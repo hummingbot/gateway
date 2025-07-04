@@ -11,7 +11,7 @@ const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
   const { executeSwapRoute } = await import(
-    '../../../../src/connectors/0x/swap-routes-v2/executeSwap'
+    '../../../../src/connectors/0x/router-routes/executeSwap'
   );
   await server.register(executeSwapRoute);
   return server;

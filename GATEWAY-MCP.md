@@ -57,8 +57,8 @@ src/mcp/
 1. **update_config** - Update chain/connector configuration values and trigger server restart
 2. **update_tokens** - Add, update, or remove tokens from token lists
 3. **update_wallets** - Add or remove wallets
-4. **quote_swap** - Get a quote for token swaps on any supported DEX
-5. **execute_swap** - Execute token swaps on any supported DEX
+4. **quote_swap** - Get a quote for token swaps on DEX aggregators (router connectors)
+5. **execute_swap** - Execute token swaps on DEX aggregators (router connectors)
 
 ### Prompts (Intelligent Workflows)
 1. **fetch-swap-quote** - Interactive prompt that:
@@ -325,7 +325,7 @@ update_tokens({
 
 ### Trading Operations
 ```javascript
-// Get swap quote
+// Get swap quote (for router/aggregator connectors)
 quote_swap({
   connector: "uniswap",
   network: "mainnet",
@@ -335,7 +335,7 @@ quote_swap({
   side: "SELL"
 })
 
-// Execute the swap
+// Execute the swap directly
 execute_swap({
   connector: "uniswap",
   network: "mainnet",
@@ -345,6 +345,14 @@ execute_swap({
   amount: 1,
   side: "SELL",
   slippagePct: 0.5
+})
+
+// Or execute a pre-fetched quote
+execute_quote({
+  connector: "uniswap",
+  network: "mainnet",
+  walletAddress: "0x...",
+  quoteId: "quote-id-from-quote-swap"
 })
 ```
 

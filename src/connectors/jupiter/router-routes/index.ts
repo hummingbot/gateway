@@ -4,10 +4,10 @@ import executeQuoteRoute from './executeQuote';
 import executeSwapRoute from './executeSwap';
 import quoteSwapRoute from './quoteSwap';
 
-export const jupiterSwapV2Routes: FastifyPluginAsync = async (fastify) => {
+export const jupiterRouterRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(quoteSwapRoute);
   await fastify.register(executeQuoteRoute);
   await fastify.register(executeSwapRoute);
 };
 
-export default jupiterSwapV2Routes;
+export default jupiterRouterRoutes;

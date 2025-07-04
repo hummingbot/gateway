@@ -7,7 +7,7 @@ import {
   ExecuteSwapRequest,
   GetPriceResponse,
   QuoteSwapResponse,
-} from '../../../schemas/swap-schema';
+} from '../../../schemas/router-schema';
 
 // 0x-specific extensions
 export const ZeroXGetPriceRequest = Type.Intersect([

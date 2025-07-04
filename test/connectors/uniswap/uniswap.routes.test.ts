@@ -20,28 +20,28 @@ describe('Uniswap Routes Structure', () => {
   });
 
   describe('Folder Structure', () => {
-    it('should have swap-routes-v2, amm-routes, and clmm-routes folders', () => {
+    it('should have router-routes, amm-routes, and clmm-routes folders', () => {
       const uniswapPath = path.join(
         __dirname,
         '../../../src/connectors/uniswap',
       );
-      const swapRoutesPath = path.join(uniswapPath, 'swap-routes-v2');
+      const routerRoutesPath = path.join(uniswapPath, 'router-routes');
       const ammRoutesPath = path.join(uniswapPath, 'amm-routes');
       const clmmRoutesPath = path.join(uniswapPath, 'clmm-routes');
       const oldRoutesPath = path.join(uniswapPath, 'routes');
 
-      expect(fs.existsSync(swapRoutesPath)).toBe(true);
+      expect(fs.existsSync(routerRoutesPath)).toBe(true);
       expect(fs.existsSync(ammRoutesPath)).toBe(true);
       expect(fs.existsSync(clmmRoutesPath)).toBe(true);
       expect(fs.existsSync(oldRoutesPath)).toBe(false);
     });
 
-    it('should have correct files in swap-routes-v2 folder', () => {
-      const swapRoutesPath = path.join(
+    it('should have correct files in router-routes folder', () => {
+      const routerRoutesPath = path.join(
         __dirname,
-        '../../../src/connectors/uniswap/swap-routes-v2',
+        '../../../src/connectors/uniswap/router-routes',
       );
-      const files = fs.readdirSync(swapRoutesPath);
+      const files = fs.readdirSync(routerRoutesPath);
 
       expect(files).toContain('executeSwap.ts');
       expect(files).toContain('quoteSwap.ts');
@@ -53,9 +53,9 @@ describe('Uniswap Routes Structure', () => {
     it('should register all Uniswap route types', async () => {
       const routes = fastify.printRoutes();
 
-      // Check that Uniswap swap routes are registered
+      // Check that Uniswap router routes are registered
       expect(routes).toContain('uniswap/');
-      expect(routes).toContain('swap/');
+      expect(routes).toContain('router/');
 
       // Check that Uniswap AMM routes are registered
       expect(routes).toContain('amm/');

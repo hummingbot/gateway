@@ -4,70 +4,43 @@ import {
   SwapOptionsSwapRouter02,
   SwapType,
 } from '@uniswap/smart-order-router';
+import { BigNumber } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { v4 as uuidv4 } from 'uuid';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import {
-  QuoteSwapRequestType,
-  QuoteSwapResponseType,
-  QuoteSwapResponse,
-} from '../../../schemas/swap-schema';
+  ExecuteSwapRequestType,
+  SwapExecuteResponseType,
+  SwapExecuteResponse,
+} from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Uniswap } from '../uniswap';
 
-import { UniswapQuoteSwapRequest, UniswapQuoteSwapResponse } from './schemas';
+import { UniswapExecuteSwapRequest } from './schemas';
 
-// Simple in-memory cache for quotes
-export const quoteCache = new Map<
-  string,
-  {
-    quote: any;
-    request: any;
-    timestamp: number;
-  }
->();
-
-// Clean up old quotes every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, cached] of quoteCache.entries()) {
-    if (now - cached.timestamp > 300000) {
-      // 5 minutes
-      quoteCache.delete(id);
-    }
-  }
-}, 300000);
-
-async function quoteSwap(
+async function executeSwap(
   fastify: FastifyInstance,
-  network: string,
   walletAddress: string,
+  network: string,
   baseToken: string,
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
   slippagePct: number,
-  protocols?: string[],
-): Promise<
-  QuoteSwapResponseType & {
-    route: string[];
-    routePath: string;
-    protocols: string[];
-    methodParameters: { calldata: string; value: string; to: string };
-    gasPriceWei: string;
-  }
-> {
+  gasPrice?: string,
+  maxGas?: number,
+): Promise<SwapExecuteResponseType> {
   const ethereum = await Ethereum.getInstance(network);
+  const wallet = await ethereum.getWallet(walletAddress);
   const uniswap = await Uniswap.getInstance(network);
 
-  // Resolve token symbols to token objects
+  // Resolve token symbols to addresses
   const baseTokenInfo = ethereum.getTokenBySymbol(baseToken);
   const quoteTokenInfo = ethereum.getTokenBySymbol(quoteToken);
 
   if (!baseTokenInfo || !quoteTokenInfo) {
-    throw fastify.httpErrors.notFound(
+    throw fastify.httpErrors.badRequest(
       sanitizeErrorMessage(
         'Token not found: {}',
         !baseTokenInfo ? baseToken : quoteToken,
@@ -99,7 +72,7 @@ async function quoteSwap(
     : [quoteTokenObj, baseTokenObj];
 
   logger.info(
-    `Getting executable quote for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`,
+    `Executing swap for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`,
   );
 
   // Create AlphaRouter instance
@@ -142,28 +115,63 @@ async function quoteSwap(
 
   const quote = routeResponse;
 
-  // Generate unique quote ID
-  const quoteId = uuidv4();
+  // Check and approve allowance if needed
+  if (inputToken.address !== ethereum.nativeTokenSymbol) {
+    const tokenContract = ethereum.getContract(inputToken.address, wallet);
+    const spender = quote.methodParameters.to; // Router address
+    const allowance = await ethereum.getERC20Allowance(
+      tokenContract,
+      wallet,
+      spender,
+      inputToken.decimals,
+    );
 
-  // Extract route information
-  const route: string[] = [];
-  let routePath = '';
+    // Calculate required allowance based on side
+    const requiredAmount =
+      side === 'SELL'
+        ? amount
+        : quote.quote
+          ? parseFloat(quote.quote.toExact())
+          : 0;
+    const scaleFactor = Math.pow(10, inputToken.decimals);
+    const requiredAllowance = BigNumber.from(
+      Math.floor(requiredAmount * scaleFactor).toString(),
+    );
 
-  if (quote.route && quote.route.length > 0) {
-    const firstRoute = quote.route[0];
-    if (firstRoute.tokenPath) {
-      firstRoute.tokenPath.forEach((currency) => {
-        if ('address' in currency) {
-          route.push(currency.symbol || currency.address);
-        } else {
-          route.push('ETH'); // Native currency
-        }
-      });
-      routePath = route.join(' -> ');
+    if (BigNumber.from(allowance.value).lt(requiredAllowance)) {
+      logger.info(`Approving ${inputToken.symbol} for Uniswap router`);
+      await ethereum.approveERC20(
+        tokenContract,
+        wallet,
+        spender,
+        requiredAllowance,
+      );
     }
   }
 
-  // Calculate amounts based on quote
+  // Execute the swap transaction
+  const txData = {
+    to: quote.methodParameters.to,
+    data: quote.methodParameters.calldata,
+    value: quote.methodParameters.value,
+    gasLimit:
+      maxGas || parseInt(quote.estimatedGasUsed?.toString() || '500000'),
+    ...(gasPrice && { gasPrice: BigNumber.from(gasPrice) }),
+  };
+
+  const txResponse = await wallet.sendTransaction(txData);
+  const txReceipt = await txResponse.wait();
+
+  if (!txReceipt || txReceipt.status !== 1) {
+    throw fastify.httpErrors.internalServerError('Transaction failed');
+  }
+
+  // Calculate fee from gas used
+  const fee =
+    parseFloat(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice).toString()) /
+    1e18;
+
+  // Calculate actual amounts (for now use quote amounts)
   let estimatedAmountIn: number;
   let estimatedAmountOut: number;
 
@@ -175,87 +183,54 @@ async function quoteSwap(
     estimatedAmountOut = amount;
   }
 
-  const minAmountOut =
-    side === 'SELL'
-      ? estimatedAmountOut * (1 - slippagePct / 100)
-      : estimatedAmountOut;
-  const maxAmountIn =
-    side === 'BUY'
-      ? estimatedAmountIn * (1 + slippagePct / 100)
-      : estimatedAmountIn;
+  const baseTokenBalanceChange = side === 'SELL' ? -amount : estimatedAmountOut;
+  const quoteTokenBalanceChange =
+    side === 'SELL' ? estimatedAmountOut : -amount;
 
-  const price = estimatedAmountOut / estimatedAmountIn;
-  const priceImpactPct = quote.estimatedGasUsedQuoteToken
-    ? parseFloat(quote.estimatedGasUsedQuoteToken.toExact()) * 100
-    : 0;
-
-  // Cache the quote for execution
-  quoteCache.set(quoteId, {
-    quote: {
-      ...quote,
-      methodParameters: quote.methodParameters,
-    },
-    request: {
-      network,
-      walletAddress,
-      baseTokenInfo,
-      quoteTokenInfo,
-      inputToken,
-      outputToken,
-      amount,
-      side,
-      slippagePct,
-    },
-    timestamp: Date.now(),
-  });
+  const totalInputSwapped = Math.abs(
+    side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange,
+  );
+  const totalOutputSwapped = Math.abs(
+    side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange,
+  );
 
   logger.info(
-    `Quote ${quoteId}: ${estimatedAmountIn} ${inputToken.symbol} -> ${estimatedAmountOut} ${outputToken.symbol}`,
+    `Swap executed successfully: ${totalInputSwapped} ${inputToken.symbol} -> ${totalOutputSwapped} ${outputToken.symbol}`,
   );
 
   return {
-    // Base GetQuoteResponse fields
-    quoteId,
-    estimatedAmountIn,
-    estimatedAmountOut,
-    minAmountOut,
-    maxAmountIn,
-    price,
-    priceImpactPct,
-    slippagePct,
-    gasEstimate: quote.estimatedGasUsed?.toString() || '0',
-    expirationTime: Date.now() + 300000, // 5 minutes
-    // Computed fields
-    tokenIn: inputToken.address,
-    tokenOut: outputToken.address,
-    tokenInAmount: estimatedAmountIn,
-    tokenOutAmount: estimatedAmountOut,
-    // Uniswap-specific fields
-    route,
-    routePath,
-    protocols: protocols || ['v2', 'v3'],
-    methodParameters: quote.methodParameters,
-    gasPriceWei: quote.gasPriceWei?.toString() || '0',
+    signature: txReceipt.transactionHash,
+    status: 1, // CONFIRMED
+    data: {
+      totalInputSwapped,
+      totalOutputSwapped,
+      fee,
+      baseTokenBalanceChange,
+      quoteTokenBalanceChange,
+      tokenIn: inputToken.address,
+      tokenOut: outputToken.address,
+      tokenInAmount: totalInputSwapped,
+      tokenOutAmount: totalOutputSwapped,
+    },
   };
 }
 
-export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
+export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Ethereum.getWalletAddressExample();
 
-  fastify.get<{
-    Querystring: QuoteSwapRequestType;
-    Reply: QuoteSwapResponseType;
+  fastify.post<{
+    Body: ExecuteSwapRequestType;
+    Reply: SwapExecuteResponseType;
   }>(
-    '/quote-swap',
+    '/execute-swap',
     {
       schema: {
-        description:
-          'Get an executable swap quote from Uniswap Smart Order Router',
+        description: 'Quote and execute a token swap on Uniswap in one step',
         tags: ['/connector/uniswap'],
-        querystring: {
-          ...UniswapQuoteSwapRequest,
+        body: {
+          ...UniswapExecuteSwapRequest,
           properties: {
-            ...UniswapQuoteSwapRequest.properties,
+            ...UniswapExecuteSwapRequest.properties,
             walletAddress: { type: 'string', examples: [walletAddressExample] },
             network: { type: 'string', default: 'mainnet' },
             baseToken: { type: 'string', examples: ['WETH'] },
@@ -265,41 +240,42 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             slippagePct: { type: 'number', examples: [1] },
           },
         },
-        response: { 200: UniswapQuoteSwapResponse },
+        response: { 200: SwapExecuteResponse },
       },
     },
     async (request) => {
       try {
         const {
-          network,
           walletAddress,
+          network,
           baseToken,
           quoteToken,
           amount,
           side,
           slippagePct,
-          protocols,
-          enableUniversalRouter,
-        } = request.query as typeof UniswapQuoteSwapRequest._type;
+          gasPrice,
+          maxGas,
+        } = request.body as typeof UniswapExecuteSwapRequest._type;
 
-        return await quoteSwap(
+        return await executeSwap(
           fastify,
-          network,
           walletAddress,
+          network,
           baseToken,
           quoteToken,
           amount,
           side as 'BUY' | 'SELL',
           slippagePct,
-          protocols,
+          gasPrice,
+          maxGas,
         );
       } catch (e) {
         if (e.statusCode) throw e;
-        logger.error('Error getting quote:', e);
+        logger.error('Error executing swap:', e);
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
     },
   );
 };
 
-export default quoteSwapRoute;
+export default executeSwapRoute;

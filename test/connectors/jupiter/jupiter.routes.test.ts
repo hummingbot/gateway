@@ -40,13 +40,13 @@ describe('Jupiter Routes Structure', () => {
         `../../../src/connectors/${CONNECTOR_NAME}`,
       );
 
-      // Check for swap-routes-v2 if swap is supported
-      if (jupiterConfig.trading_types.includes('swap')) {
-        const swapRoutesPath = path.join(connectorPath, 'swap-routes-v2');
-        expect(fs.existsSync(swapRoutesPath)).toBe(true);
+      // Check for router-routes if router is supported
+      if (jupiterConfig.trading_types.includes('router')) {
+        const routerRoutesPath = path.join(connectorPath, 'router-routes');
+        expect(fs.existsSync(routerRoutesPath)).toBe(true);
 
-        // Verify it has the standard swap files
-        const files = fs.readdirSync(swapRoutesPath);
+        // Verify it has the standard router files
+        const files = fs.readdirSync(routerRoutesPath);
         expect(files.some((f) => f.toLowerCase().includes('swap'))).toBe(true);
       }
 
@@ -57,11 +57,11 @@ describe('Jupiter Routes Structure', () => {
   });
 
   describe('Route Registration', () => {
-    it('should register Jupiter swap routes at /connectors/jupiter/swap', async () => {
+    it('should register Jupiter router routes at /connectors/jupiter/router', async () => {
       const routes = fastify.printRoutes();
 
-      // Check that Jupiter swap routes are registered
-      expect(routes).toContain('jupiter/swap/');
+      // Check that Jupiter router routes are registered
+      expect(routes).toContain('jupiter/router/');
       expect(routes).toContain('quote-swap');
       expect(routes).toContain('execute-swap');
     });

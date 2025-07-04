@@ -6,7 +6,7 @@ import {
   ExecuteQuoteRequestType,
   SwapExecuteResponseType,
   SwapExecuteResponse,
-} from '../../../schemas/swap-schema';
+} from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 

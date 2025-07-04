@@ -44,7 +44,7 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
       const connectors = [
         {
           name: 'jupiter',
-          trading_types: ['swap'],
+          trading_types: ['router'],
           chain: JupiterConfig.chain,
           networks: JupiterConfig.networks,
         },
@@ -62,13 +62,13 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
         },
         {
           name: 'uniswap',
-          trading_types: ['amm', 'clmm', 'swap'],
+          trading_types: ['amm', 'clmm', 'router'],
           chain: 'ethereum',
           networks: UniswapConfig.networks,
         },
         {
           name: '0x',
-          trading_types: ['swap'],
+          trading_types: ['router'],
           chain: 'ethereum',
           networks: ZeroXConfig.networks.mainnet.availableNetworks,
         },

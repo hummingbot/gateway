@@ -2,10 +2,10 @@ import sensible from '@fastify/sensible';
 import type { FastifyPluginAsync } from 'fastify';
 
 // Import routes
-import { jupiterSwapV2Routes } from './swap-routes-v2';
+import { jupiterRouterRoutes } from './router-routes';
 
 // Jupiter routes with 4 endpoints
-const jupiterSwapRoutesWrapper: FastifyPluginAsync = async (fastify) => {
+const jupiterRouterRoutesWrapper: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
 
   await fastify.register(async (instance) => {
@@ -16,11 +16,11 @@ const jupiterSwapRoutesWrapper: FastifyPluginAsync = async (fastify) => {
       }
     });
 
-    await instance.register(jupiterSwapV2Routes);
+    await instance.register(jupiterRouterRoutes);
   });
 };
 
 // Export routes in the same pattern as Raydium
 export const jupiterRoutes = {
-  swap: jupiterSwapRoutesWrapper,
+  router: jupiterRouterRoutesWrapper,
 };

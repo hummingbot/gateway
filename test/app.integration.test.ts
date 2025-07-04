@@ -31,16 +31,16 @@ describe('App Integration - Route Registration', () => {
       for (const connector of connectors) {
         const { name, trading_types } = connector;
 
-        // Test swap routes
-        if (trading_types.includes('swap')) {
+        // Test router routes
+        if (trading_types.includes('router')) {
           // For 0x, test get-price; for others, test quote-swap
           const endpoint = name === '0x' ? 'get-price' : 'quote-swap';
-          const swapResponse = await fastify.inject({
+          const routerResponse = await fastify.inject({
             method: 'GET',
-            url: `/connectors/${name}/swap/${endpoint}`,
+            url: `/connectors/${name}/router/${endpoint}`,
           });
           // Should not be 404 if the route exists
-          expect(swapResponse.statusCode).not.toBe(404);
+          expect(routerResponse.statusCode).not.toBe(404);
         }
 
         // Test AMM routes
@@ -81,7 +81,7 @@ describe('App Integration - Route Registration', () => {
 
         // All trading types should be valid
         connector.trading_types.forEach((type: string) => {
-          expect(['swap', 'amm', 'clmm']).toContain(type);
+          expect(['router', 'amm', 'clmm']).toContain(type);
         });
 
         // No duplicates
@@ -105,11 +105,11 @@ describe('App Integration - Route Registration', () => {
       for (const connector of connectors) {
         const { name, trading_types } = connector;
 
-        // Test swap routes if not supported
-        if (!trading_types.includes('swap')) {
+        // Test router routes if not supported
+        if (!trading_types.includes('router')) {
           const response = await fastify.inject({
             method: 'POST',
-            url: `/connectors/${name}/swap/quote`,
+            url: `/connectors/${name}/router/quote`,
             payload: {
               chain: connector.chain,
               network: connector.networks[0],

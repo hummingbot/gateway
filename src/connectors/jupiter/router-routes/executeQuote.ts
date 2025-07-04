@@ -3,81 +3,46 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import {
-  ExecuteSwapRequestType,
+  ExecuteQuoteRequestType,
   SwapExecuteResponseType,
   SwapExecuteResponse,
-} from '../../../schemas/swap-schema';
+} from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
-import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Jupiter } from '../jupiter';
-import { JupiterExecuteSwapRequest } from '../schemas';
+import { JupiterExecuteQuoteRequest } from '../schemas';
 
-async function executeSwap(
+import { quoteCache } from './quoteSwap';
+
+async function executeQuote(
   fastify: FastifyInstance,
   walletAddress: string,
   network: string,
-  baseToken: string,
-  quoteToken: string,
-  amount: number,
-  side: 'BUY' | 'SELL',
-  slippagePct: number,
-  onlyDirectRoutes?: boolean,
-  asLegacyTransaction?: boolean,
-  _maxAccounts?: number,
+  quoteId: string,
   priorityFeeLamports?: number,
   computeUnits?: number,
 ): Promise<SwapExecuteResponseType> {
+  // Retrieve cached quote
+  const cached = quoteCache.get(quoteId);
+  if (!cached) {
+    throw fastify.httpErrors.badRequest('Quote not found or expired');
+  }
+
+  const { quote, request } = cached;
+  const { inputToken, outputToken, side, amount } = request;
+
   const solana = await Solana.getInstance(network);
   const jupiter = await Jupiter.getInstance(network);
   const keypair = await solana.getWallet(walletAddress);
   const wallet = new Wallet(keypair as any);
 
-  // Resolve token symbols to addresses
-  const baseTokenInfo = await solana.getToken(baseToken);
-  const quoteTokenInfo = await solana.getToken(quoteToken);
-
-  if (!baseTokenInfo || !quoteTokenInfo) {
-    throw fastify.httpErrors.badRequest(
-      sanitizeErrorMessage(
-        'Token not found: {}',
-        !baseTokenInfo ? baseToken : quoteToken,
-      ),
-    );
-  }
-
-  // Determine input/output based on side
-  const inputToken = side === 'SELL' ? baseTokenInfo : quoteTokenInfo;
-  const outputToken = side === 'SELL' ? quoteTokenInfo : baseTokenInfo;
-  const inputAmount =
-    side === 'SELL'
-      ? amount * Math.pow(10, baseTokenInfo.decimals)
-      : amount * Math.pow(10, quoteTokenInfo.decimals);
-
   logger.info(
-    `Executing swap for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`,
+    `Executing quote ${quoteId} for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`,
   );
-
-  // Get quote from Jupiter API
-  const quoteResponse = await jupiter.getQuote(
-    inputToken.address,
-    outputToken.address,
-    inputAmount / Math.pow(10, inputToken.decimals),
-    slippagePct,
-    onlyDirectRoutes || false,
-    asLegacyTransaction || false,
-    side === 'BUY' ? 'ExactOut' : 'ExactIn',
-  );
-
-  if (!quoteResponse) {
-    throw fastify.httpErrors.notFound('No routes found for this swap');
-  }
-
-  const bestRoute = quoteResponse;
 
   // Execute the swap
   const swapResult = await jupiter.executeSwap(
     wallet,
-    bestRoute,
+    quote,
     priorityFeeLamports
       ? priorityFeeLamports / (computeUnits || 300000)
       : undefined,
@@ -95,8 +60,8 @@ async function executeSwap(
   const { baseTokenBalanceChange, quoteTokenBalanceChange } =
     await solana.extractPairBalanceChangesAndFee(
       signature,
-      baseTokenInfo,
-      quoteTokenInfo,
+      request.baseToken,
+      request.quoteToken,
       walletAddress,
     );
 
@@ -113,6 +78,9 @@ async function executeSwap(
   logger.info(
     `Swap executed successfully: ${totalInputSwapped.toFixed(4)} ${inputToken.symbol} -> ${totalOutputSwapped.toFixed(4)} ${outputToken.symbol}`,
   );
+
+  // Remove quote from cache after successful execution
+  quoteCache.delete(quoteId);
 
   return {
     signature,
@@ -131,29 +99,28 @@ async function executeSwap(
   };
 }
 
-export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
+export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
-    Body: ExecuteSwapRequestType;
+    Body: ExecuteQuoteRequestType;
     Reply: SwapExecuteResponseType;
   }>(
-    '/execute-swap',
+    '/execute-quote',
     {
       schema: {
-        description: 'Quote and execute a token swap on Jupiter in one step',
+        description: 'Execute a previously fetched quote from Jupiter',
         tags: ['jupiter/swap'],
         body: {
-          ...JupiterExecuteSwapRequest,
+          ...JupiterExecuteQuoteRequest,
           properties: {
-            ...JupiterExecuteSwapRequest.properties,
+            ...JupiterExecuteQuoteRequest.properties,
             walletAddress: { type: 'string', examples: [walletAddressExample] },
             network: { type: 'string', default: 'mainnet-beta' },
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [1] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            slippagePct: { type: 'number', examples: [1] },
+            quoteId: {
+              type: 'string',
+              examples: ['123e4567-e89b-12d3-a456-426614174000'],
+            },
           },
         },
         response: { 200: SwapExecuteResponse },
@@ -164,40 +131,26 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         const {
           walletAddress,
           network,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          slippagePct,
-          onlyDirectRoutes,
-          asLegacyTransaction,
-          maxAccounts,
+          quoteId,
           priorityFeeLamports,
           computeUnits,
-        } = request.body as typeof JupiterExecuteSwapRequest._type;
+        } = request.body as typeof JupiterExecuteQuoteRequest._type;
 
-        return await executeSwap(
+        return await executeQuote(
           fastify,
           walletAddress,
           network,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
-          slippagePct,
-          onlyDirectRoutes,
-          asLegacyTransaction,
-          maxAccounts,
+          quoteId,
           priorityFeeLamports,
           computeUnits,
         );
       } catch (e) {
         if (e.statusCode) throw e;
-        logger.error('Error executing swap:', e);
+        logger.error('Error executing quote:', e);
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
     },
   );
 };
 
-export default executeSwapRoute;
+export default executeQuoteRoute;

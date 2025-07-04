@@ -1,6 +1,6 @@
 import { Type } from '@sinclair/typebox';
 
-import * as Base from '../../../schemas/swap-schema';
+import * as Base from '../../../schemas/router-schema';
 
 // Uniswap-specific request extensions for quote-swap
 export const UniswapQuoteSwapRequest = Type.Intersect([

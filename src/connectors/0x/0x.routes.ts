@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 
 import { ZeroXConfig } from './0x.config';
-import zeroXSwapV2Routes from './swap-routes-v2';
+import zeroXRouterRoutes from './router-routes';
 
 export const register0xRoutes = async (
   fastify: FastifyInstance,
@@ -14,8 +14,8 @@ export const register0xRoutes = async (
     throw new Error('No networks configured for 0x connector');
   }
 
-  // Register v2 swap routes (4 endpoints)
-  await fastify.register(zeroXSwapV2Routes, {
-    prefix: '/connectors/0x/swap',
+  // Register v2 router routes (4 endpoints)
+  await fastify.register(zeroXRouterRoutes, {
+    prefix: '/connectors/0x/router',
   });
 };

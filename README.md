@@ -138,12 +138,13 @@ Gateway may be used alongside the main [Hummingbot client](https://github.com/hu
 
 ### Supported DEX Protocols
 
-| Protocol | Chain | Swap | AMM | CLMM |
-|----------|-------|------|-----|------|
+| Protocol | Chain | Router | AMM | CLMM |
+|----------|-------|--------|-----|------|
 | Jupiter | Solana | ✅ | ❌ | ❌ |
-| Meteora | Solana | ✅ | ❌ | ✅ |
-| Raydium | Solana | ✅ | ✅ | ✅ |
+| Meteora | Solana | ❌ | ❌ | ✅ |
+| Raydium | Solana | ❌ | ✅ | ✅ |
 | Uniswap | Ethereum/EVM | ✅ | ✅ | ✅ |
+| 0x | Ethereum/EVM | ✅ | ❌ | ❌ |
 
 Gateway uses [Swagger](https://swagger.io/) for API documentation. When running in development mode, access the interactive API documentation at: <http://localhost:15888/docs>
 
@@ -301,9 +302,11 @@ Afterwards, client may connect to Gateway at: <http://localhost:15888> and you c
 
 ### DEX Trading Endpoints
 
-#### Simple Swaps
-- `GET /connectors/{dex}/quote-swap` - Get swap quote
-- `POST /connectors/{dex}/execute-swap` - Execute swap
+#### Router Operations (DEX Aggregators)
+- `GET /connectors/{dex}/router/quote-swap` - Get swap quote
+- `POST /connectors/{dex}/router/execute-swap` - Execute swap without quote
+- `POST /connectors/{dex}/router/execute-quote` - Execute pre-fetched quote
+- `GET /connectors/0x/router/get-price` - Get price estimate (0x only)
 
 #### AMM Operations (Uniswap V2, Raydium)
 - `GET /connectors/{dex}/amm/pool-info` - Pool information
@@ -349,9 +352,16 @@ Gateway follows a modular architecture with clear separation of concerns:
 /src
 ├── chains/               # Blockchain-specific implementations
 ├── connectors/           # DEX-specific implementations
+│   ├── {dex}/           # Each DEX connector directory
+│   │   ├── router-routes/   # DEX aggregator operations
+│   │   ├── amm-routes/      # AMM pool operations
+│   │   └── clmm-routes/     # Concentrated liquidity operations
 ├── mcp/                  # Model Context Protocol server
 ├── services/             # Core services (config, logging, tokens)
 ├── schemas/              # API request/response schemas (TypeBox)
+│   ├── router-schema.ts  # Router operation schemas
+│   ├── amm-schema.ts     # AMM operation schemas
+│   └── clmm-schema.ts    # CLMM operation schemas
 ├── config/               # Configuration routes and utilities
 └── wallet/               # Wallet management
 ```
@@ -366,10 +376,13 @@ The `src/chains` directory contains blockchain network implementations. Each cha
 
 #### Connectors
 The `src/connectors` directory houses DEX protocol implementations. Each connector provides:
-- **Quoting**: Getting price quotes for swaps
-- **Trading**: Executing trades
-- **Liquidity Pool Info**: Fetching pool information
-- Support for different DEX models (AMM, CLMM)
+- **Router operations**: DEX aggregator functionality (router-routes/)
+  - Quote and execute swaps through aggregator protocols
+  - Support for execute-quote pattern for better execution
+- **AMM operations**: Automated Market Maker pools (amm-routes/)
+  - Manage liquidity positions in V2-style pools
+- **CLMM operations**: Concentrated Liquidity pools (clmm-routes/)
+  - Manage positions with custom price ranges
 
 #### MCP Server
 The `src/mcp` directory implements the Model Context Protocol server, exposing Gateway's functionality as "tools" that can be called by AI assistants.
@@ -487,9 +500,9 @@ For more details on the test setup and structure, see [Test README](./test/READM
 3. **Implement trading methods** based on supported operations
 
 4. **Create route files** following the pattern:
-   - Swap routes in `routes/`
-   - AMM routes in `amm-routes/`
-   - CLMM routes in `clmm-routes/`
+   - Router routes in `router-routes/` (for DEX aggregators)
+   - AMM routes in `amm-routes/` (for V2-style pools)
+   - CLMM routes in `clmm-routes/` (for concentrated liquidity)
 
 5. **Add configuration and register** in `src/connectors/connector.routes.ts`
 

@@ -10,7 +10,7 @@ const buildApp = async () => {
   await server.register(require('@fastify/sensible'));
   try {
     const { quoteSwapRoute } = await import(
-      '../../../../src/connectors/jupiter/swap-routes-v2/quoteSwap'
+      '../../../../src/connectors/jupiter/router-routes/quoteSwap'
     );
     await server.register(quoteSwapRoute);
   } catch (error) {

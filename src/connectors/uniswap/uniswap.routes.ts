@@ -24,10 +24,10 @@ import positionsOwnedRoute from './clmm-routes/positionsOwned';
 import quotePositionRoute from './clmm-routes/quotePosition';
 import clmmQuoteSwapRoute from './clmm-routes/quoteSwap';
 import clmmRemoveLiquidityRoute from './clmm-routes/removeLiquidity';
-import { uniswapSwapV2Routes } from './swap-routes-v2';
+import { uniswapRouterRoutes as routerRoutesImport } from './router-routes';
 
-// Swap routes (Universal Router with 4 endpoints)
-const uniswapSwapRoutes: FastifyPluginAsync = async (fastify) => {
+// Router routes (Universal Router with 4 endpoints)
+const uniswapRouterRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
 
   await fastify.register(async (instance) => {
@@ -37,7 +37,7 @@ const uniswapSwapRoutes: FastifyPluginAsync = async (fastify) => {
       }
     });
 
-    await instance.register(uniswapSwapV2Routes);
+    await instance.register(routerRoutesImport);
   });
 };
 
@@ -89,7 +89,7 @@ const uniswapClmmRoutes: FastifyPluginAsync = async (fastify) => {
 
 // Export routes in the same pattern as other connectors
 export const uniswapRoutes = {
-  swap: uniswapSwapRoutes,
+  router: uniswapRouterRoutes,
   amm: uniswapAmmRoutes,
   clmm: uniswapClmmRoutes,
 };

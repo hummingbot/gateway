@@ -2,7 +2,7 @@ import { BigNumber } from 'ethers';
 
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { ZeroX } from '../../../../src/connectors/0x/0x';
-import { quoteCache } from '../../../../src/connectors/0x/swap-routes-v2/quoteSwap';
+import { quoteCache } from '../../../../src/connectors/0x/router-routes/quoteSwap';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
@@ -12,7 +12,7 @@ const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
   const { executeQuoteRoute } = await import(
-    '../../../../src/connectors/0x/swap-routes-v2/executeQuote'
+    '../../../../src/connectors/0x/router-routes/executeQuote'
   );
   await server.register(executeQuoteRoute);
   return server;

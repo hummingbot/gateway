@@ -1,20 +1,20 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 
-import { Solana } from '../../../chains/solana/solana';
+import { Ethereum } from '../../../chains/ethereum/ethereum';
 import {
   QuoteSwapRequestType,
   QuoteSwapResponseType,
-} from '../../../schemas/swap-schema';
+} from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
-import { Jupiter } from '../jupiter';
-import { JupiterQuoteSwapRequest, JupiterQuoteSwapResponse } from '../schemas';
+import { ZeroX, ZeroXQuoteResponse } from '../0x';
+import { ZeroXQuoteSwapRequest, ZeroXQuoteSwapResponse } from '../schemas';
 
 // In-memory cache for quotes (with 30 second TTL)
 const quoteCache = new Map<
   string,
-  { quote: any; timestamp: number; request: any }
+  { quote: ZeroXQuoteResponse; timestamp: number; request: any }
 >();
 const QUOTE_TTL = 30000; // 30 seconds
 
@@ -36,17 +36,18 @@ async function quoteSwap(
   amount: number,
   side: 'BUY' | 'SELL',
   slippagePct: number,
-  onlyDirectRoutes?: boolean,
-  asLegacyTransaction?: boolean,
-  _maxAccounts?: number,
-  priorityFeeLamports?: number,
+  _gasPrice?: string,
+  _excludedSources?: string[],
+  _includedSources?: string[],
+  skipValidation?: boolean,
+  takerAddress?: string,
 ): Promise<QuoteSwapResponseType> {
-  const solana = await Solana.getInstance(network);
-  const jupiter = await Jupiter.getInstance(network);
+  const ethereum = await Ethereum.getInstance(network);
+  const zeroX = await ZeroX.getInstance(network);
 
   // Resolve token symbols to addresses
-  const baseTokenInfo = await solana.getToken(baseToken);
-  const quoteTokenInfo = await solana.getToken(quoteToken);
+  const baseTokenInfo = await ethereum.getTokenBySymbol(baseToken);
+  const quoteTokenInfo = await ethereum.getTokenBySymbol(quoteToken);
 
   if (!baseTokenInfo || !quoteTokenInfo) {
     throw fastify.httpErrors.badRequest(
@@ -58,37 +59,47 @@ async function quoteSwap(
   }
 
   // Determine input/output based on side
-  const inputToken = side === 'SELL' ? baseTokenInfo : quoteTokenInfo;
-  const outputToken = side === 'SELL' ? quoteTokenInfo : baseTokenInfo;
-  const inputAmount =
-    side === 'SELL'
-      ? amount * Math.pow(10, baseTokenInfo.decimals)
-      : amount * Math.pow(10, quoteTokenInfo.decimals);
+  const sellToken =
+    side === 'SELL' ? baseTokenInfo.address : quoteTokenInfo.address;
+  const buyToken =
+    side === 'SELL' ? quoteTokenInfo.address : baseTokenInfo.address;
+  const tokenDecimals =
+    side === 'SELL' ? baseTokenInfo.decimals : quoteTokenInfo.decimals;
+
+  // Convert amount to token units
+  const tokenAmount = zeroX.parseTokenAmount(amount, tokenDecimals);
+
+  // Use provided taker address or example
+  const walletAddress =
+    takerAddress || (await Ethereum.getWalletAddressExample());
 
   logger.info(
-    `Getting quote for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`,
+    `Getting quote for ${amount} ${side === 'SELL' ? baseToken : quoteToken} -> ${side === 'SELL' ? quoteToken : baseToken}`,
   );
 
-  // Get quote from Jupiter API
-  const quoteResponse = await jupiter.getQuote(
-    inputToken.address,
-    outputToken.address,
-    inputAmount / Math.pow(10, inputToken.decimals),
-    slippagePct,
-    onlyDirectRoutes || false,
-    asLegacyTransaction || false,
-    side === 'BUY' ? 'ExactOut' : 'ExactIn',
+  // Get quote from 0x API
+  const quoteResponse = await zeroX.getQuote({
+    sellToken,
+    buyToken,
+    sellAmount: side === 'SELL' ? tokenAmount : undefined,
+    buyAmount: side === 'BUY' ? tokenAmount : undefined,
+    takerAddress: walletAddress,
+    slippagePercentage: zeroX.convertSlippageToPercentage(slippagePct),
+    skipValidation: skipValidation || false,
+  });
+
+  // Parse amounts
+  const sellDecimals =
+    side === 'SELL' ? baseTokenInfo.decimals : quoteTokenInfo.decimals;
+  const buyDecimals =
+    side === 'SELL' ? quoteTokenInfo.decimals : baseTokenInfo.decimals;
+
+  const estimatedAmountIn = parseFloat(
+    zeroX.formatTokenAmount(quoteResponse.sellAmount, sellDecimals),
   );
-
-  if (!quoteResponse) {
-    throw fastify.httpErrors.notFound('No routes found for this swap');
-  }
-
-  const bestRoute = quoteResponse;
-  const estimatedAmountIn =
-    Number(quoteResponse.inAmount) / Math.pow(10, inputToken.decimals);
-  const estimatedAmountOut =
-    Number(quoteResponse.outAmount) / Math.pow(10, outputToken.decimals);
+  const estimatedAmountOut = parseFloat(
+    zeroX.formatTokenAmount(quoteResponse.buyAmount, buyDecimals),
+  );
 
   // Calculate min/max amounts based on slippage
   const minAmountOut =
@@ -102,12 +113,17 @@ async function quoteSwap(
       ? estimatedAmountOut / estimatedAmountIn
       : estimatedAmountIn / estimatedAmountOut;
 
+  // Parse price impact
+  const priceImpactPct = quoteResponse.estimatedPriceImpact
+    ? parseFloat(quoteResponse.estimatedPriceImpact) * 100
+    : 0;
+
   // Generate quote ID and cache the quote
   const quoteId = uuidv4();
   const now = Date.now();
 
   quoteCache.set(quoteId, {
-    quote: bestRoute,
+    quote: quoteResponse,
     timestamp: now,
     request: {
       network,
@@ -116,14 +132,17 @@ async function quoteSwap(
       amount,
       side,
       slippagePct,
-      inputToken,
-      outputToken,
-      priorityFeeLamports,
+      sellToken,
+      buyToken,
+      baseTokenInfo,
+      quoteTokenInfo,
+      walletAddress,
     },
   });
 
-  // Estimate gas (Jupiter provides compute units in the route plan)
-  const gasEstimate = '200000'; // Default estimate
+  // Format gas estimate
+  const gasEstimate =
+    quoteResponse.estimatedGas || quoteResponse.gas || '300000';
 
   return {
     quoteId,
@@ -132,20 +151,20 @@ async function quoteSwap(
     minAmountOut,
     maxAmountIn,
     price,
-    priceImpactPct: quoteResponse.priceImpactPct
-      ? Number(quoteResponse.priceImpactPct)
-      : 0,
+    priceImpactPct,
     slippagePct,
     gasEstimate,
     expirationTime: now + QUOTE_TTL,
-    tokenIn: inputToken.address,
-    tokenOut: outputToken.address,
+    tokenIn: sellToken,
+    tokenOut: buyToken,
     tokenInAmount: estimatedAmountIn,
     tokenOutAmount: estimatedAmountOut,
   };
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
+
   fastify.get<{
     Querystring: QuoteSwapRequestType;
     Reply: QuoteSwapResponseType;
@@ -153,21 +172,22 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     '/quote-swap',
     {
       schema: {
-        description: 'Get an executable swap quote from Jupiter',
-        tags: ['jupiter/swap'],
+        description: 'Get an executable swap quote from 0x',
+        tags: ['/connector/0x'],
         querystring: {
-          ...JupiterQuoteSwapRequest,
+          ...ZeroXQuoteSwapRequest,
           properties: {
-            ...JupiterQuoteSwapRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            baseToken: { type: 'string', examples: ['SOL'] },
+            ...ZeroXQuoteSwapRequest.properties,
+            network: { type: 'string', default: 'mainnet' },
+            baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [1] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             slippagePct: { type: 'number', examples: [1] },
+            takerAddress: { type: 'string', examples: [walletAddressExample] },
           },
         },
-        response: { 200: JupiterQuoteSwapResponse },
+        response: { 200: ZeroXQuoteSwapResponse },
       },
     },
     async (request) => {
@@ -179,11 +199,12 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           amount,
           side,
           slippagePct,
-          onlyDirectRoutes,
-          asLegacyTransaction,
-          maxAccounts,
-          priorityFeeLamports,
-        } = request.query as typeof JupiterQuoteSwapRequest._type;
+          gasPrice,
+          excludedSources,
+          includedSources,
+          skipValidation,
+          takerAddress,
+        } = request.query as typeof ZeroXQuoteSwapRequest._type;
 
         return await quoteSwap(
           fastify,
@@ -193,10 +214,11 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           amount,
           side as 'BUY' | 'SELL',
           slippagePct,
-          onlyDirectRoutes,
-          asLegacyTransaction,
-          maxAccounts,
-          priorityFeeLamports,
+          gasPrice,
+          excludedSources,
+          includedSources,
+          skipValidation,
+          takerAddress,
         );
       } catch (e) {
         if (e.statusCode) throw e;

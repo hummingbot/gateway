@@ -5,7 +5,7 @@ import {
   ExecuteQuoteRequest,
   ExecuteSwapRequest,
   QuoteSwapResponse,
-} from '../../../schemas/swap-schema';
+} from '../../../schemas/router-schema';
 
 // Jupiter-specific extensions for quote-swap
 export const JupiterQuoteSwapRequest = Type.Intersect([

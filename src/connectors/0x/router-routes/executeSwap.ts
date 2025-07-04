@@ -6,7 +6,7 @@ import {
   ExecuteSwapRequestType,
   SwapExecuteResponseType,
   SwapExecuteResponse,
-} from '../../../schemas/swap-schema';
+} from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { ZeroX } from '../0x';

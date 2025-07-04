@@ -41,7 +41,7 @@ describe('Connector Routes', () => {
         expect(Array.isArray(connector.trading_types)).toBe(true);
         expect(connector.trading_types.length).toBeGreaterThan(0);
         connector.trading_types.forEach((type: string) => {
-          expect(['swap', 'amm', 'clmm']).toContain(type);
+          expect(['router', 'amm', 'clmm']).toContain(type);
         });
 
         // Verify chain is valid
