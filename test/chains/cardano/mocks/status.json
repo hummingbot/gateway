@@ -1,0 +1,7 @@
+{
+  "chain": "cardano",
+  "network": "preprod",
+  "rpcUrl": "https://cardano-preprod.blockfrost.io/api/v0",
+  "currentBlockNumber": 12080947,
+  "nativeCurrency": "ADA"
+}

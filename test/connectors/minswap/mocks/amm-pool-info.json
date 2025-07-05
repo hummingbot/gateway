@@ -1,0 +1,14 @@
+{
+  "address": "3bb0079303c57812462dec9de8fb867cef8fd3768de7f12c77f6f0dd80381d0d",
+  "baseTokenAddress": "lovelace",
+  "quoteTokenAddress": "e16c2dc8ae937e8d3790c7fd7168d7b994621ba14ca11415f39fed724d494e",
+  "feePct": 2,
+  "price": 1.40074170245e-9,
+  "baseTokenAmount": 8078336461,
+  "quoteTokenAmount": 5767184946983,
+  "lpMint": {
+    "address": "e4214b7cce62ac6fbba385d164df48e157eae5863521b4b67ca71d863bb0079303c57812462dec9de8fb867cef8fd3768de7f12c77f6f0dd80381d0d",
+    "decimals": 0
+  },
+  "poolType": "amm"
+}

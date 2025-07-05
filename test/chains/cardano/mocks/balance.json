@@ -1,0 +1,20 @@
+{
+  "network": "preprod",
+  "wallet": "addr_test1vrvqa7ytgmptew2qy3ec0lqdk9n94vcgwu4wy07kqp2he0srll8mg",
+  "balances": [
+    {
+      "symbol": "ADA",
+      "address": "ada.lovelace",
+      "decimals": 6,
+      "name": "ADA",
+      "balance": "25"
+    },
+    {
+      "symbol": "MIN",
+      "address": "e16c2dc8ae937e8d3790c7fd7168d7b994621ba14ca11415f39fed72.4d494e",
+      "decimals": 0,
+      "name": "MIN Token",
+      "balance": "1500"
+    }
+  ]
+}

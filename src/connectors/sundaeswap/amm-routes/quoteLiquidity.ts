@@ -8,10 +8,11 @@ import {
   QuoteLiquidityResponse,
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
-import { Minswap } from '../minswap';
-import { formatTokenAmount } from '../minswap.utils';
+import { Sundaeswap } from '../sundaeswap';
+import { formatTokenAmount } from '../sundaeswap.utils';
+import { IPoolData } from '@aiquant/sundaeswap-core';
 
-export async function getMinswapAmmLiquidityQuote(
+export async function getSundaeswapAmmLiquidityQuote(
   network: string,
   poolAddress?: string,
   baseToken?: string,
@@ -28,9 +29,9 @@ export async function getMinswapAmmLiquidityQuote(
   baseTokenObj: CardanoTokenInfo;
   quoteTokenObj: CardanoTokenInfo;
   poolAddress?: string;
-  rawBaseTokenAmount: BigNumber;
-  rawQuoteTokenAmount: BigNumber;
-  routerAddress: string;
+  rawBaseTokenAmount: string;
+  rawQuoteTokenAmount: string;
+  poolData: IPoolData;
 }> {
   const networkToUse = network || 'mainnet';
 
@@ -41,10 +42,10 @@ export async function getMinswapAmmLiquidityQuote(
     throw new Error('At least one token amount must be provided');
   }
 
-  const minswap = await Minswap.getInstance(networkToUse);
+  const sundaeswap = await Sundaeswap.getInstance(networkToUse);
 
-  const baseTokenObj = minswap.cardano.getTokenBySymbol(baseToken);
-  const quoteTokenObj = minswap.cardano.getTokenBySymbol(quoteToken);
+  const baseTokenObj = sundaeswap.cardano.getTokenBySymbol(baseToken);
+  const quoteTokenObj = sundaeswap.cardano.getTokenBySymbol(quoteToken);
   if (!baseTokenObj || !quoteTokenObj) {
     throw new Error(
       `Token not found: ${!baseTokenObj ? baseToken : quoteToken}`,
@@ -54,7 +55,7 @@ export async function getMinswapAmmLiquidityQuote(
   let poolAddressToUse = poolAddress;
   let existingPool = true;
   if (!poolAddressToUse) {
-    poolAddressToUse = await minswap.findDefaultPool(
+    poolAddressToUse = await sundaeswap.findDefaultPool(
       baseToken,
       quoteToken,
       'amm',
@@ -70,18 +71,18 @@ export async function getMinswapAmmLiquidityQuote(
   let baseTokenAmountOptimal = baseTokenAmount!;
   let quoteTokenAmountOptimal = quoteTokenAmount!;
   let baseLimited = false;
-
+  let poolState: IPoolData;
   if (existingPool) {
-    const { poolState, poolDatum } =
-      await minswap.getPoolData(poolAddressToUse);
-
+    // Get pool state from Sundaeswap (adjust method name based on their SDK)
+    poolState = await sundaeswap.getPoolData(poolAddressToUse);
     if (!poolState) {
       throw new Error(`Unable to load pool ${poolAddressToUse}`);
     }
 
     // ── 2) Pull reserves as bigints ────────────────────────
-    const baseReserve: bigint = poolState.reserveA;
-    const quoteReserve: bigint = poolState.reserveB;
+    // Adjust property names based on Sundaeswap's pool structure
+    const baseReserve: bigint = poolState.liquidity.aReserve || BigInt(0);
+    const quoteReserve: bigint = poolState.liquidity.bReserve || BigInt(0);
 
     // ── 3) Convert user inputs into raw bigints ───────────
     const baseRaw = baseTokenAmount
@@ -97,7 +98,7 @@ export async function getMinswapAmmLiquidityQuote(
         )
       : null;
 
-    // ── 4) Compute the “optimal” opposite amount ───────────
+    // ── 4) Compute the "optimal" opposite amount ───────────
     if (baseRaw !== null && quoteRaw !== null) {
       // both sides provided → pick the limiting one
       const quoteOptimal = (baseRaw * quoteReserve) / baseReserve;
@@ -145,14 +146,13 @@ export async function getMinswapAmmLiquidityQuote(
   }
 
   // ── 5) Convert back into Ethers BigNumber for any on‐chain tx ───
-  const rawBaseTokenAmount = BigNumber.from(
-    Math.floor(baseTokenAmountOptimal * 10 ** baseTokenObj.decimals).toString(),
-  );
-  const rawQuoteTokenAmount = BigNumber.from(
-    Math.floor(
-      quoteTokenAmountOptimal * 10 ** quoteTokenObj.decimals,
-    ).toString(),
-  );
+  const rawBaseTokenAmount = Math.floor(
+    baseTokenAmountOptimal * 10 ** baseTokenObj.decimals,
+  ).toString();
+
+  const rawQuoteTokenAmount = Math.floor(
+    quoteTokenAmountOptimal * 10 ** quoteTokenObj.decimals,
+  ).toString();
 
   return {
     baseLimited,
@@ -165,7 +165,7 @@ export async function getMinswapAmmLiquidityQuote(
     poolAddress: poolAddressToUse,
     rawBaseTokenAmount,
     rawQuoteTokenAmount,
-    routerAddress: 'N/A',
+    poolData: poolState,
   };
 }
 
@@ -178,8 +178,8 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     '/quote-liquidity',
     {
       schema: {
-        description: 'Get liquidity quote for Minswap',
-        tags: ['minswap/amm'],
+        description: 'Get liquidity quote for Sundaeswap',
+        tags: ['sundaeswap/amm'],
         querystring: {
           ...QuoteLiquidityRequest,
           properties: {
@@ -190,7 +190,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
               examples: [''],
             },
             baseToken: { type: 'string', examples: ['ADA'] },
-            quoteToken: { type: 'string', examples: ['MIN'] },
+            quoteToken: { type: 'string', examples: ['SUNDAE'] },
             baseTokenAmount: { type: 'number', examples: [0.029314] },
             quoteTokenAmount: { type: 'number', examples: [1] },
             slippagePct: { type: 'number', examples: [1] },
@@ -213,7 +213,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
         } = request.query;
 
-        const quote = await getMinswapAmmLiquidityQuote(
+        const quote = await getSundaeswapAmmLiquidityQuote(
           network,
           poolAddress,
           baseToken,

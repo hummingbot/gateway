@@ -1,0 +1,14 @@
+{
+  "address": "2baab4c73a1cd60176f903a29a9c92ed4237c88622da51e9179121a3",
+  "baseTokenAddress": "ada.lovelace",
+  "quoteTokenAddress": "99b071ce8580d6a3a11b4902145adb8bfd0d2a03935af8cf66403e15.534245525259",
+  "feePct": 0.5,
+  "price": 96.28482095218703,
+  "baseTokenAmount": 880467013,
+  "quoteTokenAmount": 9144401,
+  "lpMint": {
+    "address": "44a1eb2d9f58add4eb1932bd0048e6a1947e85e3fe4f32956a110414.0014df102baab4c73a1cd60176f903a29a9c92ed4237c88622da51e9179121a3",
+    "decimals": 0
+  },
+  "poolType": "amm"
+}

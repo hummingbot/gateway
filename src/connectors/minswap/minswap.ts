@@ -23,7 +23,6 @@ export class Minswap {
   private static _instances: { [name: string]: Minswap };
   public cardano: Cardano;
   public config: MinswapConfig.RootConfig;
-  public rootConfig: MinswapConfig.RootConfig;
   private owner?: PrivateKey;
   public blockfrostAdapter: BlockfrostAdapter;
   // Network information
@@ -31,7 +30,7 @@ export class Minswap {
 
   private constructor(network: string) {
     this.networkName = network;
-    this.config = MinswapConfig.config as unknown as MinswapConfig.RootConfig;
+    this.config = MinswapConfig.config as MinswapConfig.RootConfig;
     this.cardano = null;
   }
 
@@ -142,7 +141,7 @@ export class Minswap {
     });
 
     return {
-      address: pool.address,
+      address: poolAddress,
       baseTokenAddress: pool.assetA,
       quoteTokenAddress: pool.assetB,
       feePct: 2,

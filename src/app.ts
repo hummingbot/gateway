@@ -23,6 +23,7 @@ import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { minswapRoutes } from './connectors/minswap/minswap.routes';
+import { sundaeswapRoutes } from './connectors/sundaeswap/sundaeswap.routes';
 import { getHttpsOptions } from './https';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { logger } from './services/logger';
@@ -96,6 +97,10 @@ const swaggerOptions = {
       {
         name: 'minswap/amm',
         description: 'Minswap pool connector (Cardano)',
+      },
+      {
+        name: 'sundaeswap/amm',
+        description: 'Sundaeswap pool connector (Cardano)',
       },
     ],
     components: {
@@ -218,6 +223,11 @@ const configureGatewayServer = () => {
 
     // Minswap routes
     app.register(minswapRoutes.amm, { prefix: '/connectors/minswap/amm' });
+
+    // Sundaeswap routes
+    app.register(sundaeswapRoutes.amm, {
+      prefix: '/connectors/sundaeswap/amm',
+    });
 
     // Register chain routes
     app.register(solanaRoutes, { prefix: '/chains/solana' });
