@@ -70,7 +70,7 @@ const configResourceHandler: ResourceHandler = async (uri, context) => {
 };
 
 // Handler for wallet list
-const walletListHandler: ResourceHandler = async (uri, context) => {
+const walletListHandler: ResourceHandler = async (_uri, context) => {
   try {
     const walletsPath = join(context.configPath, 'wallets');
 
@@ -109,7 +109,7 @@ const walletListHandler: ResourceHandler = async (uri, context) => {
 };
 
 // Handler for logs
-const logsHandler: ResourceHandler = async (uri, context) => {
+const logsHandler: ResourceHandler = async (_uri, context) => {
   try {
     if (!context.logsPath || !existsSync(context.logsPath)) {
       return 'No logs available';

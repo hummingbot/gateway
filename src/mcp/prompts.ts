@@ -17,7 +17,7 @@ type PromptHandlers = {
 };
 
 export const PROMPT_HANDLERS: PromptHandlers = {
-  fetch_swap_quote: async (context, params) => {
+  fetch_swap_quote: async (_context, params) => {
     const missingParams = [];
 
     // Check which parameters are missing
@@ -74,7 +74,7 @@ export const PROMPT_HANDLERS: PromptHandlers = {
     ].join('\n');
   },
 
-  execute_token_swap: async (context, params) => {
+  execute_token_swap: async (_context, params) => {
     const missingParams = [];
 
     // Check required parameters
@@ -126,7 +126,7 @@ export const PROMPT_HANDLERS: PromptHandlers = {
     ].join('\n');
   },
 
-  check_wallet_portfolio: async (context, params) => {
+  check_wallet_portfolio: async (_context, params) => {
     if (!params.address) {
       return [
         'I will help you check your wallet portfolio.',
@@ -165,7 +165,7 @@ export const PROMPT_HANDLERS: PromptHandlers = {
       .trim();
   },
 
-  configure_gateway: async (context, params) => {
+  configure_gateway: async (_context, params) => {
     const action = params.action || 'view';
 
     if (action === 'view') {
