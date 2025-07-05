@@ -24,6 +24,7 @@ import { pancakeswapRoutes } from './connectors/pancakeswap/pancakeswap.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { minswapRoutes } from './connectors/minswap/minswap.routes';
+import { sundaeswapRoutes } from './connectors/sundaeswap/sundaeswap.routes';
 import { getHttpsOptions } from './https';
 import { poolRoutes } from './pools/pools.routes';
 import { ConfigManagerV2 } from './services/config-manager-v2';
@@ -101,6 +102,10 @@ const swaggerOptions = {
       {
         name: 'minswap/amm',
         description: 'Minswap pool connector (Cardano)',
+      },
+      {
+        name: 'sundaeswap/amm',
+        description: 'Sundaeswap pool connector (Cardano)',
       },
     ],
     components: {
@@ -252,6 +257,11 @@ const configureGatewayServer = () => {
 
     // Minswap routes
     app.register(minswapRoutes.amm, { prefix: '/connectors/minswap/amm' });
+
+    // Sundaeswap routes
+    app.register(sundaeswapRoutes.amm, {
+      prefix: '/connectors/sundaeswap/amm',
+    });
 
     // 0x routes
     app.register(register0xRoutes);

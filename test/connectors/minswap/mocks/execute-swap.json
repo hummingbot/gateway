@@ -1,0 +1,8 @@
+{
+  "signature": "42b6c00a78b2ace7e3512a7c3a289c804baf8005f77a77a2254ace5740b33658",
+  "totalInputSwapped": 10000000,
+  "totalOutputSwapped": 10000000,
+  "fee": 192781,
+  "baseTokenBalanceChange": -10000000,
+  "quoteTokenBalanceChange": 10000000
+}

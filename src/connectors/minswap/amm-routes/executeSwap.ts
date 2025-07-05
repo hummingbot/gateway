@@ -91,10 +91,9 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         };
 
         // On‑chain reserves
-        const poolState = await minswap.blockfrostAdapter.getV2PoolByPair(
-          assetA,
-          assetB,
-        );
+        console.log('working upto here', poolAddr);
+
+        const { poolState, poolDatum } = await minswap.getPoolData(poolAddr);
         if (!poolState) {
           throw fastify.httpErrors.notFound('Pool state unavailable');
         }

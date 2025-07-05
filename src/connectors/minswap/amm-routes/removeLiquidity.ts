@@ -126,8 +126,6 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const utxos =
           await minswap.cardano.lucidInstance.utxosAt(walletAddress);
 
-        console.log(utxos);
-
         // 8) Calculate withdrawal amounts
         const totalLpInWallet = minswap.calculateAssetAmount(
           utxos,
