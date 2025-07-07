@@ -33,7 +33,7 @@
     "cli": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "rebuild-bigint": "cd node_modules/bigint-buffer && pnpm run rebuild",
-    "prepare": "husky install"
+    "prepare": "pnpm husky"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
