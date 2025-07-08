@@ -190,18 +190,22 @@ export type QuoteSwapRequestType = Static<typeof QuoteSwapRequest>;
 
 export const QuoteSwapResponse = Type.Object(
   {
+    quoteId: Type.Optional(Type.String()),
     poolAddress: Type.String(),
-    estimatedAmountIn: Type.Number(),
-    estimatedAmountOut: Type.Number(),
+    tokenIn: Type.String(),
+    tokenOut: Type.String(),
+    amountIn: Type.Number(),
+    amountOut: Type.Number(),
+    price: Type.Number(),
+    slippagePct: Type.Optional(Type.Number()),
+    priceWithSlippage: Type.Number({
+      description: 'Price including slippage (worst acceptable price)',
+    }),
     minAmountOut: Type.Number(),
     maxAmountIn: Type.Number(),
-    price: Type.Number(),
     priceImpactPct: Type.Number(),
     fee: Type.Number(),
     computeUnits: Type.Number(),
-    // Computed fields for clarity
-    tokenIn: Type.String(),
-    tokenOut: Type.String(),
   },
   { $id: 'AmmQuoteSwapResponse' },
 );

@@ -111,6 +111,14 @@ async function quoteSwap(
       ? estimatedAmountOut / estimatedAmountIn
       : estimatedAmountIn / estimatedAmountOut;
 
+  // Calculate price with slippage
+  // For SELL: worst price = minAmountOut / estimatedAmountIn (minimum quote per base)
+  // For BUY: worst price = maxAmountIn / estimatedAmountOut (maximum quote per base)
+  const priceWithSlippage =
+    side === 'SELL'
+      ? minAmountOut / estimatedAmountIn
+      : maxAmountIn / estimatedAmountOut;
+
   // Parse price impact
   const priceImpactPct = quoteResponse.estimatedPriceImpact
     ? parseFloat(quoteResponse.estimatedPriceImpact) * 100
@@ -144,17 +152,24 @@ async function quoteSwap(
 
   return {
     quoteId,
-    estimatedAmountIn: side === 'SELL' ? amount : estimatedAmountIn,
-    estimatedAmountOut: side === 'SELL' ? estimatedAmountOut : amount,
-    minAmountOut,
-    maxAmountIn,
-    price,
-    priceImpactPct,
-    slippagePct,
-    gasEstimate,
-    expirationTime: now + QUOTE_TTL,
     tokenIn: sellToken,
     tokenOut: buyToken,
+    amountIn: side === 'SELL' ? amount : estimatedAmountIn,
+    amountOut: side === 'SELL' ? estimatedAmountOut : amount,
+    price,
+    slippagePct,
+    priceWithSlippage,
+    minAmountOut,
+    maxAmountIn,
+    priceImpactPct,
+    gasEstimate,
+    expirationTime: now + QUOTE_TTL,
+    // 0x-specific fields
+    sources: quoteResponse.sources,
+    allowanceTarget: quoteResponse.allowanceTarget,
+    to: quoteResponse.to,
+    data: quoteResponse.data,
+    value: quoteResponse.value,
   };
 }
 

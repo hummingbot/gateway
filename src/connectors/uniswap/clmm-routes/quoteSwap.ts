@@ -301,20 +301,31 @@ async function formatSwapQuote(
     // Calculate fee (V3 has dynamic fees based on pool)
     const fee = quote.estimatedAmountIn * (quote.feeTier / 1000000);
 
+    // Calculate price with slippage
+    // For SELL: worst price = minAmountOut / estimatedAmountIn (minimum quote per base)
+    // For BUY: worst price = maxAmountIn / estimatedAmountOut (maximum quote per base)
+    const priceWithSlippage =
+      side === 'SELL'
+        ? quote.minAmountOut / quote.estimatedAmountIn
+        : quote.maxAmountIn / quote.estimatedAmountOut;
+
     return {
+      // Base QuoteSwapResponse fields in correct order
       poolAddress,
-      estimatedAmountIn: quote.estimatedAmountIn,
-      estimatedAmountOut: quote.estimatedAmountOut,
+      tokenIn,
+      tokenOut,
+      amountIn: quote.estimatedAmountIn,
+      amountOut: quote.estimatedAmountOut,
+      price,
+      slippagePct: slippagePct || 1, // Default 1% if not provided
+      priceWithSlippage,
       minAmountOut: quote.minAmountOut,
       maxAmountIn: quote.maxAmountIn,
-      price,
+      // CLMM-specific fields
       priceImpactPct,
       fee,
       computeUnits: estimatedGasValue, // Use gas limit as compute units for Ethereum
       activeBinId,
-      // Computed fields for clarity
-      tokenIn,
-      tokenOut,
     };
   } catch (error) {
     logger.error(`Error formatting swap quote: ${error.message}`);

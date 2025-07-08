@@ -540,18 +540,30 @@ async function formatSwapQuote(
     : 0;
   const priceImpactPct = quote.priceImpact ? quote.priceImpact * 100 : 0;
 
+  // Calculate price with slippage
+  // For SELL: priceWithSlippage = minAmountOut / estimatedAmountIn (worst price you'll accept)
+  // For BUY: priceWithSlippage = estimatedAmountOut / maxAmountIn (worst price you'll accept)
+  const priceWithSlippage =
+    side === 'SELL'
+      ? minAmountOut / estimatedAmountIn
+      : estimatedAmountOut / maxAmountIn;
+
   return {
+    // Base QuoteSwapResponse fields in correct order
     poolAddress,
-    estimatedAmountIn,
-    estimatedAmountOut,
+    tokenIn,
+    tokenOut,
+    amountIn: estimatedAmountIn,
+    amountOut: estimatedAmountOut,
+    price,
+    slippagePct: slippagePct || 1, // Default 1% if not provided
+    priceWithSlippage,
     minAmountOut,
     maxAmountIn,
-    price,
+    // AMM-specific fields
     priceImpactPct,
     fee,
     computeUnits: 300000, // Default compute units for AMM swaps
-    tokenIn,
-    tokenOut,
   };
 }
 

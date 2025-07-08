@@ -162,14 +162,20 @@ describe('GET /quote-swap', () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body).toHaveProperty('poolAddress', mockPoolAddress);
-    expect(body).toHaveProperty('estimatedAmountIn', 0.1);
-    expect(body).toHaveProperty('estimatedAmountOut', 14.85);
+    expect(body).toHaveProperty('amountIn', 0.1);
+    expect(body).toHaveProperty('amountOut', 14.85);
     expect(body).toHaveProperty('minAmountOut', 14.7);
     expect(body).toHaveProperty('price', 148.5);
     expect(body).toHaveProperty('priceImpactPct', 1);
     expect(body).toHaveProperty('fee', 0.00025);
     expect(body).toHaveProperty('tokenIn', mockSOL.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
+    // For SELL side: priceWithSlippage = minAmountOut / amountIn
+    expect(body).toHaveProperty('priceWithSlippage');
+    expect(body.priceWithSlippage).toBeCloseTo(
+      body.minAmountOut / body.amountIn,
+      8,
+    );
   });
 
   it('should return a quote for AMM swap BUY side', async () => {
@@ -239,11 +245,17 @@ describe('GET /quote-swap', () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body).toHaveProperty('poolAddress', mockPoolAddress);
-    expect(body).toHaveProperty('estimatedAmountIn', 15);
-    expect(body).toHaveProperty('estimatedAmountOut', 0.1);
+    expect(body).toHaveProperty('amountIn', 15);
+    expect(body).toHaveProperty('amountOut', 0.1);
     expect(body).toHaveProperty('maxAmountIn', 15.15);
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockSOL.address);
+    // For BUY side: priceWithSlippage = amountOut / maxAmountIn
+    expect(body).toHaveProperty('priceWithSlippage');
+    expect(body.priceWithSlippage).toBeCloseTo(
+      body.amountOut / body.maxAmountIn,
+      8,
+    );
   });
 
   it('should return 404 if pool not found', async () => {

@@ -5,7 +5,6 @@ import { Type, Static } from '@sinclair/typebox';
 // and other order router-based connectors
 // ========================================
 
-// Quote-swap replaces get-quote for all connectors
 export const QuoteSwapRequest = Type.Object(
   {
     network: Type.String(),
@@ -31,21 +30,17 @@ export type QuoteSwapRequestType = Static<typeof QuoteSwapRequest>;
 export const QuoteSwapResponse = Type.Object(
   {
     quoteId: Type.String(),
-    estimatedAmountIn: Type.Number(),
-    estimatedAmountOut: Type.Number(),
-    minAmountOut: Type.Number(),
-    maxAmountIn: Type.Number(),
-    price: Type.Number(),
-    slippagePct: Type.Number(),
-    // Computed fields for clarity
     tokenIn: Type.String(),
     tokenOut: Type.String(),
-    // Price impact percentage (optional for backward compatibility)
-    priceImpactPct: Type.Optional(
-      Type.Number({
-        description: 'Estimated price impact as a percentage (0-100)',
-      }),
-    ),
+    amountIn: Type.Number(),
+    amountOut: Type.Number(),
+    price: Type.Number(),
+    slippagePct: Type.Number(),
+    priceWithSlippage: Type.Number({
+      description: 'Price including slippage (worst acceptable price)',
+    }),
+    minAmountOut: Type.Number(),
+    maxAmountIn: Type.Number(),
   },
   { $id: 'QuoteSwapResponse' },
 );

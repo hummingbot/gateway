@@ -15,7 +15,9 @@ export const UniswapQuoteSwapRequest = Type.Intersect([
 export const UniswapQuoteSwapResponse = Type.Intersect([
   Base.QuoteSwapResponse,
   Type.Object({
-    // priceImpactPct is now included in base schema
+    priceImpactPct: Type.Number({
+      description: 'Estimated price impact as a percentage (0-100)',
+    }),
     expirationTime: Type.Number(),
     gasEstimate: Type.String(),
     route: Type.Optional(Type.Array(Type.String())),

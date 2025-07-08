@@ -176,6 +176,13 @@ async function quoteSwap(
       : estimatedAmountIn;
 
   const price = estimatedAmountOut / estimatedAmountIn;
+  // Calculate price with slippage
+  // For SELL: worst price = minAmountOut / estimatedAmountIn (minimum quote per base)
+  // For BUY: worst price = maxAmountIn / estimatedAmountOut (maximum quote per base)
+  const priceWithSlippage =
+    side === 'SELL'
+      ? minAmountOut / estimatedAmountIn
+      : maxAmountIn / estimatedAmountOut;
   const priceImpactPct = quote.estimatedGasUsedQuoteToken
     ? parseFloat(quote.estimatedGasUsedQuoteToken.toExact()) * 100
     : 0;
@@ -205,21 +212,21 @@ async function quoteSwap(
   );
 
   return {
-    // Base GetQuoteResponse fields
+    // Base QuoteSwapResponse fields in correct order
     quoteId,
-    estimatedAmountIn,
-    estimatedAmountOut,
-    minAmountOut,
-    maxAmountIn,
-    price,
-    priceImpactPct,
-    slippagePct,
-    gasEstimate: quote.estimatedGasUsed?.toString() || '0',
-    expirationTime: Date.now() + 300000, // 5 minutes
-    // Computed fields
     tokenIn: inputToken.address,
     tokenOut: outputToken.address,
+    amountIn: estimatedAmountIn,
+    amountOut: estimatedAmountOut,
+    price,
+    slippagePct,
+    priceWithSlippage,
+    minAmountOut,
+    maxAmountIn,
     // Uniswap-specific fields
+    priceImpactPct,
+    gasEstimate: quote.estimatedGasUsed?.toString() || '0',
+    expirationTime: Date.now() + 300000, // 5 minutes
     route,
     routePath,
     protocols: protocols || ['v2', 'v3'],

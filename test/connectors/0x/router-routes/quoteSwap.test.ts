@@ -96,11 +96,14 @@ describe('GET /quote-swap', () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body).toHaveProperty('quoteId');
-    expect(body).toHaveProperty('estimatedAmountIn', 0.1);
-    expect(body).toHaveProperty('estimatedAmountOut', 150);
+    expect(body).toHaveProperty('amountIn', 0.1);
+    expect(body).toHaveProperty('amountOut', 150);
     expect(body).toHaveProperty('minAmountOut');
     expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('price');
+    expect(body).toHaveProperty('priceWithSlippage');
+    // For SELL side: priceWithSlippage = minAmountOut / amountIn
+    expect(body.priceWithSlippage).toBeCloseTo(body.minAmountOut / 0.1, 8);
     expect(body).toHaveProperty('priceImpactPct');
     expect(body).toHaveProperty('slippagePct', 0.5);
     expect(body).toHaveProperty('gasEstimate', '200000');
@@ -154,10 +157,16 @@ describe('GET /quote-swap', () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body).toHaveProperty('quoteId');
-    expect(body).toHaveProperty('estimatedAmountIn', 150);
-    expect(body).toHaveProperty('estimatedAmountOut', 0.1);
+    expect(body).toHaveProperty('amountIn', 150);
+    expect(body).toHaveProperty('amountOut', 0.1);
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockWETH.address);
+    // For BUY side: priceWithSlippage = maxAmountIn / amountOut
+    expect(body).toHaveProperty('priceWithSlippage');
+    expect(body.priceWithSlippage).toBeCloseTo(
+      body.maxAmountIn / body.amountOut,
+      8,
+    );
   });
 
   it('should return 400 if token not found', async () => {

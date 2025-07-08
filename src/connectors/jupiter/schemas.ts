@@ -17,7 +17,11 @@ export const JupiterQuoteSwapRequest = Type.Intersect([
 export const JupiterQuoteSwapResponse = Type.Intersect([
   Base.QuoteSwapResponse,
   Type.Object({
-    // priceImpactPct is now included in base schema as a number
+    priceImpactPct: Type.Number({
+      description: 'Estimated price impact as a percentage (0-100)',
+    }),
+    gasEstimate: Type.String({ description: 'Estimated gas for transaction' }),
+    expirationTime: Type.Number({ description: 'Quote expiration timestamp' }),
     quoteResponse: Type.Object({
       inputMint: Type.String(),
       inAmount: Type.String(),

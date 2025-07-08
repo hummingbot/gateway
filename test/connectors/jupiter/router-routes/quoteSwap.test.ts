@@ -95,8 +95,8 @@ describe('GET /quote-swap', () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body).toHaveProperty('quoteId');
-    expect(body).toHaveProperty('estimatedAmountIn', 0.1);
-    expect(body).toHaveProperty('estimatedAmountOut', 15);
+    expect(body).toHaveProperty('amountIn', 0.1);
+    expect(body).toHaveProperty('amountOut', 15);
     expect(body).toHaveProperty('minAmountOut');
     expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('price', 150);
@@ -104,8 +104,9 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('slippagePct', 0.5);
     expect(body).toHaveProperty('tokenIn', mockSOL.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-    expect(body).toHaveProperty('estimatedAmountIn', 0.1);
-    expect(body).toHaveProperty('estimatedAmountOut', 15);
+    // For SELL side: priceWithSlippage = minAmountOut / amountIn
+    expect(body).toHaveProperty('priceWithSlippage');
+    expect(body.priceWithSlippage).toBeCloseTo(body.minAmountOut / 0.1, 8);
   });
 
   it('should return a price quote for BUY side', async () => {
@@ -144,8 +145,8 @@ describe('GET /quote-swap', () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body).toHaveProperty('quoteId');
-    expect(body).toHaveProperty('estimatedAmountIn', 15);
-    expect(body).toHaveProperty('estimatedAmountOut', 0.1);
+    expect(body).toHaveProperty('amountIn', 15);
+    expect(body).toHaveProperty('amountOut', 0.1);
     expect(body).toHaveProperty('minAmountOut');
     expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('price', 150);
@@ -153,6 +154,9 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('slippagePct', 0.5);
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockSOL.address);
+    // For BUY side: priceWithSlippage = maxAmountIn / amountOut
+    expect(body).toHaveProperty('priceWithSlippage');
+    expect(body.priceWithSlippage).toBeCloseTo(body.maxAmountIn / 0.1, 8);
   });
 
   it('should return 400 if token not found', async () => {

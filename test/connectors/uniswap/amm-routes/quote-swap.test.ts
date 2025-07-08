@@ -7,6 +7,7 @@ import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 jest.mock('../../../../src/chains/ethereum/ethereum');
 jest.mock('../../../../src/connectors/uniswap/uniswap.config');
 jest.mock('../../../../src/connectors/uniswap/uniswap');
+jest.mock('../../../../src/connectors/uniswap/uniswap.utils');
 
 // Mock ethers Contract globally
 jest.mock('ethers', () => {
@@ -14,6 +15,14 @@ jest.mock('ethers', () => {
   return {
     ...actualEthers,
     Contract: jest.fn(),
+  };
+});
+
+jest.mock('ethers/lib/utils', () => {
+  const actualUtils = jest.requireActual('ethers/lib/utils');
+  return {
+    ...actualUtils,
+    getAddress: jest.fn((address) => address),
   };
 });
 
@@ -42,7 +51,7 @@ const mockUSDC = {
 
 const mockPoolAddress = '0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc';
 
-describe.skip('GET /quote-swap', () => {
+describe('GET /quote-swap', () => {
   let server: any;
 
   beforeAll(async () => {
@@ -62,6 +71,9 @@ describe.skip('GET /quote-swap', () => {
     const { Uniswap } = await import(
       '../../../../src/connectors/uniswap/uniswap'
     );
+    const { getUniswapPoolInfo, formatTokenAmount } = await import(
+      '../../../../src/connectors/uniswap/uniswap.utils'
+    );
     const ethers = require('ethers');
 
     // Create a proper mock provider that ethers.Contract will accept
@@ -70,9 +82,14 @@ describe.skip('GET /quote-swap', () => {
       getNetwork: jest.fn().mockResolvedValue({ chainId: 1 }),
       call: jest.fn(),
       getBlockNumber: jest.fn().mockResolvedValue(1000000),
-      getGasPrice: jest
-        .fn()
-        .mockResolvedValue({ toBigInt: () => BigInt(20000000000) }),
+      getGasPrice: jest.fn().mockResolvedValue({
+        mul: jest.fn((value) => ({
+          toString: () =>
+            (BigInt(20000000000) * BigInt(value.toString())).toString(),
+        })),
+        toString: () => '20000000000',
+        toBigInt: () => BigInt(20000000000),
+      }),
       getBalance: jest
         .fn()
         .mockResolvedValue({ toBigInt: () => BigInt(1000000000000000000) }),
@@ -97,11 +114,25 @@ describe.skip('GET /quote-swap', () => {
         .mockResolvedValueOnce(mockWETH)
         .mockResolvedValueOnce(mockUSDC),
       provider: mockProvider,
+      ready: jest.fn().mockReturnValue(true),
+      init: jest.fn().mockResolvedValue(undefined),
     };
     (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
     (Ethereum.getWalletAddressExample as jest.Mock).mockResolvedValue(
       '0x1234567890123456789012345678901234567890',
     );
+
+    // Mock getUniswapPoolInfo
+    (getUniswapPoolInfo as jest.Mock).mockResolvedValue({
+      baseTokenAddress: mockWETH.address,
+      quoteTokenAddress: mockUSDC.address,
+      poolType: 'amm',
+    });
+
+    // Mock formatTokenAmount - returns number from string
+    (formatTokenAmount as jest.Mock).mockImplementation((amount, decimals) => {
+      return parseFloat(amount) / Math.pow(10, decimals);
+    });
 
     const mockConfigInstance = {
       routerAddress: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D',
@@ -110,12 +141,38 @@ describe.skip('GET /quote-swap', () => {
     };
     (UniswapConfig as any).config = mockConfigInstance;
 
-    const wethToken = new Token(1, mockWETH.address, 18, 'WETH');
-    const usdcToken = new Token(1, mockUSDC.address, 6, 'USDC');
-    const mockPair = new Pair(
-      new TokenAmount(wethToken, '1000000000000000000000'), // 1000 WETH
-      new TokenAmount(usdcToken, '1500000000000'), // 1.5M USDC
-    );
+    // Create tokens using SDK-Core instead of V2 SDK
+    const { Token: CoreToken } = await import('@uniswap/sdk-core');
+    const wethToken = new CoreToken(1, mockWETH.address, 18, 'WETH');
+    const usdcToken = new CoreToken(1, mockUSDC.address, 6, 'USDC');
+    // Create a proper mock pair with all necessary methods
+    const mockPair = {
+      token0: wethToken,
+      token1: usdcToken,
+      reserve0: new TokenAmount(wethToken, '1000000000000000000000'),
+      reserve1: new TokenAmount(usdcToken, '1500000000000'),
+      getOutputAmount: jest.fn().mockImplementation((_inputAmount) => {
+        // Mock calculation for SELL side (WETH -> USDC)
+        const outputAmount = new TokenAmount(usdcToken, '149250000'); // ~149.25 USDC for 0.1 WETH
+        const nextPair = mockPair; // Return same pair for simplicity
+        return [outputAmount, nextPair];
+      }),
+      getInputAmount: jest.fn().mockImplementation((_outputAmount) => {
+        // Mock calculation for BUY side (USDC -> WETH)
+        const inputAmount = new TokenAmount(usdcToken, '15150000'); // ~15.15 USDC for 0.1 WETH
+        const nextPair = mockPair; // Return same pair for simplicity
+        return [inputAmount, nextPair];
+      }),
+      priceOf: jest.fn().mockReturnValue({ toSignificant: () => '1500' }),
+      // Add V2 Pair specific methods that might be called
+      liquidityToken: { address: '0x1234567890123456789012345678901234567890' },
+      involvesToken: jest.fn().mockImplementation((token) => {
+        return (
+          token.address === wethToken.address ||
+          token.address === usdcToken.address
+        );
+      }),
+    };
 
     // Mock the contract calls
     const mockPairContract = {
@@ -137,8 +194,8 @@ describe.skip('GET /quote-swap', () => {
         .fn()
         .mockReturnValue({ numerator: '100', denominator: '10000' }),
       getTokenBySymbol: jest.fn().mockImplementation((symbol) => {
-        if (symbol === 'WETH') return wethToken;
-        if (symbol === 'USDC') return usdcToken;
+        if (symbol === 'WETH' || symbol === mockWETH.address) return wethToken;
+        if (symbol === 'USDC' || symbol === mockUSDC.address) return usdcToken;
         return null;
       }),
       getV2Pool: jest.fn().mockResolvedValue(mockPair),
@@ -162,20 +219,30 @@ describe.skip('GET /quote-swap', () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body).toHaveProperty('poolAddress', mockPoolAddress);
-    expect(body).toHaveProperty('estimatedAmountIn', 0.1);
-    expect(body).toHaveProperty('estimatedAmountOut');
+    expect(body).toHaveProperty('amountIn', 0.1);
+    expect(body).toHaveProperty('amountOut');
     expect(body).toHaveProperty('minAmountOut');
     expect(body).toHaveProperty('price');
     expect(body).toHaveProperty('priceImpactPct');
-    expect(body).toHaveProperty('fee', 0.003);
+    expect(body).toHaveProperty('fee');
+    expect(body.fee).toBeCloseTo(0.0003, 6); // Fee is 0.003 * 0.1 = 0.0003
     expect(body).toHaveProperty('tokenIn', mockWETH.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
+    // For SELL side: priceWithSlippage = minAmountOut / amountIn
+    expect(body).toHaveProperty('priceWithSlippage');
+    expect(body.priceWithSlippage).toBeCloseTo(
+      body.minAmountOut / body.amountIn,
+      8,
+    );
   });
 
   it('should return a quote for AMM swap BUY side', async () => {
     const { Token, Pair, TokenAmount } = require('@uniswap/sdk');
     const { Uniswap } = await import(
       '../../../../src/connectors/uniswap/uniswap'
+    );
+    const { getUniswapPoolInfo, formatTokenAmount } = await import(
+      '../../../../src/connectors/uniswap/uniswap.utils'
     );
     const ethers = require('ethers');
 
@@ -185,9 +252,14 @@ describe.skip('GET /quote-swap', () => {
       getNetwork: jest.fn().mockResolvedValue({ chainId: 1 }),
       call: jest.fn(),
       getBlockNumber: jest.fn().mockResolvedValue(1000000),
-      getGasPrice: jest
-        .fn()
-        .mockResolvedValue({ toBigInt: () => BigInt(20000000000) }),
+      getGasPrice: jest.fn().mockResolvedValue({
+        mul: jest.fn((value) => ({
+          toString: () =>
+            (BigInt(20000000000) * BigInt(value.toString())).toString(),
+        })),
+        toString: () => '20000000000',
+        toBigInt: () => BigInt(20000000000),
+      }),
       getBalance: jest
         .fn()
         .mockResolvedValue({ toBigInt: () => BigInt(1000000000000000000) }),
@@ -212,8 +284,22 @@ describe.skip('GET /quote-swap', () => {
         .mockResolvedValueOnce(mockWETH)
         .mockResolvedValueOnce(mockUSDC),
       provider: mockProvider,
+      ready: jest.fn().mockReturnValue(true),
+      init: jest.fn().mockResolvedValue(undefined),
     };
     (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
+
+    // Mock getUniswapPoolInfo
+    (getUniswapPoolInfo as jest.Mock).mockResolvedValue({
+      baseTokenAddress: mockWETH.address,
+      quoteTokenAddress: mockUSDC.address,
+      poolType: 'amm',
+    });
+
+    // Mock formatTokenAmount - returns number from string
+    (formatTokenAmount as jest.Mock).mockImplementation((amount, decimals) => {
+      return parseFloat(amount) / Math.pow(10, decimals);
+    });
 
     const mockConfigInstance = {
       routerAddress: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D',
@@ -222,12 +308,38 @@ describe.skip('GET /quote-swap', () => {
     };
     (UniswapConfig as any).config = mockConfigInstance;
 
-    const wethToken = new Token(1, mockWETH.address, 18, 'WETH');
-    const usdcToken = new Token(1, mockUSDC.address, 6, 'USDC');
-    const mockPair = new Pair(
-      new TokenAmount(wethToken, '1000000000000000000000'),
-      new TokenAmount(usdcToken, '1500000000000'),
-    );
+    // Create tokens using SDK-Core instead of V2 SDK
+    const { Token: CoreToken } = await import('@uniswap/sdk-core');
+    const wethToken = new CoreToken(1, mockWETH.address, 18, 'WETH');
+    const usdcToken = new CoreToken(1, mockUSDC.address, 6, 'USDC');
+    // Create a proper mock pair with all necessary methods
+    const mockPair = {
+      token0: wethToken,
+      token1: usdcToken,
+      reserve0: new TokenAmount(wethToken, '1000000000000000000000'),
+      reserve1: new TokenAmount(usdcToken, '1500000000000'),
+      getOutputAmount: jest.fn().mockImplementation((_inputAmount) => {
+        // Mock calculation for outputAmount
+        const outputAmount = new TokenAmount(wethToken, '100000000000000000'); // 0.1 WETH
+        const nextPair = mockPair; // Return same pair for simplicity
+        return [outputAmount, nextPair];
+      }),
+      getInputAmount: jest.fn().mockImplementation((_outputAmount) => {
+        // Mock calculation for BUY side (USDC -> WETH)
+        const inputAmount = new TokenAmount(usdcToken, '15000000'); // 15 USDC for 0.1 WETH
+        const nextPair = mockPair; // Return same pair for simplicity
+        return [inputAmount, nextPair];
+      }),
+      priceOf: jest.fn().mockReturnValue({ toSignificant: () => '1500' }),
+      // Add V2 Pair specific methods that might be called
+      liquidityToken: { address: '0x1234567890123456789012345678901234567890' },
+      involvesToken: jest.fn().mockImplementation((token) => {
+        return (
+          token.address === wethToken.address ||
+          token.address === usdcToken.address
+        );
+      }),
+    };
 
     // Mock the contract calls
     const mockPairContract = {
@@ -249,8 +361,8 @@ describe.skip('GET /quote-swap', () => {
         .fn()
         .mockReturnValue({ numerator: '100', denominator: '10000' }),
       getTokenBySymbol: jest.fn().mockImplementation((symbol) => {
-        if (symbol === 'WETH') return wethToken;
-        if (symbol === 'USDC') return usdcToken;
+        if (symbol === 'WETH' || symbol === mockWETH.address) return wethToken;
+        if (symbol === 'USDC' || symbol === mockUSDC.address) return usdcToken;
         return null;
       }),
       getV2Pool: jest.fn().mockResolvedValue(mockPair),
@@ -274,11 +386,17 @@ describe.skip('GET /quote-swap', () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body).toHaveProperty('poolAddress', mockPoolAddress);
-    expect(body).toHaveProperty('estimatedAmountIn');
-    expect(body).toHaveProperty('estimatedAmountOut', 150);
+    expect(body).toHaveProperty('amountIn');
+    expect(body).toHaveProperty('amountOut', 150);
     expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockWETH.address);
+    // For BUY side: priceWithSlippage = maxAmountIn / amountOut
+    expect(body).toHaveProperty('priceWithSlippage');
+    expect(body.priceWithSlippage).toBeCloseTo(
+      body.maxAmountIn / body.amountOut,
+      8,
+    );
   });
 
   it('should return 400 if token not found', async () => {
@@ -288,9 +406,14 @@ describe.skip('GET /quote-swap', () => {
       getNetwork: jest.fn().mockResolvedValue({ chainId: 1 }),
       call: jest.fn(),
       getBlockNumber: jest.fn().mockResolvedValue(1000000),
-      getGasPrice: jest
-        .fn()
-        .mockResolvedValue({ toBigInt: () => BigInt(20000000000) }),
+      getGasPrice: jest.fn().mockResolvedValue({
+        mul: jest.fn((value) => ({
+          toString: () =>
+            (BigInt(20000000000) * BigInt(value.toString())).toString(),
+        })),
+        toString: () => '20000000000',
+        toBigInt: () => BigInt(20000000000),
+      }),
       getBalance: jest
         .fn()
         .mockResolvedValue({ toBigInt: () => BigInt(1000000000000000000) }),
@@ -315,6 +438,8 @@ describe.skip('GET /quote-swap', () => {
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(mockUSDC),
       provider: mockProvider,
+      ready: jest.fn().mockReturnValue(true),
+      init: jest.fn().mockResolvedValue(undefined),
     };
     (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
 
@@ -332,7 +457,7 @@ describe.skip('GET /quote-swap', () => {
       },
     });
 
-    expect(response.statusCode).toBe(404); // Returns 404 for pool not found (when token is invalid)
+    expect(response.statusCode).toBe(400); // Returns 400 for invalid token
     expect(JSON.parse(response.body)).toHaveProperty('error');
   });
 });

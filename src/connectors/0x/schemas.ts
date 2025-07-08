@@ -77,7 +77,9 @@ export const ZeroXQuoteSwapRequest = Type.Intersect([
 export const ZeroXQuoteSwapResponse = Type.Intersect([
   Base.QuoteSwapResponse,
   Type.Object({
-    // priceImpactPct is now included in base schema
+    priceImpactPct: Type.Number({
+      description: 'Estimated price impact as a percentage (0-100)',
+    }),
     expirationTime: Type.Number(),
     gasEstimate: Type.String(),
     sources: Type.Optional(Type.Array(Type.Any())),

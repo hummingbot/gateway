@@ -265,20 +265,27 @@ async function formatSwapQuote(
       ? exactOutResponse.fee.toNumber() / 10 ** outputToken.decimals
       : 0;
 
+    // Calculate price with slippage (BUY side)
+    // For BUY: priceWithSlippage = estimatedAmountOut / maxAmountIn (worst price you'll accept)
+    const priceWithSlippage = estimatedAmountOut / maxAmountIn;
+
     return {
+      // Base QuoteSwapResponse fields in correct order
       poolAddress,
-      estimatedAmountIn,
-      estimatedAmountOut,
-      maxAmountIn,
-      minAmountOut: estimatedAmountOut,
+      tokenIn,
+      tokenOut,
+      amountIn: estimatedAmountIn,
+      amountOut: estimatedAmountOut,
       price,
+      slippagePct: slippagePct || 1, // Default 1% if not provided
+      priceWithSlippage,
+      minAmountOut: estimatedAmountOut,
+      maxAmountIn,
+      // CLMM-specific fields
       priceImpactPct,
       fee,
       computeUnits: 600000, // CLMM swaps typically need 600k compute units
       activeBinId,
-      // Computed fields for clarity
-      tokenIn,
-      tokenOut,
     };
   } else {
     const exactInResponse = response as ReturnTypeComputeAmountOutFormat;
@@ -313,20 +320,27 @@ async function formatSwapQuote(
       ? Number(exactInResponse.fee) / 10 ** outputToken.decimals
       : 0;
 
+    // Calculate price with slippage (SELL side)
+    // For SELL: priceWithSlippage = minAmountOut / estimatedAmountIn (worst price you'll accept)
+    const priceWithSlippage = minAmountOut / estimatedAmountIn;
+
     return {
+      // Base QuoteSwapResponse fields in correct order
       poolAddress,
-      estimatedAmountIn,
-      estimatedAmountOut,
+      tokenIn,
+      tokenOut,
+      amountIn: estimatedAmountIn,
+      amountOut: estimatedAmountOut,
+      price,
+      slippagePct: slippagePct || 1, // Default 1% if not provided
+      priceWithSlippage,
       minAmountOut,
       maxAmountIn: estimatedAmountIn,
-      price,
+      // CLMM-specific fields
       priceImpactPct,
       fee,
       computeUnits: 600000, // CLMM swaps typically need 600k compute units
       activeBinId,
-      // Computed fields for clarity
-      tokenIn,
-      tokenOut,
     };
   }
 }

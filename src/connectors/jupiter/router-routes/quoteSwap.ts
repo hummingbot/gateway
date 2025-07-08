@@ -100,6 +100,14 @@ async function quoteSwap(
       ? estimatedAmountOut / estimatedAmountIn
       : estimatedAmountIn / estimatedAmountOut;
 
+  // Calculate price with slippage
+  // For SELL: worst price = minAmountOut / estimatedAmountIn (minimum quote per base)
+  // For BUY: worst price = maxAmountIn / estimatedAmountOut (maximum quote per base)
+  const priceWithSlippage =
+    side === 'SELL'
+      ? minAmountOut / estimatedAmountIn
+      : maxAmountIn / estimatedAmountOut;
+
   // Generate quote ID and cache the entire quote response
   const quoteId = uuidv4();
   const now = Date.now();
@@ -122,16 +130,19 @@ async function quoteSwap(
 
   return {
     quoteId,
-    estimatedAmountIn: side === 'SELL' ? amount : estimatedAmountIn,
-    estimatedAmountOut: side === 'SELL' ? estimatedAmountOut : amount,
-    minAmountOut,
-    maxAmountIn,
-    price,
-    slippagePct,
     tokenIn: inputToken.address,
     tokenOut: outputToken.address,
+    amountIn: side === 'SELL' ? amount : estimatedAmountIn,
+    amountOut: side === 'SELL' ? estimatedAmountOut : amount,
+    price,
+    slippagePct,
+    priceWithSlippage,
+    minAmountOut,
+    maxAmountIn,
     // Convert Jupiter's string priceImpactPct to number
     priceImpactPct: parseFloat(quoteResponse.priceImpactPct || '0'),
+    gasEstimate: '400000', // Estimated compute units for Solana
+    expirationTime: now + QUOTE_TTL,
     // Jupiter-specific fields
     quoteResponse: {
       inputMint: inputToken.address,
