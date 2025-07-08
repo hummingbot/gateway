@@ -186,28 +186,28 @@ async function executeSwap(
   const quoteTokenBalanceChange =
     side === 'SELL' ? estimatedAmountOut : -amount;
 
-  const totalInputSwapped = Math.abs(
+  const amountIn = Math.abs(
     side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange,
   );
-  const totalOutputSwapped = Math.abs(
+  const amountOut = Math.abs(
     side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange,
   );
 
   logger.info(
-    `Swap executed successfully: ${totalInputSwapped} ${inputToken.symbol} -> ${totalOutputSwapped} ${outputToken.symbol}`,
+    `Swap executed successfully: ${amountIn} ${inputToken.symbol} -> ${amountOut} ${outputToken.symbol}`,
   );
 
   return {
     signature: txReceipt.transactionHash,
     status: 1, // CONFIRMED
     data: {
-      totalInputSwapped,
-      totalOutputSwapped,
+      tokenIn: inputToken.address,
+      tokenOut: outputToken.address,
+      amountIn,
+      amountOut,
       fee,
       baseTokenBalanceChange,
       quoteTokenBalanceChange,
-      tokenIn: inputToken.address,
-      tokenOut: outputToken.address,
     },
   };
 }

@@ -1,8 +1,13 @@
 {
   "signature": "4Kb31qfpWHMiawHVz3oP4oWLEUvnxpSbP1RVhKzLnUHHy42782RvN9Fz5QsKrFHJbfMeGJnKVGBKs7x2ZQgv6Xre",
-  "totalInputSwapped": 1.0,
-  "totalOutputSwapped": 167.5,
-  "fee": 0.001,
-  "baseTokenBalanceChange": -1.0,
-  "quoteTokenBalanceChange": 167.5
+  "status": 1,
+  "data": {
+    "tokenIn": "So11111111111111111111111111111111111111112",
+    "tokenOut": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "amountIn": 1.0,
+    "amountOut": 167.5,
+    "fee": 0.001,
+    "baseTokenBalanceChange": -1.0,
+    "quoteTokenBalanceChange": 167.5
+  }
 }

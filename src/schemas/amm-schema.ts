@@ -245,14 +245,13 @@ export const ExecuteSwapResponse = Type.Object(
     // Only included when status = CONFIRMED
     data: Type.Optional(
       Type.Object({
-        totalInputSwapped: Type.Number(),
-        totalOutputSwapped: Type.Number(),
+        tokenIn: Type.String(),
+        tokenOut: Type.String(),
+        amountIn: Type.Number(),
+        amountOut: Type.Number(),
         fee: Type.Number(),
         baseTokenBalanceChange: Type.Number(),
         quoteTokenBalanceChange: Type.Number(),
-        // Computed fields for clarity
-        tokenIn: Type.String(),
-        tokenOut: Type.String(),
       }),
     ),
   },

@@ -249,8 +249,8 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
       const executeResponse = {
         signature:
           '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-        totalInputSwapped: quoteResponse.estimatedAmountIn,
-        totalOutputSwapped: quoteResponse.estimatedAmountOut,
+        amountIn: quoteResponse.estimatedAmountIn,
+        amountOut: quoteResponse.estimatedAmountOut,
         fee: 0.003,
         baseTokenBalanceChange: quoteResponse.baseTokenBalanceChange,
         quoteTokenBalanceChange: quoteResponse.quoteTokenBalanceChange,
@@ -278,12 +278,8 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
       // Validate the response
       expect(response.status).toBe(200);
       expect(response.data.signature).toBeDefined();
-      expect(response.data.totalInputSwapped).toBe(
-        quoteResponse.estimatedAmountIn,
-      );
-      expect(response.data.totalOutputSwapped).toBe(
-        quoteResponse.estimatedAmountOut,
-      );
+      expect(response.data.amountIn).toBe(quoteResponse.estimatedAmountIn);
+      expect(response.data.amountOut).toBe(quoteResponse.estimatedAmountOut);
 
       // Verify axios was called with correct parameters
       expect(axios.post).toHaveBeenCalledWith(
@@ -315,8 +311,8 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
       const executeBuyResponse = {
         signature:
           '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
-        totalInputSwapped: buyQuoteResponse.estimatedAmountIn,
-        totalOutputSwapped: buyQuoteResponse.estimatedAmountOut,
+        amountIn: buyQuoteResponse.estimatedAmountIn,
+        amountOut: buyQuoteResponse.estimatedAmountOut,
         fee: 0.003,
         baseTokenBalanceChange: buyQuoteResponse.baseTokenBalanceChange,
         quoteTokenBalanceChange: buyQuoteResponse.quoteTokenBalanceChange,
@@ -341,8 +337,8 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
 
       expect(response.status).toBe(200);
       expect(response.data.signature).toBeDefined();
-      expect(response.data.totalInputSwapped).toBe(2500.0); // USDC spent
-      expect(response.data.totalOutputSwapped).toBe(1.0); // WETH received
+      expect(response.data.amountIn).toBe(2500.0); // USDC spent
+      expect(response.data.amountOut).toBe(1.0); // WETH received
       expect(response.data.baseTokenBalanceChange).toBe(1.0); // +1 WETH
       expect(response.data.quoteTokenBalanceChange).toBe(-2500.0); // -2500 USDC
     });
@@ -350,8 +346,8 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
     test('validates slippage parameters', async () => {
       const executeResponse = {
         signature: '0x123...',
-        totalInputSwapped: 1.0,
-        totalOutputSwapped: 1790.0,
+        amountIn: 1.0,
+        amountOut: 1790.0,
         fee: 0.003,
         baseTokenBalanceChange: -1.0,
         quoteTokenBalanceChange: 1790.0,
@@ -377,7 +373,7 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
 
       expect(response.status).toBe(200);
       // With 1% slippage, the output should be at least 99% of expected
-      expect(response.data.totalOutputSwapped).toBeGreaterThanOrEqual(1782.0);
+      expect(response.data.amountOut).toBeGreaterThanOrEqual(1782.0);
     });
 
     test('handles multiple networks for execution', async () => {
@@ -386,8 +382,8 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
       for (const network of networks) {
         const executeResponse = {
           signature: `0x${network}1234567890abcdef`,
-          totalInputSwapped: 1.0,
-          totalOutputSwapped: 1800.0,
+          amountIn: 1.0,
+          amountOut: 1800.0,
           fee: 0.003,
           baseTokenBalanceChange: -1.0,
           quoteTokenBalanceChange: 1800.0,

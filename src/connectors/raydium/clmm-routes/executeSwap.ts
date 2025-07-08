@@ -218,19 +218,19 @@ async function executeSwap(
         wallet.publicKey.toBase58(),
       );
 
-    logger.info(
-      `Swap executed successfully: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`,
-    );
-
     // Calculate actual amounts swapped based on side
-    const totalInputSwapped =
+    const amountIn =
       side === 'SELL'
         ? Math.abs(baseTokenBalanceChange)
         : Math.abs(quoteTokenBalanceChange);
-    const totalOutputSwapped =
+    const amountOut =
       side === 'SELL'
         ? Math.abs(quoteTokenBalanceChange)
         : Math.abs(baseTokenBalanceChange);
+
+    logger.info(
+      `Swap executed successfully: ${amountIn.toFixed(4)} ${inputToken.symbol} -> ${amountOut.toFixed(4)} ${outputToken.symbol}`,
+    );
 
     // Get current active bin ID from pool info
     const activeBinId =
@@ -244,15 +244,14 @@ async function executeSwap(
       signature,
       status: 1, // CONFIRMED
       data: {
-        totalInputSwapped,
-        totalOutputSwapped,
+        tokenIn,
+        tokenOut,
+        amountIn,
+        amountOut,
         fee: txData.meta.fee / 1e9,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
         activeBinId,
-        // Computed fields for clarity
-        tokenIn,
-        tokenOut,
       },
     };
   } else {

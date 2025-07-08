@@ -47,8 +47,10 @@ function validateSwapExecution(response) {
     typeof response.status === 'number' && // Added: status field
     (response.status !== 1 || // If not CONFIRMED
       (response.data && // then data is optional
-        typeof response.data.totalInputSwapped === 'number' &&
-        typeof response.data.totalOutputSwapped === 'number' &&
+        typeof response.data.tokenIn === 'string' &&
+        typeof response.data.tokenOut === 'string' &&
+        typeof response.data.amountIn === 'number' &&
+        typeof response.data.amountOut === 'number' &&
         typeof response.data.fee === 'number' &&
         typeof response.data.baseTokenBalanceChange === 'number' &&
         typeof response.data.quoteTokenBalanceChange === 'number'))
@@ -269,8 +271,10 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
           '2XGwPTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYc',
         status: 1, // CONFIRMED
         data: {
-          totalInputSwapped: 1.0,
-          totalOutputSwapped: 163.456119,
+          tokenIn: BASE_TOKEN,
+          tokenOut: QUOTE_TOKEN,
+          amountIn: 1.0,
+          amountOut: 163.456119,
           fee: 0.001,
           baseTokenBalanceChange: -1.0,
           quoteTokenBalanceChange: 163.456119,
@@ -304,11 +308,11 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       expect(response.data.signature).toBeDefined();
       expect(response.data.signature.length).toBeGreaterThan(30); // Solana signatures are long
       expect(response.data.status).toBe(1); // CONFIRMED
-      expect(response.data.data.totalInputSwapped).toBeCloseTo(
+      expect(response.data.data.amountIn).toBeCloseTo(
         quoteResponse.estimatedAmountIn,
         3, // Allow some difference due to fees
       );
-      expect(response.data.data.totalOutputSwapped).toBeCloseTo(
+      expect(response.data.data.amountOut).toBeCloseTo(
         quoteResponse.estimatedAmountOut,
         3,
       );
@@ -334,8 +338,10 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
           '3YHqPTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYd',
         status: 1, // CONFIRMED
         data: {
-          totalInputSwapped: 1.0,
-          totalOutputSwapped: 16.391234,
+          tokenIn: BASE_TOKEN,
+          tokenOut: QUOTE_TOKEN,
+          amountIn: 1.0,
+          amountOut: 16.391234,
           fee: 0.002, // Higher fee due to priority
           baseTokenBalanceChange: -1.0,
           quoteTokenBalanceChange: 16.391234,

@@ -101,31 +101,31 @@ async function executeSwap(
       wallet.publicKey.toBase58(),
     );
 
-  logger.info(
-    `Swap executed successfully: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`,
-  );
-
   // Determine total amounts swapped
-  const totalInputSwapped =
+  const amountIn =
     side === 'SELL'
       ? Math.abs(baseTokenBalanceChange)
       : Math.abs(quoteTokenBalanceChange);
-  const totalOutputSwapped =
+  const amountOut =
     side === 'SELL'
       ? Math.abs(quoteTokenBalanceChange)
       : Math.abs(baseTokenBalanceChange);
+
+  logger.info(
+    `Swap executed successfully: ${amountIn.toFixed(4)} ${inputToken.symbol} -> ${amountOut.toFixed(4)} ${outputToken.symbol}`,
+  );
 
   return {
     signature,
     status: 1, // CONFIRMED
     data: {
-      totalInputSwapped,
-      totalOutputSwapped,
+      tokenIn: inputToken.address,
+      tokenOut: outputToken.address,
+      amountIn,
+      amountOut,
       fee,
       baseTokenBalanceChange,
       quoteTokenBalanceChange,
-      tokenIn: inputToken.address,
-      tokenOut: outputToken.address,
       activeBinId: 0, // Meteora doesn't provide this in the same way
     },
   };

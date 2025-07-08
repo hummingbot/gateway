@@ -106,17 +106,17 @@ async function executeQuote(
         );
 
   // Calculate actual amounts swapped
-  const totalInputSwapped =
+  const amountIn =
     side === 'SELL'
       ? Math.abs(baseTokenBalanceChange)
       : Math.abs(quoteTokenBalanceChange);
-  const totalOutputSwapped =
+  const amountOut =
     side === 'SELL'
       ? Math.abs(quoteTokenBalanceChange)
       : Math.abs(baseTokenBalanceChange);
 
   logger.info(
-    `Swap executed successfully: ${totalInputSwapped.toFixed(4)} ${side === 'SELL' ? baseTokenInfo.symbol : quoteTokenInfo.symbol} -> ${totalOutputSwapped.toFixed(4)} ${side === 'SELL' ? quoteTokenInfo.symbol : baseTokenInfo.symbol}`,
+    `Swap executed successfully: ${amountIn.toFixed(4)} ${side === 'SELL' ? baseTokenInfo.symbol : quoteTokenInfo.symbol} -> ${amountOut.toFixed(4)} ${side === 'SELL' ? quoteTokenInfo.symbol : baseTokenInfo.symbol}`,
   );
 
   // Remove quote from cache after successful execution
@@ -126,13 +126,13 @@ async function executeQuote(
     signature: txReceipt.transactionHash,
     status: 1, // CONFIRMED
     data: {
-      totalInputSwapped,
-      totalOutputSwapped,
+      tokenIn: sellToken,
+      tokenOut: buyToken,
+      amountIn,
+      amountOut,
       fee,
       baseTokenBalanceChange,
       quoteTokenBalanceChange,
-      tokenIn: sellToken,
-      tokenOut: buyToken,
     },
   };
 }

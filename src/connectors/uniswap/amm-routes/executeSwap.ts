@@ -280,14 +280,12 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         logger.info(`Gas used: ${receipt.gasUsed.toString()}`);
 
         // Calculate amounts using quote values
-        const totalInputSwapped = quote.estimatedAmountIn;
-        const totalOutputSwapped = quote.estimatedAmountOut;
+        const amountIn = quote.estimatedAmountIn;
+        const amountOut = quote.estimatedAmountOut;
 
         // Calculate balance changes as numbers
-        const baseTokenBalanceChange =
-          side === 'BUY' ? totalOutputSwapped : -totalInputSwapped;
-        const quoteTokenBalanceChange =
-          side === 'BUY' ? -totalInputSwapped : totalOutputSwapped;
+        const baseTokenBalanceChange = side === 'BUY' ? amountOut : -amountIn;
+        const quoteTokenBalanceChange = side === 'BUY' ? -amountIn : amountOut;
 
         // Calculate gas fee (formatTokenAmount already returns a number)
         const gasFee = formatTokenAmount(
@@ -308,14 +306,13 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           signature: txSignature,
           status: 1, // CONFIRMED
           data: {
-            totalInputSwapped: totalInputSwapped,
-            totalOutputSwapped: totalOutputSwapped,
+            tokenIn,
+            tokenOut,
+            amountIn,
+            amountOut,
             fee: gasFee,
             baseTokenBalanceChange,
             quoteTokenBalanceChange,
-            // Computed fields for clarity
-            tokenIn,
-            tokenOut,
           },
         };
       } catch (error) {

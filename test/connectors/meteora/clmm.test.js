@@ -97,8 +97,10 @@ function validateSwapExecution(response) {
     typeof response.status === 'number' &&
     (response.status !== 1 || // If not CONFIRMED
       (response.data &&
-        typeof response.data.totalInputSwapped === 'number' &&
-        typeof response.data.totalOutputSwapped === 'number' &&
+        typeof response.data.tokenIn === 'string' &&
+        typeof response.data.tokenOut === 'string' &&
+        typeof response.data.amountIn === 'number' &&
+        typeof response.data.amountOut === 'number' &&
         typeof response.data.fee === 'number' &&
         typeof response.data.baseTokenBalanceChange === 'number' &&
         typeof response.data.quoteTokenBalanceChange === 'number'))
@@ -396,8 +398,12 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
 
       // Validate the response
       expect(response.status).toBe(200);
+      expect(validateSwapExecution(response.data)).toBe(true);
       expect(response.data.signature).toBeDefined();
       expect(response.data.signature.length).toBeGreaterThan(80); // Solana signatures are long
+      expect(response.data.status).toBe(1); // CONFIRMED
+      expect(response.data.data.tokenIn).toBeDefined();
+      expect(response.data.data.tokenOut).toBeDefined();
     });
 
     test('handles transaction simulation error', async () => {

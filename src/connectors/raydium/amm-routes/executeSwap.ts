@@ -176,10 +176,10 @@ async function executeSwap(
     );
 
     // Calculate actual amounts swapped based on side
-    const totalInputSwapped = Math.abs(
+    const amountIn = Math.abs(
       side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange,
     );
-    const totalOutputSwapped = Math.abs(
+    const amountOut = Math.abs(
       side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange,
     );
 
@@ -191,14 +191,13 @@ async function executeSwap(
       signature,
       status: 1, // CONFIRMED
       data: {
-        totalInputSwapped,
-        totalOutputSwapped,
+        tokenIn,
+        tokenOut,
+        amountIn,
+        amountOut,
         fee: txData.meta.fee / 1e9,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
-        // Computed fields for clarity
-        tokenIn,
-        tokenOut,
       },
     };
   } else {

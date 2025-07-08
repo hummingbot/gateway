@@ -371,8 +371,8 @@ export class Jupiter {
     inputMint: string,
     outputMint: string,
   ): Promise<{
-    totalInputSwapped: number;
-    totalOutputSwapped: number;
+    amountIn: number;
+    amountOut: number;
     fee: number;
   }> {
     let inputBalanceChange: number, outputBalanceChange: number, fee: number;
@@ -409,8 +409,8 @@ export class Jupiter {
     }
 
     return {
-      totalInputSwapped: Math.abs(inputBalanceChange),
-      totalOutputSwapped: Math.abs(outputBalanceChange),
+      amountIn: Math.abs(inputBalanceChange),
+      amountOut: Math.abs(outputBalanceChange),
       fee,
     };
   }

@@ -157,8 +157,8 @@ describe('POST /execute-quote', () => {
     const body = JSON.parse(response.body);
     expect(body).toHaveProperty('signature', mockReceipt.transactionHash);
     expect(body).toHaveProperty('status', 1);
-    expect(body.data).toHaveProperty('totalInputSwapped', 0.1);
-    expect(body.data).toHaveProperty('totalOutputSwapped', 150);
+    expect(body.data).toHaveProperty('amountIn', 0.1);
+    expect(body.data).toHaveProperty('amountOut', 150);
     expect(body.data).toHaveProperty('fee', 0.006);
     expect(body.data).toHaveProperty('baseTokenBalanceChange', -0.1);
     expect(body.data).toHaveProperty('quoteTokenBalanceChange', 150);

@@ -256,8 +256,8 @@ describe('Uniswap AMM Tests (Base Network)', () => {
       const executeResponse = {
         signature:
           '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-        totalInputSwapped: quoteResponse.estimatedAmountIn,
-        totalOutputSwapped: quoteResponse.estimatedAmountOut,
+        amountIn: quoteResponse.estimatedAmountIn,
+        amountOut: quoteResponse.estimatedAmountOut,
         fee: 0.003,
         baseTokenBalanceChange: quoteResponse.baseTokenBalanceChange,
         quoteTokenBalanceChange: quoteResponse.quoteTokenBalanceChange,
@@ -285,12 +285,8 @@ describe('Uniswap AMM Tests (Base Network)', () => {
       // Validate the response
       expect(response.status).toBe(200);
       expect(response.data.signature).toBeDefined();
-      expect(response.data.totalInputSwapped).toBe(
-        quoteResponse.estimatedAmountIn,
-      );
-      expect(response.data.totalOutputSwapped).toBe(
-        quoteResponse.estimatedAmountOut,
-      );
+      expect(response.data.amountIn).toBe(quoteResponse.estimatedAmountIn);
+      expect(response.data.amountOut).toBe(quoteResponse.estimatedAmountOut);
     });
 
     test('handles transaction simulation error', async () => {

@@ -137,8 +137,8 @@ describe('POST /execute-swap', () => {
     const body = JSON.parse(response.body);
     expect(body).toHaveProperty('signature', mockTransaction.signature);
     expect(body).toHaveProperty('status', 1);
-    expect(body.data).toHaveProperty('totalInputSwapped', 0.1);
-    expect(body.data).toHaveProperty('totalOutputSwapped', 14.85);
+    expect(body.data).toHaveProperty('amountIn', 0.1);
+    expect(body.data).toHaveProperty('amountOut', 14.85);
     expect(body.data).toHaveProperty('fee', 5000); // Fee in lamports
     expect(body.data).toHaveProperty('baseTokenBalanceChange', -0.1);
     expect(body.data).toHaveProperty('quoteTokenBalanceChange', 14.85);
@@ -207,8 +207,8 @@ describe('POST /execute-swap', () => {
     const body = JSON.parse(response.body);
     expect(body).toHaveProperty('signature', mockTransaction.signature);
     expect(body).toHaveProperty('status', 1);
-    expect(body.data).toHaveProperty('totalInputSwapped', 15);
-    expect(body.data).toHaveProperty('totalOutputSwapped', 0.1);
+    expect(body.data).toHaveProperty('amountIn', 15);
+    expect(body.data).toHaveProperty('amountOut', 0.1);
     expect(body.data).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body.data).toHaveProperty('tokenOut', mockSOL.address);
   });

@@ -2,8 +2,10 @@
   "signature": "2ZE6KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpS3Yw",
   "status": 1,
   "data": {
-    "totalInputSwapped": 1.0,
-    "totalOutputSwapped": 167.5,
+    "tokenIn": "So11111111111111111111111111111111111111112",
+    "tokenOut": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "amountIn": 1.0,
+    "amountOut": 167.5,
     "fee": 0.0025,
     "baseTokenBalanceChange": -1.0,
     "quoteTokenBalanceChange": 167.5
