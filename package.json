@@ -38,7 +38,7 @@
     "mcp:start": "node dist/mcp/index.js",
     "mcp:dev": "tsx src/mcp/index.ts",
     "rebuild-bigint": "cd node_modules/bigint-buffer && pnpm run rebuild",
-    "prepare": "husky install"
+    "prepare": "pnpm husky"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",
