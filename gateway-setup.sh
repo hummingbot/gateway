@@ -34,18 +34,87 @@ copy_configs () {
   echo
   # Make destination folder if needed
   mkdir -p $HOST_CONF_PATH
-  # Copy all files in the source folder to the destination folder
-  cp $TEMPLATE_DIR/*.yml $HOST_CONF_PATH
-  cp -r $TEMPLATE_DIR/networks $HOST_CONF_PATH/
-  cp -r $TEMPLATE_DIR/connectors $HOST_CONF_PATH/
-  cp -r $TEMPLATE_DIR/tokens $HOST_CONF_PATH/
-  cp -r $TEMPLATE_DIR/pools $HOST_CONF_PATH/
-  # Confirm that the files were copied
-  if [ $? -eq 0 ]; then
-    echo "Files successfully copied from $TEMPLATE_DIR to $HOST_CONF_PATH"
+  
+  # Track what was updated for final summary
+  UPDATED_ITEMS=""
+  
+  # Note: conf/wallets/ is never touched by this script to preserve user wallets
+  
+  # Function to prompt for yes/no with default
+  prompt_yes_no () {
+    local prompt_text="$1"
+    local default_val="${2:-Y}"
+    local user_input
+    
+    if [ "$default_val" = "Y" ]; then
+      read -p "$prompt_text [Y/n] >>> " user_input
+      user_input=${user_input:-Y}
+    else
+      read -p "$prompt_text [y/N] >>> " user_input
+      user_input=${user_input:-N}
+    fi
+    
+    if [[ "$user_input" == "Y" || "$user_input" == "y" ]]; then
+      return 0
+    else
+      return 1
+    fi
+  }
+  
+  # Always copy root.yml (essential file)
+  cp $TEMPLATE_DIR/root.yml $HOST_CONF_PATH/
+  UPDATED_ITEMS="${UPDATED_ITEMS}root.yml, "
+  
+  # Ask about server.yml
+  echo "📄 Configuration files:"
+  if prompt_yes_no "  - Update server.yml?" "Y"; then
+    cp $TEMPLATE_DIR/server.yml $HOST_CONF_PATH/
+    UPDATED_ITEMS="${UPDATED_ITEMS}server.yml, "
+  fi
+  
+  echo
+  echo "📁 Configuration folders:"
+  
+  # Copy connectors folder
+  if prompt_yes_no "  - Update connectors/ (default connector configs)?" "Y"; then
+    cp -r $TEMPLATE_DIR/connectors $HOST_CONF_PATH/
+    UPDATED_ITEMS="${UPDATED_ITEMS}connectors/, "
+  fi
+  
+  # Copy namespace folder
+  if prompt_yes_no "  - Update namespace/ (config schemas)?" "Y"; then
+    cp -r $TEMPLATE_DIR/namespace $HOST_CONF_PATH/
+    UPDATED_ITEMS="${UPDATED_ITEMS}namespace/, "
+  fi
+  
+  # Copy networks folder
+  if prompt_yes_no "  - Update networks/ (default chain/network configs)?" "Y"; then
+    cp -r $TEMPLATE_DIR/networks $HOST_CONF_PATH/
+    UPDATED_ITEMS="${UPDATED_ITEMS}networks/, "
+  fi
+  
+  # Copy tokens folder
+  if prompt_yes_no "  - Update tokens/ (token lists)?" "Y"; then
+    cp -r $TEMPLATE_DIR/tokens $HOST_CONF_PATH/
+    UPDATED_ITEMS="${UPDATED_ITEMS}tokens/, "
+  fi
+  
+  # Copy pools folder
+  if prompt_yes_no "  - Update pools/ (AMM/CLMM pool lists)?" "Y"; then
+    cp -r $TEMPLATE_DIR/pools $HOST_CONF_PATH/
+    UPDATED_ITEMS="${UPDATED_ITEMS}pools/, "
+  fi
+  
+  # Note: wallets folder is preserved and never overwritten
+  
+  # Remove trailing comma and space
+  UPDATED_ITEMS=${UPDATED_ITEMS%, }
+  
+  echo
+  if [ -n "$UPDATED_ITEMS" ]; then
+    echo "✅ Successfully updated: $UPDATED_ITEMS"
   else
-    echo "Error copying files from $TEMPLATE_DIR to $HOST_CONF_PATH"
-    exit
+    echo "⚠️  No configurations were updated"
   fi
 }
 
@@ -123,10 +192,10 @@ fi
 
 # Ask user to confirm and proceed
 echo
-echo "ℹ️ Confirm if this is correct:"
+echo "ℹ️ Configuration update settings:"
 echo
-printf "%30s %5s\n" "Copy configs FROM:" "$TEMPLATE_DIR"
-printf "%30s %5s\n" "Copy configs TO:" "$HOST_CONF_PATH"
+printf "%30s %5s\n" "Source directory:" "$TEMPLATE_DIR"
+printf "%30s %5s\n" "Destination directory:" "$HOST_CONF_PATH"
 if [[ "$LINK_CERTS" == "Y" ||  "$LINK_CERTS" == "y" ]]
 then
   echo
@@ -134,6 +203,8 @@ then
   printf "%30s %5s\n" "Link certs TO:" "$CERTS_TO_PATH"
   echo "  (Symlink will be created)"
 fi
+echo
+echo "You will be asked which configurations to update."
 echo
 
 prompt_proceed

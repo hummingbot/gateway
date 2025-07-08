@@ -83,7 +83,7 @@ const getLogPath = () => {
 };
 
 const allLogsFileTransport = new DailyRotateFile({
-  level: 'info',
+  level: ConfigManagerV2.getInstance().get('server.logLevel') || 'info',
   filename: `${getLogPath()}/logs_gateway_app.log.%DATE%`,
   datePattern: 'YYYY-MM-DD',
   handleExceptions: true,
@@ -91,13 +91,14 @@ const allLogsFileTransport = new DailyRotateFile({
 });
 
 export const logger = winston.createLogger({
-  level: 'info',
+  level: ConfigManagerV2.getInstance().get('server.logLevel') || 'info',
   format: logFileFormat,
   exitOnError: false,
   transports: [allLogsFileTransport],
 });
 
 const toStdout = new winston.transports.Console({
+  level: ConfigManagerV2.getInstance().get('server.logLevel') || 'info',
   format: sdtoutFormat,
 });
 

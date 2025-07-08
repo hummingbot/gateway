@@ -26,7 +26,7 @@ logToStdOut: true
 fastifyLogs: false
 
 # Log level for the application (debug, info, warn, error)
-logLevel: info
+logLevel: debug
 
 # MCP Server Configuration
 mcp:

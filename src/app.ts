@@ -313,6 +313,9 @@ export const startGateway = async () => {
   logger.info(
     `⚡️ Gateway version ${GATEWAY_VERSION} starting at ${protocol}://localhost:${port}`,
   );
+  logger.info(
+    `🔧 Log level configured as: ${ConfigManagerV2.getInstance().get('server.logLevel') || 'info'}`,
+  );
 
   try {
     // Kill any process using the gateway port

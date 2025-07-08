@@ -7,19 +7,8 @@
     "nativeCurrencySymbol": { "type": "string" },
     "gasPriceRefreshInterval": { "type": "number" },
     "gasLimitTransaction": { "type": "integer" },
-    "manualGasPrice": { "type": "integer" },
-    "defaultComputeUnits": { "type": "number" },
-    "gasEstimateInterval": { "type": "number" },
-    "maxFee": { "type": "number" },
-    "minFee": { "type": "number" },
-    "retryCount": { "type": "number" },
-    "retryFeeMultiplier": { "type": "number" },
-    "retryInterval": { "type": "number" }
+    "manualGasPrice": { "type": "integer" }
   },
-  "required": [
-    "chainID",
-    "nodeURL",
-    "nativeCurrencySymbol"
-  ],
+  "required": ["chainID", "nodeURL", "nativeCurrencySymbol"],
   "additionalProperties": false
 }
