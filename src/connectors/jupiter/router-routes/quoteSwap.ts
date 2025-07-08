@@ -102,7 +102,7 @@ async function quoteSwap(
       ? estimatedAmountOut / estimatedAmountIn
       : estimatedAmountIn / estimatedAmountOut;
 
-  // Generate quote ID and cache the quote
+  // Generate quote ID and cache the entire quote response
   const quoteId = uuidv4();
   const now = Date.now();
 
@@ -122,9 +122,6 @@ async function quoteSwap(
     },
   });
 
-  // Estimate gas (Jupiter provides compute units in the route plan)
-  const gasEstimate = '200000'; // Default estimate
-
   return {
     quoteId,
     estimatedAmountIn: side === 'SELL' ? amount : estimatedAmountIn,
@@ -132,16 +129,14 @@ async function quoteSwap(
     minAmountOut,
     maxAmountIn,
     price,
-    priceImpactPct: quoteResponse.priceImpactPct
-      ? Number(quoteResponse.priceImpactPct)
-      : 0,
     slippagePct,
-    gasEstimate,
-    expirationTime: now + QUOTE_TTL,
     tokenIn: inputToken.address,
     tokenOut: outputToken.address,
     tokenInAmount: estimatedAmountIn,
     tokenOutAmount: estimatedAmountOut,
+    // Jupiter-specific fields
+    priceImpactPct: quoteResponse.priceImpactPct,
+    quoteResponse: bestRoute,
   };
 }
 

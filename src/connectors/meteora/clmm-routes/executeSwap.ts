@@ -11,9 +11,9 @@ import {
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Meteora } from '../meteora';
+import { MeteoraClmmExecuteSwapRequest } from '../schemas';
 
 import { getRawSwapQuote } from './quoteSwap';
-import { MeteoraClmmExecuteSwapRequest } from './schemas';
 
 async function executeSwap(
   fastify: FastifyInstance,

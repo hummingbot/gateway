@@ -15,9 +15,8 @@ import {
 } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
+import { UniswapExecuteSwapRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
-
-import { UniswapExecuteSwapRequest } from './schemas';
 
 async function executeSwap(
   fastify: FastifyInstance,

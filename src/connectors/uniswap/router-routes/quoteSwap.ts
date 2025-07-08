@@ -15,9 +15,8 @@ import {
 } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
+import { UniswapQuoteSwapRequest, UniswapQuoteSwapResponse } from '../schemas';
 import { Uniswap } from '../uniswap';
-
-import { UniswapQuoteSwapRequest, UniswapQuoteSwapResponse } from './schemas';
 
 // Simple in-memory cache for quotes
 export const quoteCache = new Map<

@@ -15,9 +15,9 @@ import {
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
+import { RaydiumClmmExecuteSwapRequest } from '../schemas';
 
 import { getSwapQuote, convertAmountIn } from './quoteSwap';
-import { RaydiumClmmExecuteSwapRequest } from './schemas';
 
 async function executeSwap(
   fastify: FastifyInstance,

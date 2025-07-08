@@ -17,9 +17,21 @@ export const JupiterQuoteSwapRequest = Type.Intersect([
 export const JupiterQuoteSwapResponse = Type.Intersect([
   Base.QuoteSwapResponse,
   Type.Object({
-    routePlan: Type.Optional(Type.Array(Type.Any())),
-    contextSlot: Type.Optional(Type.Number()),
-    timeTaken: Type.Optional(Type.Number()),
+    priceImpactPct: Type.String(),
+    quoteResponse: Type.Object({
+      inputMint: Type.String(),
+      inAmount: Type.String(),
+      outputMint: Type.String(),
+      outAmount: Type.String(),
+      otherAmountThreshold: Type.String(),
+      swapMode: Type.String(),
+      slippageBps: Type.Number(),
+      platformFee: Type.Optional(Type.Any()),
+      priceImpactPct: Type.String(),
+      routePlan: Type.Array(Type.Any()),
+      contextSlot: Type.Optional(Type.Number()),
+      timeTaken: Type.Optional(Type.Number()),
+    }),
   }),
 ]);
 

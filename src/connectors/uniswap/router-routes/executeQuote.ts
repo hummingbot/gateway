@@ -8,10 +8,10 @@ import {
   SwapExecuteResponse,
 } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
+import { UniswapExecuteQuoteRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
 
 import { quoteCache } from './quoteSwap';
-import { UniswapExecuteQuoteRequest } from './schemas';
 
 async function executeQuote(
   fastify: FastifyInstance,

@@ -31,7 +31,6 @@ export const GetPriceResponse = Type.Object(
     estimatedAmountIn: Type.Number(),
     estimatedAmountOut: Type.Number(),
     price: Type.Number(),
-    priceImpactPct: Type.Number(),
     // Computed fields for clarity
     tokenIn: Type.String(),
     tokenOut: Type.String(),
@@ -73,10 +72,7 @@ export const QuoteSwapResponse = Type.Object(
     minAmountOut: Type.Number(),
     maxAmountIn: Type.Number(),
     price: Type.Number(),
-    priceImpactPct: Type.Number(),
     slippagePct: Type.Number(),
-    gasEstimate: Type.String(),
-    expirationTime: Type.Number(),
     // Computed fields for clarity
     tokenIn: Type.String(),
     tokenOut: Type.String(),

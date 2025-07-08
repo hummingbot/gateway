@@ -20,8 +20,7 @@ import {
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
-
-import { RaydiumClmmQuoteSwapRequest } from './schemas';
+import { RaydiumClmmQuoteSwapRequest } from '../schemas';
 
 /**
  * Helper function to convert amount for buy orders in Raydium CLMM
