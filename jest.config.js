@@ -5,6 +5,7 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   forceExit: true,
+  detectOpenHandles: false,
   coveragePathIgnorePatterns: [
     'src/app.ts',
     'src/https.ts',

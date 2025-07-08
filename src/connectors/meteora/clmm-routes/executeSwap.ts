@@ -126,8 +126,6 @@ async function executeSwap(
       quoteTokenBalanceChange,
       tokenIn: inputToken.address,
       tokenOut: outputToken.address,
-      tokenInAmount: totalInputSwapped,
-      tokenOutAmount: totalOutputSwapped,
       activeBinId: 0, // Meteora doesn't provide this in the same way
     },
   };

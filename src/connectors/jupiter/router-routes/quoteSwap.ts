@@ -1,11 +1,9 @@
+import { Static } from '@sinclair/typebox';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  QuoteSwapRequestType,
-  QuoteSwapResponseType,
-} from '../../../schemas/router-schema';
+import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Jupiter } from '../jupiter';
@@ -40,7 +38,7 @@ async function quoteSwap(
   asLegacyTransaction?: boolean,
   _maxAccounts?: number,
   priorityFeeLamports?: number,
-): Promise<QuoteSwapResponseType> {
+): Promise<Static<typeof JupiterQuoteSwapResponse>> {
   const solana = await Solana.getInstance(network);
   const jupiter = await Jupiter.getInstance(network);
 
@@ -132,18 +130,30 @@ async function quoteSwap(
     slippagePct,
     tokenIn: inputToken.address,
     tokenOut: outputToken.address,
-    tokenInAmount: estimatedAmountIn,
-    tokenOutAmount: estimatedAmountOut,
+    // Convert Jupiter's string priceImpactPct to number
+    priceImpactPct: parseFloat(quoteResponse.priceImpactPct || '0'),
     // Jupiter-specific fields
-    priceImpactPct: quoteResponse.priceImpactPct,
-    quoteResponse: bestRoute,
+    quoteResponse: {
+      inputMint: inputToken.address,
+      inAmount: quoteResponse.inAmount,
+      outputMint: outputToken.address,
+      outAmount: quoteResponse.outAmount,
+      otherAmountThreshold: quoteResponse.otherAmountThreshold || '0',
+      swapMode: quoteResponse.swapMode || 'ExactIn',
+      slippageBps: quoteResponse.slippageBps,
+      platformFee: undefined, // Jupiter doesn't provide this in the quote
+      priceImpactPct: quoteResponse.priceImpactPct || '0',
+      routePlan: quoteResponse.routePlan || [],
+      contextSlot: quoteResponse.contextSlot,
+      timeTaken: quoteResponse.timeTaken,
+    },
   };
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: QuoteSwapRequestType;
-    Reply: QuoteSwapResponseType;
+    Reply: Static<typeof JupiterQuoteSwapResponse>;
   }>(
     '/quote-swap',
     {

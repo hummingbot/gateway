@@ -1,10 +1,51 @@
-import { Type } from '@sinclair/typebox';
+import { Type, Static } from '@sinclair/typebox';
 
 import * as Base from '../../schemas/router-schema';
 
+// GetPrice schemas - only used by 0x connector
+export const GetPriceRequest = Type.Object(
+  {
+    network: Type.String(),
+    baseToken: Type.String({
+      description: 'Token to determine swap direction',
+    }),
+    quoteToken: Type.String({
+      description: 'The other token in the pair',
+    }),
+    amount: Type.Number(),
+    side: Type.Enum(
+      { BUY: 'BUY', SELL: 'SELL' },
+      {
+        description: 'Trade direction',
+      },
+    ),
+  },
+  { $id: 'GetPriceRequest' },
+);
+export type GetPriceRequestType = Static<typeof GetPriceRequest>;
+
+export const GetPriceResponse = Type.Object(
+  {
+    estimatedAmountIn: Type.Number(),
+    estimatedAmountOut: Type.Number(),
+    price: Type.Number(),
+    // Computed fields for clarity
+    tokenIn: Type.String(),
+    tokenOut: Type.String(),
+    // Price impact percentage (optional for backward compatibility)
+    priceImpactPct: Type.Optional(
+      Type.Number({
+        description: 'Estimated price impact as a percentage (0-100)',
+      }),
+    ),
+  },
+  { $id: 'GetPriceResponse' },
+);
+export type GetPriceResponseType = Static<typeof GetPriceResponse>;
+
 // 0x-specific extensions for get-price
 export const ZeroXGetPriceRequest = Type.Intersect([
-  Base.GetPriceRequest,
+  GetPriceRequest,
   Type.Object({
     gasPrice: Type.Optional(Type.String()),
     excludedSources: Type.Optional(Type.Array(Type.String())),
@@ -14,9 +55,9 @@ export const ZeroXGetPriceRequest = Type.Intersect([
 
 // 0x-specific extensions for get-price response
 export const ZeroXGetPriceResponse = Type.Intersect([
-  Base.GetPriceResponse,
+  GetPriceResponse,
   Type.Object({
-    priceImpactPct: Type.Number(),
+    // priceImpactPct is now included in base schema
   }),
 ]);
 
@@ -36,7 +77,7 @@ export const ZeroXQuoteSwapRequest = Type.Intersect([
 export const ZeroXQuoteSwapResponse = Type.Intersect([
   Base.QuoteSwapResponse,
   Type.Object({
-    priceImpactPct: Type.Number(),
+    // priceImpactPct is now included in base schema
     expirationTime: Type.Number(),
     gasEstimate: Type.String(),
     sources: Type.Optional(Type.Array(Type.Any())),

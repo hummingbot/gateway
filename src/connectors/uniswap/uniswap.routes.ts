@@ -1,33 +1,13 @@
 import sensible from '@fastify/sensible';
 import { FastifyPluginAsync } from 'fastify';
 
-// Import swap routes
-
-// Import AMM routes
-import addLiquidityRoute from './amm-routes/addLiquidity';
-import ammExecuteSwapRoute from './amm-routes/executeSwap';
-import poolInfoRoute from './amm-routes/poolInfo';
-import positionInfoRoute from './amm-routes/positionInfo';
-import quoteLiquidityRoute from './amm-routes/quoteLiquidity';
-import ammQuoteSwapRoute from './amm-routes/quoteSwap';
-import removeLiquidityRoute from './amm-routes/removeLiquidity';
-
-// Import CLMM routes
-import clmmAddLiquidityRoute from './clmm-routes/addLiquidity';
-import closePositionRoute from './clmm-routes/closePosition';
-import collectFeesRoute from './clmm-routes/collectFees';
-import clmmExecuteSwapRoute from './clmm-routes/executeSwap';
-import openPositionRoute from './clmm-routes/openPosition';
-import clmmPoolInfoRoute from './clmm-routes/poolInfo';
-import clmmPositionInfoRoute from './clmm-routes/positionInfo';
-import positionsOwnedRoute from './clmm-routes/positionsOwned';
-import quotePositionRoute from './clmm-routes/quotePosition';
-import clmmQuoteSwapRoute from './clmm-routes/quoteSwap';
-import clmmRemoveLiquidityRoute from './clmm-routes/removeLiquidity';
-import { uniswapRouterRoutes as routerRoutesImport } from './router-routes';
+// Import routes
+import { uniswapAmmRoutes } from './amm-routes';
+import { uniswapClmmRoutes } from './clmm-routes';
+import { uniswapRouterRoutes } from './router-routes';
 
 // Router routes (Universal Router with 4 endpoints)
-const uniswapRouterRoutes: FastifyPluginAsync = async (fastify) => {
+const uniswapRouterRoutesWrapper: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
 
   await fastify.register(async (instance) => {
@@ -37,12 +17,12 @@ const uniswapRouterRoutes: FastifyPluginAsync = async (fastify) => {
       }
     });
 
-    await instance.register(routerRoutesImport);
+    await instance.register(uniswapRouterRoutes);
   });
 };
 
 // AMM routes (Uniswap V2)
-const uniswapAmmRoutes: FastifyPluginAsync = async (fastify) => {
+const uniswapAmmRoutesWrapper: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
 
   await fastify.register(async (instance) => {
@@ -52,18 +32,12 @@ const uniswapAmmRoutes: FastifyPluginAsync = async (fastify) => {
       }
     });
 
-    await instance.register(poolInfoRoute);
-    await instance.register(positionInfoRoute);
-    await instance.register(ammQuoteSwapRoute);
-    await instance.register(quoteLiquidityRoute);
-    await instance.register(ammExecuteSwapRoute);
-    await instance.register(addLiquidityRoute);
-    await instance.register(removeLiquidityRoute);
+    await instance.register(uniswapAmmRoutes);
   });
 };
 
 // CLMM routes (Uniswap V3)
-const uniswapClmmRoutes: FastifyPluginAsync = async (fastify) => {
+const uniswapClmmRoutesWrapper: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
 
   await fastify.register(async (instance) => {
@@ -73,25 +47,15 @@ const uniswapClmmRoutes: FastifyPluginAsync = async (fastify) => {
       }
     });
 
-    await instance.register(clmmPoolInfoRoute);
-    await instance.register(clmmPositionInfoRoute);
-    await instance.register(positionsOwnedRoute);
-    await instance.register(quotePositionRoute);
-    await instance.register(clmmQuoteSwapRoute);
-    await instance.register(clmmExecuteSwapRoute);
-    await instance.register(openPositionRoute);
-    await instance.register(clmmAddLiquidityRoute);
-    await instance.register(clmmRemoveLiquidityRoute);
-    await instance.register(collectFeesRoute);
-    await instance.register(closePositionRoute);
+    await instance.register(uniswapClmmRoutes);
   });
 };
 
 // Export routes in the same pattern as other connectors
 export const uniswapRoutes = {
-  router: uniswapRouterRoutes,
-  amm: uniswapAmmRoutes,
-  clmm: uniswapClmmRoutes,
+  router: uniswapRouterRoutesWrapper,
+  amm: uniswapAmmRoutesWrapper,
+  clmm: uniswapClmmRoutesWrapper,
 };
 
 export default uniswapRoutes;

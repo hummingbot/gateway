@@ -137,8 +137,6 @@ async function formatSwapQuote(
       activeBinId: 0, // TODO: Get active bin ID
       tokenIn: inputToken.address,
       tokenOut: outputToken.address,
-      tokenInAmount: estimatedAmountIn,
-      tokenOutAmount: amountOut,
     };
   } else {
     const exactInQuote = quote as SwapQuote;
@@ -176,8 +174,6 @@ async function formatSwapQuote(
       activeBinId: 0, // TODO: Get active bin ID
       tokenIn: inputToken.address,
       tokenOut: outputToken.address,
-      tokenInAmount: estimatedAmountIn,
-      tokenOutAmount: estimatedAmountOut,
     };
   }
 }

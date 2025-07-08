@@ -259,8 +259,6 @@ async function formatSwapQuote(
     // Determine token addresses for computed fields
     const tokenIn = inputToken.address;
     const tokenOut = outputToken.address;
-    const tokenInAmount = estimatedAmountIn;
-    const tokenOutAmount = estimatedAmountOut;
 
     // Calculate fee
     const fee = exactOutResponse.fee
@@ -281,8 +279,6 @@ async function formatSwapQuote(
       // Computed fields for clarity
       tokenIn,
       tokenOut,
-      tokenInAmount,
-      tokenOutAmount,
     };
   } else {
     const exactInResponse = response as ReturnTypeComputeAmountOutFormat;
@@ -311,8 +307,6 @@ async function formatSwapQuote(
     // Determine token addresses for computed fields
     const tokenIn = inputToken.address;
     const tokenOut = outputToken.address;
-    const tokenInAmount = estimatedAmountIn;
-    const tokenOutAmount = estimatedAmountOut;
 
     // Calculate fee
     const fee = exactInResponse.fee
@@ -333,8 +327,6 @@ async function formatSwapQuote(
       // Computed fields for clarity
       tokenIn,
       tokenOut,
-      tokenInAmount,
-      tokenOutAmount,
     };
   }
 }

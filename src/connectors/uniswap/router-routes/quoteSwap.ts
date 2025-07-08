@@ -1,3 +1,4 @@
+import { Static } from '@sinclair/typebox';
 import { CurrencyAmount, Percent, TradeType, Token } from '@uniswap/sdk-core';
 import {
   AlphaRouter,
@@ -10,7 +11,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import {
   QuoteSwapRequestType,
-  QuoteSwapResponseType,
   QuoteSwapResponse,
 } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
@@ -49,15 +49,7 @@ async function quoteSwap(
   side: 'BUY' | 'SELL',
   slippagePct: number,
   protocols?: string[],
-): Promise<
-  QuoteSwapResponseType & {
-    route: string[];
-    routePath: string;
-    protocols: string[];
-    methodParameters: { calldata: string; value: string; to: string };
-    gasPriceWei: string;
-  }
-> {
+): Promise<Static<typeof UniswapQuoteSwapResponse>> {
   const ethereum = await Ethereum.getInstance(network);
   const uniswap = await Uniswap.getInstance(network);
 
@@ -227,8 +219,6 @@ async function quoteSwap(
     // Computed fields
     tokenIn: inputToken.address,
     tokenOut: outputToken.address,
-    tokenInAmount: estimatedAmountIn,
-    tokenOutAmount: estimatedAmountOut,
     // Uniswap-specific fields
     route,
     routePath,
@@ -243,7 +233,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
   fastify.get<{
     Querystring: QuoteSwapRequestType;
-    Reply: QuoteSwapResponseType;
+    Reply: Static<typeof UniswapQuoteSwapResponse>;
   }>(
     '/quote-swap',
     {

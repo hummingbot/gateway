@@ -239,8 +239,6 @@ async function executeSwap(
     // Determine token addresses for computed fields
     const tokenIn = inputToken.address;
     const tokenOut = outputToken.address;
-    const tokenInAmount = totalInputSwapped;
-    const tokenOutAmount = totalOutputSwapped;
 
     return {
       signature,
@@ -255,8 +253,6 @@ async function executeSwap(
         // Computed fields for clarity
         tokenIn,
         tokenOut,
-        tokenInAmount,
-        tokenOutAmount,
       },
     };
   } else {

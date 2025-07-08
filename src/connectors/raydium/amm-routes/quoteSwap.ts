@@ -531,8 +531,6 @@ async function formatSwapQuote(
     side === 'SELL' ? resolvedBaseToken.address : resolvedQuoteToken.address;
   const tokenOut =
     side === 'SELL' ? resolvedQuoteToken.address : resolvedBaseToken.address;
-  const tokenInAmount = estimatedAmountIn;
-  const tokenOutAmount = estimatedAmountOut;
 
   // Calculate fee and price impact
   const fee = quote.fee
@@ -554,8 +552,6 @@ async function formatSwapQuote(
     computeUnits: 300000, // Default compute units for AMM swaps
     tokenIn,
     tokenOut,
-    tokenInAmount,
-    tokenOutAmount,
   };
 }
 

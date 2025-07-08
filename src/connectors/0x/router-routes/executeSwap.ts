@@ -174,8 +174,6 @@ async function executeSwap(
       quoteTokenBalanceChange,
       tokenIn: sellToken,
       tokenOut: buyToken,
-      tokenInAmount: totalInputSwapped,
-      tokenOutAmount: totalOutputSwapped,
     },
   };
 }

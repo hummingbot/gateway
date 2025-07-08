@@ -1,11 +1,9 @@
+import { Static } from '@sinclair/typebox';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  QuoteSwapRequestType,
-  QuoteSwapResponseType,
-} from '../../../schemas/router-schema';
+import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { ZeroX, ZeroXQuoteResponse } from '../0x';
@@ -41,7 +39,7 @@ async function quoteSwap(
   _includedSources?: string[],
   skipValidation?: boolean,
   takerAddress?: string,
-): Promise<QuoteSwapResponseType> {
+): Promise<Static<typeof ZeroXQuoteSwapResponse>> {
   const ethereum = await Ethereum.getInstance(network);
   const zeroX = await ZeroX.getInstance(network);
 
@@ -157,8 +155,6 @@ async function quoteSwap(
     expirationTime: now + QUOTE_TTL,
     tokenIn: sellToken,
     tokenOut: buyToken,
-    tokenInAmount: estimatedAmountIn,
-    tokenOutAmount: estimatedAmountOut,
   };
 }
 
@@ -167,7 +163,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
   fastify.get<{
     Querystring: QuoteSwapRequestType;
-    Reply: QuoteSwapResponseType;
+    Reply: Static<typeof ZeroXQuoteSwapResponse>;
   }>(
     '/quote-swap',
     {

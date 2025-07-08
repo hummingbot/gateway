@@ -90,17 +90,38 @@ This file provides guidance to AI coding assistants when working with code in th
 - All configs validated against JSON schemas in `src/templates/json/`
 
 ## Supported Networks
-### Ethereum Networks
-- Mainnet, Sepolia, Arbitrum, Avalanche, Base, BSC, Celo, Optimism, Polygon, World Chain
+
+### Ethereum & EVM Networks
+- Ethereum Mainnet
+- Arbitrum
+- Avalanche
+- Base
+- BSC (Binance Smart Chain)
+- Celo
+- Optimism
+- Polygon
+- Sepolia (testnet)
 
 ### Solana Networks
-- Mainnet, Devnet
+- Solana Mainnet-Beta
+- Solana Devnet
 
 ## Supported DEX Connectors
-- **Jupiter** (Solana): Token swaps via aggregator
-- **Meteora** (Solana): CLMM operations
-- **Raydium** (Solana): AMM and CLMM operations
-- **Uniswap** (Ethereum/EVM): V2 AMM, V3 CLMM, and Universal Router swaps
+- **Jupiter** (Solana): Router-based swaps via DEX aggregator
+- **Meteora** (Solana): DLMM operations
+- **Raydium** (Solana): Standard AMM and CLMM operations
+- **Uniswap** (Ethereum/EVM): V2 AMM, V3 CLMM, and V3 Smart Order Router swaps
+- **0x** (Ethereum/EVM): Router-based swaps via DEX aggregator
+
+### Supported DEX Protocols
+
+| Protocol | Chain | Router | AMM | CLMM |
+|----------|-------|--------|-----|------|
+| Jupiter | Solana | ✅ | ❌ | ❌ |
+| Meteora | Solana | ❌ | ❌ | ✅ |
+| Raydium | Solana | ❌ | ✅ | ✅ |
+| Uniswap | Ethereum/EVM | ✅ | ✅ | ✅ |
+| 0x | Ethereum/EVM | ✅ | ❌ | ❌ |
 
 ## Environment Variables
 - `GATEWAY_PASSPHRASE`: Set passphrase for wallet encryption

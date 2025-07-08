@@ -17,7 +17,7 @@ export const JupiterQuoteSwapRequest = Type.Intersect([
 export const JupiterQuoteSwapResponse = Type.Intersect([
   Base.QuoteSwapResponse,
   Type.Object({
-    priceImpactPct: Type.String(),
+    // priceImpactPct is now included in base schema as a number
     quoteResponse: Type.Object({
       inputMint: Type.String(),
       inAmount: Type.String(),

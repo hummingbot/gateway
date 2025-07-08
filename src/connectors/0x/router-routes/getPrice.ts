@@ -1,15 +1,15 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { logger } from '../../../services/logger';
+import { sanitizeErrorMessage } from '../../../services/sanitize';
+import { ZeroX } from '../0x';
 import {
   GetPriceRequestType,
   GetPriceResponseType,
   GetPriceResponse,
-} from '../../../schemas/router-schema';
-import { logger } from '../../../services/logger';
-import { sanitizeErrorMessage } from '../../../services/sanitize';
-import { ZeroX } from '../0x';
-import { ZeroXGetPriceRequest } from '../schemas';
+  ZeroXGetPriceRequest,
+} from '../schemas';
 
 async function getPrice(
   fastify: FastifyInstance,
@@ -95,8 +95,6 @@ async function getPrice(
     priceImpactPct,
     tokenIn: sellToken,
     tokenOut: buyToken,
-    tokenInAmount: estimatedAmountIn,
-    tokenOutAmount: estimatedAmountOut,
   };
 }
 

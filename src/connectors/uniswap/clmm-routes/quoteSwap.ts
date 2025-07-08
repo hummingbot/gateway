@@ -297,8 +297,6 @@ async function formatSwapQuote(
     // Determine token addresses for computed fields
     const tokenIn = quote.inputToken.address;
     const tokenOut = quote.outputToken.address;
-    const tokenInAmount = quote.estimatedAmountIn;
-    const tokenOutAmount = quote.estimatedAmountOut;
 
     // Calculate fee (V3 has dynamic fees based on pool)
     const fee = quote.estimatedAmountIn * (quote.feeTier / 1000000);
@@ -317,8 +315,6 @@ async function formatSwapQuote(
       // Computed fields for clarity
       tokenIn,
       tokenOut,
-      tokenInAmount,
-      tokenOutAmount,
     };
   } catch (error) {
     logger.error(`Error formatting swap quote: ${error.message}`);

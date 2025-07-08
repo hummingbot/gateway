@@ -93,8 +93,6 @@ async function executeQuote(
       quoteTokenBalanceChange,
       tokenIn: inputToken.address,
       tokenOut: outputToken.address,
-      tokenInAmount: totalInputSwapped,
-      tokenOutAmount: totalOutputSwapped,
     },
   };
 }

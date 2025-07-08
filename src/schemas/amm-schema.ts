@@ -202,8 +202,6 @@ export const QuoteSwapResponse = Type.Object(
     // Computed fields for clarity
     tokenIn: Type.String(),
     tokenOut: Type.String(),
-    tokenInAmount: Type.Number(),
-    tokenOutAmount: Type.Number(),
   },
   { $id: 'AmmQuoteSwapResponse' },
 );
@@ -251,8 +249,6 @@ export const ExecuteSwapResponse = Type.Object(
         // Computed fields for clarity
         tokenIn: Type.String(),
         tokenOut: Type.String(),
-        tokenInAmount: Type.Number(),
-        tokenOutAmount: Type.Number(),
       }),
     ),
   },

@@ -303,8 +303,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         // Determine token addresses for computed fields
         const tokenIn = quote.inputToken.address;
         const tokenOut = quote.outputToken.address;
-        const tokenInAmount = totalInputSwapped;
-        const tokenOutAmount = totalOutputSwapped;
 
         return {
           signature: txSignature,
@@ -318,8 +316,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             // Computed fields for clarity
             tokenIn,
             tokenOut,
-            tokenInAmount,
-            tokenOutAmount,
           },
         };
       } catch (error) {

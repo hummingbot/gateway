@@ -1,45 +1,9 @@
 import { Type, Static } from '@sinclair/typebox';
 
 // ========================================
-// Base Request/Response Types for Aggregators
+// Base request/response types for DEX aggregators
+// and other order router-based connectors
 // ========================================
-
-// Get-price is only for 0x connector
-export const GetPriceRequest = Type.Object(
-  {
-    network: Type.String(),
-    baseToken: Type.String({
-      description: 'Token to determine swap direction',
-    }),
-    quoteToken: Type.String({
-      description: 'The other token in the pair',
-    }),
-    amount: Type.Number(),
-    side: Type.Enum(
-      { BUY: 'BUY', SELL: 'SELL' },
-      {
-        description: 'Trade direction',
-      },
-    ),
-  },
-  { $id: 'GetPriceRequest' },
-);
-export type GetPriceRequestType = Static<typeof GetPriceRequest>;
-
-export const GetPriceResponse = Type.Object(
-  {
-    estimatedAmountIn: Type.Number(),
-    estimatedAmountOut: Type.Number(),
-    price: Type.Number(),
-    // Computed fields for clarity
-    tokenIn: Type.String(),
-    tokenOut: Type.String(),
-    tokenInAmount: Type.Number(),
-    tokenOutAmount: Type.Number(),
-  },
-  { $id: 'GetPriceResponse' },
-);
-export type GetPriceResponseType = Static<typeof GetPriceResponse>;
 
 // Quote-swap replaces get-quote for all connectors
 export const QuoteSwapRequest = Type.Object(
@@ -76,8 +40,12 @@ export const QuoteSwapResponse = Type.Object(
     // Computed fields for clarity
     tokenIn: Type.String(),
     tokenOut: Type.String(),
-    tokenInAmount: Type.Number(),
-    tokenOutAmount: Type.Number(),
+    // Price impact percentage (optional for backward compatibility)
+    priceImpactPct: Type.Optional(
+      Type.Number({
+        description: 'Estimated price impact as a percentage (0-100)',
+      }),
+    ),
   },
   { $id: 'QuoteSwapResponse' },
 );
@@ -123,8 +91,6 @@ export const SwapExecuteResponse = Type.Object(
         // Computed fields for clarity
         tokenIn: Type.String(),
         tokenOut: Type.String(),
-        tokenInAmount: Type.Number(),
-        tokenOutAmount: Type.Number(),
       }),
     ),
   },

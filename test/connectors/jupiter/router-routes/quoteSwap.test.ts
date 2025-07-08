@@ -102,12 +102,10 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('price', 150);
     expect(body).toHaveProperty('priceImpactPct', 0.001);
     expect(body).toHaveProperty('slippagePct', 0.5);
-    expect(body).toHaveProperty('gasEstimate');
-    expect(body).toHaveProperty('expirationTime');
     expect(body).toHaveProperty('tokenIn', mockSOL.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-    expect(body).toHaveProperty('tokenInAmount', 0.1);
-    expect(body).toHaveProperty('tokenOutAmount', 15);
+    expect(body).toHaveProperty('estimatedAmountIn', 0.1);
+    expect(body).toHaveProperty('estimatedAmountOut', 15);
   });
 
   it('should return a price quote for BUY side', async () => {
@@ -153,8 +151,6 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('price', 150);
     expect(body).toHaveProperty('priceImpactPct', 0.001);
     expect(body).toHaveProperty('slippagePct', 0.5);
-    expect(body).toHaveProperty('gasEstimate');
-    expect(body).toHaveProperty('expirationTime');
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockSOL.address);
   });
