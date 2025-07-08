@@ -22,8 +22,7 @@ async function executeSwap(
   side: 'BUY' | 'SELL',
   slippagePct: number,
   onlyDirectRoutes?: boolean,
-  asLegacyTransaction?: boolean,
-  _maxAccounts?: number,
+  restrictIntermediateTokens?: boolean,
   priorityFeeLamports?: number,
   computeUnits?: number,
 ): Promise<SwapExecuteResponseType> {
@@ -64,7 +63,7 @@ async function executeSwap(
     inputAmount / Math.pow(10, inputToken.decimals),
     slippagePct,
     onlyDirectRoutes || false,
-    asLegacyTransaction || false,
+    restrictIntermediateTokens || false,
     side === 'BUY' ? 'ExactOut' : 'ExactIn',
   );
 
@@ -168,8 +167,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           side,
           slippagePct,
           onlyDirectRoutes,
-          asLegacyTransaction,
-          maxAccounts,
+          restrictIntermediateTokens,
           priorityFeeLamports,
           computeUnits,
         } = request.body as typeof JupiterExecuteSwapRequest._type;
@@ -184,8 +182,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           side as 'BUY' | 'SELL',
           slippagePct,
           onlyDirectRoutes,
-          asLegacyTransaction,
-          maxAccounts,
+          restrictIntermediateTokens,
           priorityFeeLamports,
           computeUnits,
         );

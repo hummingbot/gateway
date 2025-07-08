@@ -35,8 +35,7 @@ async function quoteSwap(
   side: 'BUY' | 'SELL',
   slippagePct: number,
   onlyDirectRoutes?: boolean,
-  asLegacyTransaction?: boolean,
-  _maxAccounts?: number,
+  restrictIntermediateTokens?: boolean,
   priorityFeeLamports?: number,
 ): Promise<Static<typeof JupiterQuoteSwapResponse>> {
   const solana = await Solana.getInstance(network);
@@ -74,7 +73,7 @@ async function quoteSwap(
     inputAmount / Math.pow(10, inputToken.decimals),
     slippagePct,
     onlyDirectRoutes || false,
-    asLegacyTransaction || false,
+    restrictIntermediateTokens || false,
     side === 'BUY' ? 'ExactOut' : 'ExactIn',
   );
 
@@ -196,8 +195,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           side,
           slippagePct,
           onlyDirectRoutes,
-          asLegacyTransaction,
-          maxAccounts,
+          restrictIntermediateTokens,
           priorityFeeLamports,
         } = request.query as typeof JupiterQuoteSwapRequest._type;
 
@@ -210,8 +208,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           side as 'BUY' | 'SELL',
           slippagePct,
           onlyDirectRoutes,
-          asLegacyTransaction,
-          maxAccounts,
+          restrictIntermediateTokens,
           priorityFeeLamports,
         );
       } catch (e) {

@@ -6,10 +6,17 @@ import * as Base from '../../schemas/router-schema';
 export const JupiterQuoteSwapRequest = Type.Intersect([
   Base.QuoteSwapRequest,
   Type.Object({
-    onlyDirectRoutes: Type.Optional(Type.Boolean()),
-    asLegacyTransaction: Type.Optional(Type.Boolean()),
-    maxAccounts: Type.Optional(Type.Number()),
-    priorityFeeLamports: Type.Optional(Type.Number()),
+    restrictIntermediateTokens: Type.Optional(
+      Type.Boolean({
+        description:
+          'Restrict routing through highly liquid intermediate tokens only for better price and stability',
+      }),
+    ),
+    onlyDirectRoutes: Type.Optional(
+      Type.Boolean({
+        description: 'Restrict routing to only go through 1 market',
+      }),
+    ),
   }),
 ]);
 
@@ -52,9 +59,17 @@ export const JupiterExecuteQuoteRequest = Type.Intersect([
 export const JupiterExecuteSwapRequest = Type.Intersect([
   Base.ExecuteSwapRequest,
   Type.Object({
-    onlyDirectRoutes: Type.Optional(Type.Boolean()),
-    asLegacyTransaction: Type.Optional(Type.Boolean()),
-    maxAccounts: Type.Optional(Type.Number()),
+    restrictIntermediateTokens: Type.Optional(
+      Type.Boolean({
+        description:
+          'Restrict routing through highly liquid intermediate tokens only for better price and stability',
+      }),
+    ),
+    onlyDirectRoutes: Type.Optional(
+      Type.Boolean({
+        description: 'Restrict routing to only go through 1 market',
+      }),
+    ),
     priorityFeeLamports: Type.Optional(Type.Number()),
     computeUnits: Type.Optional(Type.Number()),
   }),

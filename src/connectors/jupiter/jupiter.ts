@@ -108,7 +108,7 @@ export class Jupiter {
     amount: number,
     slippagePct?: number,
     onlyDirectRoutes: boolean = false,
-    asLegacyTransaction: boolean = false,
+    restrictIntermediateTokens: boolean = false,
     swapMode: 'ExactIn' | 'ExactOut' = 'ExactIn',
   ): Promise<QuoteResponse> {
     const inputToken = await this.solana.getToken(inputTokenIdentifier);
@@ -133,14 +133,10 @@ export class Jupiter {
       slippageBps: slippageBps.toString(),
       swapMode: swapMode,
       onlyDirectRoutes: onlyDirectRoutes.toString(),
-      asLegacyTransaction: asLegacyTransaction.toString(),
-      restrictIntermediateTokens: 'false',
+      restrictIntermediateTokens: restrictIntermediateTokens.toString(),
     });
 
-    // Only add maxAccounts for ExactIn mode (not supported for ExactOut)
-    if (swapMode === 'ExactIn') {
-      params.append('maxAccounts', '64');
-    }
+    // Note: maxAccounts parameter has been deprecated
 
     logger.debug(
       `Getting Jupiter quote for ${inputToken.symbol} to ${outputToken.symbol} with params:`,
