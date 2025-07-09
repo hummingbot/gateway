@@ -13,6 +13,9 @@ export async function pollSolanaTransaction(
   _fastify: FastifyInstance,
   network: string,
   signature: string,
+  baseToken?: string,
+  quoteToken?: string,
+  walletAddress?: string,
 ): Promise<PollResponseType> {
   const solana = await Solana.getInstance(network);
 
@@ -50,12 +53,48 @@ export async function pollSolanaTransaction(
     }
 
     const txStatus = await solana.getTransactionStatusCode(txData as any);
-    const { balanceChange, fee } =
-      await solana.extractAccountBalanceChangeAndFee(signature, 0);
-
-    logger.info(
-      `Polling for transaction ${signature}, Status: ${txStatus}, Balance Change: ${balanceChange} SOL, Fee: ${fee} SOL`,
+    const { fee } = await solana.extractAccountBalanceChangeAndFee(
+      signature,
+      0,
     );
+
+    let baseTokenBalanceChange: number | undefined;
+    let quoteTokenBalanceChange: number | undefined;
+
+    // Calculate token balance changes if tokens and wallet address are provided
+    if (baseToken && quoteToken && walletAddress) {
+      try {
+        const baseTokenInfo = await solana.getToken(baseToken);
+        const quoteTokenInfo = await solana.getToken(quoteToken);
+
+        if (baseTokenInfo && quoteTokenInfo) {
+          const balanceChanges = await solana.extractPairBalanceChangesAndFee(
+            signature,
+            baseTokenInfo,
+            quoteTokenInfo,
+            walletAddress,
+          );
+          baseTokenBalanceChange = balanceChanges.baseTokenBalanceChange;
+          quoteTokenBalanceChange = balanceChanges.quoteTokenBalanceChange;
+
+          logger.info(
+            `Transaction ${signature} - Status: ${txStatus}, Fee: ${fee} SOL, Base Token (${baseTokenInfo.symbol}) Change: ${baseTokenBalanceChange}, Quote Token (${quoteTokenInfo.symbol}) Change: ${quoteTokenBalanceChange}`,
+          );
+        } else {
+          logger.warn(
+            `Could not find token info for base: ${baseToken} or quote: ${quoteToken}`,
+          );
+        }
+      } catch (error) {
+        logger.error(
+          `Error calculating balance changes for transaction ${signature}: ${error.message}`,
+        );
+      }
+    } else {
+      logger.info(
+        `Polling for transaction ${signature}, Status: ${txStatus}, Fee: ${fee} SOL`,
+      );
+    }
 
     return {
       currentBlock,
@@ -64,6 +103,8 @@ export async function pollSolanaTransaction(
       txStatus,
       fee,
       txData,
+      baseTokenBalanceChange,
+      quoteTokenBalanceChange,
     };
   } catch (error) {
     logger.error(`Error polling transaction ${signature}: ${error.message}`);
@@ -100,6 +141,18 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
                 '55ukR6VCt1sQFMC8Nyeo51R1SMaTzUC7jikmkEJ2jjkQNdqBxXHraH7vaoaNmf8rX4Y55EXAj8XXoyzvvsrQqWZa',
               ],
             },
+            baseToken: {
+              type: 'string',
+              examples: ['SOL', 'USDC'],
+            },
+            quoteToken: {
+              type: 'string',
+              examples: ['USDC', 'SOL'],
+            },
+            walletAddress: {
+              type: 'string',
+              examples: ['GJJKFjQLkPtKmqvBjmjoBGfpZDJGr65J8YCvGcCFrKBh'],
+            },
           },
         },
         response: {
@@ -108,8 +161,16 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { network, signature } = request.body;
-      return await pollSolanaTransaction(fastify, network, signature);
+      const { network, signature, baseToken, quoteToken, walletAddress } =
+        request.body;
+      return await pollSolanaTransaction(
+        fastify,
+        network,
+        signature,
+        baseToken,
+        quoteToken,
+        walletAddress,
+      );
     },
   );
 };
