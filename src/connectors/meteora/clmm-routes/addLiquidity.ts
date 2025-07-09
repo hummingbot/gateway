@@ -155,14 +155,14 @@ async function addLiquidity(
   );
 
   const { balanceChange: tokenXAddedAmount } =
-    await solana.extractTokenBalanceChangeAndFee(
+    await solana.extractBalanceChangeAndFee(
       signature,
       dlmmPool.tokenX.publicKey.toBase58(),
       dlmmPool.pubkey.toBase58(),
     );
 
   const { balanceChange: tokenYAddedAmount } =
-    await solana.extractTokenBalanceChangeAndFee(
+    await solana.extractBalanceChangeAndFee(
       signature,
       dlmmPool.tokenY.publicKey.toBase58(),
       dlmmPool.pubkey.toBase58(),

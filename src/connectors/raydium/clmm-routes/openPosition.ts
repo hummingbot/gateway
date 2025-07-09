@@ -144,7 +144,7 @@ async function openPosition(
   if (confirmed && txData) {
     // Transaction confirmed, return full data
     const totalFee = txData.meta.fee;
-    const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(
+    const { balanceChange } = await solana.extractBalanceChangeAndFee(
       signature,
       0,
     );

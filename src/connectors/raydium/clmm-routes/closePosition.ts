@@ -42,7 +42,7 @@ async function closePosition(
         computeUnits,
       );
 
-      const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(
+      const { balanceChange } = await solana.extractBalanceChangeAndFee(
         removeLiquidityResponse.signature,
         0,
       );
@@ -90,7 +90,7 @@ async function closePosition(
       COMPUTE_UNITS,
     );
 
-    const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(
+    const { balanceChange } = await solana.extractBalanceChangeAndFee(
       signature,
       0,
     );

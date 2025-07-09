@@ -65,14 +65,14 @@ export async function collectFees(
   );
 
   const { balanceChange: collectedFeeA } =
-    await solana.extractTokenBalanceChangeAndFee(
+    await solana.extractBalanceChangeAndFee(
       signature,
       poolInfo.mintA.address,
       wallet.publicKey.toBase58(),
     );
 
   const { balanceChange: collectedFeeB } =
-    await solana.extractTokenBalanceChangeAndFee(
+    await solana.extractBalanceChangeAndFee(
       signature,
       poolInfo.mintB.address,
       wallet.publicKey.toBase58(),

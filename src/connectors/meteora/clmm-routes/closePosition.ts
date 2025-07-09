@@ -103,7 +103,7 @@ async function closePosition(
         `Position ${positionAddress} closed successfully with signature: ${signature}`,
       );
 
-      const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(
+      const { balanceChange } = await solana.extractBalanceChangeAndFee(
         signature,
         0,
       );

@@ -1163,27 +1163,6 @@ export class Solana {
     }
   }
 
-  /**
-   * @deprecated Use extractBalanceChangeAndFee with token mint and owner instead
-   */
-  async extractTokenBalanceChangeAndFee(
-    signature: string,
-    mint: string,
-    owner: string,
-  ): Promise<{ balanceChange: number; fee: number }> {
-    return this.extractBalanceChangeAndFee(signature, mint, owner);
-  }
-
-  /**
-   * @deprecated Use extractBalanceChangeAndFee with account index instead
-   */
-  async extractAccountBalanceChangeAndFee(
-    signature: string,
-    accountIndex: number,
-  ): Promise<{ balanceChange: number; fee: number }> {
-    return this.extractBalanceChangeAndFee(signature, accountIndex);
-  }
-
   // Validate if a string is a valid Solana private key
   public static validateSolPrivateKey(secretKey: string): boolean {
     try {
