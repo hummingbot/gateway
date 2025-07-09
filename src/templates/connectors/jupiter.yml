@@ -1,12 +1,15 @@
-# how much the execution price is allowed to move unfavorably from the trade
-# execution price. It uses a rational number for precision.
-allowedSlippage: '1/100'
+# Default slippage percentage for swaps (as a decimal, e.g., 1 = 1%)
+slippagePct: 1
 
 # Priority level for swap transaction processing
 # Options: medium, high, veryHigh
 priorityLevel: 'veryHigh'
 
+# Maximum priority fee in lamports (for dynamic priority fees)
+# Used when priorityLevel is set and no explicit priorityFeeLamports is provided
+maxLamports: 1000000
+
 # Jupiter API key (optional)
-# For free tier, leave empty and use lite-api.jup.ag
-# For paid plans, generate key at https://portal.jup.ag
+# For free tier, leave empty (uses https://lite-api.jup.ag)
+# For paid plans, generate key at https://portal.jup.ag (uses https://api.jup.ag)
 apiKey: ''

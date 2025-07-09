@@ -21,7 +21,7 @@ export const QuoteSwapRequest = Type.Object(
         description: 'Trade direction',
       },
     ),
-    slippagePct: Type.Number({ minimum: 0, maximum: 100 }),
+    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
   },
   { $id: 'QuoteSwapRequest' },
 );
@@ -64,7 +64,7 @@ export const ExecuteSwapRequest = Type.Object(
     quoteToken: Type.String(),
     amount: Type.Number(),
     side: Type.Enum({ BUY: 'BUY', SELL: 'SELL' }),
-    slippagePct: Type.Number({ minimum: 0, maximum: 100 }),
+    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
   },
   { $id: 'ExecuteSwapRequest' },
 );

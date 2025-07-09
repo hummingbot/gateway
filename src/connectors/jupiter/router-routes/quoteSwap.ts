@@ -7,6 +7,7 @@ import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Jupiter } from '../jupiter';
+import { JupiterConfig } from '../jupiter.config';
 import { JupiterQuoteSwapRequest, JupiterQuoteSwapResponse } from '../schemas';
 
 // In-memory cache for quotes (with 30 second TTL)
@@ -36,7 +37,6 @@ export async function quoteSwap(
   slippagePct: number,
   onlyDirectRoutes?: boolean,
   restrictIntermediateTokens?: boolean,
-  priorityFeeLamports?: number,
 ): Promise<Static<typeof JupiterQuoteSwapResponse>> {
   const solana = await Solana.getInstance(network);
   const jupiter = await Jupiter.getInstance(network);
@@ -123,7 +123,6 @@ export async function quoteSwap(
       slippagePct,
       inputToken,
       outputToken,
-      priorityFeeLamports,
     },
   });
 
@@ -138,10 +137,6 @@ export async function quoteSwap(
     priceWithSlippage,
     minAmountOut,
     maxAmountIn,
-    // Convert Jupiter's string priceImpactPct to number
-    priceImpactPct: parseFloat(quoteResponse.priceImpactPct || '0'),
-    gasEstimate: '400000', // Estimated compute units for Solana
-    expirationTime: now + QUOTE_TTL,
     // Jupiter-specific fields
     quoteResponse: {
       inputMint: inputToken.address,
@@ -196,7 +191,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
           onlyDirectRoutes,
           restrictIntermediateTokens,
-          priorityFeeLamports,
         } = request.query as typeof JupiterQuoteSwapRequest._type;
 
         return await quoteSwap(
@@ -206,10 +200,9 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           quoteToken,
           amount,
           side as 'BUY' | 'SELL',
-          slippagePct,
+          slippagePct ?? JupiterConfig.config.slippagePct,
           onlyDirectRoutes,
           restrictIntermediateTokens,
-          priorityFeeLamports,
         );
       } catch (e) {
         if (e.statusCode) throw e;

@@ -7,6 +7,7 @@ import {
   SwapExecuteResponse,
 } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
+import { JupiterConfig } from '../jupiter.config';
 import { JupiterExecuteSwapRequest } from '../schemas';
 
 import { executeQuote } from './executeQuote';
@@ -23,8 +24,8 @@ async function executeSwap(
   slippagePct: number,
   onlyDirectRoutes?: boolean,
   restrictIntermediateTokens?: boolean,
-  priorityFeeLamports?: number,
-  computeUnits?: number,
+  priorityLevel?: string,
+  maxLamports?: number,
 ): Promise<SwapExecuteResponseType> {
   // Step 1: Get a fresh quote using the quoteSwap function
   const quoteResult = await quoteSwap(
@@ -37,7 +38,6 @@ async function executeSwap(
     slippagePct,
     onlyDirectRoutes,
     restrictIntermediateTokens,
-    priorityFeeLamports,
   );
 
   // Step 2: Execute the quote immediately using executeQuote function
@@ -46,8 +46,8 @@ async function executeSwap(
     walletAddress,
     network,
     quoteResult.quoteId,
-    priorityFeeLamports,
-    computeUnits,
+    priorityLevel ?? JupiterConfig.config.priorityLevel,
+    maxLamports ?? JupiterConfig.config.maxLamports,
   );
 
   return executeResult;
@@ -93,8 +93,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
           onlyDirectRoutes,
           restrictIntermediateTokens,
-          priorityFeeLamports,
-          computeUnits,
+          priorityLevel,
+          maxLamports,
         } = request.body as typeof JupiterExecuteSwapRequest._type;
 
         return await executeSwap(
@@ -105,11 +105,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           quoteToken,
           amount,
           side as 'BUY' | 'SELL',
-          slippagePct,
+          slippagePct ?? JupiterConfig.config.slippagePct,
           onlyDirectRoutes,
           restrictIntermediateTokens,
-          priorityFeeLamports,
-          computeUnits,
+          priorityLevel,
+          maxLamports,
         );
       } catch (e) {
         if (e.statusCode) throw e;

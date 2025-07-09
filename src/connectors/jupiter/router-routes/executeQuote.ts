@@ -9,6 +9,7 @@ import {
 } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { Jupiter } from '../jupiter';
+import { JupiterConfig } from '../jupiter.config';
 import { JupiterExecuteQuoteRequest } from '../schemas';
 
 import { quoteCache } from './quoteSwap';
@@ -18,8 +19,8 @@ export async function executeQuote(
   walletAddress: string,
   network: string,
   quoteId: string,
-  priorityFeeLamports?: number,
-  computeUnits?: number,
+  priorityLevel?: string,
+  maxLamports?: number,
 ): Promise<SwapExecuteResponseType> {
   // Retrieve cached quote
   const cached = quoteCache.get(quoteId);
@@ -43,20 +44,30 @@ export async function executeQuote(
   const swapResult = await jupiter.executeSwap(
     wallet,
     quote,
-    priorityFeeLamports
-      ? priorityFeeLamports / (computeUnits || 300000)
-      : undefined,
-    computeUnits,
+    priorityLevel,
+    maxLamports,
   );
-
-  if (!swapResult.confirmed) {
-    throw fastify.httpErrors.internalServerError('Transaction not confirmed');
-  }
 
   const signature = swapResult.signature;
   const fee = swapResult.feeInLamports / 1e9;
 
-  // Extract balance changes
+  // If transaction is not confirmed, return partial result
+  if (!swapResult.confirmed) {
+    logger.warn(
+      `Transaction ${signature} not confirmed after retry attempts. May need higher priority fee.`,
+    );
+
+    // Still remove quote from cache as it's been used
+    quoteCache.delete(quoteId);
+
+    return {
+      signature,
+      status: 0, // PENDING
+      data: undefined, // No balance changes available for unconfirmed tx
+    };
+  }
+
+  // Extract balance changes for confirmed transactions
   const { baseTokenBalanceChange, quoteTokenBalanceChange } =
     await solana.extractPairBalanceChangesAndFee(
       signature,
@@ -126,21 +137,16 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          walletAddress,
-          network,
-          quoteId,
-          priorityFeeLamports,
-          computeUnits,
-        } = request.body as typeof JupiterExecuteQuoteRequest._type;
+        const { walletAddress, network, quoteId, priorityLevel, maxLamports } =
+          request.body as typeof JupiterExecuteQuoteRequest._type;
 
         return await executeQuote(
           fastify,
           walletAddress,
           network,
           quoteId,
-          priorityFeeLamports,
-          computeUnits,
+          priorityLevel ?? JupiterConfig.config.priorityLevel,
+          maxLamports ?? JupiterConfig.config.maxLamports,
         );
       } catch (e) {
         if (e.statusCode) throw e;

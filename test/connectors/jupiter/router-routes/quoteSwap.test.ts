@@ -100,7 +100,7 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('minAmountOut');
     expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('price', 150);
-    expect(body).toHaveProperty('priceImpactPct', 0.001);
+    expect(body.quoteResponse).toHaveProperty('priceImpactPct', '0.001');
     expect(body).toHaveProperty('slippagePct', 0.5);
     expect(body).toHaveProperty('tokenIn', mockSOL.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
@@ -150,7 +150,7 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('minAmountOut');
     expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('price', 150);
-    expect(body).toHaveProperty('priceImpactPct', 0.001);
+    expect(body.quoteResponse).toHaveProperty('priceImpactPct', '0.001');
     expect(body).toHaveProperty('slippagePct', 0.5);
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockSOL.address);

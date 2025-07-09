@@ -1,11 +1,29 @@
 {
+  "quoteId": "jupiter-quote-buy-456",
+  "tokenIn": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "tokenOut": "So11111111111111111111111111111111111111112",
+  "amountIn": 1639.410442,
+  "amountOut": 10,
+  "price": 163.94104420000002,
+  "slippagePct": 1,
+  "priceWithSlippage": 165.58045464200002,
+  "minAmountOut": 9.9,
+  "maxAmountIn": 1655.804596,
   "estimatedAmountIn": 10,
   "estimatedAmountOut": 1639.410442,
-  "minAmountOut": 1639.410442,
-  "maxAmountIn": 10,
   "baseTokenBalanceChange": 10,
   "quoteTokenBalanceChange": -1639.410442,
-  "price": 163.94104420000002,
   "computeUnits": 300000,
-  "poolAddress": "jupiter-aggregator"
+  "poolAddress": "jupiter-aggregator",
+  "quoteResponse": {
+    "inputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "inAmount": "1639410442",
+    "outputMint": "So11111111111111111111111111111111111111112",
+    "outAmount": "10000000000",
+    "otherAmountThreshold": "9900000000",
+    "swapMode": "ExactOut",
+    "slippageBps": 100,
+    "priceImpactPct": "0.001",
+    "routePlan": []
+  }
 }

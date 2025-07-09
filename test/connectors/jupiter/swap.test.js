@@ -24,18 +24,25 @@ function loadMockResponse(filename) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
-// Function to validate swap quote response structure based on GetSwapQuoteResponse schema
+// Function to validate swap quote response structure based on QuoteSwapResponse schema
 function validateSwapQuote(response) {
   return (
     response &&
-    typeof response.estimatedAmountIn === 'number' &&
-    typeof response.estimatedAmountOut === 'number' &&
+    typeof response.quoteId === 'string' &&
+    typeof response.tokenIn === 'string' &&
+    typeof response.tokenOut === 'string' &&
+    typeof response.amountIn === 'number' &&
+    typeof response.amountOut === 'number' &&
+    typeof response.price === 'number' &&
+    typeof response.slippagePct === 'number' &&
+    typeof response.priceWithSlippage === 'number' &&
     typeof response.minAmountOut === 'number' &&
     typeof response.maxAmountIn === 'number' &&
-    typeof response.baseTokenBalanceChange === 'number' &&
-    typeof response.quoteTokenBalanceChange === 'number' &&
-    typeof response.price === 'number' &&
-    typeof response.computeUnits === 'number' // Updated: replaced gas fields with computeUnits
+    response.quoteResponse && // Jupiter-specific nested object
+    typeof response.quoteResponse.inputMint === 'string' &&
+    typeof response.quoteResponse.inAmount === 'string' &&
+    typeof response.quoteResponse.outputMint === 'string' &&
+    typeof response.quoteResponse.outAmount === 'string'
   );
 }
 
@@ -364,8 +371,8 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
           side: 'SELL',
           amount: 1.0,
           walletAddress: TEST_WALLET,
-          priorityFeePerCU: 1000, // 1000 lamports per CU
-          computeUnits: 400000, // Custom compute units
+          priorityLevel: 'veryHigh',
+          maxLamports: 1000000,
         },
       );
 
@@ -379,8 +386,8 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       expect(axios.post).toHaveBeenCalledWith(
         `http://localhost:15888/connectors/${CONNECTOR}/execute-swap`,
         expect.objectContaining({
-          priorityFeePerCU: 1000,
-          computeUnits: 400000,
+          priorityLevel: 'veryHigh',
+          maxLamports: 1000000,
         }),
       );
     });

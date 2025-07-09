@@ -2,10 +2,17 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "allowedSlippage": { "type": "string" },
-    "priorityLevel": { 
+    "slippagePct": {
+      "type": "number",
+      "description": "Default slippage percentage for swaps (e.g., 1 = 1%)"
+    },
+    "priorityLevel": {
       "type": "string",
       "enum": ["medium", "high", "veryHigh"]
+    },
+    "maxLamports": {
+      "type": "number",
+      "description": "Maximum priority fee in lamports for dynamic priority fees"
     },
     "apiKey": {
       "type": "string",
@@ -13,5 +20,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["allowedSlippage", "priorityLevel"]
+  "required": ["slippagePct", "priorityLevel", "maxLamports"]
 }

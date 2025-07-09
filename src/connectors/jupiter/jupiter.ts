@@ -3,7 +3,6 @@ import { VersionedTransaction } from '@solana/web3.js';
 import axios, { AxiosInstance } from 'axios';
 
 import { Solana, BASE_FEE } from '../../chains/solana/solana';
-import { percentRegexp } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';
 
 import { JupiterConfig } from './jupiter.config';
@@ -13,7 +12,8 @@ const JUPITER_API_RETRY_INTERVAL_MS = 1000;
 export const DECIMAL_MULTIPLIER = 10;
 
 // Jupiter API base URL
-const JUPITER_API_BASE = 'https://lite-api.jup.ag';
+const JUPITER_API_BASE_FREE = 'https://lite-api.jup.ag';
+const JUPITER_API_BASE_PAID = 'https://api.jup.ag';
 
 // Type definitions for Jupiter API responses
 interface QuoteResponse {
@@ -49,16 +49,19 @@ export class Jupiter {
       'Content-Type': 'application/json',
     };
 
-    // Add API key header if provided
+    let baseURL = JUPITER_API_BASE_FREE;
+
+    // Add API key header if provided and use paid endpoint
     if (this.config.apiKey && this.config.apiKey.length > 0) {
       headers['x-api-key'] = this.config.apiKey;
-      logger.info('Using Jupiter API key for requests');
+      baseURL = JUPITER_API_BASE_PAID;
+      logger.info('Using Jupiter paid API with key');
     } else {
       logger.info('Using Jupiter free tier (no API key)');
     }
 
     this.httpClient = axios.create({
-      baseURL: JUPITER_API_BASE,
+      baseURL,
       timeout: 30000,
       headers,
     });
@@ -91,15 +94,7 @@ export class Jupiter {
    * @returns Slippage as a percentage (e.g., 1.0 for 1%)
    */
   getSlippagePct(): number {
-    const allowedSlippage = this.config.allowedSlippage;
-    const nd = allowedSlippage.match(percentRegexp);
-    let slippage = 0.0;
-    if (nd) {
-      slippage = Number(nd[1]) / Number(nd[2]);
-    } else {
-      logger.error('Failed to parse slippage value:', allowedSlippage);
-    }
-    return slippage * 100;
+    return this.config.slippagePct;
   }
 
   async getQuote(
@@ -120,7 +115,9 @@ export class Jupiter {
       );
     }
 
-    const slippageBps = slippagePct ? Math.round(slippagePct * 100) : 50; // Default to 0.5% if not provided
+    const slippageBps = Math.round(
+      (slippagePct ?? this.config.slippagePct) * 100,
+    );
     const tokenDecimals =
       swapMode === 'ExactOut' ? outputToken.decimals : inputToken.decimals;
     const quoteAmount = Math.floor(amount * 10 ** tokenDecimals);
@@ -140,7 +137,7 @@ export class Jupiter {
 
     logger.debug(
       `Getting Jupiter quote for ${inputToken.symbol} to ${outputToken.symbol} with params:`,
-      params.toString(),
+      Object.fromEntries(params),
     );
 
     try {
@@ -180,11 +177,14 @@ export class Jupiter {
   async getSwapObj(
     wallet: Wallet,
     quote: QuoteResponse,
-    priorityFee?: number,
+    maxLamports?: number,
+    priorityLevel?: string,
   ): Promise<SwapResponse> {
-    const feeLamports = priorityFee
-      ? Math.floor(priorityFee)
-      : Math.floor(this.solana.config.minFee * 1e9);
+    // Use provided values or fall back to config
+    const feeLamports = maxLamports
+      ? Math.floor(maxLamports)
+      : Math.floor(this.config.maxLamports);
+    const level = priorityLevel || this.config.priorityLevel;
 
     let lastError: Error | null = null;
     for (let attempt = 1; attempt <= JUPITER_API_RETRY_COUNT; attempt++) {
@@ -196,7 +196,7 @@ export class Jupiter {
           prioritizationFeeLamports: {
             priorityLevelWithMaxLamports: {
               maxLamports: feeLamports,
-              priorityLevel: this.getPriorityLevel(this.config.priorityLevel),
+              priorityLevel: this.getPriorityLevel(level),
             },
           },
         };
@@ -211,7 +211,7 @@ export class Jupiter {
       } catch (error: any) {
         lastError = error;
         logger.error(
-          `[JUPITER] Fetching swap object attempt ${attempt}/${JUPITER_API_RETRY_COUNT} failed:`,
+          `Fetching swap object attempt ${attempt}/${JUPITER_API_RETRY_COUNT} failed:`,
           error.response?.status
             ? {
                 error: error.message,
@@ -223,7 +223,7 @@ export class Jupiter {
 
         if (attempt < JUPITER_API_RETRY_COUNT) {
           logger.info(
-            `[JUPITER] Waiting ${JUPITER_API_RETRY_INTERVAL_MS}ms before retry...`,
+            `Waiting ${JUPITER_API_RETRY_INTERVAL_MS}ms before retry...`,
           );
           await new Promise((resolve) =>
             setTimeout(resolve, JUPITER_API_RETRY_INTERVAL_MS),
@@ -246,21 +246,8 @@ export class Jupiter {
         sigVerify: false,
       });
 
-    // console.log('Simulation Result:', {
-    //   logs: simulatedTransactionResponse.logs,
-    //   unitsConsumed: simulatedTransactionResponse.unitsConsumed,
-    //   status: simulatedTransactionResponse.err ? 'FAILED' : 'SUCCESS'
-    // });
-
     if (simulatedTransactionResponse.err) {
       const logs = simulatedTransactionResponse.logs || [];
-      // console.log('Simulation Error Details:', {
-      //   error: simulatedTransactionResponse.err,
-      //   programLogs: logs,
-      //   accounts: simulatedTransactionResponse.accounts,
-      //   unitsConsumed: simulatedTransactionResponse.unitsConsumed,
-      // });
-
       const errorMessage = `Transaction simulation failed: Error: ${JSON.stringify(simulatedTransactionResponse.err)}\nProgram Logs: ${logs.join('\n')}`;
 
       throw new Error(errorMessage);
@@ -270,8 +257,8 @@ export class Jupiter {
   async executeSwap(
     wallet: Wallet,
     quote: QuoteResponse,
-    priorityFeePerCU?: number,
-    computeUnits?: number,
+    priorityLevel?: string,
+    maxLamports?: number,
   ): Promise<{
     signature: string;
     feeInLamports: number;
@@ -280,23 +267,16 @@ export class Jupiter {
     confirmed: boolean;
     txData?: any;
   }> {
-    // Use provided priority fee per CU or default to minimum
-    const finalPriorityFeePerCU = priorityFeePerCU || 0;
-
-    // Use provided compute units or default
-    const computeUnitsToUse = computeUnits || 300000;
-
-    // Calculate total priority fee in lamports (priorityFeePerCU is in lamports/CU)
-    const currentPriorityFee = Math.floor(
-      finalPriorityFeePerCU * computeUnitsToUse,
-    );
+    // Build prioritizationFeeLamports object
+    const priorityFee = maxLamports || this.config.maxLamports;
+    const level = priorityLevel || this.config.priorityLevel;
 
     logger.info(
-      `Sending swap with priority fee of ${finalPriorityFeePerCU} lamports/CU (${(currentPriorityFee / 1e9).toFixed(6)} SOL total)`,
+      `Sending swap with priority level ${level} and max ${priorityFee} lamports`,
     );
 
-    // Get swap object from Jupiter API
-    const swapObj = await this.getSwapObj(wallet, quote, currentPriorityFee);
+    // Get swap object from Jupiter API with priority fee configuration
+    const swapObj = await this.getSwapObj(wallet, quote, priorityFee, level);
 
     const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
     const transaction = VersionedTransaction.deserialize(

@@ -8,8 +8,9 @@ export namespace JupiterConfig {
 
   export interface RootConfig {
     // Global configuration
-    allowedSlippage: string;
+    slippagePct: number;
     priorityLevel: string;
+    maxLamports: number;
     apiKey?: string;
 
     // Available networks
@@ -17,10 +18,9 @@ export namespace JupiterConfig {
   }
 
   export const config: RootConfig = {
-    allowedSlippage: ConfigManagerV2.getInstance().get(
-      'jupiter.allowedSlippage',
-    ),
+    slippagePct: ConfigManagerV2.getInstance().get('jupiter.slippagePct'),
     priorityLevel: ConfigManagerV2.getInstance().get('jupiter.priorityLevel'),
+    maxLamports: ConfigManagerV2.getInstance().get('jupiter.maxLamports'),
     apiKey: ConfigManagerV2.getInstance().get('jupiter.apiKey'),
 
     availableNetworks: [

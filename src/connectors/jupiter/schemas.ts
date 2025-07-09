@@ -24,11 +24,6 @@ export const JupiterQuoteSwapRequest = Type.Intersect([
 export const JupiterQuoteSwapResponse = Type.Intersect([
   Base.QuoteSwapResponse,
   Type.Object({
-    priceImpactPct: Type.Number({
-      description: 'Estimated price impact as a percentage (0-100)',
-    }),
-    gasEstimate: Type.String({ description: 'Estimated gas for transaction' }),
-    expirationTime: Type.Number({ description: 'Quote expiration timestamp' }),
     quoteResponse: Type.Object({
       inputMint: Type.String(),
       inAmount: Type.String(),
@@ -50,8 +45,17 @@ export const JupiterQuoteSwapResponse = Type.Intersect([
 export const JupiterExecuteQuoteRequest = Type.Intersect([
   Base.ExecuteQuoteRequest,
   Type.Object({
-    priorityFeeLamports: Type.Optional(Type.Number()),
-    computeUnits: Type.Optional(Type.Number()),
+    priorityLevel: Type.Optional(
+      Type.String({
+        description: 'Priority level for transaction processing',
+        enum: ['medium', 'high', 'veryHigh'],
+      }),
+    ),
+    maxLamports: Type.Optional(
+      Type.Number({
+        description: 'Maximum priority fee in lamports',
+      }),
+    ),
   }),
 ]);
 
@@ -70,7 +74,16 @@ export const JupiterExecuteSwapRequest = Type.Intersect([
         description: 'Restrict routing to only go through 1 market',
       }),
     ),
-    priorityFeeLamports: Type.Optional(Type.Number()),
-    computeUnits: Type.Optional(Type.Number()),
+    priorityLevel: Type.Optional(
+      Type.String({
+        description: 'Priority level for transaction processing',
+        enum: ['medium', 'high', 'veryHigh'],
+      }),
+    ),
+    maxLamports: Type.Optional(
+      Type.Number({
+        description: 'Maximum priority fee in lamports',
+      }),
+    ),
   }),
 ]);
