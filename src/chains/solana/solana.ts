@@ -1088,32 +1088,13 @@ export class Solana {
     tokenOrAccountIndex: string | number,
     owner?: string,
   ): Promise<{ balanceChange: number; fee: number }> {
-    // Fetch transaction details with retry logic
-    let txDetails;
-    const maxAttempts = this.config.confirmRetryCount;
-    const retryDelay = this.config.confirmRetryInterval;
+    // Fetch transaction details
+    const txDetails = await this.connection.getParsedTransaction(signature, {
+      maxSupportedTransactionVersion: 0,
+    });
 
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        txDetails = await this.connection.getParsedTransaction(signature, {
-          maxSupportedTransactionVersion: 0,
-        });
-
-        if (txDetails) {
-          break;
-        } else {
-          throw new Error('Transaction details are null');
-        }
-      } catch (error: any) {
-        if (attempt < maxAttempts - 1) {
-          await new Promise((resolve) => setTimeout(resolve, retryDelay));
-        } else {
-          logger.error(
-            `Failed to fetch transaction after ${maxAttempts} attempts: ${error.message}`,
-          );
-          return { balanceChange: 0, fee: 0 };
-        }
-      }
+    if (!txDetails) {
+      throw new Error(`Transaction ${signature} not found`);
     }
 
     // Calculate fee (always in SOL)
