@@ -5,19 +5,10 @@
     "nodeURL": { "type": "string" },
     "nativeCurrencySymbol": { "type": "string" },
     "defaultComputeUnits": { "type": "number" },
-    "gasEstimateInterval": { "type": "number" },
-    "maxFee": { "type": "number" },
-    "minFee": { "type": "number" },
-    "retryCount": { "type": "number" },
-    "retryFeeMultiplier": { "type": "number" },
-    "retryInterval": { "type": "number" },
     "confirmRetryInterval": { "type": "number" },
     "confirmRetryCount": { "type": "number" },
     "basePriorityFeePct": { "type": "number" }
   },
-  "required": [
-    "nodeURL",
-    "nativeCurrencySymbol"
-  ],
+  "required": ["nodeURL", "nativeCurrencySymbol"],
   "additionalProperties": false
 }

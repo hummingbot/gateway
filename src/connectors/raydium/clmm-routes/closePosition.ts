@@ -84,18 +84,6 @@ async function closePosition(
     // Use provided compute units or default
     const COMPUTE_UNITS = computeUnits || 200000;
 
-    // Use provided priority fee per CU or estimate default
-    let finalPriorityFeePerCU: number;
-    if (priorityFeePerCU !== undefined) {
-      finalPriorityFeePerCU = priorityFeePerCU;
-    } else {
-      // Calculate default if not provided
-      const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-      finalPriorityFeePerCU = Math.floor(
-        (currentPriorityFee * 1e6) / COMPUTE_UNITS,
-      );
-    }
-
     const { signature, fee } = await solana.sendAndConfirmVersionedTransaction(
       result.transaction,
       [wallet],
