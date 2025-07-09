@@ -53,10 +53,7 @@ export async function pollSolanaTransaction(
     }
 
     const txStatus = await solana.getTransactionStatusCode(txData as any);
-    const { fee } = await solana.extractAccountBalanceChangeAndFee(
-      signature,
-      0,
-    );
+    const { fee } = await solana.extractBalanceChangeAndFee(signature, 0);
 
     let baseTokenBalanceChange: number | undefined;
     let quoteTokenBalanceChange: number | undefined;

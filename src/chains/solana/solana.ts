@@ -1076,86 +1076,131 @@ export class Solana {
     }
   }
 
+  /**
+   * Extract balance change and fee from a transaction
+   * @param signature Transaction signature
+   * @param tokenOrAccountIndex Either: token mint address (for SPL tokens), 'SOL' (for native SOL), or account index number
+   * @param owner Optional owner address (required for SPL tokens)
+   * @returns Balance change and transaction fee
+   */
+  async extractBalanceChangeAndFee(
+    signature: string,
+    tokenOrAccountIndex: string | number,
+    owner?: string,
+  ): Promise<{ balanceChange: number; fee: number }> {
+    // Fetch transaction details with retry logic
+    let txDetails;
+    const maxAttempts = 20;
+    const retryDelay = 1000;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        txDetails = await this.connection.getParsedTransaction(signature, {
+          maxSupportedTransactionVersion: 0,
+        });
+
+        if (txDetails) {
+          break;
+        } else {
+          throw new Error('Transaction details are null');
+        }
+      } catch (error: any) {
+        if (attempt < maxAttempts - 1) {
+          await new Promise((resolve) => setTimeout(resolve, retryDelay));
+        } else {
+          logger.error(
+            `Failed to fetch transaction after ${maxAttempts} attempts: ${error.message}`,
+          );
+          return { balanceChange: 0, fee: 0 };
+        }
+      }
+    }
+
+    // Calculate fee (always in SOL)
+    const fee = (txDetails.meta?.fee || 0) * LAMPORT_TO_SOL;
+
+    // Handle different input types
+    if (typeof tokenOrAccountIndex === 'number') {
+      // Account index provided - get SOL balance change
+      const preBalances = txDetails.meta?.preBalances || [];
+      const postBalances = txDetails.meta?.postBalances || [];
+
+      const balanceChange =
+        (postBalances[tokenOrAccountIndex] - preBalances[tokenOrAccountIndex]) *
+        LAMPORT_TO_SOL;
+
+      return { balanceChange, fee };
+    } else if (tokenOrAccountIndex === 'SOL') {
+      // SOL requested - find owner's account in transaction
+      if (!owner) {
+        throw new Error('Owner address required for SOL balance extraction');
+      }
+
+      // Find the account index for the owner
+      const ownerPubkey = new PublicKey(owner);
+      const accountIndex = txDetails.transaction.message.accountKeys.findIndex(
+        (key) => key.pubkey.equals(ownerPubkey),
+      );
+
+      if (accountIndex === -1) {
+        logger.warn(`Owner ${owner} not found in transaction accounts`);
+        return { balanceChange: 0, fee };
+      }
+
+      const preBalances = txDetails.meta?.preBalances || [];
+      const postBalances = txDetails.meta?.postBalances || [];
+
+      const balanceChange =
+        (postBalances[accountIndex] - preBalances[accountIndex]) *
+        LAMPORT_TO_SOL;
+
+      return { balanceChange, fee };
+    } else {
+      // Token mint address provided - get SPL token balance change
+      if (!owner) {
+        throw new Error('Owner address required for token balance extraction');
+      }
+
+      const preTokenBalances = txDetails.meta?.preTokenBalances || [];
+      const postTokenBalances = txDetails.meta?.postTokenBalances || [];
+
+      const preBalance =
+        preTokenBalances.find(
+          (balance) =>
+            balance.mint === tokenOrAccountIndex && balance.owner === owner,
+        )?.uiTokenAmount.uiAmount || 0;
+
+      const postBalance =
+        postTokenBalances.find(
+          (balance) =>
+            balance.mint === tokenOrAccountIndex && balance.owner === owner,
+        )?.uiTokenAmount.uiAmount || 0;
+
+      const balanceChange = postBalance - preBalance;
+
+      return { balanceChange, fee };
+    }
+  }
+
+  /**
+   * @deprecated Use extractBalanceChangeAndFee with token mint and owner instead
+   */
   async extractTokenBalanceChangeAndFee(
     signature: string,
     mint: string,
     owner: string,
   ): Promise<{ balanceChange: number; fee: number }> {
-    let txDetails;
-    for (let attempt = 0; attempt < 20; attempt++) {
-      try {
-        txDetails = await this.connection.getParsedTransaction(signature, {
-          maxSupportedTransactionVersion: 0,
-        });
-
-        if (txDetails) {
-          break; // Exit loop if txDetails is not null
-        } else {
-          throw new Error('Transaction details are null');
-        }
-      } catch (error: any) {
-        if (attempt < 10) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        } else {
-          // Return default values after 10 attempts
-          return { balanceChange: 0, fee: 0 };
-        }
-      }
-    }
-
-    const preTokenBalances = txDetails.meta?.preTokenBalances || [];
-    const postTokenBalances = txDetails.meta?.postTokenBalances || [];
-
-    const preBalance =
-      preTokenBalances.find(
-        (balance) => balance.mint === mint && balance.owner === owner,
-      )?.uiTokenAmount.uiAmount || 0;
-
-    const postBalance =
-      postTokenBalances.find(
-        (balance) => balance.mint === mint && balance.owner === owner,
-      )?.uiTokenAmount.uiAmount || 0;
-
-    const balanceChange = postBalance - preBalance;
-    const fee = (txDetails.meta?.fee || 0) / 1_000_000_000; // Convert lamports to SOL
-
-    return { balanceChange, fee };
+    return this.extractBalanceChangeAndFee(signature, mint, owner);
   }
 
+  /**
+   * @deprecated Use extractBalanceChangeAndFee with account index instead
+   */
   async extractAccountBalanceChangeAndFee(
     signature: string,
     accountIndex: number,
   ): Promise<{ balanceChange: number; fee: number }> {
-    let txDetails;
-    for (let attempt = 0; attempt < 20; attempt++) {
-      try {
-        txDetails = await this.connection.getParsedTransaction(signature, {
-          maxSupportedTransactionVersion: 0,
-        });
-
-        if (txDetails) {
-          break; // Exit loop if txDetails is not null
-        } else {
-          throw new Error('Transaction details are null');
-        }
-      } catch (error: any) {
-        if (attempt < 19) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        } else {
-          // Return default values after 10 attempts
-          return { balanceChange: 0, fee: 0 };
-        }
-      }
-    }
-
-    const preBalances = txDetails.meta?.preBalances || [];
-    const postBalances = txDetails.meta?.postBalances || [];
-
-    const balanceChange =
-      (postBalances[accountIndex] - preBalances[accountIndex]) * LAMPORT_TO_SOL;
-    const fee = (txDetails.meta?.fee || 0) * LAMPORT_TO_SOL;
-
-    return { balanceChange, fee };
+    return this.extractBalanceChangeAndFee(signature, accountIndex);
   }
 
   // Validate if a string is a valid Solana private key
@@ -1251,37 +1296,27 @@ export class Solana {
     quoteTokenBalanceChange: number;
     fee: number;
   }> {
-    let baseTokenBalanceChange: number, quoteTokenBalanceChange: number;
+    // Extract balance changes for both tokens
+    const { balanceChange: baseTokenBalanceChange } =
+      await this.extractBalanceChangeAndFee(
+        signature,
+        tokenX.symbol === 'SOL' ? 'SOL' : tokenX.address,
+        walletAddress,
+      );
 
-    if (tokenX.symbol === 'SOL') {
-      ({ balanceChange: baseTokenBalanceChange } =
-        await this.extractAccountBalanceChangeAndFee(signature, 0));
-    } else {
-      ({ balanceChange: baseTokenBalanceChange } =
-        await this.extractTokenBalanceChangeAndFee(
-          signature,
-          tokenX.address,
-          walletAddress,
-        ));
-    }
+    const { balanceChange: quoteTokenBalanceChange } =
+      await this.extractBalanceChangeAndFee(
+        signature,
+        tokenY.symbol === 'SOL' ? 'SOL' : tokenY.address,
+        walletAddress,
+      );
 
-    if (tokenY.symbol === 'SOL') {
-      ({ balanceChange: quoteTokenBalanceChange } =
-        await this.extractAccountBalanceChangeAndFee(signature, 0));
-    } else {
-      ({ balanceChange: quoteTokenBalanceChange } =
-        await this.extractTokenBalanceChangeAndFee(
-          signature,
-          tokenY.address,
-          walletAddress,
-        ));
-    }
-
-    const { fee } = await this.extractAccountBalanceChangeAndFee(signature, 0);
+    // Fee is already included in each call, but we only need it once
+    const { fee } = await this.extractBalanceChangeAndFee(signature, 0);
 
     return {
-      baseTokenBalanceChange: baseTokenBalanceChange,
-      quoteTokenBalanceChange: quoteTokenBalanceChange,
+      baseTokenBalanceChange,
+      quoteTokenBalanceChange,
       fee,
     };
   }
