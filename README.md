@@ -193,8 +193,8 @@ git clone https://github.com/hummingbot/gateway.git
 # Go to newly created folder
 cd gateway
 
-# Switch to main branch (or a specific version branch like core-2.6)
-git checkout main
+# Switch to core-2.8 branch
+git checkout core-2.8
 ```
 
 ### Setup Gateway
@@ -225,57 +225,46 @@ pnpm start --passphrase=<PASSPHRASE>
 
 ## Installation with Docker
 
-### Building the Docker Image
+### Step 1: Get the Docker Image
 
-Build the Gateway Docker image locally:
+**Option A: Pull from Docker Hub**
+```bash
+# Note: This image will be available after the v2.8 release
+docker pull hummingbot/gateway:latest
+```
 
+**Option B: Build locally**
 ```bash
 # Simple build
-docker build -t gateway:latest .
+docker build -t hummingbot/gateway:core-2.8 .
 
 # Build with version tag and metadata
 docker build \
   --build-arg BRANCH=$(git rev-parse --abbrev-ref HEAD) \
   --build-arg COMMIT=$(git rev-parse HEAD) \
   --build-arg BUILD_DATE=$(date -u +"%Y-%m-%d") \
-  -t gateway:core-2.8 .
+  -t hummingbot/gateway:core-2.8 .
 ```
 
-### Running Gateway with Docker
+### Step 2: Run the Gateway Container
 
-Run Gateway in development mode (HTTP, no SSL):
-
-```bash
-docker run -p 15888:15888 -e GATEWAY_PASSPHRASE=your-passphrase -e DEV=true gateway:latest
-```
-
-Run Gateway in production mode (HTTPS):
-
-```bash
-docker run -p 15888:15888 -e GATEWAY_PASSPHRASE=your-passphrase gateway:latest
-```
-
-With persistent configuration and logs:
-
+**Development mode (HTTP, no SSL):**
 ```bash
 docker run -p 15888:15888 \
-  -e GATEWAY_PASSPHRASE=your-passphrase \
+  -e GATEWAY_PASSPHRASE=admin \
   -e DEV=true \
   -v $(pwd)/conf:/home/gateway/conf \
   -v $(pwd)/logs:/home/gateway/logs \
-  gateway:latest
+  hummingbot/gateway:core-2.8
 ```
 
-### Pulling from Docker Hub
-
-Alternatively, pull the pre-built image from Docker Hub:
-
+**Production mode (HTTPS):**
 ```bash
-# Pull the latest image
-docker pull hummingbot/gateway:latest
-
-# Run it
-docker run -p 15888:15888 -e GATEWAY_PASSPHRASE=your-passphrase -e DEV=true hummingbot/gateway:latest
+docker run -p 15888:15888 \
+  -e GATEWAY_PASSPHRASE=admin \
+  -v $(pwd)/conf:/home/gateway/conf \
+  -v $(pwd)/logs:/home/gateway/logs \
+  hummingbot/gateway:core-2.8
 ```
 
 ### Access Points
