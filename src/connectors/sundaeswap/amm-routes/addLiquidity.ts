@@ -80,14 +80,8 @@ async function addLiquidity(
   );
 
   const result = await txBuilder.deposit({ ...depositArgs });
-  // console.log(result);
-
   const builtTx = await result.build();
-  // console.log(builtTx);
-
   const { submit } = await builtTx.sign();
-  // console.log(submit);
-
   const txHash = await submit();
 
   return {

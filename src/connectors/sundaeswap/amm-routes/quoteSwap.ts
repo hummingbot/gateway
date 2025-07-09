@@ -220,6 +220,7 @@ export async function getSundaeswapAmmQuote(
   };
 }
 
+// Fixed formatSwapQuote function with corrected balance changes
 async function formatSwapQuote(
   fastify: FastifyInstance,
   network: string,
@@ -253,10 +254,21 @@ async function formatSwapQuote(
     );
 
     // Calculate balance changes based on which tokens are being swapped
-    const baseTokenBalanceChange =
-      side === 'BUY' ? quote.estimatedAmountOut : -quote.estimatedAmountIn;
-    const quoteTokenBalanceChange =
-      side === 'BUY' ? -quote.estimatedAmountIn : quote.estimatedAmountOut;
+    // The quote object tells us which token is input and which is output
+    let baseTokenBalanceChange: number;
+    let quoteTokenBalanceChange: number;
+
+    if (side === 'SELL') {
+      // SELL: spending quoteToken, receiving baseToken
+      // Input token is quoteToken, output token is baseToken
+      baseTokenBalanceChange = quote.estimatedAmountOut; // positive (receiving)
+      quoteTokenBalanceChange = -quote.estimatedAmountIn; // negative (spending)
+    } else {
+      // BUY: spending baseToken, receiving quoteToken
+      // Input token is baseToken, output token is quoteToken
+      baseTokenBalanceChange = -quote.estimatedAmountIn; // negative (spending)
+      quoteTokenBalanceChange = quote.estimatedAmountOut; // positive (receiving)
+    }
 
     logger.info(
       `Balance changes: baseTokenBalanceChange=${baseTokenBalanceChange}, quoteTokenBalanceChange=${quoteTokenBalanceChange}`,
@@ -341,7 +353,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         const networkToUse = network || 'mainnet';
         const slippageToUse = slippagePct || 1; // Default to 1% if not provided
 
-        console.log('working upto here');
         const sundaeswap = await Sundaeswap.getInstance(networkToUse);
         let poolIdent = requestedpoolIdent;
 

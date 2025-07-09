@@ -1,7 +1,6 @@
 import { BigNumber } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
-import { Cardano } from '../../../chains/cardano/cardano';
 import {
   RemoveLiquidityRequestType,
   RemoveLiquidityRequest,
@@ -119,6 +118,9 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         const poolData = await sundaeswap.getPoolData(poolAddress);
+        const wallet =
+          await sundaeswap.cardano.getWalletFromAddress(walletAddress);
+        sundaeswap.cardano.lucidInstance.selectWalletFromPrivateKey(wallet);
         const utxos =
           await sundaeswap.cardano.lucidInstance.utxosAt(walletAddress);
 
@@ -127,19 +129,17 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           utxos,
           poolData.assetLP,
         );
-        console.log('totalLpInWallet', totalLpInWallet);
+
         // Calculate how much LP token will be withdrawn based on the percentage
         const withdrawalAmount = BigInt(
           (BigInt(totalLpInWallet) * BigInt(percentageToRemove)) / BigInt(100),
         );
-        // console.log('withdrawalAmount', withdrawalAmount);
 
         // Define the LP Token to withdraw
         const lpTokenAmount = new AssetAmount(
           withdrawalAmount,
           poolData.assetLP,
         ); // Specify LP token amount
-        // console.log(lpTokenAmount);
 
         // Build withdraw arguments (Added `pool` property)
         const withdrawArgs: IWithdrawConfigArgs = {
@@ -184,11 +184,13 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Calculate the amounts that will be received (proportional to LP tokens withdrawn)
         const baseTokenAmountRemoved = Math.floor(
-          Number(baseTokenReserve) * withdrawalProportion,
+          (Number(baseTokenReserve) * withdrawalProportion) /
+            baseTokenObj.decimals,
         );
 
         const quoteTokenAmountRemoved = Math.floor(
-          Number(quoteTokenReserve) * withdrawalProportion,
+          (Number(quoteTokenReserve) * withdrawalProportion) /
+            quoteTokenObj.decimals,
         );
 
         return {

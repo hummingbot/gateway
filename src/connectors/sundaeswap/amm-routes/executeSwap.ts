@@ -214,10 +214,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           new DatumBuilderLucidV3(net),
         );
         const swapResult = await txBuilder.swap({ ...args });
-        console.log('working upto here', swapResult);
 
         const builtTx = await swapResult.build();
-        console.log('working upto here!', builtTx);
         const { submit } = await builtTx.sign();
 
         const txHash = await submit();
@@ -228,11 +226,21 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         const outputAmountHuman =
           Number(outputAmount) / 10 ** outputTokenObj.decimals;
 
-        // Calculate balance changes
-        const baseTokenBalanceChange =
-          side === 'BUY' ? outputAmountHuman : -inputAmountHuman;
-        const quoteTokenBalanceChange =
-          side === 'BUY' ? -inputAmountHuman : outputAmountHuman;
+        // Calculate balance changes correctly
+        let baseTokenBalanceChange: number;
+        let quoteTokenBalanceChange: number;
+
+        if (side === 'BUY') {
+          // BUY: spending baseToken to get quoteToken
+          // baseToken decreases (negative), quoteToken increases (positive)
+          baseTokenBalanceChange = -inputAmountHuman; // spending baseToken
+          quoteTokenBalanceChange = outputAmountHuman; // receiving quoteToken
+        } else {
+          // SELL: spending quoteToken to get baseToken
+          // quoteToken decreases (negative), baseToken increases (positive)
+          quoteTokenBalanceChange = -inputAmountHuman; // spending quoteToken
+          baseTokenBalanceChange = outputAmountHuman; // receiving baseToken
+        }
 
         return {
           signature: txHash,

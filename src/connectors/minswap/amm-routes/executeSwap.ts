@@ -91,7 +91,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         };
 
         // On‑chain reserves
-        console.log('working upto here', poolAddr);
 
         const { poolState, poolDatum } = await minswap.getPoolData(poolAddr);
         if (!poolState) {
@@ -100,10 +99,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         const baseReserve = poolState.reserveA;
         const quoteReserve = poolState.reserveB;
 
-        // 1) interpret `amount` as quoteUnits
-        const amountIn = BigInt(
-          Math.floor(amount * 10 ** quoteInfo.decimals).toString(),
-        );
         const pct = BigInt(slippagePct);
 
         // 2) build via SDK
@@ -113,17 +108,25 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         const dex = new Dex(minswap.cardano.lucidInstance);
 
         let txBuild: TxComplete;
-        let rawOut: bigint;
+        let baseAmountChange: number;
+        let quoteAmountChange: number;
+        let totalInputSwapped: number;
+        let totalOutputSwapped: number;
 
         if (side === 'SELL') {
-          // SELL quote → receive base  (exact‑in)
+          // SELL: selling quote tokens to get base tokens
+          // `amount` is the amount of quote tokens to sell (input)
+          const amountIn = BigInt(
+            Math.floor(amount * 10 ** quoteInfo.decimals).toString(),
+          );
+
           const { amountOut: idealBaseOut } = calculateSwapExactIn({
             amountIn,
             reserveIn: quoteReserve,
             reserveOut: baseReserve,
           });
           const minBaseOut = (idealBaseOut * (100n - pct)) / 100n;
-          rawOut = minBaseOut;
+
           txBuild = await dex.buildSwapExactInTx({
             sender: walletAddr,
             availableUtxos:
@@ -134,10 +137,23 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             minimumAmountOut: minBaseOut,
             isLimitOrder: false,
           });
+
+          // SELL: spending quote tokens (-), receiving base tokens (+)
+          quoteAmountChange = -Number(amount);
+          baseAmountChange = +Number(
+            formatTokenAmount(minBaseOut.toString(), baseInfo.decimals),
+          );
+          totalInputSwapped = amount; // quote tokens spent
+          totalOutputSwapped = Number(
+            formatTokenAmount(minBaseOut.toString(), baseInfo.decimals),
+          ); // base tokens received
         } else {
-          // BUY quote → means you want exactly `amountIn` quote out, spending base (exact‑out)
-          const exactQuoteOut = amountIn;
-          rawOut = exactQuoteOut;
+          // BUY: buying quote tokens with base tokens
+          // `amount` is the amount of quote tokens to buy (output)
+          const exactQuoteOut = BigInt(
+            Math.floor(amount * 10 ** quoteInfo.decimals).toString(),
+          );
+
           const { amountIn: idealBaseIn } = calculateSwapExactOut({
             exactAmountOut: exactQuoteOut,
             reserveIn: baseReserve,
@@ -155,6 +171,16 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             assetOut: quoteToken === 'ADA' ? ADA : assetB,
             expectedAmountOut: exactQuoteOut,
           });
+
+          // BUY: spending base tokens (-), receiving quote tokens (+)
+          baseAmountChange = -Number(
+            formatTokenAmount(maxBaseIn.toString(), baseInfo.decimals),
+          );
+          quoteAmountChange = +Number(amount);
+          totalInputSwapped = Number(
+            formatTokenAmount(maxBaseIn.toString(), baseInfo.decimals),
+          ); // base tokens spent
+          totalOutputSwapped = amount; // quote tokens received
         }
 
         // 3) sign & submit
@@ -164,24 +190,11 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         return {
           signature: txHash,
-          totalInputSwapped: amount, // quote in
-          totalOutputSwapped: Number(
-            formatTokenAmount(
-              rawOut.toString(),
-              side === 'SELL' ? baseInfo.decimals : quoteInfo.decimals,
-            ),
-          ),
+          totalInputSwapped: totalInputSwapped,
+          totalOutputSwapped: totalOutputSwapped,
           fee: txBuild.fee,
-          // for SELL: base balance goes +, quote goes −
-          // for BUY:  quote goes +, base goes −
-          baseTokenBalanceChange:
-            side === 'SELL'
-              ? +formatTokenAmount(rawOut.toString(), baseInfo.decimals)
-              : -Number(amount),
-          quoteTokenBalanceChange:
-            side === 'SELL'
-              ? -Number(amount)
-              : +formatTokenAmount(rawOut.toString(), quoteInfo.decimals),
+          baseTokenBalanceChange: baseAmountChange,
+          quoteTokenBalanceChange: quoteAmountChange,
         };
       } catch (err: any) {
         logger.error('Swap failed:', err);
