@@ -188,7 +188,6 @@ export class Cardano {
     }
 
     tokenAdress = token.policyId + token.assetName;
-    // console.log('tokenAdress', tokenAdress);
 
     const Lucid = this.getLucid();
     Lucid.selectWalletFromPrivateKey(privateKey);
@@ -306,7 +305,6 @@ export class Cardano {
 
       // Parse the response JSON
       const tx = await response.json();
-      console.log(tx);
 
       // Simplify the response for the bot
       return {
@@ -397,10 +395,8 @@ export class Cardano {
         TOKEN_NOT_SUPPORTED_ERROR_CODE,
       );
     }
-    // console.log("tokenInfo", tokenInfo);
 
     tokenAddress = tokenInfo[0]?.policyId + tokenInfo[0]?.assetName;
-    // console.log("tokenAdress", tokenAddress);
 
     return tokenAddress;
   }

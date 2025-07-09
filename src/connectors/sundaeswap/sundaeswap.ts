@@ -118,6 +118,11 @@ export class Sundaeswap {
     );
     const raw = await queryProvider.findPoolData({ ident });
 
+    const aReserveSmallest =
+      raw.liquidity.aReserve / BigInt(10 ** raw.assetA.decimals);
+    const bReserveSmallest =
+      raw.liquidity.bReserve / BigInt(10 ** raw.assetB.decimals);
+
     const info: PoolInfo = {
       address: raw.ident,
       baseTokenAddress: raw.assetA.assetId,
@@ -125,7 +130,7 @@ export class Sundaeswap {
       feePct: raw.currentFee * 100,
       price:
         raw.liquidity.aReserve > 0n
-          ? Number(raw.liquidity.aReserve) / Number(raw.liquidity.bReserve)
+          ? Number(aReserveSmallest) / Number(bReserveSmallest)
           : 0,
       baseTokenAmount: Number(raw.liquidity.aReserve), // ← explicit cast
       quoteTokenAmount: Number(raw.liquidity.bReserve), // ← explicit cast
@@ -163,7 +168,8 @@ export class Sundaeswap {
 
   public calculateAssetAmount(utxos: UTxO[], asset: IPoolDataAsset): bigint {
     return utxos.reduce((acc, utxo) => {
-      const assetValue = utxo.assets[asset.assetId];
+      const [policyId, assetName] = asset.assetId.split('.');
+      const assetValue = utxo.assets[policyId + assetName];
       if (assetValue) {
         return acc + BigInt(assetValue); // Ensure addition is performed with BigInt
       }

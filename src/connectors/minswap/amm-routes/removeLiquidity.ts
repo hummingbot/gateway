@@ -131,12 +131,9 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           utxos,
           poolState.assetLP,
         );
-        console.log('totalLpInWallet', totalLpInWallet);
 
         const withdrawLpAmount =
           (totalLpInWallet * BigInt(percentageToRemove)) / 100n;
-
-        console.log('withdrawLpAmount', withdrawLpAmount);
 
         // 9) Calculate the assets to be received upon withdrawal
         const { amountAReceive, amountBReceive } = calculateWithdraw({

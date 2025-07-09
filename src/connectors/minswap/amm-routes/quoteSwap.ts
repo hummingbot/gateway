@@ -15,6 +15,7 @@ import {
   calculateSwapExactIn,
   calculateSwapExactOut,
 } from '@aiquant/minswap-sdk';
+import { BN } from 'bn.js';
 
 async function quoteAmmSwap(
   minswap: Minswap,
@@ -33,20 +34,25 @@ async function quoteAmmSwap(
   const inputToken = exactIn ? quoteToken : baseToken;
   const outputToken = exactIn ? baseToken : quoteToken;
 
-  // Convert `amount` to smallest‐unit of the input token
-  const amountInSmallestUnit = BigNumber.from(
-    Math.floor(amount * 10 ** inputToken.decimals),
-  ).toBigInt();
+  // FIXED: Convert `amount` to smallest‐unit based on what the amount represents
+  // For BUY: amount = desired quoteToken amount (output)
+  // For SELL: amount = available quoteToken amount (input)
+  let amountInSmallestUnit: bigint;
 
-  // Fetch the pool
-  const assetA: Asset = {
-    policyId: baseToken.policyId,
-    tokenName: baseToken.assetName,
-  };
-  const assetB: Asset = {
-    policyId: quoteToken.policyId,
-    tokenName: quoteToken.assetName,
-  };
+  if (side === 'BUY') {
+    // For BUY, amount represents the desired quoteToken (output), but we need exactOut calculation
+    // So convert amount using quoteToken decimals
+    amountInSmallestUnit = BigNumber.from(
+      Math.floor(amount * 10 ** quoteToken.decimals),
+    ).toBigInt();
+  } else {
+    // For SELL, amount represents the quoteToken to spend (input)
+    // So convert amount using quoteToken decimals
+    amountInSmallestUnit = BigNumber.from(
+      Math.floor(amount * 10 ** quoteToken.decimals),
+    ).toBigInt();
+  }
+
   const { poolState, poolDatum } = await minswap.getPoolData(poolAddress);
 
   if (!poolState)
@@ -75,6 +81,7 @@ async function quoteAmmSwap(
   // Do the math
   let inputAmount: bigint, outputAmount: bigint, priceImpact: number;
   if (exactIn) {
+    // SELL: spending exact amount of quoteToken
     inputAmount = amountInSmallestUnit;
     const { amountOut, priceImpact: pi } = calculateSwapExactIn({
       amountIn: inputAmount,
@@ -84,7 +91,8 @@ async function quoteAmmSwap(
     outputAmount = amountOut;
     priceImpact = pi.toNumber();
   } else {
-    outputAmount = amountInSmallestUnit; // you want exactly this many quote
+    // BUY: want to receive exact amount of quoteToken
+    outputAmount = amountInSmallestUnit;
     const { amountIn, priceImpact: pi } = calculateSwapExactOut({
       exactAmountOut: outputAmount,
       reserveIn,
@@ -94,17 +102,22 @@ async function quoteAmmSwap(
     priceImpact = pi.toNumber();
   }
 
-  // Slippage
-  const slipFactorNum = BigInt(Math.floor((100 - slippagePct) * 100)); // e.g. 99.5%→9950
-  const slipDenominator = 10000n;
+  const effectiveSlippage =
+    slippagePct !== undefined
+      ? slippagePct / 100
+      : minswap.getAllowedSlippage();
+
   const minAmountOut = exactIn
-    ? (outputAmount * slipFactorNum) / slipDenominator
+    ? new BN(outputAmount.toString())
+        .mul(new BN(Math.floor((1 - effectiveSlippage) * 10000)))
+        .div(new BN(10000))
     : outputAmount;
+
   const maxAmountIn = exactIn
     ? inputAmount
-    : (inputAmount *
-        (slipDenominator + BigInt(Math.round(slippagePct * 100)))) /
-      slipDenominator;
+    : new BN(inputAmount.toString())
+        .mul(new BN(Math.floor((1 + effectiveSlippage) * 10000)))
+        .div(new BN(10000));
 
   // Format human‐readable
   const estimatedIn = formatTokenAmount(
@@ -247,10 +260,21 @@ async function formatSwapQuote(
     );
 
     // Calculate balance changes based on which tokens are being swapped
-    const baseTokenBalanceChange =
-      side === 'BUY' ? quote.estimatedAmountOut : -quote.estimatedAmountIn;
-    const quoteTokenBalanceChange =
-      side === 'BUY' ? -quote.estimatedAmountIn : quote.estimatedAmountOut;
+    // The quote object tells us which token is input and which is output
+    let baseTokenBalanceChange: number;
+    let quoteTokenBalanceChange: number;
+
+    if (side === 'SELL') {
+      // SELL: spending quoteToken, receiving baseToken
+      // Input token is quoteToken, output token is baseToken
+      baseTokenBalanceChange = quote.estimatedAmountOut; // positive (receiving)
+      quoteTokenBalanceChange = -quote.estimatedAmountIn; // negative (spending)
+    } else {
+      // BUY: spending baseToken, receiving quoteToken
+      // Input token is baseToken, output token is quoteToken
+      baseTokenBalanceChange = -quote.estimatedAmountIn; // negative (spending)
+      quoteTokenBalanceChange = quote.estimatedAmountOut; // positive (receiving)
+    }
 
     logger.info(
       `Balance changes: baseTokenBalanceChange=${baseTokenBalanceChange}, quoteTokenBalanceChange=${quoteTokenBalanceChange}`,
