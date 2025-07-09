@@ -1090,8 +1090,8 @@ export class Solana {
   ): Promise<{ balanceChange: number; fee: number }> {
     // Fetch transaction details with retry logic
     let txDetails;
-    const maxAttempts = 20;
-    const retryDelay = 1000;
+    const maxAttempts = this.config.confirmRetryCount;
+    const retryDelay = this.config.confirmRetryInterval;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
