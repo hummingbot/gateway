@@ -31,7 +31,7 @@ ENV COMMIT_BRANCH=${BRANCH}
 ENV COMMIT_SHA=${COMMIT}
 ENV BUILD_DATE=${BUILD_DATE}
 ENV INSTALLATION_TYPE=docker
-ENV DEV=false
+ENV DEV=true
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
@@ -42,7 +42,15 @@ COPY . .
 # Build
 RUN pnpm build
 
-# Expose port 15888 - note that docs port is 8080
+# Create necessary conf directories
+RUN mkdir -p /home/gateway/conf/networks/ethereum \
+    /home/gateway/conf/networks/solana \
+    /home/gateway/conf/connectors \
+    /home/gateway/conf/tokens/ethereum \
+    /home/gateway/conf/tokens/solana \
+    /home/gateway/conf/pools
+
+# Expose default port and Swagger UI on http://localhost:15888/docs
 EXPOSE 15888
 
 # Set the default command to run when starting the container

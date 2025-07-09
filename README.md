@@ -225,46 +225,64 @@ pnpm start --passphrase=<PASSPHRASE>
 
 ## Installation with Docker
 
-Build the Gateway Docker image locally by executing the below command. You may replace `development` with a tag of your choice.
+### Building the Docker Image
+
+Build the Gateway Docker image locally:
 
 ```bash
+# Simple build
+docker build -t gateway:latest .
+
+# Build with version tag and metadata
 docker build \
   --build-arg BRANCH=$(git rev-parse --abbrev-ref HEAD) \
   --build-arg COMMIT=$(git rev-parse HEAD) \
   --build-arg BUILD_DATE=$(date -u +"%Y-%m-%d") \
-  -t hummingbot/gateway:development -f Dockerfile .
+  -t gateway:core-2.8 .
 ```
 
-### Start Gateway from Docker
+### Running Gateway with Docker
 
-Start a container in HTTPS mode using this `development` Docker image. Make sure to replace `<PASSPHRASE>` with the passphrase you used to generate the certs in the Hummingbot client. 
+Run Gateway in development mode (HTTP, no SSL):
 
 ```bash
-docker run --name gateway \
-  -p 15888:15888 \
-  -v "$(pwd)/conf:/home/gateway/conf" \
-  -v "$(pwd)/logs:/home/gateway/logs" \
-  -v "$(pwd)/db:/home/gateway/db" \
-  -v "$(pwd)/certs:/home/gateway/certs" \
-  -e GATEWAY_PASSPHRASE=<PASSPHRASE> \
-  hummingbot/gateway:development
+docker run -p 15888:15888 -e GATEWAY_PASSPHRASE=your-passphrase -e DEV=true gateway:latest
 ```
-Afterwards, clients with valid certificates can connect to Gateway at: <https://localhost:15888>
 
-You may also start the container in HTTP mode by setting the `DEV` environment variable to `true`. Note that this will disable HTTPS and allow unauthenticated access to Gateway and its endpoints.
+Run Gateway in production mode (HTTPS):
 
 ```bash
-docker run --name gateway \
-  -p 15888:15888 \
-  -v "$(pwd)/conf:/home/gateway/conf" \
-  -v "$(pwd)/logs:/home/gateway/logs" \
-  -v "$(pwd)/db:/home/gateway/db" \
-  -v "$(pwd)/certs:/home/gateway/certs" \
+docker run -p 15888:15888 -e GATEWAY_PASSPHRASE=your-passphrase gateway:latest
+```
+
+With persistent configuration and logs:
+
+```bash
+docker run -p 15888:15888 \
+  -e GATEWAY_PASSPHRASE=your-passphrase \
   -e DEV=true \
-  hummingbot/gateway:development
+  -v $(pwd)/conf:/home/gateway/conf \
+  -v $(pwd)/logs:/home/gateway/logs \
+  gateway:latest
 ```
 
-Afterwards, client may connect to Gateway at: <http://localhost:15888> and you can access the Swagger documentation UI at: <http://localhost:15888/docs>
+### Pulling from Docker Hub
+
+Alternatively, pull the pre-built image from Docker Hub:
+
+```bash
+# Pull the latest image
+docker pull hummingbot/gateway:latest
+
+# Run it
+docker run -p 15888:15888 -e GATEWAY_PASSPHRASE=your-passphrase -e DEV=true hummingbot/gateway:latest
+```
+
+### Access Points
+
+- Development mode: http://localhost:15888
+- Production mode: https://localhost:15888  
+- Swagger API docs: http://localhost:15888/docs (dev mode only)
 
 
 ## API Endpoints Overview

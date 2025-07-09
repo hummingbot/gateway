@@ -13,7 +13,7 @@ import { JupiterExecuteQuoteRequest } from '../schemas';
 
 import { quoteCache } from './quoteSwap';
 
-async function executeQuote(
+export async function executeQuote(
   fastify: FastifyInstance,
   walletAddress: string,
   network: string,

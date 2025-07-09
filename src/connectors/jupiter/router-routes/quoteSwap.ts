@@ -26,7 +26,7 @@ setInterval(() => {
   }
 }, 10000); // Run every 10 seconds
 
-async function quoteSwap(
+export async function quoteSwap(
   fastify: FastifyInstance,
   network: string,
   baseToken: string,
