@@ -119,7 +119,7 @@ async function executeQuote(
     `Swap executed successfully: ${amountIn.toFixed(4)} ${side === 'SELL' ? baseTokenInfo.symbol : quoteTokenInfo.symbol} -> ${amountOut.toFixed(4)} ${side === 'SELL' ? quoteTokenInfo.symbol : baseTokenInfo.symbol}`,
   );
 
-  // Remove quote from cache after successful execution
+  // Remove quote from cache only after successful execution (confirmed)
   quoteCache.delete(quoteId);
 
   return {

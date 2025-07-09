@@ -2,7 +2,7 @@ import { Wallet } from '@coral-xyz/anchor';
 import { VersionedTransaction } from '@solana/web3.js';
 import axios, { AxiosInstance } from 'axios';
 
-import { Solana, BASE_FEE } from '../../chains/solana/solana';
+import { Solana } from '../../chains/solana/solana';
 import { logger } from '../../services/logger';
 
 import { JupiterConfig } from './jupiter.config';
@@ -174,19 +174,34 @@ export class Jupiter {
     }
   }
 
-  async getSwapObj(
+  /**
+   * Builds and prepares a swap transaction from a quote
+   * @param wallet The wallet to use for signing
+   * @param quote The quote response from Jupiter API
+   * @param maxLamports Maximum priority fee in lamports (optional)
+   * @param priorityLevel Priority level for transaction (optional)
+   * @returns Prepared and simulated transaction ready for execution
+   */
+  public async buildSwapTransaction(
     wallet: Wallet,
     quote: QuoteResponse,
     maxLamports?: number,
     priorityLevel?: string,
-  ): Promise<SwapResponse> {
+  ): Promise<VersionedTransaction> {
     // Use provided values or fall back to config
     const feeLamports = maxLamports
       ? Math.floor(maxLamports)
       : Math.floor(this.config.maxLamports);
     const level = priorityLevel || this.config.priorityLevel;
 
+    logger.info(
+      `Sending swap with priority level ${level} and max ${feeLamports} lamports`,
+    );
+
+    // Get swap object from Jupiter API with retry logic
     let lastError: Error | null = null;
+    let swapObj: SwapResponse;
+
     for (let attempt = 1; attempt <= JUPITER_API_RETRY_COUNT; attempt++) {
       try {
         const swapRequest = {
@@ -196,7 +211,7 @@ export class Jupiter {
           prioritizationFeeLamports: {
             priorityLevelWithMaxLamports: {
               maxLamports: feeLamports,
-              priorityLevel: this.getPriorityLevel(level),
+              priorityLevel: level,
             },
           },
         };
@@ -205,9 +220,8 @@ export class Jupiter {
           '/swap/v1/swap',
           swapRequest,
         );
-        const swapObj = response.data;
-
-        return swapObj;
+        swapObj = response.data;
+        break; // Success, exit the retry loop
       } catch (error: any) {
         lastError = error;
         logger.error(
@@ -232,189 +246,25 @@ export class Jupiter {
       }
     }
 
-    throw new Error(
-      `Failed to fetch swap route after ${JUPITER_API_RETRY_COUNT} attempts. Last error: ${lastError?.message}`,
-    );
-  }
-
-  public async simulateTransaction(transaction: VersionedTransaction) {
-    const { value: simulatedTransactionResponse } =
-      await this.solana.connection.simulateTransaction(transaction, {
-        replaceRecentBlockhash: true,
-        commitment: 'confirmed',
-        accounts: { encoding: 'base64', addresses: [] },
-        sigVerify: false,
-      });
-
-    if (simulatedTransactionResponse.err) {
-      const logs = simulatedTransactionResponse.logs || [];
-      const errorMessage = `Transaction simulation failed: Error: ${JSON.stringify(simulatedTransactionResponse.err)}\nProgram Logs: ${logs.join('\n')}`;
-
-      throw new Error(errorMessage);
+    if (!swapObj) {
+      throw new Error(
+        `Failed to fetch swap route after ${JUPITER_API_RETRY_COUNT} attempts. Last error: ${lastError?.message}`,
+      );
     }
-  }
-
-  async executeSwap(
-    wallet: Wallet,
-    quote: QuoteResponse,
-    priorityLevel?: string,
-    maxLamports?: number,
-  ): Promise<{
-    signature: string;
-    feeInLamports: number;
-    computeUnitLimit: number;
-    priorityFeePrice: number;
-    confirmed: boolean;
-    txData?: any;
-  }> {
-    // Build prioritizationFeeLamports object
-    const priorityFee = maxLamports || this.config.maxLamports;
-    const level = priorityLevel || this.config.priorityLevel;
-
-    logger.info(
-      `Sending swap with priority level ${level} and max ${priorityFee} lamports`,
-    );
-
-    // Get swap object from Jupiter API with priority fee configuration
-    const swapObj = await this.getSwapObj(wallet, quote, priorityFee, level);
 
     const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
     const transaction = VersionedTransaction.deserialize(
       new Uint8Array(swapTransactionBuf),
     );
-    await this.simulateTransaction(transaction);
+
+    // Sign and simulate the transaction
     transaction.sign([wallet.payer]);
+    await this.solana.simulateTransaction(transaction);
 
-    // Send transaction
-    const signature = await this.solana.connection.sendRawTransaction(
-      Buffer.from(transaction.serialize()),
-      { skipPreflight: true },
-    );
-
-    // Try to confirm transaction (but don't retry with higher fees)
-    let retryCount = 0;
-    while (retryCount < this.solana.config.retryCount) {
-      try {
-        const { confirmed, txData } =
-          await this.solana.confirmTransaction(signature);
-        if (confirmed && txData) {
-          const computeUnitsUsed = txData.meta.computeUnitsConsumed;
-          const totalFee = txData.meta.fee;
-          const priorityFee = totalFee - BASE_FEE;
-          const priorityFeePrice = (priorityFee / computeUnitsUsed) * 1e6;
-
-          return {
-            signature,
-            feeInLamports: totalFee,
-            computeUnitLimit: computeUnitsUsed,
-            priorityFeePrice,
-            confirmed: true,
-            txData,
-          };
-        }
-      } catch (error) {
-        logger.debug(
-          `[JUPITER] Swap confirmation attempt ${retryCount + 1}/${this.solana.config.retryCount} failed: ${error.message}`,
-        );
-      }
-
-      retryCount++;
-      if (retryCount < this.solana.config.retryCount) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, this.solana.config.retryInterval * 1000),
-        );
-      }
-    }
-
-    // If we get here, swap wasn't confirmed after retryCount attempts
-    // Return pending status for Hummingbot to handle retry
-    return {
-      signature,
-      feeInLamports: 0,
-      computeUnitLimit: 0,
-      priorityFeePrice: 0,
-      confirmed: false,
-    };
-
-    // If no signature obtained, throw error
-    throw new Error(
-      'Failed to execute swap - no transaction signature obtained',
-    );
-  }
-
-  async extractSwapBalances(
-    signature: string,
-    inputMint: string,
-    outputMint: string,
-  ): Promise<{
-    amountIn: number;
-    amountOut: number;
-    fee: number;
-  }> {
-    let inputBalanceChange: number, outputBalanceChange: number, fee: number;
-
-    // Get transaction info to extract the 'from' address
-    const txInfo = await this.solana.connection.getTransaction(signature);
-    if (!txInfo) {
-      throw new Error('Transaction not found');
-    }
-    const fromAddress = txInfo.transaction.message.accountKeys[0].toBase58();
-
-    if (inputMint === 'So11111111111111111111111111111111111111112') {
-      ({ balanceChange: inputBalanceChange, fee } =
-        await this.solana.extractAccountBalanceChangeAndFee(signature, 0));
-    } else {
-      ({ balanceChange: inputBalanceChange, fee } =
-        await this.solana.extractTokenBalanceChangeAndFee(
-          signature,
-          inputMint,
-          fromAddress,
-        ));
-    }
-
-    if (outputMint === 'So11111111111111111111111111111111111111112') {
-      ({ balanceChange: outputBalanceChange } =
-        await this.solana.extractAccountBalanceChangeAndFee(signature, 0));
-    } else {
-      ({ balanceChange: outputBalanceChange } =
-        await this.solana.extractTokenBalanceChangeAndFee(
-          signature,
-          outputMint,
-          fromAddress,
-        ));
-    }
-
-    return {
-      amountIn: Math.abs(inputBalanceChange),
-      amountOut: Math.abs(outputBalanceChange),
-      fee,
-    };
+    return transaction;
   }
 
   public static getRequestAmount(amount: number, decimals: number): number {
     return Math.floor(amount * DECIMAL_MULTIPLIER ** decimals);
-  }
-
-  /**
-   * Converts a priority level string to the expected format for Jupiter API
-   * @param priorityLevel The priority level from config
-   * @returns Properly formatted priority level for Jupiter API
-   */
-  private getPriorityLevel(
-    priorityLevel: string,
-  ): 'medium' | 'high' | 'veryHigh' {
-    const level = priorityLevel.toLowerCase();
-
-    if (level === 'medium' || level === 'high') {
-      return level as 'medium' | 'high';
-    } else if (level === 'veryhigh') {
-      return 'veryHigh';
-    }
-
-    // Default to medium if invalid value
-    logger.warn(
-      `Invalid priority level: ${priorityLevel}, defaulting to 'medium'`,
-    );
-    return 'medium';
   }
 }

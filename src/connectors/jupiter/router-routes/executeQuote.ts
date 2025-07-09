@@ -9,7 +9,6 @@ import {
 } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { Jupiter } from '../jupiter';
-import { JupiterConfig } from '../jupiter.config';
 import { JupiterExecuteQuoteRequest } from '../schemas';
 
 import { quoteCache } from './quoteSwap';
@@ -29,7 +28,8 @@ export async function executeQuote(
   }
 
   const { quote, request } = cached;
-  const { inputToken, outputToken, side, amount } = request;
+  const { inputToken, outputToken, side, amount, baseToken, quoteToken } =
+    request;
 
   const solana = await Solana.getInstance(network);
   const jupiter = await Jupiter.getInstance(network);
@@ -40,25 +40,64 @@ export async function executeQuote(
     `Executing quote ${quoteId} for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`,
   );
 
-  // Execute the swap
-  const swapResult = await jupiter.executeSwap(
+  // Build the swap transaction
+  const transaction = await jupiter.buildSwapTransaction(
     wallet,
     quote,
-    priorityLevel,
     maxLamports,
+    priorityLevel,
   );
 
-  const signature = swapResult.signature;
-  const fee = swapResult.feeInLamports / 1e9;
+  // Send and confirm transaction using Solana's method
+  const { confirmed, signature, txData } =
+    await solana.sendAndConfirmRawTransaction(transaction);
 
-  // If transaction is not confirmed, return partial result
-  if (!swapResult.confirmed) {
-    logger.warn(
-      `Transaction ${signature} not confirmed after retry attempts. May need higher priority fee.`,
+  // Return with status
+  if (confirmed && txData) {
+    // Remove quote from cache only after successful execution (confirmed)
+    quoteCache.delete(quoteId);
+
+    // Transaction confirmed, return full data
+    const { baseTokenBalanceChange, quoteTokenBalanceChange } =
+      await solana.extractPairBalanceChangesAndFee(
+        signature,
+        await solana.getToken(baseToken),
+        await solana.getToken(quoteToken),
+        walletAddress,
+      );
+
+    // Calculate actual amounts swapped
+    const amountIn =
+      side === 'SELL'
+        ? Math.abs(baseTokenBalanceChange)
+        : Math.abs(quoteTokenBalanceChange);
+    const amountOut =
+      side === 'SELL'
+        ? Math.abs(quoteTokenBalanceChange)
+        : Math.abs(baseTokenBalanceChange);
+
+    logger.info(
+      `Swap executed successfully: ${amountIn.toFixed(4)} ${inputToken.symbol} -> ${amountOut.toFixed(4)} ${outputToken.symbol}`,
     );
 
-    // Still remove quote from cache as it's been used
-    quoteCache.delete(quoteId);
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      data: {
+        tokenIn: inputToken.address,
+        tokenOut: outputToken.address,
+        amountIn,
+        amountOut,
+        fee: txData.meta.fee / 1e9,
+        baseTokenBalanceChange,
+        quoteTokenBalanceChange,
+      },
+    };
+  } else {
+    // Transaction pending, return for Hummingbot to handle retry
+    logger.warn(
+      `Transaction ${signature} not confirmed. May need higher priority fee.`,
+    );
 
     return {
       signature,
@@ -66,46 +105,6 @@ export async function executeQuote(
       data: undefined, // No balance changes available for unconfirmed tx
     };
   }
-
-  // Extract balance changes for confirmed transactions
-  const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-    await solana.extractPairBalanceChangesAndFee(
-      signature,
-      request.baseToken,
-      request.quoteToken,
-      walletAddress,
-    );
-
-  // Calculate actual amounts swapped
-  const amountIn =
-    side === 'SELL'
-      ? Math.abs(baseTokenBalanceChange)
-      : Math.abs(quoteTokenBalanceChange);
-  const amountOut =
-    side === 'SELL'
-      ? Math.abs(quoteTokenBalanceChange)
-      : Math.abs(baseTokenBalanceChange);
-
-  logger.info(
-    `Swap executed successfully: ${amountIn.toFixed(4)} ${inputToken.symbol} -> ${amountOut.toFixed(4)} ${outputToken.symbol}`,
-  );
-
-  // Remove quote from cache after successful execution
-  quoteCache.delete(quoteId);
-
-  return {
-    signature,
-    status: 1, // CONFIRMED
-    data: {
-      tokenIn: inputToken.address,
-      tokenOut: outputToken.address,
-      amountIn,
-      amountOut,
-      fee,
-      baseTokenBalanceChange,
-      quoteTokenBalanceChange,
-    },
-  };
 }
 
 export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
@@ -145,8 +144,8 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
           walletAddress,
           network,
           quoteId,
-          priorityLevel ?? JupiterConfig.config.priorityLevel,
-          maxLamports ?? JupiterConfig.config.maxLamports,
+          priorityLevel,
+          maxLamports,
         );
       } catch (e) {
         if (e.statusCode) throw e;
