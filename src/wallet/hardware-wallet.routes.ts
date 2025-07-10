@@ -6,19 +6,14 @@ import { Solana } from '../chains/solana/solana';
 import { HardwareWalletService } from '../services/hardware-wallet-service';
 import { logger } from '../services/logger';
 
+// Maximum number of account indices to check when searching for an address
+const MAX_ACCOUNTS_TO_CHECK = 50;
+
 import {
   AddHardwareWalletRequest,
   AddHardwareWalletResponse,
-  RemoveHardwareWalletRequest,
-  RemoveHardwareWalletResponse,
-  ListHardwareWalletsRequest,
-  ListHardwareWalletsResponse,
   AddHardwareWalletRequestSchema,
   AddHardwareWalletResponseSchema,
-  RemoveHardwareWalletRequestSchema,
-  RemoveHardwareWalletResponseSchema,
-  ListHardwareWalletsRequestSchema,
-  ListHardwareWalletsResponseSchema,
 } from './schemas';
 import {
   validateChainName,
@@ -61,11 +56,11 @@ async function addHardwareWallet(
     }
 
     // Search for the address on the Ledger device
-    const startIndex = req.accountIndex || 0;
-    const maxAccountsToCheck = 20; // Check up to 20 accounts
     let found = false;
 
-    for (let i = startIndex; i < startIndex + maxAccountsToCheck; i++) {
+    // Try different derivation path patterns
+    // Pattern 1: Standard hardened account indices (most common)
+    for (let i = 0; i < MAX_ACCOUNTS_TO_CHECK; i++) {
       try {
         if (req.chain.toLowerCase() === 'solana') {
           const derivationPath = `44'/501'/${i}'`;
@@ -73,6 +68,11 @@ async function addHardwareWallet(
         } else if (req.chain.toLowerCase() === 'ethereum') {
           const derivationPath = `44'/60'/0'/0/${i}`;
           walletInfo = await hardwareWalletService.getEthereumAddress(derivationPath);
+        }
+
+        // Log the address found at this index
+        if (walletInfo) {
+          logger.info(`Account index ${i}: ${walletInfo.address}`);
         }
 
         // Check if this address matches the requested address
@@ -87,12 +87,37 @@ async function addHardwareWallet(
       }
     }
 
+    // Pattern 2: For Solana, also try the single non-hardened derivation path used by some wallets
+    if (!found && req.chain.toLowerCase() === 'solana') {
+      try {
+        const alternativePath = `44'/501'/0'/0'`;
+        walletInfo = await hardwareWalletService.getSolanaAddress(alternativePath);
+
+        if (walletInfo) {
+          logger.info(`Alternative path ${alternativePath}: ${walletInfo.address}`);
+
+          if (walletInfo.address.toLowerCase() === validatedAddress.toLowerCase()) {
+            found = true;
+            logger.info(`Found matching address at derivation path ${alternativePath}`);
+          }
+        }
+      } catch (error) {
+        logger.debug(`Alternative path check failed: ${error.message}`);
+      }
+    }
+
     if (!found) {
-      throw fastify.httpErrors.badRequest(
-        `Address ${validatedAddress} not found on Ledger device. ` +
-          `Checked account indices ${startIndex} to ${startIndex + maxAccountsToCheck - 1}. ` +
-          `If your address uses a different account index, please specify it.`,
-      );
+      const message =
+        req.chain.toLowerCase() === 'solana'
+          ? `Address ${validatedAddress} not found on Ledger device. ` +
+            `Checked account indices 0 to ${MAX_ACCOUNTS_TO_CHECK - 1} (paths 44'/501'/X') ` +
+            `and alternative path 44'/501'/0'/0'. ` +
+            `Please ensure this address was generated from this Ledger device.`
+          : `Address ${validatedAddress} not found on Ledger device. ` +
+            `Checked account indices 0 to ${MAX_ACCOUNTS_TO_CHECK - 1}. ` +
+            `Please ensure this address was generated from this Ledger device.`;
+
+      throw fastify.httpErrors.badRequest(message);
     }
 
     // Get existing hardware wallets
@@ -100,11 +125,6 @@ async function addHardwareWallet(
 
     // Check if address already exists
     const existingIndex = existingWallets.findIndex((w) => w.address === validatedAddress);
-
-    // Update wallet info with optional name
-    if (req.name) {
-      walletInfo.name = req.name;
-    }
 
     if (existingIndex >= 0) {
       // Replace existing entry
@@ -144,63 +164,6 @@ async function addHardwareWallet(
   }
 }
 
-async function removeHardwareWallet(
-  fastify: FastifyInstance,
-  req: RemoveHardwareWalletRequest,
-): Promise<RemoveHardwareWalletResponse> {
-  logger.info(`Removing hardware wallet: ${req.address} from chain: ${req.chain}`);
-
-  // Validate chain name
-  if (!validateChainName(req.chain)) {
-    throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
-  }
-
-  // Validate the address based on chain type
-  let validatedAddress: string;
-  if (req.chain.toLowerCase() === 'ethereum') {
-    validatedAddress = Ethereum.validateAddress(req.address);
-  } else if (req.chain.toLowerCase() === 'solana') {
-    validatedAddress = Solana.validateAddress(req.address);
-  } else {
-    throw new Error(`Unsupported chain: ${req.chain}`);
-  }
-
-  // Get existing hardware wallets
-  const wallets = await getHardwareWallets(req.chain);
-
-  // Find and remove the wallet
-  const index = wallets.findIndex((w) => w.address === validatedAddress);
-  if (index === -1) {
-    throw fastify.httpErrors.notFound(`Hardware wallet ${validatedAddress} not found for ${req.chain}`);
-  }
-
-  wallets.splice(index, 1);
-  await saveHardwareWallets(req.chain, wallets);
-
-  return {
-    message: `Hardware wallet ${validatedAddress} removed successfully`,
-  };
-}
-
-async function listHardwareWallets(
-  fastify: FastifyInstance,
-  req: ListHardwareWalletsRequest,
-): Promise<ListHardwareWalletsResponse> {
-  logger.info(`Listing hardware wallets for chain: ${req.chain}`);
-
-  // Validate chain name
-  if (!validateChainName(req.chain)) {
-    throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
-  }
-
-  const wallets = await getHardwareWallets(req.chain);
-
-  return {
-    chain: req.chain,
-    wallets,
-  };
-}
-
 export const hardwareWalletRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
 
@@ -209,7 +172,7 @@ export const hardwareWalletRoutes: FastifyPluginAsync = async (fastify) => {
     Body: AddHardwareWalletRequest;
     Reply: AddHardwareWalletResponse;
   }>(
-    '/hardware/add',
+    '/add-hardware',
     {
       schema: {
         description: 'Add a hardware wallet',
@@ -222,48 +185,6 @@ export const hardwareWalletRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       return await addHardwareWallet(fastify, request.body);
-    },
-  );
-
-  // Remove hardware wallet
-  fastify.delete<{
-    Body: RemoveHardwareWalletRequest;
-    Reply: RemoveHardwareWalletResponse;
-  }>(
-    '/hardware/remove',
-    {
-      schema: {
-        description: 'Remove a hardware wallet',
-        tags: ['/wallet'],
-        body: RemoveHardwareWalletRequestSchema,
-        response: {
-          200: RemoveHardwareWalletResponseSchema,
-        },
-      },
-    },
-    async (request) => {
-      return await removeHardwareWallet(fastify, request.body);
-    },
-  );
-
-  // List hardware wallets
-  fastify.get<{
-    Querystring: ListHardwareWalletsRequest;
-    Reply: ListHardwareWalletsResponse;
-  }>(
-    '/hardware',
-    {
-      schema: {
-        description: 'List hardware wallets for a chain',
-        tags: ['/wallet'],
-        querystring: ListHardwareWalletsRequestSchema,
-        response: {
-          200: ListHardwareWalletsResponseSchema,
-        },
-      },
-    },
-    async (request) => {
-      return await listHardwareWallets(fastify, request.query);
     },
   );
 };

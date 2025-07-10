@@ -1,6 +1,7 @@
 import EthApp from '@ledgerhq/hw-app-eth';
 import SolanaApp from '@ledgerhq/hw-app-solana';
-import { Transaction, VersionedTransaction } from '@solana/web3.js';
+import { Transaction, VersionedTransaction, PublicKey } from '@solana/web3.js';
+import bs58 from 'bs58';
 
 import { LedgerTransportManager } from './ledger-transport';
 import { logger } from './logger';
@@ -15,7 +16,6 @@ export interface HardwareWalletInfo {
   publicKey: string;
   derivationPath: string;
   chain: string;
-  name?: string;
   addedAt: string;
 }
 
@@ -49,9 +49,14 @@ export class HardwareWalletService {
         throw new Error('Failed to get address from Ledger device');
       }
 
+      // Convert the buffer to base58 string (Solana address format)
+      const addressBuffer = Buffer.isBuffer(result.address) ? result.address : Buffer.from(result.address);
+      const publicKey = new PublicKey(addressBuffer);
+      const addressString = publicKey.toBase58();
+
       return {
-        address: result.address.toString(),
-        publicKey: result.address.toString(),
+        address: addressString,
+        publicKey: addressString,
         derivationPath,
         chain: 'solana',
         addedAt: new Date().toISOString(),

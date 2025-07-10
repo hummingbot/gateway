@@ -1,27 +1,90 @@
 import { Type, Static } from '@sinclair/typebox';
 
 // Define schemas
-export const WalletAddressSchema = Type.String();
+export const WalletAddressSchema = Type.String({
+  description: 'Wallet address (Ethereum format: 0x... or Solana format: base58)',
+});
+
+// Unified add wallet schema that supports all wallet types
+export const UnifiedAddWalletRequestSchema = Type.Object({
+  chain: Type.String(),
+  // For regular wallets
+  privateKey: Type.Optional(Type.String()),
+  // For read-only and hardware wallets
+  address: Type.Optional(WalletAddressSchema),
+  // Wallet type flags
+  readOnly: Type.Optional(Type.Boolean({ default: false })),
+  hardware: Type.Optional(Type.Boolean({ default: false })),
+  // Hardware wallet specific
+  accountIndex: Type.Optional(Type.Integer({ minimum: 0, default: 0 })),
+});
 
 export const AddWalletRequestSchema = Type.Object({
-  chain: Type.String(),
-  privateKey: Type.String(),
+  chain: Type.String({
+    description: 'Blockchain to add wallet to',
+    enum: ['ethereum', 'solana'],
+    examples: ['solana', 'ethereum'],
+  }),
+  privateKey: Type.String({
+    description: 'Private key for the wallet',
+    examples: ['<your-private-key>'],
+  }),
+});
+
+export const UnifiedAddWalletResponseSchema = Type.Object({
+  address: WalletAddressSchema,
+  message: Type.String(),
+  // Additional info for hardware wallets
+  publicKey: Type.Optional(Type.String()),
+  derivationPath: Type.Optional(Type.String()),
 });
 
 export const AddWalletResponseSchema = Type.Object({
-  address: WalletAddressSchema,
+  address: Type.String({
+    description: 'The wallet address that was added',
+  }),
+});
+
+export const GetWalletsQuerySchema = Type.Object({
+  showReadOnly: Type.Optional(Type.Boolean({ default: true })),
+  showHardware: Type.Optional(Type.Boolean({ default: true })),
 });
 
 export const GetWalletResponseSchema = Type.Object({
-  chain: Type.String(),
-  walletAddresses: Type.Array(WalletAddressSchema),
-  readOnlyWalletAddresses: Type.Optional(Type.Array(WalletAddressSchema)),
-  hardwareWalletAddresses: Type.Optional(Type.Array(WalletAddressSchema)),
+  chain: Type.String({
+    description: 'Blockchain name',
+    examples: ['solana', 'ethereum'],
+  }),
+  walletAddresses: Type.Array(WalletAddressSchema, {
+    description: 'List of regular wallet addresses with private keys',
+  }),
+  readOnlyWalletAddresses: Type.Optional(
+    Type.Array(WalletAddressSchema, {
+      description: 'List of read-only wallet addresses (no private keys)',
+    }),
+  ),
+  hardwareWalletAddresses: Type.Optional(
+    Type.Array(WalletAddressSchema, {
+      description: 'List of hardware wallet addresses (Ledger)',
+    }),
+  ),
 });
 
 export const RemoveWalletRequestSchema = Type.Object({
-  chain: Type.String(),
-  address: WalletAddressSchema,
+  chain: Type.String({
+    description: 'Blockchain to remove wallet from',
+    enum: ['ethereum', 'solana'],
+    examples: ['solana', 'ethereum'],
+  }),
+  address: Type.String({
+    description: 'Wallet address to remove',
+  }),
+});
+
+export const RemoveWalletResponseSchema = Type.Object({
+  message: Type.String({
+    description: 'Success message indicating wallet type removed',
+  }),
 });
 
 export const SignMessageRequestSchema = Type.Object({
@@ -36,13 +99,24 @@ export const SignMessageResponseSchema = Type.Object({
 });
 
 export const AddReadOnlyWalletRequestSchema = Type.Object({
-  chain: Type.String(),
-  address: WalletAddressSchema,
+  chain: Type.String({
+    description: 'Blockchain to add read-only wallet to',
+    enum: ['ethereum', 'solana'],
+    default: 'solana',
+    examples: ['solana', 'ethereum'],
+  }),
+  address: Type.String({
+    description: 'Wallet address to monitor (read-only)',
+  }),
 });
 
 export const AddReadOnlyWalletResponseSchema = Type.Object({
-  message: Type.String(),
-  address: WalletAddressSchema,
+  message: Type.String({
+    description: 'Success message',
+  }),
+  address: Type.String({
+    description: 'The wallet address that was added',
+  }),
 });
 
 export const RemoveReadOnlyWalletRequestSchema = Type.Object({
@@ -56,18 +130,30 @@ export const RemoveReadOnlyWalletResponseSchema = Type.Object({
 
 // Hardware wallet schemas
 export const AddHardwareWalletRequestSchema = Type.Object({
-  chain: Type.String(),
-  address: WalletAddressSchema,
-  accountIndex: Type.Optional(Type.Integer({ minimum: 0, default: 0 })),
-  name: Type.Optional(Type.String()),
+  chain: Type.String({
+    description: 'Blockchain for hardware wallet',
+    enum: ['ethereum', 'solana'],
+    default: 'solana',
+    examples: ['solana', 'ethereum'],
+  }),
+  address: Type.String({
+    description: 'Hardware wallet address to add (must exist on connected Ledger device)',
+  }),
 });
 
 export const AddHardwareWalletResponseSchema = Type.Object({
-  address: WalletAddressSchema,
-  publicKey: Type.String(),
-  derivationPath: Type.String(),
-  name: Type.Optional(Type.String()),
-  message: Type.String(),
+  address: Type.String({
+    description: 'The hardware wallet address that was added',
+  }),
+  publicKey: Type.String({
+    description: 'Public key of the hardware wallet',
+  }),
+  derivationPath: Type.String({
+    description: 'BIP32/BIP44 derivation path used',
+  }),
+  message: Type.String({
+    description: 'Success message',
+  }),
 });
 
 export const RemoveHardwareWalletRequestSchema = Type.Object({
@@ -87,7 +173,6 @@ export const HardwareWalletInfoSchema = Type.Object({
   address: WalletAddressSchema,
   publicKey: Type.String(),
   derivationPath: Type.String(),
-  name: Type.Optional(Type.String()),
   addedAt: Type.String(),
 });
 
@@ -97,9 +182,13 @@ export const ListHardwareWalletsResponseSchema = Type.Object({
 });
 
 // Export TypeScript types
+export type UnifiedAddWalletRequest = Static<typeof UnifiedAddWalletRequestSchema>;
+export type UnifiedAddWalletResponse = Static<typeof UnifiedAddWalletResponseSchema>;
+export type GetWalletsQuery = Static<typeof GetWalletsQuerySchema>;
 export type AddWalletRequest = Static<typeof AddWalletRequestSchema>;
 export type AddWalletResponse = Static<typeof AddWalletResponseSchema>;
 export type RemoveWalletRequest = Static<typeof RemoveWalletRequestSchema>;
+export type RemoveWalletResponse = Static<typeof RemoveWalletResponseSchema>;
 export type SignMessageRequest = Static<typeof SignMessageRequestSchema>;
 export type SignMessageResponse = Static<typeof SignMessageResponseSchema>;
 export type GetWalletResponse = Static<typeof GetWalletResponseSchema>;

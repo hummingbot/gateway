@@ -233,7 +233,11 @@ async function getJsonFiles(source: string): Promise<string[]> {
   }
 }
 
-export async function getWallets(fastify: FastifyInstance): Promise<GetWalletResponse[]> {
+export async function getWallets(
+  fastify: FastifyInstance,
+  showReadOnly: boolean = true,
+  showHardware: boolean = true,
+): Promise<GetWalletResponse[]> {
   logger.info('Getting all wallets');
   try {
     // Create wallet directory if it doesn't exist
@@ -269,11 +273,11 @@ export async function getWallets(fastify: FastifyInstance): Promise<GetWalletRes
           }
         });
 
-      // Get read-only wallet addresses
-      const readOnlyAddresses = await getReadOnlyWalletAddresses(chain);
+      // Get read-only wallet addresses if requested
+      const readOnlyAddresses = showReadOnly ? await getReadOnlyWalletAddresses(chain) : [];
 
-      // Get hardware wallet addresses
-      const hardwareAddresses = await getHardwareWalletAddresses(chain);
+      // Get hardware wallet addresses if requested
+      const hardwareAddresses = showHardware ? await getHardwareWalletAddresses(chain) : [];
 
       responses.push({
         chain: safeChain,
@@ -418,7 +422,6 @@ export interface HardwareWalletData {
   address: string;
   publicKey: string;
   derivationPath: string;
-  name?: string;
   addedAt: string;
 }
 
@@ -461,6 +464,11 @@ export async function saveHardwareWallets(chain: string, wallets: HardwareWallet
 
   await mkdirIfDoesNotExist(dirPath);
   await fse.writeFile(filePath, JSON.stringify({ wallets }, null, 2));
+}
+
+export async function isReadOnlyWallet(chain: string, address: string): Promise<boolean> {
+  const readOnlyAddresses = await getReadOnlyWalletAddresses(chain);
+  return readOnlyAddresses.includes(address);
 }
 
 export async function isHardwareWallet(chain: string, address: string): Promise<boolean> {
