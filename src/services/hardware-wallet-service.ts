@@ -1,4 +1,4 @@
-import EthApp from '@ledgerhq/hw-app-eth';
+import EthApp, { ledgerService } from '@ledgerhq/hw-app-eth';
 import SolanaApp from '@ledgerhq/hw-app-solana';
 import { Transaction, VersionedTransaction, PublicKey } from '@solana/web3.js';
 import bs58 from 'bs58';
@@ -164,7 +164,25 @@ export class HardwareWalletService {
       try {
         logger.info(`Requesting signature for transaction on path: ${derivationPath}`);
 
-        const result = await ethApp.signTransaction(derivationPath, rawTxHex);
+        // Resolve transaction to get proper display data for Ledger
+        let resolution;
+        try {
+          resolution = await ledgerService.resolveTransaction(rawTxHex, {}, {});
+          logger.debug('Transaction resolution completed successfully');
+        } catch (resolutionError) {
+          logger.warn(`Failed to resolve transaction for Ledger display: ${resolutionError.message}`);
+          // Create a minimal resolution object if resolution fails
+          resolution = {
+            domains: [],
+            plugin: [],
+            externalPlugin: [],
+            nfts: [],
+            erc20Tokens: [],
+          };
+        }
+
+        // Sign with resolution parameter to ensure proper display on Ledger device
+        const result = await ethApp.signTransaction(derivationPath, rawTxHex, resolution);
 
         if (!result) {
           throw new Error('Failed to get signature from Ledger device');
