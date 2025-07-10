@@ -69,7 +69,24 @@ export class Cardano {
 
     if (!Cardano._instances[network]) {
       const instance = new Cardano(network);
-      await instance.init();
+
+      if (
+        instance.projectId &&
+        instance.projectId.toLowerCase().startsWith(network.toLowerCase())
+      ) {
+        try {
+          await instance.init();
+        } catch (err: any) {
+          logger.warn(
+            `[Cardano] initial init() skipped for network="${network}": ${err.message}`,
+          );
+        }
+      } else {
+        logger.info(
+          `[Cardano] skipped init() for network="${network}" because projectId is still placeholder`,
+        );
+      }
+
       Cardano._instances[network] = instance;
     }
 
