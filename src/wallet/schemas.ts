@@ -16,6 +16,7 @@ export const GetWalletResponseSchema = Type.Object({
   chain: Type.String(),
   walletAddresses: Type.Array(WalletAddressSchema),
   readOnlyWalletAddresses: Type.Optional(Type.Array(WalletAddressSchema)),
+  hardwareWalletAddresses: Type.Optional(Type.Array(WalletAddressSchema)),
 });
 
 export const RemoveWalletRequestSchema = Type.Object({
@@ -53,6 +54,57 @@ export const RemoveReadOnlyWalletResponseSchema = Type.Object({
   message: Type.String(),
 });
 
+// Hardware wallet schemas
+export const AddHardwareWalletRequestSchema = Type.Object({
+  chain: Type.String(),
+  derivationPath: Type.Optional(Type.String()),
+  name: Type.Optional(Type.String()),
+});
+
+export const AddHardwareWalletResponseSchema = Type.Object({
+  address: WalletAddressSchema,
+  publicKey: Type.String(),
+  derivationPath: Type.String(),
+  name: Type.Optional(Type.String()),
+  message: Type.String(),
+});
+
+export const RemoveHardwareWalletRequestSchema = Type.Object({
+  chain: Type.String(),
+  address: WalletAddressSchema,
+});
+
+export const RemoveHardwareWalletResponseSchema = Type.Object({
+  message: Type.String(),
+});
+
+export const ListHardwareWalletsRequestSchema = Type.Object({
+  chain: Type.String(),
+});
+
+export const HardwareWalletInfoSchema = Type.Object({
+  address: WalletAddressSchema,
+  publicKey: Type.String(),
+  derivationPath: Type.String(),
+  name: Type.Optional(Type.String()),
+  addedAt: Type.String(),
+});
+
+export const ListHardwareWalletsResponseSchema = Type.Object({
+  chain: Type.String(),
+  wallets: Type.Array(HardwareWalletInfoSchema),
+});
+
+export const ListHardwareDevicesResponseSchema = Type.Object({
+  devices: Type.Array(
+    Type.Object({
+      descriptor: Type.String(),
+      productName: Type.String(),
+      serialNumber: Type.Optional(Type.String()),
+    }),
+  ),
+});
+
 // Export TypeScript types
 export type AddWalletRequest = Static<typeof AddWalletRequestSchema>;
 export type AddWalletResponse = Static<typeof AddWalletResponseSchema>;
@@ -60,15 +112,15 @@ export type RemoveWalletRequest = Static<typeof RemoveWalletRequestSchema>;
 export type SignMessageRequest = Static<typeof SignMessageRequestSchema>;
 export type SignMessageResponse = Static<typeof SignMessageResponseSchema>;
 export type GetWalletResponse = Static<typeof GetWalletResponseSchema>;
-export type AddReadOnlyWalletRequest = Static<
-  typeof AddReadOnlyWalletRequestSchema
->;
-export type AddReadOnlyWalletResponse = Static<
-  typeof AddReadOnlyWalletResponseSchema
->;
-export type RemoveReadOnlyWalletRequest = Static<
-  typeof RemoveReadOnlyWalletRequestSchema
->;
-export type RemoveReadOnlyWalletResponse = Static<
-  typeof RemoveReadOnlyWalletResponseSchema
->;
+export type AddReadOnlyWalletRequest = Static<typeof AddReadOnlyWalletRequestSchema>;
+export type AddReadOnlyWalletResponse = Static<typeof AddReadOnlyWalletResponseSchema>;
+export type RemoveReadOnlyWalletRequest = Static<typeof RemoveReadOnlyWalletRequestSchema>;
+export type RemoveReadOnlyWalletResponse = Static<typeof RemoveReadOnlyWalletResponseSchema>;
+export type AddHardwareWalletRequest = Static<typeof AddHardwareWalletRequestSchema>;
+export type AddHardwareWalletResponse = Static<typeof AddHardwareWalletResponseSchema>;
+export type RemoveHardwareWalletRequest = Static<typeof RemoveHardwareWalletRequestSchema>;
+export type RemoveHardwareWalletResponse = Static<typeof RemoveHardwareWalletResponseSchema>;
+export type ListHardwareWalletsRequest = Static<typeof ListHardwareWalletsRequestSchema>;
+export type ListHardwareWalletsResponse = Static<typeof ListHardwareWalletsResponseSchema>;
+export type HardwareWalletInfo = Static<typeof HardwareWalletInfoSchema>;
+export type ListHardwareDevicesResponse = Static<typeof ListHardwareDevicesResponseSchema>;

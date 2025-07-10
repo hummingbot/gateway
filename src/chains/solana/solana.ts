@@ -1,11 +1,6 @@
 import crypto from 'crypto';
 
-import {
-  TOKEN_PROGRAM_ID,
-  TOKEN_2022_PROGRAM_ID,
-  unpackAccount,
-  getMint,
-} from '@solana/spl-token';
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, unpackAccount, getMint } from '@solana/spl-token';
 import { TokenInfo } from '@solana/spl-token-registry';
 import {
   Connection,
@@ -35,8 +30,10 @@ import {
   getSafeWalletFilePath,
   sanitizePathComponent,
   getReadOnlyWalletAddresses,
+  isHardwareWallet as isHardwareWalletUtil,
 } from '../../wallet/utils';
 
+import { SolanaLedger } from './solana-ledger';
 import { Config, getSolanaConfig } from './solana.config';
 
 // Constants used for fee calculations
@@ -116,34 +113,22 @@ export class Solana {
       logger.info(
         `Initializing Solana connector for network: ${this.network}, nodeURL: ${this.config.network.nodeURL}`,
       );
-      await this.loadTokens(
-        this.config.network.tokenListSource,
-        this.config.network.tokenListType,
-      );
+      await this.loadTokens(this.config.network.tokenListSource, this.config.network.tokenListType);
     } catch (e) {
       logger.error(`Failed to initialize ${this.network}: ${e}`);
       throw e;
     }
   }
 
-  async getTokenList(
-    _tokenListSource?: string,
-    _tokenListType?: TokenListType,
-  ): Promise<TokenInfo[]> {
+  async getTokenList(_tokenListSource?: string, _tokenListType?: TokenListType): Promise<TokenInfo[]> {
     // Always return the stored list loaded via TokenService
     return this.tokenList;
   }
 
-  async loadTokens(
-    _tokenListSource: string,
-    _tokenListType: TokenListType,
-  ): Promise<void> {
+  async loadTokens(_tokenListSource: string, _tokenListType: TokenListType): Promise<void> {
     try {
       // Use TokenService to load tokens
-      const tokens = await TokenService.getInstance().loadTokenList(
-        'solana',
-        this.network,
-      );
+      const tokens = await TokenService.getInstance().loadTokenList('solana', this.network);
 
       // Convert to TokenInfo format (SPL token registry format)
       this.tokenList = tokens.map((token) => ({
@@ -159,13 +144,9 @@ export class Solana {
         this._tokenMap[token.symbol] = token;
       });
 
-      logger.info(
-        `Loaded ${this.tokenList.length} tokens for solana/${this.network}`,
-      );
+      logger.info(`Loaded ${this.tokenList.length} tokens for solana/${this.network}`);
     } catch (error) {
-      logger.error(
-        `Failed to load token list for ${this.network}: ${error.message}`,
-      );
+      logger.error(`Failed to load token list for ${this.network}: ${error.message}`);
       throw error;
     }
   }
@@ -173,17 +154,11 @@ export class Solana {
   async getToken(addressOrSymbol: string): Promise<TokenInfo | null> {
     // First try to find by symbol (case-insensitive)
     const normalizedSearch = addressOrSymbol.toUpperCase().trim();
-    let token = this.tokenList.find(
-      (token: TokenInfo) =>
-        token.symbol.toUpperCase().trim() === normalizedSearch,
-    );
+    let token = this.tokenList.find((token: TokenInfo) => token.symbol.toUpperCase().trim() === normalizedSearch);
 
     // If not found by symbol, try to find by address
     if (!token) {
-      token = this.tokenList.find(
-        (token: TokenInfo) =>
-          token.address.toLowerCase() === addressOrSymbol.toLowerCase(),
-      );
+      token = this.tokenList.find((token: TokenInfo) => token.address.toLowerCase() === addressOrSymbol.toLowerCase());
     }
 
     // If still not found, try to create a new token assuming addressOrSymbol is an address
@@ -249,10 +224,7 @@ export class Solana {
       const safeWalletPath = getSafeWalletFilePath('solana', validatedAddress);
 
       // Read the wallet file using the safe path
-      const encryptedPrivateKey: string = await fse.readFile(
-        safeWalletPath,
-        'utf8',
-      );
+      const encryptedPrivateKey: string = await fse.readFile(safeWalletPath, 'utf8');
 
       const passphrase = ConfigManagerCertPassphrase.readPassphrase();
       if (!passphrase) {
@@ -285,22 +257,24 @@ export class Solana {
     }
   }
 
+  /**
+   * Check if an address is a hardware wallet
+   */
+  async isHardwareWallet(address: string): Promise<boolean> {
+    try {
+      return await isHardwareWalletUtil('solana', address);
+    } catch (error) {
+      logger.error(`Error checking hardware wallet status: ${error.message}`);
+      return false;
+    }
+  }
+
   async encrypt(secret: string, password: string): Promise<string> {
     const algorithm = 'aes-256-ctr';
     const iv = crypto.randomBytes(16);
     const salt = crypto.randomBytes(32);
-    const key = crypto.pbkdf2Sync(
-      password,
-      new Uint8Array(salt),
-      5000,
-      32,
-      'sha512',
-    );
-    const cipher = crypto.createCipheriv(
-      algorithm,
-      new Uint8Array(key),
-      new Uint8Array(iv),
-    );
+    const key = crypto.pbkdf2Sync(password, new Uint8Array(salt), 5000, 32, 'sha512');
+    const cipher = crypto.createCipheriv(algorithm, new Uint8Array(key), new Uint8Array(iv));
 
     const encryptedBuffers = [
       new Uint8Array(cipher.update(new Uint8Array(Buffer.from(secret)))),
@@ -327,16 +301,10 @@ export class Solana {
 
     const key = crypto.pbkdf2Sync(password, salt, 5000, 32, 'sha512');
 
-    const decipher = crypto.createDecipheriv(
-      hash.algorithm,
-      new Uint8Array(key),
-      iv,
-    );
+    const decipher = crypto.createDecipheriv(hash.algorithm, new Uint8Array(key), iv);
 
     const decryptedBuffers = [
-      new Uint8Array(
-        decipher.update(new Uint8Array(Buffer.from(hash.encrypted, 'hex'))),
-      ),
+      new Uint8Array(decipher.update(new Uint8Array(Buffer.from(hash.encrypted, 'hex')))),
       new Uint8Array(decipher.final()),
     ];
     const decrypted = Buffer.concat(decryptedBuffers);
@@ -347,33 +315,22 @@ export class Solana {
   /**
    * @deprecated Use the optimized implementation in routes/balances.ts instead
    */
-  async getBalance(
-    wallet: Keypair,
-    symbols?: string[],
-  ): Promise<Record<string, number>> {
+  async getBalance(wallet: Keypair, symbols?: string[]): Promise<Record<string, number>> {
     const publicKey = wallet.publicKey;
     const balances: Record<string, number> = {};
 
     // Treat empty array as if no tokens were specified
-    const effectiveSymbols =
-      symbols && symbols.length === 0 ? undefined : symbols;
+    const effectiveSymbols = symbols && symbols.length === 0 ? undefined : symbols;
 
     // Fetch SOL balance only if symbols is undefined or includes "SOL" (case-insensitive)
-    if (
-      !effectiveSymbols ||
-      effectiveSymbols.some((s) => s.toUpperCase() === 'SOL')
-    ) {
+    if (!effectiveSymbols || effectiveSymbols.some((s) => s.toUpperCase() === 'SOL')) {
       const solBalance = await this.connection.getBalance(publicKey);
       const solBalanceInSol = solBalance * LAMPORT_TO_SOL;
       balances['SOL'] = solBalanceInSol;
     }
 
     // Return early if only SOL balance was requested
-    if (
-      effectiveSymbols &&
-      effectiveSymbols.length === 1 &&
-      effectiveSymbols[0].toUpperCase() === 'SOL'
-    ) {
+    if (effectiveSymbols && effectiveSymbols.length === 1 && effectiveSymbols[0].toUpperCase() === 'SOL') {
       return balances;
     }
 
@@ -398,11 +355,7 @@ export class Solana {
     for (const value of allAccounts) {
       try {
         const programId = value.account.owner;
-        const parsedAccount = unpackAccount(
-          value.pubkey,
-          value.account,
-          programId,
-        );
+        const parsedAccount = unpackAccount(value.pubkey, value.account, programId);
         const mintAddress = parsedAccount.mint.toBase58();
         mintToAccount.set(mintAddress, { parsedAccount, value });
       } catch (error) {
@@ -421,9 +374,7 @@ export class Solana {
         }
 
         // Check if it's a token symbol in our list
-        const tokenBySymbol = this.tokenList.find(
-          (t) => t.symbol.toUpperCase() === s.toUpperCase(),
-        );
+        const tokenBySymbol = this.tokenList.find((t) => t.symbol.toUpperCase() === s.toUpperCase());
 
         if (tokenBySymbol) {
           foundTokens.add(tokenBySymbol.symbol);
@@ -432,18 +383,13 @@ export class Solana {
           if (mintToAccount.has(tokenBySymbol.address)) {
             const { parsedAccount } = mintToAccount.get(tokenBySymbol.address);
             const amount = parsedAccount.amount;
-            const uiAmount =
-              Number(amount) / Math.pow(10, tokenBySymbol.decimals);
+            const uiAmount = Number(amount) / Math.pow(10, tokenBySymbol.decimals);
             balances[tokenBySymbol.symbol] = uiAmount;
-            logger.debug(
-              `Found balance for ${tokenBySymbol.symbol}: ${uiAmount}`,
-            );
+            logger.debug(`Found balance for ${tokenBySymbol.symbol}: ${uiAmount}`);
           } else {
             // Token not found in wallet, set balance to 0
             balances[tokenBySymbol.symbol] = 0;
-            logger.debug(
-              `No balance found for ${tokenBySymbol.symbol}, setting to 0`,
-            );
+            logger.debug(`No balance found for ${tokenBySymbol.symbol}, setting to 0`);
           }
         }
         // If it looks like a Solana address, prepare to fetch it directly
@@ -458,9 +404,7 @@ export class Solana {
               const { parsedAccount } = mintToAccount.get(mintAddress);
 
               // Try to get token from our token list
-              const token = this.tokenList.find(
-                (t) => t.address === mintAddress,
-              );
+              const token = this.tokenList.find((t) => t.address === mintAddress);
 
               if (token) {
                 // Token is in our list
@@ -468,9 +412,7 @@ export class Solana {
                 const amount = parsedAccount.amount;
                 const uiAmount = Number(amount) / Math.pow(10, token.decimals);
                 balances[token.symbol] = uiAmount;
-                logger.debug(
-                  `Found balance for ${token.symbol} (${mintAddress}): ${uiAmount}`,
-                );
+                logger.debug(`Found balance for ${token.symbol} (${mintAddress}): ${uiAmount}`);
               } else {
                 // Token is not in our list, need to fetch its metadata
                 tokensToFetch.set(mintAddress, s);
@@ -483,17 +425,13 @@ export class Solana {
             logger.warn(`Invalid token address format: ${s}`);
           }
         } else {
-          logger.warn(
-            `Token not recognized: ${s} (not a known symbol or valid address)`,
-          );
+          logger.warn(`Token not recognized: ${s} (not a known symbol or valid address)`);
         }
       }
     } else {
       // No symbols provided or empty array - check all tokens in the token list
       // Note: When symbols is an empty array, we check all tokens in the token list
-      logger.info(
-        `Checking balances for all ${this.tokenList.length} tokens in the token list`,
-      );
+      logger.info(`Checking balances for all ${this.tokenList.length} tokens in the token list`);
 
       // Process all tokens from the token list
       for (const token of this.tokenList) {
@@ -508,15 +446,11 @@ export class Solana {
           const amount = parsedAccount.amount;
           const uiAmount = Number(amount) / Math.pow(10, token.decimals);
           balances[token.symbol] = uiAmount;
-          logger.debug(
-            `Found balance for ${token.symbol} (${token.address}): ${uiAmount}`,
-          );
+          logger.debug(`Found balance for ${token.symbol} (${token.address}): ${uiAmount}`);
         } else {
           // Set balance to 0 for tokens in the list but not in wallet
           balances[token.symbol] = 0;
-          logger.debug(
-            `No balance found for ${token.symbol} (${token.address}), setting to 0`,
-          );
+          logger.debug(`No balance found for ${token.symbol} (${token.address}), setting to 0`);
         }
       }
     }
@@ -540,28 +474,19 @@ export class Solana {
         } else {
           // Try to get decimals anyway for the display
           try {
-            const mintInfo = await getMint(
-              this.connection,
-              new PublicKey(mintAddress),
-            );
+            const mintInfo = await getMint(this.connection, new PublicKey(mintAddress));
             decimals = mintInfo.decimals;
           } catch (error) {
-            logger.warn(
-              `Could not fetch mint info for ${mintAddress}: ${error.message}`,
-            );
+            logger.warn(`Could not fetch mint info for ${mintAddress}: ${error.message}`);
             decimals = 9; // Default to 9 decimals
           }
         }
 
         // Use the full mint address as the display key for the balance
         balances[mintAddress] = balance;
-        logger.debug(
-          `Using full address as display key for ${mintAddress} with balance ${balance}`,
-        );
+        logger.debug(`Using full address as display key for ${mintAddress} with balance ${balance}`);
       } catch (error) {
-        logger.error(
-          `Failed to process token ${mintAddress}: ${error.message}`,
-        );
+        logger.error(`Failed to process token ${mintAddress}: ${error.message}`);
       }
     }
 
@@ -588,9 +513,7 @@ export class Solana {
   }
 
   // returns a Solana TransactionResponse for a txHash.
-  async getTransaction(
-    payerSignature: string,
-  ): Promise<VersionedTransactionResponse | null> {
+  async getTransaction(payerSignature: string): Promise<VersionedTransactionResponse | null> {
     return this.connection.getTransaction(payerSignature, {
       commitment: 'confirmed',
       maxSupportedTransactionVersion: 0,
@@ -598,9 +521,7 @@ export class Solana {
   }
 
   // returns a Solana TransactionResponseStatusCode for a txData.
-  public async getTransactionStatusCode(
-    txData: TransactionResponse | null,
-  ): Promise<TransactionResponseStatusCode> {
+  public async getTransactionStatusCode(txData: TransactionResponse | null): Promise<TransactionResponseStatusCode> {
     let txStatus;
     if (!txData) {
       // tx not yet confirmed by validator
@@ -608,9 +529,7 @@ export class Solana {
     } else {
       // If txData exists, check if there's an error in the metadata
       txStatus =
-        txData.meta?.err == null
-          ? TransactionResponseStatusCode.CONFIRMED
-          : TransactionResponseStatusCode.FAILED;
+        txData.meta?.err == null ? TransactionResponseStatusCode.CONFIRMED : TransactionResponseStatusCode.FAILED;
     }
     return txStatus;
   }
@@ -642,8 +561,7 @@ export class Solana {
     // Check cache first
     if (
       Solana.lastPriorityFeeEstimate &&
-      Date.now() - Solana.lastPriorityFeeEstimate.timestamp <
-        Solana.PRIORITY_FEE_CACHE_MS
+      Date.now() - Solana.lastPriorityFeeEstimate.timestamp < Solana.PRIORITY_FEE_CACHE_MS
     ) {
       return Solana.lastPriorityFeeEstimate.fee;
     }
@@ -667,9 +585,7 @@ export class Solana {
       });
 
       if (!response.ok) {
-        logger.error(
-          `Failed to fetch priority fees, using minimum fee: ${response.status}`,
-        );
+        logger.error(`Failed to fetch priority fees, using minimum fee: ${response.status}`);
         // Default to 0.1 lamports/CU as minimum
         return 0.1;
       }
@@ -677,9 +593,7 @@ export class Solana {
       const data: PriorityFeeResponse = await response.json();
 
       // Extract fees and filter out zeros
-      const fees = data.result
-        .map((item) => item.prioritizationFee)
-        .filter((fee) => fee > 0);
+      const fees = data.result.map((item) => item.prioritizationFee).filter((fee) => fee > 0);
 
       // Default to 0.1 lamports/CU as minimum
       const minimumFeeLamports = 0.1;
@@ -693,16 +607,13 @@ export class Solana {
       // Calculate statistics
       const minFee = Math.min(...fees) / 1_000_000; // Convert to lamports
       const maxFee = Math.max(...fees) / 1_000_000; // Convert to lamports
-      const averageFee =
-        fees.reduce((sum, fee) => sum + fee, 0) / fees.length / 1_000_000; // Convert to lamports
+      const averageFee = fees.reduce((sum, fee) => sum + fee, 0) / fees.length / 1_000_000; // Convert to lamports
       logger.info(
         `Recent priority fees paid: ${minFee.toFixed(4)} - ${maxFee.toFixed(4)} lamports/CU (avg: ${averageFee.toFixed(4)})`,
       );
 
       // Calculate index for percentile
-      const percentileIndex = Math.ceil(
-        (fees.length * this.config.basePriorityFeePct) / 100,
-      );
+      const percentileIndex = Math.ceil((fees.length * this.config.basePriorityFeePct) / 100);
       let basePriorityFee = fees[percentileIndex - 1] / 1_000_000; // Convert to lamports
 
       // Ensure fee is not below minimum (convert SOL to lamports)
@@ -745,18 +656,13 @@ export class Solana {
 
         // Check if transaction is already confirmed but had an error
         if (txData.meta?.err) {
-          return reject(
-            new Error(
-              `Transaction failed with error: ${JSON.stringify(txData.meta.err)}`,
-            ),
-          );
+          return reject(new Error(`Transaction failed with error: ${JSON.stringify(txData.meta.err)}`));
         }
 
         // More definitive check using slot confirmation
         const status = await this.connection.getSignatureStatus(signature);
         const isConfirmed =
-          status.value?.confirmationStatus === 'confirmed' ||
-          status.value?.confirmationStatus === 'finalized';
+          status.value?.confirmationStatus === 'confirmed' || status.value?.confirmationStatus === 'finalized';
 
         resolve({ confirmed: !!isConfirmed, txData });
       });
@@ -786,8 +692,7 @@ export class Solana {
     priorityFeePerCU?: number,
   ): Promise<{ signature: string; fee: number }> {
     // Use provided priority fee or estimate it
-    const currentPriorityFee =
-      priorityFeePerCU ?? (await this.estimateGasPrice());
+    const currentPriorityFee = priorityFeePerCU ?? (await this.estimateGasPrice());
     const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
 
     const basePriorityFeeLamports = currentPriorityFee * computeUnitsToUse;
@@ -797,38 +702,23 @@ export class Solana {
 
     // Prepare transaction with compute budget
     if (tx instanceof Transaction) {
-      tx = await this.prepareTx(
-        tx,
-        currentPriorityFee,
-        computeUnitsToUse,
-        signers,
-      );
+      tx = await this.prepareTx(tx, currentPriorityFee, computeUnitsToUse, signers);
     } else {
-      tx = await this.prepareVersionedTx(
-        tx,
-        currentPriorityFee,
-        computeUnitsToUse,
-        signers,
-      );
+      tx = await this.prepareVersionedTx(tx, currentPriorityFee, computeUnitsToUse, signers);
       await this.connection.simulateTransaction(tx);
     }
 
     // Use the confirmation retry logic from sendAndConfirmRawTransaction
     const serializedTx = tx.serialize();
-    const { confirmed, signature, txData } =
-      await this._sendAndConfirmRawTransaction(serializedTx);
+    const { confirmed, signature, txData } = await this._sendAndConfirmRawTransaction(serializedTx);
 
     if (confirmed && txData) {
       const actualFee = this.getFee(txData);
-      logger.info(
-        `Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`,
-      );
+      logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
       return { signature, fee: actualFee };
     }
 
-    throw new Error(
-      `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
-    );
+    throw new Error(`Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`);
   }
 
   private async prepareTx(
@@ -844,9 +734,7 @@ export class Solana {
 
     // Remove any existing priority fee instructions and add the new one
     tx.instructions = [
-      ...tx.instructions.filter(
-        (inst) => !inst.programId.equals(ComputeBudgetProgram.programId),
-      ),
+      ...tx.instructions.filter((inst) => !inst.programId.equals(ComputeBudgetProgram.programId)),
       priorityFeeInstruction,
     ];
 
@@ -890,28 +778,20 @@ export class Solana {
     ];
 
     // Check if ComputeBudgetProgram is in static keys
-    const computeBudgetProgramIndex =
-      originalMessage.staticAccountKeys.findIndex((key) =>
-        key.equals(ComputeBudgetProgram.programId),
-      );
+    const computeBudgetProgramIndex = originalMessage.staticAccountKeys.findIndex((key) =>
+      key.equals(ComputeBudgetProgram.programId),
+    );
 
     // Add ComputeBudget program to static keys, adjust indexes, and create modified instructions
     if (computeBudgetProgramIndex === -1) {
       // Add ComputeBudget program to static keys
-      const newStaticKeys = [
-        ...originalMessage.staticAccountKeys,
-        ComputeBudgetProgram.programId,
-      ];
+      const newStaticKeys = [...originalMessage.staticAccountKeys, ComputeBudgetProgram.programId];
 
       // Process original instructions with index adjustment
-      const originalInstructions = originalMessage.compiledInstructions.map(
-        (ix) => ({
-          ...ix,
-          accountKeyIndexes: ix.accountKeyIndexes.map((index) =>
-            index >= originalStaticCount ? index + 1 : index,
-          ),
-        }),
-      );
+      const originalInstructions = originalMessage.compiledInstructions.map((ix) => ({
+        ...ix,
+        accountKeyIndexes: ix.accountKeyIndexes.map((index) => (index >= originalStaticCount ? index + 1 : index)),
+      }));
 
       // Create modified instructions
       const modifiedInstructions = [
@@ -939,13 +819,9 @@ export class Solana {
       );
     } else {
       // Remove compute budget instructions from original instructions
-      const nonComputeBudgetInstructions =
-        originalMessage.compiledInstructions.filter(
-          (ix) =>
-            !originalMessage.staticAccountKeys[ix.programIdIndex].equals(
-              ComputeBudgetProgram.programId,
-            ),
-        );
+      const nonComputeBudgetInstructions = originalMessage.compiledInstructions.filter(
+        (ix) => !originalMessage.staticAccountKeys[ix.programIdIndex].equals(ComputeBudgetProgram.programId),
+      );
 
       // Create modified instructions
       const modifiedInstructions = [
@@ -1014,8 +890,7 @@ export class Solana {
       // Ensure transaction is properly prepared
       const { blockhash } = await this.connection.getLatestBlockhash();
       transaction.recentBlockhash = transaction.recentBlockhash || blockhash;
-      transaction.feePayer =
-        transaction.feePayer || transaction.signatures[0]?.publicKey || null;
+      transaction.feePayer = transaction.feePayer || transaction.signatures[0]?.publicKey || null;
 
       // Get serialized transaction bytes
       const serializedTx = transaction.serialize();
@@ -1044,17 +919,12 @@ export class Solana {
         return { confirmed, signature, txData };
       }
       retryCount++;
-      await new Promise((resolve) =>
-        setTimeout(resolve, this.config.confirmRetryInterval * 1000),
-      );
+      await new Promise((resolve) => setTimeout(resolve, this.config.confirmRetryInterval * 1000));
     }
     return { confirmed: false, signature: '', txData: null };
   }
 
-  async sendRawTransaction(
-    rawTx: Buffer | Uint8Array | Array<number>,
-    lastValidBlockHeight: number,
-  ): Promise<string> {
+  async sendRawTransaction(rawTx: Buffer | Uint8Array | Array<number>, lastValidBlockHeight: number): Promise<string> {
     const blockheight = await this.connection.getBlockHeight({
       commitment: 'confirmed',
     });
@@ -1114,10 +984,9 @@ export class Solana {
       // Check if this is native SOL
       if (token === 'So11111111111111111111111111111111111111112') {
         // For native SOL, we need to calculate from lamport balance changes
-        const accountIndex =
-          txDetails.transaction.message.accountKeys.findIndex((key) =>
-            key.pubkey.equals(ownerPubkey),
-          );
+        const accountIndex = txDetails.transaction.message.accountKeys.findIndex((key) =>
+          key.pubkey.equals(ownerPubkey),
+        );
 
         if (accountIndex === -1) {
           logger.warn(`Owner ${owner} not found in transaction accounts`);
@@ -1125,20 +994,17 @@ export class Solana {
         }
 
         // Calculate SOL change including fees
-        const lamportChange =
-          postBalances[accountIndex] - preBalances[accountIndex];
+        const lamportChange = postBalances[accountIndex] - preBalances[accountIndex];
         return lamportChange * LAMPORT_TO_SOL;
       } else {
         // Token mint address provided - get SPL token balance change
         const preBalance =
-          preTokenBalances.find(
-            (balance) => balance.mint === token && balance.owner === owner,
-          )?.uiTokenAmount.uiAmount || 0;
+          preTokenBalances.find((balance) => balance.mint === token && balance.owner === owner)?.uiTokenAmount
+            .uiAmount || 0;
 
         const postBalance =
-          postTokenBalances.find(
-            (balance) => balance.mint === token && balance.owner === owner,
-          )?.uiTokenAmount.uiAmount || 0;
+          postTokenBalances.find((balance) => balance.mint === token && balance.owner === owner)?.uiTokenAmount
+            .uiAmount || 0;
 
         return postBalance - preBalance;
       }
@@ -1182,9 +1048,7 @@ export class Solana {
         // Attempt to validate the address
         return Solana.validateAddress(walletAddress);
       } catch (e) {
-        logger.warn(
-          `Invalid Solana address found in wallet directory: ${walletAddress}`,
-        );
+        logger.warn(`Invalid Solana address found in wallet directory: ${walletAddress}`);
         return null;
       }
     } catch (error) {
@@ -1209,38 +1073,30 @@ export class Solana {
       Solana._walletAddressExample = defaultAddress;
       return defaultAddress;
     } catch (error) {
-      logger.error(
-        `Error getting Solana wallet address for example: ${error.message}`,
-      );
+      logger.error(`Error getting Solana wallet address for example: ${error.message}`);
       return defaultAddress;
     }
   }
 
   // Update getTokenBySymbol to use new getToken method
-  public async getTokenBySymbol(
-    tokenSymbol: string,
-  ): Promise<TokenInfo | undefined> {
+  public async getTokenBySymbol(tokenSymbol: string): Promise<TokenInfo | undefined> {
     return (await this.getToken(tokenSymbol)) || undefined;
   }
 
-  public async simulateTransaction(
-    transaction: VersionedTransaction | Transaction,
-  ) {
+  public async simulateTransaction(transaction: VersionedTransaction | Transaction) {
     try {
       if (!(transaction instanceof VersionedTransaction)) {
         // Convert regular Transaction to VersionedTransaction for simulation
         const { blockhash } = await this.connection.getLatestBlockhash();
         transaction.recentBlockhash = transaction.recentBlockhash || blockhash;
-        transaction.feePayer =
-          transaction.feePayer || transaction.signatures[0]?.publicKey || null;
+        transaction.feePayer = transaction.feePayer || transaction.signatures[0]?.publicKey || null;
 
         // Convert to VersionedTransaction
         const messageV0 = new MessageV0({
           header: transaction.compileMessage().header,
           staticAccountKeys: transaction.compileMessage().staticAccountKeys,
           recentBlockhash: transaction.recentBlockhash,
-          compiledInstructions:
-            transaction.compileMessage().compiledInstructions,
+          compiledInstructions: transaction.compileMessage().compiledInstructions,
           addressTableLookups: [],
         });
 
@@ -1248,13 +1104,12 @@ export class Solana {
       }
 
       // Now handle all as VersionedTransaction
-      const { value: simulatedTransactionResponse } =
-        await this.connection.simulateTransaction(transaction, {
-          replaceRecentBlockhash: false,
-          commitment: 'confirmed',
-          accounts: { encoding: 'base64', addresses: [] },
-          sigVerify: false,
-        });
+      const { value: simulatedTransactionResponse } = await this.connection.simulateTransaction(transaction, {
+        replaceRecentBlockhash: false,
+        commitment: 'confirmed',
+        accounts: { encoding: 'base64', addresses: [] },
+        sigVerify: false,
+      });
 
       logger.info('Simulation Result:', {
         unitsConsumed: simulatedTransactionResponse.unitsConsumed,
@@ -1284,20 +1139,13 @@ export class Solana {
     signers: Signer[] = [],
     computeUnits?: number,
   ): Promise<{ signature: string; fee: number }> {
-    logger.warn(
-      'sendAndConfirmVersionedTransaction is deprecated. Use sendAndConfirmRawTransaction instead.',
-    );
+    logger.warn('sendAndConfirmVersionedTransaction is deprecated. Use sendAndConfirmRawTransaction instead.');
 
     const currentPriorityFee = Math.floor(await this.estimateGasPrice());
     const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
 
     // Prepare transaction with compute budget instructions
-    const modifiedTx = await this.prepareVersionedTx(
-      tx,
-      currentPriorityFee,
-      computeUnitsToUse,
-      signers,
-    );
+    const modifiedTx = await this.prepareVersionedTx(tx, currentPriorityFee, computeUnitsToUse, signers);
 
     // Use the new method
     const result = await this.sendAndConfirmRawTransaction(modifiedTx);
@@ -1307,8 +1155,6 @@ export class Solana {
       return { signature: result.signature, fee: actualFee };
     }
 
-    throw new Error(
-      `Transaction ${result.signature} not confirmed after multiple attempts`,
-    );
+    throw new Error(`Transaction ${result.signature} not confirmed after multiple attempts`);
   }
 }

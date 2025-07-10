@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import { hardwareWalletRoutes } from './hardware-wallet.routes';
 import { addReadOnlyWalletRoute } from './routes/addReadOnlyWallet';
 import { addWalletRoute } from './routes/addWallet';
 import { getWalletsRoute } from './routes/getWallets';
@@ -15,6 +16,7 @@ export const walletRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(signMessageRoute);
   await fastify.register(addReadOnlyWalletRoute);
   await fastify.register(removeReadOnlyWalletRoute);
+  await fastify.register(hardwareWalletRoutes);
 };
 
 export default walletRoutes;
