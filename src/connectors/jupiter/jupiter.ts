@@ -102,8 +102,9 @@ export class Jupiter {
     outputTokenIdentifier: string,
     amount: number,
     slippagePct?: number,
-    onlyDirectRoutes: boolean = false,
-    restrictIntermediateTokens: boolean = false,
+    onlyDirectRoutes: boolean = JupiterConfig.config.onlyDirectRoutes,
+    restrictIntermediateTokens: boolean = JupiterConfig.config
+      .restrictIntermediateTokens,
     swapMode: 'ExactIn' | 'ExactOut' = 'ExactIn',
   ): Promise<QuoteResponse> {
     const inputToken = await this.solana.getToken(inputTokenIdentifier);

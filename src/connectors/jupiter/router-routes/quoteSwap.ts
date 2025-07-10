@@ -72,8 +72,9 @@ export async function quoteSwap(
     outputToken.address,
     inputAmount / Math.pow(10, inputToken.decimals),
     slippagePct,
-    onlyDirectRoutes || false,
-    restrictIntermediateTokens || false,
+    onlyDirectRoutes ?? JupiterConfig.config.onlyDirectRoutes,
+    restrictIntermediateTokens ??
+      JupiterConfig.config.restrictIntermediateTokens,
     side === 'BUY' ? 'ExactOut' : 'ExactIn',
   );
 

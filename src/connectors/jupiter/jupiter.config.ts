@@ -8,9 +8,12 @@ export namespace JupiterConfig {
 
   export interface RootConfig {
     // Global configuration
+    defaultNetwork: string;
     slippagePct: number;
     priorityLevel: string;
     maxLamports: number;
+    onlyDirectRoutes: boolean;
+    restrictIntermediateTokens: boolean;
     apiKey?: string;
 
     // Available networks
@@ -18,9 +21,16 @@ export namespace JupiterConfig {
   }
 
   export const config: RootConfig = {
+    defaultNetwork: ConfigManagerV2.getInstance().get('jupiter.defaultNetwork'),
     slippagePct: ConfigManagerV2.getInstance().get('jupiter.slippagePct'),
     priorityLevel: ConfigManagerV2.getInstance().get('jupiter.priorityLevel'),
     maxLamports: ConfigManagerV2.getInstance().get('jupiter.maxLamports'),
+    onlyDirectRoutes: ConfigManagerV2.getInstance().get(
+      'jupiter.onlyDirectRoutes',
+    ),
+    restrictIntermediateTokens: ConfigManagerV2.getInstance().get(
+      'jupiter.restrictIntermediateTokens',
+    ),
     apiKey: ConfigManagerV2.getInstance().get('jupiter.apiKey'),
 
     availableNetworks: [
