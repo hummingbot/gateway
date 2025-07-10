@@ -1,3 +1,4 @@
+import sensible from '@fastify/sensible';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../chains/ethereum/ethereum';
@@ -12,14 +13,12 @@ import {
   RemoveHardwareWalletResponse,
   ListHardwareWalletsRequest,
   ListHardwareWalletsResponse,
-  ListHardwareDevicesResponse,
   AddHardwareWalletRequestSchema,
   AddHardwareWalletResponseSchema,
   RemoveHardwareWalletRequestSchema,
   RemoveHardwareWalletResponseSchema,
   ListHardwareWalletsRequestSchema,
   ListHardwareWalletsResponseSchema,
-  ListHardwareDevicesResponseSchema,
 } from './schemas';
 import {
   validateChainName,
@@ -52,16 +51,48 @@ async function addHardwareWallet(
     let walletInfo;
     let validatedAddress: string;
 
-    if (req.chain.toLowerCase() === 'solana') {
-      const derivationPath = req.derivationPath || "44'/501'/0'";
-      walletInfo = await hardwareWalletService.getSolanaAddress(derivationPath);
-      validatedAddress = Solana.validateAddress(walletInfo.address);
-    } else if (req.chain.toLowerCase() === 'ethereum') {
-      const derivationPath = req.derivationPath || "44'/60'/0'/0/0";
-      walletInfo = await hardwareWalletService.getEthereumAddress(derivationPath);
-      validatedAddress = Ethereum.validateAddress(walletInfo.address);
+    // Validate the provided address based on chain type
+    if (req.chain.toLowerCase() === 'ethereum') {
+      validatedAddress = Ethereum.validateAddress(req.address);
+    } else if (req.chain.toLowerCase() === 'solana') {
+      validatedAddress = Solana.validateAddress(req.address);
     } else {
       throw new Error(`Unsupported chain: ${req.chain}`);
+    }
+
+    // Search for the address on the Ledger device
+    const startIndex = req.accountIndex || 0;
+    const maxAccountsToCheck = 20; // Check up to 20 accounts
+    let found = false;
+
+    for (let i = startIndex; i < startIndex + maxAccountsToCheck; i++) {
+      try {
+        if (req.chain.toLowerCase() === 'solana') {
+          const derivationPath = `44'/501'/${i}'`;
+          walletInfo = await hardwareWalletService.getSolanaAddress(derivationPath);
+        } else if (req.chain.toLowerCase() === 'ethereum') {
+          const derivationPath = `44'/60'/0'/0/${i}`;
+          walletInfo = await hardwareWalletService.getEthereumAddress(derivationPath);
+        }
+
+        // Check if this address matches the requested address
+        if (walletInfo && walletInfo.address.toLowerCase() === validatedAddress.toLowerCase()) {
+          found = true;
+          logger.info(`Found matching address at account index ${i}`);
+          break;
+        }
+      } catch (error) {
+        // Continue checking other indices
+        logger.debug(`Account index ${i} check failed: ${error.message}`);
+      }
+    }
+
+    if (!found) {
+      throw fastify.httpErrors.badRequest(
+        `Address ${validatedAddress} not found on Ledger device. ` +
+          `Checked account indices ${startIndex} to ${startIndex + maxAccountsToCheck - 1}. ` +
+          `If your address uses a different account index, please specify it.`,
+      );
     }
 
     // Get existing hardware wallets
@@ -94,9 +125,15 @@ async function addHardwareWallet(
         message: `Hardware wallet ${validatedAddress} added successfully`,
       };
     }
-  } catch (error) {
+  } catch (error: any) {
     logger.error(`Failed to add hardware wallet: ${error.message}`);
 
+    // If it's already an HTTP error (has statusCode), re-throw it directly
+    if (error.statusCode) {
+      throw error;
+    }
+
+    // Otherwise, wrap it appropriately based on the error message
     if (error.message.includes('No Ledger device found')) {
       throw fastify.httpErrors.badRequest(error.message);
     } else if (error.message.includes('rejected by user')) {
@@ -164,21 +201,9 @@ async function listHardwareWallets(
   };
 }
 
-async function listHardwareDevices(): Promise<ListHardwareDevicesResponse> {
-  logger.info('Listing connected hardware devices');
-
-  const hardwareWalletService = HardwareWalletService.getInstance();
-
-  try {
-    const devices = await hardwareWalletService.listDevices();
-    return { devices };
-  } catch (error) {
-    logger.error(`Failed to list hardware devices: ${error.message}`);
-    return { devices: [] };
-  }
-}
-
 export const hardwareWalletRoutes: FastifyPluginAsync = async (fastify) => {
+  await fastify.register(sensible);
+
   // Add hardware wallet
   fastify.post<{
     Body: AddHardwareWalletRequest;
@@ -239,25 +264,6 @@ export const hardwareWalletRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       return await listHardwareWallets(fastify, request.query);
-    },
-  );
-
-  // List connected hardware devices
-  fastify.get<{
-    Reply: ListHardwareDevicesResponse;
-  }>(
-    '/hardware/devices',
-    {
-      schema: {
-        description: 'List connected hardware devices',
-        tags: ['/wallet'],
-        response: {
-          200: ListHardwareDevicesResponseSchema,
-        },
-      },
-    },
-    async () => {
-      return await listHardwareDevices();
     },
   );
 };

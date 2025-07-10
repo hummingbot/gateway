@@ -57,7 +57,8 @@ export const RemoveReadOnlyWalletResponseSchema = Type.Object({
 // Hardware wallet schemas
 export const AddHardwareWalletRequestSchema = Type.Object({
   chain: Type.String(),
-  derivationPath: Type.Optional(Type.String()),
+  address: WalletAddressSchema,
+  accountIndex: Type.Optional(Type.Integer({ minimum: 0, default: 0 })),
   name: Type.Optional(Type.String()),
 });
 
@@ -95,16 +96,6 @@ export const ListHardwareWalletsResponseSchema = Type.Object({
   wallets: Type.Array(HardwareWalletInfoSchema),
 });
 
-export const ListHardwareDevicesResponseSchema = Type.Object({
-  devices: Type.Array(
-    Type.Object({
-      descriptor: Type.String(),
-      productName: Type.String(),
-      serialNumber: Type.Optional(Type.String()),
-    }),
-  ),
-});
-
 // Export TypeScript types
 export type AddWalletRequest = Static<typeof AddWalletRequestSchema>;
 export type AddWalletResponse = Static<typeof AddWalletResponseSchema>;
@@ -123,4 +114,3 @@ export type RemoveHardwareWalletResponse = Static<typeof RemoveHardwareWalletRes
 export type ListHardwareWalletsRequest = Static<typeof ListHardwareWalletsRequestSchema>;
 export type ListHardwareWalletsResponse = Static<typeof ListHardwareWalletsResponseSchema>;
 export type HardwareWalletInfo = Static<typeof HardwareWalletInfoSchema>;
-export type ListHardwareDevicesResponse = Static<typeof ListHardwareDevicesResponseSchema>;
