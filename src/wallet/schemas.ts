@@ -5,20 +5,6 @@ export const WalletAddressSchema = Type.String({
   description: 'Wallet address (Ethereum format: 0x... or Solana format: base58)',
 });
 
-// Unified add wallet schema that supports all wallet types
-export const UnifiedAddWalletRequestSchema = Type.Object({
-  chain: Type.String(),
-  // For regular wallets
-  privateKey: Type.Optional(Type.String()),
-  // For read-only and hardware wallets
-  address: Type.Optional(WalletAddressSchema),
-  // Wallet type flags
-  readOnly: Type.Optional(Type.Boolean({ default: false })),
-  hardware: Type.Optional(Type.Boolean({ default: false })),
-  // Hardware wallet specific
-  accountIndex: Type.Optional(Type.Integer({ minimum: 0, default: 0 })),
-});
-
 export const AddWalletRequestSchema = Type.Object({
   chain: Type.String({
     description: 'Blockchain to add wallet to',
@@ -31,14 +17,6 @@ export const AddWalletRequestSchema = Type.Object({
   }),
 });
 
-export const UnifiedAddWalletResponseSchema = Type.Object({
-  address: WalletAddressSchema,
-  message: Type.String(),
-  // Additional info for hardware wallets
-  publicKey: Type.Optional(Type.String()),
-  derivationPath: Type.Optional(Type.String()),
-});
-
 export const AddWalletResponseSchema = Type.Object({
   address: Type.String({
     description: 'The wallet address that was added',
@@ -46,8 +24,8 @@ export const AddWalletResponseSchema = Type.Object({
 });
 
 export const GetWalletsQuerySchema = Type.Object({
-  showReadOnly: Type.Optional(Type.Boolean({ default: true })),
   showHardware: Type.Optional(Type.Boolean({ default: true })),
+  showReadOnly: Type.Optional(Type.Boolean({ default: true })),
 });
 
 export const GetWalletResponseSchema = Type.Object({
@@ -182,8 +160,6 @@ export const ListHardwareWalletsResponseSchema = Type.Object({
 });
 
 // Export TypeScript types
-export type UnifiedAddWalletRequest = Static<typeof UnifiedAddWalletRequestSchema>;
-export type UnifiedAddWalletResponse = Static<typeof UnifiedAddWalletResponseSchema>;
 export type GetWalletsQuery = Static<typeof GetWalletsQuerySchema>;
 export type AddWalletRequest = Static<typeof AddWalletRequestSchema>;
 export type AddWalletResponse = Static<typeof AddWalletResponseSchema>;
