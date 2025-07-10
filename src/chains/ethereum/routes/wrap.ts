@@ -235,7 +235,7 @@ export const wrapRoute: FastifyPluginAsync = async (fastify) => {
           }),
           address: Type.String({ examples: [walletAddressExample] }),
           amount: Type.String({
-            examples: ['0.1', '1.0'],
+            examples: ['0.01'],
             description: 'The amount of native token to wrap (e.g., ETH, BNB, AVAX)',
           }),
         }),
