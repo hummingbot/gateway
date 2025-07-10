@@ -158,5 +158,31 @@ describe('Hardware Wallet Routes', () => {
       // Should only check once before failing
       expect(mockHardwareWalletService.getSolanaAddress).toHaveBeenCalledTimes(1);
     });
+
+    it('should fail immediately if wrong app is open', async () => {
+      const mockAddress = '0x10BA451e6439Efc6a17dc20d21121Aa838100705';
+
+      (Ethereum.validateAddress as jest.Mock).mockReturnValue(mockAddress);
+
+      // Mock wrong app being open (error code 0x6a83)
+      mockHardwareWalletService.getEthereumAddress.mockRejectedValue(
+        new Error('Ledger device: UNKNOWN_ERROR (0x6a83)'),
+      );
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/add-hardware',
+        body: {
+          chain: 'ethereum',
+          address: mockAddress,
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toContain('Wrong Ledger app is open');
+      expect(response.body).toContain('Please open the Ethereum app on your Ledger device');
+      // Should only check once before failing
+      expect(mockHardwareWalletService.getEthereumAddress).toHaveBeenCalledTimes(1);
+    });
   });
 });

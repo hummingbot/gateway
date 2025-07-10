@@ -85,6 +85,14 @@ async function addHardwareWallet(
           );
         }
 
+        // Check if wrong app is open (error code 0x6a83)
+        if (error.message?.includes('0x6a83') || error.message?.includes('UNKNOWN_ERROR')) {
+          const appName = req.chain.toLowerCase() === 'ethereum' ? 'Ethereum' : 'Solana';
+          throw fastify.httpErrors.badRequest(
+            `Wrong Ledger app is open. Please open the ${appName} app on your Ledger device.`,
+          );
+        }
+
         // Continue checking other indices for other errors
       }
     }
@@ -111,6 +119,14 @@ async function addHardwareWallet(
           const appName = req.chain.toLowerCase() === 'ethereum' ? 'Ethereum' : 'Solana';
           throw fastify.httpErrors.badRequest(
             `Ledger device is locked. Please unlock your Ledger device and open the ${appName} app.`,
+          );
+        }
+
+        // Check if wrong app is open (error code 0x6a83)
+        if (error.message?.includes('0x6a83') || error.message?.includes('UNKNOWN_ERROR')) {
+          const appName = req.chain.toLowerCase() === 'ethereum' ? 'Ethereum' : 'Solana';
+          throw fastify.httpErrors.badRequest(
+            `Wrong Ledger app is open. Please open the ${appName} app on your Ledger device.`,
           );
         }
       }
