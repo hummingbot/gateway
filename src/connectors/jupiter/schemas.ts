@@ -139,9 +139,6 @@ export const JupiterQuoteSwapResponse = Type.Object({
 export const JupiterExecuteQuoteRequest = Type.Object({
   walletAddress: Type.String({
     description: 'Solana wallet address that will execute the swap',
-    examples: [
-      '7aaee2311351ac9e4de53bf981fd3c882969e4edcd8e858b4eac50f6b8a41112',
-    ], // Example wallet
   }),
   network: Type.String({
     description: 'Solana network to use',
@@ -156,6 +153,7 @@ export const JupiterExecuteQuoteRequest = Type.Object({
     Type.String({
       description: 'Priority level for Solana transaction processing',
       enum: ['medium', 'high', 'veryHigh'],
+      default: JupiterConfig.config.priorityLevel,
     }),
   ),
   maxLamports: Type.Optional(
@@ -170,9 +168,6 @@ export const JupiterExecuteQuoteRequest = Type.Object({
 export const JupiterExecuteSwapRequest = Type.Object({
   walletAddress: Type.String({
     description: 'Solana wallet address that will execute the swap',
-    examples: [
-      '7aaee2311351ac9e4de53bf981fd3c882969e4edcd8e858b4eac50f6b8a41112',
-    ], // Example wallet
   }),
   network: Type.String({
     description: 'Solana network to use',
@@ -223,6 +218,7 @@ export const JupiterExecuteSwapRequest = Type.Object({
     Type.String({
       description: 'Priority level for Solana transaction processing',
       enum: ['medium', 'high', 'veryHigh'],
+      default: JupiterConfig.config.priorityLevel,
     }),
   ),
   maxLamports: Type.Optional(

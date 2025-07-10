@@ -1197,7 +1197,8 @@ export class Solana {
     if (Solana._walletAddressExample) {
       return Solana._walletAddressExample;
     }
-    const defaultAddress = '11111111111111111111111111111111';
+    // Use a valid Solana address format (system program address)
+    const defaultAddress = '11111111111111111111111111111112';
     try {
       const foundWallet = await Solana.getFirstWalletAddress();
       if (foundWallet) {

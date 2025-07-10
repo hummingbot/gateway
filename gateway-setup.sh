@@ -16,35 +16,51 @@ CERTS_TO_PATH="$GATEWAY_DIR/certs"
 # Default Hummingbot certs path (one level up from gateway)
 HUMMINGBOT_CERTS_PATH="$HUMMINGBOT_ROOT/certs"
 
+# Check for --with-defaults flag
+WITH_DEFAULTS=false
+for arg in "$@"; do
+  if [ "$arg" = "--with-defaults" ]; then
+    WITH_DEFAULTS=true
+    break
+  fi
+done
+
 
 prompt_proceed () {
- read -p "Do you want to proceed? [Y/N] >>> " PROCEED
- if [ "$PROCEED" == "" ]
- then
-   prompt_proceed
+ if [ "$WITH_DEFAULTS" = true ]; then
+   PROCEED="Y"
  else
-  if [[ "$PROCEED" != "Y" && "$PROCEED" != "y" ]]
-  then
-    PROCEED="N"
-  fi
+   read -p "Do you want to proceed? [Y/N] >>> " PROCEED
+   if [ "$PROCEED" == "" ]
+   then
+     prompt_proceed
+   else
+    if [[ "$PROCEED" != "Y" && "$PROCEED" != "y" ]]
+    then
+      PROCEED="N"
+    fi
+   fi
  fi
 }
 
-copy_configs () {
-  echo
-  # Make destination folder if needed
-  mkdir -p $HOST_CONF_PATH
-  
-  # Track what was updated for final summary
-  UPDATED_ITEMS=""
-  
-  # Note: conf/wallets/ is never touched by this script to preserve user wallets
+ask_config_choices () {
+  # Track what will be updated
+  PLANNED_UPDATES=""
   
   # Function to prompt for yes/no with default
   prompt_yes_no () {
     local prompt_text="$1"
     local default_val="${2:-Y}"
     local user_input
+    
+    if [ "$WITH_DEFAULTS" = true ]; then
+      # In with-defaults mode, use default value
+      if [ "$default_val" = "Y" ]; then
+        return 0
+      else
+        return 1
+      fi
+    fi
     
     if [ "$default_val" = "Y" ]; then
       read -p "$prompt_text [Y/n] >>> " user_input
@@ -61,51 +77,125 @@ copy_configs () {
     fi
   }
   
+  # Always include root.yml (essential file)
+  UPDATE_ROOT="Y"
+  PLANNED_UPDATES="${PLANNED_UPDATES}root.yml, "
+  
+  # Always update namespace folder (required for config validation)
+  UPDATE_NAMESPACE="Y"
+  PLANNED_UPDATES="${PLANNED_UPDATES}namespace/, "
+
+  # Ask about configurations to update
+  echo "📦 Select configurations to update:"
+  echo
+  
+  # Ask about server.yml
+  if prompt_yes_no "  - server.yml (default Gateway server config)?" "Y"; then
+    UPDATE_SERVER="Y"
+    PLANNED_UPDATES="${PLANNED_UPDATES}server.yml, "
+  else
+    UPDATE_SERVER="N"
+  fi
+  
+  # Ask about networks folder
+  if prompt_yes_no "  - networks/ (default configs for each chain/network)?" "Y"; then
+    UPDATE_NETWORKS="Y"
+    PLANNED_UPDATES="${PLANNED_UPDATES}networks/, "
+  else
+    UPDATE_NETWORKS="N"
+  fi
+  
+  # Ask about connectors folder
+  if prompt_yes_no "  - connectors/ (default configs for each DEX connector)?" "Y"; then
+    UPDATE_CONNECTORS="Y"
+    PLANNED_UPDATES="${PLANNED_UPDATES}connectors/, "
+  else
+    UPDATE_CONNECTORS="N"
+  fi
+  
+  # Ask about tokens folder
+  if prompt_yes_no "  - tokens/ (default token lists for each chain/network)?" "Y"; then
+    UPDATE_TOKENS="Y"
+    PLANNED_UPDATES="${PLANNED_UPDATES}tokens/, "
+  else
+    UPDATE_TOKENS="N"
+  fi
+  
+  # Ask about pools folder
+  if prompt_yes_no "  - pools/ (default pool lists for each DEX connector)?" "Y"; then
+    UPDATE_POOLS="Y"
+    PLANNED_UPDATES="${PLANNED_UPDATES}pools/, "
+  else
+    UPDATE_POOLS="N"
+  fi
+  
+  # Remove trailing comma and space
+  PLANNED_UPDATES=${PLANNED_UPDATES%, }
+}
+
+copy_configs () {
+  echo
+  # Make destination folder if needed
+  mkdir -p $HOST_CONF_PATH
+  
+  # Preserve wallets directory if it exists
+  if [ -d "$HOST_CONF_PATH/wallets" ]; then
+    cp -r "$HOST_CONF_PATH/wallets" "$HOST_CONF_PATH/wallets.backup"
+  fi
+  
+  # Track what was updated for final summary
+  UPDATED_ITEMS=""
+  
+  # Note: conf/wallets/ is never touched by this script to preserve user wallets
+  
+  # Copy based on user choices
   # Always copy root.yml (essential file)
   cp $TEMPLATE_DIR/root.yml $HOST_CONF_PATH/
   UPDATED_ITEMS="${UPDATED_ITEMS}root.yml, "
   
-  # Ask about server.yml
-  echo "📄 Configuration files:"
-  if prompt_yes_no "  - Update server.yml?" "Y"; then
+  # Copy server.yml if selected
+  if [ "$UPDATE_SERVER" = "Y" ]; then
     cp $TEMPLATE_DIR/server.yml $HOST_CONF_PATH/
     UPDATED_ITEMS="${UPDATED_ITEMS}server.yml, "
   fi
   
-  echo
-  echo "📁 Configuration folders:"
-  
-  # Copy connectors folder
-  if prompt_yes_no "  - Update connectors/ (default connector configs)?" "Y"; then
+  # Copy connectors folder if selected
+  if [ "$UPDATE_CONNECTORS" = "Y" ]; then
     cp -r $TEMPLATE_DIR/connectors $HOST_CONF_PATH/
     UPDATED_ITEMS="${UPDATED_ITEMS}connectors/, "
   fi
   
-  # Copy namespace folder
-  if prompt_yes_no "  - Update namespace/ (config schemas)?" "Y"; then
+  # Copy namespace folder if selected
+  if [ "$UPDATE_NAMESPACE" = "Y" ]; then
     cp -r $TEMPLATE_DIR/namespace $HOST_CONF_PATH/
     UPDATED_ITEMS="${UPDATED_ITEMS}namespace/, "
   fi
   
-  # Copy networks folder
-  if prompt_yes_no "  - Update networks/ (default chain/network configs)?" "Y"; then
+  # Copy networks folder if selected
+  if [ "$UPDATE_NETWORKS" = "Y" ]; then
     cp -r $TEMPLATE_DIR/networks $HOST_CONF_PATH/
     UPDATED_ITEMS="${UPDATED_ITEMS}networks/, "
   fi
   
-  # Copy tokens folder
-  if prompt_yes_no "  - Update tokens/ (token lists)?" "Y"; then
+  # Copy tokens folder if selected
+  if [ "$UPDATE_TOKENS" = "Y" ]; then
     cp -r $TEMPLATE_DIR/tokens $HOST_CONF_PATH/
     UPDATED_ITEMS="${UPDATED_ITEMS}tokens/, "
   fi
   
-  # Copy pools folder
-  if prompt_yes_no "  - Update pools/ (AMM/CLMM pool lists)?" "Y"; then
+  # Copy pools folder if selected
+  if [ "$UPDATE_POOLS" = "Y" ]; then
     cp -r $TEMPLATE_DIR/pools $HOST_CONF_PATH/
     UPDATED_ITEMS="${UPDATED_ITEMS}pools/, "
   fi
   
   # Note: wallets folder is preserved and never overwritten
+  
+  # Restore wallets directory if it was backed up
+  if [ -d "$HOST_CONF_PATH/wallets.backup" ]; then
+    rm -rf "$HOST_CONF_PATH/wallets"
+    mv "$HOST_CONF_PATH/wallets.backup" "$HOST_CONF_PATH/wallets"
+  fi
   
   # Remove trailing comma and space
   UPDATED_ITEMS=${UPDATED_ITEMS%, }
@@ -120,29 +210,6 @@ copy_configs () {
 
 
 link_certs () {
-  # Default to Hummingbot certs path, but allow user to override
-  echo "Default Hummingbot certs path detected: $HUMMINGBOT_CERTS_PATH"
-  read -p "Enter path to the Hummingbot certs folder (press Enter for default) >>> " CERTS_FROM_PATH
-  
-  # Use default if no input provided
-  if [ -z "$CERTS_FROM_PATH" ]; then
-    CERTS_FROM_PATH="$HUMMINGBOT_CERTS_PATH"
-  fi
-  
-  if [ ! -d "$CERTS_FROM_PATH" ]; then
-    echo "Error: $CERTS_FROM_PATH does not exist or is not a directory"
-    echo "Tip: Run 'gateway generate-certs' from Hummingbot to create certificates"
-    exit 1
-  fi
-
-  # Check if there are any .pem files in the source directory
-  PEM_COUNT=$(find "$CERTS_FROM_PATH" -maxdepth 1 -name "*.pem" | wc -l)
-  if [ "$PEM_COUNT" -eq 0 ]; then
-    echo "Error: No .pem files found in $CERTS_FROM_PATH"
-    echo "Tip: Run 'gateway generate-certs' from Hummingbot to create certificates"
-    exit 1
-  fi
-
   # Remove existing certs folder/symlink if it exists
   if [ -L "$CERTS_TO_PATH" ] || [ -d "$CERTS_TO_PATH" ]; then
     echo "Removing existing certs folder/symlink..."
@@ -154,8 +221,8 @@ link_certs () {
   
   # Confirm that the symlink was created
   if [ $? -eq 0 ]; then
-    echo "Symlink successfully created from $CERTS_TO_PATH to $CERTS_FROM_PATH"
-    echo "Gateway will now use the same certificates as Hummingbot"
+    echo "✅ Certificate symlink created successfully"
+    echo "   Gateway will now use the same certificates as Hummingbot"
   else
     echo "Error creating symlink from $CERTS_TO_PATH to $CERTS_FROM_PATH"
     exit 1
@@ -176,35 +243,103 @@ replace_lists_source () {
 
 echo
 echo
-echo "===============  SETUP GATEWAY (Submodule Mode) ==============="
+echo "===============  SETUP GATEWAY ==============="
 echo
-echo "Gateway directory: $GATEWAY_DIR"
-echo "Hummingbot root: $HUMMINGBOT_ROOT"
+if [ "$WITH_DEFAULTS" = true ]; then
+  echo "Running with --with-defaults: All configurations will be updated automatically."
+else
+  echo "This script helps you initialize a Gateway server."
+  echo "It will copy default configuration files from the templates directory to your conf folder. You can choose which configurations to update."
+  echo "Optionally, it will also link to the Hummingbot client certificates so you can run Gateway in HTTPS mode."
+fi
 echo
 
-read -p "Do you want to link to Hummingbot client certificates (Y/N) >>> " LINK_CERTS
-if [[ "$LINK_CERTS" == "Y" ||  "$LINK_CERTS" == "y" ]]
-then
-  link_certs
+# Ask user which configurations to update
+ask_config_choices
+
+# Ask about certificates
+if [ "$WITH_DEFAULTS" = true ]; then
+  # Skip certificate linking in with-defaults mode
+  LINK_CERTS="N"
 else
-  echo "Skipping linking client certificates"
+  echo
+  read -p "Do you want to link to Hummingbot client certificates [y/N] >>> " LINK_CERTS
+  # Default to No if empty
+  LINK_CERTS=${LINK_CERTS:-N}
+    if [[ "$LINK_CERTS" == "Y" ||  "$LINK_CERTS" == "y" ]]
+    then
+      # Get the certificate path now, before showing summary
+      echo
+      read -p "Enter path to the Hummingbot certs folder [$HUMMINGBOT_CERTS_PATH] >>> " CERTS_FROM_PATH
+    
+      # Use default if no input provided
+      if [ -z "$CERTS_FROM_PATH" ]; then
+        CERTS_FROM_PATH="$HUMMINGBOT_CERTS_PATH"
+      fi
+      
+      # Validate the path
+      if [ ! -d "$CERTS_FROM_PATH" ]; then
+        echo "Error: $CERTS_FROM_PATH does not exist or is not a directory"
+        echo "Tip: Run 'gateway generate-certs' from Hummingbot to create certificates"
+        exit 1
+      fi
+      
+      # Check if there are any .pem files in the source directory
+      PEM_COUNT=$(find "$CERTS_FROM_PATH" -maxdepth 1 -name "*.pem" | wc -l)
+      if [ "$PEM_COUNT" -eq 0 ]; then
+        echo "Error: No .pem files found in $CERTS_FROM_PATH"
+        echo "Tip: Run 'gateway generate-certs' from Hummingbot to create certificates"
+        exit 1
+      fi
+    fi
 fi
 
-# Ask user to confirm and proceed
+# Show what will be updated and ask for final confirmation
 echo
-echo "ℹ️ Configuration update settings:"
+echo "📋 Summary of changes:"
 echo
-printf "%30s %5s\n" "Source directory:" "$TEMPLATE_DIR"
-printf "%30s %5s\n" "Destination directory:" "$HOST_CONF_PATH"
+
+# Show configuration updates
+echo "📦 Configuration updates:"
+echo "   FROM: $TEMPLATE_DIR"
+echo "   TO:   $HOST_CONF_PATH"
+echo
+
+# List specific items to be updated
+echo "   Items to be updated:"
+echo "   - root.yml (always updated - essential file)"
+if [ "$UPDATE_SERVER" = "Y" ]; then
+  echo "   - server.yml (default Gateway server configs)"
+fi
+if [ "$UPDATE_NETWORKS" = "Y" ]; then
+  echo "   - networks/ (default configs for each chain/network)"
+fi
+if [ "$UPDATE_CONNECTORS" = "Y" ]; then
+  echo "   - connectors/ (default configs for each DEX connector)"
+fi
+if [ "$UPDATE_TOKENS" = "Y" ]; then
+  echo "   - tokens/ (default token lists for each chain/network)"
+fi
+if [ "$UPDATE_POOLS" = "Y" ]; then
+  echo "   - pools/ (default pool lists for each DEX connector)"
+fi
+
+# Show wallet preservation status
+if [ -d "$HOST_CONF_PATH/wallets" ]; then
+  echo
+  echo "✅ Existing wallets/ directory will be preserved"
+fi
+
+# Show certificate linking if applicable
 if [[ "$LINK_CERTS" == "Y" ||  "$LINK_CERTS" == "y" ]]
 then
   echo
-  printf "%30s %5s\n" "Link certs FROM:" "$CERTS_FROM_PATH"
-  printf "%30s %5s\n" "Link certs TO:" "$CERTS_TO_PATH"
-  echo "  (Symlink will be created)"
+  echo "🔐 Certificates:"
+  echo "   FROM: $CERTS_FROM_PATH"
+  echo "   TO:   $CERTS_TO_PATH"
+  echo "   (Symlink will be created)"
 fi
-echo
-echo "You will be asked which configurations to update."
+
 echo
 
 prompt_proceed
@@ -212,6 +347,13 @@ if [[ "$PROCEED" == "Y" || "$PROCEED" == "y" ]]
 then
   copy_configs
   replace_lists_source
+  
+  # Link certificates if requested
+  if [[ "$LINK_CERTS" == "Y" ||  "$LINK_CERTS" == "y" ]]
+  then
+    echo
+    link_certs
+  fi
 else
   echo "Exiting..."
   exit

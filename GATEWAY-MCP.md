@@ -231,7 +231,11 @@ pnpm build
 
 ```bash
 # Generate certificates and initial configs
-./gateway-setup.sh
+# Option 1: Interactive setup
+pnpm run setup
+
+# Option 2: Setup with all defaults
+pnpm run setup:with-defaults
 
 # Start Gateway API
 pnpm start

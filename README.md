@@ -205,8 +205,12 @@ pnpm install
 # Complile Typescript into JS
 pnpm build
 
-# Run Gateway setup script, which helps you set configs and CERTS_PATH
-./gateway-setup.sh
+# Run Gateway setup script
+# Option 1: Interactive setup (choose which configs to update)
+pnpm run setup
+
+# Option 2: Setup with all defaults (updates all configs automatically)
+pnpm run setup:with-defaults
 ```
 
 ### Start Gateway
