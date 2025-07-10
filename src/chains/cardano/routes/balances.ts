@@ -146,12 +146,12 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
   // Get first wallet address for example
   const cardano = await Cardano.getInstance('preprod');
 
-  // Default Ethereum address for examples if no wallet is available
+  // Default Cardano address for examples if no wallet is available
   let firstWalletAddress = '';
 
   try {
-    // Try to get user's first Ethereum wallet if available
-    // getFirstWalletAddress specifically looks in the /ethereum directory
+    // Try to get user's first Cardano wallet if available
+    // getFirstWalletAddress specifically looks in the /cardano directory
     const userWallet = await cardano.getFirstWalletAddress();
     if (userWallet) {
       // Make sure it's a valid Cardano address
@@ -166,7 +166,7 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
       }
     }
   } catch (error) {
-    logger.warn('No Ethereum wallets found for examples in schema');
+    logger.warn('No Cardano wallets found for examples in schema');
   }
 
   BalanceRequestSchema.properties.address.examples = [firstWalletAddress];

@@ -68,7 +68,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           );
         }
 
-        // Get Uniswap and Ethereum instances
+        // Get Minswap and Cardano instances
         const minswap = await Minswap.getInstance(networkToUse);
 
         // Get wallet address - either from request or first available
