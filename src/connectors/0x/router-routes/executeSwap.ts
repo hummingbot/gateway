@@ -1,16 +1,12 @@
-import { BigNumber } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  ExecuteSwapRequestType,
-  SwapExecuteResponseType,
-  SwapExecuteResponse,
-} from '../../../schemas/router-schema';
+import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
-import { sanitizeErrorMessage } from '../../../services/sanitize';
-import { ZeroX } from '../0x';
 import { ZeroXExecuteSwapRequest } from '../schemas';
+
+import { executeQuote } from './executeQuote';
+import { quoteSwap } from './quoteSwap';
 
 async function executeSwap(
   fastify: FastifyInstance,
@@ -23,159 +19,24 @@ async function executeSwap(
   slippagePct: number,
   gasPrice?: string,
   maxGas?: number,
-  _excludedSources?: string[],
-  _includedSources?: string[],
 ): Promise<SwapExecuteResponseType> {
-  const ethereum = await Ethereum.getInstance(network);
-  const wallet = await ethereum.getWallet(walletAddress);
-  const zeroX = await ZeroX.getInstance(network);
-
-  // Resolve token symbols to addresses
-  const baseTokenInfo = await ethereum.getTokenBySymbol(baseToken);
-  const quoteTokenInfo = await ethereum.getTokenBySymbol(quoteToken);
-
-  if (!baseTokenInfo || !quoteTokenInfo) {
-    throw fastify.httpErrors.badRequest(
-      sanitizeErrorMessage(
-        'Token not found: {}',
-        !baseTokenInfo ? baseToken : quoteToken,
-      ),
-    );
-  }
-
-  // Determine input/output based on side
-  const sellToken =
-    side === 'SELL' ? baseTokenInfo.address : quoteTokenInfo.address;
-  const buyToken =
-    side === 'SELL' ? quoteTokenInfo.address : baseTokenInfo.address;
-  const tokenDecimals =
-    side === 'SELL' ? baseTokenInfo.decimals : quoteTokenInfo.decimals;
-  const sellTokenInfo = side === 'SELL' ? baseTokenInfo : quoteTokenInfo;
-  const buyTokenInfo = side === 'SELL' ? quoteTokenInfo : baseTokenInfo;
-
-  // Convert amount to token units
-  const tokenAmount = zeroX.parseTokenAmount(amount, tokenDecimals);
-
-  logger.info(
-    `Executing swap for ${amount} ${side === 'SELL' ? baseToken : quoteToken} -> ${side === 'SELL' ? quoteToken : baseToken}`,
+  // Step 1: Get a fresh firm quote using the quoteSwap function
+  const quoteResult = await quoteSwap(
+    fastify,
+    network,
+    baseToken,
+    quoteToken,
+    amount,
+    side,
+    slippagePct,
+    false, // indicativePrice = false for firm quote
+    walletAddress, // takerAddress
   );
 
-  // Get quote from 0x API
-  const quoteResponse = await zeroX.getQuote({
-    sellToken,
-    buyToken,
-    sellAmount: side === 'SELL' ? tokenAmount : undefined,
-    buyAmount: side === 'BUY' ? tokenAmount : undefined,
-    takerAddress: walletAddress,
-    slippagePercentage: zeroX.convertSlippageToPercentage(slippagePct),
-    skipValidation: false,
-  });
+  // Step 2: Execute the quote immediately using executeQuote function
+  const executeResult = await executeQuote(fastify, walletAddress, network, quoteResult.quoteId, gasPrice, maxGas);
 
-  // Check and approve allowance if needed
-  if (sellTokenInfo.address !== ethereum.nativeTokenSymbol) {
-    const tokenContract = ethereum.getContract(sellTokenInfo.address, wallet);
-    const allowance = await ethereum.getERC20Allowance(
-      tokenContract,
-      wallet,
-      quoteResponse.allowanceTarget,
-      sellTokenInfo.decimals,
-    );
-
-    const requiredAllowance = BigNumber.from(quoteResponse.sellAmount);
-    if (BigNumber.from(allowance.value).lt(requiredAllowance)) {
-      logger.info(`Approving ${sellTokenInfo.symbol} for 0x swap`);
-      await ethereum.approveERC20(
-        tokenContract,
-        wallet,
-        quoteResponse.allowanceTarget,
-        requiredAllowance,
-      );
-    }
-  }
-
-  // Execute the swap transaction
-  const txData = {
-    to: quoteResponse.to,
-    data: quoteResponse.data,
-    value: quoteResponse.value,
-    gasLimit:
-      maxGas || parseInt(quoteResponse.estimatedGas || quoteResponse.gas),
-    ...(gasPrice && { gasPrice: BigNumber.from(gasPrice) }),
-  };
-
-  const txResponse = await wallet.sendTransaction(txData);
-  const txReceipt = await txResponse.wait();
-
-  if (!txReceipt || txReceipt.status !== 1) {
-    throw fastify.httpErrors.internalServerError('Transaction failed');
-  }
-
-  // Calculate fee from gas used
-  const fee = parseFloat(
-    zeroX.formatTokenAmount(
-      txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice).toString(),
-      18,
-    ),
-  );
-
-  // For now, use the quote amounts as the actual amounts
-  // In a real implementation, you would extract actual amounts from events
-  const baseTokenBalanceChange =
-    side === 'SELL'
-      ? -parseFloat(
-          zeroX.formatTokenAmount(
-            quoteResponse.sellAmount,
-            baseTokenInfo.decimals,
-          ),
-        )
-      : parseFloat(
-          zeroX.formatTokenAmount(
-            quoteResponse.buyAmount,
-            baseTokenInfo.decimals,
-          ),
-        );
-  const quoteTokenBalanceChange =
-    side === 'SELL'
-      ? parseFloat(
-          zeroX.formatTokenAmount(
-            quoteResponse.buyAmount,
-            quoteTokenInfo.decimals,
-          ),
-        )
-      : -parseFloat(
-          zeroX.formatTokenAmount(
-            quoteResponse.sellAmount,
-            quoteTokenInfo.decimals,
-          ),
-        );
-
-  // Calculate actual amounts swapped
-  const amountIn =
-    side === 'SELL'
-      ? Math.abs(baseTokenBalanceChange)
-      : Math.abs(quoteTokenBalanceChange);
-  const amountOut =
-    side === 'SELL'
-      ? Math.abs(quoteTokenBalanceChange)
-      : Math.abs(baseTokenBalanceChange);
-
-  logger.info(
-    `Swap executed successfully: ${amountIn.toFixed(4)} ${sellTokenInfo.symbol} -> ${amountOut.toFixed(4)} ${buyTokenInfo.symbol}`,
-  );
-
-  return {
-    signature: txReceipt.transactionHash,
-    status: 1, // CONFIRMED
-    data: {
-      tokenIn: sellToken,
-      tokenOut: buyToken,
-      amountIn,
-      amountOut,
-      fee,
-      baseTokenBalanceChange,
-      quoteTokenBalanceChange,
-    },
-  };
+  return executeResult;
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
@@ -208,19 +69,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          walletAddress,
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          slippagePct,
-          gasPrice,
-          maxGas,
-          excludedSources,
-          includedSources,
-        } = request.body as typeof ZeroXExecuteSwapRequest._type;
+        const { walletAddress, network, baseToken, quoteToken, amount, side, slippagePct, gasPrice, maxGas } =
+          request.body as typeof ZeroXExecuteSwapRequest._type;
 
         return await executeSwap(
           fastify,
@@ -233,8 +83,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
           gasPrice,
           maxGas,
-          excludedSources,
-          includedSources,
         );
       } catch (e) {
         if (e.statusCode) throw e;

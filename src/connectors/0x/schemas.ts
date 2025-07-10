@@ -2,72 +2,29 @@ import { Type, Static } from '@sinclair/typebox';
 
 import * as Base from '../../schemas/router-schema';
 
-// GetPrice schemas - only used by 0x connector
-export const GetPriceRequest = Type.Object(
-  {
-    network: Type.String(),
-    baseToken: Type.String({
-      description: 'Token to determine swap direction',
-    }),
-    quoteToken: Type.String({
-      description: 'The other token in the pair',
-    }),
-    amount: Type.Number(),
-    side: Type.String({
-      description: 'Trade direction',
-      enum: ['BUY', 'SELL'],
-    }),
-  },
-  { $id: 'GetPriceRequest' },
-);
-export type GetPriceRequestType = Static<typeof GetPriceRequest>;
+import { ZeroXConfig } from './0x.config';
 
-export const GetPriceResponse = Type.Object(
-  {
-    estimatedAmountIn: Type.Number(),
-    estimatedAmountOut: Type.Number(),
-    price: Type.Number(),
-    // Computed fields for clarity
-    tokenIn: Type.String(),
-    tokenOut: Type.String(),
-    // Price impact percentage (optional for backward compatibility)
-    priceImpactPct: Type.Optional(
-      Type.Number({
-        description: 'Estimated price impact as a percentage (0-100)',
-      }),
-    ),
-  },
-  { $id: 'GetPriceResponse' },
-);
-export type GetPriceResponseType = Static<typeof GetPriceResponse>;
-
-// 0x-specific extensions for get-price
-export const ZeroXGetPriceRequest = Type.Intersect([
-  GetPriceRequest,
-  Type.Object({
-    gasPrice: Type.Optional(Type.String()),
-    excludedSources: Type.Optional(Type.Array(Type.String())),
-    includedSources: Type.Optional(Type.Array(Type.String())),
-  }),
-]);
-
-// 0x-specific extensions for get-price response
-export const ZeroXGetPriceResponse = Type.Intersect([
-  GetPriceResponse,
-  Type.Object({
-    // priceImpactPct is now included in base schema
-  }),
-]);
+// Constants for examples
+const BASE_TOKEN = 'WETH';
+const QUOTE_TOKEN = 'USDC';
+const SWAP_AMOUNT = 1;
 
 // 0x-specific extensions for quote-swap
 export const ZeroXQuoteSwapRequest = Type.Intersect([
   Base.QuoteSwapRequest,
   Type.Object({
-    gasPrice: Type.Optional(Type.String()),
-    excludedSources: Type.Optional(Type.Array(Type.String())),
-    includedSources: Type.Optional(Type.Array(Type.String())),
-    skipValidation: Type.Optional(Type.Boolean()),
-    takerAddress: Type.Optional(Type.String()),
+    indicativePrice: Type.Optional(
+      Type.Boolean({
+        description:
+          'If true, returns indicative pricing only (no commitment). If false, returns firm quote ready for execution',
+        default: true,
+      }),
+    ),
+    takerAddress: Type.Optional(
+      Type.String({
+        description: 'Ethereum wallet address that will execute the swap (optional for quotes)',
+      }),
+    ),
   }),
 ]);
 
@@ -78,13 +35,39 @@ export const ZeroXQuoteSwapResponse = Type.Intersect([
     priceImpactPct: Type.Number({
       description: 'Estimated price impact as a percentage (0-100)',
     }),
-    expirationTime: Type.Number(),
-    gasEstimate: Type.String(),
-    sources: Type.Optional(Type.Array(Type.Any())),
-    allowanceTarget: Type.Optional(Type.String()),
-    to: Type.Optional(Type.String()),
-    data: Type.Optional(Type.String()),
-    value: Type.Optional(Type.String()),
+    expirationTime: Type.Optional(
+      Type.Number({
+        description: 'Unix timestamp when this quote expires (only for firm quotes)',
+      }),
+    ),
+    gasEstimate: Type.String({
+      description: 'Estimated gas required for the swap',
+    }),
+    sources: Type.Optional(
+      Type.Array(Type.Any(), {
+        description: 'Liquidity sources used for this quote',
+      }),
+    ),
+    allowanceTarget: Type.Optional(
+      Type.String({
+        description: 'Contract address that needs token approval',
+      }),
+    ),
+    to: Type.Optional(
+      Type.String({
+        description: 'Contract address to send transaction to',
+      }),
+    ),
+    data: Type.Optional(
+      Type.String({
+        description: 'Encoded transaction data',
+      }),
+    ),
+    value: Type.Optional(
+      Type.String({
+        description: 'ETH value to send with transaction',
+      }),
+    ),
   }),
 ]);
 
@@ -92,8 +75,17 @@ export const ZeroXQuoteSwapResponse = Type.Intersect([
 export const ZeroXExecuteQuoteRequest = Type.Intersect([
   Base.ExecuteQuoteRequest,
   Type.Object({
-    gasPrice: Type.Optional(Type.String()),
-    maxGas: Type.Optional(Type.Number()),
+    gasPrice: Type.Optional(
+      Type.String({
+        description: 'Gas price in wei for the transaction',
+      }),
+    ),
+    maxGas: Type.Optional(
+      Type.Number({
+        description: 'Maximum gas limit for the transaction',
+        examples: [300000],
+      }),
+    ),
   }),
 ]);
 
@@ -101,9 +93,16 @@ export const ZeroXExecuteQuoteRequest = Type.Intersect([
 export const ZeroXExecuteSwapRequest = Type.Intersect([
   Base.ExecuteSwapRequest,
   Type.Object({
-    gasPrice: Type.Optional(Type.String()),
-    maxGas: Type.Optional(Type.Number()),
-    excludedSources: Type.Optional(Type.Array(Type.String())),
-    includedSources: Type.Optional(Type.Array(Type.String())),
+    gasPrice: Type.Optional(
+      Type.String({
+        description: 'Gas price in wei for the transaction',
+      }),
+    ),
+    maxGas: Type.Optional(
+      Type.Number({
+        description: 'Maximum gas limit for the transaction',
+        examples: [300000],
+      }),
+    ),
   }),
 ]);

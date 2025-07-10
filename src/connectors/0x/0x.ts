@@ -70,8 +70,7 @@ export class ZeroX {
     this.apiKey = ConfigManagerV2.getInstance().get('0x.apiKey') || '';
     // Update config with dynamic values
     this.config.apiKey = this.apiKey;
-    this.config.slippagePct =
-      ConfigManagerV2.getInstance().get('0x.slippagePct') || 0.01;
+    this.config.slippagePct = ConfigManagerV2.getInstance().get('0x.slippagePct') || 0.01;
 
     const apiEndpoint = ZeroXConfig.getApiEndpoint(network);
 
@@ -146,17 +145,12 @@ export class ZeroX {
         queryParams.affiliateAddress = params.affiliateAddress;
       }
 
-      const response = await this.client.get<ZeroXPriceResponse>(
-        '/swap/permit2/price',
-        { params: queryParams },
-      );
+      const response = await this.client.get<ZeroXPriceResponse>('/swap/permit2/price', { params: queryParams });
 
       return response.data;
     } catch (error: any) {
       if (error.response?.data) {
-        logger.error(
-          `0x API Error Response: ${JSON.stringify(error.response.data)}`,
-        );
+        logger.error(`0x API Error Response: ${JSON.stringify(error.response.data)}`);
         throw new Error(
           `0x API Error: ${error.response.data.reason || error.response.data.message || JSON.stringify(error.response.data)}`,
         );
@@ -195,17 +189,12 @@ export class ZeroX {
         queryParams.affiliateAddress = params.affiliateAddress;
       }
 
-      const response = await this.client.get<ZeroXQuoteResponse>(
-        '/swap/permit2/quote',
-        { params: queryParams },
-      );
+      const response = await this.client.get<ZeroXQuoteResponse>('/swap/permit2/quote', { params: queryParams });
 
       return response.data;
     } catch (error: any) {
       if (error.response?.data) {
-        logger.error(
-          `0x API Error Response: ${JSON.stringify(error.response.data)}`,
-        );
+        logger.error(`0x API Error Response: ${JSON.stringify(error.response.data)}`);
         throw new Error(
           `0x API Error: ${error.response.data.reason || error.response.data.message || JSON.stringify(error.response.data)}`,
         );
@@ -219,7 +208,8 @@ export class ZeroX {
   }
 
   public get gasPriceBuffer(): number {
-    return ConfigManagerV2.getInstance().get('0x.gasPriceBuffer') || 1.2;
+    // Hardcoded default for now
+    return 1.2;
   }
 
   public convertSlippageToPercentage(slippagePct: number): number {

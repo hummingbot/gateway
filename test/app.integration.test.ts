@@ -33,11 +33,10 @@ describe('App Integration - Route Registration', () => {
 
         // Test router routes
         if (trading_types.includes('router')) {
-          // For 0x, test get-price; for others, test quote-swap
-          const endpoint = name === '0x' ? 'get-price' : 'quote-swap';
+          // Test quote-swap for all router connectors
           const routerResponse = await fastify.inject({
             method: 'GET',
-            url: `/connectors/${name}/router/${endpoint}`,
+            url: `/connectors/${name}/router/quote-swap`,
           });
           // Should not be 404 if the route exists
           expect(routerResponse.statusCode).not.toBe(404);

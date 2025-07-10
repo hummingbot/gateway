@@ -1,18 +1,21 @@
-import { BigNumber } from 'ethers';
-
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
-import { ZeroX } from '../../../../src/connectors/0x/0x';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
-jest.mock('../../../../src/connectors/0x/0x');
+
+// Mock the quoteSwap and executeQuote functions
+jest.mock('../../../../src/connectors/0x/router-routes/quoteSwap', () => ({
+  quoteSwap: jest.fn(),
+}));
+
+jest.mock('../../../../src/connectors/0x/router-routes/executeQuote', () => ({
+  executeQuote: jest.fn(),
+}));
 
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { executeSwapRoute } = await import(
-    '../../../../src/connectors/0x/router-routes/executeSwap'
-  );
+  const { executeSwapRoute } = await import('../../../../src/connectors/0x/router-routes/executeSwap');
   await server.register(executeSwapRoute);
   return server;
 };
@@ -29,33 +32,9 @@ const mockUSDC = {
   decimals: 6,
 };
 
-const mockWallet = {
-  address: '0x1234567890123456789012345678901234567890',
-  sendTransaction: jest.fn(),
-};
-
-const mockTransaction = {
-  hash: '0xabcdef1234567890',
-  wait: jest.fn(),
-};
-
 const mockReceipt = {
   transactionHash: '0xabcdef1234567890',
   status: 1,
-  gasUsed: BigNumber.from('200000'),
-  effectiveGasPrice: BigNumber.from('30000000000'), // 30 gwei
-};
-
-const mockQuoteResponse = {
-  sellToken: mockWETH.address,
-  buyToken: mockUSDC.address,
-  sellAmount: '100000000000000000',
-  buyAmount: '150000000',
-  allowanceTarget: '0xdef1c0ded9bec7f1a1670819833240f027b25eff',
-  to: '0xdef1c0ded9bec7f1a1670819833240f027b25eff',
-  data: '0x1234567890',
-  value: '0',
-  gas: '200000',
 };
 
 describe('POST /execute-swap', () => {
@@ -74,38 +53,43 @@ describe('POST /execute-swap', () => {
   });
 
   it('should quote and execute a swap in one step for SELL side', async () => {
-    mockWallet.sendTransaction.mockResolvedValue(mockTransaction);
-    mockTransaction.wait.mockResolvedValue(mockReceipt);
+    (Ethereum.getWalletAddressExample as jest.Mock).mockResolvedValue('0x1234567890123456789012345678901234567890');
 
-    const mockEthereumInstance = {
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
-      getTokenBySymbol: jest
-        .fn()
-        .mockResolvedValueOnce(mockWETH)
-        .mockResolvedValueOnce(mockUSDC),
-      getContract: jest.fn().mockReturnValue({}),
-      getERC20Allowance: jest.fn().mockResolvedValue({
-        value: BigNumber.from('1000000000000000000'),
-        decimals: 18,
-      }),
-      nativeTokenSymbol: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
-    };
-    (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
-    (Ethereum.getWalletAddressExample as jest.Mock).mockResolvedValue(
-      '0x1234567890123456789012345678901234567890',
-    );
+    // Import the mocked functions
+    const { quoteSwap } = require('../../../../src/connectors/0x/router-routes/quoteSwap');
+    const { executeQuote } = require('../../../../src/connectors/0x/router-routes/executeQuote');
 
-    const mockZeroXInstance = {
-      parseTokenAmount: jest.fn().mockReturnValue('100000000000000000'),
-      formatTokenAmount: jest
-        .fn()
-        .mockReturnValueOnce('0.006') // fee
-        .mockReturnValueOnce('0.1') // sellAmount
-        .mockReturnValueOnce('150'), // buyAmount
-      convertSlippageToPercentage: jest.fn().mockReturnValue(0.005),
-      getQuote: jest.fn().mockResolvedValue(mockQuoteResponse),
-    };
-    (ZeroX.getInstance as jest.Mock).mockResolvedValue(mockZeroXInstance);
+    // Mock quoteSwap to return a quote response
+    quoteSwap.mockResolvedValue({
+      quoteId: 'test-quote-id',
+      tokenIn: mockWETH.address,
+      tokenOut: mockUSDC.address,
+      amountIn: 0.1,
+      amountOut: 150,
+      price: 1500,
+      slippagePct: 0.5,
+      priceWithSlippage: 1492.5,
+      minAmountOut: 149.25,
+      maxAmountIn: 0.1,
+      priceImpactPct: 0.1,
+      gasEstimate: '200000',
+      expirationTime: Date.now() + 30000,
+    });
+
+    // Mock executeQuote to return execution result
+    executeQuote.mockResolvedValue({
+      signature: mockReceipt.transactionHash,
+      status: 1,
+      data: {
+        tokenIn: mockWETH.address,
+        tokenOut: mockUSDC.address,
+        amountIn: 0.1,
+        amountOut: 150,
+        fee: 0.006,
+        baseTokenBalanceChange: -0.1,
+        quoteTokenBalanceChange: 150,
+      },
+    });
 
     const response = await server.inject({
       method: 'POST',
@@ -135,41 +119,41 @@ describe('POST /execute-swap', () => {
   });
 
   it('should quote and execute a swap for BUY side', async () => {
-    mockWallet.sendTransaction.mockResolvedValue(mockTransaction);
-    mockTransaction.wait.mockResolvedValue(mockReceipt);
+    // Import the mocked functions
+    const { quoteSwap } = require('../../../../src/connectors/0x/router-routes/quoteSwap');
+    const { executeQuote } = require('../../../../src/connectors/0x/router-routes/executeQuote');
 
-    const mockEthereumInstance = {
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
-      getTokenBySymbol: jest
-        .fn()
-        .mockResolvedValueOnce(mockWETH)
-        .mockResolvedValueOnce(mockUSDC),
-      getContract: jest.fn().mockReturnValue({}),
-      getERC20Allowance: jest.fn().mockResolvedValue({
-        value: BigNumber.from('1000000000000000000'),
-        decimals: 18,
-      }),
-      nativeTokenSymbol: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE',
-    };
-    (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
+    // Mock quoteSwap to return a quote response for BUY side
+    quoteSwap.mockResolvedValue({
+      quoteId: 'test-quote-id-buy',
+      tokenIn: mockUSDC.address,
+      tokenOut: mockWETH.address,
+      amountIn: 150,
+      amountOut: 0.1,
+      price: 0.000667,
+      slippagePct: 0.5,
+      priceWithSlippage: 0.00067,
+      minAmountOut: 0.1,
+      maxAmountIn: 150.75,
+      priceImpactPct: 0.1,
+      gasEstimate: '200000',
+      expirationTime: Date.now() + 30000,
+    });
 
-    const mockZeroXInstance = {
-      parseTokenAmount: jest.fn().mockReturnValue('100000000000000000'),
-      formatTokenAmount: jest
-        .fn()
-        .mockReturnValueOnce('0.006') // fee
-        .mockReturnValueOnce('0.1') // buyAmount (baseToken for BUY side)
-        .mockReturnValueOnce('150'), // sellAmount (quoteToken for BUY side)
-      convertSlippageToPercentage: jest.fn().mockReturnValue(0.005),
-      getQuote: jest.fn().mockResolvedValue({
-        ...mockQuoteResponse,
-        sellToken: mockUSDC.address,
-        buyToken: mockWETH.address,
-        sellAmount: '150000000',
-        buyAmount: '100000000000000000',
-      }),
-    };
-    (ZeroX.getInstance as jest.Mock).mockResolvedValue(mockZeroXInstance);
+    // Mock executeQuote to return execution result
+    executeQuote.mockResolvedValue({
+      signature: mockReceipt.transactionHash,
+      status: 1,
+      data: {
+        tokenIn: mockUSDC.address,
+        tokenOut: mockWETH.address,
+        amountIn: 150,
+        amountOut: 0.1,
+        fee: 0.006,
+        baseTokenBalanceChange: 0.1,
+        quoteTokenBalanceChange: -150,
+      },
+    });
 
     const response = await server.inject({
       method: 'POST',
@@ -196,14 +180,14 @@ describe('POST /execute-swap', () => {
   });
 
   it('should return 400 if token not found', async () => {
-    const mockEthereumInstance = {
-      getWallet: jest.fn(),
-      getTokenBySymbol: jest
-        .fn()
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(mockUSDC),
-    };
-    (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
+    // Import the mocked functions
+    const { quoteSwap } = require('../../../../src/connectors/0x/router-routes/quoteSwap');
+
+    // Mock quoteSwap to throw a 400 error
+    quoteSwap.mockRejectedValue({
+      statusCode: 400,
+      message: 'Token not found: INVALID',
+    });
 
     const response = await server.inject({
       method: 'POST',
@@ -220,6 +204,7 @@ describe('POST /execute-swap', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body)).toHaveProperty('error');
+    const body = JSON.parse(response.body);
+    expect(body).toHaveProperty('message', 'Token not found: INVALID');
   });
 });

@@ -2,11 +2,7 @@ import { BigNumber } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  ExecuteQuoteRequestType,
-  SwapExecuteResponseType,
-  SwapExecuteResponse,
-} from '../../../schemas/router-schema';
+import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { ZeroX } from '../0x';
 import { ZeroXExecuteQuoteRequest } from '../schemas';
@@ -28,8 +24,7 @@ async function executeQuote(
   }
 
   const { quote, request } = cached;
-  const { sellToken, buyToken, side, amount, baseTokenInfo, quoteTokenInfo } =
-    request;
+  const { sellToken, buyToken, side, amount, baseTokenInfo, quoteTokenInfo } = request;
 
   const ethereum = await Ethereum.getInstance(network);
   const wallet = await ethereum.getWallet(walletAddress);
@@ -53,12 +48,7 @@ async function executeQuote(
     const requiredAllowance = BigNumber.from(quote.sellAmount);
     if (BigNumber.from(allowance.value).lt(requiredAllowance)) {
       logger.info(`Approving ${sellTokenInfo.symbol} for 0x swap`);
-      await ethereum.approveERC20(
-        tokenContract,
-        wallet,
-        quote.allowanceTarget,
-        requiredAllowance,
-      );
+      await ethereum.approveERC20(tokenContract, wallet, quote.allowanceTarget, requiredAllowance);
     }
   }
 
@@ -79,41 +69,22 @@ async function executeQuote(
   }
 
   // Calculate fee from gas used
-  const fee = parseFloat(
-    zeroX.formatTokenAmount(
-      txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice).toString(),
-      18,
-    ),
-  );
+  const fee = parseFloat(zeroX.formatTokenAmount(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice).toString(), 18));
 
   // For now, use the quote amounts as the actual amounts
   // In a real implementation, you would extract actual amounts from events
   const baseTokenBalanceChange =
     side === 'SELL'
-      ? -parseFloat(
-          zeroX.formatTokenAmount(quote.sellAmount, baseTokenInfo.decimals),
-        )
-      : parseFloat(
-          zeroX.formatTokenAmount(quote.buyAmount, baseTokenInfo.decimals),
-        );
+      ? -parseFloat(zeroX.formatTokenAmount(quote.sellAmount, baseTokenInfo.decimals))
+      : parseFloat(zeroX.formatTokenAmount(quote.buyAmount, baseTokenInfo.decimals));
   const quoteTokenBalanceChange =
     side === 'SELL'
-      ? parseFloat(
-          zeroX.formatTokenAmount(quote.buyAmount, quoteTokenInfo.decimals),
-        )
-      : -parseFloat(
-          zeroX.formatTokenAmount(quote.sellAmount, quoteTokenInfo.decimals),
-        );
+      ? parseFloat(zeroX.formatTokenAmount(quote.buyAmount, quoteTokenInfo.decimals))
+      : -parseFloat(zeroX.formatTokenAmount(quote.sellAmount, quoteTokenInfo.decimals));
 
   // Calculate actual amounts swapped
-  const amountIn =
-    side === 'SELL'
-      ? Math.abs(baseTokenBalanceChange)
-      : Math.abs(quoteTokenBalanceChange);
-  const amountOut =
-    side === 'SELL'
-      ? Math.abs(quoteTokenBalanceChange)
-      : Math.abs(baseTokenBalanceChange);
+  const amountIn = side === 'SELL' ? Math.abs(baseTokenBalanceChange) : Math.abs(quoteTokenBalanceChange);
+  const amountOut = side === 'SELL' ? Math.abs(quoteTokenBalanceChange) : Math.abs(baseTokenBalanceChange);
 
   logger.info(
     `Swap executed successfully: ${amountIn.toFixed(4)} ${side === 'SELL' ? baseTokenInfo.symbol : quoteTokenInfo.symbol} -> ${amountOut.toFixed(4)} ${side === 'SELL' ? quoteTokenInfo.symbol : baseTokenInfo.symbol}`,
@@ -136,6 +107,8 @@ async function executeQuote(
     },
   };
 }
+
+export { executeQuote };
 
 export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Ethereum.getWalletAddressExample();
@@ -169,14 +142,7 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
         const { walletAddress, network, quoteId, gasPrice, maxGas } =
           request.body as typeof ZeroXExecuteQuoteRequest._type;
 
-        return await executeQuote(
-          fastify,
-          walletAddress,
-          network,
-          quoteId,
-          gasPrice,
-          maxGas,
-        );
+        return await executeQuote(fastify, walletAddress, network, quoteId, gasPrice, maxGas);
       } catch (e) {
         if (e.statusCode) throw e;
         logger.error('Error executing quote:', e);
