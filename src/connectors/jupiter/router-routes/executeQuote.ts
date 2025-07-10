@@ -9,6 +9,7 @@ import {
 } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { Jupiter } from '../jupiter';
+import { JupiterConfig } from '../jupiter.config';
 import { JupiterExecuteQuoteRequest } from '../schemas';
 
 import { quoteCache } from './quoteSwap';
@@ -58,27 +59,24 @@ export async function executeQuote(
     quoteCache.delete(quoteId);
 
     // Transaction confirmed, return full data
-    const baseTokenInfo = await solana.getToken(baseToken);
-    const quoteTokenInfo = await solana.getToken(quoteToken);
-
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(
+    const { balanceChanges, fee } = await solana.extractBalanceChangesAndFee(
       signature,
       walletAddress,
-      [baseTokenInfo.address, quoteTokenInfo.address],
+      [inputToken.address, outputToken.address],
     );
 
-    const baseTokenBalanceChange = balanceChanges[0];
-    const quoteTokenBalanceChange = balanceChanges[1];
+    const inputTokenBalanceChange = balanceChanges[0];
+    const outputTokenBalanceChange = balanceChanges[1];
 
     // Calculate actual amounts swapped
-    const amountIn =
-      side === 'SELL'
-        ? Math.abs(baseTokenBalanceChange)
-        : Math.abs(quoteTokenBalanceChange);
-    const amountOut =
-      side === 'SELL'
-        ? Math.abs(quoteTokenBalanceChange)
-        : Math.abs(baseTokenBalanceChange);
+    const amountIn = Math.abs(inputTokenBalanceChange);
+    const amountOut = Math.abs(outputTokenBalanceChange);
+
+    // Calculate base and quote token balance changes based on side
+    const baseTokenBalanceChange =
+      side === 'SELL' ? inputTokenBalanceChange : outputTokenBalanceChange;
+    const quoteTokenBalanceChange =
+      side === 'SELL' ? outputTokenBalanceChange : inputTokenBalanceChange;
 
     logger.info(
       `Swap executed successfully: ${amountIn.toFixed(4)} ${inputToken.symbol} -> ${amountOut.toFixed(4)} ${outputToken.symbol}`,
@@ -92,7 +90,7 @@ export async function executeQuote(
         tokenOut: outputToken.address,
         amountIn,
         amountOut,
-        fee: txData.meta.fee / 1e9,
+        fee,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
       },
@@ -128,10 +126,21 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...JupiterExecuteQuoteRequest.properties,
             walletAddress: { type: 'string', examples: [walletAddressExample] },
-            network: { type: 'string', default: 'mainnet-beta' },
+            network: {
+              type: 'string',
+              default: JupiterConfig.examples.network,
+            },
             quoteId: {
               type: 'string',
-              examples: ['123e4567-e89b-12d3-a456-426614174000'],
+              examples: [JupiterConfig.examples.quoteId],
+            },
+            priorityLevel: {
+              type: 'string',
+              examples: [JupiterConfig.examples.priorityLevel],
+            },
+            maxLamports: {
+              type: 'number',
+              examples: [JupiterConfig.examples.maxLamports],
             },
           },
         },

@@ -22,8 +22,6 @@ async function executeSwap(
   amount: number,
   side: 'BUY' | 'SELL',
   slippagePct: number,
-  onlyDirectRoutes?: boolean,
-  restrictIntermediateTokens?: boolean,
   priorityLevel?: string,
   maxLamports?: number,
 ): Promise<SwapExecuteResponseType> {
@@ -36,8 +34,6 @@ async function executeSwap(
     amount,
     side,
     slippagePct,
-    onlyDirectRoutes,
-    restrictIntermediateTokens,
   );
 
   // Step 2: Execute the quote immediately using executeQuote function
@@ -70,14 +66,38 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...JupiterExecuteSwapRequest.properties,
             walletAddress: { type: 'string', examples: [walletAddressExample] },
-            network: { type: 'string', default: 'mainnet-beta' },
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [1] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
+            network: {
+              type: 'string',
+              default: JupiterConfig.examples.network,
+            },
+            baseToken: {
+              type: 'string',
+              examples: [JupiterConfig.examples.baseToken],
+            },
+            quoteToken: {
+              type: 'string',
+              examples: [JupiterConfig.examples.quoteToken],
+            },
+            amount: {
+              type: 'number',
+              examples: [JupiterConfig.examples.amount],
+            },
+            side: {
+              type: 'string',
+              enum: ['BUY', 'SELL'],
+              examples: [JupiterConfig.examples.side],
+            },
             slippagePct: {
               type: 'number',
-              examples: [JupiterConfig.config.slippagePct],
+              examples: [JupiterConfig.examples.slippagePct],
+            },
+            priorityLevel: {
+              type: 'string',
+              examples: [JupiterConfig.examples.priorityLevel],
+            },
+            maxLamports: {
+              type: 'number',
+              examples: [JupiterConfig.examples.maxLamports],
             },
           },
         },
@@ -94,8 +114,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           amount,
           side,
           slippagePct,
-          onlyDirectRoutes,
-          restrictIntermediateTokens,
           priorityLevel,
           maxLamports,
         } = request.body as typeof JupiterExecuteSwapRequest._type;
@@ -109,8 +127,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           amount,
           side as 'BUY' | 'SELL',
           slippagePct ?? JupiterConfig.config.slippagePct,
-          onlyDirectRoutes,
-          restrictIntermediateTokens,
           priorityLevel,
           maxLamports,
         );
