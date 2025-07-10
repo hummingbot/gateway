@@ -39,9 +39,7 @@ export async function getEthereumBalances(
         wallet = await ethereum.getWallet(address);
       } catch (err) {
         logger.error(`Failed to load wallet: ${err.message}`);
-        throw fastify.httpErrors.internalServerError(
-          `Failed to load wallet: ${err.message}`,
-        );
+        throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
       }
     }
 
@@ -50,15 +48,11 @@ export async function getEthereumBalances(
       ? await ethereum.getNativeBalanceByAddress(address)
       : await ethereum.getNativeBalance(wallet!);
     // Convert string to number as required by schema
-    balances[ethereum.nativeTokenSymbol] = parseFloat(
-      tokenValueToString(nativeBalance),
-    );
+    balances[ethereum.nativeTokenSymbol] = parseFloat(tokenValueToString(nativeBalance));
 
     if (checkAllTokens) {
       // No tokens specified, check all tokens in the token list
-      logger.info(
-        `Checking balances for all ${ethereum.storedTokenList.length} tokens in the token list`,
-      );
+      logger.info(`Checking balances for all ${ethereum.storedTokenList.length} tokens in the token list`);
 
       // Process tokens in batches to avoid overwhelming the provider
       // This allows for provider-specific rate limiting while still being efficient
@@ -71,33 +65,24 @@ export async function getEthereumBalances(
       const startTime = Date.now();
       let timeExceeded = false;
 
-      logger.info(
-        `Processing ${totalTokens} tokens in batches of ${batchSize} with ${maxScanTimeMs}ms time limit`,
-      );
+      logger.info(`Processing ${totalTokens} tokens in batches of ${batchSize} with ${maxScanTimeMs}ms time limit`);
 
       for (let i = 0; i < totalTokens && !timeExceeded; i += batchSize) {
         // Check if we've exceeded the time limit
         if (Date.now() - startTime > maxScanTimeMs) {
-          logger.warn(
-            `Time limit of ${maxScanTimeMs}ms exceeded after checking ${i} tokens. Stopping scan.`,
-          );
+          logger.warn(`Time limit of ${maxScanTimeMs}ms exceeded after checking ${i} tokens. Stopping scan.`);
           timeExceeded = true;
           break;
         }
 
         const batch = tokenList.slice(i, i + batchSize);
-        logger.debug(
-          `Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(totalTokens / batchSize)}`,
-        );
+        logger.debug(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(totalTokens / batchSize)}`);
 
         // Process batch in parallel with timeout
         await Promise.all(
           batch.map(async (token) => {
             try {
-              const contract = ethereum.getContract(
-                token.address,
-                ethereum.provider,
-              );
+              const contract = ethereum.getContract(token.address, ethereum.provider);
               const balance = isReadOnly
                 ? await ethereum.getERC20BalanceByAddress(
                     contract,
@@ -117,15 +102,11 @@ export async function getEthereumBalances(
               // Only add tokens with non-zero balances
               if (balanceNum > 0) {
                 balances[token.symbol] = balanceNum;
-                logger.debug(
-                  `Found non-zero balance for ${token.symbol}: ${balanceNum}`,
-                );
+                logger.debug(`Found non-zero balance for ${token.symbol}: ${balanceNum}`);
               }
             } catch (err) {
               // Log error but continue with other tokens
-              logger.warn(
-                `Error getting balance for ${token.symbol}: ${err.message}`,
-              );
+              logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
             }
           }),
         );
@@ -139,12 +120,9 @@ export async function getEthereumBalances(
             return;
           }
 
-          const token = ethereum.getTokenBySymbol(symbolOrAddress);
+          const token = ethereum.getToken(symbolOrAddress);
           if (token) {
-            const contract = ethereum.getContract(
-              token.address,
-              ethereum.provider,
-            );
+            const contract = ethereum.getContract(token.address, ethereum.provider);
             const balance = isReadOnly
               ? await ethereum.getERC20BalanceByAddress(
                   contract,
@@ -166,9 +144,7 @@ export async function getEthereumBalances(
     }
 
     if (!Object.keys(balances).length) {
-      throw fastify.httpErrors.badRequest(
-        'No token balances found for the given wallet',
-      );
+      throw fastify.httpErrors.badRequest('No token balances found for the given wallet');
     }
 
     return { balances };
@@ -177,9 +153,7 @@ export async function getEthereumBalances(
       throw error; // Re-throw if it's already a Fastify error
     }
     logger.error(`Error getting balances: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(
-      `Failed to get balances: ${error.message}`,
-    );
+    throw fastify.httpErrors.internalServerError(`Failed to get balances: ${error.message}`);
   }
 }
 
@@ -202,17 +176,7 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
             ...BalanceRequestSchema.properties,
             network: {
               type: 'string',
-              examples: [
-                'mainnet',
-                'arbitrum',
-                'optimism',
-                'base',
-                'sepolia',
-                'bsc',
-                'avalanche',
-                'celo',
-                'polygon',
-              ],
+              examples: ['mainnet', 'arbitrum', 'optimism', 'base', 'sepolia', 'bsc', 'avalanche', 'celo', 'polygon'],
             },
             address: { type: 'string', examples: [walletAddressExample] },
             tokens: {
@@ -220,14 +184,7 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
               items: { type: 'string' },
               description:
                 'A list of token symbols or addresses. An empty array is treated the same as if the parameter was not provided, returning only non-zero balances plus the native token.',
-              examples: [
-                [
-                  'ETH',
-                  'USDC',
-                  'DAI',
-                  '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-                ],
-              ],
+              examples: [['ETH', 'USDC', 'DAI', '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48']],
             },
           },
         },

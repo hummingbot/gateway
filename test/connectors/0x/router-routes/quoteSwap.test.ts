@@ -57,7 +57,7 @@ describe('GET /quote-swap', () => {
 
   it('should return an executable quote for SELL side', async () => {
     const mockEthereumInstance = {
-      getTokenBySymbol: jest.fn().mockResolvedValueOnce(mockWETH).mockResolvedValueOnce(mockUSDC),
+      getToken: jest.fn().mockReturnValueOnce(mockWETH).mockReturnValueOnce(mockUSDC),
     };
     (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
     (Ethereum.getWalletAddressExample as jest.Mock).mockResolvedValue('0x1234567890123456789012345678901234567890');
@@ -105,7 +105,7 @@ describe('GET /quote-swap', () => {
 
   it('should return an executable quote for BUY side', async () => {
     const mockEthereumInstance = {
-      getTokenBySymbol: jest.fn().mockResolvedValueOnce(mockWETH).mockResolvedValueOnce(mockUSDC),
+      getToken: jest.fn().mockReturnValueOnce(mockWETH).mockReturnValueOnce(mockUSDC),
     };
     (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
     (Ethereum.getWalletAddressExample as jest.Mock).mockResolvedValue('0x1234567890123456789012345678901234567890');
@@ -152,7 +152,7 @@ describe('GET /quote-swap', () => {
 
   it('should return 400 if token not found', async () => {
     const mockEthereumInstance = {
-      getTokenBySymbol: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(mockUSDC),
+      getToken: jest.fn().mockReturnValueOnce(undefined).mockReturnValueOnce(mockUSDC),
     };
     (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
 
@@ -175,7 +175,7 @@ describe('GET /quote-swap', () => {
 
   it('should return indicative price when indicativePrice=true', async () => {
     const mockEthereumInstance = {
-      getTokenBySymbol: jest.fn().mockResolvedValueOnce(mockWETH).mockResolvedValueOnce(mockUSDC),
+      getToken: jest.fn().mockReturnValueOnce(mockWETH).mockReturnValueOnce(mockUSDC),
     };
     (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
     (Ethereum.getWalletAddressExample as jest.Mock).mockResolvedValue('0x1234567890123456789012345678901234567890');
@@ -215,7 +215,7 @@ describe('GET /quote-swap', () => {
 
   it('should default to indicative price when indicativePrice not specified', async () => {
     const mockEthereumInstance = {
-      getTokenBySymbol: jest.fn().mockResolvedValueOnce(mockWETH).mockResolvedValueOnce(mockUSDC),
+      getToken: jest.fn().mockReturnValueOnce(mockWETH).mockReturnValueOnce(mockUSDC),
     };
     (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
     (Ethereum.getWalletAddressExample as jest.Mock).mockResolvedValue('0x1234567890123456789012345678901234567890');

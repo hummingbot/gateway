@@ -1,18 +1,11 @@
 import { Static } from '@sinclair/typebox';
 import { CurrencyAmount, Percent, TradeType, Token } from '@uniswap/sdk-core';
-import {
-  AlphaRouter,
-  SwapOptionsSwapRouter02,
-  SwapType,
-} from '@uniswap/smart-order-router';
+import { AlphaRouter, SwapOptionsSwapRouter02, SwapType } from '@uniswap/smart-order-router';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  QuoteSwapRequestType,
-  QuoteSwapResponse,
-} from '../../../schemas/router-schema';
+import { QuoteSwapRequestType, QuoteSwapResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { UniswapQuoteSwapRequest, UniswapQuoteSwapResponse } from '../schemas';
@@ -54,15 +47,12 @@ async function quoteSwap(
   const uniswap = await Uniswap.getInstance(network);
 
   // Resolve token symbols to token objects
-  const baseTokenInfo = ethereum.getTokenBySymbol(baseToken);
-  const quoteTokenInfo = ethereum.getTokenBySymbol(quoteToken);
+  const baseTokenInfo = ethereum.getToken(baseToken);
+  const quoteTokenInfo = ethereum.getToken(quoteToken);
 
   if (!baseTokenInfo || !quoteTokenInfo) {
     throw fastify.httpErrors.notFound(
-      sanitizeErrorMessage(
-        'Token not found: {}',
-        !baseTokenInfo ? baseToken : quoteToken,
-      ),
+      sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
     );
   }
 
@@ -85,13 +75,9 @@ async function quoteSwap(
 
   // Determine input/output based on side
   const exactIn = side === 'SELL';
-  const [inputToken, outputToken] = exactIn
-    ? [baseTokenObj, quoteTokenObj]
-    : [quoteTokenObj, baseTokenObj];
+  const [inputToken, outputToken] = exactIn ? [baseTokenObj, quoteTokenObj] : [quoteTokenObj, baseTokenObj];
 
-  logger.info(
-    `Getting executable quote for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`,
-  );
+  logger.info(`Getting executable quote for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`);
 
   // Create AlphaRouter instance
   const router = new AlphaRouter({
@@ -166,23 +152,14 @@ async function quoteSwap(
     estimatedAmountOut = amount;
   }
 
-  const minAmountOut =
-    side === 'SELL'
-      ? estimatedAmountOut * (1 - slippagePct / 100)
-      : estimatedAmountOut;
-  const maxAmountIn =
-    side === 'BUY'
-      ? estimatedAmountIn * (1 + slippagePct / 100)
-      : estimatedAmountIn;
+  const minAmountOut = side === 'SELL' ? estimatedAmountOut * (1 - slippagePct / 100) : estimatedAmountOut;
+  const maxAmountIn = side === 'BUY' ? estimatedAmountIn * (1 + slippagePct / 100) : estimatedAmountIn;
 
   const price = estimatedAmountOut / estimatedAmountIn;
   // Calculate price with slippage
   // For SELL: worst price = minAmountOut / estimatedAmountIn (minimum quote per base)
   // For BUY: worst price = maxAmountIn / estimatedAmountOut (maximum quote per base)
-  const priceWithSlippage =
-    side === 'SELL'
-      ? minAmountOut / estimatedAmountIn
-      : maxAmountIn / estimatedAmountOut;
+  const priceWithSlippage = side === 'SELL' ? minAmountOut / estimatedAmountIn : maxAmountIn / estimatedAmountOut;
   const priceImpactPct = quote.estimatedGasUsedQuoteToken
     ? parseFloat(quote.estimatedGasUsedQuoteToken.toExact()) * 100
     : 0;
@@ -245,8 +222,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     '/quote-swap',
     {
       schema: {
-        description:
-          'Get an executable swap quote from Uniswap Smart Order Router',
+        description: 'Get an executable swap quote from Uniswap Smart Order Router',
         tags: ['/connector/uniswap'],
         querystring: {
           ...UniswapQuoteSwapRequest,

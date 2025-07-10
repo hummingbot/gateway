@@ -68,9 +68,15 @@ export class ZeroX {
     this.config = ZeroXConfig.getConfig('mainnet');
     // Load API key dynamically from ConfigManager
     this.apiKey = ConfigManagerV2.getInstance().get('0x.apiKey') || '';
+
+    // Check if API key is configured
+    if (!this.apiKey) {
+      throw new Error('0x API key not configured. Please add your API key to conf/connectors/0x.yml');
+    }
+
     // Update config with dynamic values
     this.config.apiKey = this.apiKey;
-    this.config.slippagePct = ConfigManagerV2.getInstance().get('0x.slippagePct') || 0.01;
+    this.config.slippagePct = ConfigManagerV2.getInstance().get('0x.slippagePct') || 1;
 
     const apiEndpoint = ZeroXConfig.getApiEndpoint(network);
 
@@ -210,11 +216,6 @@ export class ZeroX {
   public get gasPriceBuffer(): number {
     // Hardcoded default for now
     return 1.2;
-  }
-
-  public convertSlippageToPercentage(slippagePct: number): number {
-    // Convert from percentage (e.g., 0.5) to decimal (e.g., 0.005)
-    return slippagePct / 100;
   }
 
   public formatTokenAmount(amount: string, decimals: number): string {

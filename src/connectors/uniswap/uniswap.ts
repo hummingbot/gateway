@@ -25,12 +25,7 @@ import {
   getUniswapV3QuoterV2ContractAddress,
   getUniswapV3FactoryAddress,
 } from './uniswap.contracts';
-import {
-  findPoolAddress,
-  isValidV2Pool,
-  isValidV3Pool,
-  isFractionString,
-} from './uniswap.utils';
+import { findPoolAddress, isValidV2Pool, isValidV3Pool, isFractionString } from './uniswap.utils';
 
 export class Uniswap {
   private static _instances: { [name: string]: Uniswap };
@@ -43,7 +38,6 @@ export class Uniswap {
 
   // Common properties
   private chainId: number;
-  private tokenList: Record<string, Token> = {};
   private _ready: boolean = false;
 
   // V2 (AMM) properties
@@ -111,9 +105,7 @@ export class Uniswap {
         getUniswapV3NftManagerAddress(this.networkName),
         [
           {
-            inputs: [
-              { internalType: 'address', name: 'owner', type: 'address' },
-            ],
+            inputs: [{ internalType: 'address', name: 'owner', type: 'address' }],
             name: 'balanceOf',
             outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
             stateMutability: 'view',
@@ -133,9 +125,7 @@ export class Uniswap {
               { internalType: 'uint256', name: 'amountIn', type: 'uint256' },
             ],
             name: 'quoteExactInput',
-            outputs: [
-              { internalType: 'uint256', name: 'amountOut', type: 'uint256' },
-            ],
+            outputs: [{ internalType: 'uint256', name: 'amountOut', type: 'uint256' }],
             stateMutability: 'nonpayable',
             type: 'function',
           },
@@ -149,25 +139,13 @@ export class Uniswap {
         provider: this.ethereum.provider,
       });
 
-      // Load tokens
+      // Ensure ethereum is initialized
       if (!this.ethereum.ready()) {
         await this.ethereum.init();
       }
 
-      for (const token of this.ethereum.storedTokenList) {
-        this.tokenList[token.address] = new Token(
-          this.chainId,
-          token.address,
-          token.decimals,
-          token.symbol,
-          token.name,
-        );
-      }
-
       this._ready = true;
-      logger.info(
-        `Uniswap connector initialized for network: ${this.networkName}`,
-      );
+      logger.info(`Uniswap connector initialized for network: ${this.networkName}`);
     } catch (error) {
       logger.error(`Error initializing Uniswap: ${error.message}`);
       throw error;
@@ -184,37 +162,34 @@ export class Uniswap {
   /**
    * Given a token's address, return the connector's native representation of the token.
    */
-  public getTokenByAddress(address: string): Token {
-    return this.tokenList[getAddress(address)];
+  public getTokenByAddress(address: string): Token | null {
+    const tokenInfo = this.ethereum.getToken(address);
+    if (!tokenInfo) return null;
+
+    // Create Uniswap SDK Token instance
+    return new Token(tokenInfo.chainId, tokenInfo.address, tokenInfo.decimals, tokenInfo.symbol, tokenInfo.name);
   }
 
   /**
    * Given a token's symbol, return the connector's native representation of the token.
    */
   public getTokenBySymbol(symbol: string): Token | null {
-    const token = this.ethereum.getTokenBySymbol(symbol);
-    if (!token) return null;
-    return this.getTokenByAddress(token.address);
+    // Just use getTokenByAddress since ethereum.getToken handles both symbols and addresses
+    return this.getTokenByAddress(symbol);
   }
 
   /**
    * Get a V2 pool (pair) by its address or by token symbols
    */
-  public async getV2Pool(
-    tokenA: Token | string,
-    tokenB: Token | string,
-    poolAddress?: string,
-  ): Promise<V2Pair | null> {
+  public async getV2Pool(tokenA: Token | string, tokenB: Token | string, poolAddress?: string): Promise<V2Pair | null> {
     try {
       // Resolve pool address if provided
       let pairAddress = poolAddress;
 
       // If tokenA and tokenB are strings, assume they are symbols
-      const tokenAObj =
-        typeof tokenA === 'string' ? this.getTokenBySymbol(tokenA) : tokenA;
+      const tokenAObj = typeof tokenA === 'string' ? this.getTokenBySymbol(tokenA) : tokenA;
 
-      const tokenBObj =
-        typeof tokenB === 'string' ? this.getTokenBySymbol(tokenB) : tokenB;
+      const tokenBObj = typeof tokenB === 'string' ? this.getTokenBySymbol(tokenB) : tokenB;
 
       if (!tokenAObj || !tokenBObj) {
         throw new Error(`Invalid tokens: ${tokenA}, ${tokenB}`);
@@ -223,20 +198,12 @@ export class Uniswap {
       // Find pool address if not provided
       if (!pairAddress) {
         if (typeof tokenA === 'string' && typeof tokenB === 'string') {
-          pairAddress = findPoolAddress(
-            tokenA,
-            tokenB,
-            'amm',
-            this.networkName,
-          );
+          pairAddress = findPoolAddress(tokenA, tokenB, 'amm', this.networkName);
         }
 
         // If still not found, try to get it from the factory
         if (!pairAddress) {
-          pairAddress = await this.v2Factory.getPair(
-            tokenAObj.address,
-            tokenBObj.address,
-          );
+          pairAddress = await this.v2Factory.getPair(tokenAObj.address, tokenBObj.address);
         }
       }
 
@@ -252,24 +219,13 @@ export class Uniswap {
       }
 
       // Get pair data from the contract
-      const pairContract = new Contract(
-        pairAddress,
-        IUniswapV2PairABI.abi,
-        this.ethereum.provider,
-      );
+      const pairContract = new Contract(pairAddress, IUniswapV2PairABI.abi, this.ethereum.provider);
 
-      const [reserves, token0Address] = await Promise.all([
-        pairContract.getReserves(),
-        pairContract.token0(),
-      ]);
+      const [reserves, token0Address] = await Promise.all([pairContract.getReserves(), pairContract.token0()]);
 
       const [reserve0, reserve1] = reserves;
-      const token0 =
-        getAddress(token0Address) === getAddress(tokenAObj.address)
-          ? tokenAObj
-          : tokenBObj;
-      const token1 =
-        token0.address === tokenAObj.address ? tokenBObj : tokenAObj;
+      const token0 = getAddress(token0Address) === getAddress(tokenAObj.address) ? tokenAObj : tokenBObj;
+      const token1 = token0.address === tokenAObj.address ? tokenBObj : tokenAObj;
 
       return new V2Pair(
         CurrencyAmount.fromRawAmount(token0, reserve0.toString()),
@@ -295,11 +251,9 @@ export class Uniswap {
       let poolAddr = poolAddress;
 
       // If tokenA and tokenB are strings, assume they are symbols
-      const tokenAObj =
-        typeof tokenA === 'string' ? this.getTokenBySymbol(tokenA) : tokenA;
+      const tokenAObj = typeof tokenA === 'string' ? this.getTokenBySymbol(tokenA) : tokenA;
 
-      const tokenBObj =
-        typeof tokenB === 'string' ? this.getTokenBySymbol(tokenB) : tokenB;
+      const tokenBObj = typeof tokenB === 'string' ? this.getTokenBySymbol(tokenB) : tokenB;
 
       if (!tokenAObj || !tokenBObj) {
         throw new Error(`Invalid tokens: ${tokenA}, ${tokenB}`);
@@ -314,31 +268,18 @@ export class Uniswap {
 
         // If still not found and a fee is provided, try to get it from the factory
         if (!poolAddr && fee) {
-          poolAddr = await this.v3Factory.getPool(
-            tokenAObj.address,
-            tokenBObj.address,
-            fee,
-          );
+          poolAddr = await this.v3Factory.getPool(tokenAObj.address, tokenBObj.address, fee);
         }
 
         // If still not found, try all possible fee tiers
         if (!poolAddr) {
           // Try each fee tier
-          const allFeeTiers = [
-            FeeAmount.LOWEST,
-            FeeAmount.LOW,
-            FeeAmount.MEDIUM,
-            FeeAmount.HIGH,
-          ];
+          const allFeeTiers = [FeeAmount.LOWEST, FeeAmount.LOW, FeeAmount.MEDIUM, FeeAmount.HIGH];
 
           for (const feeTier of allFeeTiers) {
             if (feeTier === fee) continue; // Skip if we already tried this fee tier
 
-            poolAddr = await this.v3Factory.getPool(
-              tokenAObj.address,
-              tokenBObj.address,
-              feeTier,
-            );
+            poolAddr = await this.v3Factory.getPool(tokenAObj.address, tokenBObj.address, feeTier);
 
             if (poolAddr && poolAddr !== constants.AddressZero) {
               break;
@@ -359,11 +300,7 @@ export class Uniswap {
       }
 
       // Get pool data from the contract
-      const poolContract = new Contract(
-        poolAddr,
-        IUniswapV3PoolABI,
-        this.ethereum.provider,
-      );
+      const poolContract = new Contract(poolAddr, IUniswapV3PoolABI, this.ethereum.provider);
 
       const [liquidity, slot0, feeData] = await Promise.all([
         poolContract.liquidity(),
@@ -414,12 +351,7 @@ export class Uniswap {
   ): Promise<string | null> {
     try {
       // Try to find pool in the config pools dictionary, passing in the network
-      const poolAddr = findPoolAddress(
-        baseToken,
-        quoteToken,
-        poolType,
-        this.networkName,
-      );
+      const poolAddr = findPoolAddress(baseToken, quoteToken, poolType, this.networkName);
       if (poolAddr) {
         return poolAddr;
       }
@@ -436,10 +368,7 @@ export class Uniswap {
       // If not found, try to get it from the factory
       if (poolType === 'amm') {
         // V2 pool
-        const pairAddress = await this.v2Factory.getPair(
-          baseTokenObj.address,
-          quoteTokenObj.address,
-        );
+        const pairAddress = await this.v2Factory.getPair(baseTokenObj.address, quoteTokenObj.address);
 
         if (pairAddress && pairAddress !== constants.AddressZero) {
           return pairAddress;
@@ -454,11 +383,7 @@ export class Uniswap {
         ];
 
         for (const fee of feeTiers) {
-          const addr = await this.v3Factory.getPool(
-            baseTokenObj.address,
-            quoteTokenObj.address,
-            fee,
-          );
+          const addr = await this.v3Factory.getPool(baseTokenObj.address, quoteTokenObj.address, fee);
 
           if (addr && addr !== constants.AddressZero) {
             return addr;
@@ -489,9 +414,7 @@ export class Uniswap {
 
     const nd = slippagePct.match(percentRegexp);
     if (nd) return new Percent(nd[1], nd[2]);
-    throw new Error(
-      'Encountered a malformed percent string in the config for allowed slippage.',
-    );
+    throw new Error('Encountered a malformed percent string in the config for allowed slippage.');
   }
 
   /**
@@ -512,17 +435,12 @@ export class Uniswap {
    * @param walletAddress The wallet address to check ownership for
    * @throws Error if position is not owned by wallet or position ID is invalid
    */
-  public async checkNFTOwnership(
-    positionId: string,
-    walletAddress: string,
-  ): Promise<void> {
+  public async checkNFTOwnership(positionId: string, walletAddress: string): Promise<void> {
     const nftContract = new Contract(
       getUniswapV3NftManagerAddress(this.networkName),
       [
         {
-          inputs: [
-            { internalType: 'uint256', name: 'tokenId', type: 'uint256' },
-          ],
+          inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
           name: 'ownerOf',
           outputs: [{ internalType: 'address', name: '', type: 'address' }],
           stateMutability: 'view',
@@ -535,9 +453,7 @@ export class Uniswap {
     try {
       const owner = await nftContract.ownerOf(positionId);
       if (owner.toLowerCase() !== walletAddress.toLowerCase()) {
-        throw new Error(
-          `Position ${positionId} is not owned by wallet ${walletAddress}`,
-        );
+        throw new Error(`Position ${positionId} is not owned by wallet ${walletAddress}`);
       }
     } catch (error: any) {
       if (error.message.includes('is not owned by')) {
@@ -554,18 +470,12 @@ export class Uniswap {
    * @param operatorAddress The address that needs approval (usually the position manager itself)
    * @throws Error if NFT is not approved
    */
-  public async checkNFTApproval(
-    positionId: string,
-    walletAddress: string,
-    operatorAddress: string,
-  ): Promise<void> {
+  public async checkNFTApproval(positionId: string, walletAddress: string, operatorAddress: string): Promise<void> {
     const nftContract = new Contract(
       getUniswapV3NftManagerAddress(this.networkName),
       [
         {
-          inputs: [
-            { internalType: 'uint256', name: 'tokenId', type: 'uint256' },
-          ],
+          inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
           name: 'getApproved',
           outputs: [{ internalType: 'address', name: '', type: 'address' }],
           stateMutability: 'view',
@@ -587,15 +497,9 @@ export class Uniswap {
 
     // Check if the position manager itself is approved (it should be the operator)
     const approvedAddress = await nftContract.getApproved(positionId);
-    const isApprovedForAll = await nftContract.isApprovedForAll(
-      walletAddress,
-      operatorAddress,
-    );
+    const isApprovedForAll = await nftContract.isApprovedForAll(walletAddress, operatorAddress);
 
-    if (
-      approvedAddress.toLowerCase() !== operatorAddress.toLowerCase() &&
-      !isApprovedForAll
-    ) {
+    if (approvedAddress.toLowerCase() !== operatorAddress.toLowerCase() && !isApprovedForAll) {
       throw new Error(
         `Insufficient NFT approval. Please approve the position NFT (${positionId}) for the Uniswap Position Manager (${operatorAddress})`,
       );

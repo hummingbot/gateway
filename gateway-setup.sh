@@ -307,7 +307,6 @@ echo
 
 # List specific items to be updated
 echo "   Items to be updated:"
-echo "   - root.yml (always updated - essential file)"
 if [ "$UPDATE_SERVER" = "Y" ]; then
   echo "   - server.yml (default Gateway server configs)"
 fi
@@ -323,6 +322,8 @@ fi
 if [ "$UPDATE_POOLS" = "Y" ]; then
   echo "   - pools/ (default pool lists for each DEX connector)"
 fi
+echo "   - root.yml (always updated - essential file)"
+echo "   - namespaces/ (always updated - config schemas)"
 
 # Show wallet preservation status
 if [ -d "$HOST_CONF_PATH/wallets" ]; then

@@ -1,18 +1,10 @@
 import { CurrencyAmount, Percent, TradeType, Token } from '@uniswap/sdk-core';
-import {
-  AlphaRouter,
-  SwapOptionsSwapRouter02,
-  SwapType,
-} from '@uniswap/smart-order-router';
+import { AlphaRouter, SwapOptionsSwapRouter02, SwapType } from '@uniswap/smart-order-router';
 import { BigNumber } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  ExecuteSwapRequestType,
-  SwapExecuteResponseType,
-  SwapExecuteResponse,
-} from '../../../schemas/router-schema';
+import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { UniswapExecuteSwapRequest } from '../schemas';
@@ -35,15 +27,12 @@ async function executeSwap(
   const uniswap = await Uniswap.getInstance(network);
 
   // Resolve token symbols to addresses
-  const baseTokenInfo = ethereum.getTokenBySymbol(baseToken);
-  const quoteTokenInfo = ethereum.getTokenBySymbol(quoteToken);
+  const baseTokenInfo = ethereum.getToken(baseToken);
+  const quoteTokenInfo = ethereum.getToken(quoteToken);
 
   if (!baseTokenInfo || !quoteTokenInfo) {
     throw fastify.httpErrors.badRequest(
-      sanitizeErrorMessage(
-        'Token not found: {}',
-        !baseTokenInfo ? baseToken : quoteToken,
-      ),
+      sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
     );
   }
 
@@ -66,13 +55,9 @@ async function executeSwap(
 
   // Determine input/output based on side
   const exactIn = side === 'SELL';
-  const [inputToken, outputToken] = exactIn
-    ? [baseTokenObj, quoteTokenObj]
-    : [quoteTokenObj, baseTokenObj];
+  const [inputToken, outputToken] = exactIn ? [baseTokenObj, quoteTokenObj] : [quoteTokenObj, baseTokenObj];
 
-  logger.info(
-    `Executing swap for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`,
-  );
+  logger.info(`Executing swap for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`);
 
   // Create AlphaRouter instance
   const router = new AlphaRouter({
@@ -118,33 +103,16 @@ async function executeSwap(
   if (inputToken.address !== ethereum.nativeTokenSymbol) {
     const tokenContract = ethereum.getContract(inputToken.address, wallet);
     const spender = quote.methodParameters.to; // Router address
-    const allowance = await ethereum.getERC20Allowance(
-      tokenContract,
-      wallet,
-      spender,
-      inputToken.decimals,
-    );
+    const allowance = await ethereum.getERC20Allowance(tokenContract, wallet, spender, inputToken.decimals);
 
     // Calculate required allowance based on side
-    const requiredAmount =
-      side === 'SELL'
-        ? amount
-        : quote.quote
-          ? parseFloat(quote.quote.toExact())
-          : 0;
+    const requiredAmount = side === 'SELL' ? amount : quote.quote ? parseFloat(quote.quote.toExact()) : 0;
     const scaleFactor = Math.pow(10, inputToken.decimals);
-    const requiredAllowance = BigNumber.from(
-      Math.floor(requiredAmount * scaleFactor).toString(),
-    );
+    const requiredAllowance = BigNumber.from(Math.floor(requiredAmount * scaleFactor).toString());
 
     if (BigNumber.from(allowance.value).lt(requiredAllowance)) {
       logger.info(`Approving ${inputToken.symbol} for Uniswap router`);
-      await ethereum.approveERC20(
-        tokenContract,
-        wallet,
-        spender,
-        requiredAllowance,
-      );
+      await ethereum.approveERC20(tokenContract, wallet, spender, requiredAllowance);
     }
   }
 
@@ -153,8 +121,7 @@ async function executeSwap(
     to: quote.methodParameters.to,
     data: quote.methodParameters.calldata,
     value: quote.methodParameters.value,
-    gasLimit:
-      maxGas || parseInt(quote.estimatedGasUsed?.toString() || '500000'),
+    gasLimit: maxGas || parseInt(quote.estimatedGasUsed?.toString() || '500000'),
     ...(gasPrice && { gasPrice: BigNumber.from(gasPrice) }),
   };
 
@@ -166,9 +133,7 @@ async function executeSwap(
   }
 
   // Calculate fee from gas used
-  const fee =
-    parseFloat(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice).toString()) /
-    1e18;
+  const fee = parseFloat(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice).toString()) / 1e18;
 
   // Calculate actual amounts (for now use quote amounts)
   let estimatedAmountIn: number;
@@ -183,19 +148,12 @@ async function executeSwap(
   }
 
   const baseTokenBalanceChange = side === 'SELL' ? -amount : estimatedAmountOut;
-  const quoteTokenBalanceChange =
-    side === 'SELL' ? estimatedAmountOut : -amount;
+  const quoteTokenBalanceChange = side === 'SELL' ? estimatedAmountOut : -amount;
 
-  const amountIn = Math.abs(
-    side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange,
-  );
-  const amountOut = Math.abs(
-    side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange,
-  );
+  const amountIn = Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange);
+  const amountOut = Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange);
 
-  logger.info(
-    `Swap executed successfully: ${amountIn} ${inputToken.symbol} -> ${amountOut} ${outputToken.symbol}`,
-  );
+  logger.info(`Swap executed successfully: ${amountIn} ${inputToken.symbol} -> ${amountOut} ${outputToken.symbol}`);
 
   return {
     signature: txReceipt.transactionHash,
@@ -242,17 +200,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          walletAddress,
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          slippagePct,
-          gasPrice,
-          maxGas,
-        } = request.body as typeof UniswapExecuteSwapRequest._type;
+        const { walletAddress, network, baseToken, quoteToken, amount, side, slippagePct, gasPrice, maxGas } =
+          request.body as typeof UniswapExecuteSwapRequest._type;
 
         return await executeSwap(
           fastify,

@@ -5,24 +5,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
+import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { ZeroX, ZeroXQuoteResponse } from '../0x';
 import { ZeroXConfig } from '../0x.config';
 import { ZeroXQuoteSwapRequest, ZeroXQuoteSwapResponse } from '../schemas';
-
-// In-memory cache for quotes (with 30 second TTL)
-const quoteCache = new Map<string, { quote: ZeroXQuoteResponse; timestamp: number; request: any }>();
-const QUOTE_TTL = 30000; // 30 seconds
-
-// Cleanup expired quotes periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, cached] of quoteCache.entries()) {
-    if (now - cached.timestamp > QUOTE_TTL) {
-      quoteCache.delete(id);
-    }
-  }
-}, 10000); // Run every 10 seconds
 
 async function quoteSwap(
   fastify: FastifyInstance,
@@ -39,8 +26,8 @@ async function quoteSwap(
   const zeroX = await ZeroX.getInstance(network);
 
   // Resolve token symbols to addresses
-  const baseTokenInfo = await ethereum.getTokenBySymbol(baseToken);
-  const quoteTokenInfo = await ethereum.getTokenBySymbol(quoteToken);
+  const baseTokenInfo = ethereum.getToken(baseToken);
+  const quoteTokenInfo = ethereum.getToken(quoteToken);
 
   if (!baseTokenInfo || !quoteTokenInfo) {
     throw fastify.httpErrors.badRequest(
@@ -67,26 +54,40 @@ async function quoteSwap(
   let apiResponse: any;
   if (indicativePrice) {
     // Use price API for indicative quotes (no commitment)
-    apiResponse = await zeroX.getPrice({
+    const priceParams: any = {
       sellToken,
       buyToken,
-      sellAmount: side === 'SELL' ? tokenAmount : undefined,
-      buyAmount: side === 'BUY' ? tokenAmount : undefined,
       takerAddress: walletAddress,
-      slippagePercentage: zeroX.convertSlippageToPercentage(slippagePct),
+      slippagePercentage: slippagePct / 100, // Convert to percentage
       skipValidation: true, // Always skip validation for price quotes
-    });
+    };
+
+    // Only add the amount parameter that we're using
+    if (side === 'SELL') {
+      priceParams.sellAmount = tokenAmount;
+    } else {
+      priceParams.buyAmount = tokenAmount;
+    }
+
+    apiResponse = await zeroX.getPrice(priceParams);
   } else {
     // Use quote API for firm quotes (with commitment)
-    apiResponse = await zeroX.getQuote({
+    const quoteParams: any = {
       sellToken,
       buyToken,
-      sellAmount: side === 'SELL' ? tokenAmount : undefined,
-      buyAmount: side === 'BUY' ? tokenAmount : undefined,
       takerAddress: walletAddress,
-      slippagePercentage: zeroX.convertSlippageToPercentage(slippagePct),
+      slippagePercentage: slippagePct / 100, // Convert to percentage
       skipValidation: false,
-    });
+    };
+
+    // Only add the amount parameter that we're using
+    if (side === 'SELL') {
+      quoteParams.sellAmount = tokenAmount;
+    } else {
+      quoteParams.buyAmount = tokenAmount;
+    }
+
+    apiResponse = await zeroX.getQuote(quoteParams);
   }
 
   // Parse amounts
@@ -119,24 +120,21 @@ async function quoteSwap(
   if (!indicativePrice) {
     // Only generate quote ID and cache for firm quotes
     quoteId = uuidv4();
-    expirationTime = now + QUOTE_TTL;
+    expirationTime = now + 30000; // 30 seconds TTL
 
-    quoteCache.set(quoteId, {
-      quote: apiResponse,
-      timestamp: now,
-      request: {
-        network,
-        baseToken,
-        quoteToken,
-        amount,
-        side,
-        slippagePct,
-        sellToken,
-        buyToken,
-        baseTokenInfo,
-        quoteTokenInfo,
-        walletAddress,
-      },
+    // Store the quote in global cache for later execution
+    quoteCache.set(quoteId, apiResponse, {
+      network,
+      baseToken,
+      quoteToken,
+      amount,
+      side,
+      slippagePct,
+      sellToken,
+      buyToken,
+      baseTokenInfo,
+      quoteTokenInfo,
+      walletAddress,
     });
   } else {
     // For indicative prices, use a placeholder quote ID
@@ -184,23 +182,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         description:
           'Get a swap quote from 0x. Use indicativePrice=true for price discovery only, or false/undefined for executable quotes',
         tags: ['/connector/0x'],
-        querystring: {
-          ...ZeroXQuoteSwapRequest,
-          properties: {
-            ...ZeroXQuoteSwapRequest.properties,
-            network: {
-              type: 'string',
-              default: 'mainnet',
-              examples: ZeroXConfig.networks.mainnet.availableNetworks,
-            },
-            baseToken: { type: 'string', examples: ['WETH'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [1] },
-            side: { type: 'string', enum: ['BUY', 'SELL'] },
-            slippagePct: { type: 'number', examples: [1] },
-            takerAddress: { type: 'string', examples: [walletAddressExample] },
-          },
-        },
+        querystring: ZeroXQuoteSwapRequest,
         response: { 200: ZeroXQuoteSwapResponse },
       },
     },
@@ -220,10 +202,19 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           indicativePrice ?? true,
           takerAddress,
         );
-      } catch (e) {
+      } catch (e: any) {
         if (e.statusCode) throw e;
-        logger.error('Error getting quote:', e);
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        logger.error('Error getting quote:', e.message || e);
+
+        // Handle specific error cases
+        if (e.message?.includes('0x API key not configured')) {
+          throw fastify.httpErrors.badRequest(e.message);
+        }
+        if (e.message?.includes('0x API Error')) {
+          throw fastify.httpErrors.badRequest(e.message);
+        }
+
+        throw fastify.httpErrors.internalServerError(e.message || 'Failed to get quote');
       }
     },
   );

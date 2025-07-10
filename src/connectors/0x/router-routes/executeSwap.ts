@@ -51,19 +51,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Quote and execute a token swap on 0x in one step',
         tags: ['/connector/0x'],
-        body: {
-          ...ZeroXExecuteSwapRequest,
-          properties: {
-            ...ZeroXExecuteSwapRequest.properties,
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            network: { type: 'string', default: 'mainnet' },
-            baseToken: { type: 'string', examples: ['WETH'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [1] },
-            side: { type: 'string', enum: ['BUY', 'SELL'] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        body: ZeroXExecuteSwapRequest,
         response: { 200: SwapExecuteResponse },
       },
     },

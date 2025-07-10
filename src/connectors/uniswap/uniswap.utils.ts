@@ -30,9 +30,7 @@ export const isValidV2Pool = async (poolAddress: string): Promise<boolean> => {
   try {
     // This would typically check if the contract at poolAddress conforms to the V2 Pair interface
     // For now, we'll just check if it's a valid address
-    return (
-      poolAddress && poolAddress.length === 42 && poolAddress.startsWith('0x')
-    );
+    return poolAddress && poolAddress.length === 42 && poolAddress.startsWith('0x');
   } catch (error) {
     logger.error(`Error validating V2 pool: ${error}`);
     return false;
@@ -48,9 +46,7 @@ export const isValidV3Pool = async (poolAddress: string): Promise<boolean> => {
   try {
     // This would typically check if the contract at poolAddress conforms to the V3 Pool interface
     // For now, we'll just check if it's a valid address
-    return (
-      poolAddress && poolAddress.length === 42 && poolAddress.startsWith('0x')
-    );
+    return poolAddress && poolAddress.length === 42 && poolAddress.startsWith('0x');
   } catch (error) {
     logger.error(`Error validating V3 pool: ${error}`);
     return false;
@@ -101,10 +97,7 @@ export const findPoolAddress = (
  * @param decimals The token decimals
  * @returns The formatted token amount
  */
-export const formatTokenAmount = (
-  amount: string | number,
-  decimals: number,
-): number => {
+export const formatTokenAmount = (amount: string | number, decimals: number): number => {
   try {
     if (typeof amount === 'string') {
       return parseFloat(amount) / Math.pow(10, decimals);
@@ -133,12 +126,11 @@ export async function getFullTokenFromSymbol(
     await ethereum.init();
   }
 
-  const tokenInfo: TokenInfo = ethereum.getTokenBySymbol(tokenSymbol);
+  // Try to find token using ethereum's getToken method
+  const tokenInfo = ethereum.getToken(tokenSymbol);
 
   if (!tokenInfo) {
-    throw fastify.httpErrors.badRequest(
-      `Token ${tokenSymbol} is not supported`,
-    );
+    throw fastify.httpErrors.badRequest(`Token ${tokenSymbol} is not supported`);
   }
 
   const uniswapToken = new Token(
@@ -150,9 +142,7 @@ export async function getFullTokenFromSymbol(
   );
 
   if (!uniswapToken) {
-    throw fastify.httpErrors.internalServerError(
-      `Failed to create token for ${tokenSymbol}`,
-    );
+    throw fastify.httpErrors.internalServerError(`Failed to create token for ${tokenSymbol}`);
   }
 
   return uniswapToken;
@@ -217,26 +207,16 @@ export interface UniswapPoolInfo {
  * @param network The network name
  * @returns Pool information with base and quote token addresses
  */
-export async function getV2PoolInfo(
-  poolAddress: string,
-  network: string,
-): Promise<UniswapPoolInfo | null> {
+export async function getV2PoolInfo(poolAddress: string, network: string): Promise<UniswapPoolInfo | null> {
   try {
     const ethereum = await Ethereum.getInstance(network);
     const uniswap = await Uniswap.getInstance(network);
 
     // Create pair contract
-    const pairContract = new Contract(
-      poolAddress,
-      IUniswapV2PairABI.abi,
-      ethereum.provider,
-    );
+    const pairContract = new Contract(poolAddress, IUniswapV2PairABI.abi, ethereum.provider);
 
     // Get token addresses
-    const [token0Address, token1Address] = await Promise.all([
-      pairContract.token0(),
-      pairContract.token1(),
-    ]);
+    const [token0Address, token1Address] = await Promise.all([pairContract.token0(), pairContract.token1()]);
 
     // By convention, use token0 as base and token1 as quote
     return {
@@ -256,10 +236,7 @@ export async function getV2PoolInfo(
  * @param network The network name
  * @returns Pool information with base and quote token addresses
  */
-export async function getV3PoolInfo(
-  poolAddress: string,
-  _network: string,
-): Promise<UniswapPoolInfo | null> {
+export async function getV3PoolInfo(poolAddress: string, _network: string): Promise<UniswapPoolInfo | null> {
   try {
     // For V3, we need to get the pool contract and extract token addresses
     // This is a simplified approach - in production you'd use the pool contract ABI
@@ -270,9 +247,7 @@ export async function getV3PoolInfo(
 
     // For now, return null - V3 pool info extraction needs to be implemented
     // with proper pool contract ABI
-    logger.warn(
-      `V3 pool info extraction not implemented for pool ${poolAddress}`,
-    );
+    logger.warn(`V3 pool info extraction not implemented for pool ${poolAddress}`);
     return null;
   } catch (error) {
     logger.error(`Error getting V3 pool info: ${error.message}`);

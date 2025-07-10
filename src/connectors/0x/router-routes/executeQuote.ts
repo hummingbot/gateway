@@ -4,10 +4,9 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
+import { quoteCache } from '../../../services/quote-cache';
 import { ZeroX } from '../0x';
 import { ZeroXExecuteQuoteRequest } from '../schemas';
-
-import { quoteCache } from './quoteSwap';
 
 async function executeQuote(
   fastify: FastifyInstance,
@@ -17,27 +16,26 @@ async function executeQuote(
   gasPrice?: string,
   maxGas?: number,
 ): Promise<SwapExecuteResponseType> {
-  // Retrieve cached quote
-  const cached = quoteCache.get(quoteId);
-  if (!cached) {
+  // Retrieve cached quote from global cache
+  const quote = quoteCache.get(quoteId);
+  if (!quote) {
     throw fastify.httpErrors.badRequest('Quote not found or expired');
   }
-
-  const { quote, request } = cached;
-  const { sellToken, buyToken, side, amount, baseTokenInfo, quoteTokenInfo } = request;
 
   const ethereum = await Ethereum.getInstance(network);
   const wallet = await ethereum.getWallet(walletAddress);
   const zeroX = await ZeroX.getInstance(network);
 
-  logger.info(
-    `Executing quote ${quoteId} for ${amount} ${side === 'SELL' ? baseTokenInfo.symbol : quoteTokenInfo.symbol} -> ${side === 'SELL' ? quoteTokenInfo.symbol : baseTokenInfo.symbol}`,
-  );
+  logger.info(`Executing quote ${quoteId} on ${network}`);
 
-  // Check and approve allowance if needed
-  const sellTokenInfo = side === 'SELL' ? baseTokenInfo : quoteTokenInfo;
-  if (sellTokenInfo.address !== ethereum.nativeTokenSymbol) {
-    const tokenContract = ethereum.getContract(sellTokenInfo.address, wallet);
+  // Check allowance for the sell token
+  if (quote.sellTokenAddress !== ethereum.nativeTokenSymbol) {
+    const sellTokenInfo = ethereum.getToken(quote.sellTokenAddress);
+    if (!sellTokenInfo) {
+      throw fastify.httpErrors.badRequest(`Token ${quote.sellTokenAddress} not found`);
+    }
+
+    const tokenContract = ethereum.getContract(quote.sellTokenAddress, wallet);
     const allowance = await ethereum.getERC20Allowance(
       tokenContract,
       wallet,
@@ -47,8 +45,9 @@ async function executeQuote(
 
     const requiredAllowance = BigNumber.from(quote.sellAmount);
     if (BigNumber.from(allowance.value).lt(requiredAllowance)) {
-      logger.info(`Approving ${sellTokenInfo.symbol} for 0x swap`);
-      await ethereum.approveERC20(tokenContract, wallet, quote.allowanceTarget, requiredAllowance);
+      throw fastify.httpErrors.badRequest(
+        `Insufficient allowance for ${sellTokenInfo.symbol}. Required: ${zeroX.formatTokenAmount(quote.sellAmount, sellTokenInfo.decimals)}, Current: ${zeroX.formatTokenAmount(allowance.value.toString(), sellTokenInfo.decimals)}`,
+      );
     }
   }
 
@@ -72,33 +71,36 @@ async function executeQuote(
   const fee = parseFloat(zeroX.formatTokenAmount(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice).toString(), 18));
 
   // For now, use the quote amounts as the actual amounts
-  // In a real implementation, you would extract actual amounts from events
-  const baseTokenBalanceChange =
-    side === 'SELL'
-      ? -parseFloat(zeroX.formatTokenAmount(quote.sellAmount, baseTokenInfo.decimals))
-      : parseFloat(zeroX.formatTokenAmount(quote.buyAmount, baseTokenInfo.decimals));
-  const quoteTokenBalanceChange =
-    side === 'SELL'
-      ? parseFloat(zeroX.formatTokenAmount(quote.buyAmount, quoteTokenInfo.decimals))
-      : -parseFloat(zeroX.formatTokenAmount(quote.sellAmount, quoteTokenInfo.decimals));
+  // Get token info for formatting amounts
+  const sellTokenInfo = ethereum.getToken(quote.sellTokenAddress);
+  const buyTokenInfo = ethereum.getToken(quote.buyTokenAddress);
 
-  // Calculate actual amounts swapped
-  const amountIn = side === 'SELL' ? Math.abs(baseTokenBalanceChange) : Math.abs(quoteTokenBalanceChange);
-  const amountOut = side === 'SELL' ? Math.abs(quoteTokenBalanceChange) : Math.abs(baseTokenBalanceChange);
+  if (!sellTokenInfo || !buyTokenInfo) {
+    throw fastify.httpErrors.badRequest('Token info not found');
+  }
+
+  // Calculate actual amounts from the quote
+  const amountIn = parseFloat(zeroX.formatTokenAmount(quote.sellAmount, sellTokenInfo.decimals));
+  const amountOut = parseFloat(zeroX.formatTokenAmount(quote.buyAmount, buyTokenInfo.decimals));
 
   logger.info(
-    `Swap executed successfully: ${amountIn.toFixed(4)} ${side === 'SELL' ? baseTokenInfo.symbol : quoteTokenInfo.symbol} -> ${amountOut.toFixed(4)} ${side === 'SELL' ? quoteTokenInfo.symbol : baseTokenInfo.symbol}`,
+    `Swap executed successfully: ${amountIn.toFixed(4)} ${sellTokenInfo.symbol} -> ${amountOut.toFixed(4)} ${buyTokenInfo.symbol}`,
   );
 
   // Remove quote from cache only after successful execution (confirmed)
   quoteCache.delete(quoteId);
 
+  // For 0x quotes, we don't know the original side, so we'll set balance changes to 0
+  // The actual balance changes would need to be tracked from the original request
+  const baseTokenBalanceChange = 0;
+  const quoteTokenBalanceChange = 0;
+
   return {
     signature: txReceipt.transactionHash,
     status: 1, // CONFIRMED
     data: {
-      tokenIn: sellToken,
-      tokenOut: buyToken,
+      tokenIn: quote.sellTokenAddress,
+      tokenOut: quote.buyTokenAddress,
       amountIn,
       amountOut,
       fee,
@@ -122,18 +124,7 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Execute a previously fetched quote from 0x',
         tags: ['/connector/0x'],
-        body: {
-          ...ZeroXExecuteQuoteRequest,
-          properties: {
-            ...ZeroXExecuteQuoteRequest.properties,
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            network: { type: 'string', default: 'mainnet' },
-            quoteId: {
-              type: 'string',
-              examples: ['123e4567-e89b-12d3-a456-426614174000'],
-            },
-          },
-        },
+        body: ZeroXExecuteQuoteRequest,
         response: { 200: SwapExecuteResponse },
       },
     },
