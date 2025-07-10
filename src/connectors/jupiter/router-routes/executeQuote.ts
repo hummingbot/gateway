@@ -9,7 +9,6 @@ import {
 } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { Jupiter } from '../jupiter';
-import { JupiterConfig } from '../jupiter.config';
 import { JupiterExecuteQuoteRequest } from '../schemas';
 
 import { quoteCache } from './quoteSwap';
@@ -125,22 +124,9 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
           ...JupiterExecuteQuoteRequest,
           properties: {
             ...JupiterExecuteQuoteRequest.properties,
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            network: {
-              type: 'string',
-              default: JupiterConfig.examples.network,
-            },
-            quoteId: {
-              type: 'string',
-              examples: [JupiterConfig.examples.quoteId],
-            },
-            priorityLevel: {
-              type: 'string',
-              examples: [JupiterConfig.examples.priorityLevel],
-            },
-            maxLamports: {
-              type: 'number',
-              examples: [JupiterConfig.examples.maxLamports],
+            walletAddress: {
+              ...JupiterExecuteQuoteRequest.properties.walletAddress,
+              examples: [walletAddressExample],
             },
           },
         },

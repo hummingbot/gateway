@@ -30,17 +30,4 @@ export namespace JupiterConfig {
       },
     ],
   };
-
-  // Example configurations for route schemas
-  export const examples = {
-    network: networks[0], // 'mainnet-beta'
-    baseToken: 'SOL',
-    quoteToken: 'USDC',
-    amount: 1,
-    side: 'SELL' as const,
-    slippagePct: config.slippagePct,
-    priorityLevel: config.priorityLevel,
-    maxLamports: config.maxLamports,
-    quoteId: '123e4567-e89b-12d3-a456-426614174000',
-  };
 }

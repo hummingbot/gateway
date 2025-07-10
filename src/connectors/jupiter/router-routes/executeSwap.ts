@@ -66,39 +66,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...JupiterExecuteSwapRequest.properties,
             walletAddress: { type: 'string', examples: [walletAddressExample] },
-            network: {
-              type: 'string',
-              default: JupiterConfig.examples.network,
-            },
-            baseToken: {
-              type: 'string',
-              examples: [JupiterConfig.examples.baseToken],
-            },
-            quoteToken: {
-              type: 'string',
-              examples: [JupiterConfig.examples.quoteToken],
-            },
-            amount: {
-              type: 'number',
-              examples: [JupiterConfig.examples.amount],
-            },
-            side: {
-              type: 'string',
-              enum: ['BUY', 'SELL'],
-              examples: [JupiterConfig.examples.side],
-            },
-            slippagePct: {
-              type: 'number',
-              examples: [JupiterConfig.examples.slippagePct],
-            },
-            priorityLevel: {
-              type: 'string',
-              examples: [JupiterConfig.examples.priorityLevel],
-            },
-            maxLamports: {
-              type: 'number',
-              examples: [JupiterConfig.examples.maxLamports],
-            },
           },
         },
         response: { 200: SwapExecuteResponse },
