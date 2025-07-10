@@ -7,7 +7,7 @@ import { TokenListType, TokenValue } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
-import { walletPath, getReadOnlyWalletAddresses } from '../../wallet/utils';
+import { walletPath, getReadOnlyWalletAddresses, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
 
 import { getEthereumConfig } from './ethereum.config';
 
@@ -362,6 +362,18 @@ export class Ethereum {
       return readOnlyAddresses.includes(address);
     } catch (error) {
       logger.error(`Error checking read-only wallet status: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Check if an address is a hardware wallet
+   */
+  public async isHardwareWallet(address: string): Promise<boolean> {
+    try {
+      return await checkIsHardwareWallet('ethereum', address);
+    } catch (error) {
+      logger.error(`Error checking hardware wallet status: ${error.message}`);
       return false;
     }
   }

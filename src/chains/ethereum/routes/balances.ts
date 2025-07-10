@@ -31,10 +31,11 @@ export async function getEthereumBalances(
     // If no tokens specified, check all tokens in the token list
     const checkAllTokens = !effectiveTokens;
 
-    // Check if this is a read-only wallet
+    // Check if this is a read-only wallet or hardware wallet
     isReadOnly = await ethereum.isReadOnlyWallet(address);
+    const isHardware = await ethereum.isHardwareWallet(address);
 
-    if (!isReadOnly) {
+    if (!isReadOnly && !isHardware) {
       try {
         wallet = await ethereum.getWallet(address);
       } catch (err) {
@@ -44,9 +45,10 @@ export async function getEthereumBalances(
     }
 
     // Always get native token balance
-    const nativeBalance = isReadOnly
-      ? await ethereum.getNativeBalanceByAddress(address)
-      : await ethereum.getNativeBalance(wallet!);
+    const nativeBalance =
+      isReadOnly || isHardware
+        ? await ethereum.getNativeBalanceByAddress(address)
+        : await ethereum.getNativeBalance(wallet!);
     // Convert string to number as required by schema
     balances[ethereum.nativeTokenSymbol] = parseFloat(tokenValueToString(nativeBalance));
 
@@ -83,19 +85,20 @@ export async function getEthereumBalances(
           batch.map(async (token) => {
             try {
               const contract = ethereum.getContract(token.address, ethereum.provider);
-              const balance = isReadOnly
-                ? await ethereum.getERC20BalanceByAddress(
-                    contract,
-                    address,
-                    token.decimals,
-                    3000, // 3 second timeout for better responsiveness
-                  )
-                : await ethereum.getERC20Balance(
-                    contract,
-                    wallet!,
-                    token.decimals,
-                    3000, // 3 second timeout for better responsiveness
-                  );
+              const balance =
+                isReadOnly || isHardware
+                  ? await ethereum.getERC20BalanceByAddress(
+                      contract,
+                      address,
+                      token.decimals,
+                      3000, // 3 second timeout for better responsiveness
+                    )
+                  : await ethereum.getERC20Balance(
+                      contract,
+                      wallet!,
+                      token.decimals,
+                      3000, // 3 second timeout for better responsiveness
+                    );
               // Parse balance to number
               const balanceNum = parseFloat(tokenValueToString(balance));
 
@@ -123,19 +126,20 @@ export async function getEthereumBalances(
           const token = ethereum.getToken(symbolOrAddress);
           if (token) {
             const contract = ethereum.getContract(token.address, ethereum.provider);
-            const balance = isReadOnly
-              ? await ethereum.getERC20BalanceByAddress(
-                  contract,
-                  address,
-                  token.decimals,
-                  5000, // 5 second timeout for specifically requested tokens
-                )
-              : await ethereum.getERC20Balance(
-                  contract,
-                  wallet!,
-                  token.decimals,
-                  5000, // 5 second timeout for specifically requested tokens
-                );
+            const balance =
+              isReadOnly || isHardware
+                ? await ethereum.getERC20BalanceByAddress(
+                    contract,
+                    address,
+                    token.decimals,
+                    5000, // 5 second timeout for specifically requested tokens
+                  )
+                : await ethereum.getERC20Balance(
+                    contract,
+                    wallet!,
+                    token.decimals,
+                    5000, // 5 second timeout for specifically requested tokens
+                  );
             // Convert string to number as required by schema
             balances[token.symbol] = parseFloat(tokenValueToString(balance));
           }

@@ -1,16 +1,17 @@
 import { FastifyPluginAsync } from 'fastify';
 
 import { logger } from '../../services/logger';
-import { GetWalletResponse, GetWalletResponseSchema } from '../schemas';
+import { GetWalletsQuery, GetWalletResponse, GetWalletResponseSchema, GetWalletsQuerySchema } from '../schemas';
 import { getWallets } from '../utils';
 
 export const getWalletsRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{ Reply: GetWalletResponse[] }>(
+  fastify.get<{ Querystring: GetWalletsQuery; Reply: GetWalletResponse[] }>(
     '/',
     {
       schema: {
         description: 'Get all wallets across different chains',
         tags: ['/wallet'],
+        querystring: GetWalletsQuerySchema,
         response: {
           200: {
             type: 'array',
@@ -19,9 +20,10 @@ export const getWalletsRoute: FastifyPluginAsync = async (fastify) => {
         },
       },
     },
-    async () => {
-      logger.info('Getting all wallets');
-      return await getWallets(fastify);
+    async (request) => {
+      const { showReadOnly = true, showHardware = true } = request.query;
+      logger.info(`Getting all wallets (showReadOnly: ${showReadOnly}, showHardware: ${showHardware})`);
+      return await getWallets(fastify, showReadOnly, showHardware);
     },
   );
 };

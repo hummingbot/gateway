@@ -7,6 +7,7 @@ import { ApproveRequestType, ApproveResponseType, ApproveResponseSchema } from '
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { TokenInfo, Ethereum } from '../ethereum';
+import { EthereumLedger } from '../ethereum-ledger';
 
 // Helper function to convert transaction to a format matching the CustomTransactionSchema
 const toEthereumTransaction = (transaction: ethers.Transaction) => {
@@ -48,13 +49,8 @@ export async function approveEthereumToken(
     throw fastify.httpErrors.badRequest(`Invalid spender: ${error.message}`);
   }
 
-  let wallet: ethers.Wallet;
-  try {
-    wallet = await ethereum.getWallet(address);
-  } catch (err) {
-    logger.error(`Failed to load wallet: ${err.message}`);
-    throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
-  }
+  // Check if this is a hardware wallet
+  const isHardware = await ethereum.isHardwareWallet(address);
 
   // Try to find the token by symbol or address
   const fullToken = ethereum.getToken(token);
@@ -64,12 +60,66 @@ export async function approveEthereumToken(
 
   const amountBigNumber = amount ? utils.parseUnits(amount, fullToken.decimals) : constants.MaxUint256;
 
-  // Instantiate a contract and pass in wallet, which act on behalf of that signer
-  const contract = ethereum.getContract(fullToken.address, wallet);
-
   try {
-    // Call approve function
-    const approval = await ethereum.approveERC20(contract, wallet, spenderAddress, amountBigNumber);
+    let approval;
+
+    if (isHardware) {
+      // Hardware wallet flow
+      logger.info(`Hardware wallet detected for ${address}. Building approve transaction for Ledger signing.`);
+
+      const ledger = new EthereumLedger();
+
+      // Get nonce for the address
+      const nonce = await ethereum.provider.getTransactionCount(address, 'latest');
+
+      // Build the approve transaction data
+      const iface = new utils.Interface(['function approve(address spender, uint256 amount)']);
+      const data = iface.encodeFunctionData('approve', [spenderAddress, amountBigNumber]);
+
+      // Get gas price
+      const gasPrice = await ethereum.provider.getGasPrice();
+      const feeData = await ethereum.provider.getFeeData();
+
+      // Build unsigned transaction
+      const unsignedTx = {
+        to: fullToken.address,
+        data: data,
+        nonce: nonce,
+        chainId: ethereum.chainId,
+        gasLimit: ethers.BigNumber.from('100000'), // Standard gas limit for approve
+        maxFeePerGas: feeData.maxFeePerGas,
+        maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
+      };
+
+      // Sign with Ledger
+      const signedTx = await ledger.signTransaction(address, unsignedTx as any);
+
+      // Send the signed transaction
+      const txResponse = await ethereum.provider.sendTransaction(signedTx);
+
+      // Wait for confirmation
+      const receipt = await txResponse.wait();
+
+      approval = {
+        hash: receipt.transactionHash,
+        nonce: nonce,
+      };
+    } else {
+      // Regular wallet flow
+      let wallet: ethers.Wallet;
+      try {
+        wallet = await ethereum.getWallet(address);
+      } catch (err) {
+        logger.error(`Failed to load wallet: ${err.message}`);
+        throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
+      }
+
+      // Instantiate a contract and pass in wallet, which act on behalf of that signer
+      const contract = ethereum.getContract(fullToken.address, wallet);
+
+      // Call approve function
+      approval = await ethereum.approveERC20(contract, wallet, spenderAddress, amountBigNumber);
+    }
 
     return {
       signature: approval.hash,
@@ -90,6 +140,12 @@ export async function approveEthereumToken(
       throw fastify.httpErrors.badRequest(
         'Insufficient funds for transaction. Please ensure you have enough ETH to cover gas costs.',
       );
+    } else if (error.message.includes('rejected on Ledger')) {
+      throw fastify.httpErrors.badRequest('Transaction rejected on Ledger device');
+    } else if (error.message.includes('Ledger device is locked')) {
+      throw fastify.httpErrors.badRequest(error.message);
+    } else if (error.message.includes('Wrong app is open')) {
+      throw fastify.httpErrors.badRequest(error.message);
     }
 
     throw fastify.httpErrors.internalServerError(`Failed to approve token: ${error.message}`);

@@ -30,6 +30,7 @@ export const JupiterQuoteSwapRequest = Type.Object({
     description:
       'Trade direction - BUY means buying base token with quote token, SELL means selling base token for quote token',
     enum: ['BUY', 'SELL'],
+    default: 'SELL',
   }),
   slippagePct: Type.Optional(
     Type.Number({
@@ -41,8 +42,7 @@ export const JupiterQuoteSwapRequest = Type.Object({
   ),
   restrictIntermediateTokens: Type.Optional(
     Type.Boolean({
-      description:
-        'Restrict routing through highly liquid intermediate tokens only for better price and stability',
+      description: 'Restrict routing through highly liquid intermediate tokens only for better price and stability',
       default: JupiterConfig.config.restrictIntermediateTokens,
       examples: [JupiterConfig.config.restrictIntermediateTokens],
     }),
@@ -190,6 +190,7 @@ export const JupiterExecuteSwapRequest = Type.Object({
     description:
       'Trade direction - BUY means buying base token with quote token, SELL means selling base token for quote token',
     enum: ['BUY', 'SELL'],
+    default: 'SELL',
   }),
   slippagePct: Type.Optional(
     Type.Number({
@@ -201,8 +202,7 @@ export const JupiterExecuteSwapRequest = Type.Object({
   ),
   restrictIntermediateTokens: Type.Optional(
     Type.Boolean({
-      description:
-        'Restrict routing through highly liquid intermediate tokens only for better price and stability',
+      description: 'Restrict routing through highly liquid intermediate tokens only for better price and stability',
       default: JupiterConfig.config.restrictIntermediateTokens,
       examples: [JupiterConfig.config.restrictIntermediateTokens],
     }),

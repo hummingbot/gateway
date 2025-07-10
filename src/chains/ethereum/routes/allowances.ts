@@ -19,11 +19,12 @@ export async function getEthereumAllowances(
     const ethereum = await Ethereum.getInstance(network);
     await ethereum.init();
 
-    // Check if this is a read-only wallet
+    // Check if this is a read-only wallet or hardware wallet
     const isReadOnly = await ethereum.isReadOnlyWallet(address);
+    const isHardware = await ethereum.isHardwareWallet(address);
     let wallet: ethers.Wallet | null = null;
 
-    if (!isReadOnly) {
+    if (!isReadOnly && !isHardware) {
       wallet = await ethereum.getWallet(address);
     }
 
@@ -73,7 +74,7 @@ export async function getEthereumAllowances(
       Object.keys(tokenInfoMap).map(async (symbol) => {
         const contract = ethereum.getContract(tokenInfoMap[symbol].address, ethereum.provider);
         approvals[symbol] = tokenValueToString(
-          isReadOnly
+          isReadOnly || isHardware
             ? await ethereum.getERC20AllowanceByAddress(
                 contract,
                 address,
