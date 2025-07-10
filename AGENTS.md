@@ -87,7 +87,7 @@ This file provides guidance to AI coding assistants when working with code in th
 - Chain configs: `src/templates/{chain}.yml`
 - Connector configs: `src/templates/{connector}.yml`
 - Token lists: `src/templates/lists/{network}.json`
-- All configs validated against JSON schemas in `src/templates/json/`
+- All configs validated against JSON schemas in `src/templates/namespace/`
 
 ## Supported Networks
 
