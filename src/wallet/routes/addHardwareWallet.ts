@@ -14,7 +14,7 @@ import {
 import { validateChainName, getHardwareWallets, saveHardwareWallets, HardwareWalletData } from '../utils';
 
 // Maximum number of account indices to check when searching for an address
-const MAX_ACCOUNTS_TO_CHECK = 50;
+const MAX_ACCOUNTS_TO_CHECK = 8;
 
 async function addHardwareWallet(
   fastify: FastifyInstance,
