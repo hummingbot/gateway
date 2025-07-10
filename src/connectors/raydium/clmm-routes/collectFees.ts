@@ -64,19 +64,14 @@ export async function collectFees(
     [wallet],
   );
 
-  const { balanceChange: collectedFeeA } =
-    await solana.extractBalanceChangeAndFee(
-      signature,
-      poolInfo.mintA.address,
-      wallet.publicKey.toBase58(),
-    );
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
+    signature,
+    wallet.publicKey.toBase58(),
+    [poolInfo.mintA.address, poolInfo.mintB.address],
+  );
 
-  const { balanceChange: collectedFeeB } =
-    await solana.extractBalanceChangeAndFee(
-      signature,
-      poolInfo.mintB.address,
-      wallet.publicKey.toBase58(),
-    );
+  const collectedFeeA = balanceChanges[0];
+  const collectedFeeB = balanceChanges[1];
 
   logger.info(
     `Fees collected from position ${positionAddress}: ${Math.abs(

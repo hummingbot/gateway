@@ -78,16 +78,10 @@ export const PollRequestSchema = Type.Object(
   {
     network: Type.String(),
     signature: Type.String({ description: 'Transaction signature/hash' }),
-    baseToken: Type.Optional(
-      Type.String({
+    tokens: Type.Optional(
+      Type.Array(Type.String(), {
         description:
-          'Base token symbol or address for balance change calculation',
-      }),
-    ),
-    quoteToken: Type.Optional(
-      Type.String({
-        description:
-          'Quote token symbol or address for balance change calculation',
+          'Array of token symbols or addresses for balance change calculation',
       }),
     ),
     walletAddress: Type.Optional(
@@ -107,14 +101,14 @@ export const PollResponseSchema = Type.Object(
     signature: Type.String(),
     txBlock: Type.Union([Type.Number(), Type.Null()]),
     txStatus: Type.Number(),
-    txData: Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()]),
     fee: Type.Union([Type.Number(), Type.Null()]),
-    baseTokenBalanceChange: Type.Optional(
-      Type.Number({ description: 'Balance change for base token' }),
+    tokenBalanceChanges: Type.Optional(
+      Type.Record(Type.String(), Type.Number(), {
+        description:
+          'Dictionary of token balance changes keyed by token input value (symbol or address)',
+      }),
     ),
-    quoteTokenBalanceChange: Type.Optional(
-      Type.Number({ description: 'Balance change for quote token' }),
-    ),
+    txData: Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()]),
     error: Type.Optional(Type.String()),
   },
   { $id: 'PollResponse' },

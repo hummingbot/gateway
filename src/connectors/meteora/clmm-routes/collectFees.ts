@@ -72,19 +72,17 @@ export async function collectFees(
     priorityFeePerCU,
   );
 
-  const { balanceChange: collectedFeeX } =
-    await solana.extractBalanceChangeAndFee(
-      signature,
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
+    signature,
+    dlmmPool.pubkey.toBase58(),
+    [
       dlmmPool.tokenX.publicKey.toBase58(),
-      dlmmPool.pubkey.toBase58(),
-    );
-
-  const { balanceChange: collectedFeeY } =
-    await solana.extractBalanceChangeAndFee(
-      signature,
       dlmmPool.tokenY.publicKey.toBase58(),
-      dlmmPool.pubkey.toBase58(),
-    );
+    ],
+  );
+
+  const collectedFeeX = balanceChanges[0];
+  const collectedFeeY = balanceChanges[1];
 
   logger.info(
     `Fees collected from position ${positionAddress}: ${Math.abs(collectedFeeX).toFixed(4)} ${tokenXSymbol}, ${Math.abs(collectedFeeY).toFixed(4)} ${tokenYSymbol}`,

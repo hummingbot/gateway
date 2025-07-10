@@ -86,19 +86,17 @@ export async function removeLiquidity(
     priorityFeePerCU,
   );
 
-  const { balanceChange: tokenXRemovedAmount } =
-    await solana.extractBalanceChangeAndFee(
-      signature,
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
+    signature,
+    dlmmPool.pubkey.toBase58(),
+    [
       dlmmPool.tokenX.publicKey.toBase58(),
-      dlmmPool.pubkey.toBase58(),
-    );
-
-  const { balanceChange: tokenYRemovedAmount } =
-    await solana.extractBalanceChangeAndFee(
-      signature,
       dlmmPool.tokenY.publicKey.toBase58(),
-      dlmmPool.pubkey.toBase58(),
-    );
+    ],
+  );
+
+  const tokenXRemovedAmount = balanceChanges[0];
+  const tokenYRemovedAmount = balanceChanges[1];
 
   logger.info(
     `Liquidity removed from position ${positionAddress}: ${Math.abs(tokenXRemovedAmount).toFixed(4)} ${tokenXSymbol}, ${Math.abs(tokenYRemovedAmount).toFixed(4)} ${tokenYSymbol}`,

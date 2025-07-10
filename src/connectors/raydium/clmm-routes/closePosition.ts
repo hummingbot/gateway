@@ -42,11 +42,12 @@ async function closePosition(
         computeUnits,
       );
 
-      const { balanceChange } = await solana.extractBalanceChangeAndFee(
+      const { balanceChanges } = await solana.extractBalanceChangesAndFee(
         removeLiquidityResponse.signature,
-        0,
+        wallet.publicKey.toBase58(),
+        ['So11111111111111111111111111111111111111112'],
       );
-      const rentRefunded = Math.abs(balanceChange);
+      const rentRefunded = Math.abs(balanceChanges[0]);
 
       return {
         signature: removeLiquidityResponse.signature,
@@ -90,11 +91,12 @@ async function closePosition(
       COMPUTE_UNITS,
     );
 
-    const { balanceChange } = await solana.extractBalanceChangeAndFee(
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(
       signature,
-      0,
+      wallet.publicKey.toBase58(),
+      ['So11111111111111111111111111111111111111112'],
     );
-    const rentRefunded = Math.abs(balanceChange);
+    const rentRefunded = Math.abs(balanceChanges[0]);
 
     return {
       signature,

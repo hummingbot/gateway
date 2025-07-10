@@ -97,13 +97,14 @@ async function addLiquidity(
 
   if (confirmed && txData) {
     const totalFee = txData.meta.fee;
-    const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-      await solana.extractPairBalanceChangesAndFee(
-        signature,
-        baseToken,
-        quoteToken,
-        wallet.publicKey.toBase58(),
-      );
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(
+      signature,
+      wallet.publicKey.toBase58(),
+      [baseToken.address, quoteToken.address],
+    );
+
+    const baseTokenBalanceChange = balanceChanges[0];
+    const quoteTokenBalanceChange = balanceChanges[1];
     return {
       signature,
       status: 1, // CONFIRMED

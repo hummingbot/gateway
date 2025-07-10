@@ -58,13 +58,17 @@ export async function executeQuote(
     quoteCache.delete(quoteId);
 
     // Transaction confirmed, return full data
-    const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-      await solana.extractPairBalanceChangesAndFee(
-        signature,
-        await solana.getToken(baseToken),
-        await solana.getToken(quoteToken),
-        walletAddress,
-      );
+    const baseTokenInfo = await solana.getToken(baseToken);
+    const quoteTokenInfo = await solana.getToken(quoteToken);
+
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(
+      signature,
+      walletAddress,
+      [baseTokenInfo.address, quoteTokenInfo.address],
+    );
+
+    const baseTokenBalanceChange = balanceChanges[0];
+    const quoteTokenBalanceChange = balanceChanges[1];
 
     // Calculate actual amounts swapped
     const amountIn =

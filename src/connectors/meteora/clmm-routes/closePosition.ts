@@ -103,11 +103,12 @@ async function closePosition(
         `Position ${positionAddress} closed successfully with signature: ${signature}`,
       );
 
-      const { balanceChange } = await solana.extractBalanceChangeAndFee(
+      const { balanceChanges } = await solana.extractBalanceChangesAndFee(
         signature,
-        0,
+        wallet.publicKey.toBase58(),
+        ['So11111111111111111111111111111111111111112'],
       );
-      const returnedSOL = Math.abs(balanceChange);
+      const returnedSOL = Math.abs(balanceChanges[0]);
 
       const totalFee =
         fee +

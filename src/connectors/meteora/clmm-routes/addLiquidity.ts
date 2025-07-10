@@ -154,19 +154,17 @@ async function addLiquidity(
     priorityFeePerCU,
   );
 
-  const { balanceChange: tokenXAddedAmount } =
-    await solana.extractBalanceChangeAndFee(
-      signature,
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
+    signature,
+    dlmmPool.pubkey.toBase58(),
+    [
       dlmmPool.tokenX.publicKey.toBase58(),
-      dlmmPool.pubkey.toBase58(),
-    );
-
-  const { balanceChange: tokenYAddedAmount } =
-    await solana.extractBalanceChangeAndFee(
-      signature,
       dlmmPool.tokenY.publicKey.toBase58(),
-      dlmmPool.pubkey.toBase58(),
-    );
+    ],
+  );
+
+  const tokenXAddedAmount = balanceChanges[0];
+  const tokenYAddedAmount = balanceChanges[1];
 
   logger.info(
     `Liquidity added to position ${positionAddress}: ${Math.abs(tokenXAddedAmount).toFixed(4)} ${tokenXSymbol}, ${Math.abs(tokenYAddedAmount).toFixed(4)} ${tokenYSymbol}`,

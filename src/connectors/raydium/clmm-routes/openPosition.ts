@@ -144,19 +144,17 @@ async function openPosition(
   if (confirmed && txData) {
     // Transaction confirmed, return full data
     const totalFee = txData.meta.fee;
-    const { balanceChange } = await solana.extractBalanceChangeAndFee(
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(
       signature,
-      0,
+      wallet.publicKey.toBase58(),
+      [
+        'SOL', // Get SOL balance change for rent
+        baseTokenInfo.symbol === 'SOL' ? 'SOL' : baseTokenInfo.address,
+        quoteTokenInfo.symbol === 'SOL' ? 'SOL' : quoteTokenInfo.address,
+      ],
     );
-    const positionRent = Math.abs(balanceChange);
 
-    const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-      await solana.extractPairBalanceChangesAndFee(
-        signature,
-        baseTokenInfo,
-        quoteTokenInfo,
-        wallet.publicKey.toBase58(),
-      );
+    const positionRent = Math.abs(balanceChanges[0]);
 
     return {
       signature,
@@ -165,8 +163,8 @@ async function openPosition(
         fee: totalFee / 1e9,
         positionAddress: extInfo.nftMint.toBase58(),
         positionRent,
-        baseTokenAmountAdded: baseTokenBalanceChange,
-        quoteTokenAmountAdded: quoteTokenBalanceChange,
+        baseTokenAmountAdded: balanceChanges[1],
+        quoteTokenAmountAdded: balanceChanges[2],
       },
     };
   } else {

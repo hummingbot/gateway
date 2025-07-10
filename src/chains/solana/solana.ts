@@ -1077,17 +1077,20 @@ export class Solana {
   }
 
   /**
-   * Extract balance change and fee from a transaction
+   * Extract balance changes and fee from a transaction for multiple tokens
    * @param signature Transaction signature
-   * @param tokenOrAccountIndex Either: token mint address (for SPL tokens), 'SOL' (for native SOL), or account index number
-   * @param owner Optional owner address (required for SPL tokens)
-   * @returns Balance change and transaction fee
+   * @param owner Owner address (required for SPL tokens and SOL balance extraction)
+   * @param tokens Array of token mint addresses or 'SOL' for native SOL
+   * @returns Array of balance changes in the same order as tokens, and transaction fee
    */
-  async extractBalanceChangeAndFee(
+  async extractBalanceChangesAndFee(
     signature: string,
-    tokenOrAccountIndex: string | number,
-    owner?: string,
-  ): Promise<{ balanceChange: number; fee: number }> {
+    owner: string,
+    tokens: string[],
+  ): Promise<{
+    balanceChanges: number[];
+    fee: number;
+  }> {
     // Fetch transaction details
     const txDetails = await this.connection.getParsedTransaction(signature, {
       maxSupportedTransactionVersion: 0,
@@ -1100,67 +1103,48 @@ export class Solana {
     // Calculate fee (always in SOL)
     const fee = (txDetails.meta?.fee || 0) * LAMPORT_TO_SOL;
 
-    // Handle different input types
-    if (typeof tokenOrAccountIndex === 'number') {
-      // Account index provided - get SOL balance change
-      const preBalances = txDetails.meta?.preBalances || [];
-      const postBalances = txDetails.meta?.postBalances || [];
+    const preBalances = txDetails.meta?.preBalances || [];
+    const postBalances = txDetails.meta?.postBalances || [];
+    const preTokenBalances = txDetails.meta?.preTokenBalances || [];
+    const postTokenBalances = txDetails.meta?.postTokenBalances || [];
+    const ownerPubkey = new PublicKey(owner);
 
-      const balanceChange =
-        (postBalances[tokenOrAccountIndex] - preBalances[tokenOrAccountIndex]) *
-        LAMPORT_TO_SOL;
+    // Process each token and return array of balance changes
+    const balanceChanges = tokens.map((token) => {
+      // Check if this is native SOL
+      if (token === 'So11111111111111111111111111111111111111112') {
+        // For native SOL, we need to calculate from lamport balance changes
+        const accountIndex =
+          txDetails.transaction.message.accountKeys.findIndex((key) =>
+            key.pubkey.equals(ownerPubkey),
+          );
 
-      return { balanceChange, fee };
-    } else if (tokenOrAccountIndex === 'SOL') {
-      // SOL requested - find owner's account in transaction
-      if (!owner) {
-        throw new Error('Owner address required for SOL balance extraction');
+        if (accountIndex === -1) {
+          logger.warn(`Owner ${owner} not found in transaction accounts`);
+          return 0;
+        }
+
+        // Calculate SOL change including fees
+        const lamportChange =
+          postBalances[accountIndex] - preBalances[accountIndex];
+        return lamportChange * LAMPORT_TO_SOL;
+      } else {
+        // Token mint address provided - get SPL token balance change
+        const preBalance =
+          preTokenBalances.find(
+            (balance) => balance.mint === token && balance.owner === owner,
+          )?.uiTokenAmount.uiAmount || 0;
+
+        const postBalance =
+          postTokenBalances.find(
+            (balance) => balance.mint === token && balance.owner === owner,
+          )?.uiTokenAmount.uiAmount || 0;
+
+        return postBalance - preBalance;
       }
+    });
 
-      // Find the account index for the owner
-      const ownerPubkey = new PublicKey(owner);
-      const accountIndex = txDetails.transaction.message.accountKeys.findIndex(
-        (key) => key.pubkey.equals(ownerPubkey),
-      );
-
-      if (accountIndex === -1) {
-        logger.warn(`Owner ${owner} not found in transaction accounts`);
-        return { balanceChange: 0, fee };
-      }
-
-      const preBalances = txDetails.meta?.preBalances || [];
-      const postBalances = txDetails.meta?.postBalances || [];
-
-      const balanceChange =
-        (postBalances[accountIndex] - preBalances[accountIndex]) *
-        LAMPORT_TO_SOL;
-
-      return { balanceChange, fee };
-    } else {
-      // Token mint address provided - get SPL token balance change
-      if (!owner) {
-        throw new Error('Owner address required for token balance extraction');
-      }
-
-      const preTokenBalances = txDetails.meta?.preTokenBalances || [];
-      const postTokenBalances = txDetails.meta?.postTokenBalances || [];
-
-      const preBalance =
-        preTokenBalances.find(
-          (balance) =>
-            balance.mint === tokenOrAccountIndex && balance.owner === owner,
-        )?.uiTokenAmount.uiAmount || 0;
-
-      const postBalance =
-        postTokenBalances.find(
-          (balance) =>
-            balance.mint === tokenOrAccountIndex && balance.owner === owner,
-        )?.uiTokenAmount.uiAmount || 0;
-
-      const balanceChange = postBalance - preBalance;
-
-      return { balanceChange, fee };
-    }
+    return { balanceChanges, fee };
   }
 
   // Validate if a string is a valid Solana private key
@@ -1236,49 +1220,6 @@ export class Solana {
     tokenSymbol: string,
   ): Promise<TokenInfo | undefined> {
     return (await this.getToken(tokenSymbol)) || undefined;
-  }
-
-  /**
-   * Helper function to get balance changes for both tokens in a pair
-   * @param signature Transaction signature
-   * @param tokenX First token (can be SOL)
-   * @param tokenY Second token (can be SOL)
-   * @param walletAddress Wallet address to check balances for
-   * @returns Balance changes and transaction fee
-   */
-  async extractPairBalanceChangesAndFee(
-    signature: string,
-    tokenX: TokenInfo,
-    tokenY: TokenInfo,
-    walletAddress: string,
-  ): Promise<{
-    baseTokenBalanceChange: number;
-    quoteTokenBalanceChange: number;
-    fee: number;
-  }> {
-    // Extract balance changes for both tokens
-    const { balanceChange: baseTokenBalanceChange } =
-      await this.extractBalanceChangeAndFee(
-        signature,
-        tokenX.symbol === 'SOL' ? 'SOL' : tokenX.address,
-        walletAddress,
-      );
-
-    const { balanceChange: quoteTokenBalanceChange } =
-      await this.extractBalanceChangeAndFee(
-        signature,
-        tokenY.symbol === 'SOL' ? 'SOL' : tokenY.address,
-        walletAddress,
-      );
-
-    // Fee is already included in each call, but we only need it once
-    const { fee } = await this.extractBalanceChangeAndFee(signature, 0);
-
-    return {
-      baseTokenBalanceChange,
-      quoteTokenBalanceChange,
-      fee,
-    };
   }
 
   public async simulateTransaction(

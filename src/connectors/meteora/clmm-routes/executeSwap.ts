@@ -93,13 +93,21 @@ async function executeSwap(
     priorityFeePerCU,
   );
 
-  const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-    await solana.extractPairBalanceChangesAndFee(
-      signature,
-      await solana.getToken(dlmmPool.tokenX.publicKey.toBase58()),
-      await solana.getToken(dlmmPool.tokenY.publicKey.toBase58()),
-      wallet.publicKey.toBase58(),
-    );
+  const tokenXInfo = await solana.getToken(
+    dlmmPool.tokenX.publicKey.toBase58(),
+  );
+  const tokenYInfo = await solana.getToken(
+    dlmmPool.tokenY.publicKey.toBase58(),
+  );
+
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
+    signature,
+    wallet.publicKey.toBase58(),
+    [tokenXInfo.address, tokenYInfo.address],
+  );
+
+  const baseTokenBalanceChange = balanceChanges[0];
+  const quoteTokenBalanceChange = balanceChanges[1];
 
   // Determine total amounts swapped
   const amountIn =

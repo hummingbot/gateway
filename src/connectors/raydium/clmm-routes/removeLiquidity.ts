@@ -81,13 +81,17 @@ export async function removeLiquidity(
   // Return with status
   if (confirmed && txData) {
     // Transaction confirmed, return full data
-    const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-      await solana.extractPairBalanceChangesAndFee(
-        signature,
-        await solana.getToken(poolInfo.mintA.address),
-        await solana.getToken(poolInfo.mintB.address),
-        wallet.publicKey.toBase58(),
-      );
+    const tokenAInfo = await solana.getToken(poolInfo.mintA.address);
+    const tokenBInfo = await solana.getToken(poolInfo.mintB.address);
+
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(
+      signature,
+      wallet.publicKey.toBase58(),
+      [tokenAInfo.address, tokenBInfo.address],
+    );
+
+    const baseTokenBalanceChange = balanceChanges[0];
+    const quoteTokenBalanceChange = balanceChanges[1];
 
     logger.info(
       `Liquidity removed from position ${positionAddress}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${poolInfo.mintA.symbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${poolInfo.mintB.symbol}`,

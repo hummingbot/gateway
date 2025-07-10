@@ -213,16 +213,15 @@ async function openPosition(
     priorityFeePerCU,
   );
 
-  const {
-    baseTokenBalanceChange,
-    quoteTokenBalanceChange,
-    fee: extractedFee,
-  } = await solana.extractPairBalanceChangesAndFee(
-    signature,
-    tokenX,
-    tokenY,
-    wallet.publicKey.toBase58(),
-  );
+  const { balanceChanges, fee: extractedFee } =
+    await solana.extractBalanceChangesAndFee(
+      signature,
+      wallet.publicKey.toBase58(),
+      [tokenX.address, tokenY.address],
+    );
+
+  const baseTokenBalanceChange = balanceChanges[0];
+  const quoteTokenBalanceChange = balanceChanges[1];
 
   // Calculate sentSOL based on which token is SOL
   const sentSOL =

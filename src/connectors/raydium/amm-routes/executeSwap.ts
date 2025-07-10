@@ -163,13 +163,17 @@ async function executeSwap(
   // Return with status
   if (confirmed && txData) {
     // Transaction confirmed, return full data
-    const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-      await solana.extractPairBalanceChangesAndFee(
-        signature,
-        await solana.getToken(poolInfo.baseTokenAddress),
-        await solana.getToken(poolInfo.quoteTokenAddress),
-        wallet.publicKey.toBase58(),
-      );
+    const baseTokenInfo = await solana.getToken(poolInfo.baseTokenAddress);
+    const quoteTokenInfo = await solana.getToken(poolInfo.quoteTokenAddress);
+
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(
+      signature,
+      wallet.publicKey.toBase58(),
+      [baseTokenInfo.address, quoteTokenInfo.address],
+    );
+
+    const baseTokenBalanceChange = balanceChanges[0];
+    const quoteTokenBalanceChange = balanceChanges[1];
 
     logger.info(
       `Swap executed successfully: ${Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`,
