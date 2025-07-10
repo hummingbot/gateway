@@ -7,7 +7,7 @@ export namespace ZeroXConfig {
     availableNetworks: string[];
     apiUrl: string;
     apiKey: string;
-    allowedSlippage: number;
+    slippagePct: number;
     contractAddress: string;
   }
 
@@ -28,7 +28,7 @@ export namespace ZeroXConfig {
       ],
       apiUrl: 'https://api.0x.org',
       apiKey: '', // Will be loaded dynamically
-      allowedSlippage: 0.01, // Default value, will be loaded dynamically
+      slippagePct: 0.01, // Default value, will be loaded dynamically
       contractAddress: '',
     },
   };

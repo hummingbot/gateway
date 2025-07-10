@@ -22,6 +22,7 @@ import {
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+import { RaydiumConfig } from '../raydium.config';
 
 import { quoteLiquidity } from './quoteLiquidity';
 
@@ -150,13 +151,9 @@ async function addLiquidity(
   logger.info(
     `Adding liquidity to Raydium ${ammPoolInfo.poolType} position...`,
   );
-  const slippage = new Percent(
-    Math.floor(
-      ((slippagePct === 0 ? 0 : slippagePct || raydium.getSlippagePct()) *
-        100) /
-        10000,
-    ),
-  );
+  const slippageValue =
+    slippagePct === 0 ? 0 : slippagePct || RaydiumConfig.config.slippagePct;
+  const slippage = new Percent(Math.floor((slippageValue * 100) / 10000));
 
   // Use provided compute units or quote's estimate
   const computeUnitsToUse = computeUnits || quoteComputeUnits;

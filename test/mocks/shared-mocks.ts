@@ -30,12 +30,12 @@ export const mockConfigStorage: Record<string, any> = {
   'ethereum-goerli.nodeURL': 'https://goerli.infura.io/v3/test',
   'ethereum-goerli.nativeCurrencySymbol': 'ETH',
   // Connector configurations
-  'jupiter.allowedSlippage': '0.01',
+  'jupiter.slippagePct': 1,
   'jupiter.priorityLevel': 'medium',
   'jupiter.apiKey': undefined,
-  'meteora.allowedSlippage': '0.01',
-  'raydium.allowedSlippage': '0.01',
-  'uniswap.allowedSlippage': '0.01',
+  'meteora.slippagePct': 1,
+  'raydium.slippagePct': 1,
+  'uniswap.slippagePct': '0.01',
   'uniswap.ttl': 300,
 };
 
@@ -193,12 +193,12 @@ export function resetAllMocks() {
     'ethereum-mainnet.nativeCurrencySymbol': 'ETH',
     'ethereum-goerli.nodeURL': 'https://goerli.infura.io/v3/test',
     'ethereum-goerli.nativeCurrencySymbol': 'ETH',
-    'jupiter.allowedSlippage': '0.01',
+    'jupiter.slippagePct': 1,
     'jupiter.priorityLevel': 'medium',
     'jupiter.apiKey': undefined,
-    'meteora.allowedSlippage': '0.01',
-    'raydium.allowedSlippage': '0.01',
-    'uniswap.allowedSlippage': '0.01',
+    'meteora.slippagePct': 1,
+    'raydium.slippagePct': 1,
+    'uniswap.slippagePct': '0.01',
     'uniswap.ttl': 300,
   });
 }

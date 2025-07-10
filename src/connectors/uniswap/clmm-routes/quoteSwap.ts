@@ -93,7 +93,7 @@ async function quoteClmmSwap(
     const slippageTolerance =
       slippagePct !== undefined
         ? new Percent(Math.floor(slippagePct * 100), 10000)
-        : uniswap.getAllowedSlippage();
+        : uniswap.getSlippagePct();
 
     const minAmountOut = exactIn
       ? trade.minimumAmountOut(slippageTolerance).quotient.toString()

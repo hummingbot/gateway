@@ -54,7 +54,7 @@ describe('Config Routes V2 Tests', () => {
           nativeCurrencySymbol: 'SOL',
         },
         uniswap: {
-          allowedSlippage: '2/100',
+          slippagePct: '2/100',
           ttl: 300,
         },
       },
@@ -294,10 +294,10 @@ describe('Config Routes V2 Tests', () => {
       );
     });
 
-    it('should handle allowedSlippage special case', async () => {
+    it('should handle slippagePct special case', async () => {
       mockConfigManager.getNamespace.mockReturnValue({
         configuration: {
-          allowedSlippage: '2/100',
+          slippagePct: '2/100',
         },
       });
 
@@ -306,7 +306,7 @@ describe('Config Routes V2 Tests', () => {
         url: '/update',
         payload: {
           namespace: 'uniswap',
-          path: 'allowedSlippage',
+          path: 'slippagePct',
           value: '0.05',
         },
       });

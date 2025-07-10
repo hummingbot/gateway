@@ -16,6 +16,7 @@ import {
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+import { RaydiumConfig } from '../raydium.config';
 import { isValidAmm, isValidCpmm } from '../raydium.utils';
 
 interface AmmComputePairResult {
@@ -89,13 +90,9 @@ export async function quoteLiquidity(
     const epochInfo = await solana.connection.getEpochInfo();
     // Convert percentage to basis points (multiply by 100 to handle decimals)
     // e.g., 0.5% becomes 50/10000, 0% becomes 0/10000
-    const slippage = new Percent(
-      Math.floor(
-        ((slippagePct === 0 ? 0 : slippagePct || raydium.getSlippagePct()) *
-          100) /
-          10000,
-      ),
-    );
+    const slippageValue =
+      slippagePct === 0 ? 0 : slippagePct || RaydiumConfig.config.slippagePct;
+    const slippage = new Percent(Math.floor((slippageValue * 100) / 10000));
 
     const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
 

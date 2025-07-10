@@ -8,7 +8,6 @@ import {
   BinLiquidity,
 } from '../../schemas/clmm-schema';
 import { convertDecimals } from '../../services/base';
-import { percentRegexp } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';
 
 import { MeteoraConfig } from './meteora.config';
@@ -388,22 +387,6 @@ export class Meteora {
     }
 
     return { minBinId, maxBinId };
-  }
-
-  /**
-   * Gets the allowed slippage percentage from config
-   * @returns Slippage as a percentage (e.g., 1.0 for 1%)
-   */
-  getSlippagePct(): number {
-    const allowedSlippage = MeteoraConfig.config.allowedSlippage;
-    const nd = allowedSlippage.match(percentRegexp);
-    let slippage = 0.0;
-    if (nd) {
-      slippage = Number(nd[1]) / Number(nd[2]);
-    } else {
-      logger.error('Failed to parse slippage value:', allowedSlippage);
-    }
-    return slippage * 100;
   }
 
   private getPairKey(baseToken: string, quoteToken: string): string {

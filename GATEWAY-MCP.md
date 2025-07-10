@@ -328,8 +328,8 @@ read_config({
 // Update connector configuration
 update_config({
   path: "connectors/uniswap.yml",
-  key: "allowedSlippage",
-  value: "3/100"
+  key: "slippagePct",
+  value: "1/100"
 })
 ```
 

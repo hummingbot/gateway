@@ -196,7 +196,7 @@ async function openPosition(
       },
       totalXAmount,
       totalYAmount,
-      slippage: slippagePct ?? meteora.getSlippagePct(),
+      slippage: slippagePct ?? MeteoraConfig.config.slippagePct,
     });
 
   logger.info(

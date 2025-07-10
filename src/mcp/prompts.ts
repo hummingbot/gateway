@@ -226,7 +226,7 @@ export const PROMPT_HANDLERS: PromptHandlers = {
         '## Gateway Setup Steps',
         '',
         '### 1. Initial Setup',
-        '- Run `pnpm setup` to create configuration files',
+        '- Run `./gateway-setup.sh` to create configuration files',
         '- This copies templates to the conf/ directory',
         '',
         '### 2. Configure Chains',

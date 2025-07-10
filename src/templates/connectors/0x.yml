@@ -6,7 +6,7 @@
 
 # Allowed slippage for swap transactions (as a decimal)
 # Default: 0.01 (1%)
-allowedSlippage: 0.01
+slippagePct: 0.01
 
 # API key for 0x API (required)
 # Get your API key from https://dashboard.0x.org

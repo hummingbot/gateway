@@ -213,7 +213,7 @@ describe('updateConfig - Configuration updates', () => {
       // Call updateConfig for a connector
       updateConfig(
         mockFastify as unknown as FastifyInstance,
-        'uniswap.allowedSlippage',
+        'uniswap.slippagePct',
         '2/100',
       );
 
@@ -222,7 +222,7 @@ describe('updateConfig - Configuration updates', () => {
 
       // Verify only runtime config was updated
       expect(mockConfigManager.set).toHaveBeenCalledWith(
-        'uniswap.allowedSlippage',
+        'uniswap.slippagePct',
         '2/100',
       );
     });

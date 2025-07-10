@@ -18,7 +18,7 @@ export namespace UniswapConfig {
 
   export interface RootConfig {
     // Global configuration
-    allowedSlippage: string;
+    slippagePct: string;
     maximumHops: number;
 
     // Available networks
@@ -26,9 +26,7 @@ export namespace UniswapConfig {
   }
 
   export const config: RootConfig = {
-    allowedSlippage: ConfigManagerV2.getInstance().get(
-      'uniswap.allowedSlippage',
-    ),
+    slippagePct: ConfigManagerV2.getInstance().get('uniswap.slippagePct'),
     maximumHops: ConfigManagerV2.getInstance().get('uniswap.maximumHops') || 4,
 
     availableNetworks: [

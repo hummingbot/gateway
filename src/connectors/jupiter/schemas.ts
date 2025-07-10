@@ -26,14 +26,11 @@ export const JupiterQuoteSwapRequest = Type.Object({
     description: 'Amount of base token to trade',
     examples: [SWAP_AMOUNT],
   }),
-  side: Type.Enum(
-    { BUY: 'BUY', SELL: 'SELL' },
-    {
-      description:
-        'Trade direction - BUY means buying base token with quote token, SELL means selling base token for quote token',
-      examples: ['SELL'],
-    },
-  ),
+  side: Type.String({
+    description:
+      'Trade direction - BUY means buying base token with quote token, SELL means selling base token for quote token',
+    enum: ['BUY', 'SELL'],
+  }),
   slippagePct: Type.Optional(
     Type.Number({
       minimum: 0,
@@ -159,7 +156,6 @@ export const JupiterExecuteQuoteRequest = Type.Object({
     Type.String({
       description: 'Priority level for Solana transaction processing',
       enum: ['medium', 'high', 'veryHigh'],
-      examples: [JupiterConfig.config.priorityLevel],
     }),
   ),
   maxLamports: Type.Optional(
@@ -195,14 +191,11 @@ export const JupiterExecuteSwapRequest = Type.Object({
     description: 'Amount of base token to trade',
     examples: [SWAP_AMOUNT],
   }),
-  side: Type.Enum(
-    { BUY: 'BUY', SELL: 'SELL' },
-    {
-      description:
-        'Trade direction - BUY means buying base token with quote token, SELL means selling base token for quote token',
-      examples: ['SELL'],
-    },
-  ),
+  side: Type.String({
+    description:
+      'Trade direction - BUY means buying base token with quote token, SELL means selling base token for quote token',
+    enum: ['BUY', 'SELL'],
+  }),
   slippagePct: Type.Optional(
     Type.Number({
       minimum: 0,
@@ -230,7 +223,6 @@ export const JupiterExecuteSwapRequest = Type.Object({
     Type.String({
       description: 'Priority level for Solana transaction processing',
       enum: ['medium', 'high', 'veryHigh'],
-      examples: [JupiterConfig.config.priorityLevel],
     }),
   ),
   maxLamports: Type.Optional(

@@ -467,17 +467,19 @@ For more details on the test setup and structure, see [Test README](./test/READM
    }
    ```
 
-2. **Implement required methods**:
+2. **Implement required routes**:
    - `getWallet(address: string)`
    - `getBalance(address: string)`
    - `getTokens(tokenSymbols: string[])`
+   - `getPool(tradingPair: string)`
    - `getStatus()`
 
 3. **Create route handlers** in `src/chains/mychain/routes/`
 
-4. **Add configuration**:
-   - Create `src/templates/mychain.yml`
-   - Add JSON schema in `src/templates/json/mychain-schema.json`
+4. **Add configuration for each supported network**:
+   - Add JSON schema in `src/templates/namespace/mychain-network-schema.json`
+   - Create `src/templates/networks/my-chain/` folder
+   - In this folder, add default YAML files for each network titled `network-name.yml`
 
 5. **Register the chain** in `src/chains/chain.routes.ts`
 

@@ -11,6 +11,7 @@ import {
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
+import { RaydiumConfig } from '../raydium.config';
 import { RaydiumAmmExecuteSwapRequest } from '../schemas';
 
 import { getRawSwapQuote } from './quoteSwap';
@@ -41,7 +42,7 @@ async function executeSwap(
   }
 
   // Use configured slippage if not provided
-  const effectiveSlippage = slippagePct || raydium.getSlippagePct();
+  const effectiveSlippage = slippagePct || RaydiumConfig.config.slippagePct;
 
   // Get swap quote
   const quote = await getRawSwapQuote(

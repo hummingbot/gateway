@@ -22,7 +22,6 @@ import {
   PoolInfo as ClmmPoolInfo,
   PositionInfo,
 } from '../../schemas/clmm-schema';
-import { percentRegexp } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';
 
 import { RaydiumConfig } from './raydium.config';
@@ -367,22 +366,6 @@ export class Raydium {
       logger.error(`Error getting AMM pool info for ${poolAddress}:`, error);
       return null;
     }
-  }
-
-  /**
-   * Gets the allowed slippage percentage from config
-   * @returns Slippage as a percentage (e.g., 1.0 for 1%)
-   */
-  getSlippagePct(): number {
-    const allowedSlippage = RaydiumConfig.config.allowedSlippage;
-    const nd = allowedSlippage.match(percentRegexp);
-    let slippage = 0.0;
-    if (nd) {
-      slippage = Number(nd[1]) / Number(nd[2]);
-    } else {
-      logger.error('Failed to parse slippage value:', allowedSlippage);
-    }
-    return slippage * 100;
   }
 
   private getPairKey(baseToken: string, quoteToken: string): string {

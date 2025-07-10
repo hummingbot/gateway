@@ -95,9 +95,9 @@ describe('POST /execute-swap', () => {
         signature: mockTransaction.signature,
         fee: 5000,
       }),
-      extractPairBalanceChangesAndFee: jest.fn().mockResolvedValue({
-        baseTokenBalanceChange: -0.1,
-        quoteTokenBalanceChange: 14.85,
+      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
+        balanceChanges: [-0.1, 14.85],
+        fee: 5000,
       }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
@@ -106,7 +106,6 @@ describe('POST /execute-swap', () => {
     );
 
     const mockMeteoraInstance = {
-      getSlippagePct: jest.fn().mockReturnValue(1),
       getDlmmPool: jest.fn().mockResolvedValue(mockDlmmPool),
       swapBase2Quote: jest.fn().mockResolvedValue({
         swapOutAmount: 14850000,
@@ -168,15 +167,14 @@ describe('POST /execute-swap', () => {
         signature: mockTransaction.signature,
         fee: 5000,
       }),
-      extractPairBalanceChangesAndFee: jest.fn().mockResolvedValue({
-        baseTokenBalanceChange: 0.1,
-        quoteTokenBalanceChange: -15,
+      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
+        balanceChanges: [0.1, -15],
+        fee: 5000,
       }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockMeteoraInstance = {
-      getSlippagePct: jest.fn().mockReturnValue(1),
       getDlmmPool: jest.fn().mockResolvedValue(mockDlmmPool),
       swapQuote2Base: jest.fn().mockResolvedValue({
         swapOutAmount: 100000000,

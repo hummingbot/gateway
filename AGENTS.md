@@ -12,7 +12,7 @@ This file provides guidance to AI coding assistants when working with code in th
 - Lint code: `pnpm lint`
 - Format code: `pnpm format`
 - Type check: `pnpm typecheck`
-- Initial setup: `pnpm setup` (creates configs and copies certificates)
+- Initial setup: `./gateway-setup.sh` (creates configs and copies certificates)
 - Clean install: `pnpm clean` (removes node_modules, coverage, logs, dist)
 
 ## Architecture Overview

@@ -12,6 +12,7 @@ import {
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+import { RaydiumConfig } from '../raydium.config';
 
 export async function quotePosition(
   _fastify: FastifyInstance,
@@ -87,7 +88,9 @@ export async function quotePosition(
 
     const epochInfo = await solana.connection.getEpochInfo();
     const slippage =
-      (slippagePct === 0 ? 0 : slippagePct || raydium.getSlippagePct()) / 100;
+      (slippagePct === 0
+        ? 0
+        : slippagePct || RaydiumConfig.config.slippagePct) / 100;
 
     let resBase;
     if (baseAmountBN) {

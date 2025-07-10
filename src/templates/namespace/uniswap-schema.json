@@ -2,9 +2,15 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "allowedSlippage": { "type": "string" },
-    "maximumHops": { "type": "integer" }
+    "slippagePct": {
+      "type": "string",
+      "description": "Default slippage percentage in fraction format (e.g., '2/100' for 2%)"
+    },
+    "maximumHops": {
+      "type": "integer",
+      "description": "Maximum number of hops to consider for each swap"
+    }
   },
   "additionalProperties": false,
-  "required": ["allowedSlippage", "maximumHops"]
+  "required": ["slippagePct", "maximumHops"]
 }

@@ -130,7 +130,6 @@ describe('GET /quote-swap', () => {
           decimals: 9,
         },
       }),
-      getSlippagePct: jest.fn().mockReturnValue(1),
       getPoolfromAPI: jest.fn().mockResolvedValue([mockPoolInfo, {}]),
       raydiumSDK: {
         liquidity: {
@@ -213,7 +212,6 @@ describe('GET /quote-swap', () => {
           decimals: 9,
         },
       }),
-      getSlippagePct: jest.fn().mockReturnValue(1),
       getPoolfromAPI: jest.fn().mockResolvedValue([mockPoolInfo, {}]),
       raydiumSDK: {
         liquidity: {

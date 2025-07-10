@@ -20,7 +20,7 @@ export const ConfigUpdateRequestSchema = Type.Object({
       'nodeURL',
       'nativeCurrencySymbol',
       'manualGasPrice',
-      'allowedSlippage',
+      'slippagePct',
     ],
   }),
   value: Type.Union(

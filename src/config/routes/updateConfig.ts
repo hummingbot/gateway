@@ -8,7 +8,7 @@ import {
   ConfigUpdateRequestSchema,
   ConfigUpdateResponseSchema,
 } from '../schemas';
-import { updateConfig, updateAllowedSlippageToFraction } from '../utils';
+import { updateConfig } from '../utils';
 
 export const updateConfigRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{ Body: ConfigUpdateRequest; Reply: ConfigUpdateResponse }>(
@@ -81,16 +81,6 @@ export const updateConfigRoute: FastifyPluginAsync = async (fastify) => {
               processedValue = processedValue.toLowerCase() === 'true';
               break;
           }
-        }
-
-        // Special handling for allowedSlippage
-        if (
-          path === 'allowedSlippage' ||
-          fullPath.endsWith('allowedSlippage')
-        ) {
-          const body = { configPath: fullPath, configValue: processedValue };
-          updateAllowedSlippageToFraction(body);
-          processedValue = body.configValue;
         }
 
         updateConfig(fastify, fullPath, processedValue);

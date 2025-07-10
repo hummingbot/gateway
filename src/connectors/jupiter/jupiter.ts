@@ -3,13 +3,10 @@ import { VersionedTransaction } from '@solana/web3.js';
 import axios, { AxiosInstance } from 'axios';
 
 import { Solana } from '../../chains/solana/solana';
+import { getSolanaConfig } from '../../chains/solana/solana.config';
 import { logger } from '../../services/logger';
 
 import { JupiterConfig } from './jupiter.config';
-
-const JUPITER_API_RETRY_COUNT = 5;
-const JUPITER_API_RETRY_INTERVAL_MS = 1000;
-export const DECIMAL_MULTIPLIER = 10;
 
 // Jupiter API base URL
 const JUPITER_API_BASE_FREE = 'https://lite-api.jup.ag';
@@ -45,7 +42,7 @@ export class Jupiter {
     this.solana = null;
 
     // Initialize HTTP client with Jupiter API base URL
-    const headers: any = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
@@ -67,6 +64,11 @@ export class Jupiter {
     });
   }
 
+  /**
+   * Gets or creates a singleton instance of Jupiter for the specified network
+   * @param network The Solana network to connect to (e.g., 'mainnet-beta', 'devnet')
+   * @returns Promise resolving to the Jupiter instance
+   */
   public static async getInstance(network: string): Promise<Jupiter> {
     if (!Jupiter._instances) {
       Jupiter._instances = {};
@@ -79,6 +81,11 @@ export class Jupiter {
     return Jupiter._instances[network];
   }
 
+  /**
+   * Initializes the Jupiter instance with the specified network
+   * @param network The Solana network to connect to
+   * @throws Error if initialization fails
+   */
   private async init(network: string): Promise<void> {
     try {
       this.solana = await Solana.getInstance(network);
@@ -90,13 +97,17 @@ export class Jupiter {
   }
 
   /**
-   * Gets the allowed slippage percentage from config
-   * @returns Slippage as a percentage (e.g., 1.0 for 1%)
+   * Gets a swap quote from Jupiter API for the specified token pair
+   * @param inputTokenIdentifier The input token symbol or address
+   * @param outputTokenIdentifier The output token symbol or address
+   * @param amount The amount of tokens to swap (in human-readable format)
+   * @param slippagePct Optional slippage percentage (e.g., 1 for 1%). Defaults to config value
+   * @param onlyDirectRoutes Whether to only use direct routes. Defaults to config value
+   * @param restrictIntermediateTokens Whether to restrict intermediate tokens to highly liquid ones. Defaults to config value
+   * @param swapMode Whether the amount is for input ('ExactIn') or output ('ExactOut'). Defaults to 'ExactIn'
+   * @returns Promise resolving to the quote response from Jupiter API
+   * @throws Error if tokens are not found or if no route is available
    */
-  getSlippagePct(): number {
-    return this.config.slippagePct;
-  }
-
   async getQuote(
     inputTokenIdentifier: string,
     outputTokenIdentifier: string,
@@ -152,23 +163,26 @@ export class Jupiter {
 
       logger.debug('Got Jupiter quote:', quote);
       return quote;
-    } catch (error: any) {
-      logger.error('Jupiter API error:', error.message);
-      if (error.response?.data) {
-        logger.error('Jupiter API error response:', error.response.data);
+    } catch (error) {
+      const axiosError = error as any; // Type assertion for axios error
+      logger.error('Jupiter API error:', axiosError.message);
+      if (axiosError.response?.data) {
+        logger.error('Jupiter API error response:', axiosError.response.data);
 
         // Handle specific error messages
-        if (typeof error.response.data === 'string') {
-          if (error.response.data === 'Route not found') {
+        if (typeof axiosError.response.data === 'string') {
+          if (axiosError.response.data === 'Route not found') {
             if (swapMode === 'ExactOut') {
               throw new Error('ExactOut not supported for this token pair');
             } else {
               throw new Error('No route found for this token pair');
             }
           }
-          throw new Error(`Jupiter API error: ${error.response.data}`);
-        } else if (error.response.data.error) {
-          throw new Error(`Jupiter API error: ${error.response.data.error}`);
+          throw new Error(`Jupiter API error: ${axiosError.response.data}`);
+        } else if (axiosError.response.data.error) {
+          throw new Error(
+            `Jupiter API error: ${axiosError.response.data.error}`,
+          );
         }
       }
       throw error;
@@ -203,7 +217,11 @@ export class Jupiter {
     let lastError: Error | null = null;
     let swapObj: SwapResponse;
 
-    for (let attempt = 1; attempt <= JUPITER_API_RETRY_COUNT; attempt++) {
+    const solanaConfig = getSolanaConfig('solana', this.solana.network);
+    const retryCount = solanaConfig.confirmRetryCount;
+    const retryInterval = solanaConfig.confirmRetryInterval;
+
+    for (let attempt = 1; attempt <= retryCount; attempt++) {
       try {
         const swapRequest = {
           quoteResponse: quote,
@@ -223,33 +241,30 @@ export class Jupiter {
         );
         swapObj = response.data;
         break; // Success, exit the retry loop
-      } catch (error: any) {
-        lastError = error;
+      } catch (error) {
+        const axiosError = error as any; // Type assertion for axios error
+        lastError = axiosError;
         logger.error(
-          `Fetching swap object attempt ${attempt}/${JUPITER_API_RETRY_COUNT} failed:`,
-          error.response?.status
+          `Fetching swap object attempt ${attempt}/${retryCount} failed:`,
+          axiosError.response?.status
             ? {
-                error: error.message,
-                status: error.response.status,
-                data: error.response.data,
+                error: axiosError.message,
+                status: axiosError.response.status,
+                data: axiosError.response.data,
               }
-            : error,
+            : axiosError,
         );
 
-        if (attempt < JUPITER_API_RETRY_COUNT) {
-          logger.info(
-            `Waiting ${JUPITER_API_RETRY_INTERVAL_MS}ms before retry...`,
-          );
-          await new Promise((resolve) =>
-            setTimeout(resolve, JUPITER_API_RETRY_INTERVAL_MS),
-          );
+        if (attempt < retryCount) {
+          logger.info(`Waiting ${retryInterval}ms before retry...`);
+          await new Promise((resolve) => setTimeout(resolve, retryInterval));
         }
       }
     }
 
     if (!swapObj) {
       throw new Error(
-        `Failed to fetch swap route after ${JUPITER_API_RETRY_COUNT} attempts. Last error: ${lastError?.message}`,
+        `Failed to fetch swap route after ${retryCount} attempts. Last error: ${lastError?.message}`,
       );
     }
 
@@ -263,9 +278,5 @@ export class Jupiter {
     await this.solana.simulateTransaction(transaction);
 
     return transaction;
-  }
-
-  public static getRequestAmount(amount: number, decimals: number): number {
-    return Math.floor(amount * DECIMAL_MULTIPLIER ** decimals);
   }
 }

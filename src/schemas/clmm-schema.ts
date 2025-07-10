@@ -350,12 +350,10 @@ export const QuoteSwapRequest = Type.Object(
       description: 'The other token in the pair',
     }),
     amount: Type.Number(),
-    side: Type.Enum(
-      { BUY: 'BUY', SELL: 'SELL' },
-      {
-        description: 'Trade direction',
-      },
-    ),
+    side: Type.String({
+      description: 'Trade direction',
+      enum: ['BUY', 'SELL'],
+    }),
     slippagePct: Type.Number({ minimum: 0, maximum: 100 }),
   },
   { $id: 'ClmmQuoteSwapRequest' },
@@ -394,7 +392,9 @@ export const ExecuteSwapRequest = Type.Object(
     baseToken: Type.String(),
     quoteToken: Type.String(),
     amount: Type.Number(),
-    side: Type.Enum({ BUY: 'BUY', SELL: 'SELL' }),
+    side: Type.String({
+      enum: ['BUY', 'SELL'],
+    }),
     slippagePct: Type.Number({ minimum: 0, maximum: 100 }),
     priorityFeePerCU: Type.Optional(
       Type.Number({

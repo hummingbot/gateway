@@ -157,7 +157,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         const slippageTolerance =
           slippagePct !== undefined
             ? new Percent(Math.floor(slippagePct * 100), 10000)
-            : uniswap.getAllowedSlippage();
+            : uniswap.getSlippagePct();
 
         // Convert price range to ticks
         // In Uniswap, ticks are log base 1.0001 of price

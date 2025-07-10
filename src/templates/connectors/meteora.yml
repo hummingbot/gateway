@@ -1,6 +1,6 @@
 # Global settings for Meteora
-# how much the execution price is allowed to move unfavorably
-allowedSlippage: '1/100'
+# Default slippage percentage for swaps (e.g., 1 = 1%)
+slippagePct: 1
 
 # default DLMM strategy type for positions
 # SpotImBalanced = 0,

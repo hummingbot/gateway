@@ -474,40 +474,24 @@ export class Uniswap {
   }
 
   /**
-   * Get the allowed slippage percent from string or config
-   * @param allowedSlippageStr Optional string representation of slippage value
+   * Get the slippage percent from string or config
+   * @param slippagePctStr Optional string representation of slippage value
    * @returns A Percent object for use with Uniswap SDK
    */
-  public getAllowedSlippage(allowedSlippageStr?: string): Percent {
-    if (allowedSlippageStr != null && isFractionString(allowedSlippageStr)) {
-      const fractionSplit = allowedSlippageStr.split('/');
+  public getSlippagePct(slippagePctStr?: string): Percent {
+    if (slippagePctStr != null && isFractionString(slippagePctStr)) {
+      const fractionSplit = slippagePctStr.split('/');
       return new Percent(fractionSplit[0], fractionSplit[1]);
     }
 
-    // Use the global allowedSlippage setting
-    const allowedSlippage = this.config.allowedSlippage;
+    // Use the global slippagePct setting
+    const slippagePct = this.config.slippagePct;
 
-    const nd = allowedSlippage.match(percentRegexp);
+    const nd = slippagePct.match(percentRegexp);
     if (nd) return new Percent(nd[1], nd[2]);
     throw new Error(
       'Encountered a malformed percent string in the config for allowed slippage.',
     );
-  }
-
-  /**
-   * Gets the allowed slippage percentage from config
-   * @returns Slippage as a percentage (e.g., 1.0 for 1%)
-   */
-  public getSlippagePct(): number {
-    const allowedSlippage = this.config.allowedSlippage;
-    const nd = allowedSlippage.match(percentRegexp);
-    let slippage = 0.0;
-    if (nd) {
-      slippage = Number(nd[1]) / Number(nd[2]);
-    } else {
-      logger.error('Failed to parse slippage value:', allowedSlippage);
-    }
-    return slippage * 100;
   }
 
   /**

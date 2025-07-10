@@ -8,10 +8,9 @@ import {
   SwapExecuteResponse,
 } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
+import { quoteCache } from '../../../services/quote-cache';
 import { Jupiter } from '../jupiter';
 import { JupiterExecuteQuoteRequest } from '../schemas';
-
-import { quoteCache } from './quoteSwap';
 
 export async function executeQuote(
   fastify: FastifyInstance,
@@ -22,22 +21,29 @@ export async function executeQuote(
   maxLamports?: number,
 ): Promise<SwapExecuteResponseType> {
   // Retrieve cached quote
-  const cached = quoteCache.get(quoteId);
-  if (!cached) {
+  const quote = quoteCache.get(quoteId);
+  if (!quote) {
     throw fastify.httpErrors.badRequest('Quote not found or expired');
   }
 
-  const { quote, request } = cached;
-  const { inputToken, outputToken, side, amount, baseToken, quoteToken } =
-    request;
-
+  // Parse the quote to get token information
   const solana = await Solana.getInstance(network);
   const jupiter = await Jupiter.getInstance(network);
+
+  const inputToken = await solana.getToken(quote.inputMint || quote.inputToken);
+  const outputToken = await solana.getToken(
+    quote.outputMint || quote.outputToken,
+  );
+
+  if (!inputToken || !outputToken) {
+    throw fastify.httpErrors.badRequest('Invalid tokens in quote');
+  }
+
   const keypair = await solana.getWallet(walletAddress);
   const wallet = new Wallet(keypair as any);
 
   logger.info(
-    `Executing quote ${quoteId} for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`,
+    `Executing quote ${quoteId} for ${inputToken.symbol} -> ${outputToken.symbol}`,
   );
 
   // Build the swap transaction
@@ -71,11 +77,10 @@ export async function executeQuote(
     const amountIn = Math.abs(inputTokenBalanceChange);
     const amountOut = Math.abs(outputTokenBalanceChange);
 
-    // Calculate base and quote token balance changes based on side
-    const baseTokenBalanceChange =
-      side === 'SELL' ? inputTokenBalanceChange : outputTokenBalanceChange;
-    const quoteTokenBalanceChange =
-      side === 'SELL' ? outputTokenBalanceChange : inputTokenBalanceChange;
+    // For router quotes, we don't have side information
+    // So we return the raw balance changes
+    const baseTokenBalanceChange = inputTokenBalanceChange;
+    const quoteTokenBalanceChange = outputTokenBalanceChange;
 
     logger.info(
       `Swap executed successfully: ${amountIn.toFixed(4)} ${inputToken.symbol} -> ${amountOut.toFixed(4)} ${outputToken.symbol}`,

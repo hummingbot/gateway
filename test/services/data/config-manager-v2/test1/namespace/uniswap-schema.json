@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "allowedSlippage": { "type": "string" },
+    "slippagePct": { "type": "string" },
     "maximumHops": { "type": "integer" },
     "networks": {
       "type": "object",
@@ -20,7 +20,7 @@
               "additionalProperties": false
             },
             "clmm": {
-              "type": "object", 
+              "type": "object",
               "patternProperties": {
                 "^[A-Za-z0-9.-]+-[A-Za-z0-9.-]+$": {
                   "type": "string"
@@ -37,5 +37,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["allowedSlippage", "maximumHops", "networks"]
+  "required": ["slippagePct", "maximumHops", "networks"]
 }

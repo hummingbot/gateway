@@ -11,6 +11,7 @@ import {
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Meteora } from '../meteora';
+import { MeteoraConfig } from '../meteora.config';
 import { MeteoraClmmExecuteSwapRequest } from '../schemas';
 
 import { getRawSwapQuote } from './quoteSwap';
@@ -46,7 +47,7 @@ async function executeSwap(
     amount,
     side,
     poolAddress,
-    slippagePct || meteora.getSlippagePct(),
+    slippagePct || MeteoraConfig.config.slippagePct,
   );
 
   logger.info(
@@ -160,7 +161,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.01] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
+            side: { type: 'string', enum: ['BUY', 'SELL'] },
             poolAddress: { type: 'string', examples: [''] },
             slippagePct: { type: 'number', examples: [1] },
           },

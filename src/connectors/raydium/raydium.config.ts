@@ -8,16 +8,14 @@ export namespace RaydiumConfig {
 
   export interface RootConfig {
     // Global configuration
-    allowedSlippage: string;
+    slippagePct: number;
 
     // Available networks
     availableNetworks: Array<AvailableNetworks>;
   }
 
   export const config: RootConfig = {
-    allowedSlippage: ConfigManagerV2.getInstance().get(
-      'raydium.allowedSlippage',
-    ),
+    slippagePct: ConfigManagerV2.getInstance().get('raydium.slippagePct'),
 
     availableNetworks: [
       {

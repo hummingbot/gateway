@@ -13,12 +13,10 @@ export const GetPriceRequest = Type.Object(
       description: 'The other token in the pair',
     }),
     amount: Type.Number(),
-    side: Type.Enum(
-      { BUY: 'BUY', SELL: 'SELL' },
-      {
-        description: 'Trade direction',
-      },
-    ),
+    side: Type.String({
+      description: 'Trade direction',
+      enum: ['BUY', 'SELL'],
+    }),
   },
   { $id: 'GetPriceRequest' },
 );

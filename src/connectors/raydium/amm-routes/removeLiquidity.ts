@@ -19,6 +19,7 @@ import {
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+import { RaydiumConfig } from '../raydium.config';
 
 // Interfaces for SDK responses
 interface TokenBurnInfo {
@@ -75,9 +76,9 @@ async function createRemoveLiquidityTransaction(
       });
     return response.transaction;
   } else if (ammPoolInfo.poolType === 'cpmm') {
-    // Use default slippage from Raydium class
+    // Use default slippage from config
     const slippage = new Percent(
-      Math.floor(raydium.getSlippagePct() * 100) / 10000,
+      Math.floor(RaydiumConfig.config.slippagePct * 100) / 10000,
     );
 
     const response: CPMMWithdrawLiquiditySDKResponse =

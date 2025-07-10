@@ -15,6 +15,7 @@ import {
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Meteora } from '../meteora';
+import { MeteoraConfig } from '../meteora.config';
 
 export async function getRawSwapQuote(
   fastify: FastifyInstance,
@@ -54,7 +55,7 @@ export async function getRawSwapQuote(
   const swapForY = inputToken.address === dlmmPool.tokenX.publicKey.toBase58();
   const binArrays = await dlmmPool.getBinArrayForSwap(swapForY);
   const effectiveSlippage = new BN(
-    (slippagePct ?? meteora.getSlippagePct()) * 100,
+    (slippagePct ?? MeteoraConfig.config.slippagePct) * 100,
   );
 
   const quote =

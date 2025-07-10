@@ -8,7 +8,7 @@ export namespace MeteoraConfig {
 
   export interface RootConfig {
     // Global configuration
-    allowedSlippage: string;
+    slippagePct: number;
     strategyType: number;
 
     // Available networks
@@ -16,9 +16,7 @@ export namespace MeteoraConfig {
   }
 
   export const config: RootConfig = {
-    allowedSlippage: ConfigManagerV2.getInstance().get(
-      'meteora.allowedSlippage',
-    ),
+    slippagePct: ConfigManagerV2.getInstance().get('meteora.slippagePct'),
     strategyType:
       ConfigManagerV2.getInstance().get('meteora.strategyType') ?? 0,
 

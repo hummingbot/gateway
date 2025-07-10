@@ -199,7 +199,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [1] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
+            side: { type: 'string', enum: ['BUY', 'SELL'] },
             slippagePct: { type: 'number', examples: [1] },
           },
         },

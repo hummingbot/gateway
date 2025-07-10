@@ -70,8 +70,8 @@ export class ZeroX {
     this.apiKey = ConfigManagerV2.getInstance().get('0x.apiKey') || '';
     // Update config with dynamic values
     this.config.apiKey = this.apiKey;
-    this.config.allowedSlippage =
-      ConfigManagerV2.getInstance().get('0x.allowedSlippage') || 0.01;
+    this.config.slippagePct =
+      ConfigManagerV2.getInstance().get('0x.slippagePct') || 0.01;
 
     const apiEndpoint = ZeroXConfig.getApiEndpoint(network);
 
@@ -214,8 +214,8 @@ export class ZeroX {
     }
   }
 
-  public get allowedSlippage(): number {
-    return this.config.allowedSlippage;
+  public get slippagePct(): number {
+    return this.config.slippagePct;
   }
 
   public get gasPriceBuffer(): number {

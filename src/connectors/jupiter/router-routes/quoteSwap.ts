@@ -5,27 +5,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { Solana } from '../../../chains/solana/solana';
 import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
+import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Jupiter } from '../jupiter';
 import { JupiterConfig } from '../jupiter.config';
 import { JupiterQuoteSwapRequest, JupiterQuoteSwapResponse } from '../schemas';
-
-// In-memory cache for quotes (with 30 second TTL)
-const quoteCache = new Map<
-  string,
-  { quote: any; timestamp: number; request: any }
->();
-const QUOTE_TTL = 30000; // 30 seconds
-
-// Cleanup expired quotes periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, cached] of quoteCache.entries()) {
-    if (now - cached.timestamp > QUOTE_TTL) {
-      quoteCache.delete(id);
-    }
-  }
-}, 10000); // Run every 10 seconds
 
 export async function quoteSwap(
   fastify: FastifyInstance,
@@ -110,21 +94,16 @@ export async function quoteSwap(
 
   // Generate quote ID and cache the entire quote response
   const quoteId = uuidv4();
-  const now = Date.now();
 
-  quoteCache.set(quoteId, {
-    quote: bestRoute,
-    timestamp: now,
-    request: {
-      network,
-      baseToken,
-      quoteToken,
-      amount,
-      side,
-      slippagePct,
-      inputToken,
-      outputToken,
-    },
+  quoteCache.set(quoteId, bestRoute, {
+    network,
+    baseToken,
+    quoteToken,
+    amount,
+    side,
+    slippagePct,
+    inputToken,
+    outputToken,
   });
 
   return {
@@ -202,8 +181,5 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
   );
 };
-
-// Export quote cache for use in execute-quote
-export { quoteCache };
 
 export default quoteSwapRoute;

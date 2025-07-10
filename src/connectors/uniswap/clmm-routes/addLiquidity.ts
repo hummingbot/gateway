@@ -133,7 +133,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const slippageTolerance =
           slippagePct !== undefined
             ? new Percent(Math.floor(slippagePct * 100), 10000)
-            : uniswap.getAllowedSlippage();
+            : uniswap.getSlippagePct();
 
         // Determine base and quote tokens
         const baseTokenSymbol =

@@ -123,7 +123,7 @@ async function addLiquidity(
   // Calculate slippage-adjusted amounts
   const slippageTolerance = slippagePct
     ? new Percent(slippagePct, 100)
-    : uniswap.getAllowedSlippage();
+    : uniswap.getSlippagePct();
 
   const slippageMultiplier = new Percent(1).subtract(slippageTolerance);
 

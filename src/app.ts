@@ -27,6 +27,7 @@ import { getHttpsOptions } from './https';
 import { poolRoutes } from './pools/pools.routes';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { logger } from './services/logger';
+import { quoteCache } from './services/quote-cache';
 import { tokensRoutes } from './tokens/tokens.routes';
 import { GATEWAY_VERSION } from './version';
 import { walletRoutes } from './wallet/wallet.routes';
@@ -387,6 +388,24 @@ export const startGateway = async () => {
       : `${protocol}://localhost:${port}/docs`;
 
     logger.info(`📓 Documentation available at ${docsUrl}`);
+
+    // Set up graceful shutdown
+    const shutdown = async () => {
+      logger.info('Shutting down gracefully...');
+
+      // Stop quote cache cleanup
+      quoteCache.stopCleanup();
+
+      // Close server
+      await gatewayApp.close();
+
+      logger.info('Gateway stopped');
+      process.exit(0);
+    };
+
+    // Handle shutdown signals
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
   } catch (err) {
     logger.error(`Failed to start the server: ${err}`);
     process.exit(1);

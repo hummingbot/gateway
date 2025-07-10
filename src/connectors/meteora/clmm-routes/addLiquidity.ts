@@ -137,7 +137,7 @@ async function addLiquidity(
       minBinId,
       strategyType: strategyType ?? MeteoraConfig.config.strategyType,
     },
-    slippage: slippagePct ?? meteora.getSlippagePct(),
+    slippage: slippagePct ?? MeteoraConfig.config.slippagePct,
   });
 
   // Use provided compute units or default

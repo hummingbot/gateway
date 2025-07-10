@@ -15,6 +15,7 @@ import {
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
+import { RaydiumConfig } from '../raydium.config';
 import { RaydiumClmmExecuteSwapRequest } from '../schemas';
 
 import { getSwapQuote, convertAmountIn } from './quoteSwap';
@@ -47,7 +48,7 @@ async function executeSwap(
   console.log('poolKeys', poolKeys);
 
   // Use configured slippage if not provided
-  const effectiveSlippage = slippagePct || raydium.getSlippagePct();
+  const effectiveSlippage = slippagePct || RaydiumConfig.config.slippagePct;
 
   const { inputToken, outputToken, response, clmmPoolInfo } =
     await getSwapQuote(

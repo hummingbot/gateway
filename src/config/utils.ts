@@ -4,62 +4,8 @@ import * as path from 'path';
 import { FastifyInstance } from 'fastify';
 import * as yaml from 'js-yaml';
 
-import { fromFractionString, toFractionString } from '../services/base';
 import { ConfigManagerV2 } from '../services/config-manager-v2';
 import { logger } from '../services/logger';
-import { isFloatString, isFractionString } from '../services/string-utils';
-
-export const invalidAllowedSlippage: string =
-  'allowedSlippage should be a number between 0.0 and 1.0 or a string of a fraction.';
-
-// Only permit percentages 0.0 (inclusive) to less than 1.0
-export const isAllowedPercentage = (val: string | number): boolean => {
-  if (typeof val === 'string') {
-    if (isFloatString(val)) {
-      const num: number = parseFloat(val);
-      return num >= 0.0 && num < 1.0;
-    } else {
-      const num: number | null = fromFractionString(val);
-      return num !== null && num >= 0.0 && num < 1.0;
-    }
-  }
-  return val >= 0.0 && val < 1.0;
-};
-
-export const validateAllowedSlippage = (
-  fastify: FastifyInstance,
-  configPath: string,
-  configValue: any,
-): void => {
-  if (configPath.endsWith('allowedSlippage')) {
-    if (
-      !(
-        (typeof configValue === 'number' ||
-          (typeof configValue === 'string' &&
-            (isFractionString(configValue) || isFloatString(configValue)))) &&
-        isAllowedPercentage(configValue)
-      )
-    ) {
-      throw fastify.httpErrors.badRequest(invalidAllowedSlippage);
-    }
-  }
-};
-
-// Mutates the input value in place to convert to fraction string format
-export const updateAllowedSlippageToFraction = (body: {
-  configPath: string;
-  configValue: any;
-}): void => {
-  if (body.configPath.endsWith('allowedSlippage')) {
-    if (
-      typeof body.configValue === 'number' ||
-      (typeof body.configValue === 'string' &&
-        !isFractionString(body.configValue))
-    ) {
-      body.configValue = toFractionString(body.configValue);
-    }
-  }
-};
 
 export const getConfig = (
   fastify: FastifyInstance,
@@ -89,8 +35,6 @@ export const updateConfig = (
   logger.info(
     `Updating config path: ${configPath} with value: ${JSON.stringify(configValue)}`,
   );
-
-  validateAllowedSlippage(fastify, configPath, configValue);
 
   try {
     // Update the configuration using ConfigManagerV2

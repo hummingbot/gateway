@@ -19,13 +19,11 @@ export const QuoteSwapRequest = Type.Object(
     amount: Type.Number({
       description: 'Amount of base token to trade',
     }),
-    side: Type.Enum(
-      { BUY: 'BUY', SELL: 'SELL' },
-      {
-        description:
-          'Trade direction - BUY means buying base token with quote token, SELL means selling base token for quote token',
-      },
-    ),
+    side: Type.String({
+      description:
+        'Trade direction - BUY means buying base token with quote token, SELL means selling base token for quote token',
+      enum: ['BUY', 'SELL'],
+    }),
     slippagePct: Type.Optional(
       Type.Number({
         minimum: 0,
@@ -108,13 +106,11 @@ export const ExecuteSwapRequest = Type.Object(
     amount: Type.Number({
       description: 'Amount of base token to trade',
     }),
-    side: Type.Enum(
-      { BUY: 'BUY', SELL: 'SELL' },
-      {
-        description:
-          'Trade direction - BUY means buying base token with quote token, SELL means selling base token for quote token',
-      },
-    ),
+    side: Type.String({
+      description:
+        'Trade direction - BUY means buying base token with quote token, SELL means selling base token for quote token',
+      enum: ['BUY', 'SELL'],
+    }),
     slippagePct: Type.Optional(
       Type.Number({
         minimum: 0,

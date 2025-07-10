@@ -20,6 +20,7 @@ import {
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
+import { RaydiumConfig } from '../raydium.config';
 import { RaydiumClmmQuoteSwapRequest } from '../schemas';
 
 /**
@@ -90,7 +91,7 @@ export async function getSwapQuote(
     poolKeys: [clmmPoolInfo],
   });
   const effectiveSlippage = new BN(
-    (slippagePct ?? raydium.getSlippagePct()) / 100,
+    (slippagePct ?? RaydiumConfig.config.slippagePct) / 100,
   );
 
   // Convert BN to number for slippage
@@ -363,7 +364,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             baseToken: { type: 'string', examples: ['SOL'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
             amount: { type: 'number', examples: [0.01] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
+            side: { type: 'string', enum: ['BUY', 'SELL'] },
             poolAddress: { type: 'string', examples: [''] },
             slippagePct: { type: 'number', examples: [1] },
           },

@@ -1,5 +1,5 @@
 # Test uniswap configuration
-allowedSlippage: '2/100'
+slippagePct: '2/100'
 maximumHops: 4
 networks:
   mainnet:
