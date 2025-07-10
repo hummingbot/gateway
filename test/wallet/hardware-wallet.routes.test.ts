@@ -9,7 +9,7 @@ jest.mock('../../src/chains/ethereum/ethereum');
 import { Ethereum } from '../../src/chains/ethereum/ethereum';
 import { Solana } from '../../src/chains/solana/solana';
 import { HardwareWalletService } from '../../src/services/hardware-wallet-service';
-import { hardwareWalletRoutes } from '../../src/wallet/hardware-wallet.routes';
+import { addHardwareWalletRoute } from '../../src/wallet/routes/addHardwareWallet';
 import { getHardwareWallets, saveHardwareWallets, validateChainName } from '../../src/wallet/utils';
 
 describe('Hardware Wallet Routes', () => {
@@ -20,7 +20,7 @@ describe('Hardware Wallet Routes', () => {
     jest.clearAllMocks();
 
     app = Fastify();
-    await app.register(hardwareWalletRoutes);
+    await app.register(addHardwareWalletRoute);
 
     mockHardwareWalletService = {
       isDeviceConnected: jest.fn().mockResolvedValue(true),
@@ -43,7 +43,7 @@ describe('Hardware Wallet Routes', () => {
     await app.close();
   });
 
-  describe('POST /wallet/hardware/add', () => {
+  describe('POST /wallet/add-hardware', () => {
     it('should add a Solana hardware wallet by finding the address', async () => {
       const mockAddress = 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH';
 
@@ -75,7 +75,7 @@ describe('Hardware Wallet Routes', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/hardware/add',
+        url: '/add-hardware',
         body: {
           chain: 'solana',
           address: mockAddress,
@@ -107,7 +107,7 @@ describe('Hardware Wallet Routes', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/hardware/add',
+        url: '/add-hardware',
         body: {
           chain: 'solana',
           address: mockAddress,
@@ -124,7 +124,7 @@ describe('Hardware Wallet Routes', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/hardware/add',
+        url: '/add-hardware',
         body: {
           chain: 'solana',
           address: 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH',
@@ -134,100 +134,29 @@ describe('Hardware Wallet Routes', () => {
       expect(response.statusCode).toBe(400);
       expect(response.body).toContain('No Ledger device found');
     });
-  });
 
-  describe('DELETE /wallet/hardware/remove', () => {
-    it('should remove a hardware wallet', async () => {
+    it('should fail immediately if device is locked', async () => {
       const mockAddress = 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH';
 
       (Solana.validateAddress as jest.Mock).mockReturnValue(mockAddress);
-      (getHardwareWallets as jest.Mock).mockResolvedValue([
-        {
-          address: mockAddress,
-          publicKey: mockAddress,
-          derivationPath: "44'/501'/0'",
-          addedAt: new Date().toISOString(),
-        },
-      ]);
+
+      // Mock the device being locked
+      mockHardwareWalletService.getSolanaAddress.mockRejectedValue(new Error('Ledger device: Locked device (0x5515)'));
 
       const response = await app.inject({
-        method: 'DELETE',
-        url: '/hardware/remove',
+        method: 'POST',
+        url: '/add-hardware',
         body: {
           chain: 'solana',
           address: mockAddress,
         },
-      });
-
-      expect(response.statusCode).toBe(200);
-      const result = JSON.parse(response.body);
-      expect(result.message).toContain('removed successfully');
-      expect(saveHardwareWallets).toHaveBeenCalledWith('solana', []);
-    });
-
-    it('should fail if wallet not found', async () => {
-      const mockAddress = 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH';
-
-      (Solana.validateAddress as jest.Mock).mockReturnValue(mockAddress);
-      (getHardwareWallets as jest.Mock).mockResolvedValue([]);
-
-      const response = await app.inject({
-        method: 'DELETE',
-        url: '/hardware/remove',
-        body: {
-          chain: 'solana',
-          address: mockAddress,
-        },
-      });
-
-      expect(response.statusCode).toBe(404);
-      expect(response.body).toContain('not found');
-    });
-  });
-
-  describe('GET /wallet/hardware', () => {
-    it('should list hardware wallets', async () => {
-      const mockWallets = [
-        {
-          address: 'address1',
-          publicKey: 'address1',
-          derivationPath: "44'/501'/0'",
-          name: 'Ledger 1',
-          addedAt: new Date().toISOString(),
-        },
-        {
-          address: 'address2',
-          publicKey: 'address2',
-          derivationPath: "44'/501'/1'",
-          name: 'Ledger 2',
-          addedAt: new Date().toISOString(),
-        },
-      ];
-
-      (getHardwareWallets as jest.Mock).mockResolvedValue(mockWallets);
-
-      const response = await app.inject({
-        method: 'GET',
-        url: '/hardware?chain=solana',
-      });
-
-      expect(response.statusCode).toBe(200);
-      const result = JSON.parse(response.body);
-      expect(result.chain).toBe('solana');
-      expect(result.wallets).toHaveLength(2);
-      expect(result.wallets[0].name).toBe('Ledger 1');
-    });
-
-    it('should fail with invalid chain', async () => {
-      (validateChainName as jest.Mock).mockReturnValue(false);
-
-      const response = await app.inject({
-        method: 'GET',
-        url: '/hardware?chain=invalid',
       });
 
       expect(response.statusCode).toBe(400);
-      expect(response.body).toContain('Unrecognized chain name');
+      expect(response.body).toContain('Ledger device is locked');
+      expect(response.body).toContain('Please unlock your Ledger device and open the Solana app');
+      // Should only check once before failing
+      expect(mockHardwareWalletService.getSolanaAddress).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -1,27 +1,20 @@
 import sensible from '@fastify/sensible';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { Ethereum } from '../chains/ethereum/ethereum';
-import { Solana } from '../chains/solana/solana';
-import { HardwareWalletService } from '../services/hardware-wallet-service';
-import { logger } from '../services/logger';
-
-// Maximum number of account indices to check when searching for an address
-const MAX_ACCOUNTS_TO_CHECK = 50;
-
+import { Ethereum } from '../../chains/ethereum/ethereum';
+import { Solana } from '../../chains/solana/solana';
+import { HardwareWalletService } from '../../services/hardware-wallet-service';
+import { logger } from '../../services/logger';
 import {
   AddHardwareWalletRequest,
   AddHardwareWalletResponse,
   AddHardwareWalletRequestSchema,
   AddHardwareWalletResponseSchema,
-} from './schemas';
-import {
-  validateChainName,
-  sanitizePathComponent,
-  getHardwareWallets,
-  saveHardwareWallets,
-  HardwareWalletData,
-} from './utils';
+} from '../schemas';
+import { validateChainName, getHardwareWallets, saveHardwareWallets, HardwareWalletData } from '../utils';
+
+// Maximum number of account indices to check when searching for an address
+const MAX_ACCOUNTS_TO_CHECK = 50;
 
 async function addHardwareWallet(
   fastify: FastifyInstance,
@@ -81,9 +74,18 @@ async function addHardwareWallet(
           logger.info(`Found matching address at account index ${i}`);
           break;
         }
-      } catch (error) {
-        // Continue checking other indices
+      } catch (error: any) {
         logger.debug(`Account index ${i} check failed: ${error.message}`);
+
+        // Check if the device is locked (error code 0x5515)
+        if (error.message?.includes('0x5515') || error.message?.includes('Locked device')) {
+          const appName = req.chain.toLowerCase() === 'ethereum' ? 'Ethereum' : 'Solana';
+          throw fastify.httpErrors.badRequest(
+            `Ledger device is locked. Please unlock your Ledger device and open the ${appName} app.`,
+          );
+        }
+
+        // Continue checking other indices for other errors
       }
     }
 
@@ -101,8 +103,16 @@ async function addHardwareWallet(
             logger.info(`Found matching address at derivation path ${alternativePath}`);
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         logger.debug(`Alternative path check failed: ${error.message}`);
+
+        // Check if the device is locked (error code 0x5515)
+        if (error.message?.includes('0x5515') || error.message?.includes('Locked device')) {
+          const appName = req.chain.toLowerCase() === 'ethereum' ? 'Ethereum' : 'Solana';
+          throw fastify.httpErrors.badRequest(
+            `Ledger device is locked. Please unlock your Ledger device and open the ${appName} app.`,
+          );
+        }
       }
     }
 
@@ -164,10 +174,9 @@ async function addHardwareWallet(
   }
 }
 
-export const hardwareWalletRoutes: FastifyPluginAsync = async (fastify) => {
+export const addHardwareWalletRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
 
-  // Add hardware wallet
   fastify.post<{
     Body: AddHardwareWalletRequest;
     Reply: AddHardwareWalletResponse;
@@ -189,4 +198,4 @@ export const hardwareWalletRoutes: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-export default hardwareWalletRoutes;
+export default addHardwareWalletRoute;
