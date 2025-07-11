@@ -35,6 +35,11 @@ export const BalanceRequestSchema = Type.Object(
         description: 'a list of token symbols or addresses',
       }),
     ),
+    fetchAll: Type.Optional(
+      Type.Boolean({
+        description: 'fetch all tokens in wallet, not just those in token list (default: false)',
+      }),
+    ),
   },
   { $id: 'BalanceRequest' },
 );
@@ -51,9 +56,7 @@ export type BalanceResponseType = Static<typeof BalanceResponseSchema>;
 export const TokensRequestSchema = Type.Object(
   {
     network: Type.String(),
-    tokenSymbols: Type.Optional(
-      Type.Union([Type.String(), Type.Array(Type.String())]),
-    ),
+    tokenSymbols: Type.Optional(Type.Union([Type.String(), Type.Array(Type.String())])),
   },
   { $id: 'TokensRequest' },
 );
@@ -80,14 +83,12 @@ export const PollRequestSchema = Type.Object(
     signature: Type.String({ description: 'Transaction signature/hash' }),
     tokens: Type.Optional(
       Type.Array(Type.String(), {
-        description:
-          'Array of token symbols or addresses for balance change calculation',
+        description: 'Array of token symbols or addresses for balance change calculation',
       }),
     ),
     walletAddress: Type.Optional(
       Type.String({
-        description:
-          'Wallet address for balance change calculation (required if tokens provided)',
+        description: 'Wallet address for balance change calculation (required if tokens provided)',
       }),
     ),
   },
@@ -104,8 +105,7 @@ export const PollResponseSchema = Type.Object(
     fee: Type.Union([Type.Number(), Type.Null()]),
     tokenBalanceChanges: Type.Optional(
       Type.Record(Type.String(), Type.Number(), {
-        description:
-          'Dictionary of token balance changes keyed by token input value (symbol or address)',
+        description: 'Dictionary of token balance changes keyed by token input value (symbol or address)',
       }),
     ),
     txData: Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()]),
