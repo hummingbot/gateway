@@ -23,7 +23,7 @@ async function executeQuote(
   }
 
   const { quote, request } = cached;
-  const { baseTokenInfo, quoteTokenInfo, inputToken, outputToken, side, amount } = request;
+  const { quoteTokenInfo, inputToken, outputToken, side, amount } = request;
 
   const ethereum = await Ethereum.getInstance(network);
   const wallet = await ethereum.getWallet(walletAddress);
@@ -74,7 +74,7 @@ async function executeQuote(
 
   logger.info(`Swap executed successfully: ${amountIn} ${inputToken.symbol} -> ${amountOut} ${outputToken.symbol}`);
 
-  // Remove quote from cache after successful execution
+  // Remove quote from cache only after successful execution (confirmed)
   quoteCache.delete(quoteId);
 
   return {
@@ -91,6 +91,8 @@ async function executeQuote(
     },
   };
 }
+
+export { executeQuote };
 
 export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Ethereum.getWalletAddressExample();

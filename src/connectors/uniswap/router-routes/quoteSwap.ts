@@ -5,7 +5,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { QuoteSwapRequestType, QuoteSwapResponse } from '../../../schemas/router-schema';
+import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
@@ -180,6 +180,8 @@ async function quoteSwap(
     gasPriceWei: '0', // We can add this later if needed
   };
 }
+
+export { quoteSwap };
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Ethereum.getWalletAddressExample();
