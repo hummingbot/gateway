@@ -151,25 +151,59 @@ Gateway uses [Swagger](https://swagger.io/) for API documentation. When running 
 
 ## Installation from Source
 
-### Install NodeJS 20+
+### Prerequisites
 
-We recommend downloading the graphical installer from the [NodeJS official site](https://nodejs.org/en/download/).
+#### System Requirements
+- NodeJS 20+ (required)
+- Python 3 (required for node-gyp)
+- C++ build tools (required for native dependencies)
+- USB libraries (required for hardware wallet support)
 
-For terminal-based users, follow the steps below to install from a Linux-based machine (Ubunbu 20+)
+#### Platform-specific Prerequisites
 
+**macOS:**
 ```bash
-#  Ensure your package list is up to date and install curl
-sudo apt update && sudo apt install -y curl
+# Install Xcode Command Line Tools (for C++ compiler)
+xcode-select --install
+
+# Install Homebrew if not already installed
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install Node.js 20+ and required libraries
+brew install node@20 libusb python@3
+```
+
+**Ubuntu/Debian:**
+```bash
+# Update package list and install dependencies
+sudo apt update
+sudo apt install -y curl build-essential libusb-1.0-0-dev libudev-dev python3
 
 # Add Node 20.x repository
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 
-
-# Install the default versions from Ubuntu’s repository:
+# Install Node.js
 sudo apt install -y nodejs
+```
 
+**Windows:**
+1. Install [Node.js 20+](https://nodejs.org/en/download/)
+2. Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022) or Visual Studio Community with C++ workload
+3. Install [Python 3](https://www.python.org/downloads/)
+4. Run PowerShell as Administrator and install windows-build-tools:
+   ```powershell
+   npm install --global windows-build-tools
+   ```
+
+### Install NodeJS 20+
+
+We recommend downloading the graphical installer from the [NodeJS official site](https://nodejs.org/en/download/).
+
+For terminal-based users who haven't installed Node.js using the platform-specific instructions above:
+
+```bash
 # Check Node.js version: 
-nodejs --version
+node --version
 ```  
 
 ### Install `pnpm` package manager
@@ -199,10 +233,17 @@ git checkout core-2.8
 
 ### Setup Gateway
 ```bash
-# Install JS libraries
+# Install JS libraries (this will compile native dependencies)
 pnpm install
 
-# Complile Typescript into JS
+# If you encounter USB HID errors during install, try:
+# macOS/Linux:
+pnpm install --force
+
+# Windows (run as Administrator):
+pnpm install --force
+
+# Compile Typescript into JS
 pnpm build
 
 # Run Gateway setup script
@@ -555,3 +596,42 @@ pnpm rebuild-bigint
 ```
 
 Note that this requires having the necessary C++ build tools installed on your system.
+
+### Hardware Wallet (Ledger) Issues
+
+If you encounter errors when using hardware wallets (Ledger devices), here are common solutions:
+
+#### USB HID Errors
+If you see errors like `Cannot find module '@ledgerhq/hw-transport-node-hid'` or similar USB/HID-related errors:
+
+1. **Ensure prerequisites are installed** (see Prerequisites section above)
+2. **Rebuild native dependencies:**
+   ```bash
+   # Clean and reinstall
+   pnpm clean
+   pnpm install --force
+   ```
+
+3. **Platform-specific fixes:**
+   
+   **Linux:** Add udev rules for Ledger devices
+   ```bash
+   wget -q -O - https://raw.githubusercontent.com/LedgerHQ/udev-rules/master/add_udev_rules.sh | sudo bash
+   ```
+   
+   **macOS:** Grant Terminal/IDE USB permissions in System Preferences > Security & Privacy
+   
+   **Windows:** Run as Administrator and ensure drivers are installed from [Ledger Live](https://www.ledger.com/ledger-live)
+
+#### Permission Errors
+- **Linux/macOS:** Run Gateway with appropriate permissions or add your user to the `plugdev` group:
+  ```bash
+  sudo usermod -a -G plugdev $USER
+  # Logout and login again for changes to take effect
+  ```
+
+#### Device Not Found
+- Ensure Ledger device is connected and unlocked
+- Open the appropriate app (Ethereum or Solana) on the device
+- Try different USB ports or cables
+- Close Ledger Live if it's running (it may lock the device)
