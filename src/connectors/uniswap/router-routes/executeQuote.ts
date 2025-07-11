@@ -130,7 +130,7 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         if (e.statusCode) throw e;
         logger.error('Error executing quote:', e);
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        throw fastify.httpErrors.internalServerError(e.message || 'Internal server error');
       }
     },
   );

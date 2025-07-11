@@ -6,6 +6,7 @@ import * as Base from '../../schemas/router-schema';
 export const UniswapQuoteSwapRequest = Type.Intersect([
   Base.QuoteSwapRequest,
   Type.Object({
+    walletAddress: Type.Optional(Type.String()),
     protocols: Type.Optional(Type.Array(Type.String())),
     exactIn: Type.Optional(Type.Boolean()),
   }),

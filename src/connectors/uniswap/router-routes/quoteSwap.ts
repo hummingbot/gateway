@@ -16,7 +16,7 @@ import { UniversalRouterService } from '../universal-router';
 async function quoteSwap(
   fastify: FastifyInstance,
   network: string,
-  walletAddress: string,
+  walletAddress: string | undefined,
   baseToken: string,
   quoteToken: string,
   amount: number,
@@ -89,6 +89,9 @@ async function quoteSwap(
     }
   }) || [Protocol.V2, Protocol.V3]; // V4 requires different approach
 
+  // Use provided wallet address or example
+  const recipientAddress = walletAddress || (await Ethereum.getWalletAddressExample());
+
   // Get quote from Universal Router
   const quoteResult = await universalRouter.getQuote(
     inputToken,
@@ -98,7 +101,7 @@ async function quoteSwap(
     {
       slippageTolerance: new Percent(Math.floor(slippagePct * 100), 10000),
       deadline: Math.floor(Date.now() / 1000 + 1800), // 30 minutes
-      recipient: walletAddress,
+      recipient: recipientAddress,
       protocols: protocolsToUse,
     },
   );
@@ -140,7 +143,7 @@ async function quoteSwap(
     },
     request: {
       network,
-      walletAddress,
+      walletAddress: recipientAddress,
       baseTokenInfo,
       quoteTokenInfo,
       inputToken,
@@ -199,7 +202,11 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           ...UniswapQuoteSwapRequest,
           properties: {
             ...UniswapQuoteSwapRequest.properties,
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
+            walletAddress: {
+              type: 'string',
+              examples: [walletAddressExample],
+              description: 'Optional wallet address for the recipient',
+            },
             network: { type: 'string', default: 'mainnet' },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
@@ -234,7 +241,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         return await quoteSwap(
           fastify,
           network,
-          walletAddress,
+          walletAddress || undefined,
           baseToken,
           quoteToken,
           amount,
@@ -245,7 +252,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         if (e.statusCode) throw e;
         logger.error('Error getting quote:', e);
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        throw fastify.httpErrors.internalServerError(e.message || 'Internal server error');
       }
     },
   );
