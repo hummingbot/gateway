@@ -7,7 +7,7 @@ import { TokenListType, TokenValue } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
-import { walletPath, getReadOnlyWalletAddresses, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
+import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
 
 import { getEthereumConfig } from './ethereum.config';
 
@@ -354,19 +354,6 @@ export class Ethereum {
   }
 
   /**
-   * Check if an address is a read-only wallet
-   */
-  public async isReadOnlyWallet(address: string): Promise<boolean> {
-    try {
-      const readOnlyAddresses = await getReadOnlyWalletAddresses('ethereum');
-      return readOnlyAddresses.includes(address);
-    } catch (error) {
-      logger.error(`Error checking read-only wallet status: ${error.message}`);
-      return false;
-    }
-  }
-
-  /**
    * Check if an address is a hardware wallet
    */
   public async isHardwareWallet(address: string): Promise<boolean> {
@@ -403,7 +390,7 @@ export class Ethereum {
   }
 
   /**
-   * Get native token balance by address (for read-only wallets)
+   * Get native token balance by address
    */
   public async getNativeBalanceByAddress(address: string): Promise<TokenValue> {
     const balance = await this.provider.getBalance(address);
@@ -437,7 +424,7 @@ export class Ethereum {
   }
 
   /**
-   * Get ERC-20 token balance by address (for read-only wallets)
+   * Get ERC-20 token balance by address
    */
   public async getERC20BalanceByAddress(
     contract: Contract,
@@ -476,7 +463,7 @@ export class Ethereum {
   }
 
   /**
-   * Get ERC-20 token allowance by address (for read-only wallets)
+   * Get ERC-20 token allowance by address
    */
   public async getERC20AllowanceByAddress(
     contract: Contract,

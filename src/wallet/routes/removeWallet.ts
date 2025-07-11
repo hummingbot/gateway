@@ -11,16 +11,7 @@ import {
   RemoveWalletRequestSchema,
   RemoveWalletResponseSchema,
 } from '../schemas';
-import {
-  removeWallet,
-  validateChainName,
-  isHardwareWallet,
-  isReadOnlyWallet,
-  getHardwareWallets,
-  saveHardwareWallets,
-  getReadOnlyWalletAddresses,
-  saveReadOnlyWalletAddresses,
-} from '../utils';
+import { removeWallet, validateChainName, isHardwareWallet, getHardwareWallets, saveHardwareWallets } from '../utils';
 
 export const removeWalletRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
@@ -70,24 +61,6 @@ export const removeWalletRoute: FastifyPluginAsync = async (fastify) => {
 
         return {
           message: `Hardware wallet ${validatedAddress} removed successfully`,
-        };
-      }
-
-      // Check if it's a read-only wallet
-      if (await isReadOnlyWallet(chain, validatedAddress)) {
-        logger.info(`Removing read-only wallet: ${validatedAddress} from chain: ${chain}`);
-
-        const addresses = await getReadOnlyWalletAddresses(chain);
-        const index = addresses.indexOf(validatedAddress);
-        if (index === -1) {
-          throw fastify.httpErrors.notFound(`Read-only wallet ${validatedAddress} not found for ${chain}`);
-        }
-
-        addresses.splice(index, 1);
-        await saveReadOnlyWalletAddresses(chain, addresses);
-
-        return {
-          message: `Read-only wallet ${validatedAddress} removed successfully`,
         };
       }
 

@@ -21,9 +21,9 @@ export const getWalletsRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { showReadOnly = true, showHardware = true } = request.query;
-      logger.info(`Getting all wallets (showReadOnly: ${showReadOnly}, showHardware: ${showHardware})`);
-      return await getWallets(fastify, showReadOnly, showHardware);
+      const { showHardware = true } = request.query;
+      logger.info(`Getting all wallets (showHardware: ${showHardware})`);
+      return await getWallets(fastify, true, showHardware);
     },
   );
 };

@@ -1,7 +1,7 @@
 # Ledger Hardware Wallet Integration Plan for Gateway
 
 ## Overview
-This document outlines the plan to integrate Ledger hardware wallet support into Gateway, focusing initially on Jupiter (Solana) integration. The implementation will follow a similar architecture to the existing read-only wallet support.
+This document outlines the plan to integrate Ledger hardware wallet support into Gateway, focusing initially on Jupiter (Solana) integration.
 
 ## Architecture
 
@@ -23,7 +23,7 @@ This document outlines the plan to integrate Ledger hardware wallet support into
 
 ### Data Model
 
-Hardware wallets will be stored similarly to read-only wallets:
+Hardware wallets will be stored in dedicated files:
 ```
 /conf/wallets/
   /solana/
