@@ -3,7 +3,7 @@ import { VersionedTransaction } from '@solana/web3.js';
 import axios, { AxiosInstance } from 'axios';
 
 import { Solana } from '../../chains/solana/solana';
-import { getSolanaConfig } from '../../chains/solana/solana.config';
+import { getSolanaNetworkConfig } from '../../chains/solana/solana.config';
 import { logger } from '../../services/logger';
 
 import { JupiterConfig } from './jupiter.config';
@@ -205,7 +205,7 @@ export class Jupiter {
     let lastError: Error | null = null;
     let swapObj: SwapResponse;
 
-    const solanaConfig = getSolanaConfig('solana', this.solana.network);
+    const solanaConfig = getSolanaNetworkConfig(this.solana.network);
     const retryCount = solanaConfig.confirmRetryCount;
     const retryInterval = solanaConfig.confirmRetryInterval;
 
@@ -287,7 +287,7 @@ export class Jupiter {
     let lastError: Error | null = null;
     let swapObj: SwapResponse;
 
-    const solanaConfig = getSolanaConfig('solana', this.solana.network);
+    const solanaConfig = getSolanaNetworkConfig(this.solana.network);
     const retryCount = solanaConfig.confirmRetryCount;
     const retryInterval = solanaConfig.confirmRetryInterval;
 

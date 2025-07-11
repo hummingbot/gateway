@@ -3,13 +3,13 @@ import { BigNumber, Contract, ContractTransaction, providers, Transaction, utils
 import { getAddress } from 'ethers/lib/utils';
 import fse from 'fs-extra';
 
-import { TokenListType, TokenValue } from '../../services/base';
+import { TokenValue } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
 
-import { getEthereumConfig } from './ethereum.config';
+import { getEthereumNetworkConfig } from './ethereum.config';
 
 // information about an Ethereum token
 export interface TokenInfo {
@@ -35,8 +35,6 @@ export class Ethereum {
   public rpcUrl: string;
   public gasPrice: number;
   public gasLimitTransaction: number;
-  public tokenListSource: string;
-  public tokenListType: TokenListType;
   private _initialized: boolean = false;
 
   // For backward compatibility
@@ -45,13 +43,11 @@ export class Ethereum {
   }
 
   private constructor(network: string) {
-    const config = getEthereumConfig('ethereum', network);
-    this.chainId = config.network.chainID;
-    this.rpcUrl = config.network.nodeURL;
+    const config = getEthereumNetworkConfig(network);
+    this.chainId = config.chainID;
+    this.rpcUrl = config.nodeURL;
     logger.info(`Initializing Ethereum connector for network: ${network}, nodeURL: ${this.rpcUrl}`);
     this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
-    this.tokenListSource = config.network.tokenListSource;
-    this.tokenListType = config.network.tokenListType;
     this.network = network;
     this.nativeTokenSymbol = config.nativeCurrencySymbol;
     this.gasPrice = config.manualGasPrice;
@@ -186,7 +182,7 @@ export class Ethereum {
    */
   public async init(): Promise<void> {
     try {
-      await this.loadTokens(this.tokenListSource, this.tokenListType);
+      await this.loadTokens();
       this._initialized = true;
     } catch (e) {
       logger.error(`Failed to initialize Ethereum chain: ${e}`);
@@ -197,7 +193,7 @@ export class Ethereum {
   /**
    * Load tokens from the token list source
    */
-  public async loadTokens(_tokenListSource: string, _tokenListType: TokenListType): Promise<void> {
+  public async loadTokens(): Promise<void> {
     logger.info(`Loading tokens for ethereum/${this.network} using TokenService`);
     try {
       // Use TokenService to load tokens

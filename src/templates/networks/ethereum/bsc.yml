@@ -1,7 +1,6 @@
 chainID: 56
 nodeURL: https://binance.llamarpc.com
 nativeCurrencySymbol: BNB
-gasPriceRefreshInterval: 60
 
 # Gas parameters for transactions
 gasLimitTransaction: 3000000

@@ -5,7 +5,6 @@
     "chainID": { "type": "integer" },
     "nodeURL": { "type": "string" },
     "nativeCurrencySymbol": { "type": "string" },
-    "gasPriceRefreshInterval": { "type": "number" },
     "gasLimitTransaction": { "type": "integer" },
     "manualGasPrice": { "type": "integer" }
   },

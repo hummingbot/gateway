@@ -17,8 +17,6 @@ import {
 import bs58 from 'bs58';
 import fse from 'fs-extra';
 
-import { TokenListType } from '../../services/base';
-
 // TODO: Replace with Fastify httpErrors
 const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
 
@@ -32,8 +30,7 @@ import {
   isHardwareWallet as isHardwareWalletUtil,
 } from '../../wallet/utils';
 
-import { SolanaLedger } from './solana-ledger';
-import { Config, getSolanaConfig } from './solana.config';
+import { SolanaNetworkConfig, getSolanaNetworkConfig } from './solana.config';
 
 // Constants used for fee calculations
 export const BASE_FEE = 5000;
@@ -74,7 +71,7 @@ export class Solana {
   public nativeTokenSymbol: string;
 
   public tokenList: TokenInfo[] = [];
-  public config: Config;
+  public config: SolanaNetworkConfig;
   private _tokenMap: Record<string, TokenInfo> = {};
 
   private static _instances: { [name: string]: Solana };
@@ -88,9 +85,9 @@ export class Solana {
 
   private constructor(network: string) {
     this.network = network;
-    this.config = getSolanaConfig('solana', network);
-    this.nativeTokenSymbol = this.config.network.nativeCurrencySymbol;
-    this.connection = new Connection(this.config.network.nodeURL, {
+    this.config = getSolanaNetworkConfig(network);
+    this.nativeTokenSymbol = this.config.nativeCurrencySymbol;
+    this.connection = new Connection(this.config.nodeURL, {
       commitment: 'confirmed',
     });
   }
@@ -109,22 +106,20 @@ export class Solana {
 
   private async init(): Promise<void> {
     try {
-      logger.info(
-        `Initializing Solana connector for network: ${this.network}, nodeURL: ${this.config.network.nodeURL}`,
-      );
-      await this.loadTokens(this.config.network.tokenListSource, this.config.network.tokenListType);
+      logger.info(`Initializing Solana connector for network: ${this.network}, nodeURL: ${this.config.nodeURL}`);
+      await this.loadTokens();
     } catch (e) {
       logger.error(`Failed to initialize ${this.network}: ${e}`);
       throw e;
     }
   }
 
-  async getTokenList(_tokenListSource?: string, _tokenListType?: TokenListType): Promise<TokenInfo[]> {
+  async getTokenList(): Promise<TokenInfo[]> {
     // Always return the stored list loaded via TokenService
     return this.tokenList;
   }
 
-  async loadTokens(_tokenListSource: string, _tokenListType: TokenListType): Promise<void> {
+  async loadTokens(): Promise<void> {
     try {
       // Use TokenService to load tokens
       const tokens = await TokenService.getInstance().loadTokenList('solana', this.network);

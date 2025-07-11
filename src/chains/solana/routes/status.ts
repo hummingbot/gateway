@@ -13,8 +13,8 @@ export async function getSolanaStatus(fastify: FastifyInstance, network: string)
   try {
     const solana = await Solana.getInstance(network);
     const chain = 'solana';
-    const rpcUrl = solana.config.network.nodeURL;
-    const nativeCurrency = solana.config.network.nativeCurrencySymbol;
+    const rpcUrl = solana.config.nodeURL;
+    const nativeCurrency = solana.config.nativeCurrencySymbol;
     const currentBlockNumber = await solana.getCurrentBlockNumber();
 
     return {

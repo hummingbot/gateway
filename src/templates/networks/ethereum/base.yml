@@ -1,7 +1,6 @@
 chainID: 8453
 nodeURL: https://mainnet.base.org
 nativeCurrencySymbol: ETH
-gasPriceRefreshInterval: 60
 
 # Gas parameters for transactions
 gasLimitTransaction: 3000000

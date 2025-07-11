@@ -5,9 +5,6 @@ import { format, fraction, number } from 'mathjs';
 
 import { isFractionString, isFloatString } from './string-utils';
 
-// the type of information source for tokens
-export type TokenListType = 'FILE' | 'URL';
-
 // the type of information source for markets
 export type MarketListType = 'FILE' | 'URL';
 

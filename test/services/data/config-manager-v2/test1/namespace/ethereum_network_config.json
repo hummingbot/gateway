@@ -15,15 +15,7 @@
     "nativeCurrencySymbol": {
       "description": "The symbol of the native currency",
       "type": "string"
-    },
-    "gasPriceRefreshInterval": {
-      "description": "The interval in seconds to refresh the gas price",
-      "type": "integer"
     }
   },
-  "required": [
-    "chainID",
-    "nodeURL",
-    "nativeCurrencySymbol"
-  ]
+  "required": ["chainID", "nodeURL", "nativeCurrencySymbol"]
 }

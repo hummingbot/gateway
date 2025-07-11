@@ -1,7 +1,6 @@
 chainID: 137
 nodeURL: https://rpc.ankr.com/polygon
 nativeCurrencySymbol: POL
-gasPriceRefreshInterval: 60
 
 # Gas parameters for transactions
 gasLimitTransaction: 3000000

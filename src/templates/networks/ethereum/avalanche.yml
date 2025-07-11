@@ -1,7 +1,6 @@
 chainID: 43114
 nodeURL: https://api.avax.network/ext/bc/C/rpc
 nativeCurrencySymbol: AVAX
-gasPriceRefreshInterval: 60
 
 # Gas parameters for transactions
 gasLimitTransaction: 3000000
