@@ -13,7 +13,7 @@ interface CachedQuote {
 class QuoteCache {
   private static instance: QuoteCache;
   private cache: Map<string, CachedQuote>;
-  private readonly QUOTE_TTL = 30000; // 30 seconds
+  private readonly QUOTE_TTL = 120000; // 2 minutes
   private cleanupInterval: NodeJS.Timeout | null = null;
 
   private constructor() {
