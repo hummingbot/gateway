@@ -63,15 +63,17 @@ async function quoteSwap(
   // Create Universal Router service
   const universalRouter = new UniversalRouterService(ethereum.provider, ethereum.chainId, network);
 
-  // Convert amount to token units
+  // Convert amount to token units using string manipulation to avoid BigInt conversion issues
   let tradeAmount: CurrencyAmount<Token>;
   if (exactIn) {
-    const scaleFactor = Math.pow(10, inputToken.decimals);
-    const rawAmount = Math.floor(amount * scaleFactor).toString();
+    // Convert amount to string with fixed decimals, then remove the decimal point
+    const amountStr = amount.toFixed(inputToken.decimals);
+    const rawAmount = amountStr.replace('.', '');
     tradeAmount = CurrencyAmount.fromRawAmount(inputToken, rawAmount);
   } else {
-    const scaleFactor = Math.pow(10, outputToken.decimals);
-    const rawAmount = Math.floor(amount * scaleFactor).toString();
+    // Convert amount to string with fixed decimals, then remove the decimal point
+    const amountStr = amount.toFixed(outputToken.decimals);
+    const rawAmount = amountStr.replace('.', '');
     tradeAmount = CurrencyAmount.fromRawAmount(outputToken, rawAmount);
   }
 
