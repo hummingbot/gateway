@@ -5,15 +5,10 @@ import Fastify, { FastifyInstance } from 'fastify';
 import fse from 'fs-extra';
 
 // Import shared mocks for common dependencies
-import { getReadOnlyWalletAddresses, saveReadOnlyWalletAddresses } from '../../src/wallet/utils';
-import { walletRoutes } from '../../src/wallet/wallet.routes';
 import { setupCommonMocks } from '../mocks/shared-mocks';
 
 // Setup common mocks
 setupCommonMocks();
-
-// Import path module at top level
-const testWalletPath = path.join(__dirname, 'test-wallets');
 
 // Create a module to store mocks
 const walletUtilsMocks = {
@@ -24,35 +19,45 @@ const walletUtilsMocks = {
   getWallets: jest.fn(),
 };
 
-// Mock wallet utils with test path
-jest.mock('../../src/wallet/utils', () => ({
-  walletPath: testWalletPath,
-  getReadOnlyWalletFilePath: (chain: string) => `${testWalletPath}/${chain.toLowerCase()}/read-only.json`,
-  getReadOnlyWalletAddresses: walletUtilsMocks.getReadOnlyWalletAddresses,
-  saveReadOnlyWalletAddresses: walletUtilsMocks.saveReadOnlyWalletAddresses,
-  addReadOnlyWallet: walletUtilsMocks.addReadOnlyWallet,
-  removeReadOnlyWallet: walletUtilsMocks.removeReadOnlyWallet,
-  getWallets: walletUtilsMocks.getWallets,
-  mkdirIfDoesNotExist: jest.fn(),
-  sanitizePathComponent: (input: string) => input.replace(/[\/\\:*?"<>|]/g, ''),
-  validateChainName: (chain: string) => ['ethereum', 'solana'].includes(chain.toLowerCase()),
-  isHardwareWallet: jest.fn().mockResolvedValue(false),
-  isReadOnlyWallet: jest.fn().mockImplementation(async (chain: string, address: string) => {
-    const addresses = await walletUtilsMocks.getReadOnlyWalletAddresses(chain);
-    // For Ethereum addresses, compare checksummed versions
-    if (chain.toLowerCase() === 'ethereum') {
-      const { getAddress } = require('ethers/lib/utils');
-      const checksummedAddress = getAddress(address);
-      return addresses.some((addr) => getAddress(addr) === checksummedAddress);
-    }
-    return addresses.includes(address);
-  }),
-  getHardwareWallets: jest.fn().mockResolvedValue([]),
-  saveHardwareWallets: jest.fn(),
-  removeWallet: jest.fn(),
-}));
+// Mock wallet utils with test path - using require.resolve to get the path dynamically
+jest.mock('../../src/wallet/utils', () => {
+  const path = require('path');
+  const testWalletPath = path.join(__dirname, 'test-wallets');
+
+  return {
+    walletPath: testWalletPath,
+    getReadOnlyWalletFilePath: (chain: string) => `${testWalletPath}/${chain.toLowerCase()}/read-only.json`,
+    getReadOnlyWalletAddresses: walletUtilsMocks.getReadOnlyWalletAddresses,
+    saveReadOnlyWalletAddresses: walletUtilsMocks.saveReadOnlyWalletAddresses,
+    addReadOnlyWallet: walletUtilsMocks.addReadOnlyWallet,
+    removeReadOnlyWallet: walletUtilsMocks.removeReadOnlyWallet,
+    getWallets: walletUtilsMocks.getWallets,
+    mkdirIfDoesNotExist: jest.fn(),
+    sanitizePathComponent: (input: string) => input.replace(/[\/\\:*?"<>|]/g, ''),
+    validateChainName: (chain: string) => ['ethereum', 'solana'].includes(chain.toLowerCase()),
+    isHardwareWallet: jest.fn().mockResolvedValue(false),
+    isReadOnlyWallet: jest.fn().mockImplementation(async (chain: string, address: string) => {
+      const addresses = await walletUtilsMocks.getReadOnlyWalletAddresses(chain);
+      // For Ethereum addresses, compare checksummed versions
+      if (chain.toLowerCase() === 'ethereum') {
+        const { getAddress } = require('ethers/lib/utils');
+        const checksummedAddress = getAddress(address);
+        return addresses.some((addr) => getAddress(addr) === checksummedAddress);
+      }
+      return addresses.includes(address);
+    }),
+    getHardwareWallets: jest.fn().mockResolvedValue([]),
+    saveHardwareWallets: jest.fn(),
+    removeWallet: jest.fn(),
+  };
+});
 
 // Import after mocking
+import { getReadOnlyWalletAddresses, saveReadOnlyWalletAddresses } from '../../src/wallet/utils';
+import { walletRoutes } from '../../src/wallet/wallet.routes';
+
+// Define testWalletPath for use in the test
+const testWalletPath = path.join(__dirname, 'test-wallets');
 
 // Get mock functions
 const mockGetReadOnlyWalletAddresses = walletUtilsMocks.getReadOnlyWalletAddresses;
