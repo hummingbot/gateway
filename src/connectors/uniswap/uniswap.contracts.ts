@@ -1,10 +1,12 @@
 /**
  * Uniswap contract addresses for various networks
- * This file contains the contract addresses for Uniswap V2 and V3 contracts
+ * This file contains the contract addresses for Uniswap V2, V3, and V4 contracts
  * on different networks. These are not meant to be edited by users.
  *
- * Last updated: May 2025
- * Source: https://docs.uniswap.org/contracts/v3/reference/deployments/
+ * Last updated: January 2025
+ * Sources:
+ * - V3: https://docs.uniswap.org/contracts/v3/reference/deployments/
+ * - V4: https://docs.uniswap.org/contracts/v4/deployments
  */
 
 export interface UniswapContractAddresses {
@@ -17,6 +19,10 @@ export interface UniswapContractAddresses {
   uniswapV3NftManagerAddress: string;
   uniswapV3QuoterV2ContractAddress: string;
   uniswapV3FactoryAddress: string;
+
+  // V4 contracts
+  uniswapV4PoolManagerAddress?: string;
+  uniswapV4StateViewAddress?: string;
 }
 
 export interface NetworkContractAddresses {
@@ -33,6 +39,9 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
     uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+    // V4 contracts - Official Uniswap addresses
+    uniswapV4PoolManagerAddress: '0x000000000004444c5dc75cB358380D2e3dE08A90',
+    uniswapV4StateViewAddress: '0x7ffe42c4a5deea5b0fec41c94c136cf115597227',
   },
   arbitrum: {
     // V2 contracts - Official Uniswap addresses
@@ -43,6 +52,9 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
     uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+    // V4 contracts - Official Uniswap addresses
+    uniswapV4PoolManagerAddress: '0x360e68faccca8ca495c1b759fd9eee466db9fb32',
+    uniswapV4StateViewAddress: '0x76fd297e2d437cd7f76d50f01afe6160f86e9990',
   },
   optimism: {
     // V2 contracts - Official Uniswap addresses
@@ -53,6 +65,9 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
     uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+    // V4 contracts - Official Uniswap addresses
+    uniswapV4PoolManagerAddress: '0x9a13f98cb987694c9f086b1f5eb990eea8264ec3',
+    uniswapV4StateViewAddress: '0xc18a3169788f4f75a170290584eca6395c75ecdb',
   },
   base: {
     // V2 contracts - Official Uniswap addresses
@@ -63,6 +78,9 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3NftManagerAddress: '0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1',
     uniswapV3QuoterV2ContractAddress: '0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a',
     uniswapV3FactoryAddress: '0x33128a8fC17869897dcE68Ed026d694621f6FDfD',
+    // V4 contracts - Official Uniswap addresses
+    uniswapV4PoolManagerAddress: '0x498581ff718922c3f8e6a244956af099b2652b2b',
+    uniswapV4StateViewAddress: '0xa3c0c9b65bad0b08107aa264b0f3db444b867a71',
   },
   sepolia: {
     // V2 contracts - Official Uniswap addresses for Sepolia testnet
@@ -113,6 +131,9 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
     uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+    // V4 contracts - Official Uniswap addresses
+    uniswapV4PoolManagerAddress: '0x67366782805870060151383f4bbff9dab53e5cd6',
+    uniswapV4StateViewAddress: '0x5ea1bd7974c8a611cbab0bdcafcb1d9cc9b3ba5a',
   },
 };
 
@@ -183,6 +204,26 @@ export function getUniswapV3FactoryAddress(network: string): string {
 
   if (!address) {
     throw new Error(`Uniswap V3 Factory address not configured for network: ${network}`);
+  }
+
+  return address;
+}
+
+export function getUniswapV4PoolManagerAddress(network: string): string {
+  const address = contractAddresses[network]?.uniswapV4PoolManagerAddress;
+
+  if (!address) {
+    throw new Error(`Uniswap V4 Pool Manager address not configured for network: ${network}`);
+  }
+
+  return address;
+}
+
+export function getUniswapV4StateViewAddress(network: string): string {
+  const address = contractAddresses[network]?.uniswapV4StateViewAddress;
+
+  if (!address) {
+    throw new Error(`Uniswap V4 StateView address not configured for network: ${network}`);
   }
 
   return address;
@@ -610,6 +651,57 @@ export const IUniswapV2FactoryABI = {
     },
   ],
 };
+
+/**
+ * Uniswap V4 StateView ABI for querying pool state
+ */
+export const IStateViewABI = [
+  {
+    inputs: [
+      {
+        components: [
+          { internalType: 'Currency', name: 'currency0', type: 'address' },
+          { internalType: 'Currency', name: 'currency1', type: 'address' },
+          { internalType: 'uint24', name: 'fee', type: 'uint24' },
+          { internalType: 'int24', name: 'tickSpacing', type: 'int24' },
+          { internalType: 'contract IHooks', name: 'hooks', type: 'address' },
+        ],
+        internalType: 'struct PoolKey',
+        name: 'key',
+        type: 'tuple',
+      },
+    ],
+    name: 'getSlot0',
+    outputs: [
+      { internalType: 'uint160', name: 'sqrtPriceX96', type: 'uint160' },
+      { internalType: 'int24', name: 'tick', type: 'int24' },
+      { internalType: 'uint24', name: 'protocolFee', type: 'uint24' },
+      { internalType: 'uint24', name: 'lpFee', type: 'uint24' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        components: [
+          { internalType: 'Currency', name: 'currency0', type: 'address' },
+          { internalType: 'Currency', name: 'currency1', type: 'address' },
+          { internalType: 'uint24', name: 'fee', type: 'uint24' },
+          { internalType: 'int24', name: 'tickSpacing', type: 'int24' },
+          { internalType: 'contract IHooks', name: 'hooks', type: 'address' },
+        ],
+        internalType: 'struct PoolKey',
+        name: 'key',
+        type: 'tuple',
+      },
+    ],
+    name: 'getLiquidity',
+    outputs: [{ internalType: 'uint128', name: '', type: 'uint128' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+];
 
 /**
  * Standard ERC20 ABI for token operations

@@ -88,6 +88,12 @@ importers:
       '@solflare-wallet/utl-sdk':
         specifier: ^1.4.0
         version: 1.4.0(@solana/web3.js@1.98.2(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(encoding@0.1.13)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@uniswap/permit2-sdk':
+        specifier: ^1.3.1
+        version: 1.3.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      '@uniswap/router-sdk':
+        specifier: ^2.0.4
+        version: 2.0.4(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
       '@uniswap/sdk':
         specifier: 3.0.3
         version: 3.0.3(@ethersproject/address@5.7.0)(@ethersproject/contracts@5.7.0)(@ethersproject/networks@5.7.0)(@ethersproject/providers@5.7.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@ethersproject/solidity@5.7.0)
@@ -97,6 +103,9 @@ importers:
       '@uniswap/smart-order-router':
         specifier: ^3.59.0
         version: 3.59.0(bufferutil@4.0.9)(encoding@0.1.13)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(jsbi@3.2.5)(utf-8-validate@5.0.10)
+      '@uniswap/universal-router-sdk':
+        specifier: ^4.19.6
+        version: 4.19.6(bufferutil@4.0.9)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       '@uniswap/v2-sdk':
         specifier: ^4.15.2
         version: 4.15.2
@@ -109,6 +118,9 @@ importers:
       '@uniswap/v3-sdk':
         specifier: ^3.25.2
         version: 3.25.2(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@uniswap/v4-sdk':
+        specifier: ^1.21.4
+        version: 1.21.4(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
       ajv:
         specifier: ^8.17.1
         version: 8.17.1
@@ -2092,6 +2104,9 @@ packages:
   '@uniswap/router-sdk@1.23.0':
     resolution: {integrity: sha512-KkHoMauTZh2N44sOU0ZuYseNNn9nAvaU57HwyCWjtwZdA7HaXtACfIRJbQvnkNNuALJfzHNkuv2aFyPSjNNmMw==}
 
+  '@uniswap/router-sdk@2.0.4':
+    resolution: {integrity: sha512-MxCtD+g+2pzzd9rZ6HKTdv1ZK2mLjREoDRNAp9+F961zCCVhgJr9L1/6Hour27/xxCyljwmG83Zn1cSS054giw==}
+
   '@uniswap/sdk-core@5.9.0':
     resolution: {integrity: sha512-OME7WR6+5QwQs45A2079r+/FS0zU944+JCQwUX9GyIriCxqw2pGu4F9IEqmlwD+zSIMml0+MJnJJ47pFgSyWDw==}
     engines: {node: '>=10'}
@@ -2128,12 +2143,20 @@ packages:
     resolution: {integrity: sha512-EB/NLIkuT2BCdKnh2wcXT0cmINjRoiskjibFclpheALHL49XSrB08H4k7KV3BP6+JNKLeTHekvTDdsMd9rs5TA==}
     engines: {node: '>=14'}
 
+  '@uniswap/universal-router-sdk@4.19.6':
+    resolution: {integrity: sha512-vBtHv4OzEn6Spkl1UgN/0TqO354w7RUdsE1uwAdqz2zfxhV48GOlKJWpe7LiI2ZukL/BMubLewtwC4q/RfjjJQ==}
+    engines: {node: '>=14'}
+
   '@uniswap/universal-router@1.6.0':
     resolution: {integrity: sha512-Gt0b0rtMV1vSrgXY3vz5R1RCZENB+rOkbOidY9GvcXrK1MstSrQSOAc+FCr8FSgsDhmRAdft0lk5YUxtM9i9Lg==}
     engines: {node: '>=14'}
 
   '@uniswap/universal-router@2.0.0-beta.1':
     resolution: {integrity: sha512-DdaMHaoDyJoCwpH+BiRKw/w2vjZtZS+ekpyrhmIeOBK1L2QEVFj977BNo6t24WzriZ9mSuIKF69RjHdXDUgHsQ==}
+    engines: {node: '>=14'}
+
+  '@uniswap/universal-router@2.0.0-beta.2':
+    resolution: {integrity: sha512-/USVkWZrOCjLeZluR7Yk8SpfWDUKG/MLcOyuxuwnqM1xCJj5ekguSYhct+Yfo/3t9fsZcnL8vSYgz0MKqAomGg==}
     engines: {node: '>=14'}
 
   '@uniswap/v2-core@1.0.1':
@@ -9645,6 +9668,17 @@ snapshots:
     transitivePeerDependencies:
       - hardhat
 
+  '@uniswap/router-sdk@2.0.4(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))':
+    dependencies:
+      '@ethersproject/abi': 5.8.0
+      '@uniswap/sdk-core': 7.7.2
+      '@uniswap/swap-router-contracts': 1.3.1(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@uniswap/v2-sdk': 4.15.2
+      '@uniswap/v3-sdk': 3.25.2(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@uniswap/v4-sdk': 1.21.4(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+    transitivePeerDependencies:
+      - hardhat
+
   '@uniswap/sdk-core@5.9.0':
     dependencies:
       '@ethersproject/address': 5.7.0
@@ -9752,6 +9786,25 @@ snapshots:
       - hardhat
       - utf-8-validate
 
+  '@uniswap/universal-router-sdk@4.19.6(bufferutil@4.0.9)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
+    dependencies:
+      '@openzeppelin/contracts': 4.9.6
+      '@uniswap/permit2-sdk': 1.3.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      '@uniswap/router-sdk': 2.0.4(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@uniswap/sdk-core': 7.7.2
+      '@uniswap/universal-router': 2.0.0-beta.2
+      '@uniswap/v2-core': 1.0.1
+      '@uniswap/v2-sdk': 4.15.2
+      '@uniswap/v3-core': 1.0.0
+      '@uniswap/v3-sdk': 3.25.2(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@uniswap/v4-sdk': 1.21.4(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+      bignumber.js: 9.3.0
+      ethers: 5.8.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+    transitivePeerDependencies:
+      - bufferutil
+      - hardhat
+      - utf-8-validate
+
   '@uniswap/universal-router@1.6.0':
     dependencies:
       '@openzeppelin/contracts': 4.9.6
@@ -9759,6 +9812,12 @@ snapshots:
       '@uniswap/v3-core': 1.0.0
 
   '@uniswap/universal-router@2.0.0-beta.1':
+    dependencies:
+      '@openzeppelin/contracts': 4.9.6
+      '@uniswap/v2-core': 1.0.1
+      '@uniswap/v3-core': 1.0.0
+
+  '@uniswap/universal-router@2.0.0-beta.2':
     dependencies:
       '@openzeppelin/contracts': 4.9.6
       '@uniswap/v2-core': 1.0.1

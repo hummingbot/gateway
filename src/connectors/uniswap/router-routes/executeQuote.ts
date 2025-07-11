@@ -4,10 +4,9 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
+import { quoteCache } from '../../../services/quote-cache';
 import { UniswapExecuteQuoteRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
-
-import { quoteCache } from './quoteSwap';
 
 async function executeQuote(
   fastify: FastifyInstance,
@@ -38,13 +37,11 @@ async function executeQuote(
     const spender = quote.methodParameters.to; // Router address
     const allowance = await ethereum.getERC20Allowance(tokenContract, wallet, spender, inputToken.decimals);
 
-    // Calculate required allowance based on side
-    const requiredAmount = side === 'SELL' ? amount : quote.quote ? parseFloat(quote.quote.toExact()) : 0;
-    const scaleFactor = Math.pow(10, inputToken.decimals);
-    const requiredAllowance = BigNumber.from(Math.floor(requiredAmount * scaleFactor).toString());
+    // Calculate required allowance from the trade input amount
+    const requiredAllowance = BigNumber.from(quote.trade.inputAmount.quotient.toString());
 
     if (BigNumber.from(allowance.value).lt(requiredAllowance)) {
-      logger.info(`Approving ${inputToken.symbol} for Uniswap router`);
+      logger.info(`Approving ${inputToken.symbol} for Universal Router`);
       await ethereum.approveERC20(tokenContract, wallet, spender, requiredAllowance);
     }
   }
@@ -54,7 +51,7 @@ async function executeQuote(
     to: quote.methodParameters.to,
     data: quote.methodParameters.calldata,
     value: quote.methodParameters.value,
-    gasLimit: maxGas || parseInt(quote.estimatedGasUsed?.toString() || '500000'),
+    gasLimit: maxGas || parseInt(quote.estimatedGasUsed.toString()),
     ...(gasPrice && { gasPrice: BigNumber.from(gasPrice) }),
   };
 
@@ -68,12 +65,12 @@ async function executeQuote(
   // Calculate fee from gas used
   const fee = parseFloat(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice).toString()) / 1e18;
 
-  // Calculate actual amounts (for now use quote amounts)
-  const baseTokenBalanceChange = side === 'SELL' ? -amount : quote.quote ? parseFloat(quote.quote.toExact()) : 0;
-  const quoteTokenBalanceChange = side === 'SELL' ? (quote.quote ? parseFloat(quote.quote.toExact()) : 0) : -amount;
+  // Calculate actual amounts from the trade
+  const amountIn = parseFloat(quote.trade.inputAmount.toExact());
+  const amountOut = parseFloat(quote.trade.outputAmount.toExact());
 
-  const amountIn = Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange);
-  const amountOut = Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange);
+  const baseTokenBalanceChange = side === 'SELL' ? -amountIn : amountOut;
+  const quoteTokenBalanceChange = side === 'SELL' ? amountOut : -amountIn;
 
   logger.info(`Swap executed successfully: ${amountIn} ${inputToken.symbol} -> ${amountOut} ${outputToken.symbol}`);
 
@@ -105,7 +102,7 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
     '/execute-quote',
     {
       schema: {
-        description: 'Execute a previously fetched quote from Uniswap',
+        description: 'Execute a previously fetched quote from Uniswap Universal Router',
         tags: ['/connector/uniswap'],
         body: {
           ...UniswapExecuteQuoteRequest,

@@ -1,5 +1,5 @@
+import { Protocol } from '@uniswap/router-sdk';
 import { CurrencyAmount, Percent, TradeType, Token } from '@uniswap/sdk-core';
-import { AlphaRouter, SwapOptionsSwapRouter02, SwapType } from '@uniswap/smart-order-router';
 import { BigNumber } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
@@ -9,6 +9,7 @@ import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { UniswapExecuteSwapRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
+import { UniversalRouterService } from '../universal-router';
 
 async function executeSwap(
   fastify: FastifyInstance,
@@ -59,11 +60,8 @@ async function executeSwap(
 
   logger.info(`Executing swap for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`);
 
-  // Create AlphaRouter instance
-  const router = new AlphaRouter({
-    chainId: ethereum.chainId,
-    provider: ethereum.provider,
-  });
+  // Create Universal Router service
+  const universalRouter = new UniversalRouterService(ethereum.provider, ethereum.chainId, network);
 
   // Convert amount to token units
   let tradeAmount: CurrencyAmount<Token>;
@@ -77,27 +75,19 @@ async function executeSwap(
     tradeAmount = CurrencyAmount.fromRawAmount(outputToken, rawAmount);
   }
 
-  // Configure swap options with actual wallet address
-  const swapOptions: SwapOptionsSwapRouter02 = {
-    recipient: walletAddress,
-    slippageTolerance: new Percent(Math.floor(slippagePct * 100), 10000),
-    deadline: Math.floor(Date.now() / 1000 + 1800), // 30 minutes
-    type: SwapType.SWAP_ROUTER_02,
-  };
-
-  // Get quote from router
-  const routeResponse = await router.route(
-    tradeAmount,
+  // Get quote from Universal Router
+  const quote = await universalRouter.getQuote(
+    inputToken,
     outputToken,
+    tradeAmount,
     exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
-    swapOptions,
+    {
+      slippageTolerance: new Percent(Math.floor(slippagePct * 100), 10000),
+      deadline: Math.floor(Date.now() / 1000 + 1800), // 30 minutes
+      recipient: walletAddress,
+      protocols: [Protocol.V2, Protocol.V3], // V4 requires different approach
+    },
   );
-
-  if (!routeResponse || !routeResponse.methodParameters) {
-    throw fastify.httpErrors.notFound('No routes found for this token pair');
-  }
-
-  const quote = routeResponse;
 
   // Check and approve allowance if needed
   if (inputToken.address !== ethereum.nativeTokenSymbol) {
@@ -105,13 +95,11 @@ async function executeSwap(
     const spender = quote.methodParameters.to; // Router address
     const allowance = await ethereum.getERC20Allowance(tokenContract, wallet, spender, inputToken.decimals);
 
-    // Calculate required allowance based on side
-    const requiredAmount = side === 'SELL' ? amount : quote.quote ? parseFloat(quote.quote.toExact()) : 0;
-    const scaleFactor = Math.pow(10, inputToken.decimals);
-    const requiredAllowance = BigNumber.from(Math.floor(requiredAmount * scaleFactor).toString());
+    // Calculate required allowance from the trade input amount
+    const requiredAllowance = BigNumber.from(quote.trade.inputAmount.quotient.toString());
 
     if (BigNumber.from(allowance.value).lt(requiredAllowance)) {
-      logger.info(`Approving ${inputToken.symbol} for Uniswap router`);
+      logger.info(`Approving ${inputToken.symbol} for Universal Router`);
       await ethereum.approveERC20(tokenContract, wallet, spender, requiredAllowance);
     }
   }
@@ -121,7 +109,7 @@ async function executeSwap(
     to: quote.methodParameters.to,
     data: quote.methodParameters.calldata,
     value: quote.methodParameters.value,
-    gasLimit: maxGas || parseInt(quote.estimatedGasUsed?.toString() || '500000'),
+    gasLimit: maxGas || parseInt(quote.estimatedGasUsed.toString()),
     ...(gasPrice && { gasPrice: BigNumber.from(gasPrice) }),
   };
 
@@ -135,23 +123,12 @@ async function executeSwap(
   // Calculate fee from gas used
   const fee = parseFloat(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice).toString()) / 1e18;
 
-  // Calculate actual amounts (for now use quote amounts)
-  let estimatedAmountIn: number;
-  let estimatedAmountOut: number;
+  // Calculate actual amounts from the trade
+  const amountIn = parseFloat(quote.trade.inputAmount.toExact());
+  const amountOut = parseFloat(quote.trade.outputAmount.toExact());
 
-  if (exactIn) {
-    estimatedAmountIn = amount;
-    estimatedAmountOut = quote.quote ? parseFloat(quote.quote.toExact()) : 0;
-  } else {
-    estimatedAmountIn = quote.quote ? parseFloat(quote.quote.toExact()) : 0;
-    estimatedAmountOut = amount;
-  }
-
-  const baseTokenBalanceChange = side === 'SELL' ? -amount : estimatedAmountOut;
-  const quoteTokenBalanceChange = side === 'SELL' ? estimatedAmountOut : -amount;
-
-  const amountIn = Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange);
-  const amountOut = Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange);
+  const baseTokenBalanceChange = side === 'SELL' ? -amountIn : amountOut;
+  const quoteTokenBalanceChange = side === 'SELL' ? amountOut : -amountIn;
 
   logger.info(`Swap executed successfully: ${amountIn} ${inputToken.symbol} -> ${amountOut} ${outputToken.symbol}`);
 
@@ -180,7 +157,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     '/execute-swap',
     {
       schema: {
-        description: 'Quote and execute a token swap on Uniswap in one step',
+        description: 'Quote and execute a token swap on Uniswap Universal Router in one step',
         tags: ['/connector/uniswap'],
         body: {
           ...UniswapExecuteSwapRequest,

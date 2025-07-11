@@ -1,36 +1,17 @@
 import { Static } from '@sinclair/typebox';
+import { Protocol } from '@uniswap/router-sdk';
 import { CurrencyAmount, Percent, TradeType, Token } from '@uniswap/sdk-core';
-import { AlphaRouter, SwapOptionsSwapRouter02, SwapType } from '@uniswap/smart-order-router';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { QuoteSwapRequestType, QuoteSwapResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
+import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { UniswapQuoteSwapRequest, UniswapQuoteSwapResponse } from '../schemas';
 import { Uniswap } from '../uniswap';
-
-// Simple in-memory cache for quotes
-export const quoteCache = new Map<
-  string,
-  {
-    quote: any;
-    request: any;
-    timestamp: number;
-  }
->();
-
-// Clean up old quotes every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, cached] of quoteCache.entries()) {
-    if (now - cached.timestamp > 300000) {
-      // 5 minutes
-      quoteCache.delete(id);
-    }
-  }
-}, 300000);
+import { UniversalRouterService } from '../universal-router';
 
 async function quoteSwap(
   fastify: FastifyInstance,
@@ -77,13 +58,10 @@ async function quoteSwap(
   const exactIn = side === 'SELL';
   const [inputToken, outputToken] = exactIn ? [baseTokenObj, quoteTokenObj] : [quoteTokenObj, baseTokenObj];
 
-  logger.info(`Getting executable quote for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`);
+  logger.info(`Getting Universal Router quote for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`);
 
-  // Create AlphaRouter instance
-  const router = new AlphaRouter({
-    chainId: ethereum.chainId,
-    provider: ethereum.provider,
-  });
+  // Create Universal Router service
+  const universalRouter = new UniversalRouterService(ethereum.provider, ethereum.chainId, network);
 
   // Convert amount to token units
   let tradeAmount: CurrencyAmount<Token>;
@@ -97,48 +75,40 @@ async function quoteSwap(
     tradeAmount = CurrencyAmount.fromRawAmount(outputToken, rawAmount);
   }
 
-  // Configure swap options with actual wallet address
-  const swapOptions: SwapOptionsSwapRouter02 = {
-    recipient: walletAddress,
-    slippageTolerance: new Percent(Math.floor(slippagePct * 100), 10000),
-    deadline: Math.floor(Date.now() / 1000 + 1800), // 30 minutes
-    type: SwapType.SWAP_ROUTER_02,
-  };
+  // Map protocol strings to Protocol enum
+  const protocolsToUse = protocols?.map((p) => {
+    switch (p.toLowerCase()) {
+      case 'v2':
+        return Protocol.V2;
+      case 'v3':
+        return Protocol.V3;
+      case 'v4':
+        return Protocol.V4;
+      default:
+        return Protocol.V3;
+    }
+  }) || [Protocol.V2, Protocol.V3]; // V4 requires different approach
 
-  // Get quote from router
-  const routeResponse = await router.route(
-    tradeAmount,
+  // Get quote from Universal Router
+  const quoteResult = await universalRouter.getQuote(
+    inputToken,
     outputToken,
+    tradeAmount,
     exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
-    swapOptions,
+    {
+      slippageTolerance: new Percent(Math.floor(slippagePct * 100), 10000),
+      deadline: Math.floor(Date.now() / 1000 + 1800), // 30 minutes
+      recipient: walletAddress,
+      protocols: protocolsToUse,
+    },
   );
-
-  if (!routeResponse || !routeResponse.methodParameters) {
-    throw fastify.httpErrors.notFound('No routes found for this token pair');
-  }
-
-  const quote = routeResponse;
 
   // Generate unique quote ID
   const quoteId = uuidv4();
 
-  // Extract route information
-  const route: string[] = [];
-  let routePath = '';
-
-  if (quote.route && quote.route.length > 0) {
-    const firstRoute = quote.route[0];
-    if (firstRoute.tokenPath) {
-      firstRoute.tokenPath.forEach((currency) => {
-        if ('address' in currency) {
-          route.push(currency.symbol || currency.address);
-        } else {
-          route.push('ETH'); // Native currency
-        }
-      });
-      routePath = route.join(' -> ');
-    }
-  }
+  // Extract route information from quoteResult
+  const route = quoteResult.route;
+  const routePath = quoteResult.routePath;
 
   // Calculate amounts based on quote
   let estimatedAmountIn: number;
@@ -146,9 +116,9 @@ async function quoteSwap(
 
   if (exactIn) {
     estimatedAmountIn = amount;
-    estimatedAmountOut = quote.quote ? parseFloat(quote.quote.toExact()) : 0;
+    estimatedAmountOut = parseFloat(quoteResult.quote.toExact());
   } else {
-    estimatedAmountIn = quote.quote ? parseFloat(quote.quote.toExact()) : 0;
+    estimatedAmountIn = parseFloat(quoteResult.trade.inputAmount.toExact());
     estimatedAmountOut = amount;
   }
 
@@ -160,15 +130,13 @@ async function quoteSwap(
   // For SELL: worst price = minAmountOut / estimatedAmountIn (minimum quote per base)
   // For BUY: worst price = maxAmountIn / estimatedAmountOut (maximum quote per base)
   const priceWithSlippage = side === 'SELL' ? minAmountOut / estimatedAmountIn : maxAmountIn / estimatedAmountOut;
-  const priceImpactPct = quote.estimatedGasUsedQuoteToken
-    ? parseFloat(quote.estimatedGasUsedQuoteToken.toExact()) * 100
-    : 0;
 
   // Cache the quote for execution
-  quoteCache.set(quoteId, {
+  // Store both quote and request data in the quote object for Uniswap
+  const cachedQuote = {
     quote: {
-      ...quote,
-      methodParameters: quote.methodParameters,
+      ...quoteResult,
+      methodParameters: quoteResult.methodParameters,
     },
     request: {
       network,
@@ -181,8 +149,9 @@ async function quoteSwap(
       side,
       slippagePct,
     },
-    timestamp: Date.now(),
-  });
+  };
+
+  quoteCache.set(quoteId, cachedQuote);
 
   logger.info(
     `Quote ${quoteId}: ${estimatedAmountIn} ${inputToken.symbol} -> ${estimatedAmountOut} ${outputToken.symbol}`,
@@ -201,14 +170,14 @@ async function quoteSwap(
     minAmountOut,
     maxAmountIn,
     // Uniswap-specific fields
-    priceImpactPct,
-    gasEstimate: quote.estimatedGasUsed?.toString() || '0',
+    priceImpactPct: quoteResult.priceImpact,
+    gasEstimate: quoteResult.estimatedGasUsed.toString(),
     expirationTime: Date.now() + 300000, // 5 minutes
     route,
     routePath,
     protocols: protocols || ['v2', 'v3'],
-    methodParameters: quote.methodParameters,
-    gasPriceWei: quote.gasPriceWei?.toString() || '0',
+    methodParameters: quoteResult.methodParameters,
+    gasPriceWei: '0', // We can add this later if needed
   };
 }
 
@@ -222,7 +191,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     '/quote-swap',
     {
       schema: {
-        description: 'Get an executable swap quote from Uniswap Smart Order Router',
+        description: 'Get an executable swap quote from Uniswap Universal Router',
         tags: ['/connector/uniswap'],
         querystring: {
           ...UniswapQuoteSwapRequest,
@@ -235,6 +204,12 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             amount: { type: 'number', examples: [1] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             slippagePct: { type: 'number', examples: [1] },
+            protocols: {
+              type: 'array',
+              items: { type: 'string' },
+              examples: [['v2', 'v3', 'v4']],
+              description: 'Protocols to use for routing (v2, v3, v4)',
+            },
           },
         },
         response: { 200: UniswapQuoteSwapResponse },
