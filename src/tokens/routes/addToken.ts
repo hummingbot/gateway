@@ -40,10 +40,7 @@ export const addTokenRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.conflict(error.message);
         }
 
-        if (
-          error.message.includes('Invalid') ||
-          error.message.includes('required')
-        ) {
+        if (error.message.includes('Invalid') || error.message.includes('required')) {
           throw fastify.httpErrors.badRequest(error.message);
         }
 

@@ -18,10 +18,7 @@ import { Keypair, PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../chains/solana/solana';
 import { PoolInfo as AmmPoolInfo } from '../../schemas/amm-schema';
-import {
-  PoolInfo as ClmmPoolInfo,
-  PositionInfo,
-} from '../../schemas/clmm-schema';
+import { PoolInfo as ClmmPoolInfo, PositionInfo } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
 
 import { RaydiumConfig } from './raydium.config';
@@ -66,8 +63,7 @@ export class Raydium {
       if (walletAddress) {
         this.owner = await this.solana.getWallet(walletAddress);
       }
-      const raydiumCluster =
-        this.solana.network == `mainnet-beta` ? 'mainnet' : 'devnet';
+      const raydiumCluster = this.solana.network == `mainnet-beta` ? 'mainnet' : 'devnet';
 
       // Initialize Raydium SDK with optional owner
       this.raydiumSDK = await RaydiumSDK.load({
@@ -78,10 +74,7 @@ export class Raydium {
         blockhashCommitment: 'confirmed',
       });
 
-      logger.info(
-        'Raydium initialized' +
-          (walletAddress ? ` with wallet: ${walletAddress}` : 'with no wallet'),
-      );
+      logger.info('Raydium initialized' + (walletAddress ? ` with wallet: ${walletAddress}` : 'with no wallet'));
     } catch (error) {
       logger.error('Raydium initialization failed:', error);
       throw error;
@@ -89,14 +82,11 @@ export class Raydium {
   }
 
   async getClmmPoolfromRPC(poolAddress: string): Promise<ClmmRpcData | null> {
-    const poolInfoResponse: ClmmRpcData =
-      await this.raydiumSDK.clmm.getRpcClmmPoolInfo({ poolId: poolAddress });
+    const poolInfoResponse: ClmmRpcData = await this.raydiumSDK.clmm.getRpcClmmPoolInfo({ poolId: poolAddress });
     return poolInfoResponse;
   }
 
-  async getClmmPoolfromAPI(
-    poolAddress: string,
-  ): Promise<[ApiV3PoolInfoConcentratedItem, ClmmKeys] | null> {
+  async getClmmPoolfromAPI(poolAddress: string): Promise<[ApiV3PoolInfoConcentratedItem, ClmmKeys] | null> {
     const poolInfoResponse = await this.raydiumSDK.api.fetchPoolById({
       ids: poolAddress,
     });
@@ -129,9 +119,7 @@ export class Raydium {
       let ammConfigData;
       if (rawPool.ammConfig) {
         try {
-          const configAccount = await this.solana.connection.getAccountInfo(
-            rawPool.ammConfig,
-          );
+          const configAccount = await this.solana.connection.getAccountInfo(rawPool.ammConfig);
           if (configAccount) {
             const dataBuffer = configAccount.data;
             ammConfigData = {
@@ -140,18 +128,12 @@ export class Raydium {
             };
           }
         } catch (e) {
-          logger.error(
-            `Error fetching CLMM pool info for ${poolAddress}: ${e}`,
-          );
+          logger.error(`Error fetching CLMM pool info for ${poolAddress}: ${e}`);
         }
       }
 
-      const vaultABalance = (
-        await this.solana.connection.getTokenAccountBalance(rawPool.vaultA)
-      ).value.uiAmount;
-      const vaultBBalance = (
-        await this.solana.connection.getTokenAccountBalance(rawPool.vaultB)
-      ).value.uiAmount;
+      const vaultABalance = (await this.solana.connection.getTokenAccountBalance(rawPool.vaultA)).value.uiAmount;
+      const vaultBBalance = (await this.solana.connection.getTokenAccountBalance(rawPool.vaultB)).value.uiAmount;
 
       const poolInfo: ClmmPoolInfo = {
         address: poolAddress,
@@ -173,13 +155,8 @@ export class Raydium {
 
   async getClmmPosition(positionAddress: string): Promise<any> {
     const positionNftMint = new PublicKey(positionAddress);
-    const positionPubKey = getPdaPersonalPositionAddress(
-      CLMM_PROGRAM_ID,
-      positionNftMint,
-    ).publicKey;
-    const positionAccount = await this.solana.connection.getAccountInfo(
-      new PublicKey(positionPubKey),
-    );
+    const positionPubKey = getPdaPersonalPositionAddress(CLMM_PROGRAM_ID, positionNftMint).publicKey;
+    const positionAccount = await this.solana.connection.getAccountInfo(new PublicKey(positionPubKey));
 
     if (!positionAccount) {
       logger.warn(`Position account not found: ${positionAddress}`);
@@ -230,10 +207,8 @@ export class Raydium {
         lowerPrice: Number(priceLower.price),
         upperPrice: Number(priceUpper.price),
         price: Number(poolInfo.price),
-        baseTokenAmount:
-          Number(amountA.amount) / 10 ** Number(poolInfo.mintA.decimals),
-        quoteTokenAmount:
-          Number(amountB.amount) / 10 ** Number(poolInfo.mintB.decimals),
+        baseTokenAmount: Number(amountA.amount) / 10 ** Number(poolInfo.mintA.decimals),
+        quoteTokenAmount: Number(amountB.amount) / 10 ** Number(poolInfo.mintB.decimals),
         baseFeeAmount: Number(position.tokenFeesOwedA?.toString() || '0'),
         quoteFeeAmount: Number(position.tokenFeesOwedB?.toString() || '0'),
         lowerBinId: position.tickLower,
@@ -248,13 +223,7 @@ export class Raydium {
   // General Pool Methods
   async getPoolfromAPI(
     poolAddress: string,
-  ): Promise<
-    | [
-        ApiV3PoolInfoStandardItem | ApiV3PoolInfoStandardItemCpmm,
-        AmmV4Keys | AmmV5Keys,
-      ]
-    | null
-  > {
+  ): Promise<[ApiV3PoolInfoStandardItem | ApiV3PoolInfoStandardItemCpmm, AmmV4Keys | AmmV5Keys] | null> {
     try {
       let poolInfo: ApiV3PoolInfoStandardItem | ApiV3PoolInfoStandardItemCpmm;
       let poolKeys: AmmV4Keys | AmmV5Keys;
@@ -263,16 +232,12 @@ export class Raydium {
         const data = await this.raydiumSDK.api.fetchPoolById({
           ids: poolAddress,
         });
-        poolInfo = data[0] as
-          | ApiV3PoolInfoStandardItem
-          | ApiV3PoolInfoStandardItemCpmm;
+        poolInfo = data[0] as ApiV3PoolInfoStandardItem | ApiV3PoolInfoStandardItemCpmm;
       } else {
         const data = await this.raydiumSDK.liquidity.getPoolInfoFromRpc({
           poolId: poolAddress,
         });
-        poolInfo = data.poolInfo as
-          | ApiV3PoolInfoStandardItem
-          | ApiV3PoolInfoStandardItemCpmm;
+        poolInfo = data.poolInfo as ApiV3PoolInfoStandardItem | ApiV3PoolInfoStandardItemCpmm;
         poolKeys = data.poolKeys as AmmV4Keys | AmmV5Keys;
       }
       console.log('poolInfo', poolInfo);
@@ -284,10 +249,7 @@ export class Raydium {
 
       return [poolInfo, poolKeys];
     } catch (error) {
-      logger.error(
-        `Error getting AMM pool info from API for ${poolAddress}:`,
-        error,
-      );
+      logger.error(`Error getting AMM pool info from API for ${poolAddress}:`, error);
       return null;
     }
   }
@@ -310,25 +272,17 @@ export class Raydium {
       const poolType = await this.getPoolType(poolAddress);
       let poolInfo: AmmPoolInfo;
       if (poolType === 'amm') {
-        const rawPool = await this.raydiumSDK.liquidity.getRpcPoolInfos([
-          poolAddress,
-        ]);
+        const rawPool = await this.raydiumSDK.liquidity.getRpcPoolInfos([poolAddress]);
         console.log('ammPoolInfo', rawPool);
 
         poolInfo = {
           address: poolAddress,
           baseTokenAddress: rawPool[poolAddress].baseMint.toString(),
           quoteTokenAddress: rawPool[poolAddress].quoteMint.toString(),
-          feePct:
-            Number(rawPool[poolAddress].tradeFeeNumerator) /
-            Number(rawPool[poolAddress].tradeFeeDenominator),
+          feePct: Number(rawPool[poolAddress].tradeFeeNumerator) / Number(rawPool[poolAddress].tradeFeeDenominator),
           price: Number(rawPool[poolAddress].poolPrice),
-          baseTokenAmount:
-            Number(rawPool[poolAddress].mintAAmount) /
-            10 ** Number(rawPool[poolAddress].baseDecimal),
-          quoteTokenAmount:
-            Number(rawPool[poolAddress].mintBAmount) /
-            10 ** Number(rawPool[poolAddress].quoteDecimal),
+          baseTokenAmount: Number(rawPool[poolAddress].mintAAmount) / 10 ** Number(rawPool[poolAddress].baseDecimal),
+          quoteTokenAmount: Number(rawPool[poolAddress].mintBAmount) / 10 ** Number(rawPool[poolAddress].quoteDecimal),
           poolType: poolType,
           lpMint: {
             address: rawPool[poolAddress].lpMint.toString(),
@@ -337,9 +291,7 @@ export class Raydium {
         };
         return poolInfo;
       } else if (poolType === 'cpmm') {
-        const rawPool = await this.raydiumSDK.cpmm.getRpcPoolInfos([
-          poolAddress,
-        ]);
+        const rawPool = await this.raydiumSDK.cpmm.getRpcPoolInfos([poolAddress]);
         console.log('cpmmPoolInfo', rawPool);
 
         poolInfo = {
@@ -348,12 +300,8 @@ export class Raydium {
           quoteTokenAddress: rawPool[poolAddress].mintB.toString(),
           feePct: Number(rawPool[poolAddress].configInfo?.tradeFeeRate || 0),
           price: Number(rawPool[poolAddress].poolPrice),
-          baseTokenAmount:
-            Number(rawPool[poolAddress].baseReserve) /
-            10 ** Number(rawPool[poolAddress].mintDecimalA),
-          quoteTokenAmount:
-            Number(rawPool[poolAddress].quoteReserve) /
-            10 ** Number(rawPool[poolAddress].mintDecimalB),
+          baseTokenAmount: Number(rawPool[poolAddress].baseReserve) / 10 ** Number(rawPool[poolAddress].mintDecimalA),
+          quoteTokenAmount: Number(rawPool[poolAddress].quoteReserve) / 10 ** Number(rawPool[poolAddress].mintDecimalB),
           poolType: poolType,
           lpMint: {
             address: rawPool[poolAddress].mintLp.toString(),
@@ -379,9 +327,7 @@ export class Raydium {
    * @param executeFunc The execute function returned by SDK methods
    * @returns Transaction ID
    */
-  async executeTransaction(
-    executeFunc: () => Promise<{ txId: string }>,
-  ): Promise<string> {
+  async executeTransaction(executeFunc: () => Promise<{ txId: string }>): Promise<string> {
     try {
       const result = await executeFunc();
       logger.info(`Transaction executed successfully: ${result.txId}`);
@@ -394,9 +340,7 @@ export class Raydium {
         throw new Error('Insufficient SOL balance for transaction fees');
       }
       if (error.message?.includes('slippage')) {
-        throw new Error(
-          'Transaction failed due to slippage. Try increasing slippage tolerance.',
-        );
+        throw new Error('Transaction failed due to slippage. Try increasing slippage tolerance.');
       }
       if (error.message?.includes('blockhash')) {
         throw new Error('Transaction expired. Please try again.');
@@ -406,11 +350,7 @@ export class Raydium {
     }
   }
 
-  async findDefaultPool(
-    _baseToken: string,
-    _quoteToken: string,
-    _routeType: 'amm' | 'clmm',
-  ): Promise<string | null> {
+  async findDefaultPool(_baseToken: string, _quoteToken: string, _routeType: 'amm' | 'clmm'): Promise<string | null> {
     // Pools are now managed separately, return null for dynamic pool discovery
     return null;
   }

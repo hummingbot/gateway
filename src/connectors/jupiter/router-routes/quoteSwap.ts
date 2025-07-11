@@ -31,10 +31,7 @@ export async function quoteSwap(
 
   if (!baseTokenInfo || !quoteTokenInfo) {
     throw fastify.httpErrors.badRequest(
-      sanitizeErrorMessage(
-        'Token not found: {}',
-        !baseTokenInfo ? baseToken : quoteToken,
-      ),
+      sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
     );
   }
 
@@ -42,13 +39,9 @@ export async function quoteSwap(
   const inputToken = side === 'SELL' ? baseTokenInfo : quoteTokenInfo;
   const outputToken = side === 'SELL' ? quoteTokenInfo : baseTokenInfo;
   const inputAmount =
-    side === 'SELL'
-      ? amount * Math.pow(10, baseTokenInfo.decimals)
-      : amount * Math.pow(10, quoteTokenInfo.decimals);
+    side === 'SELL' ? amount * Math.pow(10, baseTokenInfo.decimals) : amount * Math.pow(10, quoteTokenInfo.decimals);
 
-  logger.info(
-    `Getting quote for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`,
-  );
+  logger.info(`Getting quote for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`);
 
   // Get quote from Jupiter API
   const quoteResponse = await jupiter.getQuote(
@@ -57,8 +50,7 @@ export async function quoteSwap(
     inputAmount / Math.pow(10, inputToken.decimals),
     slippagePct,
     onlyDirectRoutes ?? JupiterConfig.config.onlyDirectRoutes,
-    restrictIntermediateTokens ??
-      JupiterConfig.config.restrictIntermediateTokens,
+    restrictIntermediateTokens ?? JupiterConfig.config.restrictIntermediateTokens,
     side === 'BUY' ? 'ExactOut' : 'ExactIn',
   );
 
@@ -67,30 +59,20 @@ export async function quoteSwap(
   }
 
   const bestRoute = quoteResponse;
-  const estimatedAmountIn =
-    Number(quoteResponse.inAmount) / Math.pow(10, inputToken.decimals);
-  const estimatedAmountOut =
-    Number(quoteResponse.outAmount) / Math.pow(10, outputToken.decimals);
+  const estimatedAmountIn = Number(quoteResponse.inAmount) / Math.pow(10, inputToken.decimals);
+  const estimatedAmountOut = Number(quoteResponse.outAmount) / Math.pow(10, outputToken.decimals);
 
   // Calculate min/max amounts based on slippage
-  const minAmountOut =
-    side === 'SELL' ? estimatedAmountOut * (1 - slippagePct / 100) : amount;
-  const maxAmountIn =
-    side === 'BUY' ? estimatedAmountIn * (1 + slippagePct / 100) : amount;
+  const minAmountOut = side === 'SELL' ? estimatedAmountOut * (1 - slippagePct / 100) : amount;
+  const maxAmountIn = side === 'BUY' ? estimatedAmountIn * (1 + slippagePct / 100) : amount;
 
   // Calculate price based on side
-  const price =
-    side === 'SELL'
-      ? estimatedAmountOut / estimatedAmountIn
-      : estimatedAmountIn / estimatedAmountOut;
+  const price = side === 'SELL' ? estimatedAmountOut / estimatedAmountIn : estimatedAmountIn / estimatedAmountOut;
 
   // Calculate price with slippage
   // For SELL: worst price = minAmountOut / estimatedAmountIn (minimum quote per base)
   // For BUY: worst price = maxAmountIn / estimatedAmountOut (maximum quote per base)
-  const priceWithSlippage =
-    side === 'SELL'
-      ? minAmountOut / estimatedAmountIn
-      : maxAmountIn / estimatedAmountOut;
+  const priceWithSlippage = side === 'SELL' ? minAmountOut / estimatedAmountIn : maxAmountIn / estimatedAmountOut;
 
   // Generate quote ID and cache the entire quote response
   const quoteId = uuidv4();

@@ -11,10 +11,7 @@ import {
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import {
-  getUniswapV3SmartOrderRouterAddress,
-  ISwapRouter02ABI,
-} from '../uniswap.contracts';
+import { getUniswapV3SmartOrderRouterAddress, ISwapRouter02ABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
 import { getUniswapClmmQuote } from './quoteSwap';
@@ -80,9 +77,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         if (!walletAddress) {
           walletAddress = await Ethereum.getFirstWalletAddress();
           if (!walletAddress) {
-            throw fastify.httpErrors.badRequest(
-              'No wallet address provided and no wallets found.',
-            );
+            throw fastify.httpErrors.badRequest('No wallet address provided and no wallets found.');
           }
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
@@ -91,31 +86,24 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         const uniswap = await Uniswap.getInstance(networkToUse);
         let poolAddress = requestedPoolAddress;
         if (!poolAddress) {
-          poolAddress = await uniswap.findDefaultPool(
-            baseToken,
-            quoteToken,
-            'clmm',
-          );
+          poolAddress = await uniswap.findDefaultPool(baseToken, quoteToken, 'clmm');
 
           if (!poolAddress) {
-            throw fastify.httpErrors.notFound(
-              `No CLMM pool found for pair ${baseToken}-${quoteToken}`,
-            );
+            throw fastify.httpErrors.notFound(`No CLMM pool found for pair ${baseToken}-${quoteToken}`);
           }
         }
 
         // Get quote using the shared quote function - this eliminates duplication
-        const { quote, ethereum, baseTokenObj, quoteTokenObj } =
-          await getUniswapClmmQuote(
-            fastify,
-            networkToUse,
-            poolAddress,
-            baseToken,
-            quoteToken,
-            amount,
-            side as 'BUY' | 'SELL',
-            slippagePct,
-          );
+        const { quote, ethereum, baseTokenObj, quoteTokenObj } = await getUniswapClmmQuote(
+          fastify,
+          networkToUse,
+          poolAddress,
+          baseToken,
+          quoteToken,
+          amount,
+          side as 'BUY' | 'SELL',
+          slippagePct,
+        );
 
         // Get the wallet
         const wallet = await ethereum.getWallet(walletAddress);
@@ -135,22 +123,13 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             throw new Error('WETH token not found');
           }
 
-          logger.info(
-            `ETH detected as input token, wrapping ${amount} ETH to WETH first`,
-          );
+          logger.info(`ETH detected as input token, wrapping ${amount} ETH to WETH first`);
 
-          const wrapResult = await wrapEthereum(
-            fastify,
-            networkToUse,
-            walletAddress,
-            amount.toString(),
-          );
+          const wrapResult = await wrapEthereum(fastify, networkToUse, walletAddress, amount.toString());
           wrapTxHash = wrapResult.signature;
           inputTokenAddress = wethToken.address;
 
-          logger.info(
-            `Successfully wrapped ${amount} ETH to WETH, transaction hash: ${wrapTxHash}`,
-          );
+          logger.info(`Successfully wrapped ${amount} ETH to WETH, transaction hash: ${wrapTxHash}`);
         }
 
         // Handle output ETH conversion (we're using WETH)
@@ -165,11 +144,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Get SwapRouter02 contract
         const routerAddress = getUniswapV3SmartOrderRouterAddress(networkToUse);
-        const routerContract = new Contract(
-          routerAddress,
-          ISwapRouter02ABI,
-          wallet,
-        );
+        const routerContract = new Contract(routerAddress, ISwapRouter02ABI, wallet);
 
         logger.info(`Executing swap using SwapRouter02:`);
         logger.info(`Router address: ${routerAddress}`);
@@ -188,8 +163,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           quote.inputToken.decimals,
         );
 
-        const amountNeeded =
-          side === 'SELL' ? quote.rawAmountIn : quote.rawMaxAmountIn;
+        const amountNeeded = side === 'SELL' ? quote.rawAmountIn : quote.rawMaxAmountIn;
         const currentAllowance = BigNumber.from(allowance.value);
 
         logger.info(
@@ -259,10 +233,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
           };
 
-          tx = await routerContract.exactInputSingle(
-            exactInputParams,
-            txOptions,
-          );
+          tx = await routerContract.exactInputSingle(exactInputParams, txOptions);
         } else {
           // exactOutputSingle - we know the exact output amount
           swapParams.amountOut = quote.rawAmountOut;
@@ -282,10 +253,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
           };
 
-          tx = await routerContract.exactOutputSingle(
-            exactOutputParams,
-            txOptions,
-          );
+          tx = await routerContract.exactOutputSingle(exactOutputParams, txOptions);
         }
 
         logger.info(`Transaction sent: ${tx.hash}`);
@@ -295,9 +263,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Check if the transaction was successful
         if (receipt.status === 0) {
-          logger.error(
-            `Transaction failed on-chain. Receipt: ${JSON.stringify(receipt)}`,
-          );
+          logger.error(`Transaction failed on-chain. Receipt: ${JSON.stringify(receipt)}`);
           throw new Error(
             'Transaction reverted on-chain. This could be due to slippage, insufficient funds, or other blockchain issues.',
           );
@@ -321,9 +287,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         );
 
         // Include both swap and wrap txHash in the response if applicable
-        const txSignature = wrapTxHash
-          ? `swap:${receipt.transactionHash},wrap:${wrapTxHash}`
-          : receipt.transactionHash;
+        const txSignature = wrapTxHash ? `swap:${receipt.transactionHash},wrap:${wrapTxHash}` : receipt.transactionHash;
 
         // Get current tick from pool
         const activeBinId = quote.currentTick || 0;
@@ -349,9 +313,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
       } catch (error) {
         logger.error(`Swap execution error: ${error.message}`);
         if (error.transaction) {
-          logger.debug(
-            `Transaction details: ${JSON.stringify(error.transaction)}`,
-          );
+          logger.debug(`Transaction details: ${JSON.stringify(error.transaction)}`);
         }
         if (error.receipt) {
           logger.debug(`Transaction receipt: ${JSON.stringify(error.receipt)}`);
@@ -364,9 +326,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Provide more detailed error messages for common issues
         const errorMessage = error.reason || error.message;
-        throw fastify.httpErrors.internalServerError(
-          `Failed to execute swap: ${errorMessage}`,
-        );
+        throw fastify.httpErrors.internalServerError(`Failed to execute swap: ${errorMessage}`);
       }
     },
   );

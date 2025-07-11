@@ -38,9 +38,7 @@ describe('PoolService', () => {
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       };
 
-      await expect(
-        poolService.validatePool('raydium', pool),
-      ).resolves.not.toThrow();
+      await expect(poolService.validatePool('raydium', pool)).resolves.not.toThrow();
     });
 
     it('should reject invalid address', async () => {
@@ -52,9 +50,7 @@ describe('PoolService', () => {
         address: 'invalid-address',
       };
 
-      await expect(poolService.validatePool('raydium', pool)).rejects.toThrow(
-        'Invalid Solana pool address',
-      );
+      await expect(poolService.validatePool('raydium', pool)).rejects.toThrow('Invalid Solana pool address');
     });
   });
 });

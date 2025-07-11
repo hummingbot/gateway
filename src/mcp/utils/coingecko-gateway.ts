@@ -90,10 +90,7 @@ export class CoinGeckoGateway {
       'Passing environment to CoinGecko subprocess:',
       Object.keys(cgEnv)
         .filter((k) => k.includes('COINGECKO'))
-        .map(
-          (k) =>
-            `${k}=${cgEnv[k] ? cgEnv[k].substring(0, 10) + '...' : 'undefined'}`,
-        ),
+        .map((k) => `${k}=${cgEnv[k] ? cgEnv[k].substring(0, 10) + '...' : 'undefined'}`),
     );
 
     this.transport = new StdioClientTransport({
@@ -102,10 +99,7 @@ export class CoinGeckoGateway {
       env: cgEnv,
     });
 
-    this.coingeckoClient = new Client(
-      { name: 'gateway-coingecko', version: '1.0.0' },
-      { capabilities: {} },
-    );
+    this.coingeckoClient = new Client({ name: 'gateway-coingecko', version: '1.0.0' }, { capabilities: {} });
 
     try {
       await this.coingeckoClient.connect(this.transport);
@@ -125,14 +119,9 @@ export class CoinGeckoGateway {
       const serverConfig = configManager.get('server.mcp.coingeckoTools');
       toolSubset = serverConfig || [];
 
-      console.error(
-        `Loading predefined ${toolSubset.length} CoinGecko tools from server config`,
-      );
+      console.error(`Loading predefined ${toolSubset.length} CoinGecko tools from server config`);
     } catch (error) {
-      console.error(
-        'Failed to load CoinGecko tools from server config:',
-        error,
-      );
+      console.error('Failed to load CoinGecko tools from server config:', error);
       return; // Don't register any tools if config fails
     }
 
@@ -142,9 +131,7 @@ export class CoinGeckoGateway {
     }
 
     // Update handlers for the predefined tools only
-    console.error(
-      `Updating handlers for ${toolSubset.length} CoinGecko tools...`,
-    );
+    console.error(`Updating handlers for ${toolSubset.length} CoinGecko tools...`);
 
     for (const toolName of toolSubset) {
       const prefixedName = `coingecko_${toolName}`;
@@ -209,10 +196,7 @@ export class CoinGeckoGateway {
 let globalGateway: CoinGeckoGateway | null = null;
 
 // Export function to register CoinGecko tools
-export async function registerCoinGeckoTools(
-  server: Server,
-  apiClient: GatewayApiClient,
-): Promise<CoinGeckoGateway> {
+export async function registerCoinGeckoTools(server: Server, apiClient: GatewayApiClient): Promise<CoinGeckoGateway> {
   if (!globalGateway) {
     globalGateway = new CoinGeckoGateway(server, apiClient);
 

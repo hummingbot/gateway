@@ -37,10 +37,9 @@ async function calculateLpAmount(
   }
 
   // Get user's LP token account
-  const lpTokenAccounts = await solana.connection.getTokenAccountsByOwner(
-    walletAddress,
-    { mint: new PublicKey(lpMint) },
-  );
+  const lpTokenAccounts = await solana.connection.getTokenAccountsByOwner(walletAddress, {
+    mint: new PublicKey(lpMint),
+  });
 
   if (lpTokenAccounts.value.length === 0) {
     // Return zero values if no LP token account exists
@@ -53,8 +52,7 @@ async function calculateLpAmount(
 
   // Get LP token balance
   const lpTokenAccount = lpTokenAccounts.value[0].pubkey;
-  const accountInfo =
-    await solana.connection.getTokenAccountBalance(lpTokenAccount);
+  const accountInfo = await solana.connection.getTokenAccountBalance(lpTokenAccount);
   const lpTokenAmount = accountInfo.value.uiAmount || 0;
 
   if (lpTokenAmount === 0) {
@@ -66,10 +64,8 @@ async function calculateLpAmount(
   }
 
   // Calculate token amounts based on LP share
-  const baseTokenAmount =
-    (lpTokenAmount * poolInfo.mintAmountA) / poolInfo.lpAmount;
-  const quoteTokenAmount =
-    (lpTokenAmount * poolInfo.mintAmountB) / poolInfo.lpAmount;
+  const baseTokenAmount = (lpTokenAmount * poolInfo.mintAmountA) / poolInfo.lpAmount;
+  const quoteTokenAmount = (lpTokenAmount * poolInfo.mintAmountB) / poolInfo.lpAmount;
 
   return {
     lpTokenAmount,
@@ -126,14 +122,13 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Calculate LP token amount and token amounts
-        const { lpTokenAmount, baseTokenAmount, quoteTokenAmount } =
-          await calculateLpAmount(
-            solana,
-            new PublicKey(walletAddress),
-            ammPoolInfo,
-            poolInfo,
-            poolAddress,
-          );
+        const { lpTokenAmount, baseTokenAmount, quoteTokenAmount } = await calculateLpAmount(
+          solana,
+          new PublicKey(walletAddress),
+          ammPoolInfo,
+          poolInfo,
+          poolAddress,
+        );
 
         return {
           poolAddress,
@@ -150,9 +145,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         if (e.statusCode) {
           throw fastify.httpErrors.createError(e.statusCode, e.message);
         }
-        throw fastify.httpErrors.internalServerError(
-          'Failed to fetch position info',
-        );
+        throw fastify.httpErrors.internalServerError('Failed to fetch position info');
       }
     },
   );

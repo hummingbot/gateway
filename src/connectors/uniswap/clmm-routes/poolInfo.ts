@@ -2,12 +2,7 @@ import { FeeAmount } from '@uniswap/v3-sdk';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  GetPoolInfoRequestType,
-  GetPoolInfoRequest,
-  PoolInfo,
-  PoolInfoSchema,
-} from '../../../schemas/clmm-schema';
+import { GetPoolInfoRequestType, GetPoolInfoRequest, PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Uniswap } from '../uniswap';
@@ -56,31 +51,18 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         // Get pool information to determine tokens
         const poolInfo = await getUniswapPoolInfo(poolAddress, network, 'clmm');
         if (!poolInfo) {
-          throw fastify.httpErrors.notFound(
-            sanitizeErrorMessage('Pool not found: {}', poolAddress),
-          );
+          throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
         }
 
-        const baseTokenObj = uniswap.getTokenByAddress(
-          poolInfo.baseTokenAddress,
-        );
-        const quoteTokenObj = uniswap.getTokenByAddress(
-          poolInfo.quoteTokenAddress,
-        );
+        const baseTokenObj = uniswap.getTokenByAddress(poolInfo.baseTokenAddress);
+        const quoteTokenObj = uniswap.getTokenByAddress(poolInfo.quoteTokenAddress);
 
         if (!baseTokenObj || !quoteTokenObj) {
-          throw fastify.httpErrors.badRequest(
-            'Token information not found for pool',
-          );
+          throw fastify.httpErrors.badRequest('Token information not found for pool');
         }
 
         // Get V3 pool details
-        const pool = await uniswap.getV3Pool(
-          baseTokenObj,
-          quoteTokenObj,
-          undefined,
-          poolAddress,
-        );
+        const pool = await uniswap.getV3Pool(baseTokenObj, quoteTokenObj, undefined, poolAddress);
 
         if (!pool) {
           throw fastify.httpErrors.notFound('Pool not found');
@@ -89,8 +71,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         // Determine token ordering
         const token0 = pool.token0;
         const token1 = pool.token1;
-        const isBaseToken0 =
-          baseTokenObj.address.toLowerCase() === token0.address.toLowerCase();
+        const isBaseToken0 = baseTokenObj.address.toLowerCase() === token0.address.toLowerCase();
 
         // Calculate price based on sqrtPriceX96
         // sqrtPriceX96 = sqrt(price) * 2^96
@@ -105,14 +86,8 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         // Get token reserves in the pool
         // This is a simplified calculation - actual reserves depend on the tick distribution
         const liquidity = pool.liquidity;
-        const token0Amount = formatTokenAmount(
-          liquidity.toString(),
-          token0.decimals,
-        );
-        const token1Amount = formatTokenAmount(
-          liquidity.toString(),
-          token1.decimals,
-        );
+        const token0Amount = formatTokenAmount(liquidity.toString(), token0.decimals);
+        const token1Amount = formatTokenAmount(liquidity.toString(), token1.decimals);
 
         // Map to base and quote amounts
         const baseTokenAmount = isBaseToken0 ? token0Amount : token1Amount;
@@ -140,9 +115,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         };
       } catch (e) {
         logger.error(e);
-        throw fastify.httpErrors.internalServerError(
-          'Failed to fetch pool info',
-        );
+        throw fastify.httpErrors.internalServerError('Failed to fetch pool info');
       }
     },
   );

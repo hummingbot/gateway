@@ -6,10 +6,7 @@ interface PromptContext {
 }
 
 // Type for individual prompt handler
-type PromptHandler<T extends PromptName> = (
-  context: PromptContext,
-  params: PromptParams<T>,
-) => Promise<string>;
+type PromptHandler<T extends PromptName> = (context: PromptContext, params: PromptParams<T>) => Promise<string>;
 
 // Type for all handlers
 type PromptHandlers = {
@@ -157,9 +154,7 @@ export const PROMPT_HANDLERS: PromptHandlers = {
       '- Contract addresses',
       '- Native token balance',
       '',
-      params.chain
-        ? ''
-        : 'To check all chains, I will query each supported chain individually.',
+      params.chain ? '' : 'To check all chains, I will query each supported chain individually.',
     ]
       .join('\n')
       .trim();

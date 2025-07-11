@@ -61,22 +61,17 @@ export async function getSwapQuote(
   const quoteToken = await solana.getToken(quoteTokenSymbol);
 
   if (!baseToken || !quoteToken) {
-    throw fastify.httpErrors.notFound(
-      `Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`,
-    );
+    throw fastify.httpErrors.notFound(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
   }
 
   const [poolInfo] = await raydium.getClmmPoolfromAPI(poolAddress);
   if (!poolInfo) {
-    throw fastify.httpErrors.notFound(
-      sanitizeErrorMessage('Pool not found: {}', poolAddress),
-    );
+    throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
   }
 
   // For buy orders, we're swapping quote token for base token (ExactOut)
   // For sell orders, we're swapping base token for quote token (ExactIn)
-  const [inputToken, outputToken] =
-    side === 'BUY' ? [quoteToken, baseToken] : [baseToken, quoteToken];
+  const [inputToken, outputToken] = side === 'BUY' ? [quoteToken, baseToken] : [baseToken, quoteToken];
 
   const amount_bn =
     side === 'BUY'
@@ -90,17 +85,13 @@ export async function getSwapQuote(
     connection: solana.connection,
     poolKeys: [clmmPoolInfo],
   });
-  const effectiveSlippage = new BN(
-    (slippagePct ?? RaydiumConfig.config.slippagePct) / 100,
-  );
+  const effectiveSlippage = new BN((slippagePct ?? RaydiumConfig.config.slippagePct) / 100);
 
   // Convert BN to number for slippage
   const effectiveSlippageNumber = effectiveSlippage.toNumber();
 
   // AmountOut = swapQuote, AmountOutBaseOut = swapQuoteExactOut
-  const response:
-    | ReturnTypeComputeAmountOutFormat
-    | ReturnTypeComputeAmountOutBaseOut =
+  const response: ReturnTypeComputeAmountOutFormat | ReturnTypeComputeAmountOutBaseOut =
     side === 'BUY'
       ? await PoolUtils.computeAmountIn({
           poolInfo: clmmPoolInfo,
@@ -154,72 +145,48 @@ async function formatSwapQuote(
     {
       inputToken: inputToken.symbol,
       outputToken: outputToken.symbol,
-      responseType:
-        side === 'BUY'
-          ? 'ReturnTypeComputeAmountOutBaseOut'
-          : 'ReturnTypeComputeAmountOutFormat',
+      responseType: side === 'BUY' ? 'ReturnTypeComputeAmountOutBaseOut' : 'ReturnTypeComputeAmountOutFormat',
       response:
         side === 'BUY'
           ? {
               amountIn: {
-                amount: (
-                  response as ReturnTypeComputeAmountOutBaseOut
-                ).amountIn.amount.toNumber(),
+                amount: (response as ReturnTypeComputeAmountOutBaseOut).amountIn.amount.toNumber(),
               },
               maxAmountIn: {
-                amount: (
-                  response as ReturnTypeComputeAmountOutBaseOut
-                ).maxAmountIn.amount.toNumber(),
+                amount: (response as ReturnTypeComputeAmountOutBaseOut).maxAmountIn.amount.toNumber(),
               },
               realAmountOut: {
-                amount: (
-                  response as ReturnTypeComputeAmountOutBaseOut
-                ).realAmountOut.amount.toNumber(),
+                amount: (response as ReturnTypeComputeAmountOutBaseOut).realAmountOut.amount.toNumber(),
               },
             }
           : {
               realAmountIn: {
                 amount: {
-                  raw: (
-                    response as ReturnTypeComputeAmountOutFormat
-                  ).realAmountIn.amount.raw.toNumber(),
+                  raw: (response as ReturnTypeComputeAmountOutFormat).realAmountIn.amount.raw.toNumber(),
                   token: {
-                    symbol: (response as ReturnTypeComputeAmountOutFormat)
-                      .realAmountIn.amount.token.symbol,
-                    mint: (response as ReturnTypeComputeAmountOutFormat)
-                      .realAmountIn.amount.token.mint,
-                    decimals: (response as ReturnTypeComputeAmountOutFormat)
-                      .realAmountIn.amount.token.decimals,
+                    symbol: (response as ReturnTypeComputeAmountOutFormat).realAmountIn.amount.token.symbol,
+                    mint: (response as ReturnTypeComputeAmountOutFormat).realAmountIn.amount.token.mint,
+                    decimals: (response as ReturnTypeComputeAmountOutFormat).realAmountIn.amount.token.decimals,
                   },
                 },
               },
               amountOut: {
                 amount: {
-                  raw: (
-                    response as ReturnTypeComputeAmountOutFormat
-                  ).amountOut.amount.raw.toNumber(),
+                  raw: (response as ReturnTypeComputeAmountOutFormat).amountOut.amount.raw.toNumber(),
                   token: {
-                    symbol: (response as ReturnTypeComputeAmountOutFormat)
-                      .amountOut.amount.token.symbol,
-                    mint: (response as ReturnTypeComputeAmountOutFormat)
-                      .amountOut.amount.token.mint,
-                    decimals: (response as ReturnTypeComputeAmountOutFormat)
-                      .amountOut.amount.token.decimals,
+                    symbol: (response as ReturnTypeComputeAmountOutFormat).amountOut.amount.token.symbol,
+                    mint: (response as ReturnTypeComputeAmountOutFormat).amountOut.amount.token.mint,
+                    decimals: (response as ReturnTypeComputeAmountOutFormat).amountOut.amount.token.decimals,
                   },
                 },
               },
               minAmountOut: {
                 amount: {
-                  numerator: (
-                    response as ReturnTypeComputeAmountOutFormat
-                  ).minAmountOut.amount.raw.toNumber(),
+                  numerator: (response as ReturnTypeComputeAmountOutFormat).minAmountOut.amount.raw.toNumber(),
                   token: {
-                    symbol: (response as ReturnTypeComputeAmountOutFormat)
-                      .minAmountOut.amount.token.symbol,
-                    mint: (response as ReturnTypeComputeAmountOutFormat)
-                      .minAmountOut.amount.token.mint,
-                    decimals: (response as ReturnTypeComputeAmountOutFormat)
-                      .minAmountOut.amount.token.decimals,
+                    symbol: (response as ReturnTypeComputeAmountOutFormat).minAmountOut.amount.token.symbol,
+                    mint: (response as ReturnTypeComputeAmountOutFormat).minAmountOut.amount.token.mint,
+                    decimals: (response as ReturnTypeComputeAmountOutFormat).minAmountOut.amount.token.decimals,
                   },
                 },
               },
@@ -229,9 +196,7 @@ async function formatSwapQuote(
 
   if (side === 'BUY') {
     const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut;
-    const estimatedAmountOut =
-      exactOutResponse.realAmountOut.amount.toNumber() /
-      10 ** outputToken.decimals;
+    const estimatedAmountOut = exactOutResponse.realAmountOut.amount.toNumber() / 10 ** outputToken.decimals;
     const estimatedAmountIn = convertAmountIn(
       amount,
       inputToken.decimals,
@@ -248,23 +213,17 @@ async function formatSwapQuote(
     const price = estimatedAmountIn / estimatedAmountOut;
 
     // Calculate price impact percentage
-    const priceImpactPct = exactOutResponse.priceImpact
-      ? Number(exactOutResponse.priceImpact) * 100
-      : 0;
+    const priceImpactPct = exactOutResponse.priceImpact ? Number(exactOutResponse.priceImpact) * 100 : 0;
 
     // Get current price/tick
-    const activeBinId = exactOutResponse.currentPrice
-      ? Number(exactOutResponse.currentPrice)
-      : 0;
+    const activeBinId = exactOutResponse.currentPrice ? Number(exactOutResponse.currentPrice) : 0;
 
     // Determine token addresses for computed fields
     const tokenIn = inputToken.address;
     const tokenOut = outputToken.address;
 
     // Calculate fee
-    const fee = exactOutResponse.fee
-      ? exactOutResponse.fee.toNumber() / 10 ** outputToken.decimals
-      : 0;
+    const fee = exactOutResponse.fee ? exactOutResponse.fee.toNumber() / 10 ** outputToken.decimals : 0;
 
     // Calculate price with slippage (BUY side)
     // For BUY: priceWithSlippage = estimatedAmountOut / maxAmountIn (worst price you'll accept)
@@ -290,36 +249,24 @@ async function formatSwapQuote(
     };
   } else {
     const exactInResponse = response as ReturnTypeComputeAmountOutFormat;
-    const estimatedAmountIn =
-      exactInResponse.realAmountIn.amount.raw.toNumber() /
-      10 ** inputToken.decimals;
-    const estimatedAmountOut =
-      exactInResponse.amountOut.amount.raw.toNumber() /
-      10 ** outputToken.decimals;
-    const minAmountOut =
-      exactInResponse.minAmountOut.amount.raw.toNumber() /
-      10 ** outputToken.decimals;
+    const estimatedAmountIn = exactInResponse.realAmountIn.amount.raw.toNumber() / 10 ** inputToken.decimals;
+    const estimatedAmountOut = exactInResponse.amountOut.amount.raw.toNumber() / 10 ** outputToken.decimals;
+    const minAmountOut = exactInResponse.minAmountOut.amount.raw.toNumber() / 10 ** outputToken.decimals;
 
     const price = estimatedAmountOut / estimatedAmountIn;
 
     // Calculate price impact percentage
-    const priceImpactPct = exactInResponse.priceImpact
-      ? Number(exactInResponse.priceImpact) * 100
-      : 0;
+    const priceImpactPct = exactInResponse.priceImpact ? Number(exactInResponse.priceImpact) * 100 : 0;
 
     // Get current price/tick
-    const activeBinId = exactInResponse.currentPrice
-      ? Number(exactInResponse.currentPrice)
-      : 0;
+    const activeBinId = exactInResponse.currentPrice ? Number(exactInResponse.currentPrice) : 0;
 
     // Determine token addresses for computed fields
     const tokenIn = inputToken.address;
     const tokenOut = outputToken.address;
 
     // Calculate fee
-    const fee = exactInResponse.fee
-      ? Number(exactInResponse.fee) / 10 ** outputToken.decimals
-      : 0;
+    const fee = exactInResponse.fee ? Number(exactInResponse.fee) / 10 ** outputToken.decimals : 0;
 
     // Calculate price with slippage (SELL side)
     // For SELL: priceWithSlippage = minAmountOut / estimatedAmountIn (worst price you'll accept)
@@ -374,22 +321,13 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          poolAddress,
-          slippagePct,
-        } = request.query as typeof RaydiumClmmQuoteSwapRequest._type;
+        const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } =
+          request.query as typeof RaydiumClmmQuoteSwapRequest._type;
         const networkToUse = network;
 
         // Validate essential parameters
         if (!baseToken || !quoteToken || !amount || !side) {
-          throw fastify.httpErrors.badRequest(
-            'baseToken, quoteToken, amount, and side are required',
-          );
+          throw fastify.httpErrors.badRequest('baseToken, quoteToken, amount, and side are required');
         }
 
         const solana = await Solana.getInstance(networkToUse);
@@ -404,17 +342,12 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           if (!baseTokenInfo || !quoteTokenInfo) {
             throw fastify.httpErrors.badRequest(
-              sanitizeErrorMessage(
-                'Token not found: {}',
-                !baseTokenInfo ? baseToken : quoteToken,
-              ),
+              sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
             );
           }
 
           // Use PoolService to find pool by token pair
-          const { PoolService } = await import(
-            '../../../services/pool-service'
-          );
+          const { PoolService } = await import('../../../services/pool-service');
           const poolService = PoolService.getInstance();
 
           const pool = await poolService.getPool(
@@ -449,9 +382,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         try {
           gasEstimation = await estimateGasSolana(fastify, networkToUse);
         } catch (error) {
-          logger.warn(
-            `Failed to estimate gas for swap quote: ${error.message}`,
-          );
+          logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
         }
 
         return {
@@ -464,9 +395,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError(
-          'Failed to get swap quote',
-        );
+        throw fastify.httpErrors.internalServerError('Failed to get swap quote');
       }
     },
   );

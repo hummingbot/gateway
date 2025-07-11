@@ -7,11 +7,7 @@ import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  OpenPositionRequest,
-  OpenPositionResponse,
-  OpenPositionResponseType,
-} from '../../../schemas/clmm-schema';
+import { OpenPositionRequest, OpenPositionResponse, OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 import { MeteoraConfig } from '../meteora.config';
@@ -19,19 +15,12 @@ import { MeteoraConfig } from '../meteora.config';
 // Using Fastify's native error handling
 
 // Define error messages
-const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) =>
-  `Invalid Solana address: ${address}`;
-const POOL_NOT_FOUND_MESSAGE = (poolAddress: string) =>
-  `Pool not found: ${poolAddress}`;
+const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
+const POOL_NOT_FOUND_MESSAGE = (poolAddress: string) => `Pool not found: ${poolAddress}`;
 const MISSING_AMOUNTS_MESSAGE = 'Missing amounts for position creation';
-const INSUFFICIENT_BALANCE_MESSAGE = (
-  token: string,
-  required: string,
-  actual: string,
-) =>
+const INSUFFICIENT_BALANCE_MESSAGE = (token: string, required: string, actual: string) =>
   `Insufficient balance for ${token}. Required: ${required}, Available: ${actual}`;
-const OPEN_POSITION_ERROR_MESSAGE = (error: any) =>
-  `Failed to open position: ${error.message || error}`;
+const OPEN_POSITION_ERROR_MESSAGE = (error: any) => `Failed to open position: ${error.message || error}`;
 
 const SOL_POSITION_RENT = 0.05; // SOL amount required for position rent
 const SOL_TRANSACTION_BUFFER = 0.01; // Additional SOL buffer for transaction costs
@@ -58,12 +47,8 @@ async function openPosition(
     new PublicKey(poolAddress);
     new PublicKey(walletAddress);
   } catch (error) {
-    const invalidAddress = error.message.includes(poolAddress)
-      ? 'pool'
-      : 'wallet';
-    throw fastify.httpErrors.badRequest(
-      INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress),
-    );
+    const invalidAddress = error.message.includes(poolAddress) ? 'pool' : 'wallet';
+    throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress));
   }
 
   const wallet = await solana.getWallet(walletAddress);
@@ -76,10 +61,7 @@ async function openPosition(
       throw fastify.httpErrors.notFound(POOL_NOT_FOUND_MESSAGE(poolAddress));
     }
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes('Invalid account discriminator')
-    ) {
+    if (error instanceof Error && error.message.includes('Invalid account discriminator')) {
       throw fastify.httpErrors.notFound(POOL_NOT_FOUND_MESSAGE(poolAddress));
     }
     throw error; // Re-throw unexpected errors
@@ -95,25 +77,15 @@ async function openPosition(
   }
 
   // Check balances with SOL buffer
-  const balances = await solana.getBalance(wallet, [
-    tokenXSymbol,
-    tokenYSymbol,
-    'SOL',
-  ]);
+  const balances = await solana.getBalance(wallet, [tokenXSymbol, tokenYSymbol, 'SOL']);
   const requiredBaseAmount =
-    (baseTokenAmount || 0) +
-    (tokenXSymbol === 'SOL' ? SOL_POSITION_RENT + SOL_TRANSACTION_BUFFER : 0);
+    (baseTokenAmount || 0) + (tokenXSymbol === 'SOL' ? SOL_POSITION_RENT + SOL_TRANSACTION_BUFFER : 0);
   const requiredQuoteAmount =
-    (quoteTokenAmount || 0) +
-    (tokenYSymbol === 'SOL' ? SOL_POSITION_RENT + SOL_TRANSACTION_BUFFER : 0);
+    (quoteTokenAmount || 0) + (tokenYSymbol === 'SOL' ? SOL_POSITION_RENT + SOL_TRANSACTION_BUFFER : 0);
 
   if (balances[tokenXSymbol] < requiredBaseAmount) {
     throw fastify.httpErrors.badRequest(
-      INSUFFICIENT_BALANCE_MESSAGE(
-        tokenXSymbol,
-        requiredBaseAmount.toString(),
-        balances[tokenXSymbol].toString(),
-      ),
+      INSUFFICIENT_BALANCE_MESSAGE(tokenXSymbol, requiredBaseAmount.toString(), balances[tokenXSymbol].toString()),
     );
   }
 
@@ -129,11 +101,7 @@ async function openPosition(
 
   // Validate price position requirements
   if (currentPrice < lowerPrice) {
-    if (
-      !baseTokenAmount ||
-      baseTokenAmount <= 0 ||
-      (quoteTokenAmount !== undefined && quoteTokenAmount !== 0)
-    ) {
+    if (!baseTokenAmount || baseTokenAmount <= 0 || (quoteTokenAmount !== undefined && quoteTokenAmount !== 0)) {
       throw fastify.httpErrors.badRequest(
         OPEN_POSITION_ERROR_MESSAGE(
           `Current price ${currentPrice.toFixed(4)} is below lower price ${lowerPrice.toFixed(4)}. ` +
@@ -142,11 +110,7 @@ async function openPosition(
       );
     }
   } else if (currentPrice > upperPrice) {
-    if (
-      !quoteTokenAmount ||
-      quoteTokenAmount <= 0 ||
-      (baseTokenAmount !== undefined && baseTokenAmount !== 0)
-    ) {
+    if (!quoteTokenAmount || quoteTokenAmount <= 0 || (baseTokenAmount !== undefined && baseTokenAmount !== 0)) {
       throw fastify.httpErrors.badRequest(
         OPEN_POSITION_ERROR_MESSAGE(
           `Current price ${currentPrice.toFixed(4)} is above upper price ${upperPrice.toFixed(4)}. ` +
@@ -158,46 +122,34 @@ async function openPosition(
 
   const lowerPricePerLamport = dlmmPool.toPricePerLamport(lowerPrice);
   const upperPricePerLamport = dlmmPool.toPricePerLamport(upperPrice);
-  const minBinId = dlmmPool.getBinIdFromPrice(
-    Number(lowerPricePerLamport),
-    true,
-  );
-  const maxBinId = dlmmPool.getBinIdFromPrice(
-    Number(upperPricePerLamport),
-    false,
-  );
+  const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true);
+  const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false);
 
   const totalXAmount = new BN(
     DecimalUtil.toBN(
-      new Decimal(
-        baseTokenAmount || 0 + (tokenXSymbol === 'SOL' ? SOL_POSITION_RENT : 0),
-      ),
+      new Decimal(baseTokenAmount || 0 + (tokenXSymbol === 'SOL' ? SOL_POSITION_RENT : 0)),
       dlmmPool.tokenX.decimal,
     ),
   );
   const totalYAmount = new BN(
     DecimalUtil.toBN(
-      new Decimal(
-        quoteTokenAmount ||
-          0 + (tokenYSymbol === 'SOL' ? SOL_POSITION_RENT : 0),
-      ),
+      new Decimal(quoteTokenAmount || 0 + (tokenYSymbol === 'SOL' ? SOL_POSITION_RENT : 0)),
       dlmmPool.tokenY.decimal,
     ),
   );
 
-  const createPositionTx =
-    await dlmmPool.initializePositionAndAddLiquidityByStrategy({
-      positionPubKey: newImbalancePosition.publicKey,
-      user: wallet.publicKey,
-      strategy: {
-        maxBinId,
-        minBinId,
-        strategyType: strategyType ?? MeteoraConfig.config.strategyType,
-      },
-      totalXAmount,
-      totalYAmount,
-      slippage: slippagePct ?? MeteoraConfig.config.slippagePct,
-    });
+  const createPositionTx = await dlmmPool.initializePositionAndAddLiquidityByStrategy({
+    positionPubKey: newImbalancePosition.publicKey,
+    user: wallet.publicKey,
+    strategy: {
+      maxBinId,
+      minBinId,
+      strategyType: strategyType ?? MeteoraConfig.config.strategyType,
+    },
+    totalXAmount,
+    totalYAmount,
+    slippage: slippagePct ?? MeteoraConfig.config.slippagePct,
+  });
 
   logger.info(
     `Opening position in pool ${poolAddress} with price range ${lowerPrice.toFixed(4)} - ${upperPrice.toFixed(4)} ${tokenYSymbol}/${tokenXSymbol}`,
@@ -213,12 +165,11 @@ async function openPosition(
     priorityFeePerCU,
   );
 
-  const { balanceChanges, fee: extractedFee } =
-    await solana.extractBalanceChangesAndFee(
-      signature,
-      wallet.publicKey.toBase58(),
-      [tokenX.address, tokenY.address],
-    );
+  const { balanceChanges, fee: extractedFee } = await solana.extractBalanceChangesAndFee(
+    signature,
+    wallet.publicKey.toBase58(),
+    [tokenX.address, tokenY.address],
+  );
 
   const baseTokenBalanceChange = balanceChanges[0];
   const quoteTokenBalanceChange = balanceChanges[1];
@@ -254,9 +205,7 @@ export const MeteoraOpenPositionRequest = Type.Intersect(
     Type.Object({
       strategyType: Type.Optional(
         Type.Number({
-          enum: Object.values(StrategyType).filter(
-            (x) => typeof x === 'number',
-          ),
+          enum: Object.values(StrategyType).filter((x) => typeof x === 'number'),
         }),
       ),
     }),
@@ -264,9 +213,7 @@ export const MeteoraOpenPositionRequest = Type.Intersect(
   { $id: 'MeteoraOpenPositionRequest' },
 );
 
-export type MeteoraOpenPositionRequestType = Static<
-  typeof MeteoraOpenPositionRequest
->;
+export type MeteoraOpenPositionRequestType = Static<typeof MeteoraOpenPositionRequest>;
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Solana.getWalletAddressExample();
@@ -298,9 +245,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
             strategyType: {
               type: 'number',
               examples: [StrategyType.SpotImBalanced],
-              enum: Object.values(StrategyType).filter(
-                (x) => typeof x === 'number',
-              ),
+              enum: Object.values(StrategyType).filter((x) => typeof x === 'number'),
             },
           },
         },

@@ -40,25 +40,18 @@ mcp.stdout.on('data', (data) => {
           });
           console.log(`\nTotal: ${msg.result.tools.length} tools`);
 
-          const gatewayTools = msg.result.tools.filter(
-            (t) => !t.name.startsWith('coingecko_'),
-          );
-          const coingeckoTools = msg.result.tools.filter((t) =>
-            t.name.startsWith('coingecko_'),
-          );
+          const gatewayTools = msg.result.tools.filter((t) => !t.name.startsWith('coingecko_'));
+          const coingeckoTools = msg.result.tools.filter((t) => t.name.startsWith('coingecko_'));
 
           console.log(`Gateway tools: ${gatewayTools.length}`);
           console.log(`CoinGecko tools: ${coingeckoTools.length}`);
 
           const expectedGatewayTools = 5;
           const expectedCoinGeckoTools = withCoinGecko ? 12 : 0;
-          const expectedTotalTools =
-            expectedGatewayTools + expectedCoinGeckoTools;
+          const expectedTotalTools = expectedGatewayTools + expectedCoinGeckoTools;
 
           if (msg.result.tools.length === expectedTotalTools) {
-            console.log(
-              `\n✅ MCP server working correctly! (${expectedTotalTools} tools as expected)`,
-            );
+            console.log(`\n✅ MCP server working correctly! (${expectedTotalTools} tools as expected)`);
           } else {
             console.log(
               `\n❌ Unexpected number of tools (expected ${expectedTotalTools}, got ${msg.result.tools.length})`,

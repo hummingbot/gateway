@@ -35,9 +35,7 @@ listPrompts.stdout.on('data', (data) => {
             console.log(`- ${prompt.name}: ${prompt.description}`);
             console.log('  Arguments:');
             prompt.arguments.forEach((arg) => {
-              console.log(
-                `    - ${arg.name}: ${arg.description} ${arg.required ? '(required)' : '(optional)'}`,
-              );
+              console.log(`    - ${arg.name}: ${arg.description} ${arg.required ? '(required)' : '(optional)'}`);
             });
           });
 
@@ -59,9 +57,7 @@ listPrompts.stderr.on('data', (data) => {
 });
 
 function testGetPrompt() {
-  console.log(
-    '\n\nTest: Getting fetch-swap-quote prompt with partial arguments',
-  );
+  console.log('\n\nTest: Getting fetch-swap-quote prompt with partial arguments');
   const getPrompt = spawn('npx', ['tsx', mcpPath], {
     stdio: ['pipe', 'pipe', 'pipe'],
   });
@@ -102,9 +98,7 @@ function testGetPrompt() {
             console.log('- Searches CoinGecko for token data');
             console.log('- Finds highest volume pools');
             console.log('- Gets swap quotes from the best pool');
-            console.log(
-              '\nNote: Requires --with-coingecko flag to access CoinGecko tools',
-            );
+            console.log('\nNote: Requires --with-coingecko flag to access CoinGecko tools');
             process.exit(0);
           }
         }

@@ -80,14 +80,8 @@ export const PROMPT_DEFINITIONS = [
       '- Set up new chains or connectors',
     ].join('\n'),
     paramsSchema: {
-      action: z
-        .enum(['view', 'update', 'setup'])
-        .optional()
-        .describe('The configuration action to perform'),
-      configFile: z
-        .string()
-        .optional()
-        .describe('The configuration file to work with'),
+      action: z.enum(['view', 'update', 'setup']).optional().describe('The configuration action to perform'),
+      configFile: z.string().optional().describe('The configuration file to work with'),
     },
   },
 ] as const;
@@ -95,10 +89,7 @@ export const PROMPT_DEFINITIONS = [
 // Type exports
 export type PromptName = (typeof PROMPT_DEFINITIONS)[number]['name'];
 
-export type PromptDefinition<T extends PromptName> = Extract<
-  (typeof PROMPT_DEFINITIONS)[number],
-  { name: T }
->;
+export type PromptDefinition<T extends PromptName> = Extract<(typeof PROMPT_DEFINITIONS)[number], { name: T }>;
 
 // Helper type to extract params from schema
 type ZodifyRecord<T extends Record<string, z.ZodTypeAny>> = {

@@ -27,14 +27,7 @@ function loadMockResponse(filename) {
     return JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch (error) {
     // If not found, use generic mock template
-    const templatePath = path.join(
-      __dirname,
-      '..',
-      '..',
-      'templates',
-      'mock-examples',
-      `connector-${filename}.json`,
-    );
+    const templatePath = path.join(__dirname, '..', '..', 'templates', 'mock-examples', `connector-${filename}.json`);
     return JSON.parse(fs.readFileSync(templatePath, 'utf8'));
   }
 }
@@ -87,18 +80,15 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/routes/quote-swap`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'SELL',
-            amount: 1.0,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/routes/quote-swap`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'SELL',
+          amount: 1.0,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -163,18 +153,15 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/routes/quote-swap`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'BUY',
-            amount: 1.0,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/routes/quote-swap`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'BUY',
+          amount: 1.0,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -207,18 +194,15 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
           data: mockResponse,
         });
 
-        const response = await axios.get(
-          `http://localhost:15888/connectors/${CONNECTOR}/routes/quote-swap`,
-          {
-            params: {
-              network,
-              baseToken: BASE_TOKEN,
-              quoteToken: QUOTE_TOKEN,
-              side: 'SELL',
-              amount: 1.0,
-            },
+        const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/routes/quote-swap`, {
+          params: {
+            network,
+            baseToken: BASE_TOKEN,
+            quoteToken: QUOTE_TOKEN,
+            side: 'SELL',
+            amount: 1.0,
           },
-        );
+        });
 
         expect(response.status).toBe(200);
         expect(validateSwapQuote(response.data)).toBe(true);
@@ -247,8 +231,7 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
 
       // Mock a successful execution response
       const executeResponse = {
-        signature:
-          '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+        signature: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
         amountIn: quoteResponse.estimatedAmountIn,
         amountOut: quoteResponse.estimatedAmountOut,
         fee: 0.003,
@@ -263,17 +246,14 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/routes/execute-swap`,
-        {
-          network: NETWORK,
-          baseToken: BASE_TOKEN,
-          quoteToken: QUOTE_TOKEN,
-          side: 'SELL',
-          amount: 1.0,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/routes/execute-swap`, {
+        network: NETWORK,
+        baseToken: BASE_TOKEN,
+        quoteToken: QUOTE_TOKEN,
+        side: 'SELL',
+        amount: 1.0,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -309,8 +289,7 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
 
       // Mock a successful BUY execution response
       const executeBuyResponse = {
-        signature:
-          '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
+        signature: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
         amountIn: buyQuoteResponse.estimatedAmountIn,
         amountOut: buyQuoteResponse.estimatedAmountOut,
         fee: 0.003,
@@ -323,17 +302,14 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
         data: executeBuyResponse,
       });
 
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/routes/execute-swap`,
-        {
-          network: NETWORK,
-          baseToken: BASE_TOKEN,
-          quoteToken: QUOTE_TOKEN,
-          side: 'BUY',
-          amount: 1.0, // Want to buy 1 WETH
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/routes/execute-swap`, {
+        network: NETWORK,
+        baseToken: BASE_TOKEN,
+        quoteToken: QUOTE_TOKEN,
+        side: 'BUY',
+        amount: 1.0, // Want to buy 1 WETH
+        walletAddress: TEST_WALLET,
+      });
 
       expect(response.status).toBe(200);
       expect(response.data.signature).toBeDefined();
@@ -358,18 +334,15 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
         data: executeResponse,
       });
 
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/routes/execute-swap`,
-        {
-          network: NETWORK,
-          baseToken: BASE_TOKEN,
-          quoteToken: QUOTE_TOKEN,
-          side: 'SELL',
-          amount: 1.0,
-          walletAddress: TEST_WALLET,
-          slippagePct: 1.0, // 1% slippage
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/routes/execute-swap`, {
+        network: NETWORK,
+        baseToken: BASE_TOKEN,
+        quoteToken: QUOTE_TOKEN,
+        side: 'SELL',
+        amount: 1.0,
+        walletAddress: TEST_WALLET,
+        slippagePct: 1.0, // 1% slippage
+      });
 
       expect(response.status).toBe(200);
       // With 1% slippage, the output should be at least 99% of expected
@@ -394,17 +367,14 @@ describe('Uniswap V3 Swap Router Tests (Base Network)', () => {
           data: executeResponse,
         });
 
-        const response = await axios.post(
-          `http://localhost:15888/connectors/${CONNECTOR}/routes/execute-swap`,
-          {
-            network,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'SELL',
-            amount: 1.0,
-            walletAddress: TEST_WALLET,
-          },
-        );
+        const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/routes/execute-swap`, {
+          network,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'SELL',
+          amount: 1.0,
+          walletAddress: TEST_WALLET,
+        });
 
         expect(response.status).toBe(200);
         expect(response.data.signature).toContain(network);

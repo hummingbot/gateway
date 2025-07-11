@@ -9,10 +9,7 @@ import {
 import { logger } from '../../../services/logger';
 import { Solana } from '../solana';
 
-export async function getSolanaStatus(
-  fastify: FastifyInstance,
-  network: string,
-): Promise<StatusResponseType> {
+export async function getSolanaStatus(fastify: FastifyInstance, network: string): Promise<StatusResponseType> {
   try {
     const solana = await Solana.getInstance(network);
     const chain = 'solana';
@@ -29,9 +26,7 @@ export async function getSolanaStatus(
     };
   } catch (error) {
     logger.error(`Error getting Solana status: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(
-      `Failed to get Solana status: ${error.message}`,
-    );
+    throw fastify.httpErrors.internalServerError(`Failed to get Solana status: ${error.message}`);
   }
 }
 

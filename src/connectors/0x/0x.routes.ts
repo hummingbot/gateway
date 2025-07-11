@@ -3,9 +3,7 @@ import { FastifyInstance } from 'fastify';
 import { ZeroXConfig } from './0x.config';
 import zeroXRouterRoutes from './router-routes';
 
-export const register0xRoutes = async (
-  fastify: FastifyInstance,
-): Promise<void> => {
+export const register0xRoutes = async (fastify: FastifyInstance): Promise<void> => {
   // Get available networks from config
   const networks = ZeroXConfig.networks.mainnet.availableNetworks;
 

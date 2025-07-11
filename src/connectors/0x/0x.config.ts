@@ -15,17 +15,7 @@ export namespace ZeroXConfig {
     mainnet: {
       tradingTypes: ['SWAP'],
       chainType: 'EVM',
-      availableNetworks: [
-        'mainnet',
-        'sepolia',
-        'arbitrum',
-        'avalanche',
-        'base',
-        'bsc',
-        'celo',
-        'optimism',
-        'polygon',
-      ],
+      availableNetworks: ['mainnet', 'sepolia', 'arbitrum', 'avalanche', 'base', 'bsc', 'celo', 'optimism', 'polygon'],
       apiUrl: 'https://api.0x.org',
       apiKey: '', // Will be loaded dynamically
       slippagePct: 0.01, // Default value, will be loaded dynamically

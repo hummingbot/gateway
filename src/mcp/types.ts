@@ -82,16 +82,10 @@ type ZodifyRecord<T extends Record<string, z.ZodTypeAny>> = {
 };
 
 // Extract tool definition type
-export type ToolDefinition<T extends ToolName> = Extract<
-  (typeof TOOL_DEFINITIONS)[number],
-  { name: T }
->;
+export type ToolDefinition<T extends ToolName> = Extract<(typeof TOOL_DEFINITIONS)[number], { name: T }>;
 
 // Extract prompt definition type
-export type PromptDefinition<T extends PromptName> = Extract<
-  (typeof PROMPT_DEFINITIONS)[number],
-  { name: T }
->;
+export type PromptDefinition<T extends PromptName> = Extract<(typeof PROMPT_DEFINITIONS)[number], { name: T }>;
 
 // Infer params from tool definitions
 export type ToolParams<T extends ToolName> =
@@ -110,15 +104,9 @@ export type PromptParams<T extends PromptName> =
     : Record<string, never>;
 
 // Handler function types with proper context
-export type ToolHandlerExtended<T extends ToolName> = (
-  context: any,
-  params: ToolParams<T>,
-) => Promise<string>;
+export type ToolHandlerExtended<T extends ToolName> = (context: any, params: ToolParams<T>) => Promise<string>;
 
-export type PromptHandlerExtended<T extends PromptName> = (
-  context: any,
-  params: PromptParams<T>,
-) => Promise<string>;
+export type PromptHandlerExtended<T extends PromptName> = (context: any, params: PromptParams<T>) => Promise<string>;
 
 // Registry types
 export interface ToolInfo {
@@ -201,11 +189,7 @@ type ResourceContentBlock = {
       };
 };
 
-export type ContentBlock =
-  | TextContentBlock
-  | ImageContentBlock
-  | AudioContentBlock
-  | ResourceContentBlock;
+export type ContentBlock = TextContentBlock | ImageContentBlock | AudioContentBlock | ResourceContentBlock;
 
 export type ToolCallResult = {
   content: ContentBlock[];
@@ -223,10 +207,7 @@ export function asTextContentResult(result: object): ToolCallResult {
   };
 }
 
-export function asErrorContentResult(
-  error: string,
-  details?: any,
-): ToolCallResult {
+export function asErrorContentResult(error: string, details?: any): ToolCallResult {
   return {
     content: [
       {

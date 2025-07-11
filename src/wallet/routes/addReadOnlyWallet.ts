@@ -26,9 +26,7 @@ export const addReadOnlyWalletRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      logger.info(
-        `Adding read-only wallet for chain: ${request.body.chain}, address: ${request.body.address}`,
-      );
+      logger.info(`Adding read-only wallet for chain: ${request.body.chain}, address: ${request.body.address}`);
       return await addReadOnlyWallet(fastify, request.body);
     },
   );

@@ -82,24 +82,16 @@ mcp.stdout.on('data', (data) => {
 
                 // Find trending-related endpoints
                 const trendingEndpoints = content.endpoints.filter(
-                  (e) =>
-                    e.name.toLowerCase().includes('trend') ||
-                    e.description.toLowerCase().includes('trend'),
+                  (e) => e.name.toLowerCase().includes('trend') || e.description.toLowerCase().includes('trend'),
                 );
-                console.log(
-                  `\n  Trending endpoints found: ${trendingEndpoints.length}`,
-                );
+                console.log(`\n  Trending endpoints found: ${trendingEndpoints.length}`);
                 trendingEndpoints.slice(0, 3).forEach((e) => {
                   console.log(`    - ${e.name}: ${e.description}`);
                 });
 
                 // Find price endpoints
-                const priceEndpoints = content.endpoints.filter((e) =>
-                  e.name.toLowerCase().includes('price'),
-                );
-                console.log(
-                  `\n  Price endpoints found: ${priceEndpoints.length}`,
-                );
+                const priceEndpoints = content.endpoints.filter((e) => e.name.toLowerCase().includes('price'));
+                console.log(`\n  Price endpoints found: ${priceEndpoints.length}`);
                 priceEndpoints.slice(0, 3).forEach((e) => {
                   console.log(`    - ${e.name}: ${e.description}`);
                 });
@@ -114,9 +106,7 @@ mcp.stdout.on('data', (data) => {
             try {
               const content = JSON.parse(msg.result.content[0].text);
               if (content.bitcoin) {
-                console.log(
-                  `  Bitcoin: $${content.bitcoin.usd} (24h: ${content.bitcoin.usd_24h_change?.toFixed(2)}%)`,
-                );
+                console.log(`  Bitcoin: $${content.bitcoin.usd} (24h: ${content.bitcoin.usd_24h_change?.toFixed(2)}%)`);
               }
               if (content.ethereum) {
                 console.log(
@@ -135,9 +125,7 @@ mcp.stdout.on('data', (data) => {
               if (content.coins) {
                 console.log(`  Trending coins: ${content.coins.length}`);
                 content.coins.slice(0, 3).forEach((coin, i) => {
-                  console.log(
-                    `    ${i + 1}. ${coin.item.name} (${coin.item.symbol})`,
-                  );
+                  console.log(`    ${i + 1}. ${coin.item.name} (${coin.item.symbol})`);
                 });
               }
             } catch (e) {
@@ -151,9 +139,7 @@ mcp.stdout.on('data', (data) => {
         if (msg.error) {
           console.error(`\n❌ Error in command ${msg.id}:`, msg.error.message);
           if (msg.error.message.includes('not found')) {
-            console.log(
-              '  Tip: The endpoint name might be different. Check command 1 output for correct names.',
-            );
+            console.log('  Tip: The endpoint name might be different. Check command 1 output for correct names.');
           }
           // Continue with next test
           if (currentCommand === msg.id) {

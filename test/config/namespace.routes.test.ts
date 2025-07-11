@@ -53,9 +53,7 @@ describe('Namespace Routes', () => {
 
       // Check that namespaces are sorted alphabetically
       for (let i = 1; i < namespaces.length; i++) {
-        expect(
-          namespaces[i].localeCompare(namespaces[i - 1]),
-        ).toBeGreaterThanOrEqual(0);
+        expect(namespaces[i].localeCompare(namespaces[i - 1])).toBeGreaterThanOrEqual(0);
       }
     });
   });

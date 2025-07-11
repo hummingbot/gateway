@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 
 const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
-const {
-  StdioClientTransport,
-} = require('@modelcontextprotocol/sdk/client/stdio.js');
+const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
 
 async function testCompletions() {
   console.log('Testing Gateway MCP Completions...\n');

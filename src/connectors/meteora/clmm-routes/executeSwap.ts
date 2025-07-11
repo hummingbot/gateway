@@ -3,11 +3,7 @@ import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  ExecuteSwapResponseType,
-  ExecuteSwapResponse,
-  ExecuteSwapRequestType,
-} from '../../../schemas/clmm-schema';
+import { ExecuteSwapResponseType, ExecuteSwapResponse, ExecuteSwapRequestType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Meteora } from '../meteora';
@@ -50,9 +46,7 @@ async function executeSwap(
     slippagePct || MeteoraConfig.config.slippagePct,
   );
 
-  logger.info(
-    `Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`,
-  );
+  logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
 
   const swapTx =
     side === 'BUY'
@@ -94,31 +88,20 @@ async function executeSwap(
     priorityFeePerCU,
   );
 
-  const tokenXInfo = await solana.getToken(
-    dlmmPool.tokenX.publicKey.toBase58(),
-  );
-  const tokenYInfo = await solana.getToken(
-    dlmmPool.tokenY.publicKey.toBase58(),
-  );
+  const tokenXInfo = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
+  const tokenYInfo = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
 
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-    signature,
-    wallet.publicKey.toBase58(),
-    [tokenXInfo.address, tokenYInfo.address],
-  );
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    tokenXInfo.address,
+    tokenYInfo.address,
+  ]);
 
   const baseTokenBalanceChange = balanceChanges[0];
   const quoteTokenBalanceChange = balanceChanges[1];
 
   // Determine total amounts swapped
-  const amountIn =
-    side === 'SELL'
-      ? Math.abs(baseTokenBalanceChange)
-      : Math.abs(quoteTokenBalanceChange);
-  const amountOut =
-    side === 'SELL'
-      ? Math.abs(quoteTokenBalanceChange)
-      : Math.abs(baseTokenBalanceChange);
+  const amountIn = side === 'SELL' ? Math.abs(baseTokenBalanceChange) : Math.abs(quoteTokenBalanceChange);
+  const amountOut = side === 'SELL' ? Math.abs(quoteTokenBalanceChange) : Math.abs(baseTokenBalanceChange);
 
   logger.info(
     `Swap executed successfully: ${amountIn.toFixed(4)} ${inputToken.symbol} -> ${amountOut.toFixed(4)} ${outputToken.symbol}`,
@@ -197,17 +180,12 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           if (!baseTokenInfo || !quoteTokenInfo) {
             throw fastify.httpErrors.badRequest(
-              sanitizeErrorMessage(
-                'Token not found: {}',
-                !baseTokenInfo ? baseToken : quoteToken,
-              ),
+              sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
             );
           }
 
           // Use PoolService to find pool by token pair
-          const { PoolService } = await import(
-            '../../../services/pool-service'
-          );
+          const { PoolService } = await import('../../../services/pool-service');
           const poolService = PoolService.getInstance();
 
           const pool = await poolService.getPool(
@@ -226,9 +204,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           poolAddressUsed = pool.address;
         }
-        logger.info(
-          `Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddress}`,
-        );
+        logger.info(`Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddress}`);
 
         return await executeSwap(
           fastify,

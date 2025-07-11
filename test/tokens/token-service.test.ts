@@ -30,9 +30,7 @@ describe('TokenService', () => {
         decimals: 6,
       };
 
-      await expect(
-        tokenService.validateToken('ethereum', token),
-      ).resolves.not.toThrow();
+      await expect(tokenService.validateToken('ethereum', token)).resolves.not.toThrow();
     });
 
     it('should reject Ethereum token with invalid address', async () => {
@@ -43,9 +41,7 @@ describe('TokenService', () => {
         decimals: 18,
       };
 
-      await expect(
-        tokenService.validateToken('ethereum', token),
-      ).rejects.toThrow('Invalid Ethereum address');
+      await expect(tokenService.validateToken('ethereum', token)).rejects.toThrow('Invalid Ethereum address');
     });
 
     it('should validate Solana token with valid base58 address', async () => {
@@ -56,9 +52,7 @@ describe('TokenService', () => {
         decimals: 9,
       };
 
-      await expect(
-        tokenService.validateToken('solana', token),
-      ).resolves.not.toThrow();
+      await expect(tokenService.validateToken('solana', token)).resolves.not.toThrow();
     });
 
     it('should reject token with invalid decimals', async () => {
@@ -69,9 +63,9 @@ describe('TokenService', () => {
         decimals: 256,
       };
 
-      await expect(
-        tokenService.validateToken('ethereum', token),
-      ).rejects.toThrow('Token decimals must be a number between 0 and 255');
+      await expect(tokenService.validateToken('ethereum', token)).rejects.toThrow(
+        'Token decimals must be a number between 0 and 255',
+      );
     });
 
     it('should reject unsupported chain', async () => {
@@ -82,9 +76,7 @@ describe('TokenService', () => {
         decimals: 18,
       };
 
-      await expect(
-        tokenService.validateToken('unsupported', token),
-      ).rejects.toThrow('Unsupported chain');
+      await expect(tokenService.validateToken('unsupported', token)).rejects.toThrow('Unsupported chain');
     });
   });
 });

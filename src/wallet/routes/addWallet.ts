@@ -1,12 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 
 import { logger } from '../../services/logger';
-import {
-  AddWalletRequest,
-  AddWalletResponse,
-  AddWalletRequestSchema,
-  AddWalletResponseSchema,
-} from '../schemas';
+import { AddWalletRequest, AddWalletResponse, AddWalletRequestSchema, AddWalletResponseSchema } from '../schemas';
 import { addWallet } from '../utils';
 
 export const addWalletRoute: FastifyPluginAsync = async (fastify) => {

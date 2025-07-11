@@ -20,38 +20,19 @@ export interface Config {
   basePriorityFeePct: number;
 }
 
-export function getSolanaConfig(
-  chainName: string,
-  networkName: string,
-): Config {
+export function getSolanaConfig(chainName: string, networkName: string): Config {
   const namespaceId = `${chainName}-${networkName}`;
   return {
     network: {
       name: networkName,
       nodeURL: ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL'),
       tokenListType: 'FILE' as TokenListType,
-      tokenListSource: path.join(
-        rootPath(),
-        'conf',
-        'tokens',
-        chainName,
-        `${networkName}.json`,
-      ),
-      nativeCurrencySymbol: ConfigManagerV2.getInstance().get(
-        namespaceId + '.nativeCurrencySymbol',
-      ),
+      tokenListSource: path.join(rootPath(), 'conf', 'tokens', chainName, `${networkName}.json`),
+      nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
     },
-    defaultComputeUnits: ConfigManagerV2.getInstance().get(
-      namespaceId + '.defaultComputeUnits',
-    ),
-    confirmRetryInterval: ConfigManagerV2.getInstance().get(
-      namespaceId + '.confirmRetryInterval',
-    ),
-    confirmRetryCount: ConfigManagerV2.getInstance().get(
-      namespaceId + '.confirmRetryCount',
-    ),
-    basePriorityFeePct: ConfigManagerV2.getInstance().get(
-      namespaceId + '.basePriorityFeePct',
-    ),
+    defaultComputeUnits: ConfigManagerV2.getInstance().get(namespaceId + '.defaultComputeUnits'),
+    confirmRetryInterval: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryInterval'),
+    confirmRetryCount: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryCount'),
+    basePriorityFeePct: ConfigManagerV2.getInstance().get(namespaceId + '.basePriorityFeePct'),
   };
 }

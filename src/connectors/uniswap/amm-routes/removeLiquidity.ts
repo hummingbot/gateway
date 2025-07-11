@@ -12,11 +12,7 @@ import {
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import {
-  getUniswapV2RouterAddress,
-  IUniswapV2Router02ABI,
-  IUniswapV2PairABI,
-} from '../uniswap.contracts';
+import { getUniswapV2RouterAddress, IUniswapV2Router02ABI, IUniswapV2PairABI } from '../uniswap.contracts';
 import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
 import { checkLPAllowance } from './positionInfo';
@@ -73,9 +69,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         if (percentageToRemove <= 0 || percentageToRemove > 100) {
-          throw fastify.httpErrors.badRequest(
-            'Percentage to remove must be between 0 and 100',
-          );
+          throw fastify.httpErrors.badRequest('Percentage to remove must be between 0 and 100');
         }
 
         // Get Uniswap and Ethereum instances
@@ -87,35 +81,23 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         if (!walletAddress) {
           walletAddress = await uniswap.getFirstWalletAddress();
           if (!walletAddress) {
-            throw fastify.httpErrors.badRequest(
-              'No wallet address provided and no default wallet found',
-            );
+            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
           }
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
         // Resolve tokens
         // Get pool information to determine tokens
-        const poolInfo = await getUniswapPoolInfo(
-          poolAddress,
-          networkToUse,
-          'amm',
-        );
+        const poolInfo = await getUniswapPoolInfo(poolAddress, networkToUse, 'amm');
         if (!poolInfo) {
           throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
         }
 
-        const baseTokenObj = uniswap.getTokenByAddress(
-          poolInfo.baseTokenAddress,
-        );
-        const quoteTokenObj = uniswap.getTokenByAddress(
-          poolInfo.quoteTokenAddress,
-        );
+        const baseTokenObj = uniswap.getTokenByAddress(poolInfo.baseTokenAddress);
+        const quoteTokenObj = uniswap.getTokenByAddress(poolInfo.quoteTokenAddress);
 
         if (!baseTokenObj || !quoteTokenObj) {
-          throw fastify.httpErrors.badRequest(
-            'Token information not found for pool',
-          );
+          throw fastify.httpErrors.badRequest('Token information not found for pool');
         }
 
         // Get the wallet
@@ -125,17 +107,11 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Check if the user has LP tokens for this pool
-        const pairContract = new Contract(
-          poolAddress,
-          IUniswapV2PairABI.abi,
-          wallet,
-        );
+        const pairContract = new Contract(poolAddress, IUniswapV2PairABI.abi, wallet);
 
         const lpBalance = await pairContract.balanceOf(walletAddress);
         if (lpBalance.eq(0)) {
-          throw fastify.httpErrors.badRequest(
-            `No liquidity position found for this pool`,
-          );
+          throw fastify.httpErrors.badRequest(`No liquidity position found for this pool`);
         }
 
         // Get the total supply and reserves
@@ -146,30 +122,19 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           pairContract.getReserves(),
         ]);
 
-        const token0IsBase =
-          token0.toLowerCase() === baseTokenObj.address.toLowerCase();
+        const token0IsBase = token0.toLowerCase() === baseTokenObj.address.toLowerCase();
 
         // Calculate expected amounts
-        const liquidityToRemove = lpBalance
-          .mul(Math.floor(percentageToRemove * 100))
-          .div(10000);
+        const liquidityToRemove = lpBalance.mul(Math.floor(percentageToRemove * 100)).div(10000);
         const baseTokenReserve = token0IsBase ? reserves[0] : reserves[1];
         const quoteTokenReserve = token0IsBase ? reserves[1] : reserves[0];
 
-        const expectedBaseTokenAmount = baseTokenReserve
-          .mul(liquidityToRemove)
-          .div(totalSupply);
-        const expectedQuoteTokenAmount = quoteTokenReserve
-          .mul(liquidityToRemove)
-          .div(totalSupply);
+        const expectedBaseTokenAmount = baseTokenReserve.mul(liquidityToRemove).div(totalSupply);
+        const expectedQuoteTokenAmount = quoteTokenReserve.mul(liquidityToRemove).div(totalSupply);
 
         // Get the router contract with signer
         const routerAddress = getUniswapV2RouterAddress(networkToUse);
-        const router = new Contract(
-          routerAddress,
-          IUniswapV2Router02ABI.abi,
-          wallet,
-        );
+        const router = new Contract(routerAddress, IUniswapV2Router02ABI.abi, wallet);
 
         // Calculate slippage-adjusted amounts (0.5% slippage by default)
         const slippageTolerance = new Percent(5, 1000); // 0.5%
@@ -185,13 +150,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Check LP token allowance
         try {
-          await checkLPAllowance(
-            ethereum,
-            wallet,
-            poolAddress,
-            routerAddress,
-            liquidityToRemove,
-          );
+          await checkLPAllowance(ethereum, wallet, poolAddress, routerAddress, liquidityToRemove);
         } catch (error: any) {
           throw fastify.httpErrors.badRequest(error.message);
         }
@@ -202,10 +161,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         let tx;
 
         // Prepare gas options
-        const gasOptions = await ethereum.prepareGasOptions(
-          priorityFeePerCU,
-          computeUnits || 300000,
-        );
+        const gasOptions = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits || 300000);
 
         // Check if one of the tokens is WETH
         if (baseTokenObj.symbol === 'WETH') {
@@ -248,15 +204,9 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const receipt = await tx.wait();
 
         // Format amounts for response
-        const baseTokenAmountRemoved = formatTokenAmount(
-          expectedBaseTokenAmount.toString(),
-          baseTokenObj.decimals,
-        );
+        const baseTokenAmountRemoved = formatTokenAmount(expectedBaseTokenAmount.toString(), baseTokenObj.decimals);
 
-        const quoteTokenAmountRemoved = formatTokenAmount(
-          expectedQuoteTokenAmount.toString(),
-          quoteTokenObj.decimals,
-        );
+        const quoteTokenAmountRemoved = formatTokenAmount(expectedQuoteTokenAmount.toString(), quoteTokenObj.decimals);
 
         // Calculate gas fee
         const gasFee = formatTokenAmount(
@@ -280,18 +230,13 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Handle insufficient funds errors
-        if (
-          e.code === 'INSUFFICIENT_FUNDS' ||
-          (e.message && e.message.includes('insufficient funds'))
-        ) {
+        if (e.code === 'INSUFFICIENT_FUNDS' || (e.message && e.message.includes('insufficient funds'))) {
           throw fastify.httpErrors.badRequest(
             'Insufficient ETH balance to pay for gas fees. Please add more ETH to your wallet.',
           );
         }
 
-        throw fastify.httpErrors.internalServerError(
-          'Failed to remove liquidity',
-        );
+        throw fastify.httpErrors.internalServerError('Failed to remove liquidity');
       }
     },
   );

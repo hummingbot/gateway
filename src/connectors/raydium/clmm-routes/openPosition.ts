@@ -38,25 +38,16 @@ async function openPosition(
   let poolAddressToUse = poolAddress;
   if (!poolAddressToUse) {
     if (!baseTokenSymbol || !quoteTokenSymbol) {
-      throw new Error(
-        'Either poolAddress or both baseToken and quoteToken must be provided',
-      );
+      throw new Error('Either poolAddress or both baseToken and quoteToken must be provided');
     }
 
-    poolAddressToUse = await raydium.findDefaultPool(
-      baseTokenSymbol,
-      quoteTokenSymbol,
-      'clmm',
-    );
+    poolAddressToUse = await raydium.findDefaultPool(baseTokenSymbol, quoteTokenSymbol, 'clmm');
     if (!poolAddressToUse) {
-      throw new Error(
-        `No CLMM pool found for pair ${baseTokenSymbol}-${quoteTokenSymbol}`,
-      );
+      throw new Error(`No CLMM pool found for pair ${baseTokenSymbol}-${quoteTokenSymbol}`);
     }
   }
 
-  const [poolInfo, poolKeys] =
-    await raydium.getClmmPoolfromAPI(poolAddressToUse);
+  const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(poolAddressToUse);
   const rpcData = await raydium.getClmmPoolfromRPC(poolAddressToUse);
   poolInfo.price = rpcData.currentPrice;
 
@@ -97,62 +88,42 @@ async function openPosition(
   } else {
     // Calculate default if not provided
     const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-    finalPriorityFeePerCU = Math.floor(
-      (currentPriorityFee * 1e6) / COMPUTE_UNITS,
-    );
+    finalPriorityFeePerCU = Math.floor((currentPriorityFee * 1e6) / COMPUTE_UNITS);
   }
-  const { transaction, extInfo } =
-    await raydium.raydiumSDK.clmm.openPositionFromBase({
-      poolInfo,
-      poolKeys,
-      tickUpper: Math.max(lowerTick, upperTick),
-      tickLower: Math.min(lowerTick, upperTick),
-      base: quotePositionResponse.baseLimited ? 'MintA' : 'MintB',
-      ownerInfo: { useSOLBalance: true },
-      baseAmount: quotePositionResponse.baseLimited
-        ? new BN(
-            quotePositionResponse.baseTokenAmount *
-              10 ** baseTokenInfo.decimals,
-          )
-        : new BN(
-            quotePositionResponse.quoteTokenAmount *
-              10 ** quoteTokenInfo.decimals,
-          ),
-      otherAmountMax: quotePositionResponse.baseLimited
-        ? new BN(
-            quotePositionResponse.quoteTokenAmountMax *
-              10 ** quoteTokenInfo.decimals,
-          )
-        : new BN(
-            quotePositionResponse.baseTokenAmountMax *
-              10 ** baseTokenInfo.decimals,
-          ),
-      txVersion: TxVersion.V0,
-      computeBudgetConfig: {
-        units: COMPUTE_UNITS,
-        microLamports: finalPriorityFeePerCU,
-      },
-    });
+  const { transaction, extInfo } = await raydium.raydiumSDK.clmm.openPositionFromBase({
+    poolInfo,
+    poolKeys,
+    tickUpper: Math.max(lowerTick, upperTick),
+    tickLower: Math.min(lowerTick, upperTick),
+    base: quotePositionResponse.baseLimited ? 'MintA' : 'MintB',
+    ownerInfo: { useSOLBalance: true },
+    baseAmount: quotePositionResponse.baseLimited
+      ? new BN(quotePositionResponse.baseTokenAmount * 10 ** baseTokenInfo.decimals)
+      : new BN(quotePositionResponse.quoteTokenAmount * 10 ** quoteTokenInfo.decimals),
+    otherAmountMax: quotePositionResponse.baseLimited
+      ? new BN(quotePositionResponse.quoteTokenAmountMax * 10 ** quoteTokenInfo.decimals)
+      : new BN(quotePositionResponse.baseTokenAmountMax * 10 ** baseTokenInfo.decimals),
+    txVersion: TxVersion.V0,
+    computeBudgetConfig: {
+      units: COMPUTE_UNITS,
+      microLamports: finalPriorityFeePerCU,
+    },
+  });
 
   transaction.sign([wallet]);
   await solana.simulateTransaction(transaction);
 
-  const { confirmed, signature, txData } =
-    await solana.sendAndConfirmRawTransaction(transaction);
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
   // Return with status
   if (confirmed && txData) {
     // Transaction confirmed, return full data
     const totalFee = txData.meta.fee;
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-      signature,
-      wallet.publicKey.toBase58(),
-      [
-        'SOL', // Get SOL balance change for rent
-        baseTokenInfo.symbol === 'SOL' ? 'SOL' : baseTokenInfo.address,
-        quoteTokenInfo.symbol === 'SOL' ? 'SOL' : quoteTokenInfo.address,
-      ],
-    );
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+      'SOL', // Get SOL balance change for rent
+      baseTokenInfo.symbol === 'SOL' ? 'SOL' : baseTokenInfo.address,
+      quoteTokenInfo.symbol === 'SOL' ? 'SOL' : quoteTokenInfo.address,
+    ]);
 
     const positionRent = Math.abs(balanceChanges[0]);
 

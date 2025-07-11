@@ -68,11 +68,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          poolAddress,
-          walletAddress: requestedWalletAddress,
-        } = request.query;
+        const { network, poolAddress, walletAddress: requestedWalletAddress } = request.query;
 
         const networkToUse = network;
 
@@ -90,37 +86,26 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         if (!walletAddress) {
           walletAddress = await uniswap.getFirstWalletAddress();
           if (!walletAddress) {
-            throw fastify.httpErrors.badRequest(
-              'No wallet address provided and no default wallet found',
-            );
+            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
           }
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
         // Get the pair contract
-        const pairContract = new Contract(
-          poolAddress,
-          IUniswapV2PairABI.abi,
-          ethereum.provider,
-        );
+        const pairContract = new Contract(poolAddress, IUniswapV2PairABI.abi, ethereum.provider);
 
         // Get LP token balance for the wallet
         const lpBalance = await pairContract.balanceOf(walletAddress);
 
         // Get token addresses from the pair
-        const [token0, token1] = await Promise.all([
-          pairContract.token0(),
-          pairContract.token1(),
-        ]);
+        const [token0, token1] = await Promise.all([pairContract.token0(), pairContract.token1()]);
 
         // Get token objects by address
         const baseTokenObj = uniswap.getTokenByAddress(token0);
         const quoteTokenObj = uniswap.getTokenByAddress(token1);
 
         if (!baseTokenObj || !quoteTokenObj) {
-          throw fastify.httpErrors.badRequest(
-            'Token information not found for pool',
-          );
+          throw fastify.httpErrors.badRequest('Token information not found for pool');
         }
 
         // If no position, return early
@@ -138,39 +123,24 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get total supply and reserves
-        const [totalSupply, reserves] = await Promise.all([
-          pairContract.totalSupply(),
-          pairContract.getReserves(),
-        ]);
+        const [totalSupply, reserves] = await Promise.all([pairContract.totalSupply(), pairContract.getReserves()]);
 
         // Determine which token is base and which is quote
-        const token0IsBase =
-          token0.toLowerCase() === baseTokenObj.address.toLowerCase();
+        const token0IsBase = token0.toLowerCase() === baseTokenObj.address.toLowerCase();
 
         // Calculate user's share of the pool
-        const userShare =
-          lpBalance.mul(10000).div(totalSupply).toNumber() / 10000; // Convert to percentage
+        const userShare = lpBalance.mul(10000).div(totalSupply).toNumber() / 10000; // Convert to percentage
 
         // Calculate token amounts
         const baseTokenReserve = token0IsBase ? reserves[0] : reserves[1];
         const quoteTokenReserve = token0IsBase ? reserves[1] : reserves[0];
 
-        const userBaseTokenAmount = baseTokenReserve
-          .mul(lpBalance)
-          .div(totalSupply);
-        const userQuoteTokenAmount = quoteTokenReserve
-          .mul(lpBalance)
-          .div(totalSupply);
+        const userBaseTokenAmount = baseTokenReserve.mul(lpBalance).div(totalSupply);
+        const userQuoteTokenAmount = quoteTokenReserve.mul(lpBalance).div(totalSupply);
 
         // Calculate price (quoteToken per baseToken)
-        const baseTokenAmountFloat = formatTokenAmount(
-          baseTokenReserve.toString(),
-          baseTokenObj.decimals,
-        );
-        const quoteTokenAmountFloat = formatTokenAmount(
-          quoteTokenReserve.toString(),
-          quoteTokenObj.decimals,
-        );
+        const baseTokenAmountFloat = formatTokenAmount(baseTokenReserve.toString(), baseTokenObj.decimals);
+        const quoteTokenAmountFloat = formatTokenAmount(quoteTokenReserve.toString(), quoteTokenObj.decimals);
         const price = quoteTokenAmountFloat / baseTokenAmountFloat;
 
         // Format for response
@@ -178,14 +148,8 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         logger.info(`Total supply: ${totalSupply.toString()}`);
 
         const formattedLpAmount = formatTokenAmount(lpBalance.toString(), 18); // LP tokens have 18 decimals
-        const formattedBaseAmount = formatTokenAmount(
-          userBaseTokenAmount.toString(),
-          baseTokenObj.decimals,
-        );
-        const formattedQuoteAmount = formatTokenAmount(
-          userQuoteTokenAmount.toString(),
-          quoteTokenObj.decimals,
-        );
+        const formattedBaseAmount = formatTokenAmount(userBaseTokenAmount.toString(), baseTokenObj.decimals);
+        const formattedQuoteAmount = formatTokenAmount(userQuoteTokenAmount.toString(), quoteTokenObj.decimals);
 
         logger.info(`Formatted LP amount: ${formattedLpAmount}`);
         logger.info(`Formatted base amount: ${formattedBaseAmount}`);
@@ -206,9 +170,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError(
-          'Failed to get position info',
-        );
+        throw fastify.httpErrors.internalServerError('Failed to get position info');
       }
     },
   );

@@ -60,9 +60,7 @@ describe('Config Routes V2 Tests', () => {
       },
     };
 
-    (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue(
-      mockConfigManager,
-    );
+    (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue(mockConfigManager);
 
     // Register the config routes plugin
     await fastify.register(configRoutes);
@@ -72,27 +70,25 @@ describe('Config Routes V2 Tests', () => {
 
     // Setup default mock implementations
     (updateConfig as jest.Mock).mockImplementation(() => {});
-    (getConfig as jest.Mock).mockImplementation(
-      (_fastify, namespace, network) => {
-        if (!namespace) return mockConfigManager.allConfigurations;
-        const nsConfig = mockConfigManager.allConfigurations[namespace];
-        if (!nsConfig)
+    (getConfig as jest.Mock).mockImplementation((_fastify, namespace, network) => {
+      if (!namespace) return mockConfigManager.allConfigurations;
+      const nsConfig = mockConfigManager.allConfigurations[namespace];
+      if (!nsConfig)
+        throw {
+          statusCode: 404,
+          message: `Namespace '${namespace}' not found`,
+        };
+      if (network && nsConfig.networks) {
+        if (!nsConfig.networks[network]) {
           throw {
             statusCode: 404,
-            message: `Namespace '${namespace}' not found`,
+            message: `Network '${network}' not found`,
           };
-        if (network && nsConfig.networks) {
-          if (!nsConfig.networks[network]) {
-            throw {
-              statusCode: 404,
-              message: `Network '${network}' not found`,
-            };
-          }
-          return nsConfig.networks[network];
         }
-        return nsConfig;
-      },
-    );
+        return nsConfig.networks[network];
+      }
+      return nsConfig;
+    });
   });
 
   afterEach(async () => {
@@ -178,11 +174,7 @@ describe('Config Routes V2 Tests', () => {
         message: `Configuration updated successfully: 'ethereum.manualGasPrice' set to 150`,
       });
 
-      expect(updateConfig).toHaveBeenCalledWith(
-        expect.anything(),
-        'ethereum.manualGasPrice',
-        150,
-      );
+      expect(updateConfig).toHaveBeenCalledWith(expect.anything(), 'ethereum.manualGasPrice', 150);
     });
 
     it('should convert string numbers to numbers based on current type', async () => {
@@ -247,10 +239,7 @@ describe('Config Routes V2 Tests', () => {
       });
 
       expect(response.statusCode).toBe(404);
-      expect(JSON.parse(response.payload)).toHaveProperty(
-        'message',
-        "Namespace 'invalid' not found",
-      );
+      expect(JSON.parse(response.payload)).toHaveProperty('message', "Namespace 'invalid' not found");
     });
 
     it('should update server config without network', async () => {
@@ -289,9 +278,7 @@ describe('Config Routes V2 Tests', () => {
       });
 
       expect(response.statusCode).toBe(404);
-      expect(JSON.parse(response.payload).message).toContain(
-        "Namespace 'ethereum-goerli' not found",
-      );
+      expect(JSON.parse(response.payload).message).toContain("Namespace 'ethereum-goerli' not found");
     });
 
     it('should handle slippagePct special case', async () => {
@@ -347,9 +334,7 @@ describe('Config Routes V2 Tests', () => {
       });
 
       expect(response.statusCode).toBe(500);
-      expect(JSON.parse(response.payload).message).toContain(
-        'Failed to update configuration',
-      );
+      expect(JSON.parse(response.payload).message).toContain('Failed to update configuration');
     });
 
     it('should update Solana mainnet-beta configuration', async () => {
@@ -391,9 +376,7 @@ describe('Config Routes V2 Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toEqual(
-        mockConfigManager.allConfigurations,
-      );
+      expect(JSON.parse(response.payload)).toEqual(mockConfigManager.allConfigurations);
     });
 
     it('should get namespace configuration', async () => {
@@ -409,9 +392,7 @@ describe('Config Routes V2 Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toEqual(
-        mockConfigManager.allConfigurations['ethereum-mainnet'],
-      );
+      expect(JSON.parse(response.payload)).toEqual(mockConfigManager.allConfigurations['ethereum-mainnet']);
     });
 
     it('should get network-specific configuration', async () => {

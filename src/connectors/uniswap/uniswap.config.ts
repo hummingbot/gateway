@@ -4,17 +4,7 @@ import { ConfigManagerV2 } from '../../services/config-manager-v2';
 export namespace UniswapConfig {
   // Supported networks for Uniswap
   export const chain = 'ethereum';
-  export const networks = [
-    'mainnet',
-    'arbitrum',
-    'optimism',
-    'base',
-    'sepolia',
-    'bsc',
-    'avalanche',
-    'celo',
-    'polygon',
-  ];
+  export const networks = ['mainnet', 'arbitrum', 'optimism', 'base', 'sepolia', 'bsc', 'avalanche', 'celo', 'polygon'];
 
   export interface RootConfig {
     // Global configuration

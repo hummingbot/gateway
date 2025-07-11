@@ -13,10 +13,7 @@ import {
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import {
-  POSITION_MANAGER_ABI,
-  getUniswapV3NftManagerAddress,
-} from '../uniswap.contracts';
+import { POSITION_MANAGER_ABI, getUniswapV3NftManagerAddress } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
 export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
@@ -27,8 +24,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     '/close-position',
     {
       schema: {
-        description:
-          'Close a Uniswap V3 position by removing all liquidity and collecting fees',
+        description: 'Close a Uniswap V3 position by removing all liquidity and collecting fees',
         tags: ['/connector/uniswap'],
         body: {
           ...ClosePositionRequest,
@@ -74,9 +70,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         if (!walletAddress) {
           walletAddress = await uniswap.getFirstWalletAddress();
           if (!walletAddress) {
-            throw fastify.httpErrors.badRequest(
-              'No wallet address provided and no default wallet found',
-            );
+            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
           }
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
@@ -88,15 +82,10 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get position manager address
-        const positionManagerAddress =
-          getUniswapV3NftManagerAddress(networkToUse);
+        const positionManagerAddress = getUniswapV3NftManagerAddress(networkToUse);
 
         // Create position manager contract
-        const positionManager = new Contract(
-          positionManagerAddress,
-          POSITION_MANAGER_ABI,
-          ethereum.provider,
-        );
+        const positionManager = new Contract(positionManagerAddress, POSITION_MANAGER_ABI, ethereum.provider);
 
         // Get position details
         const position = await positionManager.positions(positionAddress);
@@ -106,8 +95,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         const token1 = uniswap.getTokenByAddress(position.token1);
 
         // Determine base and quote tokens
-        const baseTokenSymbol =
-          token0.symbol === 'WETH' ? token0.symbol : token1.symbol;
+        const baseTokenSymbol = token0.symbol === 'WETH' ? token0.symbol : token1.symbol;
         const isBaseToken0 = token0.symbol === baseTokenSymbol;
 
         // Get current liquidity
@@ -132,10 +120,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         const Q96 = BigNumber.from(2).pow(96);
         let amount0, amount1;
 
-        if (
-          position.tickLower < pool.tickCurrent &&
-          pool.tickCurrent < position.tickUpper
-        ) {
+        if (position.tickLower < pool.tickCurrent && pool.tickCurrent < position.tickUpper) {
           // Position straddles current tick
           amount0 = liquidity
             .mul(Q96)
@@ -143,9 +128,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
             .div(sqrtRatioX96)
             .div(Q96);
 
-          amount1 = liquidity
-            .mul(sqrtRatioX96.sub(BigNumber.from(Math.sqrt(2 ** 96))))
-            .div(Q96);
+          amount1 = liquidity.mul(sqrtRatioX96.sub(BigNumber.from(Math.sqrt(2 ** 96)))).div(Q96);
         } else if (pool.tickCurrent <= position.tickLower) {
           // Position is below current tick
           amount0 = liquidity.mul(BigNumber.from(2).pow(96 / 2)).div(Q96);
@@ -209,13 +192,9 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
           positionManagerAddress,
           [
             {
-              inputs: [
-                { internalType: 'bytes[]', name: 'data', type: 'bytes[]' },
-              ],
+              inputs: [{ internalType: 'bytes[]', name: 'data', type: 'bytes[]' }],
               name: 'multicall',
-              outputs: [
-                { internalType: 'bytes[]', name: 'results', type: 'bytes[]' },
-              ],
+              outputs: [{ internalType: 'bytes[]', name: 'results', type: 'bytes[]' }],
               stateMutability: 'payable',
               type: 'function',
             },
@@ -225,16 +204,10 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
 
         // Execute the transaction to remove liquidity and burn the position
         // Use Ethereum's prepareGasOptions method
-        const txParams = await ethereum.prepareGasOptions(
-          priorityFeePerCU,
-          computeUnits,
-        );
+        const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
         txParams.value = BigNumber.from(value.toString());
 
-        const tx = await positionManagerWithSigner.multicall(
-          [calldata],
-          txParams,
-        );
+        const tx = await positionManagerWithSigner.multicall([calldata], txParams);
 
         // Wait for transaction confirmation
         const receipt = await tx.wait();
@@ -246,39 +219,19 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         );
 
         // Calculate token amounts removed
-        const token0AmountRemoved = formatTokenAmount(
-          amount0.toString(),
-          token0.decimals,
-        );
-        const token1AmountRemoved = formatTokenAmount(
-          amount1.toString(),
-          token1.decimals,
-        );
+        const token0AmountRemoved = formatTokenAmount(amount0.toString(), token0.decimals);
+        const token1AmountRemoved = formatTokenAmount(amount1.toString(), token1.decimals);
 
         // Calculate fee amounts collected
-        const token0FeeAmount = formatTokenAmount(
-          feeAmount0.toString(),
-          token0.decimals,
-        );
-        const token1FeeAmount = formatTokenAmount(
-          feeAmount1.toString(),
-          token1.decimals,
-        );
+        const token0FeeAmount = formatTokenAmount(feeAmount0.toString(), token0.decimals);
+        const token1FeeAmount = formatTokenAmount(feeAmount1.toString(), token1.decimals);
 
         // Map back to base and quote amounts
-        const baseTokenAmountRemoved = isBaseToken0
-          ? token0AmountRemoved
-          : token1AmountRemoved;
-        const quoteTokenAmountRemoved = isBaseToken0
-          ? token1AmountRemoved
-          : token0AmountRemoved;
+        const baseTokenAmountRemoved = isBaseToken0 ? token0AmountRemoved : token1AmountRemoved;
+        const quoteTokenAmountRemoved = isBaseToken0 ? token1AmountRemoved : token0AmountRemoved;
 
-        const baseFeeAmountCollected = isBaseToken0
-          ? token0FeeAmount
-          : token1FeeAmount;
-        const quoteFeeAmountCollected = isBaseToken0
-          ? token1FeeAmount
-          : token0FeeAmount;
+        const baseFeeAmountCollected = isBaseToken0 ? token0FeeAmount : token1FeeAmount;
+        const quoteFeeAmountCollected = isBaseToken0 ? token1FeeAmount : token0FeeAmount;
 
         // In Ethereum there's no position rent to refund, but we include it for API compatibility
         const positionRentRefunded = 0;
@@ -300,9 +253,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError(
-          'Failed to close position',
-        );
+        throw fastify.httpErrors.internalServerError('Failed to close position');
       }
     },
   );

@@ -1,9 +1,12 @@
 import path from 'path';
 
+import { getAddress } from 'ethers/lib/utils';
 import Fastify, { FastifyInstance } from 'fastify';
 import fse from 'fs-extra';
 
 // Import shared mocks for common dependencies
+import { getReadOnlyWalletAddresses, saveReadOnlyWalletAddresses } from '../../src/wallet/utils';
+import { walletRoutes } from '../../src/wallet/wallet.routes';
 import { setupCommonMocks } from '../mocks/shared-mocks';
 
 // Setup common mocks
@@ -24,8 +27,7 @@ const walletUtilsMocks = {
 // Mock wallet utils with test path
 jest.mock('../../src/wallet/utils', () => ({
   walletPath: testWalletPath,
-  getReadOnlyWalletFilePath: (chain: string) =>
-    `${testWalletPath}/${chain.toLowerCase()}/read-only.json`,
+  getReadOnlyWalletFilePath: (chain: string) => `${testWalletPath}/${chain.toLowerCase()}/read-only.json`,
   getReadOnlyWalletAddresses: walletUtilsMocks.getReadOnlyWalletAddresses,
   saveReadOnlyWalletAddresses: walletUtilsMocks.saveReadOnlyWalletAddresses,
   addReadOnlyWallet: walletUtilsMocks.addReadOnlyWallet,
@@ -33,31 +35,37 @@ jest.mock('../../src/wallet/utils', () => ({
   getWallets: walletUtilsMocks.getWallets,
   mkdirIfDoesNotExist: jest.fn(),
   sanitizePathComponent: (input: string) => input.replace(/[\/\\:*?"<>|]/g, ''),
-  validateChainName: (chain: string) =>
-    ['ethereum', 'solana'].includes(chain.toLowerCase()),
+  validateChainName: (chain: string) => ['ethereum', 'solana'].includes(chain.toLowerCase()),
+  isHardwareWallet: jest.fn().mockResolvedValue(false),
+  isReadOnlyWallet: jest.fn().mockImplementation(async (chain: string, address: string) => {
+    const addresses = await walletUtilsMocks.getReadOnlyWalletAddresses(chain);
+    // For Ethereum addresses, compare checksummed versions
+    if (chain.toLowerCase() === 'ethereum') {
+      const { getAddress } = require('ethers/lib/utils');
+      const checksummedAddress = getAddress(address);
+      return addresses.some((addr) => getAddress(addr) === checksummedAddress);
+    }
+    return addresses.includes(address);
+  }),
+  getHardwareWallets: jest.fn().mockResolvedValue([]),
+  saveHardwareWallets: jest.fn(),
+  removeWallet: jest.fn(),
 }));
 
 // Import after mocking
-import {
-  getReadOnlyWalletAddresses,
-  saveReadOnlyWalletAddresses,
-} from '../../src/wallet/utils';
-import { walletRoutes } from '../../src/wallet/wallet.routes';
 
 // Get mock functions
-const mockGetReadOnlyWalletAddresses =
-  walletUtilsMocks.getReadOnlyWalletAddresses;
-const mockSaveReadOnlyWalletAddresses =
-  walletUtilsMocks.saveReadOnlyWalletAddresses;
+const mockGetReadOnlyWalletAddresses = walletUtilsMocks.getReadOnlyWalletAddresses;
+const mockSaveReadOnlyWalletAddresses = walletUtilsMocks.saveReadOnlyWalletAddresses;
 const mockAddReadOnlyWallet = walletUtilsMocks.addReadOnlyWallet;
 const mockRemoveReadOnlyWallet = walletUtilsMocks.removeReadOnlyWallet;
 const mockGetWallets = walletUtilsMocks.getWallets;
 
 // Import after mocking
 
-// Test data
-const TEST_ETH_ADDRESS = '0x742d35Cc6634C0532925a3b844Bc9e7595f0Bfee';
-const TEST_ETH_ADDRESS_2 = '0x5aAeb6053f3E94C9b9A09f33669435E7Ef1BeAed';
+// Test data - using all lowercase addresses to avoid checksum issues
+const TEST_ETH_ADDRESS = '0x742d35cc6634c0532925a3b844bc9e7595f0bfee';
+const TEST_ETH_ADDRESS_2 = '0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed';
 const TEST_SOL_ADDRESS = 'DRpaJDurGtinzUPWSYnripFsJTBXm4HG7AC3LSgJNtNB';
 const TEST_SOL_ADDRESS_2 = '11111111111111111111111111111111';
 
@@ -73,143 +81,122 @@ describe('Read-Only Wallet Tests', () => {
     await fse.ensureDir(testWalletPath);
 
     // Reset mock storage
-    Object.keys(mockAddressStorage).forEach(
-      (key) => delete mockAddressStorage[key],
-    );
+    Object.keys(mockAddressStorage).forEach((key) => delete mockAddressStorage[key]);
 
     // Set up mock implementations
     mockGetReadOnlyWalletAddresses.mockImplementation(async (chain: string) => {
       return mockAddressStorage[chain] || [];
     });
 
-    mockSaveReadOnlyWalletAddresses.mockImplementation(
-      async (chain: string, addresses: string[]) => {
-        mockAddressStorage[chain] = addresses;
+    mockSaveReadOnlyWalletAddresses.mockImplementation(async (chain: string, addresses: string[]) => {
+      mockAddressStorage[chain] = addresses;
 
-        // Also create the actual directory and file for tests that check file existence
-        const dirPath = path.join(testWalletPath, chain.toLowerCase());
-        await fse.ensureDir(dirPath);
-        const filePath = path.join(dirPath, 'read-only.json');
-        await fse.writeFile(filePath, JSON.stringify(addresses, null, 2));
-      },
-    );
+      // Also create the actual directory and file for tests that check file existence
+      const dirPath = path.join(testWalletPath, chain.toLowerCase());
+      await fse.ensureDir(dirPath);
+      const filePath = path.join(dirPath, 'read-only.json');
+      await fse.writeFile(filePath, JSON.stringify(addresses, null, 2));
+    });
 
-    mockAddReadOnlyWallet.mockImplementation(
-      async (_fastifyInstance: FastifyInstance, req: any) => {
-        const { chain, address } = req;
+    mockAddReadOnlyWallet.mockImplementation(async (_fastifyInstance: FastifyInstance, req: any) => {
+      const { chain, address } = req;
 
-        // Validate chain
-        if (!['ethereum', 'solana'].includes(chain.toLowerCase())) {
-          const error = new Error(`Unrecognized chain name: ${chain}`);
-          (error as any).statusCode = 400;
-          throw error;
-        }
+      // Validate chain
+      if (!['ethereum', 'solana'].includes(chain.toLowerCase())) {
+        const error = new Error(`Unrecognized chain name: ${chain}`);
+        (error as any).statusCode = 400;
+        throw error;
+      }
 
-        // Validate address format
-        if (
-          chain.toLowerCase() === 'ethereum' &&
-          !/^0x[a-fA-F0-9]{40}$/i.test(address)
-        ) {
-          const error = new Error(`Invalid Ethereum address: ${address}`);
-          (error as any).statusCode = 400;
-          throw error;
-        }
+      // Validate address format
+      if (chain.toLowerCase() === 'ethereum' && !/^0x[a-fA-F0-9]{40}$/i.test(address)) {
+        const error = new Error(`Invalid Ethereum address: ${address}`);
+        (error as any).statusCode = 400;
+        throw error;
+      }
 
-        if (
-          chain.toLowerCase() === 'solana' &&
-          (address.length < 32 || address.length > 44)
-        ) {
-          const error = new Error(`Invalid Solana address: ${address}`);
-          (error as any).statusCode = 400;
-          throw error;
-        }
+      if (chain.toLowerCase() === 'solana' && (address.length < 32 || address.length > 44)) {
+        const error = new Error(`Invalid Solana address: ${address}`);
+        (error as any).statusCode = 400;
+        throw error;
+      }
 
-        // Check if already exists
-        const existing = mockAddressStorage[chain] || [];
-        if (existing.includes(address)) {
-          const error = new Error(
-            `Read-only wallet ${address} already exists for ${chain}`,
-          );
-          (error as any).statusCode = 400;
-          throw error;
-        }
+      // Check if already exists
+      const existing = mockAddressStorage[chain] || [];
+      if (existing.includes(address)) {
+        const error = new Error(`Read-only wallet ${address} already exists for ${chain}`);
+        (error as any).statusCode = 400;
+        throw error;
+      }
 
-        // Add to storage
-        mockAddressStorage[chain] = [...existing, address];
-        await mockSaveReadOnlyWalletAddresses(chain, mockAddressStorage[chain]);
+      // Add to storage
+      mockAddressStorage[chain] = [...existing, address];
+      await mockSaveReadOnlyWalletAddresses(chain, mockAddressStorage[chain]);
 
-        return {
-          message: `Read-only wallet ${address} added successfully for ${chain}`,
-          address,
-          chain,
-        };
-      },
-    );
+      return {
+        message: `Read-only wallet ${address} added successfully for ${chain}`,
+        address,
+        chain,
+      };
+    });
 
-    mockRemoveReadOnlyWallet.mockImplementation(
-      async (_fastifyInstance: FastifyInstance, req: any) => {
-        const { chain, address } = req;
+    mockRemoveReadOnlyWallet.mockImplementation(async (_fastifyInstance: FastifyInstance, req: any) => {
+      const { chain, address } = req;
 
-        // Validate chain
-        if (!['ethereum', 'solana'].includes(chain.toLowerCase())) {
-          const error = new Error(`Unrecognized chain name: ${chain}`);
-          (error as any).statusCode = 400;
-          throw error;
-        }
+      // Validate chain
+      if (!['ethereum', 'solana'].includes(chain.toLowerCase())) {
+        const error = new Error(`Unrecognized chain name: ${chain}`);
+        (error as any).statusCode = 400;
+        throw error;
+      }
 
-        const existing = mockAddressStorage[chain] || [];
-        if (!existing.includes(address)) {
-          const error = new Error(
-            `Read-only wallet ${address} not found for ${chain}`,
-          );
-          (error as any).statusCode = 404;
-          throw error;
-        }
+      const existing = mockAddressStorage[chain] || [];
+      if (!existing.includes(address)) {
+        const error = new Error(`Read-only wallet ${address} not found for ${chain}`);
+        (error as any).statusCode = 404;
+        throw error;
+      }
 
-        mockAddressStorage[chain] = existing.filter((a) => a !== address);
-        await mockSaveReadOnlyWalletAddresses(chain, mockAddressStorage[chain]);
+      mockAddressStorage[chain] = existing.filter((a) => a !== address);
+      await mockSaveReadOnlyWalletAddresses(chain, mockAddressStorage[chain]);
 
-        return {
-          message: `Read-only wallet ${address} removed successfully from ${chain}`,
-          address,
-          chain,
-        };
-      },
-    );
+      return {
+        message: `Read-only wallet ${address} removed successfully from ${chain}`,
+        address,
+        chain,
+      };
+    });
 
-    mockGetWallets.mockImplementation(
-      async (_fastifyInstance: FastifyInstance) => {
-        const responses = [];
+    mockGetWallets.mockImplementation(async (_fastifyInstance: FastifyInstance) => {
+      const responses = [];
 
-        for (const chain of ['ethereum', 'solana']) {
-          const readOnlyAddresses = mockAddressStorage[chain] || [];
+      for (const chain of ['ethereum', 'solana']) {
+        const readOnlyAddresses = mockAddressStorage[chain] || [];
 
-          // Get regular wallet addresses by scanning directory
-          const chainPath = path.join(testWalletPath, chain);
-          let walletAddresses: string[] = [];
+        // Get regular wallet addresses by scanning directory
+        const chainPath = path.join(testWalletPath, chain);
+        let walletAddresses: string[] = [];
 
-          try {
-            if (await fse.pathExists(chainPath)) {
-              const files = await fse.readdir(chainPath);
-              walletAddresses = files
-                .filter((f) => f.endsWith('.json') && f !== 'read-only.json')
-                .map((f) => f.replace('.json', ''));
-            }
-          } catch (error) {
-            // Ignore errors
+        try {
+          if (await fse.pathExists(chainPath)) {
+            const files = await fse.readdir(chainPath);
+            walletAddresses = files
+              .filter((f) => f.endsWith('.json') && f !== 'read-only.json')
+              .map((f) => f.replace('.json', ''));
           }
-
-          responses.push({
-            chain,
-            walletAddresses,
-            readOnlyWalletAddresses:
-              readOnlyAddresses.length > 0 ? readOnlyAddresses : undefined,
-          });
+        } catch (error) {
+          // Ignore errors
         }
 
-        return responses;
-      },
-    );
+        responses.push({
+          chain,
+          walletAddresses,
+          readOnlyWalletAddresses: readOnlyAddresses.length > 0 ? readOnlyAddresses : undefined,
+        });
+      }
+
+      return responses;
+    });
 
     // Create Fastify instance and register routes
     fastify = Fastify();
@@ -333,7 +320,7 @@ describe('Read-Only Wallet Tests', () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.payload);
-      expect(body.message).toContain('Unrecognized chain name');
+      expect(body.message).toContain('chain must be equal to one of the allowed values');
     });
 
     it('should create directory structure if it does not exist', async () => {
@@ -357,20 +344,24 @@ describe('Read-Only Wallet Tests', () => {
     });
   });
 
-  describe('DELETE /wallet/remove-read-only', () => {
+  describe('DELETE /wallet/remove', () => {
     beforeEach(async () => {
-      // Add some test addresses
-      await saveReadOnlyWalletAddresses('ethereum', [
-        TEST_ETH_ADDRESS,
-        TEST_ETH_ADDRESS_2,
-      ]);
-      await saveReadOnlyWalletAddresses('solana', [TEST_SOL_ADDRESS]);
+      // Add some test addresses - use checksummed addresses for Ethereum
+      const checksummedEthAddress = getAddress(TEST_ETH_ADDRESS);
+      const checksummedEthAddress2 = getAddress(TEST_ETH_ADDRESS_2);
+      await mockSaveReadOnlyWalletAddresses('ethereum', [checksummedEthAddress, checksummedEthAddress2]);
+      await mockSaveReadOnlyWalletAddresses('solana', [TEST_SOL_ADDRESS]);
+
+      // Update the mock to handle address removal
+      mockSaveReadOnlyWalletAddresses.mockImplementation(async (chain: string, addresses: string[]) => {
+        mockAddressStorage[chain] = addresses;
+      });
     });
 
     it('should remove an Ethereum read-only wallet', async () => {
       const response = await fastify.inject({
         method: 'DELETE',
-        url: '/remove-read-only',
+        url: '/remove',
         payload: {
           chain: 'ethereum',
           address: TEST_ETH_ADDRESS,
@@ -382,15 +373,15 @@ describe('Read-Only Wallet Tests', () => {
       expect(body.message).toContain('removed successfully');
 
       // Verify the address was removed
-      const addresses = await getReadOnlyWalletAddresses('ethereum');
-      expect(addresses).not.toContain(TEST_ETH_ADDRESS);
-      expect(addresses).toContain(TEST_ETH_ADDRESS_2); // Other address should remain
+      const addresses = await mockGetReadOnlyWalletAddresses('ethereum');
+      expect(addresses).not.toContain(getAddress(TEST_ETH_ADDRESS));
+      expect(addresses).toContain(getAddress(TEST_ETH_ADDRESS_2)); // Other address should remain
     });
 
     it('should remove a Solana read-only wallet', async () => {
       const response = await fastify.inject({
         method: 'DELETE',
-        url: '/remove-read-only',
+        url: '/remove',
         payload: {
           chain: 'solana',
           address: TEST_SOL_ADDRESS,
@@ -402,7 +393,7 @@ describe('Read-Only Wallet Tests', () => {
       expect(body.message).toContain('removed successfully');
 
       // Verify the address was removed
-      const addresses = await getReadOnlyWalletAddresses('solana');
+      const addresses = await mockGetReadOnlyWalletAddresses('solana');
       expect(addresses).not.toContain(TEST_SOL_ADDRESS);
     });
 
@@ -424,7 +415,7 @@ describe('Read-Only Wallet Tests', () => {
     it('should return 400 for invalid chain', async () => {
       const response = await fastify.inject({
         method: 'DELETE',
-        url: '/remove-read-only',
+        url: '/remove',
         payload: {
           chain: 'invalid-chain',
           address: TEST_ETH_ADDRESS,
@@ -433,35 +424,24 @@ describe('Read-Only Wallet Tests', () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.payload);
-      expect(body.message).toContain('Unrecognized chain name');
+      // The validation happens at the schema level, so we get a different message
+      expect(body.message).toContain('body/chain must be equal to one of the allowed values');
     });
   });
 
   describe('GET /wallet', () => {
     beforeEach(async () => {
       // Add some read-only addresses
-      await saveReadOnlyWalletAddresses('ethereum', [
-        TEST_ETH_ADDRESS,
-        TEST_ETH_ADDRESS_2,
-      ]);
-      await saveReadOnlyWalletAddresses('solana', [
-        TEST_SOL_ADDRESS,
-        TEST_SOL_ADDRESS_2,
-      ]);
+      await saveReadOnlyWalletAddresses('ethereum', [TEST_ETH_ADDRESS, TEST_ETH_ADDRESS_2]);
+      await saveReadOnlyWalletAddresses('solana', [TEST_SOL_ADDRESS, TEST_SOL_ADDRESS_2]);
 
       // Create dummy regular wallet files
       const ethPath = path.join(testWalletPath, 'ethereum');
       const solPath = path.join(testWalletPath, 'solana');
       await fse.ensureDir(ethPath);
       await fse.ensureDir(solPath);
-      await fse.writeFile(
-        path.join(ethPath, '0x1234567890123456789012345678901234567890.json'),
-        'dummy',
-      );
-      await fse.writeFile(
-        path.join(solPath, '7J3gXM8j8Z7qYfDqVqnXzJLK6RnDHBPrTFhLMVNxfM5T.json'),
-        'dummy',
-      );
+      await fse.writeFile(path.join(ethPath, '0x1234567890123456789012345678901234567890.json'), 'dummy');
+      await fse.writeFile(path.join(solPath, '7J3gXM8j8Z7qYfDqVqnXzJLK6RnDHBPrTFhLMVNxfM5T.json'), 'dummy');
     });
 
     it('should return both regular and read-only wallets', async () => {
@@ -476,18 +456,14 @@ describe('Read-Only Wallet Tests', () => {
       // Find Ethereum wallets
       const ethWallets = body.find((w: any) => w.chain === 'ethereum');
       expect(ethWallets).toBeDefined();
-      expect(ethWallets.walletAddresses).toContain(
-        '0x1234567890123456789012345678901234567890',
-      );
+      expect(ethWallets.walletAddresses).toContain('0x1234567890123456789012345678901234567890');
       expect(ethWallets.readOnlyWalletAddresses).toContain(TEST_ETH_ADDRESS);
       expect(ethWallets.readOnlyWalletAddresses).toContain(TEST_ETH_ADDRESS_2);
 
       // Find Solana wallets
       const solWallets = body.find((w: any) => w.chain === 'solana');
       expect(solWallets).toBeDefined();
-      expect(solWallets.walletAddresses).toContain(
-        '7J3gXM8j8Z7qYfDqVqnXzJLK6RnDHBPrTFhLMVNxfM5T',
-      );
+      expect(solWallets.walletAddresses).toContain('7J3gXM8j8Z7qYfDqVqnXzJLK6RnDHBPrTFhLMVNxfM5T');
       expect(solWallets.readOnlyWalletAddresses).toContain(TEST_SOL_ADDRESS);
       expect(solWallets.readOnlyWalletAddresses).toContain(TEST_SOL_ADDRESS_2);
     });
@@ -528,11 +504,7 @@ describe('Read-Only Wallet Tests', () => {
       });
 
       it('should handle invalid JSON gracefully', async () => {
-        const filePath = path.join(
-          testWalletPath,
-          'ethereum',
-          'read-only.json',
-        );
+        const filePath = path.join(testWalletPath, 'ethereum', 'read-only.json');
         await fse.ensureDir(path.dirname(filePath));
         await fse.writeFile(filePath, 'invalid json');
 

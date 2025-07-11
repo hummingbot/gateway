@@ -7,8 +7,7 @@ import { PositionInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 // Using Fastify's native error handling
-const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) =>
-  `Invalid Solana address: ${address}`;
+const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
 
 // Schema definitions
 const GetPositionsOwnedRequest = Type.Object({
@@ -36,8 +35,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     '/positions-owned',
     {
       schema: {
-        description:
-          "Retrieve a list of positions owned by a user's wallet in a specific Meteora pool",
+        description: "Retrieve a list of positions owned by a user's wallet in a specific Meteora pool",
         tags: ['/connector/meteora'],
         querystring: {
           ...GetPositionsOwnedRequest,
@@ -62,18 +60,11 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
           new PublicKey(poolAddress);
           new PublicKey(walletAddress);
         } catch (error) {
-          const invalidAddress = error.message.includes(poolAddress)
-            ? 'pool'
-            : 'wallet';
-          throw fastify.httpErrors.badRequest(
-            INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress),
-          );
+          const invalidAddress = error.message.includes(poolAddress) ? 'pool' : 'wallet';
+          throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress));
         }
 
-        const positions = await meteora.getPositionsInPool(
-          poolAddress,
-          new PublicKey(walletAddress),
-        );
+        const positions = await meteora.getPositionsInPool(poolAddress, new PublicKey(walletAddress));
 
         return positions;
       } catch (e) {

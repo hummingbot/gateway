@@ -29,16 +29,11 @@ describe('Jupiter Routes Structure', () => {
       });
 
       const { connectors } = JSON.parse(response.body);
-      const jupiterConfig = connectors.find(
-        (c: any) => c.name === CONNECTOR_NAME,
-      );
+      const jupiterConfig = connectors.find((c: any) => c.name === CONNECTOR_NAME);
 
       expect(jupiterConfig).toBeDefined();
 
-      const connectorPath = path.join(
-        __dirname,
-        `../../../src/connectors/${CONNECTOR_NAME}`,
-      );
+      const connectorPath = path.join(__dirname, `../../../src/connectors/${CONNECTOR_NAME}`);
 
       // Check for router-routes if router is supported
       if (jupiterConfig.trading_types.includes('router')) {

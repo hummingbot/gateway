@@ -83,10 +83,7 @@ async function runTests() {
   });
   if (result2 && result2.messages[0]) {
     console.log('Role:', result2.messages[0].role);
-    console.log(
-      'Content:',
-      result2.messages[0].content.text.substring(0, 500) + '...',
-    );
+    console.log('Content:', result2.messages[0].content.text.substring(0, 500) + '...');
   }
 
   console.log('\n' + '='.repeat(80) + '\n');
@@ -103,10 +100,7 @@ async function runTests() {
   });
   if (result3 && result3.messages[0]) {
     console.log('Role:', result3.messages[0].role);
-    console.log(
-      'First 500 chars:',
-      result3.messages[0].content.text.substring(0, 500) + '...',
-    );
+    console.log('First 500 chars:', result3.messages[0].content.text.substring(0, 500) + '...');
   }
 
   console.log('\nElicitation test complete!');

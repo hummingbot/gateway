@@ -153,95 +153,47 @@ export const COINGECKO_TOOL_DEFINITIONS = [
       localization: z
         .boolean()
         .optional()
-        .describe(
-          'include all the localized languages in the response, default: true',
-        ),
-      tickers: z
-        .boolean()
-        .optional()
-        .describe('include tickers data, default: true'),
-      market_data: z
-        .boolean()
-        .optional()
-        .describe('include market data, default: true'),
-      community_data: z
-        .boolean()
-        .optional()
-        .describe('include community data, default: true'),
-      developer_data: z
-        .boolean()
-        .optional()
-        .describe('include developer data, default: true'),
-      sparkline: z
-        .boolean()
-        .optional()
-        .describe('include sparkline 7 days data, default: false'),
+        .describe('include all the localized languages in the response, default: true'),
+      tickers: z.boolean().optional().describe('include tickers data, default: true'),
+      market_data: z.boolean().optional().describe('include market data, default: true'),
+      community_data: z.boolean().optional().describe('include community data, default: true'),
+      developer_data: z.boolean().optional().describe('include developer data, default: true'),
+      sparkline: z.boolean().optional().describe('include sparkline 7 days data, default: false'),
     },
   },
   {
     name: 'coingecko_get_simple_price' as const,
-    description:
-      'Query the prices of one or more coins by using their unique Coin API IDs',
+    description: 'Query the prices of one or more coins by using their unique Coin API IDs',
     paramsSchema: {
-      ids: z
-        .string()
-        .describe("coins' IDs, comma-separated if querying more than 1 coin"),
-      vs_currencies: z
-        .string()
-        .describe(
-          'target currency of coins, comma-separated if querying more than 1 currency',
-        ),
-      include_market_cap: z
-        .boolean()
-        .optional()
-        .describe('include market capitalization, default: false'),
-      include_24hr_vol: z
-        .boolean()
-        .optional()
-        .describe('include 24hr volume, default: false'),
-      include_24hr_change: z
-        .boolean()
-        .optional()
-        .describe('include 24hr change, default: false'),
+      ids: z.string().describe("coins' IDs, comma-separated if querying more than 1 coin"),
+      vs_currencies: z.string().describe('target currency of coins, comma-separated if querying more than 1 currency'),
+      include_market_cap: z.boolean().optional().describe('include market capitalization, default: false'),
+      include_24hr_vol: z.boolean().optional().describe('include 24hr volume, default: false'),
+      include_24hr_change: z.boolean().optional().describe('include 24hr change, default: false'),
       include_last_updated_at: z
         .boolean()
         .optional()
         .describe('include last updated price time in UNIX, default: false'),
-      precision: z
-        .string()
-        .optional()
-        .describe('decimal place for currency price value'),
+      precision: z.string().optional().describe('decimal place for currency price value'),
     },
   },
   {
     name: 'coingecko_get_tokens_networks_onchain_pools' as const,
-    description:
-      'Query top pools based on the provided token contract address on a network',
+    description: 'Query top pools based on the provided token contract address on a network',
     paramsSchema: {
       network: z.string().describe('network ID'),
       token_address: z.string().describe('token contract address'),
-      include: z
-        .string()
-        .optional()
-        .describe(
-          'attributes to include, comma-separated if more than one to include',
-        ),
+      include: z.string().optional().describe('attributes to include, comma-separated if more than one to include'),
       page: z.number().optional().describe('page through results, default: 1'),
     },
   },
   {
     name: 'coingecko_get_address_networks_onchain_pools' as const,
-    description:
-      'Query the specific pool based on the provided network and pool address',
+    description: 'Query the specific pool based on the provided network and pool address',
     paramsSchema: {
       network: z.string().describe('network ID'),
       address: z.string().describe('pool contract address'),
-      include: z
-        .string()
-        .optional()
-        .describe(
-          'attributes to include, comma-separated if more than one to include',
-        ),
+      include: z.string().optional().describe('attributes to include, comma-separated if more than one to include'),
     },
   },
   {
@@ -250,19 +202,13 @@ export const COINGECKO_TOOL_DEFINITIONS = [
     paramsSchema: {
       network: z.string().describe('network ID'),
       query: z.string().describe('search query'),
-      include: z
-        .string()
-        .optional()
-        .describe(
-          'attributes to include, comma-separated if more than one to include',
-        ),
+      include: z.string().optional().describe('attributes to include, comma-separated if more than one to include'),
       page: z.number().optional().describe('page through results, default: 1'),
     },
   },
   {
     name: 'coingecko_get_address_networks_onchain_tokens' as const,
-    description:
-      'Query specific token data based on the provided token contract address on a network',
+    description: 'Query specific token data based on the provided token contract address on a network',
     paramsSchema: {
       network: z.string().describe('network ID'),
       address: z.string().describe('token contract address'),
@@ -280,15 +226,9 @@ export const COINGECKO_TOOL_DEFINITIONS = [
   },
   {
     name: 'coingecko_get_networks_onchain_trending_pools' as const,
-    description:
-      'Query all the trending pools across all networks on GeckoTerminal',
+    description: 'Query all the trending pools across all networks on GeckoTerminal',
     paramsSchema: {
-      include: z
-        .string()
-        .optional()
-        .describe(
-          'attributes to include, comma-separated if more than one to include',
-        ),
+      include: z.string().optional().describe('attributes to include, comma-separated if more than one to include'),
       page: z.number().optional().describe('page through results, default: 1'),
     },
   },
@@ -303,61 +243,32 @@ export const COINGECKO_TOOL_DEFINITIONS = [
   },
   {
     name: 'coingecko_get_coins_markets' as const,
-    description:
-      'Query all the supported coins with price, market cap, volume and market related data',
+    description: 'Query all the supported coins with price, market cap, volume and market related data',
     paramsSchema: {
-      vs_currency: z
-        .string()
-        .describe('target currency of coins and market data'),
-      ids: z
-        .string()
-        .optional()
-        .describe("coins' IDs, comma-separated if querying more than 1 coin"),
-      category: z
-        .string()
-        .optional()
-        .describe("filter based on coins' category"),
-      order: z
-        .string()
-        .optional()
-        .describe('sort result by field, default: market_cap_desc'),
-      per_page: z
-        .number()
-        .optional()
-        .describe('total results per page, default: 100'),
+      vs_currency: z.string().describe('target currency of coins and market data'),
+      ids: z.string().optional().describe("coins' IDs, comma-separated if querying more than 1 coin"),
+      category: z.string().optional().describe("filter based on coins' category"),
+      order: z.string().optional().describe('sort result by field, default: market_cap_desc'),
+      per_page: z.number().optional().describe('total results per page, default: 100'),
       page: z.number().optional().describe('page through results, default: 1'),
-      sparkline: z
-        .boolean()
-        .optional()
-        .describe('include sparkline 7 days data, default: false'),
-      price_change_percentage: z
-        .string()
-        .optional()
-        .describe('include price change percentage timeframe'),
+      sparkline: z.boolean().optional().describe('include sparkline 7 days data, default: false'),
+      price_change_percentage: z.string().optional().describe('include price change percentage timeframe'),
     },
   },
   {
     name: 'coingecko_get_search_trending' as const,
-    description:
-      'Query trending search coins, NFTs and categories on CoinGecko in the last 24 hours',
+    description: 'Query trending search coins, NFTs and categories on CoinGecko in the last 24 hours',
     paramsSchema: {},
   },
 ] as const;
 
 // Type exports for type safety
-export type ToolName =
-  | (typeof TOOL_DEFINITIONS)[number]['name']
-  | (typeof COINGECKO_TOOL_DEFINITIONS)[number]['name'];
+export type ToolName = (typeof TOOL_DEFINITIONS)[number]['name'] | (typeof COINGECKO_TOOL_DEFINITIONS)[number]['name'];
 
 // Combined tool definitions for type extraction
-type AllToolDefinitions =
-  | typeof TOOL_DEFINITIONS
-  | typeof COINGECKO_TOOL_DEFINITIONS;
+type AllToolDefinitions = typeof TOOL_DEFINITIONS | typeof COINGECKO_TOOL_DEFINITIONS;
 
-export type ToolDefinition<T extends ToolName> = Extract<
-  AllToolDefinitions[number],
-  { name: T }
->;
+export type ToolDefinition<T extends ToolName> = Extract<AllToolDefinitions[number], { name: T }>;
 
 // Helper type to extract params from schema
 type ZodifyRecord<T extends Record<string, z.ZodTypeAny>> = {

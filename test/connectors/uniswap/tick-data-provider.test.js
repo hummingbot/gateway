@@ -61,9 +61,7 @@ describe('Uniswap Tick Data Provider Tests', () => {
 
       // Verify the tick data provider functionality
       expect(typeof pool.tickDataProvider.getTick).toBe('function');
-      expect(
-        typeof pool.tickDataProvider.nextInitializedTickWithinOneWord,
-      ).toBe('function');
+      expect(typeof pool.tickDataProvider.nextInitializedTickWithinOneWord).toBe('function');
     });
 
     test('tick data provider returns the expected formats', async () => {
@@ -86,22 +84,20 @@ describe('Uniswap Tick Data Provider Tests', () => {
       expect(tickInfo).toHaveProperty('liquidityGross');
 
       // Test going up (lte = false)
-      const [nextTickUp, initializedUp] =
-        await pool.tickDataProvider.nextInitializedTickWithinOneWord(
-          testTick,
-          false,
-          pool.tickSpacing,
-        );
+      const [nextTickUp, initializedUp] = await pool.tickDataProvider.nextInitializedTickWithinOneWord(
+        testTick,
+        false,
+        pool.tickSpacing,
+      );
       expect(nextTickUp).toBe(testTick + pool.tickSpacing);
       expect(initializedUp).toBe(false);
 
       // Test going down (lte = true)
-      const [nextTickDown, initializedDown] =
-        await pool.tickDataProvider.nextInitializedTickWithinOneWord(
-          testTick,
-          true,
-          pool.tickSpacing,
-        );
+      const [nextTickDown, initializedDown] = await pool.tickDataProvider.nextInitializedTickWithinOneWord(
+        testTick,
+        true,
+        pool.tickSpacing,
+      );
       expect(nextTickDown).toBe(testTick - pool.tickSpacing);
       expect(initializedDown).toBe(false);
     });

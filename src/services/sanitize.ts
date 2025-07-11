@@ -27,9 +27,6 @@ export function sanitizeString(input: string): string {
  * @param userInput The user input to include
  * @returns The sanitized error message
  */
-export function sanitizeErrorMessage(
-  template: string,
-  userInput: string,
-): string {
+export function sanitizeErrorMessage(template: string, userInput: string): string {
   return template.replace('{}', sanitizeString(userInput));
 }

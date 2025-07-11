@@ -124,16 +124,13 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -172,16 +169,13 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.get(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`,
-          {
-            params: {
-              network: NETWORK,
-              baseToken: BASE_TOKEN,
-              quoteToken: 'UNKNOWN',
-            },
+        axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`, {
+          params: {
+            network: NETWORK,
+            baseToken: BASE_TOKEN,
+            quoteToken: 'UNKNOWN',
           },
-        ),
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 404,
@@ -205,18 +199,15 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'SELL',
-            amount: 1.0,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'SELL',
+          amount: 1.0,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -264,18 +255,15 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'BUY',
-            amount: 1.0,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'BUY',
+          amount: 1.0,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -302,18 +290,15 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.get(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`,
-          {
-            params: {
-              network: NETWORK,
-              baseToken: BASE_TOKEN,
-              quoteToken: QUOTE_TOKEN,
-              side: 'SELL',
-              amount: 1000000.0, // Very large amount
-            },
+        axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`, {
+          params: {
+            network: NETWORK,
+            baseToken: BASE_TOKEN,
+            quoteToken: QUOTE_TOKEN,
+            side: 'SELL',
+            amount: 1000000.0, // Very large amount
           },
-        ),
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 400,
@@ -338,17 +323,14 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`,
-        {
-          network: NETWORK,
-          baseToken: BASE_TOKEN,
-          quoteToken: QUOTE_TOKEN,
-          side: 'SELL',
-          amount: 1.0,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`, {
+        network: NETWORK,
+        baseToken: BASE_TOKEN,
+        quoteToken: QUOTE_TOKEN,
+        side: 'SELL',
+        amount: 1.0,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -376,17 +358,14 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.post(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`,
-          {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'SELL',
-            amount: 1000000.0,
-            walletAddress: TEST_WALLET,
-          },
-        ),
+        axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`, {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'SELL',
+          amount: 1000000.0,
+          walletAddress: TEST_WALLET,
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 500,
@@ -419,17 +398,14 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-liquidity`,
-        {
-          params: {
-            network: NETWORK,
-            poolAddress: TEST_POOL,
-            baseTokenAmount: 1.0,
-            quoteTokenAmount: 167.5,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-liquidity`, {
+        params: {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          baseTokenAmount: 1.0,
+          quoteTokenAmount: 167.5,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -458,16 +434,13 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`,
-        {
-          params: {
-            network: NETWORK,
-            poolAddress: TEST_POOL,
-            lpTokenAmount: 100.5,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`, {
+        params: {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          lpTokenAmount: 100.5,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -479,8 +452,7 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
   describe('Add Liquidity Endpoint', () => {
     test('returns successful liquidity addition', async () => {
       const mockResponse = {
-        signature:
-          '2ZE6KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpS3Yw',
+        signature: '2ZE6KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpS3Yw',
         baseTokenAmount: 1.0,
         quoteTokenAmount: 167.5,
         lpTokenAmount: 12.94,
@@ -495,16 +467,13 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`,
-        {
-          network: NETWORK,
-          poolAddress: TEST_POOL,
-          baseTokenAmount: 1.0,
-          quoteTokenAmount: 167.5,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`, {
+        network: NETWORK,
+        poolAddress: TEST_POOL,
+        baseTokenAmount: 1.0,
+        quoteTokenAmount: 167.5,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -529,16 +498,13 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.post(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`,
-          {
-            network: NETWORK,
-            poolAddress: TEST_POOL,
-            baseTokenAmount: 10000.0, // Large amount
-            quoteTokenAmount: 1675000.0,
-            walletAddress: TEST_WALLET,
-          },
-        ),
+        axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`, {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          baseTokenAmount: 10000.0, // Large amount
+          quoteTokenAmount: 1675000.0,
+          walletAddress: TEST_WALLET,
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 400,
@@ -554,8 +520,7 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
   describe('Remove Liquidity Endpoint', () => {
     test('returns successful liquidity removal', async () => {
       const mockResponse = {
-        signature:
-          '3aF7KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpT4Zx',
+        signature: '3aF7KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpT4Zx',
         baseTokenAmount: 0.95,
         quoteTokenAmount: 159.125,
         lpTokenAmount: 12.94,
@@ -570,15 +535,12 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`,
-        {
-          network: NETWORK,
-          poolAddress: TEST_POOL,
-          lpTokenAmount: 12.94,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`, {
+        network: NETWORK,
+        poolAddress: TEST_POOL,
+        lpTokenAmount: 12.94,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -603,15 +565,12 @@ describe('Raydium AMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.post(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`,
-          {
-            network: NETWORK,
-            poolAddress: TEST_POOL,
-            lpTokenAmount: 10000.0, // Large amount
-            walletAddress: TEST_WALLET,
-          },
-        ),
+        axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`, {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          lpTokenAmount: 10000.0, // Large amount
+          walletAddress: TEST_WALLET,
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 400,

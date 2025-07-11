@@ -11,10 +11,7 @@ export interface ResourceConfig {
 }
 
 // Resource handler type
-type ResourceHandler = (
-  uri: string,
-  context: ResourceContext,
-) => Promise<string>;
+type ResourceHandler = (uri: string, context: ResourceContext) => Promise<string>;
 
 // Context for resource handlers
 interface ResourceContext {
@@ -153,8 +150,7 @@ export const RESOURCES: ResourceConfig[] = [
     name: 'gateway-api-endpoints',
     uri: 'gateway://gateway-api-endpoints.json',
     mimeType: 'application/json',
-    description:
-      'Complete list of Gateway API endpoints for chains and connectors',
+    description: 'Complete list of Gateway API endpoints for chains and connectors',
     handler: jsonResourceHandler,
   },
   {
@@ -181,9 +177,7 @@ export const RESOURCES: ResourceConfig[] = [
 ];
 
 // Dynamic resource list handler - discovers config files
-export async function listDynamicResources(
-  context: ResourceContext,
-): Promise<ResourceConfig[]> {
+export async function listDynamicResources(context: ResourceContext): Promise<ResourceConfig[]> {
   const dynamicResources: ResourceConfig[] = [];
 
   try {
@@ -213,18 +207,13 @@ export async function listDynamicResources(
 }
 
 // Combined resource list
-export async function getAllResources(
-  context: ResourceContext,
-): Promise<ResourceConfig[]> {
+export async function getAllResources(context: ResourceContext): Promise<ResourceConfig[]> {
   const dynamicResources = await listDynamicResources(context);
   return [...RESOURCES, ...dynamicResources];
 }
 
 // Resource handler executor
-export async function handleResource(
-  uri: string,
-  context: ResourceContext,
-): Promise<string> {
+export async function handleResource(uri: string, context: ResourceContext): Promise<string> {
   const allResources = await getAllResources(context);
   const resource = allResources.find((r) => r.uri === uri);
 

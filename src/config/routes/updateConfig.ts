@@ -57,12 +57,9 @@ export const updateConfigRoute: FastifyPluginAsync = async (fastify) => {
 
       try {
         // Validate namespace exists
-        const namespaceConfig =
-          ConfigManagerV2.getInstance().getNamespace(namespace);
+        const namespaceConfig = ConfigManagerV2.getInstance().getNamespace(namespace);
         if (!namespaceConfig) {
-          throw fastify.httpErrors.notFound(
-            `Namespace '${namespace}' not found`,
-          );
+          throw fastify.httpErrors.notFound(`Namespace '${namespace}' not found`);
         }
 
         // Build the full config path
@@ -98,9 +95,7 @@ export const updateConfigRoute: FastifyPluginAsync = async (fastify) => {
           throw error;
         }
         // Otherwise, throw a generic internal server error
-        throw fastify.httpErrors.internalServerError(
-          'Failed to update configuration',
-        );
+        throw fastify.httpErrors.internalServerError('Failed to update configuration');
       }
     },
   );

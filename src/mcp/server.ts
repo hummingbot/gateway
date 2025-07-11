@@ -12,10 +12,7 @@ import { z } from 'zod';
 import { PROMPT_DEFINITIONS } from './promptDefinitions';
 import { PROMPT_HANDLERS } from './prompts';
 import { getAllResources, handleResource } from './resources';
-import {
-  TOOL_DEFINITIONS,
-  COINGECKO_TOOL_DEFINITIONS,
-} from './toolDefinitions';
+import { TOOL_DEFINITIONS, COINGECKO_TOOL_DEFINITIONS } from './toolDefinitions';
 import { TOOL_HANDLERS } from './tools';
 import { GatewayApiClient } from './utils/api-client';
 import { ToolRegistry } from './utils/tool-registry';
@@ -30,13 +27,7 @@ export interface ServerContext {
 }
 
 // Configure and set up the MCP server
-export async function configureServer({
-  server,
-  context,
-}: {
-  server: Server;
-  context: ServerContext;
-}) {
+export async function configureServer({ server, context }: { server: Server; context: ServerContext }) {
   // Register Gateway tools
   for (const toolDef of TOOL_DEFINITIONS) {
     const handler = TOOL_HANDLERS[toolDef.name];
@@ -140,16 +131,14 @@ export async function configureServer({
       prompts: PROMPT_DEFINITIONS.map((def) => ({
         name: def.name,
         description: def.description,
-        arguments: Object.entries(def.paramsSchema || {}).map(
-          ([key, schema]) => {
-            const zodSchema = schema as z.ZodTypeAny;
-            return {
-              name: key,
-              description: zodSchema.description || key,
-              required: !zodSchema.isOptional(),
-            };
-          },
-        ),
+        arguments: Object.entries(def.paramsSchema || {}).map(([key, schema]) => {
+          const zodSchema = schema as z.ZodTypeAny;
+          return {
+            name: key,
+            description: zodSchema.description || key,
+            required: !zodSchema.isOptional(),
+          };
+        }),
       })),
     };
   });
@@ -235,9 +224,7 @@ export async function configureServer({
     }
 
     // Now initialize the CoinGecko subprocess which will update the handlers
-    const { registerCoinGeckoTools } = await import(
-      './utils/coingecko-gateway'
-    );
+    const { registerCoinGeckoTools } = await import('./utils/coingecko-gateway');
     await registerCoinGeckoTools(server, context.apiClient);
   }
 

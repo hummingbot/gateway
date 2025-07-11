@@ -8,10 +8,7 @@ export interface ConnectorTestConfig {
   fastify: FastifyInstance;
 }
 
-export async function getConnectorConfig(
-  fastify: FastifyInstance,
-  connectorName: string,
-) {
+export async function getConnectorConfig(fastify: FastifyInstance, connectorName: string) {
   const response = await fastify.inject({
     method: 'GET',
     url: '/connectors',
@@ -21,14 +18,8 @@ export async function getConnectorConfig(
   return connectors.find((c: any) => c.name === connectorName);
 }
 
-export function validateConnectorFolderStructure(
-  connectorName: string,
-  tradingTypes: string[],
-) {
-  const connectorPath = path.join(
-    __dirname,
-    `../../src/connectors/${connectorName}`,
-  );
+export function validateConnectorFolderStructure(connectorName: string, tradingTypes: string[]) {
+  const connectorPath = path.join(__dirname, `../../src/connectors/${connectorName}`);
 
   // Check for appropriate folders based on trading types
   if (tradingTypes.includes('swap')) {
@@ -36,9 +27,7 @@ export function validateConnectorFolderStructure(
     expect(fs.existsSync(swapRoutesPath)).toBe(true);
 
     const files = fs.readdirSync(swapRoutesPath);
-    expect(files.some((f) => f.includes('Swap') || f.includes('swap'))).toBe(
-      true,
-    );
+    expect(files.some((f) => f.includes('Swap') || f.includes('swap'))).toBe(true);
   }
 
   if (tradingTypes.includes('amm')) {
@@ -56,11 +45,7 @@ export function validateConnectorFolderStructure(
   expect(fs.existsSync(oldRoutesPath)).toBe(false);
 }
 
-export async function testConnectorRoutes(
-  config: ConnectorTestConfig,
-  tradingTypes: string[],
-  connectorInfo?: any,
-) {
+export async function testConnectorRoutes(config: ConnectorTestConfig, tradingTypes: string[], connectorInfo?: any) {
   const { name, fastify } = config;
 
   // Get proper chain and network values

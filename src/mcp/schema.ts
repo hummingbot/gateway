@@ -15,38 +15,22 @@ import { z } from 'zod';
 // - 'solana' for Solana networks
 export const ParamChain = z
   .enum(['ethereum', 'solana'])
-  .describe(
-    'The blockchain to use (ethereum for all EVM chains, solana for Solana)',
-  );
+  .describe('The blockchain to use (ethereum for all EVM chains, solana for Solana)');
 
 // Network schemas - these match the actual networks supported by each chain
 // Sources:
 // - Ethereum networks: src/connectors/uniswap/uniswap.config.ts
 // - Solana networks: src/connectors/jupiter/jupiter.config.ts
 export const ParamEthereumNetwork = z
-  .enum([
-    'mainnet',
-    'sepolia',
-    'arbitrum',
-    'avalanche',
-    'base',
-    'bsc',
-    'celo',
-    'optimism',
-    'polygon',
-  ])
+  .enum(['mainnet', 'sepolia', 'arbitrum', 'avalanche', 'base', 'bsc', 'celo', 'optimism', 'polygon'])
   .describe('Network for Ethereum/EVM chains');
 
-export const ParamSolanaNetwork = z
-  .enum(['mainnet-beta', 'devnet'])
-  .describe('Network for Solana');
+export const ParamSolanaNetwork = z.enum(['mainnet-beta', 'devnet']).describe('Network for Solana');
 
 // Union network type that accepts both
 export const ParamNetwork = z
   .union([ParamEthereumNetwork, ParamSolanaNetwork])
-  .describe(
-    'The specific network for the chain (e.g., mainnet, arbitrum for Ethereum, or mainnet-beta for Solana)',
-  );
+  .describe('The specific network for the chain (e.g., mainnet, arbitrum for Ethereum, or mainnet-beta for Solana)');
 
 // Connector schemas - these match the actual DEX connectors in Gateway
 // Source: src/connectors/connector.routes.ts
@@ -59,16 +43,12 @@ export const ParamConnector = z
 export const ParamAddress = z
   .string()
   .trim()
-  .describe(
-    'A wallet address (Ethereum format: 0x... or Solana format: base58)',
-  );
+  .describe('A wallet address (Ethereum format: 0x... or Solana format: base58)');
 
 export const ParamTokenAddress = z
   .string()
   .trim()
-  .describe(
-    'The contract address of a token (0x... for EVM chains, base58 for Solana)',
-  );
+  .describe('The contract address of a token (0x... for EVM chains, base58 for Solana)');
 
 // Token schemas
 export const ParamTokenSymbol = z
@@ -77,10 +57,7 @@ export const ParamTokenSymbol = z
   .toUpperCase()
   .describe('The symbol of a token (e.g., ETH, USDC, SOL)');
 
-export const ParamAmount = z
-  .string()
-  .trim()
-  .describe('The amount of tokens (as a string to preserve precision)');
+export const ParamAmount = z.string().trim().describe('The amount of tokens (as a string to preserve precision)');
 
 // Swap parameters
 // Note: Gateway has comprehensive trading schemas in src/schemas/router-schema.ts
@@ -92,21 +69,14 @@ export const ParamSlippage = z
   .optional()
   .describe('Maximum acceptable slippage percentage (0-100). Defaults to 1%');
 
-export const ParamMaxFeePerGas = z
-  .string()
-  .optional()
-  .describe('Maximum fee per gas in wei (EVM chains only)');
+export const ParamMaxFeePerGas = z.string().optional().describe('Maximum fee per gas in wei (EVM chains only)');
 
 export const ParamMaxPriorityFeePerGas = z
   .string()
   .optional()
   .describe('Maximum priority fee per gas in wei (EVM chains only)');
 
-export const ParamNonce = z
-  .number()
-  .int()
-  .optional()
-  .describe('Transaction nonce (EVM chains only)');
+export const ParamNonce = z.number().int().optional().describe('Transaction nonce (EVM chains only)');
 
 // Configuration schemas
 export const ParamConfigPath = z
@@ -117,19 +87,12 @@ export const ParamConfigPath = z
 export const ParamConfigKey = z
   .string()
   .trim()
-  .describe(
-    'The configuration key to update (dot notation supported, e.g., "server.port")',
-  );
+  .describe('The configuration key to update (dot notation supported, e.g., "server.port")');
 
-export const ParamConfigValue = z
-  .any()
-  .describe('The new value for the configuration key');
+export const ParamConfigValue = z.any().describe('The new value for the configuration key');
 
 // Transaction schemas
-export const ParamTxHash = z
-  .string()
-  .trim()
-  .describe('Transaction hash to query');
+export const ParamTxHash = z.string().trim().describe('Transaction hash to query');
 
 export const ParamSwapSide = z
   .enum(['BUY', 'SELL'])

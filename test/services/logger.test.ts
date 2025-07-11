@@ -15,8 +15,7 @@ describe('Test logger', () => {
   it('updateLoggerToStdout works', (done) => {
     ConfigManagerV2.getInstance().set('server.logToStdOut', true);
     updateLoggerToStdout();
-    const ofTypeConsole = (element: any) =>
-      element instanceof winston.transports.Console;
+    const ofTypeConsole = (element: any) => element instanceof winston.transports.Console;
     expect(logger.transports.some(ofTypeConsole)).toEqual(true);
     ConfigManagerV2.getInstance().set('server.logToStdOut', false);
     updateLoggerToStdout();

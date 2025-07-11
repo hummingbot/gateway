@@ -2,12 +2,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
-import {
-  TokenListQuery,
-  TokenListQuerySchema,
-  TokenListResponse,
-  TokenListResponseSchema,
-} from '../schemas';
+import { TokenListQuery, TokenListQuerySchema, TokenListResponse, TokenListResponseSchema } from '../schemas';
 
 export const listTokensRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{ Querystring: TokenListQuery; Reply: TokenListResponse }>(

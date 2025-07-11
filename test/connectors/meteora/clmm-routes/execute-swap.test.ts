@@ -10,9 +10,7 @@ jest.mock('../../../../src/connectors/meteora/meteora');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { executeSwapRoute } = await import(
-    '../../../../src/connectors/meteora/clmm-routes/executeSwap'
-  );
+  const { executeSwapRoute } = await import('../../../../src/connectors/meteora/clmm-routes/executeSwap');
   await server.register(executeSwapRoute);
   return server;
 };
@@ -83,9 +81,7 @@ describe('POST /execute-swap', () => {
         .mockResolvedValueOnce(mockUSDC)
         .mockResolvedValueOnce({ ...mockSOL }) // For balance extraction
         .mockResolvedValueOnce({ ...mockUSDC }), // For balance extraction
-      findAssociatedTokenAddress: jest
-        .fn()
-        .mockResolvedValue('mock-ata-address'),
+      findAssociatedTokenAddress: jest.fn().mockResolvedValue('mock-ata-address'),
       getTxData: jest.fn().mockResolvedValue({
         blockTime: Date.now() / 1000,
         meta: { fee: 5000 },
@@ -101,9 +97,7 @@ describe('POST /execute-swap', () => {
       }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
-    (Solana.getWalletAddressExample as jest.Mock).mockResolvedValue(
-      '11111111111111111111111111111111',
-    );
+    (Solana.getWalletAddressExample as jest.Mock).mockResolvedValue('11111111111111111111111111111111');
 
     const mockMeteoraInstance = {
       getDlmmPool: jest.fn().mockResolvedValue(mockDlmmPool),
@@ -155,9 +149,7 @@ describe('POST /execute-swap', () => {
         .mockResolvedValueOnce(mockUSDC)
         .mockResolvedValueOnce({ ...mockSOL }) // For balance extraction
         .mockResolvedValueOnce({ ...mockUSDC }), // For balance extraction
-      findAssociatedTokenAddress: jest
-        .fn()
-        .mockResolvedValue('mock-ata-address'),
+      findAssociatedTokenAddress: jest.fn().mockResolvedValue('mock-ata-address'),
       getTxData: jest.fn().mockResolvedValue({
         blockTime: Date.now() / 1000,
         meta: { fee: 5000 },
@@ -214,10 +206,7 @@ describe('POST /execute-swap', () => {
   it('should return 400 if token not found', async () => {
     const mockSolanaInstance = {
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      getToken: jest
-        .fn()
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(mockUSDC),
+      getToken: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(mockUSDC),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 

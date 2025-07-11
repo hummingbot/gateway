@@ -138,12 +138,7 @@ describe('Pool Routes Tests', () => {
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual(mockPools);
-      expect(mockPoolService.listPools).toHaveBeenCalledWith(
-        'raydium',
-        'mainnet-beta',
-        undefined,
-        undefined,
-      );
+      expect(mockPoolService.listPools).toHaveBeenCalledWith('raydium', 'mainnet-beta', undefined, undefined);
     });
 
     it('should filter pools by type', async () => {
@@ -166,12 +161,7 @@ describe('Pool Routes Tests', () => {
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual(mockPools);
-      expect(mockPoolService.listPools).toHaveBeenCalledWith(
-        'raydium',
-        'mainnet-beta',
-        'clmm',
-        undefined,
-      );
+      expect(mockPoolService.listPools).toHaveBeenCalledWith('raydium', 'mainnet-beta', 'clmm', undefined);
     });
 
     it('should search pools by token symbol', async () => {
@@ -194,18 +184,11 @@ describe('Pool Routes Tests', () => {
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual(mockPools);
-      expect(mockPoolService.listPools).toHaveBeenCalledWith(
-        'raydium',
-        undefined,
-        undefined,
-        'SOL',
-      );
+      expect(mockPoolService.listPools).toHaveBeenCalledWith('raydium', undefined, undefined, 'SOL');
     });
 
     it('should return 400 for invalid parameters', async () => {
-      mockPoolService.listPools.mockRejectedValue(
-        new Error('Invalid connector name'),
-      );
+      mockPoolService.listPools.mockRejectedValue(new Error('Invalid connector name'));
 
       const response = await fastify.inject({
         method: 'GET',
@@ -236,13 +219,7 @@ describe('Pool Routes Tests', () => {
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual(mockPool);
-      expect(mockPoolService.getPool).toHaveBeenCalledWith(
-        'raydium',
-        'mainnet-beta',
-        'amm',
-        'SOL',
-        'USDC',
-      );
+      expect(mockPoolService.getPool).toHaveBeenCalledWith('raydium', 'mainnet-beta', 'amm', 'SOL', 'USDC');
     });
 
     it('should return 404 if pool not found', async () => {
@@ -265,9 +242,7 @@ describe('Pool Routes Tests', () => {
 
       expect(response.statusCode).toBe(400);
       expect(JSON.parse(response.payload)).toHaveProperty('message');
-      expect(JSON.parse(response.payload).message).toContain(
-        'Invalid trading pair format',
-      );
+      expect(JSON.parse(response.payload).message).toContain('Invalid trading pair format');
     });
   });
 
@@ -290,9 +265,7 @@ describe('Pool Routes Tests', () => {
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toHaveProperty('message');
-      expect(JSON.parse(response.payload).message).toContain(
-        'Pool WIF-SOL added successfully',
-      );
+      expect(JSON.parse(response.payload).message).toContain('Pool WIF-SOL added successfully');
 
       expect(mockPoolService.addPool).toHaveBeenCalledWith('raydium', {
         type: 'amm',
@@ -304,9 +277,7 @@ describe('Pool Routes Tests', () => {
     });
 
     it('should return 400 for duplicate pool', async () => {
-      mockPoolService.addPool.mockRejectedValue(
-        new Error('Pool with address already exists'),
-      );
+      mockPoolService.addPool.mockRejectedValue(new Error('Pool with address already exists'));
 
       const response = await fastify.inject({
         method: 'POST',
@@ -351,9 +322,7 @@ describe('Pool Routes Tests', () => {
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toHaveProperty('message');
-      expect(JSON.parse(response.payload).message).toContain(
-        'Pool with address',
-      );
+      expect(JSON.parse(response.payload).message).toContain('Pool with address');
 
       expect(mockPoolService.removePool).toHaveBeenCalledWith(
         'raydium',
@@ -364,9 +333,7 @@ describe('Pool Routes Tests', () => {
     });
 
     it('should return 404 if pool not found', async () => {
-      mockPoolService.removePool.mockRejectedValue(
-        new Error('Pool with address NonExistent not found'),
-      );
+      mockPoolService.removePool.mockRejectedValue(new Error('Pool with address NonExistent not found'));
 
       const response = await fastify.inject({
         method: 'DELETE',

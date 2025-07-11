@@ -8,10 +8,9 @@ import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-c
 import { getReadOnlyWalletAddresses } from '../../src/wallet/utils';
 
 // Ensure the mock is properly typed
-const mockedGetReadOnlyWalletAddresses =
-  getReadOnlyWalletAddresses as jest.MockedFunction<
-    typeof getReadOnlyWalletAddresses
-  >;
+const mockedGetReadOnlyWalletAddresses = getReadOnlyWalletAddresses as jest.MockedFunction<
+  typeof getReadOnlyWalletAddresses
+>;
 import { patch, unpatch } from '../services/patch';
 
 // Mock dependencies
@@ -46,17 +45,13 @@ describe('Read-Only Wallet Integration Tests', () => {
       const isReadOnly = await ethereum.isReadOnlyWallet(testAddress);
       expect(isReadOnly).toBe(true);
 
-      const isNotReadOnly = await ethereum.isReadOnlyWallet(
-        '0x0000000000000000000000000000000000000000',
-      );
+      const isNotReadOnly = await ethereum.isReadOnlyWallet('0x0000000000000000000000000000000000000000');
       expect(isNotReadOnly).toBe(false);
     });
 
     it('should get native balance for read-only wallet', async () => {
       // Mock provider.getBalance
-      ethereum.provider.getBalance = jest
-        .fn()
-        .mockResolvedValue(ethers.BigNumber.from('1000000000000000000'));
+      ethereum.provider.getBalance = jest.fn().mockResolvedValue(ethers.BigNumber.from('1000000000000000000'));
 
       const balance = await ethereum.getNativeBalanceByAddress(testAddress);
       expect(balance.value.toString()).toBe('1000000000000000000');
@@ -66,17 +61,10 @@ describe('Read-Only Wallet Integration Tests', () => {
     it('should get ERC20 balance for read-only wallet', async () => {
       // Mock contract
       const mockContract = {
-        balanceOf: jest
-          .fn()
-          .mockResolvedValue(ethers.BigNumber.from('1000000')),
+        balanceOf: jest.fn().mockResolvedValue(ethers.BigNumber.from('1000000')),
       };
 
-      const balance = await ethereum.getERC20BalanceByAddress(
-        mockContract as any,
-        testAddress,
-        6,
-        5000,
-      );
+      const balance = await ethereum.getERC20BalanceByAddress(mockContract as any, testAddress, 6, 5000);
 
       expect(mockContract.balanceOf).toHaveBeenCalledWith(testAddress);
       expect(balance.value.toString()).toBe('1000000');
@@ -91,12 +79,7 @@ describe('Read-Only Wallet Integration Tests', () => {
         allowance: jest.fn().mockResolvedValue(ethers.BigNumber.from('500000')),
       };
 
-      const allowance = await ethereum.getERC20AllowanceByAddress(
-        mockContract as any,
-        testAddress,
-        spender,
-        6,
-      );
+      const allowance = await ethereum.getERC20AllowanceByAddress(mockContract as any, testAddress, spender, 6);
 
       expect(mockContract.allowance).toHaveBeenCalledWith(testAddress, spender);
       expect(allowance.value.toString()).toBe('500000');
@@ -125,9 +108,7 @@ describe('Read-Only Wallet Integration Tests', () => {
       const isReadOnly = await solana.isReadOnlyWallet(testAddress);
       expect(isReadOnly).toBe(true);
 
-      const isNotReadOnly = await solana.isReadOnlyWallet(
-        '11111111111111111111111111111111',
-      );
+      const isNotReadOnly = await solana.isReadOnlyWallet('11111111111111111111111111111111');
       expect(isNotReadOnly).toBe(false);
     });
 

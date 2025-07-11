@@ -34,9 +34,7 @@ async function addLiquidity(
   const position = await raydium.getClmmPosition(positionAddress);
   if (!position) throw new Error('Position not found');
 
-  const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(
-    positionInfo.poolAddress,
-  );
+  const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(positionInfo.poolAddress);
   // const clmmPool = await raydium.getClmmPoolfromRPC(positionInfo.poolAddress);
 
   const baseToken = await solana.getToken(poolInfo.mintA.address);
@@ -61,47 +59,35 @@ async function addLiquidity(
   // Use provided priority fee or default to 0
   const finalPriorityFeePerCU = priorityFeePerCU || 0;
 
-  const { transaction } =
-    await raydium.raydiumSDK.clmm.increasePositionFromBase({
-      poolInfo,
-      ownerPosition: position,
-      ownerInfo: { useSOLBalance: true },
-      base: quotePositionResponse.baseLimited ? 'MintA' : 'MintB',
-      baseAmount: quotePositionResponse.baseLimited
-        ? new BN(
-            quotePositionResponse.baseTokenAmount * 10 ** baseToken.decimals,
-          )
-        : new BN(
-            quotePositionResponse.quoteTokenAmount * 10 ** quoteToken.decimals,
-          ),
-      otherAmountMax: quotePositionResponse.baseLimited
-        ? new BN(
-            quotePositionResponse.quoteTokenAmountMax *
-              10 ** quoteToken.decimals,
-          )
-        : new BN(
-            quotePositionResponse.baseTokenAmountMax * 10 ** baseToken.decimals,
-          ),
-      txVersion: TxVersion.V0,
-      computeBudgetConfig: {
-        units: COMPUTE_UNITS,
-        microLamports: finalPriorityFeePerCU,
-      },
-    });
+  const { transaction } = await raydium.raydiumSDK.clmm.increasePositionFromBase({
+    poolInfo,
+    ownerPosition: position,
+    ownerInfo: { useSOLBalance: true },
+    base: quotePositionResponse.baseLimited ? 'MintA' : 'MintB',
+    baseAmount: quotePositionResponse.baseLimited
+      ? new BN(quotePositionResponse.baseTokenAmount * 10 ** baseToken.decimals)
+      : new BN(quotePositionResponse.quoteTokenAmount * 10 ** quoteToken.decimals),
+    otherAmountMax: quotePositionResponse.baseLimited
+      ? new BN(quotePositionResponse.quoteTokenAmountMax * 10 ** quoteToken.decimals)
+      : new BN(quotePositionResponse.baseTokenAmountMax * 10 ** baseToken.decimals),
+    txVersion: TxVersion.V0,
+    computeBudgetConfig: {
+      units: COMPUTE_UNITS,
+      microLamports: finalPriorityFeePerCU,
+    },
+  });
 
   transaction.sign([wallet]);
   await solana.simulateTransaction(transaction);
 
-  const { confirmed, signature, txData } =
-    await solana.sendAndConfirmRawTransaction(transaction);
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
   if (confirmed && txData) {
     const totalFee = txData.meta.fee;
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-      signature,
-      wallet.publicKey.toBase58(),
-      [baseToken.address, quoteToken.address],
-    );
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+      baseToken.address,
+      quoteToken.address,
+    ]);
 
     const baseTokenBalanceChange = balanceChanges[0];
     const quoteTokenBalanceChange = balanceChanges[1];

@@ -37,15 +37,12 @@ describe('Raydium SDK v0.1.141-alpha Breaking Changes Documentation', () => {
       expect(percent.toDecimal).toBeUndefined();
 
       // Must calculate decimal value manually
-      const decimal =
-        percent.numerator.toNumber() / percent.denominator.toNumber();
+      const decimal = percent.numerator.toNumber() / percent.denominator.toNumber();
       expect(decimal).toBe(0.01);
 
       console.log('Breaking change: Percent.toDecimal() removed');
       console.log('  Old: percent.toDecimal()');
-      console.log(
-        '  New: percent.numerator.toNumber() / percent.denominator.toNumber()',
-      );
+      console.log('  New: percent.numerator.toNumber() / percent.denominator.toNumber()');
     });
 
     test('Percent arithmetic operations', () => {
@@ -71,9 +68,7 @@ describe('Raydium SDK v0.1.141-alpha Breaking Changes Documentation', () => {
 
       expect(Object.keys(changes).length).toBe(3);
 
-      console.log(
-        'Breaking change: Token constructor requires PublicKey instances',
-      );
+      console.log('Breaking change: Token constructor requires PublicKey instances');
       console.log('  Old: address as string');
       console.log('  New: address as PublicKey instance');
     });
@@ -91,10 +86,8 @@ describe('Raydium SDK v0.1.141-alpha Breaking Changes Documentation', () => {
   describe('CurveCalculator Changes', () => {
     test('swap function signature has changed', () => {
       // CurveCalculator.swap now requires different parameters
-      const oldSignature =
-        'swap(amountIn, baseReserve, quoteReserve, swapDirection)';
-      const newSignature =
-        'swap(amountIn, baseReserve, quoteReserve, tradeFeeRate)';
+      const oldSignature = 'swap(amountIn, baseReserve, quoteReserve, swapDirection)';
+      const newSignature = 'swap(amountIn, baseReserve, quoteReserve, tradeFeeRate)';
 
       expect(oldSignature).not.toBe(newSignature);
 
@@ -121,14 +114,7 @@ describe('Raydium SDK v0.1.141-alpha Breaking Changes Documentation', () => {
   describe('Liquidity Method Parameter Changes', () => {
     test('documents addLiquidity parameter changes', () => {
       // This is a documentation test - actual SDK methods require initialized instance
-      const oldParams = [
-        'poolInfo',
-        'poolKeys',
-        'amountInA',
-        'amountInB',
-        'fixedSide',
-        'txVersion',
-      ];
+      const oldParams = ['poolInfo', 'poolKeys', 'amountInA', 'amountInB', 'fixedSide', 'txVersion'];
 
       const newParams = [
         'poolInfo',
@@ -145,9 +131,7 @@ describe('Raydium SDK v0.1.141-alpha Breaking Changes Documentation', () => {
       expect(newParams).toContain('otherAmountMin');
       expect(newParams).toContain('computeBudgetConfig');
 
-      console.log(
-        'Breaking change: addLiquidity requires otherAmountMin parameter',
-      );
+      console.log('Breaking change: addLiquidity requires otherAmountMin parameter');
     });
 
     test('documents removeLiquidity parameter changes', () => {
@@ -161,9 +145,7 @@ describe('Raydium SDK v0.1.141-alpha Breaking Changes Documentation', () => {
 
       console.log('Breaking change: removeLiquidity parameter types changed');
       console.log('  lpAmount: renamed from lpTokenAmount');
-      console.log(
-        '  baseAmountMin/quoteAmountMin: now use BN instead of TokenAmount',
-      );
+      console.log('  baseAmountMin/quoteAmountMin: now use BN instead of TokenAmount');
     });
   });
 

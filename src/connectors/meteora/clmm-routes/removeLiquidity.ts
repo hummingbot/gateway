@@ -12,8 +12,7 @@ import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 
 // Using Fastify's native error handling
-const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) =>
-  `Invalid Solana address: ${address}`;
+const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
 import { PublicKey } from '@solana/web3.js';
 
 export async function removeLiquidity(
@@ -33,30 +32,19 @@ export async function removeLiquidity(
     new PublicKey(positionAddress);
     new PublicKey(walletAddress);
   } catch (error) {
-    const invalidAddress = error.message.includes(positionAddress)
-      ? 'position'
-      : 'wallet';
-    throw fastify.httpErrors.badRequest(
-      INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress),
-    );
+    const invalidAddress = error.message.includes(positionAddress) ? 'position' : 'wallet';
+    throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress));
   }
 
-  const { position, info } = await meteora.getRawPosition(
-    positionAddress,
-    wallet.publicKey,
-  );
+  const { position, info } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
   const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
   const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
   const tokenY = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
   const tokenXSymbol = tokenX?.symbol || 'UNKNOWN';
   const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
-  logger.info(
-    `Removing ${percentageToRemove.toFixed(4)}% liquidity from position ${positionAddress}`,
-  );
-  const binIdsToRemove = position.positionData.positionBinData.map(
-    (bin) => bin.binId,
-  );
+  logger.info(`Removing ${percentageToRemove.toFixed(4)}% liquidity from position ${positionAddress}`);
+  const binIdsToRemove = position.positionData.positionBinData.map((bin) => bin.binId);
   const bps = new BN(percentageToRemove * 100);
 
   const removeLiquidityTx = await dlmmPool.removeLiquidity({
@@ -68,9 +56,7 @@ export async function removeLiquidity(
   });
 
   if (Array.isArray(removeLiquidityTx)) {
-    throw fastify.httpErrors.internalServerError(
-      'Unexpected array of transactions',
-    );
+    throw fastify.httpErrors.internalServerError('Unexpected array of transactions');
   }
   // Use provided compute units or default
   const finalComputeUnits = computeUnits || 1_000_000;
@@ -86,14 +72,10 @@ export async function removeLiquidity(
     priorityFeePerCU,
   );
 
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-    signature,
-    dlmmPool.pubkey.toBase58(),
-    [
-      dlmmPool.tokenX.publicKey.toBase58(),
-      dlmmPool.tokenY.publicKey.toBase58(),
-    ],
-  );
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
+    dlmmPool.tokenX.publicKey.toBase58(),
+    dlmmPool.tokenY.publicKey.toBase58(),
+  ]);
 
   const tokenXRemovedAmount = balanceChanges[0];
   const tokenYRemovedAmount = balanceChanges[1];
@@ -141,14 +123,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress,
-          positionAddress,
-          percentageToRemove,
-          priorityFeePerCU,
-          computeUnits,
-        } = request.body;
+        const { network, walletAddress, positionAddress, percentageToRemove, priorityFeePerCU, computeUnits } =
+          request.body;
 
         const networkToUse = network;
 

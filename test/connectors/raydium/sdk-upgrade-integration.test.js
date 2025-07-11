@@ -43,8 +43,7 @@ describe('Raydium SDK v0.1.141-alpha Integration Tests', () => {
       const slippage = new Percent(50, 10000); // 0.5%
 
       // Manual decimal calculation
-      const decimal =
-        slippage.numerator.toNumber() / slippage.denominator.toNumber();
+      const decimal = slippage.numerator.toNumber() / slippage.denominator.toNumber();
       expect(decimal).toBe(0.005);
 
       // Percent arithmetic
@@ -58,8 +57,7 @@ describe('Raydium SDK v0.1.141-alpha Integration Tests', () => {
       const slippage = new Percent(100, 10000); // 1%
 
       // Calculate minimum amount with slippage
-      const slippageMultiplier =
-        1 - slippage.numerator.toNumber() / slippage.denominator.toNumber();
+      const slippageMultiplier = 1 - slippage.numerator.toNumber() / slippage.denominator.toNumber();
       const minAmount = amount.muln(slippageMultiplier * 10000).divn(10000);
 
       expect(minAmount.toString()).toBe('990000000'); // 0.99 SOL
@@ -107,25 +105,13 @@ describe('Raydium SDK v0.1.141-alpha Integration Tests', () => {
 
   describe('Program ID Validation', () => {
     test('mainnet AMM program IDs are correct', () => {
-      const AMM_V4 = new PublicKey(
-        '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8',
-      );
-      const AMM_STABLE = new PublicKey(
-        '5quBtoiQqxF9Jv6KYKctB59NT3gtJD2Y65kdnB1Uev3h',
-      );
-      const CLMM_PROGRAM_ID = new PublicKey(
-        'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK',
-      );
+      const AMM_V4 = new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8');
+      const AMM_STABLE = new PublicKey('5quBtoiQqxF9Jv6KYKctB59NT3gtJD2Y65kdnB1Uev3h');
+      const CLMM_PROGRAM_ID = new PublicKey('CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK');
 
-      expect(AMM_V4.toBase58()).toBe(
-        '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8',
-      );
-      expect(AMM_STABLE.toBase58()).toBe(
-        '5quBtoiQqxF9Jv6KYKctB59NT3gtJD2Y65kdnB1Uev3h',
-      );
-      expect(CLMM_PROGRAM_ID.toBase58()).toBe(
-        'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK',
-      );
+      expect(AMM_V4.toBase58()).toBe('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8');
+      expect(AMM_STABLE.toBase58()).toBe('5quBtoiQqxF9Jv6KYKctB59NT3gtJD2Y65kdnB1Uev3h');
+      expect(CLMM_PROGRAM_ID.toBase58()).toBe('CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK');
     });
 
     test('devnet program IDs have correct structure', () => {
@@ -159,9 +145,7 @@ describe('Raydium SDK v0.1.141-alpha Integration Tests', () => {
 
       // 100% slippage
       const maxSlippage = new Percent(100, 100);
-      expect(
-        maxSlippage.numerator.toNumber() / maxSlippage.denominator.toNumber(),
-      ).toBe(1);
+      expect(maxSlippage.numerator.toNumber() / maxSlippage.denominator.toNumber()).toBe(1);
     });
   });
 });

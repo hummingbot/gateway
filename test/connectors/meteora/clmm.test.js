@@ -188,15 +188,12 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`,
-        {
-          params: {
-            network: NETWORK,
-            poolAddress: TEST_POOL,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`, {
+        params: {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -234,16 +231,13 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.get(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`,
-          {
-            params: {
-              network: NETWORK,
-              baseToken: BASE_TOKEN,
-              quoteToken: 'UNKNOWN',
-            },
+        axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`, {
+          params: {
+            network: NETWORK,
+            baseToken: BASE_TOKEN,
+            quoteToken: 'UNKNOWN',
           },
-        ),
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 404,
@@ -267,18 +261,15 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'SELL',
-            amount: 1.0,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'SELL',
+          amount: 1.0,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -311,18 +302,15 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'BUY',
-            amount: 1.0,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'BUY',
+          amount: 1.0,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -348,18 +336,15 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.get(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`,
-          {
-            params: {
-              network: NETWORK,
-              baseToken: BASE_TOKEN,
-              quoteToken: QUOTE_TOKEN,
-              side: 'SELL',
-              amount: 1000000.0, // Very large amount
-            },
+        axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`, {
+          params: {
+            network: NETWORK,
+            baseToken: BASE_TOKEN,
+            quoteToken: QUOTE_TOKEN,
+            side: 'SELL',
+            amount: 1000000.0, // Very large amount
           },
-        ),
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 400,
@@ -384,17 +369,14 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`,
-        {
-          network: NETWORK,
-          baseToken: BASE_TOKEN,
-          quoteToken: QUOTE_TOKEN,
-          side: 'SELL',
-          amount: 1.0,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`, {
+        network: NETWORK,
+        baseToken: BASE_TOKEN,
+        quoteToken: QUOTE_TOKEN,
+        side: 'SELL',
+        amount: 1.0,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -421,17 +403,14 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.post(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`,
-          {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'SELL',
-            amount: 1000000.0,
-            walletAddress: TEST_WALLET,
-          },
-        ),
+        axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`, {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'SELL',
+          amount: 1000000.0,
+          walletAddress: TEST_WALLET,
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 500,
@@ -455,15 +434,12 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`,
-        {
-          params: {
-            network: NETWORK,
-            positionId: TEST_POSITION_ID,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`, {
+        params: {
+          network: NETWORK,
+          positionId: TEST_POSITION_ID,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -487,15 +463,12 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.get(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`,
-          {
-            params: {
-              network: NETWORK,
-              positionId: 'invalid-position',
-            },
+        axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`, {
+          params: {
+            network: NETWORK,
+            positionId: 'invalid-position',
           },
-        ),
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 404,
@@ -519,15 +492,12 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/positions-owned`,
-        {
-          params: {
-            network: NETWORK,
-            walletAddress: TEST_WALLET,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/positions-owned`, {
+        params: {
+          network: NETWORK,
+          walletAddress: TEST_WALLET,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -548,15 +518,12 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/positions-owned`,
-        {
-          params: {
-            network: NETWORK,
-            walletAddress: 'EmptyWallet123456789',
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/positions-owned`, {
+        params: {
+          network: NETWORK,
+          walletAddress: 'EmptyWallet123456789',
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -588,19 +555,16 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-position`,
-        {
-          params: {
-            network: NETWORK,
-            poolAddress: TEST_POOL,
-            lowerTick: -88720,
-            upperTick: 88720,
-            baseTokenAmount: 1.0,
-            quoteTokenAmount: 167.5,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-position`, {
+        params: {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          lowerTick: -88720,
+          upperTick: 88720,
+          baseTokenAmount: 1.0,
+          quoteTokenAmount: 167.5,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -616,8 +580,7 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
           status: 400,
           data: {
             error: 'BadRequest',
-            message:
-              'Invalid tick range: lower tick must be less than upper tick',
+            message: 'Invalid tick range: lower tick must be less than upper tick',
             code: 400,
           },
         },
@@ -625,19 +588,16 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.get(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-position`,
-          {
-            params: {
-              network: NETWORK,
-              poolAddress: TEST_POOL,
-              lowerTick: 100,
-              upperTick: 50, // Invalid: upper < lower
-              baseTokenAmount: 1.0,
-              quoteTokenAmount: 167.5,
-            },
+        axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-position`, {
+          params: {
+            network: NETWORK,
+            poolAddress: TEST_POOL,
+            lowerTick: 100,
+            upperTick: 50, // Invalid: upper < lower
+            baseTokenAmount: 1.0,
+            quoteTokenAmount: 167.5,
           },
-        ),
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 400,
@@ -664,19 +624,16 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.get(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-position`,
-          {
-            params: {
-              network: NETWORK,
-              poolAddress: TEST_POOL,
-              lowerTick: -88721, // Not aligned with tick spacing
-              upperTick: 88720,
-              baseTokenAmount: 1.0,
-              quoteTokenAmount: 167.5,
-            },
+        axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-position`, {
+          params: {
+            network: NETWORK,
+            poolAddress: TEST_POOL,
+            lowerTick: -88721, // Not aligned with tick spacing
+            upperTick: 88720,
+            baseTokenAmount: 1.0,
+            quoteTokenAmount: 167.5,
           },
-        ),
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 400,
@@ -700,18 +657,15 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/open-position`,
-        {
-          network: NETWORK,
-          poolAddress: TEST_POOL,
-          lowerTick: -88720,
-          upperTick: 88720,
-          baseTokenAmount: 1.0,
-          quoteTokenAmount: 167.5,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/open-position`, {
+        network: NETWORK,
+        poolAddress: TEST_POOL,
+        lowerTick: -88720,
+        upperTick: 88720,
+        baseTokenAmount: 1.0,
+        quoteTokenAmount: 167.5,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -735,18 +689,15 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.post(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/open-position`,
-          {
-            network: NETWORK,
-            poolAddress: TEST_POOL,
-            lowerTick: -88720,
-            upperTick: 88720,
-            baseTokenAmount: 10000.0, // Large amount
-            quoteTokenAmount: 1675000.0,
-            walletAddress: TEST_WALLET,
-          },
-        ),
+        axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/open-position`, {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          lowerTick: -88720,
+          upperTick: 88720,
+          baseTokenAmount: 10000.0, // Large amount
+          quoteTokenAmount: 1675000.0,
+          walletAddress: TEST_WALLET,
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 400,
@@ -770,16 +721,13 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`,
-        {
-          network: NETWORK,
-          positionId: TEST_POSITION_ID,
-          baseTokenAmount: 0.5,
-          quoteTokenAmount: 83.75,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`, {
+        network: NETWORK,
+        positionId: TEST_POSITION_ID,
+        baseTokenAmount: 0.5,
+        quoteTokenAmount: 83.75,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -803,16 +751,13 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.post(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`,
-          {
-            network: NETWORK,
-            positionId: 'invalid-position',
-            baseTokenAmount: 0.5,
-            quoteTokenAmount: 83.75,
-            walletAddress: TEST_WALLET,
-          },
-        ),
+        axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`, {
+          network: NETWORK,
+          positionId: 'invalid-position',
+          baseTokenAmount: 0.5,
+          quoteTokenAmount: 83.75,
+          walletAddress: TEST_WALLET,
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 404,
@@ -827,8 +772,7 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
   describe('Remove Liquidity Endpoint', () => {
     test('returns successful liquidity removal', async () => {
       const mockResponse = {
-        signature:
-          '4bF7KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpU5Ay',
+        signature: '4bF7KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpU5Ay',
         positionId: TEST_POSITION_ID,
         baseTokenAmount: 0.95,
         quoteTokenAmount: 159.125,
@@ -843,15 +787,12 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`,
-        {
-          network: NETWORK,
-          positionId: TEST_POSITION_ID,
-          liquidity: '647000000',
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`, {
+        network: NETWORK,
+        positionId: TEST_POSITION_ID,
+        liquidity: '647000000',
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -876,15 +817,12 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.post(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`,
-          {
-            network: NETWORK,
-            positionId: TEST_POSITION_ID,
-            liquidity: '9999999999999999999', // Excessive amount
-            walletAddress: TEST_WALLET,
-          },
-        ),
+        axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`, {
+          network: NETWORK,
+          positionId: TEST_POSITION_ID,
+          liquidity: '9999999999999999999', // Excessive amount
+          walletAddress: TEST_WALLET,
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 400,
@@ -900,8 +838,7 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
   describe('Close Position Endpoint', () => {
     test('returns successful position closure', async () => {
       const mockResponse = {
-        signature:
-          '5cG8KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpV6Bz',
+        signature: '5cG8KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpV6Bz',
         positionId: TEST_POSITION_ID,
         baseTokenAmount: 1.0,
         quoteTokenAmount: 167.5,
@@ -916,14 +853,11 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/close-position`,
-        {
-          network: NETWORK,
-          positionId: TEST_POSITION_ID,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/close-position`, {
+        network: NETWORK,
+        positionId: TEST_POSITION_ID,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -948,14 +882,11 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.post(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/close-position`,
-          {
-            network: NETWORK,
-            positionId: TEST_POSITION_ID,
-            walletAddress: TEST_WALLET,
-          },
-        ),
+        axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/close-position`, {
+          network: NETWORK,
+          positionId: TEST_POSITION_ID,
+          walletAddress: TEST_WALLET,
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 400,
@@ -980,14 +911,11 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/collect-fees`,
-        {
-          network: NETWORK,
-          positionId: TEST_POSITION_ID,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/collect-fees`, {
+        network: NETWORK,
+        positionId: TEST_POSITION_ID,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -998,8 +926,7 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
 
     test('handles no fees to collect', async () => {
       const mockResponse = {
-        signature:
-          '7eH9KihZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpX8Ed',
+        signature: '7eH9KihZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpX8Ed',
         positionId: TEST_POSITION_ID,
         feeBaseAmount: 0,
         feeQuoteAmount: 0,
@@ -1012,14 +939,11 @@ describe('Meteora CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/collect-fees`,
-        {
-          network: NETWORK,
-          positionId: TEST_POSITION_ID,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/collect-fees`, {
+        network: NETWORK,
+        positionId: TEST_POSITION_ID,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);

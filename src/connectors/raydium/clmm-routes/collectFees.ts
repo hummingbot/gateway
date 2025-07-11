@@ -27,9 +27,7 @@ export async function collectFees(
     throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
-  const [poolInfo] = await raydium.getClmmPoolfromAPI(
-    position.poolId.toBase58(),
-  );
+  const [poolInfo] = await raydium.getClmmPoolfromAPI(position.poolId.toBase58());
 
   const tokenA = await solana.getToken(poolInfo.mintA.address);
   const tokenB = await solana.getToken(poolInfo.mintB.address);
@@ -39,9 +37,7 @@ export async function collectFees(
   logger.info(`Collecting fees from CLMM position ${positionAddress}`);
 
   const { rewardDefaultInfos } = poolInfo;
-  const validRewards = rewardDefaultInfos.filter(
-    (info) => Number(info.perSecond) > 0 && info.mint?.address,
-  );
+  const validRewards = rewardDefaultInfos.filter((info) => Number(info.perSecond) > 0 && info.mint?.address);
 
   if (validRewards.length === 0) {
     logger.warn(`No active rewards found for position ${positionAddress}`);
@@ -59,26 +55,20 @@ export async function collectFees(
   });
   console.log('transaction', transaction);
 
-  const { signature, fee } = await solana.sendAndConfirmTransaction(
-    transaction,
-    [wallet],
-  );
+  const { signature, fee } = await solana.sendAndConfirmTransaction(transaction, [wallet]);
 
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-    signature,
-    wallet.publicKey.toBase58(),
-    [poolInfo.mintA.address, poolInfo.mintB.address],
-  );
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    poolInfo.mintA.address,
+    poolInfo.mintB.address,
+  ]);
 
   const collectedFeeA = balanceChanges[0];
   const collectedFeeB = balanceChanges[1];
 
   logger.info(
-    `Fees collected from position ${positionAddress}: ${Math.abs(
-      collectedFeeA,
-    ).toFixed(4)} ${tokenASymbol}, ${Math.abs(collectedFeeB).toFixed(
-      4,
-    )} ${tokenBSymbol}`,
+    `Fees collected from position ${positionAddress}: ${Math.abs(collectedFeeA).toFixed(4)} ${tokenASymbol}, ${Math.abs(
+      collectedFeeB,
+    ).toFixed(4)} ${tokenBSymbol}`,
   );
 
   return {
@@ -118,12 +108,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { network, walletAddress, positionAddress } = request.body;
-        return await collectFees(
-          fastify,
-          network,
-          walletAddress,
-          positionAddress,
-        );
+        return await collectFees(fastify, network, walletAddress, positionAddress);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

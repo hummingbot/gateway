@@ -65,21 +65,15 @@ mcp.stdout.on('data', (data) => {
         if (msg.id === 1 && msg.result && msg.result.tools) {
           console.log('✓ Tool listing successful:');
           console.log(`  Found ${msg.result.tools.length} tools`);
-          const coingeckoTools = msg.result.tools.filter((t) =>
-            t.name.startsWith('coingecko_'),
-          );
-          console.log(
-            `  CoinGecko tools: ${coingeckoTools.map((t) => t.name).join(', ')}`,
-          );
+          const coingeckoTools = msg.result.tools.filter((t) => t.name.startsWith('coingecko_'));
+          console.log(`  CoinGecko tools: ${coingeckoTools.map((t) => t.name).join(', ')}`);
         } else if (msg.id === 2) {
           console.log('\n✓ CoinGecko list endpoints successful');
           if (msg.result && msg.result.content) {
             try {
               const content = JSON.parse(msg.result.content[0].text);
               if (content.endpoints) {
-                console.log(
-                  `  Found ${content.endpoints.length} endpoints matching "trending"`,
-                );
+                console.log(`  Found ${content.endpoints.length} endpoints matching "trending"`);
               }
             } catch (e) {
               console.log('  Response received');
@@ -128,9 +122,7 @@ mcp.stderr.on('data', (data) => {
   // Only log actual errors, not status messages
   if (
     message.includes('Failed') ||
-    (message.includes('Error') &&
-      !message.includes('Starting') &&
-      !message.includes('Gateway MCP'))
+    (message.includes('Error') && !message.includes('Starting') && !message.includes('Gateway MCP'))
   ) {
     console.error('stderr:', message);
   }

@@ -6,8 +6,7 @@ import { PositionInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 // Using Fastify's native error handling
-const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) =>
-  `Invalid Solana address: ${address}`;
+const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
 
 // Schema definitions
 const GetPositionsOwnedRequest = Type.Object({
@@ -32,8 +31,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     '/positions-owned',
     {
       schema: {
-        description:
-          "Retrieve a list of positions owned by a user's wallet in a specific Raydium CLMM pool",
+        description: "Retrieve a list of positions owned by a user's wallet in a specific Raydium CLMM pool",
         tags: ['/connector/raydium'],
         querystring: GetPositionsOwnedRequest,
         response: {
@@ -51,9 +49,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         try {
           new PublicKey(poolAddress);
         } catch (error) {
-          throw fastify.httpErrors.badRequest(
-            INVALID_SOLANA_ADDRESS_MESSAGE('pool'),
-          );
+          throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('pool'));
         }
         console.log('poolAddress', poolAddress);
 
@@ -69,9 +65,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
           });
           console.log('positions', positions);
           const positionsInfo = await Promise.all(
-            positions.map((pos) =>
-              raydium.getPositionInfo(pos.nftMint.toString()),
-            ),
+            positions.map((pos) => raydium.getPositionInfo(pos.nftMint.toString())),
           );
           return positionsInfo;
         }

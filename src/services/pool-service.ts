@@ -7,12 +7,7 @@ import { ethers } from 'ethers';
 import * as fse from 'fs-extra';
 
 import { rootPath } from '../paths';
-import {
-  Pool,
-  PoolFileFormat,
-  SupportedConnector,
-  isSupportedConnector,
-} from '../pools/types';
+import { Pool, PoolFileFormat, SupportedConnector, isSupportedConnector } from '../pools/types';
 import { SupportedChain } from '../tokens/types';
 
 import { logger } from './logger';
@@ -51,12 +46,7 @@ export class PoolService {
     }
 
     // Construct the path - now using flat structure
-    const poolListPath = path.join(
-      rootPath(),
-      'conf',
-      'pools',
-      `${sanitizedConnector}.json`,
-    );
+    const poolListPath = path.join(rootPath(), 'conf', 'pools', `${sanitizedConnector}.json`);
 
     // Ensure the resolved path is within the expected directory
     const expectedRoot = path.join(rootPath(), 'conf', 'pools');
@@ -74,13 +64,7 @@ export class PoolService {
   private getTemplatePath(connector: string): string {
     const sanitizedConnector = path.basename(connector);
 
-    return path.join(
-      rootPath(),
-      'src',
-      'templates',
-      'pools',
-      `${sanitizedConnector}.json`,
-    );
+    return path.join(rootPath(), 'src', 'templates', 'pools', `${sanitizedConnector}.json`);
   }
 
   /**
@@ -122,9 +106,7 @@ export class PoolService {
         const data = await readFile(templatePath, 'utf8');
         return JSON.parse(data);
       } catch (error) {
-        logger.warn(
-          `Failed to read template for ${connector}: ${error.message}`,
-        );
+        logger.warn(`Failed to read template for ${connector}: ${error.message}`);
       }
     }
 
@@ -199,12 +181,7 @@ export class PoolService {
   /**
    * List all pools for a connector with optional filtering
    */
-  public async listPools(
-    connector: string,
-    network?: string,
-    type?: 'amm' | 'clmm',
-    search?: string,
-  ): Promise<Pool[]> {
+  public async listPools(connector: string, network?: string, type?: 'amm' | 'clmm', search?: string): Promise<Pool[]> {
     const pools = await this.loadPoolList(connector);
 
     let filteredPools = pools;
@@ -307,9 +284,7 @@ export class PoolService {
     const pools = await this.loadPoolList(connector);
 
     // Check for duplicate address
-    if (
-      pools.some((p) => p.address.toLowerCase() === pool.address.toLowerCase())
-    ) {
+    if (pools.some((p) => p.address.toLowerCase() === pool.address.toLowerCase())) {
       throw new Error(`Pool with address ${pool.address} already exists`);
     }
 
@@ -319,15 +294,11 @@ export class PoolService {
         (p) =>
           p.network === pool.network &&
           p.type === pool.type &&
-          ((p.baseSymbol === pool.baseSymbol &&
-            p.quoteSymbol === pool.quoteSymbol) ||
-            (p.baseSymbol === pool.quoteSymbol &&
-              p.quoteSymbol === pool.baseSymbol)),
+          ((p.baseSymbol === pool.baseSymbol && p.quoteSymbol === pool.quoteSymbol) ||
+            (p.baseSymbol === pool.quoteSymbol && p.quoteSymbol === pool.baseSymbol)),
       )
     ) {
-      throw new Error(
-        `Pool for ${pool.baseSymbol}-${pool.quoteSymbol} already exists on ${pool.network} ${pool.type}`,
-      );
+      throw new Error(`Pool for ${pool.baseSymbol}-${pool.quoteSymbol} already exists on ${pool.network} ${pool.type}`);
     }
 
     pools.push(pool);
@@ -337,28 +308,16 @@ export class PoolService {
   /**
    * Remove a pool by address
    */
-  public async removePool(
-    connector: string,
-    network: string,
-    type: 'amm' | 'clmm',
-    address: string,
-  ): Promise<void> {
+  public async removePool(connector: string, network: string, type: 'amm' | 'clmm', address: string): Promise<void> {
     const pools = await this.loadPoolList(connector);
     const initialLength = pools.length;
 
     const filteredPools = pools.filter(
-      (p) =>
-        !(
-          p.address.toLowerCase() === address.toLowerCase() &&
-          p.network === network &&
-          p.type === type
-        ),
+      (p) => !(p.address.toLowerCase() === address.toLowerCase() && p.network === network && p.type === type),
     );
 
     if (filteredPools.length === initialLength) {
-      throw new Error(
-        `Pool with address ${address} not found on ${network} ${type}`,
-      );
+      throw new Error(`Pool with address ${address} not found on ${network} ${type}`);
     }
 
     await this.savePoolList(connector, filteredPools);
@@ -367,15 +326,9 @@ export class PoolService {
   /**
    * Get a pool by address
    */
-  public async getPoolByAddress(
-    connector: string,
-    address: string,
-  ): Promise<Pool | null> {
+  public async getPoolByAddress(connector: string, address: string): Promise<Pool | null> {
     const pools = await this.loadPoolList(connector);
-    return (
-      pools.find((p) => p.address.toLowerCase() === address.toLowerCase()) ||
-      null
-    );
+    return pools.find((p) => p.address.toLowerCase() === address.toLowerCase()) || null;
   }
 
   /**

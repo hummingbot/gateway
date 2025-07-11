@@ -14,10 +14,7 @@ import {
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import {
-  POSITION_MANAGER_ABI,
-  getUniswapV3NftManagerAddress,
-} from '../uniswap.contracts';
+import { POSITION_MANAGER_ABI, getUniswapV3NftManagerAddress } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
@@ -78,9 +75,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         if (percentageToRemove < 0 || percentageToRemove > 100) {
-          throw fastify.httpErrors.badRequest(
-            'Percentage to remove must be between 0 and 100',
-          );
+          throw fastify.httpErrors.badRequest('Percentage to remove must be between 0 and 100');
         }
 
         // Get Uniswap and Ethereum instances
@@ -92,9 +87,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         if (!walletAddress) {
           walletAddress = await uniswap.getFirstWalletAddress();
           if (!walletAddress) {
-            throw fastify.httpErrors.badRequest(
-              'No wallet address provided and no default wallet found',
-            );
+            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
           }
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
@@ -106,8 +99,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get position manager address
-        const positionManagerAddress =
-          getUniswapV3NftManagerAddress(networkToUse);
+        const positionManagerAddress = getUniswapV3NftManagerAddress(networkToUse);
 
         // Check NFT ownership
         try {
@@ -120,11 +112,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Create position manager contract
-        const positionManager = new Contract(
-          positionManagerAddress,
-          POSITION_MANAGER_ABI,
-          ethereum.provider,
-        );
+        const positionManager = new Contract(positionManagerAddress, POSITION_MANAGER_ABI, ethereum.provider);
 
         // Create position manager with signer
         const positionManagerWithSigner = positionManager.connect(wallet);
@@ -139,16 +127,13 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         // Determine base and quote tokens - WETH or lower address is base
         const isBaseToken0 =
           token0.symbol === 'WETH' ||
-          (token1.symbol !== 'WETH' &&
-            token0.address.toLowerCase() < token1.address.toLowerCase());
+          (token1.symbol !== 'WETH' && token0.address.toLowerCase() < token1.address.toLowerCase());
 
         // Get current liquidity
         const currentLiquidity = position.liquidity;
 
         // Calculate liquidity to remove based on percentage
-        const liquidityToRemove = currentLiquidity
-          .mul(Math.floor(percentageToRemove * 100))
-          .div(10000);
+        const liquidityToRemove = currentLiquidity.mul(Math.floor(percentageToRemove * 100)).div(10000);
 
         // Get the pool
         const pool = await uniswap.getV3Pool(token0, token1, position.fee);
@@ -165,10 +150,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         });
 
         // Calculate the amounts that will be withdrawn
-        const liquidityPercentage = new Percent(
-          Math.floor(percentageToRemove * 100),
-          10000,
-        );
+        const liquidityPercentage = new Percent(Math.floor(percentageToRemove * 100), 10000);
         const partialPosition = new Position({
           pool,
           tickLower: position.tickLower,
@@ -188,27 +170,17 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Apply slippage tolerance
         const slippageTolerance = new Percent(100, 10000); // 1% slippage
-        const amount0Min = amount0.multiply(
-          new Percent(1).subtract(slippageTolerance),
-        ).quotient;
-        const amount1Min = amount1.multiply(
-          new Percent(1).subtract(slippageTolerance),
-        ).quotient;
+        const amount0Min = amount0.multiply(new Percent(1).subtract(slippageTolerance)).quotient;
+        const amount1Min = amount1.multiply(new Percent(1).subtract(slippageTolerance)).quotient;
 
         // Also add any fees that have been collected to the expected amounts
         const totalAmount0 = CurrencyAmount.fromRawAmount(
           token0,
-          JSBI.add(
-            amount0.quotient,
-            JSBI.BigInt(position.tokensOwed0.toString()),
-          ),
+          JSBI.add(amount0.quotient, JSBI.BigInt(position.tokensOwed0.toString())),
         );
         const totalAmount1 = CurrencyAmount.fromRawAmount(
           token1,
-          JSBI.add(
-            amount1.quotient,
-            JSBI.BigInt(position.tokensOwed1.toString()),
-          ),
+          JSBI.add(amount1.quotient, JSBI.BigInt(position.tokensOwed1.toString())),
         );
 
         // Create parameters for removing liquidity
@@ -226,24 +198,14 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         };
 
         // Get the calldata using the SDK
-        const { calldata, value } =
-          NonfungiblePositionManager.removeCallParameters(
-            positionSDK,
-            removeParams,
-          );
+        const { calldata, value } = NonfungiblePositionManager.removeCallParameters(positionSDK, removeParams);
 
         // Execute the transaction to remove liquidity
         // Use Ethereum's prepareGasOptions method
-        const txParams = await ethereum.prepareGasOptions(
-          priorityFeePerCU,
-          computeUnits,
-        );
+        const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
         txParams.value = BigNumber.from(value.toString());
 
-        const tx = await positionManagerWithSigner.multicall(
-          [calldata],
-          txParams,
-        );
+        const tx = await positionManagerWithSigner.multicall([calldata], txParams);
 
         // Wait for transaction confirmation
         const receipt = await tx.wait();
@@ -255,22 +217,12 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         );
 
         // Calculate token amounts removed including fees
-        const token0AmountRemoved = formatTokenAmount(
-          totalAmount0.quotient.toString(),
-          token0.decimals,
-        );
-        const token1AmountRemoved = formatTokenAmount(
-          totalAmount1.quotient.toString(),
-          token1.decimals,
-        );
+        const token0AmountRemoved = formatTokenAmount(totalAmount0.quotient.toString(), token0.decimals);
+        const token1AmountRemoved = formatTokenAmount(totalAmount1.quotient.toString(), token1.decimals);
 
         // Map back to base and quote amounts
-        const baseTokenAmountRemoved = isBaseToken0
-          ? token0AmountRemoved
-          : token1AmountRemoved;
-        const quoteTokenAmountRemoved = isBaseToken0
-          ? token1AmountRemoved
-          : token0AmountRemoved;
+        const baseTokenAmountRemoved = isBaseToken0 ? token0AmountRemoved : token1AmountRemoved;
+        const quoteTokenAmountRemoved = isBaseToken0 ? token1AmountRemoved : token0AmountRemoved;
 
         return {
           signature: receipt.transactionHash,
@@ -286,9 +238,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError(
-          'Failed to remove liquidity',
-        );
+        throw fastify.httpErrors.internalServerError('Failed to remove liquidity');
       }
     },
   );

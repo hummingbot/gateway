@@ -35,12 +35,8 @@ export const RaydiumAmmQuoteSwapRequest = Type.Intersect([
 export const RaydiumAmmExecuteSwapRequest = Type.Intersect([
   AMMBase.ExecuteSwapRequest,
   Type.Object({
-    priorityFeePerCU: Type.Optional(
-      Type.Number({ description: 'Priority fee per compute unit' }),
-    ),
-    computeUnits: Type.Optional(
-      Type.Number({ description: 'Compute units for transaction' }),
-    ),
+    priorityFeePerCU: Type.Optional(Type.Number({ description: 'Priority fee per compute unit' })),
+    computeUnits: Type.Optional(Type.Number({ description: 'Compute units for transaction' })),
   }),
 ]);
 
@@ -55,11 +51,7 @@ export const RaydiumClmmQuoteSwapRequest = Type.Intersect([
 export const RaydiumClmmExecuteSwapRequest = Type.Intersect([
   CLMMBase.ExecuteSwapRequest,
   Type.Object({
-    priorityFeePerCU: Type.Optional(
-      Type.Number({ description: 'Priority fee per compute unit' }),
-    ),
-    computeUnits: Type.Optional(
-      Type.Number({ description: 'Compute units for transaction' }),
-    ),
+    priorityFeePerCU: Type.Optional(Type.Number({ description: 'Priority fee per compute unit' })),
+    computeUnits: Type.Optional(Type.Number({ description: 'Compute units for transaction' })),
   }),
 ]);

@@ -1,11 +1,5 @@
 import { Token, CurrencyAmount, Percent, TradeType } from '@uniswap/sdk-core';
-import {
-  Pool as V3Pool,
-  SwapQuoter,
-  SwapOptions,
-  Route as V3Route,
-  Trade as V3Trade,
-} from '@uniswap/v3-sdk';
+import { Pool as V3Pool, SwapQuoter, SwapOptions, Route as V3Route, Trade as V3Trade } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import JSBI from 'jsbi';
@@ -20,11 +14,7 @@ import {
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Uniswap } from '../uniswap';
-import {
-  formatTokenAmount,
-  parseFeeTier,
-  getUniswapPoolInfo,
-} from '../uniswap.utils';
+import { formatTokenAmount, parseFeeTier, getUniswapPoolInfo } from '../uniswap.utils';
 
 async function quoteClmmSwap(
   uniswap: Uniswap,
@@ -44,16 +34,12 @@ async function quoteClmmSwap(
       poolAddress,
     );
     if (!pool) {
-      throw new Error(
-        `Pool not found for ${baseToken.symbol}-${quoteToken.symbol}`,
-      );
+      throw new Error(`Pool not found for ${baseToken.symbol}-${quoteToken.symbol}`);
     }
 
     // Determine which token is being traded (exact in/out)
     const exactIn = side === 'SELL';
-    const [inputToken, outputToken] = exactIn
-      ? [baseToken, quoteToken]
-      : [quoteToken, baseToken];
+    const [inputToken, outputToken] = exactIn ? [baseToken, quoteToken] : [quoteToken, baseToken];
 
     // Create a route for the trade
     const route = new V3Route([pool], inputToken, outputToken);
@@ -64,36 +50,22 @@ async function quoteClmmSwap(
       // For SELL (exactIn), we use the input amount and EXACT_INPUT trade type
       const inputAmount = CurrencyAmount.fromRawAmount(
         inputToken,
-        JSBI.BigInt(
-          Math.floor(amount * Math.pow(10, inputToken.decimals)).toString(),
-        ),
+        JSBI.BigInt(Math.floor(amount * Math.pow(10, inputToken.decimals)).toString()),
       );
-      trade = await V3Trade.fromRoute(
-        route,
-        inputAmount,
-        TradeType.EXACT_INPUT,
-      );
+      trade = await V3Trade.fromRoute(route, inputAmount, TradeType.EXACT_INPUT);
     } else {
       // For BUY (exactOut), we use the output amount and EXACT_OUTPUT trade type
       const outputAmount = CurrencyAmount.fromRawAmount(
         outputToken,
-        JSBI.BigInt(
-          Math.floor(amount * Math.pow(10, outputToken.decimals)).toString(),
-        ),
+        JSBI.BigInt(Math.floor(amount * Math.pow(10, outputToken.decimals)).toString()),
       );
-      trade = await V3Trade.fromRoute(
-        route,
-        outputAmount,
-        TradeType.EXACT_OUTPUT,
-      );
+      trade = await V3Trade.fromRoute(route, outputAmount, TradeType.EXACT_OUTPUT);
     }
 
     // Calculate slippage-adjusted amounts
     // Convert slippagePct to integer basis points (0.5% -> 50 basis points)
     const slippageTolerance =
-      slippagePct !== undefined
-        ? new Percent(Math.floor(slippagePct * 100), 10000)
-        : uniswap.getSlippagePct();
+      slippagePct !== undefined ? new Percent(Math.floor(slippagePct * 100), 10000) : uniswap.getSlippagePct();
 
     const minAmountOut = exactIn
       ? trade.minimumAmountOut(slippageTolerance).quotient.toString()
@@ -104,24 +76,12 @@ async function quoteClmmSwap(
       : trade.maximumAmountIn(slippageTolerance).quotient.toString();
 
     // Calculate amounts - trade object has inputAmount and outputAmount for both types
-    const estimatedAmountIn = formatTokenAmount(
-      trade.inputAmount.quotient.toString(),
-      inputToken.decimals,
-    );
+    const estimatedAmountIn = formatTokenAmount(trade.inputAmount.quotient.toString(), inputToken.decimals);
 
-    const estimatedAmountOut = formatTokenAmount(
-      trade.outputAmount.quotient.toString(),
-      outputToken.decimals,
-    );
+    const estimatedAmountOut = formatTokenAmount(trade.outputAmount.quotient.toString(), outputToken.decimals);
 
-    const minAmountOutValue = formatTokenAmount(
-      minAmountOut,
-      outputToken.decimals,
-    );
-    const maxAmountInValue = formatTokenAmount(
-      maxAmountIn,
-      inputToken.decimals,
-    );
+    const minAmountOutValue = formatTokenAmount(minAmountOut, outputToken.decimals);
+    const maxAmountInValue = formatTokenAmount(maxAmountIn, inputToken.decimals);
 
     // Calculate price impact
     const priceImpact = parseFloat(trade.priceImpact.toSignificant(4));
@@ -180,21 +140,15 @@ export async function getUniswapClmmQuote(
 
   if (!baseTokenObj) {
     logger.error(`Base token not found: ${baseToken}`);
-    throw new Error(
-      sanitizeErrorMessage('Base token not found: {}', baseToken),
-    );
+    throw new Error(sanitizeErrorMessage('Base token not found: {}', baseToken));
   }
 
   if (!quoteTokenObj) {
     logger.error(`Quote token not found: ${quoteToken}`);
-    throw new Error(
-      sanitizeErrorMessage('Quote token not found: {}', quoteToken),
-    );
+    throw new Error(sanitizeErrorMessage('Quote token not found: {}', quoteToken));
   }
 
-  logger.info(
-    `Base token: ${baseTokenObj.symbol}, address=${baseTokenObj.address}, decimals=${baseTokenObj.decimals}`,
-  );
+  logger.info(`Base token: ${baseTokenObj.symbol}, address=${baseTokenObj.address}, decimals=${baseTokenObj.decimals}`);
   logger.info(
     `Quote token: ${quoteTokenObj.symbol}, address=${quoteTokenObj.address}, decimals=${quoteTokenObj.decimals}`,
   );
@@ -239,27 +193,24 @@ async function formatSwapQuote(
 
   try {
     // Use the extracted quote function
-    const { quote, uniswap, ethereum, baseTokenObj, quoteTokenObj } =
-      await getUniswapClmmQuote(
-        fastify,
-        network,
-        poolAddress,
-        baseToken,
-        quoteToken,
-        amount,
-        side,
-        slippagePct,
-      );
+    const { quote, uniswap, ethereum, baseTokenObj, quoteTokenObj } = await getUniswapClmmQuote(
+      fastify,
+      network,
+      poolAddress,
+      baseToken,
+      quoteToken,
+      amount,
+      side,
+      slippagePct,
+    );
 
     logger.info(
       `Quote result: estimatedAmountIn=${quote.estimatedAmountIn}, estimatedAmountOut=${quote.estimatedAmountOut}`,
     );
 
     // Calculate balance changes based on which tokens are being swapped
-    const baseTokenBalanceChange =
-      side === 'BUY' ? quote.estimatedAmountOut : -quote.estimatedAmountIn;
-    const quoteTokenBalanceChange =
-      side === 'BUY' ? -quote.estimatedAmountIn : quote.estimatedAmountOut;
+    const baseTokenBalanceChange = side === 'BUY' ? quote.estimatedAmountOut : -quote.estimatedAmountIn;
+    const quoteTokenBalanceChange = side === 'BUY' ? -quote.estimatedAmountIn : quote.estimatedAmountOut;
 
     logger.info(
       `Balance changes: baseTokenBalanceChange=${baseTokenBalanceChange}, quoteTokenBalanceChange=${quoteTokenBalanceChange}`,
@@ -305,9 +256,7 @@ async function formatSwapQuote(
     // For SELL: worst price = minAmountOut / estimatedAmountIn (minimum quote per base)
     // For BUY: worst price = maxAmountIn / estimatedAmountOut (maximum quote per base)
     const priceWithSlippage =
-      side === 'SELL'
-        ? quote.minAmountOut / quote.estimatedAmountIn
-        : quote.maxAmountIn / quote.estimatedAmountOut;
+      side === 'SELL' ? quote.minAmountOut / quote.estimatedAmountIn : quote.maxAmountIn / quote.estimatedAmountOut;
 
     return {
       // Base QuoteSwapResponse fields in correct order
@@ -366,59 +315,68 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, poolAddress, baseToken, amount, side, slippagePct } =
-          request.query;
+        const { network, poolAddress, baseToken, quoteToken, amount, side, slippagePct } = request.query;
 
         const networkToUse = network;
 
-        if (!poolAddress) {
-          throw fastify.httpErrors.badRequest('Pool address is required');
+        // Validate essential parameters
+        if (!baseToken || !amount || !side) {
+          throw fastify.httpErrors.badRequest('baseToken, amount, and side are required');
         }
 
-        // Get pool information to determine tokens
         const uniswap = await Uniswap.getInstance(networkToUse);
-        const poolInfo = await getUniswapPoolInfo(
-          poolAddress,
-          networkToUse,
-          'clmm',
-        );
-        if (!poolInfo) {
-          throw fastify.httpErrors.notFound(
-            sanitizeErrorMessage('Pool not found: {}', poolAddress),
-          );
-        }
 
+        let poolAddressToUse = poolAddress;
         let baseTokenToUse: string;
         let quoteTokenToUse: string;
 
-        // Determine which token is base and which is quote based on the provided baseToken
-        if (baseToken === poolInfo.baseTokenAddress) {
-          baseTokenToUse = poolInfo.baseTokenAddress;
-          quoteTokenToUse = poolInfo.quoteTokenAddress;
-        } else if (baseToken === poolInfo.quoteTokenAddress) {
-          // User specified the quote token as base, so swap them
-          baseTokenToUse = poolInfo.quoteTokenAddress;
-          quoteTokenToUse = poolInfo.baseTokenAddress;
-        } else {
-          // Try to resolve baseToken as symbol to address
-          const resolvedToken = uniswap.getTokenBySymbol(baseToken);
+        if (poolAddressToUse) {
+          // Pool address provided, get pool info to determine tokens
+          const poolInfo = await getUniswapPoolInfo(poolAddressToUse, networkToUse, 'clmm');
+          if (!poolInfo) {
+            throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddressToUse));
+          }
 
-          if (resolvedToken) {
-            if (resolvedToken.address === poolInfo.baseTokenAddress) {
-              baseTokenToUse = poolInfo.baseTokenAddress;
-              quoteTokenToUse = poolInfo.quoteTokenAddress;
-            } else if (resolvedToken.address === poolInfo.quoteTokenAddress) {
-              baseTokenToUse = poolInfo.quoteTokenAddress;
-              quoteTokenToUse = poolInfo.baseTokenAddress;
-            } else {
-              throw fastify.httpErrors.badRequest(
-                `Token ${baseToken} not found in pool ${poolAddress}`,
-              );
-            }
+          // Determine which token is base and which is quote based on the provided baseToken
+          if (baseToken === poolInfo.baseTokenAddress) {
+            baseTokenToUse = poolInfo.baseTokenAddress;
+            quoteTokenToUse = poolInfo.quoteTokenAddress;
+          } else if (baseToken === poolInfo.quoteTokenAddress) {
+            // User specified the quote token as base, so swap them
+            baseTokenToUse = poolInfo.quoteTokenAddress;
+            quoteTokenToUse = poolInfo.baseTokenAddress;
           } else {
-            throw fastify.httpErrors.badRequest(
-              `Token ${baseToken} not found in pool ${poolAddress}`,
-            );
+            // Try to resolve baseToken as symbol to address
+            const resolvedToken = uniswap.getTokenBySymbol(baseToken);
+
+            if (resolvedToken) {
+              if (resolvedToken.address === poolInfo.baseTokenAddress) {
+                baseTokenToUse = poolInfo.baseTokenAddress;
+                quoteTokenToUse = poolInfo.quoteTokenAddress;
+              } else if (resolvedToken.address === poolInfo.quoteTokenAddress) {
+                baseTokenToUse = poolInfo.quoteTokenAddress;
+                quoteTokenToUse = poolInfo.baseTokenAddress;
+              } else {
+                throw fastify.httpErrors.badRequest(`Token ${baseToken} not found in pool ${poolAddressToUse}`);
+              }
+            } else {
+              throw fastify.httpErrors.badRequest(`Token ${baseToken} not found in pool ${poolAddressToUse}`);
+            }
+          }
+        } else {
+          // No pool address provided, need quoteToken to find pool
+          if (!quoteToken) {
+            throw fastify.httpErrors.badRequest('quoteToken is required when poolAddress is not provided');
+          }
+
+          baseTokenToUse = baseToken;
+          quoteTokenToUse = quoteToken;
+
+          // Find pool using findDefaultPool
+          poolAddressToUse = await uniswap.findDefaultPool(baseTokenToUse, quoteTokenToUse, 'clmm');
+
+          if (!poolAddressToUse) {
+            throw fastify.httpErrors.notFound(`No CLMM pool found for pair ${baseTokenToUse}-${quoteTokenToUse}`);
           }
         }
 
@@ -438,9 +396,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           throw e;
         }
         logger.error('Unexpected error getting swap quote:', e);
-        throw fastify.httpErrors.internalServerError(
-          'Error getting swap quote',
-        );
+        throw fastify.httpErrors.internalServerError('Error getting swap quote');
       }
     },
   );

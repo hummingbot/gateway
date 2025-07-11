@@ -7,11 +7,7 @@ import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { PositionInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import {
-  POSITION_MANAGER_ABI,
-  getUniswapV3NftManagerAddress,
-  getUniswapV3FactoryAddress,
-} from '../uniswap.contracts';
+import { POSITION_MANAGER_ABI, getUniswapV3NftManagerAddress, getUniswapV3FactoryAddress } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
 // Define the request and response types
@@ -83,9 +79,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         if (!walletAddress) {
           walletAddress = await uniswap.getFirstWalletAddress();
           if (!walletAddress) {
-            throw fastify.httpErrors.badRequest(
-              'No wallet address provided and no default wallet found',
-            );
+            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
           }
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
@@ -112,10 +106,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         const positions = [];
         for (let i = 0; i < numPositions; i++) {
           try {
-            const tokenId = await positionManager.tokenOfOwnerByIndex(
-              walletAddress,
-              i,
-            );
+            const tokenId = await positionManager.tokenOfOwnerByIndex(walletAddress, i);
 
             // Get position details
             const positionDetails = await positionManager.positions(tokenId);
@@ -140,14 +131,8 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
             const fee = positionDetails.fee;
 
             // Get collected fees
-            const feeAmount0 = formatTokenAmount(
-              positionDetails.tokensOwed0.toString(),
-              token0.decimals,
-            );
-            const feeAmount1 = formatTokenAmount(
-              positionDetails.tokensOwed1.toString(),
-              token1.decimals,
-            );
+            const feeAmount0 = formatTokenAmount(positionDetails.tokensOwed0.toString(), token0.decimals);
+            const feeAmount1 = formatTokenAmount(positionDetails.tokensOwed1.toString(), token1.decimals);
 
             // Get the pool associated with the position
             const pool = await uniswap.getV3Pool(token0, token1, fee);
@@ -157,16 +142,8 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
             }
 
             // Calculate price range
-            const lowerPrice = tickToPrice(
-              token0,
-              token1,
-              tickLower,
-            ).toSignificant(6);
-            const upperPrice = tickToPrice(
-              token0,
-              token1,
-              tickUpper,
-            ).toSignificant(6);
+            const lowerPrice = tickToPrice(token0, token1, tickLower).toSignificant(6);
+            const upperPrice = tickToPrice(token0, token1, tickUpper).toSignificant(6);
 
             // Calculate current price
             const price = pool.token0Price.toSignificant(6);
@@ -180,20 +157,13 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
             });
 
             // Get token amounts in the position
-            const token0Amount = formatTokenAmount(
-              position.amount0.quotient.toString(),
-              token0.decimals,
-            );
-            const token1Amount = formatTokenAmount(
-              position.amount1.quotient.toString(),
-              token1.decimals,
-            );
+            const token0Amount = formatTokenAmount(position.amount0.quotient.toString(), token0.decimals);
+            const token1Amount = formatTokenAmount(position.amount1.quotient.toString(), token1.decimals);
 
             // Determine which token is base and which is quote
             const isBaseToken0 =
               token0.symbol === 'WETH' ||
-              (token1.symbol !== 'WETH' &&
-                token0.address.toLowerCase() < token1.address.toLowerCase());
+              (token1.symbol !== 'WETH' && token0.address.toLowerCase() < token1.address.toLowerCase());
 
             const [baseTokenAddress, quoteTokenAddress] = isBaseToken0
               ? [token0.address, token1.address]
@@ -203,9 +173,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
               ? [token0Amount, token1Amount]
               : [token1Amount, token0Amount];
 
-            const [baseFeeAmount, quoteFeeAmount] = isBaseToken0
-              ? [feeAmount0, feeAmount1]
-              : [feeAmount1, feeAmount0];
+            const [baseFeeAmount, quoteFeeAmount] = isBaseToken0 ? [feeAmount0, feeAmount1] : [feeAmount1, feeAmount0];
 
             // Get the actual pool address using computePoolAddress
             const poolAddress = computePoolAddress({
@@ -231,9 +199,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
               price: parseFloat(price),
             });
           } catch (err) {
-            logger.warn(
-              `Error fetching position ${i} for wallet ${walletAddress}: ${err.message}`,
-            );
+            logger.warn(`Error fetching position ${i} for wallet ${walletAddress}: ${err.message}`);
           }
         }
 
@@ -243,9 +209,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError(
-          'Failed to fetch positions',
-        );
+        throw fastify.httpErrors.internalServerError('Failed to fetch positions');
       }
     },
   );

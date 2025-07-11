@@ -85,8 +85,7 @@ describe('Raydium SDK v0.1.141-alpha Integration Tests', () => {
 
     test('should load real CLMM pool info', async () => {
       // Use a known SOL-USDC CLMM pool address
-      const solUsdcClmmPoolAddress =
-        '2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv';
+      const solUsdcClmmPoolAddress = '2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv';
 
       const poolInfo = await raydium.getClmmPoolInfo(solUsdcClmmPoolAddress);
 
@@ -97,9 +96,7 @@ describe('Raydium SDK v0.1.141-alpha Integration Tests', () => {
         expect(poolInfo.binStep).toBeDefined();
       } else {
         // If pool not found, just log a warning
-        console.warn(
-          `CLMM pool ${solUsdcClmmPoolAddress} not found - might be using wrong address`,
-        );
+        console.warn(`CLMM pool ${solUsdcClmmPoolAddress} not found - might be using wrong address`);
       }
     });
   });
@@ -112,8 +109,7 @@ describe('Raydium SDK v0.1.141-alpha Integration Tests', () => {
       try {
         // For mainnet, use API method
         const [poolInfo] = await raydium.getPoolfromAPI(solUsdcPoolAddress);
-        const rpcData =
-          await raydium.raydiumSDK.liquidity.getRpcPoolInfo(solUsdcPoolAddress);
+        const rpcData = await raydium.raydiumSDK.liquidity.getRpcPoolInfo(solUsdcPoolAddress);
 
         // Check if this is a standard AMM pool
         if (poolInfo.type === 'Standard') {
@@ -125,11 +121,7 @@ describe('Raydium SDK v0.1.141-alpha Integration Tests', () => {
               baseReserve: rpcData.baseReserve,
               quoteReserve: rpcData.quoteReserve,
               status: rpcData.status.toNumber(),
-              version:
-                poolInfo.programId ===
-                '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8'
-                  ? 4
-                  : 5,
+              version: poolInfo.programId === '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8' ? 4 : 5,
             } as any, // Type assertion to handle type mismatch
             amountIn: new (require('bn.js'))(amountIn),
             mintIn: SOL.address,
@@ -180,8 +172,7 @@ describe('Raydium SDK v0.1.141-alpha Integration Tests', () => {
   describe('CLMM Swap Operations with New SDK', () => {
     test('should get real swap quote for CLMM pool', async () => {
       // Use a known SOL-USDC CLMM pool address
-      const solUsdcClmmPoolAddress =
-        '2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv';
+      const solUsdcClmmPoolAddress = '2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv';
 
       try {
         // Get CLMM pool info first
@@ -208,9 +199,7 @@ describe('Raydium SDK v0.1.141-alpha Integration Tests', () => {
           // that may not be fully implemented in the test environment
         } else {
           // If pool not found, mark test as passed with warning
-          console.warn(
-            `CLMM pool ${solUsdcClmmPoolAddress} not found - skipping swap test`,
-          );
+          console.warn(`CLMM pool ${solUsdcClmmPoolAddress} not found - skipping swap test`);
           expect(true).toBe(true);
         }
       } catch (error) {
@@ -249,8 +238,7 @@ describe('Raydium SDK v0.1.141-alpha Integration Tests', () => {
       expect(percent.numerator).toBeDefined();
       expect(percent.denominator).toBeDefined();
 
-      const decimal =
-        percent.numerator.toNumber() / percent.denominator.toNumber();
+      const decimal = percent.numerator.toNumber() / percent.denominator.toNumber();
       expect(decimal).toBe(0.01);
     });
 
@@ -293,12 +281,8 @@ describe('Raydium SDK v0.1.141-alpha Integration Tests', () => {
       const startTime = Date.now();
 
       // Test loading specific pool info instead of all pools
-      const ammPoolInfo = await raydium.getAmmPoolInfo(
-        '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
-      );
-      const clmmPoolInfo = await raydium.getClmmPoolInfo(
-        'Gvq4K22vKB3HqejKLPZn2J2jomcVY3vHCDqH5RBxciis',
-      );
+      const ammPoolInfo = await raydium.getAmmPoolInfo('58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2');
+      const clmmPoolInfo = await raydium.getClmmPoolInfo('Gvq4K22vKB3HqejKLPZn2J2jomcVY3vHCDqH5RBxciis');
 
       const endTime = Date.now();
       const duration = endTime - startTime;

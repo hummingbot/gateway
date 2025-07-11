@@ -1,11 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 
-import {
-  GetPoolInfoRequestType,
-  GetPoolInfoRequest,
-  PoolInfo,
-  PoolInfoSchema,
-} from '../../../schemas/amm-schema';
+import { GetPoolInfoRequestType, GetPoolInfoRequest, PoolInfo, PoolInfoSchema } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 
@@ -37,9 +32,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         return poolInfo;
       } catch (e) {
         logger.error(e);
-        throw fastify.httpErrors.internalServerError(
-          'Failed to fetch pool info',
-        );
+        throw fastify.httpErrors.internalServerError('Failed to fetch pool info');
       }
     },
   );

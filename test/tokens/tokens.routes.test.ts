@@ -82,14 +82,8 @@ describe('Token Routes', () => {
     });
 
     it('should return 404 when token list not found', async () => {
-      const mockService = (
-        TokenService.getInstance as jest.Mock
-      ).mockReturnValue({
-        listTokens: jest
-          .fn()
-          .mockRejectedValue(
-            new Error('Token list not found for ethereum/invalid'),
-          ),
+      const mockService = (TokenService.getInstance as jest.Mock).mockReturnValue({
+        listTokens: jest.fn().mockRejectedValue(new Error('Token list not found for ethereum/invalid')),
         getToken: jest.fn(),
         addToken: jest.fn(),
         removeToken: jest.fn(),
@@ -171,8 +165,7 @@ describe('Token Routes', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body).toEqual({
-        message:
-          'Token TEST added successfully to ethereum/mainnet. Gateway restart required.',
+        message: 'Token TEST added successfully to ethereum/mainnet. Gateway restart required.',
         requiresRestart: true,
       });
     });
@@ -216,9 +209,7 @@ describe('Token Routes', () => {
 
     it('should return 404 when token not found', async () => {
       const mockService = TokenService.getInstance();
-      (mockService.removeToken as jest.Mock).mockRejectedValue(
-        new Error('Token 0x123 not found in ethereum/mainnet'),
-      );
+      (mockService.removeToken as jest.Mock).mockRejectedValue(new Error('Token 0x123 not found in ethereum/mainnet'));
 
       const response = await app.inject({
         method: 'DELETE',

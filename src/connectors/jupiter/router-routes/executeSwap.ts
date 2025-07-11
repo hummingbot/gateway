@@ -1,11 +1,7 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  ExecuteSwapRequestType,
-  SwapExecuteResponseType,
-  SwapExecuteResponse,
-} from '../../../schemas/router-schema';
+import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { JupiterConfig } from '../jupiter.config';
 import { JupiterExecuteSwapRequest } from '../schemas';
@@ -26,15 +22,7 @@ async function executeSwap(
   maxLamports?: number,
 ): Promise<SwapExecuteResponseType> {
   // Step 1: Get a fresh quote using the quoteSwap function
-  const quoteResult = await quoteSwap(
-    fastify,
-    network,
-    baseToken,
-    quoteToken,
-    amount,
-    side,
-    slippagePct,
-  );
+  const quoteResult = await quoteSwap(fastify, network, baseToken, quoteToken, amount, side, slippagePct);
 
   // Step 2: Execute the quote immediately using executeQuote function
   const executeResult = await executeQuote(
@@ -76,17 +64,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          walletAddress,
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          slippagePct,
-          priorityLevel,
-          maxLamports,
-        } = request.body as typeof JupiterExecuteSwapRequest._type;
+        const { walletAddress, network, baseToken, quoteToken, amount, side, slippagePct, priorityLevel, maxLamports } =
+          request.body as typeof JupiterExecuteSwapRequest._type;
 
         return await executeSwap(
           fastify,

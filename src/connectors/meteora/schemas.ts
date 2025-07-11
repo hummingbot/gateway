@@ -27,11 +27,7 @@ export const MeteoraQuoteSwapResponse = Type.Intersect([
 export const MeteoraClmmExecuteSwapRequest = Type.Intersect([
   CLMMBase.ExecuteSwapRequest,
   Type.Object({
-    priorityFeePerCU: Type.Optional(
-      Type.Number({ description: 'Priority fee per compute unit' }),
-    ),
-    computeUnits: Type.Optional(
-      Type.Number({ description: 'Compute units for transaction' }),
-    ),
+    priorityFeePerCU: Type.Optional(Type.Number({ description: 'Priority fee per compute unit' })),
+    computeUnits: Type.Optional(Type.Number({ description: 'Compute units for transaction' })),
   }),
 ]);

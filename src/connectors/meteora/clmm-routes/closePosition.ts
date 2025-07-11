@@ -27,10 +27,7 @@ async function closePosition(
     const solana = await Solana.getInstance(network);
     const meteora = await Meteora.getInstance(network);
     const wallet = await solana.getWallet(walletAddress);
-    const positionInfo = await meteora.getPositionInfo(
-      positionAddress,
-      wallet.publicKey,
-    );
+    const positionInfo = await meteora.getPositionInfo(positionAddress, wallet.publicKey);
     logger.info('Position Info:', positionInfo);
 
     const dlmmPool = await meteora.getDlmmPool(positionInfo.poolAddress);
@@ -80,10 +77,7 @@ async function closePosition(
 
     // Now close the position
     try {
-      const { position } = await meteora.getRawPosition(
-        positionAddress,
-        wallet.publicKey,
-      );
+      const { position } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
 
       const closePositionTx = await dlmmPool.closePosition({
         owner: wallet.publicKey,
@@ -99,21 +93,14 @@ async function closePosition(
         finalComputeUnits,
         priorityFeePerCU,
       );
-      logger.info(
-        `Position ${positionAddress} closed successfully with signature: ${signature}`,
-      );
+      logger.info(`Position ${positionAddress} closed successfully with signature: ${signature}`);
 
-      const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-        signature,
-        wallet.publicKey.toBase58(),
-        ['So11111111111111111111111111111111111111112'],
-      );
+      const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+        'So11111111111111111111111111111111111111112',
+      ]);
       const returnedSOL = Math.abs(balanceChanges[0]);
 
-      const totalFee =
-        fee +
-        (removeLiquidityResult.data?.fee || 0) +
-        (collectFeesResult.data?.fee || 0);
+      const totalFee = fee + (removeLiquidityResult.data?.fee || 0) + (collectFeesResult.data?.fee || 0);
 
       return {
         signature,
@@ -121,14 +108,10 @@ async function closePosition(
         data: {
           fee: totalFee,
           positionRentRefunded: returnedSOL,
-          baseTokenAmountRemoved:
-            removeLiquidityResult.data?.baseTokenAmountRemoved || 0,
-          quoteTokenAmountRemoved:
-            removeLiquidityResult.data?.quoteTokenAmountRemoved || 0,
-          baseFeeAmountCollected:
-            collectFeesResult.data?.baseFeeAmountCollected || 0,
-          quoteFeeAmountCollected:
-            collectFeesResult.data?.quoteFeeAmountCollected || 0,
+          baseTokenAmountRemoved: removeLiquidityResult.data?.baseTokenAmountRemoved || 0,
+          quoteTokenAmountRemoved: removeLiquidityResult.data?.quoteTokenAmountRemoved || 0,
+          baseFeeAmountCollected: collectFeesResult.data?.baseFeeAmountCollected || 0,
+          quoteFeeAmountCollected: collectFeesResult.data?.quoteFeeAmountCollected || 0,
         },
       };
     } catch (positionError) {
@@ -184,13 +167,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress,
-          positionAddress,
-          priorityFeePerCU,
-          computeUnits,
-        } = request.body;
+        const { network, walletAddress, positionAddress, priorityFeePerCU, computeUnits } = request.body;
         const networkToUse = network;
 
         return await closePosition(

@@ -13,10 +13,7 @@ interface ToolContext {
 }
 
 // Type for individual tool handler
-type ToolHandler<T extends ToolName> = (
-  context: ToolContext,
-  params: ToolParams<T>,
-) => Promise<string>;
+type ToolHandler<T extends ToolName> = (context: ToolContext, params: ToolParams<T>) => Promise<string>;
 
 // Type for all handlers - partial to allow CoinGecko tools to be added dynamically
 type ToolHandlers = {
@@ -26,17 +23,7 @@ type ToolHandlers = {
 // Gateway tool handlers
 const GATEWAY_HANDLERS: Partial<ToolHandlers> = {
   quote_swap: async (context, params) => {
-    const {
-      chain,
-      network,
-      connector,
-      address,
-      base,
-      quote,
-      amount,
-      side,
-      slippage,
-    } = params;
+    const { chain, network, connector, address, base, quote, amount, side, slippage } = params;
 
     try {
       const result = await context.apiClient.quoteSwap({
@@ -177,10 +164,7 @@ const GATEWAY_HANDLERS: Partial<ToolHandlers> = {
       }
 
       const balanceRows = balances
-        .map(
-          (token: any) =>
-            `| ${token.symbol} | ${token.balance} | ${token.address || 'Native'} |`,
-        )
+        .map((token: any) => `| ${token.symbol} | ${token.balance} | ${token.address || 'Native'} |`)
         .join('\n');
 
       return [
@@ -236,9 +220,7 @@ const GATEWAY_HANDLERS: Partial<ToolHandlers> = {
         `- **Gas Price**: ${result.gasPrice}`,
         '',
         result.logs && result.logs.length > 0
-          ? '## Event Logs\n```json\n' +
-            JSON.stringify(result.logs, null, 2) +
-            '\n```'
+          ? '## Event Logs\n```json\n' + JSON.stringify(result.logs, null, 2) + '\n```'
           : '',
       ]
         .join('\n')
@@ -321,9 +303,7 @@ const GATEWAY_HANDLERS: Partial<ToolHandlers> = {
       current[keys[keys.length - 1]] = value;
 
       // Write back to file
-      const newContent = isJson
-        ? JSON.stringify(config, null, 2)
-        : yaml.dump(config);
+      const newContent = isJson ? JSON.stringify(config, null, 2) : yaml.dump(config);
 
       writeFileSync(configPath, newContent, 'utf-8');
 
@@ -354,11 +334,7 @@ const GATEWAY_HANDLERS: Partial<ToolHandlers> = {
 };
 
 // Helper function to get blockchain explorer URL
-function getExplorerUrl(
-  chain: string,
-  network: string,
-  txHash: string,
-): string {
+function getExplorerUrl(chain: string, network: string, txHash: string): string {
   const explorers: Record<string, Record<string, string>> = {
     ethereum: {
       mainnet: 'https://etherscan.io/tx/',
@@ -378,9 +354,7 @@ function getExplorerUrl(
   };
 
   const explorerBase = explorers[chain]?.[network];
-  return explorerBase
-    ? `${explorerBase}${txHash}`
-    : `Unknown explorer for ${chain} ${network}`;
+  return explorerBase ? `${explorerBase}${txHash}` : `Unknown explorer for ${chain} ${network}`;
 }
 
 // Export combined handlers (Gateway + CoinGecko)
@@ -393,8 +367,6 @@ export function createCoinGeckoHandler(toolName: string): ToolHandler<any> {
   return async (_context, _params) => {
     // This handler will be called by the server.ts when a CoinGecko tool is invoked
     // The actual implementation is handled by the CoinGecko subprocess via ToolRegistry
-    throw new Error(
-      `CoinGecko handler for ${toolName} should be handled by ToolRegistry, not called directly`,
-    );
+    throw new Error(`CoinGecko handler for ${toolName} should be handled by ToolRegistry, not called directly`);
   };
 }

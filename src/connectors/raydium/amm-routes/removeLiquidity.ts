@@ -64,32 +64,28 @@ async function createRemoveLiquidityTransaction(
     const baseAmountMin = new BN(0); // We'll accept any amount due to slippage
     const quoteAmountMin = new BN(0); // We'll accept any amount due to slippage
 
-    const response: AMMRemoveLiquiditySDKResponse =
-      await raydium.raydiumSDK.liquidity.removeLiquidity({
-        poolInfo: poolInfo as ApiV3PoolInfoStandardItem,
-        poolKeys: poolKeys as AmmV4Keys,
-        lpAmount: lpAmount,
-        baseAmountMin,
-        quoteAmountMin,
-        txVersion: raydium.txVersion,
-        computeBudgetConfig,
-      });
+    const response: AMMRemoveLiquiditySDKResponse = await raydium.raydiumSDK.liquidity.removeLiquidity({
+      poolInfo: poolInfo as ApiV3PoolInfoStandardItem,
+      poolKeys: poolKeys as AmmV4Keys,
+      lpAmount: lpAmount,
+      baseAmountMin,
+      quoteAmountMin,
+      txVersion: raydium.txVersion,
+      computeBudgetConfig,
+    });
     return response.transaction;
   } else if (ammPoolInfo.poolType === 'cpmm') {
     // Use default slippage from config
-    const slippage = new Percent(
-      Math.floor(RaydiumConfig.config.slippagePct * 100) / 10000,
-    );
+    const slippage = new Percent(Math.floor(RaydiumConfig.config.slippagePct * 100) / 10000);
 
-    const response: CPMMWithdrawLiquiditySDKResponse =
-      await raydium.raydiumSDK.cpmm.withdrawLiquidity({
-        poolInfo: poolInfo as ApiV3PoolInfoStandardItemCpmm,
-        poolKeys: poolKeys as CpmmKeys,
-        lpAmount: lpAmount,
-        txVersion: raydium.txVersion,
-        slippage,
-        computeBudgetConfig,
-      });
+    const response: CPMMWithdrawLiquiditySDKResponse = await raydium.raydiumSDK.cpmm.withdrawLiquidity({
+      poolInfo: poolInfo as ApiV3PoolInfoStandardItemCpmm,
+      poolKeys: poolKeys as CpmmKeys,
+      lpAmount: lpAmount,
+      txVersion: raydium.txVersion,
+      slippage,
+      computeBudgetConfig,
+    });
     return response.transaction;
   }
   throw new Error(`Unsupported pool type: ${ammPoolInfo.poolType}`);
@@ -116,10 +112,9 @@ async function calculateLpAmountToRemove(
   }
 
   // Get user's LP token account
-  const lpTokenAccounts = await solana.connection.getTokenAccountsByOwner(
-    wallet.publicKey,
-    { mint: new PublicKey(lpMint) },
-  );
+  const lpTokenAccounts = await solana.connection.getTokenAccountsByOwner(wallet.publicKey, {
+    mint: new PublicKey(lpMint),
+  });
 
   if (lpTokenAccounts.value.length === 0) {
     throw new Error(`No LP token account found for pool ${poolAddress}`);
@@ -127,22 +122,15 @@ async function calculateLpAmountToRemove(
 
   // Get LP token balance
   const lpTokenAccount = lpTokenAccounts.value[0].pubkey;
-  const accountInfo =
-    await solana.connection.getTokenAccountBalance(lpTokenAccount);
-  const lpBalance = new BN(
-    new Decimal(accountInfo.value.uiAmount)
-      .mul(10 ** accountInfo.value.decimals)
-      .toFixed(0),
-  );
+  const accountInfo = await solana.connection.getTokenAccountBalance(lpTokenAccount);
+  const lpBalance = new BN(new Decimal(accountInfo.value.uiAmount).mul(10 ** accountInfo.value.decimals).toFixed(0));
 
   if (lpBalance.isZero()) {
     throw new Error('LP token balance is zero - nothing to remove');
   }
 
   // Calculate LP amount to remove based on percentage
-  return new BN(
-    new Decimal(lpBalance.toString()).mul(percentageToRemove / 100).toFixed(0),
-  );
+  return new BN(new Decimal(lpBalance.toString()).mul(percentageToRemove / 100).toFixed(0));
 }
 
 async function removeLiquidity(
@@ -175,9 +163,7 @@ async function removeLiquidity(
     percentageToRemove,
   );
 
-  logger.info(
-    `Removing ${percentageToRemove.toFixed(4)}% liquidity from pool ${poolAddress}...`,
-  );
+  logger.info(`Removing ${percentageToRemove.toFixed(4)}% liquidity from pool ${poolAddress}...`);
   const DEFAULT_COMPUTE_UNITS = 600000;
 
   // Use provided compute units or default
@@ -191,9 +177,7 @@ async function removeLiquidity(
   } else {
     // Default priority fee calculation
     const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-    priorityFeePerCUMicroLamports = Math.floor(
-      (currentPriorityFee * 1e6) / computeUnitsToUse,
-    );
+    priorityFeePerCUMicroLamports = Math.floor((currentPriorityFee * 1e6) / computeUnitsToUse);
   }
 
   const transaction = await createRemoveLiquidityTransaction(
@@ -212,8 +196,7 @@ async function removeLiquidity(
     (transaction as VersionedTransaction).sign([wallet]);
   } else {
     const txAsTransaction = transaction as Transaction;
-    const { blockhash, lastValidBlockHeight } =
-      await solana.connection.getLatestBlockhash();
+    const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash();
     txAsTransaction.recentBlockhash = blockhash;
     txAsTransaction.lastValidBlockHeight = lastValidBlockHeight;
     txAsTransaction.feePayer = wallet.publicKey;
@@ -222,17 +205,15 @@ async function removeLiquidity(
 
   await solana.simulateTransaction(transaction);
 
-  const { confirmed, signature, txData } =
-    await solana.sendAndConfirmRawTransaction(transaction);
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
   if (confirmed && txData) {
     const tokenAInfo = await solana.getToken(poolInfo.mintA.address);
     const tokenBInfo = await solana.getToken(poolInfo.mintB.address);
 
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-      signature,
-      wallet.publicKey.toBase58(),
-      [tokenAInfo.address, tokenBInfo.address],
-    );
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+      tokenAInfo.address,
+      tokenBInfo.address,
+    ]);
 
     const baseTokenBalanceChange = balanceChanges[0];
     const quoteTokenBalanceChange = balanceChanges[1];
@@ -278,8 +259,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, poolAddress, percentageToRemove } =
-          request.body;
+        const { network, walletAddress, poolAddress, percentageToRemove } = request.body;
 
         return await removeLiquidity(
           fastify,

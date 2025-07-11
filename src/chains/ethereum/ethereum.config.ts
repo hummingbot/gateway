@@ -27,10 +27,7 @@ export interface Config {
   gasLimitTransaction: number;
 }
 
-export function getEthereumConfig(
-  chainName: string,
-  networkName: string,
-): Config {
+export function getEthereumConfig(chainName: string, networkName: string): Config {
   const namespaceId = `${chainName}-${networkName}`;
   return {
     network: {
@@ -38,25 +35,11 @@ export function getEthereumConfig(
       chainID: ConfigManagerV2.getInstance().get(namespaceId + '.chainID'),
       nodeURL: ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL'),
       tokenListType: 'FILE' as TokenListType,
-      tokenListSource: path.join(
-        rootPath(),
-        'conf',
-        'tokens',
-        chainName,
-        `${networkName}.json`,
-      ),
-      gasPriceRefreshInterval: ConfigManagerV2.getInstance().get(
-        namespaceId + '.gasPriceRefreshInterval',
-      ),
+      tokenListSource: path.join(rootPath(), 'conf', 'tokens', chainName, `${networkName}.json`),
+      gasPriceRefreshInterval: ConfigManagerV2.getInstance().get(namespaceId + '.gasPriceRefreshInterval'),
     },
-    nativeCurrencySymbol: ConfigManagerV2.getInstance().get(
-      namespaceId + '.nativeCurrencySymbol',
-    ),
-    manualGasPrice: ConfigManagerV2.getInstance().get(
-      namespaceId + '.manualGasPrice',
-    ),
-    gasLimitTransaction: ConfigManagerV2.getInstance().get(
-      namespaceId + '.gasLimitTransaction',
-    ),
+    nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
+    manualGasPrice: ConfigManagerV2.getInstance().get(namespaceId + '.manualGasPrice'),
+    gasLimitTransaction: ConfigManagerV2.getInstance().get(namespaceId + '.gasLimitTransaction'),
   };
 }

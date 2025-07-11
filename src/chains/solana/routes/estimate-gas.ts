@@ -25,9 +25,7 @@ export async function estimateGasSolana(
     };
   } catch (error) {
     logger.error(`Error estimating gas: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(
-      `Failed to estimate gas: ${error.message}`,
-    );
+    throw fastify.httpErrors.internalServerError(`Failed to estimate gas: ${error.message}`);
   }
 }
 

@@ -13,10 +13,7 @@ import {
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import {
-  POSITION_MANAGER_ABI,
-  getUniswapV3NftManagerAddress,
-} from '../uniswap.contracts';
+import { POSITION_MANAGER_ABI, getUniswapV3NftManagerAddress } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
 export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
@@ -77,9 +74,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         if (!walletAddress) {
           walletAddress = await uniswap.getFirstWalletAddress();
           if (!walletAddress) {
-            throw fastify.httpErrors.badRequest(
-              'No wallet address provided and no default wallet found',
-            );
+            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
           }
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
@@ -91,8 +86,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get position manager address
-        const positionManagerAddress =
-          getUniswapV3NftManagerAddress(networkToUse);
+        const positionManagerAddress = getUniswapV3NftManagerAddress(networkToUse);
 
         // Check NFT ownership
         try {
@@ -105,11 +99,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Create position manager contract
-        const positionManager = new Contract(
-          positionManagerAddress,
-          POSITION_MANAGER_ABI,
-          wallet,
-        );
+        const positionManager = new Contract(positionManagerAddress, POSITION_MANAGER_ABI, wallet);
 
         // Get position details
         const position = await positionManager.positions(positionAddress);
@@ -121,8 +111,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         // Determine base and quote tokens - WETH or lower address is base
         const isBaseToken0 =
           token0.symbol === 'WETH' ||
-          (token1.symbol !== 'WETH' &&
-            token0.address.toLowerCase() < token1.address.toLowerCase());
+          (token1.symbol !== 'WETH' && token0.address.toLowerCase() < token1.address.toLowerCase());
 
         // Get fees owned
         const feeAmount0 = position.tokensOwed0;
@@ -134,14 +123,8 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Create CurrencyAmount objects for fees
-        const expectedCurrencyOwed0 = CurrencyAmount.fromRawAmount(
-          token0,
-          feeAmount0.toString(),
-        );
-        const expectedCurrencyOwed1 = CurrencyAmount.fromRawAmount(
-          token1,
-          feeAmount1.toString(),
-        );
+        const expectedCurrencyOwed0 = CurrencyAmount.fromRawAmount(token0, feeAmount0.toString());
+        const expectedCurrencyOwed1 = CurrencyAmount.fromRawAmount(token1, feeAmount1.toString());
 
         // Create parameters for collecting fees
         const collectParams = {
@@ -152,15 +135,11 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         };
 
         // Get calldata for collecting fees
-        const { calldata, value } =
-          NonfungiblePositionManager.collectCallParameters(collectParams);
+        const { calldata, value } = NonfungiblePositionManager.collectCallParameters(collectParams);
 
         // Execute the transaction to collect fees
         // Use Ethereum's prepareGasOptions method
-        const txParams = await ethereum.prepareGasOptions(
-          priorityFeePerCU,
-          computeUnits || 300000,
-        );
+        const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits || 300000);
         txParams.value = BigNumber.from(value.toString());
 
         const tx = await positionManager.multicall([calldata], txParams);
@@ -175,22 +154,12 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         );
 
         // Calculate fee amounts collected
-        const token0FeeAmount = formatTokenAmount(
-          feeAmount0.toString(),
-          token0.decimals,
-        );
-        const token1FeeAmount = formatTokenAmount(
-          feeAmount1.toString(),
-          token1.decimals,
-        );
+        const token0FeeAmount = formatTokenAmount(feeAmount0.toString(), token0.decimals);
+        const token1FeeAmount = formatTokenAmount(feeAmount1.toString(), token1.decimals);
 
         // Map back to base and quote amounts
-        const baseFeeAmountCollected = isBaseToken0
-          ? token0FeeAmount
-          : token1FeeAmount;
-        const quoteFeeAmountCollected = isBaseToken0
-          ? token1FeeAmount
-          : token0FeeAmount;
+        const baseFeeAmountCollected = isBaseToken0 ? token0FeeAmount : token1FeeAmount;
+        const quoteFeeAmountCollected = isBaseToken0 ? token1FeeAmount : token0FeeAmount;
 
         return {
           signature: receipt.transactionHash,

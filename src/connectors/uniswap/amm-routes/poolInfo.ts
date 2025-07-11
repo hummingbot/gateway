@@ -2,12 +2,7 @@ import { Contract } from '@ethersproject/contracts';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  GetPoolInfoRequestType,
-  GetPoolInfoRequest,
-  PoolInfo,
-  PoolInfoSchema,
-} from '../../../schemas/amm-schema';
+import { GetPoolInfoRequestType, GetPoolInfoRequest, PoolInfo, PoolInfoSchema } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { IUniswapV2PairABI } from '../uniswap.contracts';
@@ -39,11 +34,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
 
         // For Uniswap, we need to get the pair contract to extract token addresses
         // Create a pair contract instance to read token addresses
-        const pairContract = new Contract(
-          poolAddress,
-          IUniswapV2PairABI.abi,
-          ethereum.provider,
-        );
+        const pairContract = new Contract(poolAddress, IUniswapV2PairABI.abi, ethereum.provider);
 
         // Get token addresses from the pair
         const token0Address = await pairContract.token0();
@@ -71,14 +62,8 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         // Since we only have poolAddress, use token0 as base and token1 as quote
         const actualBaseToken = pairToken0;
         const actualQuoteToken = pairToken1;
-        const baseTokenAmount = formatTokenAmount(
-          v2Pair.reserve0.quotient.toString(),
-          pairToken0.decimals,
-        );
-        const quoteTokenAmount = formatTokenAmount(
-          v2Pair.reserve1.quotient.toString(),
-          pairToken1.decimals,
-        );
+        const baseTokenAmount = formatTokenAmount(v2Pair.reserve0.quotient.toString(), pairToken0.decimals);
+        const quoteTokenAmount = formatTokenAmount(v2Pair.reserve1.quotient.toString(), pairToken1.decimals);
 
         // Calculate price (quoteToken per baseToken)
         const price = quoteTokenAmount / baseTokenAmount;
@@ -113,9 +98,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.notFound('Resource not found');
         } else {
           logger.error('Unexpected error fetching pool info:', e);
-          throw fastify.httpErrors.internalServerError(
-            'Failed to fetch pool info',
-          );
+          throw fastify.httpErrors.internalServerError('Failed to fetch pool info');
         }
       }
     },

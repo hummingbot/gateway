@@ -21,10 +21,7 @@ describe('Meteora Routes Structure', () => {
 
   describe('Folder Structure', () => {
     it('should only have clmm-routes folder', () => {
-      const meteoraPath = path.join(
-        __dirname,
-        '../../../src/connectors/meteora',
-      );
+      const meteoraPath = path.join(__dirname, '../../../src/connectors/meteora');
       const clmmRoutesPath = path.join(meteoraPath, 'clmm-routes');
       const ammRoutesPath = path.join(meteoraPath, 'amm-routes');
       const swapRoutesPath = path.join(meteoraPath, 'swap-routes');
@@ -37,10 +34,7 @@ describe('Meteora Routes Structure', () => {
     });
 
     it('should have swap endpoints within CLMM routes', () => {
-      const clmmRoutesPath = path.join(
-        __dirname,
-        '../../../src/connectors/meteora/clmm-routes',
-      );
+      const clmmRoutesPath = path.join(__dirname, '../../../src/connectors/meteora/clmm-routes');
       const files = fs.readdirSync(clmmRoutesPath);
 
       expect(files).toContain('executeSwap.ts');

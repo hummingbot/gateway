@@ -25,12 +25,8 @@ export namespace JupiterConfig {
     slippagePct: ConfigManagerV2.getInstance().get('jupiter.slippagePct'),
     priorityLevel: ConfigManagerV2.getInstance().get('jupiter.priorityLevel'),
     maxLamports: ConfigManagerV2.getInstance().get('jupiter.maxLamports'),
-    onlyDirectRoutes: ConfigManagerV2.getInstance().get(
-      'jupiter.onlyDirectRoutes',
-    ),
-    restrictIntermediateTokens: ConfigManagerV2.getInstance().get(
-      'jupiter.restrictIntermediateTokens',
-    ),
+    onlyDirectRoutes: ConfigManagerV2.getInstance().get('jupiter.onlyDirectRoutes'),
+    restrictIntermediateTokens: ConfigManagerV2.getInstance().get('jupiter.restrictIntermediateTokens'),
     apiKey: ConfigManagerV2.getInstance().get('jupiter.apiKey'),
 
     availableNetworks: [

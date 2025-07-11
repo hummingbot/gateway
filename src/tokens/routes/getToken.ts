@@ -2,12 +2,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
-import {
-  TokenViewQuery,
-  TokenViewQuerySchema,
-  TokenResponse,
-  TokenResponseSchema,
-} from '../schemas';
+import { TokenViewQuery, TokenViewQuerySchema, TokenResponse, TokenResponseSchema } from '../schemas';
 
 export const getTokenRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -42,16 +37,10 @@ export const getTokenRoute: FastifyPluginAsync = async (fastify) => {
 
       try {
         const tokenService = TokenService.getInstance();
-        const token = await tokenService.getToken(
-          chain,
-          network,
-          symbolOrAddress,
-        );
+        const token = await tokenService.getToken(chain, network, symbolOrAddress);
 
         if (!token) {
-          throw fastify.httpErrors.notFound(
-            `Token ${symbolOrAddress} not found in ${chain}/${network}`,
-          );
+          throw fastify.httpErrors.notFound(`Token ${symbolOrAddress} not found in ${chain}/${network}`);
         }
 
         return {

@@ -2,12 +2,7 @@ import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  PoolInfo,
-  PoolInfoSchema,
-  FetchPoolsRequest,
-  FetchPoolsRequestType,
-} from '../../../schemas/clmm-schema';
+import { PoolInfo, PoolInfoSchema, FetchPoolsRequest, FetchPoolsRequestType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 // Using Fastify's native error handling
@@ -72,12 +67,8 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
               try {
                 return await meteora.getPoolInfo(pair.publicKey.toString());
               } catch (error) {
-                logger.error(
-                  `Failed to get pool info for ${pair.publicKey.toString()}: ${error.message}`,
-                );
-                throw fastify.httpErrors.notFound(
-                  `Pool not found: ${pair.publicKey.toString()}`,
-                );
+                logger.error(`Failed to get pool info for ${pair.publicKey.toString()}: ${error.message}`);
+                throw fastify.httpErrors.notFound(`Pool not found: ${pair.publicKey.toString()}`);
               }
             }),
         );
@@ -86,9 +77,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error('Error in fetch-pools:', e);
         if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError(
-          'Error processing the request',
-        );
+        throw fastify.httpErrors.internalServerError('Error processing the request');
       }
     },
   });

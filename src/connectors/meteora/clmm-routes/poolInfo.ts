@@ -41,9 +41,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
 
         const meteora = await Meteora.getInstance(network);
         if (!meteora) {
-          throw fastify.httpErrors.serviceUnavailable(
-            'Meteora service unavailable',
-          );
+          throw fastify.httpErrors.serviceUnavailable('Meteora service unavailable');
         }
 
         return (await meteora.getPoolInfo(poolAddress)) as MeteoraPoolInfo;

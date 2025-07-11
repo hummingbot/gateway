@@ -1,8 +1,5 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
 export interface ToolDefinition {
   name: string;
@@ -13,13 +10,9 @@ export interface ToolDefinition {
 // Global registry to track all tools
 export class ToolRegistry {
   private static tools: ToolDefinition[] = [];
-  private static handlers: Map<string, (request: any) => Promise<any>> =
-    new Map();
+  private static handlers: Map<string, (request: any) => Promise<any>> = new Map();
 
-  static registerTool(
-    tool: ToolDefinition,
-    handler: (request: any) => Promise<any>,
-  ) {
+  static registerTool(tool: ToolDefinition, handler: (request: any) => Promise<any>) {
     this.tools.push(tool);
     this.handlers.set(tool.name, handler);
   }

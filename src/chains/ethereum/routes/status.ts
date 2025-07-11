@@ -9,9 +9,7 @@ import {
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
 
-export async function getEthereumStatus(
-  network: string,
-): Promise<StatusResponseType> {
+export async function getEthereumStatus(network: string): Promise<StatusResponseType> {
   try {
     const ethereum = await Ethereum.getInstance(network);
     const chain = 'ethereum';
@@ -63,17 +61,7 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
             ...StatusRequestSchema.properties,
             network: {
               type: 'string',
-              examples: [
-                'mainnet',
-                'arbitrum',
-                'optimism',
-                'base',
-                'sepolia',
-                'bsc',
-                'avalanche',
-                'celo',
-                'polygon',
-              ],
+              examples: ['mainnet', 'arbitrum', 'optimism', 'base', 'sepolia', 'bsc', 'avalanche', 'celo', 'polygon'],
             },
           },
         },

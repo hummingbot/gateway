@@ -24,11 +24,7 @@ import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Uniswap } from '../uniswap';
 import { getUniswapV3NftManagerAddress } from '../uniswap.contracts';
-import {
-  formatTokenAmount,
-  parseFeeTier,
-  getUniswapPoolInfo,
-} from '../uniswap.utils';
+import { formatTokenAmount, parseFeeTier, getUniswapPoolInfo } from '../uniswap.utils';
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
@@ -101,36 +97,22 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         if (!walletAddress) {
           walletAddress = await uniswap.getFirstWalletAddress();
           if (!walletAddress) {
-            throw fastify.httpErrors.badRequest(
-              'No wallet address provided and no default wallet found',
-            );
+            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
           }
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
         // Get pool information to determine tokens
-        const poolInfo = await getUniswapPoolInfo(
-          poolAddress,
-          networkToUse,
-          'clmm',
-        );
+        const poolInfo = await getUniswapPoolInfo(poolAddress, networkToUse, 'clmm');
         if (!poolInfo) {
-          throw fastify.httpErrors.notFound(
-            sanitizeErrorMessage('Pool not found: {}', poolAddress),
-          );
+          throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
         }
 
-        const baseTokenObj = uniswap.getTokenByAddress(
-          poolInfo.baseTokenAddress,
-        );
-        const quoteTokenObj = uniswap.getTokenByAddress(
-          poolInfo.quoteTokenAddress,
-        );
+        const baseTokenObj = uniswap.getTokenByAddress(poolInfo.baseTokenAddress);
+        const quoteTokenObj = uniswap.getTokenByAddress(poolInfo.quoteTokenAddress);
 
         if (!baseTokenObj || !quoteTokenObj) {
-          throw fastify.httpErrors.badRequest(
-            'Token information not found for pool',
-          );
+          throw fastify.httpErrors.badRequest('Token information not found for pool');
         }
 
         // Get the wallet
@@ -140,24 +122,15 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get the V3 pool
-        const pool = await uniswap.getV3Pool(
-          baseTokenObj,
-          quoteTokenObj,
-          undefined,
-          poolAddress,
-        );
+        const pool = await uniswap.getV3Pool(baseTokenObj, quoteTokenObj, undefined, poolAddress);
         if (!pool) {
-          throw fastify.httpErrors.notFound(
-            `Pool not found for ${baseTokenObj.symbol}-${quoteTokenObj.symbol}`,
-          );
+          throw fastify.httpErrors.notFound(`Pool not found for ${baseTokenObj.symbol}-${quoteTokenObj.symbol}`);
         }
 
         // Calculate slippage tolerance
         // Convert slippagePct to integer basis points (0.5% -> 50 basis points)
         const slippageTolerance =
-          slippagePct !== undefined
-            ? new Percent(Math.floor(slippagePct * 100), 10000)
-            : uniswap.getSlippagePct();
+          slippagePct !== undefined ? new Percent(Math.floor(slippagePct * 100), 10000) : uniswap.getSlippagePct();
 
         // Convert price range to ticks
         // In Uniswap, ticks are log base 1.0001 of price
@@ -166,8 +139,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         const token1 = pool.token1;
 
         // Determine if we need to invert the price depending on which token is token0
-        const isBaseToken0 =
-          baseTokenObj.address.toLowerCase() === token0.address.toLowerCase();
+        const isBaseToken0 = baseTokenObj.address.toLowerCase() === token0.address.toLowerCase();
 
         // Convert prices to ticks
         let lowerTick, upperTick;
@@ -176,17 +148,14 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         // For WETH (18 decimals) and USDC (6 decimals), we need to adjust for the decimal difference
         const priceToTickWithDecimals = (humanPrice: number): number => {
           // Convert human price (USDC per WETH) to raw price (USDC units per WETH unit)
-          const rawPrice =
-            humanPrice * Math.pow(10, token1.decimals - token0.decimals);
+          const rawPrice = humanPrice * Math.pow(10, token1.decimals - token0.decimals);
           return Math.floor(Math.log(rawPrice) / Math.log(1.0001));
         };
 
         lowerTick = priceToTickWithDecimals(lowerPrice);
         upperTick = priceToTickWithDecimals(upperPrice);
 
-        logger.info(
-          `Calculated ticks - Lower: ${lowerTick}, Upper: ${upperTick}`,
-        );
+        logger.info(`Calculated ticks - Lower: ${lowerTick}, Upper: ${upperTick}`);
         logger.info(`Current pool tick: ${pool.tickCurrent}`);
 
         // Ensure ticks are on valid tick spacing boundaries
@@ -196,9 +165,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
 
         // Ensure lower < upper
         if (lowerTick >= upperTick) {
-          throw fastify.httpErrors.badRequest(
-            'Lower price must be less than upper price',
-          );
+          throw fastify.httpErrors.badRequest('Lower price must be less than upper price');
         }
 
         // Calculate token amounts for the position
@@ -207,39 +174,23 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
 
         if (baseTokenAmount !== undefined) {
           // Convert baseTokenAmount to raw amount
-          const baseAmountRaw = Math.floor(
-            baseTokenAmount * Math.pow(10, baseTokenObj.decimals),
-          );
+          const baseAmountRaw = Math.floor(baseTokenAmount * Math.pow(10, baseTokenObj.decimals));
 
           if (isBaseToken0) {
-            token0Amount = CurrencyAmount.fromRawAmount(
-              token0,
-              JSBI.BigInt(baseAmountRaw.toString()),
-            );
+            token0Amount = CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(baseAmountRaw.toString()));
           } else {
-            token1Amount = CurrencyAmount.fromRawAmount(
-              token1,
-              JSBI.BigInt(baseAmountRaw.toString()),
-            );
+            token1Amount = CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(baseAmountRaw.toString()));
           }
         }
 
         if (quoteTokenAmount !== undefined) {
           // Convert quoteTokenAmount to raw amount
-          const quoteAmountRaw = Math.floor(
-            quoteTokenAmount * Math.pow(10, quoteTokenObj.decimals),
-          );
+          const quoteAmountRaw = Math.floor(quoteTokenAmount * Math.pow(10, quoteTokenObj.decimals));
 
           if (isBaseToken0) {
-            token1Amount = CurrencyAmount.fromRawAmount(
-              token1,
-              JSBI.BigInt(quoteAmountRaw.toString()),
-            );
+            token1Amount = CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(quoteAmountRaw.toString()));
           } else {
-            token0Amount = CurrencyAmount.fromRawAmount(
-              token0,
-              JSBI.BigInt(quoteAmountRaw.toString()),
-            );
+            token0Amount = CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(quoteAmountRaw.toString()));
           }
         }
 
@@ -271,16 +222,14 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         logger.info(`  Amount1: ${position.amount1.toSignificant(18)}`);
         logger.info(`  Liquidity: ${position.liquidity.toString()}`);
 
-        const { calldata, value } =
-          NonfungiblePositionManager.addCallParameters(position, mintOptions);
+        const { calldata, value } = NonfungiblePositionManager.addCallParameters(position, mintOptions);
 
         logger.info(`  Value (ETH): ${value}`);
         logger.info(`  Recipient: ${walletAddress}`);
         logger.info(`  Deadline: ${mintOptions.deadline}`);
 
         // Get position manager address for allowance checks
-        const positionManagerAddress =
-          getUniswapV3NftManagerAddress(networkToUse);
+        const positionManagerAddress = getUniswapV3NftManagerAddress(networkToUse);
 
         // Check token0 allowance if needed (including WETH)
         if (!token0Amount.equalTo(0)) {
@@ -293,16 +242,12 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           );
 
           const currentAllowance0 = BigNumber.from(allowance0.value);
-          const requiredAmount0 = BigNumber.from(
-            token0Amount.quotient.toString(),
-          );
+          const requiredAmount0 = BigNumber.from(token0Amount.quotient.toString());
 
           logger.info(
             `${token0.symbol} allowance: ${formatTokenAmount(currentAllowance0.toString(), token0.decimals)}`,
           );
-          logger.info(
-            `${token0.symbol} required: ${formatTokenAmount(requiredAmount0.toString(), token0.decimals)}`,
-          );
+          logger.info(`${token0.symbol} required: ${formatTokenAmount(requiredAmount0.toString(), token0.decimals)}`);
 
           if (currentAllowance0.lt(requiredAmount0)) {
             throw fastify.httpErrors.badRequest(
@@ -322,16 +267,12 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           );
 
           const currentAllowance1 = BigNumber.from(allowance1.value);
-          const requiredAmount1 = BigNumber.from(
-            token1Amount.quotient.toString(),
-          );
+          const requiredAmount1 = BigNumber.from(token1Amount.quotient.toString());
 
           logger.info(
             `${token1.symbol} allowance: ${formatTokenAmount(currentAllowance1.toString(), token1.decimals)}`,
           );
-          logger.info(
-            `${token1.symbol} required: ${formatTokenAmount(requiredAmount1.toString(), token1.decimals)}`,
-          );
+          logger.info(`${token1.symbol} required: ${formatTokenAmount(requiredAmount1.toString(), token1.decimals)}`);
 
           if (currentAllowance1.lt(requiredAmount1)) {
             throw fastify.httpErrors.badRequest(
@@ -345,13 +286,9 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           positionManagerAddress,
           [
             {
-              inputs: [
-                { internalType: 'bytes[]', name: 'data', type: 'bytes[]' },
-              ],
+              inputs: [{ internalType: 'bytes[]', name: 'data', type: 'bytes[]' }],
               name: 'multicall',
-              outputs: [
-                { internalType: 'bytes[]', name: 'results', type: 'bytes[]' },
-              ],
+              outputs: [{ internalType: 'bytes[]', name: 'results', type: 'bytes[]' }],
               stateMutability: 'payable',
               type: 'function',
             },
@@ -367,10 +304,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         let tx;
         try {
           // Use Ethereum's prepareGasOptions method
-          const txParams = await ethereum.prepareGasOptions(
-            priorityFeePerCU,
-            computeUnits,
-          );
+          const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
           txParams.value = BigNumber.from(value.toString());
 
           tx = await positionManager.multicall([calldata], txParams);
@@ -387,12 +321,9 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         for (const log of receipt.logs) {
           // Look for the Transfer event from the NFT manager (position created)
           if (
-            log.address.toLowerCase() ===
-              positionManagerAddress.toLowerCase() &&
-            log.topics[0] ===
-              '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' &&
-            log.topics[1] ===
-              '0x0000000000000000000000000000000000000000000000000000000000000000'
+            log.address.toLowerCase() === positionManagerAddress.toLowerCase() &&
+            log.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' &&
+            log.topics[1] === '0x0000000000000000000000000000000000000000000000000000000000000000'
           ) {
             // This is a Transfer from address 0, which is a mint
             positionId = BigNumber.from(log.topics[3]).toString();
@@ -410,23 +341,13 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         const positionRent = 0;
 
         // Calculate actual token amounts added based on position
-        const actualToken0Amount = formatTokenAmount(
-          position.amount0.quotient.toString(),
-          token0.decimals,
-        );
+        const actualToken0Amount = formatTokenAmount(position.amount0.quotient.toString(), token0.decimals);
 
-        const actualToken1Amount = formatTokenAmount(
-          position.amount1.quotient.toString(),
-          token1.decimals,
-        );
+        const actualToken1Amount = formatTokenAmount(position.amount1.quotient.toString(), token1.decimals);
 
         // Map back to base and quote amounts
-        const baseAmountUsed = isBaseToken0
-          ? actualToken0Amount
-          : actualToken1Amount;
-        const quoteAmountUsed = isBaseToken0
-          ? actualToken1Amount
-          : actualToken0Amount;
+        const baseAmountUsed = isBaseToken0 ? actualToken0Amount : actualToken1Amount;
+        const quoteAmountUsed = isBaseToken0 ? actualToken1Amount : actualToken0Amount;
 
         return {
           signature: receipt.transactionHash,
@@ -468,23 +389,14 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Handle insufficient allowance errors
-        if (
-          e.message &&
-          e.message.includes('Insufficient') &&
-          e.message.includes('allowance')
-        ) {
+        if (e.message && e.message.includes('Insufficient') && e.message.includes('allowance')) {
           logger.error('Request error:', e);
           throw fastify.httpErrors.badRequest('Invalid request');
         }
 
         // Handle insufficient funds errors
-        if (
-          e.code === 'INSUFFICIENT_FUNDS' ||
-          (e.message && e.message.includes('insufficient funds'))
-        ) {
-          throw fastify.httpErrors.badRequest(
-            'Insufficient funds to complete the transaction',
-          );
+        if (e.code === 'INSUFFICIENT_FUNDS' || (e.message && e.message.includes('insufficient funds'))) {
+          throw fastify.httpErrors.badRequest('Insufficient funds to complete the transaction');
         }
 
         // Generic error

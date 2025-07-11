@@ -45,15 +45,10 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         try {
           new PublicKey(walletAddress);
         } catch (error) {
-          throw fastify.httpErrors.badRequest(
-            `Invalid wallet address: ${walletAddress}`,
-          );
+          throw fastify.httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
         }
 
-        const position = await meteora.getPositionInfo(
-          positionAddress,
-          new PublicKey(walletAddress),
-        );
+        const position = await meteora.getPositionInfo(positionAddress, new PublicKey(walletAddress));
 
         return position;
       } catch (e) {

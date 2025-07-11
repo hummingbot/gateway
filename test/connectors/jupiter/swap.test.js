@@ -84,18 +84,15 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/quote-swap`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'SELL',
-            amount: 1.0,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/quote-swap`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'SELL',
+          amount: 1.0,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -132,18 +129,15 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/quote-swap`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'BUY',
-            amount: 10,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/quote-swap`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'BUY',
+          amount: 10,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -233,28 +227,23 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       });
 
       // Make the request with custom slippage
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/quote-swap`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'SELL',
-            amount: 0.1,
-            slippagePct: 2.5, // 2.5% slippage
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/quote-swap`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'SELL',
+          amount: 0.1,
+          slippagePct: 2.5, // 2.5% slippage
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
       expect(validateSwapQuote(response.data)).toBe(true);
 
       // With higher slippage, minAmountOut should be lower than the estimated output
-      expect(response.data.minAmountOut).toBeLessThan(
-        response.data.estimatedAmountOut,
-      );
+      expect(response.data.minAmountOut).toBeLessThan(response.data.estimatedAmountOut);
       expect(response.data.minAmountOut).toBeCloseTo(15.98, 1); // ~2.5% less than 16.39
 
       // Verify axios was called with slippage parameter
@@ -274,8 +263,7 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       // Load mock responses
       const quoteResponse = loadMockResponse('quote-swap');
       const executeResponse = {
-        signature:
-          '2XGwPTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYc',
+        signature: '2XGwPTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYc',
         status: 1, // CONFIRMED
         data: {
           tokenIn: BASE_TOKEN,
@@ -295,17 +283,14 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/execute-swap`,
-        {
-          network: NETWORK,
-          baseToken: BASE_TOKEN,
-          quoteToken: QUOTE_TOKEN,
-          side: 'SELL',
-          amount: 1.0,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/execute-swap`, {
+        network: NETWORK,
+        baseToken: BASE_TOKEN,
+        quoteToken: QUOTE_TOKEN,
+        side: 'SELL',
+        amount: 1.0,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -319,10 +304,7 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
         quoteResponse.estimatedAmountIn,
         3, // Allow some difference due to fees
       );
-      expect(response.data.data.amountOut).toBeCloseTo(
-        quoteResponse.estimatedAmountOut,
-        3,
-      );
+      expect(response.data.data.amountOut).toBeCloseTo(quoteResponse.estimatedAmountOut, 3);
 
       // Verify axios was called with correct parameters
       expect(axios.post).toHaveBeenCalledWith(
@@ -341,8 +323,7 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
     test('returns successful swap execution with fee parameters', async () => {
       // Mock response with status-based format
       const executeResponse = {
-        signature:
-          '3YHqPTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYd',
+        signature: '3YHqPTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYd',
         status: 1, // CONFIRMED
         data: {
           tokenIn: BASE_TOKEN,
@@ -362,19 +343,16 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       });
 
       // Make the request with fee parameters
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/execute-swap`,
-        {
-          network: NETWORK,
-          baseToken: BASE_TOKEN,
-          quoteToken: QUOTE_TOKEN,
-          side: 'SELL',
-          amount: 1.0,
-          walletAddress: TEST_WALLET,
-          priorityLevel: 'veryHigh',
-          maxLamports: 1000000,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/execute-swap`, {
+        network: NETWORK,
+        baseToken: BASE_TOKEN,
+        quoteToken: QUOTE_TOKEN,
+        side: 'SELL',
+        amount: 1.0,
+        walletAddress: TEST_WALLET,
+        priorityLevel: 'veryHigh',
+        maxLamports: 1000000,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -395,8 +373,7 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
     test('returns pending swap execution', async () => {
       // Mock response with PENDING status
       const executeResponse = {
-        signature:
-          '4ZIrQTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYe',
+        signature: '4ZIrQTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYe',
         status: 0, // PENDING
         // No data field when pending
       };
@@ -408,17 +385,14 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/execute-swap`,
-        {
-          network: NETWORK,
-          baseToken: BASE_TOKEN,
-          quoteToken: QUOTE_TOKEN,
-          side: 'SELL',
-          amount: 1.0,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/execute-swap`, {
+        network: NETWORK,
+        baseToken: BASE_TOKEN,
+        quoteToken: QUOTE_TOKEN,
+        side: 'SELL',
+        amount: 1.0,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -442,17 +416,14 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.post(
-          `http://localhost:15888/connectors/${CONNECTOR}/execute-swap`,
-          {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'SELL',
-            amount: 1000000.0, // Very large amount to cause error
-            walletAddress: TEST_WALLET,
-          },
-        ),
+        axios.post(`http://localhost:15888/connectors/${CONNECTOR}/execute-swap`, {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'SELL',
+          amount: 1000000.0, // Very large amount to cause error
+          walletAddress: TEST_WALLET,
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 500,

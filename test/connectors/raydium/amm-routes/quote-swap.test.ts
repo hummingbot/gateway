@@ -10,9 +10,7 @@ jest.mock('../../../../src/connectors/raydium/raydium');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quoteSwapRoute } = await import(
-    '../../../../src/connectors/raydium/amm-routes/quoteSwap'
-  );
+  const { quoteSwapRoute } = await import('../../../../src/connectors/raydium/amm-routes/quoteSwap');
   await server.register(quoteSwapRoute);
   return server;
 };
@@ -103,17 +101,13 @@ describe('GET /quote-swap', () => {
   it('should return a quote for AMM swap SELL side', async () => {
     const mockSolanaInstance = {
       getToken: jest.fn((token) => {
-        if (token === 'SOL' || token === mockSOL.address)
-          return Promise.resolve(mockSOL);
-        if (token === 'USDC' || token === mockUSDC.address)
-          return Promise.resolve(mockUSDC);
+        if (token === 'SOL' || token === mockSOL.address) return Promise.resolve(mockSOL);
+        if (token === 'USDC' || token === mockUSDC.address) return Promise.resolve(mockUSDC);
         return Promise.resolve(null);
       }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
-    (Solana.getWalletAddressExample as jest.Mock).mockResolvedValue(
-      '11111111111111111111111111111111',
-    );
+    (Solana.getWalletAddressExample as jest.Mock).mockResolvedValue('11111111111111111111111111111111');
 
     const mockRaydiumInstance = {
       getAmmPoolInfo: jest.fn().mockResolvedValue({
@@ -171,19 +165,14 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
     // For SELL side: priceWithSlippage = minAmountOut / amountIn
     expect(body).toHaveProperty('priceWithSlippage');
-    expect(body.priceWithSlippage).toBeCloseTo(
-      body.minAmountOut / body.amountIn,
-      8,
-    );
+    expect(body.priceWithSlippage).toBeCloseTo(body.minAmountOut / body.amountIn, 8);
   });
 
   it('should return a quote for AMM swap BUY side', async () => {
     const mockSolanaInstance = {
       getToken: jest.fn((token) => {
-        if (token === 'SOL' || token === mockSOL.address)
-          return Promise.resolve(mockSOL);
-        if (token === 'USDC' || token === mockUSDC.address)
-          return Promise.resolve(mockUSDC);
+        if (token === 'SOL' || token === mockSOL.address) return Promise.resolve(mockSOL);
+        if (token === 'USDC' || token === mockUSDC.address) return Promise.resolve(mockUSDC);
         return Promise.resolve(null);
       }),
     };
@@ -250,19 +239,14 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('tokenOut', mockSOL.address);
     // For BUY side: priceWithSlippage = amountOut / maxAmountIn
     expect(body).toHaveProperty('priceWithSlippage');
-    expect(body.priceWithSlippage).toBeCloseTo(
-      body.amountOut / body.maxAmountIn,
-      8,
-    );
+    expect(body.priceWithSlippage).toBeCloseTo(body.amountOut / body.maxAmountIn, 8);
   });
 
   it('should return 404 if pool not found', async () => {
     const mockSolanaInstance = {
       getToken: jest.fn((token) => {
-        if (token === 'SOL' || token === mockSOL.address)
-          return Promise.resolve(mockSOL);
-        if (token === 'USDC' || token === mockUSDC.address)
-          return Promise.resolve(mockUSDC);
+        if (token === 'SOL' || token === mockSOL.address) return Promise.resolve(mockSOL);
+        if (token === 'USDC' || token === mockUSDC.address) return Promise.resolve(mockUSDC);
         return Promise.resolve(null);
       }),
     };

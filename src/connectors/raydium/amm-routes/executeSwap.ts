@@ -3,11 +3,7 @@ import BN from 'bn.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana, BASE_FEE } from '../../../chains/solana/solana';
-import {
-  ExecuteSwapResponse,
-  ExecuteSwapResponseType,
-  ExecuteSwapRequestType,
-} from '../../../schemas/amm-schema';
+import { ExecuteSwapResponse, ExecuteSwapResponseType, ExecuteSwapRequestType } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
@@ -36,9 +32,7 @@ async function executeSwap(
   // Get pool info from address
   const poolInfo = await raydium.getAmmPoolInfo(poolAddress);
   if (!poolInfo) {
-    throw fastify.httpErrors.notFound(
-      sanitizeErrorMessage('Pool not found: {}', poolAddress),
-    );
+    throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
   }
 
   // Use configured slippage if not provided
@@ -59,9 +53,7 @@ async function executeSwap(
   const inputToken = quote.inputToken;
   const outputToken = quote.outputToken;
 
-  logger.info(
-    `Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`,
-  );
+  logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
 
   // Use provided compute units or default
   const COMPUTE_UNITS = computeUnits || 300000;
@@ -73,9 +65,7 @@ async function executeSwap(
   } else {
     // Calculate default if not provided
     const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-    finalPriorityFeePerCU = Math.floor(
-      (currentPriorityFee * 1e6) / COMPUTE_UNITS,
-    );
+    finalPriorityFeePerCU = Math.floor((currentPriorityFee * 1e6) / COMPUTE_UNITS);
   }
   let transaction: VersionedTransaction;
 
@@ -158,8 +148,7 @@ async function executeSwap(
   transaction.sign([wallet]);
   await solana.simulateTransaction(transaction as VersionedTransaction);
 
-  const { confirmed, signature, txData } =
-    await solana.sendAndConfirmRawTransaction(transaction);
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
   // Return with status
   if (confirmed && txData) {
@@ -167,11 +156,10 @@ async function executeSwap(
     const baseTokenInfo = await solana.getToken(poolInfo.baseTokenAddress);
     const quoteTokenInfo = await solana.getToken(poolInfo.quoteTokenAddress);
 
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-      signature,
-      wallet.publicKey.toBase58(),
-      [baseTokenInfo.address, quoteTokenInfo.address],
-    );
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+      baseTokenInfo.address,
+      quoteTokenInfo.address,
+    ]);
 
     const baseTokenBalanceChange = balanceChanges[0];
     const quoteTokenBalanceChange = balanceChanges[1];
@@ -181,12 +169,8 @@ async function executeSwap(
     );
 
     // Calculate actual amounts swapped based on side
-    const amountIn = Math.abs(
-      side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange,
-    );
-    const amountOut = Math.abs(
-      side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange,
-    );
+    const amountIn = Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange);
+    const amountOut = Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange);
 
     // Determine token addresses for computed fields
     const tokenIn = inputToken.address;
@@ -270,17 +254,12 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           if (!baseTokenInfo || !quoteTokenInfo) {
             throw fastify.httpErrors.badRequest(
-              sanitizeErrorMessage(
-                'Token not found: {}',
-                !baseTokenInfo ? baseToken : quoteToken,
-              ),
+              sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
             );
           }
 
           // Use PoolService to find pool by token pair
-          const { PoolService } = await import(
-            '../../../services/pool-service'
-          );
+          const { PoolService } = await import('../../../services/pool-service');
           const poolService = PoolService.getInstance();
 
           const pool = await poolService.getPool(

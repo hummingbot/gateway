@@ -82,13 +82,9 @@ function testTools() {
 
             console.log('\n✓ Resources and tools test passed!');
             console.log('\nArchitecture:');
-            console.log(
-              '- Resources handle all READ operations (configs, tokens, wallets)',
-            );
+            console.log('- Resources handle all READ operations (configs, tokens, wallets)');
             console.log('- Tools handle all WRITE operations (updates)');
-            console.log(
-              '- Clean separation of concerns with minimal permissions needed',
-            );
+            console.log('- Clean separation of concerns with minimal permissions needed');
             process.exit(0);
           }
         }

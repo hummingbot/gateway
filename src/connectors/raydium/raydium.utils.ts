@@ -14,15 +14,9 @@ const VALID_AMM_PROGRAM_ID = new Set([
   DEVNET_PROGRAM_ID.AMM_STABLE.toBase58(),
 ]);
 
-const VALID_CLMM_PROGRAM_ID = new Set([
-  CLMM_PROGRAM_ID.toBase58(),
-  DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID.toBase58(),
-]);
+const VALID_CLMM_PROGRAM_ID = new Set([CLMM_PROGRAM_ID.toBase58(), DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID.toBase58()]);
 
-const VALID_CPMM_PROGRAM_ID = new Set([
-  CREATE_CPMM_POOL_PROGRAM.toBase58(),
-  DEV_CREATE_CPMM_POOL_PROGRAM.toBase58(),
-]);
+const VALID_CPMM_PROGRAM_ID = new Set([CREATE_CPMM_POOL_PROGRAM.toBase58(), DEV_CREATE_CPMM_POOL_PROGRAM.toBase58()]);
 
 export const isValidClmm = (id: string) => VALID_CLMM_PROGRAM_ID.has(id);
 export const isValidAmm = (id: string) => VALID_AMM_PROGRAM_ID.has(id);

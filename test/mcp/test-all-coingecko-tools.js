@@ -8,8 +8,7 @@ const mcp = spawn('node', ['dist/mcp/index.js', '--with-coingecko'], {
   env: {
     ...process.env,
     GATEWAY_URL: 'http://localhost:15888',
-    COINGECKO_DEMO_API_KEY:
-      process.env.COINGECKO_DEMO_API_KEY || 'CG-SDa3K5EePjwFqJcHph3KQnzh',
+    COINGECKO_DEMO_API_KEY: process.env.COINGECKO_DEMO_API_KEY || 'CG-SDa3K5EePjwFqJcHph3KQnzh',
   },
 });
 
@@ -30,26 +29,17 @@ mcp.stdout.on('data', (data) => {
         // Handle tool listing response
         if (msg.id === 1 && msg.result && msg.result.tools) {
           allTools = msg.result.tools;
-          const coingeckoTools = allTools.filter((t) =>
-            t.name.startsWith('coingecko_'),
-          );
-          const gatewayTools = allTools.filter(
-            (t) => !t.name.startsWith('coingecko_'),
-          );
+          const coingeckoTools = allTools.filter((t) => t.name.startsWith('coingecko_'));
+          const gatewayTools = allTools.filter((t) => !t.name.startsWith('coingecko_'));
 
           console.log(`Total tools: ${allTools.length}`);
           console.log(`Gateway tools: ${gatewayTools.length}`);
           console.log(`CoinGecko tools: ${coingeckoTools.length}`);
 
           // Write all CoinGecko tools to a JSON file
-          require('fs').writeFileSync(
-            'coingecko-tools-full.json',
-            JSON.stringify(coingeckoTools, null, 2),
-          );
+          require('fs').writeFileSync('coingecko-tools-full.json', JSON.stringify(coingeckoTools, null, 2));
 
-          console.log(
-            '\nSaved all CoinGecko tools to coingecko-tools-full.json',
-          );
+          console.log('\nSaved all CoinGecko tools to coingecko-tools-full.json');
           process.exit(0);
         }
 
@@ -76,9 +66,7 @@ mcp.stderr.on('data', (data) => {
 // Send tool list command after server is ready
 setTimeout(() => {
   console.log('Requesting tool list...');
-  mcp.stdin.write(
-    JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) + '\n',
-  );
+  mcp.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) + '\n');
 }, 5000); // Wait 5 seconds for server to fully initialize
 
 // Timeout after 30 seconds

@@ -70,9 +70,7 @@ async function main() {
       `Gateway MCP server v${GATEWAY_VERSION} running with ${totalTools} tools (6 Gateway + ${totalTools - 6} CoinGecko)`,
     );
   } else {
-    console.error(
-      `Gateway MCP server v${GATEWAY_VERSION} running with ${totalTools} Gateway tools`,
-    );
+    console.error(`Gateway MCP server v${GATEWAY_VERSION} running with ${totalTools} Gateway tools`);
   }
 }
 

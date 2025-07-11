@@ -40,34 +40,25 @@ async function createAddLiquidityTransaction(
   if (ammPoolInfo.poolType === 'amm') {
     const amountInA = new TokenAmount(
       toToken(poolInfo.mintA),
-      new Decimal(baseTokenAmountAdded)
-        .mul(10 ** poolInfo.mintA.decimals)
-        .toFixed(0),
+      new Decimal(baseTokenAmountAdded).mul(10 ** poolInfo.mintA.decimals).toFixed(0),
     );
     const amountInB = new TokenAmount(
       toToken(poolInfo.mintB),
-      new Decimal(quoteTokenAmountAdded)
-        .mul(10 ** poolInfo.mintB.decimals)
-        .toFixed(0),
+      new Decimal(quoteTokenAmountAdded).mul(10 ** poolInfo.mintB.decimals).toFixed(0),
     );
 
     // Calculate otherAmountMin based on slippage
     // Convert Percent to decimal (e.g., 1% = 0.01)
-    const slippageDecimal =
-      slippage.numerator.toNumber() / slippage.denominator.toNumber();
+    const slippageDecimal = slippage.numerator.toNumber() / slippage.denominator.toNumber();
     const slippageMultiplier = new Decimal(1).minus(slippageDecimal);
     const otherAmountMin = baseLimited
       ? new TokenAmount(
           toToken(poolInfo.mintB),
-          new Decimal(amountInB.raw.toString())
-            .mul(slippageMultiplier)
-            .toFixed(0),
+          new Decimal(amountInB.raw.toString()).mul(slippageMultiplier).toFixed(0),
         )
       : new TokenAmount(
           toToken(poolInfo.mintA),
-          new Decimal(amountInA.raw.toString())
-            .mul(slippageMultiplier)
-            .toFixed(0),
+          new Decimal(amountInA.raw.toString()).mul(slippageMultiplier).toFixed(0),
         );
 
     const response = await raydium.raydiumSDK.liquidity.addLiquidity({
@@ -85,10 +76,7 @@ async function createAddLiquidityTransaction(
     const baseIn = baseLimited;
     const inputAmount = new BN(
       new Decimal(baseLimited ? baseTokenAmountAdded : quoteTokenAmountAdded)
-        .mul(
-          10 **
-            (baseLimited ? poolInfo.mintA.decimals : poolInfo.mintB.decimals),
-        )
+        .mul(10 ** (baseLimited ? poolInfo.mintA.decimals : poolInfo.mintB.decimals))
         .toFixed(0),
     );
     const response = await raydium.raydiumSDK.cpmm.addLiquidity({
@@ -134,25 +122,13 @@ async function addLiquidity(
     slippagePct,
   )) as QuoteLiquidityResponseType;
 
-  const {
-    baseLimited,
-    baseTokenAmountMax,
-    quoteTokenAmountMax,
-    computeUnits: quoteComputeUnits,
-  } = quoteResponse;
+  const { baseLimited, baseTokenAmountMax, quoteTokenAmountMax, computeUnits: quoteComputeUnits } = quoteResponse;
 
-  const baseTokenAmountAdded = baseLimited
-    ? baseTokenAmount
-    : baseTokenAmountMax;
-  const quoteTokenAmountAdded = baseLimited
-    ? quoteTokenAmount
-    : quoteTokenAmountMax;
+  const baseTokenAmountAdded = baseLimited ? baseTokenAmount : baseTokenAmountMax;
+  const quoteTokenAmountAdded = baseLimited ? quoteTokenAmount : quoteTokenAmountMax;
 
-  logger.info(
-    `Adding liquidity to Raydium ${ammPoolInfo.poolType} position...`,
-  );
-  const slippageValue =
-    slippagePct === 0 ? 0 : slippagePct || RaydiumConfig.config.slippagePct;
+  logger.info(`Adding liquidity to Raydium ${ammPoolInfo.poolType} position...`);
+  const slippageValue = slippagePct === 0 ? 0 : slippagePct || RaydiumConfig.config.slippagePct;
   const slippage = new Percent(Math.floor((slippageValue * 100) / 10000));
 
   // Use provided compute units or quote's estimate
@@ -166,9 +142,7 @@ async function addLiquidity(
   } else {
     // Default priority fee calculation
     const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-    priorityFeePerCUMicroLamports = Math.floor(
-      (currentPriorityFee * 1e6) / computeUnitsToUse,
-    );
+    priorityFeePerCUMicroLamports = Math.floor((currentPriorityFee * 1e6) / computeUnitsToUse);
   }
 
   const transaction = await createAddLiquidityTransaction(
@@ -191,8 +165,7 @@ async function addLiquidity(
     (transaction as VersionedTransaction).sign([wallet]);
   } else {
     const txAsTransaction = transaction as Transaction;
-    const { blockhash, lastValidBlockHeight } =
-      await solana.connection.getLatestBlockhash();
+    const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash();
     txAsTransaction.recentBlockhash = blockhash;
     txAsTransaction.lastValidBlockHeight = lastValidBlockHeight;
     txAsTransaction.feePayer = wallet.publicKey;
@@ -203,17 +176,15 @@ async function addLiquidity(
 
   console.log('signed transaction', transaction);
 
-  const { confirmed, signature, txData } =
-    await solana.sendAndConfirmRawTransaction(transaction);
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
   if (confirmed && txData) {
     const tokenAInfo = await solana.getToken(poolInfo.mintA.address);
     const tokenBInfo = await solana.getToken(poolInfo.mintB.address);
 
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-      signature,
-      wallet.publicKey.toBase58(),
-      [tokenAInfo.address, tokenBInfo.address],
-    );
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+      tokenAInfo.address,
+      tokenBInfo.address,
+    ]);
 
     const baseTokenBalanceChange = balanceChanges[0];
     const quoteTokenBalanceChange = balanceChanges[1];
@@ -254,14 +225,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.body;
+        const { network, walletAddress, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.body;
 
         return await addLiquidity(
           fastify,

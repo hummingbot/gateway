@@ -49,10 +49,21 @@ export class HardwareWalletService {
         throw new Error('Failed to get address from Ledger device');
       }
 
-      // Convert the buffer to base58 string (Solana address format)
-      const addressBuffer = Buffer.isBuffer(result.address) ? result.address : Buffer.from(result.address);
-      const publicKey = new PublicKey(addressBuffer);
-      const addressString = publicKey.toBase58();
+      // Handle address conversion - it might be a buffer, string, or object with toString
+      let addressString: string;
+      if (typeof result.address === 'string') {
+        // Already a base58 string
+        addressString = result.address;
+      } else if (Buffer.isBuffer(result.address)) {
+        // Convert buffer to base58
+        const publicKey = new PublicKey(result.address);
+        addressString = publicKey.toBase58();
+      } else if (result.address && typeof (result.address as any).toString === 'function') {
+        // Object with toString method (e.g., PublicKey object)
+        addressString = (result.address as any).toString();
+      } else {
+        throw new Error('Invalid address format returned from Ledger device');
+      }
 
       return {
         address: addressString,

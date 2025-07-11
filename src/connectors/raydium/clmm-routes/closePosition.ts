@@ -56,10 +56,8 @@ async function closePosition(
           ? {
               fee: removeLiquidityResponse.data.fee,
               positionRentRefunded: rentRefunded,
-              baseTokenAmountRemoved:
-                removeLiquidityResponse.data.baseTokenAmountRemoved,
-              quoteTokenAmountRemoved:
-                removeLiquidityResponse.data.quoteTokenAmountRemoved,
+              baseTokenAmountRemoved: removeLiquidityResponse.data.baseTokenAmountRemoved,
+              quoteTokenAmountRemoved: removeLiquidityResponse.data.quoteTokenAmountRemoved,
               baseFeeAmountCollected: 0,
               quoteFeeAmountCollected: 0,
             }
@@ -68,9 +66,7 @@ async function closePosition(
     }
 
     // Original close position logic for empty positions
-    const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(
-      position.poolId.toBase58(),
-    );
+    const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(position.poolId.toBase58());
     logger.debug('Pool Info:', poolInfo);
 
     const result = await raydium.raydiumSDK.clmm.closePosition({
@@ -91,11 +87,9 @@ async function closePosition(
       COMPUTE_UNITS,
     );
 
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-      signature,
-      wallet.publicKey.toBase58(),
-      ['So11111111111111111111111111111111111111112'],
-    );
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+      'So11111111111111111111111111111111111111112',
+    ]);
     const rentRefunded = Math.abs(balanceChanges[0]);
 
     return {
@@ -144,13 +138,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress,
-          positionAddress,
-          priorityFeePerCU,
-          computeUnits,
-        } = request.body;
+        const { network, walletAddress, positionAddress, priorityFeePerCU, computeUnits } = request.body;
         const networkToUse = network;
 
         return await closePosition(

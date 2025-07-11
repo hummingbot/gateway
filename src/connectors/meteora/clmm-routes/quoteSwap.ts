@@ -33,9 +33,7 @@ export async function getRawSwapQuote(
   const quoteToken = await solana.getToken(quoteTokenSymbol);
 
   if (!baseToken || !quoteToken) {
-    throw fastify.httpErrors.notFound(
-      `Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`,
-    );
+    throw fastify.httpErrors.notFound(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
   }
 
   const dlmmPool = await meteora.getDlmmPool(poolAddress);
@@ -45,8 +43,7 @@ export async function getRawSwapQuote(
 
   // For buy orders, we're swapping quote token for base token (ExactOut)
   // For sell orders, we're swapping base token for quote token (ExactIn)
-  const [inputToken, outputToken] =
-    side === 'BUY' ? [quoteToken, baseToken] : [baseToken, quoteToken];
+  const [inputToken, outputToken] = side === 'BUY' ? [quoteToken, baseToken] : [baseToken, quoteToken];
 
   const amount_bn =
     side === 'BUY'
@@ -54,18 +51,11 @@ export async function getRawSwapQuote(
       : DecimalUtil.toBN(new Decimal(amount), inputToken.decimals);
   const swapForY = inputToken.address === dlmmPool.tokenX.publicKey.toBase58();
   const binArrays = await dlmmPool.getBinArrayForSwap(swapForY);
-  const effectiveSlippage = new BN(
-    (slippagePct ?? MeteoraConfig.config.slippagePct) * 100,
-  );
+  const effectiveSlippage = new BN((slippagePct ?? MeteoraConfig.config.slippagePct) * 100);
 
   const quote =
     side === 'BUY'
-      ? dlmmPool.swapQuoteExactOut(
-          amount_bn,
-          swapForY,
-          effectiveSlippage,
-          binArrays,
-        )
+      ? dlmmPool.swapQuoteExactOut(amount_bn, swapForY, effectiveSlippage, binArrays)
       : dlmmPool.swapQuote(amount_bn, swapForY, effectiveSlippage, binArrays);
 
   return {
@@ -110,18 +100,9 @@ async function formatSwapQuote(
 
   if (side === 'BUY') {
     const exactOutQuote = quote as SwapQuoteExactOut;
-    const estimatedAmountIn = DecimalUtil.fromBN(
-      exactOutQuote.inAmount,
-      inputToken.decimals,
-    ).toNumber();
-    const maxAmountIn = DecimalUtil.fromBN(
-      exactOutQuote.maxInAmount,
-      inputToken.decimals,
-    ).toNumber();
-    const amountOut = DecimalUtil.fromBN(
-      exactOutQuote.outAmount,
-      outputToken.decimals,
-    ).toNumber();
+    const estimatedAmountIn = DecimalUtil.fromBN(exactOutQuote.inAmount, inputToken.decimals).toNumber();
+    const maxAmountIn = DecimalUtil.fromBN(exactOutQuote.maxInAmount, inputToken.decimals).toNumber();
+    const amountOut = DecimalUtil.fromBN(exactOutQuote.outAmount, outputToken.decimals).toNumber();
 
     const price = amountOut / estimatedAmountIn;
     // For BUY: priceWithSlippage = estimatedAmountOut / maxAmountIn (worst price you'll accept)
@@ -147,18 +128,9 @@ async function formatSwapQuote(
     };
   } else {
     const exactInQuote = quote as SwapQuote;
-    const estimatedAmountIn = DecimalUtil.fromBN(
-      exactInQuote.consumedInAmount,
-      inputToken.decimals,
-    ).toNumber();
-    const estimatedAmountOut = DecimalUtil.fromBN(
-      exactInQuote.outAmount,
-      outputToken.decimals,
-    ).toNumber();
-    const minAmountOut = DecimalUtil.fromBN(
-      exactInQuote.minOutAmount,
-      outputToken.decimals,
-    ).toNumber();
+    const estimatedAmountIn = DecimalUtil.fromBN(exactInQuote.consumedInAmount, inputToken.decimals).toNumber();
+    const estimatedAmountOut = DecimalUtil.fromBN(exactInQuote.outAmount, outputToken.decimals).toNumber();
+    const minAmountOut = DecimalUtil.fromBN(exactInQuote.minOutAmount, outputToken.decimals).toNumber();
 
     // For sell orders:
     // - Base token (input) decreases (negative)
@@ -213,22 +185,12 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          poolAddress,
-          slippagePct,
-        } = request.query;
+        const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query;
         const networkUsed = network;
 
         // Validate essential parameters
         if (!baseToken || !quoteToken || !amount || !side) {
-          throw fastify.httpErrors.badRequest(
-            'baseToken, quoteToken, amount, and side are required',
-          );
+          throw fastify.httpErrors.badRequest('baseToken, quoteToken, amount, and side are required');
         }
 
         const solana = await Solana.getInstance(networkUsed);
@@ -243,17 +205,12 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           if (!baseTokenInfo || !quoteTokenInfo) {
             throw fastify.httpErrors.badRequest(
-              sanitizeErrorMessage(
-                'Token not found: {}',
-                !baseTokenInfo ? baseToken : quoteToken,
-              ),
+              sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
             );
           }
 
           // Use PoolService to find pool by token pair
-          const { PoolService } = await import(
-            '../../../services/pool-service'
-          );
+          const { PoolService } = await import('../../../services/pool-service');
           const poolService = PoolService.getInstance();
 
           const pool = await poolService.getPool(
@@ -291,9 +248,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           await estimateGasSolana(fastify, networkUsed);
           // Keep the default compute units value
         } catch (error) {
-          logger.warn(
-            `Failed to estimate gas for swap quote: ${error.message}`,
-          );
+          logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
         }
 
         return {

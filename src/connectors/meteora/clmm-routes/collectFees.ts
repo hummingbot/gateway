@@ -23,10 +23,7 @@ export async function collectFees(
   const wallet = await solana.getWallet(address);
 
   // Get position result and check if it's null before destructuring
-  const positionResult = await meteora.getRawPosition(
-    positionAddress,
-    wallet.publicKey,
-  );
+  const positionResult = await meteora.getRawPosition(positionAddress, wallet.publicKey);
 
   if (!positionResult) {
     throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
@@ -41,9 +38,7 @@ export async function collectFees(
 
   const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
   if (!dlmmPool) {
-    throw fastify.httpErrors.notFound(
-      `Pool not found for position: ${positionAddress}`,
-    );
+    throw fastify.httpErrors.notFound(`Pool not found for position: ${positionAddress}`);
   }
 
   const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
@@ -72,14 +67,10 @@ export async function collectFees(
     priorityFeePerCU,
   );
 
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-    signature,
-    dlmmPool.pubkey.toBase58(),
-    [
-      dlmmPool.tokenX.publicKey.toBase58(),
-      dlmmPool.tokenY.publicKey.toBase58(),
-    ],
-  );
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
+    dlmmPool.tokenX.publicKey.toBase58(),
+    dlmmPool.tokenY.publicKey.toBase58(),
+  ]);
 
   const collectedFeeX = balanceChanges[0];
   const collectedFeeY = balanceChanges[1];
@@ -130,14 +121,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         const networkToUse = network;
 
         const { priorityFeePerCU, computeUnits } = request.body;
-        return await collectFees(
-          fastify,
-          networkToUse,
-          walletAddress,
-          positionAddress,
-          priorityFeePerCU,
-          computeUnits,
-        );
+        return await collectFees(fastify, networkToUse, walletAddress, positionAddress, priorityFeePerCU, computeUnits);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

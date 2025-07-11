@@ -13,10 +13,7 @@ import {
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import {
-  getUniswapV2RouterAddress,
-  IUniswapV2Router02ABI,
-} from '../uniswap.contracts';
+import { getUniswapV2RouterAddress, IUniswapV2Router02ABI } from '../uniswap.contracts';
 import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
 import { getUniswapAmmLiquidityQuote } from './quoteLiquidity';
@@ -46,22 +43,13 @@ async function addLiquidity(
       throw new Error('WETH token not found');
     }
 
-    logger.info(
-      `ETH detected as base token, wrapping ${baseTokenAmount} ETH to WETH first`,
-    );
+    logger.info(`ETH detected as base token, wrapping ${baseTokenAmount} ETH to WETH first`);
 
-    const wrapResult = await wrapEthereum(
-      fastify,
-      networkToUse,
-      walletAddress,
-      baseTokenAmount.toString(),
-    );
+    const wrapResult = await wrapEthereum(fastify, networkToUse, walletAddress, baseTokenAmount.toString());
     baseWrapTxHash = wrapResult.signature;
     actualBaseToken = 'WETH';
 
-    logger.info(
-      `Successfully wrapped ${baseTokenAmount} ETH to WETH, transaction hash: ${baseWrapTxHash}`,
-    );
+    logger.info(`Successfully wrapped ${baseTokenAmount} ETH to WETH, transaction hash: ${baseWrapTxHash}`);
   }
 
   // Handle ETH->WETH wrapping if needed for quoteToken
@@ -74,22 +62,13 @@ async function addLiquidity(
       throw new Error('WETH token not found');
     }
 
-    logger.info(
-      `ETH detected as quote token, wrapping ${quoteTokenAmount} ETH to WETH first`,
-    );
+    logger.info(`ETH detected as quote token, wrapping ${quoteTokenAmount} ETH to WETH first`);
 
-    const wrapResult = await wrapEthereum(
-      fastify,
-      networkToUse,
-      walletAddress,
-      quoteTokenAmount.toString(),
-    );
+    const wrapResult = await wrapEthereum(fastify, networkToUse, walletAddress, quoteTokenAmount.toString());
     quoteWrapTxHash = wrapResult.signature;
     actualQuoteToken = 'WETH';
 
-    logger.info(
-      `Successfully wrapped ${quoteTokenAmount} ETH to WETH, transaction hash: ${quoteWrapTxHash}`,
-    );
+    logger.info(`Successfully wrapped ${quoteTokenAmount} ETH to WETH, transaction hash: ${quoteWrapTxHash}`);
   }
 
   // Get quote first to calculate optimal amounts and get execution data
@@ -114,16 +93,10 @@ async function addLiquidity(
   }
 
   // Get the router contract with signer
-  const router = new Contract(
-    quote.routerAddress,
-    IUniswapV2Router02ABI.abi,
-    wallet,
-  );
+  const router = new Contract(quote.routerAddress, IUniswapV2Router02ABI.abi, wallet);
 
   // Calculate slippage-adjusted amounts
-  const slippageTolerance = slippagePct
-    ? new Percent(slippagePct, 100)
-    : uniswap.getSlippagePct();
+  const slippageTolerance = slippagePct ? new Percent(slippagePct, 100) : uniswap.getSlippagePct();
 
   const slippageMultiplier = new Percent(1).subtract(slippageTolerance);
 
@@ -143,10 +116,7 @@ async function addLiquidity(
   // Check if one of the tokens is WETH
   if (quote.baseTokenObj.symbol === 'WETH') {
     // Check allowance for quote token
-    const tokenContract = ethereum.getContract(
-      quote.quoteTokenObj.address,
-      wallet,
-    );
+    const tokenContract = ethereum.getContract(quote.quoteTokenObj.address, wallet);
     const allowance = await ethereum.getERC20Allowance(
       tokenContract,
       wallet,
@@ -184,10 +154,7 @@ async function addLiquidity(
     );
   } else if (quote.quoteTokenObj.symbol === 'WETH') {
     // Check allowance for base token
-    const tokenContract = ethereum.getContract(
-      quote.baseTokenObj.address,
-      wallet,
-    );
+    const tokenContract = ethereum.getContract(quote.baseTokenObj.address, wallet);
     const allowance = await ethereum.getERC20Allowance(
       tokenContract,
       wallet,
@@ -211,10 +178,7 @@ async function addLiquidity(
     }
 
     // Add liquidity Token + ETH
-    const gasOptions = await ethereum.prepareGasOptions(
-      priorityFeePerCU,
-      computeUnits,
-    );
+    const gasOptions = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
     gasOptions.value = quote.rawQuoteTokenAmount;
 
     tx = await router.addLiquidityETH(
@@ -228,10 +192,7 @@ async function addLiquidity(
     );
   } else {
     // Both tokens are ERC20 - check allowances for both
-    const baseTokenContract = ethereum.getContract(
-      quote.baseTokenObj.address,
-      wallet,
-    );
+    const baseTokenContract = ethereum.getContract(quote.baseTokenObj.address, wallet);
     const baseAllowance = await ethereum.getERC20Allowance(
       baseTokenContract,
       wallet,
@@ -239,10 +200,7 @@ async function addLiquidity(
       quote.baseTokenObj.decimals,
     );
 
-    const quoteTokenContract = ethereum.getContract(
-      quote.quoteTokenObj.address,
-      wallet,
-    );
+    const quoteTokenContract = ethereum.getContract(quote.quoteTokenObj.address, wallet);
     const quoteAllowance = await ethereum.getERC20Allowance(
       quoteTokenContract,
       wallet,
@@ -280,10 +238,7 @@ async function addLiquidity(
     }
 
     // Add liquidity Token + Token
-    const gasOptions = await ethereum.prepareGasOptions(
-      priorityFeePerCU,
-      computeUnits,
-    );
+    const gasOptions = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
 
     tx = await router.addLiquidity(
       quote.baseTokenObj.address,
@@ -380,20 +335,14 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         if (!walletAddress) {
           walletAddress = await Ethereum.getFirstWalletAddress();
           if (!walletAddress) {
-            throw fastify.httpErrors.badRequest(
-              'No wallet address provided and no wallets found.',
-            );
+            throw fastify.httpErrors.badRequest('No wallet address provided and no wallets found.');
           }
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
         // Get pool information to determine tokens
         const uniswap = await Uniswap.getInstance(networkToUse);
-        const poolInfo = await getUniswapPoolInfo(
-          poolAddress,
-          networkToUse,
-          'amm',
-        );
+        const poolInfo = await getUniswapPoolInfo(poolAddress, networkToUse, 'amm');
         if (!poolInfo) {
           throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
         }
@@ -427,10 +376,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Handle insufficient funds errors
-        if (
-          e.code === 'INSUFFICIENT_FUNDS' ||
-          (e.message && e.message.includes('insufficient funds'))
-        ) {
+        if (e.code === 'INSUFFICIENT_FUNDS' || (e.message && e.message.includes('insufficient funds'))) {
           throw fastify.httpErrors.badRequest(
             'Insufficient ETH balance to pay for gas fees. Please add more ETH to your wallet.',
           );

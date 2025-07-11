@@ -11,10 +11,7 @@ import {
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
-import {
-  IUniswapV2PairABI,
-  getUniswapV2RouterAddress,
-} from '../uniswap.contracts';
+import { IUniswapV2PairABI, getUniswapV2RouterAddress } from '../uniswap.contracts';
 import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
 export async function getUniswapAmmLiquidityQuote(
@@ -58,9 +55,7 @@ export async function getUniswapAmmLiquidityQuote(
   const quoteTokenObj = uniswap.getTokenBySymbol(quoteToken);
 
   if (!baseTokenObj || !quoteTokenObj) {
-    throw new Error(
-      `Token not found: ${!baseTokenObj ? baseToken : quoteToken}`,
-    );
+    throw new Error(`Token not found: ${!baseTokenObj ? baseToken : quoteToken}`);
   }
 
   // Find pool address if not provided
@@ -68,17 +63,11 @@ export async function getUniswapAmmLiquidityQuote(
   let existingPool = true;
 
   if (!poolAddressToUse) {
-    poolAddressToUse = await uniswap.findDefaultPool(
-      baseToken,
-      quoteToken,
-      'amm',
-    );
+    poolAddressToUse = await uniswap.findDefaultPool(baseToken, quoteToken, 'amm');
 
     if (!poolAddressToUse) {
       existingPool = false;
-      logger.info(
-        `No existing pool found for ${baseToken}-${quoteToken}, providing theoretical quote`,
-      );
+      logger.info(`No existing pool found for ${baseToken}-${quoteToken}, providing theoretical quote`);
     }
   }
 
@@ -88,11 +77,7 @@ export async function getUniswapAmmLiquidityQuote(
 
   if (existingPool) {
     // Get existing pool data to calculate optimal amounts
-    const pairContract = new Contract(
-      poolAddressToUse,
-      IUniswapV2PairABI.abi,
-      ethereum.provider,
-    );
+    const pairContract = new Contract(poolAddressToUse, IUniswapV2PairABI.abi, ethereum.provider);
 
     // Get token addresses and reserves
     const [token0, token1, reserves] = await Promise.all([
@@ -102,8 +87,7 @@ export async function getUniswapAmmLiquidityQuote(
     ]);
 
     // Determine which token is base and which is quote
-    const token0IsBase =
-      token0.toLowerCase() === baseTokenObj.address.toLowerCase();
+    const token0IsBase = token0.toLowerCase() === baseTokenObj.address.toLowerCase();
 
     const reserve0 = reserves[0];
     const reserve1 = reserves[1];
@@ -113,19 +97,11 @@ export async function getUniswapAmmLiquidityQuote(
 
     // Convert amounts to BigNumber with proper decimals
     const baseAmountRaw = baseTokenAmount
-      ? BigNumber.from(
-          Math.floor(
-            baseTokenAmount * Math.pow(10, baseTokenObj.decimals),
-          ).toString(),
-        )
+      ? BigNumber.from(Math.floor(baseTokenAmount * Math.pow(10, baseTokenObj.decimals)).toString())
       : null;
 
     const quoteAmountRaw = quoteTokenAmount
-      ? BigNumber.from(
-          Math.floor(
-            quoteTokenAmount * Math.pow(10, quoteTokenObj.decimals),
-          ).toString(),
-        )
+      ? BigNumber.from(Math.floor(quoteTokenAmount * Math.pow(10, quoteTokenObj.decimals)).toString())
       : null;
 
     // Calculate optimal amounts based on the reserves ratio
@@ -136,40 +112,24 @@ export async function getUniswapAmmLiquidityQuote(
       if (quoteOptimal.lte(quoteAmountRaw)) {
         // Base token is the limiting factor
         baseLimited = true;
-        quoteTokenAmountOptimal = formatTokenAmount(
-          quoteOptimal.toString(),
-          quoteTokenObj.decimals,
-        );
+        quoteTokenAmountOptimal = formatTokenAmount(quoteOptimal.toString(), quoteTokenObj.decimals);
       } else {
         // Quote token is the limiting factor
         baseLimited = false;
         const baseOptimal = quoteAmountRaw.mul(baseReserve).div(quoteReserve);
-        baseTokenAmountOptimal = formatTokenAmount(
-          baseOptimal.toString(),
-          baseTokenObj.decimals,
-        );
+        baseTokenAmountOptimal = formatTokenAmount(baseOptimal.toString(), baseTokenObj.decimals);
       }
     } else if (baseAmountRaw) {
       // Only base amount provided, calculate quote amount
-      const quoteOptimal = baseReserve.isZero()
-        ? BigNumber.from(0)
-        : baseAmountRaw.mul(quoteReserve).div(baseReserve);
+      const quoteOptimal = baseReserve.isZero() ? BigNumber.from(0) : baseAmountRaw.mul(quoteReserve).div(baseReserve);
 
-      quoteTokenAmountOptimal = formatTokenAmount(
-        quoteOptimal.toString(),
-        quoteTokenObj.decimals,
-      );
+      quoteTokenAmountOptimal = formatTokenAmount(quoteOptimal.toString(), quoteTokenObj.decimals);
       baseLimited = true;
     } else if (quoteAmountRaw) {
       // Only quote amount provided, calculate base amount
-      const baseOptimal = quoteReserve.isZero()
-        ? BigNumber.from(0)
-        : quoteAmountRaw.mul(baseReserve).div(quoteReserve);
+      const baseOptimal = quoteReserve.isZero() ? BigNumber.from(0) : quoteAmountRaw.mul(baseReserve).div(quoteReserve);
 
-      baseTokenAmountOptimal = formatTokenAmount(
-        baseOptimal.toString(),
-        baseTokenObj.decimals,
-      );
+      baseTokenAmountOptimal = formatTokenAmount(baseOptimal.toString(), baseTokenObj.decimals);
       baseLimited = false;
     }
   } else {
@@ -179,14 +139,10 @@ export async function getUniswapAmmLiquidityQuote(
       baseLimited = false;
     } else if (baseTokenAmount) {
       // Only base amount provided, need quote amount
-      throw new Error(
-        'For new pools, both base and quote token amounts must be provided',
-      );
+      throw new Error('For new pools, both base and quote token amounts must be provided');
     } else if (quoteTokenAmount) {
       // Only quote amount provided, need base amount
-      throw new Error(
-        'For new pools, both base and quote token amounts must be provided',
-      );
+      throw new Error('For new pools, both base and quote token amounts must be provided');
     }
   }
 
@@ -195,15 +151,11 @@ export async function getUniswapAmmLiquidityQuote(
 
   // Convert final amounts to raw values for execution
   const rawBaseTokenAmount = BigNumber.from(
-    Math.floor(
-      baseTokenAmountOptimal * Math.pow(10, baseTokenObj.decimals),
-    ).toString(),
+    Math.floor(baseTokenAmountOptimal * Math.pow(10, baseTokenObj.decimals)).toString(),
   );
 
   const rawQuoteTokenAmount = BigNumber.from(
-    Math.floor(
-      quoteTokenAmountOptimal * Math.pow(10, quoteTokenObj.decimals),
-    ).toString(),
+    Math.floor(quoteTokenAmountOptimal * Math.pow(10, quoteTokenObj.decimals)).toString(),
   );
 
   return {
@@ -255,13 +207,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.query;
+        const { network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.query;
 
         if (!poolAddress) {
           throw fastify.httpErrors.badRequest('Pool address is required');
@@ -303,9 +249,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError(
-          'Failed to get liquidity quote',
-        );
+        throw fastify.httpErrors.internalServerError('Failed to get liquidity quote');
       }
     },
   );

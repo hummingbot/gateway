@@ -129,8 +129,7 @@ export const SwapExecuteResponse = Type.Object(
       description: 'Transaction signature/hash',
     }),
     status: Type.Number({
-      description:
-        'Transaction status: 0 = PENDING, 1 = CONFIRMED, -1 = FAILED',
+      description: 'Transaction status: 0 = PENDING, 1 = CONFIRMED, -1 = FAILED',
     }),
 
     // Only included when status = CONFIRMED

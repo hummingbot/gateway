@@ -39,9 +39,7 @@ describe('updateConfig - Configuration updates', () => {
       set: jest.fn(),
       get: jest.fn(),
     };
-    (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue(
-      mockConfigManager,
-    );
+    (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue(mockConfigManager);
 
     // Mock Fastify instance
     mockFastify = {
@@ -72,17 +70,10 @@ describe('updateConfig - Configuration updates', () => {
   describe('Configuration updates', () => {
     it('should update Solana network config through ConfigManagerV2', () => {
       // Call updateConfig
-      updateConfig(
-        mockFastify as unknown as FastifyInstance,
-        'solana-mainnet-beta.nodeURL',
-        'https://new-rpc.com',
-      );
+      updateConfig(mockFastify as unknown as FastifyInstance, 'solana-mainnet-beta.nodeURL', 'https://new-rpc.com');
 
       // Verify runtime config was updated
-      expect(mockConfigManager.set).toHaveBeenCalledWith(
-        'solana-mainnet-beta.nodeURL',
-        'https://new-rpc.com',
-      );
+      expect(mockConfigManager.set).toHaveBeenCalledWith('solana-mainnet-beta.nodeURL', 'https://new-rpc.com');
 
       // Verify no file operations occurred (handled by ConfigManagerV2)
       expect(mockFs.writeFileSync).not.toHaveBeenCalled();
@@ -108,17 +99,10 @@ describe('updateConfig - Configuration updates', () => {
 
     it('should handle configuration updates without file operations', () => {
       // Call updateConfig
-      updateConfig(
-        mockFastify as unknown as FastifyInstance,
-        'solana-devnet.nodeURL',
-        'https://new-rpc.com',
-      );
+      updateConfig(mockFastify as unknown as FastifyInstance, 'solana-devnet.nodeURL', 'https://new-rpc.com');
 
       // Verify runtime config was updated
-      expect(mockConfigManager.set).toHaveBeenCalledWith(
-        'solana-devnet.nodeURL',
-        'https://new-rpc.com',
-      );
+      expect(mockConfigManager.set).toHaveBeenCalledWith('solana-devnet.nodeURL', 'https://new-rpc.com');
 
       // Verify no directory or file operations occurred
       expect(mockFs.mkdirSync).not.toHaveBeenCalled();
@@ -146,11 +130,7 @@ describe('updateConfig - Configuration updates', () => {
 
     it('should update non-chain namespaces through ConfigManagerV2', () => {
       // Call updateConfig for a non-chain namespace
-      updateConfig(
-        mockFastify as unknown as FastifyInstance,
-        'server.port',
-        15889,
-      );
+      updateConfig(mockFastify as unknown as FastifyInstance, 'server.port', 15889);
 
       // Verify no network file was written
       expect(mockFs.writeFileSync).not.toHaveBeenCalled();
@@ -161,20 +141,13 @@ describe('updateConfig - Configuration updates', () => {
 
     it('should update chain-level configurations through ConfigManagerV2', () => {
       // Call updateConfig for a chain namespace but not a network config
-      updateConfig(
-        mockFastify as unknown as FastifyInstance,
-        'solana.transactionLabelPrefix',
-        'solana-tx',
-      );
+      updateConfig(mockFastify as unknown as FastifyInstance, 'solana.transactionLabelPrefix', 'solana-tx');
 
       // Verify no file operations occurred
       expect(mockFs.writeFileSync).not.toHaveBeenCalled();
 
       // Verify runtime config was updated
-      expect(mockConfigManager.set).toHaveBeenCalledWith(
-        'solana.transactionLabelPrefix',
-        'solana-tx',
-      );
+      expect(mockConfigManager.set).toHaveBeenCalledWith('solana.transactionLabelPrefix', 'solana-tx');
     });
 
     it('should handle ConfigManagerV2 errors gracefully', () => {
@@ -184,21 +157,15 @@ describe('updateConfig - Configuration updates', () => {
       });
 
       // Mock httpErrors.internalServerError to throw
-      mockFastify.httpErrors.internalServerError.mockImplementation(
-        (msg: string) => {
-          const error = new Error(msg);
-          (error as any).statusCode = 500;
-          throw error;
-        },
-      );
+      mockFastify.httpErrors.internalServerError.mockImplementation((msg: string) => {
+        const error = new Error(msg);
+        (error as any).statusCode = 500;
+        throw error;
+      });
 
       // Call updateConfig - should throw HTTP error
       expect(() => {
-        updateConfig(
-          mockFastify as unknown as FastifyInstance,
-          'solana-mainnet-beta.nodeURL',
-          'https://new-rpc.com',
-        );
+        updateConfig(mockFastify as unknown as FastifyInstance, 'solana-mainnet-beta.nodeURL', 'https://new-rpc.com');
       }).toThrow('Failed to update configuration: Configuration error');
 
       // Verify fastify error was called
@@ -211,20 +178,13 @@ describe('updateConfig - Configuration updates', () => {
   describe('Non-network configuration updates', () => {
     it('should update connector configuration normally', () => {
       // Call updateConfig for a connector
-      updateConfig(
-        mockFastify as unknown as FastifyInstance,
-        'uniswap.slippagePct',
-        '2/100',
-      );
+      updateConfig(mockFastify as unknown as FastifyInstance, 'uniswap.slippagePct', '2/100');
 
       // Verify no network file operations
       expect(mockFs.writeFileSync).not.toHaveBeenCalled();
 
       // Verify only runtime config was updated
-      expect(mockConfigManager.set).toHaveBeenCalledWith(
-        'uniswap.slippagePct',
-        '2/100',
-      );
+      expect(mockConfigManager.set).toHaveBeenCalledWith('uniswap.slippagePct', '2/100');
     });
   });
 });

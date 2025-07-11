@@ -30,9 +30,7 @@ const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
 
-  const { quoteSwapRoute } = await import(
-    '../../../../src/connectors/uniswap/amm-routes/quoteSwap'
-  );
+  const { quoteSwapRoute } = await import('../../../../src/connectors/uniswap/amm-routes/quoteSwap');
   await server.register(quoteSwapRoute);
   return server;
 };
@@ -68,12 +66,8 @@ describe('GET /quote-swap', () => {
 
   it('should return a quote for AMM swap SELL side', async () => {
     const { Token, Pair, TokenAmount } = require('@uniswap/sdk');
-    const { Uniswap } = await import(
-      '../../../../src/connectors/uniswap/uniswap'
-    );
-    const { getUniswapPoolInfo, formatTokenAmount } = await import(
-      '../../../../src/connectors/uniswap/uniswap.utils'
-    );
+    const { Uniswap } = await import('../../../../src/connectors/uniswap/uniswap');
+    const { getUniswapPoolInfo, formatTokenAmount } = await import('../../../../src/connectors/uniswap/uniswap.utils');
     const ethers = require('ethers');
 
     // Create a proper mock provider that ethers.Contract will accept
@@ -84,15 +78,12 @@ describe('GET /quote-swap', () => {
       getBlockNumber: jest.fn().mockResolvedValue(1000000),
       getGasPrice: jest.fn().mockResolvedValue({
         mul: jest.fn((value) => ({
-          toString: () =>
-            (BigInt(20000000000) * BigInt(value.toString())).toString(),
+          toString: () => (BigInt(20000000000) * BigInt(value.toString())).toString(),
         })),
         toString: () => '20000000000',
         toBigInt: () => BigInt(20000000000),
       }),
-      getBalance: jest
-        .fn()
-        .mockResolvedValue({ toBigInt: () => BigInt(1000000000000000000) }),
+      getBalance: jest.fn().mockResolvedValue({ toBigInt: () => BigInt(1000000000000000000) }),
       // Add other required provider methods
       resolveName: jest.fn(),
       lookupAddress: jest.fn(),
@@ -109,18 +100,13 @@ describe('GET /quote-swap', () => {
 
     const mockEthereumInstance = {
       chainId: 1,
-      getToken: jest
-        .fn()
-        .mockResolvedValueOnce(mockWETH)
-        .mockResolvedValueOnce(mockUSDC),
+      getToken: jest.fn().mockResolvedValueOnce(mockWETH).mockResolvedValueOnce(mockUSDC),
       provider: mockProvider,
       ready: jest.fn().mockReturnValue(true),
       init: jest.fn().mockResolvedValue(undefined),
     };
     (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
-    (Ethereum.getWalletAddressExample as jest.Mock).mockResolvedValue(
-      '0x1234567890123456789012345678901234567890',
-    );
+    (Ethereum.getWalletAddressExample as jest.Mock).mockResolvedValue('0x1234567890123456789012345678901234567890');
 
     // Mock getUniswapPoolInfo
     (getUniswapPoolInfo as jest.Mock).mockResolvedValue({
@@ -167,10 +153,7 @@ describe('GET /quote-swap', () => {
       // Add V2 Pair specific methods that might be called
       liquidityToken: { address: '0x1234567890123456789012345678901234567890' },
       involvesToken: jest.fn().mockImplementation((token) => {
-        return (
-          token.address === wethToken.address ||
-          token.address === usdcToken.address
-        );
+        return token.address === wethToken.address || token.address === usdcToken.address;
       }),
     };
 
@@ -227,20 +210,13 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
     // For SELL side: priceWithSlippage = minAmountOut / amountIn
     expect(body).toHaveProperty('priceWithSlippage');
-    expect(body.priceWithSlippage).toBeCloseTo(
-      body.minAmountOut / body.amountIn,
-      8,
-    );
+    expect(body.priceWithSlippage).toBeCloseTo(body.minAmountOut / body.amountIn, 8);
   });
 
   it('should return a quote for AMM swap BUY side', async () => {
     const { Token, Pair, TokenAmount } = require('@uniswap/sdk');
-    const { Uniswap } = await import(
-      '../../../../src/connectors/uniswap/uniswap'
-    );
-    const { getUniswapPoolInfo, formatTokenAmount } = await import(
-      '../../../../src/connectors/uniswap/uniswap.utils'
-    );
+    const { Uniswap } = await import('../../../../src/connectors/uniswap/uniswap');
+    const { getUniswapPoolInfo, formatTokenAmount } = await import('../../../../src/connectors/uniswap/uniswap.utils');
     const ethers = require('ethers');
 
     // Create a proper mock provider that ethers.Contract will accept
@@ -251,15 +227,12 @@ describe('GET /quote-swap', () => {
       getBlockNumber: jest.fn().mockResolvedValue(1000000),
       getGasPrice: jest.fn().mockResolvedValue({
         mul: jest.fn((value) => ({
-          toString: () =>
-            (BigInt(20000000000) * BigInt(value.toString())).toString(),
+          toString: () => (BigInt(20000000000) * BigInt(value.toString())).toString(),
         })),
         toString: () => '20000000000',
         toBigInt: () => BigInt(20000000000),
       }),
-      getBalance: jest
-        .fn()
-        .mockResolvedValue({ toBigInt: () => BigInt(1000000000000000000) }),
+      getBalance: jest.fn().mockResolvedValue({ toBigInt: () => BigInt(1000000000000000000) }),
       // Add other required provider methods
       resolveName: jest.fn(),
       lookupAddress: jest.fn(),
@@ -276,10 +249,7 @@ describe('GET /quote-swap', () => {
 
     const mockEthereumInstance = {
       chainId: 1,
-      getToken: jest
-        .fn()
-        .mockResolvedValueOnce(mockWETH)
-        .mockResolvedValueOnce(mockUSDC),
+      getToken: jest.fn().mockResolvedValueOnce(mockWETH).mockResolvedValueOnce(mockUSDC),
       provider: mockProvider,
       ready: jest.fn().mockReturnValue(true),
       init: jest.fn().mockResolvedValue(undefined),
@@ -331,10 +301,7 @@ describe('GET /quote-swap', () => {
       // Add V2 Pair specific methods that might be called
       liquidityToken: { address: '0x1234567890123456789012345678901234567890' },
       involvesToken: jest.fn().mockImplementation((token) => {
-        return (
-          token.address === wethToken.address ||
-          token.address === usdcToken.address
-        );
+        return token.address === wethToken.address || token.address === usdcToken.address;
       }),
     };
 
@@ -387,10 +354,7 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('tokenOut', mockWETH.address);
     // For BUY side: priceWithSlippage = maxAmountIn / amountOut
     expect(body).toHaveProperty('priceWithSlippage');
-    expect(body.priceWithSlippage).toBeCloseTo(
-      body.maxAmountIn / body.amountOut,
-      8,
-    );
+    expect(body.priceWithSlippage).toBeCloseTo(body.maxAmountIn / body.amountOut, 8);
   });
 
   it('should return 400 if token not found', async () => {
@@ -402,15 +366,12 @@ describe('GET /quote-swap', () => {
       getBlockNumber: jest.fn().mockResolvedValue(1000000),
       getGasPrice: jest.fn().mockResolvedValue({
         mul: jest.fn((value) => ({
-          toString: () =>
-            (BigInt(20000000000) * BigInt(value.toString())).toString(),
+          toString: () => (BigInt(20000000000) * BigInt(value.toString())).toString(),
         })),
         toString: () => '20000000000',
         toBigInt: () => BigInt(20000000000),
       }),
-      getBalance: jest
-        .fn()
-        .mockResolvedValue({ toBigInt: () => BigInt(1000000000000000000) }),
+      getBalance: jest.fn().mockResolvedValue({ toBigInt: () => BigInt(1000000000000000000) }),
       // Add other required provider methods
       resolveName: jest.fn(),
       lookupAddress: jest.fn(),
@@ -427,10 +388,7 @@ describe('GET /quote-swap', () => {
 
     const mockEthereumInstance = {
       chainId: 1,
-      getToken: jest
-        .fn()
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(mockUSDC),
+      getToken: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(mockUSDC),
       provider: mockProvider,
       ready: jest.fn().mockReturnValue(true),
       init: jest.fn().mockResolvedValue(undefined),

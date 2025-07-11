@@ -9,9 +9,7 @@ const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
   try {
-    const { quoteSwapRoute } = await import(
-      '../../../../src/connectors/jupiter/router-routes/quoteSwap'
-    );
+    const { quoteSwapRoute } = await import('../../../../src/connectors/jupiter/router-routes/quoteSwap');
     await server.register(quoteSwapRoute);
   } catch (error) {
     console.error('Failed to import route:', error);
@@ -64,10 +62,7 @@ describe('GET /quote-swap', () => {
 
   it('should return a swap quote for SELL side', async () => {
     const mockSolanaInstance = {
-      getToken: jest
-        .fn()
-        .mockResolvedValueOnce(mockSOL)
-        .mockResolvedValueOnce(mockUSDC),
+      getToken: jest.fn().mockResolvedValueOnce(mockSOL).mockResolvedValueOnce(mockUSDC),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -111,10 +106,7 @@ describe('GET /quote-swap', () => {
 
   it('should return a price quote for BUY side', async () => {
     const mockSolanaInstance = {
-      getToken: jest
-        .fn()
-        .mockResolvedValueOnce(mockSOL)
-        .mockResolvedValueOnce(mockUSDC),
+      getToken: jest.fn().mockResolvedValueOnce(mockSOL).mockResolvedValueOnce(mockUSDC),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -161,10 +153,7 @@ describe('GET /quote-swap', () => {
 
   it('should return 400 if token not found', async () => {
     const mockSolanaInstance = {
-      getToken: jest
-        .fn()
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(mockUSDC),
+      getToken: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(mockUSDC),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -186,10 +175,7 @@ describe('GET /quote-swap', () => {
 
   it('should return 404 if no routes found', async () => {
     const mockSolanaInstance = {
-      getToken: jest
-        .fn()
-        .mockResolvedValueOnce(mockSOL)
-        .mockResolvedValueOnce(mockUSDC),
+      getToken: jest.fn().mockResolvedValueOnce(mockSOL).mockResolvedValueOnce(mockUSDC),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 

@@ -28,9 +28,7 @@ export async function removeLiquidity(
   const wallet = await solana.getWallet(walletAddress);
 
   const positionInfo = await raydium.getClmmPosition(positionAddress);
-  const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(
-    positionInfo.poolId.toBase58(),
-  );
+  const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(positionInfo.poolId.toBase58());
 
   if (positionInfo.liquidity.isZero()) {
     throw new Error('Position has zero liquidity - nothing to remove');
@@ -40,14 +38,10 @@ export async function removeLiquidity(
   }
 
   const liquidityToRemove = new BN(
-    new Decimal(positionInfo.liquidity.toString())
-      .mul(percentageToRemove / 100)
-      .toFixed(0),
+    new Decimal(positionInfo.liquidity.toString()).mul(percentageToRemove / 100).toFixed(0),
   );
 
-  logger.info(
-    `Removing ${percentageToRemove.toFixed(4)}% liquidity from position ${positionAddress}`,
-  );
+  logger.info(`Removing ${percentageToRemove.toFixed(4)}% liquidity from position ${positionAddress}`);
 
   // Use provided compute units or default
   const COMPUTE_UNITS = computeUnits || 600000;
@@ -75,8 +69,7 @@ export async function removeLiquidity(
   transaction.sign([wallet]);
   await solana.simulateTransaction(transaction);
 
-  const { confirmed, signature, txData } =
-    await solana.sendAndConfirmRawTransaction(transaction);
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
   // Return with status
   if (confirmed && txData) {
@@ -84,11 +77,10 @@ export async function removeLiquidity(
     const tokenAInfo = await solana.getToken(poolInfo.mintA.address);
     const tokenBInfo = await solana.getToken(poolInfo.mintB.address);
 
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-      signature,
-      wallet.publicKey.toBase58(),
-      [tokenAInfo.address, tokenBInfo.address],
-    );
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+      tokenAInfo.address,
+      tokenBInfo.address,
+    ]);
 
     const baseTokenBalanceChange = balanceChanges[0];
     const quoteTokenBalanceChange = balanceChanges[1];
@@ -140,14 +132,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress,
-          positionAddress,
-          percentageToRemove,
-          priorityFeePerCU,
-          computeUnits,
-        } = request.body;
+        const { network, walletAddress, positionAddress, percentageToRemove, priorityFeePerCU, computeUnits } =
+          request.body;
 
         return await removeLiquidity(
           fastify,

@@ -22,11 +22,7 @@ export async function pollSolanaTransaction(
     const currentBlock = await solana.getCurrentBlockNumber();
 
     // Validate transaction signature format
-    if (
-      !signature ||
-      typeof signature !== 'string' ||
-      !signature.match(/^[A-Za-z0-9]{43,88}$/)
-    ) {
+    if (!signature || typeof signature !== 'string' || !signature.match(/^[A-Za-z0-9]{43,88}$/)) {
       return {
         currentBlock,
         signature,
@@ -74,11 +70,7 @@ export async function pollSolanaTransaction(
         }
 
         if (tokenAddresses.length > 0) {
-          const result = await solana.extractBalanceChangesAndFee(
-            signature,
-            walletAddress,
-            tokenAddresses,
-          );
+          const result = await solana.extractBalanceChangesAndFee(signature, walletAddress, tokenAddresses);
           fee = result.fee;
 
           // Build balance changes dictionary with original input values as keys
@@ -100,9 +92,7 @@ export async function pollSolanaTransaction(
           fee = 0;
         }
       } catch (error) {
-        logger.error(
-          `Error calculating balance changes for transaction ${signature}: ${error.message}`,
-        );
+        logger.error(`Error calculating balance changes for transaction ${signature}: ${error.message}`);
         // Set fee to 0 on error
         fee = 0;
       }
@@ -114,9 +104,7 @@ export async function pollSolanaTransaction(
         [],
       );
       fee = feeResult.fee;
-      logger.info(
-        `Polling for transaction ${signature}, Status: ${txStatus}, Fee: ${fee} SOL`,
-      );
+      logger.info(`Polling for transaction ${signature}, Status: ${txStatus}, Fee: ${fee} SOL`);
     }
 
     return {
@@ -161,9 +149,7 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
             network: { type: 'string', examples: ['mainnet-beta', 'devnet'] },
             signature: {
               type: 'string',
-              examples: [
-                '55ukR6VCt1sQFMC8Nyeo51R1SMaTzUC7jikmkEJ2jjkQNdqBxXHraH7vaoaNmf8rX4Y55EXAj8XXoyzvvsrQqWZa',
-              ],
+              examples: ['55ukR6VCt1sQFMC8Nyeo51R1SMaTzUC7jikmkEJ2jjkQNdqBxXHraH7vaoaNmf8rX4Y55EXAj8XXoyzvvsrQqWZa'],
             },
             tokens: {
               type: 'array',
@@ -183,13 +169,7 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { network, signature, tokens, walletAddress } = request.body;
-      return await pollSolanaTransaction(
-        fastify,
-        network,
-        signature,
-        tokens,
-        walletAddress,
-      );
+      return await pollSolanaTransaction(fastify, network, signature, tokens, walletAddress);
     },
   );
 };

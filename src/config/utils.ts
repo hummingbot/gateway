@@ -7,14 +7,10 @@ import * as yaml from 'js-yaml';
 import { ConfigManagerV2 } from '../services/config-manager-v2';
 import { logger } from '../services/logger';
 
-export const getConfig = (
-  fastify: FastifyInstance,
-  namespace?: string,
-): object => {
+export const getConfig = (fastify: FastifyInstance, namespace?: string): object => {
   if (namespace) {
     logger.info(`Getting configuration for namespace: ${namespace}`);
-    const namespaceConfig =
-      ConfigManagerV2.getInstance().getNamespace(namespace);
+    const namespaceConfig = ConfigManagerV2.getInstance().getNamespace(namespace);
 
     if (!namespaceConfig) {
       throw fastify.httpErrors.notFound(`Namespace '${namespace}' not found`);
@@ -27,14 +23,8 @@ export const getConfig = (
   return ConfigManagerV2.getInstance().allConfigurations;
 };
 
-export const updateConfig = (
-  fastify: FastifyInstance,
-  configPath: string,
-  configValue: any,
-): void => {
-  logger.info(
-    `Updating config path: ${configPath} with value: ${JSON.stringify(configValue)}`,
-  );
+export const updateConfig = (fastify: FastifyInstance, configPath: string, configValue: any): void => {
+  logger.info(`Updating config path: ${configPath} with value: ${JSON.stringify(configValue)}`);
 
   try {
     // Update the configuration using ConfigManagerV2
@@ -42,9 +32,7 @@ export const updateConfig = (
     logger.info(`Successfully updated configuration: ${configPath}`);
   } catch (error) {
     logger.error(`Failed to update configuration: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(
-      `Failed to update configuration: ${error.message}`,
-    );
+    throw fastify.httpErrors.internalServerError(`Failed to update configuration: ${error.message}`);
   }
 };
 
@@ -73,11 +61,7 @@ export const getDefaultPools = async (
   try {
     // Get pools from PoolService
     const poolService = PoolService.getInstance();
-    const pools = await poolService.getDefaultPools(
-      baseConnector,
-      network,
-      type,
-    );
+    const pools = await poolService.getDefaultPools(baseConnector, network, type);
 
     logger.info(`Retrieved default pools for ${connector} on ${network}`);
     return pools;

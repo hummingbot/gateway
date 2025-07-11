@@ -1,17 +1,10 @@
-import {
-  ReturnTypeComputeAmountOutFormat,
-  ReturnTypeComputeAmountOutBaseOut,
-} from '@raydium-io/raydium-sdk-v2';
+import { ReturnTypeComputeAmountOutFormat, ReturnTypeComputeAmountOutBaseOut } from '@raydium-io/raydium-sdk-v2';
 import { VersionedTransaction } from '@solana/web3.js';
 import BN from 'bn.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana, BASE_FEE } from '../../../chains/solana/solana';
-import {
-  ExecuteSwapRequestType,
-  ExecuteSwapResponse,
-  ExecuteSwapResponseType,
-} from '../../../schemas/clmm-schema';
+import { ExecuteSwapRequestType, ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
@@ -40,9 +33,7 @@ async function executeSwap(
   // Get pool info from address
   const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(poolAddress);
   if (!poolInfo) {
-    throw fastify.httpErrors.notFound(
-      sanitizeErrorMessage('Pool not found: {}', poolAddress),
-    );
+    throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
   }
   console.log('poolInfo', poolInfo);
   console.log('poolKeys', poolKeys);
@@ -50,90 +41,66 @@ async function executeSwap(
   // Use configured slippage if not provided
   const effectiveSlippage = slippagePct || RaydiumConfig.config.slippagePct;
 
-  const { inputToken, outputToken, response, clmmPoolInfo } =
-    await getSwapQuote(
-      fastify,
-      network,
-      baseToken,
-      quoteToken,
-      amount,
-      side,
-      poolAddress,
-      effectiveSlippage,
-    );
+  const { inputToken, outputToken, response, clmmPoolInfo } = await getSwapQuote(
+    fastify,
+    network,
+    baseToken,
+    quoteToken,
+    amount,
+    side,
+    poolAddress,
+    effectiveSlippage,
+  );
 
   logger.info(`Raydium CLMM getSwapQuote:`, {
     response:
       side === 'BUY'
         ? {
             amountIn: {
-              amount: (
-                response as ReturnTypeComputeAmountOutBaseOut
-              ).amountIn.amount.toNumber(),
+              amount: (response as ReturnTypeComputeAmountOutBaseOut).amountIn.amount.toNumber(),
             },
             maxAmountIn: {
-              amount: (
-                response as ReturnTypeComputeAmountOutBaseOut
-              ).maxAmountIn.amount.toNumber(),
+              amount: (response as ReturnTypeComputeAmountOutBaseOut).maxAmountIn.amount.toNumber(),
             },
             realAmountOut: {
-              amount: (
-                response as ReturnTypeComputeAmountOutBaseOut
-              ).realAmountOut.amount.toNumber(),
+              amount: (response as ReturnTypeComputeAmountOutBaseOut).realAmountOut.amount.toNumber(),
             },
           }
         : {
             realAmountIn: {
               amount: {
-                raw: (
-                  response as ReturnTypeComputeAmountOutFormat
-                ).realAmountIn.amount.raw.toNumber(),
+                raw: (response as ReturnTypeComputeAmountOutFormat).realAmountIn.amount.raw.toNumber(),
                 token: {
-                  symbol: (response as ReturnTypeComputeAmountOutFormat)
-                    .realAmountIn.amount.token.symbol,
-                  mint: (response as ReturnTypeComputeAmountOutFormat)
-                    .realAmountIn.amount.token.mint,
-                  decimals: (response as ReturnTypeComputeAmountOutFormat)
-                    .realAmountIn.amount.token.decimals,
+                  symbol: (response as ReturnTypeComputeAmountOutFormat).realAmountIn.amount.token.symbol,
+                  mint: (response as ReturnTypeComputeAmountOutFormat).realAmountIn.amount.token.mint,
+                  decimals: (response as ReturnTypeComputeAmountOutFormat).realAmountIn.amount.token.decimals,
                 },
               },
             },
             amountOut: {
               amount: {
-                raw: (
-                  response as ReturnTypeComputeAmountOutFormat
-                ).amountOut.amount.raw.toNumber(),
+                raw: (response as ReturnTypeComputeAmountOutFormat).amountOut.amount.raw.toNumber(),
                 token: {
-                  symbol: (response as ReturnTypeComputeAmountOutFormat)
-                    .amountOut.amount.token.symbol,
-                  mint: (response as ReturnTypeComputeAmountOutFormat).amountOut
-                    .amount.token.mint,
-                  decimals: (response as ReturnTypeComputeAmountOutFormat)
-                    .amountOut.amount.token.decimals,
+                  symbol: (response as ReturnTypeComputeAmountOutFormat).amountOut.amount.token.symbol,
+                  mint: (response as ReturnTypeComputeAmountOutFormat).amountOut.amount.token.mint,
+                  decimals: (response as ReturnTypeComputeAmountOutFormat).amountOut.amount.token.decimals,
                 },
               },
             },
             minAmountOut: {
               amount: {
-                numerator: (
-                  response as ReturnTypeComputeAmountOutFormat
-                ).minAmountOut.amount.raw.toNumber(),
+                numerator: (response as ReturnTypeComputeAmountOutFormat).minAmountOut.amount.raw.toNumber(),
                 token: {
-                  symbol: (response as ReturnTypeComputeAmountOutFormat)
-                    .minAmountOut.amount.token.symbol,
-                  mint: (response as ReturnTypeComputeAmountOutFormat)
-                    .minAmountOut.amount.token.mint,
-                  decimals: (response as ReturnTypeComputeAmountOutFormat)
-                    .minAmountOut.amount.token.decimals,
+                  symbol: (response as ReturnTypeComputeAmountOutFormat).minAmountOut.amount.token.symbol,
+                  mint: (response as ReturnTypeComputeAmountOutFormat).minAmountOut.amount.token.mint,
+                  decimals: (response as ReturnTypeComputeAmountOutFormat).minAmountOut.amount.token.decimals,
                 },
               },
             },
           },
   });
 
-  logger.info(
-    `Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`,
-  );
+  logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
 
   // Use provided compute units or default
   const COMPUTE_UNITS = computeUnits || 600000;
@@ -145,9 +112,7 @@ async function executeSwap(
   } else {
     // Calculate default if not provided
     const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-    finalPriorityFeePerCU = Math.floor(
-      (currentPriorityFee * 1e6) / COMPUTE_UNITS,
-    );
+    finalPriorityFeePerCU = Math.floor((currentPriorityFee * 1e6) / COMPUTE_UNITS);
   }
 
   // Build transaction with SDK - pass parameters directly
@@ -160,8 +125,7 @@ async function executeSwap(
       outputToken.decimals,
       exactOutResponse.amountIn.amount,
     );
-    const amountInWithSlippage =
-      amountIn * 10 ** inputToken.decimals * (1 + effectiveSlippage / 100);
+    const amountInWithSlippage = amountIn * 10 ** inputToken.decimals * (1 + effectiveSlippage / 100);
     // logger.info(`amountInWithSlippage: ${amountInWithSlippage}`);
     ({ transaction } = (await raydium.raydiumSDK.clmm.swapBaseOut({
       poolInfo,
@@ -206,40 +170,31 @@ async function executeSwap(
   await solana.simulateTransaction(transaction as VersionedTransaction);
 
   // Send and confirm - keep retry loop here for retrying same tx hash
-  const { confirmed, signature, txData } =
-    await solana.sendAndConfirmRawTransaction(transaction);
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
   if (confirmed && txData) {
     // Return confirmed with full data
     const tokenAInfo = await solana.getToken(poolInfo.mintA.address);
     const tokenBInfo = await solana.getToken(poolInfo.mintB.address);
 
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-      signature,
-      wallet.publicKey.toBase58(),
-      [tokenAInfo.address, tokenBInfo.address],
-    );
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+      tokenAInfo.address,
+      tokenBInfo.address,
+    ]);
 
     const baseTokenBalanceChange = balanceChanges[0];
     const quoteTokenBalanceChange = balanceChanges[1];
 
     // Calculate actual amounts swapped based on side
-    const amountIn =
-      side === 'SELL'
-        ? Math.abs(baseTokenBalanceChange)
-        : Math.abs(quoteTokenBalanceChange);
-    const amountOut =
-      side === 'SELL'
-        ? Math.abs(quoteTokenBalanceChange)
-        : Math.abs(baseTokenBalanceChange);
+    const amountIn = side === 'SELL' ? Math.abs(baseTokenBalanceChange) : Math.abs(quoteTokenBalanceChange);
+    const amountOut = side === 'SELL' ? Math.abs(quoteTokenBalanceChange) : Math.abs(baseTokenBalanceChange);
 
     logger.info(
       `Swap executed successfully: ${amountIn.toFixed(4)} ${inputToken.symbol} -> ${amountOut.toFixed(4)} ${outputToken.symbol}`,
     );
 
     // Get current active bin ID from pool info
-    const activeBinId =
-      (poolInfo as any).currentTickIndex || (poolInfo as any).activeBin || 0;
+    const activeBinId = (poolInfo as any).currentTickIndex || (poolInfo as any).activeBin || 0;
 
     // Determine token addresses for computed fields
     const tokenIn = inputToken.address;
@@ -324,17 +279,12 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           if (!baseTokenInfo || !quoteTokenInfo) {
             throw fastify.httpErrors.badRequest(
-              sanitizeErrorMessage(
-                'Token not found: {}',
-                !baseTokenInfo ? baseToken : quoteToken,
-              ),
+              sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
             );
           }
 
           // Use PoolService to find pool by token pair
-          const { PoolService } = await import(
-            '../../../services/pool-service'
-          );
+          const { PoolService } = await import('../../../services/pool-service');
           const poolService = PoolService.getInstance();
 
           const pool = await poolService.getPool(
@@ -372,9 +322,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError(
-          'Failed to get swap quote',
-        );
+        throw fastify.httpErrors.internalServerError('Failed to get swap quote');
       }
     },
   );

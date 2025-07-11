@@ -37,9 +37,7 @@ listTools.stdout.on('data', (data) => {
           console.log('\nSimplified MCP server test passed! ✓');
           console.log('\nExpected tools:');
           console.log('- get_config: Get configuration settings');
-          console.log(
-            '- update_config: Update configuration and restart Gateway',
-          );
+          console.log('- update_config: Update configuration and restart Gateway');
           console.log('- quote_swap: Get swap quotes');
           console.log('- execute_swap: Execute swaps');
 
@@ -83,12 +81,8 @@ function testWithCoinGecko() {
         if (line.includes('"jsonrpc"')) {
           const response = JSON.parse(line);
           if (response.result && response.result.tools) {
-            console.log(
-              `\nWith CoinGecko: Found ${response.result.tools.length} tools`,
-            );
-            const cgTools = response.result.tools.filter((t) =>
-              t.name.startsWith('coingecko_'),
-            );
+            console.log(`\nWith CoinGecko: Found ${response.result.tools.length} tools`);
+            const cgTools = response.result.tools.filter((t) => t.name.startsWith('coingecko_'));
             console.log(`- ${cgTools.length} CoinGecko tools added`);
             console.log('\nCoinGecko integration test passed! ✓');
             process.exit(0);

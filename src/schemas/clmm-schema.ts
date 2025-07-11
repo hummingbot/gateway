@@ -109,8 +109,7 @@ export const OpenPositionRequest = Type.Object(
     // New optional fee parameters
     priorityFeePerCU: Type.Optional(
       Type.Number({
-        description:
-          'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
+        description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
       }),
     ),
     computeUnits: Type.Optional(
@@ -154,8 +153,7 @@ export const AddLiquidityRequest = Type.Object(
     // New optional fee parameters
     priorityFeePerCU: Type.Optional(
       Type.Number({
-        description:
-          'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
+        description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
       }),
     ),
     computeUnits: Type.Optional(
@@ -195,8 +193,7 @@ export const RemoveLiquidityRequest = Type.Object(
     // New optional fee parameters
     priorityFeePerCU: Type.Optional(
       Type.Number({
-        description:
-          'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
+        description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
       }),
     ),
     computeUnits: Type.Optional(
@@ -225,9 +222,7 @@ export const RemoveLiquidityResponse = Type.Object(
   },
   { $id: 'RemoveLiquidityResponse' },
 );
-export type RemoveLiquidityResponseType = Static<
-  typeof RemoveLiquidityResponse
->;
+export type RemoveLiquidityResponseType = Static<typeof RemoveLiquidityResponse>;
 
 export const CollectFeesRequest = Type.Object(
   {
@@ -237,8 +232,7 @@ export const CollectFeesRequest = Type.Object(
     // New optional fee parameters
     priorityFeePerCU: Type.Optional(
       Type.Number({
-        description:
-          'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
+        description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
       }),
     ),
     computeUnits: Type.Optional(
@@ -277,8 +271,7 @@ export const ClosePositionRequest = Type.Object(
     // New optional fee parameters
     priorityFeePerCU: Type.Optional(
       Type.Number({
-        description:
-          'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
+        description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
       }),
     ),
     computeUnits: Type.Optional(
@@ -312,11 +305,7 @@ export const ClosePositionResponse = Type.Object(
 );
 export type ClosePositionResponseType = Static<typeof ClosePositionResponse>;
 
-export const QuotePositionRequest = Type.Omit(
-  OpenPositionRequest,
-  ['walletAddress'],
-  { $id: 'QuotePositionRequest' },
-);
+export const QuotePositionRequest = Type.Omit(OpenPositionRequest, ['walletAddress'], { $id: 'QuotePositionRequest' });
 export type QuotePositionRequestType = Static<typeof QuotePositionRequest>;
 
 export const QuotePositionResponse = Type.Object(
@@ -342,13 +331,19 @@ export type QuotePositionResponseType = Static<typeof QuotePositionResponse>;
 export const QuoteSwapRequest = Type.Object(
   {
     network: Type.String(),
-    poolAddress: Type.String(),
+    poolAddress: Type.Optional(
+      Type.String({
+        description: 'Pool address (optional - can be looked up from baseToken and quoteToken)',
+      }),
+    ),
     baseToken: Type.String({
       description: 'Token to determine swap direction',
     }),
-    quoteToken: Type.String({
-      description: 'The other token in the pair',
-    }),
+    quoteToken: Type.Optional(
+      Type.String({
+        description: 'The other token in the pair (optional - required if poolAddress not provided)',
+      }),
+    ),
     amount: Type.Number(),
     side: Type.String({
       description: 'Trade direction',
@@ -388,9 +383,17 @@ export const ExecuteSwapRequest = Type.Object(
   {
     walletAddress: Type.String(),
     network: Type.String(),
-    poolAddress: Type.String(),
+    poolAddress: Type.Optional(
+      Type.String({
+        description: 'Pool address (optional - can be looked up from baseToken and quoteToken)',
+      }),
+    ),
     baseToken: Type.String(),
-    quoteToken: Type.String(),
+    quoteToken: Type.Optional(
+      Type.String({
+        description: 'The other token in the pair (optional - required if poolAddress not provided)',
+      }),
+    ),
     amount: Type.Number(),
     side: Type.String({
       enum: ['BUY', 'SELL'],
@@ -398,8 +401,7 @@ export const ExecuteSwapRequest = Type.Object(
     slippagePct: Type.Number({ minimum: 0, maximum: 100 }),
     priorityFeePerCU: Type.Optional(
       Type.Number({
-        description:
-          'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
+        description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
       }),
     ),
     computeUnits: Type.Optional(

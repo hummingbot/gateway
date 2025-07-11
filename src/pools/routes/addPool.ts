@@ -24,8 +24,7 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { connector, type, network, baseSymbol, quoteSymbol, address } =
-        request.body;
+      const { connector, type, network, baseSymbol, quoteSymbol, address } = request.body;
 
       const poolService = PoolService.getInstance();
 

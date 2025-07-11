@@ -23,8 +23,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
     '/',
     {
       schema: {
-        description:
-          'Returns a list of available blockchain networks supported by Gateway.',
+        description: 'Returns a list of available blockchain networks supported by Gateway.',
         tags: ['system'],
         response: {
           200: ChainsResponseSchema,
@@ -71,12 +70,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
         networks: networks.sort(),
       }));
 
-      logger.info(
-        'Available chains: ' +
-          chains
-            .map((c) => `${c.chain} (${c.networks.length} networks)`)
-            .join(', '),
-      );
+      logger.info('Available chains: ' + chains.map((c) => `${c.chain} (${c.networks.length} networks)`).join(', '));
 
       return { chains };
     },

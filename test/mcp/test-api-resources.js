@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 
 const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
-const {
-  StdioClientTransport,
-} = require('@modelcontextprotocol/sdk/client/stdio.js');
+const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
 
 async function testApiResources() {
   console.log('Testing Gateway MCP API Resources...\n');
@@ -36,12 +34,8 @@ async function testApiResources() {
     const resources = await client.listResources();
 
     // Find API endpoint resources
-    const gatewayEndpoints = resources.resources.find(
-      (r) => r.uri === 'gateway://api-endpoints',
-    );
-    const coinGeckoEndpoints = resources.resources.find(
-      (r) => r.uri === 'coingecko://api-endpoints',
-    );
+    const gatewayEndpoints = resources.resources.find((r) => r.uri === 'gateway://api-endpoints');
+    const coinGeckoEndpoints = resources.resources.find((r) => r.uri === 'coingecko://api-endpoints');
 
     console.log('\nAPI Endpoint Resources:');
     if (gatewayEndpoints) {
@@ -54,16 +48,12 @@ async function testApiResources() {
     // Test reading a Gateway endpoint resource
     if (gatewayEndpoints) {
       console.log('\n=== Reading Gateway API Endpoints ===');
-      const allGatewayEndpoints = await client.readResource(
-        'gateway://api-endpoints',
-      );
+      const allGatewayEndpoints = await client.readResource('gateway://api-endpoints');
 
       const data = JSON.parse(allGatewayEndpoints.contents[0].text);
       const categories = Object.keys(data);
       let totalEndpoints = 0;
-      categories.forEach(
-        (cat) => (totalEndpoints += data[cat].endpoints.length),
-      );
+      categories.forEach((cat) => (totalEndpoints += data[cat].endpoints.length));
 
       console.log(`Categories: ${categories.length}`);
       console.log(`Total endpoints: ${totalEndpoints}`);
@@ -80,16 +70,12 @@ async function testApiResources() {
     // Test reading a CoinGecko endpoint resource
     if (coinGeckoEndpoints) {
       console.log('\n=== Reading CoinGecko API Endpoints ===');
-      const coinsEndpoints = await client.readResource(
-        'coingecko://api-endpoints',
-      );
+      const coinsEndpoints = await client.readResource('coingecko://api-endpoints');
 
       const data = JSON.parse(coinsEndpoints.contents[0].text);
       const categories = Object.keys(data);
       let totalEndpoints = 0;
-      categories.forEach(
-        (cat) => (totalEndpoints += data[cat].endpoints.length),
-      );
+      categories.forEach((cat) => (totalEndpoints += data[cat].endpoints.length));
 
       console.log(`Categories: ${categories.length}`);
       console.log(`Total endpoints: ${totalEndpoints}`);

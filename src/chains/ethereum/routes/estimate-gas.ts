@@ -27,9 +27,7 @@ export async function estimateGasEthereum(
     };
   } catch (error) {
     logger.error(`Error estimating gas: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(
-      `Failed to estimate gas: ${error.message}`,
-    );
+    throw fastify.httpErrors.internalServerError(`Failed to estimate gas: ${error.message}`);
   }
 }
 
@@ -49,17 +47,7 @@ export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
             ...EstimateGasRequestSchema.properties,
             network: {
               type: 'string',
-              examples: [
-                'mainnet',
-                'arbitrum',
-                'optimism',
-                'base',
-                'sepolia',
-                'bsc',
-                'avalanche',
-                'celo',
-                'polygon',
-              ],
+              examples: ['mainnet', 'arbitrum', 'optimism', 'base', 'sepolia', 'bsc', 'avalanche', 'celo', 'polygon'],
             },
             gasLimit: { type: 'number', examples: [21000] },
           },
