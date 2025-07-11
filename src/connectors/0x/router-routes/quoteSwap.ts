@@ -38,16 +38,19 @@ async function quoteSwap(
   // Determine input/output based on side
   const sellToken = side === 'SELL' ? baseTokenInfo.address : quoteTokenInfo.address;
   const buyToken = side === 'SELL' ? quoteTokenInfo.address : baseTokenInfo.address;
-  const tokenDecimals = side === 'SELL' ? baseTokenInfo.decimals : quoteTokenInfo.decimals;
 
-  // Convert amount to token units
-  const tokenAmount = zeroX.parseTokenAmount(amount, tokenDecimals);
+  // For BUY side, amount is in base token (what we're buying), but we need to convert it for the API
+  // For SELL side, amount is in base token (what we're selling)
+  const amountDecimals = baseTokenInfo.decimals; // amount is always in base token units
+
+  // Convert amount to token units - this will be used differently based on side
+  const tokenAmount = zeroX.parseTokenAmount(amount, amountDecimals);
 
   // Use provided taker address or example
   const walletAddress = takerAddress || (await Ethereum.getWalletAddressExample());
 
   logger.info(
-    `Getting ${indicativePrice ? 'indicative price' : 'firm quote'} for ${amount} ${side === 'SELL' ? baseToken : quoteToken} -> ${side === 'SELL' ? quoteToken : baseToken}`,
+    `Getting ${indicativePrice ? 'indicative price' : 'firm quote'} for ${amount} ${baseToken} ${side === 'SELL' ? '->' : '<-'} ${quoteToken}`,
   );
 
   // Get quote or price from 0x API based on indicativePrice flag
@@ -63,6 +66,8 @@ async function quoteSwap(
     };
 
     // Only add the amount parameter that we're using
+    // For SELL: we're selling the base token, so use sellAmount
+    // For BUY: we're buying the base token, so use buyAmount
     if (side === 'SELL') {
       priceParams.sellAmount = tokenAmount;
     } else {
@@ -81,6 +86,8 @@ async function quoteSwap(
     };
 
     // Only add the amount parameter that we're using
+    // For SELL: we're selling the base token, so use sellAmount
+    // For BUY: we're buying the base token, so use buyAmount
     if (side === 'SELL') {
       quoteParams.sellAmount = tokenAmount;
     } else {
@@ -204,7 +211,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         );
       } catch (e: any) {
         if (e.statusCode) throw e;
-        logger.error('Error getting quote:', e.message || e);
+        logger.error('Error getting 0x quote:', e.message || e);
 
         // Handle specific error cases
         if (e.message?.includes('0x API key not configured')) {
@@ -214,6 +221,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest(e.message);
         }
 
+        // Return the actual error message instead of generic one
         throw fastify.httpErrors.internalServerError(e.message || 'Failed to get quote');
       }
     },

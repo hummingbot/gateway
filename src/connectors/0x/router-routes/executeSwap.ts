@@ -74,8 +74,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         );
       } catch (e) {
         if (e.statusCode) throw e;
-        logger.error('Error executing swap:', e);
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        logger.error('Error executing 0x swap:', e);
+        throw fastify.httpErrors.internalServerError(e.message || 'Internal server error');
       }
     },
   );

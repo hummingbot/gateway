@@ -136,8 +136,8 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
         return await executeQuote(fastify, walletAddress, network, quoteId, gasPrice, maxGas);
       } catch (e) {
         if (e.statusCode) throw e;
-        logger.error('Error executing quote:', e);
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        logger.error('Error executing 0x quote:', e);
+        throw fastify.httpErrors.internalServerError(e.message || 'Internal server error');
       }
     },
   );
