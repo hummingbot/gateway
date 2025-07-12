@@ -181,7 +181,7 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
     }
 
     // Wait for transaction confirmation with timeout
-    const receipt = await waitForTransactionWithTimeout(transaction);
+    const receipt = await waitForTransactionWithTimeout(transaction as any);
 
     // Calculate actual fee from receipt
     let feeInEth = '0';

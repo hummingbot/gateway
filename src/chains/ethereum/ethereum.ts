@@ -400,6 +400,7 @@ export class Ethereum {
     wallet: Wallet,
     decimals: number,
     timeoutMs: number = 5000, // Default 5 second timeout
+    tokenSymbol?: string, // Optional token symbol for logging
   ): Promise<TokenValue> {
     // Add timeout to prevent hanging on problematic tokens
     const balancePromise = contract.balanceOf(wallet.address);
@@ -414,7 +415,9 @@ export class Ethereum {
     // Race the balance request against the timeout
     const balance: BigNumber = await Promise.race([balancePromise, timeoutPromise]);
 
-    logger.debug(`Token balance for ${wallet.address}: ${balance.toString()}`);
+    if (tokenSymbol) {
+      logger.debug(`Token balance for ${tokenSymbol}: ${balance.toString()}`);
+    }
     return { value: balance, decimals: decimals };
   }
 
@@ -426,6 +429,7 @@ export class Ethereum {
     address: string,
     decimals: number,
     timeoutMs: number = 5000, // Default 5 second timeout
+    tokenSymbol?: string, // Optional token symbol for logging
   ): Promise<TokenValue> {
     // Add timeout to prevent hanging on problematic tokens
     const balancePromise = contract.balanceOf(address);
@@ -440,7 +444,9 @@ export class Ethereum {
     // Race the balance request against the timeout
     const balance: BigNumber = await Promise.race([balancePromise, timeoutPromise]);
 
-    logger.debug(`Token balance for ${address}: ${balance.toString()}`);
+    if (tokenSymbol) {
+      logger.debug(`Token balance for ${tokenSymbol}: ${balance.toString()}`);
+    }
     return { value: balance, decimals: decimals };
   }
 
@@ -492,7 +498,7 @@ export class Ethereum {
     wallet: Wallet,
     spender: string,
     amount: BigNumber,
-  ): Promise<Transaction> {
+  ): Promise<providers.TransactionResponse> {
     logger.info(`Approving ${amount.toString()} tokens for spender ${spender}`);
 
     const params: any = {
@@ -700,46 +706,26 @@ export class Ethereum {
   ): Promise<void> {
     logger.info(`Checking balances for all ${this.storedTokenList.length} tokens in the token list`);
 
-    const batchSize = 25;
-    const tokenList = this.storedTokenList;
-    const totalTokens = tokenList.length;
-    const maxScanTimeMs = 30000; // 30 seconds maximum
-    const startTime = Date.now();
+    await Promise.all(
+      this.storedTokenList.map(async (token) => {
+        try {
+          const contract = this.getContract(token.address, this.provider);
+          const balance = isHardware
+            ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 1000, token.symbol)
+            : await this.getERC20Balance(contract, wallet!, token.decimals, 1000, token.symbol);
 
-    logger.info(`Processing ${totalTokens} tokens in batches of ${batchSize} with ${maxScanTimeMs}ms time limit`);
+          const balanceNum = parseFloat(tokenValueToString(balance));
 
-    for (let i = 0; i < totalTokens; i += batchSize) {
-      // Check time limit
-      if (Date.now() - startTime > maxScanTimeMs) {
-        logger.warn(`Time limit of ${maxScanTimeMs}ms exceeded after checking ${i} tokens. Stopping scan.`);
-        break;
-      }
-
-      const batch = tokenList.slice(i, i + batchSize);
-      logger.debug(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(totalTokens / batchSize)}`);
-
-      // Process batch in parallel
-      await Promise.all(
-        batch.map(async (token) => {
-          try {
-            const contract = this.getContract(token.address, this.provider);
-            const balance = isHardware
-              ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 3000)
-              : await this.getERC20Balance(contract, wallet!, token.decimals, 3000);
-
-            const balanceNum = parseFloat(tokenValueToString(balance));
-
-            // Only add tokens with non-zero balances
-            if (balanceNum > 0) {
-              balances[token.symbol] = balanceNum;
-              logger.debug(`Found non-zero balance for ${token.symbol}: ${balanceNum}`);
-            }
-          } catch (err) {
-            logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
+          // Only add tokens with non-zero balances
+          if (balanceNum > 0) {
+            balances[token.symbol] = balanceNum;
+            logger.debug(`Found non-zero balance for ${token.symbol}: ${balanceNum}`);
           }
-        }),
-      );
-    }
+        } catch (err) {
+          logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
+        }
+      }),
+    );
   }
 
   /**
@@ -764,8 +750,8 @@ export class Ethereum {
           try {
             const contract = this.getContract(token.address, this.provider);
             const balance = isHardware
-              ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 5000)
-              : await this.getERC20Balance(contract, wallet!, token.decimals, 5000);
+              ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 5000, token.symbol)
+              : await this.getERC20Balance(contract, wallet!, token.decimals, 5000, token.symbol);
 
             balances[token.symbol] = parseFloat(tokenValueToString(balance));
           } catch (err) {

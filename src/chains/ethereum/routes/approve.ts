@@ -123,7 +123,7 @@ export async function approveEthereumToken(
       const tx = await ethereum.approveERC20(contract, wallet, spenderAddress, amountBigNumber);
 
       // Wait for the transaction to be mined with timeout
-      const receipt = await waitForTransactionWithTimeout(tx);
+      const receipt = await waitForTransactionWithTimeout(tx as any);
 
       approval = {
         hash: tx.hash,

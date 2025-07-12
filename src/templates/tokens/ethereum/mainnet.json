@@ -50,13 +50,6 @@
   },
   {
     "chainId": 1,
-    "name": "The Sandbox",
-    "symbol": "SAND",
-    "address": "0x3845badade8e6dff049820680d1f14bd3903a5d0",
-    "decimals": 18
-  },
-  {
-    "chainId": 1,
     "name": "Shiba Inu",
     "symbol": "SHIB",
     "address": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
