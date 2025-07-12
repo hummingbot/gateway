@@ -11,18 +11,18 @@
 
 ## Introduction
 
-Hummingbot Gateway is a versatile API and Model Context Protocol (MCP) server that standardizes interactions with blockchain networks and decentralized exchanges (DEXs). It acts as a middleware layer, providing a unified interface for performing actions like checking balances, executing trades, and managing wallets across different protocols.
+Hummingbot Gateway is a versatile API server that standardizes interactions with blockchain networks and decentralized exchanges (DEXs). It acts as a middleware layer, providing a unified interface for performing actions like checking balances, executing trades, and managing wallets across different protocols.
 
 Gateway can be accessed through:
-- **MCP (Model Context Protocol)**: Use AI assistants like Claude to interact with Gateway through natural language
 - **REST API**: Direct HTTP/HTTPS endpoints for programmatic access
 - **Hummingbot Client**: For automated trading strategies, use the [Hummingbot repository](https://github.com/hummingbot/hummingbot)
 
 ### Key Features
-- **Standardized REST API**: Consistent endpoints for interacting with blockchains (Ethereum, Solana) and DEXs (Uniswap, Jupiter, Raydium, Meteora)
-- **MCP Integration**: Natural language interaction with trading operations through AI assistants
+- **Standardized REST API**: Consistent endpoints for interacting with blockchains (Ethereum, Solana) and DEXs (Uniswap, Jupiter, Raydium, Meteora, 0x)
+- **Three Trading Types**: Router (DEX aggregators), AMM (V2-style pools), and CLMM (V3-style concentrated liquidity)
 - **Modular Architecture**: Clear separation of concerns with distinct modules for chains, connectors, configuration, and wallet management
 - **TypeScript-based**: Leverages the TypeScript ecosystem and popular libraries like Fastify, Ethers.js, and Solana/web3.js
+- **Security**: Built-in rate limiting (100 requests/minute) to prevent DoS attacks
 - **Extensible**: Easily extended with new chains and connectors
 
 ### Core Technologies
@@ -31,122 +31,97 @@ Gateway can be accessed through:
 - **Package Manager**: pnpm
 - **Testing**: Jest
 - **Linting/Formatting**: ESLint, Prettier
+- **API Documentation**: Swagger/OpenAPI
 
 Gateway abstracts the complexity of interacting with different blockchain protocols by providing standardized endpoints that work consistently across different chains and DEXs. Built with TypeScript to leverage native blockchain SDKs, it offers a language-agnostic API that can be integrated into any trading system.
 
-### Key Features
+Gateway may be used alongside the main [Hummingbot client](https://github.com/hummingbot/hummingbot) to enable trading and market making on DEXs, or as a standalone API server.
 
-Gateway is written in TypeScript to leverage JavaScript-based SDKs provided by blockchains and DEX protocols. The advantage of using Gateway is it provides a standardized, language-agnostic approach to interacting with these protocols.
+## Supported Networks and DEXs
 
-## MCP (Model Context Protocol) Integration
-
-Gateway includes an enhanced MCP server that exposes trading operations as tools for AI assistants like Claude. This enables natural language interaction with decentralized exchanges and blockchain networks with reduced permission requests through resources and prompts.
-
-### Available MCP Tools (18 total)
-
-#### Discovery Tools (4)
-- **get_chains** - Get available blockchain networks
-- **get_connectors** - Get available DEX connectors
-- **get_tokens** - Get supported tokens for a chain/network
-- **get_status** - Get blockchain network status
-
-#### Configuration Tools (5)
-- **get_config** - Get configuration settings
-- **update_config** - Update configuration values
-- **get_pools** - Get default pools for a connector
-- **add_pool** - Add a default pool
-- **remove_pool** - Remove a default pool
-
-#### Trading Tools (5)
-- **quote_swap** - Get swap quotes
-- **execute_swap** - Execute token swaps
-- **get_pool_info** - Get liquidity pool information
-- **estimate_gas** - Estimate gas prices
-- **poll_transaction** - Poll transaction status
-
-#### Wallet Tools (4)
-- **wallet_list** - List wallets
-- **wallet_add** - Add new wallet
-- **wallet_remove** - Remove wallet
-- **get_balances** - Get token balances
-
-### MCP Resources (8 total)
-Resources provide read-only access without requiring permissions:
-
-- `gateway://chains` - Available blockchain networks
-- `gateway://connectors` - DEX connectors and capabilities
-- `gateway://config/ethereum` - Ethereum configuration
-- `gateway://config/solana` - Solana configuration
-- `gateway://wallets` - Wallet list
-- `gateway://token-lists/ethereum-mainnet` - Ethereum token list
-- `gateway://token-lists/solana-mainnet` - Solana token list
-- `gateway://openapi` - Complete API specification
-
-### MCP Prompts (4 total)
-Guided workflows for complex operations:
-
-- **swap_optimizer** - Find best swap route across DEXs
-- **portfolio_analyzer** - Analyze wallet portfolio
-- **liquidity_finder** - Find best liquidity pools
-- **gas_optimizer** - Optimize gas settings
-
-### Quick Start with Claude Code
-
-```bash
-# 1. Build MCP server
-pnpm mcp:build
-
-# 2. Start Gateway
-pnpm start --passphrase=YOUR_PASSPHRASE
-
-# 3. Add to Claude Code (from gateway directory)
-claude mcp add gateway -e GATEWAY_URL=http://localhost:15888 -- node dist/mcp/index.js
-
-# 4. Use in Claude Code
-# Example: "What chains are available?"
-# Example: "Show me the Ethereum configuration" (uses resource, no permission needed)
-# Example: "Help me find the best swap route for 1 ETH to USDC" (uses prompt)
-```
-
-### MCP Benefits
-
-- **Fewer Interruptions**: Resources and prompts reduce permission requests
-- **Better Organization**: Tools grouped by functionality
-- **Offline Support**: Fallback data when Gateway isn't running
-- **Guided Assistance**: Prompts provide structured workflows
-- **Comprehensive Coverage**: All major Gateway operations exposed
-
-For detailed MCP setup instructions and architecture, see the [MCP documentation](./src/mcp/README.md).
-
-Gateway may be used alongside the main [Hummingbot client](https://github.com/hummingbot/hummingbot) to enable trading and market making on DEXs, or as a standalone API/MCP server.
-
-#### Ethereum & EVM Networks
+### Ethereum & EVM Networks
 - Ethereum Mainnet
 - Arbitrum
-- Avalanche
+- Avalanche  
 - Base
 - BSC (Binance Smart Chain)
 - Celo
 - Optimism
 - Polygon
-- World Chain
 - Sepolia (testnet)
 
-#### Solana Networks
-- Solana Mainnet
+### Solana Networks
+- Solana Mainnet-Beta
 - Solana Devnet
 
 ### Supported DEX Protocols
 
-| Protocol | Chain | Router | AMM | CLMM |
-|----------|-------|--------|-----|------|
-| Jupiter | Solana | ✅ | ❌ | ❌ |
-| Meteora | Solana | ❌ | ❌ | ✅ |
-| Raydium | Solana | ❌ | ✅ | ✅ |
-| Uniswap | Ethereum/EVM | ✅ | ✅ | ✅ |
-| 0x | Ethereum/EVM | ✅ | ❌ | ❌ |
+| Protocol | Chain | Router | AMM | CLMM | Description |
+|----------|-------|--------|-----|------|-------------|
+| Jupiter | Solana | ✅ | ❌ | ❌ | DEX aggregator finding optimal swap routes |
+| Meteora | Solana | ❌ | ❌ | ✅ | Dynamic Liquidity Market Maker (DLMM) |
+| Raydium | Solana | ❌ | ✅ | ✅ | Full-featured DEX with V2 AMM and V3 CLMM |
+| Uniswap | Ethereum/EVM | ✅ | ✅ | ✅ | Complete V2 AMM, V3 CLMM, and Smart Order Router |
+| 0x | Ethereum/EVM | ✅ | ❌ | ❌ | DEX aggregator with professional market making features |
 
-Gateway uses [Swagger](https://swagger.io/) for API documentation. When running in development mode, access the interactive API documentation at: <http://localhost:15888/docs>
+#### Trading Types Explained:
+- **Router**: DEX aggregators that find optimal swap routes across multiple liquidity sources
+- **AMM** (Automated Market Maker): Traditional V2-style constant product pools (x*y=k)
+- **CLMM** (Concentrated Liquidity Market Maker): V3-style pools with capital efficiency through concentrated liquidity positions
+
+## API Documentation
+
+Gateway uses [Swagger](https://swagger.io/) for API documentation. When running Gateway, access the interactive API documentation at:
+- Development mode: <http://localhost:15888/docs>
+- Production mode: <https://localhost:15888/docs>
+
+### API Route Structure
+
+#### Configuration Routes (`/config/*`)
+- `GET /config/namespaces` - List all configuration namespaces
+- `GET /config/chains` - Get available chains and networks
+- `GET /config/connectors` - List available DEX connectors
+- `GET /config` - Get configuration for a namespace
+- `PUT /config` - Update configuration values
+
+#### Chain Routes (`/chains/{chain}/*`)
+- `GET /chains/{chain}/status` - Get chain status and block height
+- `GET /chains/{chain}/tokens` - List supported tokens
+- `POST /chains/{chain}/balances` - Get wallet token balances
+- `POST /chains/{chain}/allowances` - Check token allowances
+- `POST /chains/{chain}/approve` - Approve token spending
+- `POST /chains/{chain}/wrap` - Wrap/unwrap native tokens
+
+#### Connector Routes (`/connectors/{dex}/{type}/*`)
+
+**Router Operations** (e.g., `/connectors/jupiter/router/*`):
+- `POST /quote` - Get swap quote from aggregator
+- `POST /swap` - Execute swap through aggregator
+
+**AMM Operations** (e.g., `/connectors/raydium/amm/*`):
+- `POST /poolInfo` - Get pool details
+- `POST /positionInfo` - Get liquidity position info
+- `POST /quoteSwap` - Get swap quote
+- `POST /executeSwap` - Execute swap
+- `POST /quoteLiquidity` - Quote add/remove liquidity
+- `POST /addLiquidity` - Add liquidity to pool
+- `POST /removeLiquidity` - Remove liquidity from pool
+
+**CLMM Operations** (e.g., `/connectors/uniswap/clmm/*`):
+- `POST /poolInfo` - Get concentrated liquidity pool info
+- `POST /openPosition` - Open new position
+- `POST /closePosition` - Close existing position
+- `POST /addLiquidity` - Add liquidity to position
+- `POST /removeLiquidity` - Remove liquidity from position
+- `POST /collectFees` - Collect earned fees
+- `POST /positionsOwned` - List owned positions
+
+#### Wallet Routes (`/wallet/*`)
+- `GET /wallet` - List all wallets
+- `POST /wallet/add` - Add new wallet
+- `POST /wallet/addHardware` - Add hardware wallet
+- `DELETE /wallet/remove` - Remove wallet
+- `POST /wallet/setDefault` - Set default wallet per chain
 
 
 ## Installation from Source
@@ -408,7 +383,6 @@ Gateway follows a modular architecture with clear separation of concerns:
 │   │   ├── router-routes/   # DEX aggregator operations
 │   │   ├── amm-routes/      # AMM pool operations
 │   │   └── clmm-routes/     # Concentrated liquidity operations
-├── mcp/                  # Model Context Protocol server
 ├── services/             # Core services (config, logging, tokens)
 ├── schemas/              # API request/response schemas (TypeBox)
 │   ├── router-schema.ts  # Router operation schemas
@@ -435,9 +409,6 @@ The `src/connectors` directory houses DEX protocol implementations. Each connect
   - Manage liquidity positions in V2-style pools
 - **CLMM operations**: Concentrated Liquidity pools (clmm-routes/)
   - Manage positions with custom price ranges
-
-#### MCP Server
-The `src/mcp` directory implements the Model Context Protocol server, exposing Gateway's functionality as "tools" that can be called by AI assistants.
 
 #### Services
 Essential services in `src/services` include:

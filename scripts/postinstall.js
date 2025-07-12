@@ -29,11 +29,6 @@ try {
     console.log('   - Install build tools: sudo apt install build-essential');
     console.log('   - Install USB libraries: sudo apt install libusb-1.0-0-dev libudev-dev');
     console.log('   - Add udev rules: wget -q -O - https://raw.githubusercontent.com/LedgerHQ/udev-rules/master/add_udev_rules.sh | sudo bash');
-  } else if (platform === 'win32') {
-    console.log('\n   Windows detected:');
-    console.log('   - Install Visual Studio Build Tools or Visual Studio Community');
-    console.log('   - Install Python 3');
-    console.log('   - Run as Administrator: npm install --global windows-build-tools');
   }
   
   console.log('\n   After installing prerequisites, run: pnpm install --force');

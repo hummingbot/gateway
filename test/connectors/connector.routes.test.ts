@@ -20,7 +20,7 @@ describe('Connector Routes', () => {
     it('should return the correct list of connectors with proper trading types', async () => {
       const response = await fastify.inject({
         method: 'GET',
-        url: '/connectors',
+        url: '/config/connectors',
       });
 
       expect(response.statusCode).toBe(200);

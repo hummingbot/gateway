@@ -25,7 +25,7 @@ describe('Jupiter Routes Structure', () => {
       // Get connector info
       const response = await fastify.inject({
         method: 'GET',
-        url: '/connectors',
+        url: '/config/connectors',
       });
 
       const { connectors } = JSON.parse(response.body);

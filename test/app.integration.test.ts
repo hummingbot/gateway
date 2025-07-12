@@ -22,7 +22,7 @@ describe('App Integration - Route Registration', () => {
       // Get the list of connectors and their trading types
       const connectorsResponse = await fastify.inject({
         method: 'GET',
-        url: '/connectors',
+        url: '/config/connectors',
       });
 
       const { connectors } = JSON.parse(connectorsResponse.body);
@@ -67,7 +67,7 @@ describe('App Integration - Route Registration', () => {
     it('should return valid trading types for all connectors', async () => {
       const response = await fastify.inject({
         method: 'GET',
-        url: '/connectors',
+        url: '/config/connectors',
       });
 
       const data = JSON.parse(response.body);
@@ -95,7 +95,7 @@ describe('App Integration - Route Registration', () => {
       // Get connector information
       const connectorsResponse = await fastify.inject({
         method: 'GET',
-        url: '/connectors',
+        url: '/config/connectors',
       });
 
       const { connectors } = JSON.parse(connectorsResponse.body);

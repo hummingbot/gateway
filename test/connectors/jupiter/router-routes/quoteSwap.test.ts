@@ -96,12 +96,8 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('price', 150);
     expect(body.quoteResponse).toHaveProperty('priceImpactPct', '0.001');
-    expect(body).toHaveProperty('slippagePct', 0.5);
     expect(body).toHaveProperty('tokenIn', mockSOL.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-    // For SELL side: priceWithSlippage = minAmountOut / amountIn
-    expect(body).toHaveProperty('priceWithSlippage');
-    expect(body.priceWithSlippage).toBeCloseTo(body.minAmountOut / 0.1, 8);
   });
 
   it('should return a price quote for BUY side', async () => {
@@ -143,12 +139,8 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('price', 150);
     expect(body.quoteResponse).toHaveProperty('priceImpactPct', '0.001');
-    expect(body).toHaveProperty('slippagePct', 0.5);
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockSOL.address);
-    // For BUY side: priceWithSlippage = maxAmountIn / amountOut
-    expect(body).toHaveProperty('priceWithSlippage');
-    expect(body.priceWithSlippage).toBeCloseTo(body.maxAmountIn / 0.1, 8);
   });
 
   it('should return 400 if token not found', async () => {

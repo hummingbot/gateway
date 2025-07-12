@@ -20,7 +20,7 @@ describe('Chain Routes', () => {
     it('should return the list of supported chains and networks', async () => {
       const response = await fastify.inject({
         method: 'GET',
-        url: '/chains',
+        url: '/config/chains',
       });
 
       expect(response.statusCode).toBe(200);

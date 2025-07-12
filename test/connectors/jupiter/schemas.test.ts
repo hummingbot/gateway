@@ -150,8 +150,8 @@ describe('Jupiter Schema Tests', () => {
   describe('Field Examples and Defaults', () => {
     it('should have Solana-specific examples in fields', () => {
       const networkProp = Jupiter.JupiterQuoteSwapRequest.properties.network;
-      expect(networkProp.examples).toContain('mainnet-beta');
       expect(networkProp.default).toBe('mainnet-beta');
+      expect(networkProp.enum).toContain('mainnet-beta');
 
       const baseTokenProp = Jupiter.JupiterQuoteSwapRequest.properties.baseToken;
       expect(baseTokenProp.examples).toContain('SOL');

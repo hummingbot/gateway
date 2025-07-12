@@ -19,7 +19,7 @@ describe('Namespace Routes', () => {
     it('should return the list of all namespaces', async () => {
       const response = await fastify.inject({
         method: 'GET',
-        url: '/namespaces',
+        url: '/config/namespaces',
       });
 
       expect(response.statusCode).toBe(200);
@@ -45,7 +45,7 @@ describe('Namespace Routes', () => {
     it('should return namespaces sorted alphabetically', async () => {
       const response = await fastify.inject({
         method: 'GET',
-        url: '/namespaces',
+        url: '/config/namespaces',
       });
 
       const data = JSON.parse(response.body);

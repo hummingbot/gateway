@@ -28,20 +28,3 @@ fastifyLogs: false
 # Log level for the application (debug, info, warn, error)
 logLevel: debug
 
-# MCP Server Configuration
-mcp:
-  # CoinGecko tools to load when --with-coingecko is used
-  # Leave empty to load all 46 tools, or specify a subset
-  coingeckoTools:
-    - get_search
-    - get_id_coins
-    - get_simple_price
-    - get_tokens_networks_onchain_pools
-    - get_address_networks_onchain_pools
-    - get_search_onchain_pools
-    - get_address_networks_onchain_tokens
-    - get_networks_onchain_dexes
-    - get_networks_onchain_trending_pools
-    - get_pools_networks_onchain_info
-    - get_coins_markets
-    - get_search_trending

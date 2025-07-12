@@ -10,29 +10,12 @@
     "GMTOffset": { "type": "number" },
     "logToStdOut": { "type": "boolean" },
     "fastifyLogs": { "type": "boolean" },
-    "logLevel": { 
+    "logLevel": {
       "type": "string",
       "enum": ["debug", "info", "warn", "error"],
       "default": "info"
-    },
-    "mcp": {
-      "type": "object",
-      "properties": {
-        "coingeckoTools": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "List of CoinGecko tools to load. Leave empty to load all tools."
-        }
-      },
-      "additionalProperties": false
     }
   },
   "additionalProperties": false,
-  "required": [
-    "port",
-    "certificatePath",
-    "logPath"
-  ]
+  "required": ["port", "certificatePath", "logPath"]
 }

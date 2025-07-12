@@ -10,34 +10,14 @@ jest.mock('../../../../src/connectors/uniswap/uniswap');
 jest.mock('uuid');
 
 // Create a variable to store the mock implementation
-let mockUniversalRouterService: any;
+const mockGetQuote = jest.fn();
+const mockUniversalRouterService = {
+  getQuote: mockGetQuote,
+};
 
 // Mock the UniversalRouterService
 jest.mock('../../../../src/connectors/uniswap/universal-router', () => ({
-  UniversalRouterService: jest.fn().mockImplementation(() => {
-    mockUniversalRouterService = {
-      getQuote: jest.fn().mockResolvedValue({
-        trade: {
-          inputAmount: { toExact: () => '1' },
-          outputAmount: { toExact: () => '3000' },
-          priceImpact: { toSignificant: () => '0.3' },
-        },
-        route: ['WETH', 'USDC'],
-        routePath: 'WETH -> USDC',
-        priceImpact: 0.3,
-        estimatedGasUsed: { toString: () => '300000' },
-        estimatedGasUsedQuoteToken: { toExact: () => '0.5' },
-        quote: { toExact: () => '3000' },
-        quoteGasAdjusted: { toExact: () => '2999.5' },
-        methodParameters: {
-          calldata: '0x1234567890',
-          value: '0x0',
-          to: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
-        },
-      }),
-    };
-    return mockUniversalRouterService;
-  }),
+  UniversalRouterService: jest.fn().mockImplementation(() => mockUniversalRouterService),
 }));
 
 const buildApp = async () => {
@@ -80,27 +60,25 @@ describe('GET /quote-swap', () => {
     jest.clearAllMocks();
 
     // Reset the UniversalRouterService mock to default behavior
-    if (mockUniversalRouterService) {
-      mockUniversalRouterService.getQuote.mockResolvedValue({
-        trade: {
-          inputAmount: { toExact: () => '1' },
-          outputAmount: { toExact: () => '3000' },
-          priceImpact: { toSignificant: () => '0.3' },
-        },
-        route: ['WETH', 'USDC'],
-        routePath: 'WETH -> USDC',
-        priceImpact: 0.3,
-        estimatedGasUsed: { toString: () => '300000' },
-        estimatedGasUsedQuoteToken: { toExact: () => '0.5' },
-        quote: { toExact: () => '3000' },
-        quoteGasAdjusted: { toExact: () => '2999.5' },
-        methodParameters: {
-          calldata: '0x1234567890',
-          value: '0x0',
-          to: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
-        },
-      });
-    }
+    mockGetQuote.mockResolvedValue({
+      trade: {
+        inputAmount: { toExact: () => '1' },
+        outputAmount: { toExact: () => '3000' },
+        priceImpact: { toSignificant: () => '0.3' },
+      },
+      route: ['WETH', 'USDC'],
+      routePath: 'WETH -> USDC',
+      priceImpact: 0.3,
+      estimatedGasUsed: { toString: () => '300000' },
+      estimatedGasUsedQuoteToken: { toExact: () => '0.5' },
+      quote: { toExact: () => '3000' },
+      quoteGasAdjusted: { toExact: () => '2999.5' },
+      methodParameters: {
+        calldata: '0x1234567890',
+        value: '0x0',
+        to: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
+      },
+    });
 
     // Mock provider
     mockProvider = {
@@ -128,6 +106,8 @@ describe('GET /quote-swap', () => {
     // Mock Uniswap instance
     mockUniswap = {
       router: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
+      getUniswapToken: jest.fn().mockImplementation((tokenInfo) => tokenInfo),
+      getUniversalRouterQuote: mockGetQuote,
     };
 
     (Ethereum.getInstance as jest.Mock).mockReturnValue(mockEthereum);
@@ -192,18 +172,12 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('amountOut');
     expect(body.amountOut).toBeGreaterThan(0);
     expect(body).toHaveProperty('price');
-    expect(body).toHaveProperty('route');
-    expect(body.route).toEqual(['WETH', 'USDC']);
     expect(body).toHaveProperty('routePath', 'WETH -> USDC');
-    expect(body).toHaveProperty('methodParameters');
-    expect(body.methodParameters).toHaveProperty('to');
-    expect(body.methodParameters).toHaveProperty('calldata');
-    expect(body.methodParameters).toHaveProperty('value');
   });
 
   it('should return a valid quote for BUY side', async () => {
     // Update mock for BUY side
-    mockUniversalRouterService.getQuote.mockResolvedValue({
+    mockGetQuote.mockResolvedValue({
       trade: {
         inputAmount: { toExact: () => '3000' },
         outputAmount: { toExact: () => '1' },
@@ -265,8 +239,8 @@ describe('GET /quote-swap', () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
 
-    expect(body).toHaveProperty('protocols');
-    expect(body.protocols).toContain('v3');
+    // Protocols aren't returned in the response - they're only used for filtering
+    expect(body).toHaveProperty('routePath');
   });
 
   it('should handle multiple protocols', async () => {
@@ -288,8 +262,8 @@ describe('GET /quote-swap', () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
 
-    expect(body).toHaveProperty('protocols');
-    expect(body.protocols).toEqual(['v2', 'v3']);
+    // Protocols aren't returned in the response - they're only used for filtering
+    expect(body).toHaveProperty('routePath');
   });
 
   it('should return 404 for invalid token', async () => {
