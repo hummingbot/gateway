@@ -2,6 +2,7 @@ import { BigNumber } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { waitForTransactionWithTimeout } from '../../../chains/ethereum/ethereum.utils';
 import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
@@ -56,7 +57,7 @@ async function executeQuote(
   };
 
   const txResponse = await wallet.sendTransaction(txData);
-  const txReceipt = await txResponse.wait();
+  const txReceipt = await waitForTransactionWithTimeout(txResponse);
 
   if (!txReceipt || txReceipt.status !== 1) {
     throw fastify.httpErrors.internalServerError('Transaction failed');
@@ -95,8 +96,6 @@ async function executeQuote(
 export { executeQuote };
 
 export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
   fastify.post<{
     Body: ExecuteQuoteRequestType;
     Reply: SwapExecuteResponseType;
@@ -106,18 +105,7 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Execute a previously fetched quote from Uniswap Universal Router',
         tags: ['/connector/uniswap'],
-        body: {
-          ...UniswapExecuteQuoteRequest,
-          properties: {
-            ...UniswapExecuteQuoteRequest.properties,
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            network: { type: 'string', default: 'mainnet' },
-            quoteId: {
-              type: 'string',
-              examples: ['123e4567-e89b-12d3-a456-426614174000'],
-            },
-          },
-        },
+        body: UniswapExecuteQuoteRequest,
         response: { 200: SwapExecuteResponse },
       },
     },

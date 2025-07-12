@@ -97,12 +97,12 @@ ask_config_choices () {
     UPDATE_SERVER="N"
   fi
   
-  # Ask about networks folder
-  if prompt_yes_no "  - networks/ (default configs for each chain/network)?" "Y"; then
-    UPDATE_NETWORKS="Y"
-    PLANNED_UPDATES="${PLANNED_UPDATES}networks/, "
+  # Ask about chains folder
+  if prompt_yes_no "  - chains/ (default configs for each chain/network)?" "Y"; then
+    UPDATE_CHAINS="Y"
+    PLANNED_UPDATES="${PLANNED_UPDATES}chains/, "
   else
-    UPDATE_NETWORKS="N"
+    UPDATE_CHAINS="N"
   fi
   
   # Ask about connectors folder
@@ -171,10 +171,10 @@ copy_configs () {
     UPDATED_ITEMS="${UPDATED_ITEMS}namespace/, "
   fi
   
-  # Copy networks folder if selected
-  if [ "$UPDATE_NETWORKS" = "Y" ]; then
-    cp -r $TEMPLATE_DIR/networks $HOST_CONF_PATH/
-    UPDATED_ITEMS="${UPDATED_ITEMS}networks/, "
+  # Copy chains folder if selected
+  if [ "$UPDATE_CHAINS" = "Y" ]; then
+    cp -r $TEMPLATE_DIR/chains $HOST_CONF_PATH/
+    UPDATED_ITEMS="${UPDATED_ITEMS}chains/, "
   fi
   
   # Copy tokens folder if selected
@@ -310,8 +310,8 @@ echo "   Items to be updated:"
 if [ "$UPDATE_SERVER" = "Y" ]; then
   echo "   - server.yml (default Gateway server configs)"
 fi
-if [ "$UPDATE_NETWORKS" = "Y" ]; then
-  echo "   - networks/ (default configs for each chain/network)"
+if [ "$UPDATE_CHAINS" = "Y" ]; then
+  echo "   - chains/ (default configs for each chain/network)"
 fi
 if [ "$UPDATE_CONNECTORS" = "Y" ]; then
   echo "   - connectors/ (default configs for each DEX connector)"

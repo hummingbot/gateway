@@ -20,8 +20,8 @@ describe('QuoteCache', () => {
   });
 
   afterEach(() => {
-    // Stop cleanup to prevent interference with other tests
-    cache.stopCleanup();
+    // Clear cache after each test
+    cache.clear();
   });
 
   describe('basic operations', () => {

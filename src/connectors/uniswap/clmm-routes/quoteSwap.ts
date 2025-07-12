@@ -64,8 +64,7 @@ async function quoteClmmSwap(
 
     // Calculate slippage-adjusted amounts
     // Convert slippagePct to integer basis points (0.5% -> 50 basis points)
-    const slippageTolerance =
-      slippagePct !== undefined ? new Percent(Math.floor(slippagePct * 100), 10000) : uniswap.getSlippagePct();
+    const slippageTolerance = new Percent(Math.floor((slippagePct ?? uniswap.config.slippagePct) * 100), 10000);
 
     const minAmountOut = exactIn
       ? trade.minimumAmountOut(slippageTolerance).quotient.toString()

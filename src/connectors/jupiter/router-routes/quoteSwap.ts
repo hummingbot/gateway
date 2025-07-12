@@ -69,11 +69,6 @@ export async function quoteSwap(
   // Calculate price based on side
   const price = side === 'SELL' ? estimatedAmountOut / estimatedAmountIn : estimatedAmountIn / estimatedAmountOut;
 
-  // Calculate price with slippage
-  // For SELL: worst price = minAmountOut / estimatedAmountIn (minimum quote per base)
-  // For BUY: worst price = maxAmountIn / estimatedAmountOut (maximum quote per base)
-  const priceWithSlippage = side === 'SELL' ? minAmountOut / estimatedAmountIn : maxAmountIn / estimatedAmountOut;
-
   // Generate quote ID and cache the entire quote response
   const quoteId = uuidv4();
 
@@ -95,8 +90,7 @@ export async function quoteSwap(
     amountIn: side === 'SELL' ? amount : estimatedAmountIn,
     amountOut: side === 'SELL' ? estimatedAmountOut : amount,
     price,
-    slippagePct,
-    priceWithSlippage,
+    priceImpactPct: parseFloat(quoteResponse.priceImpactPct || '0'),
     minAmountOut,
     maxAmountIn,
     // Jupiter-specific fields
@@ -108,7 +102,6 @@ export async function quoteSwap(
       otherAmountThreshold: quoteResponse.otherAmountThreshold || '0',
       swapMode: quoteResponse.swapMode || 'ExactIn',
       slippageBps: quoteResponse.slippageBps,
-      platformFee: undefined, // Jupiter doesn't provide this in the quote
       priceImpactPct: quoteResponse.priceImpactPct || '0',
       routePlan: quoteResponse.routePlan || [],
       contextSlot: quoteResponse.contextSlot,

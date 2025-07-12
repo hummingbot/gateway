@@ -8,13 +8,6 @@
   },
   {
     "chainId": 8453,
-    "name": "Balancer",
-    "symbol": "bal",
-    "address": "0x4158734d47fc9692176b5085e0f52ee0da5d47f1",
-    "decimals": 18
-  },
-  {
-    "chainId": 8453,
     "name": "Bonk On Base",
     "symbol": "bonk",
     "address": "0x72499bddb67f4ca150e1f522ca82c87bc9fb18c8",
@@ -26,20 +19,6 @@
     "symbol": "cbBTC",
     "address": "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
     "decimals": 8
-  },
-  {
-    "chainId": 8453,
-    "name": "Compound",
-    "symbol": "COMP",
-    "address": "0x9e1028F5F1D5eDE59748FFceE5532509976840E0",
-    "decimals": 18
-  },
-  {
-    "chainId": 8453,
-    "name": "Curve DAO",
-    "symbol": "crv",
-    "address": "0x8ee73c484a26e0a5df2ee2a4960b789967dd0415",
-    "decimals": 18
   },
   {
     "chainId": 8453,
@@ -57,37 +36,9 @@
   },
   {
     "chainId": 8453,
-    "name": "LEOONO by Virtuals",
-    "symbol": "leo",
-    "address": "0xc8db98437bed9943f11c5b31b645b07c0efc17e0",
-    "decimals": 18
-  },
-  {
-    "chainId": 8453,
     "name": "Chainlink",
     "symbol": "link",
     "address": "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196",
-    "decimals": 18
-  },
-  {
-    "chainId": 8453,
-    "name": "Mynth",
-    "symbol": "mnt",
-    "address": "0x26d3c0d9f4cc4c130097b6afdebe4f5e497e6bdf",
-    "decimals": 18
-  },
-  {
-    "chainId": 8453,
-    "name": "Based Pepe",
-    "symbol": "pepe",
-    "address": "0x52b492a33e447cdb854c7fc19f1e57e8bfa1777d",
-    "decimals": 18
-  },
-  {
-    "chainId": 8453,
-    "name": "PEPE 0x69 ON BASE",
-    "symbol": "pepe",
-    "address": "0x698dc45e4f10966f6d1d98e3bfd7071d8144c233",
     "decimals": 18
   },
   {
@@ -109,13 +60,6 @@
     "name": "sUSDS",
     "symbol": "susds",
     "address": "0x5875eee11cf8398102fdad704c9e96607675467a",
-    "decimals": 18
-  },
-  {
-    "chainId": 8453,
-    "name": "Sushi",
-    "symbol": "sushi",
-    "address": "0x7d49a065d17d6d4a55dc13649901fdbb98b2afba",
     "decimals": 18
   },
   {
@@ -158,13 +102,6 @@
     "name": "Superbridge Bridged wstETH (Base)",
     "symbol": "wsteth",
     "address": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
-    "decimals": 18
-  },
-  {
-    "chainId": 8453,
-    "name": "yearn.finance",
-    "symbol": "yfi",
-    "address": "0x9eaf8c1e34f05a589eda6bafdf391cf6ad3cb239",
     "decimals": 18
   }
 ]

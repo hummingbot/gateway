@@ -4,12 +4,6 @@
     "endpoints": [
       {
         "method": "GET",
-        "path": "/chains/",
-        "description": "List all supported chains",
-        "category": "discovery"
-      },
-      {
-        "method": "GET",
         "path": "/chains/{chain}/status",
         "description": "Get chain status and node information",
         "category": "status"
@@ -54,14 +48,7 @@
   },
   "connectors": {
     "description": "DEX connector operations",
-    "endpoints": [
-      {
-        "method": "GET",
-        "path": "/connectors/",
-        "description": "List all available DEX connectors",
-        "category": "discovery"
-      }
-    ]
+    "endpoints": []
   },
   "jupiter": {
     "description": "Jupiter DEX operations on Solana",
@@ -313,41 +300,47 @@
         "path": "/wallet/remove",
         "description": "Remove a wallet",
         "category": "wallet"
+      },
+      {
+        "method": "POST",
+        "path": "/wallet/setDefault",
+        "description": "Set a wallet as default for a specific chain",
+        "category": "wallet"
       }
     ]
   },
   "config": {
-    "description": "Configuration management",
+    "description": "Configuration and system information management",
     "endpoints": [
       {
         "method": "GET",
         "path": "/config/",
-        "description": "Get configuration for a namespace",
+        "description": "Get configuration settings. Returns all configurations if no parameters are specified. Use namespace to get a specific config (e.g., server, ethereum-mainnet, solana-mainnet-beta, uniswap).",
         "category": "config"
       },
       {
         "method": "POST",
         "path": "/config/update",
-        "description": "Update configuration settings",
+        "description": "Update a specific configuration value",
         "category": "config"
       },
       {
         "method": "GET",
-        "path": "/config/pools",
-        "description": "Get configured liquidity pools",
-        "category": "pools"
+        "path": "/config/chains",
+        "description": "Returns a list of available blockchain networks supported by Gateway",
+        "category": "discovery"
       },
       {
-        "method": "POST",
-        "path": "/config/pools/add",
-        "description": "Add a liquidity pool configuration",
-        "category": "pools"
+        "method": "GET",
+        "path": "/config/connectors",
+        "description": "Returns a list of available DEX connectors and their supported blockchain networks",
+        "category": "discovery"
       },
       {
-        "method": "POST",
-        "path": "/config/pools/remove",
-        "description": "Remove a liquidity pool configuration",
-        "category": "pools"
+        "method": "GET",
+        "path": "/config/namespaces",
+        "description": "Returns a list of all configuration namespaces available in Gateway",
+        "category": "discovery"
       }
     ]
   },
@@ -371,6 +364,46 @@
         "path": "/tokens/add",
         "description": "Add a new token to the token list",
         "category": "tokens"
+      }
+    ]
+  },
+  "0x": {
+    "description": "0x DEX aggregator operations on Ethereum",
+    "endpoints": [
+      {
+        "method": "POST",
+        "path": "/connectors/0x/quote-swap",
+        "description": "Get swap quote from 0x",
+        "category": "trading"
+      },
+      {
+        "method": "POST",
+        "path": "/connectors/0x/execute-swap",
+        "description": "Execute swap on 0x",
+        "category": "trading"
+      }
+    ]
+  },
+  "pools": {
+    "description": "Liquidity pool operations",
+    "endpoints": [
+      {
+        "method": "GET",
+        "path": "/pools",
+        "description": "Get available liquidity pools",
+        "category": "pools"
+      },
+      {
+        "method": "POST",
+        "path": "/pools/add",
+        "description": "Add a new liquidity pool",
+        "category": "pools"
+      },
+      {
+        "method": "DELETE",
+        "path": "/pools/remove",
+        "description": "Remove a liquidity pool",
+        "category": "pools"
       }
     ]
   }

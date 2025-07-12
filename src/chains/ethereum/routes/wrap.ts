@@ -1,12 +1,12 @@
-import { Type } from '@sinclair/typebox';
 import { ethers, utils } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { WrapRequestType, WrapResponseType, WrapResponseSchema } from '../../../schemas/chain-schema';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
 import { EthereumLedger } from '../ethereum-ledger';
+import { waitForTransactionWithTimeout } from '../ethereum.utils';
+import { WrapRequestSchema, WrapResponseSchema, WrapRequestType, WrapResponseType } from '../schemas';
 
 // WETH ABI for wrap/unwrap operations
 const WETH9ABI = [
@@ -140,13 +140,14 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
       // Send the signed transaction
       const txResponse = await ethereum.provider.sendTransaction(signedTx);
 
-      // Wait for confirmation
-      const receipt = await txResponse.wait();
+      // Wait for confirmation with timeout
+      const receipt = await waitForTransactionWithTimeout(txResponse);
 
       transaction = {
         hash: receipt.transactionHash,
         nonce: nonce,
-        gasLimit: receipt.gasUsed,
+        gasUsed: receipt.gasUsed,
+        effectiveGasPrice: receipt.effectiveGasPrice,
       };
     } else {
       // Regular wallet flow
@@ -179,16 +180,22 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
       nonce = transaction.nonce;
     }
 
-    // Calculate estimated fee
-    const gasPrice = await ethereum.provider.getGasPrice();
-    const fee = transaction.gasLimit.mul(gasPrice);
+    // Wait for transaction confirmation with timeout
+    const receipt = await waitForTransactionWithTimeout(transaction);
+
+    // Calculate actual fee from receipt
+    let feeInEth = '0';
+    if (receipt.gasUsed && receipt.effectiveGasPrice) {
+      const feeInWei = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+      feeInEth = utils.formatEther(feeInWei);
+    }
 
     return {
       signature: transaction.hash,
       status: 1, // CONFIRMED
       data: {
         nonce: nonce,
-        fee: bigNumberWithDecimalToStr(fee, 18),
+        fee: feeInEth,
         amount: bigNumberWithDecimalToStr(amountInWei, 18),
         wrappedAddress: wrappedInfo.address,
         nativeToken: wrappedInfo.nativeSymbol,
@@ -218,8 +225,6 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
 }
 
 export const wrapRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
   fastify.post<{
     Body: WrapRequestType;
     Reply: WrapResponseType;
@@ -229,16 +234,7 @@ export const wrapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Wrap native token to wrapped token (e.g., ETH to WETH, BNB to WBNB)',
         tags: ['/chain/ethereum'],
-        body: Type.Object({
-          network: Type.String({
-            examples: ['mainnet', 'arbitrum', 'optimism', 'base', 'sepolia', 'bsc', 'avalanche', 'celo', 'polygon'],
-          }),
-          address: Type.String({ examples: [walletAddressExample] }),
-          amount: Type.String({
-            examples: ['0.01'],
-            description: 'The amount of native token to wrap (e.g., ETH, BNB, AVAX)',
-          }),
-        }),
+        body: WrapRequestSchema,
         response: {
           200: WrapResponseSchema,
         },

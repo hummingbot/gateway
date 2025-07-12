@@ -522,9 +522,11 @@ For more details on the test setup and structure, see [Test README](./test/READM
 3. **Create route handlers** in `src/chains/mychain/routes/`
 
 4. **Add configuration for each supported network**:
-   - Add JSON schema in `src/templates/namespace/mychain-network-schema.json`
-   - Create `src/templates/networks/my-chain/` folder
-   - In this folder, add default YAML files for each network titled `network-name.yml`
+   - Add chain schema in `src/templates/namespace/mychain-schema.json`
+   - Add network schema in `src/templates/namespace/mychain-network-schema.json`
+   - Create `src/templates/chains/mychain.yml` chain default YAML
+   - Create `src/templates/chains/mychain/` folder
+   - In this folder, create default YAML files for each support network titled `network-name.yml`
 
 5. **Register the chain** in `src/chains/chain.routes.ts`
 

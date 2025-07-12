@@ -73,3 +73,17 @@ export const getDefaultPools = async (
 
 // Note: Pool management functions have been moved to PoolService
 // Use the /pools endpoints for pool management
+
+export const updateDefaultWallet = (fastify: FastifyInstance, chain: string, walletAddress: string): void => {
+  logger.info(`Updating default wallet for ${chain} to: ${walletAddress}`);
+
+  try {
+    // Update the default wallet configuration
+    const configPath = `${chain}.defaultWallet`;
+    ConfigManagerV2.getInstance().set(configPath, walletAddress);
+    logger.info(`Successfully updated default wallet for ${chain}`);
+  } catch (error) {
+    logger.error(`Failed to update default wallet: ${error.message}`);
+    throw fastify.httpErrors.internalServerError(`Failed to update default wallet: ${error.message}`);
+  }
+};

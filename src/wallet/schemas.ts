@@ -15,6 +15,12 @@ export const AddWalletRequestSchema = Type.Object({
     description: 'Private key for the wallet',
     examples: ['<your-private-key>'],
   }),
+  setDefault: Type.Optional(
+    Type.Boolean({
+      description: 'Set this wallet as the default for the chain',
+      default: false,
+    }),
+  ),
 });
 
 export const AddWalletResponseSchema = Type.Object({
@@ -81,6 +87,12 @@ export const AddHardwareWalletRequestSchema = Type.Object({
   address: Type.String({
     description: 'Hardware wallet address to add (must exist on connected Ledger device)',
   }),
+  setDefault: Type.Optional(
+    Type.Boolean({
+      description: 'Set this wallet as the default for the chain',
+      default: false,
+    }),
+  ),
 });
 
 export const AddHardwareWalletResponseSchema = Type.Object({
@@ -123,6 +135,29 @@ export const ListHardwareWalletsResponseSchema = Type.Object({
   wallets: Type.Array(HardwareWalletInfoSchema),
 });
 
+export const SetDefaultWalletRequestSchema = Type.Object({
+  chain: Type.String({
+    description: 'Blockchain to set default wallet for',
+    enum: ['ethereum', 'solana'],
+    examples: ['solana', 'ethereum'],
+  }),
+  address: Type.String({
+    description: 'Wallet address to set as default',
+  }),
+});
+
+export const SetDefaultWalletResponseSchema = Type.Object({
+  message: Type.String({
+    description: 'Success message',
+  }),
+  chain: Type.String({
+    description: 'Chain name',
+  }),
+  address: Type.String({
+    description: 'Default wallet address',
+  }),
+});
+
 // Export TypeScript types
 export type GetWalletsQuery = Static<typeof GetWalletsQuerySchema>;
 export type AddWalletRequest = Static<typeof AddWalletRequestSchema>;
@@ -139,3 +174,5 @@ export type RemoveHardwareWalletResponse = Static<typeof RemoveHardwareWalletRes
 export type ListHardwareWalletsRequest = Static<typeof ListHardwareWalletsRequestSchema>;
 export type ListHardwareWalletsResponse = Static<typeof ListHardwareWalletsResponseSchema>;
 export type HardwareWalletInfo = Static<typeof HardwareWalletInfoSchema>;
+export type SetDefaultWalletRequest = Static<typeof SetDefaultWalletRequestSchema>;
+export type SetDefaultWalletResponse = Static<typeof SetDefaultWalletResponseSchema>;

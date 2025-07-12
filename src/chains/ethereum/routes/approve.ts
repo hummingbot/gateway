@@ -1,13 +1,13 @@
-import { Type } from '@sinclair/typebox';
 import { ethers, constants, utils } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { getSpender } from '../../../connectors/uniswap/uniswap.contracts';
-import { ApproveRequestType, ApproveResponseType, ApproveResponseSchema } from '../../../schemas/chain-schema';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { TokenInfo, Ethereum } from '../ethereum';
 import { EthereumLedger } from '../ethereum-ledger';
+import { waitForTransactionWithTimeout } from '../ethereum.utils';
+import { ApproveRequestSchema, ApproveResponseSchema, ApproveRequestType, ApproveResponseType } from '../schemas';
 
 // Helper function to convert transaction to a format matching the CustomTransactionSchema
 const toEthereumTransaction = (transaction: ethers.Transaction) => {
@@ -97,12 +97,14 @@ export async function approveEthereumToken(
       // Send the signed transaction
       const txResponse = await ethereum.provider.sendTransaction(signedTx);
 
-      // Wait for confirmation
-      const receipt = await txResponse.wait();
+      // Wait for confirmation with timeout
+      const receipt = await waitForTransactionWithTimeout(txResponse);
 
       approval = {
         hash: receipt.transactionHash,
         nonce: nonce,
+        gasUsed: receipt.gasUsed,
+        effectiveGasPrice: receipt.effectiveGasPrice,
       };
     } else {
       // Regular wallet flow
@@ -118,7 +120,24 @@ export async function approveEthereumToken(
       const contract = ethereum.getContract(fullToken.address, wallet);
 
       // Call approve function
-      approval = await ethereum.approveERC20(contract, wallet, spenderAddress, amountBigNumber);
+      const tx = await ethereum.approveERC20(contract, wallet, spenderAddress, amountBigNumber);
+
+      // Wait for the transaction to be mined with timeout
+      const receipt = await waitForTransactionWithTimeout(tx);
+
+      approval = {
+        hash: tx.hash,
+        nonce: tx.nonce,
+        gasUsed: receipt.gasUsed,
+        effectiveGasPrice: receipt.effectiveGasPrice,
+      };
+    }
+
+    // Calculate the actual fee in ETH
+    let feeInEth = '0';
+    if (approval.gasUsed && approval.effectiveGasPrice) {
+      const feeInWei = approval.gasUsed.mul(approval.effectiveGasPrice);
+      feeInEth = utils.formatEther(feeInWei);
     }
 
     return {
@@ -129,7 +148,7 @@ export async function approveEthereumToken(
         spender: spenderAddress,
         amount: bigNumberWithDecimalToStr(amountBigNumber, fullToken.decimals),
         nonce: approval.nonce,
-        fee: '0', // TODO: Calculate actual fee from receipt
+        fee: feeInEth,
       },
     };
   } catch (error) {
@@ -153,8 +172,6 @@ export async function approveEthereumToken(
 }
 
 export const approveRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
   fastify.post<{
     Body: ApproveRequestType;
     Reply: ApproveResponseType;
@@ -164,24 +181,7 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Approve token spending',
         tags: ['/chain/ethereum'],
-        body: Type.Object({
-          network: Type.String({
-            examples: ['mainnet', 'arbitrum', 'optimism', 'base', 'sepolia', 'bsc', 'avalanche', 'celo', 'polygon'],
-          }),
-          address: Type.String({ examples: [walletAddressExample] }),
-          spender: Type.String({
-            examples: ['uniswap/clmm', 'uniswap', '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'],
-            description:
-              'Spender can be a connector name (e.g., uniswap/clmm, uniswap/amm, uniswap) or a direct contract address',
-          }),
-          token: Type.String({ examples: ['USDC', 'DAI'] }),
-          amount: Type.Optional(
-            Type.String({
-              examples: [''], // No examples since it's typically omitted for max approval
-              description: 'The amount to approve. If not provided, defaults to maximum amount (unlimited approval).',
-            }),
-          ),
-        }),
+        body: ApproveRequestSchema,
         response: {
           200: ApproveResponseSchema,
         },

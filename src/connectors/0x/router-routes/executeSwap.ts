@@ -40,8 +40,6 @@ async function executeSwap(
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
   fastify.post<{
     Body: ExecuteSwapRequestType;
     Reply: SwapExecuteResponseType;

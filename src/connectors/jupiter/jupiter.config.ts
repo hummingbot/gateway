@@ -1,14 +1,18 @@
+import { getAvailableSolanaNetworks } from '../../chains/solana/solana.utils';
 import { AvailableNetworks } from '../../services/base';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 export namespace JupiterConfig {
   // Supported networks for Jupiter
   export const chain = 'solana';
-  export const networks = ['mainnet-beta', 'devnet'];
+  export const networks = getAvailableSolanaNetworks();
+  export type Network = string;
+
+  // Supported trading types
+  export const tradingTypes = ['router'] as const;
 
   export interface RootConfig {
     // Global configuration
-    defaultNetwork: string;
     slippagePct: number;
     priorityLevel: string;
     maxLamports: number;
@@ -21,7 +25,6 @@ export namespace JupiterConfig {
   }
 
   export const config: RootConfig = {
-    defaultNetwork: ConfigManagerV2.getInstance().get('jupiter.defaultNetwork'),
     slippagePct: ConfigManagerV2.getInstance().get('jupiter.slippagePct'),
     priorityLevel: ConfigManagerV2.getInstance().get('jupiter.priorityLevel'),
     maxLamports: ConfigManagerV2.getInstance().get('jupiter.maxLamports'),
@@ -32,7 +35,7 @@ export namespace JupiterConfig {
     availableNetworks: [
       {
         chain,
-        networks,
+        networks: networks,
       },
     ],
   };

@@ -1,28 +1,26 @@
 import { Static } from '@sinclair/typebox';
-import { Protocol } from '@uniswap/router-sdk';
-import { CurrencyAmount, Percent, TradeType, Token } from '@uniswap/sdk-core';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { getEthereumChainConfig } from '../../../chains/ethereum/ethereum.config';
 import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { UniswapQuoteSwapRequest, UniswapQuoteSwapResponse } from '../schemas';
 import { Uniswap } from '../uniswap';
-import { UniversalRouterService } from '../universal-router';
+import { UniswapConfig } from '../uniswap.config';
 
 async function quoteSwap(
   fastify: FastifyInstance,
   network: string,
-  walletAddress: string | undefined,
+  walletAddress: string,
   baseToken: string,
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
   slippagePct: number,
-  protocols?: string[],
 ): Promise<Static<typeof UniswapQuoteSwapResponse>> {
   const ethereum = await Ethereum.getInstance(network);
   const uniswap = await Uniswap.getInstance(network);
@@ -38,81 +36,20 @@ async function quoteSwap(
   }
 
   // Convert to Uniswap SDK Token objects
-  const baseTokenObj = new Token(
-    ethereum.chainId,
-    baseTokenInfo.address,
-    baseTokenInfo.decimals,
-    baseTokenInfo.symbol,
-    baseTokenInfo.name,
-  );
-
-  const quoteTokenObj = new Token(
-    ethereum.chainId,
-    quoteTokenInfo.address,
-    quoteTokenInfo.decimals,
-    quoteTokenInfo.symbol,
-    quoteTokenInfo.name,
-  );
+  const baseTokenObj = uniswap.getUniswapToken(baseTokenInfo);
+  const quoteTokenObj = uniswap.getUniswapToken(quoteTokenInfo);
 
   // Determine input/output based on side
   const exactIn = side === 'SELL';
   const [inputToken, outputToken] = exactIn ? [baseTokenObj, quoteTokenObj] : [quoteTokenObj, baseTokenObj];
 
-  logger.info(`Getting Universal Router quote for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`);
-
-  // Create Universal Router service
-  const universalRouter = new UniversalRouterService(ethereum.provider, ethereum.chainId, network);
-
-  // Convert amount to token units using string manipulation to avoid BigInt conversion issues
-  let tradeAmount: CurrencyAmount<Token>;
-  if (exactIn) {
-    // Convert amount to string with fixed decimals, then remove the decimal point
-    const amountStr = amount.toFixed(inputToken.decimals);
-    const rawAmount = amountStr.replace('.', '');
-    tradeAmount = CurrencyAmount.fromRawAmount(inputToken, rawAmount);
-  } else {
-    // Convert amount to string with fixed decimals, then remove the decimal point
-    const amountStr = amount.toFixed(outputToken.decimals);
-    const rawAmount = amountStr.replace('.', '');
-    tradeAmount = CurrencyAmount.fromRawAmount(outputToken, rawAmount);
-  }
-
-  // Map protocol strings to Protocol enum
-  const protocolsToUse = protocols?.map((p) => {
-    switch (p.toLowerCase()) {
-      case 'v2':
-        return Protocol.V2;
-      case 'v3':
-        return Protocol.V3;
-      case 'v4':
-        return Protocol.V4;
-      default:
-        return Protocol.V3;
-    }
-  }) || [Protocol.V2, Protocol.V3]; // V4 requires different approach
-
-  // Use provided wallet address or example
-  const recipientAddress = walletAddress || (await Ethereum.getWalletAddressExample());
-
   // Get quote from Universal Router
-  const quoteResult = await universalRouter.getQuote(
-    inputToken,
-    outputToken,
-    tradeAmount,
-    exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
-    {
-      slippageTolerance: new Percent(Math.floor(slippagePct * 100), 10000),
-      deadline: Math.floor(Date.now() / 1000 + 1800), // 30 minutes
-      recipient: recipientAddress,
-      protocols: protocolsToUse,
-    },
-  );
+  const quoteResult = await uniswap.getUniversalRouterQuote(inputToken, outputToken, amount, side, walletAddress);
 
   // Generate unique quote ID
   const quoteId = uuidv4();
 
   // Extract route information from quoteResult
-  const route = quoteResult.route;
   const routePath = quoteResult.routePath;
 
   // Calculate amounts based on quote
@@ -131,10 +68,6 @@ async function quoteSwap(
   const maxAmountIn = side === 'BUY' ? estimatedAmountIn * (1 + slippagePct / 100) : estimatedAmountIn;
 
   const price = estimatedAmountOut / estimatedAmountIn;
-  // Calculate price with slippage
-  // For SELL: worst price = minAmountOut / estimatedAmountIn (minimum quote per base)
-  // For BUY: worst price = maxAmountIn / estimatedAmountOut (maximum quote per base)
-  const priceWithSlippage = side === 'SELL' ? minAmountOut / estimatedAmountIn : maxAmountIn / estimatedAmountOut;
 
   // Cache the quote for execution
   // Store both quote and request data in the quote object for Uniswap
@@ -145,7 +78,7 @@ async function quoteSwap(
     },
     request: {
       network,
-      walletAddress: recipientAddress,
+      walletAddress: walletAddress,
       baseTokenInfo,
       quoteTokenInfo,
       inputToken,
@@ -170,26 +103,18 @@ async function quoteSwap(
     amountIn: estimatedAmountIn,
     amountOut: estimatedAmountOut,
     price,
-    slippagePct,
-    priceWithSlippage,
+    priceImpactPct: quoteResult.priceImpact,
     minAmountOut,
     maxAmountIn,
     // Uniswap-specific fields
-    priceImpactPct: quoteResult.priceImpact,
-    gasEstimate: quoteResult.estimatedGasUsed.toString(),
-    expirationTime: Date.now() + 300000, // 5 minutes
-    route,
     routePath,
-    protocols: protocols || ['v2', 'v3'],
-    methodParameters: quoteResult.methodParameters,
-    gasPriceWei: '0', // We can add this later if needed
   };
 }
 
 export { quoteSwap };
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
+  const chainConfig = getEthereumChainConfig();
 
   fastify.get<{
     Querystring: QuoteSwapRequestType;
@@ -200,56 +125,31 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get an executable swap quote from Uniswap Universal Router',
         tags: ['/connector/uniswap'],
-        querystring: {
-          ...UniswapQuoteSwapRequest,
-          properties: {
-            ...UniswapQuoteSwapRequest.properties,
-            walletAddress: {
-              type: 'string',
-              examples: [walletAddressExample],
-              description: 'Optional wallet address for the recipient',
-            },
-            network: { type: 'string', default: 'mainnet' },
-            baseToken: { type: 'string', examples: ['WETH'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [1] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            slippagePct: { type: 'number', examples: [1] },
-            protocols: {
-              type: 'array',
-              items: { type: 'string' },
-              examples: [['v2', 'v3', 'v4']],
-              description: 'Protocols to use for routing (v2, v3, v4)',
-            },
-          },
-        },
+        querystring: UniswapQuoteSwapRequest,
         response: { 200: UniswapQuoteSwapResponse },
       },
     },
     async (request) => {
       try {
         const {
-          network,
-          walletAddress,
+          network = chainConfig.defaultNetwork,
+          walletAddress = chainConfig.defaultWallet,
           baseToken,
           quoteToken,
           amount,
           side,
-          slippagePct,
-          protocols,
-          enableUniversalRouter,
+          slippagePct = UniswapConfig.config.slippagePct,
         } = request.query as typeof UniswapQuoteSwapRequest._type;
 
         return await quoteSwap(
           fastify,
           network,
-          walletAddress || undefined,
+          walletAddress,
           baseToken,
           quoteToken,
           amount,
           side as 'BUY' | 'SELL',
           slippagePct,
-          protocols,
         );
       } catch (e) {
         if (e.statusCode) throw e;

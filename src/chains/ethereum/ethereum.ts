@@ -3,13 +3,13 @@ import { BigNumber, Contract, ContractTransaction, providers, Transaction, utils
 import { getAddress } from 'ethers/lib/utils';
 import fse from 'fs-extra';
 
-import { TokenValue } from '../../services/base';
+import { TokenValue, tokenValueToString } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
 
-import { getEthereumNetworkConfig } from './ethereum.config';
+import { getEthereumNetworkConfig, getEthereumChainConfig } from './ethereum.config';
 
 // information about an Ethereum token
 export interface TokenInfo {
@@ -25,7 +25,6 @@ export type NewDebugMsgHandler = (msg: any) => void;
 
 export class Ethereum {
   private static _instances: { [name: string]: Ethereum };
-  private static _walletAddressExample: string | null = null;
   public provider: providers.StaticJsonRpcProvider;
   public tokenList: TokenInfo[] = [];
   public tokenMap: Record<string, TokenInfo> = {};
@@ -644,27 +643,140 @@ export class Ethereum {
    * Get a wallet address example for schema documentation
    */
   public static async getWalletAddressExample(): Promise<string> {
-    if (Ethereum._walletAddressExample) {
-      return Ethereum._walletAddressExample;
-    }
-    const defaultAddress = '0x0000000000000000000000000000000000000000';
-    try {
-      const foundWallet = await Ethereum.getFirstWalletAddress();
-      if (foundWallet) {
-        Ethereum._walletAddressExample = foundWallet;
-        return foundWallet;
-      }
-      logger.debug('No wallets found for examples in schema, using default.');
-      Ethereum._walletAddressExample = defaultAddress;
-      return defaultAddress;
-    } catch (error) {
-      logger.error(`Error getting Ethereum wallet address for example: ${error.message}`);
-      return defaultAddress;
-    }
+    const chainConfig = getEthereumChainConfig();
+    return chainConfig.defaultWallet;
   }
 
   // Check if the address is a valid EVM address
   public static isAddress(address: string): boolean {
     return ethers.utils.isAddress(address);
+  }
+
+  /**
+   * Get all token balances for an address
+   * @param address Wallet address
+   * @param tokens Optional array of token symbols/addresses to fetch. If not provided, fetches all tokens in token list
+   * @returns Map of token symbol to balance
+   */
+  public async getBalances(address: string, tokens?: string[]): Promise<Record<string, number>> {
+    const balances: Record<string, number> = {};
+
+    // Treat empty array as if no tokens were specified
+    const effectiveTokens = tokens && tokens.length === 0 ? undefined : tokens;
+
+    // Check if this is a hardware wallet
+    const isHardware = await this.isHardwareWallet(address);
+    let wallet: Wallet | null = null;
+
+    if (!isHardware) {
+      wallet = await this.getWallet(address);
+    }
+
+    // Always get native token balance
+    const nativeBalance = isHardware
+      ? await this.getNativeBalanceByAddress(address)
+      : await this.getNativeBalance(wallet!);
+    balances[this.nativeTokenSymbol] = parseFloat(tokenValueToString(nativeBalance));
+
+    if (!effectiveTokens) {
+      // No tokens specified, check all tokens in token list
+      await this.getAllTokenBalances(address, wallet, isHardware, balances);
+    } else {
+      // Get specific token balances
+      await this.getSpecificTokenBalances(effectiveTokens, address, wallet, isHardware, balances);
+    }
+
+    return balances;
+  }
+
+  /**
+   * Get balances for all tokens in the token list
+   */
+  private async getAllTokenBalances(
+    address: string,
+    wallet: Wallet | null,
+    isHardware: boolean,
+    balances: Record<string, number>,
+  ): Promise<void> {
+    logger.info(`Checking balances for all ${this.storedTokenList.length} tokens in the token list`);
+
+    const batchSize = 25;
+    const tokenList = this.storedTokenList;
+    const totalTokens = tokenList.length;
+    const maxScanTimeMs = 30000; // 30 seconds maximum
+    const startTime = Date.now();
+
+    logger.info(`Processing ${totalTokens} tokens in batches of ${batchSize} with ${maxScanTimeMs}ms time limit`);
+
+    for (let i = 0; i < totalTokens; i += batchSize) {
+      // Check time limit
+      if (Date.now() - startTime > maxScanTimeMs) {
+        logger.warn(`Time limit of ${maxScanTimeMs}ms exceeded after checking ${i} tokens. Stopping scan.`);
+        break;
+      }
+
+      const batch = tokenList.slice(i, i + batchSize);
+      logger.debug(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(totalTokens / batchSize)}`);
+
+      // Process batch in parallel
+      await Promise.all(
+        batch.map(async (token) => {
+          try {
+            const contract = this.getContract(token.address, this.provider);
+            const balance = isHardware
+              ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 3000)
+              : await this.getERC20Balance(contract, wallet!, token.decimals, 3000);
+
+            const balanceNum = parseFloat(tokenValueToString(balance));
+
+            // Only add tokens with non-zero balances
+            if (balanceNum > 0) {
+              balances[token.symbol] = balanceNum;
+              logger.debug(`Found non-zero balance for ${token.symbol}: ${balanceNum}`);
+            }
+          } catch (err) {
+            logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
+          }
+        }),
+      );
+    }
+  }
+
+  /**
+   * Get balances for specific tokens
+   */
+  private async getSpecificTokenBalances(
+    tokens: string[],
+    address: string,
+    wallet: Wallet | null,
+    isHardware: boolean,
+    balances: Record<string, number>,
+  ): Promise<void> {
+    await Promise.all(
+      tokens.map(async (symbolOrAddress) => {
+        // Don't process native token again
+        if (symbolOrAddress === this.nativeTokenSymbol) {
+          return;
+        }
+
+        const token = this.getToken(symbolOrAddress);
+        if (token) {
+          try {
+            const contract = this.getContract(token.address, this.provider);
+            const balance = isHardware
+              ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 5000)
+              : await this.getERC20Balance(contract, wallet!, token.decimals, 5000);
+
+            balances[token.symbol] = parseFloat(tokenValueToString(balance));
+          } catch (err) {
+            logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
+            balances[token.symbol] = 0;
+          }
+        } else {
+          logger.warn(`Token not recognized: ${symbolOrAddress}`);
+          balances[symbolOrAddress] = 0;
+        }
+      }),
+    );
   }
 }

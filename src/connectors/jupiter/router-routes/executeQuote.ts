@@ -120,8 +120,6 @@ export async function executeQuote(
 }
 
 export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
-
   fastify.post<{
     Body: ExecuteQuoteRequestType;
     Reply: SwapExecuteResponseType;
@@ -131,16 +129,7 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Execute a previously fetched quote from Jupiter',
         tags: ['jupiter/swap'],
-        body: {
-          ...JupiterExecuteQuoteRequest,
-          properties: {
-            ...JupiterExecuteQuoteRequest.properties,
-            walletAddress: {
-              ...JupiterExecuteQuoteRequest.properties.walletAddress,
-              examples: [walletAddressExample],
-            },
-          },
-        },
+        body: JupiterExecuteQuoteRequest,
         response: { 200: SwapExecuteResponse },
       },
     },

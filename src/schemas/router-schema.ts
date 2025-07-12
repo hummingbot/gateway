@@ -7,9 +7,11 @@ import { Type, Static } from '@sinclair/typebox';
 
 export const QuoteSwapRequest = Type.Object(
   {
-    network: Type.String({
-      description: 'The blockchain network to use',
-    }),
+    network: Type.Optional(
+      Type.String({
+        description: 'The blockchain network to use',
+      }),
+    ),
     baseToken: Type.String({
       description: 'Token to determine swap direction',
     }),
@@ -56,11 +58,8 @@ export const QuoteSwapResponse = Type.Object(
     price: Type.Number({
       description: 'Exchange rate between tokenIn and tokenOut',
     }),
-    slippagePct: Type.Number({
-      description: 'Slippage percentage used for this quote',
-    }),
-    priceWithSlippage: Type.Number({
-      description: 'Price including slippage (worst acceptable price)',
+    priceImpactPct: Type.Number({
+      description: 'Estimated price impact percentage (0-100)',
     }),
     minAmountOut: Type.Number({
       description: 'Minimum amount of tokenOut that will be accepted',
@@ -75,12 +74,16 @@ export type QuoteSwapResponseType = Static<typeof QuoteSwapResponse>;
 
 export const ExecuteQuoteRequest = Type.Object(
   {
-    walletAddress: Type.String({
-      description: 'Wallet address that will execute the swap',
-    }),
-    network: Type.String({
-      description: 'The blockchain network to use',
-    }),
+    walletAddress: Type.Optional(
+      Type.String({
+        description: 'Wallet address that will execute the swap',
+      }),
+    ),
+    network: Type.Optional(
+      Type.String({
+        description: 'The blockchain network to use',
+      }),
+    ),
     quoteId: Type.String({
       description: 'ID of the quote to execute',
     }),
@@ -91,12 +94,16 @@ export type ExecuteQuoteRequestType = Static<typeof ExecuteQuoteRequest>;
 
 export const ExecuteSwapRequest = Type.Object(
   {
-    walletAddress: Type.String({
-      description: 'Wallet address that will execute the swap',
-    }),
-    network: Type.String({
-      description: 'The blockchain network to use',
-    }),
+    walletAddress: Type.Optional(
+      Type.String({
+        description: 'Wallet address that will execute the swap',
+      }),
+    ),
+    network: Type.Optional(
+      Type.String({
+        description: 'The blockchain network to use',
+      }),
+    ),
     baseToken: Type.String({
       description: 'Token to determine swap direction',
     }),

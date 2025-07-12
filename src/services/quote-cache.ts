@@ -2,7 +2,6 @@ import { logger } from './logger';
 
 interface CachedQuote {
   quote: any;
-  timestamp: number;
   request: any;
 }
 
@@ -13,12 +12,9 @@ interface CachedQuote {
 class QuoteCache {
   private static instance: QuoteCache;
   private cache: Map<string, CachedQuote>;
-  private readonly QUOTE_TTL = 120000; // 2 minutes
-  private cleanupInterval: NodeJS.Timeout | null = null;
 
   private constructor() {
     this.cache = new Map();
-    this.startCleanupInterval();
   }
 
   /**
@@ -32,35 +28,13 @@ class QuoteCache {
   }
 
   /**
-   * Start periodic cleanup of expired quotes
-   */
-  private startCleanupInterval(): void {
-    this.cleanupInterval = setInterval(() => {
-      const now = Date.now();
-      for (const [quoteId, cached] of this.cache.entries()) {
-        if (now - cached.timestamp > this.QUOTE_TTL) {
-          this.cache.delete(quoteId);
-          logger.debug(`Quote cache: Deleted expired quote ${quoteId}`);
-        }
-      }
-    }, 10000); // Run every 10 seconds
-  }
-
-  /**
    * Get a quote from cache by quote ID
    * @param quoteId The unique quote identifier
-   * @returns The cached quote data or null if not found/expired
+   * @returns The cached quote data or null if not found
    */
   public get(quoteId: string): any | null {
     const cached = this.cache.get(quoteId);
     if (!cached) {
-      return null;
-    }
-
-    // Check if quote is expired
-    if (Date.now() - cached.timestamp > this.QUOTE_TTL) {
-      this.cache.delete(quoteId);
-      logger.debug(`Quote cache: Deleted expired quote ${quoteId} on access`);
       return null;
     }
 
@@ -76,7 +50,6 @@ class QuoteCache {
   public set(quoteId: string, quote: any, request?: any): void {
     this.cache.set(quoteId, {
       quote,
-      timestamp: Date.now(),
       request: request || {},
     });
     logger.debug(`Quote cache: Stored quote ${quoteId}`);
@@ -106,16 +79,6 @@ class QuoteCache {
    */
   public size(): number {
     return this.cache.size;
-  }
-
-  /**
-   * Stop the cleanup interval (for graceful shutdown)
-   */
-  public stopCleanup(): void {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-      this.cleanupInterval = null;
-    }
   }
 }
 

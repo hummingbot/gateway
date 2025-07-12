@@ -1,30 +1,9 @@
 [
   {
     "chainId": 42220,
-    "name": "Allbridge AVAX",
-    "symbol": "AVAX",
-    "address": "0x8E3670FD7B0935d3FE832711deBFE13BB689b690",
-    "decimals": 18
-  },
-  {
-    "chainId": 42220,
-    "name": "Anyswap BNB",
-    "symbol": "BNB",
-    "address": "0xA649325Aa7C5093d12D6F98EB4378deAe68CE23F",
-    "decimals": 18
-  },
-  {
-    "chainId": 42220,
     "name": "Celo",
     "symbol": "CELO",
     "address": "0x471EcE3750Da237f93B8E339c536989b8978a438",
-    "decimals": 18
-  },
-  {
-    "chainId": 42220,
-    "name": "Curve DAO Token",
-    "symbol": "CRV",
-    "address": "0x173fd7434B8B50dF08e3298f173487ebDB35FD14",
     "decimals": 18
   },
   {
@@ -36,13 +15,6 @@
   },
   {
     "chainId": 42220,
-    "name": "Anyswap FTM",
-    "symbol": "FTM",
-    "address": "0x218c3c3D49d0E7B37aff0D8bB079de36Ae61A4c0",
-    "decimals": 18
-  },
-  {
-    "chainId": 42220,
     "name": "Allbridge SOL",
     "symbol": "SOL",
     "address": "0x173234922eB27d5138c5e481be9dF5261fAeD450",
@@ -50,23 +22,9 @@
   },
   {
     "chainId": 42220,
-    "name": "Optics v2 SUSHI",
-    "symbol": "SUSHI",
-    "address": "0x29dFce9c22003A4999930382Fd00f9Fd6133Acd1",
-    "decimals": 18
-  },
-  {
-    "chainId": 42220,
     "name": "USD Coin",
     "symbol": "USDC",
     "address": "0xcebA9300f2b948710d2653dD7B07f33A8B32118C",
-    "decimals": 6
-  },
-  {
-    "chainId": 42220,
-    "name": "Optics v2 USDT",
-    "symbol": "USDT",
-    "address": "0x88eeC49252c8cbc039DCdB394c0c2BA2f1637EA0",
     "decimals": 6
   },
   {

@@ -12,13 +12,10 @@ import Fastify, { FastifyInstance } from 'fastify';
 // Internal dependencies
 
 // Routes
-import { chainRoutes } from './chains/chain.routes';
 import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
 import { configRoutes } from './config/config.routes';
-import { namespaceRoutes } from './config/namespace.routes';
 import { register0xRoutes } from './connectors/0x/0x.routes';
-import { connectorsRoutes } from './connectors/connector.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
@@ -48,7 +45,7 @@ const swaggerOptions = {
   openapi: {
     info: {
       title: 'Hummingbot Gateway',
-      description: 'API endpoints for interacting with DEX connectors on various blockchain networks',
+      description: 'API endpoints for interacting with DEXs and blockchains',
       version: GATEWAY_VERSION,
     },
     servers: [
@@ -58,7 +55,7 @@ const swaggerOptions = {
     ],
     tags: [
       // Main categories
-      { name: 'system', description: 'System configuration endpoints' },
+      { name: '/config', description: 'System configuration endpoints' },
       { name: '/wallet', description: 'Wallet management endpoints' },
       { name: '/tokens', description: 'Token management endpoints' },
       { name: '/pools', description: 'Pool management endpoints' },
@@ -190,9 +187,6 @@ const configureGatewayServer = () => {
   const registerRoutes = async (app: FastifyInstance) => {
     // Register system routes
     app.register(configRoutes, { prefix: '/config' });
-    app.register(namespaceRoutes, { prefix: '/namespaces' });
-    app.register(connectorsRoutes, { prefix: '/connectors' });
-    app.register(chainRoutes, { prefix: '/chains' });
 
     // Register wallet routes
     app.register(walletRoutes, { prefix: '/wallet' });
@@ -374,9 +368,6 @@ export const startGateway = async () => {
     // Set up graceful shutdown
     const shutdown = async () => {
       logger.info('Shutting down gracefully...');
-
-      // Stop quote cache cleanup
-      quoteCache.stopCleanup();
 
       // Close server
       await gatewayApp.close();

@@ -3,6 +3,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { Solana } from '../../chains/solana/solana';
+import { updateDefaultWallet } from '../../config/utils';
 import { HardwareWalletService } from '../../services/hardware-wallet-service';
 import { logger } from '../../services/logger';
 import {
@@ -157,6 +158,11 @@ async function addHardwareWallet(
       existingWallets[existingIndex] = walletInfo;
       await saveHardwareWallets(req.chain, existingWallets);
 
+      // Update default wallet if requested
+      if (req.setDefault) {
+        updateDefaultWallet(fastify, req.chain, validatedAddress);
+      }
+
       return {
         ...walletInfo,
         message: `Hardware wallet ${validatedAddress} updated successfully`,
@@ -165,6 +171,11 @@ async function addHardwareWallet(
       // Add new wallet
       existingWallets.push(walletInfo);
       await saveHardwareWallets(req.chain, existingWallets);
+
+      // Update default wallet if requested
+      if (req.setDefault) {
+        updateDefaultWallet(fastify, req.chain, validatedAddress);
+      }
 
       return {
         ...walletInfo,

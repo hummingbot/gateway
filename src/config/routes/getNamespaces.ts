@@ -1,8 +1,8 @@
 import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
-import { ConfigManagerV2 } from '../services/config-manager-v2';
-import { logger } from '../services/logger';
+import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import { logger } from '../../services/logger';
 
 // Define the schema using Typebox
 const NamespacesResponseSchema = Type.Object({
@@ -12,14 +12,14 @@ const NamespacesResponseSchema = Type.Object({
 // Type for TypeScript
 type NamespacesResponse = Static<typeof NamespacesResponseSchema>;
 
-export const namespaceRoutes: FastifyPluginAsync = async (fastify) => {
+export const getNamespacesRoute: FastifyPluginAsync = async (fastify) => {
   // List all namespaces
   fastify.get<{ Reply: NamespacesResponse }>(
-    '/',
+    '/namespaces',
     {
       schema: {
         description: 'Returns a list of all configuration namespaces available in Gateway.',
-        tags: ['system'],
+        tags: ['/config'],
         response: {
           200: NamespacesResponseSchema,
         },
@@ -38,4 +38,4 @@ export const namespaceRoutes: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-export default namespaceRoutes;
+export default getNamespacesRoute;

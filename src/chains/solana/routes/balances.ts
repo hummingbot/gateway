@@ -2,13 +2,9 @@ import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, unpackAccount, getMint } from 
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import {
-  BalanceRequestType,
-  BalanceResponseType,
-  BalanceRequestSchema,
-  BalanceResponseSchema,
-} from '../../../schemas/chain-schema';
+import { BalanceRequestType, BalanceResponseType, BalanceResponseSchema } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
+import { SolanaBalanceRequest } from '../schemas';
 import { Solana } from '../solana';
 
 // Define the LAMPORT_TO_SOL constant for easier access
@@ -323,12 +319,6 @@ function filterZeroBalances(balances: Record<string, number>): Record<string, nu
 }
 
 export const balancesRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
-
-  // Example address for Solana tokens
-  const USDC_MINT_ADDRESS = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'; // USDC on Solana
-  const BONK_MINT_ADDRESS = 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263'; // BONK on Solana
-
   fastify.post<{
     Body: BalanceRequestType;
     Reply: BalanceResponseType;
@@ -339,30 +329,7 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
         description:
           'Get token balances for a Solana address. If no tokens specified or empty array provided, returns non-zero balances for tokens from the token list that are found in the wallet (includes SOL even if zero). If specific tokens are requested, returns those exact tokens with their balances, including zeros.',
         tags: ['/chain/solana'],
-        body: {
-          ...BalanceRequestSchema,
-          properties: {
-            ...BalanceRequestSchema.properties,
-            network: { type: 'string', examples: ['mainnet-beta', 'devnet'] },
-            address: { type: 'string', examples: [walletAddressExample] },
-            tokens: {
-              type: 'array',
-              items: { type: 'string' },
-              description:
-                'A list of token symbols (SOL, USDC, BONK) or token mint addresses. Both formats are accepted and will be automatically detected. An empty array is treated the same as if the parameter was not provided, returning only non-zero balances (with the exception of SOL).',
-              examples: [
-                ['SOL', 'USDC', 'BONK'],
-                ['SOL', USDC_MINT_ADDRESS, BONK_MINT_ADDRESS],
-              ],
-            },
-            fetchAll: {
-              type: 'boolean',
-              description: 'Whether to fetch all tokens in wallet, not just those in token list. Defaults to false.',
-              default: false,
-              examples: [false, true],
-            },
-          },
-        },
+        body: SolanaBalanceRequest,
         response: {
           200: {
             ...BalanceResponseSchema,

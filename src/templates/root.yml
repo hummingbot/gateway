@@ -4,50 +4,59 @@ configurations:
     configurationPath: server.yml
     schemaPath: server-schema.json
 
+  # Chain configurations
+  $namespace ethereum:
+    configurationPath: chains/ethereum.yml
+    schemaPath: ethereum-chain-schema.json
+
+  $namespace solana:
+    configurationPath: chains/solana.yml
+    schemaPath: solana-chain-schema.json
+
   # Ethereum networks
   $namespace ethereum-mainnet:
-    configurationPath: networks/ethereum/mainnet.yml
+    configurationPath: chains/ethereum/mainnet.yml
     schemaPath: ethereum-network-schema.json
 
   $namespace ethereum-arbitrum:
-    configurationPath: networks/ethereum/arbitrum.yml
+    configurationPath: chains/ethereum/arbitrum.yml
     schemaPath: ethereum-network-schema.json
 
   $namespace ethereum-optimism:
-    configurationPath: networks/ethereum/optimism.yml
+    configurationPath: chains/ethereum/optimism.yml
     schemaPath: ethereum-network-schema.json
 
   $namespace ethereum-base:
-    configurationPath: networks/ethereum/base.yml
+    configurationPath: chains/ethereum/base.yml
     schemaPath: ethereum-network-schema.json
 
   $namespace ethereum-sepolia:
-    configurationPath: networks/ethereum/sepolia.yml
+    configurationPath: chains/ethereum/sepolia.yml
     schemaPath: ethereum-network-schema.json
 
   $namespace ethereum-bsc:
-    configurationPath: networks/ethereum/bsc.yml
+    configurationPath: chains/ethereum/bsc.yml
     schemaPath: ethereum-network-schema.json
 
   $namespace ethereum-avalanche:
-    configurationPath: networks/ethereum/avalanche.yml
+    configurationPath: chains/ethereum/avalanche.yml
     schemaPath: ethereum-network-schema.json
 
   $namespace ethereum-celo:
-    configurationPath: networks/ethereum/celo.yml
+    configurationPath: chains/ethereum/celo.yml
     schemaPath: ethereum-network-schema.json
 
   $namespace ethereum-polygon:
-    configurationPath: networks/ethereum/polygon.yml
+    configurationPath: chains/ethereum/polygon.yml
     schemaPath: ethereum-network-schema.json
 
   # Solana networks
   $namespace solana-mainnet-beta:
-    configurationPath: networks/solana/mainnet-beta.yml
+    configurationPath: chains/solana/mainnet-beta.yml
     schemaPath: solana-network-schema.json
 
   $namespace solana-devnet:
-    configurationPath: networks/solana/devnet.yml
+    configurationPath: chains/solana/devnet.yml
     schemaPath: solana-network-schema.json
 
   # Connectors

@@ -27,7 +27,7 @@ const NamespaceTag: string = '$namespace ';
 // Schemas are always in dist/src/templates/namespace/
 const SchemasBaseDir: string = path.join(rootPath(), 'dist/src/templates/namespace');
 
-export const ConfigRootSchemaPath: string = path.join(SchemasBaseDir, 'configuration-root-schema.json');
+export const ConfigRootSchemaPath: string = path.join(SchemasBaseDir, 'root-schema.json');
 
 // Use conf directory for configs and dist/src/templates for templates
 const ConfigDir: string = path.join(rootPath(), 'conf/');

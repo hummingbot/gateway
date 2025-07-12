@@ -58,25 +58,21 @@ export interface ZeroXQuoteResponse extends ZeroXPriceResponse {
 export class ZeroX {
   private static instances: Map<string, ZeroX> = new Map();
   private client: AxiosInstance;
-  private config: ZeroXConfig.NetworkConfig;
   private apiKey: string;
+  private _slippagePct: number;
 
   private constructor(
     private network: string,
     private chainId: number,
   ) {
-    this.config = ZeroXConfig.getConfig('mainnet');
-    // Load API key dynamically from ConfigManager
-    this.apiKey = ConfigManagerV2.getInstance().get('0x.apiKey') || '';
+    // Load configuration from ConfigManager
+    this.apiKey = ZeroXConfig.config.apiKey;
+    this._slippagePct = ZeroXConfig.config.slippagePct;
 
     // Check if API key is configured
     if (!this.apiKey) {
       throw new Error('0x API key not configured. Please add your API key to conf/connectors/0x.yml');
     }
-
-    // Update config with dynamic values
-    this.config.apiKey = this.apiKey;
-    this.config.slippagePct = ConfigManagerV2.getInstance().get('0x.slippagePct') || 1;
 
     const apiEndpoint = ZeroXConfig.getApiEndpoint(network);
 
@@ -210,7 +206,7 @@ export class ZeroX {
   }
 
   public get slippagePct(): number {
-    return this.config.slippagePct;
+    return this._slippagePct;
   }
 
   public get gasPriceBuffer(): number {

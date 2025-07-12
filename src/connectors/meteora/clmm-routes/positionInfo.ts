@@ -2,6 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
+import { getAvailableSolanaNetworks } from '../../../chains/solana/solana.utils';
 import {
   PositionInfo,
   PositionInfoSchema,
@@ -26,7 +27,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         querystring: {
           ...GetPositionInfoRequest,
           properties: {
-            network: { type: 'string', examples: ['mainnet-beta'] },
+            network: { type: 'string', examples: getAvailableSolanaNetworks() },
             walletAddress: { type: 'string', examples: [walletAddressExample] },
             positionAddress: { type: 'string' },
           },

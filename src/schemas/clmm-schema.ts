@@ -4,7 +4,7 @@ import { TransactionStatus } from './chain-schema';
 
 export const FetchPoolsRequest = Type.Object(
   {
-    network: Type.String(), // Network
+    network: Type.Optional(Type.String()), // Network
     limit: Type.Optional(Type.Number({ minimum: 1 })), // Maximum number of pools to return
     tokenA: Type.Optional(Type.String()), // First token symbol or address
     tokenB: Type.Optional(Type.String()), // Second token symbol or address
@@ -59,7 +59,7 @@ export type MeteoraPoolInfo = Static<typeof MeteoraPoolInfoSchema>;
 
 export const GetPoolInfoRequest = Type.Object(
   {
-    network: Type.String(),
+    network: Type.Optional(Type.String()),
     poolAddress: Type.String(),
   },
   { $id: 'GetPoolInfoRequest' },
@@ -88,9 +88,9 @@ export type PositionInfo = Static<typeof PositionInfoSchema>;
 
 export const GetPositionInfoRequest = Type.Object(
   {
-    network: Type.String(),
+    network: Type.Optional(Type.String()),
     positionAddress: Type.String(),
-    walletAddress: Type.String(),
+    walletAddress: Type.Optional(Type.String()),
   },
   { $id: 'GetPositionInfoRequest' },
 );
@@ -98,8 +98,8 @@ export type GetPositionInfoRequestType = Static<typeof GetPositionInfoRequest>;
 
 export const OpenPositionRequest = Type.Object(
   {
-    network: Type.String(),
-    walletAddress: Type.String(),
+    network: Type.Optional(Type.String()),
+    walletAddress: Type.Optional(Type.String()),
     lowerPrice: Type.Number(),
     upperPrice: Type.Number(),
     poolAddress: Type.String(),
@@ -144,8 +144,8 @@ export type OpenPositionResponseType = Static<typeof OpenPositionResponse>;
 
 export const AddLiquidityRequest = Type.Object(
   {
-    network: Type.String(),
-    walletAddress: Type.String(),
+    network: Type.Optional(Type.String()),
+    walletAddress: Type.Optional(Type.String()),
     positionAddress: Type.String(),
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
@@ -186,8 +186,8 @@ export type AddLiquidityResponseType = Static<typeof AddLiquidityResponse>;
 
 export const RemoveLiquidityRequest = Type.Object(
   {
-    network: Type.String(),
-    walletAddress: Type.String(),
+    network: Type.Optional(Type.String()),
+    walletAddress: Type.Optional(Type.String()),
     positionAddress: Type.String(),
     percentageToRemove: Type.Number({ minimum: 0, maximum: 100 }),
     // New optional fee parameters
@@ -226,8 +226,8 @@ export type RemoveLiquidityResponseType = Static<typeof RemoveLiquidityResponse>
 
 export const CollectFeesRequest = Type.Object(
   {
-    network: Type.String(),
-    walletAddress: Type.String(),
+    network: Type.Optional(Type.String()),
+    walletAddress: Type.Optional(Type.String()),
     positionAddress: Type.String(),
     // New optional fee parameters
     priorityFeePerCU: Type.Optional(
@@ -265,8 +265,8 @@ export type CollectFeesResponseType = Static<typeof CollectFeesResponse>;
 
 export const ClosePositionRequest = Type.Object(
   {
-    network: Type.String(),
-    walletAddress: Type.String(),
+    network: Type.Optional(Type.String()),
+    walletAddress: Type.Optional(Type.String()),
     positionAddress: Type.String(),
     // New optional fee parameters
     priorityFeePerCU: Type.Optional(
@@ -330,7 +330,7 @@ export type QuotePositionResponseType = Static<typeof QuotePositionResponse>;
 
 export const QuoteSwapRequest = Type.Object(
   {
-    network: Type.String(),
+    network: Type.Optional(Type.String()),
     poolAddress: Type.Optional(
       Type.String({
         description: 'Pool address (optional - can be looked up from baseToken and quoteToken)',
@@ -349,7 +349,7 @@ export const QuoteSwapRequest = Type.Object(
       description: 'Trade direction',
       enum: ['BUY', 'SELL'],
     }),
-    slippagePct: Type.Number({ minimum: 0, maximum: 100 }),
+    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
   },
   { $id: 'ClmmQuoteSwapRequest' },
 );
@@ -381,8 +381,8 @@ export type QuoteSwapResponseType = Static<typeof QuoteSwapResponse>;
 
 export const ExecuteSwapRequest = Type.Object(
   {
-    walletAddress: Type.String(),
-    network: Type.String(),
+    walletAddress: Type.Optional(Type.String()),
+    network: Type.Optional(Type.String()),
     poolAddress: Type.Optional(
       Type.String({
         description: 'Pool address (optional - can be looked up from baseToken and quoteToken)',
@@ -398,7 +398,7 @@ export const ExecuteSwapRequest = Type.Object(
     side: Type.String({
       enum: ['BUY', 'SELL'],
     }),
-    slippagePct: Type.Number({ minimum: 0, maximum: 100 }),
+    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
     priorityFeePerCU: Type.Optional(
       Type.Number({
         description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',

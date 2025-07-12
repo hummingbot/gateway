@@ -23,14 +23,9 @@ const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
-import {
-  walletPath,
-  getSafeWalletFilePath,
-  sanitizePathComponent,
-  isHardwareWallet as isHardwareWalletUtil,
-} from '../../wallet/utils';
+import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
-import { SolanaNetworkConfig, getSolanaNetworkConfig } from './solana.config';
+import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
 
 // Constants used for fee calculations
 export const BASE_FEE = 5000;
@@ -75,7 +70,6 @@ export class Solana {
   private _tokenMap: Record<string, TokenInfo> = {};
 
   private static _instances: { [name: string]: Solana };
-  private static _walletAddressExample: string | null = null;
 
   private static lastPriorityFeeEstimate: {
     timestamp: number;
@@ -1005,63 +999,14 @@ export class Solana {
     }
   }
 
-  // Add new method to get first wallet address
-  public static async getFirstWalletAddress(): Promise<string | null> {
-    // Specifically look in the solana subdirectory, not in any other chain's directory
-    const safeChain = sanitizePathComponent('solana');
-    const path = `${walletPath}/${safeChain}`;
-    try {
-      // Create directory if it doesn't exist
-      await fse.ensureDir(path);
-
-      // Get all .json files in the directory
-      const files = await fse.readdir(path);
-      const walletFiles = files.filter((f) => f.endsWith('.json'));
-
-      if (walletFiles.length === 0) {
-        return null;
-      }
-
-      // Get the first wallet address (without .json extension)
-      const walletAddress = walletFiles[0].slice(0, -5);
-
-      try {
-        // Attempt to validate the address
-        return Solana.validateAddress(walletAddress);
-      } catch (e) {
-        logger.warn(`Invalid Solana address found in wallet directory: ${walletAddress}`);
-        return null;
-      }
-    } catch (error) {
-      logger.error(`Error getting Solana wallet address: ${error.message}`);
-      return null;
-    }
-  }
-
-  public static async getWalletAddressExample(): Promise<string> {
-    if (Solana._walletAddressExample) {
-      return Solana._walletAddressExample;
-    }
-    // Use a valid Solana address format (system program address)
-    const defaultAddress = '11111111111111111111111111111112';
-    try {
-      const foundWallet = await Solana.getFirstWalletAddress();
-      if (foundWallet) {
-        Solana._walletAddressExample = foundWallet;
-        return foundWallet;
-      }
-      logger.debug('No wallets found for examples in schema, using default.');
-      Solana._walletAddressExample = defaultAddress;
-      return defaultAddress;
-    } catch (error) {
-      logger.error(`Error getting Solana wallet address for example: ${error.message}`);
-      return defaultAddress;
-    }
-  }
-
   // Update getTokenBySymbol to use new getToken method
   public async getTokenBySymbol(tokenSymbol: string): Promise<TokenInfo | undefined> {
     return (await this.getToken(tokenSymbol)) || undefined;
+  }
+
+  public static async getWalletAddressExample(): Promise<string> {
+    const chainConfig = getSolanaChainConfig();
+    return chainConfig.defaultWallet;
   }
 
   public async simulateTransaction(transaction: VersionedTransaction | Transaction) {

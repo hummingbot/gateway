@@ -2,11 +2,6 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "defaultNetwork": {
-      "type": "string",
-      "description": "Default network for Jupiter operations",
-      "enum": ["mainnet-beta", "devnet"]
-    },
     "slippagePct": {
       "type": "number",
       "description": "Default slippage percentage for swaps (e.g., 1 = 1%)"
@@ -33,12 +28,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "defaultNetwork",
-    "slippagePct",
-    "priorityLevel",
-    "maxLamports",
-    "onlyDirectRoutes",
-    "restrictIntermediateTokens"
-  ]
+  "required": ["slippagePct", "priorityLevel", "maxLamports", "onlyDirectRoutes", "restrictIntermediateTokens"]
 }

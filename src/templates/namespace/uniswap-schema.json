@@ -3,8 +3,8 @@
   "type": "object",
   "properties": {
     "slippagePct": {
-      "type": "string",
-      "description": "Default slippage percentage in fraction format (e.g., '2/100' for 2%)"
+      "type": "number",
+      "description": "Default slippage percentage (e.g., 2 for 2%)"
     },
     "maximumHops": {
       "type": "integer",

@@ -1,12 +1,16 @@
-import { Type } from '@sinclair/typebox';
 import { ethers } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { getSpender } from '../../../connectors/uniswap/uniswap.contracts';
-import { AllowancesRequestType, AllowancesResponseType } from '../../../schemas/chain-schema';
 import { tokenValueToString } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { TokenInfo, Ethereum } from '../ethereum';
+import {
+  AllowancesRequestSchema,
+  AllowancesResponseSchema,
+  AllowancesRequestType,
+  AllowancesResponseType,
+} from '../schemas';
 
 export async function getEthereumAllowances(
   fastify: FastifyInstance,
@@ -99,8 +103,6 @@ export async function getEthereumAllowances(
 }
 
 export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
   fastify.post<{
     Body: AllowancesRequestType;
     Reply: AllowancesResponseType;
@@ -110,30 +112,9 @@ export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get token allowances',
         tags: ['/chain/ethereum'],
-        body: Type.Object({
-          network: Type.String({
-            examples: ['mainnet', 'arbitrum', 'optimism', 'base', 'sepolia', 'bsc', 'avalanche', 'celo', 'polygon'],
-          }),
-          address: Type.String({ examples: [walletAddressExample] }),
-          spender: Type.String({
-            examples: ['uniswap/clmm', 'uniswap', '0xC36442b4a4522E871399CD717aBDD847Ab11FE88'],
-            description:
-              'Spender can be a connector name (e.g., uniswap/clmm, uniswap/amm, uniswap) or a direct contract address',
-          }),
-          tokens: Type.Array(Type.String(), {
-            examples: [
-              ['USDC', 'DAI'],
-              ['0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', '0x6B175474E89094C44Da98b954EedeAC495271d0F'],
-              ['USDC', '0xd0b53D9277642d899DF5C87A3966A349A798F224'],
-            ],
-            description: 'Array of token symbols or addresses',
-          }),
-        }),
+        body: AllowancesRequestSchema,
         response: {
-          200: Type.Object({
-            spender: Type.String(),
-            approvals: Type.Record(Type.String(), Type.String()),
-          }),
+          200: AllowancesResponseSchema,
         },
       },
     },

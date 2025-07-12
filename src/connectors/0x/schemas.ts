@@ -1,8 +1,12 @@
 import { Type, Static } from '@sinclair/typebox';
 
+import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
 import * as Base from '../../schemas/router-schema';
 
 import { ZeroXConfig } from './0x.config';
+
+// Get chain config for defaults
+const ethereumChainConfig = getEthereumChainConfig();
 
 // Constants for examples
 const BASE_TOKEN = 'WETH';
@@ -11,17 +15,19 @@ const SWAP_AMOUNT = 1;
 
 // 0x-specific quote-swap request (superset of base QuoteSwapRequest)
 export const ZeroXQuoteSwapRequest = Type.Object({
-  network: Type.String({
-    description: 'The blockchain network to use',
-    default: 'mainnet',
-    examples: ZeroXConfig.networks.mainnet.availableNetworks,
-  }),
+  network: Type.Optional(
+    Type.String({
+      description: 'The EVM network to use',
+      default: ethereumChainConfig.defaultNetwork,
+      enum: [...ZeroXConfig.networks],
+    }),
+  ),
   baseToken: Type.String({
-    description: 'Token to determine swap direction',
+    description: 'First token in the trading pair',
     examples: [BASE_TOKEN],
   }),
   quoteToken: Type.String({
-    description: 'The other token in the pair',
+    description: 'Second token in the trading pair',
     examples: [QUOTE_TOKEN],
   }),
   amount: Type.Number({
@@ -75,20 +81,14 @@ export const ZeroXQuoteSwapResponse = Type.Object({
   price: Type.Number({
     description: 'Exchange rate between tokenIn and tokenOut',
   }),
-  slippagePct: Type.Number({
-    description: 'Slippage percentage used for this quote',
-  }),
-  priceWithSlippage: Type.Number({
-    description: 'Price including slippage (worst acceptable price)',
+  priceImpactPct: Type.Number({
+    description: 'Estimated price impact percentage (0-100)',
   }),
   minAmountOut: Type.Number({
     description: 'Minimum amount of tokenOut that will be accepted',
   }),
   maxAmountIn: Type.Number({
     description: 'Maximum amount of tokenIn that will be spent',
-  }),
-  priceImpactPct: Type.Number({
-    description: 'Estimated price impact as a percentage (0-100)',
   }),
   expirationTime: Type.Optional(
     Type.Number({
@@ -127,13 +127,20 @@ export const ZeroXQuoteSwapResponse = Type.Object({
 
 // 0x-specific execute-quote request (superset of base ExecuteQuoteRequest)
 export const ZeroXExecuteQuoteRequest = Type.Object({
-  walletAddress: Type.String({
-    description: 'Wallet address that will execute the swap',
-  }),
-  network: Type.String({
-    description: 'The blockchain network to use',
-    default: 'mainnet',
-  }),
+  walletAddress: Type.Optional(
+    Type.String({
+      description: 'Wallet address that will execute the swap',
+      default: ethereumChainConfig.defaultWallet,
+    }),
+  ),
+  network: Type.Optional(
+    Type.String({
+      description: 'The blockchain network to use',
+      default: ethereumChainConfig.defaultNetwork,
+      enum: [...ZeroXConfig.networks],
+      examples: [...ZeroXConfig.networks],
+    }),
+  ),
   quoteId: Type.String({
     description: 'ID of the quote to execute',
     examples: ['123e4567-e89b-12d3-a456-426614174000'],
@@ -146,20 +153,28 @@ export const ZeroXExecuteQuoteRequest = Type.Object({
   maxGas: Type.Optional(
     Type.Number({
       description: 'Maximum gas limit for the transaction',
-      examples: [300000],
+      examples: [1000000],
     }),
   ),
 });
 
 // 0x-specific execute-swap request (superset of base ExecuteSwapRequest)
 export const ZeroXExecuteSwapRequest = Type.Object({
-  walletAddress: Type.String({
-    description: 'Wallet address that will execute the swap',
-  }),
-  network: Type.String({
-    description: 'The blockchain network to use',
-    default: 'mainnet',
-  }),
+  walletAddress: Type.Optional(
+    Type.String({
+      description: 'Wallet address that will execute the swap',
+      default: ethereumChainConfig.defaultWallet,
+      examples: [ethereumChainConfig.defaultWallet],
+    }),
+  ),
+  network: Type.Optional(
+    Type.String({
+      description: 'The blockchain network to use',
+      default: ethereumChainConfig.defaultNetwork,
+      enum: [...ZeroXConfig.networks],
+      examples: [...ZeroXConfig.networks],
+    }),
+  ),
   baseToken: Type.String({
     description: 'Token to determine swap direction',
     examples: [BASE_TOKEN],

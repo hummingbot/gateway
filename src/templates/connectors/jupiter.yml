@@ -1,7 +1,3 @@
-# Default network for Jupiter operations
-# Options: mainnet-beta, devnet
-defaultNetwork: 'mainnet-beta'
-
 # Default slippage percentage for swaps (as a decimal, e.g., 1 = 1%)
 slippagePct: 1
 

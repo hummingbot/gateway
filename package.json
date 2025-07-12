@@ -1,7 +1,7 @@
 {
   "name": "gateway",
   "version": "dev-2.8.0",
-  "description": "Hummingbot Gateway is an API/MCP server that helps you interact with DEXs on various blockchains.",
+  "description": "Hummingbot Gateway is an API/MCP server that helps you interact with DEXs and blockchains.",
   "main": "index.js",
   "license": "Apache-2.0",
   "repository": "https://github.com/hummingbot/gateway",
@@ -25,7 +25,7 @@
     "setup:with-defaults": "bash ./gateway-setup.sh --with-defaults",
     "start": "START_SERVER=true node dist/index.js",
     "start:with-mcp": "./start-with-mcp.sh",
-    "copy-files": "copyfiles 'src/templates/namespace/*.json' 'src/templates/*.yml' 'src/templates/networks/**/*.yml' 'src/templates/connectors/*.yml' 'src/templates/tokens/**/*.json' 'src/templates/pools/*.json' 'src/mcp/resources/*.json' dist",
+    "copy-files": "copyfiles 'src/templates/namespace/*.json' 'src/templates/*.yml' 'src/templates/chains/**/*.yml' 'src/templates/connectors/*.yml' 'src/templates/tokens/**/*.json' 'src/templates/pools/*.json' 'src/mcp/resources/*.json' dist",
     "test": "GATEWAY_TEST_MODE=dev jest --verbose",
     "test:clear-cache": "jest --clearCache",
     "test:debug": "GATEWAY_TEST_MODE=dev jest --watch --runInBand",

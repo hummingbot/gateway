@@ -96,7 +96,7 @@ async function addLiquidity(
   const router = new Contract(quote.routerAddress, IUniswapV2Router02ABI.abi, wallet);
 
   // Calculate slippage-adjusted amounts
-  const slippageTolerance = slippagePct ? new Percent(slippagePct, 100) : uniswap.getSlippagePct();
+  const slippageTolerance = new Percent(Math.floor((slippagePct ?? uniswap.config.slippagePct) * 100), 10000);
 
   const slippageMultiplier = new Percent(1).subtract(slippageTolerance);
 

@@ -8,27 +8,6 @@
   },
   {
     "chainId": 10,
-    "name": "Aptos",
-    "symbol": "APT",
-    "address": "0xC5B3AC2DF8D8D7AC851F763a5b3Ff23B4A696d59",
-    "decimals": 8
-  },
-  {
-    "chainId": 10,
-    "name": "Balancer",
-    "symbol": "BAL",
-    "address": "0xFE8B128bA8C78aabC59d4c64cEE7fF28e9379921",
-    "decimals": 18
-  },
-  {
-    "chainId": 10,
-    "name": "Curve DAO Token",
-    "symbol": "CRV",
-    "address": "0x0994206dfe8de6ec6920ff4d779b0d950605fb53",
-    "decimals": 18
-  },
-  {
-    "chainId": 10,
     "name": "Dai Stablecoin",
     "symbol": "DAI",
     "address": "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1",
@@ -50,58 +29,9 @@
   },
   {
     "chainId": 10,
-    "name": "Lido DAO Token",
-    "symbol": "LDO",
-    "address": "0xFdb794692724153d1488CcdBE0C56c252596735F",
-    "decimals": 18
-  },
-  {
-    "chainId": 10,
-    "name": "Chainlink",
-    "symbol": "LINK",
-    "address": "0x350a791bfc2c21f9ed5d10980dad2e2638ffa7f6",
-    "decimals": 18
-  },
-  {
-    "chainId": 10,
-    "name": "Maker",
-    "symbol": "MKR",
-    "address": "0xab7badef82e9fe11f6f33f87bc9bc2aa27f2fcb5",
-    "decimals": 18
-  },
-  {
-    "chainId": 10,
     "name": "Optimism",
     "symbol": "OP",
     "address": "0x4200000000000000000000000000000000000042",
-    "decimals": 18
-  },
-  {
-    "chainId": 10,
-    "name": "Synthetix",
-    "symbol": "SNX",
-    "address": "0x8700daec35af8ff88c16bdf0418774cb3d7599b4",
-    "decimals": 18
-  },
-  {
-    "chainId": 10,
-    "name": "Solana",
-    "symbol": "SOL",
-    "address": "0xba1Cf949c382A32a09A17B2AdF3587fc7fA664f1",
-    "decimals": 9
-  },
-  {
-    "chainId": 10,
-    "name": "SushiToken",
-    "symbol": "SUSHI",
-    "address": "0x3eaEb77b03dBc0F6321AE1b72b2E9aDb0F60112B",
-    "decimals": 18
-  },
-  {
-    "chainId": 10,
-    "name": "Uniswap",
-    "symbol": "UNI",
-    "address": "0x6fd9d7ad17242c41f7131d257212c54a0e816691",
     "decimals": 18
   },
   {
@@ -137,13 +67,6 @@
     "name": "Wrapped liquid staked Ether 2.0",
     "symbol": "wstETH",
     "address": "0x1F32b1c2345538c0c6f582fCB022739c4A194Ebb",
-    "decimals": 18
-  },
-  {
-    "chainId": 10,
-    "name": "0x Protocol Token",
-    "symbol": "ZRX",
-    "address": "0xD1917629B3E6A72E6772Aab5dBe58Eb7FA3C2F33",
     "decimals": 18
   }
 ]

@@ -9,7 +9,7 @@ export enum TransactionStatus {
 
 export const EstimateGasRequestSchema = Type.Object(
   {
-    network: Type.String(),
+    network: Type.Optional(Type.String()),
     gasLimit: Type.Optional(Type.Number()),
   },
   { $id: 'EstimateGasRequest' },
@@ -28,8 +28,8 @@ export type EstimateGasResponse = Static<typeof EstimateGasResponseSchema>;
 
 export const BalanceRequestSchema = Type.Object(
   {
-    network: Type.String(),
-    address: Type.String(),
+    network: Type.Optional(Type.String()),
+    address: Type.Optional(Type.String()),
     tokens: Type.Optional(
       Type.Array(Type.String(), {
         description: 'a list of token symbols or addresses',
@@ -55,7 +55,7 @@ export type BalanceResponseType = Static<typeof BalanceResponseSchema>;
 
 export const TokensRequestSchema = Type.Object(
   {
-    network: Type.String(),
+    network: Type.Optional(Type.String()),
     tokenSymbols: Type.Optional(Type.Union([Type.String(), Type.Array(Type.String())])),
   },
   { $id: 'TokensRequest' },
@@ -79,7 +79,7 @@ export type TokensResponseType = Static<typeof TokensResponseSchema>;
 
 export const PollRequestSchema = Type.Object(
   {
-    network: Type.String(),
+    network: Type.Optional(Type.String()),
     signature: Type.String({ description: 'Transaction signature/hash' }),
     tokens: Type.Optional(
       Type.Array(Type.String(), {
@@ -117,7 +117,7 @@ export type PollResponseType = Static<typeof PollResponseSchema>;
 
 export const StatusRequestSchema = Type.Object(
   {
-    network: Type.String(),
+    network: Type.Optional(Type.String()),
   },
   { $id: 'StatusRequest' },
 );
@@ -134,126 +134,3 @@ export const StatusResponseSchema = Type.Object(
   { $id: 'StatusResponse' },
 );
 export type StatusResponseType = Static<typeof StatusResponseSchema>;
-
-// Base schemas
-export const NetworkSelectionSchema = Type.Object(
-  {
-    chain: Type.String(),
-    network: Type.String(),
-  },
-  { $id: 'NetworkSelection' },
-);
-
-// Allowances schemas
-export const AllowancesRequestSchema = Type.Intersect(
-  [
-    NetworkSelectionSchema,
-    Type.Object({
-      address: Type.String({ description: "the user's public Ethereum key" }),
-      spender: Type.String({
-        description:
-          'connector name (e.g., uniswap/clmm, uniswap/amm, uniswap) or the address of the contract that will be allowed to spend tokens',
-      }),
-      tokens: Type.Array(Type.String(), {
-        description: 'a list of token symbols or addresses',
-      }),
-    }),
-  ],
-  { $id: 'AllowancesRequest' },
-);
-export type AllowancesRequestType = Static<typeof AllowancesRequestSchema>;
-
-export const AllowancesResponseSchema = Type.Object(
-  {
-    spender: Type.String(),
-    approvals: Type.Record(Type.String(), Type.String()),
-  },
-  { $id: 'AllowancesResponse' },
-);
-export type AllowancesResponseType = Static<typeof AllowancesResponseSchema>;
-
-// Approve schemas
-export const ApproveRequestSchema = Type.Intersect(
-  [
-    NetworkSelectionSchema,
-    Type.Object({
-      amount: Type.Optional(
-        Type.String({
-          description:
-            'the amount the spender will be approved to use, defaults to unlimited approval (MaxUint256) if not provided',
-        }),
-      ),
-      address: Type.String({ description: "the user's public Ethereum key" }),
-      spender: Type.String({
-        description:
-          'connector name (e.g., uniswap/clmm, uniswap/amm, uniswap) or the address of the contract that will be allowed to spend tokens',
-      }),
-      token: Type.String({
-        description: 'the token symbol the spender will be approved for',
-      }),
-    }),
-  ],
-  { $id: 'ApproveRequest' },
-);
-export type ApproveRequestType = Static<typeof ApproveRequestSchema>;
-
-export const CustomTransactionSchema = Type.Object(
-  {
-    data: Type.String(),
-    to: Type.String(),
-    // Minimal definition, expand as needed
-  },
-  { $id: 'CustomTransaction' },
-);
-
-export const ApproveResponseSchema = Type.Object(
-  {
-    signature: Type.String(),
-    status: Type.Number({ description: 'TransactionStatus enum value' }),
-
-    // Only included when status = CONFIRMED
-    data: Type.Optional(
-      Type.Object({
-        tokenAddress: Type.String(),
-        spender: Type.String(),
-        amount: Type.String(),
-        nonce: Type.Number(),
-        fee: Type.String(),
-      }),
-    ),
-  },
-  { $id: 'ApproveResponse' },
-);
-export type ApproveResponseType = Static<typeof ApproveResponseSchema>;
-
-// Wrap ETH to WETH schemas
-export const WrapRequestSchema = Type.Object(
-  {
-    network: Type.String(),
-    address: Type.String({ description: "the user's public Ethereum key" }),
-    amount: Type.String({ description: 'the amount of ETH to wrap into WETH' }),
-  },
-  { $id: 'WrapRequest' },
-);
-export type WrapRequestType = Static<typeof WrapRequestSchema>;
-
-export const WrapResponseSchema = Type.Object(
-  {
-    signature: Type.String(),
-    status: Type.Number({ description: 'TransactionStatus enum value' }),
-
-    // Only included when status = CONFIRMED
-    data: Type.Optional(
-      Type.Object({
-        nonce: Type.Number(),
-        fee: Type.String(),
-        amount: Type.String(),
-        wrappedAddress: Type.String(),
-        nativeToken: Type.String(),
-        wrappedToken: Type.String(),
-      }),
-    ),
-  },
-  { $id: 'WrapResponse' },
-);
-export type WrapResponseType = Static<typeof WrapResponseSchema>;

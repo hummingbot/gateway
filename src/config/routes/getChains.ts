@@ -1,8 +1,8 @@
 import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
-import { ConfigManagerV2 } from '../services/config-manager-v2';
-import { logger } from '../services/logger';
+import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import { logger } from '../../services/logger';
 
 // Define the schema using Typebox
 const NetworkSchema = Type.Object({
@@ -17,14 +17,14 @@ const ChainsResponseSchema = Type.Object({
 // Type for TypeScript
 type ChainsResponse = Static<typeof ChainsResponseSchema>;
 
-export const chainRoutes: FastifyPluginAsync = async (fastify) => {
+export const getChainsRoute: FastifyPluginAsync = async (fastify) => {
   // List available chains
   fastify.get<{ Reply: ChainsResponse }>(
-    '/',
+    '/chains',
     {
       schema: {
         description: 'Returns a list of available blockchain networks supported by Gateway.',
-        tags: ['system'],
+        tags: ['/config'],
         response: {
           200: ChainsResponseSchema,
         },
@@ -77,4 +77,4 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-export default chainRoutes;
+export default getChainsRoute;

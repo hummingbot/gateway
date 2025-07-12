@@ -1,5 +1,7 @@
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
+import { getAvailableEthereumNetworks } from './ethereum.utils';
+
 export interface EthereumNetworkConfig {
   chainID: number;
   nodeURL: string;
@@ -7,6 +9,14 @@ export interface EthereumNetworkConfig {
   manualGasPrice: number;
   gasLimitTransaction: number;
 }
+
+export interface EthereumChainConfig {
+  defaultNetwork: string;
+  defaultWallet: string;
+}
+
+// Export available networks
+export const networks = getAvailableEthereumNetworks();
 
 export function getEthereumNetworkConfig(network: string): EthereumNetworkConfig {
   const namespaceId = `ethereum-${network}`;
@@ -16,5 +26,12 @@ export function getEthereumNetworkConfig(network: string): EthereumNetworkConfig
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
     manualGasPrice: ConfigManagerV2.getInstance().get(namespaceId + '.manualGasPrice'),
     gasLimitTransaction: ConfigManagerV2.getInstance().get(namespaceId + '.gasLimitTransaction'),
+  };
+}
+
+export function getEthereumChainConfig(): EthereumChainConfig {
+  return {
+    defaultNetwork: ConfigManagerV2.getInstance().get('ethereum.defaultNetwork'),
+    defaultWallet: ConfigManagerV2.getInstance().get('ethereum.defaultWallet'),
   };
 }

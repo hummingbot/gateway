@@ -3,6 +3,7 @@ import fse from 'fs-extra';
 
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
+import { updateDefaultWallet } from '../config/utils';
 import { ConfigManagerCertPassphrase } from '../services/config-manager-cert-passphrase';
 import {
   getInitializedChain,
@@ -130,6 +131,11 @@ export async function addWallet(fastify: FastifyInstance, req: AddWalletRequest)
   // Sanitize address for filename
   const safeAddress = sanitizePathComponent(address);
   await fse.writeFile(`${path}/${safeAddress}.json`, encryptedPrivateKey);
+
+  // Update default wallet if requested
+  if (req.setDefault) {
+    updateDefaultWallet(fastify, req.chain, address);
+  }
 
   return { address };
 }

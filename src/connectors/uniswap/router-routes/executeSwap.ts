@@ -42,8 +42,6 @@ async function executeSwap(
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
   fastify.post<{
     Body: ExecuteSwapRequestType;
     Reply: SwapExecuteResponseType;
@@ -53,19 +51,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Quote and execute a token swap on Uniswap Universal Router in one step',
         tags: ['/connector/uniswap'],
-        body: {
-          ...UniswapExecuteSwapRequest,
-          properties: {
-            ...UniswapExecuteSwapRequest.properties,
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            network: { type: 'string', default: 'mainnet' },
-            baseToken: { type: 'string', examples: ['WETH'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [1] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        body: UniswapExecuteSwapRequest,
         response: { 200: SwapExecuteResponse },
       },
     },

@@ -1,6 +1,6 @@
 // V3 (CLMM) imports
-import { Token, CurrencyAmount, Percent } from '@uniswap/sdk-core';
-import { AlphaRouter } from '@uniswap/smart-order-router';
+import { Protocol } from '@uniswap/router-sdk';
+import { Token, CurrencyAmount, Percent, TradeType } from '@uniswap/sdk-core';
 import { Pair as V2Pair } from '@uniswap/v2-sdk';
 import { abi as IUniswapV3FactoryABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Factory.sol/IUniswapV3Factory.json';
 import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
@@ -9,8 +9,7 @@ import { Contract, constants } from 'ethers';
 import { getAddress } from 'ethers/lib/utils';
 import JSBI from 'jsbi';
 
-import { Ethereum } from '../../chains/ethereum/ethereum';
-import { percentRegexp } from '../../services/config-manager-v2';
+import { Ethereum, TokenInfo } from '../../chains/ethereum/ethereum';
 import { logger } from '../../services/logger';
 
 import { UniswapConfig } from './uniswap.config';
@@ -20,12 +19,12 @@ import {
   IUniswapV2Router02ABI,
   getUniswapV2RouterAddress,
   getUniswapV2FactoryAddress,
-  getUniswapV3SmartOrderRouterAddress,
   getUniswapV3NftManagerAddress,
   getUniswapV3QuoterV2ContractAddress,
   getUniswapV3FactoryAddress,
 } from './uniswap.contracts';
-import { findPoolAddress, isValidV2Pool, isValidV3Pool, isFractionString } from './uniswap.utils';
+import { findPoolAddress, isValidV2Pool, isValidV3Pool } from './uniswap.utils';
+import { UniversalRouterService } from './universal-router';
 
 export class Uniswap {
   private static _instances: { [name: string]: Uniswap };
@@ -45,10 +44,10 @@ export class Uniswap {
   private v2Router: Contract;
 
   // V3 (CLMM) properties
-  private _alphaRouter: AlphaRouter | null;
   private v3Factory: Contract;
   private v3NFTManager: Contract;
   private v3Quoter: Contract;
+  private universalRouter: UniversalRouterService;
 
   // Network information
   private networkName: string;
@@ -133,11 +132,8 @@ export class Uniswap {
         this.ethereum.provider,
       );
 
-      // Initialize AlphaRouter for V3 swaps (always use AlphaRouter with Universal Router)
-      this._alphaRouter = new AlphaRouter({
-        chainId: this.chainId,
-        provider: this.ethereum.provider,
-      });
+      // Initialize Universal Router service
+      this.universalRouter = new UniversalRouterService(this.ethereum.provider, this.chainId, this.networkName);
 
       // Ensure ethereum is initialized
       if (!this.ethereum.ready()) {
@@ -176,6 +172,65 @@ export class Uniswap {
   public getTokenBySymbol(symbol: string): Token | null {
     // Just use getTokenByAddress since ethereum.getToken handles both symbols and addresses
     return this.getTokenByAddress(symbol);
+  }
+
+  /**
+   * Create a Uniswap SDK Token object from token info
+   * @param tokenInfo Token information from Ethereum
+   * @returns Uniswap SDK Token object
+   */
+  public getUniswapToken(tokenInfo: TokenInfo): Token {
+    return new Token(this.ethereum.chainId, tokenInfo.address, tokenInfo.decimals, tokenInfo.symbol, tokenInfo.name);
+  }
+
+  /**
+   * Get a quote from Universal Router for token swaps
+   * @param inputToken The token being swapped from
+   * @param outputToken The token being swapped to
+   * @param amount The amount to swap
+   * @param side The trade direction (BUY or SELL)
+   * @param walletAddress The recipient wallet address
+   * @returns Quote result from Universal Router
+   */
+  public async getUniversalRouterQuote(
+    inputToken: Token,
+    outputToken: Token,
+    amount: number,
+    side: 'BUY' | 'SELL',
+    walletAddress: string,
+  ): Promise<any> {
+    logger.info(`Getting Universal Router quote for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`);
+
+    // Determine input/output based on side
+    const exactIn = side === 'SELL';
+    const tokenForAmount = exactIn ? inputToken : outputToken;
+
+    // Convert amount to token units using string manipulation to avoid BigInt conversion issues
+    const amountStr = amount.toFixed(tokenForAmount.decimals);
+    const rawAmount = amountStr.replace('.', '');
+    const tradeAmount = CurrencyAmount.fromRawAmount(tokenForAmount, rawAmount);
+
+    // Use default protocols (V2 and V3)
+    const protocolsToUse = [Protocol.V2, Protocol.V3]; // V4 requires different approach
+
+    // Get slippage from config
+    const slippageTolerance = new Percent(Math.floor(this.config.slippagePct * 100), 10000);
+
+    // Get quote from Universal Router
+    const quoteResult = await this.universalRouter.getQuote(
+      inputToken,
+      outputToken,
+      tradeAmount,
+      exactIn ? TradeType.EXACT_INPUT : TradeType.EXACT_OUTPUT,
+      {
+        slippageTolerance,
+        deadline: Math.floor(Date.now() / 1000 + 1800), // 30 minutes
+        recipient: walletAddress,
+        protocols: protocolsToUse,
+      },
+    );
+
+    return quoteResult;
   }
 
   /**
@@ -350,71 +405,13 @@ export class Uniswap {
     poolType: 'amm' | 'clmm',
   ): Promise<string | null> {
     try {
-      // Try to find pool in the config pools dictionary, passing in the network
+      // Only use the config pools dictionary, passing in the network
       const poolAddr = findPoolAddress(baseToken, quoteToken, poolType, this.networkName);
-      if (poolAddr) {
-        return poolAddr;
-      }
-
-      // Get token objects
-      const baseTokenObj = this.getTokenBySymbol(baseToken);
-      const quoteTokenObj = this.getTokenBySymbol(quoteToken);
-
-      if (!baseTokenObj || !quoteTokenObj) {
-        logger.error(`Tokens not found: ${baseToken}, ${quoteToken}`);
-        return null;
-      }
-
-      // If not found, try to get it from the factory
-      if (poolType === 'amm') {
-        // V2 pool
-        const pairAddress = await this.v2Factory.getPair(baseTokenObj.address, quoteTokenObj.address);
-
-        if (pairAddress && pairAddress !== constants.AddressZero) {
-          return pairAddress;
-        }
-      } else {
-        // V3 pool - try all fee tiers
-        const feeTiers = [
-          FeeAmount.MEDIUM, // Try medium fee first (0.3%)
-          FeeAmount.LOW, // Then low (0.05%)
-          FeeAmount.LOWEST, // Then lowest (0.01%)
-          FeeAmount.HIGH, // Finally high (1%)
-        ];
-
-        for (const fee of feeTiers) {
-          const addr = await this.v3Factory.getPool(baseTokenObj.address, quoteTokenObj.address, fee);
-
-          if (addr && addr !== constants.AddressZero) {
-            return addr;
-          }
-        }
-      }
-
-      return null;
+      return poolAddr || null;
     } catch (error) {
       logger.error(`Error finding default pool: ${error.message}`);
       return null;
     }
-  }
-
-  /**
-   * Get the slippage percent from string or config
-   * @param slippagePctStr Optional string representation of slippage value
-   * @returns A Percent object for use with Uniswap SDK
-   */
-  public getSlippagePct(slippagePctStr?: string): Percent {
-    if (slippagePctStr != null && isFractionString(slippagePctStr)) {
-      const fractionSplit = slippagePctStr.split('/');
-      return new Percent(fractionSplit[0], fractionSplit[1]);
-    }
-
-    // Use the global slippagePct setting
-    const slippagePct = this.config.slippagePct;
-
-    const nd = slippagePct.match(percentRegexp);
-    if (nd) return new Percent(nd[1], nd[2]);
-    throw new Error('Encountered a malformed percent string in the config for allowed slippage.');
   }
 
   /**

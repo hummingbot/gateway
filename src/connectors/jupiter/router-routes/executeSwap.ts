@@ -1,6 +1,5 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { Solana } from '../../../chains/solana/solana';
 import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { JupiterConfig } from '../jupiter.config';
@@ -38,8 +37,6 @@ async function executeSwap(
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
-
   fastify.post<{
     Body: ExecuteSwapRequestType;
     Reply: SwapExecuteResponseType;
@@ -49,16 +46,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Quote and execute a token swap on Jupiter in one step',
         tags: ['jupiter/swap'],
-        body: {
-          ...JupiterExecuteSwapRequest,
-          properties: {
-            ...JupiterExecuteSwapRequest.properties,
-            walletAddress: {
-              ...JupiterExecuteSwapRequest.properties.walletAddress,
-              examples: [walletAddressExample],
-            },
-          },
-        },
+        body: JupiterExecuteSwapRequest,
         response: { 200: SwapExecuteResponse },
       },
     },

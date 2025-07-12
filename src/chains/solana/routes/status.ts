@@ -1,12 +1,8 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import {
-  StatusRequestType,
-  StatusResponseType,
-  StatusRequestSchema,
-  StatusResponseSchema,
-} from '../../../schemas/chain-schema';
+import { StatusRequestType, StatusResponseType, StatusResponseSchema } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
+import { SolanaStatusRequest } from '../schemas';
 import { Solana } from '../solana';
 
 export async function getSolanaStatus(fastify: FastifyInstance, network: string): Promise<StatusResponseType> {
@@ -40,13 +36,7 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get Solana network status',
         tags: ['/chain/solana'],
-        querystring: {
-          ...StatusRequestSchema,
-          properties: {
-            ...StatusRequestSchema.properties,
-            network: { type: 'string', examples: ['mainnet-beta', 'devnet'] },
-          },
-        },
+        querystring: SolanaStatusRequest,
         response: {
           200: StatusResponseSchema,
         },

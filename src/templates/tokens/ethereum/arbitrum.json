@@ -15,24 +15,10 @@
   },
   {
     "chainId": 42161,
-    "name": "Bonk",
-    "symbol": "BONK",
-    "address": "0x09199d9a5f4448d0848e4395d065e1ad9c4a1f74",
-    "decimals": 5
-  },
-  {
-    "chainId": 42161,
     "name": "Coinbase Wrapped BTC",
     "symbol": "cbBTC",
     "address": "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
     "decimals": 8
-  },
-  {
-    "chainId": 42161,
-    "name": "Compound",
-    "symbol": "COMP",
-    "address": "0x354a6da3fcde098f8389cad84b0182725c6c91de",
-    "decimals": 18
   },
   {
     "chainId": 42161,
@@ -50,66 +36,10 @@
   },
   {
     "chainId": 42161,
-    "name": "The Graph",
-    "symbol": "GRT",
-    "address": "0x9623063377ad1b27544c965ccd7342f7ea7e88c7",
-    "decimals": 18
-  },
-  {
-    "chainId": 42161,
-    "name": "Lido DAO",
-    "symbol": "LDO",
-    "address": "0x13ad51ed4f1b7e9dc168d8a00cb3f4ddd85efa60",
-    "decimals": 18
-  },
-  {
-    "chainId": 42161,
-    "name": "Chainlink",
-    "symbol": "LINK",
-    "address": "0xf97f4df75117a78c1a5a0dbb814af92458539fb4",
-    "decimals": 18
-  },
-  {
-    "chainId": 42161,
-    "name": "Maker",
-    "symbol": "MKR",
-    "address": "0x2e9a6df78e42a30712c10a9dc4b1c8656f8f2879",
-    "decimals": 18
-  },
-  {
-    "chainId": 42161,
-    "name": "PepePAD",
-    "symbol": "PEPE",
-    "address": "0xef00278d7eadf3b2c05267a2f185e468ad7eab7d",
-    "decimals": 18
-  },
-  {
-    "chainId": 42161,
-    "name": "Sushi",
-    "symbol": "SUSHI",
-    "address": "0xd4d42f0b6def4ce0383636770ef773390d85c61a",
-    "decimals": 18
-  },
-  {
-    "chainId": 42161,
-    "name": "Uniswap",
-    "symbol": "UNI",
-    "address": "0xfa7f8980b0f1e64a2062791cc3b0871572f1f7f0",
-    "decimals": 18
-  },
-  {
-    "chainId": 42161,
     "name": "USD Coin",
     "symbol": "USDC",
     "address": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
     "decimals": 6
-  },
-  {
-    "chainId": 42161,
-    "name": "Sperax USD",
-    "symbol": "USDS",
-    "address": "0xd74f5255d557944cf7dd0e45ff521520002d5748",
-    "decimals": 18
   },
   {
     "chainId": 42161,
@@ -130,20 +60,6 @@
     "name": "WETH",
     "symbol": "WETH",
     "address": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
-    "decimals": 18
-  },
-  {
-    "chainId": 42161,
-    "name": "Wrapped stETH",
-    "symbol": "WSTETH",
-    "address": "0x5979d7b546e38e414f7e9822514be443a4800529",
-    "decimals": 18
-  },
-  {
-    "chainId": 42161,
-    "name": "yearn finance",
-    "symbol": "YFI",
-    "address": "0x82e3a8f066a6989666b031d916c43672085b1582",
     "decimals": 18
   }
 ]

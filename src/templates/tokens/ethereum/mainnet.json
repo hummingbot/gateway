@@ -8,27 +8,6 @@
   },
   {
     "chainId": 1,
-    "name": "ApeCoin",
-    "symbol": "APE",
-    "address": "0x4d224452801aced8b2f0aebe155379bb5d594381",
-    "decimals": 18
-  },
-  {
-    "chainId": 1,
-    "name": "Axie Infinity",
-    "symbol": "AXS",
-    "address": "0xbb0e17ef65f82ab018d8edd776e8dd940327b28b",
-    "decimals": 18
-  },
-  {
-    "chainId": 1,
-    "name": "Compound",
-    "symbol": "COMP",
-    "address": "0xc00e94cb662c3520282e6f5717214004a7f26888",
-    "decimals": 18
-  },
-  {
-    "chainId": 1,
     "name": "Curve DAO",
     "symbol": "CRV",
     "address": "0xd533a949740bb3306d119cc777fa900ba034cd52",
@@ -64,23 +43,9 @@
   },
   {
     "chainId": 1,
-    "name": "Decentraland",
-    "symbol": "MANA",
-    "address": "0x0f5d2fb29fb7d3cfee444a200298f468908cc942",
-    "decimals": 18
-  },
-  {
-    "chainId": 1,
     "name": "Pepe",
     "symbol": "PEPE",
     "address": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
-    "decimals": 18
-  },
-  {
-    "chainId": 1,
-    "name": "Quant",
-    "symbol": "QNT",
-    "address": "0x4a220e6096b25eadb88358cb44068a3248254675",
     "decimals": 18
   },
   {
@@ -134,7 +99,7 @@
   },
   {
     "chainId": 1,
-    "name": "WETH",
+    "name": "Wrapped Ethererum",
     "symbol": "WETH",
     "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
     "decimals": 18

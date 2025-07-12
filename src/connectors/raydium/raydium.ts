@@ -58,11 +58,7 @@ export class Raydium {
     try {
       this.solana = await Solana.getInstance(network);
 
-      // Load first wallet if available
-      const walletAddress = await Solana.getFirstWalletAddress();
-      if (walletAddress) {
-        this.owner = await this.solana.getWallet(walletAddress);
-      }
+      // Skip loading owner wallet - it will be provided in each operation
       const raydiumCluster = this.solana.network == `mainnet-beta` ? 'mainnet' : 'devnet';
 
       // Initialize Raydium SDK with optional owner
@@ -74,7 +70,7 @@ export class Raydium {
         blockhashCommitment: 'confirmed',
       });
 
-      logger.info('Raydium initialized' + (walletAddress ? ` with wallet: ${walletAddress}` : 'with no wallet'));
+      logger.info('Raydium initialized with no default wallet');
     } catch (error) {
       logger.error('Raydium initialization failed:', error);
       throw error;

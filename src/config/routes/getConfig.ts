@@ -11,7 +11,7 @@ export const getConfigRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description:
           'Get configuration settings. Returns all configurations if no parameters are specified. Use namespace to get a specific config (e.g., server, ethereum-mainnet, solana-mainnet-beta, uniswap).',
-        tags: ['system'],
+        tags: ['/config'],
         querystring: ConfigQuerySchema,
         response: {
           200: {

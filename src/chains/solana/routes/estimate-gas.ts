@@ -1,12 +1,8 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import {
-  EstimateGasRequestType,
-  EstimateGasResponse,
-  EstimateGasRequestSchema,
-  EstimateGasResponseSchema,
-} from '../../../schemas/chain-schema';
+import { EstimateGasRequestType, EstimateGasResponse, EstimateGasResponseSchema } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
+import { SolanaEstimateGasRequest } from '../schemas';
 import { Solana } from '../solana';
 
 export async function estimateGasSolana(
@@ -39,14 +35,7 @@ export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Estimate gas prices for Solana transactions',
         tags: ['/chain/solana'],
-        body: {
-          ...EstimateGasRequestSchema,
-          properties: {
-            ...EstimateGasRequestSchema.properties,
-            network: { type: 'string', examples: ['mainnet-beta', 'devnet'] },
-            gasLimit: { type: 'number', examples: [200000] },
-          },
-        },
+        body: SolanaEstimateGasRequest,
         response: {
           200: EstimateGasResponseSchema,
         },

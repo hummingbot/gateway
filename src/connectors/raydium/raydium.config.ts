@@ -1,10 +1,15 @@
+import { getAvailableSolanaNetworks } from '../../chains/solana/solana.utils';
 import { AvailableNetworks } from '../../services/base';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
 export namespace RaydiumConfig {
   // Supported networks for Raydium
   export const chain = 'solana';
-  export const networks = ['mainnet-beta', 'devnet'];
+  export const networks = getAvailableSolanaNetworks();
+  export type Network = string;
+
+  // Supported trading types
+  export const tradingTypes = ['amm', 'clmm'] as const;
 
   export interface RootConfig {
     // Global configuration
@@ -20,7 +25,7 @@ export namespace RaydiumConfig {
     availableNetworks: [
       {
         chain,
-        networks,
+        networks: networks,
       },
     ],
   };

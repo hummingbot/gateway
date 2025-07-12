@@ -1,12 +1,8 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import {
-  PollRequestType,
-  PollResponseType,
-  PollRequestSchema,
-  PollResponseSchema,
-} from '../../../schemas/chain-schema';
+import { PollRequestType, PollResponseType, PollResponseSchema } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
+import { SolanaPollRequest } from '../schemas';
 import { Solana } from '../solana';
 
 export async function pollSolanaTransaction(
@@ -131,8 +127,6 @@ export async function pollSolanaTransaction(
 }
 
 export const pollRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
-
   fastify.post<{
     Body: PollRequestType;
     Reply: PollResponseType;
@@ -142,26 +136,7 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Poll for the status of a Solana transaction',
         tags: ['/chain/solana'],
-        body: {
-          ...PollRequestSchema,
-          properties: {
-            ...PollRequestSchema.properties,
-            network: { type: 'string', examples: ['mainnet-beta', 'devnet'] },
-            signature: {
-              type: 'string',
-              examples: ['55ukR6VCt1sQFMC8Nyeo51R1SMaTzUC7jikmkEJ2jjkQNdqBxXHraH7vaoaNmf8rX4Y55EXAj8XXoyzvvsrQqWZa'],
-            },
-            tokens: {
-              type: 'array',
-              items: { type: 'string' },
-              examples: [['SOL', 'USDC']],
-            },
-            walletAddress: {
-              type: 'string',
-              examples: [walletAddressExample],
-            },
-          },
-        },
+        body: SolanaPollRequest,
         response: {
           200: PollResponseSchema,
         },

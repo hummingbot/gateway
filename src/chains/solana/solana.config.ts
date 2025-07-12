@@ -1,5 +1,7 @@
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 
+import { getAvailableSolanaNetworks } from './solana.utils';
+
 export interface SolanaNetworkConfig {
   nodeURL: string;
   nativeCurrencySymbol: string;
@@ -8,6 +10,14 @@ export interface SolanaNetworkConfig {
   confirmRetryCount: number;
   basePriorityFeePct: number;
 }
+
+export interface SolanaChainConfig {
+  defaultNetwork: string;
+  defaultWallet: string;
+}
+
+// Export available networks
+export const networks = getAvailableSolanaNetworks();
 
 export function getSolanaNetworkConfig(network: string): SolanaNetworkConfig {
   const namespaceId = `solana-${network}`;
@@ -18,5 +28,12 @@ export function getSolanaNetworkConfig(network: string): SolanaNetworkConfig {
     confirmRetryInterval: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryInterval'),
     confirmRetryCount: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryCount'),
     basePriorityFeePct: ConfigManagerV2.getInstance().get(namespaceId + '.basePriorityFeePct'),
+  };
+}
+
+export function getSolanaChainConfig(): SolanaChainConfig {
+  return {
+    defaultNetwork: ConfigManagerV2.getInstance().get('solana.defaultNetwork'),
+    defaultWallet: ConfigManagerV2.getInstance().get('solana.defaultWallet'),
   };
 }

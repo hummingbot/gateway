@@ -1,13 +1,12 @@
 import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
-import { logger } from '../services/logger';
-
-import { ZeroXConfig } from './0x/0x.config';
-import { JupiterConfig } from './jupiter/jupiter.config';
-import { MeteoraConfig } from './meteora/meteora.config';
-import { RaydiumConfig } from './raydium/raydium.config';
-import { UniswapConfig } from './uniswap/uniswap.config';
+import { ZeroXConfig } from '../../connectors/0x/0x.config';
+import { JupiterConfig } from '../../connectors/jupiter/jupiter.config';
+import { MeteoraConfig } from '../../connectors/meteora/meteora.config';
+import { RaydiumConfig } from '../../connectors/raydium/raydium.config';
+import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
+import { logger } from '../../services/logger';
 
 // Define the schema using Typebox
 const ConnectorSchema = Type.Object({
@@ -24,14 +23,14 @@ const ConnectorsResponseSchema = Type.Object({
 // Type for TypeScript
 type ConnectorsResponse = Static<typeof ConnectorsResponseSchema>;
 
-export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
+export const getConnectorsRoute: FastifyPluginAsync = async (fastify) => {
   // List available connectors
   fastify.get<{ Reply: ConnectorsResponse }>(
-    '/',
+    '/connectors',
     {
       schema: {
         description: 'Returns a list of available DEX connectors and their supported blockchain networks.',
-        tags: ['system'],
+        tags: ['/config'],
         response: {
           200: ConnectorsResponseSchema,
         },
@@ -43,33 +42,33 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
       const connectors = [
         {
           name: 'jupiter',
-          trading_types: ['router'],
+          trading_types: [...JupiterConfig.tradingTypes],
           chain: JupiterConfig.chain,
-          networks: JupiterConfig.networks,
+          networks: [...JupiterConfig.networks],
         },
         {
           name: 'meteora',
-          trading_types: ['clmm'],
+          trading_types: [...MeteoraConfig.tradingTypes],
           chain: MeteoraConfig.chain,
-          networks: MeteoraConfig.networks,
+          networks: [...MeteoraConfig.networks],
         },
         {
           name: 'raydium',
-          trading_types: ['amm', 'clmm'],
+          trading_types: [...RaydiumConfig.tradingTypes],
           chain: RaydiumConfig.chain,
-          networks: RaydiumConfig.networks,
+          networks: [...RaydiumConfig.networks],
         },
         {
           name: 'uniswap',
-          trading_types: ['amm', 'clmm', 'router'],
-          chain: 'ethereum',
-          networks: UniswapConfig.networks,
+          trading_types: [...UniswapConfig.tradingTypes],
+          chain: UniswapConfig.chain,
+          networks: [...UniswapConfig.networks],
         },
         {
           name: '0x',
-          trading_types: ['router'],
-          chain: 'ethereum',
-          networks: ZeroXConfig.networks.mainnet.availableNetworks,
+          trading_types: [...ZeroXConfig.tradingTypes],
+          chain: ZeroXConfig.chain,
+          networks: [...ZeroXConfig.networks],
         },
       ];
 
@@ -80,4 +79,4 @@ export const connectorsRoutes: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-export default connectorsRoutes;
+export default getConnectorsRoute;

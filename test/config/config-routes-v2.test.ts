@@ -11,7 +11,17 @@ jest.mock('../../src/services/logger', () => ({
 }));
 
 jest.mock('../../src/config/utils');
-jest.mock('../../src/services/config-manager-v2');
+jest.mock('../../src/services/config-manager-v2', () => ({
+  ConfigManagerV2: {
+    getInstance: jest.fn().mockReturnValue({
+      get: jest.fn().mockReturnValue(1), // Default value for config gets
+      set: jest.fn(),
+      getNamespace: jest.fn(),
+      allConfigurations: {},
+      allNamespaces: [],
+    }),
+  },
+}));
 jest.mock('fs');
 jest.mock('js-yaml');
 
@@ -57,6 +67,12 @@ describe('Config Routes V2 Tests', () => {
           slippagePct: '2/100',
           ttl: 300,
         },
+      },
+      namespaces: {
+        server: {},
+        'ethereum-mainnet': {},
+        'solana-mainnet-beta': {},
+        uniswap: {},
       },
     };
 

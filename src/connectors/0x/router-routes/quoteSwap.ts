@@ -111,11 +111,6 @@ async function quoteSwap(
   // Calculate price based on side
   const price = side === 'SELL' ? estimatedAmountOut / estimatedAmountIn : estimatedAmountIn / estimatedAmountOut;
 
-  // Calculate price with slippage
-  // For SELL: worst price = minAmountOut / estimatedAmountIn (minimum quote per base)
-  // For BUY: worst price = maxAmountIn / estimatedAmountOut (maximum quote per base)
-  const priceWithSlippage = side === 'SELL' ? minAmountOut / estimatedAmountIn : maxAmountIn / estimatedAmountOut;
-
   // Parse price impact
   const priceImpactPct = apiResponse.estimatedPriceImpact ? parseFloat(apiResponse.estimatedPriceImpact) * 100 : 0;
 
@@ -158,11 +153,9 @@ async function quoteSwap(
     amountIn: side === 'SELL' ? amount : estimatedAmountIn,
     amountOut: side === 'SELL' ? estimatedAmountOut : amount,
     price,
-    slippagePct,
-    priceWithSlippage,
+    priceImpactPct,
     minAmountOut,
     maxAmountIn,
-    priceImpactPct,
     gasEstimate,
     ...(expirationTime && { expirationTime }),
     // 0x-specific fields (only available for firm quotes)
@@ -177,8 +170,6 @@ async function quoteSwap(
 export { quoteSwap };
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
   fastify.get<{
     Querystring: QuoteSwapRequestType;
     Reply: Static<typeof ZeroXQuoteSwapResponse>;

@@ -1,62 +1,6 @@
 [
   {
     "chainId": 56,
-    "name": "Cardano Token",
-    "symbol": "ADA",
-    "address": "0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "ApeCoin",
-    "symbol": "APE",
-    "address": "0xC762043E211571eB34f1ef377e5e8e76914962f9",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Cosmos Token",
-    "symbol": "ATOM",
-    "address": "0x0Eb3a705fc54725037CC9e008bDede697f62F335",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Axie Infinity Shard",
-    "symbol": "AXS",
-    "address": "0x715D400F88C167884bbCc41C5FeA407ed4D2f8A0",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Basic Attention Token",
-    "symbol": "BAT",
-    "address": "0x101d82428437127bF1608F699CD651e6Abf9766E",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Bitcoin Cash Token",
-    "symbol": "BCH",
-    "address": "0x8fF795a6F4D97E7887C79beA79aba5cc76444aDf",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Bittorrent",
-    "symbol": "BTT",
-    "address": "0x352Cb5E19b12FC216548a2677bD0fce83BaE434B",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Compound Finance",
-    "symbol": "COMP",
-    "address": "0x52CE071Bd9b1C4B00A0b92D298c512478CaD67e8",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
     "name": "Binance Pegged DAI",
     "symbol": "DAI",
     "address": "0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3",
@@ -64,114 +8,9 @@
   },
   {
     "chainId": 56,
-    "name": "Dogecoin",
-    "symbol": "DOGE",
-    "address": "0xbA2aE424d960c26247Dd6c32edC70B295c744C43",
-    "decimals": 8
-  },
-  {
-    "chainId": 56,
-    "name": "Polkadot Token",
-    "symbol": "DOT",
-    "address": "0x7083609fCE4d1d8Dc0C979AAb8c869Ea2C873402",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Elrond",
-    "symbol": "EGLD",
-    "address": "0xbF7c81FFF98BbE61B40Ed186e4AfD6DDd01337fe",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "EOS Token",
-    "symbol": "EOS",
-    "address": "0x56b6fB708fC5732DEC1Afc8D8556423A2EDcCbD6",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
     "name": "Binance Pegged ETH",
     "symbol": "ETH",
     "address": "0x2170Ed0880ac9A755fd29B2688956BD959F933F8",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Filecoin",
-    "symbol": "FIL",
-    "address": "0x0D8Ce2A99Bb6e3B7Db580eD848240e4a0F9aE153",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Injective Protocol",
-    "symbol": "INJ",
-    "address": "0xa2B726B1145A4773F68593CF171187d8EBe4d495",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "JasmyCoin",
-    "symbol": "JASMY",
-    "address": "0x15669CF161946C09a8B207650BfBB00e3d8A2E3E",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "KAVA",
-    "symbol": "KAVA",
-    "address": "0x5F88AB06e8dfe89DF127B2430Bba4Af600866035",
-    "decimals": 6
-  },
-  {
-    "chainId": 56,
-    "name": "ChainLink Token",
-    "symbol": "LINK",
-    "address": "0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Litecoin Token",
-    "symbol": "LTC",
-    "address": "0x4338665CBB7B2485A8855A139b75D5e34AB0DB94",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Decentraland",
-    "symbol": "MANA",
-    "address": "0x26433c8127d9b4e9B71Eaa15111DF99Ea2EeB2f8",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "The Sandbox",
-    "symbol": "SAND",
-    "address": "0x67b725d7e342d7B611fa85e859Df9697D9378B2e",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Sushi",
-    "symbol": "SUSHI",
-    "address": "0x947950BcC74888a40Ffa2593C5798F11Fc9124C4",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Tron",
-    "symbol": "TRX",
-    "address": "0x85EAC5Ac2F758618dFa09bDbe0cf174e7d574D5B",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Uniswap",
-    "symbol": "UNI",
-    "address": "0xBf5140A22578168FD562DCcF235E5D43A02ce9B1",
     "decimals": 18
   },
   {
@@ -193,34 +32,6 @@
     "name": "WBNB Token",
     "symbol": "WBNB",
     "address": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "XRP Token",
-    "symbol": "XRP",
-    "address": "0x1D2F0da169ceB9fC7B3144628dB156f3F6c60dBE",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Tezos Token",
-    "symbol": "XTZ",
-    "address": "0x16939ef78684453bfDFb47825F8a5F714f12623a",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "yearn.finance",
-    "symbol": "YFI",
-    "address": "0x88f1A5ae2A3BF98AEAF342D26B30a79438c9142e",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Zcash Token",
-    "symbol": "ZEC",
-    "address": "0x1Ba42e5193dfA8B03D15dd1B86a3113bbBEF8Eeb",
     "decimals": 18
   }
 ]

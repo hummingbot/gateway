@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import { getAvailableSolanaNetworks } from '../../../chains/solana/solana.utils';
 import {
   MeteoraPoolInfo,
   MeteoraPoolInfoSchema,
@@ -22,7 +23,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         querystring: {
           ...GetPoolInfoRequest,
           properties: {
-            network: { type: 'string', examples: ['mainnet-beta'] },
+            network: { type: 'string', examples: getAvailableSolanaNetworks() },
             poolAddress: {
               type: 'string',
               examples: ['2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3'],

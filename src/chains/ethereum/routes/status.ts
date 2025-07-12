@@ -1,13 +1,9 @@
 import { FastifyPluginAsync } from 'fastify';
 
-import {
-  StatusRequestType,
-  StatusResponseType,
-  StatusRequestSchema,
-  StatusResponseSchema,
-} from '../../../schemas/chain-schema';
+import { StatusRequestType, StatusResponseType, StatusResponseSchema } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
+import { EthereumStatusRequest } from '../schemas';
 
 export async function getEthereumStatus(network: string): Promise<StatusResponseType> {
   try {
@@ -55,16 +51,7 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get Ethereum chain status',
         tags: ['/chain/ethereum'],
-        querystring: {
-          ...StatusRequestSchema,
-          properties: {
-            ...StatusRequestSchema.properties,
-            network: {
-              type: 'string',
-              examples: ['mainnet', 'arbitrum', 'optimism', 'base', 'sepolia', 'bsc', 'avalanche', 'celo', 'polygon'],
-            },
-          },
-        },
+        querystring: EthereumStatusRequest,
         response: {
           200: StatusResponseSchema,
         },
