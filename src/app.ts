@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
+import fastifyRateLimit from '@fastify/rate-limit';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -145,6 +146,22 @@ const configureGatewayServer = () => {
   if (docsServer) {
     docsServer.withTypeProvider<TypeBoxTypeProvider>();
   }
+
+  // Register rate limiting globally
+  server.register(fastifyRateLimit, {
+    max: 100, // maximum 100 requests
+    timeWindow: '1 minute', // per 1 minute window
+    global: true, // apply to all routes
+    errorResponseBuilder: function (_request, context) {
+      return {
+        statusCode: 429,
+        error: 'Too Many Requests',
+        message: `Rate limit exceeded, retry in ${context.after}`,
+        date: Date.now(),
+        expiresIn: context.ttl,
+      };
+    },
+  });
 
   // Register Swagger
   server.register(fastifySwagger, swaggerOptions);

@@ -46,6 +46,7 @@
     "@ethersproject/networks": "5.7.0",
     "@ethersproject/providers": "5.7.0",
     "@ethersproject/solidity": "5.7.0",
+    "@fastify/rate-limit": "^9.1.0",
     "@fastify/sensible": "5.0.0",
     "@fastify/swagger": "^8.15.0",
     "@fastify/swagger-ui": "^4.2.0",
