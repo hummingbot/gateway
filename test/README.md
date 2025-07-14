@@ -1,24 +1,49 @@
 # Gateway Tests
 
-This directory contains tests for the Gateway API. The test structure has been designed to be simple, maintainable, and easy to extend for community contributors.
+This directory contains comprehensive test suites for the Gateway API. The test structure is designed to be modular, maintainable, and easy to extend.
 
 ## Test Structure
 
 ```
 /test
-  /chains/                    # Chain endpoint tests (ethereum.test.js, solana.test.js)
+  /chains/                    # Chain endpoint tests
+    chain.test.js            # Chain routes test
+    ethereum.test.js         # Ethereum chain tests
+    solana.test.js           # Solana chain tests
   /connectors/                # Connector endpoint tests by protocol
     /jupiter/                 # Jupiter connector tests
+      swap.test.js           # Swap operation tests
     /uniswap/                 # Uniswap connector tests
+      amm.test.js            # V2 AMM tests
+      clmm.test.js           # V3 CLMM tests
+      swap.test.js           # Universal Router tests
     /raydium/                 # Raydium connector tests
+      amm.test.js            # AMM operation tests
+      clmm.test.js           # CLMM operation tests
     /meteora/                 # Meteora connector tests
+      clmm.test.js           # CLMM operation tests
   /mocks/                     # Mock response data
     /chains/                  # Chain mock responses
+      chains.json            # Chain list response
+      /ethereum/             # Ethereum mock responses
+        balance.json
+        status.json
+        tokens.json
+      /solana/               # Solana mock responses
+        balance.json
+        status.json
+        tokens.json
     /connectors/              # Connector mock responses
+      connectors.json        # Connector list response
+      /jupiter/
+      /raydium/
+      /meteora/
+      /uniswap/
   /services/                  # Service tests
     /data/                    # Test data files
   /wallet/                    # Wallet tests
-  /utils/                     # Test utilities
+  /config/                    # Configuration tests
+  jest-setup.js              # Test environment configuration
 ```
 
 ## Running Tests
@@ -27,18 +52,24 @@ This directory contains tests for the Gateway API. The test structure has been d
 # Run all tests
 pnpm test
 
+# Run tests with coverage report
+pnpm test:cov
+
+# Run tests in watch mode (for development)
+pnpm test:debug
+
 # Run chain tests only
 GATEWAY_TEST_MODE=dev jest --runInBand test/chains
 
-# Run connector tests only
-GATEWAY_TEST_MODE=dev jest --runInBand test/connectors
+# Run specific connector tests
+GATEWAY_TEST_MODE=dev jest --runInBand test/connectors/uniswap
+GATEWAY_TEST_MODE=dev jest --runInBand test/connectors/raydium/amm.test.js
 
-# Run services tests only
-GATEWAY_TEST_MODE=dev jest --runInBand test/services
-
-# Run specific test
+# Run a single test file
 GATEWAY_TEST_MODE=dev jest --runInBand test/chains/ethereum.test.js
-GATEWAY_TEST_MODE=dev jest --runInBand test/connectors/jupiter/swap.test.js
+
+# Clear Jest cache if tests are behaving unexpectedly
+pnpm test:clear-cache
 ```
 
 ## Test Setup and Configuration
@@ -66,55 +97,127 @@ The test environment is configured in `test/jest-setup.js`, which:
 
 ### Test Environment Variables
 
-Tests use the following environment variables:
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `GATEWAY_TEST_MODE=dev` | Runs tests with mocked blockchain connections | Yes |
+| `START_SERVER=true` | Required when starting the actual server | No (tests only) |
 
-- `GATEWAY_TEST_MODE=dev` - Runs tests in development mode without requiring real blockchain connections
-- Running tests without this variable will attempt to connect to real networks and may fail
+**Note**: Always use `GATEWAY_TEST_MODE=dev` for unit tests to avoid real blockchain connections
 
 ## Mock Responses
 
-All tests use mock responses stored in JSON files in the `test/mocks` directory, organized by chain and connector. These files can be easily updated to match current API responses for verification or to add new test cases.
+Tests use mock responses stored in JSON files in the `test/mocks` directory. This approach ensures:
+- Tests run without blockchain connections
+- Consistent test results
+- Fast test execution
+- CI/CD compatibility
 
-Directory structure for mocks:
+### Mock File Naming Convention
+
+| Operation | Mock File Name |
+|-----------|----------------||
+| Chain status | `status.json` |
+| Token balances | `balance.json` |
+| Token info | `tokens.json` |
+| Pool info | `{type}-pool-info.json` |
+| Swap quote | `{type}-quote-swap.json` |
+| Position info | `{type}-position-info.json` |
+
+Where `{type}` is either `amm` or `clmm`.
+
+### Updating Mock Responses
+
+1. **Start Gateway locally**:
+   ```bash
+   pnpm start --passphrase=test --dev
+   ```
+
+2. **Make API calls** to get real responses:
+   ```bash
+   curl http://localhost:15888/chains/ethereum/status
+   ```
+
+3. **Save responses** in the appropriate mock file:
+   ```bash
+   # Example: Save Ethereum status response
+   curl http://localhost:15888/chains/ethereum/status > test/mocks/chains/ethereum/status.json
+   ```
+
+4. **Verify tests** pass with updated mocks:
+   ```bash
+   GATEWAY_TEST_MODE=dev jest --runInBand test/chains/ethereum.test.js
+   ```
+
+## Writing Tests
+
+### Test Structure Example
+
+```javascript
+// test/connectors/uniswap/amm.test.js
+describe('Uniswap AMM Routes', () => {
+  const mockApp = {
+    inject: (options) => {
+      // Mock implementation
+    }
+  };
+
+  beforeEach(() => {
+    // Setup mocks
+  });
+
+  it('should return pool information', async () => {
+    const response = await mockApp.inject({
+      method: 'GET',
+      url: '/connectors/uniswap/amm/pool-info',
+      query: {
+        chain: 'ethereum',
+        network: 'mainnet',
+        tokenA: 'USDC',
+        tokenB: 'WETH'
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      poolAddress: expect.any(String),
+      token0: expect.any(String),
+      token1: expect.any(String)
+    });
+  });
+});
 ```
-/mocks
-  /chains/
-    /ethereum/      # Generic Ethereum mock responses
-    /solana/        # Generic Solana mock responses
-  /connectors/
-    /jupiter/       # Jupiter connector mock responses
-    /raydium/       # Raydium connector mock responses
-    /meteora/       # Meteora connector mock responses
-    /uniswap/       # Uniswap connector mock responses
-```
 
-To update mock responses with live data:
+### Testing Best Practices
 
-1. Run the Gateway API locally
-2. Make the API calls you want to test
-3. Save the responses as JSON files in the appropriate mock directory
-4. Run the tests to verify they work with the updated mock data
+1. **Use descriptive test names** that explain what is being tested
+2. **Test both success and error cases**
+3. **Verify response structure** matches TypeBox schemas
+4. **Mock external dependencies** (blockchain calls, API requests)
+5. **Keep tests isolated** - each test should be independent
+6. **Use beforeEach/afterEach** for setup and cleanup
 
-This approach ensures the tests run without requiring actual network connections, making them suitable for CI/CD environments.
+### Coverage Requirements
 
-## Supported Schema Types
+- New features must have **minimum 75% code coverage**
+- Run `pnpm test:cov` to check coverage
+- Coverage reports are generated in `/coverage` directory
 
-Gateway supports the following schema types for DEX connectors:
+## Troubleshooting Tests
 
-1. **Swap Schema**: Basic token swap operations common to all DEXs
-   - Quote Swap: Get price quotes for token swaps
-   - Execute Swap: Execute token swaps between pairs
+### Common Issues
 
-2. **AMM Schema**: Automated Market Maker operations
-   - Pool Info: Get information about liquidity pools
-   - Add Liquidity: Add liquidity to pools
-   - Remove Liquidity: Remove liquidity from pools
-   - Position Info: Get information about liquidity positions
+1. **Tests timing out**
+   - Increase timeout in specific test: `jest.setTimeout(30000)`
+   - Check for unresolved promises
 
-3. **CLMM Schema**: Concentrated Liquidity Market Maker operations
-   - Pool Info: Get information about concentrated liquidity pools
-   - Open Position: Open a new concentrated liquidity position
-   - Close Position: Close a concentrated liquidity position
-   - Add Liquidity: Add liquidity to a position
-   - Remove Liquidity: Remove liquidity from a position
-   - Collect Fees: Collect fees from a position
+2. **Mock data mismatch**
+   - Update mock files with current API responses
+   - Verify mock file paths are correct
+
+3. **Module not found errors**
+   - Clear Jest cache: `pnpm test:clear-cache`
+   - Check import paths use correct aliases
+
+4. **Native module errors**
+   - These are handled by `jest-setup.js`
+   - If new errors appear, add mocks to setup file

@@ -12,21 +12,7 @@ import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const solana = await Solana.getInstance('mainnet-beta');
-  let firstWalletAddress = '<solana-wallet-address>';
-
-  const foundWallet = await solana.getFirstWalletAddress();
-  if (foundWallet) {
-    firstWalletAddress = foundWallet;
-  } else {
-    logger.debug('No wallets found for examples in schema');
-  }
-
-  // Update schema example
-  GetPositionInfoRequest.properties.walletAddress.examples = [
-    firstWalletAddress,
-  ];
+  const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.get<{
     Querystring: GetPositionInfoRequestType;
@@ -41,15 +27,8 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           ...GetPositionInfoRequest,
           properties: {
             network: { type: 'string', examples: ['mainnet-beta'] },
-            walletAddress: {
-              type: 'string',
-              description: 'Will use first available wallet if not specified',
-              examples: [firstWalletAddress],
-            },
-            positionAddress: {
-              type: 'string',
-              description: 'Meteora position',
-            },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
+            positionAddress: { type: 'string' },
           },
         },
         response: {

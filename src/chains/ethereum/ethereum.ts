@@ -7,6 +7,7 @@ import {
   Transaction,
   utils,
   Wallet,
+  ethers,
 } from 'ethers';
 import { getAddress } from 'ethers/lib/utils';
 import fse from 'fs-extra';
@@ -33,6 +34,7 @@ export type NewDebugMsgHandler = (msg: any) => void;
 
 export class Ethereum {
   private static _instances: { [name: string]: Ethereum };
+  private static _walletAddressExample: string | null = null;
   public provider: providers.StaticJsonRpcProvider;
   public tokenList: TokenInfo[] = [];
   public tokenMap: Record<string, TokenInfo> = {};
@@ -286,9 +288,6 @@ export class Ethereum {
   }
 
   /**
-   * Get a wallet from stored encrypted key
-   */
-  /**
    * Validate Ethereum address format
    * @param address The address to validate
    * @returns The checksummed address if valid
@@ -333,8 +332,7 @@ export class Ethereum {
   /**
    * Get the first available Ethereum wallet address
    */
-  public async getFirstWalletAddress(): Promise<string | null> {
-    // Specifically look in the ethereum subdirectory, not in any other chain's directory
+  public static async getFirstWalletAddress(): Promise<string | null> {
     const path = `${walletPath}/ethereum`;
     try {
       // Create directory if it doesn't exist
@@ -348,20 +346,19 @@ export class Ethereum {
         return null;
       }
 
-      // Return first wallet address (without .json extension)
+      // Get the first wallet address (without .json extension)
       const walletAddress = walletFiles[0].slice(0, -5);
 
-      // Validate it looks like an Ethereum address (0x followed by 40 hex chars)
-      if (!walletAddress.startsWith('0x') || walletAddress.length !== 42) {
+      try {
+        // Attempt to validate the address
+        return Ethereum.validateAddress(walletAddress);
+      } catch (e) {
         logger.warn(
           `Invalid Ethereum address found in wallet directory: ${walletAddress}`,
         );
         return null;
       }
-
-      return walletAddress;
-    } catch (error) {
-      logger.error(`Error getting Ethereum wallet address: ${error.message}`);
+    } catch (err) {
       return null;
     }
   }
@@ -635,5 +632,35 @@ export class Ethereum {
     // Create transaction to call deposit() function
     logger.info(`Wrapping ${utils.formatEther(amountInWei)} ETH to WETH`);
     return await wrappedContract.deposit(params);
+  }
+
+  /**
+   * Get a wallet address example for schema documentation
+   */
+  public static async getWalletAddressExample(): Promise<string> {
+    if (Ethereum._walletAddressExample) {
+      return Ethereum._walletAddressExample;
+    }
+    const defaultAddress = '0x0000000000000000000000000000000000000000';
+    try {
+      const foundWallet = await Ethereum.getFirstWalletAddress();
+      if (foundWallet) {
+        Ethereum._walletAddressExample = foundWallet;
+        return foundWallet;
+      }
+      logger.debug('No wallets found for examples in schema, using default.');
+      Ethereum._walletAddressExample = defaultAddress;
+      return defaultAddress;
+    } catch (error) {
+      logger.error(
+        `Error getting Ethereum wallet address for example: ${error.message}`,
+      );
+      return defaultAddress;
+    }
+  }
+
+  // Check if the address is a valid EVM address
+  public static isAddress(address: string): boolean {
+    return ethers.utils.isAddress(address);
   }
 }

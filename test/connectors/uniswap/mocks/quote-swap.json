@@ -7,6 +7,6 @@
   "baseTokenBalanceChange": -1.0,
   "quoteTokenBalanceChange": 1800.0,
   "gasPrice": 5.0,
-  "gasLimit": 250000,
-  "gasCost": 0.00125
+  "gasLimit": 300000,
+  "gasCost": 0.0015
 }

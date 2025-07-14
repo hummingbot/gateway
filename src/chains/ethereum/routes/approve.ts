@@ -174,16 +174,7 @@ export async function approveEthereumToken(
 }
 
 export const approveRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const ethereum = await Ethereum.getInstance('base');
-  let firstWalletAddress = '<ethereum-wallet-address>';
-
-  try {
-    firstWalletAddress =
-      (await ethereum.getFirstWalletAddress()) || firstWalletAddress;
-  } catch (error) {
-    logger.warn('No wallets found for examples in schema');
-  }
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.post<{
     Body: ApproveRequestType;
@@ -211,7 +202,7 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
               'worldchain',
             ],
           }),
-          address: Type.String({ examples: [firstWalletAddress] }),
+          address: Type.String({ examples: [walletAddressExample] }),
           spender: Type.String({
             examples: [
               'uniswap/clmm',

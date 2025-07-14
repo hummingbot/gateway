@@ -22,16 +22,8 @@ import { formatTokenAmount } from '../uniswap.utils';
 import { checkLPAllowance } from './positionInfo';
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const ethereum = await Ethereum.getInstance('base');
-  let firstWalletAddress = '<ethereum-wallet-address>';
-
-  try {
-    firstWalletAddress =
-      (await ethereum.getFirstWalletAddress()) || firstWalletAddress;
-  } catch (error) {
-    logger.warn('No wallets found for examples in schema');
-  }
+  await fastify.register(require('@fastify/sensible'));
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.post<{
     Body: RemoveLiquidityRequestType;
@@ -47,7 +39,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...RemoveLiquidityRequest.properties,
             network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: [firstWalletAddress] },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
             poolAddress: {
               type: 'string',
               examples: [''],
@@ -203,7 +195,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             routerAddress,
             liquidityToRemove,
           );
-        } catch (error) {
+        } catch (error: any) {
           throw fastify.httpErrors.badRequest(error.message);
         }
 

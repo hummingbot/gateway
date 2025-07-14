@@ -7,7 +7,6 @@ const axios = require('axios');
 // Constants for this test file
 const CONNECTOR = 'meteora';
 const PROTOCOL = 'clmm';
-const CHAIN = 'solana';
 const NETWORK = 'mainnet-beta';
 const BASE_TOKEN = 'SOL';
 const QUOTE_TOKEN = 'USDC';

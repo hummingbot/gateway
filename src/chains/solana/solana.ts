@@ -92,6 +92,7 @@ export class Solana {
   private _tokenMap: Record<string, TokenInfo> = {};
 
   private static _instances: { [name: string]: Solana };
+  private static _walletAddressExample: string | null = null;
 
   private static lastPriorityFeeEstimate: {
     timestamp: number;
@@ -1238,7 +1239,7 @@ export class Solana {
   }
 
   // Add new method to get first wallet address
-  public async getFirstWalletAddress(): Promise<string | null> {
+  public static async getFirstWalletAddress(): Promise<string | null> {
     // Specifically look in the solana subdirectory, not in any other chain's directory
     const safeChain = sanitizePathComponent('solana');
     const path = `${walletPath}/${safeChain}`;
@@ -1269,6 +1270,28 @@ export class Solana {
     } catch (error) {
       logger.error(`Error getting Solana wallet address: ${error.message}`);
       return null;
+    }
+  }
+
+  public static async getWalletAddressExample(): Promise<string> {
+    if (Solana._walletAddressExample) {
+      return Solana._walletAddressExample;
+    }
+    const defaultAddress = '11111111111111111111111111111111';
+    try {
+      const foundWallet = await Solana.getFirstWalletAddress();
+      if (foundWallet) {
+        Solana._walletAddressExample = foundWallet;
+        return foundWallet;
+      }
+      logger.debug('No wallets found for examples in schema, using default.');
+      Solana._walletAddressExample = defaultAddress;
+      return defaultAddress;
+    } catch (error) {
+      logger.error(
+        `Error getting Solana wallet address for example: ${error.message}`,
+      );
+      return defaultAddress;
     }
   }
 

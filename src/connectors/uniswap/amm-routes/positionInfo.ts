@@ -31,22 +31,13 @@ export async function checkLPAllowance(
   const currentLpAllowance = BigNumber.from(lpAllowance.value);
   if (currentLpAllowance.lt(requiredAmount)) {
     throw new Error(
-      `Insufficient LP token allowance. Please approve at least ${formatTokenAmount(requiredAmount.toString(), 18)} LP tokens for the Uniswap router (${routerAddress})`,
+      `Insufficient LP token allowance. Please approve at least ${formatTokenAmount(requiredAmount.toString(), 18)} LP tokens (${poolAddress}) for the Uniswap router (${routerAddress})`,
     );
   }
 }
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const ethereum = await Ethereum.getInstance('base');
-  let firstWalletAddress = '<ethereum-wallet-address>';
-
-  try {
-    firstWalletAddress =
-      (await ethereum.getFirstWalletAddress()) || firstWalletAddress;
-  } catch (error) {
-    logger.warn('No wallets found for examples in schema');
-  }
+  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.get<{
     Querystring: GetPositionInfoRequestType;
@@ -61,13 +52,13 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           ...GetPositionInfoRequest,
           properties: {
             network: { type: 'string', default: 'base' },
+            walletAddress: { type: 'string', examples: [walletAddressExample] },
             poolAddress: {
               type: 'string',
               examples: [''],
             },
             baseToken: { type: 'string', examples: ['WETH'] },
             quoteToken: { type: 'string', examples: ['USDC'] },
-            walletAddress: { type: 'string', examples: [firstWalletAddress] },
           },
         },
         response: {
