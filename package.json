@@ -85,6 +85,7 @@
     "fastify": "^4.29.0",
     "fastify-type-provider-zod": "^2.1.0",
     "fs-extra": "^10.1.0",
+    "goosefx-amm-sdk": "^2.0.0",
     "handle": "link:@oclif/errors/handle",
     "js-yaml": "^4.1.0",
     "level": "^8.0.1",

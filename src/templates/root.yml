@@ -27,3 +27,7 @@ configurations:
   $namespace raydium:
     configurationPath: raydium.yml
     schemaPath: raydium-schema.json
+
+  $namespace gamma:
+    configurationPath: gamma.yml
+    schemaPath: gamma-schema.json

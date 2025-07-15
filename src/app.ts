@@ -17,6 +17,7 @@ import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
 import { configRoutes } from './config/config.routes';
 import { connectorsRoutes } from './connectors/connector.routes';
+import { gammaRoutes } from './connectors/gamma/gamma.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
@@ -90,6 +91,9 @@ const swaggerOptions = {
         name: 'uniswap/clmm',
         description: 'Uniswap V3 pool connector (Ethereum)',
       },
+      { name: 'gamma/amm',
+        description: 'Gamma AMM connector endpoints',
+      }
     ],
     components: {
       parameters: {
@@ -206,6 +210,7 @@ const configureGatewayServer = () => {
     // Raydium routes
     app.register(raydiumRoutes.clmm, { prefix: '/connectors/raydium/clmm' });
     app.register(raydiumRoutes.amm, { prefix: '/connectors/raydium/amm' });
+    app.register(gammaRoutes.amm, { prefix: '/connectors/gamma/amm' });
 
     app.register(uniswapRoutes, { prefix: '/connectors/uniswap' });
 
