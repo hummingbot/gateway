@@ -6,18 +6,22 @@ export class RnpExampleTestHarness extends AbstractGatewayTestHarness<RnpExample
   readonly dependencyContracts = {
     // Defines a contract for `this.dep1.methodA()`. Since it's listed here,
     // it's "managed" and must be mocked in "Play" tests.
-    dep1_A: this.dependencyFactory.instanceProperty('dep1', 'methodA'),
-    dep1_B: this.dependencyFactory.instanceProperty('dep1', 'methodB'),
+    dep1_A: this.dependencyFactory.instanceProperty('dep1', (x) => x.methodA),
+    dep1_B: this.dependencyFactory.instanceProperty('dep1', (x) => x.methodB),
 
     // The `allowPassThrough: true` flag creates an exception. `dep1.methodC`
     // is still "managed", but it will call its real implementation during
     // "Play" tests instead of throwing an error if it isn't mocked.
-    dep1_C: this.dependencyFactory.instanceProperty('dep1', 'methodC', true),
-    dep1_D: this.dependencyFactory.instanceProperty('dep1', 'methodD'),
+    dep1_C: this.dependencyFactory.instanceProperty(
+      'dep1',
+      (x) => x.methodC,
+      true,
+    ),
+    dep1_D: this.dependencyFactory.instanceProperty('dep1', (x) => x.methodD),
 
     // This defines a contract for a method on a class prototype. This is
     // necessary for dependencies that are instantiated inside other methods.
-    dep3_X: this.dependencyFactory.prototype(DepProto, 'methodX'),
+    dep3_X: this.dependencyFactory.prototype(DepProto, (x) => x.methodX),
 
     // CRITICAL NOTE: Because other `dep1` methods are listed above, the entire
     // `dep1` object is now "managed". This means `dep1.methodUnmapped()`
