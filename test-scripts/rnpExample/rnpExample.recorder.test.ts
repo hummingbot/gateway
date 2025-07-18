@@ -1,54 +1,45 @@
+import {
+  useABC,
+  useB_superJsonMethod,
+  useBUnloaded_Recorder,
+  useDTwice,
+  usePrototypeDep,
+  useUnlistedDep,
+  useUnmappedMethod_Recorder,
+} from '#test/rnpExample/rnpExample.api-test-cases';
 import { RnpExampleTestHarness } from '#test/rnpExample/rnpExample.test-harness';
-import { 
-   useABC,
-   useUnlistedDep,
-   useDTwice,
-   usePrototypeDep,
-   useUnmappedMethod_Recorder,
-   useB_superJsonMethod,
-   useBUnloaded_Recorder,
- } from '#test/rnpExample/rnpExample.api-test-cases';
 
 describe('RnpExample', () => {
-  let harness: RnpExampleTestHarness;
-  jest.setTimeout(1200000);
-  
+  let _harness: RnpExampleTestHarness;
+  const harness = () => _harness;
+  jest.setTimeout(10000);
+
   beforeAll(async () => {
-    harness = new RnpExampleTestHarness();
-    await harness.initRecorderTests();
+    _harness = new RnpExampleTestHarness();
+    await _harness.initRecorderTests();
   });
 
   afterEach(async () => {
-    await harness.reset();
+    await _harness.reset();
   });
 
   afterAll(async () => {
-    await harness.teardown();
+    await _harness.teardown();
   });
 
-  it('useABC', async () => {
-    await useABC.processRecorderRequest(harness);
-  });
-
-  it('useB_superJsonMethod', async () => {
-    await useB_superJsonMethod.processRecorderRequest(harness);
-  });
- 
-  it('useDTwice', async () => {
-    await useDTwice.processRecorderRequest(harness);
-  });
- 
-  it('usePrototypeDep', async () => {
-    await usePrototypeDep.processRecorderRequest(harness);
-  });
+  it('useABC', useABC.createRecordTest(harness));
   
-  it('useUnlistedDep', async () => {
-    await useUnlistedDep.processRecorderRequest(harness);
-  });
-
-  it('useBUnloaded_Recorder', async () => {
-    await useBUnloaded_Recorder.processRecorderRequest(harness);
-  });
+  it('useB_superJsonMethod', useB_superJsonMethod.createRecordTest(harness));
+  
+  it('useDTwice', useDTwice.createRecordTest(harness));
+  
+  it('usePrototypeDep', usePrototypeDep.createRecordTest(harness));
+  
+  it('useUnlistedDep', useUnlistedDep.createRecordTest(harness));
+  
+  it('useBUnloaded_Recorder', useBUnloaded_Recorder.createRecordTest(harness));
+  
+  it('useUnmappedMethod_Recorder', useUnmappedMethod_Recorder.createRecordTest(harness));
 
   it('useBUnloaded_Mocked', async () => {
     // Create expected snapshot for running test in "Play" mode
@@ -58,10 +49,6 @@ describe('RnpExample', () => {
         'Failed to useSuperJsonMethod: Mocked dependency was called without a mock loaded: dep1_B. Either load a mock or allowPassThrough.',
       statusCode: 500,
     }).toMatchSnapshot({});
-  });
-
-  it('useUnmappedMethod_Recorder', async () => {
-    await useUnmappedMethod_Recorder.processRecorderRequest(harness);
   });
 
   it('useUnmappedMethod_Mocked', async () => {

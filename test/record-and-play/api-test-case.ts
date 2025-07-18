@@ -137,4 +137,18 @@ export class APITestCase<Harness extends AbstractGatewayTestHarness<any>>
       throw error;
     }
   }
+
+  public createPlayTest(getHarness: () => Harness): () => Promise<void> {
+    return async () => {
+      const harness = getHarness();
+      await this.processPlayRequest(harness);
+    };
+  }
+
+  public createRecordTest(getHarness: () => Harness): () => Promise<void> {
+    return async () => {
+      const harness = getHarness();
+      await this.processRecorderRequest(harness);
+    };
+  }
 }

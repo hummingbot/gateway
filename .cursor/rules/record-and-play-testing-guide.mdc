@@ -32,13 +32,13 @@ The RnP framework consists of four key types of files that work together for a g
 ### `*.recorder.test.ts` - The Recorder
 *   **Location:** `test-scripts/{chains|connectors}/{feature-name}/{feature-name}.recorder.test.ts`
 *   **Example:** `test-scripts/rnpExample/rnpExample.recorder.test.ts`
-*   **Purpose:** The sole responsibility of this test suite is to generate mock files. It imports a `TestCase` and calls `processRecorderRequest(harness)` on it to execute against live services and save the results.
+*   **Purpose:** The sole responsibility of this test suite is to generate mock files. It imports a `TestCase` and uses the `createRecordTest(harness)` method to generate a one-line `it` block that executes the test against live services.
 *   **Execution:** Recorder tests are slow, make real network calls, and are run individually.
 
 ### `*.test.ts` - The Unit Test
 *   **Location:** `test/{chains|connectors}/{feature-name}/{feature-name}.test.ts`
 *   **Example:** `test/rnpExample/rnpExample.test.ts`
-*   **Purpose:** This is the fast, isolated unit test suite. It imports a `TestCase` and calls `processPlayRequest(harness)` on it. This uses the generated mocks to validate application logic without making network calls.
+*   **Purpose:** This is the fast, isolated unit test suite. It imports a `TestCase` and uses the `createPlayTest(harness)` method to generate a one-line `it` block that validates application logic against generated mocks.
 *   **Execution:** These tests are fast and run as part of the main `pnpm test` suite.
 
 ## 3. Directory and Naming Conventions
@@ -56,7 +56,7 @@ The framework relies on a strict set of conventions. These are functional requir
 *   **Recorder Tests:** `test-scripts/connectors/raydium/`
 
 ### Test Naming
-The `describe()` and `it()` block names in the recorder and the unit test **MUST MATCH EXACTLY**. Compare the `it('useABC', ...)` blocks in `rnpExample.recorder.test.ts` and `rnpExample.test.ts` to see this in practice. This naming convention is how Jest associates API response snapshots with the correct test.
+The `describe()` and `it()` block names in the recorder and the unit test **MUST MATCH EXACTLY**. The test case's variable name is used for the `it` block's name to ensure consistency. Compare the `it('useABC', ...)` blocks in `rnpExample.recorder.test.ts` and `rnpExample.test.ts` to see this in practice. This naming convention is how Jest associates API response snapshots with the correct test.
 
 ### Command Segregation
 *   **To run fast unit tests:**
@@ -91,8 +91,10 @@ Follow this step-by-step process. In these paths, `{feature-type}` is either `ch
 
 **Step 3: Create the Recorder Test**
 *   Open `test-scripts/{feature-type}/{feature-name}/{feature-name}.recorder.test.ts`.
-*   Add a new `it()` block with a name that will be identical to the unit test's.
-*   Inside, call `processRecorderRequest(harness)` on your new test case.
+*   Add a new one-line `it()` block using the `createRecordTest` helper:
+    ```typescript
+    it('your_test_case_name', yourTestCase.createRecordTest(harness));
+    ```
 
 **Step 4: Run the Recorder**
 *   Execute the recorder test from your terminal to generate mock and snapshot files.
@@ -102,8 +104,10 @@ Follow this step-by-step process. In these paths, `{feature-type}` is either `ch
 
 **Step 5: Create the Unit Test**
 *   Open `test/{feature-type}/{feature-name}/{feature-name}.test.ts`.
-*   Add a new `it()` block with a name that **exactly matches** the recorder's.
-*   Inside, call `processPlayRequest(harness)` on the same test case.
+*   Add a new one-line `it()` block that **exactly matches** the recorder's:
+    ```typescript
+    it('your_test_case_name', yourTestCase.createPlayTest(harness));
+    ```
 
 **Step 6: Run the Unit Test**
 *   Execute the main test suite to verify your logic against the generated mocks.

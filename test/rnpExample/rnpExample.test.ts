@@ -1,51 +1,49 @@
 import {
   useABC,
-  useUnlistedDep,
+  useB_superJsonMethod,
+  useBUnloaded_Mocked,
+  useBUnloaded_Recorder,
   useDTwice,
   usePrototypeDep,
+  useUnlistedDep,
   useUnmappedMethod_Mocked,
-  useB_superJsonMethod,
-  useBUnloaded_Recorder,
-  useBUnloaded_Mocked,
   useUnmappedMethod_Recorder,
 } from './rnpExample.api-test-cases';
 import { RnpExampleTestHarness } from './rnpExample.test-harness';
 
 describe('RnpExample', () => {
-  let harness: RnpExampleTestHarness;
+  let _harness: RnpExampleTestHarness;
+  const harness = () => _harness;
 
   beforeAll(async () => {
-    harness = new RnpExampleTestHarness();
-    await harness.initMockedTests();
+    _harness = new RnpExampleTestHarness();
+    await _harness.initMockedTests();
   });
 
   afterEach(async () => {
-    await harness.reset();
+    await _harness.reset();
   });
 
   afterAll(async () => {
-    await harness.teardown();
+    await _harness.teardown();
   });
 
-  it('useABC', async () => {
-    await useABC.processPlayRequest(harness);
-  });
+  it('useABC', useABC.createPlayTest(harness));
 
-  it('useB_superJsonMethod', async () => {
-    await useB_superJsonMethod.processPlayRequest(harness);
-  });
+  it('useB_superJsonMethod', useB_superJsonMethod.createPlayTest(harness));
 
-  it('useDTwice', async () => {
-    await useDTwice.processPlayRequest(harness);
-  });
+  it('useDTwice', useDTwice.createPlayTest(harness));
 
-  it('usePrototypeDep', async () => {
-    await usePrototypeDep.processPlayRequest(harness);
-  });
+  it('usePrototypeDep', usePrototypeDep.createPlayTest(harness));
 
-  it('useUnlistedDep', async () => {
-    await useUnlistedDep.processPlayRequest(harness);
-  });
+  it('useUnlistedDep', useUnlistedDep.createPlayTest(harness));
+
+  it('useBUnloaded_Mocked', useBUnloaded_Mocked.createPlayTest(harness));
+
+  it(
+    'useUnmappedMethod_Mocked',
+    useUnmappedMethod_Mocked.createPlayTest(harness),
+  );
 
   it('useBUnloaded_Recorder', async () => {
     // Snapshots must match the recorded output and this call fails in "play" mode
@@ -53,18 +51,9 @@ describe('RnpExample', () => {
     expect(useBUnloaded_Recorder.propertyMatchers).toMatchSnapshot();
   });
 
-  it('useBUnloaded_Mocked', async () => {
-    await useBUnloaded_Mocked.processPlayRequest(harness);
-  });
-
   it('useUnmappedMethod_Recorder', async () => {
     // Snapshots must match the recorded output and this call fails in "play" mode
     // so we force a predictable result by just using the recorder test's propertyMatchers.
     expect(useUnmappedMethod_Recorder.propertyMatchers).toMatchSnapshot();
   });
-
-  it('useUnmappedMethod_Mocked', async () => {
-    await useUnmappedMethod_Mocked.processPlayRequest(harness);
-  });
-
 });
