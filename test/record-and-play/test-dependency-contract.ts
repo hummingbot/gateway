@@ -10,11 +10,13 @@ export interface MockProvider<TInstance> {
 /**
  * Defines the contract for how a dependency should be spied upon and mocked.
  */
-export abstract class TestDependencyContract<TInstance, TMock> {
+export abstract class TestDependencyContract<TInstance, TObject, TMock> {
   /** If true, the real method will be called even during "Play" mode tests. */
   public allowPassThrough: boolean;
+  /** The name of the method to be spied on. */
+  abstract readonly methodName: keyof TObject;
   /** Returns the object or prototype that contains the method to be spied on. */
-  abstract getObject(provider: MockProvider<TInstance>): any;
+  abstract getObject(provider: MockProvider<TInstance>): TObject;
   /** Creates and returns a Jest spy on the dependency's method. */
   abstract setupSpy(provider: MockProvider<TInstance>): jest.SpyInstance;
   /**
@@ -46,10 +48,10 @@ export class InstancePropertyDependency<
   TInstance,
   TObject,
   TMock,
-> extends TestDependencyContract<TInstance, TMock> {
+> extends TestDependencyContract<TInstance, TObject, TMock> {
   constructor(
     private getObjectFn: (provider: MockProvider<TInstance>) => TObject,
-    public methodName: keyof TObject,
+    public readonly methodName: keyof TObject,
     public allowPassThrough = false,
   ) {
     super();
@@ -77,16 +79,16 @@ export class PrototypeDependency<
   TInstance,
   TObject,
   TMock,
-> extends TestDependencyContract<TInstance, TMock> {
+> extends TestDependencyContract<TInstance, TObject, TMock> {
   constructor(
     private ClassConstructor: { new (...args: any[]): TObject },
-    public methodName: keyof TObject,
+    public readonly methodName: keyof TObject,
     public allowPassThrough = false,
   ) {
     super();
   }
 
-  getObject(_provider: MockProvider<TInstance>) {
+  getObject(_provider: MockProvider<TInstance>): TObject {
     return this.ClassConstructor.prototype;
   }
 
