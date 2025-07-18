@@ -71,9 +71,9 @@ The `describe()` and `it()` block names in the recorder and the unit test **MUST
 ## 4. The Critical Rule of Dependency Management
 
 To ensure unit tests are fast and never make accidental live network calls, the framework enforces a strict safety policy. Understanding this is not optional.
-*   When you add even one method from a dependency object (e.g., `dep1.methodA`) to the `dependencyContracts` in `rnpExample.test-harness.ts`, the *entire object* (`dep1`) is now considered "managed."
-*   **In Recorder Mode:** Managed dependencies behave as expected. The listed methods are spied on, and unlisted methods on the same object (like `dep1.methodUnmapped`) call their real implementation.
-*   **In Play Mode:** This is where the safety rule applies. **Every method** on a managed object must be explicitly mocked. If a method (like `dep1.methodUnmapped`) is called without a mock, the test will fail. The `useUnmappedMethodMocked` test case in `rnpExample.api-test-cases.ts` is designed specifically to validate this failure.
+*   When you add even one method from a dependency object (e.g., `Dependency1.A_basicMethod`) to the `dependencyContracts` in `rnpExample.test-harness.ts`, the *entire object* (`dep1`) is now considered "managed."
+*   **In Recorder Mode:** Managed dependencies behave as expected. The listed methods are spied on, and unlisted methods on the same object (like `Dependency1.unmappedMethod`) call their real implementation.
+*   **In Play Mode:** This is where the safety rule applies. **Every method** on a managed object must be explicitly mocked. If a method (like `Dependency1.unmappedMethod`) is called without a mock, the test will fail. The `useUnmappedMethodMocked` test case in `rnpExample.api-test-cases.ts` is designed specifically to validate this failure.
 *   **Why?** This strictness forces the agent developer to be fully aware of every interaction with an external service. It makes it impossible for a dependency to add a new network call that would slow down unit tests.
 *   **Truly Unmanaged Dependencies:** In contrast, `dep2` from `rnpExample` is never mentioned in the `dependencyContracts`. It is "unmanaged," so its methods can be called freely in either mode. The `useUnlistedDep` test case demonstrates this.
 

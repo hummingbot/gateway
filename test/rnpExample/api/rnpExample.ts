@@ -1,25 +1,26 @@
 import { BigNumber } from 'ethers';
 
 export class Dependency1 {
-  A_basicMethod = async () => `real methodA-${Math.random()}`;
+  A_basicMethod = async () => `real A_basicMethod-${Math.random()}`;
 
   B_superJsonMethod = async () =>
     BigNumber.from(Math.floor(Math.random() * 1000000));
 
   C_passthroughMethod = async () => `real C_passthroughMethod-${Math.random()}`;
 
-  D_usedTwiceInOneCallMethod = async () => `real methodD-${Math.random()}`;
+  D_usedTwiceInOneCallMethod = async () =>
+    `real D_usedTwiceInOneCallMethod-${Math.random()}`;
 
   unmappedMethod = async () => `real unmappedMethod-${Math.random()}`;
 }
 
 export class UnlistedDependency {
-  unlistedMethod = async () => `real methodZ-${Math.random()}`;
+  unlistedMethod = async () => `real unlistedMethod-${Math.random()}`;
 }
 
 export class LocallyInitializedDependency {
   async prototypeMethod() {
-    return `real methodX-${Math.random()}`;
+    return `real prototypeMethod-${Math.random()}`;
   }
 }
 
