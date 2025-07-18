@@ -1,19 +1,19 @@
 import { FastifyPluginAsync } from 'fastify';
 
-import { useABCRoute } from './routes/useABC';
-import { useDTwiceRoute } from './routes/useDTwice';
-import { usePrototypeDepRoute } from './routes/usePrototypeDep';
-import { useSuperJsonMethodRoute } from './routes/useSuperJsonMethod';
-import { useUnlistedDepRoute } from './routes/useUnlistedDep';
-import { useUnmappedMethodRoute } from './routes/useUnmappedMethod';
+import { callABCRoute } from './routes/callABC';
+import { callDTwiceRoute } from './routes/callDTwice';
+import { callPrototypeDepRoute } from './routes/callPrototypeDep';
+import { callSuperJsonMethodRoute } from './routes/callSuperJsonMethod';
+import { callUnlistedDepRoute } from './routes/callUnlistedDep';
+import { callUnmappedMethodRoute } from './routes/callUnmappedMethod';
 
 export const rnpExampleRoutes: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(useABCRoute);
-  await fastify.register(useSuperJsonMethodRoute);
-  await fastify.register(useDTwiceRoute);
-  await fastify.register(usePrototypeDepRoute);
-  await fastify.register(useUnlistedDepRoute);
-  await fastify.register(useUnmappedMethodRoute);
+  await fastify.register(callABCRoute);
+  await fastify.register(callSuperJsonMethodRoute);
+  await fastify.register(callDTwiceRoute);
+  await fastify.register(callPrototypeDepRoute);
+  await fastify.register(callUnlistedDepRoute);
+  await fastify.register(callUnmappedMethodRoute);
 };
 
 export default rnpExampleRoutes;

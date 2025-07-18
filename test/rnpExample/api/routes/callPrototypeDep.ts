@@ -4,12 +4,12 @@ import { logger } from '#src/services/logger';
 
 import { RnpExample } from '../rnpExample';
 
-export const usePrototypeDepRoute: FastifyPluginAsync = async (fastify) => {
+export const callPrototypeDepRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: { network: string };
     Reply: { x: string };
   }>(
-    '/usePrototypeDep',
+    '/callPrototypeDep',
     {
       schema: {
         summary: 'A RnpExample route for testing prototype dependencies',
@@ -18,11 +18,11 @@ export const usePrototypeDepRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const rnpExample = await RnpExample.getInstance(request.query.network);
-        return await rnpExample.usePrototypeDep();
+        return await rnpExample.callPrototypeDep();
       } catch (error) {
-        logger.error(`Error getting usePrototypeDep status: ${error.message}`);
+        logger.error(`Error getting callPrototypeDep status: ${error.message}`);
         throw fastify.httpErrors.internalServerError(
-          `Failed to usePrototypeDep: ${error.message}`,
+          `Failed to callPrototypeDep: ${error.message}`,
         );
       }
     },

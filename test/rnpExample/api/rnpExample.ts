@@ -45,14 +45,14 @@ export class RnpExample {
     return RnpExample._instances[network];
   }
 
-  async useABC() {
+  async callABC() {
     const a = await this.dep1.A_basicMethod();
     const b = await this.dep1.B_superJsonMethod();
     const c = await this.dep1.C_passthroughMethod();
     return { a, b: b.toString(), c };
   }
 
-  async useSuperJsonMethod() {
+  async callSuperJsonMethod() {
     const b = await this.dep1.B_superJsonMethod();
     if (!BigNumber.isBigNumber(b)) {
       throw new Error('b is not a BigNumber');
@@ -60,24 +60,24 @@ export class RnpExample {
     return { b: b.toString() };
   }
 
-  async useDTwice() {
+  async callDTwice() {
     const d1 = await this.dep1.D_usedTwiceInOneCallMethod();
     const d2 = await this.dep1.D_usedTwiceInOneCallMethod();
     return { d1, d2 };
   }
 
-  async useUnmappedMethod() {
+  async callUnmappedMethod() {
     const unmapped = await this.dep1.unmappedMethod();
     return { unmapped };
   }
 
-  async usePrototypeDep() {
+  async callPrototypeDep() {
     const localDep = new LocallyInitializedDependency();
     const x = await localDep.prototypeMethod();
     return { x };
   }
 
-  async useUnlistedDep() {
+  async callUnlistedDep() {
     const z = await this.dep2.unlistedMethod();
     return { z };
   }

@@ -4,12 +4,12 @@ import { logger } from '#src/services/logger';
 
 import { RnpExample } from '../rnpExample';
 
-export const useDTwiceRoute: FastifyPluginAsync = async (fastify) => {
+export const callABCRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: { network: string };
-    Reply: { d1: string; d2: string };
+    Reply: { a: string; b: string; c: string };
   }>(
-    '/useDTwice',
+    '/callABC',
     {
       schema: {
         summary: 'A RnpExample route for testing',
@@ -18,11 +18,11 @@ export const useDTwiceRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const rnpExample = await RnpExample.getInstance(request.query.network);
-        return await rnpExample.useDTwice();
+        return await rnpExample.callABC();
       } catch (error) {
-        logger.error(`Error getting useDTwice status: ${error.message}`);
+        logger.error(`Error getting callABC status: ${error.message}`);
         throw fastify.httpErrors.internalServerError(
-          `Failed to useDTwice: ${error.message}`,
+          `Failed to callABC: ${error.message}`,
         );
       }
     },

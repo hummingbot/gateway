@@ -4,12 +4,12 @@ import { logger } from '#src/services/logger';
 
 import { RnpExample } from '../rnpExample';
 
-export const useSuperJsonMethodRoute: FastifyPluginAsync = async (fastify) => {
+export const callDTwiceRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: { network: string };
-    Reply: { b: string };
+    Reply: { d1: string; d2: string };
   }>(
-    '/useSuperJsonMethod',
+    '/callDTwice',
     {
       schema: {
         summary: 'A RnpExample route for testing',
@@ -18,13 +18,11 @@ export const useSuperJsonMethodRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const rnpExample = await RnpExample.getInstance(request.query.network);
-        return await rnpExample.useSuperJsonMethod();
+        return await rnpExample.callDTwice();
       } catch (error) {
-        logger.error(
-          `Error getting useSuperJsonMethod status: ${error.message}`,
-        );
+        logger.error(`Error getting callDTwice status: ${error.message}`);
         throw fastify.httpErrors.internalServerError(
-          `Failed to useSuperJsonMethod: ${error.message}`,
+          `Failed to callDTwice: ${error.message}`,
         );
       }
     },
