@@ -10,15 +10,15 @@ class TestCase extends APITestCase<RnpExampleTestHarness> {}
  * with `allowPassThrough` in the harness, it will call its real implementation
  * without throwing an error.
  */
-export const useABC = new TestCase({
+export const callABC = new TestCase({
   method: 'GET',
-  url: '/rnpExample/useABC',
+  url: '/rnpExample/callABC',
   expectedStatus: 200,
   query: { network: 'TEST' },
   payload: {},
   requiredMocks: {
-    dep1_A: 'rnpExample-useABC_A',
-    dep1_B: 'rnpExample-useABC_B',
+    dep1_A: 'rnpExample-callABC_A',
+    dep1_B: 'rnpExample-callABC_B',
   },
   propertyMatchers: {
     c: expect.any(String),
@@ -28,14 +28,14 @@ export const useABC = new TestCase({
 /**
  * A simple test case that calls one mocked dependency.
  */
-export const useB_superJsonMethod = new TestCase({
+export const callB_superJsonMethod = new TestCase({
   method: 'GET',
-  url: '/rnpExample/useSuperJsonMethod',
+  url: '/rnpExample/callSuperJsonMethod',
   expectedStatus: 200,
   query: { network: 'TEST' },
   payload: {},
   requiredMocks: {
-    dep1_B: 'rnpExample-useB_superJsonMethod',
+    dep1_B: 'rnpExample-callB_superJsonMethod',
   },
 });
 
@@ -44,41 +44,40 @@ export const useB_superJsonMethod = new TestCase({
  * The `requiredMocks` array provides two different mock files, which will be
  * returned in order for the two sequential calls to `dep1.D_usedTwiceInOneCallMethod()`.
  */
-export const useDTwice = new TestCase({
+export const callDTwice = new TestCase({
   method: 'GET',
-  url: '/rnpExample/useDTwice',
+  url: '/rnpExample/callDTwice',
   expectedStatus: 200,
   query: { network: 'TEST' },
   payload: {},
   requiredMocks: {
-    dep1_D: ['rnpExample-useDTwice_1', 'rnpExample-useDTwice_2'],
+    dep1_D: ['rnpExample-callDTwice_1', 'rnpExample-callDTwice_2'],
   },
 });
 
 /**
  * A test case for a dependency defined on a class prototype.
  */
-export const usePrototypeDep = new TestCase({
+export const callPrototypeDep = new TestCase({
   method: 'GET',
-  url: '/rnpExample/usePrototypeDep',
+  url: '/rnpExample/callPrototypeDep',
   expectedStatus: 200,
   query: { network: 'TEST' },
   payload: {},
   requiredMocks: {
-    localDep: 'rnpExample-usePrototypeDep',
+    localDep: 'rnpExample-callPrototypeDep',
   },
 });
 
-
 /**
  * A test case for a method that calls a truly "unmanaged" dependency.
- * The `useUnlistedDep` endpoint calls `dep2.unlistedMethod`. Because `dep2` is not
+ * The `callUnlistedDep` endpoint calls `dep2.unlistedMethod`. Because `dep2` is not
  * mentioned anywhere in the harness's `dependencyContracts`, it is "unmanaged"
  * and will always call its real implementation in both Record and Play modes.
  */
-export const useUnlistedDep = new TestCase({
+export const callUnlistedDep = new TestCase({
   method: 'GET',
-  url: '/rnpExample/useUnlistedDep',
+  url: '/rnpExample/callUnlistedDep',
   expectedStatus: 200,
   query: { network: 'TEST' },
   payload: {},
@@ -90,12 +89,12 @@ export const useUnlistedDep = new TestCase({
 
 /**
  * A recorder-only test case for an unloaded dependency.
- * This exists to demonstrate that the recorder and "Play" mode test output 
+ * This exists to demonstrate that the recorder and "Play" mode test output
  * varies in this scenario as the mock test will fail but recorder test will pass.
  */
-export const useBUnloaded_Recorder = new TestCase({
+export const callBUnloaded_Recorder = new TestCase({
   method: 'GET',
-  url: '/rnpExample/useSuperJsonMethod',
+  url: '/rnpExample/callSuperJsonMethod',
   expectedStatus: 200,
   query: { network: 'TEST' },
   payload: {},
@@ -109,9 +108,9 @@ export const useBUnloaded_Recorder = new TestCase({
  * via `requiredMocks`. This is designed to fail, demonstrating the safety
  * feature that prevents calls to managed dependencies that haven't been loaded.
  */
-export const useBUnloaded_Mocked = new TestCase({
+export const callBUnloaded_Mocked = new TestCase({
   method: 'GET',
-  url: '/rnpExample/useSuperJsonMethod',
+  url: '/rnpExample/callSuperJsonMethod',
   expectedStatus: 500,
   query: { network: 'TEST' },
   payload: {},
@@ -123,9 +122,9 @@ export const useBUnloaded_Mocked = new TestCase({
  * This exists to demonstrate that the recorder and "Play" mode test output
  * varies in this scenario as the mock test will fail but recorder test will pass.
  */
-export const useUnmappedMethod_Recorder = new TestCase({
+export const callUnmappedMethod_Recorder = new TestCase({
   method: 'GET',
-  url: '/rnpExample/useUnmappedMethod',
+  url: '/rnpExample/callUnmappedMethod',
   expectedStatus: 200,
   query: { network: 'TEST' },
   payload: {},
@@ -134,19 +133,18 @@ export const useUnmappedMethod_Recorder = new TestCase({
 
 /**
  * A failure test case for a "Play" mode test case that calls a method with an unmapped dependency.
- * The `useUnmappedMethod` endpoint calls `dep1.unmappedMethod`. 
- * But because `dep1` * is a "managed" object in the harness and `unmappedMethod` 
+ * The `callUnmappedMethod` endpoint calls `dep1.unmappedMethod`.
+ * But because `dep1` * is a "managed" object in the harness and `unmappedMethod`
  * is not explicitly mocked or set to `allowPassThrough`, this test gets a error return object.
- * This demonstrates the key safety feature of the RnP framework 
+ * This demonstrates the key safety feature of the RnP framework
  * that prevents calls to unmapped methods. .
  */
-export const useUnmappedMethod_Mocked = new TestCase({
+export const callUnmappedMethod_Mocked = new TestCase({
   method: 'GET',
-  url: '/rnpExample/useUnmappedMethod',
+  url: '/rnpExample/callUnmappedMethod',
   expectedStatus: 424,
   query: { network: 'TEST' },
   payload: {},
   requiredMocks: {},
   propertyMatchers: {},
 });
-

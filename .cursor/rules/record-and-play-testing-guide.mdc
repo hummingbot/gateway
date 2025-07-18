@@ -27,7 +27,7 @@ The RnP framework consists of four key types of files that work together for a g
 ### `*.api-test-cases.ts` - The Single Source of Truth
 *   **Location:** `test/{chains|connectors}/{feature-name}/{feature-name}.api-test-cases.ts`
 *   **Example:** `test/rnpExample/rnpExample.api-test-cases.ts`
-*   **Purpose:** This file defines the specific API requests that will be used for both recording and testing. By defining test cases in one place (e.g., `export const useABC = new TestCase(...)`), we prevent code duplication and ensure the recorder and the unit test are perfectly aligned.
+*   **Purpose:** This file defines the specific API requests that will be used for both recording and testing. By defining test cases in one place (e.g., `export const callABC = new TestCase(...)`), we prevent code duplication and ensure the recorder and the unit test are perfectly aligned.
 
 ### `*.recorder.test.ts` - The Recorder
 *   **Location:** `test-scripts/{chains|connectors}/{feature-name}/{feature-name}.recorder.test.ts`
@@ -56,7 +56,7 @@ The framework relies on a strict set of conventions. These are functional requir
 *   **Recorder Tests:** `test-scripts/connectors/raydium/`
 
 ### Test Naming
-The `describe()` and `it()` block names in the recorder and the unit test **MUST MATCH EXACTLY**. The test case's variable name is used for the `it` block's name to ensure consistency. Compare the `it('useABC', ...)` blocks in `rnpExample.recorder.test.ts` and `rnpExample.test.ts` to see this in practice. This naming convention is how Jest associates API response snapshots with the correct test.
+The `describe()` and `it()` block names in the recorder and the unit test **MUST MATCH EXACTLY**. The test case's variable name is used for the `it` block's name to ensure consistency. Compare the `it('callABC', ...)` blocks in `rnpExample.recorder.test.ts` and `rnpExample.test.ts` to see this in practice. This naming convention is how Jest associates API response snapshots with the correct test.
 
 ### Command Segregation
 *   **To run fast unit tests:**
@@ -73,9 +73,9 @@ The `describe()` and `it()` block names in the recorder and the unit test **MUST
 To ensure unit tests are fast and never make accidental live network calls, the framework enforces a strict safety policy. Understanding this is not optional.
 *   When you add even one method from a dependency object (e.g., `Dependency1.A_basicMethod`) to the `dependencyContracts` in `rnpExample.test-harness.ts`, the *entire object* (`dep1`) is now considered "managed."
 *   **In Recorder Mode:** Managed dependencies behave as expected. The listed methods are spied on, and unlisted methods on the same object (like `Dependency1.unmappedMethod`) call their real implementation.
-*   **In Play Mode:** This is where the safety rule applies. **Every method** on a managed object must be explicitly mocked. If a method (like `Dependency1.unmappedMethod`) is called without a mock, the test will fail. The `useUnmappedMethodMocked` test case in `rnpExample.api-test-cases.ts` is designed specifically to validate this failure.
+*   **In Play Mode:** This is where the safety rule applies. **Every method** on a managed object must be explicitly mocked. If a method (like `Dependency1.unmappedMethod`) is called without a mock, the test will fail. The `callUnmappedMethodMocked` test case in `rnpExample.api-test-cases.ts` is designed specifically to validate this failure.
 *   **Why?** This strictness forces the agent developer to be fully aware of every interaction with an external service. It makes it impossible for a dependency to add a new network call that would slow down unit tests.
-*   **Truly Unmanaged Dependencies:** In contrast, `dep2` from `rnpExample` is never mentioned in the `dependencyContracts`. It is "unmanaged," so its methods can be called freely in either mode. The `useUnlistedDep` test case demonstrates this.
+*   **Truly Unmanaged Dependencies:** In contrast, `dep2` from `rnpExample` is never mentioned in the `dependencyContracts`. It is "unmanaged," so its methods can be called freely in either mode. The `callUnlistedDep` test case demonstrates this.
 
 ## 5. Workflow: Adding a New Endpoint Test
 
@@ -83,7 +83,7 @@ Follow this step-by-step process. In these paths, `{feature-type}` is either `ch
 
 **Step 1: Define the Test Case**
 *   Open or create `test/{feature-type}/{feature-name}/{feature-name}.api-test-cases.ts`.
-*   Create and export a new `TestCase` instance (e.g., `export const useNewFeature = new TestCase(...)`).
+*   Create and export a new `TestCase` instance (e.g., `export const callNewFeature = new TestCase(...)`).
 
 **Step 2: Update the Test Harness**
 *   Open `test/{feature-type}/{feature-name}/{feature-name}.test-harness.ts`.

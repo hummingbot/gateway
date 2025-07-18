@@ -1,11 +1,11 @@
 import {
-  useABC,
-  useB_superJsonMethod,
-  useBUnloaded_Recorder,
-  useDTwice,
-  usePrototypeDep,
-  useUnlistedDep,
-  useUnmappedMethod_Recorder,
+  callABC,
+  callB_superJsonMethod,
+  callBUnloaded_Recorder,
+  callDTwice,
+  callPrototypeDep,
+  callUnlistedDep,
+  callUnmappedMethod_Recorder,
 } from '#test/rnpExample/rnpExample.api-test-cases';
 import { RnpExampleTestHarness } from '#test/rnpExample/rnpExample.test-harness';
 
@@ -27,36 +27,36 @@ describe('RnpExample', () => {
     await _harness.teardown();
   });
 
-  it('useABC', useABC.createRecordTest(harness));
+  it('callABC', callABC.createRecordTest(harness));
   
-  it('useB_superJsonMethod', useB_superJsonMethod.createRecordTest(harness));
+  it('callB_superJsonMethod', callB_superJsonMethod.createRecordTest(harness));
   
-  it('useDTwice', useDTwice.createRecordTest(harness));
+  it('callDTwice', callDTwice.createRecordTest(harness));
   
-  it('usePrototypeDep', usePrototypeDep.createRecordTest(harness));
+  it('callPrototypeDep', callPrototypeDep.createRecordTest(harness));
   
-  it('useUnlistedDep', useUnlistedDep.createRecordTest(harness));
+  it('callUnlistedDep', callUnlistedDep.createRecordTest(harness));
   
-  it('useBUnloaded_Recorder', useBUnloaded_Recorder.createRecordTest(harness));
+  it('callBUnloaded_Recorder', callBUnloaded_Recorder.createRecordTest(harness));
   
-  it('useUnmappedMethod_Recorder', useUnmappedMethod_Recorder.createRecordTest(harness));
+  it('callUnmappedMethod_Recorder', callUnmappedMethod_Recorder.createRecordTest(harness));
 
-  it('useBUnloaded_Mocked', async () => {
+  it('callBUnloaded_Mocked', async () => {
     // Create expected snapshot for running test in "Play" mode
     expect({
       error: 'InternalServerError',
       message:
-        'Failed to useSuperJsonMethod: Mocked dependency was called without a mock loaded: dep1_B. Either load a mock or allowPassThrough.',
+        'Failed to callSuperJsonMethod: Mocked dependency was called without a mock loaded: dep1_B. Either load a mock or allowPassThrough.',
       statusCode: 500,
     }).toMatchSnapshot({});
   });
 
-  it('useUnmappedMethod_Mocked', async () => {
+  it('callUnmappedMethod_Mocked', async () => {
     // Create expected snapshot for running test in "Play" mode
     expect({
       error: 'FailedDependencyError',
       message:
-        'Failed to useUnmappedMethod: Unmapped method was called: dep1_A.unmappedMethod. Method must be listed and either mocked or specify allowPassThrough.',
+        'Failed to callUnmappedMethod: Unmapped method was called: dep1_A.unmappedMethod. Method must be listed and either mocked or specify allowPassThrough.',
       statusCode: 424,
     }).toMatchSnapshot({});
   });

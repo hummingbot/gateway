@@ -4,12 +4,12 @@ import { logger } from '#src/services/logger';
 
 import { RnpExample } from '../rnpExample';
 
-export const useABCRoute: FastifyPluginAsync = async (fastify) => {
+export const callSuperJsonMethodRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: { network: string };
-    Reply: { a: string; b: string; c: string };
+    Reply: { b: string };
   }>(
-    '/useABC',
+    '/callSuperJsonMethod',
     {
       schema: {
         summary: 'A RnpExample route for testing',
@@ -18,11 +18,13 @@ export const useABCRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const rnpExample = await RnpExample.getInstance(request.query.network);
-        return await rnpExample.useABC();
+        return await rnpExample.callSuperJsonMethod();
       } catch (error) {
-        logger.error(`Error getting useABC status: ${error.message}`);
+        logger.error(
+          `Error getting callSuperJsonMethod status: ${error.message}`,
+        );
         throw fastify.httpErrors.internalServerError(
-          `Failed to useABC: ${error.message}`,
+          `Failed to callSuperJsonMethod: ${error.message}`,
         );
       }
     },

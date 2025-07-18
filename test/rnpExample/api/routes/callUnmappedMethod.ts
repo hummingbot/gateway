@@ -4,12 +4,12 @@ import { logger } from '#src/services/logger';
 
 import { RnpExample } from '../rnpExample';
 
-export const useUnmappedMethodRoute: FastifyPluginAsync = async (fastify) => {
+export const callUnmappedMethodRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: { network: string };
     Reply: { unmapped: string };
   }>(
-    '/useUnmappedMethod',
+    '/callUnmappedMethod',
     {
       schema: {
         summary: 'A RnpExample route for testing',
@@ -18,14 +18,14 @@ export const useUnmappedMethodRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const rnpExample = await RnpExample.getInstance(request.query.network);
-        return await rnpExample.useUnmappedMethod();
+        return await rnpExample.callUnmappedMethod();
       } catch (error) {
         logger.error(
-          `Error getting useUnmappedMethod status: ${error.message}`,
+          `Error getting callUnmappedMethod status: ${error.message}`,
         );
         // Throw specific error to verify a 424 is returned for snapshot
         throw fastify.httpErrors.failedDependency(
-          `Failed to useUnmappedMethod: ${error.message}`,
+          `Failed to callUnmappedMethod: ${error.message}`,
         );
       }
     },

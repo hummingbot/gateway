@@ -1,61 +1,61 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`RnpExample useABC 1`] = `
+exports[`RnpExample callABC 1`] = `
 {
-  "a": "real A_basicMethod-0.9261297200194791",
-  "b": "559573",
+  "a": "real A_basicMethod-0.8194074871792008",
+  "b": "648847",
   "c": Any<String>,
 }
 `;
 
-exports[`RnpExample useB_superJsonMethod 1`] = `
+exports[`RnpExample callB_superJsonMethod 1`] = `
 {
-  "b": "984683",
+  "b": "993671",
 }
 `;
 
-exports[`RnpExample useBUnloaded_Mocked 1`] = `
+exports[`RnpExample callBUnloaded_Mocked 1`] = `
 {
   "error": "InternalServerError",
-  "message": "Failed to useSuperJsonMethod: Mocked dependency was called without a mock loaded: dep1_B. Either load a mock or allowPassThrough.",
+  "message": "Failed to callSuperJsonMethod: Mocked dependency was called without a mock loaded: dep1_B. Either load a mock or allowPassThrough.",
   "statusCode": 500,
 }
 `;
 
-exports[`RnpExample useBUnloaded_Recorder 1`] = `
+exports[`RnpExample callBUnloaded_Recorder 1`] = `
 {
   "b": Any<String>,
 }
 `;
 
-exports[`RnpExample useDTwice 1`] = `
+exports[`RnpExample callDTwice 1`] = `
 {
-  "d1": "real D_usedTwiceInOneCallMethod-0.1108886413926522",
-  "d2": "real D_usedTwiceInOneCallMethod-0.7985412087769337",
+  "d1": "real D_usedTwiceInOneCallMethod-0.5699946728175469",
+  "d2": "real D_usedTwiceInOneCallMethod-0.926208199266757",
 }
 `;
 
-exports[`RnpExample usePrototypeDep 1`] = `
+exports[`RnpExample callPrototypeDep 1`] = `
 {
-  "x": "real prototypeMethod-0.9680478758520263",
+  "x": "real prototypeMethod-0.6351804576911579",
 }
 `;
 
-exports[`RnpExample useUnlistedDep 1`] = `
+exports[`RnpExample callUnlistedDep 1`] = `
 {
   "z": Any<String>,
 }
 `;
 
-exports[`RnpExample useUnmappedMethod_Mocked 1`] = `
+exports[`RnpExample callUnmappedMethod_Mocked 1`] = `
 {
   "error": "FailedDependencyError",
-  "message": "Failed to useUnmappedMethod: Unmapped method was called: dep1_A.unmappedMethod. Method must be listed and either mocked or specify allowPassThrough.",
+  "message": "Failed to callUnmappedMethod: Unmapped method was called: dep1_A.unmappedMethod. Method must be listed and either mocked or specify allowPassThrough.",
   "statusCode": 424,
 }
 `;
 
-exports[`RnpExample useUnmappedMethod_Recorder 1`] = `
+exports[`RnpExample callUnmappedMethod_Recorder 1`] = `
 {
   "unmapped": Any<String>,
 }

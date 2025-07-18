@@ -1,13 +1,13 @@
 import {
-  useABC,
-  useB_superJsonMethod,
-  useBUnloaded_Mocked,
-  useBUnloaded_Recorder,
-  useDTwice,
-  usePrototypeDep,
-  useUnlistedDep,
-  useUnmappedMethod_Mocked,
-  useUnmappedMethod_Recorder,
+  callABC,
+  callB_superJsonMethod,
+  callBUnloaded_Mocked,
+  callBUnloaded_Recorder,
+  callDTwice,
+  callPrototypeDep,
+  callUnlistedDep,
+  callUnmappedMethod_Mocked,
+  callUnmappedMethod_Recorder,
 } from './rnpExample.api-test-cases';
 import { RnpExampleTestHarness } from './rnpExample.test-harness';
 
@@ -28,32 +28,32 @@ describe('RnpExample', () => {
     await _harness.teardown();
   });
 
-  it('useABC', useABC.createPlayTest(harness));
+  it('callABC', callABC.createPlayTest(harness));
 
-  it('useB_superJsonMethod', useB_superJsonMethod.createPlayTest(harness));
+  it('callB_superJsonMethod', callB_superJsonMethod.createPlayTest(harness));
 
-  it('useDTwice', useDTwice.createPlayTest(harness));
+  it('callDTwice', callDTwice.createPlayTest(harness));
 
-  it('usePrototypeDep', usePrototypeDep.createPlayTest(harness));
+  it('callPrototypeDep', callPrototypeDep.createPlayTest(harness));
 
-  it('useUnlistedDep', useUnlistedDep.createPlayTest(harness));
+  it('callUnlistedDep', callUnlistedDep.createPlayTest(harness));
 
-  it('useBUnloaded_Mocked', useBUnloaded_Mocked.createPlayTest(harness));
+  it('callBUnloaded_Mocked', callBUnloaded_Mocked.createPlayTest(harness));
 
   it(
-    'useUnmappedMethod_Mocked',
-    useUnmappedMethod_Mocked.createPlayTest(harness),
+    'callUnmappedMethod_Mocked',
+    callUnmappedMethod_Mocked.createPlayTest(harness),
   );
 
-  it('useBUnloaded_Recorder', async () => {
+  it('callBUnloaded_Recorder', async () => {
     // Snapshots must match the recorded output and this call fails in "play" mode
     // so we force a predictable result by just using the recorder test's propertyMatchers.
-    expect(useBUnloaded_Recorder.propertyMatchers).toMatchSnapshot();
+    expect(callBUnloaded_Recorder.propertyMatchers).toMatchSnapshot();
   });
 
-  it('useUnmappedMethod_Recorder', async () => {
+  it('callUnmappedMethod_Recorder', async () => {
     // Snapshots must match the recorded output and this call fails in "play" mode
     // so we force a predictable result by just using the recorder test's propertyMatchers.
-    expect(useUnmappedMethod_Recorder.propertyMatchers).toMatchSnapshot();
+    expect(callUnmappedMethod_Recorder.propertyMatchers).toMatchSnapshot();
   });
 });
