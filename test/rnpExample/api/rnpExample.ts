@@ -1,35 +1,36 @@
 import { BigNumber } from 'ethers';
 
-export class Dep1 {
-  methodA = async () => `real methodA-${Math.random()}`;
+export class Dependency1 {
+  A_basicMethod = async () => `real methodA-${Math.random()}`;
 
-  methodB = async () => BigNumber.from(Math.floor(Math.random() * 1000000));
+  B_superJsonMethod = async () =>
+    BigNumber.from(Math.floor(Math.random() * 1000000));
 
-  methodC = async () => `real methodC-${Math.random()}`;
+  C_passthroughMethod = async () => `real C_passthroughMethod-${Math.random()}`;
 
-  methodD = async () => `real methodD-${Math.random()}`;
+  D_usedTwiceInOneCallMethod = async () => `real methodD-${Math.random()}`;
 
-  methodUnmapped = async () => `real methodUnmapped-${Math.random()}`;
+  unmappedMethod = async () => `real unmappedMethod-${Math.random()}`;
 }
 
-export class Dep2 {
-  methodZ = async () => `real methodZ-${Math.random()}`;
+export class UnlistedDependency {
+  unlistedMethod = async () => `real methodZ-${Math.random()}`;
 }
 
-export class DepProto {
-  async methodX() {
+export class LocallyInitializedDependency {
+  async prototypeMethod() {
     return `real methodX-${Math.random()}`;
   }
 }
 
 export class RnpExample {
   private static _instances: { [name: string]: RnpExample };
-  public dep1: Dep1;
-  public dep2: Dep2;
+  public dep1: Dependency1;
+  public dep2: UnlistedDependency;
 
   constructor() {
-    this.dep1 = new Dep1();
-    this.dep2 = new Dep2();
+    this.dep1 = new Dependency1();
+    this.dep2 = new UnlistedDependency();
   }
 
   public static async getInstance(network: string): Promise<RnpExample> {
@@ -44,14 +45,14 @@ export class RnpExample {
   }
 
   async useABC() {
-    const a = await this.dep1.methodA();
-    const b = await this.dep1.methodB();
-    const c = await this.dep1.methodC();
+    const a = await this.dep1.A_basicMethod();
+    const b = await this.dep1.B_superJsonMethod();
+    const c = await this.dep1.C_passthroughMethod();
     return { a, b: b.toString(), c };
   }
 
-  async useB() {
-    const b = await this.dep1.methodB();
+  async useSuperJsonMethod() {
+    const b = await this.dep1.B_superJsonMethod();
     if (!BigNumber.isBigNumber(b)) {
       throw new Error('b is not a BigNumber');
     }
@@ -59,24 +60,24 @@ export class RnpExample {
   }
 
   async useDTwice() {
-    const d1 = await this.dep1.methodD();
-    const d2 = await this.dep1.methodD();
+    const d1 = await this.dep1.D_usedTwiceInOneCallMethod();
+    const d2 = await this.dep1.D_usedTwiceInOneCallMethod();
     return { d1, d2 };
   }
 
   async useUnmappedMethod() {
-    const unmapped = await this.dep1.methodUnmapped();
+    const unmapped = await this.dep1.unmappedMethod();
     return { unmapped };
   }
 
-  async useProtoDep() {
-    const dep3 = new DepProto();
-    const x = await dep3.methodX();
+  async usePrototypeDep() {
+    const localDep = new LocallyInitializedDependency();
+    const x = await localDep.prototypeMethod();
     return { x };
   }
 
   async useUnlistedDep() {
-    const z = await this.dep2.methodZ();
+    const z = await this.dep2.unlistedMethod();
     return { z };
   }
 }

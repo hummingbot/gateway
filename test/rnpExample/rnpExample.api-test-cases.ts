@@ -17,8 +17,8 @@ export const useABC = new TestCase({
   query: { network: 'TEST' },
   payload: {},
   requiredMocks: {
-    dep1_A: 'rnpExample-methodA',
-    dep1_B: 'rnpExample-methodB',
+    dep1_A: 'rnpExample-useABC_A',
+    dep1_B: 'rnpExample-useABC_B',
   },
   propertyMatchers: {
     c: expect.any(String),
@@ -28,30 +28,15 @@ export const useABC = new TestCase({
 /**
  * A simple test case that calls one mocked dependency.
  */
-export const useB = new TestCase({
+export const useB_superJsonMethod = new TestCase({
   method: 'GET',
-  url: '/rnpExample/useB',
+  url: '/rnpExample/useSuperJsonMethod',
   expectedStatus: 200,
   query: { network: 'TEST' },
   payload: {},
   requiredMocks: {
-    dep1_B: 'rnpExample-methodB-useB',
+    dep1_B: 'rnpExample-useB_superJsonMethod',
   },
-});
-
-/**
- * A test case for an unloaded dependency.
- * This test calls a method that requires the 'dep1_B' mock, but does not load it
- * via `requiredMocks`. This is designed to fail, demonstrating the safety
- * feature that prevents calls to managed dependencies that haven't been loaded.
- */
-export const useBUnloaded = new TestCase({
-  method: 'GET',
-  url: '/rnpExample/useB',
-  expectedStatus: 500,
-  query: { network: 'TEST' },
-  payload: {},
-  requiredMocks: {},
 });
 
 /**
@@ -66,8 +51,37 @@ export const useDTwice = new TestCase({
   query: { network: 'TEST' },
   payload: {},
   requiredMocks: {
-    dep1_D: ['rnpExample-methodD1', 'rnpExample-methodD2'],
+    dep1_D: ['rnpExample-useDTwice_1', 'rnpExample-useDTwice_2'],
   },
+});
+
+/**
+ * A test case for a dependency defined on a class prototype.
+ */
+export const usePrototypeDep = new TestCase({
+  method: 'GET',
+  url: '/rnpExample/usePrototypeDep',
+  expectedStatus: 200,
+  query: { network: 'TEST' },
+  payload: {},
+  requiredMocks: {
+    localDep: 'rnpExample-usePrototypeDep',
+  },
+});
+
+/**
+ * A test case for an unloaded dependency.
+ * This test calls a method that requires the 'dep1_A' mock, but does not load it
+ * via `requiredMocks`. This is designed to fail, demonstrating the safety
+ * feature that prevents calls to managed dependencies that haven't been loaded.
+ */
+export const useABCUnloaded = new TestCase({
+  method: 'GET',
+  url: '/rnpExample/useABC',
+  expectedStatus: 500,
+  query: { network: 'TEST' },
+  payload: {},
+  requiredMocks: {},
 });
 
 /**
@@ -75,7 +89,7 @@ export const useDTwice = new TestCase({
  * This test is only used in the recorder to generate a snapshot.
  * It is not used in "Play" mode.
  */
-export const useUnmappedMethodRecorder = new TestCase({
+export const useUnmappedMethod_Recorder = new TestCase({
   method: 'GET',
   url: '/rnpExample/useUnmappedMethod',
   expectedStatus: 200,
@@ -91,7 +105,7 @@ export const useUnmappedMethodRecorder = new TestCase({
  * mocked or set to `allowPassThrough`, this test is expected to fail.
  * This demonstrates the key safety feature of the RnP framework.
  */
-export const useUnmappedMethodMocked = new TestCase({
+export const useUnmappedMethod_Mocked = new TestCase({
   method: 'GET',
   url: '/rnpExample/useUnmappedMethod',
   expectedStatus: 424,
@@ -116,19 +130,5 @@ export const useUnlistedDep = new TestCase({
   requiredMocks: {},
   propertyMatchers: {
     z: expect.any(String),
-  },
-});
-
-/**
- * A test case for a dependency defined on a class prototype.
- */
-export const useProtoDep = new TestCase({
-  method: 'GET',
-  url: '/rnpExample/useProtoDep',
-  expectedStatus: 200,
-  query: { network: 'TEST' },
-  payload: {},
-  requiredMocks: {
-    dep3_X: 'rnpExample-methodX',
   },
 });

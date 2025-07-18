@@ -3,9 +3,9 @@ import {
    useABC,
    useUnlistedDep,
    useDTwice,
-   useProtoDep,
-   useUnmappedMethodRecorder,
-   useB,
+   usePrototypeDep,
+   useUnmappedMethod_Recorder,
+   useB_superJsonMethod,
  } from '#test/rnpExample/rnpExample.api-test-cases';
 
 describe('RnpExample', () => {
@@ -29,39 +29,39 @@ describe('RnpExample', () => {
     await useABC.processRecorderRequest(harness);
   });
 
-  it('useB', async () => {
-    await useB.processRecorderRequest(harness);
+  it('useB_superJsonMethod', async () => {
+    await useB_superJsonMethod.processRecorderRequest(harness);
   });
  
   it('useDTwice', async () => {
     await useDTwice.processRecorderRequest(harness);
   });
  
-  it('useProtoDep', async () => {
-    await useProtoDep.processRecorderRequest(harness);
+  it('usePrototypeDep', async () => {
+    await usePrototypeDep.processRecorderRequest(harness);
   });
 
-  it('useUnmappedMethodRecorder', async () => {
-    await useUnmappedMethodRecorder.processRecorderRequest(harness);
-  });
-
-  it('useUnmappedMethodMocked', async () => {
-    // Create to force snapshot file to match exactly
-    expect({
-      error: 'FailedDependencyError',
-      message:
-        'Failed to useUnmappedMethod: Unmapped method was called: dep1_A.methodUnmapped. Method must be listed and either mocked or specify allowPassThrough.',
-      statusCode: 424,
-    }).toMatchSnapshot({});
-  });
-
-  it('useBUnloaded', async () => {
+  it('useABCUnloaded', async () => {
     // Create to force snapshot file to match exactly
     expect({
       error: 'InternalServerError',
       message:
-        'Failed to useB: Mocked dependency was called without a mock loaded: dep1_B. Either load a mock or allowPassThrough.',
+        'Failed to useABC: Mocked dependency was called without a mock loaded: dep1_A. Either load a mock or allowPassThrough.',
       statusCode: 500,
+    }).toMatchSnapshot({});
+  });
+
+  it('useUnmappedMethod_Recorder', async () => {
+    await useUnmappedMethod_Recorder.processRecorderRequest(harness);
+  });
+
+  it('useUnmappedMethod_Mocked', async () => {
+    // Create to force snapshot file to match exactly
+    expect({
+      error: 'FailedDependencyError',
+      message:
+        'Failed to useUnmappedMethod: Unmapped method was called: dep1_A.unmappedMethod. Method must be listed and either mocked or specify allowPassThrough.',
+      statusCode: 424,
     }).toMatchSnapshot({});
   });
 

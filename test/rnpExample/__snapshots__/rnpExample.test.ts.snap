@@ -2,36 +2,36 @@
 
 exports[`RnpExample useABC 1`] = `
 {
-  "a": "real methodA-0.623159602411435",
-  "b": "624554",
+  "a": "real methodA-0.9780876880931055",
+  "b": "798931",
   "c": Any<String>,
 }
 `;
 
-exports[`RnpExample useB 1`] = `
+exports[`RnpExample useABCUnloaded 1`] = `
 {
-  "b": "735292",
+  "error": "InternalServerError",
+  "message": "Failed to useABC: Mocked dependency was called without a mock loaded: dep1_A. Either load a mock or allowPassThrough.",
+  "statusCode": 500,
 }
 `;
 
-exports[`RnpExample useBUnloaded 1`] = `
+exports[`RnpExample useB_superJsonMethod 1`] = `
 {
-  "error": "InternalServerError",
-  "message": "Failed to useB: Mocked dependency was called without a mock loaded: dep1_B. Either load a mock or allowPassThrough.",
-  "statusCode": 500,
+  "b": "634042",
 }
 `;
 
 exports[`RnpExample useDTwice 1`] = `
 {
-  "d1": "real methodD-0.9962881775546952",
-  "d2": "real methodD-0.38055493047559086",
+  "d1": "real methodD-0.38345424792538996",
+  "d2": "real methodD-0.7831965722241947",
 }
 `;
 
-exports[`RnpExample useProtoDep 1`] = `
+exports[`RnpExample usePrototypeDep 1`] = `
 {
-  "x": "real methodX-0.10033756858188925",
+  "x": "real methodX-0.3895412431687655",
 }
 `;
 
@@ -41,15 +41,15 @@ exports[`RnpExample useUnlistedDep 1`] = `
 }
 `;
 
-exports[`RnpExample useUnmappedMethodMocked 1`] = `
+exports[`RnpExample useUnmappedMethod_Mocked 1`] = `
 {
   "error": "FailedDependencyError",
-  "message": "Failed to useUnmappedMethod: Unmapped method was called: dep1_A.methodUnmapped. Method must be listed and either mocked or specify allowPassThrough.",
+  "message": "Failed to useUnmappedMethod: Unmapped method was called: dep1_A.unmappedMethod. Method must be listed and either mocked or specify allowPassThrough.",
   "statusCode": 424,
 }
 `;
 
-exports[`RnpExample useUnmappedMethodRecorder 1`] = `
+exports[`RnpExample useUnmappedMethod_Recorder 1`] = `
 {
   "unmapped": Any<String>,
 }
