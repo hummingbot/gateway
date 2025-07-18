@@ -11,7 +11,7 @@ import {
 } from './test-dependency-contract';
 
 interface ContractWithSpy<TInstance>
-  extends TestDependencyContract<TInstance, any> {
+  extends TestDependencyContract<TInstance, any, any> {
   spy?: jest.SpyInstance;
 }
 
@@ -211,9 +211,7 @@ export abstract class AbstractGatewayTestHarness<TInstance>
       for (const methodName of Object.keys(object)) {
         // Find if a contract exists for this specific method.
         const contract = Object.values(this.dependencyContracts).find(
-          (c) =>
-            c.getObject(this) === object &&
-            (c as any).methodName === methodName,
+          (c) => c.getObject(this) === object && c.methodName === methodName,
         );
 
         if (contract) {
