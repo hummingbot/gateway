@@ -816,6 +816,31 @@ export class Solana {
     return gasCost;
   }
 
+  /**
+   * Prepare gas options for a transaction
+   * @param priorityFeePerCU Priority fee in lamports per compute unit (optional)
+   * @param computeUnits Compute units limit (optional)
+   * @returns Gas options object containing priorityFeePerCU and computeUnits
+   */
+  public async prepareGasOptions(
+    priorityFeePerCU?: number,
+    computeUnits?: number,
+  ): Promise<{
+    priorityFeePerCU: number;
+    computeUnits: number;
+  }> {
+    // If priorityFeePerCU not provided, estimate it
+    const feePerCU = priorityFeePerCU ?? (await this.estimateGasPrice());
+
+    // Use default compute units if not provided
+    const units = computeUnits || this.config.defaultComputeUnits;
+
+    return {
+      priorityFeePerCU: feePerCU,
+      computeUnits: units,
+    };
+  }
+
   async estimateGasPrice(): Promise<number> {
     // Check cache first
     if (

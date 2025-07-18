@@ -11,11 +11,6 @@ export const PoolInfoSchema = Type.Object(
     price: Type.Number(),
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
-    poolType: Type.Optional(Type.String()),
-    lpMint: Type.Object({
-      address: Type.String(),
-      decimals: Type.Number(),
-    }),
   },
   { $id: 'PoolInfo' },
 );
@@ -38,16 +33,6 @@ export const AddLiquidityRequest = Type.Object(
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
     slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
-    priorityFeePerCU: Type.Optional(
-      Type.Number({
-        description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
-      }),
-    ),
-    computeUnits: Type.Optional(
-      Type.Number({
-        description: 'Max compute units (Solana) or gas limit (Ethereum)',
-      }),
-    ),
   },
   { $id: 'AddLiquidityRequest' },
 );
@@ -83,9 +68,6 @@ export const QuoteLiquidityResponse = Type.Object(
     quoteTokenAmount: Type.Number(),
     baseTokenAmountMax: Type.Number(),
     quoteTokenAmountMax: Type.Number(),
-    computeUnits: Type.Number({
-      description: 'Estimated compute units for the transaction',
-    }),
   },
   { $id: 'QuoteLiquidityResponse' },
 );
@@ -94,19 +76,9 @@ export type QuoteLiquidityResponseType = Static<typeof QuoteLiquidityResponse>;
 export const RemoveLiquidityRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
-    walletAddress: Type.Optional(Type.String({ examples: ['<solana-wallet-address>'] })),
+    walletAddress: Type.Optional(Type.String()),
     poolAddress: Type.String(),
     percentageToRemove: Type.Number({ minimum: 0, maximum: 100 }),
-    priorityFeePerCU: Type.Optional(
-      Type.Number({
-        description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
-      }),
-    ),
-    computeUnits: Type.Optional(
-      Type.Number({
-        description: 'Max compute units (Solana) or gas limit (Ethereum)',
-      }),
-    ),
   },
   { $id: 'RemoveLiquidityRequest' },
 );
@@ -188,7 +160,6 @@ export type QuoteSwapRequestType = Static<typeof QuoteSwapRequest>;
 
 export const QuoteSwapResponse = Type.Object(
   {
-    quoteId: Type.Optional(Type.String()),
     poolAddress: Type.String(),
     tokenIn: Type.String(),
     tokenOut: Type.String(),
@@ -196,14 +167,9 @@ export const QuoteSwapResponse = Type.Object(
     amountOut: Type.Number(),
     price: Type.Number(),
     slippagePct: Type.Optional(Type.Number()),
-    priceWithSlippage: Type.Number({
-      description: 'Price including slippage (worst acceptable price)',
-    }),
     minAmountOut: Type.Number(),
     maxAmountIn: Type.Number(),
     priceImpactPct: Type.Number(),
-    fee: Type.Number(),
-    computeUnits: Type.Number(),
   },
   { $id: 'AmmQuoteSwapResponse' },
 );
@@ -229,16 +195,6 @@ export const ExecuteSwapRequest = Type.Object(
       enum: ['BUY', 'SELL'],
     }),
     slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
-    priorityFeePerCU: Type.Optional(
-      Type.Number({
-        description: 'Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)',
-      }),
-    ),
-    computeUnits: Type.Optional(
-      Type.Number({
-        description: 'Max compute units (Solana) or gas limit (Ethereum)',
-      }),
-    ),
   },
   { $id: 'AmmExecuteSwapRequest' },
 );

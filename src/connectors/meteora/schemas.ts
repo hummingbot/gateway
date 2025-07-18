@@ -1,4 +1,5 @@
-import { Type } from '@sinclair/typebox';
+import { StrategyType } from '@meteora-ag/dlmm';
+import { Type, Static } from '@sinclair/typebox';
 
 import { getSolanaChainConfig } from '../../chains/solana/solana.config';
 import * as CLMMBase from '../../schemas/clmm-schema';
@@ -126,6 +127,15 @@ export const MeteoraClmmOpenPositionRequest = Type.Intersect([
         examples: [MeteoraConfig.config.slippagePct],
       }),
     ),
+    priorityFeePerCU: Type.Optional(Type.Number({ description: 'Priority fee per compute unit' })),
+    computeUnits: Type.Optional(Type.Number({ description: 'Compute units for transaction' })),
+    strategyType: Type.Optional(
+      Type.Number({
+        description: 'Strategy type for the position',
+        examples: [StrategyType.SpotImBalanced],
+        enum: Object.values(StrategyType).filter((x) => typeof x === 'number'),
+      }),
+    ),
   }),
 ]);
 
@@ -157,6 +167,15 @@ export const MeteoraClmmAddLiquidityRequest = Type.Intersect([
         examples: [MeteoraConfig.config.slippagePct],
       }),
     ),
+    priorityFeePerCU: Type.Optional(Type.Number({ description: 'Priority fee per compute unit' })),
+    computeUnits: Type.Optional(Type.Number({ description: 'Compute units for transaction' })),
+    strategyType: Type.Optional(
+      Type.Number({
+        description: 'Strategy type for the position',
+        examples: [StrategyType.SpotImBalanced],
+        enum: Object.values(StrategyType).filter((x) => typeof x === 'number'),
+      }),
+    ),
   }),
 ]);
 
@@ -179,5 +198,55 @@ export const MeteoraClmmRemoveLiquidityRequest = Type.Intersect([
         examples: [solanaChainConfig.defaultWallet],
       }),
     ),
+    priorityFeePerCU: Type.Optional(Type.Number({ description: 'Priority fee per compute unit' })),
+    computeUnits: Type.Optional(Type.Number({ description: 'Compute units for transaction' })),
+  }),
+]);
+
+// Meteora CLMM Close Position Request
+export const MeteoraClmmClosePositionRequest = Type.Intersect([
+  Type.Omit(CLMMBase.ClosePositionRequest, ['network', 'walletAddress']),
+  Type.Object({
+    network: Type.Optional(
+      Type.String({
+        description: 'Solana network to use',
+        default: solanaChainConfig.defaultNetwork,
+        enum: [...MeteoraConfig.networks],
+        examples: [...MeteoraConfig.networks],
+      }),
+    ),
+    walletAddress: Type.Optional(
+      Type.String({
+        description: 'Solana wallet address that will close the position',
+        default: solanaChainConfig.defaultWallet,
+        examples: [solanaChainConfig.defaultWallet],
+      }),
+    ),
+    priorityFeePerCU: Type.Optional(Type.Number({ description: 'Priority fee per compute unit' })),
+    computeUnits: Type.Optional(Type.Number({ description: 'Compute units for transaction' })),
+  }),
+]);
+
+// Meteora CLMM Collect Fees Request
+export const MeteoraClmmCollectFeesRequest = Type.Intersect([
+  Type.Omit(CLMMBase.CollectFeesRequest, ['network', 'walletAddress']),
+  Type.Object({
+    network: Type.Optional(
+      Type.String({
+        description: 'Solana network to use',
+        default: solanaChainConfig.defaultNetwork,
+        enum: [...MeteoraConfig.networks],
+        examples: [...MeteoraConfig.networks],
+      }),
+    ),
+    walletAddress: Type.Optional(
+      Type.String({
+        description: 'Solana wallet address that will collect fees',
+        default: solanaChainConfig.defaultWallet,
+        examples: [solanaChainConfig.defaultWallet],
+      }),
+    ),
+    priorityFeePerCU: Type.Optional(Type.Number({ description: 'Priority fee per compute unit' })),
+    computeUnits: Type.Optional(Type.Number({ description: 'Compute units for transaction' })),
   }),
 ]);

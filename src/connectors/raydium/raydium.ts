@@ -24,6 +24,11 @@ import { logger } from '../../services/logger';
 import { RaydiumConfig } from './raydium.config';
 import { isValidClmm, isValidAmm, isValidCpmm } from './raydium.utils';
 
+// Internal type that includes poolType for internal use
+interface InternalAmmPoolInfo extends AmmPoolInfo {
+  poolType?: 'amm' | 'cpmm';
+}
+
 export class Raydium {
   private static _instances: { [name: string]: Raydium };
   public solana: Solana; // Changed to public for use in route handlers
@@ -263,10 +268,10 @@ export class Raydium {
   }
 
   // AMM Pool Methods
-  async getAmmPoolInfo(poolAddress: string): Promise<AmmPoolInfo | null> {
+  async getAmmPoolInfo(poolAddress: string): Promise<InternalAmmPoolInfo | null> {
     try {
       const poolType = await this.getPoolType(poolAddress);
-      let poolInfo: AmmPoolInfo;
+      let poolInfo: InternalAmmPoolInfo;
       if (poolType === 'amm') {
         const rawPool = await this.raydiumSDK.liquidity.getRpcPoolInfos([poolAddress]);
         console.log('ammPoolInfo', rawPool);
@@ -280,10 +285,6 @@ export class Raydium {
           baseTokenAmount: Number(rawPool[poolAddress].mintAAmount) / 10 ** Number(rawPool[poolAddress].baseDecimal),
           quoteTokenAmount: Number(rawPool[poolAddress].mintBAmount) / 10 ** Number(rawPool[poolAddress].quoteDecimal),
           poolType: poolType,
-          lpMint: {
-            address: rawPool[poolAddress].lpMint.toString(),
-            decimals: 9, // Default LP token decimals for Raydium
-          },
         };
         return poolInfo;
       } else if (poolType === 'cpmm') {
@@ -299,10 +300,6 @@ export class Raydium {
           baseTokenAmount: Number(rawPool[poolAddress].baseReserve) / 10 ** Number(rawPool[poolAddress].mintDecimalA),
           quoteTokenAmount: Number(rawPool[poolAddress].quoteReserve) / 10 ** Number(rawPool[poolAddress].mintDecimalB),
           poolType: poolType,
-          lpMint: {
-            address: rawPool[poolAddress].mintLp.toString(),
-            decimals: 9, // Default LP token decimals for Raydium
-          },
         };
         return poolInfo;
       }

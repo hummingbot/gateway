@@ -5,6 +5,7 @@ import {
   ApiV3PoolInfoStandardItemCpmm,
   Percent,
 } from '@raydium-io/raydium-sdk-v2';
+import { Static } from '@sinclair/typebox';
 import { VersionedTransaction, Transaction, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
@@ -12,14 +13,14 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana, BASE_FEE } from '../../../chains/solana/solana';
 import {
-  RemoveLiquidityRequest,
-  RemoveLiquidityResponse,
   RemoveLiquidityRequestType,
+  RemoveLiquidityResponse,
   RemoveLiquidityResponseType,
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
+import { RaydiumAmmRemoveLiquidityRequest } from '../schemas';
 
 // Interfaces for SDK responses
 interface TokenBurnInfo {
@@ -243,7 +244,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   // const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
-    Body: RemoveLiquidityRequestType;
+    Body: Static<typeof RaydiumAmmRemoveLiquidityRequest>;
     Reply: RemoveLiquidityResponseType;
   }>(
     '/remove-liquidity',
@@ -251,7 +252,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Remove liquidity from a Raydium AMM/CPMM pool',
         tags: ['/connector/raydium'],
-        body: RemoveLiquidityRequest,
+        body: RaydiumAmmRemoveLiquidityRequest,
         response: {
           200: RemoveLiquidityResponse,
         },
@@ -259,7 +260,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, poolAddress, percentageToRemove } = request.body;
+        const { network, walletAddress, poolAddress, percentageToRemove, priorityFeePerCU, computeUnits } =
+          request.body;
 
         return await removeLiquidity(
           fastify,
@@ -267,8 +269,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           walletAddress,
           poolAddress,
           percentageToRemove,
-          request.body.priorityFeePerCU,
-          request.body.computeUnits,
+          priorityFeePerCU,
+          computeUnits,
         );
       } catch (e) {
         logger.error(e);

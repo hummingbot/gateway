@@ -1,14 +1,11 @@
+import { Static } from '@sinclair/typebox';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  CollectFeesRequest,
-  CollectFeesResponse,
-  CollectFeesRequestType,
-  CollectFeesResponseType,
-} from '../../../schemas/clmm-schema';
+import { CollectFeesResponse, CollectFeesRequestType, CollectFeesResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
+import { MeteoraClmmCollectFeesRequest } from '../schemas';
 
 export async function collectFees(
   fastify: FastifyInstance,
@@ -94,7 +91,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
-    Body: CollectFeesRequestType;
+    Body: Static<typeof MeteoraClmmCollectFeesRequest>;
     Reply: CollectFeesResponseType;
   }>(
     '/collect-fees',
@@ -102,14 +99,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Collect fees from a Meteora position',
         tags: ['/connector/meteora'],
-        body: {
-          ...CollectFeesRequest,
-          properties: {
-            ...CollectFeesRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-          },
-        },
+        body: MeteoraClmmCollectFeesRequest,
         response: {
           200: CollectFeesResponse,
         },

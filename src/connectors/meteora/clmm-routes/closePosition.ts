@@ -1,8 +1,8 @@
+import { Static } from '@sinclair/typebox';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import {
-  ClosePositionRequest,
   ClosePositionResponse,
   ClosePositionRequestType,
   ClosePositionResponseType,
@@ -11,6 +11,7 @@ import {
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
+import { MeteoraClmmClosePositionRequest } from '../schemas';
 
 import { collectFees } from './collectFees';
 import { removeLiquidity } from './removeLiquidity';
@@ -143,7 +144,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
-    Body: ClosePositionRequestType;
+    Body: Static<typeof MeteoraClmmClosePositionRequest>;
     Reply: ClosePositionResponseType;
   }>(
     '/close-position',
@@ -151,15 +152,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Close a Meteora position',
         tags: ['/connector/meteora'],
-        body: {
-          ...ClosePositionRequest,
-          properties: {
-            ...ClosePositionRequest.properties,
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            network: { type: 'string', default: 'mainnet-beta' },
-            positionAddress: { type: 'string' },
-          },
-        },
+        body: MeteoraClmmClosePositionRequest,
         response: {
           200: ClosePositionResponse,
         },

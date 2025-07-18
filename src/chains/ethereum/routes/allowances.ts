@@ -4,7 +4,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { getSpender } from '../../../connectors/uniswap/uniswap.contracts';
 import { tokenValueToString } from '../../../services/base';
 import { logger } from '../../../services/logger';
-import { TokenInfo, Ethereum } from '../ethereum';
+import { Ethereum, TokenInfo } from '../ethereum';
 import {
   AllowancesRequestSchema,
   AllowancesResponseSchema,
@@ -31,18 +31,29 @@ export async function getEthereumAllowances(
       wallet = await ethereum.getWallet(address);
     }
 
-    const tokenInfoMap = ethereum.getTokensAsMap(tokens);
+    // If tokens array is empty, get all tokens from the token list
+    let tokenInfoMap: Record<string, TokenInfo>;
+    if (!tokens || tokens.length === 0) {
+      // Get all tokens from the token list
+      const allTokens = ethereum.storedTokenList;
+      tokenInfoMap = {};
+      for (const token of allTokens) {
+        tokenInfoMap[token.symbol] = token;
+      }
+    } else {
+      tokenInfoMap = ethereum.getTokensAsMap(tokens);
 
-    // Check if any tokens were found
-    const foundSymbols = Object.keys(tokenInfoMap);
-    if (foundSymbols.length === 0) {
-      const errorMsg = `None of the provided tokens could be found or fetched: ${tokens.join(', ')}`;
-      logger.error(errorMsg);
-      throw fastify.httpErrors.badRequest(errorMsg);
+      // Check if any tokens were found
+      const foundSymbols = Object.keys(tokenInfoMap);
+      if (foundSymbols.length === 0) {
+        const errorMsg = `None of the provided tokens could be found or fetched: ${tokens.join(', ')}`;
+        logger.error(errorMsg);
+        throw fastify.httpErrors.badRequest(errorMsg);
+      }
     }
 
-    // Log any tokens that couldn't be resolved
-    if (foundSymbols.length < tokens.length) {
+    // Log any tokens that couldn't be resolved (only for specific token requests)
+    if (tokens && tokens.length > 0 && Object.keys(tokenInfoMap).length < tokens.length) {
       const resolvedAddresses = Object.values(tokenInfoMap).map((t) => t.address.toLowerCase());
       const resolvedSymbols = Object.values(tokenInfoMap).map((t) => t.symbol.toUpperCase());
 

@@ -1,15 +1,16 @@
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
+import { Static } from '@sinclair/typebox';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana, BASE_FEE } from '../../../chains/solana/solana';
 import {
-  ClosePositionRequest,
   ClosePositionResponse,
   ClosePositionRequestType,
   ClosePositionResponseType,
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+import { RaydiumClmmClosePositionRequest } from '../schemas';
 
 import { removeLiquidity } from './removeLiquidity';
 
@@ -114,7 +115,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
-    Body: ClosePositionRequestType;
+    Body: Static<typeof RaydiumClmmClosePositionRequest>;
     Reply: ClosePositionResponseType;
   }>(
     '/close-position',
@@ -122,15 +123,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Close a Raydium CLMM position',
         tags: ['/connector/raydium'],
-        body: {
-          ...ClosePositionRequest,
-          properties: {
-            ...ClosePositionRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            positionAddress: { type: 'string' },
-          },
-        },
+        body: RaydiumClmmClosePositionRequest,
         response: {
           200: ClosePositionResponse,
         },

@@ -7,6 +7,7 @@ import {
   TokenAmount,
   toToken,
 } from '@raydium-io/raydium-sdk-v2';
+import { Static } from '@sinclair/typebox';
 import { VersionedTransaction, Transaction } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
@@ -14,15 +15,15 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana, BASE_FEE } from '../../../chains/solana/solana';
 import {
-  AddLiquidityRequest,
-  AddLiquidityResponse,
   AddLiquidityRequestType,
+  AddLiquidityResponse,
   AddLiquidityResponseType,
   QuoteLiquidityResponseType,
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
+import { RaydiumAmmAddLiquidityRequest } from '../schemas';
 
 import { quoteLiquidity } from './quoteLiquidity';
 
@@ -122,7 +123,7 @@ async function addLiquidity(
     slippagePct,
   )) as QuoteLiquidityResponseType;
 
-  const { baseLimited, baseTokenAmountMax, quoteTokenAmountMax, computeUnits: quoteComputeUnits } = quoteResponse;
+  const { baseLimited, baseTokenAmountMax, quoteTokenAmountMax } = quoteResponse;
 
   const baseTokenAmountAdded = baseLimited ? baseTokenAmount : baseTokenAmountMax;
   const quoteTokenAmountAdded = baseLimited ? quoteTokenAmount : quoteTokenAmountMax;
@@ -131,8 +132,8 @@ async function addLiquidity(
   const slippageValue = slippagePct === 0 ? 0 : slippagePct || RaydiumConfig.config.slippagePct;
   const slippage = new Percent(Math.floor((slippageValue * 100) / 10000));
 
-  // Use provided compute units or quote's estimate
-  const computeUnitsToUse = computeUnits || quoteComputeUnits;
+  // Use provided compute units or a default value
+  const computeUnitsToUse = computeUnits || 400000;
 
   // Calculate priority fee
   let priorityFeePerCUMicroLamports: number;
@@ -209,7 +210,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   // const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
-    Body: AddLiquidityRequestType;
+    Body: Static<typeof RaydiumAmmAddLiquidityRequest>;
     Reply: AddLiquidityResponseType;
   }>(
     '/add-liquidity',
@@ -217,7 +218,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Add liquidity to a Raydium AMM/CPMM pool',
         tags: ['/connector/raydium'],
-        body: AddLiquidityRequest,
+        body: RaydiumAmmAddLiquidityRequest,
         response: {
           200: AddLiquidityResponse,
         },
@@ -225,7 +226,16 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.body;
+        const {
+          network,
+          walletAddress,
+          poolAddress,
+          baseTokenAmount,
+          quoteTokenAmount,
+          slippagePct,
+          priorityFeePerCU,
+          computeUnits,
+        } = request.body;
 
         return await addLiquidity(
           fastify,
@@ -235,8 +245,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
-          request.body.priorityFeePerCU,
-          request.body.computeUnits,
+          priorityFeePerCU,
+          computeUnits,
         );
       } catch (e) {
         logger.error(e);

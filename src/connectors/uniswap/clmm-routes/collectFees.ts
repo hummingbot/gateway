@@ -49,13 +49,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress: requestedWalletAddress,
-          positionAddress,
-          priorityFeePerCU,
-          computeUnits,
-        } = request.body;
+        const { network, walletAddress: requestedWalletAddress, positionAddress } = request.body;
 
         const networkToUse = network;
         const chain = 'ethereum'; // Default to ethereum
@@ -139,7 +133,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
 
         // Execute the transaction to collect fees
         // Use Ethereum's prepareGasOptions method
-        const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits || 300000);
+        const txParams = await ethereum.prepareGasOptions();
         txParams.value = BigNumber.from(value.toString());
 
         const tx = await positionManager.multicall([calldata], txParams);

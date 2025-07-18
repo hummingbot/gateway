@@ -202,15 +202,12 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('amountIn', 0.1);
     expect(body).toHaveProperty('amountOut');
     expect(body).toHaveProperty('minAmountOut');
+    expect(body).toHaveProperty('maxAmountIn', 0.1);
     expect(body).toHaveProperty('price');
     expect(body).toHaveProperty('priceImpactPct');
-    expect(body).toHaveProperty('fee');
-    expect(body.fee).toBeCloseTo(0.0003, 6); // Fee is 0.003 * 0.1 = 0.0003
+    expect(body).toHaveProperty('slippagePct', 1);
     expect(body).toHaveProperty('tokenIn', mockWETH.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-    // For SELL side: priceWithSlippage = minAmountOut / amountIn
-    expect(body).toHaveProperty('priceWithSlippage');
-    expect(body.priceWithSlippage).toBeCloseTo(body.minAmountOut / body.amountIn, 8);
   });
 
   it('should return a quote for AMM swap BUY side', async () => {
@@ -352,9 +349,10 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockWETH.address);
-    // For BUY side: priceWithSlippage = maxAmountIn / amountOut
-    expect(body).toHaveProperty('priceWithSlippage');
-    expect(body.priceWithSlippage).toBeCloseTo(body.maxAmountIn / body.amountOut, 8);
+    expect(body).toHaveProperty('minAmountOut', 150);
+    expect(body).toHaveProperty('slippagePct', 1);
+    expect(body).toHaveProperty('price');
+    expect(body).toHaveProperty('priceImpactPct');
   });
 
   it('should return 400 if token not found', async () => {

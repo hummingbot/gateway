@@ -105,8 +105,6 @@ async function formatSwapQuote(
     const amountOut = DecimalUtil.fromBN(exactOutQuote.outAmount, outputToken.decimals).toNumber();
 
     const price = amountOut / estimatedAmountIn;
-    // For BUY: priceWithSlippage = estimatedAmountOut / maxAmountIn (worst price you'll accept)
-    const priceWithSlippage = amountOut / maxAmountIn;
 
     return {
       // Base QuoteSwapResponse fields in correct order
@@ -117,13 +115,10 @@ async function formatSwapQuote(
       amountOut: amountOut,
       price,
       slippagePct: slippagePct || 1, // Default 1% if not provided
-      priceWithSlippage,
       minAmountOut: amountOut,
       maxAmountIn,
       // CLMM-specific fields
       priceImpactPct: 0, // TODO: Calculate actual price impact
-      fee: 0.3, // Default fee percentage
-      computeUnits: 0,
       activeBinId: 0, // TODO: Get active bin ID
     };
   } else {
@@ -139,8 +134,6 @@ async function formatSwapQuote(
     const quoteTokenChange = estimatedAmountOut;
 
     const price = estimatedAmountOut / estimatedAmountIn;
-    // For SELL: priceWithSlippage = minAmountOut / estimatedAmountIn (worst price you'll accept)
-    const priceWithSlippage = minAmountOut / estimatedAmountIn;
 
     return {
       // Base QuoteSwapResponse fields in correct order
@@ -151,13 +144,10 @@ async function formatSwapQuote(
       amountOut: estimatedAmountOut,
       price,
       slippagePct: slippagePct || 1, // Default 1% if not provided
-      priceWithSlippage,
       minAmountOut,
       maxAmountIn: estimatedAmountIn,
       // CLMM-specific fields
       priceImpactPct: 0, // TODO: Calculate actual price impact
-      fee: 0.3, // Default fee percentage
-      computeUnits: 0,
       activeBinId: 0, // TODO: Get active bin ID
     };
   }

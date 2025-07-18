@@ -57,14 +57,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress: requestedWalletAddress,
-          positionAddress,
-          percentageToRemove,
-          priorityFeePerCU,
-          computeUnits,
-        } = request.body;
+        const { network, walletAddress: requestedWalletAddress, positionAddress, percentageToRemove } = request.body;
 
         const networkToUse = network;
         const chain = 'ethereum'; // Default to ethereum
@@ -202,7 +195,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Execute the transaction to remove liquidity
         // Use Ethereum's prepareGasOptions method
-        const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
+        const txParams = await ethereum.prepareGasOptions();
         txParams.value = BigNumber.from(value.toString());
 
         const tx = await positionManagerWithSigner.multicall([calldata], txParams);

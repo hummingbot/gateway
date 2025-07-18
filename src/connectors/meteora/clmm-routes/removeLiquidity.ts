@@ -1,15 +1,16 @@
 import { BN } from '@coral-xyz/anchor';
+import { Static } from '@sinclair/typebox';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import {
-  RemoveLiquidityRequest,
   RemoveLiquidityResponse,
   RemoveLiquidityRequestType,
   RemoveLiquidityResponseType,
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
+import { MeteoraClmmRemoveLiquidityRequest } from '../schemas';
 
 // Using Fastify's native error handling
 const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
@@ -99,7 +100,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
-    Body: RemoveLiquidityRequestType;
+    Body: Static<typeof MeteoraClmmRemoveLiquidityRequest>;
     Reply: RemoveLiquidityResponseType;
   }>(
     '/remove-liquidity',
@@ -107,15 +108,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Remove liquidity from a Meteora position',
         tags: ['/connector/meteora'],
-        body: {
-          ...RemoveLiquidityRequest,
-          properties: {
-            ...RemoveLiquidityRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            percentageToRemove: { type: 'number', examples: [100] },
-          },
-        },
+        body: MeteoraClmmRemoveLiquidityRequest,
         response: {
           200: RemoveLiquidityResponse,
         },

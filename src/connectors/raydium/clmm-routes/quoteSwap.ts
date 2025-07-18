@@ -225,10 +225,6 @@ async function formatSwapQuote(
     // Calculate fee
     const fee = exactOutResponse.fee ? exactOutResponse.fee.toNumber() / 10 ** outputToken.decimals : 0;
 
-    // Calculate price with slippage (BUY side)
-    // For BUY: priceWithSlippage = estimatedAmountOut / maxAmountIn (worst price you'll accept)
-    const priceWithSlippage = estimatedAmountOut / maxAmountIn;
-
     return {
       // Base QuoteSwapResponse fields in correct order
       poolAddress,
@@ -238,13 +234,10 @@ async function formatSwapQuote(
       amountOut: estimatedAmountOut,
       price,
       slippagePct: slippagePct || 1, // Default 1% if not provided
-      priceWithSlippage,
       minAmountOut: estimatedAmountOut,
       maxAmountIn,
       // CLMM-specific fields
       priceImpactPct,
-      fee,
-      computeUnits: 600000, // CLMM swaps typically need 600k compute units
       activeBinId,
     };
   } else {
@@ -268,10 +261,6 @@ async function formatSwapQuote(
     // Calculate fee
     const fee = exactInResponse.fee ? Number(exactInResponse.fee) / 10 ** outputToken.decimals : 0;
 
-    // Calculate price with slippage (SELL side)
-    // For SELL: priceWithSlippage = minAmountOut / estimatedAmountIn (worst price you'll accept)
-    const priceWithSlippage = minAmountOut / estimatedAmountIn;
-
     return {
       // Base QuoteSwapResponse fields in correct order
       poolAddress,
@@ -281,13 +270,10 @@ async function formatSwapQuote(
       amountOut: estimatedAmountOut,
       price,
       slippagePct: slippagePct || 1, // Default 1% if not provided
-      priceWithSlippage,
       minAmountOut,
       maxAmountIn: estimatedAmountIn,
       // CLMM-specific fields
       priceImpactPct,
-      fee,
-      computeUnits: 600000, // CLMM swaps typically need 600k compute units
       activeBinId,
     };
   }
@@ -303,19 +289,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get swap quote for Raydium CLMM',
         tags: ['/connector/raydium'],
-        querystring: {
-          ...RaydiumClmmQuoteSwapRequest,
-          properties: {
-            ...RaydiumClmmQuoteSwapRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.01] },
-            side: { type: 'string', enum: ['BUY', 'SELL'] },
-            poolAddress: { type: 'string', examples: [''] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        querystring: RaydiumClmmQuoteSwapRequest,
         response: { 200: QuoteSwapResponse },
       },
     },

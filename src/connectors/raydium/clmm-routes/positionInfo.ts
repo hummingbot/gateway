@@ -1,14 +1,12 @@
 import { FastifyPluginAsync } from 'fastify';
 
-import { PositionInfo, PositionInfoSchema } from '../../../schemas/clmm-schema';
+import { PositionInfo, PositionInfoSchema, GetPositionInfoRequestType } from '../../../schemas/clmm-schema';
 import { Raydium } from '../raydium';
+import { RaydiumClmmGetPositionInfoRequest } from '../schemas';
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: {
-      network?: string;
-      positionAddress: string;
-    };
+    Querystring: GetPositionInfoRequestType;
     Reply: PositionInfo;
   }>(
     '/position-info',
@@ -16,14 +14,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get info about a Raydium CLMM position',
         tags: ['/connector/raydium'],
-        querystring: {
-          type: 'object',
-          properties: {
-            network: { type: 'string', default: 'mainnet-beta' },
-            positionAddress: { type: 'string' },
-          },
-          required: ['positionAddress'],
-        },
+        querystring: RaydiumClmmGetPositionInfoRequest,
         response: {
           200: PositionInfoSchema,
         },

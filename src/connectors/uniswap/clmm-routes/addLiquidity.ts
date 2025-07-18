@@ -1,25 +1,22 @@
 import { Contract } from '@ethersproject/contracts';
+import { Static } from '@sinclair/typebox';
 import { Token, CurrencyAmount, Percent } from '@uniswap/sdk-core';
 import { Position, Pool as V3Pool, NonfungiblePositionManager, FeeAmount } from '@uniswap/v3-sdk';
-import { BigNumber } from 'ethers';
+import { BigNumber, utils } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  AddLiquidityRequestType,
-  AddLiquidityRequest,
-  AddLiquidityResponseType,
-  AddLiquidityResponse,
-} from '../../../schemas/clmm-schema';
+import { AddLiquidityResponseType, AddLiquidityResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
+import { UniswapClmmAddLiquidityRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
 import { getUniswapV3NftManagerAddress, POSITION_MANAGER_ABI, ERC20_ABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
-    Body: AddLiquidityRequestType;
+    Body: Static<typeof UniswapClmmAddLiquidityRequest>;
     Reply: AddLiquidityResponseType;
   }>(
     '/add-liquidity',
@@ -27,21 +24,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Add liquidity to an existing Uniswap V3 position',
         tags: ['/connector/uniswap'],
-        body: {
-          ...AddLiquidityRequest,
-          properties: {
-            ...AddLiquidityRequest.properties,
-            network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: ['0x...'] },
-            positionAddress: {
-              type: 'string',
-              description: 'Position NFT token ID',
-            },
-            baseTokenAmount: { type: 'number', examples: [0.1] },
-            quoteTokenAmount: { type: 'number', examples: [200] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        body: UniswapClmmAddLiquidityRequest,
         response: {
           200: AddLiquidityResponse,
         },
@@ -56,8 +39,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
-          priorityFeePerCU,
-          computeUnits,
+          gasPrice,
+          maxGas,
         } = request.body;
 
         const networkToUse = network;
@@ -225,7 +208,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Execute the transaction to increase liquidity
         // Use Ethereum's prepareGasOptions method
-        const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
+        const priorityFeeGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
+        const txParams = await ethereum.prepareGasOptions(priorityFeeGwei, maxGas);
         txParams.value = BigNumber.from(value.toString());
 
         const tx = await positionManagerWithSigner.multicall([calldata], txParams);

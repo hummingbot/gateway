@@ -245,12 +245,6 @@ async function formatSwapQuote(
     // Calculate fee (V2 has 0.3% fixed fee)
     const fee = quote.estimatedAmountIn * 0.003;
 
-    // Calculate price with slippage
-    // For SELL: worst price = minAmountOut / estimatedAmountIn (minimum quote per base)
-    // For BUY: worst price = maxAmountIn / estimatedAmountOut (maximum quote per base)
-    const priceWithSlippage =
-      side === 'SELL' ? quote.minAmountOut / quote.estimatedAmountIn : quote.maxAmountIn / quote.estimatedAmountOut;
-
     return {
       // Base QuoteSwapResponse fields in correct order
       poolAddress,
@@ -260,13 +254,10 @@ async function formatSwapQuote(
       amountOut: quote.estimatedAmountOut,
       price,
       slippagePct: slippagePct || 1, // Default 1% if not provided
-      priceWithSlippage,
       minAmountOut: quote.minAmountOut,
       maxAmountIn: quote.maxAmountIn,
       // AMM-specific fields
       priceImpactPct,
-      fee,
-      computeUnits: estimatedGasValue, // Use gas limit as compute units for Ethereum
     };
   } catch (error) {
     logger.error(`Error formatting swap quote: ${error.message}`);

@@ -9,18 +9,6 @@ import { EthereumLedger } from '../ethereum-ledger';
 import { waitForTransactionWithTimeout } from '../ethereum.utils';
 import { ApproveRequestSchema, ApproveResponseSchema, ApproveRequestType, ApproveResponseType } from '../schemas';
 
-// Helper function to convert transaction to a format matching the CustomTransactionSchema
-const toEthereumTransaction = (transaction: ethers.Transaction) => {
-  return {
-    data: transaction.data,
-    to: transaction.to || '',
-    maxPriorityFeePerGas: transaction.maxPriorityFeePerGas?.toString() || null,
-    maxFeePerGas: transaction.maxFeePerGas?.toString() || null,
-    gasLimit: transaction.gasLimit?.toString() || null,
-    value: transaction.value?.toString() || '0',
-  };
-};
-
 export async function approveEthereumToken(
   fastify: FastifyInstance,
   network: string,
@@ -76,19 +64,12 @@ export async function approveEthereumToken(
       const iface = new utils.Interface(['function approve(address spender, uint256 amount)']);
       const data = iface.encodeFunctionData('approve', [spenderAddress, amountBigNumber]);
 
-      // Get gas price
-      const gasPrice = await ethereum.provider.getGasPrice();
-      const feeData = await ethereum.provider.getFeeData();
-
-      // Build unsigned transaction
+      // Build unsigned transaction - let gateway handle gas parameters
       const unsignedTx = {
         to: fullToken.address,
         data: data,
         nonce: nonce,
         chainId: ethereum.chainId,
-        gasLimit: ethers.BigNumber.from('100000'), // Standard gas limit for approve
-        maxFeePerGas: feeData.maxFeePerGas,
-        maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
       };
 
       // Sign with Ledger

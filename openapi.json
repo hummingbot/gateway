@@ -999,11 +999,11 @@
         "description": "Get Solana network status",
         "parameters": [
           {
-            "schema": { "type": "string" },
-            "examples": { "mainnet-beta": { "value": "mainnet-beta" }, "devnet": { "value": "devnet" } },
+            "schema": { "default": "mainnet-beta", "enum": ["devnet", "mainnet-beta"], "type": "string" },
             "in": "query",
             "name": "network",
-            "required": true
+            "required": false,
+            "description": "The Solana network to use"
           }
         ],
         "responses": {
@@ -1038,26 +1038,32 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "example": "mainnet-beta" },
-                  "address": { "type": "string", "example": "11111111111111111111111111111111" },
+                  "network": {
+                    "description": "The Solana network to use",
+                    "default": "mainnet-beta",
+                    "enum": ["devnet", "mainnet-beta"],
+                    "type": "string"
+                  },
+                  "address": {
+                    "description": "Solana wallet address",
+                    "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                    "type": "string"
+                  },
                   "tokens": {
+                    "description": "A list of token symbols (SOL, USDC, BONK) or token mint addresses. Both formats are accepted and will be automatically detected. An empty array is treated the same as if the parameter was not provided, returning only non-zero balances (with the exception of SOL).",
                     "type": "array",
                     "items": { "type": "string" },
-                    "description": "A list of token symbols (SOL, USDC, BONK) or token mint addresses. Both formats are accepted and will be automatically detected. An empty array is treated the same as if the parameter was not provided, returning only non-zero balances (with the exception of SOL).",
                     "example": ["SOL", "USDC", "BONK"]
                   },
                   "fetchAll": {
-                    "type": "boolean",
-                    "description": "Whether to fetch all tokens in wallet, not just those in token list. Defaults to false.",
+                    "description": "Whether to fetch all tokens in wallet, not just those in token list",
                     "default": false,
-                    "example": false
+                    "type": "boolean"
                   }
-                },
-                "required": ["network", "address"]
+                }
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1094,15 +1100,30 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "example": "mainnet-beta" },
+                  "network": {
+                    "description": "The Solana network to use",
+                    "default": "mainnet-beta",
+                    "enum": ["devnet", "mainnet-beta"],
+                    "type": "string"
+                  },
                   "signature": {
+                    "description": "Transaction signature to poll",
                     "type": "string",
                     "example": "55ukR6VCt1sQFMC8Nyeo51R1SMaTzUC7jikmkEJ2jjkQNdqBxXHraH7vaoaNmf8rX4Y55EXAj8XXoyzvvsrQqWZa"
                   },
-                  "tokens": { "type": "array", "items": { "type": "string" }, "example": ["SOL", "USDC"] },
-                  "walletAddress": { "type": "string", "example": "11111111111111111111111111111111" }
+                  "tokens": {
+                    "description": "Tokens to track balance changes for",
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "example": ["SOL", "USDC", "BONK"]
+                  },
+                  "walletAddress": {
+                    "description": "Wallet address to track balance changes for",
+                    "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                    "type": "string"
+                  }
                 },
-                "required": ["network", "signature"]
+                "required": ["signature"]
               }
             }
           },
@@ -1147,14 +1168,17 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "example": "mainnet-beta" },
-                  "gasLimit": { "type": "number", "example": 200000 }
-                },
-                "required": ["network"]
+                  "network": {
+                    "description": "The Solana network to use",
+                    "default": "mainnet-beta",
+                    "enum": ["devnet", "mainnet-beta"],
+                    "type": "string"
+                  },
+                  "gasLimit": { "description": "Gas limit for the transaction", "type": "number", "example": 200000 }
+                }
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1182,21 +1206,15 @@
         "description": "Get Ethereum chain status",
         "parameters": [
           {
-            "schema": { "type": "string" },
-            "examples": {
-              "mainnet": { "value": "mainnet" },
-              "arbitrum": { "value": "arbitrum" },
-              "optimism": { "value": "optimism" },
-              "base": { "value": "base" },
-              "sepolia": { "value": "sepolia" },
-              "bsc": { "value": "bsc" },
-              "avalanche": { "value": "avalanche" },
-              "celo": { "value": "celo" },
-              "polygon": { "value": "polygon" }
+            "schema": {
+              "default": "mainnet",
+              "enum": ["arbitrum", "avalanche", "base", "bsc", "celo", "mainnet", "optimism", "polygon", "sepolia"],
+              "type": "string"
             },
             "in": "query",
             "name": "network",
-            "required": true
+            "required": false,
+            "description": "The Ethereum network to use"
           }
         ],
         "responses": {
@@ -1231,24 +1249,37 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "example": "mainnet" },
-                  "address": { "type": "string", "example": "0x0000000000000000000000000000000000000000" },
+                  "network": {
+                    "description": "The Ethereum network to use",
+                    "default": "mainnet",
+                    "enum": [
+                      "arbitrum",
+                      "avalanche",
+                      "base",
+                      "bsc",
+                      "celo",
+                      "mainnet",
+                      "optimism",
+                      "polygon",
+                      "sepolia"
+                    ],
+                    "type": "string"
+                  },
+                  "address": {
+                    "description": "Ethereum wallet address",
+                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "type": "string"
+                  },
                   "tokens": {
+                    "description": "A list of token symbols (ETH, USDC, WETH) or token addresses. Both formats are accepted and will be automatically detected. An empty array is treated the same as if the parameter was not provided, returning only non-zero balances (with the exception of ETH).",
                     "type": "array",
                     "items": { "type": "string" },
-                    "description": "A list of token symbols or addresses. An empty array is treated the same as if the parameter was not provided, returning only non-zero balances plus the native token.",
-                    "example": ["ETH", "USDC", "DAI", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"]
-                  },
-                  "fetchAll": {
-                    "description": "fetch all tokens in wallet, not just those in token list (default: false)",
-                    "type": "boolean"
+                    "example": ["ETH", "USDC", "WETH"]
                   }
-                },
-                "required": ["network", "address"]
+                }
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1276,19 +1307,29 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "example": "mainnet" },
-                  "signature": { "type": "string", "example": "0x123..." },
-                  "tokens": {
-                    "description": "Array of token symbols or addresses for balance change calculation",
-                    "type": "array",
-                    "items": { "type": "string" }
-                  },
-                  "walletAddress": {
-                    "description": "Wallet address for balance change calculation (required if tokens provided)",
+                  "network": {
+                    "description": "The Ethereum network to use",
+                    "default": "mainnet",
+                    "enum": [
+                      "arbitrum",
+                      "avalanche",
+                      "base",
+                      "bsc",
+                      "celo",
+                      "mainnet",
+                      "optimism",
+                      "polygon",
+                      "sepolia"
+                    ],
                     "type": "string"
+                  },
+                  "signature": {
+                    "description": "Transaction hash to poll",
+                    "type": "string",
+                    "example": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
                   }
                 },
-                "required": ["network", "signature"]
+                "required": ["signature"]
               }
             }
           },
@@ -1333,21 +1374,40 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "example": "mainnet" },
-                  "address": { "type": "string", "example": "0x0000000000000000000000000000000000000000" },
+                  "network": {
+                    "description": "The Ethereum network to use",
+                    "default": "mainnet",
+                    "enum": [
+                      "arbitrum",
+                      "avalanche",
+                      "base",
+                      "bsc",
+                      "celo",
+                      "mainnet",
+                      "optimism",
+                      "polygon",
+                      "sepolia"
+                    ],
+                    "type": "string"
+                  },
+                  "address": {
+                    "description": "Ethereum wallet address",
+                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "type": "string"
+                  },
                   "spender": {
-                    "description": "Spender can be a connector name (e.g., uniswap/clmm, uniswap/amm, uniswap) or a direct contract address",
+                    "description": "Connector name (e.g., uniswap/clmm, uniswap/amm, 0x/router) or contract address",
                     "type": "string",
-                    "example": "uniswap/clmm"
+                    "example": "uniswap/router"
                   },
                   "tokens": {
                     "description": "Array of token symbols or addresses",
                     "type": "array",
                     "items": { "type": "string" },
-                    "example": ["USDC", "DAI"]
+                    "example": ["USDC", "WETH"]
                   }
                 },
-                "required": ["network", "address", "spender", "tokens"]
+                "required": ["spender", "tokens"]
               }
             }
           },
@@ -1382,21 +1442,40 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "example": "mainnet" },
-                  "address": { "type": "string", "example": "0x0000000000000000000000000000000000000000" },
-                  "spender": {
-                    "description": "Spender can be a connector name (e.g., uniswap/clmm, uniswap/amm, uniswap) or a direct contract address",
-                    "type": "string",
-                    "example": "uniswap/clmm"
+                  "network": {
+                    "description": "The Ethereum network to use",
+                    "default": "mainnet",
+                    "enum": [
+                      "arbitrum",
+                      "avalanche",
+                      "base",
+                      "bsc",
+                      "celo",
+                      "mainnet",
+                      "optimism",
+                      "polygon",
+                      "sepolia"
+                    ],
+                    "type": "string"
                   },
-                  "token": { "type": "string", "example": "USDC" },
+                  "address": {
+                    "description": "Ethereum wallet address",
+                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "type": "string"
+                  },
+                  "spender": {
+                    "description": "Connector name (e.g., uniswap/clmm, uniswap/amm, 0x/router) contract address",
+                    "type": "string",
+                    "example": "uniswap/router"
+                  },
+                  "token": { "description": "Token symbol or address", "type": "string", "example": "USDC" },
                   "amount": {
                     "description": "The amount to approve. If not provided, defaults to maximum amount (unlimited approval).",
-                    "type": "string",
-                    "example": ""
+                    "default": "",
+                    "type": "string"
                   }
                 },
-                "required": ["network", "address", "spender", "token"]
+                "required": ["spender", "token"]
               }
             }
           },
@@ -1442,14 +1521,27 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "example": "mainnet" },
-                  "gasLimit": { "type": "number", "example": 21000 }
-                },
-                "required": ["network"]
+                  "network": {
+                    "description": "The Ethereum network to use",
+                    "default": "mainnet",
+                    "enum": [
+                      "arbitrum",
+                      "avalanche",
+                      "base",
+                      "bsc",
+                      "celo",
+                      "mainnet",
+                      "optimism",
+                      "polygon",
+                      "sepolia"
+                    ],
+                    "type": "string"
+                  },
+                  "gasLimit": { "description": "Gas limit for the transaction", "type": "number", "example": 200000 }
+                }
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1481,15 +1573,34 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "example": "mainnet" },
-                  "address": { "type": "string", "example": "0x0000000000000000000000000000000000000000" },
+                  "network": {
+                    "description": "The Ethereum network to use",
+                    "default": "mainnet",
+                    "enum": [
+                      "arbitrum",
+                      "avalanche",
+                      "base",
+                      "bsc",
+                      "celo",
+                      "mainnet",
+                      "optimism",
+                      "polygon",
+                      "sepolia"
+                    ],
+                    "type": "string"
+                  },
+                  "address": {
+                    "description": "Ethereum wallet address",
+                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "type": "string"
+                  },
                   "amount": {
                     "description": "The amount of native token to wrap (e.g., ETH, BNB, AVAX)",
                     "type": "string",
                     "example": "0.01"
                   }
                 },
-                "required": ["network", "address", "amount"]
+                "required": ["amount"]
               }
             }
           },
@@ -1532,8 +1643,7 @@
         "description": "Get an executable swap quote from Jupiter",
         "parameters": [
           {
-            "schema": { "default": "mainnet-beta", "enum": ["mainnet-beta", "devnet"], "type": "string" },
-            "examples": { "mainnet-beta": { "value": "mainnet-beta" }, "devnet": { "value": "devnet" } },
+            "schema": { "default": "mainnet-beta", "enum": ["devnet", "mainnet-beta"], "type": "string" },
             "in": "query",
             "name": "network",
             "required": false,
@@ -1571,8 +1681,7 @@
             "description": "Trade direction - BUY means buying base token with quote token, SELL means selling base token for quote token"
           },
           {
-            "schema": { "minimum": 0, "maximum": 100, "type": "number" },
-            "example": 1,
+            "schema": { "minimum": 0, "maximum": 100, "default": 1, "type": "number" },
             "in": "query",
             "name": "slippagePct",
             "required": false,
@@ -1580,7 +1689,6 @@
           },
           {
             "schema": { "default": true, "type": "boolean" },
-            "example": true,
             "in": "query",
             "name": "restrictIntermediateTokens",
             "required": false,
@@ -1588,7 +1696,6 @@
           },
           {
             "schema": { "default": false, "type": "boolean" },
-            "example": false,
             "in": "query",
             "name": "onlyDirectRoutes",
             "required": false,
@@ -1609,11 +1716,7 @@
                     "amountIn": { "description": "Amount of tokenIn to be swapped", "type": "number" },
                     "amountOut": { "description": "Expected amount of tokenOut to receive", "type": "number" },
                     "price": { "description": "Exchange rate between tokenIn and tokenOut", "type": "number" },
-                    "slippagePct": { "description": "Slippage percentage used for this quote", "type": "number" },
-                    "priceWithSlippage": {
-                      "description": "Price including slippage (worst acceptable price)",
-                      "type": "number"
-                    },
+                    "priceImpactPct": { "description": "Estimated price impact percentage (0-100)", "type": "number" },
                     "minAmountOut": {
                       "description": "Minimum amount of tokenOut that will be accepted",
                       "type": "number"
@@ -1662,8 +1765,7 @@
                     "amountIn",
                     "amountOut",
                     "price",
-                    "slippagePct",
-                    "priceWithSlippage",
+                    "priceImpactPct",
                     "minAmountOut",
                     "maxAmountIn",
                     "quoteResponse"
@@ -1687,16 +1789,14 @@
                 "properties": {
                   "walletAddress": {
                     "description": "Solana wallet address that will execute the swap",
-                    "default": "11111111111111111111111111111111",
-                    "type": "string",
-                    "example": "11111111111111111111111111111111"
+                    "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                    "type": "string"
                   },
                   "network": {
                     "description": "Solana network to use",
                     "default": "mainnet-beta",
-                    "enum": ["mainnet-beta", "devnet"],
-                    "type": "string",
-                    "example": "mainnet-beta"
+                    "enum": ["devnet", "mainnet-beta"],
+                    "type": "string"
                   },
                   "quoteId": {
                     "description": "ID of the Jupiter quote to execute",
@@ -1711,8 +1811,8 @@
                   },
                   "maxLamports": {
                     "description": "Maximum priority fee in lamports for Solana transaction",
-                    "type": "number",
-                    "example": 1000000
+                    "default": [1000000],
+                    "type": "number"
                   }
                 },
                 "required": ["quoteId"]
@@ -1782,16 +1882,14 @@
                 "properties": {
                   "walletAddress": {
                     "description": "Solana wallet address that will execute the swap",
-                    "default": "11111111111111111111111111111111",
-                    "type": "string",
-                    "example": "11111111111111111111111111111111"
+                    "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                    "type": "string"
                   },
                   "network": {
                     "description": "Solana network to use",
                     "default": "mainnet-beta",
-                    "enum": ["mainnet-beta", "devnet"],
-                    "type": "string",
-                    "example": "mainnet-beta"
+                    "enum": ["devnet", "mainnet-beta"],
+                    "type": "string"
                   },
                   "baseToken": {
                     "description": "Solana token symbol or address to determine swap direction",
@@ -1814,20 +1912,18 @@
                     "minimum": 0,
                     "maximum": 100,
                     "description": "Maximum acceptable slippage percentage",
-                    "type": "number",
-                    "example": 1
+                    "default": 1,
+                    "type": "number"
                   },
                   "restrictIntermediateTokens": {
                     "description": "Restrict routing through highly liquid intermediate tokens only for better price and stability",
                     "default": true,
-                    "type": "boolean",
-                    "example": true
+                    "type": "boolean"
                   },
                   "onlyDirectRoutes": {
                     "description": "Restrict routing to only go through 1 market",
                     "default": false,
-                    "type": "boolean",
-                    "example": false
+                    "type": "boolean"
                   },
                   "priorityLevel": {
                     "description": "Priority level for Solana transaction processing",
@@ -1837,8 +1933,8 @@
                   },
                   "maxLamports": {
                     "description": "Maximum priority fee in lamports for Solana transaction",
-                    "type": "number",
-                    "example": 1000000
+                    "default": 1000000,
+                    "type": "number"
                   }
                 },
                 "required": ["baseToken", "quoteToken", "amount", "side"]
@@ -1905,7 +2001,7 @@
             "schema": { "type": "string", "default": "mainnet-beta" },
             "in": "query",
             "name": "network",
-            "required": true
+            "required": false
           },
           {
             "schema": { "type": "number", "minimum": 1, "default": 10 },
@@ -1963,10 +2059,10 @@
         "parameters": [
           {
             "schema": { "type": "string" },
-            "example": "mainnet-beta",
+            "examples": { "devnet": { "value": "devnet" }, "mainnet-beta": { "value": "mainnet-beta" } },
             "in": "query",
             "name": "network",
-            "required": true
+            "required": false
           },
           {
             "schema": { "type": "string" },
@@ -2046,7 +2142,7 @@
           },
           {
             "schema": { "type": "string" },
-            "example": "11111111111111111111111111111111",
+            "example": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
             "in": "query",
             "name": "walletAddress",
             "required": true
@@ -2114,17 +2210,17 @@
         "parameters": [
           {
             "schema": { "type": "string" },
-            "example": "mainnet-beta",
+            "examples": { "devnet": { "value": "devnet" }, "mainnet-beta": { "value": "mainnet-beta" } },
             "in": "query",
             "name": "network",
-            "required": true
+            "required": false
           },
           {
             "schema": { "type": "string" },
-            "example": "11111111111111111111111111111111",
+            "example": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
             "in": "query",
             "name": "walletAddress",
-            "required": true
+            "required": false
           },
           { "schema": { "type": "string" }, "in": "query", "name": "positionAddress", "required": true }
         ],
@@ -2177,7 +2273,7 @@
         "tags": ["/connector/meteora"],
         "description": "Get swap quote for Meteora CLMM",
         "parameters": [
-          { "schema": { "type": "string" }, "in": "query", "name": "network", "required": true },
+          { "schema": { "type": "string" }, "in": "query", "name": "network", "required": false },
           {
             "schema": { "type": "string" },
             "in": "query",
@@ -2211,7 +2307,7 @@
             "schema": { "minimum": 0, "maximum": 100, "type": "number" },
             "in": "query",
             "name": "slippagePct",
-            "required": true
+            "required": false
           }
         ],
         "responses": {
@@ -2221,7 +2317,6 @@
               "application/json": {
                 "schema": {
                   "properties": {
-                    "quoteId": { "type": "string" },
                     "poolAddress": { "type": "string" },
                     "tokenIn": { "type": "string" },
                     "tokenOut": { "type": "string" },
@@ -2229,15 +2324,9 @@
                     "amountOut": { "type": "number" },
                     "price": { "type": "number" },
                     "slippagePct": { "type": "number" },
-                    "priceWithSlippage": {
-                      "description": "Price including slippage (worst acceptable price)",
-                      "type": "number"
-                    },
                     "minAmountOut": { "type": "number" },
                     "maxAmountIn": { "type": "number" },
                     "priceImpactPct": { "type": "number" },
-                    "fee": { "type": "number" },
-                    "computeUnits": { "type": "number" },
                     "activeBinId": { "type": "number" }
                   },
                   "type": "object"
@@ -2261,8 +2350,6 @@
                   {
                     "type": "object",
                     "properties": {
-                      "walletAddress": { "type": "string" },
-                      "network": { "type": "string" },
                       "poolAddress": {
                         "description": "Pool address (optional - can be looked up from baseToken and quoteToken)",
                         "type": "string"
@@ -2273,20 +2360,34 @@
                         "type": "string"
                       },
                       "amount": { "type": "number" },
-                      "side": { "enum": ["BUY", "SELL"], "type": "string" },
-                      "slippagePct": { "minimum": 0, "maximum": 100, "type": "number" },
-                      "priorityFeePerCU": {
-                        "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                        "type": "number"
-                      },
-                      "computeUnits": { "description": "Compute units for transaction", "type": "number" }
+                      "side": { "enum": ["BUY", "SELL"], "type": "string" }
                     },
-                    "required": ["walletAddress", "network", "baseToken", "amount", "side", "slippagePct"],
-                    "title": "ClmmExecuteSwapRequest"
+                    "required": ["baseToken", "amount", "side"]
                   },
                   {
                     "type": "object",
                     "properties": {
+                      "network": {
+                        "description": "Solana network to use",
+                        "default": "mainnet-beta",
+                        "enum": ["devnet", "mainnet-beta"],
+                        "examples": ["devnet", "mainnet-beta"],
+                        "type": "string"
+                      },
+                      "walletAddress": {
+                        "description": "Solana wallet address that will execute the swap",
+                        "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                        "examples": ["82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5"],
+                        "type": "string"
+                      },
+                      "slippagePct": {
+                        "minimum": 0,
+                        "maximum": 100,
+                        "description": "Maximum acceptable slippage percentage",
+                        "default": 1,
+                        "examples": [1],
+                        "type": "number"
+                      },
                       "priorityFeePerCU": { "description": "Priority fee per compute unit", "type": "number" },
                       "computeUnits": { "description": "Compute units for transaction", "type": "number" }
                     }
@@ -2294,7 +2395,7 @@
                 ],
                 "properties": {
                   "network": { "type": "string", "default": "mainnet-beta" },
-                  "walletAddress": { "type": "string", "example": "11111111111111111111111111111111" },
+                  "walletAddress": { "type": "string", "example": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5" },
                   "baseToken": { "type": "string", "example": "SOL" },
                   "quoteToken": { "type": "string", "example": "USDC" },
                   "amount": { "type": "number", "example": 0.01 },
@@ -2357,27 +2458,56 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {
-                  "network": { "type": "string", "default": "mainnet-beta" },
-                  "walletAddress": { "type": "string", "example": "11111111111111111111111111111111" },
-                  "lowerPrice": { "type": "number", "example": 100 },
-                  "upperPrice": { "type": "number", "example": 180 },
-                  "poolAddress": { "type": "string", "example": "2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3" },
-                  "baseTokenAmount": { "type": "number", "example": 0.1 },
-                  "quoteTokenAmount": { "type": "number", "example": 15 },
-                  "slippagePct": { "type": "number", "example": 1 },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                    "type": "number"
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "lowerPrice": { "type": "number" },
+                      "upperPrice": { "type": "number" },
+                      "poolAddress": { "type": "string" },
+                      "baseTokenAmount": { "type": "number" },
+                      "quoteTokenAmount": { "type": "number" }
+                    },
+                    "required": ["lowerPrice", "upperPrice", "poolAddress"]
                   },
-                  "computeUnits": { "description": "Compute units for transaction", "type": "number" },
-                  "strategyType": { "type": "number", "enum": [0, 1, 2, 3, 4, 5], "example": 0 }
-                },
-                "required": ["network", "walletAddress", "lowerPrice", "upperPrice", "poolAddress"]
+                  {
+                    "type": "object",
+                    "properties": {
+                      "network": {
+                        "description": "Solana network to use",
+                        "default": "mainnet-beta",
+                        "enum": ["devnet", "mainnet-beta"],
+                        "examples": ["devnet", "mainnet-beta"],
+                        "type": "string"
+                      },
+                      "walletAddress": {
+                        "description": "Solana wallet address that will open the position",
+                        "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                        "examples": ["82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5"],
+                        "type": "string"
+                      },
+                      "slippagePct": {
+                        "minimum": 0,
+                        "maximum": 100,
+                        "description": "Maximum acceptable slippage percentage",
+                        "default": 1,
+                        "examples": [1],
+                        "type": "number"
+                      },
+                      "priorityFeePerCU": { "description": "Priority fee per compute unit", "type": "number" },
+                      "computeUnits": { "description": "Compute units for transaction", "type": "number" },
+                      "strategyType": {
+                        "description": "Strategy type for the position",
+                        "examples": [0],
+                        "enum": [0, 1, 2, 3, 4, 5],
+                        "type": "number"
+                      }
+                    }
+                  }
+                ]
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -2424,25 +2554,54 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {
-                  "network": { "type": "string", "default": "mainnet-beta" },
-                  "walletAddress": { "type": "string", "example": "11111111111111111111111111111111" },
-                  "positionAddress": { "type": "string" },
-                  "baseTokenAmount": { "type": "number" },
-                  "quoteTokenAmount": { "type": "number" },
-                  "slippagePct": { "type": "number", "example": 1 },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                    "type": "number"
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "positionAddress": { "type": "string" },
+                      "baseTokenAmount": { "type": "number" },
+                      "quoteTokenAmount": { "type": "number" }
+                    },
+                    "required": ["positionAddress", "baseTokenAmount", "quoteTokenAmount"]
                   },
-                  "computeUnits": { "description": "Compute units for transaction", "type": "number" },
-                  "strategyType": { "type": "number", "enum": [0, 1, 2, 3, 4, 5], "example": 0 }
-                },
-                "required": ["network", "walletAddress", "positionAddress", "baseTokenAmount", "quoteTokenAmount"]
+                  {
+                    "type": "object",
+                    "properties": {
+                      "network": {
+                        "description": "Solana network to use",
+                        "default": "mainnet-beta",
+                        "enum": ["devnet", "mainnet-beta"],
+                        "examples": ["devnet", "mainnet-beta"],
+                        "type": "string"
+                      },
+                      "walletAddress": {
+                        "description": "Solana wallet address that will add liquidity",
+                        "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                        "examples": ["82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5"],
+                        "type": "string"
+                      },
+                      "slippagePct": {
+                        "minimum": 0,
+                        "maximum": 100,
+                        "description": "Maximum acceptable slippage percentage",
+                        "default": 1,
+                        "examples": [1],
+                        "type": "number"
+                      },
+                      "priorityFeePerCU": { "description": "Priority fee per compute unit", "type": "number" },
+                      "computeUnits": { "description": "Compute units for transaction", "type": "number" },
+                      "strategyType": {
+                        "description": "Strategy type for the position",
+                        "examples": [0],
+                        "enum": [0, 1, 2, 3, 4, 5],
+                        "type": "number"
+                      }
+                    }
+                  }
+                ]
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -2481,22 +2640,39 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {
-                  "network": { "type": "string", "default": "mainnet-beta" },
-                  "walletAddress": { "type": "string", "example": "11111111111111111111111111111111" },
-                  "positionAddress": { "type": "string" },
-                  "percentageToRemove": { "type": "number", "example": 100 },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                    "type": "number"
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "positionAddress": { "type": "string" },
+                      "percentageToRemove": { "minimum": 0, "maximum": 100, "type": "number" }
+                    },
+                    "required": ["positionAddress", "percentageToRemove"]
                   },
-                  "computeUnits": { "description": "Compute units for transaction", "type": "number" }
-                },
-                "required": ["network", "walletAddress", "positionAddress", "percentageToRemove"]
+                  {
+                    "type": "object",
+                    "properties": {
+                      "network": {
+                        "description": "Solana network to use",
+                        "default": "mainnet-beta",
+                        "enum": ["devnet", "mainnet-beta"],
+                        "examples": ["devnet", "mainnet-beta"],
+                        "type": "string"
+                      },
+                      "walletAddress": {
+                        "description": "Solana wallet address that will remove liquidity",
+                        "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                        "examples": ["82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5"],
+                        "type": "string"
+                      },
+                      "priorityFeePerCU": { "description": "Priority fee per compute unit", "type": "number" },
+                      "computeUnits": { "description": "Compute units for transaction", "type": "number" }
+                    }
+                  }
+                ]
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -2535,21 +2711,36 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {
-                  "network": { "type": "string", "default": "mainnet-beta" },
-                  "walletAddress": { "type": "string", "example": "11111111111111111111111111111111" },
-                  "positionAddress": { "type": "string" },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                    "type": "number"
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": { "positionAddress": { "type": "string" } },
+                    "required": ["positionAddress"]
                   },
-                  "computeUnits": { "description": "Compute units for transaction", "type": "number" }
-                },
-                "required": ["network", "walletAddress", "positionAddress"]
+                  {
+                    "type": "object",
+                    "properties": {
+                      "network": {
+                        "description": "Solana network to use",
+                        "default": "mainnet-beta",
+                        "enum": ["devnet", "mainnet-beta"],
+                        "examples": ["devnet", "mainnet-beta"],
+                        "type": "string"
+                      },
+                      "walletAddress": {
+                        "description": "Solana wallet address that will collect fees",
+                        "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                        "examples": ["82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5"],
+                        "type": "string"
+                      },
+                      "priorityFeePerCU": { "description": "Priority fee per compute unit", "type": "number" },
+                      "computeUnits": { "description": "Compute units for transaction", "type": "number" }
+                    }
+                  }
+                ]
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -2588,21 +2779,36 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {
-                  "network": { "type": "string", "default": "mainnet-beta" },
-                  "walletAddress": { "type": "string", "example": "11111111111111111111111111111111" },
-                  "positionAddress": { "type": "string" },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                    "type": "number"
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": { "positionAddress": { "type": "string" } },
+                    "required": ["positionAddress"]
                   },
-                  "computeUnits": { "description": "Compute units for transaction", "type": "number" }
-                },
-                "required": ["network", "walletAddress", "positionAddress"]
+                  {
+                    "type": "object",
+                    "properties": {
+                      "network": {
+                        "description": "Solana network to use",
+                        "default": "mainnet-beta",
+                        "enum": ["devnet", "mainnet-beta"],
+                        "examples": ["devnet", "mainnet-beta"],
+                        "type": "string"
+                      },
+                      "walletAddress": {
+                        "description": "Solana wallet address that will close the position",
+                        "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                        "examples": ["82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5"],
+                        "type": "string"
+                      },
+                      "priorityFeePerCU": { "description": "Priority fee per compute unit", "type": "number" },
+                      "computeUnits": { "description": "Compute units for transaction", "type": "number" }
+                    }
+                  }
+                ]
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -2647,8 +2853,21 @@
         "tags": ["/connector/raydium"],
         "description": "Get AMM pool information from Raydium",
         "parameters": [
-          { "schema": { "type": "string" }, "in": "query", "name": "network", "required": true },
-          { "schema": { "type": "string" }, "in": "query", "name": "poolAddress", "required": true }
+          {
+            "schema": { "default": "mainnet-beta", "enum": ["devnet", "mainnet-beta"], "type": "string" },
+            "in": "query",
+            "name": "network",
+            "required": false,
+            "description": "Solana network to use"
+          },
+          {
+            "schema": { "type": "string" },
+            "example": "8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj",
+            "in": "query",
+            "name": "poolAddress",
+            "required": true,
+            "description": "Raydium AMM pool address"
+          }
         ],
         "responses": {
           "200": {
@@ -2664,13 +2883,7 @@
                     "feePct": { "type": "number" },
                     "price": { "type": "number" },
                     "baseTokenAmount": { "type": "number" },
-                    "quoteTokenAmount": { "type": "number" },
-                    "poolType": { "type": "string" },
-                    "lpMint": {
-                      "type": "object",
-                      "properties": { "address": { "type": "string" }, "decimals": { "type": "number" } },
-                      "required": ["address", "decimals"]
-                    }
+                    "quoteTokenAmount": { "type": "number" }
                   },
                   "required": [
                     "address",
@@ -2679,8 +2892,7 @@
                     "feePct",
                     "price",
                     "baseTokenAmount",
-                    "quoteTokenAmount",
-                    "lpMint"
+                    "quoteTokenAmount"
                   ]
                 }
               }
@@ -2694,9 +2906,28 @@
         "tags": ["/connector/raydium"],
         "description": "Get info about a Raydium AMM position",
         "parameters": [
-          { "schema": { "type": "string" }, "in": "query", "name": "network", "required": true },
-          { "schema": { "type": "string" }, "in": "query", "name": "poolAddress", "required": true },
-          { "schema": { "type": "string" }, "in": "query", "name": "walletAddress", "required": true }
+          {
+            "schema": { "default": "mainnet-beta", "enum": ["devnet", "mainnet-beta"], "type": "string" },
+            "in": "query",
+            "name": "network",
+            "required": false,
+            "description": "Solana network to use"
+          },
+          {
+            "schema": { "type": "string" },
+            "example": "8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj",
+            "in": "query",
+            "name": "poolAddress",
+            "required": true,
+            "description": "Raydium AMM pool address"
+          },
+          {
+            "schema": { "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5", "type": "string" },
+            "in": "query",
+            "name": "walletAddress",
+            "required": false,
+            "description": "Solana wallet address"
+          }
         ],
         "responses": {
           "200": {
@@ -2738,34 +2969,42 @@
         "description": "Quote amounts for a new Raydium AMM liquidity position",
         "parameters": [
           {
-            "schema": { "type": "string", "default": "mainnet-beta" },
+            "schema": { "default": "mainnet-beta", "enum": ["devnet", "mainnet-beta"], "type": "string" },
             "in": "query",
             "name": "network",
-            "required": true
+            "required": false,
+            "description": "Solana network to use"
           },
           {
             "schema": { "type": "string" },
-            "example": "6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg",
+            "example": "8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj",
             "in": "query",
             "name": "poolAddress",
-            "required": true
-          },
-          { "schema": { "type": "number" }, "example": 1, "in": "query", "name": "baseTokenAmount", "required": true },
-          { "schema": { "type": "number" }, "example": 1, "in": "query", "name": "quoteTokenAmount", "required": true },
-          { "schema": { "type": "number" }, "example": 1, "in": "query", "name": "slippagePct", "required": false },
-          {
-            "schema": { "type": "number" },
-            "in": "query",
-            "name": "priorityFeePerCU",
-            "required": false,
-            "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)"
+            "required": true,
+            "description": "Raydium AMM pool address"
           },
           {
             "schema": { "type": "number" },
+            "example": 1,
             "in": "query",
-            "name": "computeUnits",
+            "name": "baseTokenAmount",
+            "required": true,
+            "description": "Amount of base token to add"
+          },
+          {
+            "schema": { "type": "number" },
+            "example": 100,
+            "in": "query",
+            "name": "quoteTokenAmount",
+            "required": true,
+            "description": "Amount of quote token to add"
+          },
+          {
+            "schema": { "minimum": 0, "maximum": 100, "default": 1, "type": "number" },
+            "in": "query",
+            "name": "slippagePct",
             "required": false,
-            "description": "Max compute units (Solana) or gas limit (Ethereum)"
+            "description": "Maximum acceptable slippage percentage"
           }
         ],
         "responses": {
@@ -2780,16 +3019,14 @@
                     "baseTokenAmount": { "type": "number" },
                     "quoteTokenAmount": { "type": "number" },
                     "baseTokenAmountMax": { "type": "number" },
-                    "quoteTokenAmountMax": { "type": "number" },
-                    "computeUnits": { "description": "Estimated compute units for the transaction", "type": "number" }
+                    "quoteTokenAmountMax": { "type": "number" }
                   },
                   "required": [
                     "baseLimited",
                     "baseTokenAmount",
                     "quoteTokenAmount",
                     "baseTokenAmountMax",
-                    "quoteTokenAmountMax",
-                    "computeUnits"
+                    "quoteTokenAmountMax"
                   ]
                 }
               }
@@ -2809,16 +3046,24 @@
         "tags": ["/connector/raydium"],
         "description": "Get swap quote for Raydium AMM",
         "parameters": [
-          { "schema": { "type": "string" }, "in": "query", "name": "network", "required": true },
           {
-            "schema": { "type": "string" },
+            "schema": { "default": "mainnet-beta", "enum": ["devnet", "mainnet-beta"], "type": "string" },
             "in": "query",
-            "name": "poolAddress",
+            "name": "network",
             "required": false,
-            "description": "Pool address (optional - can be looked up from baseToken and quoteToken)"
+            "description": "Solana network to use"
           },
           {
             "schema": { "type": "string" },
+            "example": "8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj",
+            "in": "query",
+            "name": "poolAddress",
+            "required": false,
+            "description": "AMM pool address (optional - can be looked up from baseToken and quoteToken)"
+          },
+          {
+            "schema": { "type": "string" },
+            "example": "SOL",
             "in": "query",
             "name": "baseToken",
             "required": true,
@@ -2826,24 +3071,33 @@
           },
           {
             "schema": { "type": "string" },
+            "example": "USDC",
             "in": "query",
             "name": "quoteToken",
             "required": false,
             "description": "The other token in the pair (optional - required if poolAddress not provided)"
           },
-          { "schema": { "type": "number" }, "in": "query", "name": "amount", "required": true },
           {
-            "schema": { "enum": ["BUY", "SELL"], "type": "string" },
+            "schema": { "type": "number" },
+            "example": 0.1,
+            "in": "query",
+            "name": "amount",
+            "required": true,
+            "description": "Amount to swap"
+          },
+          {
+            "schema": { "enum": ["BUY", "SELL"], "default": "SELL", "type": "string" },
             "in": "query",
             "name": "side",
             "required": true,
             "description": "Trade direction"
           },
           {
-            "schema": { "minimum": 0, "maximum": 100, "type": "number" },
+            "schema": { "minimum": 0, "maximum": 100, "default": 1, "type": "number" },
             "in": "query",
             "name": "slippagePct",
-            "required": true
+            "required": false,
+            "description": "Maximum acceptable slippage percentage"
           }
         ],
         "responses": {
@@ -2854,7 +3108,6 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "quoteId": { "type": "string" },
                     "poolAddress": { "type": "string" },
                     "tokenIn": { "type": "string" },
                     "tokenOut": { "type": "string" },
@@ -2862,15 +3115,9 @@
                     "amountOut": { "type": "number" },
                     "price": { "type": "number" },
                     "slippagePct": { "type": "number" },
-                    "priceWithSlippage": {
-                      "description": "Price including slippage (worst acceptable price)",
-                      "type": "number"
-                    },
                     "minAmountOut": { "type": "number" },
                     "maxAmountIn": { "type": "number" },
-                    "priceImpactPct": { "type": "number" },
-                    "fee": { "type": "number" },
-                    "computeUnits": { "type": "number" }
+                    "priceImpactPct": { "type": "number" }
                   },
                   "required": [
                     "poolAddress",
@@ -2879,12 +3126,9 @@
                     "amountIn",
                     "amountOut",
                     "price",
-                    "priceWithSlippage",
                     "minAmountOut",
                     "maxAmountIn",
-                    "priceImpactPct",
-                    "fee",
-                    "computeUnits"
+                    "priceImpactPct"
                   ]
                 }
               }
@@ -2902,57 +3146,31 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "allOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "walletAddress": { "type": "string" },
-                      "network": { "type": "string" },
-                      "poolAddress": {
-                        "description": "Pool address (optional - can be looked up from baseToken and quoteToken)",
-                        "type": "string"
-                      },
-                      "baseToken": { "type": "string" },
-                      "quoteToken": {
-                        "description": "The other token in the pair (optional - required if poolAddress not provided)",
-                        "type": "string"
-                      },
-                      "amount": { "type": "number" },
-                      "side": { "enum": ["BUY", "SELL"], "type": "string" },
-                      "slippagePct": { "minimum": 0, "maximum": 100, "type": "number" },
-                      "priorityFeePerCU": {
-                        "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                        "type": "number"
-                      },
-                      "computeUnits": {
-                        "description": "Max compute units (Solana) or gas limit (Ethereum)",
-                        "type": "number"
-                      }
-                    },
-                    "required": ["walletAddress", "network", "baseToken", "amount", "side", "slippagePct"],
-                    "title": "AmmExecuteSwapRequest"
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "priorityFeePerCU": { "description": "Priority fee per compute unit", "type": "number" },
-                      "computeUnits": { "description": "Compute units for transaction", "type": "number" }
-                    }
-                  }
-                ],
                 "properties": {
+                  "walletAddress": { "type": "string", "example": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5" },
                   "network": { "type": "string", "default": "mainnet-beta" },
-                  "walletAddress": { "type": "string", "example": "11111111111111111111111111111111" },
+                  "poolAddress": { "type": "string", "example": "" },
                   "baseToken": { "type": "string", "example": "SOL" },
                   "quoteToken": { "type": "string", "example": "USDC" },
                   "amount": { "type": "number", "example": 0.01 },
                   "side": { "type": "string", "example": "SELL" },
-                  "poolAddress": { "type": "string", "example": "" },
-                  "slippagePct": { "type": "number", "example": 1 }
-                }
+                  "slippagePct": { "type": "number", "example": 1 },
+                  "priorityFeePerCU": {
+                    "description": "Priority fee per compute unit in lamports",
+                    "type": "number",
+                    "example": 1000
+                  },
+                  "computeUnits": {
+                    "description": "Max compute units for transaction",
+                    "type": "number",
+                    "example": 300000
+                  }
+                },
+                "required": ["baseToken", "amount", "side"]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -3004,22 +3222,47 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string" },
-                  "walletAddress": { "type": "string" },
-                  "poolAddress": { "type": "string" },
-                  "baseTokenAmount": { "type": "number" },
-                  "quoteTokenAmount": { "type": "number" },
-                  "slippagePct": { "minimum": 0, "maximum": 100, "type": "number" },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
+                  "network": {
+                    "description": "Solana network to use",
+                    "default": "mainnet-beta",
+                    "enum": ["devnet", "mainnet-beta"],
+                    "type": "string"
+                  },
+                  "walletAddress": {
+                    "description": "Solana wallet address",
+                    "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                    "type": "string"
+                  },
+                  "poolAddress": {
+                    "description": "Raydium AMM pool address",
+                    "type": "string",
+                    "example": "8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj"
+                  },
+                  "baseTokenAmount": { "description": "Amount of base token to add", "type": "number", "example": 1 },
+                  "quoteTokenAmount": {
+                    "description": "Amount of quote token to add",
+                    "type": "number",
+                    "example": 100
+                  },
+                  "slippagePct": {
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Maximum acceptable slippage percentage",
+                    "default": 1,
                     "type": "number"
                   },
+                  "priorityFeePerCU": {
+                    "description": "Priority fee per compute unit in lamports",
+                    "type": "number",
+                    "example": 1000
+                  },
                   "computeUnits": {
-                    "description": "Max compute units (Solana) or gas limit (Ethereum)",
-                    "type": "number"
+                    "description": "Max compute units for transaction",
+                    "type": "number",
+                    "example": 300000
                   }
                 },
-                "required": ["network", "walletAddress", "poolAddress", "baseTokenAmount", "quoteTokenAmount"]
+                "required": ["poolAddress", "baseTokenAmount", "quoteTokenAmount"]
               }
             }
           },
@@ -3063,20 +3306,41 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string" },
-                  "walletAddress": { "type": "string", "example": "<solana-wallet-address>" },
-                  "poolAddress": { "type": "string" },
-                  "percentageToRemove": { "minimum": 0, "maximum": 100, "type": "number" },
+                  "network": {
+                    "description": "Solana network to use",
+                    "default": "mainnet-beta",
+                    "enum": ["devnet", "mainnet-beta"],
+                    "type": "string"
+                  },
+                  "walletAddress": {
+                    "description": "Solana wallet address",
+                    "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                    "type": "string"
+                  },
+                  "poolAddress": {
+                    "description": "Raydium AMM pool address",
+                    "type": "string",
+                    "example": "8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj"
+                  },
+                  "percentageToRemove": {
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Percentage of liquidity to remove",
+                    "type": "number",
+                    "example": 50
+                  },
                   "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                    "type": "number"
+                    "description": "Priority fee per compute unit in lamports",
+                    "type": "number",
+                    "example": 1000
                   },
                   "computeUnits": {
-                    "description": "Max compute units (Solana) or gas limit (Ethereum)",
-                    "type": "number"
+                    "description": "Max compute units for transaction",
+                    "type": "number",
+                    "example": 300000
                   }
                 },
-                "required": ["network", "walletAddress", "poolAddress", "percentageToRemove"]
+                "required": ["poolAddress", "percentageToRemove"]
               }
             }
           },
@@ -3115,8 +3379,21 @@
         "tags": ["/connector/raydium"],
         "description": "Get CLMM pool information from Raydium",
         "parameters": [
-          { "schema": { "type": "string" }, "in": "query", "name": "network", "required": true },
-          { "schema": { "type": "string" }, "in": "query", "name": "poolAddress", "required": true }
+          {
+            "schema": { "default": "mainnet-beta", "enum": ["devnet", "mainnet-beta"], "type": "string" },
+            "in": "query",
+            "name": "network",
+            "required": false,
+            "description": "Solana network to use"
+          },
+          {
+            "schema": { "type": "string" },
+            "example": "2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv",
+            "in": "query",
+            "name": "poolAddress",
+            "required": true,
+            "description": "Raydium CLMM pool address"
+          }
         ],
         "responses": {
           "200": {
@@ -3226,12 +3503,27 @@
         "description": "Get info about a Raydium CLMM position",
         "parameters": [
           {
-            "schema": { "type": "string", "default": "mainnet-beta" },
+            "schema": { "default": "mainnet-beta", "enum": ["devnet", "mainnet-beta"], "type": "string" },
             "in": "query",
             "name": "network",
-            "required": false
+            "required": false,
+            "description": "Solana network to use"
           },
-          { "schema": { "type": "string" }, "in": "query", "name": "positionAddress", "required": true }
+          {
+            "schema": { "type": "string" },
+            "example": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+            "in": "query",
+            "name": "positionAddress",
+            "required": true,
+            "description": "Position NFT address"
+          },
+          {
+            "schema": { "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5", "type": "string" },
+            "in": "query",
+            "name": "walletAddress",
+            "required": false,
+            "description": "Solana wallet address"
+          }
         ],
         "responses": {
           "200": {
@@ -3286,7 +3578,7 @@
             "schema": { "type": "string", "default": "mainnet-beta" },
             "in": "query",
             "name": "network",
-            "required": true
+            "required": false
           },
           { "schema": { "type": "number" }, "example": 100, "in": "query", "name": "lowerPrice", "required": true },
           { "schema": { "type": "number" }, "example": 180, "in": "query", "name": "upperPrice", "required": true },
@@ -3312,20 +3604,6 @@
             "required": false
           },
           { "schema": { "type": "number" }, "example": 1, "in": "query", "name": "slippagePct", "required": false },
-          {
-            "schema": { "type": "number" },
-            "in": "query",
-            "name": "priorityFeePerCU",
-            "required": false,
-            "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)"
-          },
-          {
-            "schema": { "type": "number" },
-            "in": "query",
-            "name": "computeUnits",
-            "required": false,
-            "description": "Compute units for transaction"
-          },
           { "schema": { "type": "string" }, "example": "SOL", "in": "query", "name": "baseToken", "required": false },
           { "schema": { "type": "string" }, "example": "USDC", "in": "query", "name": "quoteToken", "required": false }
         ],
@@ -3342,16 +3620,14 @@
                     "quoteTokenAmount": { "type": "number" },
                     "baseTokenAmountMax": { "type": "number" },
                     "quoteTokenAmountMax": { "type": "number" },
-                    "liquidity": {},
-                    "computeUnits": { "description": "Estimated compute units for the transaction", "type": "number" }
+                    "liquidity": {}
                   },
                   "required": [
                     "baseLimited",
                     "baseTokenAmount",
                     "quoteTokenAmount",
                     "baseTokenAmountMax",
-                    "quoteTokenAmountMax",
-                    "computeUnits"
+                    "quoteTokenAmountMax"
                   ]
                 }
               }
@@ -3372,17 +3648,58 @@
         "description": "Get swap quote for Raydium CLMM",
         "parameters": [
           {
-            "schema": { "type": "string", "default": "mainnet-beta" },
+            "schema": { "default": "mainnet-beta", "enum": ["devnet", "mainnet-beta"], "type": "string" },
             "in": "query",
             "name": "network",
-            "required": false
+            "required": false,
+            "description": "Solana network to use"
           },
-          { "schema": { "type": "string" }, "example": "SOL", "in": "query", "name": "baseToken", "required": false },
-          { "schema": { "type": "string" }, "example": "USDC", "in": "query", "name": "quoteToken", "required": false },
-          { "schema": { "type": "number" }, "example": 0.01, "in": "query", "name": "amount", "required": false },
-          { "schema": { "type": "string", "enum": ["BUY", "SELL"] }, "in": "query", "name": "side", "required": false },
-          { "schema": { "type": "string" }, "example": "", "in": "query", "name": "poolAddress", "required": false },
-          { "schema": { "type": "number" }, "example": 1, "in": "query", "name": "slippagePct", "required": false }
+          {
+            "schema": { "type": "string" },
+            "example": "2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv",
+            "in": "query",
+            "name": "poolAddress",
+            "required": false,
+            "description": "CLMM pool address (optional - can be looked up from tokens)"
+          },
+          {
+            "schema": { "type": "string" },
+            "example": "SOL",
+            "in": "query",
+            "name": "baseToken",
+            "required": true,
+            "description": "Token to determine swap direction"
+          },
+          {
+            "schema": { "type": "string" },
+            "example": "USDC",
+            "in": "query",
+            "name": "quoteToken",
+            "required": false,
+            "description": "The other token in the pair"
+          },
+          {
+            "schema": { "type": "number" },
+            "example": 0.1,
+            "in": "query",
+            "name": "amount",
+            "required": true,
+            "description": "Amount to swap"
+          },
+          {
+            "schema": { "enum": ["BUY", "SELL"], "default": "SELL", "type": "string" },
+            "in": "query",
+            "name": "side",
+            "required": true,
+            "description": "Trade direction"
+          },
+          {
+            "schema": { "minimum": 0, "maximum": 100, "default": 1, "type": "number" },
+            "in": "query",
+            "name": "slippagePct",
+            "required": false,
+            "description": "Maximum acceptable slippage percentage"
+          }
         ],
         "responses": {
           "200": {
@@ -3392,7 +3709,6 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "quoteId": { "type": "string" },
                     "poolAddress": { "type": "string" },
                     "tokenIn": { "type": "string" },
                     "tokenOut": { "type": "string" },
@@ -3400,15 +3716,9 @@
                     "amountOut": { "type": "number" },
                     "price": { "type": "number" },
                     "slippagePct": { "type": "number" },
-                    "priceWithSlippage": {
-                      "description": "Price including slippage (worst acceptable price)",
-                      "type": "number"
-                    },
                     "minAmountOut": { "type": "number" },
                     "maxAmountIn": { "type": "number" },
                     "priceImpactPct": { "type": "number" },
-                    "fee": { "type": "number" },
-                    "computeUnits": { "type": "number" },
                     "activeBinId": { "type": "number" }
                   },
                   "required": [
@@ -3418,12 +3728,9 @@
                     "amountIn",
                     "amountOut",
                     "price",
-                    "priceWithSlippage",
                     "minAmountOut",
                     "maxAmountIn",
                     "priceImpactPct",
-                    "fee",
-                    "computeUnits",
                     "activeBinId"
                   ]
                 }
@@ -3442,53 +3749,31 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "allOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "walletAddress": { "type": "string" },
-                      "network": { "type": "string" },
-                      "poolAddress": {
-                        "description": "Pool address (optional - can be looked up from baseToken and quoteToken)",
-                        "type": "string"
-                      },
-                      "baseToken": { "type": "string" },
-                      "quoteToken": {
-                        "description": "The other token in the pair (optional - required if poolAddress not provided)",
-                        "type": "string"
-                      },
-                      "amount": { "type": "number" },
-                      "side": { "enum": ["BUY", "SELL"], "type": "string" },
-                      "slippagePct": { "minimum": 0, "maximum": 100, "type": "number" },
-                      "priorityFeePerCU": {
-                        "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                        "type": "number"
-                      },
-                      "computeUnits": { "description": "Compute units for transaction", "type": "number" }
-                    },
-                    "required": ["walletAddress", "network", "baseToken", "amount", "side", "slippagePct"]
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "priorityFeePerCU": { "description": "Priority fee per compute unit", "type": "number" },
-                      "computeUnits": { "description": "Compute units for transaction", "type": "number" }
-                    }
-                  }
-                ],
                 "properties": {
-                  "walletAddress": { "type": "string", "example": "11111111111111111111111111111111" },
+                  "walletAddress": { "type": "string", "example": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5" },
                   "network": { "type": "string", "default": "mainnet-beta" },
                   "poolAddress": { "type": "string", "example": "" },
                   "baseToken": { "type": "string", "example": "SOL" },
                   "quoteToken": { "type": "string", "example": "USDC" },
                   "amount": { "type": "number", "example": 0.01 },
                   "side": { "type": "string", "enum": ["BUY", "SELL"], "example": "SELL" },
-                  "slippagePct": { "type": "number", "example": 1 }
-                }
+                  "slippagePct": { "type": "number", "example": 1 },
+                  "priorityFeePerCU": {
+                    "description": "Priority fee per compute unit in lamports",
+                    "type": "number",
+                    "example": 1000
+                  },
+                  "computeUnits": {
+                    "description": "Max compute units for transaction",
+                    "type": "number",
+                    "example": 300000
+                  }
+                },
+                "required": ["baseToken", "amount", "side"]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -3542,23 +3827,61 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "default": "mainnet-beta" },
-                  "walletAddress": { "type": "string", "example": "11111111111111111111111111111111" },
-                  "lowerPrice": { "type": "number", "example": 100 },
-                  "upperPrice": { "type": "number", "example": 180 },
-                  "poolAddress": { "type": "string", "example": "3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv" },
-                  "baseTokenAmount": { "type": "number", "example": 0.1 },
-                  "quoteTokenAmount": { "type": "number", "example": 15 },
-                  "slippagePct": { "type": "number", "example": 1 },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
+                  "network": {
+                    "description": "Solana network to use",
+                    "default": "mainnet-beta",
+                    "enum": ["devnet", "mainnet-beta"],
+                    "type": "string"
+                  },
+                  "walletAddress": {
+                    "description": "Solana wallet address",
+                    "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                    "type": "string"
+                  },
+                  "lowerPrice": {
+                    "description": "Lower price bound for the position",
+                    "type": "number",
+                    "example": 90
+                  },
+                  "upperPrice": {
+                    "description": "Upper price bound for the position",
+                    "type": "number",
+                    "example": 110
+                  },
+                  "poolAddress": {
+                    "description": "Raydium CLMM pool address",
+                    "type": "string",
+                    "example": "2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv"
+                  },
+                  "baseTokenAmount": {
+                    "description": "Amount of base token to deposit",
+                    "type": "number",
+                    "example": 1
+                  },
+                  "quoteTokenAmount": {
+                    "description": "Amount of quote token to deposit",
+                    "type": "number",
+                    "example": 100
+                  },
+                  "slippagePct": {
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Maximum acceptable slippage percentage",
+                    "default": 1,
                     "type": "number"
                   },
-                  "computeUnits": { "description": "Compute units for transaction", "type": "number" },
-                  "baseToken": { "type": "string", "example": "SOL" },
-                  "quoteToken": { "type": "string", "example": "USDC" }
+                  "priorityFeePerCU": {
+                    "description": "Priority fee per compute unit in lamports",
+                    "type": "number",
+                    "example": 1000
+                  },
+                  "computeUnits": {
+                    "description": "Max compute units for transaction",
+                    "type": "number",
+                    "example": 300000
+                  }
                 },
-                "required": ["network", "walletAddress", "lowerPrice", "upperPrice", "poolAddress"]
+                "required": ["lowerPrice", "upperPrice", "poolAddress"]
               }
             }
           },
@@ -3610,19 +3933,47 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "default": "mainnet-beta" },
-                  "walletAddress": { "type": "string" },
-                  "positionAddress": { "type": "string" },
-                  "baseTokenAmount": { "type": "number" },
-                  "quoteTokenAmount": { "type": "number" },
-                  "slippagePct": { "type": "number", "example": 1 },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
+                  "network": {
+                    "description": "Solana network to use",
+                    "default": "mainnet-beta",
+                    "enum": ["devnet", "mainnet-beta"],
+                    "type": "string"
+                  },
+                  "walletAddress": {
+                    "description": "Solana wallet address",
+                    "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                    "type": "string"
+                  },
+                  "positionAddress": {
+                    "description": "Position NFT address",
+                    "type": "string",
+                    "example": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"
+                  },
+                  "baseTokenAmount": { "description": "Amount of base token to add", "type": "number", "example": 1 },
+                  "quoteTokenAmount": {
+                    "description": "Amount of quote token to add",
+                    "type": "number",
+                    "example": 100
+                  },
+                  "slippagePct": {
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Maximum acceptable slippage percentage",
+                    "default": 1,
                     "type": "number"
                   },
-                  "computeUnits": { "description": "Compute units for transaction", "type": "number" }
+                  "priorityFeePerCU": {
+                    "description": "Priority fee per compute unit in lamports",
+                    "type": "number",
+                    "example": 1000
+                  },
+                  "computeUnits": {
+                    "description": "Max compute units for transaction",
+                    "type": "number",
+                    "example": 300000
+                  }
                 },
-                "required": ["network", "walletAddress", "positionAddress", "baseTokenAmount", "quoteTokenAmount"]
+                "required": ["positionAddress", "baseTokenAmount", "quoteTokenAmount"]
               }
             }
           },
@@ -3666,17 +4017,41 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "default": "mainnet-beta" },
-                  "walletAddress": { "type": "string" },
-                  "positionAddress": { "type": "string" },
-                  "percentageToRemove": { "minimum": 0, "maximum": 100, "type": "number" },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                    "type": "number"
+                  "network": {
+                    "description": "Solana network to use",
+                    "default": "mainnet-beta",
+                    "enum": ["devnet", "mainnet-beta"],
+                    "type": "string"
                   },
-                  "computeUnits": { "description": "Compute units for transaction", "type": "number" }
+                  "walletAddress": {
+                    "description": "Solana wallet address",
+                    "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                    "type": "string"
+                  },
+                  "positionAddress": {
+                    "description": "Position NFT address to remove liquidity from",
+                    "type": "string",
+                    "example": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"
+                  },
+                  "percentageToRemove": {
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Percentage of liquidity to remove",
+                    "type": "number",
+                    "example": 50
+                  },
+                  "priorityFeePerCU": {
+                    "description": "Priority fee per compute unit in lamports",
+                    "type": "number",
+                    "example": 1000
+                  },
+                  "computeUnits": {
+                    "description": "Max compute units for transaction",
+                    "type": "number",
+                    "example": 300000
+                  }
                 },
-                "required": ["network", "walletAddress", "positionAddress", "percentageToRemove"]
+                "required": ["positionAddress", "percentageToRemove"]
               }
             }
           },
@@ -3721,15 +4096,10 @@
                 "type": "object",
                 "properties": {
                   "network": { "type": "string", "default": "mainnet-beta" },
-                  "walletAddress": { "type": "string", "example": "11111111111111111111111111111111" },
-                  "positionAddress": { "type": "string" },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                    "type": "number"
-                  },
-                  "computeUnits": { "description": "Compute units for transaction", "type": "number" }
+                  "walletAddress": { "type": "string", "example": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5" },
+                  "positionAddress": { "type": "string" }
                 },
-                "required": ["network", "walletAddress", "positionAddress"]
+                "required": ["positionAddress"]
               }
             }
           },
@@ -3773,16 +4143,34 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "default": "mainnet-beta" },
-                  "walletAddress": { "type": "string", "example": "11111111111111111111111111111111" },
-                  "positionAddress": { "type": "string" },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                    "type": "number"
+                  "network": {
+                    "description": "Solana network to use",
+                    "default": "mainnet-beta",
+                    "enum": ["devnet", "mainnet-beta"],
+                    "type": "string"
                   },
-                  "computeUnits": { "description": "Compute units for transaction", "type": "number" }
+                  "walletAddress": {
+                    "description": "Solana wallet address",
+                    "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                    "type": "string"
+                  },
+                  "positionAddress": {
+                    "description": "Position NFT address to close",
+                    "type": "string",
+                    "example": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"
+                  },
+                  "priorityFeePerCU": {
+                    "description": "Priority fee per compute unit in lamports",
+                    "type": "number",
+                    "example": 1000
+                  },
+                  "computeUnits": {
+                    "description": "Max compute units for transaction",
+                    "type": "number",
+                    "example": 300000
+                  }
                 },
-                "required": ["network", "walletAddress", "positionAddress"]
+                "required": ["positionAddress"]
               }
             }
           },
@@ -3834,24 +4222,13 @@
           {
             "schema": {
               "default": "mainnet",
-              "enum": ["mainnet", "arbitrum", "optimism", "base", "sepolia", "bsc", "avalanche", "celo", "polygon"],
+              "enum": ["arbitrum", "avalanche", "base", "bsc", "celo", "mainnet", "optimism", "polygon"],
               "type": "string"
-            },
-            "examples": {
-              "mainnet": { "value": "mainnet" },
-              "arbitrum": { "value": "arbitrum" },
-              "optimism": { "value": "optimism" },
-              "base": { "value": "base" },
-              "sepolia": { "value": "sepolia" },
-              "bsc": { "value": "bsc" },
-              "avalanche": { "value": "avalanche" },
-              "celo": { "value": "celo" },
-              "polygon": { "value": "polygon" }
             },
             "in": "query",
             "name": "network",
             "required": false,
-            "description": "The blockchain network to use"
+            "description": "The EVM network to use"
           },
           {
             "schema": { "type": "string" },
@@ -3859,7 +4236,7 @@
             "in": "query",
             "name": "baseToken",
             "required": true,
-            "description": "Token to determine swap direction"
+            "description": "First token in the trading pair"
           },
           {
             "schema": { "type": "string" },
@@ -3867,7 +4244,7 @@
             "in": "query",
             "name": "quoteToken",
             "required": true,
-            "description": "The other token in the pair"
+            "description": "Second token in the trading pair"
           },
           {
             "schema": { "type": "number" },
@@ -3886,15 +4263,13 @@
           },
           {
             "schema": { "minimum": 0, "maximum": 100, "default": 1, "type": "number" },
-            "example": 1,
             "in": "query",
             "name": "slippagePct",
             "required": false,
             "description": "Maximum acceptable slippage percentage"
           },
           {
-            "schema": { "default": "0x0000000000000000000000000000000000000000", "type": "string" },
-            "example": "0x0000000000000000000000000000000000000000",
+            "schema": { "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684", "type": "string" },
             "in": "query",
             "name": "walletAddress",
             "required": false,
@@ -3915,20 +4290,12 @@
                     "amountIn": { "description": "Amount of tokenIn to be swapped", "type": "number" },
                     "amountOut": { "description": "Expected amount of tokenOut to receive", "type": "number" },
                     "price": { "description": "Exchange rate between tokenIn and tokenOut", "type": "number" },
-                    "slippagePct": { "description": "Slippage percentage used for this quote", "type": "number" },
-                    "priceWithSlippage": {
-                      "description": "Price including slippage (worst acceptable price)",
-                      "type": "number"
-                    },
+                    "priceImpactPct": { "description": "Estimated price impact percentage (0-100)", "type": "number" },
                     "minAmountOut": {
                       "description": "Minimum amount of tokenOut that will be accepted",
                       "type": "number"
                     },
                     "maxAmountIn": { "description": "Maximum amount of tokenIn that will be spent", "type": "number" },
-                    "priceImpactPct": {
-                      "description": "Estimated price impact as a percentage (0-100)",
-                      "type": "number"
-                    },
                     "routePath": { "description": "Human-readable route path", "type": "string" }
                   },
                   "required": [
@@ -3938,11 +4305,9 @@
                     "amountIn",
                     "amountOut",
                     "price",
-                    "slippagePct",
-                    "priceWithSlippage",
+                    "priceImpactPct",
                     "minAmountOut",
-                    "maxAmountIn",
-                    "priceImpactPct"
+                    "maxAmountIn"
                   ]
                 }
               }
@@ -3963,26 +4328,16 @@
                 "properties": {
                   "walletAddress": {
                     "description": "Wallet address that will execute the swap",
-                    "default": "0x0000000000000000000000000000000000000000",
+                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
                     "type": "string",
-                    "example": "0x0000000000000000000000000000000000000000"
+                    "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684"
                   },
                   "network": {
                     "description": "The blockchain network to use",
                     "default": "mainnet",
-                    "enum": [
-                      "mainnet",
-                      "arbitrum",
-                      "optimism",
-                      "base",
-                      "sepolia",
-                      "bsc",
-                      "avalanche",
-                      "celo",
-                      "polygon"
-                    ],
+                    "enum": ["arbitrum", "avalanche", "base", "bsc", "celo", "mainnet", "optimism", "polygon"],
                     "type": "string",
-                    "example": "mainnet"
+                    "example": "arbitrum"
                   },
                   "quoteId": {
                     "description": "ID of the quote to execute",
@@ -4063,26 +4418,16 @@
                 "properties": {
                   "walletAddress": {
                     "description": "Wallet address that will execute the swap",
-                    "default": "0x0000000000000000000000000000000000000000",
+                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
                     "type": "string",
-                    "example": "0x0000000000000000000000000000000000000000"
+                    "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684"
                   },
                   "network": {
                     "description": "The blockchain network to use",
                     "default": "mainnet",
-                    "enum": [
-                      "mainnet",
-                      "arbitrum",
-                      "optimism",
-                      "base",
-                      "sepolia",
-                      "bsc",
-                      "avalanche",
-                      "celo",
-                      "polygon"
-                    ],
+                    "enum": ["arbitrum", "avalanche", "base", "bsc", "celo", "mainnet", "optimism", "polygon"],
                     "type": "string",
-                    "example": "mainnet"
+                    "example": "arbitrum"
                   },
                   "baseToken": {
                     "description": "Token to determine swap direction",
@@ -4171,7 +4516,7 @@
         "tags": ["/connector/uniswap"],
         "description": "Get AMM pool information from Uniswap V2",
         "parameters": [
-          { "schema": { "type": "string" }, "in": "query", "name": "network", "required": true },
+          { "schema": { "type": "string" }, "in": "query", "name": "network", "required": false },
           { "schema": { "type": "string" }, "in": "query", "name": "poolAddress", "required": true }
         ],
         "responses": {
@@ -4188,13 +4533,7 @@
                     "feePct": { "type": "number" },
                     "price": { "type": "number" },
                     "baseTokenAmount": { "type": "number" },
-                    "quoteTokenAmount": { "type": "number" },
-                    "poolType": { "type": "string" },
-                    "lpMint": {
-                      "type": "object",
-                      "properties": { "address": { "type": "string" }, "decimals": { "type": "number" } },
-                      "required": ["address", "decimals"]
-                    }
+                    "quoteTokenAmount": { "type": "number" }
                   },
                   "required": [
                     "address",
@@ -4203,8 +4542,7 @@
                     "feePct",
                     "price",
                     "baseTokenAmount",
-                    "quoteTokenAmount",
-                    "lpMint"
+                    "quoteTokenAmount"
                   ]
                 }
               }
@@ -4218,13 +4556,13 @@
         "tags": ["/connector/uniswap"],
         "description": "Get position information for a Uniswap V2 pool",
         "parameters": [
-          { "schema": { "type": "string", "default": "base" }, "in": "query", "name": "network", "required": true },
+          { "schema": { "type": "string", "default": "base" }, "in": "query", "name": "network", "required": false },
           {
             "schema": { "type": "string" },
-            "example": "0x0000000000000000000000000000000000000000",
+            "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
             "in": "query",
             "name": "walletAddress",
-            "required": true
+            "required": false
           },
           { "schema": { "type": "string" }, "example": "", "in": "query", "name": "poolAddress", "required": true },
           { "schema": { "type": "string" }, "example": "WETH", "in": "query", "name": "baseToken", "required": false },
@@ -4269,7 +4607,7 @@
         "tags": ["/connector/uniswap"],
         "description": "Get swap quote for Uniswap V2 AMM",
         "parameters": [
-          { "schema": { "type": "string", "default": "base" }, "in": "query", "name": "network", "required": true },
+          { "schema": { "type": "string", "default": "base" }, "in": "query", "name": "network", "required": false },
           { "schema": { "type": "string" }, "example": "", "in": "query", "name": "poolAddress", "required": false },
           { "schema": { "type": "string" }, "example": "WETH", "in": "query", "name": "baseToken", "required": true },
           { "schema": { "type": "string" }, "example": "USDC", "in": "query", "name": "quoteToken", "required": false },
@@ -4281,7 +4619,7 @@
             "name": "side",
             "required": true
           },
-          { "schema": { "type": "number" }, "example": 1, "in": "query", "name": "slippagePct", "required": true }
+          { "schema": { "type": "number" }, "example": 1, "in": "query", "name": "slippagePct", "required": false }
         ],
         "responses": {
           "200": {
@@ -4291,7 +4629,6 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "quoteId": { "type": "string" },
                     "poolAddress": { "type": "string" },
                     "tokenIn": { "type": "string" },
                     "tokenOut": { "type": "string" },
@@ -4299,15 +4636,9 @@
                     "amountOut": { "type": "number" },
                     "price": { "type": "number" },
                     "slippagePct": { "type": "number" },
-                    "priceWithSlippage": {
-                      "description": "Price including slippage (worst acceptable price)",
-                      "type": "number"
-                    },
                     "minAmountOut": { "type": "number" },
                     "maxAmountIn": { "type": "number" },
-                    "priceImpactPct": { "type": "number" },
-                    "fee": { "type": "number" },
-                    "computeUnits": { "type": "number" }
+                    "priceImpactPct": { "type": "number" }
                   },
                   "required": [
                     "poolAddress",
@@ -4316,12 +4647,9 @@
                     "amountIn",
                     "amountOut",
                     "price",
-                    "priceWithSlippage",
                     "minAmountOut",
                     "maxAmountIn",
-                    "priceImpactPct",
-                    "fee",
-                    "computeUnits"
+                    "priceImpactPct"
                   ]
                 }
               }
@@ -4335,7 +4663,7 @@
         "tags": ["/connector/uniswap"],
         "description": "Get liquidity quote for a Uniswap V2 pool",
         "parameters": [
-          { "schema": { "type": "string", "default": "base" }, "in": "query", "name": "network", "required": true },
+          { "schema": { "type": "string", "default": "base" }, "in": "query", "name": "network", "required": false },
           { "schema": { "type": "string" }, "example": "", "in": "query", "name": "poolAddress", "required": true },
           {
             "schema": { "type": "number" },
@@ -4352,20 +4680,6 @@
             "required": true
           },
           { "schema": { "type": "number" }, "example": 1, "in": "query", "name": "slippagePct", "required": false },
-          {
-            "schema": { "type": "number" },
-            "in": "query",
-            "name": "priorityFeePerCU",
-            "required": false,
-            "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)"
-          },
-          {
-            "schema": { "type": "number" },
-            "in": "query",
-            "name": "computeUnits",
-            "required": false,
-            "description": "Max compute units (Solana) or gas limit (Ethereum)"
-          },
           { "schema": { "type": "string" }, "example": "WETH", "in": "query", "name": "baseToken", "required": false },
           { "schema": { "type": "string" }, "example": "USDC", "in": "query", "name": "quoteToken", "required": false }
         ],
@@ -4381,16 +4695,14 @@
                     "baseTokenAmount": { "type": "number" },
                     "quoteTokenAmount": { "type": "number" },
                     "baseTokenAmountMax": { "type": "number" },
-                    "quoteTokenAmountMax": { "type": "number" },
-                    "computeUnits": { "description": "Estimated compute units for the transaction", "type": "number" }
+                    "quoteTokenAmountMax": { "type": "number" }
                   },
                   "required": [
                     "baseLimited",
                     "baseTokenAmount",
                     "quoteTokenAmount",
                     "baseTokenAmountMax",
-                    "quoteTokenAmountMax",
-                    "computeUnits"
+                    "quoteTokenAmountMax"
                   ]
                 }
               }
@@ -4409,24 +4721,40 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "walletAddress": { "type": "string", "example": "0x0000000000000000000000000000000000000000" },
-                  "network": { "type": "string", "default": "base" },
-                  "poolAddress": { "type": "string", "example": "" },
-                  "baseToken": { "type": "string", "example": "WETH" },
-                  "quoteToken": { "type": "string", "example": "USDC" },
-                  "amount": { "type": "number", "example": 0.001 },
-                  "side": { "type": "string", "enum": ["BUY", "SELL"], "example": "SELL" },
-                  "slippagePct": { "type": "number", "example": 1 },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
+                  "walletAddress": {
+                    "description": "Wallet address that will execute the swap",
+                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "type": "string"
+                  },
+                  "network": {
+                    "description": "The EVM network to use",
+                    "default": "mainnet",
+                    "enum": ["arbitrum", "avalanche", "base", "bsc", "celo", "mainnet", "optimism", "polygon"],
+                    "type": "string"
+                  },
+                  "poolAddress": {
+                    "description": "Pool address (optional - can be looked up from tokens)",
+                    "type": "string"
+                  },
+                  "baseToken": { "description": "Base token symbol or address", "type": "string", "example": "WETH" },
+                  "quoteToken": { "description": "Quote token symbol or address", "type": "string", "example": "USDC" },
+                  "amount": { "description": "Amount to swap", "type": "number", "example": 1 },
+                  "side": { "enum": ["BUY", "SELL"], "default": "SELL", "type": "string" },
+                  "slippagePct": {
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Maximum acceptable slippage percentage",
+                    "default": 2,
                     "type": "number"
                   },
-                  "computeUnits": {
-                    "description": "Max compute units (Solana) or gas limit (Ethereum)",
-                    "type": "number"
+                  "gasPrice": { "description": "Gas price in wei for the transaction", "type": "string" },
+                  "maxGas": {
+                    "description": "Maximum gas limit for the transaction",
+                    "type": "number",
+                    "example": 300000
                   }
                 },
-                "required": ["walletAddress", "network", "baseToken", "amount", "side", "slippagePct"]
+                "required": ["baseToken", "amount", "side"]
               }
             }
           },
@@ -4482,24 +4810,35 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "default": "base" },
-                  "walletAddress": { "type": "string", "example": "0x0000000000000000000000000000000000000000" },
-                  "poolAddress": { "type": "string", "example": "" },
-                  "baseTokenAmount": { "type": "number", "example": 0.001 },
-                  "quoteTokenAmount": { "type": "number", "example": 2.5 },
-                  "slippagePct": { "type": "number", "example": 1 },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
+                  "network": {
+                    "description": "The EVM network to use",
+                    "default": "mainnet",
+                    "enum": ["arbitrum", "avalanche", "base", "bsc", "celo", "mainnet", "optimism", "polygon"],
+                    "type": "string"
+                  },
+                  "walletAddress": {
+                    "description": "Wallet address that will add liquidity",
+                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "type": "string"
+                  },
+                  "poolAddress": { "description": "Address of the Uniswap V2 pool", "type": "string" },
+                  "baseTokenAmount": { "description": "Amount of base token to add", "type": "number" },
+                  "quoteTokenAmount": { "description": "Amount of quote token to add", "type": "number" },
+                  "slippagePct": {
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Maximum acceptable slippage percentage",
+                    "default": 2,
                     "type": "number"
                   },
-                  "computeUnits": {
-                    "description": "Max compute units (Solana) or gas limit (Ethereum)",
-                    "type": "number"
-                  },
-                  "baseToken": { "type": "string", "example": "WETH" },
-                  "quoteToken": { "type": "string", "example": "USDC" }
+                  "gasPrice": { "description": "Gas price in wei for the transaction", "type": "string" },
+                  "maxGas": {
+                    "description": "Maximum gas limit for the transaction",
+                    "type": "number",
+                    "example": 300000
+                  }
                 },
-                "required": ["network", "walletAddress", "poolAddress", "baseTokenAmount", "quoteTokenAmount"]
+                "required": ["poolAddress", "baseTokenAmount", "quoteTokenAmount"]
               }
             }
           },
@@ -4543,22 +4882,32 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "default": "base" },
-                  "walletAddress": { "type": "string", "example": "0x0000000000000000000000000000000000000000" },
-                  "poolAddress": { "type": "string", "example": "" },
-                  "percentageToRemove": { "type": "number", "example": 100 },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
+                  "network": {
+                    "description": "The EVM network to use",
+                    "default": "mainnet",
+                    "enum": ["arbitrum", "avalanche", "base", "bsc", "celo", "mainnet", "optimism", "polygon"],
+                    "type": "string"
+                  },
+                  "walletAddress": {
+                    "description": "Wallet address that will remove liquidity",
+                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "type": "string"
+                  },
+                  "poolAddress": { "description": "Address of the Uniswap V2 pool", "type": "string" },
+                  "percentageToRemove": {
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Percentage of liquidity to remove",
                     "type": "number"
                   },
-                  "computeUnits": {
-                    "description": "Max compute units (Solana) or gas limit (Ethereum)",
-                    "type": "number"
-                  },
-                  "baseToken": { "type": "string", "example": "WETH" },
-                  "quoteToken": { "type": "string", "example": "USDC" }
+                  "gasPrice": { "description": "Gas price in wei for the transaction", "type": "string" },
+                  "maxGas": {
+                    "description": "Maximum gas limit for the transaction",
+                    "type": "number",
+                    "example": 300000
+                  }
                 },
-                "required": ["network", "walletAddress", "poolAddress", "percentageToRemove"]
+                "required": ["poolAddress", "percentageToRemove"]
               }
             }
           },
@@ -4597,7 +4946,7 @@
         "tags": ["/connector/uniswap"],
         "description": "Get CLMM pool information from Uniswap V3",
         "parameters": [
-          { "schema": { "type": "string", "default": "base" }, "in": "query", "name": "network", "required": true },
+          { "schema": { "type": "string", "default": "base" }, "in": "query", "name": "network", "required": false },
           { "schema": { "type": "string" }, "example": "", "in": "query", "name": "poolAddress", "required": true },
           { "schema": { "type": "string" }, "example": "WETH", "in": "query", "name": "baseToken", "required": false },
           { "schema": { "type": "string" }, "example": "USDC", "in": "query", "name": "quoteToken", "required": false }
@@ -4643,7 +4992,7 @@
         "tags": ["/connector/uniswap"],
         "description": "Get position information for a Uniswap V3 position",
         "parameters": [
-          { "schema": { "type": "string", "default": "base" }, "in": "query", "name": "network", "required": true },
+          { "schema": { "type": "string", "default": "base" }, "in": "query", "name": "network", "required": false },
           {
             "schema": { "type": "string" },
             "example": "1234",
@@ -4654,10 +5003,10 @@
           },
           {
             "schema": { "type": "string" },
-            "example": "0x0000000000000000000000000000000000000000",
+            "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
             "in": "query",
             "name": "walletAddress",
-            "required": true
+            "required": false
           }
         ],
         "responses": {
@@ -4718,7 +5067,7 @@
           },
           {
             "schema": { "type": "string" },
-            "example": "0x0000000000000000000000000000000000000000",
+            "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
             "in": "query",
             "name": "walletAddress",
             "required": true
@@ -4776,7 +5125,7 @@
         "tags": ["/connector/uniswap"],
         "description": "Get a quote for opening a position on Uniswap V3",
         "parameters": [
-          { "schema": { "type": "string", "default": "base" }, "in": "query", "name": "network", "required": true },
+          { "schema": { "type": "string", "default": "base" }, "in": "query", "name": "network", "required": false },
           { "schema": { "type": "number" }, "example": 1000, "in": "query", "name": "lowerPrice", "required": true },
           { "schema": { "type": "number" }, "example": 4000, "in": "query", "name": "upperPrice", "required": true },
           { "schema": { "type": "string" }, "example": "", "in": "query", "name": "poolAddress", "required": true },
@@ -4800,20 +5149,6 @@
             "name": "slippagePct",
             "required": false
           },
-          {
-            "schema": { "type": "number" },
-            "in": "query",
-            "name": "priorityFeePerCU",
-            "required": false,
-            "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)"
-          },
-          {
-            "schema": { "type": "number" },
-            "in": "query",
-            "name": "computeUnits",
-            "required": false,
-            "description": "Compute units for transaction"
-          },
           { "schema": { "type": "string" }, "example": "WETH", "in": "query", "name": "baseToken", "required": false },
           { "schema": { "type": "string" }, "example": "USDC", "in": "query", "name": "quoteToken", "required": false }
         ],
@@ -4830,16 +5165,14 @@
                     "quoteTokenAmount": { "type": "number" },
                     "baseTokenAmountMax": { "type": "number" },
                     "quoteTokenAmountMax": { "type": "number" },
-                    "liquidity": {},
-                    "computeUnits": { "description": "Estimated compute units for the transaction", "type": "number" }
+                    "liquidity": {}
                   },
                   "required": [
                     "baseLimited",
                     "baseTokenAmount",
                     "quoteTokenAmount",
                     "baseTokenAmountMax",
-                    "quoteTokenAmountMax",
-                    "computeUnits"
+                    "quoteTokenAmountMax"
                   ]
                 }
               }
@@ -4853,7 +5186,7 @@
         "tags": ["/connector/uniswap"],
         "description": "Get swap quote for Uniswap V3 CLMM",
         "parameters": [
-          { "schema": { "type": "string", "default": "base" }, "in": "query", "name": "network", "required": true },
+          { "schema": { "type": "string", "default": "base" }, "in": "query", "name": "network", "required": false },
           {
             "schema": { "type": "string" },
             "in": "query",
@@ -4871,7 +5204,7 @@
             "name": "side",
             "required": true
           },
-          { "schema": { "type": "number" }, "example": 1, "in": "query", "name": "slippagePct", "required": true }
+          { "schema": { "type": "number" }, "example": 1, "in": "query", "name": "slippagePct", "required": false }
         ],
         "responses": {
           "200": {
@@ -4881,7 +5214,6 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "quoteId": { "type": "string" },
                     "poolAddress": { "type": "string" },
                     "tokenIn": { "type": "string" },
                     "tokenOut": { "type": "string" },
@@ -4889,15 +5221,9 @@
                     "amountOut": { "type": "number" },
                     "price": { "type": "number" },
                     "slippagePct": { "type": "number" },
-                    "priceWithSlippage": {
-                      "description": "Price including slippage (worst acceptable price)",
-                      "type": "number"
-                    },
                     "minAmountOut": { "type": "number" },
                     "maxAmountIn": { "type": "number" },
                     "priceImpactPct": { "type": "number" },
-                    "fee": { "type": "number" },
-                    "computeUnits": { "type": "number" },
                     "activeBinId": { "type": "number" }
                   },
                   "required": [
@@ -4907,12 +5233,9 @@
                     "amountIn",
                     "amountOut",
                     "price",
-                    "priceWithSlippage",
                     "minAmountOut",
                     "maxAmountIn",
                     "priceImpactPct",
-                    "fee",
-                    "computeUnits",
                     "activeBinId"
                   ]
                 }
@@ -4932,21 +5255,16 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "walletAddress": { "type": "string", "example": "0x0000000000000000000000000000000000000000" },
+                  "walletAddress": { "type": "string", "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684" },
                   "network": { "type": "string", "default": "base" },
                   "poolAddress": { "type": "string", "example": "" },
                   "baseToken": { "type": "string", "example": "WETH" },
                   "quoteToken": { "type": "string", "example": "USDC" },
                   "amount": { "type": "number", "example": 0.001 },
                   "side": { "type": "string", "enum": ["BUY", "SELL"], "example": "SELL" },
-                  "slippagePct": { "type": "number", "example": 1 },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                    "type": "number"
-                  },
-                  "computeUnits": { "description": "Compute units for transaction", "type": "number" }
+                  "slippagePct": { "type": "number", "example": 1 }
                 },
-                "required": ["walletAddress", "network", "baseToken", "amount", "side", "slippagePct"]
+                "required": ["baseToken", "amount", "side"]
               }
             }
           },
@@ -5005,22 +5323,17 @@
                 "type": "object",
                 "properties": {
                   "network": { "type": "string", "default": "base" },
-                  "walletAddress": { "type": "string", "example": "0x0000000000000000000000000000000000000000" },
+                  "walletAddress": { "type": "string", "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684" },
                   "lowerPrice": { "type": "number", "example": 1000 },
                   "upperPrice": { "type": "number", "example": 4000 },
                   "poolAddress": { "type": "string", "example": "" },
                   "baseTokenAmount": { "type": "number", "example": 0.001 },
                   "quoteTokenAmount": { "type": "number", "example": 3 },
                   "slippagePct": { "type": "number", "example": 1 },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                    "type": "number"
-                  },
-                  "computeUnits": { "description": "Compute units for transaction", "type": "number" },
                   "baseToken": { "type": "string", "example": "WETH" },
                   "quoteToken": { "type": "string", "example": "USDC" }
                 },
-                "required": ["network", "walletAddress", "lowerPrice", "upperPrice", "poolAddress"]
+                "required": ["lowerPrice", "upperPrice", "poolAddress"]
               }
             }
           },
@@ -5072,19 +5385,35 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "default": "base" },
-                  "walletAddress": { "type": "string", "example": "0x..." },
-                  "positionAddress": { "type": "string", "description": "Position NFT token ID" },
-                  "baseTokenAmount": { "type": "number", "example": 0.1 },
-                  "quoteTokenAmount": { "type": "number", "example": 200 },
-                  "slippagePct": { "type": "number", "example": 1 },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
+                  "network": {
+                    "description": "The EVM network to use",
+                    "default": "mainnet",
+                    "enum": ["arbitrum", "avalanche", "base", "bsc", "celo", "mainnet", "optimism", "polygon"],
+                    "type": "string"
+                  },
+                  "walletAddress": {
+                    "description": "Wallet address that will add liquidity",
+                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "type": "string"
+                  },
+                  "positionAddress": { "description": "NFT token ID of the position", "type": "string" },
+                  "baseTokenAmount": { "description": "Amount of base token to add", "type": "number" },
+                  "quoteTokenAmount": { "description": "Amount of quote token to add", "type": "number" },
+                  "slippagePct": {
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Maximum acceptable slippage percentage",
+                    "default": 2,
                     "type": "number"
                   },
-                  "computeUnits": { "description": "Compute units for transaction", "type": "number" }
+                  "gasPrice": { "description": "Gas price in wei for the transaction", "type": "string" },
+                  "maxGas": {
+                    "description": "Maximum gas limit for the transaction",
+                    "type": "number",
+                    "example": 300000
+                  }
                 },
-                "required": ["network", "walletAddress", "positionAddress", "baseTokenAmount", "quoteTokenAmount"]
+                "required": ["positionAddress", "baseTokenAmount", "quoteTokenAmount"]
               }
             }
           },
@@ -5129,16 +5458,11 @@
                 "type": "object",
                 "properties": {
                   "network": { "type": "string", "default": "base" },
-                  "walletAddress": { "type": "string", "example": "0x0000000000000000000000000000000000000000" },
+                  "walletAddress": { "type": "string", "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684" },
                   "positionAddress": { "type": "string", "description": "Position NFT token ID", "example": "1234" },
-                  "percentageToRemove": { "type": "number", "minimum": 0, "maximum": 100, "example": 50 },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                    "type": "number"
-                  },
-                  "computeUnits": { "description": "Compute units for transaction", "type": "number" }
+                  "percentageToRemove": { "type": "number", "minimum": 0, "maximum": 100, "example": 50 }
                 },
-                "required": ["network", "walletAddress", "positionAddress", "percentageToRemove"]
+                "required": ["positionAddress", "percentageToRemove"]
               }
             }
           },
@@ -5183,15 +5507,10 @@
                 "type": "object",
                 "properties": {
                   "network": { "type": "string", "default": "base" },
-                  "walletAddress": { "type": "string", "example": "0x0000000000000000000000000000000000000000" },
-                  "positionAddress": { "type": "string", "description": "Position NFT token ID", "example": "1234" },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                    "type": "number"
-                  },
-                  "computeUnits": { "description": "Compute units for transaction", "type": "number" }
+                  "walletAddress": { "type": "string", "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684" },
+                  "positionAddress": { "type": "string", "description": "Position NFT token ID", "example": "1234" }
                 },
-                "required": ["network", "walletAddress", "positionAddress"]
+                "required": ["positionAddress"]
               }
             }
           },
@@ -5235,16 +5554,11 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "network": { "type": "string", "default": "base" },
-                  "walletAddress": { "type": "string", "example": "0x..." },
-                  "positionAddress": { "type": "string", "description": "Position NFT token ID" },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit (lamports on Solana, Gwei on Ethereum)",
-                    "type": "number"
-                  },
-                  "computeUnits": { "description": "Compute units for transaction", "type": "number" }
+                  "network": { "type": "string" },
+                  "walletAddress": { "type": "string" },
+                  "positionAddress": { "type": "string" }
                 },
-                "required": ["network", "walletAddress", "positionAddress"]
+                "required": ["positionAddress"]
               }
             }
           },
@@ -5296,24 +5610,13 @@
           {
             "schema": {
               "default": "mainnet",
-              "enum": ["mainnet", "sepolia", "arbitrum", "avalanche", "base", "bsc", "celo", "optimism", "polygon"],
+              "enum": ["arbitrum", "avalanche", "base", "bsc", "mainnet", "optimism", "polygon"],
               "type": "string"
-            },
-            "examples": {
-              "mainnet": { "value": "mainnet" },
-              "sepolia": { "value": "sepolia" },
-              "arbitrum": { "value": "arbitrum" },
-              "avalanche": { "value": "avalanche" },
-              "base": { "value": "base" },
-              "bsc": { "value": "bsc" },
-              "celo": { "value": "celo" },
-              "optimism": { "value": "optimism" },
-              "polygon": { "value": "polygon" }
             },
             "in": "query",
             "name": "network",
             "required": false,
-            "description": "The blockchain network to use"
+            "description": "The EVM network to use"
           },
           {
             "schema": { "type": "string" },
@@ -5321,7 +5624,7 @@
             "in": "query",
             "name": "baseToken",
             "required": true,
-            "description": "Token to determine swap direction"
+            "description": "First token in the trading pair"
           },
           {
             "schema": { "type": "string" },
@@ -5329,7 +5632,7 @@
             "in": "query",
             "name": "quoteToken",
             "required": true,
-            "description": "The other token in the pair"
+            "description": "Second token in the trading pair"
           },
           {
             "schema": { "type": "number" },
@@ -5383,20 +5686,12 @@
                     "amountIn": { "description": "Amount of tokenIn to be swapped", "type": "number" },
                     "amountOut": { "description": "Expected amount of tokenOut to receive", "type": "number" },
                     "price": { "description": "Exchange rate between tokenIn and tokenOut", "type": "number" },
-                    "slippagePct": { "description": "Slippage percentage used for this quote", "type": "number" },
-                    "priceWithSlippage": {
-                      "description": "Price including slippage (worst acceptable price)",
-                      "type": "number"
-                    },
+                    "priceImpactPct": { "description": "Estimated price impact percentage (0-100)", "type": "number" },
                     "minAmountOut": {
                       "description": "Minimum amount of tokenOut that will be accepted",
                       "type": "number"
                     },
                     "maxAmountIn": { "description": "Maximum amount of tokenIn that will be spent", "type": "number" },
-                    "priceImpactPct": {
-                      "description": "Estimated price impact as a percentage (0-100)",
-                      "type": "number"
-                    },
                     "expirationTime": {
                       "description": "Unix timestamp when this quote expires (only for firm quotes)",
                       "type": "number"
@@ -5418,11 +5713,9 @@
                     "amountIn",
                     "amountOut",
                     "price",
-                    "slippagePct",
-                    "priceWithSlippage",
+                    "priceImpactPct",
                     "minAmountOut",
                     "maxAmountIn",
-                    "priceImpactPct",
                     "gasEstimate"
                   ]
                 }
@@ -5444,26 +5737,15 @@
                 "properties": {
                   "walletAddress": {
                     "description": "Wallet address that will execute the swap",
-                    "default": "0x0000000000000000000000000000000000000000",
-                    "type": "string",
-                    "example": "0x0000000000000000000000000000000000000000"
+                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "type": "string"
                   },
                   "network": {
                     "description": "The blockchain network to use",
                     "default": "mainnet",
-                    "enum": [
-                      "mainnet",
-                      "sepolia",
-                      "arbitrum",
-                      "avalanche",
-                      "base",
-                      "bsc",
-                      "celo",
-                      "optimism",
-                      "polygon"
-                    ],
+                    "enum": ["arbitrum", "avalanche", "base", "bsc", "mainnet", "optimism", "polygon"],
                     "type": "string",
-                    "example": "mainnet"
+                    "example": "arbitrum"
                   },
                   "quoteId": {
                     "description": "ID of the quote to execute",
@@ -5474,7 +5756,7 @@
                   "maxGas": {
                     "description": "Maximum gas limit for the transaction",
                     "type": "number",
-                    "example": 300000
+                    "example": 1000000
                   }
                 },
                 "required": ["quoteId"]
@@ -5544,26 +5826,16 @@
                 "properties": {
                   "walletAddress": {
                     "description": "Wallet address that will execute the swap",
-                    "default": "0x0000000000000000000000000000000000000000",
+                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
                     "type": "string",
-                    "example": "0x0000000000000000000000000000000000000000"
+                    "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684"
                   },
                   "network": {
                     "description": "The blockchain network to use",
                     "default": "mainnet",
-                    "enum": [
-                      "mainnet",
-                      "sepolia",
-                      "arbitrum",
-                      "avalanche",
-                      "base",
-                      "bsc",
-                      "celo",
-                      "optimism",
-                      "polygon"
-                    ],
+                    "enum": ["arbitrum", "avalanche", "base", "bsc", "mainnet", "optimism", "polygon"],
                     "type": "string",
-                    "example": "mainnet"
+                    "example": "arbitrum"
                   },
                   "baseToken": {
                     "description": "Token to determine swap direction",

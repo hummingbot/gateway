@@ -4,14 +4,10 @@ import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  PositionInfo,
-  PositionInfoSchema,
-  GetPositionInfoRequest,
-  GetPositionInfoRequestType,
-} from '../../../schemas/amm-schema';
+import { PositionInfo, PositionInfoSchema, GetPositionInfoRequestType } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+import { RaydiumAmmGetPositionInfoRequest } from '../schemas';
 
 /**
  * Calculate the LP token amount and corresponding token amounts
@@ -75,8 +71,6 @@ async function calculateLpAmount(
 }
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
-
   fastify.get<{
     Querystring: GetPositionInfoRequestType;
     Reply: PositionInfo;
@@ -86,7 +80,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get info about a Raydium AMM position',
         tags: ['/connector/raydium'],
-        querystring: GetPositionInfoRequest,
+        querystring: RaydiumAmmGetPositionInfoRequest,
         response: {
           200: PositionInfoSchema,
         },

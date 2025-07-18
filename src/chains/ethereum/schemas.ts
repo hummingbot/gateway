@@ -152,6 +152,34 @@ export const WrapResponseSchema = Type.Object({
   ),
 });
 
+// Unwrap request schema
+export const UnwrapRequestSchema = Type.Object({
+  network: EthereumNetworkParameter,
+  address: EthereumAddressParameter,
+  amount: Type.String({
+    description: 'The amount of wrapped token to unwrap (e.g., WETH, WBNB, WAVAX)',
+    examples: [EXAMPLE_AMOUNT],
+  }),
+});
+
+// Unwrap response schema
+export const UnwrapResponseSchema = Type.Object({
+  signature: Type.String(),
+  status: Type.Number({ description: 'TransactionStatus enum value' }),
+
+  // Only included when status = CONFIRMED
+  data: Type.Optional(
+    Type.Object({
+      nonce: Type.Number(),
+      fee: Type.String(),
+      amount: Type.String(),
+      wrappedAddress: Type.String(),
+      nativeToken: Type.String(),
+      wrappedToken: Type.String(),
+    }),
+  ),
+});
+
 // Type exports
 export type AllowancesRequestType = Static<typeof AllowancesRequestSchema>;
 export type AllowancesResponseType = Static<typeof AllowancesResponseSchema>;
@@ -159,3 +187,5 @@ export type ApproveRequestType = Static<typeof ApproveRequestSchema>;
 export type ApproveResponseType = Static<typeof ApproveResponseSchema>;
 export type WrapRequestType = Static<typeof WrapRequestSchema>;
 export type WrapResponseType = Static<typeof WrapResponseSchema>;
+export type UnwrapRequestType = Static<typeof UnwrapRequestSchema>;
+export type UnwrapResponseType = Static<typeof UnwrapResponseSchema>;

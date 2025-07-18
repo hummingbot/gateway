@@ -6,7 +6,7 @@ import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
 import { EthereumLedger } from '../ethereum-ledger';
 import { waitForTransactionWithTimeout } from '../ethereum.utils';
-import { WrapRequestSchema, WrapResponseSchema, WrapRequestType, WrapResponseType } from '../schemas';
+import { UnwrapRequestSchema, UnwrapResponseSchema, UnwrapRequestType, UnwrapResponseType } from '../schemas';
 
 // WETH ABI for wrap/unwrap operations
 const WETH9ABI = [
@@ -73,7 +73,7 @@ const WRAPPED_ADDRESSES: {
   },
 };
 
-export async function wrapEthereum(fastify: FastifyInstance, network: string, address: string, amount: string) {
+export async function unwrapEthereum(fastify: FastifyInstance, network: string, address: string, amount: string) {
   // Get Ethereum instance for the specified network
   const ethereum = await Ethereum.getInstance(network);
   await ethereum.init();
@@ -96,22 +96,21 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
 
     if (isHardware) {
       // Hardware wallet flow
-      logger.info(`Hardware wallet detected for ${address}. Building wrap transaction for Ledger signing.`);
+      logger.info(`Hardware wallet detected for ${address}. Building unwrap transaction for Ledger signing.`);
 
       const ledger = new EthereumLedger();
 
       // Get nonce for the address
       nonce = await ethereum.provider.getTransactionCount(address, 'latest');
 
-      // Build the wrap transaction data
+      // Build the unwrap transaction data
       const iface = new utils.Interface(WETH9ABI);
-      const data = iface.encodeFunctionData('deposit');
+      const data = iface.encodeFunctionData('withdraw', [amountInWei]);
 
       // Build unsigned transaction - let gateway handle gas parameters
       const unsignedTx = {
         to: wrappedInfo.address,
         data: data,
-        value: amountInWei,
         nonce: nonce,
         chainId: ethereum.chainId,
       };
@@ -144,17 +143,24 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
       // Create wrapped token contract instance
       const wrappedContract = new ethers.Contract(wrappedInfo.address, WETH9ABI, wallet);
 
-      // Prepare gas options for wrap transaction
+      // Check balance before unwrapping
+      const balance = await wrappedContract.balanceOf(wallet.address);
+      if (balance.lt(amountInWei)) {
+        throw fastify.httpErrors.badRequest(
+          `Insufficient ${wrappedInfo.symbol} balance. Available: ${utils.formatEther(balance)}, Required: ${amount}`,
+        );
+      }
+
+      // Prepare gas options for unwrap transaction
       const gasOptions = await ethereum.prepareGasOptions();
       const params: any = {
         ...gasOptions,
         nonce: await ethereum.provider.getTransactionCount(wallet.address),
-        value: amountInWei, // Send native token with the transaction
       };
 
-      // Create transaction to call deposit() function
-      const depositTx = await wrappedContract.populateTransaction.deposit(params);
-      transaction = await wallet.sendTransaction(depositTx);
+      // Create transaction to call withdraw() function
+      const withdrawTx = await wrappedContract.populateTransaction.withdraw(amountInWei, params);
+      transaction = await wallet.sendTransaction(withdrawTx);
       nonce = transaction.nonce;
     }
 
@@ -181,13 +187,15 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
       },
     };
   } catch (error) {
-    logger.error(`Error wrapping ${wrappedInfo.nativeSymbol} to ${wrappedInfo.symbol}: ${error.message}`);
+    logger.error(`Error unwrapping ${wrappedInfo.symbol} to ${wrappedInfo.nativeSymbol}: ${error.message}`);
 
     // Handle specific error cases
     if (error.message && error.message.includes('insufficient funds')) {
       throw fastify.httpErrors.badRequest(
-        `Insufficient funds for transaction. Please ensure you have enough ${wrappedInfo.nativeSymbol} to wrap.`,
+        `Insufficient funds for transaction. Please ensure you have enough ETH for gas costs.`,
       );
+    } else if (error.message && error.message.includes('Insufficient') && error.message.includes('balance')) {
+      throw error; // Re-throw our custom balance error
     } else if (error.message.includes('rejected on Ledger')) {
       throw fastify.httpErrors.badRequest('Transaction rejected on Ledger device');
     } else if (error.message.includes('Ledger device is locked')) {
@@ -197,33 +205,33 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
     }
 
     throw fastify.httpErrors.internalServerError(
-      `Failed to wrap ${wrappedInfo.nativeSymbol} to ${wrappedInfo.symbol}: ${error.message}`,
+      `Failed to unwrap ${wrappedInfo.symbol} to ${wrappedInfo.nativeSymbol}: ${error.message}`,
     );
   }
 }
 
-export const wrapRoute: FastifyPluginAsync = async (fastify) => {
+export const unwrapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
-    Body: WrapRequestType;
-    Reply: WrapResponseType;
+    Body: UnwrapRequestType;
+    Reply: UnwrapResponseType;
   }>(
-    '/wrap',
+    '/unwrap',
     {
       schema: {
-        description: 'Wrap native token to wrapped token (e.g., ETH to WETH, BNB to WBNB)',
+        description: 'Unwrap wrapped token to native token (e.g., WETH to ETH, WBNB to BNB)',
         tags: ['/chain/ethereum'],
-        body: WrapRequestSchema,
+        body: UnwrapRequestSchema,
         response: {
-          200: WrapResponseSchema,
+          200: UnwrapResponseSchema,
         },
       },
     },
     async (request) => {
       const { network, address, amount } = request.body;
 
-      return await wrapEthereum(fastify, network, address, amount);
+      return await unwrapEthereum(fastify, network, address, amount);
     },
   );
 };
 
-export default wrapRoute;
+export default unwrapRoute;

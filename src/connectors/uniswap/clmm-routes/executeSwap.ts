@@ -61,8 +61,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           side,
           slippagePct,
           walletAddress: requestedWalletAddress,
-          priorityFeePerCU,
-          computeUnits,
         } = request.body;
 
         const networkToUse = network;
@@ -198,20 +196,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           sqrtPriceLimitX96: 0,
         };
 
-        // Use provided gas parameters or defaults
-        const gasLimit = computeUnits || 300000;
-
-        // For Ethereum, priorityFeePerCU is interpreted as gas price in Gwei
-        const txOptions: any = { gasLimit };
-
-        if (priorityFeePerCU !== undefined) {
-          // Convert from Gwei to Wei (1 Gwei = 1e9 Wei)
-          const gasPriceWei = BigNumber.from(priorityFeePerCU).mul(1e9);
-          txOptions.gasPrice = gasPriceWei;
-          logger.info(`Using custom gas price: ${priorityFeePerCU} Gwei`);
-        }
-
-        logger.info(`Using gas limit: ${gasLimit}`);
+        // Use Ethereum's gas options
+        const txOptions = await ethereum.prepareGasOptions();
 
         let tx;
         if (side === 'SELL') {

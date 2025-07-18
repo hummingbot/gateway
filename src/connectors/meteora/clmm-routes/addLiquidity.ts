@@ -1,16 +1,17 @@
 import { StrategyType } from '@meteora-ag/dlmm';
 import { DecimalUtil } from '@orca-so/common-sdk';
-import { Type, Static } from '@sinclair/typebox';
+import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { AddLiquidityRequest, AddLiquidityResponse, AddLiquidityResponseType } from '../../../schemas/clmm-schema';
+import { AddLiquidityResponse, AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 import { MeteoraConfig } from '../meteora.config';
+import { MeteoraClmmAddLiquidityRequest } from '../schemas';
 
 // Using Fastify's native error handling
 
@@ -143,27 +144,11 @@ async function addLiquidity(
   };
 }
 
-export const MeteoraAddLiquidityRequest = Type.Intersect(
-  [
-    AddLiquidityRequest,
-    Type.Object({
-      strategyType: Type.Optional(
-        Type.Number({
-          enum: Object.values(StrategyType).filter((x) => typeof x === 'number'),
-        }),
-      ),
-    }),
-  ],
-  { $id: 'MeteoraAddLiquidityRequest' },
-);
-
-export type MeteoraAddLiquidityRequestType = Static<typeof MeteoraAddLiquidityRequest>;
-
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
-    Body: MeteoraAddLiquidityRequestType;
+    Body: Static<typeof MeteoraClmmAddLiquidityRequest>;
     Reply: AddLiquidityResponseType;
   }>(
     '/add-liquidity',
@@ -171,20 +156,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Add liquidity to a Meteora position',
         tags: ['/connector/meteora'],
-        body: {
-          ...AddLiquidityRequest,
-          properties: {
-            ...AddLiquidityRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            slippagePct: { type: 'number', examples: [1] },
-            strategyType: {
-              type: 'number',
-              examples: [StrategyType.SpotImBalanced],
-              enum: Object.values(StrategyType).filter((x) => typeof x === 'number'),
-            },
-          },
-        },
+        body: MeteoraClmmAddLiquidityRequest,
         response: {
           200: AddLiquidityResponse,
         },

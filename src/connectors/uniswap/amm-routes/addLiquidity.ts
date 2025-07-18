@@ -1,17 +1,14 @@
 import { Contract } from '@ethersproject/contracts';
+import { Static } from '@sinclair/typebox';
 import { Percent } from '@uniswap/sdk-core';
-import { BigNumber } from 'ethers';
+import { BigNumber, utils } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { wrapEthereum } from '../../../chains/ethereum/routes/wrap';
-import {
-  AddLiquidityRequestType,
-  AddLiquidityRequest,
-  AddLiquidityResponseType,
-  AddLiquidityResponse,
-} from '../../../schemas/amm-schema';
+import { AddLiquidityResponseType, AddLiquidityResponse } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
+import { UniswapAmmAddLiquidityRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
 import { getUniswapV2RouterAddress, IUniswapV2Router02ABI } from '../uniswap.contracts';
 import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
@@ -28,8 +25,8 @@ async function addLiquidity(
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct?: number,
-  priorityFeePerCU?: number,
-  computeUnits?: number,
+  gasPrice?: string,
+  maxGas?: number,
 ): Promise<AddLiquidityResponseType> {
   const networkToUse = network;
 
@@ -178,7 +175,9 @@ async function addLiquidity(
     }
 
     // Add liquidity Token + ETH
-    const gasOptions = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
+    // Convert gasPrice from wei to gwei if provided
+    const priorityFeeGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
+    const gasOptions = await ethereum.prepareGasOptions(priorityFeeGwei, maxGas);
     gasOptions.value = quote.rawQuoteTokenAmount;
 
     tx = await router.addLiquidityETH(
@@ -238,7 +237,9 @@ async function addLiquidity(
     }
 
     // Add liquidity Token + Token
-    const gasOptions = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
+    // Convert gasPrice from wei to gwei if provided
+    const priorityFeeGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
+    const gasOptions = await ethereum.prepareGasOptions(priorityFeeGwei, maxGas);
 
     tx = await router.addLiquidity(
       quote.baseTokenObj.address,
@@ -280,7 +281,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.post<{
-    Body: AddLiquidityRequestType;
+    Body: Static<typeof UniswapAmmAddLiquidityRequest>;
     Reply: AddLiquidityResponseType;
   }>(
     '/add-liquidity',
@@ -288,23 +289,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Add liquidity to a Uniswap V2 pool',
         tags: ['/connector/uniswap'],
-        body: {
-          ...AddLiquidityRequest,
-          properties: {
-            ...AddLiquidityRequest.properties,
-            network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            poolAddress: {
-              type: 'string',
-              examples: [''],
-            },
-            baseToken: { type: 'string', examples: ['WETH'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            baseTokenAmount: { type: 'number', examples: [0.001] },
-            quoteTokenAmount: { type: 'number', examples: [2.5] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        body: UniswapAmmAddLiquidityRequest,
         response: {
           200: AddLiquidityResponse,
         },
@@ -319,8 +304,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           quoteTokenAmount,
           slippagePct,
           walletAddress: requestedWalletAddress,
-          priorityFeePerCU,
-          computeUnits,
+          gasPrice,
+          maxGas,
         } = request.body;
 
         // Validate essential parameters
@@ -360,8 +345,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
-          priorityFeePerCU,
-          computeUnits,
+          gasPrice,
+          maxGas,
         );
       } catch (e) {
         logger.error(e);

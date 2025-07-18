@@ -33,7 +33,6 @@ export class Ethereum {
   public chainId: number;
   public rpcUrl: string;
   public gasPrice: number;
-  public gasLimitTransaction: number;
   private _initialized: boolean = false;
 
   // For backward compatibility
@@ -50,7 +49,6 @@ export class Ethereum {
     this.network = network;
     this.nativeTokenSymbol = config.nativeCurrencySymbol;
     this.gasPrice = config.manualGasPrice;
-    this.gasLimitTransaction = config.gasLimitTransaction;
   }
 
   public static async getInstance(network: string): Promise<Ethereum> {
@@ -135,21 +133,25 @@ export class Ethereum {
    * @returns Gas options object for ethers.js transaction
    */
   public async prepareGasOptions(priorityFeePerCU?: number, computeUnits?: number): Promise<any> {
-    const gasOptions: any = {
-      gasLimit: computeUnits || this.gasLimitTransaction,
-    };
+    const gasOptions: any = {};
 
-    // Add EIP-1559 parameters if priorityFeePerCU is provided
-    if (priorityFeePerCU !== undefined) {
-      gasOptions.type = 2; // EIP-1559 transaction
-      const priorityFeePerGasWei = utils.parseUnits(priorityFeePerCU.toString(), 'gwei');
-      gasOptions.maxPriorityFeePerGas = priorityFeePerGasWei;
-
-      // Get current base fee and add priority fee with 10% buffer
-      const block = await this.provider.getBlock('latest');
-      const baseFee = block.baseFeePerGas || BigNumber.from(0);
-      gasOptions.maxFeePerGas = baseFee.add(priorityFeePerGasWei).mul(110).div(100);
+    // Set gas limit if provided
+    if (computeUnits !== undefined) {
+      gasOptions.gasLimit = computeUnits;
     }
+
+    // If priorityFeePerCU not provided, estimate it
+    const feePerGasUnit = priorityFeePerCU ?? (await this.estimateGasPrice());
+
+    // Add EIP-1559 parameters
+    gasOptions.type = 2; // EIP-1559 transaction
+    const priorityFeePerGasWei = utils.parseUnits(feePerGasUnit.toString(), 'gwei');
+    gasOptions.maxPriorityFeePerGas = priorityFeePerGasWei;
+
+    // Get current base fee and add priority fee with 10% buffer
+    const block = await this.provider.getBlock('latest');
+    const baseFee = block.baseFeePerGas || BigNumber.from(0);
+    gasOptions.maxFeePerGas = baseFee.add(priorityFeePerGasWei).mul(110).div(100);
 
     return gasOptions;
   }
@@ -501,16 +503,14 @@ export class Ethereum {
   ): Promise<providers.TransactionResponse> {
     logger.info(`Approving ${amount.toString()} tokens for spender ${spender}`);
 
+    // Prepare gas options for approval transaction
+    const gasOptions = await this.prepareGasOptions();
     const params: any = {
-      gasLimit: this.gasLimitTransaction,
+      ...gasOptions,
       nonce: await this.provider.getTransactionCount(wallet.address),
     };
 
-    // Always fetch gas price from the network
-    const currentGasPrice = await this.provider.getGasPrice();
-    params.gasPrice = currentGasPrice.toString();
-    logger.info(`Using network gas price: ${utils.formatUnits(currentGasPrice, 'gwei')} GWEI`);
-
+    // Don't add gasPrice when using EIP-1559 parameters
     return contract.approve(spender, amount, params);
   }
 
@@ -629,17 +629,15 @@ export class Ethereum {
     // Create wrapped token contract instance
     const wrappedContract = new Contract(wrappedAddress, Ethereum.WETH9ABI, wallet);
 
-    // Set transaction parameters
+    // Prepare gas options for wrap transaction
+    const gasOptions = await this.prepareGasOptions();
     const params: any = {
-      gasLimit: this.gasLimitTransaction,
+      ...gasOptions,
       nonce: await this.provider.getTransactionCount(wallet.address),
       value: amountInWei, // Send native token with the transaction
     };
 
-    // Always fetch gas price from the network
-    const currentGasPrice = await this.provider.getGasPrice();
-    params.gasPrice = currentGasPrice.toString();
-
+    // Don't add gasPrice when using EIP-1559 parameters
     // Create transaction to call deposit() function
     logger.info(`Wrapping ${utils.formatEther(amountInWei)} ETH to WETH`);
     return await wrappedContract.deposit(params);
@@ -711,8 +709,8 @@ export class Ethereum {
         try {
           const contract = this.getContract(token.address, this.provider);
           const balance = isHardware
-            ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 1000, token.symbol)
-            : await this.getERC20Balance(contract, wallet!, token.decimals, 1000, token.symbol);
+            ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 2000, token.symbol)
+            : await this.getERC20Balance(contract, wallet!, token.decimals, 2000, token.symbol);
 
           const balanceNum = parseFloat(tokenValueToString(balance));
 

@@ -1,16 +1,13 @@
 import { Contract } from '@ethersproject/contracts';
+import { Static } from '@sinclair/typebox';
 import { Percent } from '@uniswap/sdk-core';
-import { BigNumber } from 'ethers';
+import { BigNumber, utils } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  RemoveLiquidityRequestType,
-  RemoveLiquidityRequest,
-  RemoveLiquidityResponseType,
-  RemoveLiquidityResponse,
-} from '../../../schemas/amm-schema';
+import { RemoveLiquidityResponseType, RemoveLiquidityResponse } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
+import { UniswapAmmRemoveLiquidityRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
 import { getUniswapV2RouterAddress, IUniswapV2Router02ABI, IUniswapV2PairABI } from '../uniswap.contracts';
 import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
@@ -22,7 +19,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.post<{
-    Body: RemoveLiquidityRequestType;
+    Body: Static<typeof UniswapAmmRemoveLiquidityRequest>;
     Reply: RemoveLiquidityResponseType;
   }>(
     '/remove-liquidity',
@@ -30,21 +27,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Remove liquidity from a Uniswap V2 pool',
         tags: ['/connector/uniswap'],
-        body: {
-          ...RemoveLiquidityRequest,
-          properties: {
-            ...RemoveLiquidityRequest.properties,
-            network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            poolAddress: {
-              type: 'string',
-              examples: [''],
-            },
-            baseToken: { type: 'string', examples: ['WETH'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            percentageToRemove: { type: 'number', examples: [100] },
-          },
-        },
+        body: UniswapAmmRemoveLiquidityRequest,
         response: {
           200: RemoveLiquidityResponse,
         },
@@ -57,8 +40,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           poolAddress,
           percentageToRemove,
           walletAddress: requestedWalletAddress,
-          priorityFeePerCU,
-          computeUnits,
+          gasPrice,
+          maxGas,
         } = request.body;
 
         const networkToUse = network;
@@ -161,7 +144,9 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         let tx;
 
         // Prepare gas options
-        const gasOptions = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits || 300000);
+        // Convert gasPrice from wei to gwei if provided
+        const priorityFeeGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
+        const gasOptions = await ethereum.prepareGasOptions(priorityFeeGwei, maxGas || 300000);
 
         // Check if one of the tokens is WETH
         if (baseTokenObj.symbol === 'WETH') {

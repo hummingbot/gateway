@@ -1,17 +1,18 @@
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
+import { Static } from '@sinclair/typebox';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import {
-  RemoveLiquidityRequest,
   RemoveLiquidityResponse,
   RemoveLiquidityRequestType,
   RemoveLiquidityResponseType,
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+import { RaydiumClmmRemoveLiquidityRequest } from '../schemas';
 
 export async function removeLiquidity(
   _fastify: FastifyInstance,
@@ -110,7 +111,7 @@ export async function removeLiquidity(
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
-    Body: RemoveLiquidityRequestType;
+    Body: Static<typeof RaydiumClmmRemoveLiquidityRequest>;
     Reply: RemoveLiquidityResponseType;
   }>(
     '/remove-liquidity',
@@ -118,13 +119,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Remove liquidity from Raydium CLMM position',
         tags: ['/connector/raydium'],
-        body: {
-          ...RemoveLiquidityRequest,
-          properties: {
-            ...RemoveLiquidityRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-          },
-        },
+        body: RaydiumClmmRemoveLiquidityRequest,
         response: {
           200: RemoveLiquidityResponse,
         },

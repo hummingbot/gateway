@@ -9,7 +9,6 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import {
-  QuoteLiquidityRequest,
   QuoteLiquidityRequestType,
   QuoteLiquidityResponse,
   QuoteLiquidityResponseType,
@@ -18,6 +17,7 @@ import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
 import { isValidAmm, isValidCpmm } from '../raydium.utils';
+import { RaydiumAmmQuoteLiquidityRequest } from '../schemas';
 
 interface AmmComputePairResult {
   anotherAmount: TokenAmount;
@@ -164,7 +164,6 @@ export async function quoteLiquidity(
           quoteTokenAmount: resParsed.anotherAmount,
           baseTokenAmountMax: baseTokenAmount,
           quoteTokenAmountMax: resParsed.maxAnotherAmount,
-          computeUnits: 600000, // Standard compute units for liquidity operations
         };
       } else {
         return {
@@ -173,7 +172,6 @@ export async function quoteLiquidity(
           quoteTokenAmount: quoteTokenAmount,
           baseTokenAmountMax: resParsed.maxAnotherAmount,
           quoteTokenAmountMax: quoteTokenAmount,
-          computeUnits: 600000, // Standard compute units for liquidity operations
         };
       }
     } else if (ammPoolInfo.poolType === 'cpmm') {
@@ -198,7 +196,6 @@ export async function quoteLiquidity(
           quoteTokenAmount: resParsed.anotherAmount / 10 ** quoteToken.decimals,
           baseTokenAmountMax: baseTokenAmount,
           quoteTokenAmountMax: resParsed.maxAnotherAmount / 10 ** quoteToken.decimals,
-          computeUnits: 600000, // Standard compute units for adding liquidity
         };
       } else {
         return {
@@ -207,7 +204,6 @@ export async function quoteLiquidity(
           quoteTokenAmount: quoteTokenAmount,
           baseTokenAmountMax: resParsed.maxAnotherAmount / 10 ** baseToken.decimals,
           quoteTokenAmountMax: quoteTokenAmount,
-          computeUnits: 600000, // Standard compute units for adding liquidity
         };
       }
     }
@@ -227,21 +223,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Quote amounts for a new Raydium AMM liquidity position',
         tags: ['/connector/raydium'],
-        querystring: {
-          ...QuoteLiquidityRequest,
-          properties: {
-            ...QuoteLiquidityRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            poolAddress: {
-              type: 'string',
-              examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'],
-            }, // AMM RAY-USDC
-            // poolAddress: { type: 'string', examples: ['7JuwJuNU88gurFnyWeiyGKbFmExMWcmRZntn9imEzdny'] }, // CPMM SOL-USDC
-            baseTokenAmount: { type: 'number', examples: [1] },
-            quoteTokenAmount: { type: 'number', examples: [1] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        querystring: RaydiumAmmQuoteLiquidityRequest,
         response: {
           200: QuoteLiquidityResponse,
           500: {

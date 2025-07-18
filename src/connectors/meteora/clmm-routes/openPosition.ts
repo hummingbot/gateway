@@ -7,10 +7,11 @@ import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { OpenPositionRequest, OpenPositionResponse, OpenPositionResponseType } from '../../../schemas/clmm-schema';
+import { OpenPositionResponse, OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 import { MeteoraConfig } from '../meteora.config';
+import { MeteoraClmmOpenPositionRequest } from '../schemas';
 
 // Using Fastify's native error handling
 
@@ -199,27 +200,11 @@ async function openPosition(
   };
 }
 
-export const MeteoraOpenPositionRequest = Type.Intersect(
-  [
-    OpenPositionRequest,
-    Type.Object({
-      strategyType: Type.Optional(
-        Type.Number({
-          enum: Object.values(StrategyType).filter((x) => typeof x === 'number'),
-        }),
-      ),
-    }),
-  ],
-  { $id: 'MeteoraOpenPositionRequest' },
-);
-
-export type MeteoraOpenPositionRequestType = Static<typeof MeteoraOpenPositionRequest>;
-
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
-    Body: MeteoraOpenPositionRequestType;
+    Body: Static<typeof MeteoraClmmOpenPositionRequest>;
     Reply: OpenPositionResponseType;
   }>(
     '/open-position',
@@ -227,28 +212,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Open a new Meteora position',
         tags: ['/connector/meteora'],
-        body: {
-          ...OpenPositionRequest,
-          properties: {
-            ...OpenPositionRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            lowerPrice: { type: 'number', examples: [100] },
-            upperPrice: { type: 'number', examples: [180] },
-            poolAddress: {
-              type: 'string',
-              examples: ['2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3'],
-            },
-            baseTokenAmount: { type: 'number', examples: [0.1] },
-            quoteTokenAmount: { type: 'number', examples: [15] },
-            slippagePct: { type: 'number', examples: [1] },
-            strategyType: {
-              type: 'number',
-              examples: [StrategyType.SpotImBalanced],
-              enum: Object.values(StrategyType).filter((x) => typeof x === 'number'),
-            },
-          },
-        },
+        body: MeteoraClmmOpenPositionRequest,
         response: {
           200: OpenPositionResponse,
         },

@@ -1,15 +1,12 @@
-import { BigNumber, Contract } from 'ethers';
+import { Static } from '@sinclair/typebox';
+import { BigNumber, Contract, utils } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { wrapEthereum } from '../../../chains/ethereum/routes/wrap';
-import {
-  ExecuteSwapRequest,
-  ExecuteSwapRequestType,
-  ExecuteSwapResponse,
-  ExecuteSwapResponseType,
-} from '../../../schemas/amm-schema';
+import { ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
+import { UniswapAmmExecuteSwapRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
 import { getUniswapV2RouterAddress, IUniswapV2Router02ABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
@@ -22,7 +19,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.post<{
-    Body: ExecuteSwapRequestType;
+    Body: Static<typeof UniswapAmmExecuteSwapRequest>;
     Reply: ExecuteSwapResponseType;
   }>(
     '/execute-swap',
@@ -30,20 +27,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Execute a swap on Uniswap V2 AMM using Router02',
         tags: ['/connector/uniswap'],
-        body: {
-          ...ExecuteSwapRequest,
-          properties: {
-            ...ExecuteSwapRequest.properties,
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            network: { type: 'string', default: 'base' },
-            poolAddress: { type: 'string', examples: [''] },
-            baseToken: { type: 'string', examples: ['WETH'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.001] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        body: UniswapAmmExecuteSwapRequest,
         response: { 200: ExecuteSwapResponse },
       },
     },
@@ -58,8 +42,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           side,
           slippagePct,
           walletAddress: requestedWalletAddress,
-          priorityFeePerCU,
-          computeUnits,
+          gasPrice,
+          maxGas,
         } = request.body;
 
         const networkToUse = network;
@@ -186,19 +170,19 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
 
         // Use provided gas parameters or defaults
-        const gasLimit = computeUnits || 300000;
+        const finalGasLimit = maxGas || 300000;
 
-        // For Ethereum, priorityFeePerCU is interpreted as gas price in Gwei
-        const txOptions: any = { gasLimit };
+        // For Ethereum, gasPrice is expected in wei
+        const txOptions: any = { gasLimit: finalGasLimit };
 
-        if (priorityFeePerCU !== undefined) {
-          // Convert from Gwei to Wei (1 Gwei = 1e9 Wei)
-          const gasPriceWei = BigNumber.from(priorityFeePerCU).mul(1e9);
-          txOptions.gasPrice = gasPriceWei;
-          logger.info(`Using custom gas price: ${priorityFeePerCU} Gwei`);
+        if (gasPrice !== undefined) {
+          // gasPrice is already in wei as a string
+          txOptions.gasPrice = gasPrice;
+          const gasPriceGwei = utils.formatUnits(gasPrice, 'gwei');
+          logger.info(`Using custom gas price: ${gasPriceGwei} Gwei`);
         }
 
-        logger.info(`Using gas limit: ${gasLimit}`);
+        logger.info(`Using gas limit: ${finalGasLimit}`);
 
         let tx;
         if (side === 'SELL') {

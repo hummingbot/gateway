@@ -76,11 +76,6 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
           price: price,
           baseTokenAmount: baseTokenAmount,
           quoteTokenAmount: quoteTokenAmount,
-          poolType: 'amm',
-          lpMint: {
-            address: poolAddress, // In Uniswap V2, the LP token address is the pair address
-            decimals: 18, // Uniswap V2 LP tokens have 18 decimals
-          },
         };
       } catch (e) {
         logger.error(`Error in pool-info route: ${e.message}`);

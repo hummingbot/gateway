@@ -105,6 +105,7 @@ describe('GET /quote-swap', () => {
         if (token === 'USDC' || token === mockUSDC.address) return Promise.resolve(mockUSDC);
         return Promise.resolve(null);
       }),
+      estimateGasPrice: jest.fn().mockResolvedValue(2000), // Mock priority fee in lamports per CU
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
     (Solana.getWalletAddressExample as jest.Mock).mockResolvedValue('11111111111111111111111111111111');
@@ -160,12 +161,10 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('minAmountOut', 14.7);
     expect(body).toHaveProperty('price', 148.5);
     expect(body).toHaveProperty('priceImpactPct', 1);
-    expect(body).toHaveProperty('fee', 0.00025);
     expect(body).toHaveProperty('tokenIn', mockSOL.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-    // For SELL side: priceWithSlippage = minAmountOut / amountIn
-    expect(body).toHaveProperty('priceWithSlippage');
-    expect(body.priceWithSlippage).toBeCloseTo(body.minAmountOut / body.amountIn, 8);
+    expect(body).toHaveProperty('maxAmountIn', 0.1);
+    expect(body).toHaveProperty('slippagePct', 1);
   });
 
   it('should return a quote for AMM swap BUY side', async () => {
@@ -175,6 +174,7 @@ describe('GET /quote-swap', () => {
         if (token === 'USDC' || token === mockUSDC.address) return Promise.resolve(mockUSDC);
         return Promise.resolve(null);
       }),
+      estimateGasPrice: jest.fn().mockResolvedValue(2000), // Mock priority fee in lamports per CU
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -237,9 +237,10 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('maxAmountIn', 15.15);
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockSOL.address);
-    // For BUY side: priceWithSlippage = amountOut / maxAmountIn
-    expect(body).toHaveProperty('priceWithSlippage');
-    expect(body.priceWithSlippage).toBeCloseTo(body.amountOut / body.maxAmountIn, 8);
+    expect(body).toHaveProperty('minAmountOut', 0.1);
+    expect(body).toHaveProperty('price', 150);
+    expect(body).toHaveProperty('priceImpactPct', 1);
+    expect(body).toHaveProperty('slippagePct', 1);
   });
 
   it('should return 404 if pool not found', async () => {
@@ -249,6 +250,7 @@ describe('GET /quote-swap', () => {
         if (token === 'USDC' || token === mockUSDC.address) return Promise.resolve(mockUSDC);
         return Promise.resolve(null);
       }),
+      estimateGasPrice: jest.fn().mockResolvedValue(2000), // Mock priority fee in lamports per CU
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 

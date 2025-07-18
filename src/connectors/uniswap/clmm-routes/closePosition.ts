@@ -1,7 +1,7 @@
 import { Contract } from '@ethersproject/contracts';
 import { Percent } from '@uniswap/sdk-core';
 import { NonfungiblePositionManager } from '@uniswap/v3-sdk';
-import { BigNumber } from 'ethers';
+import { BigNumber, utils } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
@@ -26,18 +26,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Close a Uniswap V3 position by removing all liquidity and collecting fees',
         tags: ['/connector/uniswap'],
-        body: {
-          ...ClosePositionRequest,
-          properties: {
-            ...ClosePositionRequest.properties,
-            network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: ['0x...'] },
-            positionAddress: {
-              type: 'string',
-              description: 'Position NFT token ID',
-            },
-          },
-        },
+        body: ClosePositionRequest,
         response: {
           200: ClosePositionResponse,
         },
@@ -45,13 +34,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress: requestedWalletAddress,
-          positionAddress,
-          priorityFeePerCU,
-          computeUnits,
-        } = request.body;
+        const { network, walletAddress: requestedWalletAddress, positionAddress } = request.body;
 
         const networkToUse = network;
         const chain = 'ethereum'; // Default to ethereum
@@ -204,7 +187,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
 
         // Execute the transaction to remove liquidity and burn the position
         // Use Ethereum's prepareGasOptions method
-        const txParams = await ethereum.prepareGasOptions(priorityFeePerCU, computeUnits);
+        const txParams = await ethereum.prepareGasOptions();
         txParams.value = BigNumber.from(value.toString());
 
         const tx = await positionManagerWithSigner.multicall([calldata], txParams);

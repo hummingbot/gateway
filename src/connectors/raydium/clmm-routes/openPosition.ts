@@ -1,17 +1,14 @@
 import { TxVersion, TickUtils } from '@raydium-io/raydium-sdk-v2';
+import { Static } from '@sinclair/typebox';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana, BASE_FEE } from '../../../chains/solana/solana';
-import {
-  OpenPositionRequest,
-  OpenPositionResponse,
-  OpenPositionRequestType,
-  OpenPositionResponseType,
-} from '../../../schemas/clmm-schema';
+import { OpenPositionResponse, OpenPositionRequestType, OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+import { RaydiumClmmOpenPositionRequest } from '../schemas';
 
 import { quotePosition } from './quotePosition';
 
@@ -78,8 +75,8 @@ async function openPosition(
 
   logger.info('Opening Raydium CLMM position...');
 
-  // Use provided compute units or quote's estimate
-  const COMPUTE_UNITS = computeUnits || quotePositionResponse.computeUnits;
+  // Use provided compute units or default
+  const COMPUTE_UNITS = computeUnits || 500000;
 
   // Use provided priority fee per CU or estimate default
   let finalPriorityFeePerCU: number;
@@ -151,7 +148,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
-    Body: OpenPositionRequestType;
+    Body: Static<typeof RaydiumClmmOpenPositionRequest>;
     Reply: OpenPositionResponseType;
   }>(
     '/open-position',
@@ -159,25 +156,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Open a new Raydium CLMM position',
         tags: ['/connector/raydium'],
-        body: {
-          ...OpenPositionRequest,
-          properties: {
-            ...OpenPositionRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            lowerPrice: { type: 'number', examples: [100] },
-            upperPrice: { type: 'number', examples: [180] },
-            poolAddress: {
-              type: 'string',
-              examples: ['3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'],
-            },
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            slippagePct: { type: 'number', examples: [1] },
-            baseTokenAmount: { type: 'number', examples: [0.1] },
-            quoteTokenAmount: { type: 'number', examples: [15] },
-          },
-        },
+        body: RaydiumClmmOpenPositionRequest,
         response: {
           200: OpenPositionResponse,
         },

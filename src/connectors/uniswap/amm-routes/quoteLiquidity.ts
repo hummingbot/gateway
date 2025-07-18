@@ -233,8 +233,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         );
 
         // Use standard gas limit for liquidity operations
-        const ethereum = await Ethereum.getInstance(network);
-        const computeUnits = ethereum.gasLimitTransaction || 500000;
+        const computeUnits = 500000;
 
         return {
           baseLimited: quote.baseLimited,

@@ -1,8 +1,9 @@
 import { FastifyPluginAsync } from 'fastify';
 
-import { GetPoolInfoRequestType, GetPoolInfoRequest, PoolInfo, PoolInfoSchema } from '../../../schemas/amm-schema';
+import { GetPoolInfoRequestType, PoolInfo, PoolInfoSchema } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+import { RaydiumAmmGetPoolInfoRequest } from '../schemas';
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -14,7 +15,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get AMM pool information from Raydium',
         tags: ['/connector/raydium'],
-        querystring: GetPoolInfoRequest,
+        querystring: RaydiumAmmGetPoolInfoRequest,
         response: {
           200: PoolInfoSchema,
         },
@@ -29,7 +30,10 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
 
         const poolInfo = await raydium.getAmmPoolInfo(poolAddress);
         if (!poolInfo) throw fastify.httpErrors.notFound('Pool not found');
-        return poolInfo;
+
+        // Return only the fields defined in the schema
+        const { poolType, ...basePoolInfo } = poolInfo;
+        return basePoolInfo;
       } catch (e) {
         logger.error(e);
         throw fastify.httpErrors.internalServerError('Failed to fetch pool info');

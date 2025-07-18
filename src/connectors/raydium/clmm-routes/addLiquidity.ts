@@ -1,17 +1,14 @@
 import { PoolUtils, TxVersion } from '@raydium-io/raydium-sdk-v2';
+import { Static } from '@sinclair/typebox';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  AddLiquidityRequest,
-  AddLiquidityResponse,
-  AddLiquidityRequestType,
-  AddLiquidityResponseType,
-} from '../../../schemas/clmm-schema';
+import { AddLiquidityResponse, AddLiquidityRequestType, AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+import { RaydiumClmmAddLiquidityRequest } from '../schemas';
 
 import { quotePosition } from './quotePosition';
 
@@ -53,8 +50,8 @@ async function addLiquidity(
   console.log('quotePositionResponse', quotePositionResponse);
   logger.info('Adding liquidity to Raydium CLMM position...');
 
-  // Use provided compute units or quote's estimate
-  const COMPUTE_UNITS = computeUnits || quotePositionResponse.computeUnits;
+  // Use provided compute units or default
+  const COMPUTE_UNITS = computeUnits || 600000;
 
   // Use provided priority fee or default to 0
   const finalPriorityFeePerCU = priorityFeePerCU || 0;
@@ -111,7 +108,7 @@ async function addLiquidity(
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
-    Body: AddLiquidityRequestType;
+    Body: Static<typeof RaydiumClmmAddLiquidityRequest>;
     Reply: AddLiquidityResponseType;
   }>(
     '/add-liquidity',
@@ -119,14 +116,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Add liquidity to existing Raydium CLMM position',
         tags: ['/connector/raydium'],
-        body: {
-          ...AddLiquidityRequest,
-          properties: {
-            ...AddLiquidityRequest.properties,
-            slippagePct: { type: 'number', examples: [1] },
-            network: { type: 'string', default: 'mainnet-beta' },
-          },
-        },
+        body: RaydiumClmmAddLiquidityRequest,
         response: {
           200: AddLiquidityResponse,
         },

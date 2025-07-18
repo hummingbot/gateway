@@ -15,6 +15,7 @@ import {
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
+import { RaydiumAmmQuoteSwapRequest } from '../schemas';
 
 async function quoteAmmSwap(
   raydium: Raydium,
@@ -468,13 +469,8 @@ async function formatSwapQuote(
   const fee = quote.fee ? new Decimal(quote.fee.toString()).div(10 ** inputToken.decimals).toNumber() : 0;
   const priceImpactPct = quote.priceImpact ? quote.priceImpact * 100 : 0;
 
-  // Calculate price with slippage
-  // For SELL: priceWithSlippage = minAmountOut / estimatedAmountIn (worst price you'll accept)
-  // For BUY: priceWithSlippage = estimatedAmountOut / maxAmountIn (worst price you'll accept)
-  const priceWithSlippage = side === 'SELL' ? minAmountOut / estimatedAmountIn : estimatedAmountOut / maxAmountIn;
-
   return {
-    // Base QuoteSwapResponse fields in correct order
+    // Base QuoteSwapResponse fields
     poolAddress,
     tokenIn,
     tokenOut,
@@ -482,13 +478,9 @@ async function formatSwapQuote(
     amountOut: estimatedAmountOut,
     price,
     slippagePct: slippagePct || 1, // Default 1% if not provided
-    priceWithSlippage,
     minAmountOut,
     maxAmountIn,
-    // AMM-specific fields
     priceImpactPct,
-    fee,
-    computeUnits: 300000, // Default compute units for AMM swaps
   };
 }
 
@@ -502,7 +494,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get swap quote for Raydium AMM',
         tags: ['/connector/raydium'],
-        querystring: QuoteSwapRequest,
+        querystring: RaydiumAmmQuoteSwapRequest,
         response: {
           200: QuoteSwapResponse,
         },

@@ -8,13 +8,6 @@
   },
   {
     "chainId": 8453,
-    "name": "Bonk On Base",
-    "symbol": "bonk",
-    "address": "0x72499bddb67f4ca150e1f522ca82c87bc9fb18c8",
-    "decimals": 18
-  },
-  {
-    "chainId": 8453,
     "name": "Coinbase Wrapped BTC",
     "symbol": "cbBTC",
     "address": "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
@@ -29,37 +22,9 @@
   },
   {
     "chainId": 8453,
-    "name": "Department Of Government Efficiency",
-    "symbol": "doge",
-    "address": "0x67f0870bb897f5e1c369976b4a2962d527b9562c",
-    "decimals": 18
-  },
-  {
-    "chainId": 8453,
     "name": "Chainlink",
     "symbol": "link",
     "address": "0x88fb150bdc53a65fe94dea0c9ba0a6daf8c6e196",
-    "decimals": 18
-  },
-  {
-    "chainId": 8453,
-    "name": "Pepe on Base",
-    "symbol": "pepe",
-    "address": "0x80f45eacf6537498ecc660e4e4a2d2f99e195cf4",
-    "decimals": 18
-  },
-  {
-    "chainId": 8453,
-    "name": "Synthetix Network",
-    "symbol": "snx",
-    "address": "0x22e6966b799c4d5b13be962e1d117b56327fda66",
-    "decimals": 18
-  },
-  {
-    "chainId": 8453,
-    "name": "sUSDS",
-    "symbol": "susds",
-    "address": "0x5875eee11cf8398102fdad704c9e96607675467a",
     "decimals": 18
   },
   {
@@ -68,13 +33,6 @@
     "symbol": "USDC",
     "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     "decimals": 6
-  },
-  {
-    "chainId": 8453,
-    "name": "USDS",
-    "symbol": "usds",
-    "address": "0x820c137fa70c8691f0e44dc420a5e53c168921dc",
-    "decimals": 18
   },
   {
     "chainId": 8453,
@@ -95,13 +53,6 @@
     "name": "Wrapped Ether",
     "symbol": "WETH",
     "address": "0x4200000000000000000000000000000000000006",
-    "decimals": 18
-  },
-  {
-    "chainId": 8453,
-    "name": "Superbridge Bridged wstETH (Base)",
-    "symbol": "wsteth",
-    "address": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
     "decimals": 18
   }
 ]
