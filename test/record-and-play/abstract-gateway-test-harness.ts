@@ -10,7 +10,8 @@ import {
   TestDependencyContract,
 } from './test-dependency-contract';
 
-interface ContractWithSpy<TInstance> extends TestDependencyContract<TInstance> {
+interface ContractWithSpy<TInstance>
+  extends TestDependencyContract<TInstance, any> {
   spy?: jest.SpyInstance;
 }
 
@@ -69,7 +70,7 @@ export abstract class AbstractGatewayTestHarness<TInstance>
    * @param fileName The name of the mock file to create.
    * @param data The data to serialize and save.
    */
-  protected _saveMock(fileName: string, data: any): void {
+  protected _saveMock<TMock>(fileName: string, data: TMock): void {
     const mockDir = path.join(this._mockDir, 'mocks');
     if (!fs.existsSync(mockDir)) {
       fs.mkdirSync(mockDir, { recursive: true });
@@ -166,6 +167,9 @@ export abstract class AbstractGatewayTestHarness<TInstance>
         // as mocks. Therefore, we set callIndexStart to numCalls - numMocks to capture only
         // the last numMocks calls, which represent the successful sequence that should be
         // replayed during testing.
+
+        // Example: If a method is called 5 times but only 2 mocks are requested, we'll
+        // record calls 4 and 5, assuming calls 1-3 were retries that failed.
         callIndexStart = numCalls - numMocks;
       }
 

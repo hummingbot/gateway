@@ -10,7 +10,7 @@ export interface MockProvider<TInstance> {
 /**
  * Defines the contract for how a dependency should be spied upon and mocked.
  */
-export abstract class TestDependencyContract<TInstance> {
+export abstract class TestDependencyContract<TInstance, TMock> {
   /** If true, the real method will be called even during "Play" mode tests. */
   public allowPassThrough: boolean;
   /** Returns the object or prototype that contains the method to be spied on. */
@@ -21,7 +21,7 @@ export abstract class TestDependencyContract<TInstance> {
    * Attaches a mock implementation to the spy.
    * Can be called multiple times to mock subsequent calls.
    */
-  setupMock<TMock>(
+  setupMock(
     spy: jest.SpyInstance,
     provider: MockProvider<TInstance>,
     fileName: string,
@@ -45,7 +45,8 @@ export abstract class TestDependencyContract<TInstance> {
 export class InstancePropertyDependency<
   TInstance,
   TObject,
-> extends TestDependencyContract<TInstance> {
+  TMock,
+> extends TestDependencyContract<TInstance, TMock> {
   constructor(
     private getObjectFn: (provider: MockProvider<TInstance>) => TObject,
     public methodName: keyof TObject,
@@ -75,7 +76,8 @@ export class InstancePropertyDependency<
 export class PrototypeDependency<
   TInstance,
   TObject,
-> extends TestDependencyContract<TInstance> {
+  TMock,
+> extends TestDependencyContract<TInstance, TMock> {
   constructor(
     private ClassConstructor: { new (...args: any[]): TObject },
     public methodName: keyof TObject,
@@ -98,18 +100,47 @@ export class PrototypeDependency<
  * This should be used within a concrete TestHarness class.
  */
 export class DependencyFactory<TInstance> {
+  private _extractMethodName<T, TMethod extends (...args: any[]) => any>(
+    selector: (obj: T) => TMethod,
+  ): keyof T {
+    // This is a hack: create a Proxy to intercept the property access
+    let prop: string | symbol | undefined;
+    const proxy = new Proxy(
+      {},
+      {
+        get(_target, p) {
+          prop = p;
+          // eslint-disable-next-line @typescript-eslint/no-empty-function
+          return () => {};
+        },
+      },
+    ) as T;
+    selector(proxy);
+    if (!prop) {
+      throw new Error('Could not extract method name from selector');
+    }
+    return prop as keyof T;
+  }
+
   /**
    * Creates a contract for a method on a class instance property.
    * @param instancePropertyName The name of the property on the main service instance that holds the dependency object.
-   * @param methodName The name of the method on the dependency object to spy on.
+   * @param methodSelector A lambda function that selects the method on the dependency object (e.g., `x => x.myMethod`).
    * @param allowPassThrough If true, the real method is called during "Play" mode.
    */
-  instanceProperty<K extends keyof TInstance>(
+  instanceProperty<
+    K extends keyof TInstance,
+    TMethod extends (...args: any[]) => any = any,
+  >(
     instancePropertyName: K,
-    methodName: keyof TInstance[K],
+    methodSelector: (dep: TInstance[K]) => TMethod,
     allowPassThrough = false,
   ) {
-    return new InstancePropertyDependency(
+    const methodName = this._extractMethodName(methodSelector);
+
+    type TMock = Awaited<ReturnType<TMethod>>;
+
+    return new InstancePropertyDependency<TInstance, TInstance[K], TMock>(
       (p: MockProvider<TInstance>): TInstance[K] =>
         p.instance[instancePropertyName],
       methodName,
@@ -120,15 +151,21 @@ export class DependencyFactory<TInstance> {
   /**
    * Creates a contract for a method on a class prototype.
    * WARNING: This will not work for methods defined as arrow functions.
-   * @param proto The class (not an instance) whose prototype contains the method.
-   * @param methodName The name of the method on the prototype to spy on.
+   * @param ClassConstructor The class (not an instance) whose prototype contains the method.
+   * @param methodSelector A lambda function that selects the method on the prototype (e.g., `x => x.myMethod`).
    * @param allowPassThrough If true, the real method is called during "Play" mode.
    */
-  prototype<TObject>(
-    proto: { new (...args: any[]): TObject },
-    methodName: keyof TObject,
+  prototype<TObject, TMethod extends (...args: any[]) => any = any>(
+    ClassConstructor: { new (...args: any[]): TObject },
+    methodSelector: (obj: TObject) => TMethod,
     allowPassThrough = false,
   ) {
-    return new PrototypeDependency(proto, methodName, allowPassThrough);
+    const methodName = this._extractMethodName(methodSelector);
+    type TMock = Awaited<ReturnType<TMethod>>;
+    return new PrototypeDependency<TInstance, TObject, TMock>(
+      ClassConstructor,
+      methodName,
+      allowPassThrough,
+    );
   }
 }
