@@ -2,15 +2,15 @@
 
 exports[`RnpExample callABC 1`] = `
 {
-  "a": "real A_basicMethod-0.613904698364715",
-  "b": "337111",
+  "a": "real A_basicMethod-48",
+  "b": "54",
   "c": Any<String>,
 }
 `;
 
 exports[`RnpExample callB_superJsonMethod 1`] = `
 {
-  "b": "824836",
+  "b": "56",
 }
 `;
 
@@ -30,14 +30,14 @@ exports[`RnpExample callBUnloaded_Recorder 1`] = `
 
 exports[`RnpExample callDTwice 1`] = `
 {
-  "d1": "real D_usedTwiceInOneCallMethod-0.1646371768088688",
-  "d2": "real D_usedTwiceInOneCallMethod-0.5056626165727529",
+  "d1": "real D_usedTwiceInOneCallMethod-67",
+  "d2": "real D_usedTwiceInOneCallMethod-4",
 }
 `;
 
 exports[`RnpExample callPrototypeDep 1`] = `
 {
-  "x": "real prototypeMethod-0.3625906666354404",
+  "x": "real prototypeMethod-67",
 }
 `;
 
