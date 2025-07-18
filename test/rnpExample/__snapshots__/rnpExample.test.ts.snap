@@ -2,15 +2,15 @@
 
 exports[`RnpExample callABC 1`] = `
 {
-  "a": "real A_basicMethod-0.8194074871792008",
-  "b": "648847",
+  "a": "real A_basicMethod-0.613904698364715",
+  "b": "337111",
   "c": Any<String>,
 }
 `;
 
 exports[`RnpExample callB_superJsonMethod 1`] = `
 {
-  "b": "993671",
+  "b": "824836",
 }
 `;
 
@@ -30,14 +30,14 @@ exports[`RnpExample callBUnloaded_Recorder 1`] = `
 
 exports[`RnpExample callDTwice 1`] = `
 {
-  "d1": "real D_usedTwiceInOneCallMethod-0.5699946728175469",
-  "d2": "real D_usedTwiceInOneCallMethod-0.926208199266757",
+  "d1": "real D_usedTwiceInOneCallMethod-0.1646371768088688",
+  "d2": "real D_usedTwiceInOneCallMethod-0.5056626165727529",
 }
 `;
 
 exports[`RnpExample callPrototypeDep 1`] = `
 {
-  "x": "real prototypeMethod-0.6351804576911579",
+  "x": "real prototypeMethod-0.3625906666354404",
 }
 `;
 
@@ -49,9 +49,9 @@ exports[`RnpExample callUnlistedDep 1`] = `
 
 exports[`RnpExample callUnmappedMethod_Mocked 1`] = `
 {
-  "error": "FailedDependencyError",
+  "error": "NotImplementedError",
   "message": "Failed to callUnmappedMethod: Unmapped method was called: dep1_A.unmappedMethod. Method must be listed and either mocked or specify allowPassThrough.",
-  "statusCode": 424,
+  "statusCode": 501,
 }
 `;
 

@@ -1,10 +1,12 @@
 import {
   callABC,
   callB_superJsonMethod,
+  callBUnloaded_Mocked,
   callBUnloaded_Recorder,
   callDTwice,
   callPrototypeDep,
   callUnlistedDep,
+  callUnmappedMethod_Mocked,
   callUnmappedMethod_Recorder,
 } from '#test/rnpExample/rnpExample.api-test-cases';
 import { RnpExampleTestHarness } from '#test/rnpExample/rnpExample.test-harness';
@@ -47,17 +49,17 @@ describe('RnpExample', () => {
       error: 'InternalServerError',
       message:
         'Failed to callSuperJsonMethod: Mocked dependency was called without a mock loaded: dep1_B. Either load a mock or allowPassThrough.',
-      statusCode: 500,
+      statusCode: callBUnloaded_Mocked.expectedStatus,
     }).toMatchSnapshot({});
   });
 
   it('callUnmappedMethod_Mocked', async () => {
     // Create expected snapshot for running test in "Play" mode
     expect({
-      error: 'FailedDependencyError',
+      error: 'NotImplementedError',
       message:
         'Failed to callUnmappedMethod: Unmapped method was called: dep1_A.unmappedMethod. Method must be listed and either mocked or specify allowPassThrough.',
-      statusCode: 424,
+      statusCode: callUnmappedMethod_Mocked.expectedStatus,
     }).toMatchSnapshot({});
   });
 });

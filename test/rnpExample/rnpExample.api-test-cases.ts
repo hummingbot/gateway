@@ -142,7 +142,7 @@ export const callUnmappedMethod_Recorder = new TestCase({
 export const callUnmappedMethod_Mocked = new TestCase({
   method: 'GET',
   url: '/rnpExample/callUnmappedMethod',
-  expectedStatus: 424,
+  expectedStatus: 501,
   query: { network: 'TEST' },
   payload: {},
   requiredMocks: {},
