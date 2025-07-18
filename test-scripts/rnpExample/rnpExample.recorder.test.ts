@@ -41,6 +41,10 @@ describe('RnpExample', () => {
   it('usePrototypeDep', async () => {
     await usePrototypeDep.processRecorderRequest(harness);
   });
+  
+  it('useUnlistedDep', async () => {
+    await useUnlistedDep.processRecorderRequest(harness);
+  });
 
   it('useBUnloaded_Recorder', async () => {
     await useBUnloaded_Recorder.processRecorderRequest(harness);
@@ -68,9 +72,5 @@ describe('RnpExample', () => {
         'Failed to useUnmappedMethod: Unmapped method was called: dep1_A.unmappedMethod. Method must be listed and either mocked or specify allowPassThrough.',
       statusCode: 424,
     }).toMatchSnapshot({});
-  });
-
-  it('useUnlistedDep', async () => {
-    await useUnlistedDep.processRecorderRequest(harness);
   });
 });

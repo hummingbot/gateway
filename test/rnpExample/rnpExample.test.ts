@@ -43,6 +43,10 @@ describe('RnpExample', () => {
     await usePrototypeDep.processPlayRequest(harness);
   });
 
+  it('useUnlistedDep', async () => {
+    await useUnlistedDep.processPlayRequest(harness);
+  });
+
   it('useBUnloaded_Recorder', async () => {
     // Snapshots must match the recorded output and this call fails in "play" mode
     // so we force a predictable result by just using the recorder test's propertyMatchers.
@@ -63,7 +67,4 @@ describe('RnpExample', () => {
     await useUnmappedMethod_Mocked.processPlayRequest(harness);
   });
 
-  it('useUnlistedDep', async () => {
-    await useUnlistedDep.processPlayRequest(harness);
-  });
 });

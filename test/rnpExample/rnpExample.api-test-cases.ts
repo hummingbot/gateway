@@ -42,7 +42,7 @@ export const useB_superJsonMethod = new TestCase({
 /**
  * A test case that calls the same dependency twice.
  * The `requiredMocks` array provides two different mock files, which will be
- * returned in order for the two sequential calls to `dep1.methodD()`.
+ * returned in order for the two sequential calls to `dep1.D_usedTwiceInOneCallMethod()`.
  */
 export const useDTwice = new TestCase({
   method: 'GET',
@@ -69,71 +69,10 @@ export const usePrototypeDep = new TestCase({
   },
 });
 
-/**
- * A test case for an unloaded dependency.
- * This test calls a method that requires the 'dep1_A' mock, but does not load it
- * via `requiredMocks`. This is designed to fail, demonstrating the safety
- * feature that prevents calls to managed dependencies that haven't been loaded.
- */
-export const useBUnloaded_Recorder = new TestCase({
-  method: 'GET',
-  url: '/rnpExample/useSuperJsonMethod',
-  expectedStatus: 200,
-  query: { network: 'TEST' },
-  payload: {},
-  requiredMocks: {},
-  propertyMatchers: { b: expect.any(String) },
-});
-
-/**
- * A test case for an unloaded dependency.
- * This test calls a method that requires the 'dep1_A' mock, but does not load it
- * via `requiredMocks`. This is designed to fail, demonstrating the safety
- * feature that prevents calls to managed dependencies that haven't been loaded.
- */
-export const useBUnloaded_Mocked = new TestCase({
-  method: 'GET',
-  url: '/rnpExample/useSuperJsonMethod',
-  expectedStatus: 500,
-  query: { network: 'TEST' },
-  payload: {},
-  requiredMocks: {},
-});
-
-/**
- * A recorder-only test case for a method that calls an unmapped dependency.
- * This test is only used in the recorder to generate a snapshot.
- * It is not used in "Play" mode.
- */
-export const useUnmappedMethod_Recorder = new TestCase({
-  method: 'GET',
-  url: '/rnpExample/useUnmappedMethod',
-  expectedStatus: 200,
-  query: { network: 'TEST' },
-  payload: {},
-  propertyMatchers: { unmapped: expect.any(String) },
-});
-
-/**
- * A "Play" mode test case that calls a method with an unmapped dependency.
- * The `useUnmappedMethod` endpoint calls `dep1.methodUnmapped`. Because `dep1`
- * is a "managed" object in the harness, but `methodUnmapped` is not explicitly
- * mocked or set to `allowPassThrough`, this test is expected to fail.
- * This demonstrates the key safety feature of the RnP framework.
- */
-export const useUnmappedMethod_Mocked = new TestCase({
-  method: 'GET',
-  url: '/rnpExample/useUnmappedMethod',
-  expectedStatus: 424,
-  query: { network: 'TEST' },
-  payload: {},
-  requiredMocks: {},
-  propertyMatchers: {},
-});
 
 /**
  * A test case for a method that calls a truly "unmanaged" dependency.
- * The `useUnlistedDep` endpoint calls `dep2.methodZ`. Because `dep2` is not
+ * The `useUnlistedDep` endpoint calls `dep2.unlistedMethod`. Because `dep2` is not
  * mentioned anywhere in the harness's `dependencyContracts`, it is "unmanaged"
  * and will always call its real implementation in both Record and Play modes.
  */
@@ -148,3 +87,66 @@ export const useUnlistedDep = new TestCase({
     z: expect.any(String),
   },
 });
+
+/**
+ * A recorder-only test case for an unloaded dependency.
+ * This exists to demonstrate that the recorder and "Play" mode test output 
+ * varies in this scenario as the mock test will fail but recorder test will pass.
+ */
+export const useBUnloaded_Recorder = new TestCase({
+  method: 'GET',
+  url: '/rnpExample/useSuperJsonMethod',
+  expectedStatus: 200,
+  query: { network: 'TEST' },
+  payload: {},
+  requiredMocks: {},
+  propertyMatchers: { b: expect.any(String) },
+});
+
+/**
+ * A failure test case for a mock/"Play" mode test with an unloaded dependency.
+ * This test calls a method that requires the 'dep1_A' mock, but does not load it
+ * via `requiredMocks`. This is designed to fail, demonstrating the safety
+ * feature that prevents calls to managed dependencies that haven't been loaded.
+ */
+export const useBUnloaded_Mocked = new TestCase({
+  method: 'GET',
+  url: '/rnpExample/useSuperJsonMethod',
+  expectedStatus: 500,
+  query: { network: 'TEST' },
+  payload: {},
+  requiredMocks: {},
+});
+
+/**
+ * A recorder-only test case for a method that calls an unmapped method on a managed dependency.
+ * This exists to demonstrate that the recorder and "Play" mode test output
+ * varies in this scenario as the mock test will fail but recorder test will pass.
+ */
+export const useUnmappedMethod_Recorder = new TestCase({
+  method: 'GET',
+  url: '/rnpExample/useUnmappedMethod',
+  expectedStatus: 200,
+  query: { network: 'TEST' },
+  payload: {},
+  propertyMatchers: { unmapped: expect.any(String) },
+});
+
+/**
+ * A failure test case for a "Play" mode test case that calls a method with an unmapped dependency.
+ * The `useUnmappedMethod` endpoint calls `dep1.unmappedMethod`. 
+ * But because `dep1` * is a "managed" object in the harness and `unmappedMethod` 
+ * is not explicitly mocked or set to `allowPassThrough`, this test gets a error return object.
+ * This demonstrates the key safety feature of the RnP framework 
+ * that prevents calls to unmapped methods. .
+ */
+export const useUnmappedMethod_Mocked = new TestCase({
+  method: 'GET',
+  url: '/rnpExample/useUnmappedMethod',
+  expectedStatus: 424,
+  query: { network: 'TEST' },
+  payload: {},
+  requiredMocks: {},
+  propertyMatchers: {},
+});
+
