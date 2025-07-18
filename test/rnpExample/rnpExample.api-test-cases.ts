@@ -75,9 +75,25 @@ export const usePrototypeDep = new TestCase({
  * via `requiredMocks`. This is designed to fail, demonstrating the safety
  * feature that prevents calls to managed dependencies that haven't been loaded.
  */
-export const useABCUnloaded = new TestCase({
+export const useBUnloaded_Recorder = new TestCase({
   method: 'GET',
-  url: '/rnpExample/useABC',
+  url: '/rnpExample/useSuperJsonMethod',
+  expectedStatus: 200,
+  query: { network: 'TEST' },
+  payload: {},
+  requiredMocks: {},
+  propertyMatchers: { b: expect.any(String) },
+});
+
+/**
+ * A test case for an unloaded dependency.
+ * This test calls a method that requires the 'dep1_A' mock, but does not load it
+ * via `requiredMocks`. This is designed to fail, demonstrating the safety
+ * feature that prevents calls to managed dependencies that haven't been loaded.
+ */
+export const useBUnloaded_Mocked = new TestCase({
+  method: 'GET',
+  url: '/rnpExample/useSuperJsonMethod',
   expectedStatus: 500,
   query: { network: 'TEST' },
   payload: {},

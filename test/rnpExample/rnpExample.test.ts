@@ -5,7 +5,9 @@ import {
   usePrototypeDep,
   useUnmappedMethod_Mocked,
   useB_superJsonMethod,
-  useABCUnloaded,
+  useBUnloaded_Recorder,
+  useBUnloaded_Mocked,
+  useUnmappedMethod_Recorder,
 } from './rnpExample.api-test-cases';
 import { RnpExampleTestHarness } from './rnpExample.test-harness';
 
@@ -41,15 +43,20 @@ describe('RnpExample', () => {
     await usePrototypeDep.processPlayRequest(harness);
   });
 
-  it('useABCUnloaded', async () => {
-    await useABCUnloaded.processPlayRequest(harness);
+  it('useBUnloaded_Recorder', async () => {
+    // Snapshots must match the recorded output and this call fails in "play" mode
+    // so we force a predictable result by just using the recorder test's propertyMatchers.
+    expect(useBUnloaded_Recorder.propertyMatchers).toMatchSnapshot();
+  });
+
+  it('useBUnloaded_Mocked', async () => {
+    await useBUnloaded_Mocked.processPlayRequest(harness);
   });
 
   it('useUnmappedMethod_Recorder', async () => {
-    // Used to force snapshot file to match exactly
-    expect({
-      unmapped: expect.any(String),
-    }).toMatchSnapshot();
+    // Snapshots must match the recorded output and this call fails in "play" mode
+    // so we force a predictable result by just using the recorder test's propertyMatchers.
+    expect(useUnmappedMethod_Recorder.propertyMatchers).toMatchSnapshot();
   });
 
   it('useUnmappedMethod_Mocked', async () => {
