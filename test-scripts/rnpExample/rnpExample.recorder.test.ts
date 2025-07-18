@@ -6,6 +6,7 @@ import {
    usePrototypeDep,
    useUnmappedMethod_Recorder,
    useB_superJsonMethod,
+   useBUnloaded_Recorder,
  } from '#test/rnpExample/rnpExample.api-test-cases';
 
 describe('RnpExample', () => {
@@ -41,12 +42,16 @@ describe('RnpExample', () => {
     await usePrototypeDep.processRecorderRequest(harness);
   });
 
-  it('useABCUnloaded', async () => {
-    // Create to force snapshot file to match exactly
+  it('useBUnloaded_Recorder', async () => {
+    await useBUnloaded_Recorder.processRecorderRequest(harness);
+  });
+
+  it('useBUnloaded_Mocked', async () => {
+    // Create expected snapshot for running test in "Play" mode
     expect({
       error: 'InternalServerError',
       message:
-        'Failed to useABC: Mocked dependency was called without a mock loaded: dep1_A. Either load a mock or allowPassThrough.',
+        'Failed to useSuperJsonMethod: Mocked dependency was called without a mock loaded: dep1_B. Either load a mock or allowPassThrough.',
       statusCode: 500,
     }).toMatchSnapshot({});
   });
@@ -56,7 +61,7 @@ describe('RnpExample', () => {
   });
 
   it('useUnmappedMethod_Mocked', async () => {
-    // Create to force snapshot file to match exactly
+    // Create expected snapshot for running test in "Play" mode
     expect({
       error: 'FailedDependencyError',
       message:

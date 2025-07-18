@@ -2,36 +2,42 @@
 
 exports[`RnpExample useABC 1`] = `
 {
-  "a": "real methodA-0.9780876880931055",
-  "b": "798931",
+  "a": "real methodA-0.7963534618359678",
+  "b": "830950",
   "c": Any<String>,
-}
-`;
-
-exports[`RnpExample useABCUnloaded 1`] = `
-{
-  "error": "InternalServerError",
-  "message": "Failed to useABC: Mocked dependency was called without a mock loaded: dep1_A. Either load a mock or allowPassThrough.",
-  "statusCode": 500,
 }
 `;
 
 exports[`RnpExample useB_superJsonMethod 1`] = `
 {
-  "b": "634042",
+  "b": "234078",
+}
+`;
+
+exports[`RnpExample useBUnloaded_Mocked 1`] = `
+{
+  "error": "InternalServerError",
+  "message": "Failed to useSuperJsonMethod: Mocked dependency was called without a mock loaded: dep1_B. Either load a mock or allowPassThrough.",
+  "statusCode": 500,
+}
+`;
+
+exports[`RnpExample useBUnloaded_Recorder 1`] = `
+{
+  "b": Any<String>,
 }
 `;
 
 exports[`RnpExample useDTwice 1`] = `
 {
-  "d1": "real methodD-0.38345424792538996",
-  "d2": "real methodD-0.7831965722241947",
+  "d1": "real methodD-0.7081604449390264",
+  "d2": "real methodD-0.6030192472856837",
 }
 `;
 
 exports[`RnpExample usePrototypeDep 1`] = `
 {
-  "x": "real methodX-0.3895412431687655",
+  "x": "real methodX-0.7299019795895281",
 }
 `;
 
