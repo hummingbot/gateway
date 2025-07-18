@@ -137,7 +137,7 @@ export const callUnmappedMethod_Recorder = new TestCase({
  * But because `dep1` * is a "managed" object in the harness and `unmappedMethod`
  * is not explicitly mocked or set to `allowPassThrough`, this test gets a error return object.
  * This demonstrates the key safety feature of the RnP framework
- * that prevents calls to unmapped methods. .
+ * that prevents calls to unmapped methods.
  */
 export const callUnmappedMethod_Mocked = new TestCase({
   method: 'GET',

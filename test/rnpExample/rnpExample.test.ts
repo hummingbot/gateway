@@ -40,10 +40,7 @@ describe('RnpExample', () => {
 
   it('callBUnloaded_Mocked', callBUnloaded_Mocked.createPlayTest(harness));
 
-  it(
-    'callUnmappedMethod_Mocked',
-    callUnmappedMethod_Mocked.createPlayTest(harness),
-  );
+  it('callUnmappedMethod_Mocked', callUnmappedMethod_Mocked.createPlayTest(harness));
 
   it('callBUnloaded_Recorder', async () => {
     // Snapshots must match the recorded output and this call fails in "play" mode
