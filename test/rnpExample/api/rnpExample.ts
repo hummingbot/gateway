@@ -1,26 +1,28 @@
 import { BigNumber } from 'ethers';
 
+const randomInt = () => Math.floor(Math.random() * 100);
+
 export class Dependency1 {
-  A_basicMethod = async () => `real A_basicMethod-${Math.random()}`;
+  A_basicMethod = async () => `real A_basicMethod-${randomInt()}`;
 
-  B_superJsonMethod = async () =>
-    BigNumber.from(Math.floor(Math.random() * 1000000));
+  B_superJsonMethod = async () => BigNumber.from(randomInt());
 
-  C_passthroughMethod = async () => `real C_passthroughMethod-${Math.random()}`;
+  C_passthroughMethod = async () => `real C_passthroughMethod-${randomInt()}`;
 
-  D_usedTwiceInOneCallMethod = async () =>
-    `real D_usedTwiceInOneCallMethod-${Math.random()}`;
+  D_usedTwiceInOneCallMethod = async () => `real D_usedTwiceInOneCallMethod-${randomInt()}`;
 
-  unmappedMethod = async () => `real unmappedMethod-${Math.random()}`;
+  unmappedMethod = async () => `real unmappedMethod-${randomInt()}`;
 }
 
 export class UnlistedDependency {
-  unlistedMethod = async () => `real unlistedMethod-${Math.random()}`;
+  unlistedMethod = async () => `real unlistedMethod-${randomInt()}`;
 }
 
 export class LocallyInitializedDependency {
+  // Note the lambda function syntax will NOT work for prototype mocking as JS replicates the method for each instance
+  // If you need to mock a lambda function you can't define then create a mock instance
   async prototypeMethod() {
-    return `real prototypeMethod-${Math.random()}`;
+    return `real prototypeMethod-${randomInt()}`;
   }
 }
 
