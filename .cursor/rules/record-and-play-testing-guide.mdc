@@ -1,6 +1,6 @@
 ---
-description: 
-globs: 
++description: Comprehensive guide for creating tests using the Record and Play (RnP) framework
++globs: ["test-scripts/**/*.recorder.test.ts", "test/**/*.test-harness.ts", "test/**/*.api-test-cases.ts"]
 alwaysApply: false
 ---
 This guide provides the complete instructions for creating tests using the project's "Record and Play" (RnP) framework. It is intended to be used by LLM agents to autonomously create, run, and maintain tests for new and existing features. Adherence to these rules is not optional; it is critical for the stability and predictability of the testing suite.
