@@ -203,7 +203,7 @@ const configureGatewayServer = () => {
   // Register routes on both servers
   const registerRoutes = async (app: FastifyInstance) => {
     // Register system routes
-    app.register(configRoutes, { prefix: '/config' });
+    app.register(configRoutes, { prefix: '/config', logLevel: 'silent' });
 
     // Register wallet routes
     app.register(walletRoutes, { prefix: '/wallet' });
@@ -292,7 +292,7 @@ const configureGatewayServer = () => {
   });
 
   // Health check route (outside registerRoutes, only on main server)
-  server.get('/', async () => {
+  server.get('/', { logLevel: 'silent' }, async () => {
     return { status: 'ok' };
   });
 
