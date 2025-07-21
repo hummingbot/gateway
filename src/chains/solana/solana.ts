@@ -512,12 +512,17 @@ export class Solana {
     const effectiveSymbols = tokens && tokens.length === 0 ? undefined : tokens;
 
     // Always fetch SOL balance if no specific tokens or SOL is requested
-    if (!effectiveSymbols || effectiveSymbols.some((s) => s.toUpperCase() === 'SOL')) {
+    const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
+    if (!effectiveSymbols || effectiveSymbols.some((s) => s.toUpperCase() === 'SOL' || s === SOL_NATIVE_MINT)) {
       balances['SOL'] = await this.getSolBalance(publicKey);
     }
 
     // Return early if only SOL was requested
-    if (effectiveSymbols && effectiveSymbols.length === 1 && effectiveSymbols[0].toUpperCase() === 'SOL') {
+    if (
+      effectiveSymbols &&
+      effectiveSymbols.length === 1 &&
+      (effectiveSymbols[0].toUpperCase() === 'SOL' || effectiveSymbols[0] === SOL_NATIVE_MINT)
+    ) {
       return balances;
     }
 
@@ -610,10 +615,11 @@ export class Solana {
     balances: Record<string, number>,
     effectiveSymbols?: string[],
   ): Record<string, number> {
+    const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
     if (effectiveSymbols) {
       // Set all requested tokens to 0
       for (const symbol of effectiveSymbols) {
-        if (symbol.toUpperCase() !== 'SOL') {
+        if (symbol.toUpperCase() !== 'SOL' && symbol !== SOL_NATIVE_MINT) {
           balances[symbol] = 0;
         }
       }
@@ -629,8 +635,9 @@ export class Solana {
     symbols: string[],
     balances: Record<string, number>,
   ): Promise<void> {
+    const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
     for (const symbol of symbols) {
-      if (symbol.toUpperCase() === 'SOL') continue;
+      if (symbol.toUpperCase() === 'SOL' || symbol === SOL_NATIVE_MINT) continue;
 
       // Try to find token by symbol
       const tokenInfo = this.tokenList.find((t) => t.symbol.toUpperCase() === symbol.toUpperCase());
