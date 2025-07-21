@@ -84,7 +84,7 @@ const getLogPath = () => {
 
 const allLogsFileTransport = new DailyRotateFile({
   level: 'info',
-  filename: `${getLogPath()}/logs_gateway_app.log.%DATE%`,
+  filename: `${getLogPath()}/${ConfigManagerV2.getInstance().get('server.logFilenameFormat') || 'logs_gateway_app.log.%DATE%'}`,
   datePattern: 'YYYY-MM-DD',
   handleExceptions: true,
   handleRejections: true,
@@ -102,9 +102,7 @@ const toStdout = new winston.transports.Console({
 });
 
 export const updateLoggerToStdout = () => {
-  ConfigManagerV2.getInstance().get('server.logToStdOut') === true
-    ? logger.add(toStdout)
-    : logger.remove(toStdout);
+  ConfigManagerV2.getInstance().get('server.logToStdOut') === true ? logger.add(toStdout) : logger.remove(toStdout);
 };
 
 // Initialize logger with stdout configuration
