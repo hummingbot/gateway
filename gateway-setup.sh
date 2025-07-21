@@ -173,8 +173,32 @@ copy_configs () {
   
   # Copy chains folder if selected
   if [ "$UPDATE_CHAINS" = "Y" ]; then
+    # Store original defaultWallet values before copying
+    ORIG_SOLANA_WALLET=""
+    ORIG_ETH_WALLET=""
+    
+    if [ -f "$HOST_CONF_PATH/chains/solana.yml" ]; then
+      ORIG_SOLANA_WALLET=$(grep "^defaultWallet:" "$HOST_CONF_PATH/chains/solana.yml" | cut -d' ' -f2- | tr -d "'\"")
+    fi
+    
+    if [ -f "$HOST_CONF_PATH/chains/ethereum.yml" ]; then
+      ORIG_ETH_WALLET=$(grep "^defaultWallet:" "$HOST_CONF_PATH/chains/ethereum.yml" | cut -d' ' -f2- | tr -d "'\"")
+    fi
+    
+    # Copy the chains folder
     cp -r $TEMPLATE_DIR/chains $HOST_CONF_PATH/
     UPDATED_ITEMS="${UPDATED_ITEMS}chains/, "
+    
+    # Restore original defaultWallet values if they weren't placeholders
+    if [ -n "$ORIG_SOLANA_WALLET" ] && [ "$ORIG_SOLANA_WALLET" != "<solana-wallet-address>" ]; then
+      perl -pi -e "s|defaultWallet: '<solana-wallet-address>'|defaultWallet: $ORIG_SOLANA_WALLET|" "$HOST_CONF_PATH/chains/solana.yml"
+      echo "   Kept original Solana defaultWallet: $ORIG_SOLANA_WALLET"
+    fi
+    
+    if [ -n "$ORIG_ETH_WALLET" ] && [ "$ORIG_ETH_WALLET" != "<ethereum-wallet-address>" ]; then
+      perl -pi -e "s|defaultWallet: '<ethereum-wallet-address>'|defaultWallet: $ORIG_ETH_WALLET|" "$HOST_CONF_PATH/chains/ethereum.yml"
+      echo "   Kept original Ethereum defaultWallet: $ORIG_ETH_WALLET"
+    fi
   fi
   
   # Copy tokens folder if selected
@@ -329,6 +353,33 @@ echo "   - namespaces/ (always updated - config schemas)"
 if [ -d "$HOST_CONF_PATH/wallets" ]; then
   echo
   echo "✅ Existing wallets/ directory will be preserved"
+fi
+
+# Check for existing defaultWallet values if chains will be updated
+if [ "$UPDATE_CHAINS" = "Y" ]; then
+  EXISTING_WALLETS=""
+  
+  if [ -f "$HOST_CONF_PATH/chains/solana.yml" ]; then
+    SOLANA_WALLET=$(grep "^defaultWallet:" "$HOST_CONF_PATH/chains/solana.yml" | cut -d' ' -f2- | tr -d "'\"")
+    if [ -n "$SOLANA_WALLET" ] && [ "$SOLANA_WALLET" != "<solana-wallet-address>" ]; then
+      EXISTING_WALLETS="Solana"
+    fi
+  fi
+  
+  if [ -f "$HOST_CONF_PATH/chains/ethereum.yml" ]; then
+    ETH_WALLET=$(grep "^defaultWallet:" "$HOST_CONF_PATH/chains/ethereum.yml" | cut -d' ' -f2- | tr -d "'\"")
+    if [ -n "$ETH_WALLET" ] && [ "$ETH_WALLET" != "<ethereum-wallet-address>" ]; then
+      if [ -n "$EXISTING_WALLETS" ]; then
+        EXISTING_WALLETS="$EXISTING_WALLETS and Ethereum"
+      else
+        EXISTING_WALLETS="Ethereum"
+      fi
+    fi
+  fi
+  
+  if [ -n "$EXISTING_WALLETS" ]; then
+    echo "✅ Existing defaultWallet values will be preserved ($EXISTING_WALLETS)"
+  fi
 fi
 
 # Show certificate linking if applicable
