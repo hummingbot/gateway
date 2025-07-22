@@ -19,12 +19,18 @@ importers:
 
   .:
     dependencies:
+      '@_etcswap/router-sdk':
+        specifier: ^1.6.4
+        version: 1.6.4(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
       '@_etcswap/sdk-core':
         specifier: ^4.0.10
         version: 4.0.10
       '@_etcswap/smart-order-router':
         specifier: ^3.15.2
         version: 3.15.2(bufferutil@4.0.9)(encoding@0.1.13)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(jsbi@3.2.5)(utf-8-validate@5.0.10)
+      '@_etcswap/universal-router-sdk':
+        specifier: ^2.0.2
+        version: 2.0.2(bufferutil@4.0.9)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       '@_etcswap/v2-sdk':
         specifier: ^4.2.2
         version: 4.2.2
@@ -347,6 +353,9 @@ importers:
 
 packages:
 
+  '@_etcswap/router-sdk@1.6.4':
+    resolution: {integrity: sha512-i5pi7uZffFb3awOq2ZKkFeazCckNxRASh/7g8fdsfKmC+k7spRt7bX8iRLP9h/LNh7vTie7lNvRebl2izMu/Xg==}
+
   '@_etcswap/router-sdk@https://codeload.github.com/etcswap/router-sdk/tar.gz/e3b3e662d0cec84613790e1bff1359d4c846f064':
     resolution: {tarball: https://codeload.github.com/etcswap/router-sdk/tar.gz/e3b3e662d0cec84613790e1bff1359d4c846f064}
     version: 1.6.4
@@ -365,6 +374,10 @@ packages:
     engines: {node: '>=10'}
     peerDependencies:
       jsbi: ^3.2.0
+
+  '@_etcswap/universal-router-sdk@2.0.2':
+    resolution: {integrity: sha512-ZwnjM7NsWrkbH0DZQAHk1tBwdg54gJG8HTMlA8ku9oUjsI4ucvkZFSzgOjhzasLrmQIR7WATrKKyvJb3UtVYLA==}
+    engines: {node: '>=14'}
 
   '@_etcswap/universal-router-sdk@https://codeload.github.com/etcswap/universal-router-sdk/tar.gz/38df3f1e5c6c224f726ed9932ce1b7f814960335':
     resolution: {tarball: https://codeload.github.com/etcswap/universal-router-sdk/tar.gz/38df3f1e5c6c224f726ed9932ce1b7f814960335}
@@ -397,9 +410,6 @@ packages:
     resolution: {tarball: https://codeload.github.com/etcswap/v3-sdk/tar.gz/f8a10d69e06b75c5b16d4ddf2f071bf4613a0cc2}
     version: 3.10.2
     engines: {node: '>=10'}
-
-  '@adraffy/ens-normalize@1.9.0':
-    resolution: {integrity: sha512-iowxq3U30sghZotgl4s/oJRci6WPBfNO5YYgk2cIOMCHr3LeGPcsZjCEr+33Q4N+oV3OABDAtA+pyvWjbvBifQ==}
 
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
@@ -2215,6 +2225,10 @@ packages:
 
   '@uniswap/universal-router-sdk@3.4.0':
     resolution: {integrity: sha512-EB/NLIkuT2BCdKnh2wcXT0cmINjRoiskjibFclpheALHL49XSrB08H4k7KV3BP6+JNKLeTHekvTDdsMd9rs5TA==}
+    engines: {node: '>=14'}
+
+  '@uniswap/universal-router-sdk@4.19.6':
+    resolution: {integrity: sha512-vBtHv4OzEn6Spkl1UgN/0TqO354w7RUdsE1uwAdqz2zfxhV48GOlKJWpe7LiI2ZukL/BMubLewtwC4q/RfjjJQ==}
     engines: {node: '>=14'}
 
   '@uniswap/universal-router@1.5.1':
@@ -6708,6 +6722,16 @@ packages:
 
 snapshots:
 
+  '@_etcswap/router-sdk@1.6.4(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))':
+    dependencies:
+      '@ethersproject/abi': 5.8.0
+      '@uniswap/sdk-core': '@_etcswap/sdk-core@https://codeload.github.com/etcswap/sdk-core/tar.gz/1662274116b501f9697e35da78dcf2e94edb8ef0'
+      '@uniswap/swap-router-contracts': https://codeload.github.com/etcswap/swap-router-contracts/tar.gz/d02515054efae1c8c1c8843b437138cb7966ca2f(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@uniswap/v2-sdk': '@_etcswap/v2-sdk@https://codeload.github.com/etcswap/v2-sdk/tar.gz/f466988787bae2f04a2daa6792df4ef75a90bbab'
+      '@uniswap/v3-sdk': '@_etcswap/v3-sdk@https://codeload.github.com/etcswap/v3-sdk/tar.gz/f8a10d69e06b75c5b16d4ddf2f071bf4613a0cc2(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))'
+    transitivePeerDependencies:
+      - hardhat
+
   '@_etcswap/router-sdk@https://codeload.github.com/etcswap/router-sdk/tar.gz/e3b3e662d0cec84613790e1bff1359d4c846f064(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))':
     dependencies:
       '@ethersproject/abi': 5.8.0
@@ -6765,6 +6789,21 @@ snapshots:
       - bufferutil
       - debug
       - encoding
+      - hardhat
+      - utf-8-validate
+
+  '@_etcswap/universal-router-sdk@2.0.2(bufferutil@4.0.9)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
+    dependencies:
+      '@uniswap/permit2-sdk': 1.3.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      '@uniswap/router-sdk': '@_etcswap/router-sdk@https://codeload.github.com/etcswap/router-sdk/tar.gz/e3b3e662d0cec84613790e1bff1359d4c846f064(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))'
+      '@uniswap/sdk-core': '@_etcswap/sdk-core@https://codeload.github.com/etcswap/sdk-core/tar.gz/1662274116b501f9697e35da78dcf2e94edb8ef0'
+      '@uniswap/universal-router': 1.5.1
+      '@uniswap/v2-sdk': '@_etcswap/v3-sdk@https://codeload.github.com/etcswap/v3-sdk/tar.gz/f8a10d69e06b75c5b16d4ddf2f071bf4613a0cc2(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))'
+      '@uniswap/v3-sdk': '@_etcswap/v3-sdk@https://codeload.github.com/etcswap/v3-sdk/tar.gz/f8a10d69e06b75c5b16d4ddf2f071bf4613a0cc2(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))'
+      bignumber.js: 9.3.0
+      ethers: 5.8.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+    transitivePeerDependencies:
+      - bufferutil
       - hardhat
       - utf-8-validate
 
@@ -6828,8 +6867,6 @@ snapshots:
       tiny-warning: 1.0.3
     transitivePeerDependencies:
       - hardhat
-
-  '@adraffy/ens-normalize@1.9.0': {}
 
   '@ampproject/remapping@2.3.0':
     dependencies:
@@ -9991,6 +10028,25 @@ snapshots:
       '@uniswap/router-sdk': 1.23.0(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
       '@uniswap/sdk-core': 5.9.0
       '@uniswap/universal-router': 2.0.0-beta.1
+      '@uniswap/v2-core': 1.0.1
+      '@uniswap/v2-sdk': 4.15.2
+      '@uniswap/v3-core': 1.0.0
+      '@uniswap/v3-sdk': 3.25.2(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@uniswap/v4-sdk': 1.21.4(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+      bignumber.js: 9.3.0
+      ethers: 5.8.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+    transitivePeerDependencies:
+      - bufferutil
+      - hardhat
+      - utf-8-validate
+
+  '@uniswap/universal-router-sdk@4.19.6(bufferutil@4.0.9)(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
+    dependencies:
+      '@openzeppelin/contracts': 4.9.6
+      '@uniswap/permit2-sdk': 1.3.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      '@uniswap/router-sdk': 2.0.4(hardhat@2.24.0(bufferutil@4.0.9)(ts-node@10.9.2(@types/node@15.14.9)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))
+      '@uniswap/sdk-core': 7.7.2
+      '@uniswap/universal-router': 2.0.0-beta.2
       '@uniswap/v2-core': 1.0.1
       '@uniswap/v2-sdk': 4.15.2
       '@uniswap/v3-core': 1.0.0
