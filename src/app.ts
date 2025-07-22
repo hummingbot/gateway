@@ -36,8 +36,7 @@ const GATEWAY_VERSION = 'dev-2.8.0';
 // When false, runs server in HTTPS mode (secure, default for production)
 // Use --dev flag to enable HTTP mode, e.g.: pnpm start --dev
 // Tests automatically run in dev mode via GATEWAY_TEST_MODE=dev
-const devMode =
-  process.argv.includes('--dev') || process.env.GATEWAY_TEST_MODE === 'dev';
+const devMode = process.argv.includes('--dev') || process.env.GATEWAY_TEST_MODE === 'dev';
 
 // Promisify exec for async/await usage
 const execPromise = promisify(exec);
@@ -46,8 +45,7 @@ const swaggerOptions = {
   openapi: {
     info: {
       title: 'Hummingbot Gateway',
-      description:
-        'API endpoints for interacting with DEX connectors on various blockchain networks',
+      description: 'API endpoints for interacting with DEX connectors on various blockchain networks',
       version: GATEWAY_VERSION,
     },
     servers: [
@@ -188,11 +186,11 @@ const configureGatewayServer = () => {
   // Register routes on both servers
   const registerRoutes = async (app: FastifyInstance) => {
     // Register system routes
-    app.register(configRoutes, { prefix: '/config' });
+    app.register(configRoutes, { prefix: '/config', logLevel: 'silent' });
     app.register(walletRoutes, { prefix: '/wallet' });
 
     // Register connector list route
-    app.register(connectorsRoutes, { prefix: '/connectors' });
+    app.register(connectorsRoutes, { prefix: '/connectors', logLevel: 'silent' });
 
     // Register chain list route
     app.register(chainRoutes, { prefix: '/chains' });
@@ -265,7 +263,7 @@ const configureGatewayServer = () => {
   });
 
   // Health check route (outside registerRoutes, only on main server)
-  server.get('/', async () => {
+  server.get('/', { logLevel: 'silent' }, async () => {
     return { status: 'ok' };
   });
 
@@ -293,9 +291,7 @@ export const startGateway = async () => {
 
   // Display ASCII logo
   console.log(`\n${asciiLogo.trim()}`);
-  logger.info(
-    `⚡️ Gateway version ${GATEWAY_VERSION} starting at ${protocol}://localhost:${port}`,
-  );
+  logger.info(`⚡️ Gateway version ${GATEWAY_VERSION} starting at ${protocol}://localhost:${port}`);
 
   try {
     // Kill any process using the gateway port
@@ -306,18 +302,14 @@ export const startGateway = async () => {
       if (process.platform === 'win32') {
         try {
           // Windows command to find and kill process on port
-          const { stdout } = await execPromise(
-            `netstat -ano | findstr :${port}`,
-          );
+          const { stdout } = await execPromise(`netstat -ano | findstr :${port}`);
           if (stdout) {
             const lines = stdout.trim().split('\n');
             for (const line of lines) {
               const parts = line.trim().split(/\s+/);
               if (parts.length > 4) {
                 const pid = parts[parts.length - 1];
-                logger.info(
-                  `Found process ${pid} using port ${port}, killing...`,
-                );
+                logger.info(`Found process ${pid} using port ${port}, killing...`);
                 await execPromise(`taskkill /F /PID ${pid}`);
               }
             }
@@ -334,9 +326,7 @@ export const startGateway = async () => {
             const pids = stdout.trim().split('\n');
             for (const pid of pids) {
               if (pid.trim()) {
-                logger.info(
-                  `Found process ${pid} using port ${port}, killing...`,
-                );
+                logger.info(`Found process ${pid} using port ${port}, killing...`);
                 await execPromise(`kill -9 ${pid}`);
               }
             }
@@ -346,15 +336,11 @@ export const startGateway = async () => {
         }
       }
     } catch (error) {
-      logger.warn(
-        `Error while checking for processes on port ${port}: ${error}`,
-      );
+      logger.warn(`Error while checking for processes on port ${port}: ${error}`);
     }
 
     if (devMode) {
-      logger.info(
-        '🔴 Running in development mode with (unsafe!) HTTP endpoints',
-      );
+      logger.info('🔴 Running in development mode with (unsafe!) HTTP endpoints');
       await gatewayApp.listen({ port, host: '0.0.0.0' });
     } else {
       logger.info('🟢 Running in secured mode with behind HTTPS endpoints');
@@ -362,9 +348,7 @@ export const startGateway = async () => {
     }
 
     // Single documentation log after server starts
-    const docsUrl = docsPort
-      ? `http://localhost:${docsPort}`
-      : `${protocol}://localhost:${port}/docs`;
+    const docsUrl = docsPort ? `http://localhost:${docsPort}` : `${protocol}://localhost:${port}/docs`;
 
     logger.info(`📓 Documentation available at ${docsUrl}`);
   } catch (err) {
