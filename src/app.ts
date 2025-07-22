@@ -16,6 +16,7 @@ import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
 import { configRoutes } from './config/config.routes';
 import { register0xRoutes } from './connectors/0x/0x.routes';
+import { etcSwapRoutes } from './connectors/etcSwap/etcSwap.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
@@ -24,7 +25,6 @@ import { getHttpsOptions } from './https';
 import { poolRoutes } from './pools/pools.routes';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { logger } from './services/logger';
-import { quoteCache } from './services/quote-cache';
 import { tokensRoutes } from './tokens/tokens.routes';
 import { GATEWAY_VERSION } from './version';
 import { walletRoutes } from './wallet/wallet.routes';
@@ -207,6 +207,13 @@ const configureGatewayServer = () => {
     });
     app.register(uniswapRoutes.amm, { prefix: '/connectors/uniswap/amm' });
     app.register(uniswapRoutes.clmm, { prefix: '/connectors/uniswap/clmm' });
+
+    // ETCSwap routes
+    app.register(etcSwapRoutes.router, {
+      prefix: '/connectors/etcSwap/router',
+    });
+    app.register(etcSwapRoutes.amm, { prefix: '/connectors/etcSwap/amm' });
+    app.register(etcSwapRoutes.clmm, { prefix: '/connectors/etcSwap/clmm' });
 
     // 0x routes
     app.register(register0xRoutes);
