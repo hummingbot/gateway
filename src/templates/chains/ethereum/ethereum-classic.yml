@@ -1,0 +1,7 @@
+chainID: 61
+nodeURL: https://etc.rivet.link
+nativeCurrencySymbol: ETH
+
+# Gas parameters for transactions
+gasLimitTransaction: 3000000
+manualGasPrice: 33

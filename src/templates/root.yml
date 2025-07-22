@@ -47,11 +47,11 @@ configurations:
     schemaPath: ethereum-network-schema.json
 
   $namespace ethereum-polygon:
-    configurationPath: networks/ethereum/polygon.yml
+    configurationPath: chains/ethereum/polygon.yml
     schemaPath: ethereum-network-schema.json
 
   $namespace ethereum-ethereum-classic:
-    configurationPath: networks/ethereum/ethereum-classic.yml
+    configurationPath: chains/ethereum/ethereum-classic.yml
     schemaPath: ethereum-network-schema.json
 
   # Solana networks
@@ -79,6 +79,10 @@ configurations:
   $namespace raydium:
     configurationPath: connectors/raydium.yml
     schemaPath: raydium-schema.json
+
+  $namespace 0x:
+    configurationPath: connectors/0x.yml
+    schemaPath: 0x-schema.json
 
   $namespace etcSwap:
     configurationPath: connectors/etcSwap.yml
