@@ -1,18 +1,15 @@
 import { TickUtils, PoolUtils } from '@raydium-io/raydium-sdk-v2';
+import { Static } from '@sinclair/typebox';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  QuotePositionRequestType,
-  QuotePositionResponseType,
-  QuotePositionRequest,
-  QuotePositionResponse,
-} from '../../../schemas/clmm-schema';
+import { QuotePositionResponseType, QuotePositionResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
+import { RaydiumClmmQuotePositionRequest } from '../schemas';
 
 export async function quotePosition(
   _fastify: FastifyInstance,
@@ -163,38 +160,17 @@ export async function quotePosition(
 
 export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: QuotePositionRequestType;
-    Reply: QuotePositionResponseType | { error: string };
+    Querystring: Static<typeof RaydiumClmmQuotePositionRequest>;
+    Reply: QuotePositionResponseType;
   }>(
     '/quote-position',
     {
       schema: {
         description: 'Quote amounts for a new Raydium CLMM position',
         tags: ['/connector/raydium'],
-        querystring: {
-          ...QuotePositionRequest,
-          properties: {
-            ...QuotePositionRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            lowerPrice: { type: 'number', examples: [100] },
-            upperPrice: { type: 'number', examples: [180] },
-            poolAddress: {
-              type: 'string',
-              examples: ['3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'],
-            },
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            baseTokenAmount: { type: 'number', examples: [0.1] },
-            quoteTokenAmount: { type: 'number', examples: [15] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        querystring: RaydiumClmmQuotePositionRequest,
         response: {
           200: QuotePositionResponse,
-          500: {
-            type: 'object',
-            properties: { error: { type: 'string' } },
-          },
         },
       },
     },
