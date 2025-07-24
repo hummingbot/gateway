@@ -40,6 +40,7 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
           }),
           type: Type.Union([Type.Literal('amm'), Type.Literal('clmm')], {
             description: 'Pool type',
+            examples: ['amm', 'clmm'],
           }),
         }),
         response: {

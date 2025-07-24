@@ -10,9 +10,13 @@ const solanaChainConfig = getSolanaChainConfig();
 // Constants for examples
 const BASE_TOKEN = 'SOL';
 const QUOTE_TOKEN = 'USDC';
-const SWAP_AMOUNT = 0.1;
-const AMM_POOL_ADDRESS_EXAMPLE = '8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj';
-const CLMM_POOL_ADDRESS_EXAMPLE = '2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv';
+const SWAP_AMOUNT = 0.01;
+const BASE_TOKEN_AMOUNT = 0.01;
+const QUOTE_TOKEN_AMOUNT = 2;
+const LOWER_PRICE_BOUND = 100;
+const UPPER_PRICE_BOUND = 300;
+const AMM_POOL_ADDRESS_EXAMPLE = '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2';
+const CLMM_POOL_ADDRESS_EXAMPLE = '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv';
 
 // ========================================
 // AMM Request Schemas
@@ -145,7 +149,7 @@ export const RaydiumAmmExecuteSwapRequest = Type.Object({
   priorityFeePerCU: Type.Optional(
     Type.Number({
       description: 'Priority fee per compute unit in lamports',
-      examples: [1000],
+      examples: [1],
     }),
   ),
   computeUnits: Type.Optional(
@@ -170,11 +174,11 @@ export const RaydiumAmmQuoteLiquidityRequest = Type.Object({
   }),
   baseTokenAmount: Type.Number({
     description: 'Amount of base token to add',
-    examples: [1.0],
+    examples: [BASE_TOKEN_AMOUNT],
   }),
   quoteTokenAmount: Type.Number({
     description: 'Amount of quote token to add',
-    examples: [100.0],
+    examples: [QUOTE_TOKEN_AMOUNT],
   }),
   slippagePct: Type.Optional(
     Type.Number({
@@ -206,11 +210,11 @@ export const RaydiumAmmAddLiquidityRequest = Type.Object({
   }),
   baseTokenAmount: Type.Number({
     description: 'Amount of base token to add',
-    examples: [1.0],
+    examples: [BASE_TOKEN_AMOUNT],
   }),
   quoteTokenAmount: Type.Number({
     description: 'Amount of quote token to add',
-    examples: [100.0],
+    examples: [QUOTE_TOKEN_AMOUNT],
   }),
   slippagePct: Type.Optional(
     Type.Number({
@@ -224,7 +228,7 @@ export const RaydiumAmmAddLiquidityRequest = Type.Object({
   priorityFeePerCU: Type.Optional(
     Type.Number({
       description: 'Priority fee per compute unit in lamports',
-      examples: [1000],
+      examples: [1],
     }),
   ),
   computeUnits: Type.Optional(
@@ -257,13 +261,13 @@ export const RaydiumAmmRemoveLiquidityRequest = Type.Object({
     minimum: 0,
     maximum: 100,
     description: 'Percentage of liquidity to remove',
-    examples: [50],
+    examples: [100],
   }),
   // Raydium-specific fee parameters
   priorityFeePerCU: Type.Optional(
     Type.Number({
       description: 'Priority fee per compute unit in lamports',
-      examples: [1000],
+      examples: [1],
     }),
   ),
   computeUnits: Type.Optional(
@@ -302,7 +306,7 @@ export const RaydiumClmmGetPositionInfoRequest = Type.Object({
   ),
   positionAddress: Type.String({
     description: 'Position NFT address',
-    examples: ['DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263'],
+    examples: ['<sample-position-address>'],
   }),
   walletAddress: Type.Optional(
     Type.String({
@@ -405,7 +409,7 @@ export const RaydiumClmmExecuteSwapRequest = Type.Object({
   priorityFeePerCU: Type.Optional(
     Type.Number({
       description: 'Priority fee per compute unit in lamports',
-      examples: [1000],
+      examples: [1],
     }),
   ),
   computeUnits: Type.Optional(
@@ -436,11 +440,11 @@ export const RaydiumClmmOpenPositionRequest = Type.Object({
   ),
   lowerPrice: Type.Number({
     description: 'Lower price bound for the position',
-    examples: [90],
+    examples: [LOWER_PRICE_BOUND],
   }),
   upperPrice: Type.Number({
     description: 'Upper price bound for the position',
-    examples: [110],
+    examples: [UPPER_PRICE_BOUND],
   }),
   poolAddress: Type.String({
     description: 'Raydium CLMM pool address',
@@ -449,13 +453,13 @@ export const RaydiumClmmOpenPositionRequest = Type.Object({
   baseTokenAmount: Type.Optional(
     Type.Number({
       description: 'Amount of base token to deposit',
-      examples: [1.0],
+      examples: [BASE_TOKEN_AMOUNT],
     }),
   ),
   quoteTokenAmount: Type.Optional(
     Type.Number({
       description: 'Amount of quote token to deposit',
-      examples: [100.0],
+      examples: [QUOTE_TOKEN_AMOUNT],
     }),
   ),
   slippagePct: Type.Optional(
@@ -470,7 +474,7 @@ export const RaydiumClmmOpenPositionRequest = Type.Object({
   priorityFeePerCU: Type.Optional(
     Type.Number({
       description: 'Priority fee per compute unit in lamports',
-      examples: [1000],
+      examples: [1],
     }),
   ),
   computeUnits: Type.Optional(
@@ -497,15 +501,15 @@ export const RaydiumClmmAddLiquidityRequest = Type.Object({
   ),
   positionAddress: Type.String({
     description: 'Position NFT address',
-    examples: ['DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263'],
+    examples: ['<sample-position-address>'],
   }),
   baseTokenAmount: Type.Number({
     description: 'Amount of base token to add',
-    examples: [1.0],
+    examples: [BASE_TOKEN_AMOUNT],
   }),
   quoteTokenAmount: Type.Number({
     description: 'Amount of quote token to add',
-    examples: [100.0],
+    examples: [QUOTE_TOKEN_AMOUNT],
   }),
   slippagePct: Type.Optional(
     Type.Number({
@@ -519,7 +523,7 @@ export const RaydiumClmmAddLiquidityRequest = Type.Object({
   priorityFeePerCU: Type.Optional(
     Type.Number({
       description: 'Priority fee per compute unit in lamports',
-      examples: [1000],
+      examples: [1],
     }),
   ),
   computeUnits: Type.Optional(
@@ -552,13 +556,13 @@ export const RaydiumClmmRemoveLiquidityRequest = Type.Object({
     minimum: 0,
     maximum: 100,
     description: 'Percentage of liquidity to remove',
-    examples: [50],
+    examples: [100],
   }),
   // Raydium-specific fee parameters
   priorityFeePerCU: Type.Optional(
     Type.Number({
       description: 'Priority fee per compute unit in lamports',
-      examples: [1000],
+      examples: [1],
     }),
   ),
   computeUnits: Type.Optional(
@@ -591,7 +595,7 @@ export const RaydiumClmmClosePositionRequest = Type.Object({
   priorityFeePerCU: Type.Optional(
     Type.Number({
       description: 'Priority fee per compute unit in lamports',
-      examples: [1000],
+      examples: [1],
     }),
   ),
   computeUnits: Type.Optional(
