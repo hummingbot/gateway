@@ -37,29 +37,40 @@ async function createAddLiquidityTransaction(
   baseLimited: boolean,
   slippage: Percent,
   computeBudgetConfig: { units: number; microLamports: number },
+  userBaseAmount: number,
+  userQuoteAmount: number,
 ): Promise<VersionedTransaction | Transaction> {
   if (ammPoolInfo.poolType === 'amm') {
+    // Use user's provided amounts as the maximum they're willing to spend
     const amountInA = new TokenAmount(
       toToken(poolInfo.mintA),
-      new Decimal(baseTokenAmountAdded).mul(10 ** poolInfo.mintA.decimals).toFixed(0),
+      new Decimal(userBaseAmount).mul(10 ** poolInfo.mintA.decimals).toFixed(0),
     );
     const amountInB = new TokenAmount(
       toToken(poolInfo.mintB),
-      new Decimal(quoteTokenAmountAdded).mul(10 ** poolInfo.mintB.decimals).toFixed(0),
+      new Decimal(userQuoteAmount).mul(10 ** poolInfo.mintB.decimals).toFixed(0),
     );
 
-    // Calculate otherAmountMin based on slippage
+    // Calculate otherAmountMin based on the quoted amounts and slippage
     // Convert Percent to decimal (e.g., 1% = 0.01)
     const slippageDecimal = slippage.numerator.toNumber() / slippage.denominator.toNumber();
     const slippageMultiplier = new Decimal(1).minus(slippageDecimal);
+
+    // For minimum amounts, we use the quoted amounts (exact pool ratio) with slippage
     const otherAmountMin = baseLimited
       ? new TokenAmount(
           toToken(poolInfo.mintB),
-          new Decimal(amountInB.raw.toString()).mul(slippageMultiplier).toFixed(0),
+          new Decimal(quoteTokenAmountAdded)
+            .mul(10 ** poolInfo.mintB.decimals)
+            .mul(slippageMultiplier)
+            .toFixed(0),
         )
       : new TokenAmount(
           toToken(poolInfo.mintA),
-          new Decimal(amountInA.raw.toString()).mul(slippageMultiplier).toFixed(0),
+          new Decimal(baseTokenAmountAdded)
+            .mul(10 ** poolInfo.mintA.decimals)
+            .mul(slippageMultiplier)
+            .toFixed(0),
         );
 
     const response = await raydium.raydiumSDK.liquidity.addLiquidity({
@@ -109,6 +120,9 @@ async function addLiquidity(
   const raydium = await Raydium.getInstance(network);
   const wallet = await solana.getWallet(walletAddress);
 
+  // Set the owner for SDK operations
+  await raydium.setOwner(wallet);
+
   const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
 
   // Get pool info and keys since they're no longer in quoteLiquidity response
@@ -123,14 +137,25 @@ async function addLiquidity(
     slippagePct,
   )) as QuoteLiquidityResponseType;
 
-  const { baseLimited, baseTokenAmountMax, quoteTokenAmountMax } = quoteResponse;
+  const {
+    baseLimited,
+    baseTokenAmount: quotedBaseAmount,
+    quoteTokenAmount: quotedQuoteAmount,
+    baseTokenAmountMax,
+    quoteTokenAmountMax,
+  } = quoteResponse;
 
-  const baseTokenAmountAdded = baseLimited ? baseTokenAmount : baseTokenAmountMax;
-  const quoteTokenAmountAdded = baseLimited ? quoteTokenAmount : quoteTokenAmountMax;
+  const baseTokenAmountAdded = baseLimited ? baseTokenAmount : quotedBaseAmount;
+  const quoteTokenAmountAdded = baseLimited ? quotedQuoteAmount : quoteTokenAmount;
 
   logger.info(`Adding liquidity to Raydium ${ammPoolInfo.poolType} position...`);
+  logger.info(
+    `Quote response: baseLimited=${baseLimited}, quotedBase=${quotedBaseAmount}, quotedQuote=${quotedQuoteAmount}`,
+  );
+  logger.info(`Amounts to add: base=${baseTokenAmountAdded}, quote=${quoteTokenAmountAdded}`);
   const slippageValue = slippagePct === 0 ? 0 : slippagePct || RaydiumConfig.config.slippagePct;
-  const slippage = new Percent(Math.floor((slippageValue * 100) / 10000));
+  // Convert percentage to basis points (e.g., 1% = 100 basis points)
+  const slippage = new Percent(Math.floor(slippageValue * 100), 10000);
 
   // Use provided compute units or a default value
   const computeUnitsToUse = computeUnits || 400000;
@@ -159,6 +184,8 @@ async function addLiquidity(
       units: computeUnitsToUse,
       microLamports: priorityFeePerCUMicroLamports,
     },
+    baseTokenAmount,
+    quoteTokenAmount,
   );
   console.log('transaction', transaction);
 

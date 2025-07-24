@@ -14,6 +14,17 @@ export const FetchPoolsRequest = Type.Object(
 
 export type FetchPoolsRequestType = Static<typeof FetchPoolsRequest>;
 
+export const GetPositionsOwnedRequest = Type.Object(
+  {
+    network: Type.Optional(Type.String()),
+    walletAddress: Type.String(),
+    poolAddress: Type.Optional(Type.String()), // Optional for Meteora, required for others
+  },
+  { $id: 'GetPositionsOwnedRequest' },
+);
+
+export type GetPositionsOwnedRequestType = Static<typeof GetPositionsOwnedRequest>;
+
 export const BinLiquiditySchema = Type.Object(
   {
     binId: Type.Number(),

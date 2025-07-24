@@ -31,6 +31,9 @@ async function openPosition(
   const raydium = await Raydium.getInstance(network);
   const wallet = await solana.getWallet(walletAddress);
 
+  // Set the owner for SDK operations
+  await raydium.setOwner(wallet);
+
   // If no pool address provided, find default pool using base and quote tokens
   let poolAddressToUse = poolAddress;
   if (!poolAddressToUse) {

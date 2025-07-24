@@ -27,6 +27,9 @@ async function closePosition(
     const raydium = await Raydium.getInstance(network);
     const wallet = await solana.getWallet(walletAddress);
 
+    // Set the owner for SDK operations
+    await raydium.setOwner(wallet);
+
     const position = await raydium.getClmmPosition(positionAddress);
     logger.debug('Position Info:', position);
 

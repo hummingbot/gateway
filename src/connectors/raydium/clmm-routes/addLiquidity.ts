@@ -27,6 +27,9 @@ async function addLiquidity(
   const raydium = await Raydium.getInstance(network);
   const wallet = await solana.getWallet(walletAddress);
 
+  // Set the owner for SDK operations
+  await raydium.setOwner(wallet);
+
   const positionInfo = await raydium.getPositionInfo(positionAddress);
   const position = await raydium.getClmmPosition(positionAddress);
   if (!position) throw new Error('Position not found');

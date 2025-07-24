@@ -605,3 +605,23 @@ export const RaydiumClmmClosePositionRequest = Type.Object({
     }),
   ),
 });
+
+export const RaydiumClmmGetPositionsOwnedRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...RaydiumConfig.networks],
+    }),
+  ),
+  walletAddress: Type.Optional(
+    Type.String({
+      description: 'Solana wallet address to check for positions',
+      default: solanaChainConfig.defaultWallet,
+    }),
+  ),
+  poolAddress: Type.String({
+    description: 'Raydium CLMM pool address (required for Raydium)',
+    examples: [CLMM_POOL_ADDRESS_EXAMPLE],
+  }),
+});

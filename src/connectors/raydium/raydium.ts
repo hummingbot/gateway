@@ -82,6 +82,23 @@ export class Raydium {
     }
   }
 
+  /** Sets the owner for SDK operations */
+  public async setOwner(owner: Keypair): Promise<void> {
+    this.owner = owner;
+    const raydiumCluster = this.solana.network == `mainnet-beta` ? 'mainnet' : 'devnet';
+
+    // Reinitialize SDK with the owner
+    this.raydiumSDK = await RaydiumSDK.load({
+      connection: this.solana.connection,
+      cluster: raydiumCluster,
+      owner: this.owner,
+      disableFeatureCheck: true,
+      blockhashCommitment: 'confirmed',
+    });
+
+    logger.info('Raydium SDK reinitialized with owner');
+  }
+
   async getClmmPoolfromRPC(poolAddress: string): Promise<ClmmRpcData | null> {
     const poolInfoResponse: ClmmRpcData = await this.raydiumSDK.clmm.getRpcClmmPoolInfo({ poolId: poolAddress });
     return poolInfoResponse;

@@ -77,7 +77,7 @@ async function createRemoveLiquidityTransaction(
     return response.transaction;
   } else if (ammPoolInfo.poolType === 'cpmm') {
     // Use default slippage from config
-    const slippage = new Percent(Math.floor(RaydiumConfig.config.slippagePct * 100) / 10000);
+    const slippage = new Percent(Math.floor(RaydiumConfig.config.slippagePct * 100), 10000);
 
     const response: CPMMWithdrawLiquiditySDKResponse = await raydium.raydiumSDK.cpmm.withdrawLiquidity({
       poolInfo: poolInfo as ApiV3PoolInfoStandardItemCpmm,
@@ -146,6 +146,9 @@ async function removeLiquidity(
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
   const wallet = await solana.getWallet(walletAddress);
+
+  // Set the owner for SDK operations
+  await raydium.setOwner(wallet);
 
   const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
   const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddress);

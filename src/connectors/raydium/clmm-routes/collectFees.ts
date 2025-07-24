@@ -22,6 +22,9 @@ export async function collectFees(
   const raydium = await Raydium.getInstance(network);
   const wallet = await solana.getWallet(walletAddress);
 
+  // Set the owner for SDK operations
+  await raydium.setOwner(wallet);
+
   const position = await raydium.getClmmPosition(positionAddress);
   if (!position) {
     throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);

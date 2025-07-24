@@ -83,10 +83,9 @@ export async function quoteLiquidity(
     }
 
     const epochInfo = await solana.connection.getEpochInfo();
-    // Convert percentage to basis points (multiply by 100 to handle decimals)
-    // e.g., 0.5% becomes 50/10000, 0% becomes 0/10000
+    // Convert percentage to basis points (e.g., 1% = 100 basis points)
     const slippageValue = slippagePct === 0 ? 0 : slippagePct || RaydiumConfig.config.slippagePct;
-    const slippage = new Percent(Math.floor((slippageValue * 100) / 10000));
+    const slippage = new Percent(Math.floor(slippageValue * 100), 10000);
 
     const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
 

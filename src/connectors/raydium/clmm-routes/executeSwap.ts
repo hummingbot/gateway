@@ -30,6 +30,9 @@ async function executeSwap(
   const raydium = await Raydium.getInstance(network);
   const wallet = await solana.getWallet(walletAddress);
 
+  // Set the owner for SDK operations
+  await raydium.setOwner(wallet);
+
   // Get pool info from address
   const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(poolAddress);
   if (!poolInfo) {
