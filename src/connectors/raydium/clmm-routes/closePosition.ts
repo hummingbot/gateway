@@ -35,6 +35,11 @@ async function closePosition(
 
     // Handle positions with remaining liquidity first
     if (!position.liquidity.isZero()) {
+      const [poolInfo] = await raydium.getClmmPoolfromAPI(position.poolId.toBase58());
+      const baseTokenInfo = await solana.getToken(poolInfo.mintA.address);
+      const quoteTokenInfo = await solana.getToken(poolInfo.mintB.address);
+
+      // When closePosition: true, the SDK removes liquidity AND collects fees in one transaction
       const removeLiquidityResponse = await removeLiquidity(
         _fastify,
         network,
@@ -46,27 +51,41 @@ async function closePosition(
         computeUnits,
       );
 
-      const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-        removeLiquidityResponse.signature,
-        wallet.publicKey.toBase58(),
-        ['So11111111111111111111111111111111111111112'],
-      );
-      const rentRefunded = Math.abs(balanceChanges[0]);
+      if (removeLiquidityResponse.status === 1 && removeLiquidityResponse.data) {
+        // Use the new helper to extract balance changes including SOL handling
+        const { baseTokenChange, quoteTokenChange, rent } = await solana.extractClmmBalanceChanges(
+          removeLiquidityResponse.signature,
+          wallet.publicKey.toBase58(),
+          baseTokenInfo,
+          quoteTokenInfo,
+          removeLiquidityResponse.data.fee * 1e9,
+        );
 
-      return {
-        signature: removeLiquidityResponse.signature,
-        status: removeLiquidityResponse.status,
-        data: removeLiquidityResponse.data
-          ? {
-              fee: removeLiquidityResponse.data.fee,
-              positionRentRefunded: rentRefunded,
-              baseTokenAmountRemoved: removeLiquidityResponse.data.baseTokenAmountRemoved,
-              quoteTokenAmountRemoved: removeLiquidityResponse.data.quoteTokenAmountRemoved,
-              baseFeeAmountCollected: 0,
-              quoteFeeAmountCollected: 0,
-            }
-          : undefined,
-      };
+        // The total balance change includes both liquidity removal and fee collection
+        // Since we know the liquidity amounts from removeLiquidity response,
+        // we can calculate the fee amounts
+        const baseFeeCollected = Math.abs(baseTokenChange) - removeLiquidityResponse.data.baseTokenAmountRemoved;
+        const quoteFeeCollected = Math.abs(quoteTokenChange) - removeLiquidityResponse.data.quoteTokenAmountRemoved;
+
+        return {
+          signature: removeLiquidityResponse.signature,
+          status: removeLiquidityResponse.status,
+          data: {
+            fee: removeLiquidityResponse.data.fee,
+            positionRentRefunded: rent,
+            baseTokenAmountRemoved: removeLiquidityResponse.data.baseTokenAmountRemoved,
+            quoteTokenAmountRemoved: removeLiquidityResponse.data.quoteTokenAmountRemoved,
+            baseFeeAmountCollected: Math.max(0, baseFeeCollected),
+            quoteFeeAmountCollected: Math.max(0, quoteFeeCollected),
+          },
+        };
+      } else {
+        // Return pending status without data
+        return {
+          signature: removeLiquidityResponse.signature,
+          status: removeLiquidityResponse.status,
+        };
+      }
     }
 
     // Original close position logic for empty positions

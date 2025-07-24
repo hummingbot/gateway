@@ -1304,6 +1304,80 @@ export class Solana {
     return { balanceChanges, fee };
   }
 
+  /**
+   * Extract balance changes for CLMM operations with proper SOL handling
+   * @param signature Transaction signature
+   * @param owner Owner address
+   * @param baseTokenInfo Base token info object with address and symbol
+   * @param quoteTokenInfo Quote token info object with address and symbol
+   * @param txFee Transaction fee in lamports (from txData.meta.fee)
+   * @returns Object with base and quote token balance changes and calculated rent
+   */
+  async extractClmmBalanceChanges(
+    signature: string,
+    owner: string,
+    baseTokenInfo: { address: string; symbol: string },
+    quoteTokenInfo: { address: string; symbol: string },
+    txFee: number,
+  ): Promise<{
+    baseTokenChange: number;
+    quoteTokenChange: number;
+    rent: number;
+  }> {
+    const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
+    const isBaseSol = baseTokenInfo.symbol === 'SOL' || baseTokenInfo.address === SOL_NATIVE_MINT;
+    const isQuoteSol = quoteTokenInfo.symbol === 'SOL' || quoteTokenInfo.address === SOL_NATIVE_MINT;
+
+    // Build unique token list for extraction
+    const tokensToExtract: string[] = [];
+    const tokenIndices: { sol?: number; base?: number; quote?: number } = {};
+
+    // Always include SOL first to track rent
+    tokensToExtract.push(SOL_NATIVE_MINT);
+    tokenIndices.sol = 0;
+
+    // Add non-SOL tokens
+    if (!isBaseSol) {
+      tokensToExtract.push(baseTokenInfo.address);
+      tokenIndices.base = tokensToExtract.length - 1;
+    } else {
+      tokenIndices.base = 0; // Base is SOL
+    }
+
+    if (!isQuoteSol) {
+      tokensToExtract.push(quoteTokenInfo.address);
+      tokenIndices.quote = tokensToExtract.length - 1;
+    } else {
+      tokenIndices.quote = 0; // Quote is SOL
+    }
+
+    // Extract balance changes
+    const { balanceChanges } = await this.extractBalanceChangesAndFee(signature, owner, tokensToExtract);
+
+    // Get individual balance changes
+    const solChange = balanceChanges[tokenIndices.sol!];
+    const baseTokenChange = balanceChanges[tokenIndices.base!];
+    const quoteTokenChange = balanceChanges[tokenIndices.quote!];
+
+    // Calculate rent from SOL balance
+    // When neither token is SOL: rent = |SOL change| - fee
+    // When one token is SOL: rent is included in the token's balance change
+    let rent = 0;
+    if (!isBaseSol && !isQuoteSol) {
+      // SOL change = -(fee + rent)
+      rent = Math.abs(solChange) - txFee / 1e9;
+    } else {
+      // For positions, rent is approximately 0.00204928 SOL
+      rent = 0.00204928;
+    }
+
+    return {
+      baseTokenChange,
+      quoteTokenChange,
+      rent,
+    };
+  }
+
   // Validate if a string is a valid Solana private key
   public static validateSolPrivateKey(secretKey: string): boolean {
     try {

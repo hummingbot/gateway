@@ -60,13 +60,36 @@ export async function collectFees(
 
   const { signature, fee } = await solana.sendAndConfirmTransaction(transaction, [wallet]);
 
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
-    poolInfo.mintA.address,
-    poolInfo.mintB.address,
-  ]);
+  // Handle balance changes - need to be careful when SOL is one of the tokens
+  const tokenAddresses = [];
+  const isBaseSol = tokenA.symbol === 'SOL' || poolInfo.mintA.address === 'So11111111111111111111111111111111111111112';
+  const isQuoteSol =
+    tokenB.symbol === 'SOL' || poolInfo.mintB.address === 'So11111111111111111111111111111111111111112';
 
-  const collectedFeeA = balanceChanges[0];
-  const collectedFeeB = balanceChanges[1];
+  // Always get SOL balance change first
+  tokenAddresses.push('So11111111111111111111111111111111111111112');
+
+  // Add non-SOL tokens
+  if (!isBaseSol) {
+    tokenAddresses.push(poolInfo.mintA.address);
+  }
+  if (!isQuoteSol) {
+    tokenAddresses.push(poolInfo.mintB.address);
+  }
+
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
+    signature,
+    wallet.publicKey.toBase58(),
+    tokenAddresses,
+  );
+
+  // Parse balance changes
+  const solChangeIndex = 0;
+  const baseChangeIndex = isBaseSol ? 0 : 1;
+  const quoteChangeIndex = isQuoteSol ? 0 : isBaseSol ? 1 : 2;
+
+  const collectedFeeA = balanceChanges[baseChangeIndex];
+  const collectedFeeB = balanceChanges[quoteChangeIndex];
 
   logger.info(
     `Fees collected from position ${positionAddress}: ${Math.abs(collectedFeeA).toFixed(4)} ${tokenASymbol}, ${Math.abs(

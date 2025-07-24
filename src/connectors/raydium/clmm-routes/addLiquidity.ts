@@ -84,13 +84,38 @@ async function addLiquidity(
 
   if (confirmed && txData) {
     const totalFee = txData.meta.fee;
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
-      baseToken.address,
-      quoteToken.address,
-    ]);
 
-    const baseTokenBalanceChange = balanceChanges[0];
-    const quoteTokenBalanceChange = balanceChanges[1];
+    // Handle balance changes - need to be careful when SOL is one of the tokens
+    const tokenAddresses = [];
+    const isBaseSol = baseToken.symbol === 'SOL' || baseToken.address === 'So11111111111111111111111111111111111111112';
+    const isQuoteSol =
+      quoteToken.symbol === 'SOL' || quoteToken.address === 'So11111111111111111111111111111111111111112';
+
+    // Always get SOL balance change first
+    tokenAddresses.push('So11111111111111111111111111111111111111112');
+
+    // Add non-SOL tokens
+    if (!isBaseSol) {
+      tokenAddresses.push(baseToken.address);
+    }
+    if (!isQuoteSol) {
+      tokenAddresses.push(quoteToken.address);
+    }
+
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(
+      signature,
+      wallet.publicKey.toBase58(),
+      tokenAddresses,
+    );
+
+    // Parse balance changes
+    const solChangeIndex = 0;
+    const baseChangeIndex = isBaseSol ? 0 : 1;
+    const quoteChangeIndex = isQuoteSol ? 0 : isBaseSol ? 1 : 2;
+
+    const baseTokenBalanceChange = balanceChanges[baseChangeIndex];
+    const quoteTokenBalanceChange = balanceChanges[quoteChangeIndex];
+
     return {
       signature,
       status: 1, // CONFIRMED
