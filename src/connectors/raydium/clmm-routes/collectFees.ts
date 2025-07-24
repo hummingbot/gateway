@@ -1,5 +1,3 @@
-import { ApiV3PoolInfoConcentratedItem } from '@raydium-io/raydium-sdk-v2';
-import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
@@ -11,6 +9,8 @@ import {
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+
+import { removeLiquidity } from './removeLiquidity';
 
 export async function collectFees(
   fastify: FastifyInstance,
@@ -34,78 +34,55 @@ export async function collectFees(
 
   const tokenA = await solana.getToken(poolInfo.mintA.address);
   const tokenB = await solana.getToken(poolInfo.mintB.address);
-  const tokenASymbol = tokenA?.symbol || 'UNKNOWN';
-  const tokenBSymbol = tokenB?.symbol || 'UNKNOWN';
 
-  logger.info(`Collecting fees from CLMM position ${positionAddress}`);
+  logger.info(`Collecting fees from CLMM position ${positionAddress} by removing 1% liquidity`);
 
-  const { rewardDefaultInfos } = poolInfo;
-  const validRewards = rewardDefaultInfos.filter((info) => Number(info.perSecond) > 0 && info.mint?.address);
-
-  if (validRewards.length === 0) {
-    logger.warn(`No active rewards found for position ${positionAddress}`);
-  }
-
-  const { transaction } = await raydium.raydiumSDK.clmm.collectRewards({
-    poolInfo: poolInfo as ApiV3PoolInfoConcentratedItem,
-    ownerInfo: {
-      useSOLBalance: true,
-    },
-    rewardMints: validRewards.map(
-      (info) => new PublicKey(info.mint.address), // Use direct address access
-    ),
-    associatedOnly: true,
-  });
-  console.log('transaction', transaction);
-
-  const { signature, fee } = await solana.sendAndConfirmTransaction(transaction, [wallet]);
-
-  // Handle balance changes - need to be careful when SOL is one of the tokens
-  const tokenAddresses = [];
-  const isBaseSol = tokenA.symbol === 'SOL' || poolInfo.mintA.address === 'So11111111111111111111111111111111111111112';
-  const isQuoteSol =
-    tokenB.symbol === 'SOL' || poolInfo.mintB.address === 'So11111111111111111111111111111111111111112';
-
-  // Always get SOL balance change first
-  tokenAddresses.push('So11111111111111111111111111111111111111112');
-
-  // Add non-SOL tokens
-  if (!isBaseSol) {
-    tokenAddresses.push(poolInfo.mintA.address);
-  }
-  if (!isQuoteSol) {
-    tokenAddresses.push(poolInfo.mintB.address);
-  }
-
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-    signature,
-    wallet.publicKey.toBase58(),
-    tokenAddresses,
+  // Remove 1% of liquidity to collect fees
+  const removeLiquidityResponse = await removeLiquidity(
+    fastify,
+    network,
+    walletAddress,
+    positionAddress,
+    1, // 1% of position
+    false, // don't close position
   );
 
-  // Parse balance changes
-  const solChangeIndex = 0;
-  const baseChangeIndex = isBaseSol ? 0 : 1;
-  const quoteChangeIndex = isQuoteSol ? 0 : isBaseSol ? 1 : 2;
+  if (removeLiquidityResponse.status === 1 && removeLiquidityResponse.data) {
+    // Use the new helper to extract balance changes including fees
+    const { baseTokenChange, quoteTokenChange } = await solana.extractClmmBalanceChanges(
+      removeLiquidityResponse.signature,
+      wallet.publicKey.toBase58(),
+      tokenA,
+      tokenB,
+      removeLiquidityResponse.data.fee * 1e9,
+    );
 
-  const collectedFeeA = balanceChanges[baseChangeIndex];
-  const collectedFeeB = balanceChanges[quoteChangeIndex];
+    // The total balance change includes both liquidity removal and fee collection
+    // Since we know the liquidity amounts from removeLiquidity response,
+    // we can calculate the fee amounts
+    const baseFeeCollected = Math.abs(baseTokenChange) - removeLiquidityResponse.data.baseTokenAmountRemoved;
+    const quoteFeeCollected = Math.abs(quoteTokenChange) - removeLiquidityResponse.data.quoteTokenAmountRemoved;
 
-  logger.info(
-    `Fees collected from position ${positionAddress}: ${Math.abs(collectedFeeA).toFixed(4)} ${tokenASymbol}, ${Math.abs(
-      collectedFeeB,
-    ).toFixed(4)} ${tokenBSymbol}`,
-  );
+    logger.info(
+      `Fees collected from position ${positionAddress}: ${Math.max(0, baseFeeCollected).toFixed(4)} ${tokenA.symbol}, ${Math.max(0, quoteFeeCollected).toFixed(4)} ${tokenB.symbol}`,
+    );
 
-  return {
-    signature,
-    status: 1, // CONFIRMED
-    data: {
-      fee,
-      baseFeeAmountCollected: Math.abs(collectedFeeA),
-      quoteFeeAmountCollected: Math.abs(collectedFeeB),
-    },
-  };
+    return {
+      signature: removeLiquidityResponse.signature,
+      status: 1, // CONFIRMED
+      data: {
+        fee: removeLiquidityResponse.data.fee,
+        baseFeeAmountCollected: Math.max(0, baseFeeCollected),
+        quoteFeeAmountCollected: Math.max(0, quoteFeeCollected),
+      },
+    };
+  } else {
+    // Return pending status
+    return {
+      signature: removeLiquidityResponse.signature,
+      status: removeLiquidityResponse.status,
+    };
+  }
 }
 
 export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
@@ -118,7 +95,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
     '/collect-fees',
     {
       schema: {
-        description: 'Collect fees from a Raydium CLMM position',
+        description: 'Collect fees from a Raydium CLMM position by removing 1% of liquidity',
         tags: ['/connector/raydium'],
         body: {
           ...CollectFeesRequest,
