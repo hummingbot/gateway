@@ -25,6 +25,26 @@ jest.mock('../../../../src/services/logger', () => ({
   },
 }));
 
+// Mock the quotePosition function
+jest.mock('../../../../src/connectors/raydium/clmm-routes/quotePosition', () => ({
+  quotePosition: jest.fn().mockResolvedValue({
+    baseLimited: true,
+    baseTokenAmount: 1,
+    quoteTokenAmount: 150,
+    baseTokenAmountMax: 1.01,
+    quoteTokenAmountMax: 151.5,
+  }),
+}));
+
+// Mock TickUtils
+jest.mock('@raydium-io/raydium-sdk-v2', () => ({
+  ...jest.requireActual('@raydium-io/raydium-sdk-v2'),
+  TickUtils: {
+    getPriceAndTick: jest.fn(() => ({ tick: 100, price: 150 })),
+  },
+  TxVersion: { V0: 0 },
+}));
+
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
@@ -94,26 +114,40 @@ describe('POST /open-position', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGasPrice: jest.fn().mockResolvedValue(2000),
+      estimateGas: jest.fn().mockResolvedValue(2000),
+      simulateTransaction: jest.fn().mockResolvedValue(undefined),
+      sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
+        confirmed: true,
+        signature: 'mock-signature',
+        txData: { meta: { fee: 5000 } },
+      }),
+      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
+        balanceChanges: [-0.002, -1, -150],
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockTxId = 'clmm-position-tx-123';
     const mockPositionNftMint = 'position-nft-mint-address';
 
+    const mockTransaction = {
+      sign: jest.fn(),
+      serialize: jest.fn().mockReturnValue(Buffer.from('mock-transaction')),
+    };
+
     const mockRaydiumInstance = {
       setOwner: jest.fn().mockResolvedValue(undefined),
       getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
       getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
+      getClmmPoolfromRPC: jest.fn().mockResolvedValue({ currentPrice: 150 }),
+      findDefaultPool: jest.fn(),
       executeTransaction: jest.fn().mockResolvedValue(mockTxId),
       raydiumSDK: {
         clmm: {
           getPriceAndTick: jest.fn().mockReturnValue({ tick: 100 }),
-          openPositionFromBase: jest.fn().mockReturnValue({
-            execute: jest.fn().mockResolvedValue({
-              txId: mockTxId,
-              positionNftMint: mockPositionNftMint,
-            }),
+          openPositionFromBase: jest.fn().mockResolvedValue({
+            transaction: mockTransaction,
+            extInfo: { nftMint: { toBase58: () => mockPositionNftMint } },
           }),
         },
         connection: {
@@ -146,11 +180,13 @@ describe('POST /open-position', () => {
     expect(mockRaydiumInstance.setOwner).toHaveBeenCalledTimes(1);
 
     // Verify the response
-    expect(body).toHaveProperty('txId', mockTxId);
-    expect(body).toHaveProperty('positionAddress', mockPositionNftMint);
-    expect(body).toHaveProperty('poolAddress', mockPoolAddress);
-    expect(body).toHaveProperty('lowerPrice', 140);
-    expect(body).toHaveProperty('upperPrice', 160);
+    expect(body).toHaveProperty('signature', 'mock-signature');
+    expect(body).toHaveProperty('status', 1);
+    expect(body.data).toHaveProperty('positionAddress', mockPositionNftMint);
+    expect(body.data).toHaveProperty('fee');
+    expect(body.data).toHaveProperty('positionRent');
+    expect(body.data).toHaveProperty('baseTokenAmountAdded');
+    expect(body.data).toHaveProperty('quoteTokenAmountAdded');
   });
 
   it('should verify setOwner is called before pool operations', async () => {
@@ -161,7 +197,16 @@ describe('POST /open-position', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGasPrice: jest.fn().mockResolvedValue(2000),
+      estimateGas: jest.fn().mockResolvedValue(2000),
+      simulateTransaction: jest.fn().mockResolvedValue(undefined),
+      sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
+        confirmed: true,
+        signature: 'mock-signature',
+        txData: { meta: { fee: 5000 } },
+      }),
+      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
+        balanceChanges: [-0.002, -1, -150],
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -179,15 +224,15 @@ describe('POST /open-position', () => {
         return Promise.resolve(mockClmmPoolInfo);
       }),
       getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
+      getClmmPoolfromRPC: jest.fn().mockResolvedValue({ currentPrice: 150 }),
+      findDefaultPool: jest.fn(),
       executeTransaction: jest.fn().mockResolvedValue('mock-tx-id'),
       raydiumSDK: {
         clmm: {
           getPriceAndTick: jest.fn().mockReturnValue({ tick: 100 }),
-          openPositionFromBase: jest.fn().mockReturnValue({
-            execute: jest.fn().mockResolvedValue({
-              txId: 'mock-tx-id',
-              positionNftMint: 'mock-position-nft',
-            }),
+          openPositionFromBase: jest.fn().mockResolvedValue({
+            transaction: { sign: jest.fn() },
+            extInfo: { nftMint: { toBase58: () => 'mock-position-nft' } },
           }),
         },
         connection: {
@@ -267,14 +312,16 @@ describe('POST /open-position', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGasPrice: jest.fn().mockResolvedValue(2000),
+      estimateGas: jest.fn().mockResolvedValue(2000),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockRaydiumInstance = {
       setOwner: jest.fn().mockResolvedValue(undefined),
-      getClmmPoolInfo: jest.fn().mockResolvedValue(null),
-      getClmmPoolfromAPI: jest.fn(),
+      getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
+      getClmmPoolfromAPI: jest.fn().mockRejectedValue(new Error('Pool not found')),
+      getClmmPoolfromRPC: jest.fn(),
+      findDefaultPool: jest.fn(),
       executeTransaction: jest.fn(),
       raydiumSDK: {
         clmm: {
@@ -311,7 +358,16 @@ describe('POST /open-position', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGasPrice: jest.fn().mockResolvedValue(2000),
+      estimateGas: jest.fn().mockResolvedValue(2000),
+      simulateTransaction: jest.fn().mockResolvedValue(undefined),
+      sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
+        confirmed: true,
+        signature: 'mock-signature',
+        txData: { meta: { fee: 5000 } },
+      }),
+      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
+        balanceChanges: [-0.002, -1, -150],
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -319,11 +375,16 @@ describe('POST /open-position', () => {
       setOwner: jest.fn().mockResolvedValue(undefined),
       getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
       getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
+      getClmmPoolfromRPC: jest.fn().mockResolvedValue({ currentPrice: 150 }),
+      findDefaultPool: jest.fn(),
       executeTransaction: jest.fn(),
       raydiumSDK: {
         clmm: {
           getPriceAndTick: jest.fn().mockReturnValue({ tick: 100 }),
-          openPositionFromBase: jest.fn(),
+          openPositionFromBase: jest.fn().mockResolvedValue({
+            transaction: { sign: jest.fn() },
+            extInfo: { nftMint: { toBase58: () => 'mock-position-nft' } },
+          }),
         },
       },
     };
@@ -355,21 +416,30 @@ describe('POST /open-position', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGasPrice: jest.fn().mockResolvedValue(2000),
+      estimateGas: jest.fn().mockResolvedValue(2000),
+      simulateTransaction: jest.fn().mockResolvedValue(undefined),
+      sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
+        confirmed: true,
+        signature: 'mock-signature',
+        txData: { meta: { fee: 5000 } },
+      }),
+      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
+        balanceChanges: [-0.002, -1, -150],
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
-    const mockOpenPositionFunc = jest.fn().mockReturnValue({
-      execute: jest.fn().mockResolvedValue({
-        txId: 'mock-tx-id',
-        positionNftMint: 'mock-position-nft',
-      }),
+    const mockOpenPositionFunc = jest.fn().mockResolvedValue({
+      transaction: { sign: jest.fn() },
+      extInfo: { nftMint: { toBase58: () => 'mock-position-nft' } },
     });
 
     const mockRaydiumInstance = {
       setOwner: jest.fn().mockResolvedValue(undefined),
       getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
       getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
+      getClmmPoolfromRPC: jest.fn().mockResolvedValue({ currentPrice: 150 }),
+      findDefaultPool: jest.fn(),
       executeTransaction: jest.fn().mockResolvedValue('mock-tx-id'),
       raydiumSDK: {
         clmm: {

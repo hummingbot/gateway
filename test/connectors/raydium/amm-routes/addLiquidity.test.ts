@@ -133,9 +133,16 @@ describe('POST /add-liquidity', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGasPrice: jest.fn().mockResolvedValue(2000),
-      getSignatureByTransaction: jest.fn().mockResolvedValue('mock-signature'),
-      getBalanceChanges: jest.fn().mockResolvedValue([0.999, 149.85]), // Base and quote token changes
+      estimateGas: jest.fn().mockResolvedValue(2000),
+      simulateTransaction: jest.fn().mockResolvedValue(undefined),
+      sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
+        confirmed: true,
+        signature: 'mock-signature',
+        txData: { meta: { fee: 5000 } },
+      }),
+      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
+        balanceChanges: [-0.999, -149.85], // Base and quote token changes (negative for spending)
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -147,13 +154,19 @@ describe('POST /add-liquidity', () => {
       executeTransaction: jest.fn().mockResolvedValue(mockTxId),
       raydiumSDK: {
         liquidity: {
-          addLiquidity: jest.fn().mockReturnValue({
-            execute: jest.fn().mockResolvedValue({ txId: mockTxId }),
+          addLiquidity: jest.fn().mockResolvedValue({
+            transaction: {
+              sign: jest.fn(),
+              serialize: jest.fn().mockReturnValue(Buffer.from('mock-transaction')),
+            },
           }),
         },
         cpmm: {
-          addLiquidity: jest.fn().mockReturnValue({
-            execute: jest.fn().mockResolvedValue({ txId: mockTxId }),
+          addLiquidity: jest.fn().mockResolvedValue({
+            transaction: {
+              sign: jest.fn(),
+              serialize: jest.fn().mockReturnValue(Buffer.from('mock-transaction')),
+            },
           }),
         },
       },
@@ -184,10 +197,11 @@ describe('POST /add-liquidity', () => {
     expect(mockRaydiumInstance.setOwner).toHaveBeenCalledTimes(1);
 
     // Verify the response
-    expect(body).toHaveProperty('txId', mockTxId);
-    expect(body).toHaveProperty('poolAddress', mockPoolAddress);
-    expect(body).toHaveProperty('lpTokenAmount');
-    expect(body).toHaveProperty('lpTokenMint');
+    expect(body).toHaveProperty('signature', 'mock-signature');
+    expect(body).toHaveProperty('status', 1);
+    expect(body.data).toHaveProperty('fee');
+    expect(body.data).toHaveProperty('baseTokenAmountAdded');
+    expect(body.data).toHaveProperty('quoteTokenAmountAdded');
   });
 
   it('should handle base-limited liquidity addition', async () => {
@@ -210,9 +224,16 @@ describe('POST /add-liquidity', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGasPrice: jest.fn().mockResolvedValue(2000),
-      getSignatureByTransaction: jest.fn().mockResolvedValue('mock-signature'),
-      getBalanceChanges: jest.fn().mockResolvedValue([1, 150]),
+      estimateGas: jest.fn().mockResolvedValue(2000),
+      simulateTransaction: jest.fn().mockResolvedValue(undefined),
+      sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
+        confirmed: true,
+        signature: 'mock-signature',
+        txData: { meta: { fee: 5000 } },
+      }),
+      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
+        balanceChanges: [-1, -150],
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -257,7 +278,7 @@ describe('POST /add-liquidity', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockRejectedValue(new Error('Wallet not found')),
-      estimateGasPrice: jest.fn().mockResolvedValue(2000),
+      estimateGas: jest.fn().mockResolvedValue(2000),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -308,14 +329,14 @@ describe('POST /add-liquidity', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGasPrice: jest.fn().mockResolvedValue(2000),
+      estimateGas: jest.fn().mockResolvedValue(2000),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockRaydiumInstance = {
       setOwner: jest.fn().mockResolvedValue(undefined),
       getAmmPoolInfo: jest.fn().mockResolvedValue(null),
-      getPoolfromAPI: jest.fn(),
+      getPoolfromAPI: jest.fn().mockRejectedValue(new Error('Pool not found')),
       executeTransaction: jest.fn(),
       raydiumSDK: {
         liquidity: {
@@ -359,9 +380,16 @@ describe('POST /add-liquidity', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGasPrice: jest.fn().mockResolvedValue(2000),
-      getSignatureByTransaction: jest.fn().mockResolvedValue('mock-signature'),
-      getBalanceChanges: jest.fn().mockResolvedValue([1, 150]),
+      estimateGas: jest.fn().mockResolvedValue(2000),
+      simulateTransaction: jest.fn().mockResolvedValue(undefined),
+      sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
+        confirmed: true,
+        signature: 'mock-signature',
+        txData: { meta: { fee: 5000 } },
+      }),
+      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
+        balanceChanges: [-1, -150],
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -424,9 +452,16 @@ describe('POST /add-liquidity', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGasPrice: jest.fn().mockResolvedValue(2000),
-      getSignatureByTransaction: jest.fn().mockResolvedValue('mock-signature'),
-      getBalanceChanges: jest.fn().mockResolvedValue([1, 150]),
+      estimateGas: jest.fn().mockResolvedValue(2000),
+      simulateTransaction: jest.fn().mockResolvedValue(undefined),
+      sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
+        confirmed: true,
+        signature: 'mock-signature',
+        txData: { meta: { fee: 5000 } },
+      }),
+      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
+        balanceChanges: [-1, -150],
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
