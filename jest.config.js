@@ -27,10 +27,14 @@ module.exports = {
   ],
   testPathIgnorePatterns: [
     '/node_modules/',
+    '/dist/',
     'test-helpers',
-    '<rootDir>/test-scripts/',
   ],
-  testMatch: ['<rootDir>/test/**/*.test.ts', '<rootDir>/test/**/*.test.js'],
+  testMatch: ['<rootDir>/test/**/*.test.ts', 
+    '<rootDir>/test/**/*.test.js',
+    // NOTE: DOES include play tests, does NOT include record tests 
+    '<rootDir>/test-play/**/*.test.ts',
+  ],
   transform: {
     '^.+\\.tsx?$': 'ts-jest',
   },

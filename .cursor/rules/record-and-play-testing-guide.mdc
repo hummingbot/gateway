@@ -1,6 +1,6 @@
 ---
-+description: Comprehensive guide for creating tests using the Record and Play (RnP) framework
-+globs: ["test-scripts/**/*.recorder.test.ts", "test/**/*.test-harness.ts", "test/**/*.api-test-cases.ts"]
+description: Comprehensive guide for creating tests using the Record and Play (RnP) framework
+globs: ["test-record/**/*.record.test.ts", "test-play/**/*.play.test.ts", "test/**/*.test-harness.ts", "test/**/*.api-test-cases.ts"]
 alwaysApply: false
 ---
 This guide provides the complete instructions for creating tests using the project's "Record and Play" (RnP) framework. It is intended to be used by LLM agents to autonomously create, run, and maintain tests for new and existing features. Adherence to these rules is not optional; it is critical for the stability and predictability of the testing suite.
@@ -11,7 +11,7 @@ This framework applies to any major feature area, including `chains` (e.g., `sol
 
 The RnP framework is designed to create high-fidelity tests that are both robust and easy to maintain. The core philosophy is:
 *   **Record against reality:** Tests are initially run against live, real-world services to record their actual responses. This captures the true behavior of our dependencies.
-*   **Play in isolation:** Once recorded, tests are run in a "play" mode that uses the saved recordings (mocks) instead of making live network calls. This makes the tests fast, deterministic, and isolated from external failures.
+*   **"Play" in isolation:** Once recorded, tests are run in a "Play" mode that uses the saved recordings (mocks) instead of making live network calls. This makes the tests fast, deterministic, and isolated from external failures.
 *   **Confidence:** This approach ensures that our application logic is tested against realistic data, which gives us high confidence that it will work correctly in production. It prevents "mock drift," where mocks no longer reflect the reality of the API they are simulating.
 
 ## 2. Core Components
@@ -27,18 +27,18 @@ The RnP framework consists of four key types of files that work together for a g
 ### `*.api-test-cases.ts` - The Single Source of Truth
 *   **Location:** `test/{chains|connectors}/{feature-name}/{feature-name}.api-test-cases.ts`
 *   **Example:** `test/rnpExample/rnpExample.api-test-cases.ts`
-*   **Purpose:** This file defines the specific API requests that will be used for both recording and testing. By defining test cases in one place (e.g., `export const callABC = new TestCase(...)`), we prevent code duplication and ensure the recorder and the unit test are perfectly aligned.
+*   **Purpose:** This file defines the specific API requests that will be used for both recording and testing. By defining test cases in one place (e.g., `export const callABC = new TestCase(...)`), we prevent code duplication and ensure the "Record" and "Play" tests are perfectly aligned.
 
-### `*.recorder.test.ts` - The Recorder
-*   **Location:** `test-scripts/{chains|connectors}/{feature-name}/{feature-name}.recorder.test.ts`
-*   **Example:** `test-scripts/rnpExample/rnpExample.recorder.test.ts`
-*   **Purpose:** The sole responsibility of this test suite is to generate mock files. It imports a `TestCase` and uses the `createRecordTest(harness)` method to generate a one-line `it` block that executes the test against live services.
-*   **Execution:** Recorder tests are slow, make real network calls, and are run individually.
+### `*.record.test.ts` - The "Record" Tests
+*   **Location:** `test-record/{chains|connectors}/{feature-name}/`
+*   **Example:** `test-record/rnpExample/rnpExample.record.test.ts`
+*   **Purpose:** The sole responsibility of this test suite is to generate mock files. It imports a `TestCase` and uses the `createRecordTest(harness)` method to generate one-line `it` blocks that executes the test against live services.
+*   **Execution:** "Record" tests are slow, make real network calls, and should be run individually using the `pnpm test-record -t "your exact test name"` command.
 
-### `*.test.ts` - The Unit Test
-*   **Location:** `test/{chains|connectors}/{feature-name}/{feature-name}.test.ts`
-*   **Example:** `test/rnpExample/rnpExample.test.ts`
-*   **Purpose:** This is the fast, isolated unit test suite. It imports a `TestCase` and uses the `createPlayTest(harness)` method to generate a one-line `it` block that validates application logic against generated mocks.
+### `*.play.test.ts` - The "Play" Tests
+*   **Location:** `test-play/{chains|connectors}/{feature-name}/`
+*   **Example:** `test-play/rnpExample/rnpExample.play.test.ts`
+*   **Purpose:** This is the fast, isolated unit test suite. It imports a `TestCase` and uses the `createPlayTest(harness)` method to generate one-line `it` blocks that validate application logic against generated mocks.
 *   **Execution:** These tests are fast and run as part of the main `pnpm test` suite.
 
 ## 3. Directory and Naming Conventions
@@ -47,35 +47,37 @@ The framework relies on a strict set of conventions. These are functional requir
 
 ### Directory Structure for Chains
 *   **Source Code:** `src/chains/solana/`
-*   **Unit Tests & Harness:** `test/chains/solana/`
-*   **Recorder Tests:** `test-scripts/chains/solana/`
+*   **Shared Test Artifacts:** `test/chains/solana/` (for harness and API test cases)
+*   **"Play" Tests:** `test-play/chains/solana/`
+*   **"Record" Tests:** `test-record/chains/solana/`
 
 ### Directory Structure for Connectors
 *   **Source Code:** `src/connectors/raydium/`
-*   **Unit Tests & Harness:** `test/connectors/raydium/`
-*   **Recorder Tests:** `test-scripts/connectors/raydium/`
+*   **Shared Test Artifacts:** `test/connectors/raydium/` (for harness and API test cases)
+*   **"Play" Tests:** `test-play/connectors/raydium/`
+*   **"Record" Tests:** `test-record/connectors/raydium/`
 
 ### Test Naming
-The `describe()` and `it()` block names in the recorder and the unit test **MUST MATCH EXACTLY**. The test case's variable name is used for the `it` block's name to ensure consistency. Compare the `it('callABC', ...)` blocks in `rnpExample.recorder.test.ts` and `rnpExample.test.ts` to see this in practice. This naming convention is how Jest associates API response snapshots with the correct test.
+The `describe()` and `it()` block names in the "Record" and "Play" tests **MUST MATCH EXACTLY**. The test case's variable name is used for the `it` block's name to ensure consistency. Compare the `it('callABC', ...)` blocks in `rnpExample.record.test.ts` and `rnpExample.play.test.ts` to see this in practice. This naming convention is how Jest associates API response snapshots with the correct test.
 
 ### Command Segregation
-*   **To run fast unit tests:**
+*   **To run all fast "Play" tests:**
     ```bash
-    pnpm test {feature-name}.test.ts
+    pnpm test-play
     ```
-*   **To run a slow recorder test and generate mocks:**
+*   **To run a slow "Record" test and generate mocks:**
     ```bash
-    pnpm test:scripts path/to/your/{feature-name}.recorder.test.ts -t "test name"
+    pnpm test-record -t "your exact test name"
     ```
 
 ## 4. The Critical Rule of Dependency Management
 
 To ensure unit tests are fast and never make accidental live network calls, the framework enforces a strict safety policy. Understanding this is not optional.
 *   When you add even one method from a dependency object (e.g., `Dependency1.A_basicMethod`) to the `dependencyContracts` in `rnpExample.test-harness.ts`, the *entire object* (`dep1`) is now considered "managed."
-*   **In Recorder Mode:** Managed dependencies behave as expected. The listed methods are spied on, and unlisted methods on the same object (like `Dependency1.unmappedMethod`) call their real implementation.
-*   **In Play Mode:** This is where the safety rule applies. **Every method** on a managed object must be explicitly mocked. If a method (like `Dependency1.unmappedMethod`) is called without a mock, the test will fail. The `callUnmappedMethodMocked` test case in `rnpExample.api-test-cases.ts` is designed specifically to validate this failure.
+*   **In "Record" Mode:** Managed dependencies behave as expected. The listed methods are spied on, and unlisted methods on the same object (like `Dependency1.unmappedMethod`) call their real implementation.
+*   **In "Play" Mode:** This is where the safety rule applies. **Every method** on a managed object must be explicitly mocked. If a method (like `Dependency1.unmappedMethod`) is called without a mock, the test will fail. The `callUnmappedMethodMocked` test case in `rnpExample.api-test-cases.ts` is designed specifically to validate this failure.
 *   **Why?** This strictness forces the agent developer to be fully aware of every interaction with an external service. It makes it impossible for a dependency to add a new network call that would slow down unit tests.
-*   **Truly Unmanaged Dependencies:** In contrast, `dep2` from `rnpExample` is never mentioned in the `dependencyContracts`. It is "unmanaged," so its methods can be called freely in either mode. The `callUnlistedDep` test case demonstrates this.
+*   **Truly Unmanaged Dependencies:** In contrast, `dep2` from `rnpExample` is not mentioned in the `dependencyContracts`. It is "unmanaged," so its methods can be called freely in either mode. The `callUnlistedDep` test case demonstrates this.
 
 ## 5. Workflow: Adding a New Endpoint Test
 
@@ -86,32 +88,38 @@ Follow this step-by-step process. In these paths, `{feature-type}` is either `ch
 *   Create and export a new `TestCase` instance (e.g., `export const callNewFeature = new TestCase(...)`).
 
 **Step 2: Update the Test Harness**
-*   Open `test/{feature-type}/{feature-name}/{feature-name}.test-harness.ts`.
+*   Open or create `test/{feature-type}/{feature-name}/{feature-name}.test-harness.ts`.
 *   If your endpoint uses any new dependencies, add them to `dependencyContracts`, as seen in `rnpExample.test-harness.ts`.
 
-**Step 3: Create the Recorder Test**
-*   Open `test-scripts/{feature-type}/{feature-name}/{feature-name}.recorder.test.ts`.
+**Step 3: Create the "Record" Test**
+*   Open or create `test-record/{feature-type}/{feature-name}/{feature-name}.record.test.ts`.
 *   Add a new one-line `it()` block using the `createRecordTest` helper:
     ```typescript
     it('your_test_case_name', yourTestCase.createRecordTest(harness));
     ```
 
-**Step 4: Run the Recorder**
-*   Execute the recorder test from your terminal to generate mock and snapshot files.
+**Step 4: Run the "Record" Test**
+*   Execute the "Record" test from your terminal to generate mock and snapshot files.
     ```bash
-    pnpm test:scripts test-scripts/{feature-type}/{feature-name}/{feature-name}.recorder.test.ts -t "your exact test name"
+    pnpm test-record {feature-name}.record.test.ts -t "your test case name"
     ```
 
-**Step 5: Create the Unit Test**
-*   Open `test/{feature-type}/{feature-name}/{feature-name}.test.ts`.
-*   Add a new one-line `it()` block that **exactly matches** the recorder's:
+**Step 5: Create the "Play" Test**
+*   Open or create `test-play/{feature-type}/{feature-name}/{feature-name}.play.test.ts`.
+*   Add a new one-line `it()` block that **exactly matches** the "Record" test:
     ```typescript
     it('your_test_case_name', yourTestCase.createPlayTest(harness));
     ```
 
-**Step 6: Run the Unit Test**
+**Step 6: Run the "Play" Test**
 *   Execute the main test suite to verify your logic against the generated mocks.
     ```bash
-    pnpm test {feature-name}.test.ts
+    pnpm test-play {feature-name}.play.test.ts
     ```
 *   The test will run, using the mocks you generated. It will pass if the application logic correctly processes the mocked dependency responses to produce the expected final API response.
+
+**Step 7: Run the whole unit test suite**
+*   Execute the mocked test suite to verify no breaking changes were introduced. 
+    ```bash
+    pnpm test
+    ```

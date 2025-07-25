@@ -73,7 +73,7 @@ export const callPrototypeDep = new TestCase({
  * A test case for a method that calls a truly "unmanaged" dependency.
  * The `callUnlistedDep` endpoint calls `dep2.unlistedMethod`. Because `dep2` is not
  * mentioned anywhere in the harness's `dependencyContracts`, it is "unmanaged"
- * and will always call its real implementation in both Record and Play modes.
+ * and will always call its real implementation in both "Record" and "Play" modes.
  */
 export const callUnlistedDep = new TestCase({
   method: 'GET',
@@ -88,9 +88,9 @@ export const callUnlistedDep = new TestCase({
 });
 
 /**
- * A recorder-only test case for an unloaded dependency.
- * This exists to demonstrate that the recorder and "Play" mode test output
- * varies in this scenario as the mock test will fail but recorder test will pass.
+ * A "Record" only test case for an unloaded dependency.
+ * This exists to demonstrate that the "Record" and "Play" test output
+ * varies in this scenario as the mock test will fail but "Record" test will pass.
  */
 export const callBUnloaded_Recorder = new TestCase({
   method: 'GET',
@@ -118,9 +118,9 @@ export const callBUnloaded_Mocked = new TestCase({
 });
 
 /**
- * A recorder-only test case for a method that calls an unmapped method on a managed dependency.
- * This exists to demonstrate that the recorder and "Play" mode test output
- * varies in this scenario as the mock test will fail but recorder test will pass.
+ * A "Record" only test case for a method that calls an unmapped method on a managed dependency.
+ * This exists to demonstrate that the "Record" and "Play" test output
+ * varies in this scenario as the mock test will fail but "Record" test will pass.
  */
 export const callUnmappedMethod_Recorder = new TestCase({
   method: 'GET',
