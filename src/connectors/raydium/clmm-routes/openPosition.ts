@@ -1,4 +1,5 @@
 import { TxVersion, TickUtils } from '@raydium-io/raydium-sdk-v2';
+import { VersionedTransaction } from '@solana/web3.js';
 import { Static } from '@sinclair/typebox';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
@@ -29,10 +30,9 @@ async function openPosition(
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
-  const wallet = await solana.getWallet(walletAddress);
 
-  // Set the owner for SDK operations
-  await raydium.setOwner(wallet);
+  // Prepare wallet and check if it's hardware
+  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
 
   // If no pool address provided, find default pool using base and quote tokens
   let poolAddressToUse = poolAddress;
@@ -90,7 +90,7 @@ async function openPosition(
     const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
     finalPriorityFeePerCU = Math.floor((currentPriorityFee * 1e6) / COMPUTE_UNITS);
   }
-  const { transaction, extInfo } = await raydium.raydiumSDK.clmm.openPositionFromBase({
+  let { transaction, extInfo } = await raydium.raydiumSDK.clmm.openPositionFromBase({
     poolInfo,
     poolKeys,
     tickUpper: Math.max(lowerTick, upperTick),
@@ -110,7 +110,8 @@ async function openPosition(
     },
   });
 
-  transaction.sign([wallet]);
+  // Sign transaction using helper
+  transaction = await raydium.signTransaction(transaction, walletAddress, isHardwareWallet, wallet) as VersionedTransaction;
   await solana.simulateTransaction(transaction);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
@@ -123,7 +124,7 @@ async function openPosition(
     // Use the new helper method to extract balance changes
     const { baseTokenChange, quoteTokenChange, rent } = await solana.extractClmmBalanceChanges(
       signature,
-      wallet.publicKey.toBase58(),
+      walletAddress,
       baseTokenInfo,
       quoteTokenInfo,
       totalFee,

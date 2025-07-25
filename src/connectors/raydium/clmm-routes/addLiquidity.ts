@@ -1,4 +1,5 @@
 import { PoolUtils, TxVersion } from '@raydium-io/raydium-sdk-v2';
+import { VersionedTransaction } from '@solana/web3.js';
 import { Static } from '@sinclair/typebox';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
@@ -25,10 +26,9 @@ async function addLiquidity(
 ): Promise<AddLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
-  const wallet = await solana.getWallet(walletAddress);
 
-  // Set the owner for SDK operations
-  await raydium.setOwner(wallet);
+  // Prepare wallet and check if it's hardware
+  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
 
   const positionInfo = await raydium.getPositionInfo(positionAddress);
   const position = await raydium.getClmmPosition(positionAddress);
@@ -59,7 +59,7 @@ async function addLiquidity(
   // Use provided priority fee or default to 0
   const finalPriorityFeePerCU = priorityFeePerCU || 0;
 
-  const { transaction } = await raydium.raydiumSDK.clmm.increasePositionFromBase({
+  let { transaction } = await raydium.raydiumSDK.clmm.increasePositionFromBase({
     poolInfo,
     ownerPosition: position,
     ownerInfo: { useSOLBalance: true },
@@ -77,7 +77,8 @@ async function addLiquidity(
     },
   });
 
-  transaction.sign([wallet]);
+  // Sign transaction using helper
+  transaction = await raydium.signTransaction(transaction, walletAddress, isHardwareWallet, wallet) as VersionedTransaction;
   await solana.simulateTransaction(transaction);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
@@ -104,7 +105,7 @@ async function addLiquidity(
 
     const { balanceChanges } = await solana.extractBalanceChangesAndFee(
       signature,
-      wallet.publicKey.toBase58(),
+      walletAddress,
       tokenAddresses,
     );
 

@@ -101,6 +101,12 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         const raydium = await Raydium.getInstance(network);
         const solana = await Solana.getInstance(network);
 
+        // Prepare wallet and check if it's hardware
+        const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
+        
+        // Get wallet public key
+        const walletPublicKey = isHardwareWallet ? (wallet as PublicKey) : (wallet as any).publicKey;
+
         // Validate pool address
         try {
           new PublicKey(poolAddress);
@@ -118,7 +124,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         // Calculate LP token amount and token amounts
         const { lpTokenAmount, baseTokenAmount, quoteTokenAmount } = await calculateLpAmount(
           solana,
-          new PublicKey(walletAddress),
+          walletPublicKey,
           ammPoolInfo,
           poolInfo,
           poolAddress,

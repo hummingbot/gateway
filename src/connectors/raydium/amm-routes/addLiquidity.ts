@@ -118,10 +118,9 @@ async function addLiquidity(
 ): Promise<AddLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
-  const wallet = await solana.getWallet(walletAddress);
 
-  // Set the owner for SDK operations
-  await raydium.setOwner(wallet);
+  // Prepare wallet and check if it's hardware
+  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
 
   const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
 
@@ -189,27 +188,29 @@ async function addLiquidity(
   );
   console.log('transaction', transaction);
 
+  // Sign transaction using helper
+  let signedTransaction: VersionedTransaction | Transaction;
   if (transaction instanceof VersionedTransaction) {
-    (transaction as VersionedTransaction).sign([wallet]);
+    signedTransaction = await raydium.signTransaction(transaction, walletAddress, isHardwareWallet, wallet) as VersionedTransaction;
   } else {
     const txAsTransaction = transaction as Transaction;
     const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash();
     txAsTransaction.recentBlockhash = blockhash;
     txAsTransaction.lastValidBlockHeight = lastValidBlockHeight;
-    txAsTransaction.feePayer = wallet.publicKey;
-    txAsTransaction.sign(wallet);
+    txAsTransaction.feePayer = isHardwareWallet ? await solana.getPublicKey(walletAddress) : (wallet as any).publicKey;
+    signedTransaction = await raydium.signTransaction(txAsTransaction, walletAddress, isHardwareWallet, wallet) as Transaction;
   }
 
-  await solana.simulateTransaction(transaction);
+  await solana.simulateTransaction(signedTransaction);
 
-  console.log('signed transaction', transaction);
+  console.log('signed transaction', signedTransaction);
 
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(signedTransaction);
   if (confirmed && txData) {
     const tokenAInfo = await solana.getToken(poolInfo.mintA.address);
     const tokenBInfo = await solana.getToken(poolInfo.mintB.address);
 
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
       tokenAInfo.address,
       tokenBInfo.address,
     ]);

@@ -14,9 +14,10 @@ import {
   AmmV4Keys,
   AmmV5Keys,
 } from '@raydium-io/raydium-sdk-v2';
-import { Keypair, PublicKey } from '@solana/web3.js';
+import { Keypair, PublicKey, VersionedTransaction, Transaction } from '@solana/web3.js';
 
 import { Solana } from '../../chains/solana/solana';
+import { SolanaLedger } from '../../chains/solana/solana-ledger';
 import { PoolInfo as AmmPoolInfo } from '../../schemas/amm-schema';
 import { PoolInfo as ClmmPoolInfo, PositionInfo } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
@@ -89,11 +90,26 @@ export class Raydium {
     this.owner = owner as Keypair;
     const raydiumCluster = this.solana.network == `mainnet-beta` ? 'mainnet' : 'devnet';
 
+    // For hardware wallets (PublicKey), we need to create a dummy Keypair for SDK initialization
+    // The SDK will use this for reading owner's positions, but we'll handle signing separately
+    let sdkOwner: Keypair;
+    if (owner instanceof PublicKey) {
+      // Create a dummy keypair with the same public key for read-only operations
+      sdkOwner = Keypair.generate();
+      // Override the publicKey getter to return the hardware wallet's public key
+      Object.defineProperty(sdkOwner, 'publicKey', {
+        get: () => owner,
+        configurable: true
+      });
+    } else {
+      sdkOwner = owner;
+    }
+
     // Reinitialize SDK with the owner
     this.raydiumSDK = await RaydiumSDK.load({
       connection: this.solana.connection,
       cluster: raydiumCluster,
-      owner: this.owner,
+      owner: sdkOwner,
       disableFeatureCheck: true,
       blockhashCommitment: 'confirmed',
     });
@@ -365,5 +381,48 @@ export class Raydium {
   async findDefaultPool(_baseToken: string, _quoteToken: string, _routeType: 'amm' | 'clmm'): Promise<string | null> {
     // Pools are now managed separately, return null for dynamic pool discovery
     return null;
+  }
+
+  /**
+   * Helper function to prepare wallet for transaction operations
+   * Returns the wallet/public key and whether it's a hardware wallet
+   */
+  public async prepareWallet(walletAddress: string): Promise<{
+    wallet: Keypair | PublicKey;
+    isHardwareWallet: boolean;
+  }> {
+    const isHardwareWallet = await this.solana.isHardwareWallet(walletAddress);
+    const wallet = isHardwareWallet 
+      ? await this.solana.getPublicKey(walletAddress)
+      : await this.solana.getWallet(walletAddress);
+    
+    // Set the owner for SDK operations
+    await this.setOwner(wallet);
+    
+    return { wallet, isHardwareWallet };
+  }
+
+  /**
+   * Helper function to sign transaction with hardware or regular wallet
+   */
+  public async signTransaction(
+    transaction: VersionedTransaction | Transaction,
+    walletAddress: string,
+    isHardwareWallet: boolean,
+    wallet: Keypair | PublicKey
+  ): Promise<VersionedTransaction | Transaction> {
+    if (isHardwareWallet) {
+      logger.info(`Hardware wallet detected for ${walletAddress}. Signing transaction with Ledger.`);
+      const ledger = new SolanaLedger();
+      return await ledger.signTransaction(walletAddress, transaction);
+    } else {
+      // Regular wallet - sign normally
+      if (transaction instanceof VersionedTransaction) {
+        transaction.sign([wallet as Keypair]);
+      } else {
+        (transaction as Transaction).sign(wallet as Keypair);
+      }
+      return transaction;
+    }
   }
 }

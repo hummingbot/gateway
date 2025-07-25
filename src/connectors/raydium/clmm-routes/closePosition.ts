@@ -1,4 +1,5 @@
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
+import { VersionedTransaction } from '@solana/web3.js';
 import { Static } from '@sinclair/typebox';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
@@ -25,10 +26,9 @@ async function closePosition(
   try {
     const solana = await Solana.getInstance(network);
     const raydium = await Raydium.getInstance(network);
-    const wallet = await solana.getWallet(walletAddress);
 
-    // Set the owner for SDK operations
-    await raydium.setOwner(wallet);
+    // Prepare wallet and check if it's hardware
+    const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
 
     const position = await raydium.getClmmPosition(positionAddress);
     logger.debug('Position Info:', position);
@@ -55,7 +55,7 @@ async function closePosition(
         // Use the new helper to extract balance changes including SOL handling
         const { baseTokenChange, quoteTokenChange, rent } = await solana.extractClmmBalanceChanges(
           removeLiquidityResponse.signature,
-          wallet.publicKey.toBase58(),
+          walletAddress,
           baseTokenInfo,
           quoteTokenInfo,
           removeLiquidityResponse.data.fee * 1e9,
@@ -104,13 +104,21 @@ async function closePosition(
     // Use provided compute units or default
     const COMPUTE_UNITS = computeUnits || 200000;
 
-    const { signature, fee } = await solana.sendAndConfirmVersionedTransaction(
+    // Sign transaction using helper
+    const signedTransaction = await raydium.signTransaction(
       result.transaction,
-      [wallet],
+      walletAddress,
+      isHardwareWallet,
+      wallet
+    ) as VersionedTransaction;
+
+    const { signature, fee } = await solana.sendAndConfirmVersionedTransaction(
+      signedTransaction,
+      [], // No additional signers needed, already signed
       COMPUTE_UNITS,
     );
 
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
       'So11111111111111111111111111111111111111112',
     ]);
     const rentRefunded = Math.abs(balanceChanges[0]);

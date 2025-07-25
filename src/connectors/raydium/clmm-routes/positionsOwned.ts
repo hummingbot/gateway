@@ -39,7 +39,9 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         const network = request.query.network;
         const solana = await Solana.getInstance(network);
         const raydium = await Raydium.getInstance(network);
-        const wallet = await solana.getWallet(walletAddress);
+        
+        // Prepare wallet and check if it's hardware
+        const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
 
         // Set the owner for SDK operations
         await raydium.setOwner(wallet);

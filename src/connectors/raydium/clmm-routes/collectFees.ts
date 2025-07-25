@@ -20,7 +20,9 @@ export async function collectFees(
 ): Promise<CollectFeesResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
-  const wallet = await solana.getWallet(walletAddress);
+  
+  // Prepare wallet and check if it's hardware
+  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
 
   // Set the owner for SDK operations
   await raydium.setOwner(wallet);
@@ -51,7 +53,7 @@ export async function collectFees(
     // Use the new helper to extract balance changes including fees
     const { baseTokenChange, quoteTokenChange } = await solana.extractClmmBalanceChanges(
       removeLiquidityResponse.signature,
-      wallet.publicKey.toBase58(),
+      walletAddress,
       tokenA,
       tokenB,
       removeLiquidityResponse.data.fee * 1e9,

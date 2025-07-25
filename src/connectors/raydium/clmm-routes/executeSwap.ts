@@ -4,7 +4,6 @@ import BN from 'bn.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana, BASE_FEE } from '../../../chains/solana/solana';
-import { SolanaLedger } from '../../../chains/solana/solana-ledger';
 import { ExecuteSwapRequestType, ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
@@ -30,15 +29,8 @@ async function executeSwap(
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
 
-  // Check if this is a hardware wallet
-  const isHardwareWallet = await solana.isHardwareWallet(walletAddress);
-
-  // For hardware wallets, we need the public key but will sign differently
-  // For regular wallets, we get the keypair
-  const wallet = isHardwareWallet ? await solana.getPublicKey(walletAddress) : await solana.getWallet(walletAddress);
-
-  // Set the owner for SDK operations
-  await raydium.setOwner(wallet);
+  // Prepare wallet and check if it's hardware
+  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
 
   // Get pool info from address
   const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(poolAddress);
@@ -175,15 +167,8 @@ async function executeSwap(
     })) as { transaction: VersionedTransaction });
   }
 
-  // Sign transaction - different approach for hardware vs regular wallets
-  if (isHardwareWallet) {
-    logger.info(`Hardware wallet detected for ${walletAddress}. Signing transaction with Ledger.`);
-    const ledger = new SolanaLedger();
-    transaction = (await ledger.signTransaction(walletAddress, transaction)) as VersionedTransaction;
-  } else {
-    // Regular wallet - sign normally
-    transaction.sign([wallet as any]);
-  }
+  // Sign transaction using helper
+  transaction = await raydium.signTransaction(transaction, walletAddress, isHardwareWallet, wallet) as VersionedTransaction;
 
   await solana.simulateTransaction(transaction as VersionedTransaction);
 
