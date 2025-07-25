@@ -1,4 +1,4 @@
-import { Keypair } from '@solana/web3.js';
+import { Keypair, VersionedTransaction, Transaction, MessageV0 } from '@solana/web3.js';
 
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Raydium } from '../../../../src/connectors/raydium/raydium';
@@ -148,6 +148,11 @@ describe('POST /add-liquidity', () => {
 
     const mockTxId = 'mock-transaction-id-123';
     const mockRaydiumInstance = {
+      prepareWallet: jest.fn().mockResolvedValue({
+        wallet: mockWallet,
+        isHardwareWallet: false,
+      }),
+      signTransaction: jest.fn().mockImplementation((tx) => Promise.resolve(tx)),
       setOwner: jest.fn().mockResolvedValue(undefined),
       getAmmPoolInfo: jest.fn().mockResolvedValue(mockAmmPoolInfo),
       getPoolfromAPI: jest.fn().mockResolvedValue([mockPoolInfo, mockPoolKeys]),
@@ -155,18 +160,28 @@ describe('POST /add-liquidity', () => {
       raydiumSDK: {
         liquidity: {
           addLiquidity: jest.fn().mockResolvedValue({
-            transaction: {
-              sign: jest.fn(),
-              serialize: jest.fn().mockReturnValue(Buffer.from('mock-transaction')),
-            },
+            transaction: new VersionedTransaction(
+              new MessageV0({
+                header: { numRequiredSignatures: 1, numReadonlySignedAccounts: 0, numReadonlyUnsignedAccounts: 0 },
+                staticAccountKeys: [],
+                recentBlockhash: 'test-blockhash',
+                compiledInstructions: [],
+                addressTableLookups: [],
+              }),
+            ),
           }),
         },
         cpmm: {
           addLiquidity: jest.fn().mockResolvedValue({
-            transaction: {
-              sign: jest.fn(),
-              serialize: jest.fn().mockReturnValue(Buffer.from('mock-transaction')),
-            },
+            transaction: new VersionedTransaction(
+              new MessageV0({
+                header: { numRequiredSignatures: 1, numReadonlySignedAccounts: 0, numReadonlyUnsignedAccounts: 0 },
+                staticAccountKeys: [],
+                recentBlockhash: 'test-blockhash',
+                compiledInstructions: [],
+                addressTableLookups: [],
+              }),
+            ),
           }),
         },
       },
@@ -192,9 +207,9 @@ describe('POST /add-liquidity', () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
 
-    // Verify setOwner was called with the wallet
-    expect(mockRaydiumInstance.setOwner).toHaveBeenCalledWith(mockWallet);
-    expect(mockRaydiumInstance.setOwner).toHaveBeenCalledTimes(1);
+    // Verify prepareWallet was called instead of setOwner
+    expect(mockRaydiumInstance.prepareWallet).toHaveBeenCalledWith(mockWalletAddress);
+    expect(mockRaydiumInstance.prepareWallet).toHaveBeenCalledTimes(1);
 
     // Verify the response
     expect(body).toHaveProperty('signature', 'mock-signature');
@@ -239,14 +254,27 @@ describe('POST /add-liquidity', () => {
 
     const mockTxId = 'mock-transaction-id-456';
     const mockRaydiumInstance = {
+      prepareWallet: jest.fn().mockResolvedValue({
+        wallet: mockWallet,
+        isHardwareWallet: false,
+      }),
+      signTransaction: jest.fn().mockImplementation((tx) => Promise.resolve(tx)),
       setOwner: jest.fn().mockResolvedValue(undefined),
       getAmmPoolInfo: jest.fn().mockResolvedValue(mockAmmPoolInfo),
       getPoolfromAPI: jest.fn().mockResolvedValue([mockPoolInfo, mockPoolKeys]),
       executeTransaction: jest.fn().mockResolvedValue(mockTxId),
       raydiumSDK: {
         liquidity: {
-          addLiquidity: jest.fn().mockReturnValue({
-            execute: jest.fn().mockResolvedValue({ txId: mockTxId }),
+          addLiquidity: jest.fn().mockResolvedValue({
+            transaction: new VersionedTransaction(
+              new MessageV0({
+                header: { numRequiredSignatures: 1, numReadonlySignedAccounts: 0, numReadonlyUnsignedAccounts: 0 },
+                staticAccountKeys: [],
+                recentBlockhash: 'test-blockhash',
+                compiledInstructions: [],
+                addressTableLookups: [],
+              }),
+            ),
           }),
         },
       },
@@ -267,7 +295,7 @@ describe('POST /add-liquidity', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(mockRaydiumInstance.setOwner).toHaveBeenCalledWith(mockWallet);
+    expect(mockRaydiumInstance.prepareWallet).toHaveBeenCalledWith(mockWalletAddress);
   });
 
   it('should handle wallet not found error', async () => {
@@ -283,9 +311,11 @@ describe('POST /add-liquidity', () => {
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockRaydiumInstance = {
+      prepareWallet: jest.fn().mockRejectedValue(new Error('Wallet not found')),
+      signTransaction: jest.fn().mockImplementation((tx) => Promise.resolve(tx)),
       setOwner: jest.fn(),
-      getAmmPoolInfo: jest.fn(),
-      getPoolfromAPI: jest.fn(),
+      getAmmPoolInfo: jest.fn().mockResolvedValue(mockAmmPoolInfo),
+      getPoolfromAPI: jest.fn().mockResolvedValue([mockPoolInfo, mockPoolKeys]),
       executeTransaction: jest.fn(),
       raydiumSDK: {
         liquidity: {
@@ -308,7 +338,8 @@ describe('POST /add-liquidity', () => {
     });
 
     expect(response.statusCode).toBe(500);
-    expect(mockRaydiumInstance.setOwner).not.toHaveBeenCalled();
+    // prepareWallet was called and threw the error
+    expect(mockRaydiumInstance.prepareWallet).toHaveBeenCalledWith('invalid-wallet');
   });
 
   it('should handle pool not found error', async () => {
@@ -334,9 +365,14 @@ describe('POST /add-liquidity', () => {
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockRaydiumInstance = {
+      prepareWallet: jest.fn().mockResolvedValue({
+        wallet: mockWallet,
+        isHardwareWallet: false,
+      }),
+      signTransaction: jest.fn().mockImplementation((tx) => Promise.resolve(tx)),
       setOwner: jest.fn().mockResolvedValue(undefined),
       getAmmPoolInfo: jest.fn().mockResolvedValue(null),
-      getPoolfromAPI: jest.fn().mockRejectedValue(new Error('Pool not found')),
+      getPoolfromAPI: jest.fn().mockResolvedValue(null),
       executeTransaction: jest.fn(),
       raydiumSDK: {
         liquidity: {
@@ -359,7 +395,7 @@ describe('POST /add-liquidity', () => {
     });
 
     expect(response.statusCode).toBe(404);
-    expect(mockRaydiumInstance.setOwner).toHaveBeenCalledWith(mockWallet);
+    expect(mockRaydiumInstance.prepareWallet).toHaveBeenCalledWith(mockWalletAddress);
   });
 
   it('should use custom compute units when provided', async () => {
@@ -394,11 +430,24 @@ describe('POST /add-liquidity', () => {
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockTxId = 'mock-transaction-id-789';
-    const mockAddLiquidityFunc = jest.fn().mockReturnValue({
-      execute: jest.fn().mockResolvedValue({ txId: mockTxId }),
+    const mockAddLiquidityFunc = jest.fn().mockResolvedValue({
+      transaction: new VersionedTransaction(
+        new MessageV0({
+          header: { numRequiredSignatures: 1, numReadonlySignedAccounts: 0, numReadonlyUnsignedAccounts: 0 },
+          staticAccountKeys: [],
+          recentBlockhash: 'test-blockhash',
+          compiledInstructions: [],
+          addressTableLookups: [],
+        }),
+      ),
     });
 
     const mockRaydiumInstance = {
+      prepareWallet: jest.fn().mockResolvedValue({
+        wallet: mockWallet,
+        isHardwareWallet: false,
+      }),
+      signTransaction: jest.fn().mockImplementation((tx) => Promise.resolve(tx)),
       setOwner: jest.fn().mockResolvedValue(undefined),
       getAmmPoolInfo: jest.fn().mockResolvedValue(mockAmmPoolInfo),
       getPoolfromAPI: jest.fn().mockResolvedValue([mockPoolInfo, mockPoolKeys]),
@@ -427,14 +476,14 @@ describe('POST /add-liquidity', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(mockRaydiumInstance.setOwner).toHaveBeenCalledWith(mockWallet);
+    expect(mockRaydiumInstance.prepareWallet).toHaveBeenCalledWith(mockWalletAddress);
 
     // Verify that addLiquidity was called with the custom compute units
     const addLiquidityCall = mockAddLiquidityFunc.mock.calls[0];
     expect(addLiquidityCall[0].computeBudgetConfig.units).toBe(customComputeUnits);
   });
 
-  it('should verify setOwner is called before SDK operations', async () => {
+  it('should verify prepareWallet is called before SDK operations', async () => {
     const { quoteLiquidity } = require('../../../../src/connectors/raydium/amm-routes/quoteLiquidity');
     quoteLiquidity.mockResolvedValue({
       baseLimited: true,
@@ -465,15 +514,20 @@ describe('POST /add-liquidity', () => {
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
-    let setOwnerCallOrder = 0;
+    let prepareWalletCallOrder = 0;
     let getAmmPoolInfoCallOrder = 0;
     let callCounter = 0;
 
     const mockRaydiumInstance = {
-      setOwner: jest.fn().mockImplementation(() => {
-        setOwnerCallOrder = ++callCounter;
-        return Promise.resolve();
+      prepareWallet: jest.fn().mockImplementation(() => {
+        prepareWalletCallOrder = ++callCounter;
+        return Promise.resolve({
+          wallet: mockWallet,
+          isHardwareWallet: false,
+        });
       }),
+      signTransaction: jest.fn().mockImplementation((tx) => Promise.resolve(tx)),
+      setOwner: jest.fn(),
       getAmmPoolInfo: jest.fn().mockImplementation(() => {
         getAmmPoolInfoCallOrder = ++callCounter;
         return Promise.resolve(mockAmmPoolInfo);
@@ -482,8 +536,16 @@ describe('POST /add-liquidity', () => {
       executeTransaction: jest.fn().mockResolvedValue('mock-tx-id'),
       raydiumSDK: {
         liquidity: {
-          addLiquidity: jest.fn().mockReturnValue({
-            execute: jest.fn().mockResolvedValue({ txId: 'mock-tx-id' }),
+          addLiquidity: jest.fn().mockResolvedValue({
+            transaction: new VersionedTransaction(
+              new MessageV0({
+                header: { numRequiredSignatures: 1, numReadonlySignedAccounts: 0, numReadonlyUnsignedAccounts: 0 },
+                staticAccountKeys: [],
+                recentBlockhash: 'test-blockhash',
+                compiledInstructions: [],
+                addressTableLookups: [],
+              }),
+            ),
           }),
         },
       },
@@ -504,9 +566,9 @@ describe('POST /add-liquidity', () => {
 
     expect(response.statusCode).toBe(200);
 
-    // Verify setOwner was called before getAmmPoolInfo
-    expect(setOwnerCallOrder).toBeLessThan(getAmmPoolInfoCallOrder);
-    expect(setOwnerCallOrder).toBe(1);
+    // Verify prepareWallet was called before getAmmPoolInfo
+    expect(prepareWalletCallOrder).toBeLessThan(getAmmPoolInfoCallOrder);
+    expect(prepareWalletCallOrder).toBe(1);
     expect(getAmmPoolInfoCallOrder).toBe(2);
   });
 });

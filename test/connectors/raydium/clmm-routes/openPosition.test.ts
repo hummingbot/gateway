@@ -1,4 +1,4 @@
-import { Keypair } from '@solana/web3.js';
+import { Keypair, VersionedTransaction, Transaction, MessageV0 } from '@solana/web3.js';
 
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Raydium } from '../../../../src/connectors/raydium/raydium';
@@ -106,7 +106,7 @@ describe('POST /open-position', () => {
     jest.clearAllMocks();
   });
 
-  it('should open a CLMM position successfully with setOwner called', async () => {
+  it('should open a CLMM position successfully', async () => {
     const mockSolanaInstance = {
       getToken: jest.fn((token) => {
         if (token === 'SOL' || token === mockSOL.address) return Promise.resolve(mockSOL);
@@ -124,18 +124,33 @@ describe('POST /open-position', () => {
       extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
         balanceChanges: [-0.002, -1, -150],
       }),
+      extractClmmBalanceChanges: jest.fn().mockResolvedValue({
+        baseTokenChange: -1,
+        quoteTokenChange: -150,
+        rent: 0.002,
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockTxId = 'clmm-position-tx-123';
     const mockPositionNftMint = 'position-nft-mint-address';
 
-    const mockTransaction = {
-      sign: jest.fn(),
-      serialize: jest.fn().mockReturnValue(Buffer.from('mock-transaction')),
-    };
+    const mockTransaction = new VersionedTransaction(
+      new MessageV0({
+        header: { numRequiredSignatures: 1, numReadonlySignedAccounts: 0, numReadonlyUnsignedAccounts: 0 },
+        staticAccountKeys: [],
+        recentBlockhash: 'test-blockhash',
+        compiledInstructions: [],
+        addressTableLookups: [],
+      }),
+    );
 
     const mockRaydiumInstance = {
+      prepareWallet: jest.fn().mockResolvedValue({
+        wallet: mockWallet,
+        isHardwareWallet: false,
+      }),
+      signTransaction: jest.fn().mockImplementation((tx) => Promise.resolve(tx)),
       setOwner: jest.fn().mockResolvedValue(undefined),
       getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
       getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
@@ -175,9 +190,9 @@ describe('POST /open-position', () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
 
-    // Verify setOwner was called with the wallet
-    expect(mockRaydiumInstance.setOwner).toHaveBeenCalledWith(mockWallet);
-    expect(mockRaydiumInstance.setOwner).toHaveBeenCalledTimes(1);
+    // Verify prepareWallet was called instead of setOwner
+    expect(mockRaydiumInstance.prepareWallet).toHaveBeenCalledWith(mockWalletAddress);
+    expect(mockRaydiumInstance.prepareWallet).toHaveBeenCalledTimes(1);
 
     // Verify the response
     expect(body).toHaveProperty('signature', 'mock-signature');
@@ -189,7 +204,7 @@ describe('POST /open-position', () => {
     expect(body.data).toHaveProperty('quoteTokenAmountAdded');
   });
 
-  it('should verify setOwner is called before pool operations', async () => {
+  it('should verify prepareWallet is called before pool operations', async () => {
     const mockSolanaInstance = {
       getToken: jest.fn((token) => {
         if (token === 'SOL' || token === mockSOL.address) return Promise.resolve(mockSOL);
@@ -207,23 +222,33 @@ describe('POST /open-position', () => {
       extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
         balanceChanges: [-0.002, -1, -150],
       }),
+      extractClmmBalanceChanges: jest.fn().mockResolvedValue({
+        baseTokenChange: -1,
+        quoteTokenChange: -150,
+        rent: 0.002,
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
-    let setOwnerCallOrder = 0;
-    let getClmmPoolInfoCallOrder = 0;
+    let prepareWalletCallOrder = 0;
+    let getClmmPoolfromAPICallOrder = 0;
     let callCounter = 0;
 
     const mockRaydiumInstance = {
-      setOwner: jest.fn().mockImplementation(() => {
-        setOwnerCallOrder = ++callCounter;
-        return Promise.resolve();
+      prepareWallet: jest.fn().mockImplementation(() => {
+        prepareWalletCallOrder = ++callCounter;
+        return Promise.resolve({
+          wallet: mockWallet,
+          isHardwareWallet: false,
+        });
       }),
-      getClmmPoolInfo: jest.fn().mockImplementation(() => {
-        getClmmPoolInfoCallOrder = ++callCounter;
-        return Promise.resolve(mockClmmPoolInfo);
+      signTransaction: jest.fn().mockImplementation((tx) => Promise.resolve(tx)),
+      setOwner: jest.fn(),
+      getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
+      getClmmPoolfromAPI: jest.fn().mockImplementation(() => {
+        getClmmPoolfromAPICallOrder = ++callCounter;
+        return Promise.resolve([mockApiPoolInfo, {}]);
       }),
-      getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
       getClmmPoolfromRPC: jest.fn().mockResolvedValue({ currentPrice: 150 }),
       findDefaultPool: jest.fn(),
       executeTransaction: jest.fn().mockResolvedValue('mock-tx-id'),
@@ -231,7 +256,15 @@ describe('POST /open-position', () => {
         clmm: {
           getPriceAndTick: jest.fn().mockReturnValue({ tick: 100 }),
           openPositionFromBase: jest.fn().mockResolvedValue({
-            transaction: { sign: jest.fn() },
+            transaction: new VersionedTransaction(
+              new MessageV0({
+                header: { numRequiredSignatures: 1, numReadonlySignedAccounts: 0, numReadonlyUnsignedAccounts: 0 },
+                staticAccountKeys: [],
+                recentBlockhash: 'test-blockhash',
+                compiledInstructions: [],
+                addressTableLookups: [],
+              }),
+            ),
             extInfo: { nftMint: { toBase58: () => 'mock-position-nft' } },
           }),
         },
@@ -258,10 +291,10 @@ describe('POST /open-position', () => {
 
     expect(response.statusCode).toBe(200);
 
-    // Verify setOwner was called before getClmmPoolInfo
-    expect(setOwnerCallOrder).toBeLessThan(getClmmPoolInfoCallOrder);
-    expect(setOwnerCallOrder).toBe(1);
-    expect(getClmmPoolInfoCallOrder).toBe(2);
+    // Verify prepareWallet was called before getClmmPoolfromAPI
+    expect(prepareWalletCallOrder).toBeLessThan(getClmmPoolfromAPICallOrder);
+    expect(prepareWalletCallOrder).toBe(1);
+    expect(getClmmPoolfromAPICallOrder).toBe(2);
   });
 
   it('should handle wallet not found error', async () => {
@@ -273,9 +306,14 @@ describe('POST /open-position', () => {
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockRaydiumInstance = {
+      prepareWallet: jest.fn().mockResolvedValue({
+        wallet: mockWallet,
+        isHardwareWallet: false,
+      }),
+      signTransaction: jest.fn().mockImplementation((tx) => Promise.resolve(tx)),
       setOwner: jest.fn(),
       getClmmPoolInfo: jest.fn(),
-      getClmmPoolfromAPI: jest.fn(),
+      getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
       executeTransaction: jest.fn(),
       raydiumSDK: {
         clmm: {
@@ -301,7 +339,8 @@ describe('POST /open-position', () => {
     });
 
     expect(response.statusCode).toBe(500);
-    expect(mockRaydiumInstance.setOwner).not.toHaveBeenCalled();
+    // prepareWallet is still called even if getWallet fails
+    expect(mockRaydiumInstance.prepareWallet).toHaveBeenCalledWith('invalid-wallet');
   });
 
   it('should handle pool not found error', async () => {
@@ -317,9 +356,14 @@ describe('POST /open-position', () => {
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockRaydiumInstance = {
+      prepareWallet: jest.fn().mockResolvedValue({
+        wallet: mockWallet,
+        isHardwareWallet: false,
+      }),
+      signTransaction: jest.fn().mockImplementation((tx) => Promise.resolve(tx)),
       setOwner: jest.fn().mockResolvedValue(undefined),
       getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
-      getClmmPoolfromAPI: jest.fn().mockRejectedValue(new Error('Pool not found')),
+      getClmmPoolfromAPI: jest.fn().mockResolvedValue(null),
       getClmmPoolfromRPC: jest.fn(),
       findDefaultPool: jest.fn(),
       executeTransaction: jest.fn(),
@@ -347,7 +391,7 @@ describe('POST /open-position', () => {
     });
 
     expect(response.statusCode).toBe(404);
-    expect(mockRaydiumInstance.setOwner).toHaveBeenCalledWith(mockWallet);
+    expect(mockRaydiumInstance.prepareWallet).toHaveBeenCalledWith(mockWalletAddress);
   });
 
   it('should handle invalid price range', async () => {
@@ -368,10 +412,20 @@ describe('POST /open-position', () => {
       extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
         balanceChanges: [-0.002, -1, -150],
       }),
+      extractClmmBalanceChanges: jest.fn().mockResolvedValue({
+        baseTokenChange: -1,
+        quoteTokenChange: -150,
+        rent: 0.002,
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockRaydiumInstance = {
+      prepareWallet: jest.fn().mockResolvedValue({
+        wallet: mockWallet,
+        isHardwareWallet: false,
+      }),
+      signTransaction: jest.fn().mockImplementation((tx) => Promise.resolve(tx)),
       setOwner: jest.fn().mockResolvedValue(undefined),
       getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
       getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
@@ -382,7 +436,15 @@ describe('POST /open-position', () => {
         clmm: {
           getPriceAndTick: jest.fn().mockReturnValue({ tick: 100 }),
           openPositionFromBase: jest.fn().mockResolvedValue({
-            transaction: { sign: jest.fn() },
+            transaction: new VersionedTransaction(
+              new MessageV0({
+                header: { numRequiredSignatures: 1, numReadonlySignedAccounts: 0, numReadonlyUnsignedAccounts: 0 },
+                staticAccountKeys: [],
+                recentBlockhash: 'test-blockhash',
+                compiledInstructions: [],
+                addressTableLookups: [],
+              }),
+            ),
             extInfo: { nftMint: { toBase58: () => 'mock-position-nft' } },
           }),
         },
@@ -405,7 +467,7 @@ describe('POST /open-position', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(mockRaydiumInstance.setOwner).toHaveBeenCalledWith(mockWallet);
+    expect(mockRaydiumInstance.prepareWallet).toHaveBeenCalledWith(mockWalletAddress);
   });
 
   it('should use custom compute units and priority fee', async () => {
@@ -426,15 +488,33 @@ describe('POST /open-position', () => {
       extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
         balanceChanges: [-0.002, -1, -150],
       }),
+      extractClmmBalanceChanges: jest.fn().mockResolvedValue({
+        baseTokenChange: -1,
+        quoteTokenChange: -150,
+        rent: 0.002,
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockOpenPositionFunc = jest.fn().mockResolvedValue({
-      transaction: { sign: jest.fn() },
+      transaction: new VersionedTransaction(
+        new MessageV0({
+          header: { numRequiredSignatures: 1, numReadonlySignedAccounts: 0, numReadonlyUnsignedAccounts: 0 },
+          staticAccountKeys: [],
+          recentBlockhash: 'test-blockhash',
+          compiledInstructions: [],
+          addressTableLookups: [],
+        }),
+      ),
       extInfo: { nftMint: { toBase58: () => 'mock-position-nft' } },
     });
 
     const mockRaydiumInstance = {
+      prepareWallet: jest.fn().mockResolvedValue({
+        wallet: mockWallet,
+        isHardwareWallet: false,
+      }),
+      signTransaction: jest.fn().mockImplementation((tx) => Promise.resolve(tx)),
       setOwner: jest.fn().mockResolvedValue(undefined),
       getClmmPoolInfo: jest.fn().mockResolvedValue(mockClmmPoolInfo),
       getClmmPoolfromAPI: jest.fn().mockResolvedValue([mockApiPoolInfo, {}]),
@@ -474,7 +554,7 @@ describe('POST /open-position', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(mockRaydiumInstance.setOwner).toHaveBeenCalledWith(mockWallet);
+    expect(mockRaydiumInstance.prepareWallet).toHaveBeenCalledWith(mockWalletAddress);
 
     // Verify that openPositionFromBase was called with the custom compute budget
     const openPositionCall = mockOpenPositionFunc.mock.calls[0];

@@ -47,7 +47,11 @@ async function openPosition(
     }
   }
 
-  const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(poolAddressToUse);
+  const poolResponse = await raydium.getClmmPoolfromAPI(poolAddressToUse);
+  if (!poolResponse) {
+    throw _fastify.httpErrors.notFound(`Pool not found for address: ${poolAddressToUse}`);
+  }
+  const [poolInfo, poolKeys] = poolResponse;
   const rpcData = await raydium.getClmmPoolfromRPC(poolAddressToUse);
   poolInfo.price = rpcData.currentPrice;
 
@@ -64,6 +68,11 @@ async function openPosition(
     price: new Decimal(upperPrice),
     baseIn: true,
   });
+
+  // Validate price range
+  if (lowerPrice >= upperPrice) {
+    throw _fastify.httpErrors.badRequest('Lower price must be less than upper price');
+  }
 
   const quotePositionResponse = await quotePosition(
     _fastify,

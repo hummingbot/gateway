@@ -123,9 +123,16 @@ async function addLiquidity(
   const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
 
   const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
+  if (!ammPoolInfo) {
+    throw _fastify.httpErrors.notFound(`Pool not found for address: ${poolAddress}`);
+  }
 
   // Get pool info and keys since they're no longer in quoteLiquidity response
-  const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddress);
+  const poolResponse = await raydium.getPoolfromAPI(poolAddress);
+  if (!poolResponse) {
+    throw _fastify.httpErrors.notFound(`Pool not found for address: ${poolAddress}`);
+  }
+  const [poolInfo, poolKeys] = poolResponse;
 
   const quoteResponse = (await quoteLiquidity(
     _fastify,
@@ -186,7 +193,6 @@ async function addLiquidity(
     baseTokenAmount,
     quoteTokenAmount,
   );
-  console.log('transaction', transaction);
 
   // Sign transaction using helper
   let signedTransaction: VersionedTransaction | Transaction;
@@ -212,8 +218,6 @@ async function addLiquidity(
   }
 
   await solana.simulateTransaction(signedTransaction);
-
-  console.log('signed transaction', signedTransaction);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(signedTransaction);
   if (confirmed && txData) {
@@ -288,6 +292,9 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         );
       } catch (e) {
         logger.error(e);
+        if (e.statusCode) {
+          throw fastify.httpErrors.createError(e.statusCode, e.message);
+        }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
     },
