@@ -93,6 +93,7 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
   try {
     let transaction;
     let nonce: number;
+    let receipt;
 
     if (isHardware) {
       // Hardware wallet flow
@@ -102,6 +103,15 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
 
       // Get nonce for the address
       nonce = await ethereum.provider.getTransactionCount(address, 'latest');
+
+      // Check balance before unwrapping
+      const wrappedContract = new ethers.Contract(wrappedInfo.address, WETH9ABI, ethereum.provider);
+      const balance = await wrappedContract.balanceOf(address);
+      if (balance.lt(amountInWei)) {
+        throw fastify.httpErrors.badRequest(
+          `Insufficient ${wrappedInfo.symbol} balance. Available: ${utils.formatEther(balance)}, Required: ${amount}`,
+        );
+      }
 
       // Build the unwrap transaction data
       const iface = new utils.Interface(WETH9ABI);
@@ -121,14 +131,12 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
       // Send the signed transaction
       const txResponse = await ethereum.provider.sendTransaction(signedTx);
 
-      // Wait for confirmation with timeout
-      const receipt = await waitForTransactionWithTimeout(txResponse);
+      // Wait for confirmation with timeout (30 seconds for hardware wallets)
+      receipt = await waitForTransactionWithTimeout(txResponse, 30000);
 
       transaction = {
         hash: receipt.transactionHash,
         nonce: nonce,
-        gasUsed: receipt.gasUsed,
-        effectiveGasPrice: receipt.effectiveGasPrice,
       };
     } else {
       // Regular wallet flow
@@ -162,10 +170,10 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
       const withdrawTx = await wrappedContract.populateTransaction.withdraw(amountInWei, params);
       transaction = await wallet.sendTransaction(withdrawTx);
       nonce = transaction.nonce;
-    }
 
-    // Wait for transaction confirmation with timeout
-    const receipt = await waitForTransactionWithTimeout(transaction as any);
+      // Wait for transaction confirmation with timeout
+      receipt = await waitForTransactionWithTimeout(transaction);
+    }
 
     // Calculate actual fee from receipt
     let feeInEth = '0';
@@ -196,6 +204,10 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
       );
     } else if (error.message && error.message.includes('Insufficient') && error.message.includes('balance')) {
       throw error; // Re-throw our custom balance error
+    } else if (error.message && error.message.includes('timeout')) {
+      throw fastify.httpErrors.requestTimeout(
+        `Transaction timeout. The transaction may still be pending. Hash: ${error.transactionHash || 'unknown'}`,
+      );
     } else if (error.message.includes('rejected on Ledger')) {
       throw fastify.httpErrors.badRequest('Transaction rejected on Ledger device');
     } else if (error.message.includes('Ledger device is locked')) {

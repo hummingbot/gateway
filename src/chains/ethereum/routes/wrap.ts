@@ -93,6 +93,7 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
   try {
     let transaction;
     let nonce: number;
+    let receipt;
 
     if (isHardware) {
       // Hardware wallet flow
@@ -122,14 +123,12 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
       // Send the signed transaction
       const txResponse = await ethereum.provider.sendTransaction(signedTx);
 
-      // Wait for confirmation with timeout
-      const receipt = await waitForTransactionWithTimeout(txResponse);
+      // Wait for confirmation with timeout (30 seconds for hardware wallets)
+      receipt = await waitForTransactionWithTimeout(txResponse, 30000);
 
       transaction = {
         hash: receipt.transactionHash,
         nonce: nonce,
-        gasUsed: receipt.gasUsed,
-        effectiveGasPrice: receipt.effectiveGasPrice,
       };
     } else {
       // Regular wallet flow
@@ -156,10 +155,10 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
       const depositTx = await wrappedContract.populateTransaction.deposit(params);
       transaction = await wallet.sendTransaction(depositTx);
       nonce = transaction.nonce;
-    }
 
-    // Wait for transaction confirmation with timeout
-    const receipt = await waitForTransactionWithTimeout(transaction as any);
+      // Wait for transaction confirmation with timeout
+      receipt = await waitForTransactionWithTimeout(transaction);
+    }
 
     // Calculate actual fee from receipt
     let feeInEth = '0';
@@ -187,6 +186,10 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
     if (error.message && error.message.includes('insufficient funds')) {
       throw fastify.httpErrors.badRequest(
         `Insufficient funds for transaction. Please ensure you have enough ${wrappedInfo.nativeSymbol} to wrap.`,
+      );
+    } else if (error.message && error.message.includes('timeout')) {
+      throw fastify.httpErrors.requestTimeout(
+        `Transaction timeout. The transaction may still be pending. Hash: ${error.transactionHash || 'unknown'}`,
       );
     } else if (error.message.includes('rejected on Ledger')) {
       throw fastify.httpErrors.badRequest('Transaction rejected on Ledger device');

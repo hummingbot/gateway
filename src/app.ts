@@ -32,9 +32,6 @@ import { walletRoutes } from './wallet/wallet.routes';
 
 import { asciiLogo } from './index';
 
-// Change version for each release
-const GATEWAY_VERSION = 'dev-2.8.0';
-
 // At the top level, define devMode once
 // When true, runs server in HTTP mode (less secure but useful for development)
 // When false, runs server in HTTPS mode (secure, default for production)

@@ -1,7 +1,8 @@
-import { BigNumber } from 'ethers';
+import { BigNumber, utils } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
 import { waitForTransactionWithTimeout } from '../../../chains/ethereum/ethereum.utils';
 import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
@@ -27,37 +28,111 @@ async function executeQuote(
   const { quoteTokenInfo, inputToken, outputToken, side, amount } = request;
 
   const ethereum = await Ethereum.getInstance(network);
-  const wallet = await ethereum.getWallet(walletAddress);
   const uniswap = await Uniswap.getInstance(network);
 
-  logger.info(`Executing quote ${quoteId} for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`);
+  // Check if this is a hardware wallet
+  const isHardwareWallet = await ethereum.isHardwareWallet(walletAddress);
+
+  logger.info(
+    `Executing quote ${quoteId} for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}${isHardwareWallet ? ' with hardware wallet' : ''}`,
+  );
 
   // Check and approve allowance if needed
   if (inputToken.address !== ethereum.nativeTokenSymbol) {
-    const tokenContract = ethereum.getContract(inputToken.address, wallet);
     const spender = quote.methodParameters.to; // Router address
-    const allowance = await ethereum.getERC20Allowance(tokenContract, wallet, spender, inputToken.decimals);
 
-    // Calculate required allowance from the trade input amount
-    const requiredAllowance = BigNumber.from(quote.trade.inputAmount.quotient.toString());
+    if (isHardwareWallet) {
+      // Hardware wallet flow for checking allowance
+      const tokenContract = ethereum.getContract(inputToken.address, ethereum.provider);
+      const allowance = await tokenContract.allowance(walletAddress, spender);
+      const requiredAllowance = BigNumber.from(quote.trade.inputAmount.quotient.toString());
 
-    if (BigNumber.from(allowance.value).lt(requiredAllowance)) {
-      logger.info(`Approving ${inputToken.symbol} for Universal Router`);
-      await ethereum.approveERC20(tokenContract, wallet, spender, requiredAllowance);
+      if (allowance.lt(requiredAllowance)) {
+        logger.info(`Hardware wallet detected. Building approve transaction for ${inputToken.symbol}`);
+
+        const ledger = new EthereumLedger();
+        const nonce = await ethereum.provider.getTransactionCount(walletAddress, 'latest');
+
+        // Build the approve transaction data
+        const iface = new utils.Interface(['function approve(address spender, uint256 amount)']);
+        const data = iface.encodeFunctionData('approve', [spender, requiredAllowance]);
+
+        // Build unsigned transaction
+        const unsignedTx = {
+          to: inputToken.address,
+          data: data,
+          nonce: nonce,
+          chainId: ethereum.chainId,
+          gasLimit: BigNumber.from('100000'), // Standard gas limit for approve
+        };
+
+        // Sign with Ledger
+        const signedTx = await ledger.signTransaction(walletAddress, unsignedTx as any);
+
+        // Send the signed transaction
+        const txResponse = await ethereum.provider.sendTransaction(signedTx);
+
+        // Wait for confirmation
+        await waitForTransactionWithTimeout(txResponse);
+        logger.info(`Approval transaction confirmed for ${inputToken.symbol}`);
+      }
+    } else {
+      // Regular wallet flow
+      const wallet = await ethereum.getWallet(walletAddress);
+      const tokenContract = ethereum.getContract(inputToken.address, wallet);
+      const allowance = await ethereum.getERC20Allowance(tokenContract, wallet, spender, inputToken.decimals);
+
+      // Calculate required allowance from the trade input amount
+      const requiredAllowance = BigNumber.from(quote.trade.inputAmount.quotient.toString());
+
+      if (BigNumber.from(allowance.value).lt(requiredAllowance)) {
+        logger.info(`Approving ${inputToken.symbol} for Universal Router`);
+        await ethereum.approveERC20(tokenContract, wallet, spender, requiredAllowance);
+      }
     }
   }
 
   // Execute the swap transaction
-  const txData = {
-    to: quote.methodParameters.to,
-    data: quote.methodParameters.calldata,
-    value: quote.methodParameters.value,
-    gasLimit: maxGas || parseInt(quote.estimatedGasUsed.toString()),
-    ...(gasPrice && { gasPrice: BigNumber.from(gasPrice) }),
-  };
+  let txReceipt;
 
-  const txResponse = await wallet.sendTransaction(txData);
-  const txReceipt = await waitForTransactionWithTimeout(txResponse);
+  if (isHardwareWallet) {
+    // Hardware wallet flow
+    logger.info('Hardware wallet detected. Building swap transaction for Ledger signing.');
+
+    const ledger = new EthereumLedger();
+    const nonce = await ethereum.provider.getTransactionCount(walletAddress, 'latest');
+
+    // Build unsigned transaction
+    const unsignedTx = {
+      to: quote.methodParameters.to,
+      data: quote.methodParameters.calldata,
+      value: quote.methodParameters.value,
+      nonce: nonce,
+      chainId: ethereum.chainId,
+      gasLimit: maxGas || parseInt(quote.estimatedGasUsed.toString()),
+      ...(gasPrice && { gasPrice: BigNumber.from(gasPrice) }),
+    };
+
+    // Sign with Ledger
+    const signedTx = await ledger.signTransaction(walletAddress, unsignedTx as any);
+
+    // Send the signed transaction
+    const txResponse = await ethereum.provider.sendTransaction(signedTx);
+    txReceipt = await waitForTransactionWithTimeout(txResponse);
+  } else {
+    // Regular wallet flow
+    const wallet = await ethereum.getWallet(walletAddress);
+    const txData = {
+      to: quote.methodParameters.to,
+      data: quote.methodParameters.calldata,
+      value: quote.methodParameters.value,
+      gasLimit: maxGas || parseInt(quote.estimatedGasUsed.toString()),
+      ...(gasPrice && { gasPrice: BigNumber.from(gasPrice) }),
+    };
+
+    const txResponse = await wallet.sendTransaction(txData);
+    txReceipt = await waitForTransactionWithTimeout(txResponse);
+  }
 
   if (!txReceipt || txReceipt.status !== 1) {
     throw fastify.httpErrors.internalServerError('Transaction failed');
