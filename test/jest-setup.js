@@ -16,4 +16,7 @@ jest.mock('@oclif/core/lib/errors/handle', () => ({
   handle: jest.fn(),
 }));
 
-console.log('Jest test environment configured with global mocks and settings');
+if (process.env.JEST_VERBOSE_SETUP === '1') {
+  // eslint-disable-next-line no-console
+  console.log('Jest test environment configured with suite level mocks and settings');
+}

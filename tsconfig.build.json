@@ -10,5 +10,5 @@
     "sourceMap": true,
     "inlineSourceMap": false
   },
-  "exclude": ["node_modules", "dist", "coverage", "test", "test-scripts"]
+  "exclude": ["node_modules", "dist", "coverage", "test", "test-record", "test-play"]
 }

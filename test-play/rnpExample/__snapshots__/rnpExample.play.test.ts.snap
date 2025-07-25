@@ -1,0 +1,62 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`RnpExample callABC 1`] = `
+{
+  "a": "real A_basicMethod-48",
+  "b": "54",
+  "c": Any<String>,
+}
+`;
+
+exports[`RnpExample callB_superJsonMethod 1`] = `
+{
+  "b": "56",
+}
+`;
+
+exports[`RnpExample callBUnloaded_Mocked 1`] = `
+{
+  "error": "InternalServerError",
+  "message": "Failed to callSuperJsonMethod: Mocked dependency was called without a mock loaded: dep1_B. Either load a mock or allowPassThrough.",
+  "statusCode": 500,
+}
+`;
+
+exports[`RnpExample callBUnloaded_Recorder 1`] = `
+{
+  "b": Any<String>,
+}
+`;
+
+exports[`RnpExample callDTwice 1`] = `
+{
+  "d1": "real D_usedTwiceInOneCallMethod-67",
+  "d2": "real D_usedTwiceInOneCallMethod-4",
+}
+`;
+
+exports[`RnpExample callPrototypeDep 1`] = `
+{
+  "x": "real prototypeMethod-67",
+}
+`;
+
+exports[`RnpExample callUnlistedDep 1`] = `
+{
+  "z": Any<String>,
+}
+`;
+
+exports[`RnpExample callUnmappedMethod_Mocked 1`] = `
+{
+  "error": "NotImplementedError",
+  "message": "Failed to callUnmappedMethod: Unmapped method was called: dep1_A.unmappedMethod. Method must be listed and either mocked or specify allowPassThrough.",
+  "statusCode": 501,
+}
+`;
+
+exports[`RnpExample callUnmappedMethod_Recorder 1`] = `
+{
+  "unmapped": Any<String>,
+}
+`;
