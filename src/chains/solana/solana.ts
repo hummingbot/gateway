@@ -250,6 +250,18 @@ export class Solana {
     }
   }
 
+  /**
+   * Get the PublicKey object for a wallet address
+   * This is used for hardware wallets where we only need the public key
+   */
+  async getPublicKey(address: string): Promise<PublicKey> {
+    try {
+      return new PublicKey(address);
+    } catch (error) {
+      throw new Error(`Invalid Solana address: ${address}`);
+    }
+  }
+
   async encrypt(secret: string, password: string): Promise<string> {
     const algorithm = 'aes-256-ctr';
     const iv = crypto.randomBytes(16);

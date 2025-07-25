@@ -83,8 +83,10 @@ export class Raydium {
   }
 
   /** Sets the owner for SDK operations */
-  public async setOwner(owner: Keypair): Promise<void> {
-    this.owner = owner;
+  public async setOwner(owner: Keypair | PublicKey): Promise<void> {
+    // If it's a PublicKey (hardware wallet), we only set it for read operations
+    // For transaction building, we'll use the public key but sign externally
+    this.owner = owner as Keypair;
     const raydiumCluster = this.solana.network == `mainnet-beta` ? 'mainnet' : 'devnet';
 
     // Reinitialize SDK with the owner

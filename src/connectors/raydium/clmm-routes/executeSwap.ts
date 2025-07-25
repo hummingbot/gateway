@@ -4,6 +4,7 @@ import BN from 'bn.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana, BASE_FEE } from '../../../chains/solana/solana';
+import { SolanaLedger } from '../../../chains/solana/solana-ledger';
 import { ExecuteSwapRequestType, ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
@@ -28,7 +29,13 @@ async function executeSwap(
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
-  const wallet = await solana.getWallet(walletAddress);
+
+  // Check if this is a hardware wallet
+  const isHardwareWallet = await solana.isHardwareWallet(walletAddress);
+
+  // For hardware wallets, we need the public key but will sign differently
+  // For regular wallets, we get the keypair
+  const wallet = isHardwareWallet ? await solana.getPublicKey(walletAddress) : await solana.getWallet(walletAddress);
 
   // Set the owner for SDK operations
   await raydium.setOwner(wallet);
@@ -168,8 +175,16 @@ async function executeSwap(
     })) as { transaction: VersionedTransaction });
   }
 
-  // Sign and simulate transaction
-  transaction.sign([wallet]);
+  // Sign transaction - different approach for hardware vs regular wallets
+  if (isHardwareWallet) {
+    logger.info(`Hardware wallet detected for ${walletAddress}. Signing transaction with Ledger.`);
+    const ledger = new SolanaLedger();
+    transaction = (await ledger.signTransaction(walletAddress, transaction)) as VersionedTransaction;
+  } else {
+    // Regular wallet - sign normally
+    transaction.sign([wallet as any]);
+  }
+
   await solana.simulateTransaction(transaction as VersionedTransaction);
 
   // Send and confirm - keep retry loop here for retrying same tx hash
@@ -180,7 +195,7 @@ async function executeSwap(
     const tokenAInfo = await solana.getToken(poolInfo.mintA.address);
     const tokenBInfo = await solana.getToken(poolInfo.mintB.address);
 
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
       tokenAInfo.address,
       tokenBInfo.address,
     ]);
