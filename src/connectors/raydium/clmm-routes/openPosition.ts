@@ -1,6 +1,6 @@
 import { TxVersion, TickUtils } from '@raydium-io/raydium-sdk-v2';
-import { VersionedTransaction } from '@solana/web3.js';
 import { Static } from '@sinclair/typebox';
+import { VersionedTransaction } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
@@ -90,7 +90,7 @@ async function openPosition(
     const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
     finalPriorityFeePerCU = Math.floor((currentPriorityFee * 1e6) / COMPUTE_UNITS);
   }
-  let { transaction, extInfo } = await raydium.raydiumSDK.clmm.openPositionFromBase({
+  const { transaction: txn, extInfo } = await raydium.raydiumSDK.clmm.openPositionFromBase({
     poolInfo,
     poolKeys,
     tickUpper: Math.max(lowerTick, upperTick),
@@ -111,7 +111,12 @@ async function openPosition(
   });
 
   // Sign transaction using helper
-  transaction = await raydium.signTransaction(transaction, walletAddress, isHardwareWallet, wallet) as VersionedTransaction;
+  const transaction = (await raydium.signTransaction(
+    txn,
+    walletAddress,
+    isHardwareWallet,
+    wallet,
+  )) as VersionedTransaction;
   await solana.simulateTransaction(transaction);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);

@@ -148,7 +148,12 @@ async function executeSwap(
   }
 
   // Sign transaction using helper
-  transaction = await raydium.signTransaction(transaction, walletAddress, isHardwareWallet, wallet) as VersionedTransaction;
+  transaction = (await raydium.signTransaction(
+    transaction,
+    walletAddress,
+    isHardwareWallet,
+    wallet,
+  )) as VersionedTransaction;
 
   await solana.simulateTransaction(transaction as VersionedTransaction);
 

@@ -1,6 +1,6 @@
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
-import { VersionedTransaction } from '@solana/web3.js';
 import { Static } from '@sinclair/typebox';
+import { VersionedTransaction } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana, BASE_FEE } from '../../../chains/solana/solana';
@@ -105,12 +105,12 @@ async function closePosition(
     const COMPUTE_UNITS = computeUnits || 200000;
 
     // Sign transaction using helper
-    const signedTransaction = await raydium.signTransaction(
+    const signedTransaction = (await raydium.signTransaction(
       result.transaction,
       walletAddress,
       isHardwareWallet,
-      wallet
-    ) as VersionedTransaction;
+      wallet,
+    )) as VersionedTransaction;
 
     const { signature, fee } = await solana.sendAndConfirmVersionedTransaction(
       signedTransaction,

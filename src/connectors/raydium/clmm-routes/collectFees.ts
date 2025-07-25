@@ -20,7 +20,7 @@ export async function collectFees(
 ): Promise<CollectFeesResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
-  
+
   // Prepare wallet and check if it's hardware
   const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
 

@@ -203,14 +203,24 @@ async function removeLiquidity(
   // Sign transaction using helper
   let signedTransaction: VersionedTransaction | Transaction;
   if (transaction instanceof VersionedTransaction) {
-    signedTransaction = await raydium.signTransaction(transaction, walletAddress, isHardwareWallet, wallet) as VersionedTransaction;
+    signedTransaction = (await raydium.signTransaction(
+      transaction,
+      walletAddress,
+      isHardwareWallet,
+      wallet,
+    )) as VersionedTransaction;
   } else {
     const txAsTransaction = transaction as Transaction;
     const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash();
     txAsTransaction.recentBlockhash = blockhash;
     txAsTransaction.lastValidBlockHeight = lastValidBlockHeight;
     txAsTransaction.feePayer = isHardwareWallet ? await solana.getPublicKey(walletAddress) : (wallet as any).publicKey;
-    signedTransaction = await raydium.signTransaction(txAsTransaction, walletAddress, isHardwareWallet, wallet) as Transaction;
+    signedTransaction = (await raydium.signTransaction(
+      txAsTransaction,
+      walletAddress,
+      isHardwareWallet,
+      wallet,
+    )) as Transaction;
   }
 
   await solana.simulateTransaction(signedTransaction);

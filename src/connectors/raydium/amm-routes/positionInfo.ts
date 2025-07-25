@@ -103,7 +103,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
 
         // Prepare wallet and check if it's hardware
         const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
-        
+
         // Get wallet public key
         const walletPublicKey = isHardwareWallet ? (wallet as PublicKey) : (wallet as any).publicKey;
 

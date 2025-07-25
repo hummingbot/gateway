@@ -99,7 +99,7 @@ export class Raydium {
       // Override the publicKey getter to return the hardware wallet's public key
       Object.defineProperty(sdkOwner, 'publicKey', {
         get: () => owner,
-        configurable: true
+        configurable: true,
       });
     } else {
       sdkOwner = owner;
@@ -392,13 +392,13 @@ export class Raydium {
     isHardwareWallet: boolean;
   }> {
     const isHardwareWallet = await this.solana.isHardwareWallet(walletAddress);
-    const wallet = isHardwareWallet 
+    const wallet = isHardwareWallet
       ? await this.solana.getPublicKey(walletAddress)
       : await this.solana.getWallet(walletAddress);
-    
+
     // Set the owner for SDK operations
     await this.setOwner(wallet);
-    
+
     return { wallet, isHardwareWallet };
   }
 
@@ -409,7 +409,7 @@ export class Raydium {
     transaction: VersionedTransaction | Transaction,
     walletAddress: string,
     isHardwareWallet: boolean,
-    wallet: Keypair | PublicKey
+    wallet: Keypair | PublicKey,
   ): Promise<VersionedTransaction | Transaction> {
     if (isHardwareWallet) {
       logger.info(`Hardware wallet detected for ${walletAddress}. Signing transaction with Ledger.`);

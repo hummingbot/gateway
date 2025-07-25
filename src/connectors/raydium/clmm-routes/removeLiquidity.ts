@@ -1,6 +1,6 @@
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
-import { VersionedTransaction } from '@solana/web3.js';
 import { Static } from '@sinclair/typebox';
+import { VersionedTransaction } from '@solana/web3.js';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
@@ -71,7 +71,12 @@ export async function removeLiquidity(
   });
 
   // Sign transaction using helper
-  transaction = await raydium.signTransaction(transaction, walletAddress, isHardwareWallet, wallet) as VersionedTransaction;
+  transaction = (await raydium.signTransaction(
+    transaction,
+    walletAddress,
+    isHardwareWallet,
+    wallet,
+  )) as VersionedTransaction;
   await solana.simulateTransaction(transaction);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
