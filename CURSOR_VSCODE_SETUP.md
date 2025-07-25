@@ -1,6 +1,6 @@
 # VS Code Setup Guide
 
-This guide provides the minimal VS Code configuration needed to work with the Gateway project's dual test suite setup (main tests + test scripts) and debug the server.
+This guide provides the minimal VS Code configuration needed to work with the Gateway project's dual test suite setup (main tests + RecordAndPlay) and debug the server.
 
 ## Jest extension for test discovery and debugging
 
@@ -14,20 +14,20 @@ Configure Jest virtual folders for multiple test suites
 {
   "jest.virtualFolders": [
     {
-      "name": "unit-tests",
-      "jestCommandLine": "pnpm test",
+      "name": "test-play",
+      "jestCommandLine": "pnpm test-play",
       "runMode": "watch"
     },
     {
-      "name": "test-scripts", 
-      "jestCommandLine": "pnpm test:scripts",
+      "name": "test-record", 
+      "jestCommandLine": "pnpm test-record",
       "runMode": "on-demand"
     }
   ]
 }
 ```
 
-## Debugging the server and unit-tests
+## Debugging the server and test-play
 
 ### launch.json (`.vscode/launch.json`)
 
@@ -56,7 +56,7 @@ Launch configuration for debugging the Gateway server and unit tests.
       "preLaunchTask": "build"
     },
     {
-      "name": "vscode-jest-tests.v2.unit-tests",
+      "name": "vscode-jest-tests.v2.test-play",
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
@@ -80,7 +80,7 @@ Launch configuration for debugging the Gateway server and unit tests.
       ],
     },
     {
-      "name": "vscode-jest-tests.v2.test-scripts",
+      "name": "vscode-jest-tests.v2.test-record",
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
@@ -90,7 +90,7 @@ Launch configuration for debugging the Gateway server and unit tests.
       },
       "args": [
         "--config",
-        "${workspaceFolder}/test-scripts/jest.config.js",
+        "${workspaceFolder}/test-record/jest.config.js",
         "--testNamePattern",
         "${jest.testNamePattern}",
         "--runTestsByPath",

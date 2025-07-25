@@ -4,14 +4,9 @@ import * as path from 'path';
 import { FastifyInstance } from 'fastify';
 import superjson from 'superjson';
 
-import {
-  DependencyFactory,
-  MockProvider,
-  TestDependencyContract,
-} from './test-dependency-contract';
+import { DependencyFactory, MockProvider, TestDependencyContract } from './test-dependency-contract';
 
-interface ContractWithSpy<TInstance>
-  extends TestDependencyContract<TInstance, any, any> {
+interface ContractWithSpy<TInstance> extends TestDependencyContract<TInstance, any, any> {
   spy?: jest.SpyInstance;
 }
 
@@ -25,9 +20,7 @@ interface ContractWithSpy<TInstance>
  *
  * @template TInstance The type of the application class being tested.
  */
-export abstract class AbstractGatewayTestHarness<TInstance>
-  implements MockProvider<TInstance>
-{
+export abstract class AbstractGatewayTestHarness<TInstance> implements MockProvider<TInstance> {
   protected _gatewayApp!: FastifyInstance;
   protected _mockDir: string;
   protected _instance!: TInstance;
@@ -38,16 +31,27 @@ export abstract class AbstractGatewayTestHarness<TInstance>
    * This is the core of the RnP framework. Each key is a human-readable alias
    * for a dependency, and the value is a contract defining how to spy on or mock it.
    */
-  abstract readonly dependencyContracts: Record<
-    string,
-    ContractWithSpy<TInstance>
-  >;
+  abstract readonly dependencyContracts: Record<string, ContractWithSpy<TInstance>>;
 
   /**
-   * @param mockDir The directory where mock files are stored, typically `__dirname`.
+   * @param harnessDir The directory of the concrete harness class, typically `__dirname`.
+   * This is used to calculate the path to the mock directory, assuming a parallel
+   * structure between a `test` directory and a `test-play` directory.
    */
-  constructor(mockDir: string) {
-    this._mockDir = mockDir;
+  constructor(harnessDir: string) {
+    const parts = harnessDir.split(path.sep);
+    const testIndex = parts.lastIndexOf('test');
+
+    if (testIndex === -1) {
+      throw new Error(
+        `Failed to resolve mock directory from harness path. ` +
+          `Ensure the harness is inside a '/test/' directory. ` +
+          `Path provided: ${harnessDir}`,
+      );
+    }
+
+    parts[testIndex] = 'test-play';
+    this._mockDir = parts.join(path.sep);
   }
 
   /**
@@ -58,9 +62,7 @@ export abstract class AbstractGatewayTestHarness<TInstance>
   protected loadMock<TMock>(fileName: string): TMock {
     const filePath = path.join(this._mockDir, 'mocks', `${fileName}.json`);
     if (fs.existsSync(filePath)) {
-      return superjson.deserialize<TMock>(
-        JSON.parse(fs.readFileSync(filePath, 'utf8')),
-      );
+      return superjson.deserialize<TMock>(JSON.parse(fs.readFileSync(filePath, 'utf8')));
     }
     throw new Error(`Mock file not found: ${filePath}`);
   }
@@ -76,10 +78,7 @@ export abstract class AbstractGatewayTestHarness<TInstance>
       fs.mkdirSync(mockDir, { recursive: true });
     }
     const serialized = superjson.serialize(data);
-    fs.writeFileSync(
-      path.join(mockDir, `${fileName}.json`),
-      JSON.stringify(serialized, null, 2),
-    );
+    fs.writeFileSync(path.join(mockDir, `${fileName}.json`), JSON.stringify(serialized, null, 2));
   }
 
   /**
@@ -97,8 +96,7 @@ export abstract class AbstractGatewayTestHarness<TInstance>
 
   /** The initialized instance of the service being tested. */
   get instance(): TInstance {
-    if (!this._instance)
-      throw new Error('Instance not initialized. Call setup first.');
+    if (!this._instance) throw new Error('Instance not initialized. Call setup first.');
     return this._instance;
   }
 
@@ -144,9 +142,7 @@ export abstract class AbstractGatewayTestHarness<TInstance>
    * @param requiredMocks A map where keys are dependency contract aliases and
    * values are the filenames for the mocks to be saved.
    */
-  public async saveMocks(
-    requiredMocks: Record<string, string | string[]>,
-  ): Promise<Record<string, Error>> {
+  public async saveMocks(requiredMocks: Record<string, string | string[]>): Promise<Record<string, Error>> {
     const errors: Record<string, Error> = {};
     for (const [key, filenames] of Object.entries(requiredMocks)) {
       const dep = this.dependencyContracts[key];
@@ -219,9 +215,7 @@ export abstract class AbstractGatewayTestHarness<TInstance>
           // If it's not allowed to pass through, set a default error for when
           // a test case forgets to load a specific mock for it.
           if (contract.spy && !contract.allowPassThrough) {
-            const depKey = Object.keys(this.dependencyContracts).find(
-              (k) => this.dependencyContracts[k] === contract,
-            );
+            const depKey = Object.keys(this.dependencyContracts).find((k) => this.dependencyContracts[k] === contract);
             contract.spy.mockImplementation(() => {
               throw new Error(
                 `Mocked dependency was called without a mock loaded: ${depKey}. Either load a mock or allowPassThrough.`,
@@ -235,11 +229,8 @@ export abstract class AbstractGatewayTestHarness<TInstance>
             const spy = jest.spyOn(object, methodName as any);
             spy.mockImplementation(() => {
               // Find a representative key for this object from the dependency contracts.
-              const representativeKey = Object.keys(
-                this.dependencyContracts,
-              ).find(
-                (key) =>
-                  this.dependencyContracts[key].getObject(this) === object,
+              const representativeKey = Object.keys(this.dependencyContracts).find(
+                (key) => this.dependencyContracts[key].getObject(this) === object,
               );
 
               const depKey = representativeKey || object.constructor.name;
@@ -262,13 +253,9 @@ export abstract class AbstractGatewayTestHarness<TInstance>
     for (const [key, filenames] of Object.entries(requiredMocks)) {
       const dep = this.dependencyContracts[key];
       if (!dep.spy) {
-        throw new Error(
-          `Dependency contract with key '${key}' not found in harness.`,
-        );
+        throw new Error(`Dependency contract with key '${key}' not found in harness.`);
       }
-      for (const fileName of Array.isArray(filenames)
-        ? filenames
-        : [filenames]) {
+      for (const fileName of Array.isArray(filenames) ? filenames : [filenames]) {
         dep.setupMock(dep.spy, this, fileName);
       }
     }

@@ -8,8 +8,8 @@ import {
   callUnlistedDep,
   callUnmappedMethod_Mocked,
   callUnmappedMethod_Recorder,
-} from './rnpExample.api-test-cases';
-import { RnpExampleTestHarness } from './rnpExample.test-harness';
+} from '#test/rnpExample/rnpExample.api-test-cases';
+import { RnpExampleTestHarness } from '#test/rnpExample/rnpExample.test-harness';
 
 describe('RnpExample', () => {
   let _harness: RnpExampleTestHarness;
@@ -44,13 +44,13 @@ describe('RnpExample', () => {
 
   it('callBUnloaded_Recorder', async () => {
     // Snapshots must match the recorded output and this call fails in "play" mode
-    // so we force a predictable result by just using the recorder test's propertyMatchers.
+    // so we force a predictable result by just using the "Record" test's propertyMatchers.
     expect(callBUnloaded_Recorder.propertyMatchers).toMatchSnapshot();
   });
 
   it('callUnmappedMethod_Recorder', async () => {
     // Snapshots must match the recorded output and this call fails in "play" mode
-    // so we force a predictable result by just using the recorder test's propertyMatchers.
+    // so we force a predictable result by just using the "Record" test's propertyMatchers.
     expect(callUnmappedMethod_Recorder.propertyMatchers).toMatchSnapshot();
   });
 });
