@@ -320,7 +320,6 @@ export const QuoteSwapResponse = Type.Object(
     minAmountOut: Type.Number(),
     maxAmountIn: Type.Number(),
     priceImpactPct: Type.Number(),
-    activeBinId: Type.Number(),
   },
   { $id: 'ClmmQuoteSwapResponse' },
 );
@@ -366,7 +365,6 @@ export const ExecuteSwapResponse = Type.Object(
         fee: Type.Number(),
         baseTokenBalanceChange: Type.Number(),
         quoteTokenBalanceChange: Type.Number(),
-        activeBinId: Type.Number(),
       }),
     ),
   },

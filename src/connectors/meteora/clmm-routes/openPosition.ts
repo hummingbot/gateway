@@ -1,6 +1,5 @@
-import { StrategyType } from '@meteora-ag/dlmm';
 import { DecimalUtil } from '@orca-so/common-sdk';
-import { Type, Static } from '@sinclair/typebox';
+import { Static } from '@sinclair/typebox';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
@@ -37,8 +36,6 @@ async function openPosition(
   quoteTokenAmount: number | undefined,
   slippagePct?: number,
   strategyType?: number,
-  priorityFeePerCU?: number,
-  computeUnits?: number,
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
@@ -156,15 +153,10 @@ async function openPosition(
     `Opening position in pool ${poolAddress} with price range ${lowerPrice.toFixed(4)} - ${upperPrice.toFixed(4)} ${tokenYSymbol}/${tokenXSymbol}`,
   );
 
-  // Use provided compute units or default
-  const finalComputeUnits = computeUnits || 1_000_000;
-
-  const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(
-    createPositionTx,
-    [wallet, newImbalancePosition],
-    finalComputeUnits,
-    priorityFeePerCU,
-  );
+  const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(createPositionTx, [
+    wallet,
+    newImbalancePosition,
+  ]);
 
   const { balanceChanges, fee: extractedFee } = await solana.extractBalanceChangesAndFee(
     signature,
@@ -201,8 +193,6 @@ async function openPosition(
 }
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
-
   fastify.post<{
     Body: Static<typeof MeteoraClmmOpenPositionRequest>;
     Reply: OpenPositionResponseType;
@@ -230,8 +220,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           quoteTokenAmount,
           slippagePct,
           strategyType,
-          priorityFeePerCU,
-          computeUnits,
         } = request.body;
         const networkToUse = network;
 
@@ -246,8 +234,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           quoteTokenAmount,
           slippagePct,
           strategyType,
-          priorityFeePerCU,
-          computeUnits,
         );
       } catch (e) {
         logger.error(e);

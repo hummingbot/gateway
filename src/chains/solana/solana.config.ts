@@ -9,6 +9,7 @@ export interface SolanaNetworkConfig {
   confirmRetryInterval: number;
   confirmRetryCount: number;
   basePriorityFeePct: number;
+  minPriorityFeePerCU: number;
 }
 
 export interface SolanaChainConfig {
@@ -28,6 +29,7 @@ export function getSolanaNetworkConfig(network: string): SolanaNetworkConfig {
     confirmRetryInterval: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryInterval'),
     confirmRetryCount: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryCount'),
     basePriorityFeePct: ConfigManagerV2.getInstance().get(namespaceId + '.basePriorityFeePct'),
+    minPriorityFeePerCU: ConfigManagerV2.getInstance().get(namespaceId + '.minPriorityFeePerCU'),
   };
 }
 

@@ -3,12 +3,13 @@ import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { ExecuteSwapResponseType, ExecuteSwapResponse, ExecuteSwapRequestType } from '../../../schemas/clmm-schema';
+import { getSolanaChainConfig } from '../../../chains/solana/solana.config';
+import { ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Meteora } from '../meteora';
 import { MeteoraConfig } from '../meteora.config';
-import { MeteoraClmmExecuteSwapRequest } from '../schemas';
+import { MeteoraClmmExecuteSwapRequest, MeteoraClmmExecuteSwapRequestType } from '../schemas';
 
 import { getRawSwapQuote } from './quoteSwap';
 
@@ -22,8 +23,6 @@ async function executeSwap(
   side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number,
-  priorityFeePerCU?: number,
-  computeUnits?: number,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
@@ -69,104 +68,53 @@ async function executeSwap(
           binArraysPubkey: (swapQuote as SwapQuote).binArraysPubkey,
         });
 
-  // Use provided compute units or default
-  const finalComputeUnits = computeUnits || 150000;
+  // Simulate transaction with proper error handling
+  await solana.simulateWithErrorHandling(swapTx, fastify);
 
-  // Note: Meteora SDK doesn't support custom compute budget configuration in swap methods
-  // The priority fee will be handled by Solana's sendAndConfirmTransaction method internally
-  // For now, we'll use the default behavior and document this limitation
+  // Send and confirm transaction
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(swapTx);
 
-  logger.info(
-    `Executing swap with ${finalComputeUnits} compute units${priorityFeePerCU ? ` and ${priorityFeePerCU} microlamports/CU priority fee` : ''}`,
-  );
-
-  // Use the existing method - it will use estimateGas internally for fee calculation
-  const { signature, fee } = await solana.sendAndConfirmTransaction(
-    swapTx,
-    [wallet],
-    finalComputeUnits,
-    priorityFeePerCU,
-  );
-
-  const tokenXInfo = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
-  const tokenYInfo = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
-
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
-    tokenXInfo.address,
-    tokenYInfo.address,
-  ]);
-
-  const baseTokenBalanceChange = balanceChanges[0];
-  const quoteTokenBalanceChange = balanceChanges[1];
-
-  // Determine total amounts swapped
-  const amountIn = side === 'SELL' ? Math.abs(baseTokenBalanceChange) : Math.abs(quoteTokenBalanceChange);
-  const amountOut = side === 'SELL' ? Math.abs(quoteTokenBalanceChange) : Math.abs(baseTokenBalanceChange);
-
-  logger.info(
-    `Swap executed successfully: ${amountIn.toFixed(4)} ${inputToken.symbol} -> ${amountOut.toFixed(4)} ${outputToken.symbol}`,
-  );
-
-  return {
+  // Handle confirmation status
+  const result = await solana.handleConfirmation(
     signature,
-    status: 1, // CONFIRMED
-    data: {
-      tokenIn: inputToken.address,
-      tokenOut: outputToken.address,
-      amountIn,
-      amountOut,
-      fee,
-      baseTokenBalanceChange,
-      quoteTokenBalanceChange,
-      activeBinId: 0, // Meteora doesn't provide this in the same way
-    },
-  };
+    confirmed,
+    txData,
+    inputToken.address,
+    outputToken.address,
+    wallet.publicKey.toBase58(),
+    side,
+  );
+
+  if (result.status === 1) {
+    logger.info(
+      `Swap executed successfully: ${result.data?.amountIn.toFixed(4)} ${inputToken.symbol} -> ${result.data?.amountOut.toFixed(4)} ${outputToken.symbol}`,
+    );
+  }
+
+  return result as ExecuteSwapResponseType;
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
-
   fastify.post<{
-    Body: ExecuteSwapRequestType;
+    Body: MeteoraClmmExecuteSwapRequestType;
     Reply: ExecuteSwapResponseType;
   }>(
     '/execute-swap',
     {
       schema: {
-        description: 'Execute a token swap on Meteora',
+        description: 'Execute a token swap on Meteora DLMM',
         tags: ['/connector/meteora'],
-        body: {
-          ...MeteoraClmmExecuteSwapRequest,
-          properties: {
-            ...MeteoraClmmExecuteSwapRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.01] },
-            side: { type: 'string', enum: ['BUY', 'SELL'] },
-            poolAddress: { type: 'string', examples: [''] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        body: MeteoraClmmExecuteSwapRequest,
         response: { 200: ExecuteSwapResponse },
       },
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          poolAddress,
-          slippagePct,
-          priorityFeePerCU,
-          computeUnits,
-        } = request.body as typeof MeteoraClmmExecuteSwapRequest._type;
-        const networkUsed = network;
+        const { network, walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body;
+
+        // Use defaults if not provided
+        const networkUsed = network || getSolanaChainConfig().defaultNetwork;
+        const walletAddressUsed = walletAddress || getSolanaChainConfig().defaultWallet;
 
         let poolAddressUsed = poolAddress;
 
@@ -204,20 +152,18 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           poolAddressUsed = pool.address;
         }
-        logger.info(`Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddress}`);
+        logger.info(`Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddressUsed}`);
 
         return await executeSwap(
           fastify,
           networkUsed,
-          walletAddress,
+          walletAddressUsed,
           baseToken,
           quoteToken,
           amount,
           side as 'BUY' | 'SELL',
           poolAddressUsed,
           slippagePct,
-          priorityFeePerCU,
-          computeUnits,
         );
       } catch (e) {
         if (e.statusCode) return e;

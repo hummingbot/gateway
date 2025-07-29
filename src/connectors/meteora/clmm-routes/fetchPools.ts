@@ -2,9 +2,10 @@ import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { PoolInfo, PoolInfoSchema, FetchPoolsRequest, FetchPoolsRequestType } from '../../../schemas/clmm-schema';
+import { PoolInfo, PoolInfoSchema, FetchPoolsRequestType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
+import { MeteoraClmmFetchPoolsRequest } from '../schemas';
 // Using Fastify's native error handling
 
 export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
@@ -15,15 +16,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
     schema: {
       description: 'Fetch info about Meteora pools',
       tags: ['/connector/meteora'],
-      querystring: {
-        ...FetchPoolsRequest,
-        properties: {
-          network: { type: 'string', default: 'mainnet-beta' },
-          limit: { type: 'number', minimum: 1, default: 10 },
-          tokenA: { type: 'string', examples: ['SOL'] },
-          tokenB: { type: 'string', examples: ['USDC'] },
-        },
-      },
+      querystring: MeteoraClmmFetchPoolsRequest,
       response: {
         200: Type.Array(PoolInfoSchema),
       },

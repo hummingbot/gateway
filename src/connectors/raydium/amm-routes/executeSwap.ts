@@ -2,7 +2,7 @@ import { VersionedTransaction } from '@solana/web3.js';
 import BN from 'bn.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { Solana, BASE_FEE } from '../../../chains/solana/solana';
+import { Solana } from '../../../chains/solana/solana';
 import { ExecuteSwapResponse, ExecuteSwapResponseType, ExecuteSwapRequestType } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
@@ -22,8 +22,6 @@ async function executeSwap(
   side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number,
-  priorityFeePerCU?: number,
-  computeUnits?: number,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
@@ -57,18 +55,13 @@ async function executeSwap(
 
   logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
 
-  // Use provided compute units or default
-  const COMPUTE_UNITS = computeUnits || 300000;
+  // Use hardcoded compute units for AMM swaps
+  const COMPUTE_UNITS = 300000;
 
-  // Use provided priority fee per CU or estimate default
-  let finalPriorityFeePerCU: number;
-  if (priorityFeePerCU !== undefined) {
-    finalPriorityFeePerCU = priorityFeePerCU;
-  } else {
-    // Calculate default if not provided
-    const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-    finalPriorityFeePerCU = Math.floor((currentPriorityFee * 1e6) / COMPUTE_UNITS);
-  }
+  // Get priority fee from solana (returns lamports/CU)
+  const priorityFeeInLamports = await solana.estimateGasPrice();
+  // Convert lamports to microLamports (1 lamport = 1,000,000 microLamports)
+  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
   let transaction: VersionedTransaction;
 
   // Get transaction based on pool type
@@ -85,7 +78,7 @@ async function executeSwap(
         txVersion: raydium.txVersion,
         computeBudgetConfig: {
           units: COMPUTE_UNITS,
-          microLamports: finalPriorityFeePerCU,
+          microLamports: priorityFeePerCU,
         },
       })) as { transaction: VersionedTransaction });
     } else {
@@ -100,7 +93,7 @@ async function executeSwap(
         txVersion: raydium.txVersion,
         computeBudgetConfig: {
           units: COMPUTE_UNITS,
-          microLamports: finalPriorityFeePerCU,
+          microLamports: priorityFeePerCU,
         },
       })) as { transaction: VersionedTransaction });
     }
@@ -121,7 +114,7 @@ async function executeSwap(
         txVersion: raydium.txVersion,
         computeBudgetConfig: {
           units: COMPUTE_UNITS,
-          microLamports: finalPriorityFeePerCU,
+          microLamports: priorityFeePerCU,
         },
       })) as { transaction: VersionedTransaction });
     } else {
@@ -139,7 +132,7 @@ async function executeSwap(
         txVersion: raydium.txVersion,
         computeBudgetConfig: {
           units: COMPUTE_UNITS,
-          microLamports: finalPriorityFeePerCU,
+          microLamports: priorityFeePerCU,
         },
       })) as { transaction: VersionedTransaction });
     }
@@ -155,56 +148,29 @@ async function executeSwap(
     wallet,
   )) as VersionedTransaction;
 
-  await solana.simulateTransaction(transaction as VersionedTransaction);
+  // Simulate transaction with proper error handling
+  await solana.simulateWithErrorHandling(transaction as VersionedTransaction, fastify);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
-  // Return with status
-  if (confirmed && txData) {
-    // Transaction confirmed, return full data
-    const baseTokenInfo = await solana.getToken(poolInfo.baseTokenAddress);
-    const quoteTokenInfo = await solana.getToken(poolInfo.quoteTokenAddress);
+  // Handle confirmation status
+  const result = await solana.handleConfirmation(
+    signature,
+    confirmed,
+    txData,
+    inputToken.address,
+    outputToken.address,
+    walletAddress,
+    side,
+  );
 
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
-      baseTokenInfo.address,
-      quoteTokenInfo.address,
-    ]);
-
-    const baseTokenBalanceChange = balanceChanges[0];
-    const quoteTokenBalanceChange = balanceChanges[1];
-
+  if (result.status === 1) {
     logger.info(
-      `Swap executed successfully: ${Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`,
+      `Swap executed successfully: ${result.data?.amountIn.toFixed(4)} ${inputToken.symbol} -> ${result.data?.amountOut.toFixed(4)} ${outputToken.symbol}`,
     );
-
-    // Calculate actual amounts swapped based on side
-    const amountIn = Math.abs(side === 'SELL' ? baseTokenBalanceChange : quoteTokenBalanceChange);
-    const amountOut = Math.abs(side === 'SELL' ? quoteTokenBalanceChange : baseTokenBalanceChange);
-
-    // Determine token addresses for computed fields
-    const tokenIn = inputToken.address;
-    const tokenOut = outputToken.address;
-
-    return {
-      signature,
-      status: 1, // CONFIRMED
-      data: {
-        tokenIn,
-        tokenOut,
-        amountIn,
-        amountOut,
-        fee: txData.meta.fee / 1e9,
-        baseTokenBalanceChange,
-        quoteTokenBalanceChange,
-      },
-    };
-  } else {
-    // Transaction pending, return for Hummingbot to handle retry
-    return {
-      signature,
-      status: 0, // PENDING
-    };
   }
+
+  return result as ExecuteSwapResponseType;
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
@@ -238,18 +204,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          poolAddress,
-          slippagePct,
-          priorityFeePerCU,
-          computeUnits,
-        } = request.body as typeof RaydiumAmmExecuteSwapRequest._type;
+        const { network, walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } =
+          request.body as typeof RaydiumAmmExecuteSwapRequest._type;
         const networkToUse = network;
 
         // If no pool address provided, find default pool
@@ -298,8 +254,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           side as 'BUY' | 'SELL',
           poolAddressToUse,
           slippagePct,
-          priorityFeePerCU,
-          computeUnits,
         );
       } catch (e) {
         logger.error(e);

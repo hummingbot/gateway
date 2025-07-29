@@ -264,7 +264,6 @@ async function formatSwapQuote(
       maxAmountIn: quote.maxAmountIn,
       // CLMM-specific fields
       priceImpactPct,
-      activeBinId,
     };
   } catch (error) {
     logger.error(`Error formatting swap quote: ${error.message}`);

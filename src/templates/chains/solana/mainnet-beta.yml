@@ -16,3 +16,7 @@ confirmRetryCount: 10
 # Floor percentile of recent priority fee samples used to estimate gasPrice for a transaction
 # Use the Nth percentile of recent priority fees as the base fee (90 = 90th percentile)
 basePriorityFeePct: 90
+
+# Minimum priority fee per compute unit in lamports
+# This sets the floor for priority fees to ensure transactions are processed (default: 0.1 lamports/CU)
+minPriorityFeePerCU: 0.1

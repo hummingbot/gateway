@@ -1,20 +1,12 @@
 import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync } from 'fastify';
 
-import { Solana } from '../../../chains/solana/solana';
-import { getAvailableSolanaNetworks } from '../../../chains/solana/solana.utils';
-import {
-  PositionInfo,
-  PositionInfoSchema,
-  GetPositionInfoRequestType,
-  GetPositionInfoRequest,
-} from '../../../schemas/clmm-schema';
+import { PositionInfo, PositionInfoSchema, GetPositionInfoRequestType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
+import { MeteoraClmmGetPositionInfoRequest } from '../schemas';
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
-
   fastify.get<{
     Querystring: GetPositionInfoRequestType;
     Reply: PositionInfo;
@@ -24,14 +16,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get details for a specific Meteora position',
         tags: ['/connector/meteora'],
-        querystring: {
-          ...GetPositionInfoRequest,
-          properties: {
-            network: { type: 'string', examples: getAvailableSolanaNetworks() },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            positionAddress: { type: 'string' },
-          },
-        },
+        querystring: MeteoraClmmGetPositionInfoRequest,
         response: {
           200: PositionInfoSchema,
         },

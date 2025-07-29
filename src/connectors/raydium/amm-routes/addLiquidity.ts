@@ -13,7 +13,7 @@ import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { Solana, BASE_FEE } from '../../../chains/solana/solana';
+import { Solana } from '../../../chains/solana/solana';
 import {
   AddLiquidityRequestType,
   AddLiquidityResponse,
@@ -113,8 +113,6 @@ async function addLiquidity(
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct?: number,
-  priorityFeePerCU?: number,
-  computeUnits?: number,
 ): Promise<AddLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
@@ -163,19 +161,13 @@ async function addLiquidity(
   // Convert percentage to basis points (e.g., 1% = 100 basis points)
   const slippage = new Percent(Math.floor(slippageValue * 100), 10000);
 
-  // Use provided compute units or a default value
-  const computeUnitsToUse = computeUnits || 400000;
+  // Use hardcoded compute units for AMM add liquidity
+  const COMPUTE_UNITS = 400000;
 
-  // Calculate priority fee
-  let priorityFeePerCUMicroLamports: number;
-  if (priorityFeePerCU !== undefined) {
-    // Convert from lamports per CU to microlamports per CU
-    priorityFeePerCUMicroLamports = Math.floor(priorityFeePerCU * 1000);
-  } else {
-    // Default priority fee calculation
-    const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-    priorityFeePerCUMicroLamports = Math.floor((currentPriorityFee * 1e6) / computeUnitsToUse);
-  }
+  // Get priority fee from solana (returns lamports/CU)
+  const priorityFeeInLamports = await solana.estimateGasPrice();
+  // Convert lamports to microLamports (1 lamport = 1,000,000 microLamports)
+  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
 
   const transaction = await createAddLiquidityTransaction(
     raydium,
@@ -187,8 +179,8 @@ async function addLiquidity(
     baseLimited,
     slippage,
     {
-      units: computeUnitsToUse,
-      microLamports: priorityFeePerCUMicroLamports,
+      units: COMPUTE_UNITS,
+      microLamports: priorityFeePerCU,
     },
     baseTokenAmount,
     quoteTokenAmount,
@@ -217,7 +209,7 @@ async function addLiquidity(
     )) as Transaction;
   }
 
-  await solana.simulateTransaction(signedTransaction);
+  await solana.simulateWithErrorHandling(signedTransaction, _fastify);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(signedTransaction);
   if (confirmed && txData) {
@@ -268,16 +260,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-          priorityFeePerCU,
-          computeUnits,
-        } = request.body;
+        const { network, walletAddress, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.body;
 
         return await addLiquidity(
           fastify,
@@ -287,8 +270,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
-          priorityFeePerCU,
-          computeUnits,
         );
       } catch (e) {
         logger.error(e);

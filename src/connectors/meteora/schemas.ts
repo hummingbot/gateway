@@ -13,7 +13,12 @@ const solanaChainConfig = getSolanaChainConfig();
 // Constants for examples
 const BASE_TOKEN = 'SOL';
 const QUOTE_TOKEN = 'USDC';
-const SWAP_AMOUNT = 0.1;
+const SWAP_AMOUNT = 0.01;
+const BASE_TOKEN_AMOUNT = 0.01;
+const QUOTE_TOKEN_AMOUNT = 2;
+const LOWER_PRICE_BOUND = 100;
+const UPPER_PRICE_BOUND = 300;
+const CLMM_POOL_ADDRESS_EXAMPLE = '2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3';
 
 // Meteora Router-specific extensions for quote-swap
 export const MeteoraQuoteSwapRequest = Type.Intersect([
@@ -24,7 +29,6 @@ export const MeteoraQuoteSwapRequest = Type.Intersect([
         description: 'Solana network to use',
         default: solanaChainConfig.defaultNetwork,
         enum: [...MeteoraConfig.networks],
-        examples: [...MeteoraConfig.networks],
       }),
     ),
     poolAddress: Type.Optional(Type.String()),
@@ -52,9 +56,34 @@ export const MeteoraClmmQuoteSwapRequest = Type.Intersect([
         description: 'Solana network to use',
         default: solanaChainConfig.defaultNetwork,
         enum: [...MeteoraConfig.networks],
-        examples: [...MeteoraConfig.networks],
       }),
     ),
+    poolAddress: Type.Optional(
+      Type.String({
+        description: 'Meteora DLMM pool address (optional - can be looked up from baseToken and quoteToken)',
+        examples: [CLMM_POOL_ADDRESS_EXAMPLE],
+      }),
+    ),
+    baseToken: Type.String({
+      description: 'Token to determine swap direction',
+      examples: [BASE_TOKEN],
+    }),
+    quoteToken: Type.Optional(
+      Type.String({
+        description: 'The other token in the pair (optional - required if poolAddress not provided)',
+        examples: [QUOTE_TOKEN],
+      }),
+    ),
+    amount: Type.Number({
+      description: 'Amount to swap',
+      examples: [SWAP_AMOUNT],
+    }),
+    side: Type.String({
+      description: 'Trade direction',
+      enum: ['BUY', 'SELL'],
+      default: 'SELL',
+      examples: ['SELL'],
+    }),
     slippagePct: Type.Optional(
       Type.Number({
         minimum: 0,
@@ -67,6 +96,9 @@ export const MeteoraClmmQuoteSwapRequest = Type.Intersect([
   }),
 ]);
 
+// Export the type for QuoteSwapRequest
+export type MeteoraClmmQuoteSwapRequestType = Static<typeof MeteoraClmmQuoteSwapRequest>;
+
 export const MeteoraClmmExecuteSwapRequest = Type.Intersect([
   Type.Omit(CLMMBase.ExecuteSwapRequest, ['network', 'walletAddress', 'slippagePct']),
   Type.Object({
@@ -75,7 +107,6 @@ export const MeteoraClmmExecuteSwapRequest = Type.Intersect([
         description: 'Solana network to use',
         default: solanaChainConfig.defaultNetwork,
         enum: [...MeteoraConfig.networks],
-        examples: [...MeteoraConfig.networks],
       }),
     ),
     walletAddress: Type.Optional(
@@ -85,6 +116,32 @@ export const MeteoraClmmExecuteSwapRequest = Type.Intersect([
         examples: [solanaChainConfig.defaultWallet],
       }),
     ),
+    poolAddress: Type.Optional(
+      Type.String({
+        description: 'Meteora DLMM pool address (optional - can be looked up from baseToken and quoteToken)',
+        examples: [CLMM_POOL_ADDRESS_EXAMPLE],
+      }),
+    ),
+    baseToken: Type.String({
+      description: 'Base token symbol or address',
+      examples: [BASE_TOKEN],
+    }),
+    quoteToken: Type.Optional(
+      Type.String({
+        description: 'Quote token symbol or address (optional - required if poolAddress not provided)',
+        examples: [QUOTE_TOKEN],
+      }),
+    ),
+    amount: Type.Number({
+      description: 'Amount to swap',
+      examples: [SWAP_AMOUNT],
+    }),
+    side: Type.String({
+      description: 'Trade direction',
+      enum: ['BUY', 'SELL'],
+      default: 'SELL',
+      examples: ['SELL'],
+    }),
     slippagePct: Type.Optional(
       Type.Number({
         minimum: 0,
@@ -94,10 +151,11 @@ export const MeteoraClmmExecuteSwapRequest = Type.Intersect([
         examples: [MeteoraConfig.config.slippagePct],
       }),
     ),
-    priorityFeePerCU: Type.Optional(Type.Number({ description: 'Priority fee per compute unit' })),
-    computeUnits: Type.Optional(Type.Number({ description: 'Compute units for transaction' })),
   }),
 ]);
+
+// Export the type for ExecuteSwapRequest
+export type MeteoraClmmExecuteSwapRequestType = Static<typeof MeteoraClmmExecuteSwapRequest>;
 
 // Meteora CLMM Open Position Request
 export const MeteoraClmmOpenPositionRequest = Type.Intersect([
@@ -108,7 +166,6 @@ export const MeteoraClmmOpenPositionRequest = Type.Intersect([
         description: 'Solana network to use',
         default: solanaChainConfig.defaultNetwork,
         enum: [...MeteoraConfig.networks],
-        examples: [...MeteoraConfig.networks],
       }),
     ),
     walletAddress: Type.Optional(
@@ -116,6 +173,30 @@ export const MeteoraClmmOpenPositionRequest = Type.Intersect([
         description: 'Solana wallet address that will open the position',
         default: solanaChainConfig.defaultWallet,
         examples: [solanaChainConfig.defaultWallet],
+      }),
+    ),
+    lowerPrice: Type.Number({
+      description: 'Lower price bound for the position',
+      examples: [LOWER_PRICE_BOUND],
+    }),
+    upperPrice: Type.Number({
+      description: 'Upper price bound for the position',
+      examples: [UPPER_PRICE_BOUND],
+    }),
+    poolAddress: Type.String({
+      description: 'Meteora DLMM pool address',
+      examples: [CLMM_POOL_ADDRESS_EXAMPLE],
+    }),
+    baseTokenAmount: Type.Optional(
+      Type.Number({
+        description: 'Amount of base token to deposit',
+        examples: [BASE_TOKEN_AMOUNT],
+      }),
+    ),
+    quoteTokenAmount: Type.Optional(
+      Type.Number({
+        description: 'Amount of quote token to deposit',
+        examples: [QUOTE_TOKEN_AMOUNT],
       }),
     ),
     slippagePct: Type.Optional(
@@ -127,8 +208,6 @@ export const MeteoraClmmOpenPositionRequest = Type.Intersect([
         examples: [MeteoraConfig.config.slippagePct],
       }),
     ),
-    priorityFeePerCU: Type.Optional(Type.Number({ description: 'Priority fee per compute unit' })),
-    computeUnits: Type.Optional(Type.Number({ description: 'Compute units for transaction' })),
     strategyType: Type.Optional(
       Type.Number({
         description: 'Strategy type for the position',
@@ -148,7 +227,6 @@ export const MeteoraClmmAddLiquidityRequest = Type.Intersect([
         description: 'Solana network to use',
         default: solanaChainConfig.defaultNetwork,
         enum: [...MeteoraConfig.networks],
-        examples: [...MeteoraConfig.networks],
       }),
     ),
     walletAddress: Type.Optional(
@@ -167,8 +245,6 @@ export const MeteoraClmmAddLiquidityRequest = Type.Intersect([
         examples: [MeteoraConfig.config.slippagePct],
       }),
     ),
-    priorityFeePerCU: Type.Optional(Type.Number({ description: 'Priority fee per compute unit' })),
-    computeUnits: Type.Optional(Type.Number({ description: 'Compute units for transaction' })),
     strategyType: Type.Optional(
       Type.Number({
         description: 'Strategy type for the position',
@@ -188,7 +264,6 @@ export const MeteoraClmmRemoveLiquidityRequest = Type.Intersect([
         description: 'Solana network to use',
         default: solanaChainConfig.defaultNetwork,
         enum: [...MeteoraConfig.networks],
-        examples: [...MeteoraConfig.networks],
       }),
     ),
     walletAddress: Type.Optional(
@@ -198,8 +273,6 @@ export const MeteoraClmmRemoveLiquidityRequest = Type.Intersect([
         examples: [solanaChainConfig.defaultWallet],
       }),
     ),
-    priorityFeePerCU: Type.Optional(Type.Number({ description: 'Priority fee per compute unit' })),
-    computeUnits: Type.Optional(Type.Number({ description: 'Compute units for transaction' })),
   }),
 ]);
 
@@ -212,7 +285,6 @@ export const MeteoraClmmClosePositionRequest = Type.Intersect([
         description: 'Solana network to use',
         default: solanaChainConfig.defaultNetwork,
         enum: [...MeteoraConfig.networks],
-        examples: [...MeteoraConfig.networks],
       }),
     ),
     walletAddress: Type.Optional(
@@ -222,8 +294,6 @@ export const MeteoraClmmClosePositionRequest = Type.Intersect([
         examples: [solanaChainConfig.defaultWallet],
       }),
     ),
-    priorityFeePerCU: Type.Optional(Type.Number({ description: 'Priority fee per compute unit' })),
-    computeUnits: Type.Optional(Type.Number({ description: 'Compute units for transaction' })),
   }),
 ]);
 
@@ -236,7 +306,6 @@ export const MeteoraClmmCollectFeesRequest = Type.Intersect([
         description: 'Solana network to use',
         default: solanaChainConfig.defaultNetwork,
         enum: [...MeteoraConfig.networks],
-        examples: [...MeteoraConfig.networks],
       }),
     ),
     walletAddress: Type.Optional(
@@ -246,7 +315,107 @@ export const MeteoraClmmCollectFeesRequest = Type.Intersect([
         examples: [solanaChainConfig.defaultWallet],
       }),
     ),
-    priorityFeePerCU: Type.Optional(Type.Number({ description: 'Priority fee per compute unit' })),
-    computeUnits: Type.Optional(Type.Number({ description: 'Compute units for transaction' })),
+  }),
+]);
+
+// Meteora CLMM Fetch Pools Request
+export const MeteoraClmmFetchPoolsRequest = Type.Intersect([
+  Type.Omit(CLMMBase.FetchPoolsRequest, ['network']),
+  Type.Object({
+    network: Type.Optional(
+      Type.String({
+        description: 'Solana network to use',
+        default: solanaChainConfig.defaultNetwork,
+        enum: [...MeteoraConfig.networks],
+      }),
+    ),
+    limit: Type.Optional(
+      Type.Number({
+        minimum: 1,
+        default: 10,
+        description: 'Maximum number of pools to return',
+        examples: [10],
+      }),
+    ),
+    tokenA: Type.Optional(
+      Type.String({
+        description: 'First token symbol or address',
+        examples: [BASE_TOKEN],
+      }),
+    ),
+    tokenB: Type.Optional(
+      Type.String({
+        description: 'Second token symbol or address',
+        examples: [QUOTE_TOKEN],
+      }),
+    ),
+  }),
+]);
+
+// Meteora CLMM Get Pool Info Request
+export const MeteoraClmmGetPoolInfoRequest = Type.Intersect([
+  Type.Omit(CLMMBase.GetPoolInfoRequest, ['network']),
+  Type.Object({
+    network: Type.Optional(
+      Type.String({
+        description: 'Solana network to use',
+        default: solanaChainConfig.defaultNetwork,
+        enum: [...MeteoraConfig.networks],
+      }),
+    ),
+    poolAddress: Type.String({
+      description: 'Meteora DLMM pool address',
+      examples: [CLMM_POOL_ADDRESS_EXAMPLE],
+    }),
+  }),
+]);
+
+// Meteora CLMM Get Position Info Request
+export const MeteoraClmmGetPositionInfoRequest = Type.Intersect([
+  Type.Omit(CLMMBase.GetPositionInfoRequest, ['network', 'walletAddress']),
+  Type.Object({
+    network: Type.Optional(
+      Type.String({
+        description: 'Solana network to use',
+        default: solanaChainConfig.defaultNetwork,
+        enum: [...MeteoraConfig.networks],
+      }),
+    ),
+    positionAddress: Type.String({
+      description: 'Position NFT address',
+      examples: ['<sample-position-address>'],
+    }),
+    walletAddress: Type.Optional(
+      Type.String({
+        description: 'Solana wallet address',
+        default: solanaChainConfig.defaultWallet,
+        examples: [solanaChainConfig.defaultWallet],
+      }),
+    ),
+  }),
+]);
+
+// Meteora CLMM Get Positions Owned Request
+export const MeteoraClmmGetPositionsOwnedRequest = Type.Intersect([
+  Type.Omit(CLMMBase.GetPositionsOwnedRequest, ['network', 'walletAddress', 'poolAddress']),
+  Type.Object({
+    network: Type.Optional(
+      Type.String({
+        description: 'Solana network to use',
+        default: solanaChainConfig.defaultNetwork,
+        enum: [...MeteoraConfig.networks],
+      }),
+    ),
+    walletAddress: Type.Optional(
+      Type.String({
+        description: 'Solana wallet address to check for positions',
+        default: solanaChainConfig.defaultWallet,
+        examples: [solanaChainConfig.defaultWallet],
+      }),
+    ),
+    poolAddress: Type.String({
+      description: 'Meteora DLMM pool address',
+      examples: [CLMM_POOL_ADDRESS_EXAMPLE],
+    }),
   }),
 ]);

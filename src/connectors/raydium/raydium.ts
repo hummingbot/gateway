@@ -149,7 +149,6 @@ export class Raydium {
   async getClmmPoolInfo(poolAddress: string): Promise<ClmmPoolInfo | null> {
     try {
       const rawPool = await this.getClmmPoolfromRPC(poolAddress);
-      console.log('rawPool', rawPool);
 
       // Fetch AMM config account data
       let ammConfigData;
@@ -200,7 +199,6 @@ export class Raydium {
     }
 
     const position = PositionInfoLayout.decode(positionAccount.data);
-    console.log('position', position);
     return position;
   }
 
@@ -209,8 +207,6 @@ export class Raydium {
       const position = await this.getClmmPosition(positionAddress);
       const poolIdString = position.poolId.toBase58();
       const [poolInfo, poolKeys] = await this.getClmmPoolfromAPI(poolIdString);
-      console.log('poolInfo', poolInfo);
-      console.log('poolKeys', poolKeys);
 
       const epochInfo = await this.solana.connection.getEpochInfo();
 
@@ -276,7 +272,6 @@ export class Raydium {
         poolInfo = data.poolInfo as ApiV3PoolInfoStandardItem | ApiV3PoolInfoStandardItemCpmm;
         poolKeys = data.poolKeys as AmmV4Keys | AmmV5Keys;
       }
-      console.log('poolInfo', poolInfo);
 
       if (!poolInfo) {
         logger.error('Pool not found for address: ' + poolAddress);
@@ -309,7 +304,6 @@ export class Raydium {
       let poolInfo: InternalAmmPoolInfo;
       if (poolType === 'amm') {
         const rawPool = await this.raydiumSDK.liquidity.getRpcPoolInfos([poolAddress]);
-        console.log('ammPoolInfo', rawPool);
 
         poolInfo = {
           address: poolAddress,
@@ -324,7 +318,6 @@ export class Raydium {
         return poolInfo;
       } else if (poolType === 'cpmm') {
         const rawPool = await this.raydiumSDK.cpmm.getRpcPoolInfos([poolAddress]);
-        console.log('cpmmPoolInfo', rawPool);
 
         poolInfo = {
           address: poolAddress,

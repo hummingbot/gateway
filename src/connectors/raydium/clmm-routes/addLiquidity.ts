@@ -21,8 +21,6 @@ async function addLiquidity(
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct?: number,
-  priorityFeePerCU?: number,
-  computeUnits?: number,
 ): Promise<AddLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
@@ -53,11 +51,13 @@ async function addLiquidity(
   console.log('quotePositionResponse', quotePositionResponse);
   logger.info('Adding liquidity to Raydium CLMM position...');
 
-  // Use provided compute units or default
-  const COMPUTE_UNITS = computeUnits || 600000;
+  // Use hardcoded compute units for add liquidity
+  const COMPUTE_UNITS = 600000;
 
-  // Use provided priority fee or default to 0
-  const finalPriorityFeePerCU = priorityFeePerCU || 0;
+  // Get priority fee from solana (returns lamports/CU)
+  const priorityFeeInLamports = await solana.estimateGasPrice();
+  // Convert lamports to microLamports (1 lamport = 1,000,000 microLamports)
+  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
 
   let { transaction } = await raydium.raydiumSDK.clmm.increasePositionFromBase({
     poolInfo,
@@ -73,7 +73,7 @@ async function addLiquidity(
     txVersion: TxVersion.V0,
     computeBudgetConfig: {
       units: COMPUTE_UNITS,
-      microLamports: finalPriorityFeePerCU,
+      microLamports: priorityFeePerCU,
     },
   });
 
@@ -84,7 +84,7 @@ async function addLiquidity(
     isHardwareWallet,
     wallet,
   )) as VersionedTransaction;
-  await solana.simulateTransaction(transaction);
+  await solana.simulateWithErrorHandling(transaction, _fastify);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
@@ -154,16 +154,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-          priorityFeePerCU,
-          computeUnits,
-        } = request.body;
+        const { network, walletAddress, positionAddress, baseTokenAmount, quoteTokenAmount, slippagePct } =
+          request.body;
 
         return await addLiquidity(
           fastify,
@@ -173,8 +165,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
-          priorityFeePerCU,
-          computeUnits,
         );
       } catch (e) {
         logger.error(e);

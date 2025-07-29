@@ -11,7 +11,7 @@ import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { Solana, BASE_FEE } from '../../../chains/solana/solana';
+import { Solana } from '../../../chains/solana/solana';
 import {
   RemoveLiquidityRequestType,
   RemoveLiquidityResponse,
@@ -143,8 +143,6 @@ async function removeLiquidity(
   walletAddress: string,
   poolAddress: string,
   percentageToRemove: number,
-  priorityFeePerCU?: number,
-  computeUnits?: number,
 ): Promise<RemoveLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
@@ -172,21 +170,13 @@ async function removeLiquidity(
   );
 
   logger.info(`Removing ${percentageToRemove.toFixed(4)}% liquidity from pool ${poolAddress}...`);
-  const DEFAULT_COMPUTE_UNITS = 600000;
+  // Use hardcoded compute units for AMM remove liquidity
+  const COMPUTE_UNITS = 600000;
 
-  // Use provided compute units or default
-  const computeUnitsToUse = computeUnits || DEFAULT_COMPUTE_UNITS;
-
-  // Calculate priority fee
-  let priorityFeePerCUMicroLamports: number;
-  if (priorityFeePerCU !== undefined) {
-    // Convert from lamports per CU to microlamports per CU
-    priorityFeePerCUMicroLamports = Math.floor(priorityFeePerCU * 1000);
-  } else {
-    // Default priority fee calculation
-    const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-    priorityFeePerCUMicroLamports = Math.floor((currentPriorityFee * 1e6) / computeUnitsToUse);
-  }
+  // Get priority fee from solana (returns lamports/CU)
+  const priorityFeeInLamports = await solana.estimateGasPrice();
+  // Convert lamports to microLamports (1 lamport = 1,000,000 microLamports)
+  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
 
   const transaction = await createRemoveLiquidityTransaction(
     raydium,
@@ -195,8 +185,8 @@ async function removeLiquidity(
     poolKeys,
     lpAmountToRemove,
     {
-      units: computeUnitsToUse,
-      microLamports: priorityFeePerCUMicroLamports,
+      units: COMPUTE_UNITS,
+      microLamports: priorityFeePerCU,
     },
   );
 
@@ -223,7 +213,7 @@ async function removeLiquidity(
     )) as Transaction;
   }
 
-  await solana.simulateTransaction(signedTransaction);
+  await solana.simulateWithErrorHandling(signedTransaction, _fastify);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(signedTransaction);
   if (confirmed && txData) {
@@ -279,18 +269,9 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, poolAddress, percentageToRemove, priorityFeePerCU, computeUnits } =
-          request.body;
+        const { network, walletAddress, poolAddress, percentageToRemove } = request.body;
 
-        return await removeLiquidity(
-          fastify,
-          network,
-          walletAddress,
-          poolAddress,
-          percentageToRemove,
-          priorityFeePerCU,
-          computeUnits,
-        );
+        return await removeLiquidity(fastify, network, walletAddress, poolAddress, percentageToRemove);
       } catch (e) {
         logger.error(e);
         throw fastify.httpErrors.internalServerError('Internal server error');

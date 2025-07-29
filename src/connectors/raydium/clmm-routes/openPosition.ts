@@ -5,7 +5,7 @@ import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { Solana, BASE_FEE } from '../../../chains/solana/solana';
+import { Solana } from '../../../chains/solana/solana';
 import { OpenPositionResponse, OpenPositionRequestType, OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
@@ -25,8 +25,6 @@ async function openPosition(
   baseTokenSymbol?: string,
   quoteTokenSymbol?: string,
   slippagePct?: number,
-  priorityFeePerCU?: number,
-  computeUnits?: number,
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
@@ -87,18 +85,14 @@ async function openPosition(
 
   logger.info('Opening Raydium CLMM position...');
 
-  // Use provided compute units or default
-  const COMPUTE_UNITS = computeUnits || 500000;
+  // Use hardcoded compute units for open position
+  const COMPUTE_UNITS = 500000;
 
-  // Use provided priority fee per CU or estimate default
-  let finalPriorityFeePerCU: number;
-  if (priorityFeePerCU !== undefined) {
-    finalPriorityFeePerCU = priorityFeePerCU;
-  } else {
-    // Calculate default if not provided
-    const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-    finalPriorityFeePerCU = Math.floor((currentPriorityFee * 1e6) / COMPUTE_UNITS);
-  }
+  // Get priority fee from solana (returns lamports/CU)
+  const priorityFeeInLamports = await solana.estimateGasPrice();
+  // Convert lamports to microLamports (1 lamport = 1,000,000 microLamports)
+  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
+
   const { transaction: txn, extInfo } = await raydium.raydiumSDK.clmm.openPositionFromBase({
     poolInfo,
     poolKeys,
@@ -115,7 +109,7 @@ async function openPosition(
     txVersion: TxVersion.V0,
     computeBudgetConfig: {
       units: COMPUTE_UNITS,
-      microLamports: finalPriorityFeePerCU,
+      microLamports: priorityFeePerCU,
     },
   });
 
@@ -126,7 +120,7 @@ async function openPosition(
     isHardwareWallet,
     wallet,
   )) as VersionedTransaction;
-  await solana.simulateTransaction(transaction);
+  await solana.simulateWithErrorHandling(transaction, _fastify);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
@@ -193,8 +187,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
-          priorityFeePerCU,
-          computeUnits,
         } = request.body;
         const networkToUse = network;
 
@@ -210,8 +202,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           undefined, // baseToken not needed anymore
           undefined, // quoteToken not needed anymore
           slippagePct,
-          priorityFeePerCU,
-          computeUnits,
         );
       } catch (e) {
         logger.error(e);

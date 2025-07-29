@@ -1,4 +1,4 @@
-import { Type } from '@sinclair/typebox';
+import { Type, Static } from '@sinclair/typebox';
 
 import { getSolanaChainConfig } from '../../chains/solana/solana.config';
 
@@ -95,9 +95,13 @@ export const RaydiumAmmQuoteSwapRequest = Type.Object({
       maximum: 100,
       description: 'Maximum acceptable slippage percentage',
       default: RaydiumConfig.config.slippagePct,
+      examples: [RaydiumConfig.config.slippagePct],
     }),
   ),
 });
+
+// Export the type for ExecuteSwapRequest
+export type RaydiumClmmExecuteSwapRequestType = Static<typeof RaydiumClmmExecuteSwapRequest>;
 
 export const RaydiumAmmExecuteSwapRequest = Type.Object({
   walletAddress: Type.Optional(
@@ -134,8 +138,10 @@ export const RaydiumAmmExecuteSwapRequest = Type.Object({
     examples: [SWAP_AMOUNT],
   }),
   side: Type.String({
+    description: 'Trade direction',
     enum: ['BUY', 'SELL'],
     default: 'SELL',
+    examples: ['SELL'],
   }),
   slippagePct: Type.Optional(
     Type.Number({
@@ -143,19 +149,7 @@ export const RaydiumAmmExecuteSwapRequest = Type.Object({
       maximum: 100,
       description: 'Maximum acceptable slippage percentage',
       default: RaydiumConfig.config.slippagePct,
-    }),
-  ),
-  // Raydium-specific fee parameters for execution
-  priorityFeePerCU: Type.Optional(
-    Type.Number({
-      description: 'Priority fee per compute unit in lamports',
-      examples: [1],
-    }),
-  ),
-  computeUnits: Type.Optional(
-    Type.Number({
-      description: 'Max compute units for transaction',
-      examples: [300000],
+      examples: [RaydiumConfig.config.slippagePct],
     }),
   ),
 });
@@ -186,6 +180,7 @@ export const RaydiumAmmQuoteLiquidityRequest = Type.Object({
       maximum: 100,
       description: 'Maximum acceptable slippage percentage',
       default: RaydiumConfig.config.slippagePct,
+      examples: [RaydiumConfig.config.slippagePct],
     }),
   ),
 });
@@ -222,19 +217,7 @@ export const RaydiumAmmAddLiquidityRequest = Type.Object({
       maximum: 100,
       description: 'Maximum acceptable slippage percentage',
       default: RaydiumConfig.config.slippagePct,
-    }),
-  ),
-  // Raydium-specific fee parameters
-  priorityFeePerCU: Type.Optional(
-    Type.Number({
-      description: 'Priority fee per compute unit in lamports',
-      examples: [1],
-    }),
-  ),
-  computeUnits: Type.Optional(
-    Type.Number({
-      description: 'Max compute units for transaction',
-      examples: [300000],
+      examples: [RaydiumConfig.config.slippagePct],
     }),
   ),
 });
@@ -263,19 +246,6 @@ export const RaydiumAmmRemoveLiquidityRequest = Type.Object({
     description: 'Percentage of liquidity to remove',
     examples: [100],
   }),
-  // Raydium-specific fee parameters
-  priorityFeePerCU: Type.Optional(
-    Type.Number({
-      description: 'Priority fee per compute unit in lamports',
-      examples: [1],
-    }),
-  ),
-  computeUnits: Type.Optional(
-    Type.Number({
-      description: 'Max compute units for transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // ========================================
@@ -355,6 +325,7 @@ export const RaydiumClmmQuoteSwapRequest = Type.Object({
       maximum: 100,
       description: 'Maximum acceptable slippage percentage',
       default: RaydiumConfig.config.slippagePct,
+      examples: [RaydiumConfig.config.slippagePct],
     }),
   ),
 });
@@ -364,6 +335,7 @@ export const RaydiumClmmExecuteSwapRequest = Type.Object({
     Type.String({
       description: 'Solana wallet address',
       default: solanaChainConfig.defaultWallet,
+      examples: [solanaChainConfig.defaultWallet],
     }),
   ),
   network: Type.Optional(
@@ -394,8 +366,10 @@ export const RaydiumClmmExecuteSwapRequest = Type.Object({
     examples: [SWAP_AMOUNT],
   }),
   side: Type.String({
+    description: 'Trade direction',
     enum: ['BUY', 'SELL'],
     default: 'SELL',
+    examples: ['SELL'],
   }),
   slippagePct: Type.Optional(
     Type.Number({
@@ -403,19 +377,7 @@ export const RaydiumClmmExecuteSwapRequest = Type.Object({
       maximum: 100,
       description: 'Maximum acceptable slippage percentage',
       default: RaydiumConfig.config.slippagePct,
-    }),
-  ),
-  // Raydium-specific fee parameters
-  priorityFeePerCU: Type.Optional(
-    Type.Number({
-      description: 'Priority fee per compute unit in lamports',
-      examples: [1],
-    }),
-  ),
-  computeUnits: Type.Optional(
-    Type.Number({
-      description: 'Max compute units for transaction',
-      examples: [300000],
+      examples: [RaydiumConfig.config.slippagePct],
     }),
   ),
 });
@@ -468,19 +430,7 @@ export const RaydiumClmmOpenPositionRequest = Type.Object({
       maximum: 100,
       description: 'Maximum acceptable slippage percentage',
       default: RaydiumConfig.config.slippagePct,
-    }),
-  ),
-  // Raydium-specific fee parameters
-  priorityFeePerCU: Type.Optional(
-    Type.Number({
-      description: 'Priority fee per compute unit in lamports',
-      examples: [1],
-    }),
-  ),
-  computeUnits: Type.Optional(
-    Type.Number({
-      description: 'Max compute units for transaction',
-      examples: [300000],
+      examples: [RaydiumConfig.config.slippagePct],
     }),
   ),
 });
@@ -517,19 +467,7 @@ export const RaydiumClmmAddLiquidityRequest = Type.Object({
       maximum: 100,
       description: 'Maximum acceptable slippage percentage',
       default: RaydiumConfig.config.slippagePct,
-    }),
-  ),
-  // Raydium-specific fee parameters
-  priorityFeePerCU: Type.Optional(
-    Type.Number({
-      description: 'Priority fee per compute unit in lamports',
-      examples: [1],
-    }),
-  ),
-  computeUnits: Type.Optional(
-    Type.Number({
-      description: 'Max compute units for transaction',
-      examples: [300000],
+      examples: [RaydiumConfig.config.slippagePct],
     }),
   ),
 });
@@ -558,19 +496,6 @@ export const RaydiumClmmRemoveLiquidityRequest = Type.Object({
     description: 'Percentage of liquidity to remove',
     examples: [100],
   }),
-  // Raydium-specific fee parameters
-  priorityFeePerCU: Type.Optional(
-    Type.Number({
-      description: 'Priority fee per compute unit in lamports',
-      examples: [1],
-    }),
-  ),
-  computeUnits: Type.Optional(
-    Type.Number({
-      description: 'Max compute units for transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 export const RaydiumClmmClosePositionRequest = Type.Object({
@@ -591,19 +516,6 @@ export const RaydiumClmmClosePositionRequest = Type.Object({
     description: 'Position NFT address to close',
     examples: ['DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263'],
   }),
-  // Raydium-specific fee parameters
-  priorityFeePerCU: Type.Optional(
-    Type.Number({
-      description: 'Priority fee per compute unit in lamports',
-      examples: [1],
-    }),
-  ),
-  computeUnits: Type.Optional(
-    Type.Number({
-      description: 'Max compute units for transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 export const RaydiumClmmGetPositionsOwnedRequest = Type.Object({
@@ -664,6 +576,7 @@ export const RaydiumClmmQuotePositionRequest = Type.Object({
       maximum: 100,
       description: 'Maximum acceptable slippage percentage',
       default: RaydiumConfig.config.slippagePct,
+      examples: [RaydiumConfig.config.slippagePct],
     }),
   ),
 });

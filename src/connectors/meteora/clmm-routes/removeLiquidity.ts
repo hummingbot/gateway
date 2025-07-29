@@ -22,8 +22,6 @@ export async function removeLiquidity(
   walletAddress: string,
   positionAddress: string,
   percentageToRemove: number,
-  priorityFeePerCU?: number,
-  computeUnits?: number,
 ): Promise<RemoveLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
@@ -59,19 +57,8 @@ export async function removeLiquidity(
   if (Array.isArray(removeLiquidityTx)) {
     throw fastify.httpErrors.internalServerError('Unexpected array of transactions');
   }
-  // Use provided compute units or default
-  const finalComputeUnits = computeUnits || 1_000_000;
 
-  logger.info(
-    `Executing removeLiquidity with ${finalComputeUnits} compute units${priorityFeePerCU ? ` and ${priorityFeePerCU} lamports/CU priority fee` : ''}`,
-  );
-
-  const { signature, fee } = await solana.sendAndConfirmTransaction(
-    removeLiquidityTx,
-    [wallet],
-    finalComputeUnits,
-    priorityFeePerCU,
-  );
+  const { signature, fee } = await solana.sendAndConfirmTransaction(removeLiquidityTx, [wallet]);
 
   const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
     dlmmPool.tokenX.publicKey.toBase58(),
@@ -116,20 +103,11 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress, percentageToRemove, priorityFeePerCU, computeUnits } =
-          request.body;
+        const { network, walletAddress, positionAddress, percentageToRemove } = request.body;
 
         const networkToUse = network;
 
-        return await removeLiquidity(
-          fastify,
-          networkToUse,
-          walletAddress,
-          positionAddress,
-          percentageToRemove,
-          priorityFeePerCU,
-          computeUnits,
-        );
+        return await removeLiquidity(fastify, networkToUse, walletAddress, positionAddress, percentageToRemove);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

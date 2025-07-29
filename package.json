@@ -34,8 +34,7 @@
     "typecheck": "tsc --noEmit",
     "generate:openapi": "curl http://localhost:15888/docs/json -o openapi.json && echo 'OpenAPI spec saved to openapi.json'",
     "rebuild-bigint": "cd node_modules/bigint-buffer && pnpm run rebuild",
-    "prepare": "pnpm husky",
-    "postinstall": "node scripts/postinstall.js"
+    "prepare": "pnpm husky"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.29.0",

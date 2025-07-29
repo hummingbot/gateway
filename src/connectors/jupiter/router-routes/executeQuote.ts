@@ -67,56 +67,25 @@ export async function executeQuote(
   // Send and confirm transaction using Solana's method
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
-  // Return with status
-  if (confirmed && txData) {
-    // Remove quote from cache only after successful execution (confirmed)
+  // Handle confirmation status
+  const result = await solana.handleConfirmation(
+    signature,
+    confirmed,
+    txData,
+    inputToken.address,
+    outputToken.address,
+    walletAddress,
+  );
+
+  // Remove quote from cache only after successful execution (confirmed)
+  if (result.status === 1) {
     quoteCache.delete(quoteId);
-
-    // Transaction confirmed, return full data
-    const { balanceChanges, fee } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
-      inputToken.address,
-      outputToken.address,
-    ]);
-
-    const inputTokenBalanceChange = balanceChanges[0];
-    const outputTokenBalanceChange = balanceChanges[1];
-
-    // Calculate actual amounts swapped
-    const amountIn = Math.abs(inputTokenBalanceChange);
-    const amountOut = Math.abs(outputTokenBalanceChange);
-
-    // For router quotes, we don't have side information
-    // So we return the raw balance changes
-    const baseTokenBalanceChange = inputTokenBalanceChange;
-    const quoteTokenBalanceChange = outputTokenBalanceChange;
-
     logger.info(
-      `Swap executed successfully: ${amountIn.toFixed(4)} ${inputToken.symbol} -> ${amountOut.toFixed(4)} ${outputToken.symbol}`,
+      `Swap executed successfully: ${result.data?.amountIn.toFixed(4)} ${inputToken.symbol} -> ${result.data?.amountOut.toFixed(4)} ${outputToken.symbol}`,
     );
-
-    return {
-      signature,
-      status: 1, // CONFIRMED
-      data: {
-        tokenIn: inputToken.address,
-        tokenOut: outputToken.address,
-        amountIn,
-        amountOut,
-        fee,
-        baseTokenBalanceChange,
-        quoteTokenBalanceChange,
-      },
-    };
-  } else {
-    // Transaction pending, return for Hummingbot to handle retry
-    logger.warn(`Transaction ${signature} not confirmed. May need higher priority fee.`);
-
-    return {
-      signature,
-      status: 0, // PENDING
-      data: undefined, // No balance changes available for unconfirmed tx
-    };
   }
+
+  return result as SwapExecuteResponseType;
 }
 
 export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {

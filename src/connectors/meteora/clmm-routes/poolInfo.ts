@@ -1,14 +1,9 @@
 import { FastifyPluginAsync } from 'fastify';
 
-import { getAvailableSolanaNetworks } from '../../../chains/solana/solana.utils';
-import {
-  MeteoraPoolInfo,
-  MeteoraPoolInfoSchema,
-  GetPoolInfoRequestType,
-  GetPoolInfoRequest,
-} from '../../../schemas/clmm-schema';
+import { MeteoraPoolInfo, MeteoraPoolInfoSchema, GetPoolInfoRequestType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
+import { MeteoraClmmGetPoolInfoRequest } from '../schemas';
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -20,16 +15,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get pool information for a Meteora pool',
         tags: ['/connector/meteora'],
-        querystring: {
-          ...GetPoolInfoRequest,
-          properties: {
-            network: { type: 'string', examples: getAvailableSolanaNetworks() },
-            poolAddress: {
-              type: 'string',
-              examples: ['2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3'],
-            },
-          },
-        },
+        querystring: MeteoraClmmGetPoolInfoRequest,
         response: {
           200: MeteoraPoolInfoSchema,
         },

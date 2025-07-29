@@ -889,8 +889,8 @@ export class Solana {
 
       if (!response.ok) {
         logger.error(`Failed to fetch priority fees, using minimum fee: ${response.status}`);
-        // Default to 0.1 lamports/CU as minimum
-        return 0.1;
+        // Use configured minimum, default to 0.1
+        return this.config.minPriorityFeePerCU || 0.1;
       }
 
       const data: PriorityFeeResponse = await response.json();
@@ -898,8 +898,8 @@ export class Solana {
       // Extract fees and filter out zeros
       const fees = data.result.map((item) => item.prioritizationFee).filter((fee) => fee > 0);
 
-      // Default to 0.1 lamports/CU as minimum
-      const minimumFeeLamports = 0.1;
+      // Use configured minimum, default to 0.1
+      const minimumFeeLamports = this.config.minPriorityFeePerCU || 0.1;
       if (fees.length === 0) {
         return minimumFeeLamports;
       }
@@ -919,7 +919,7 @@ export class Solana {
       const percentileIndex = Math.ceil((fees.length * this.config.basePriorityFeePct) / 100);
       let basePriorityFee = fees[percentileIndex - 1] / 1_000_000; // Convert to lamports
 
-      // Ensure fee is not below minimum (convert SOL to lamports)
+      // Ensure fee is not below minimum
       basePriorityFee = Math.max(basePriorityFee, minimumFeeLamports);
 
       logger.info(
@@ -934,7 +934,9 @@ export class Solana {
 
       return basePriorityFee;
     } catch (error: any) {
-      throw new Error(`Failed to fetch priority fees: ${error.message}`);
+      logger.error(`Failed to fetch priority fees: ${error.message}, using minimum fee`);
+      // Use configured minimum, default to 0.1
+      return this.config.minPriorityFeePerCU || 0.1;
     }
   }
 
@@ -1484,5 +1486,154 @@ export class Solana {
     }
 
     throw new Error(`Transaction ${result.signature} not confirmed after multiple attempts`);
+  }
+
+  /**
+   * Helper function to simulate transaction with proper error handling
+   * @param transaction Transaction to simulate
+   * @param fastify Fastify instance for error responses
+   * @returns Promise that resolves if simulation succeeds, throws descriptive error otherwise
+   */
+  public async simulateWithErrorHandling(transaction: VersionedTransaction | Transaction, fastify: any): Promise<void> {
+    try {
+      await this.simulateTransaction(transaction);
+    } catch (simulationError: any) {
+      // Parse the error to provide more descriptive messages
+      const errorMessage = simulationError.message || '';
+
+      // Check for specific Raydium/Meteora error codes
+      if (
+        errorMessage.includes('Error Code: TooLittleOutputReceived') ||
+        errorMessage.includes('custom program error: 0x1786')
+      ) {
+        throw fastify.httpErrors.badRequest(
+          `Swap failed: Slippage tolerance exceeded. The output amount would be less than your minimum. Try increasing slippage tolerance.`,
+        );
+      } else if (
+        errorMessage.includes('Error Code: TooMuchInputPaid') ||
+        errorMessage.includes('custom program error: 0x1787')
+      ) {
+        throw fastify.httpErrors.badRequest(
+          `Swap failed: Slippage tolerance exceeded. The input amount would be more than your maximum. Try increasing slippage tolerance.`,
+        );
+      } else if (errorMessage.includes('InsufficientFunds') || errorMessage.includes('insufficient')) {
+        throw fastify.httpErrors.badRequest(`Swap failed: Insufficient funds. Please check your token balance.`);
+      } else if (errorMessage.includes('AccountNotFound')) {
+        throw fastify.httpErrors.badRequest(
+          `Swap failed: One or more required accounts not found. The pool or token accounts may not be initialized.`,
+        );
+      }
+
+      // For other simulation errors, provide a cleaner message
+      logger.error('Transaction simulation failed:', simulationError);
+      throw fastify.httpErrors.badRequest(
+        `Transaction simulation failed. This usually means the swap parameters are invalid or market conditions have changed. Please try again.`,
+      );
+    }
+  }
+
+  /**
+   * Helper function to handle transaction confirmation results
+   * Returns appropriate response object based on confirmation status
+   * @param signature Transaction signature
+   * @param confirmed Whether transaction was confirmed
+   * @param txData Transaction data (if available)
+   * @param tokenIn Input token address
+   * @param tokenOut Output token address
+   * @param walletAddress Wallet address for balance changes
+   * @param side Trade side (optional, for AMM/CLMM swaps)
+   * @returns Response object with status and data
+   */
+  public async handleConfirmation(
+    signature: string,
+    confirmed: boolean,
+    txData: any,
+    tokenIn: string,
+    tokenOut: string,
+    walletAddress: string,
+    side?: 'BUY' | 'SELL',
+  ): Promise<{
+    signature: string;
+    status: number;
+    data?: {
+      tokenIn: string;
+      tokenOut: string;
+      amountIn: number;
+      amountOut: number;
+      fee: number;
+      baseTokenBalanceChange: number;
+      quoteTokenBalanceChange: number;
+    };
+  }> {
+    if (confirmed && txData) {
+      // Transaction confirmed, extract balance changes
+      const { balanceChanges, fee } = await this.extractBalanceChangesAndFee(signature, walletAddress, [
+        tokenIn,
+        tokenOut,
+      ]);
+
+      const inputTokenBalanceChange = balanceChanges[0];
+      const outputTokenBalanceChange = balanceChanges[1];
+
+      // Calculate actual amounts swapped
+      const amountIn = Math.abs(inputTokenBalanceChange);
+      const amountOut = Math.abs(outputTokenBalanceChange);
+
+      // For AMM/CLMM swaps with side information
+      let baseTokenBalanceChange: number | undefined;
+      let quoteTokenBalanceChange: number | undefined;
+
+      if (side) {
+        // For AMM/CLMM swaps, determine base/quote changes based on side
+        baseTokenBalanceChange = side === 'SELL' ? inputTokenBalanceChange : outputTokenBalanceChange;
+        quoteTokenBalanceChange = side === 'SELL' ? outputTokenBalanceChange : inputTokenBalanceChange;
+      } else {
+        // For router swaps, use raw balance changes
+        baseTokenBalanceChange = inputTokenBalanceChange;
+        quoteTokenBalanceChange = outputTokenBalanceChange;
+      }
+
+      return {
+        signature,
+        status: 1, // CONFIRMED
+        data: {
+          tokenIn,
+          tokenOut,
+          amountIn,
+          amountOut,
+          fee,
+          baseTokenBalanceChange: baseTokenBalanceChange!,
+          quoteTokenBalanceChange: quoteTokenBalanceChange!,
+        },
+      };
+    } else if (txData && !confirmed) {
+      // Transaction exists but not confirmed - extract fee from txData
+      const fee = this.getFee(txData);
+
+      logger.warn(`Transaction ${signature} not confirmed. May need higher priority fee.`);
+
+      return {
+        signature,
+        status: -1, // NOT_CONFIRMED
+        data: {
+          tokenIn,
+          tokenOut,
+          amountIn: 0,
+          amountOut: 0,
+          fee,
+          baseTokenBalanceChange: 0,
+          quoteTokenBalanceChange: 0,
+        },
+      };
+    } else {
+      // Transaction pending, no data available
+      logger.warn(`Transaction ${signature} pending. No transaction data available.`);
+
+      return {
+        signature,
+        status: 0, // PENDING
+        data: undefined,
+      };
+    }
   }
 }

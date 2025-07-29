@@ -22,8 +22,6 @@ export async function removeLiquidity(
   positionAddress: string,
   percentageToRemove: number,
   closePosition: boolean = false,
-  priorityFeePerCU?: number,
-  computeUnits?: number,
 ): Promise<RemoveLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
@@ -47,11 +45,14 @@ export async function removeLiquidity(
 
   logger.info(`Removing ${percentageToRemove.toFixed(4)}% liquidity from position ${positionAddress}`);
 
-  // Use provided compute units or default
-  const COMPUTE_UNITS = computeUnits || 600000;
+  // Use hardcoded compute units for remove liquidity
+  const COMPUTE_UNITS = 600000;
 
-  // Use provided priority fee or default to 0
-  const finalPriorityFeePerCU = priorityFeePerCU || 0;
+  // Get priority fee from solana (returns lamports/CU)
+  const priorityFeeInLamports = await solana.estimateGasPrice();
+  // Convert lamports to microLamports (1 lamport = 1,000,000 microLamports)
+  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
+
   let { transaction } = await raydium.raydiumSDK.clmm.decreaseLiquidity({
     poolInfo,
     poolKeys,
@@ -66,7 +67,7 @@ export async function removeLiquidity(
     txVersion: TxVersion.V0,
     computeBudgetConfig: {
       units: COMPUTE_UNITS,
-      microLamports: finalPriorityFeePerCU,
+      microLamports: priorityFeePerCU,
     },
   });
 
@@ -77,7 +78,7 @@ export async function removeLiquidity(
     isHardwareWallet,
     wallet,
   )) as VersionedTransaction;
-  await solana.simulateTransaction(transaction);
+  await solana.simulateWithErrorHandling(transaction, _fastify);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
@@ -136,19 +137,9 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress, percentageToRemove, priorityFeePerCU, computeUnits } =
-          request.body;
+        const { network, walletAddress, positionAddress, percentageToRemove } = request.body;
 
-        return await removeLiquidity(
-          fastify,
-          network,
-          walletAddress,
-          positionAddress,
-          percentageToRemove,
-          false,
-          priorityFeePerCU,
-          computeUnits,
-        );
+        return await removeLiquidity(fastify, network, walletAddress, positionAddress, percentageToRemove, false);
       } catch (e) {
         logger.error(e);
         throw fastify.httpErrors.internalServerError('Internal server error');

@@ -12,8 +12,6 @@ export async function collectFees(
   network: string,
   address: string,
   positionAddress: string,
-  priorityFeePerCU?: number,
-  computeUnits?: number,
 ): Promise<CollectFeesResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
@@ -50,19 +48,7 @@ export async function collectFees(
     position: position,
   });
 
-  // Use provided compute units or default
-  const finalComputeUnits = computeUnits || 300_000;
-
-  logger.info(
-    `Executing collectFees with ${finalComputeUnits} compute units${priorityFeePerCU ? ` and ${priorityFeePerCU} lamports/CU priority fee` : ''}`,
-  );
-
-  const { signature, fee } = await solana.sendAndConfirmTransaction(
-    claimSwapFeeTx,
-    [wallet],
-    finalComputeUnits,
-    priorityFeePerCU,
-  );
+  const { signature, fee } = await solana.sendAndConfirmTransaction(claimSwapFeeTx, [wallet]);
 
   const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
     dlmmPool.tokenX.publicKey.toBase58(),
@@ -110,8 +96,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         const { network, walletAddress, positionAddress } = request.body;
         const networkToUse = network;
 
-        const { priorityFeePerCU, computeUnits } = request.body;
-        return await collectFees(fastify, networkToUse, walletAddress, positionAddress, priorityFeePerCU, computeUnits);
+        return await collectFees(fastify, networkToUse, walletAddress, positionAddress);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

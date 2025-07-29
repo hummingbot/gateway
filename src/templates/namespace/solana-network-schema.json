@@ -7,7 +7,8 @@
     "defaultComputeUnits": { "type": "number" },
     "confirmRetryInterval": { "type": "number" },
     "confirmRetryCount": { "type": "number" },
-    "basePriorityFeePct": { "type": "number" }
+    "basePriorityFeePct": { "type": "number" },
+    "minPriorityFeePerCU": { "type": "number" }
   },
   "required": ["nodeURL", "nativeCurrencySymbol"],
   "additionalProperties": false

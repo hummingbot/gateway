@@ -32,8 +32,6 @@ async function addLiquidity(
   quoteTokenAmount: number,
   slippagePct?: number,
   strategyType?: StrategyType,
-  priorityFeePerCU?: number,
-  computeUnits?: number,
 ): Promise<AddLiquidityResponseType> {
   // Validate addresses first
   try {
@@ -107,19 +105,7 @@ async function addLiquidity(
     slippage: slippagePct ?? MeteoraConfig.config.slippagePct,
   });
 
-  // Use provided compute units or default
-  const finalComputeUnits = computeUnits || 800_000;
-
-  logger.info(
-    `Executing addLiquidity with ${finalComputeUnits} compute units${priorityFeePerCU ? ` and ${priorityFeePerCU} lamports/CU priority fee` : ''}`,
-  );
-
-  const { signature, fee } = await solana.sendAndConfirmTransaction(
-    addLiquidityTx,
-    [wallet],
-    finalComputeUnits,
-    priorityFeePerCU,
-  );
+  const { signature, fee } = await solana.sendAndConfirmTransaction(addLiquidityTx, [wallet]);
 
   const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
     dlmmPool.tokenX.publicKey.toBase58(),
@@ -164,16 +150,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          walletAddress,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-          strategyType,
-          priorityFeePerCU,
-          computeUnits,
-        } = request.body;
+        const { walletAddress, positionAddress, baseTokenAmount, quoteTokenAmount, slippagePct, strategyType } =
+          request.body;
         const network = request.body.network;
 
         return await addLiquidity(
@@ -185,8 +163,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           quoteTokenAmount,
           slippagePct,
           strategyType,
-          priorityFeePerCU,
-          computeUnits,
         );
       } catch (e) {
         logger.error(e);

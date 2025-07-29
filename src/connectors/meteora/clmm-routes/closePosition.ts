@@ -21,15 +21,12 @@ async function closePosition(
   network: string,
   walletAddress: string,
   positionAddress: string,
-  priorityFeePerCU?: number,
-  computeUnits?: number,
 ): Promise<ClosePositionResponseType> {
   try {
     const solana = await Solana.getInstance(network);
     const meteora = await Meteora.getInstance(network);
     const wallet = await solana.getWallet(walletAddress);
     const positionInfo = await meteora.getPositionInfo(positionAddress, wallet.publicKey);
-    logger.info('Position Info:', positionInfo);
 
     const dlmmPool = await meteora.getDlmmPool(positionInfo.poolAddress);
 
@@ -42,8 +39,6 @@ async function closePosition(
             walletAddress,
             positionAddress,
             100,
-            priorityFeePerCU,
-            computeUnits,
           )) as RemoveLiquidityResponseType)
         : {
             signature: '',
@@ -58,14 +53,7 @@ async function closePosition(
     // Remove liquidity if baseTokenFees or quoteTokenFees is greater than 0
     const collectFeesResult =
       positionInfo.baseFeeAmount > 0 || positionInfo.quoteFeeAmount > 0
-        ? ((await collectFees(
-            fastify,
-            network,
-            walletAddress,
-            positionAddress,
-            priorityFeePerCU,
-            computeUnits,
-          )) as CollectFeesResponseType)
+        ? ((await collectFees(fastify, network, walletAddress, positionAddress)) as CollectFeesResponseType)
         : {
             signature: '',
             status: 1,
@@ -85,15 +73,7 @@ async function closePosition(
         position: position,
       });
 
-      // Use provided compute units or default
-      const finalComputeUnits = computeUnits || 200_000;
-
-      const { signature, fee } = await solana.sendAndConfirmTransaction(
-        closePositionTx,
-        [wallet],
-        finalComputeUnits,
-        priorityFeePerCU,
-      );
+      const { signature, fee } = await solana.sendAndConfirmTransaction(closePositionTx, [wallet]);
       logger.info(`Position ${positionAddress} closed successfully with signature: ${signature}`);
 
       const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
@@ -160,17 +140,10 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress, priorityFeePerCU, computeUnits } = request.body;
+        const { network, walletAddress, positionAddress } = request.body;
         const networkToUse = network;
 
-        return await closePosition(
-          fastify,
-          networkToUse,
-          walletAddress,
-          positionAddress,
-          priorityFeePerCU,
-          computeUnits,
-        );
+        return await closePosition(fastify, networkToUse, walletAddress, positionAddress);
       } catch (e) {
         logger.error('Close position route error:', {
           message: e.message || 'Unknown error',

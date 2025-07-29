@@ -6,16 +6,12 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 import { Solana } from '../../../chains/solana/solana';
-import {
-  QuoteSwapResponseType,
-  QuoteSwapResponse,
-  QuoteSwapRequestType,
-  QuoteSwapRequest,
-} from '../../../schemas/clmm-schema';
+import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Meteora } from '../meteora';
 import { MeteoraConfig } from '../meteora.config';
+import { MeteoraClmmQuoteSwapRequest, MeteoraClmmQuoteSwapRequestType } from '../schemas';
 
 export async function getRawSwapQuote(
   fastify: FastifyInstance,
@@ -119,7 +115,6 @@ async function formatSwapQuote(
       maxAmountIn,
       // CLMM-specific fields
       priceImpactPct: 0, // TODO: Calculate actual price impact
-      activeBinId: 0, // TODO: Get active bin ID
     };
   } else {
     const exactInQuote = quote as SwapQuote;
@@ -148,14 +143,13 @@ async function formatSwapQuote(
       maxAmountIn: estimatedAmountIn,
       // CLMM-specific fields
       priceImpactPct: 0, // TODO: Calculate actual price impact
-      activeBinId: 0, // TODO: Get active bin ID
     };
   }
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: QuoteSwapRequestType;
+    Querystring: MeteoraClmmQuoteSwapRequestType;
     Reply: QuoteSwapResponseType;
   }>(
     '/quote-swap',
@@ -163,13 +157,9 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get swap quote for Meteora CLMM',
         tags: ['/connector/meteora'],
-        querystring: QuoteSwapRequest,
+        querystring: MeteoraClmmQuoteSwapRequest,
         response: {
-          200: {
-            properties: {
-              ...QuoteSwapResponse.properties,
-            },
-          },
+          200: QuoteSwapResponse,
         },
       },
     },
@@ -231,20 +221,14 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
         );
 
-        const computeUnits = 150000; // Default compute units for Meteora swaps
         try {
           // Note: estimateGasSolana returns feePerComputeUnit, not gasLimit
-          // For Solana, we use a default compute units value for swaps
           await estimateGasSolana(fastify, networkUsed);
-          // Keep the default compute units value
         } catch (error) {
           logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
         }
 
-        return {
-          ...result,
-          computeUnits,
-        };
+        return result;
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

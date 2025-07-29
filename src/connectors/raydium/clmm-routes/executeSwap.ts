@@ -3,13 +3,13 @@ import { VersionedTransaction } from '@solana/web3.js';
 import BN from 'bn.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { Solana, BASE_FEE } from '../../../chains/solana/solana';
-import { ExecuteSwapRequestType, ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
+import { Solana } from '../../../chains/solana/solana';
+import { ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
-import { RaydiumClmmExecuteSwapRequest } from '../schemas';
+import { RaydiumClmmExecuteSwapRequest, RaydiumClmmExecuteSwapRequestType } from '../schemas';
 
 import { getSwapQuote, convertAmountIn } from './quoteSwap';
 
@@ -23,8 +23,6 @@ async function executeSwap(
   side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number,
-  priorityFeePerCU?: number,
-  computeUnits?: number,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
@@ -37,8 +35,6 @@ async function executeSwap(
   if (!poolInfo) {
     throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
   }
-  console.log('poolInfo', poolInfo);
-  console.log('poolKeys', poolKeys);
 
   // Use configured slippage if not provided
   const effectiveSlippage = slippagePct || RaydiumConfig.config.slippagePct;
@@ -104,18 +100,13 @@ async function executeSwap(
 
   logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
 
-  // Use provided compute units or default
-  const COMPUTE_UNITS = computeUnits || 600000;
+  // Use hardcoded compute units for CLMM swaps
+  const COMPUTE_UNITS = 600000;
 
-  // Use provided priority fee per CU or estimate default
-  let finalPriorityFeePerCU: number;
-  if (priorityFeePerCU !== undefined) {
-    finalPriorityFeePerCU = priorityFeePerCU;
-  } else {
-    // Calculate default if not provided
-    const currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-    finalPriorityFeePerCU = Math.floor((currentPriorityFee * 1e6) / COMPUTE_UNITS);
-  }
+  // Get priority fee from solana (returns lamports/CU)
+  const priorityFeeInLamports = await solana.estimateGasPrice();
+  // Convert lamports to microLamports (1 lamport = 1,000,000 microLamports)
+  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
 
   // Build transaction with SDK - pass parameters directly
   let transaction: VersionedTransaction;
@@ -143,7 +134,7 @@ async function executeSwap(
       remainingAccounts: exactOutResponse.remainingAccounts,
       computeBudgetConfig: {
         units: COMPUTE_UNITS,
-        microLamports: finalPriorityFeePerCU, // Pass directly without transformation
+        microLamports: priorityFeePerCU,
       },
     })) as { transaction: VersionedTransaction });
   } else {
@@ -162,7 +153,7 @@ async function executeSwap(
       txVersion: raydium.txVersion,
       computeBudgetConfig: {
         units: COMPUTE_UNITS,
-        microLamports: finalPriorityFeePerCU, // Pass directly without transformation
+        microLamports: priorityFeePerCU,
       },
     })) as { transaction: VersionedTransaction });
   }
@@ -175,67 +166,35 @@ async function executeSwap(
     wallet,
   )) as VersionedTransaction;
 
-  await solana.simulateTransaction(transaction as VersionedTransaction);
+  // Simulate transaction with proper error handling
+  await solana.simulateWithErrorHandling(transaction as VersionedTransaction, fastify);
 
   // Send and confirm - keep retry loop here for retrying same tx hash
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
-  if (confirmed && txData) {
-    // Return confirmed with full data
-    const tokenAInfo = await solana.getToken(poolInfo.mintA.address);
-    const tokenBInfo = await solana.getToken(poolInfo.mintB.address);
+  // Handle confirmation status
+  const result = await solana.handleConfirmation(
+    signature,
+    confirmed,
+    txData,
+    inputToken.address,
+    outputToken.address,
+    walletAddress,
+    side,
+  );
 
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
-      tokenAInfo.address,
-      tokenBInfo.address,
-    ]);
-
-    const baseTokenBalanceChange = balanceChanges[0];
-    const quoteTokenBalanceChange = balanceChanges[1];
-
-    // Calculate actual amounts swapped based on side
-    const amountIn = side === 'SELL' ? Math.abs(baseTokenBalanceChange) : Math.abs(quoteTokenBalanceChange);
-    const amountOut = side === 'SELL' ? Math.abs(quoteTokenBalanceChange) : Math.abs(baseTokenBalanceChange);
-
+  if (result.status === 1) {
     logger.info(
-      `Swap executed successfully: ${amountIn.toFixed(4)} ${inputToken.symbol} -> ${amountOut.toFixed(4)} ${outputToken.symbol}`,
+      `Swap executed successfully: ${result.data?.amountIn.toFixed(4)} ${inputToken.symbol} -> ${result.data?.amountOut.toFixed(4)} ${outputToken.symbol}`,
     );
-
-    // Get current active bin ID from pool info
-    const activeBinId = (poolInfo as any).currentTickIndex || (poolInfo as any).activeBin || 0;
-
-    // Determine token addresses for computed fields
-    const tokenIn = inputToken.address;
-    const tokenOut = outputToken.address;
-
-    return {
-      signature,
-      status: 1, // CONFIRMED
-      data: {
-        tokenIn,
-        tokenOut,
-        amountIn,
-        amountOut,
-        fee: txData.meta.fee / 1e9,
-        baseTokenBalanceChange,
-        quoteTokenBalanceChange,
-        activeBinId,
-      },
-    };
-  } else {
-    // Return pending for Hummingbot to handle retry
-    return {
-      signature,
-      status: 0, // PENDING
-    };
   }
+
+  return result as ExecuteSwapResponseType;
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
-
   fastify.post<{
-    Body: ExecuteSwapRequestType;
+    Body: RaydiumClmmExecuteSwapRequestType;
     Reply: ExecuteSwapResponseType;
   }>(
     '/execute-swap',
@@ -243,37 +202,13 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Execute a swap on Raydium CLMM',
         tags: ['/connector/raydium'],
-        body: {
-          ...RaydiumClmmExecuteSwapRequest,
-          properties: {
-            ...RaydiumClmmExecuteSwapRequest.properties,
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            network: { type: 'string', default: 'mainnet-beta' },
-            poolAddress: { type: 'string', examples: [''] },
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.01] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        body: RaydiumClmmExecuteSwapRequest,
         response: { 200: ExecuteSwapResponse },
       },
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          poolAddress,
-          slippagePct,
-          priorityFeePerCU,
-          computeUnits,
-        } = request.body as typeof RaydiumClmmExecuteSwapRequest._type;
+        const { network, walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body;
         const networkToUse = network;
 
         // If no pool address provided, find default pool
@@ -322,8 +257,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           side as 'BUY' | 'SELL',
           poolAddressToUse,
           slippagePct,
-          priorityFeePerCU,
-          computeUnits,
         );
       } catch (e) {
         // Preserve the original error if it's a FastifyError

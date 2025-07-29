@@ -238,7 +238,6 @@ async function formatSwapQuote(
       maxAmountIn,
       // CLMM-specific fields
       priceImpactPct,
-      activeBinId,
     };
   } else {
     const exactInResponse = response as ReturnTypeComputeAmountOutFormat;
@@ -274,7 +273,6 @@ async function formatSwapQuote(
       maxAmountIn: estimatedAmountIn,
       // CLMM-specific fields
       priceImpactPct,
-      activeBinId,
     };
   }
 }

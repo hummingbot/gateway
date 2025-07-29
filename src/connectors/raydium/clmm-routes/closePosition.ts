@@ -3,7 +3,7 @@ import { Static } from '@sinclair/typebox';
 import { VersionedTransaction } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { Solana, BASE_FEE } from '../../../chains/solana/solana';
+import { Solana } from '../../../chains/solana/solana';
 import {
   ClosePositionResponse,
   ClosePositionRequestType,
@@ -20,8 +20,6 @@ async function closePosition(
   network: string,
   walletAddress: string,
   positionAddress: string,
-  priorityFeePerCU?: number,
-  computeUnits?: number,
 ): Promise<ClosePositionResponseType> {
   try {
     const solana = await Solana.getInstance(network);
@@ -31,7 +29,6 @@ async function closePosition(
     const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
 
     const position = await raydium.getClmmPosition(positionAddress);
-    logger.debug('Position Info:', position);
 
     // Handle positions with remaining liquidity first
     if (!position.liquidity.isZero()) {
@@ -47,8 +44,6 @@ async function closePosition(
         positionAddress,
         100,
         true,
-        priorityFeePerCU,
-        computeUnits,
       );
 
       if (removeLiquidityResponse.status === 1 && removeLiquidityResponse.data) {
@@ -92,17 +87,26 @@ async function closePosition(
     const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(position.poolId.toBase58());
     logger.debug('Pool Info:', poolInfo);
 
+    // Use hardcoded compute units for close position
+    const COMPUTE_UNITS = 200000;
+
+    // Get priority fee from solana (returns lamports/CU)
+    const priorityFeeInLamports = await solana.estimateGasPrice();
+    // Convert lamports to microLamports (1 lamport = 1,000,000 microLamports)
+    const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
+
     const result = await raydium.raydiumSDK.clmm.closePosition({
       poolInfo,
       poolKeys,
       ownerPosition: position,
       txVersion: TxVersion.V0,
+      computeBudgetConfig: {
+        units: COMPUTE_UNITS,
+        microLamports: priorityFeePerCU,
+      },
     });
 
     logger.info('Close position transaction created:', result.transaction);
-
-    // Use provided compute units or default
-    const COMPUTE_UNITS = computeUnits || 200000;
 
     // Sign transaction using helper
     const signedTransaction = (await raydium.signTransaction(
@@ -115,7 +119,6 @@ async function closePosition(
     const { signature, fee } = await solana.sendAndConfirmVersionedTransaction(
       signedTransaction,
       [], // No additional signers needed, already signed
-      COMPUTE_UNITS,
     );
 
     const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
@@ -161,17 +164,10 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress, priorityFeePerCU, computeUnits } = request.body;
+        const { network, walletAddress, positionAddress } = request.body;
         const networkToUse = network;
 
-        return await closePosition(
-          fastify,
-          networkToUse,
-          walletAddress,
-          positionAddress,
-          priorityFeePerCU,
-          computeUnits,
-        );
+        return await closePosition(fastify, networkToUse, walletAddress, positionAddress);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
