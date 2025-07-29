@@ -332,6 +332,41 @@ export class PoolService {
   }
 
   /**
+   * Update an existing pool
+   */
+  public async updatePool(connector: string, pool: Pool): Promise<void> {
+    await this.validatePool(connector, pool);
+
+    const pools = await this.loadPoolList(connector);
+
+    // Find the pool to update by matching token pair, network, and type
+    const existingIndex = pools.findIndex(
+      (p) =>
+        p.network === pool.network &&
+        p.type === pool.type &&
+        ((p.baseSymbol === pool.baseSymbol && p.quoteSymbol === pool.quoteSymbol) ||
+          (p.baseSymbol === pool.quoteSymbol && p.quoteSymbol === pool.baseSymbol)),
+    );
+
+    if (existingIndex === -1) {
+      throw new Error(`Pool for ${pool.baseSymbol}-${pool.quoteSymbol} not found on ${pool.network} ${pool.type}`);
+    }
+
+    // Check if the new address is already used by another pool
+    const addressConflict = pools.some(
+      (p, index) => index !== existingIndex && p.address.toLowerCase() === pool.address.toLowerCase(),
+    );
+
+    if (addressConflict) {
+      throw new Error(`Pool with address ${pool.address} already exists`);
+    }
+
+    // Update the pool
+    pools[existingIndex] = pool;
+    await this.savePoolList(connector, pools);
+  }
+
+  /**
    * Get default pools for a connector in the format expected by connectors
    */
   public async getDefaultPools(

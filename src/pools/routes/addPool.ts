@@ -37,11 +37,22 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
           address,
         };
 
-        await poolService.addPool(connector, pool);
+        // Check if pool already exists
+        const existingPool = await poolService.getPool(connector, network, type, baseSymbol, quoteSymbol);
 
-        return {
-          message: `Pool ${baseSymbol}-${quoteSymbol} added successfully to ${connector} ${type} on ${network}`,
-        };
+        if (existingPool) {
+          // Update existing pool
+          await poolService.updatePool(connector, pool);
+          return {
+            message: `Pool ${baseSymbol}-${quoteSymbol} updated successfully in ${connector} ${type} on ${network}`,
+          };
+        } else {
+          // Add new pool
+          await poolService.addPool(connector, pool);
+          return {
+            message: `Pool ${baseSymbol}-${quoteSymbol} added successfully to ${connector} ${type} on ${network}`,
+          };
+        }
       } catch (error) {
         throw fastify.httpErrors.badRequest(error.message);
       }
