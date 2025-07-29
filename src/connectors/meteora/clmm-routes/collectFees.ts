@@ -48,29 +48,40 @@ export async function collectFees(
     position: position,
   });
 
-  const { signature, fee } = await solana.sendAndConfirmTransaction(claimSwapFeeTx, [wallet]);
+  // Sign the transaction
+  claimSwapFeeTx.sign(wallet);
 
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
-    dlmmPool.tokenX.publicKey.toBase58(),
-    dlmmPool.tokenY.publicKey.toBase58(),
-  ]);
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(claimSwapFeeTx);
 
-  const collectedFeeX = balanceChanges[0];
-  const collectedFeeY = balanceChanges[1];
+  if (confirmed && txData) {
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
+      dlmmPool.tokenX.publicKey.toBase58(),
+      dlmmPool.tokenY.publicKey.toBase58(),
+    ]);
 
-  logger.info(
-    `Fees collected from position ${positionAddress}: ${Math.abs(collectedFeeX).toFixed(4)} ${tokenXSymbol}, ${Math.abs(collectedFeeY).toFixed(4)} ${tokenYSymbol}`,
-  );
+    const collectedFeeX = balanceChanges[0];
+    const collectedFeeY = balanceChanges[1];
+    const fee = txData.meta.fee / 1e9;
 
-  return {
-    signature,
-    status: 1, // CONFIRMED
-    data: {
-      fee,
-      baseFeeAmountCollected: Math.abs(collectedFeeX),
-      quoteFeeAmountCollected: Math.abs(collectedFeeY),
-    },
-  };
+    logger.info(
+      `Fees collected from position ${positionAddress}: ${Math.abs(collectedFeeX).toFixed(4)} ${tokenXSymbol}, ${Math.abs(collectedFeeY).toFixed(4)} ${tokenYSymbol}`,
+    );
+
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      data: {
+        fee,
+        baseFeeAmountCollected: Math.abs(collectedFeeX),
+        quoteFeeAmountCollected: Math.abs(collectedFeeY),
+      },
+    };
+  } else {
+    return {
+      signature,
+      status: 0, // PENDING
+    };
+  }
 }
 
 export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {

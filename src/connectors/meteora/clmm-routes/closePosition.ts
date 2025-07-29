@@ -73,28 +73,40 @@ async function closePosition(
         position: position,
       });
 
-      const { signature, fee } = await solana.sendAndConfirmTransaction(closePositionTx, [wallet]);
-      logger.info(`Position ${positionAddress} closed successfully with signature: ${signature}`);
+      // Sign the transaction
+      closePositionTx.sign(wallet);
 
-      const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
-        'So11111111111111111111111111111111111111112',
-      ]);
-      const returnedSOL = Math.abs(balanceChanges[0]);
+      const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(closePositionTx);
 
-      const totalFee = fee + (removeLiquidityResult.data?.fee || 0) + (collectFeesResult.data?.fee || 0);
+      if (confirmed && txData) {
+        logger.info(`Position ${positionAddress} closed successfully with signature: ${signature}`);
 
-      return {
-        signature,
-        status: 1, // CONFIRMED
-        data: {
-          fee: totalFee,
-          positionRentRefunded: returnedSOL,
-          baseTokenAmountRemoved: removeLiquidityResult.data?.baseTokenAmountRemoved || 0,
-          quoteTokenAmountRemoved: removeLiquidityResult.data?.quoteTokenAmountRemoved || 0,
-          baseFeeAmountCollected: collectFeesResult.data?.baseFeeAmountCollected || 0,
-          quoteFeeAmountCollected: collectFeesResult.data?.quoteFeeAmountCollected || 0,
-        },
-      };
+        const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+          'So11111111111111111111111111111111111111112',
+        ]);
+        const returnedSOL = Math.abs(balanceChanges[0]);
+        const fee = txData.meta.fee / 1e9;
+
+        const totalFee = fee + (removeLiquidityResult.data?.fee || 0) + (collectFeesResult.data?.fee || 0);
+
+        return {
+          signature,
+          status: 1, // CONFIRMED
+          data: {
+            fee: totalFee,
+            positionRentRefunded: returnedSOL,
+            baseTokenAmountRemoved: removeLiquidityResult.data?.baseTokenAmountRemoved || 0,
+            quoteTokenAmountRemoved: removeLiquidityResult.data?.quoteTokenAmountRemoved || 0,
+            baseFeeAmountCollected: collectFeesResult.data?.baseFeeAmountCollected || 0,
+            quoteFeeAmountCollected: collectFeesResult.data?.quoteFeeAmountCollected || 0,
+          },
+        };
+      } else {
+        return {
+          signature,
+          status: 0, // PENDING
+        };
+      }
     } catch (positionError) {
       logger.error('Error in position closing workflow:', {
         message: positionError.message,

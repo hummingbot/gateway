@@ -105,29 +105,40 @@ async function addLiquidity(
     slippage: slippagePct ?? MeteoraConfig.config.slippagePct,
   });
 
-  const { signature, fee } = await solana.sendAndConfirmTransaction(addLiquidityTx, [wallet]);
+  // Sign the transaction
+  addLiquidityTx.sign(wallet);
 
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
-    dlmmPool.tokenX.publicKey.toBase58(),
-    dlmmPool.tokenY.publicKey.toBase58(),
-  ]);
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(addLiquidityTx);
 
-  const tokenXAddedAmount = balanceChanges[0];
-  const tokenYAddedAmount = balanceChanges[1];
+  if (confirmed && txData) {
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
+      dlmmPool.tokenX.publicKey.toBase58(),
+      dlmmPool.tokenY.publicKey.toBase58(),
+    ]);
 
-  logger.info(
-    `Liquidity added to position ${positionAddress}: ${Math.abs(tokenXAddedAmount).toFixed(4)} ${tokenXSymbol}, ${Math.abs(tokenYAddedAmount).toFixed(4)} ${tokenYSymbol}`,
-  );
+    const tokenXAddedAmount = balanceChanges[0];
+    const tokenYAddedAmount = balanceChanges[1];
+    const fee = txData.meta.fee / 1e9;
 
-  return {
-    signature,
-    status: 1, // CONFIRMED
-    data: {
-      baseTokenAmountAdded: Math.abs(tokenXAddedAmount),
-      quoteTokenAmountAdded: Math.abs(tokenYAddedAmount),
-      fee,
-    },
-  };
+    logger.info(
+      `Liquidity added to position ${positionAddress}: ${Math.abs(tokenXAddedAmount).toFixed(4)} ${tokenXSymbol}, ${Math.abs(tokenYAddedAmount).toFixed(4)} ${tokenYSymbol}`,
+    );
+
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      data: {
+        baseTokenAmountAdded: Math.abs(tokenXAddedAmount),
+        quoteTokenAmountAdded: Math.abs(tokenYAddedAmount),
+        fee,
+      },
+    };
+  } else {
+    return {
+      signature,
+      status: 0, // PENDING
+    };
+  }
 }
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {

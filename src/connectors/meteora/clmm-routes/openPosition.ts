@@ -153,43 +153,52 @@ async function openPosition(
     `Opening position in pool ${poolAddress} with price range ${lowerPrice.toFixed(4)} - ${upperPrice.toFixed(4)} ${tokenYSymbol}/${tokenXSymbol}`,
   );
 
-  const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(createPositionTx, [
-    wallet,
-    newImbalancePosition,
-  ]);
+  // Sign the transaction
+  createPositionTx.sign(wallet);
+  createPositionTx.sign(newImbalancePosition);
 
-  const { balanceChanges, fee: extractedFee } = await solana.extractBalanceChangesAndFee(
-    signature,
-    wallet.publicKey.toBase58(),
-    [tokenX.address, tokenY.address],
-  );
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(createPositionTx);
 
-  const baseTokenBalanceChange = balanceChanges[0];
-  const quoteTokenBalanceChange = balanceChanges[1];
+  if (confirmed && txData) {
+    const { balanceChanges, fee: extractedFee } = await solana.extractBalanceChangesAndFee(
+      signature,
+      wallet.publicKey.toBase58(),
+      [tokenX.address, tokenY.address],
+    );
 
-  // Calculate sentSOL based on which token is SOL
-  const sentSOL =
-    tokenXSymbol === 'SOL'
-      ? Math.abs(baseTokenBalanceChange - extractedFee)
-      : tokenYSymbol === 'SOL'
-        ? Math.abs(quoteTokenBalanceChange - extractedFee)
-        : extractedFee;
+    const baseTokenBalanceChange = balanceChanges[0];
+    const quoteTokenBalanceChange = balanceChanges[1];
+    const txFee = txData.meta.fee / 1e9;
 
-  logger.info(
-    `Position opened at ${newImbalancePosition.publicKey.toBase58()}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${tokenXSymbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${tokenYSymbol}`,
-  );
+    // Calculate sentSOL based on which token is SOL
+    const sentSOL =
+      tokenXSymbol === 'SOL'
+        ? Math.abs(baseTokenBalanceChange - extractedFee)
+        : tokenYSymbol === 'SOL'
+          ? Math.abs(quoteTokenBalanceChange - extractedFee)
+          : extractedFee;
 
-  return {
-    signature,
-    status: 1, // CONFIRMED
-    data: {
-      fee: txFee,
-      positionAddress: newImbalancePosition.publicKey.toBase58(),
-      positionRent: sentSOL,
-      baseTokenAmountAdded: baseTokenBalanceChange,
-      quoteTokenAmountAdded: quoteTokenBalanceChange,
-    },
-  };
+    logger.info(
+      `Position opened at ${newImbalancePosition.publicKey.toBase58()}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${tokenXSymbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${tokenYSymbol}`,
+    );
+
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      data: {
+        fee: txFee,
+        positionAddress: newImbalancePosition.publicKey.toBase58(),
+        positionRent: sentSOL,
+        baseTokenAmountAdded: baseTokenBalanceChange,
+        quoteTokenAmountAdded: quoteTokenBalanceChange,
+      },
+    };
+  } else {
+    return {
+      signature,
+      status: 0, // PENDING
+    };
+  }
 }
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {

@@ -68,6 +68,9 @@ async function executeSwap(
           binArraysPubkey: (swapQuote as SwapQuote).binArraysPubkey,
         });
 
+  // Sign the transaction
+  swapTx.sign(wallet);
+
   // Simulate transaction with proper error handling
   await solana.simulateWithErrorHandling(swapTx, fastify);
 

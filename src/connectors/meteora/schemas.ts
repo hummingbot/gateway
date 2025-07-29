@@ -48,111 +48,105 @@ export const MeteoraQuoteSwapResponse = Type.Intersect([
 ]);
 
 // Meteora CLMM-specific extensions
-export const MeteoraClmmQuoteSwapRequest = Type.Intersect([
-  Type.Omit(CLMMBase.QuoteSwapRequest, ['network', 'slippagePct']),
-  Type.Object({
-    network: Type.Optional(
-      Type.String({
-        description: 'Solana network to use',
-        default: solanaChainConfig.defaultNetwork,
-        enum: [...MeteoraConfig.networks],
-      }),
-    ),
-    poolAddress: Type.Optional(
-      Type.String({
-        description: 'Meteora DLMM pool address (optional - can be looked up from baseToken and quoteToken)',
-        examples: [CLMM_POOL_ADDRESS_EXAMPLE],
-      }),
-    ),
-    baseToken: Type.String({
-      description: 'Token to determine swap direction',
-      examples: [BASE_TOKEN],
+export const MeteoraClmmQuoteSwapRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...MeteoraConfig.networks],
     }),
-    quoteToken: Type.Optional(
-      Type.String({
-        description: 'The other token in the pair (optional - required if poolAddress not provided)',
-        examples: [QUOTE_TOKEN],
-      }),
-    ),
-    amount: Type.Number({
-      description: 'Amount to swap',
-      examples: [SWAP_AMOUNT],
+  ),
+  poolAddress: Type.Optional(
+    Type.String({
+      description: 'Meteora DLMM pool address (optional - can be looked up from baseToken and quoteToken)',
+      examples: [CLMM_POOL_ADDRESS_EXAMPLE],
     }),
-    side: Type.String({
-      description: 'Trade direction',
-      enum: ['BUY', 'SELL'],
-      default: 'SELL',
-      examples: ['SELL'],
-    }),
-    slippagePct: Type.Optional(
-      Type.Number({
-        minimum: 0,
-        maximum: 100,
-        description: 'Maximum acceptable slippage percentage',
-        default: MeteoraConfig.config.slippagePct,
-        examples: [MeteoraConfig.config.slippagePct],
-      }),
-    ),
+  ),
+  baseToken: Type.String({
+    description: 'Token to determine swap direction',
+    examples: [BASE_TOKEN],
   }),
-]);
+  quoteToken: Type.Optional(
+    Type.String({
+      description: 'The other token in the pair (optional - required if poolAddress not provided)',
+      examples: [QUOTE_TOKEN],
+    }),
+  ),
+  amount: Type.Number({
+    description: 'Amount to swap',
+    examples: [SWAP_AMOUNT],
+  }),
+  side: Type.String({
+    description: 'Trade direction',
+    enum: ['BUY', 'SELL'],
+    default: 'SELL',
+    examples: ['SELL'],
+  }),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: MeteoraConfig.config.slippagePct,
+      examples: [MeteoraConfig.config.slippagePct],
+    }),
+  ),
+});
 
 // Export the type for QuoteSwapRequest
 export type MeteoraClmmQuoteSwapRequestType = Static<typeof MeteoraClmmQuoteSwapRequest>;
 
-export const MeteoraClmmExecuteSwapRequest = Type.Intersect([
-  Type.Omit(CLMMBase.ExecuteSwapRequest, ['network', 'walletAddress', 'slippagePct']),
-  Type.Object({
-    network: Type.Optional(
-      Type.String({
-        description: 'Solana network to use',
-        default: solanaChainConfig.defaultNetwork,
-        enum: [...MeteoraConfig.networks],
-      }),
-    ),
-    walletAddress: Type.Optional(
-      Type.String({
-        description: 'Solana wallet address that will execute the swap',
-        default: solanaChainConfig.defaultWallet,
-        examples: [solanaChainConfig.defaultWallet],
-      }),
-    ),
-    poolAddress: Type.Optional(
-      Type.String({
-        description: 'Meteora DLMM pool address (optional - can be looked up from baseToken and quoteToken)',
-        examples: [CLMM_POOL_ADDRESS_EXAMPLE],
-      }),
-    ),
-    baseToken: Type.String({
-      description: 'Base token symbol or address',
-      examples: [BASE_TOKEN],
+export const MeteoraClmmExecuteSwapRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...MeteoraConfig.networks],
     }),
-    quoteToken: Type.Optional(
-      Type.String({
-        description: 'Quote token symbol or address (optional - required if poolAddress not provided)',
-        examples: [QUOTE_TOKEN],
-      }),
-    ),
-    amount: Type.Number({
-      description: 'Amount to swap',
-      examples: [SWAP_AMOUNT],
+  ),
+  walletAddress: Type.Optional(
+    Type.String({
+      description: 'Solana wallet address that will execute the swap',
+      default: solanaChainConfig.defaultWallet,
+      examples: [solanaChainConfig.defaultWallet],
     }),
-    side: Type.String({
-      description: 'Trade direction',
-      enum: ['BUY', 'SELL'],
-      default: 'SELL',
-      examples: ['SELL'],
+  ),
+  poolAddress: Type.Optional(
+    Type.String({
+      description: 'Meteora DLMM pool address (optional - can be looked up from baseToken and quoteToken)',
+      examples: [CLMM_POOL_ADDRESS_EXAMPLE],
     }),
-    slippagePct: Type.Optional(
-      Type.Number({
-        minimum: 0,
-        maximum: 100,
-        description: 'Maximum acceptable slippage percentage',
-        default: MeteoraConfig.config.slippagePct,
-        examples: [MeteoraConfig.config.slippagePct],
-      }),
-    ),
+  ),
+  baseToken: Type.String({
+    description: 'Base token symbol or address',
+    examples: [BASE_TOKEN],
   }),
-]);
+  quoteToken: Type.Optional(
+    Type.String({
+      description: 'Quote token symbol or address (optional - required if poolAddress not provided)',
+      examples: [QUOTE_TOKEN],
+    }),
+  ),
+  amount: Type.Number({
+    description: 'Amount to swap',
+    examples: [SWAP_AMOUNT],
+  }),
+  side: Type.String({
+    description: 'Trade direction',
+    enum: ['BUY', 'SELL'],
+    default: 'SELL',
+    examples: ['SELL'],
+  }),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: MeteoraConfig.config.slippagePct,
+      examples: [MeteoraConfig.config.slippagePct],
+    }),
+  ),
+});
 
 // Export the type for ExecuteSwapRequest
 export type MeteoraClmmExecuteSwapRequestType = Static<typeof MeteoraClmmExecuteSwapRequest>;
