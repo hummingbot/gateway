@@ -114,8 +114,9 @@ describe('POST /open-position', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGas: jest.fn().mockResolvedValue(2000),
+      estimateGasPrice: jest.fn().mockResolvedValue(2000),
       simulateTransaction: jest.fn().mockResolvedValue(undefined),
+      simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
       sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
         confirmed: true,
         signature: 'mock-signature',
@@ -212,8 +213,9 @@ describe('POST /open-position', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGas: jest.fn().mockResolvedValue(2000),
+      estimateGasPrice: jest.fn().mockResolvedValue(2000),
       simulateTransaction: jest.fn().mockResolvedValue(undefined),
+      simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
       sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
         confirmed: true,
         signature: 'mock-signature',
@@ -351,7 +353,7 @@ describe('POST /open-position', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGas: jest.fn().mockResolvedValue(2000),
+      estimateGasPrice: jest.fn().mockResolvedValue(2000),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -402,8 +404,9 @@ describe('POST /open-position', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGas: jest.fn().mockResolvedValue(2000),
+      estimateGasPrice: jest.fn().mockResolvedValue(2000),
       simulateTransaction: jest.fn().mockResolvedValue(undefined),
+      simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
       sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
         confirmed: true,
         signature: 'mock-signature',
@@ -470,7 +473,7 @@ describe('POST /open-position', () => {
     expect(mockRaydiumInstance.prepareWallet).toHaveBeenCalledWith(mockWalletAddress);
   });
 
-  it('should use custom compute units and priority fee', async () => {
+  it('should use default compute units and dynamic priority fee', async () => {
     const mockSolanaInstance = {
       getToken: jest.fn((token) => {
         if (token === 'SOL' || token === mockSOL.address) return Promise.resolve(mockSOL);
@@ -478,8 +481,9 @@ describe('POST /open-position', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGas: jest.fn().mockResolvedValue(2000),
+      estimateGasPrice: jest.fn().mockResolvedValue(2000),
       simulateTransaction: jest.fn().mockResolvedValue(undefined),
+      simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
       sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
         confirmed: true,
         signature: 'mock-signature',
@@ -533,9 +537,6 @@ describe('POST /open-position', () => {
     };
     (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydiumInstance);
 
-    const customComputeUnits = 500000;
-    const customPriorityFee = 5000;
-
     const response = await server.inject({
       method: 'POST',
       url: '/open-position',
@@ -548,17 +549,15 @@ describe('POST /open-position', () => {
         baseTokenAmount: 1,
         quoteTokenAmount: 150,
         slippagePct: 1,
-        computeUnits: customComputeUnits,
-        priorityFeePerCU: customPriorityFee,
       },
     });
 
     expect(response.statusCode).toBe(200);
     expect(mockRaydiumInstance.prepareWallet).toHaveBeenCalledWith(mockWalletAddress);
 
-    // Verify that openPositionFromBase was called with the custom compute budget
+    // Verify that openPositionFromBase was called with the default compute budget
     const openPositionCall = mockOpenPositionFunc.mock.calls[0];
-    expect(openPositionCall[0].computeBudgetConfig.units).toBe(customComputeUnits);
-    expect(openPositionCall[0].computeBudgetConfig.microLamports).toBe(customPriorityFee);
+    expect(openPositionCall[0].computeBudgetConfig.units).toBe(500000); // Using hardcoded COMPUTE_UNITS
+    expect(openPositionCall[0].computeBudgetConfig.microLamports).toBe(2000000000); // Dynamic priority fee from estimateGasPrice * 1e6
   });
 });

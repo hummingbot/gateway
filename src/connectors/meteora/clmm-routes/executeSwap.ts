@@ -78,23 +78,48 @@ async function executeSwap(
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(swapTx);
 
   // Handle confirmation status
-  const result = await solana.handleConfirmation(
-    signature,
-    confirmed,
-    txData,
-    inputToken.address,
-    outputToken.address,
-    wallet.publicKey.toBase58(),
-    side,
-  );
+  if (confirmed && txData) {
+    // Transaction confirmed, extract balance changes
+    const { balanceChanges, fee } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+      inputToken.address,
+      outputToken.address,
+    ]);
 
-  if (result.status === 1) {
+    const inputTokenBalanceChange = balanceChanges[0];
+    const outputTokenBalanceChange = balanceChanges[1];
+
+    // Calculate actual amounts swapped
+    const amountIn = Math.abs(inputTokenBalanceChange);
+    const amountOut = Math.abs(outputTokenBalanceChange);
+
+    // For CLMM swaps, determine base/quote changes based on side
+    const baseTokenBalanceChange = side === 'SELL' ? inputTokenBalanceChange : outputTokenBalanceChange;
+    const quoteTokenBalanceChange = side === 'SELL' ? outputTokenBalanceChange : inputTokenBalanceChange;
+
     logger.info(
-      `Swap executed successfully: ${result.data?.amountIn.toFixed(4)} ${inputToken.symbol} -> ${result.data?.amountOut.toFixed(4)} ${outputToken.symbol}`,
+      `Swap executed successfully: ${amountIn.toFixed(4)} ${inputToken.symbol} -> ${amountOut.toFixed(4)} ${outputToken.symbol}`,
     );
-  }
 
-  return result as ExecuteSwapResponseType;
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      data: {
+        tokenIn: inputToken.address,
+        tokenOut: outputToken.address,
+        amountIn,
+        amountOut,
+        fee,
+        baseTokenBalanceChange,
+        quoteTokenBalanceChange,
+      },
+    };
+  } else {
+    // Transaction not confirmed
+    return {
+      signature,
+      status: 0, // PENDING
+    };
+  }
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {

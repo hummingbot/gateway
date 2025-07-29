@@ -133,8 +133,9 @@ describe('POST /add-liquidity', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGas: jest.fn().mockResolvedValue(2000),
+      estimateGasPrice: jest.fn().mockResolvedValue(2000),
       simulateTransaction: jest.fn().mockResolvedValue(undefined),
+      simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
       sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
         confirmed: true,
         signature: 'mock-signature',
@@ -239,8 +240,9 @@ describe('POST /add-liquidity', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGas: jest.fn().mockResolvedValue(2000),
+      estimateGasPrice: jest.fn().mockResolvedValue(2000),
       simulateTransaction: jest.fn().mockResolvedValue(undefined),
+      simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
       sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
         confirmed: true,
         signature: 'mock-signature',
@@ -306,7 +308,7 @@ describe('POST /add-liquidity', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockRejectedValue(new Error('Wallet not found')),
-      estimateGas: jest.fn().mockResolvedValue(2000),
+      estimateGasPrice: jest.fn().mockResolvedValue(2000),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -360,7 +362,7 @@ describe('POST /add-liquidity', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGas: jest.fn().mockResolvedValue(2000),
+      estimateGasPrice: jest.fn().mockResolvedValue(2000),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -398,7 +400,7 @@ describe('POST /add-liquidity', () => {
     expect(mockRaydiumInstance.prepareWallet).toHaveBeenCalledWith(mockWalletAddress);
   });
 
-  it('should use custom compute units when provided', async () => {
+  it('should use default compute units', async () => {
     const { quoteLiquidity } = require('../../../../src/connectors/raydium/amm-routes/quoteLiquidity');
     quoteLiquidity.mockResolvedValue({
       baseLimited: true,
@@ -416,8 +418,9 @@ describe('POST /add-liquidity', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGas: jest.fn().mockResolvedValue(2000),
+      estimateGasPrice: jest.fn().mockResolvedValue(2000),
       simulateTransaction: jest.fn().mockResolvedValue(undefined),
+      simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
       sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
         confirmed: true,
         signature: 'mock-signature',
@@ -460,7 +463,6 @@ describe('POST /add-liquidity', () => {
     };
     (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydiumInstance);
 
-    const customComputeUnits = 600000;
     const response = await server.inject({
       method: 'POST',
       url: '/add-liquidity',
@@ -471,16 +473,15 @@ describe('POST /add-liquidity', () => {
         baseTokenAmount: 1,
         quoteTokenAmount: 150,
         slippagePct: 1,
-        computeUnits: customComputeUnits,
       },
     });
 
     expect(response.statusCode).toBe(200);
     expect(mockRaydiumInstance.prepareWallet).toHaveBeenCalledWith(mockWalletAddress);
 
-    // Verify that addLiquidity was called with the custom compute units
+    // Verify that addLiquidity was called with the default compute units (400000)
     const addLiquidityCall = mockAddLiquidityFunc.mock.calls[0];
-    expect(addLiquidityCall[0].computeBudgetConfig.units).toBe(customComputeUnits);
+    expect(addLiquidityCall[0].computeBudgetConfig.units).toBe(400000); // Using hardcoded COMPUTE_UNITS
   });
 
   it('should verify prepareWallet is called before SDK operations', async () => {
@@ -501,8 +502,9 @@ describe('POST /add-liquidity', () => {
         return Promise.resolve(null);
       }),
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      estimateGas: jest.fn().mockResolvedValue(2000),
+      estimateGasPrice: jest.fn().mockResolvedValue(2000),
       simulateTransaction: jest.fn().mockResolvedValue(undefined),
+      simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
       sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
         confirmed: true,
         signature: 'mock-signature',

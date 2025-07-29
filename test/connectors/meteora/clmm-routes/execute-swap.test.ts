@@ -6,6 +6,21 @@ import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/meteora/meteora');
+jest.mock('../../../../src/services/pool-service', () => ({
+  PoolService: {
+    getInstance: jest.fn().mockReturnValue({
+      getPool: jest.fn().mockResolvedValue({
+        address: 'ARwi1S4DaiTG5DX7S4M4ZsrXqpMD1MrTmbu9ue2tpmEq',
+      }),
+    }),
+  },
+}));
+jest.mock('../../../../src/chains/solana/solana.config', () => ({
+  getSolanaChainConfig: jest.fn().mockReturnValue({
+    defaultNetwork: 'mainnet-beta',
+    defaultWallet: '11111111111111111111111111111111',
+  }),
+}));
 
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
@@ -33,6 +48,11 @@ const mockWallet = {
   publicKey: new PublicKey('11111111111111111111111111111111'),
 };
 
+const mockTransaction = {
+  signature: 'mocktxsignature123',
+  sign: jest.fn(),
+};
+
 const mockSwapQuote = {
   protocolFee: 1000,
   amount: 100000000,
@@ -49,23 +69,26 @@ const mockDlmmPool = {
   getBinArrayForSwap: jest.fn().mockResolvedValue([]),
   swapQuote: jest.fn().mockReturnValue(mockSwapQuote),
   swapQuoteExactOut: jest.fn().mockReturnValue(mockSwapQuote),
-  swap: jest.fn().mockResolvedValue({}),
-  swapExactOut: jest.fn().mockResolvedValue({}),
-};
-
-const mockTransaction = {
-  signature: 'mocktxsignature123',
+  swap: jest.fn().mockResolvedValue(mockTransaction),
+  swapExactOut: jest.fn().mockResolvedValue(mockTransaction),
 };
 
 describe('POST /execute-swap', () => {
   let server: any;
 
   beforeAll(async () => {
-    server = await buildApp();
+    try {
+      server = await buildApp();
+    } catch (error) {
+      console.error('Failed to build app:', error);
+      throw error;
+    }
   });
 
   afterAll(async () => {
-    await server.close();
+    if (server) {
+      await server.close();
+    }
   });
 
   beforeEach(() => {
@@ -87,10 +110,12 @@ describe('POST /execute-swap', () => {
         meta: { fee: 5000 },
         transaction: {},
       }),
-      sendAndConfirmTransaction: jest.fn().mockResolvedValue({
+      sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
+        confirmed: true,
         signature: mockTransaction.signature,
-        fee: 5000,
+        txData: { meta: { fee: 5000 } },
       }),
+      simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
       extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
         balanceChanges: [-0.1, 14.85],
         fee: 5000,
@@ -137,7 +162,6 @@ describe('POST /execute-swap', () => {
     expect(body.data).toHaveProperty('quoteTokenBalanceChange', 14.85);
     expect(body.data).toHaveProperty('tokenIn', mockSOL.address);
     expect(body.data).toHaveProperty('tokenOut', mockUSDC.address);
-    expect(body.data).toHaveProperty('activeBinId', 0);
   });
 
   it('should execute a CLMM swap for BUY side', async () => {
@@ -155,12 +179,14 @@ describe('POST /execute-swap', () => {
         meta: { fee: 5000 },
         transaction: {},
       }),
-      sendAndConfirmTransaction: jest.fn().mockResolvedValue({
+      sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
+        confirmed: true,
         signature: mockTransaction.signature,
-        fee: 5000,
+        txData: { meta: { fee: 5000 } },
       }),
+      simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
       extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
-        balanceChanges: [0.1, -15],
+        balanceChanges: [-15, 0.1], // For BUY: first is USDC (negative), second is SOL (positive)
         fee: 5000,
       }),
     };
@@ -169,9 +195,13 @@ describe('POST /execute-swap', () => {
     const mockMeteoraInstance = {
       getDlmmPool: jest.fn().mockResolvedValue(mockDlmmPool),
       swapQuote2Base: jest.fn().mockResolvedValue({
-        swapOutAmount: 100000000,
-        swapInAmount: 15000000,
-        quote: mockSwapQuote,
+        swapOutAmount: 100000000, // 0.1 SOL
+        swapInAmount: 15000000, // 15 USDC
+        quote: {
+          ...mockSwapQuote,
+          amount: 15000000, // For BUY, amount is the input (USDC)
+          minOut: 100000000, // For BUY, minOut is the output (SOL)
+        },
         transaction: mockTransaction,
         dlmmPool: mockDlmmPool,
       }),
@@ -197,10 +227,12 @@ describe('POST /execute-swap', () => {
     const body = JSON.parse(response.body);
     expect(body).toHaveProperty('signature', mockTransaction.signature);
     expect(body).toHaveProperty('status', 1);
-    expect(body.data).toHaveProperty('amountIn', 15);
-    expect(body.data).toHaveProperty('amountOut', 0.1);
+    expect(body.data).toHaveProperty('amountIn', 15); // USDC in
+    expect(body.data).toHaveProperty('amountOut', 0.1); // SOL out
     expect(body.data).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body.data).toHaveProperty('tokenOut', mockSOL.address);
+    expect(body.data).toHaveProperty('baseTokenBalanceChange', 0.1); // SOL positive (receiving)
+    expect(body.data).toHaveProperty('quoteTokenBalanceChange', -15); // USDC negative (spending)
   });
 
   it('should return 400 if token not found', async () => {
