@@ -10,7 +10,7 @@ const ethereumChainConfig = getEthereumChainConfig();
 // Constants for examples
 const BASE_TOKEN = 'WETH';
 const QUOTE_TOKEN = 'USDC';
-const SWAP_AMOUNT = 1;
+const SWAP_AMOUNT = 0.01;
 
 // Uniswap-specific quote-swap request
 export const UniswapQuoteSwapRequest = Type.Object({
@@ -111,17 +111,6 @@ export const UniswapExecuteQuoteRequest = Type.Object({
     description: 'ID of the quote to execute',
     examples: ['123e4567-e89b-12d3-a456-426614174000'],
   }),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Uniswap AMM Add Liquidity Request
@@ -251,17 +240,6 @@ export const UniswapAmmExecuteSwapRequest = Type.Object({
       default: UniswapConfig.config.slippagePct,
     }),
   ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Uniswap-specific execute-swap request
@@ -305,17 +283,6 @@ export const UniswapExecuteSwapRequest = Type.Object({
       description: 'Maximum acceptable slippage percentage',
       default: 1,
       examples: [1],
-    }),
-  ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
     }),
   ),
 });

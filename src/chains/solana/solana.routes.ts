@@ -7,9 +7,9 @@ import { statusRoute } from './routes/status';
 
 export const solanaRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(statusRoute);
+  fastify.register(estimateGasRoute);
   fastify.register(balancesRoute);
   fastify.register(pollRoute);
-  fastify.register(estimateGasRoute);
 };
 
 export default solanaRoutes;

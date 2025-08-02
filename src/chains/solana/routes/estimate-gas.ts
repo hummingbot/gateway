@@ -5,11 +5,7 @@ import { logger } from '../../../services/logger';
 import { SolanaEstimateGasRequest } from '../schemas';
 import { Solana } from '../solana';
 
-export async function estimateGasSolana(
-  fastify: FastifyInstance,
-  network: string,
-  _gasLimit?: number,
-): Promise<EstimateGasResponse> {
+export async function estimateGasSolana(fastify: FastifyInstance, network: string): Promise<EstimateGasResponse> {
   try {
     const solana = await Solana.getInstance(network);
     const priorityFeePerCUInLamports = await solana.estimateGasPrice();
@@ -26,8 +22,8 @@ export async function estimateGasSolana(
 }
 
 export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: EstimateGasRequestType;
+  fastify.get<{
+    Querystring: EstimateGasRequestType;
     Reply: EstimateGasResponse;
   }>(
     '/estimate-gas',
@@ -35,15 +31,15 @@ export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Estimate gas prices for Solana transactions',
         tags: ['/chain/solana'],
-        body: SolanaEstimateGasRequest,
+        querystring: SolanaEstimateGasRequest,
         response: {
           200: EstimateGasResponseSchema,
         },
       },
     },
     async (request) => {
-      const { network, gasLimit } = request.body;
-      return await estimateGasSolana(fastify, network, gasLimit);
+      const { network } = request.query;
+      return await estimateGasSolana(fastify, network);
     },
   );
 };

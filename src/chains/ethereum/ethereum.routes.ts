@@ -20,11 +20,11 @@ declare module 'fastify' {
 export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
   // Register all the route handlers
   fastify.register(statusRoute);
+  fastify.register(estimateGasRoute);
   fastify.register(balancesRoute);
   fastify.register(pollRoute);
   fastify.register(allowancesRoute);
   fastify.register(approveRoute);
-  fastify.register(estimateGasRoute);
   fastify.register(wrapRoute);
   fastify.register(unwrapRoute);
 };

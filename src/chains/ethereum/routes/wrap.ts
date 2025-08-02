@@ -108,13 +108,17 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
       const iface = new utils.Interface(WETH9ABI);
       const data = iface.encodeFunctionData('deposit');
 
-      // Build unsigned transaction - let gateway handle gas parameters
+      // Get gas options using estimateGasPrice
+      const gasOptions = await ethereum.prepareGasOptions();
+
+      // Build unsigned transaction with gas parameters
       const unsignedTx = {
         to: wrappedInfo.address,
         data: data,
         value: amountInWei,
         nonce: nonce,
         chainId: ethereum.chainId,
+        ...gasOptions, // Include gas parameters from prepareGasOptions
       };
 
       // Sign with Ledger

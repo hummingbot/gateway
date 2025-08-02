@@ -1,7 +1,4 @@
 chainID: 42220
 nodeURL: https://rpc.ankr.com/celo
 nativeCurrencySymbol: CELO
-
-# Gas parameters for transactions
-gasLimitTransaction: 3000000
-manualGasPrice: 33
+minGasPrice: 0.1

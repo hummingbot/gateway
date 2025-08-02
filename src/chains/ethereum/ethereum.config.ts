@@ -6,7 +6,7 @@ export interface EthereumNetworkConfig {
   chainID: number;
   nodeURL: string;
   nativeCurrencySymbol: string;
-  manualGasPrice: number;
+  minGasPrice?: number;
 }
 
 export interface EthereumChainConfig {
@@ -23,7 +23,7 @@ export function getEthereumNetworkConfig(network: string): EthereumNetworkConfig
     chainID: ConfigManagerV2.getInstance().get(namespaceId + '.chainID'),
     nodeURL: ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL'),
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
-    manualGasPrice: ConfigManagerV2.getInstance().get(namespaceId + '.manualGasPrice'),
+    minGasPrice: ConfigManagerV2.getInstance().get(namespaceId + '.minGasPrice'),
   };
 }
 

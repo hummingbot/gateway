@@ -50,12 +50,6 @@ export const EthereumBalanceRequest = Type.Object({
 // Estimate gas request schema
 export const EthereumEstimateGasRequest = Type.Object({
   network: EthereumNetworkParameter,
-  gasLimit: Type.Optional(
-    Type.Number({
-      description: 'Gas limit for the transaction',
-      examples: [200000],
-    }),
-  ),
 });
 
 // Poll request schema - map signature to txHash for Ethereum

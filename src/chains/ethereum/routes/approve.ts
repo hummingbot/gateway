@@ -4,7 +4,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { getSpender } from '../../../connectors/uniswap/uniswap.contracts';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
-import { TokenInfo, Ethereum } from '../ethereum';
+import { Ethereum } from '../ethereum';
 import { EthereumLedger } from '../ethereum-ledger';
 import { waitForTransactionWithTimeout } from '../ethereum.utils';
 import { ApproveRequestSchema, ApproveResponseSchema, ApproveRequestType, ApproveResponseType } from '../schemas';
@@ -64,12 +64,16 @@ export async function approveEthereumToken(
       const iface = new utils.Interface(['function approve(address spender, uint256 amount)']);
       const data = iface.encodeFunctionData('approve', [spenderAddress, amountBigNumber]);
 
-      // Build unsigned transaction - let gateway handle gas parameters
+      // Get gas options using estimateGasPrice
+      const gasOptions = await ethereum.prepareGasOptions();
+
+      // Build unsigned transaction with gas parameters
       const unsignedTx = {
         to: fullToken.address,
         data: data,
         nonce: nonce,
         chainId: ethereum.chainId,
+        ...gasOptions, // Include gas parameters from prepareGasOptions
       };
 
       // Sign with Ledger

@@ -879,6 +879,7 @@
                 { "type": "string", "enum": ["clmm"] }
               ]
             },
+            "examples": { "amm": { "value": "amm" }, "clmm": { "value": "clmm" } },
             "in": "query",
             "name": "type",
             "required": true,
@@ -1173,8 +1174,7 @@
                     "default": "mainnet-beta",
                     "enum": ["devnet", "mainnet-beta"],
                     "type": "string"
-                  },
-                  "gasLimit": { "description": "Gas limit for the transaction", "type": "number", "example": 200000 }
+                  }
                 }
               }
             }
@@ -1267,7 +1267,7 @@
                   },
                   "address": {
                     "description": "Ethereum wallet address",
-                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "default": "<ethereum-wallet-address>",
                     "type": "string"
                   },
                   "tokens": {
@@ -1392,7 +1392,7 @@
                   },
                   "address": {
                     "description": "Ethereum wallet address",
-                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "default": "<ethereum-wallet-address>",
                     "type": "string"
                   },
                   "spender": {
@@ -1460,7 +1460,7 @@
                   },
                   "address": {
                     "description": "Ethereum wallet address",
-                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "default": "<ethereum-wallet-address>",
                     "type": "string"
                   },
                   "spender": {
@@ -1536,8 +1536,7 @@
                       "sepolia"
                     ],
                     "type": "string"
-                  },
-                  "gasLimit": { "description": "Gas limit for the transaction", "type": "number", "example": 200000 }
+                  }
                 }
               }
             }
@@ -1591,11 +1590,85 @@
                   },
                   "address": {
                     "description": "Ethereum wallet address",
-                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "default": "<ethereum-wallet-address>",
                     "type": "string"
                   },
                   "amount": {
                     "description": "The amount of native token to wrap (e.g., ETH, BNB, AVAX)",
+                    "type": "string",
+                    "example": "0.01"
+                  }
+                },
+                "required": ["amount"]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "signature": { "type": "string" },
+                    "status": { "description": "TransactionStatus enum value", "type": "number" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "nonce": { "type": "number" },
+                        "fee": { "type": "string" },
+                        "amount": { "type": "string" },
+                        "wrappedAddress": { "type": "string" },
+                        "nativeToken": { "type": "string" },
+                        "wrappedToken": { "type": "string" }
+                      },
+                      "required": ["nonce", "fee", "amount", "wrappedAddress", "nativeToken", "wrappedToken"]
+                    }
+                  },
+                  "required": ["signature", "status"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chains/ethereum/unwrap": {
+      "post": {
+        "tags": ["/chain/ethereum"],
+        "description": "Unwrap wrapped token to native token (e.g., WETH to ETH, WBNB to BNB)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "network": {
+                    "description": "The Ethereum network to use",
+                    "default": "mainnet",
+                    "enum": [
+                      "arbitrum",
+                      "avalanche",
+                      "base",
+                      "bsc",
+                      "celo",
+                      "mainnet",
+                      "optimism",
+                      "polygon",
+                      "sepolia"
+                    ],
+                    "type": "string"
+                  },
+                  "address": {
+                    "description": "Ethereum wallet address",
+                    "default": "<ethereum-wallet-address>",
+                    "type": "string"
+                  },
+                  "amount": {
+                    "description": "The amount of wrapped token to unwrap (e.g., WETH, WBNB, WAVAX)",
                     "type": "string",
                     "example": "0.01"
                   }
@@ -1998,19 +2071,36 @@
         "description": "Fetch info about Meteora pools",
         "parameters": [
           {
-            "schema": { "type": "string", "default": "mainnet-beta" },
-            "in": "query",
-            "name": "network",
-            "required": false
-          },
-          {
-            "schema": { "type": "number", "minimum": 1, "default": 10 },
+            "schema": { "minimum": 1, "default": 10, "type": "number" },
+            "example": 10,
             "in": "query",
             "name": "limit",
-            "required": false
+            "required": false,
+            "description": "Maximum number of pools to return"
           },
-          { "schema": { "type": "string" }, "example": "SOL", "in": "query", "name": "tokenA", "required": false },
-          { "schema": { "type": "string" }, "example": "USDC", "in": "query", "name": "tokenB", "required": false }
+          {
+            "schema": { "type": "string" },
+            "example": "SOL",
+            "in": "query",
+            "name": "tokenA",
+            "required": false,
+            "description": "First token symbol or address"
+          },
+          {
+            "schema": { "type": "string" },
+            "example": "USDC",
+            "in": "query",
+            "name": "tokenB",
+            "required": false,
+            "description": "Second token symbol or address"
+          },
+          {
+            "schema": { "default": "mainnet-beta", "enum": ["devnet", "mainnet-beta"], "type": "string" },
+            "in": "query",
+            "name": "network",
+            "required": false,
+            "description": "Solana network to use"
+          }
         ],
         "responses": {
           "200": {
@@ -2059,17 +2149,18 @@
         "parameters": [
           {
             "schema": { "type": "string" },
-            "examples": { "devnet": { "value": "devnet" }, "mainnet-beta": { "value": "mainnet-beta" } },
-            "in": "query",
-            "name": "network",
-            "required": false
-          },
-          {
-            "schema": { "type": "string" },
             "example": "2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3",
             "in": "query",
             "name": "poolAddress",
-            "required": true
+            "required": true,
+            "description": "Meteora DLMM pool address"
+          },
+          {
+            "schema": { "default": "mainnet-beta", "enum": ["devnet", "mainnet-beta"], "type": "string" },
+            "in": "query",
+            "name": "network",
+            "required": false,
+            "description": "Solana network to use"
           }
         ],
         "responses": {
@@ -2135,24 +2226,27 @@
         "description": "Retrieve a list of positions owned by a user's wallet in a specific Meteora pool",
         "parameters": [
           {
-            "schema": { "default": "mainnet-beta", "type": "string" },
+            "schema": { "default": "mainnet-beta", "enum": ["devnet", "mainnet-beta"], "type": "string" },
             "in": "query",
             "name": "network",
-            "required": false
+            "required": false,
+            "description": "Solana network to use"
           },
           {
-            "schema": { "type": "string" },
+            "schema": { "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5", "type": "string" },
             "example": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
             "in": "query",
             "name": "walletAddress",
-            "required": true
+            "required": false,
+            "description": "Solana wallet address to check for positions"
           },
           {
             "schema": { "type": "string" },
-            "example": "FtFUzuXbbw6oBbU53SDUGspEka1D5Xyc4cwnkxer6xKz",
+            "example": "2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3",
             "in": "query",
             "name": "poolAddress",
-            "required": true
+            "required": true,
+            "description": "Meteora DLMM pool address"
           }
         ],
         "responses": {
@@ -2210,19 +2304,27 @@
         "parameters": [
           {
             "schema": { "type": "string" },
-            "examples": { "devnet": { "value": "devnet" }, "mainnet-beta": { "value": "mainnet-beta" } },
+            "example": "<sample-position-address>",
             "in": "query",
-            "name": "network",
-            "required": false
+            "name": "positionAddress",
+            "required": true,
+            "description": "Position NFT address"
           },
           {
-            "schema": { "type": "string" },
+            "schema": { "default": "mainnet-beta", "enum": ["devnet", "mainnet-beta"], "type": "string" },
+            "in": "query",
+            "name": "network",
+            "required": false,
+            "description": "Solana network to use"
+          },
+          {
+            "schema": { "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5", "type": "string" },
             "example": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
             "in": "query",
             "name": "walletAddress",
-            "required": false
-          },
-          { "schema": { "type": "string" }, "in": "query", "name": "positionAddress", "required": true }
+            "required": false,
+            "description": "Solana wallet address"
+          }
         ],
         "responses": {
           "200": {
@@ -2273,16 +2375,24 @@
         "tags": ["/connector/meteora"],
         "description": "Get swap quote for Meteora CLMM",
         "parameters": [
-          { "schema": { "type": "string" }, "in": "query", "name": "network", "required": false },
           {
-            "schema": { "type": "string" },
+            "schema": { "default": "mainnet-beta", "enum": ["devnet", "mainnet-beta"], "type": "string" },
             "in": "query",
-            "name": "poolAddress",
+            "name": "network",
             "required": false,
-            "description": "Pool address (optional - can be looked up from baseToken and quoteToken)"
+            "description": "Solana network to use"
           },
           {
             "schema": { "type": "string" },
+            "example": "2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3",
+            "in": "query",
+            "name": "poolAddress",
+            "required": false,
+            "description": "Meteora DLMM pool address (optional - can be looked up from baseToken and quoteToken)"
+          },
+          {
+            "schema": { "type": "string" },
+            "example": "SOL",
             "in": "query",
             "name": "baseToken",
             "required": true,
@@ -2290,24 +2400,35 @@
           },
           {
             "schema": { "type": "string" },
+            "example": "USDC",
             "in": "query",
             "name": "quoteToken",
             "required": false,
             "description": "The other token in the pair (optional - required if poolAddress not provided)"
           },
-          { "schema": { "type": "number" }, "in": "query", "name": "amount", "required": true },
           {
-            "schema": { "enum": ["BUY", "SELL"], "type": "string" },
+            "schema": { "type": "number" },
+            "example": 0.01,
+            "in": "query",
+            "name": "amount",
+            "required": true,
+            "description": "Amount to swap"
+          },
+          {
+            "schema": { "enum": ["BUY", "SELL"], "default": "SELL", "type": "string" },
+            "example": "SELL",
             "in": "query",
             "name": "side",
             "required": true,
             "description": "Trade direction"
           },
           {
-            "schema": { "minimum": 0, "maximum": 100, "type": "number" },
+            "schema": { "minimum": 0, "maximum": 100, "default": 1, "type": "number" },
+            "example": 1,
             "in": "query",
             "name": "slippagePct",
-            "required": false
+            "required": false,
+            "description": "Maximum acceptable slippage percentage"
           }
         ],
         "responses": {
@@ -2316,6 +2437,7 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "object",
                   "properties": {
                     "poolAddress": { "type": "string" },
                     "tokenIn": { "type": "string" },
@@ -2326,10 +2448,19 @@
                     "slippagePct": { "type": "number" },
                     "minAmountOut": { "type": "number" },
                     "maxAmountIn": { "type": "number" },
-                    "priceImpactPct": { "type": "number" },
-                    "activeBinId": { "type": "number" }
+                    "priceImpactPct": { "type": "number" }
                   },
-                  "type": "object"
+                  "required": [
+                    "poolAddress",
+                    "tokenIn",
+                    "tokenOut",
+                    "amountIn",
+                    "amountOut",
+                    "price",
+                    "minAmountOut",
+                    "maxAmountIn",
+                    "priceImpactPct"
+                  ]
                 }
               }
             }
@@ -2340,72 +2471,58 @@
     "/connectors/meteora/clmm/execute-swap": {
       "post": {
         "tags": ["/connector/meteora"],
-        "description": "Execute a token swap on Meteora",
+        "description": "Execute a token swap on Meteora DLMM",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "allOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "poolAddress": {
-                        "description": "Pool address (optional - can be looked up from baseToken and quoteToken)",
-                        "type": "string"
-                      },
-                      "baseToken": { "type": "string" },
-                      "quoteToken": {
-                        "description": "The other token in the pair (optional - required if poolAddress not provided)",
-                        "type": "string"
-                      },
-                      "amount": { "type": "number" },
-                      "side": { "enum": ["BUY", "SELL"], "type": "string" }
-                    },
-                    "required": ["baseToken", "amount", "side"]
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "network": {
-                        "description": "Solana network to use",
-                        "default": "mainnet-beta",
-                        "enum": ["devnet", "mainnet-beta"],
-                        "examples": ["devnet", "mainnet-beta"],
-                        "type": "string"
-                      },
-                      "walletAddress": {
-                        "description": "Solana wallet address that will execute the swap",
-                        "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
-                        "examples": ["82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5"],
-                        "type": "string"
-                      },
-                      "slippagePct": {
-                        "minimum": 0,
-                        "maximum": 100,
-                        "description": "Maximum acceptable slippage percentage",
-                        "default": 1,
-                        "examples": [1],
-                        "type": "number"
-                      },
-                      "priorityFeePerCU": { "description": "Priority fee per compute unit", "type": "number" },
-                      "computeUnits": { "description": "Compute units for transaction", "type": "number" }
-                    }
-                  }
-                ],
                 "properties": {
-                  "network": { "type": "string", "default": "mainnet-beta" },
-                  "walletAddress": { "type": "string", "example": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5" },
-                  "baseToken": { "type": "string", "example": "SOL" },
-                  "quoteToken": { "type": "string", "example": "USDC" },
-                  "amount": { "type": "number", "example": 0.01 },
-                  "side": { "type": "string", "enum": ["BUY", "SELL"] },
-                  "poolAddress": { "type": "string", "example": "" },
-                  "slippagePct": { "type": "number", "example": 1 }
-                }
+                  "network": {
+                    "description": "Solana network to use",
+                    "default": "mainnet-beta",
+                    "enum": ["devnet", "mainnet-beta"],
+                    "type": "string"
+                  },
+                  "walletAddress": {
+                    "description": "Solana wallet address that will execute the swap",
+                    "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                    "type": "string",
+                    "example": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5"
+                  },
+                  "poolAddress": {
+                    "description": "Meteora DLMM pool address (optional - can be looked up from baseToken and quoteToken)",
+                    "type": "string",
+                    "example": "2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3"
+                  },
+                  "baseToken": { "description": "Base token symbol or address", "type": "string", "example": "SOL" },
+                  "quoteToken": {
+                    "description": "Quote token symbol or address (optional - required if poolAddress not provided)",
+                    "type": "string",
+                    "example": "USDC"
+                  },
+                  "amount": { "description": "Amount to swap", "type": "number", "example": 0.01 },
+                  "side": {
+                    "description": "Trade direction",
+                    "enum": ["BUY", "SELL"],
+                    "default": "SELL",
+                    "type": "string",
+                    "example": "SELL"
+                  },
+                  "slippagePct": {
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Maximum acceptable slippage percentage",
+                    "default": 1,
+                    "type": "number",
+                    "example": 1
+                  }
+                },
+                "required": ["baseToken", "amount", "side"]
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -2426,8 +2543,7 @@
                         "amountOut": { "type": "number" },
                         "fee": { "type": "number" },
                         "baseTokenBalanceChange": { "type": "number" },
-                        "quoteTokenBalanceChange": { "type": "number" },
-                        "activeBinId": { "type": "number" }
+                        "quoteTokenBalanceChange": { "type": "number" }
                       },
                       "required": [
                         "tokenIn",
@@ -2436,8 +2552,7 @@
                         "amountOut",
                         "fee",
                         "baseTokenBalanceChange",
-                        "quoteTokenBalanceChange",
-                        "activeBinId"
+                        "quoteTokenBalanceChange"
                       ]
                     }
                   },
@@ -2477,7 +2592,6 @@
                         "description": "Solana network to use",
                         "default": "mainnet-beta",
                         "enum": ["devnet", "mainnet-beta"],
-                        "examples": ["devnet", "mainnet-beta"],
                         "type": "string"
                       },
                       "walletAddress": {
@@ -2485,6 +2599,31 @@
                         "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
                         "examples": ["82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5"],
                         "type": "string"
+                      },
+                      "lowerPrice": {
+                        "description": "Lower price bound for the position",
+                        "examples": [100],
+                        "type": "number"
+                      },
+                      "upperPrice": {
+                        "description": "Upper price bound for the position",
+                        "examples": [300],
+                        "type": "number"
+                      },
+                      "poolAddress": {
+                        "description": "Meteora DLMM pool address",
+                        "examples": ["2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3"],
+                        "type": "string"
+                      },
+                      "baseTokenAmount": {
+                        "description": "Amount of base token to deposit",
+                        "examples": [0.01],
+                        "type": "number"
+                      },
+                      "quoteTokenAmount": {
+                        "description": "Amount of quote token to deposit",
+                        "examples": [2],
+                        "type": "number"
                       },
                       "slippagePct": {
                         "minimum": 0,
@@ -2494,15 +2633,14 @@
                         "examples": [1],
                         "type": "number"
                       },
-                      "priorityFeePerCU": { "description": "Priority fee per compute unit", "type": "number" },
-                      "computeUnits": { "description": "Compute units for transaction", "type": "number" },
                       "strategyType": {
                         "description": "Strategy type for the position",
                         "examples": [0],
                         "enum": [0, 1, 2, 3, 4, 5],
                         "type": "number"
                       }
-                    }
+                    },
+                    "required": ["lowerPrice", "upperPrice", "poolAddress"]
                   }
                 ]
               }
@@ -2571,7 +2709,6 @@
                         "description": "Solana network to use",
                         "default": "mainnet-beta",
                         "enum": ["devnet", "mainnet-beta"],
-                        "examples": ["devnet", "mainnet-beta"],
                         "type": "string"
                       },
                       "walletAddress": {
@@ -2588,8 +2725,6 @@
                         "examples": [1],
                         "type": "number"
                       },
-                      "priorityFeePerCU": { "description": "Priority fee per compute unit", "type": "number" },
-                      "computeUnits": { "description": "Compute units for transaction", "type": "number" },
                       "strategyType": {
                         "description": "Strategy type for the position",
                         "examples": [0],
@@ -2656,7 +2791,6 @@
                         "description": "Solana network to use",
                         "default": "mainnet-beta",
                         "enum": ["devnet", "mainnet-beta"],
-                        "examples": ["devnet", "mainnet-beta"],
                         "type": "string"
                       },
                       "walletAddress": {
@@ -2664,9 +2798,7 @@
                         "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
                         "examples": ["82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5"],
                         "type": "string"
-                      },
-                      "priorityFeePerCU": { "description": "Priority fee per compute unit", "type": "number" },
-                      "computeUnits": { "description": "Compute units for transaction", "type": "number" }
+                      }
                     }
                   }
                 ]
@@ -2724,7 +2856,6 @@
                         "description": "Solana network to use",
                         "default": "mainnet-beta",
                         "enum": ["devnet", "mainnet-beta"],
-                        "examples": ["devnet", "mainnet-beta"],
                         "type": "string"
                       },
                       "walletAddress": {
@@ -2732,9 +2863,7 @@
                         "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
                         "examples": ["82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5"],
                         "type": "string"
-                      },
-                      "priorityFeePerCU": { "description": "Priority fee per compute unit", "type": "number" },
-                      "computeUnits": { "description": "Compute units for transaction", "type": "number" }
+                      }
                     }
                   }
                 ]
@@ -2792,7 +2921,6 @@
                         "description": "Solana network to use",
                         "default": "mainnet-beta",
                         "enum": ["devnet", "mainnet-beta"],
-                        "examples": ["devnet", "mainnet-beta"],
                         "type": "string"
                       },
                       "walletAddress": {
@@ -2800,9 +2928,7 @@
                         "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
                         "examples": ["82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5"],
                         "type": "string"
-                      },
-                      "priorityFeePerCU": { "description": "Priority fee per compute unit", "type": "number" },
-                      "computeUnits": { "description": "Compute units for transaction", "type": "number" }
+                      }
                     }
                   }
                 ]
@@ -2862,7 +2988,7 @@
           },
           {
             "schema": { "type": "string" },
-            "example": "8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj",
+            "example": "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2",
             "in": "query",
             "name": "poolAddress",
             "required": true,
@@ -2915,7 +3041,7 @@
           },
           {
             "schema": { "type": "string" },
-            "example": "8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj",
+            "example": "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2",
             "in": "query",
             "name": "poolAddress",
             "required": true,
@@ -2977,7 +3103,7 @@
           },
           {
             "schema": { "type": "string" },
-            "example": "8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj",
+            "example": "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2",
             "in": "query",
             "name": "poolAddress",
             "required": true,
@@ -2985,7 +3111,7 @@
           },
           {
             "schema": { "type": "number" },
-            "example": 1,
+            "example": 0.01,
             "in": "query",
             "name": "baseTokenAmount",
             "required": true,
@@ -2993,14 +3119,15 @@
           },
           {
             "schema": { "type": "number" },
-            "example": 100,
+            "example": 2,
             "in": "query",
             "name": "quoteTokenAmount",
             "required": true,
             "description": "Amount of quote token to add"
           },
           {
-            "schema": { "minimum": 0, "maximum": 100, "default": 1, "type": "number" },
+            "schema": { "minimum": 0, "maximum": 100, "default": 10, "type": "number" },
+            "example": 10,
             "in": "query",
             "name": "slippagePct",
             "required": false,
@@ -3055,7 +3182,7 @@
           },
           {
             "schema": { "type": "string" },
-            "example": "8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj",
+            "example": "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2",
             "in": "query",
             "name": "poolAddress",
             "required": false,
@@ -3079,7 +3206,7 @@
           },
           {
             "schema": { "type": "number" },
-            "example": 0.1,
+            "example": 0.01,
             "in": "query",
             "name": "amount",
             "required": true,
@@ -3093,7 +3220,8 @@
             "description": "Trade direction"
           },
           {
-            "schema": { "minimum": 0, "maximum": 100, "default": 1, "type": "number" },
+            "schema": { "minimum": 0, "maximum": 100, "default": 10, "type": "number" },
+            "example": 10,
             "in": "query",
             "name": "slippagePct",
             "required": false,
@@ -3154,17 +3282,7 @@
                   "quoteToken": { "type": "string", "example": "USDC" },
                   "amount": { "type": "number", "example": 0.01 },
                   "side": { "type": "string", "example": "SELL" },
-                  "slippagePct": { "type": "number", "example": 1 },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit in lamports",
-                    "type": "number",
-                    "example": 1000
-                  },
-                  "computeUnits": {
-                    "description": "Max compute units for transaction",
-                    "type": "number",
-                    "example": 300000
-                  }
+                  "slippagePct": { "type": "number", "example": 1 }
                 },
                 "required": ["baseToken", "amount", "side"]
               }
@@ -3236,30 +3354,21 @@
                   "poolAddress": {
                     "description": "Raydium AMM pool address",
                     "type": "string",
-                    "example": "8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj"
+                    "example": "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2"
                   },
-                  "baseTokenAmount": { "description": "Amount of base token to add", "type": "number", "example": 1 },
-                  "quoteTokenAmount": {
-                    "description": "Amount of quote token to add",
+                  "baseTokenAmount": {
+                    "description": "Amount of base token to add",
                     "type": "number",
-                    "example": 100
+                    "example": 0.01
                   },
+                  "quoteTokenAmount": { "description": "Amount of quote token to add", "type": "number", "example": 2 },
                   "slippagePct": {
                     "minimum": 0,
                     "maximum": 100,
                     "description": "Maximum acceptable slippage percentage",
-                    "default": 1,
-                    "type": "number"
-                  },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit in lamports",
+                    "default": 10,
                     "type": "number",
-                    "example": 1000
-                  },
-                  "computeUnits": {
-                    "description": "Max compute units for transaction",
-                    "type": "number",
-                    "example": 300000
+                    "example": 10
                   }
                 },
                 "required": ["poolAddress", "baseTokenAmount", "quoteTokenAmount"]
@@ -3320,24 +3429,14 @@
                   "poolAddress": {
                     "description": "Raydium AMM pool address",
                     "type": "string",
-                    "example": "8sLbNZoA1cfnvMJLPfp98ZLAnFSYCFApfJKMbiXNLwxj"
+                    "example": "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2"
                   },
                   "percentageToRemove": {
                     "minimum": 0,
                     "maximum": 100,
                     "description": "Percentage of liquidity to remove",
                     "type": "number",
-                    "example": 50
-                  },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit in lamports",
-                    "type": "number",
-                    "example": 1000
-                  },
-                  "computeUnits": {
-                    "description": "Max compute units for transaction",
-                    "type": "number",
-                    "example": 300000
+                    "example": 100
                   }
                 },
                 "required": ["poolAddress", "percentageToRemove"]
@@ -3388,7 +3487,7 @@
           },
           {
             "schema": { "type": "string" },
-            "example": "2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv",
+            "example": "3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv",
             "in": "query",
             "name": "poolAddress",
             "required": true,
@@ -3437,17 +3536,26 @@
         "description": "Retrieve a list of positions owned by a user's wallet in a specific Raydium CLMM pool",
         "parameters": [
           {
-            "schema": { "default": "mainnet-beta", "type": "string" },
+            "schema": { "default": "mainnet-beta", "enum": ["devnet", "mainnet-beta"], "type": "string" },
             "in": "query",
             "name": "network",
-            "required": false
+            "required": false,
+            "description": "Solana network to use"
+          },
+          {
+            "schema": { "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5", "type": "string" },
+            "in": "query",
+            "name": "walletAddress",
+            "required": false,
+            "description": "Solana wallet address to check for positions"
           },
           {
             "schema": { "type": "string" },
-            "example": "61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht",
+            "example": "3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv",
             "in": "query",
             "name": "poolAddress",
-            "required": true
+            "required": true,
+            "description": "Raydium CLMM pool address (required for Raydium)"
           }
         ],
         "responses": {
@@ -3511,7 +3619,7 @@
           },
           {
             "schema": { "type": "string" },
-            "example": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+            "example": "<sample-position-address>",
             "in": "query",
             "name": "positionAddress",
             "required": true,
@@ -3575,37 +3683,60 @@
         "description": "Quote amounts for a new Raydium CLMM position",
         "parameters": [
           {
-            "schema": { "type": "string", "default": "mainnet-beta" },
+            "schema": { "default": "mainnet-beta", "enum": ["devnet", "mainnet-beta"], "type": "string" },
             "in": "query",
             "name": "network",
-            "required": false
+            "required": false,
+            "description": "Solana network to use"
           },
-          { "schema": { "type": "number" }, "example": 100, "in": "query", "name": "lowerPrice", "required": true },
-          { "schema": { "type": "number" }, "example": 180, "in": "query", "name": "upperPrice", "required": true },
+          {
+            "schema": { "type": "number" },
+            "example": 100,
+            "in": "query",
+            "name": "lowerPrice",
+            "required": true,
+            "description": "Lower price bound for the position"
+          },
+          {
+            "schema": { "type": "number" },
+            "example": 300,
+            "in": "query",
+            "name": "upperPrice",
+            "required": true,
+            "description": "Upper price bound for the position"
+          },
           {
             "schema": { "type": "string" },
             "example": "3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv",
             "in": "query",
             "name": "poolAddress",
-            "required": true
+            "required": true,
+            "description": "Raydium CLMM pool address"
           },
           {
             "schema": { "type": "number" },
-            "example": 0.1,
+            "example": 0.01,
             "in": "query",
             "name": "baseTokenAmount",
-            "required": false
+            "required": false,
+            "description": "Amount of base token to deposit"
           },
           {
             "schema": { "type": "number" },
-            "example": 15,
+            "example": 2,
             "in": "query",
             "name": "quoteTokenAmount",
-            "required": false
+            "required": false,
+            "description": "Amount of quote token to deposit"
           },
-          { "schema": { "type": "number" }, "example": 1, "in": "query", "name": "slippagePct", "required": false },
-          { "schema": { "type": "string" }, "example": "SOL", "in": "query", "name": "baseToken", "required": false },
-          { "schema": { "type": "string" }, "example": "USDC", "in": "query", "name": "quoteToken", "required": false }
+          {
+            "schema": { "minimum": 0, "maximum": 100, "default": 10, "type": "number" },
+            "example": 10,
+            "in": "query",
+            "name": "slippagePct",
+            "required": false,
+            "description": "Maximum acceptable slippage percentage"
+          }
         ],
         "responses": {
           "200": {
@@ -3632,12 +3763,6 @@
                 }
               }
             }
-          },
-          "500": {
-            "description": "Default Response",
-            "content": {
-              "application/json": { "schema": { "type": "object", "properties": { "error": { "type": "string" } } } }
-            }
           }
         }
       }
@@ -3656,7 +3781,7 @@
           },
           {
             "schema": { "type": "string" },
-            "example": "2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv",
+            "example": "3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv",
             "in": "query",
             "name": "poolAddress",
             "required": false,
@@ -3680,7 +3805,7 @@
           },
           {
             "schema": { "type": "number" },
-            "example": 0.1,
+            "example": 0.01,
             "in": "query",
             "name": "amount",
             "required": true,
@@ -3694,7 +3819,8 @@
             "description": "Trade direction"
           },
           {
-            "schema": { "minimum": 0, "maximum": 100, "default": 1, "type": "number" },
+            "schema": { "minimum": 0, "maximum": 100, "default": 10, "type": "number" },
+            "example": 10,
             "in": "query",
             "name": "slippagePct",
             "required": false,
@@ -3718,8 +3844,7 @@
                     "slippagePct": { "type": "number" },
                     "minAmountOut": { "type": "number" },
                     "maxAmountIn": { "type": "number" },
-                    "priceImpactPct": { "type": "number" },
-                    "activeBinId": { "type": "number" }
+                    "priceImpactPct": { "type": "number" }
                   },
                   "required": [
                     "poolAddress",
@@ -3730,8 +3855,7 @@
                     "price",
                     "minAmountOut",
                     "maxAmountIn",
-                    "priceImpactPct",
-                    "activeBinId"
+                    "priceImpactPct"
                   ]
                 }
               }
@@ -3750,23 +3874,40 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "walletAddress": { "type": "string", "example": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5" },
-                  "network": { "type": "string", "default": "mainnet-beta" },
-                  "poolAddress": { "type": "string", "example": "" },
-                  "baseToken": { "type": "string", "example": "SOL" },
-                  "quoteToken": { "type": "string", "example": "USDC" },
-                  "amount": { "type": "number", "example": 0.01 },
-                  "side": { "type": "string", "enum": ["BUY", "SELL"], "example": "SELL" },
-                  "slippagePct": { "type": "number", "example": 1 },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit in lamports",
-                    "type": "number",
-                    "example": 1000
+                  "walletAddress": {
+                    "description": "Solana wallet address",
+                    "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                    "type": "string",
+                    "example": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5"
                   },
-                  "computeUnits": {
-                    "description": "Max compute units for transaction",
+                  "network": {
+                    "description": "Solana network to use",
+                    "default": "mainnet-beta",
+                    "enum": ["devnet", "mainnet-beta"],
+                    "type": "string"
+                  },
+                  "poolAddress": {
+                    "description": "CLMM pool address (optional)",
+                    "type": "string",
+                    "example": "3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv"
+                  },
+                  "baseToken": { "description": "Base token symbol or address", "type": "string", "example": "SOL" },
+                  "quoteToken": { "description": "Quote token symbol or address", "type": "string", "example": "USDC" },
+                  "amount": { "description": "Amount to swap", "type": "number", "example": 0.01 },
+                  "side": {
+                    "description": "Trade direction",
+                    "enum": ["BUY", "SELL"],
+                    "default": "SELL",
+                    "type": "string",
+                    "example": "SELL"
+                  },
+                  "slippagePct": {
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Maximum acceptable slippage percentage",
+                    "default": 10,
                     "type": "number",
-                    "example": 300000
+                    "example": 10
                   }
                 },
                 "required": ["baseToken", "amount", "side"]
@@ -3794,8 +3935,7 @@
                         "amountOut": { "type": "number" },
                         "fee": { "type": "number" },
                         "baseTokenBalanceChange": { "type": "number" },
-                        "quoteTokenBalanceChange": { "type": "number" },
-                        "activeBinId": { "type": "number" }
+                        "quoteTokenBalanceChange": { "type": "number" }
                       },
                       "required": [
                         "tokenIn",
@@ -3804,8 +3944,7 @@
                         "amountOut",
                         "fee",
                         "baseTokenBalanceChange",
-                        "quoteTokenBalanceChange",
-                        "activeBinId"
+                        "quoteTokenBalanceChange"
                       ]
                     }
                   },
@@ -3841,44 +3980,35 @@
                   "lowerPrice": {
                     "description": "Lower price bound for the position",
                     "type": "number",
-                    "example": 90
+                    "example": 100
                   },
                   "upperPrice": {
                     "description": "Upper price bound for the position",
                     "type": "number",
-                    "example": 110
+                    "example": 300
                   },
                   "poolAddress": {
                     "description": "Raydium CLMM pool address",
                     "type": "string",
-                    "example": "2QdhepnKRTLjjSqPL1PtKNwqrUkoLee5Gqs8bvZhRdMv"
+                    "example": "3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv"
                   },
                   "baseTokenAmount": {
                     "description": "Amount of base token to deposit",
                     "type": "number",
-                    "example": 1
+                    "example": 0.01
                   },
                   "quoteTokenAmount": {
                     "description": "Amount of quote token to deposit",
                     "type": "number",
-                    "example": 100
+                    "example": 2
                   },
                   "slippagePct": {
                     "minimum": 0,
                     "maximum": 100,
                     "description": "Maximum acceptable slippage percentage",
-                    "default": 1,
-                    "type": "number"
-                  },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit in lamports",
+                    "default": 10,
                     "type": "number",
-                    "example": 1000
-                  },
-                  "computeUnits": {
-                    "description": "Max compute units for transaction",
-                    "type": "number",
-                    "example": 300000
+                    "example": 10
                   }
                 },
                 "required": ["lowerPrice", "upperPrice", "poolAddress"]
@@ -3947,30 +4077,21 @@
                   "positionAddress": {
                     "description": "Position NFT address",
                     "type": "string",
-                    "example": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"
+                    "example": "<sample-position-address>"
                   },
-                  "baseTokenAmount": { "description": "Amount of base token to add", "type": "number", "example": 1 },
-                  "quoteTokenAmount": {
-                    "description": "Amount of quote token to add",
+                  "baseTokenAmount": {
+                    "description": "Amount of base token to add",
                     "type": "number",
-                    "example": 100
+                    "example": 0.01
                   },
+                  "quoteTokenAmount": { "description": "Amount of quote token to add", "type": "number", "example": 2 },
                   "slippagePct": {
                     "minimum": 0,
                     "maximum": 100,
                     "description": "Maximum acceptable slippage percentage",
-                    "default": 1,
-                    "type": "number"
-                  },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit in lamports",
+                    "default": 10,
                     "type": "number",
-                    "example": 1000
-                  },
-                  "computeUnits": {
-                    "description": "Max compute units for transaction",
-                    "type": "number",
-                    "example": 300000
+                    "example": 10
                   }
                 },
                 "required": ["positionAddress", "baseTokenAmount", "quoteTokenAmount"]
@@ -4038,17 +4159,7 @@
                     "maximum": 100,
                     "description": "Percentage of liquidity to remove",
                     "type": "number",
-                    "example": 50
-                  },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit in lamports",
-                    "type": "number",
-                    "example": 1000
-                  },
-                  "computeUnits": {
-                    "description": "Max compute units for transaction",
-                    "type": "number",
-                    "example": 300000
+                    "example": 100
                   }
                 },
                 "required": ["positionAddress", "percentageToRemove"]
@@ -4088,7 +4199,7 @@
     "/connectors/raydium/clmm/collect-fees": {
       "post": {
         "tags": ["/connector/raydium"],
-        "description": "Collect fees from a Raydium CLMM position",
+        "description": "Collect fees from a Raydium CLMM position by removing 1% of liquidity",
         "requestBody": {
           "content": {
             "application/json": {
@@ -4158,16 +4269,6 @@
                     "description": "Position NFT address to close",
                     "type": "string",
                     "example": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"
-                  },
-                  "priorityFeePerCU": {
-                    "description": "Priority fee per compute unit in lamports",
-                    "type": "number",
-                    "example": 1000
-                  },
-                  "computeUnits": {
-                    "description": "Max compute units for transaction",
-                    "type": "number",
-                    "example": 300000
                   }
                 },
                 "required": ["positionAddress"]
@@ -4269,7 +4370,7 @@
             "description": "Maximum acceptable slippage percentage"
           },
           {
-            "schema": { "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684", "type": "string" },
+            "schema": { "default": "<ethereum-wallet-address>", "type": "string" },
             "in": "query",
             "name": "walletAddress",
             "required": false,
@@ -4328,9 +4429,9 @@
                 "properties": {
                   "walletAddress": {
                     "description": "Wallet address that will execute the swap",
-                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "default": "<ethereum-wallet-address>",
                     "type": "string",
-                    "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684"
+                    "example": "<ethereum-wallet-address>"
                   },
                   "network": {
                     "description": "The blockchain network to use",
@@ -4418,9 +4519,9 @@
                 "properties": {
                   "walletAddress": {
                     "description": "Wallet address that will execute the swap",
-                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "default": "<ethereum-wallet-address>",
                     "type": "string",
-                    "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684"
+                    "example": "<ethereum-wallet-address>"
                   },
                   "network": {
                     "description": "The blockchain network to use",
@@ -4559,7 +4660,7 @@
           { "schema": { "type": "string", "default": "base" }, "in": "query", "name": "network", "required": false },
           {
             "schema": { "type": "string" },
-            "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+            "example": "<ethereum-wallet-address>",
             "in": "query",
             "name": "walletAddress",
             "required": false
@@ -4723,7 +4824,7 @@
                 "properties": {
                   "walletAddress": {
                     "description": "Wallet address that will execute the swap",
-                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "default": "<ethereum-wallet-address>",
                     "type": "string"
                   },
                   "network": {
@@ -4818,7 +4919,7 @@
                   },
                   "walletAddress": {
                     "description": "Wallet address that will add liquidity",
-                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "default": "<ethereum-wallet-address>",
                     "type": "string"
                   },
                   "poolAddress": { "description": "Address of the Uniswap V2 pool", "type": "string" },
@@ -4890,7 +4991,7 @@
                   },
                   "walletAddress": {
                     "description": "Wallet address that will remove liquidity",
-                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "default": "<ethereum-wallet-address>",
                     "type": "string"
                   },
                   "poolAddress": { "description": "Address of the Uniswap V2 pool", "type": "string" },
@@ -5003,7 +5104,7 @@
           },
           {
             "schema": { "type": "string" },
-            "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+            "example": "<ethereum-wallet-address>",
             "in": "query",
             "name": "walletAddress",
             "required": false
@@ -5067,7 +5168,7 @@
           },
           {
             "schema": { "type": "string" },
-            "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+            "example": "<ethereum-wallet-address>",
             "in": "query",
             "name": "walletAddress",
             "required": true
@@ -5223,8 +5324,7 @@
                     "slippagePct": { "type": "number" },
                     "minAmountOut": { "type": "number" },
                     "maxAmountIn": { "type": "number" },
-                    "priceImpactPct": { "type": "number" },
-                    "activeBinId": { "type": "number" }
+                    "priceImpactPct": { "type": "number" }
                   },
                   "required": [
                     "poolAddress",
@@ -5235,8 +5335,7 @@
                     "price",
                     "minAmountOut",
                     "maxAmountIn",
-                    "priceImpactPct",
-                    "activeBinId"
+                    "priceImpactPct"
                   ]
                 }
               }
@@ -5255,7 +5354,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "walletAddress": { "type": "string", "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684" },
+                  "walletAddress": { "type": "string", "example": "<ethereum-wallet-address>" },
                   "network": { "type": "string", "default": "base" },
                   "poolAddress": { "type": "string", "example": "" },
                   "baseToken": { "type": "string", "example": "WETH" },
@@ -5289,8 +5388,7 @@
                         "amountOut": { "type": "number" },
                         "fee": { "type": "number" },
                         "baseTokenBalanceChange": { "type": "number" },
-                        "quoteTokenBalanceChange": { "type": "number" },
-                        "activeBinId": { "type": "number" }
+                        "quoteTokenBalanceChange": { "type": "number" }
                       },
                       "required": [
                         "tokenIn",
@@ -5299,8 +5397,7 @@
                         "amountOut",
                         "fee",
                         "baseTokenBalanceChange",
-                        "quoteTokenBalanceChange",
-                        "activeBinId"
+                        "quoteTokenBalanceChange"
                       ]
                     }
                   },
@@ -5323,7 +5420,7 @@
                 "type": "object",
                 "properties": {
                   "network": { "type": "string", "default": "base" },
-                  "walletAddress": { "type": "string", "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684" },
+                  "walletAddress": { "type": "string", "example": "<ethereum-wallet-address>" },
                   "lowerPrice": { "type": "number", "example": 1000 },
                   "upperPrice": { "type": "number", "example": 4000 },
                   "poolAddress": { "type": "string", "example": "" },
@@ -5393,7 +5490,7 @@
                   },
                   "walletAddress": {
                     "description": "Wallet address that will add liquidity",
-                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "default": "<ethereum-wallet-address>",
                     "type": "string"
                   },
                   "positionAddress": { "description": "NFT token ID of the position", "type": "string" },
@@ -5458,7 +5555,7 @@
                 "type": "object",
                 "properties": {
                   "network": { "type": "string", "default": "base" },
-                  "walletAddress": { "type": "string", "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684" },
+                  "walletAddress": { "type": "string", "example": "<ethereum-wallet-address>" },
                   "positionAddress": { "type": "string", "description": "Position NFT token ID", "example": "1234" },
                   "percentageToRemove": { "type": "number", "minimum": 0, "maximum": 100, "example": 50 }
                 },
@@ -5507,7 +5604,7 @@
                 "type": "object",
                 "properties": {
                   "network": { "type": "string", "default": "base" },
-                  "walletAddress": { "type": "string", "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684" },
+                  "walletAddress": { "type": "string", "example": "<ethereum-wallet-address>" },
                   "positionAddress": { "type": "string", "description": "Position NFT token ID", "example": "1234" }
                 },
                 "required": ["positionAddress"]
@@ -5737,7 +5834,7 @@
                 "properties": {
                   "walletAddress": {
                     "description": "Wallet address that will execute the swap",
-                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "default": "<ethereum-wallet-address>",
                     "type": "string"
                   },
                   "network": {
@@ -5826,9 +5923,9 @@
                 "properties": {
                   "walletAddress": {
                     "description": "Wallet address that will execute the swap",
-                    "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+                    "default": "<ethereum-wallet-address>",
                     "type": "string",
-                    "example": "0xDA50C69342216b538Daf06FfECDa7363E0B96684"
+                    "example": "<ethereum-wallet-address>"
                   },
                   "network": {
                     "description": "The blockchain network to use",

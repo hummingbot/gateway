@@ -1,7 +1,4 @@
 chainID: 1
 nodeURL: https://eth.llamarpc.com
 nativeCurrencySymbol: ETH
-
-# Gas parameters for transactions
-gasLimitTransaction: 3000000
-manualGasPrice: 33
+minGasPrice: 0.1

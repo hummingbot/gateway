@@ -10,7 +10,6 @@ export enum TransactionStatus {
 export const EstimateGasRequestSchema = Type.Object(
   {
     network: Type.Optional(Type.String()),
-    gasLimit: Type.Optional(Type.Number()),
   },
   { $id: 'EstimateGasRequest' },
 );

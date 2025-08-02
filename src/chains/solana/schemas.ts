@@ -55,12 +55,6 @@ export const SolanaBalanceRequest = Type.Object({
 // Estimate gas request schema
 export const SolanaEstimateGasRequest = Type.Object({
   network: SolanaNetworkParameter,
-  gasLimit: Type.Optional(
-    Type.Number({
-      description: 'Gas limit for the transaction',
-      examples: [200000],
-    }),
-  ),
 });
 
 // Poll request schema

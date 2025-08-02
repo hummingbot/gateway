@@ -1,7 +1,4 @@
 chainID: 42161
 nodeURL: https://arb1.arbitrum.io/rpc
 nativeCurrencySymbol: ETH
-
-# Gas parameters for transactions
-gasLimitTransaction: 3000000
-manualGasPrice: 33
+minGasPrice: 0.1
