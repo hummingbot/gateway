@@ -43,7 +43,7 @@ export const UniswapQuoteSwapRequest = Type.Object({
       minimum: 0,
       maximum: 100,
       description: 'Maximum acceptable slippage percentage',
-      default: 1,
+      default: UniswapConfig.config.slippagePct,
     }),
   ),
   walletAddress: Type.Optional(
@@ -211,6 +211,7 @@ export const UniswapAmmExecuteSwapRequest = Type.Object({
   poolAddress: Type.Optional(
     Type.String({
       description: 'Pool address (optional - can be looked up from tokens)',
+      default: '',
     }),
   ),
   baseToken: Type.String({
@@ -279,7 +280,7 @@ export const UniswapExecuteSwapRequest = Type.Object({
       minimum: 0,
       maximum: 100,
       description: 'Maximum acceptable slippage percentage',
-      default: 1,
+      default: UniswapConfig.config.slippagePct,
       examples: [1],
     }),
   ),
