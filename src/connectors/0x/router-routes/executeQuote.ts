@@ -64,14 +64,6 @@ async function executeQuote(
   const txResponse = await wallet.sendTransaction(txData);
   const txReceipt = await waitForTransactionWithTimeout(txResponse);
 
-  if (!txReceipt || txReceipt.status !== 1) {
-    throw fastify.httpErrors.internalServerError('Transaction failed');
-  }
-
-  // Calculate fee from gas used
-  const fee = parseFloat(zeroX.formatTokenAmount(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice).toString(), 18));
-
-  // For now, use the quote amounts as the actual amounts
   // Get token info for formatting amounts
   const sellTokenInfo = ethereum.getToken(quote.sellTokenAddress);
   const buyTokenInfo = ethereum.getToken(quote.buyTokenAddress);
@@ -80,35 +72,40 @@ async function executeQuote(
     throw fastify.httpErrors.badRequest('Token info not found');
   }
 
-  // Calculate actual amounts from the quote
-  const amountIn = parseFloat(zeroX.formatTokenAmount(quote.sellAmount, sellTokenInfo.decimals));
-  const amountOut = parseFloat(zeroX.formatTokenAmount(quote.buyAmount, buyTokenInfo.decimals));
+  // Calculate expected amounts from the quote
+  const expectedAmountIn = parseFloat(zeroX.formatTokenAmount(quote.sellAmount, sellTokenInfo.decimals));
+  const expectedAmountOut = parseFloat(zeroX.formatTokenAmount(quote.buyAmount, buyTokenInfo.decimals));
 
+  // Use the new handleTransactionConfirmation helper
+  const result = ethereum.handleTransactionConfirmation(
+    txReceipt,
+    quote.sellTokenAddress,
+    quote.buyTokenAddress,
+    expectedAmountIn,
+    expectedAmountOut,
+  );
+
+  // Handle different transaction states
+  if (result.status === -1) {
+    // Transaction failed
+    throw fastify.httpErrors.internalServerError('Transaction failed on-chain');
+  }
+
+  if (result.status === 0) {
+    // Transaction is still pending
+    logger.info(`Transaction ${result.signature || 'pending'} is still pending`);
+    return result;
+  }
+
+  // Transaction confirmed (status === 1)
   logger.info(
-    `Swap executed successfully: ${amountIn.toFixed(4)} ${sellTokenInfo.symbol} -> ${amountOut.toFixed(4)} ${buyTokenInfo.symbol}`,
+    `Swap executed successfully: ${expectedAmountIn.toFixed(4)} ${sellTokenInfo.symbol} -> ${expectedAmountOut.toFixed(4)} ${buyTokenInfo.symbol}`,
   );
 
   // Remove quote from cache only after successful execution (confirmed)
   quoteCache.delete(quoteId);
 
-  // For 0x quotes, we don't know the original side, so we'll set balance changes to 0
-  // The actual balance changes would need to be tracked from the original request
-  const baseTokenBalanceChange = 0;
-  const quoteTokenBalanceChange = 0;
-
-  return {
-    signature: txReceipt.transactionHash,
-    status: 1, // CONFIRMED
-    data: {
-      tokenIn: quote.sellTokenAddress,
-      tokenOut: quote.buyTokenAddress,
-      amountIn,
-      amountOut,
-      fee,
-      baseTokenBalanceChange,
-      quoteTokenBalanceChange,
-    },
-  };
+  return result;
 }
 
 export { executeQuote };

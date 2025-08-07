@@ -10,9 +10,6 @@ import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { UniswapExecuteQuoteRequest } from '../schemas';
 
-// Default gas limit for router swap operations (increased for Universal Router V2)
-const ROUTER_SWAP_GAS_LIMIT = 500000;
-
 // Permit2 address is constant across all chains
 const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
 
@@ -165,20 +162,15 @@ async function executeQuote(
       const txResponse = await wallet.sendTransaction(txData);
       logger.info(`Transaction sent: ${txResponse.hash}`);
 
-      // Wait for transaction confirmation
-      txReceipt = await txResponse.wait();
+      // Wait for transaction confirmation with timeout
+      txReceipt = await waitForTransactionWithTimeout(txResponse);
     }
 
-    // Check if the transaction was successful
-    if (!txReceipt || txReceipt.status === 0) {
-      logger.error(`Transaction failed on-chain. Receipt: ${JSON.stringify(txReceipt)}`);
-      throw fastify.httpErrors.internalServerError(
-        'Transaction reverted on-chain. This could be due to slippage, expired quote, insufficient funds, or other blockchain issues.',
-      );
+    // Log transaction info if available
+    if (txReceipt) {
+      logger.info(`Transaction hash: ${txReceipt.transactionHash}`);
+      logger.info(`Gas used: ${txReceipt.gasUsed?.toString() || 'unknown'}`);
     }
-
-    logger.info(`Transaction confirmed: ${txReceipt.transactionHash}`);
-    logger.info(`Gas used: ${txReceipt.gasUsed.toString()}`);
   } catch (error) {
     logger.error(`Swap execution error: ${error.message}`);
     // Log more details about the error for debugging Universal Router issues
@@ -220,34 +212,44 @@ async function executeQuote(
     throw fastify.httpErrors.internalServerError(`Failed to execute swap: ${error.message}`);
   }
 
-  // Calculate fee from gas used
-  const fee = parseFloat(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice).toString()) / 1e18;
+  // Calculate expected amounts from the trade
+  const expectedAmountIn = parseFloat(quote.trade.inputAmount.toExact());
+  const expectedAmountOut = parseFloat(quote.trade.outputAmount.toExact());
 
-  // Calculate actual amounts from the trade
-  const amountIn = parseFloat(quote.trade.inputAmount.toExact());
-  const amountOut = parseFloat(quote.trade.outputAmount.toExact());
+  // Use the new handleTransactionConfirmation helper
+  const result = ethereum.handleTransactionConfirmation(
+    txReceipt,
+    inputToken.address,
+    outputToken.address,
+    expectedAmountIn,
+    expectedAmountOut,
+    side,
+  );
 
-  const baseTokenBalanceChange = side === 'SELL' ? -amountIn : amountOut;
-  const quoteTokenBalanceChange = side === 'SELL' ? amountOut : -amountIn;
+  // Handle different transaction states
+  if (result.status === -1) {
+    // Transaction failed
+    logger.error(`Transaction failed on-chain. Receipt: ${JSON.stringify(txReceipt)}`);
+    throw fastify.httpErrors.internalServerError(
+      'Transaction reverted on-chain. This could be due to slippage, expired quote, insufficient funds, or other blockchain issues.',
+    );
+  }
 
-  logger.info(`Swap executed successfully: ${amountIn} ${inputToken.symbol} -> ${amountOut} ${outputToken.symbol}`);
+  if (result.status === 0) {
+    // Transaction is still pending
+    logger.info(`Transaction ${result.signature || 'pending'} is still pending`);
+    return result;
+  }
+
+  // Transaction confirmed (status === 1)
+  logger.info(
+    `Swap executed successfully: ${expectedAmountIn} ${inputToken.symbol} -> ${expectedAmountOut} ${outputToken.symbol}`,
+  );
 
   // Remove quote from cache only after successful execution (confirmed)
   quoteCache.delete(quoteId);
 
-  return {
-    signature: txReceipt.transactionHash,
-    status: 1, // CONFIRMED
-    data: {
-      tokenIn: inputToken.address,
-      tokenOut: outputToken.address,
-      amountIn,
-      amountOut,
-      fee,
-      baseTokenBalanceChange,
-      quoteTokenBalanceChange,
-    },
-  };
+  return result;
 }
 
 export { executeQuote };

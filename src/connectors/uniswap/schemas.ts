@@ -10,7 +10,7 @@ const ethereumChainConfig = getEthereumChainConfig();
 // Constants for examples
 const BASE_TOKEN = 'WETH';
 const QUOTE_TOKEN = 'USDC';
-const SWAP_AMOUNT = 0.01;
+const SWAP_AMOUNT = 0.001;
 
 // Uniswap-specific quote-swap request
 export const UniswapQuoteSwapRequest = Type.Object({
@@ -104,7 +104,6 @@ export const UniswapExecuteQuoteRequest = Type.Object({
       description: 'The blockchain network to use',
       default: ethereumChainConfig.defaultNetwork,
       enum: [...UniswapConfig.networks],
-      examples: [...UniswapConfig.networks],
     }),
   ),
   quoteId: Type.String({
@@ -256,7 +255,6 @@ export const UniswapExecuteSwapRequest = Type.Object({
       description: 'The blockchain network to use',
       default: ethereumChainConfig.defaultNetwork,
       enum: [...UniswapConfig.networks],
-      examples: [...UniswapConfig.networks],
     }),
   ),
   baseToken: Type.String({

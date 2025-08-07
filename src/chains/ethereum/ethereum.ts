@@ -663,6 +663,118 @@ export class Ethereum {
   }
 
   /**
+   * Handle transaction confirmation status and return appropriate response
+   * Similar to Solana's handleConfirmation helper
+   * @param txReceipt Transaction receipt
+   * @param inputToken Input token address
+   * @param outputToken Output token address
+   * @param expectedAmountIn Expected input amount
+   * @param expectedAmountOut Expected output amount
+   * @param side Trade side (optional)
+   * @returns Response object with status and data
+   */
+  public handleTransactionConfirmation(
+    txReceipt: providers.TransactionReceipt | null,
+    inputToken: string,
+    outputToken: string,
+    expectedAmountIn: number,
+    expectedAmountOut: number,
+    side?: 'BUY' | 'SELL',
+  ): {
+    signature: string;
+    status: number;
+    data?: {
+      tokenIn: string;
+      tokenOut: string;
+      amountIn: number;
+      amountOut: number;
+      fee: number;
+      baseTokenBalanceChange: number;
+      quoteTokenBalanceChange: number;
+    };
+  } {
+    if (!txReceipt) {
+      // Transaction receipt not available - still pending
+      logger.warn('Transaction pending, no receipt available yet');
+      return {
+        signature: '',
+        status: 0, // PENDING
+        data: undefined,
+      };
+    }
+
+    const signature = txReceipt.transactionHash;
+
+    if (txReceipt.status === 0) {
+      // Transaction failed on-chain
+      logger.error(`Transaction ${signature} failed on-chain`);
+      return {
+        signature,
+        status: -1, // FAILED
+        data: {
+          tokenIn: inputToken,
+          tokenOut: outputToken,
+          amountIn: 0,
+          amountOut: 0,
+          fee: 0,
+          baseTokenBalanceChange: 0,
+          quoteTokenBalanceChange: 0,
+        },
+      };
+    }
+
+    if (txReceipt.status === 1) {
+      // Transaction confirmed successfully
+      // Calculate fee from gas used
+      const fee = parseFloat(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice).toString()) / 1e18;
+
+      // Calculate balance changes based on side
+      let baseTokenBalanceChange: number;
+      let quoteTokenBalanceChange: number;
+
+      if (side) {
+        // For AMM/CLMM swaps with side information
+        baseTokenBalanceChange = side === 'SELL' ? -expectedAmountIn : expectedAmountOut;
+        quoteTokenBalanceChange = side === 'SELL' ? expectedAmountOut : -expectedAmountIn;
+      } else {
+        // For router swaps without side information
+        baseTokenBalanceChange = -expectedAmountIn;
+        quoteTokenBalanceChange = expectedAmountOut;
+      }
+
+      return {
+        signature,
+        status: 1, // CONFIRMED
+        data: {
+          tokenIn: inputToken,
+          tokenOut: outputToken,
+          amountIn: expectedAmountIn,
+          amountOut: expectedAmountOut,
+          fee,
+          baseTokenBalanceChange,
+          quoteTokenBalanceChange,
+        },
+      };
+    }
+
+    // Transaction is still pending (ethers returns status as undefined in some cases)
+    logger.warn(`Transaction ${signature} status unclear, treating as pending`);
+    return {
+      signature,
+      status: 0, // PENDING
+      data: {
+        tokenIn: inputToken,
+        tokenOut: outputToken,
+        amountIn: 0,
+        amountOut: 0,
+        fee: 0,
+        baseTokenBalanceChange: 0,
+        quoteTokenBalanceChange: 0,
+      },
+    };
+  }
+
+  /**
    * Get all token balances for an address
    * @param address Wallet address
    * @param tokens Optional array of token symbols/addresses to fetch. If not provided, fetches all tokens in token list

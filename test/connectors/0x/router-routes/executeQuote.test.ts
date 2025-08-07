@@ -143,6 +143,26 @@ describe('POST /execute-quote', () => {
         if (address === mockUSDC.address) return mockUSDC;
         return null;
       }),
+      handleTransactionConfirmation: jest
+        .fn()
+        .mockImplementation((txReceipt, inputToken, outputToken, amountIn, amountOut) => {
+          if (!txReceipt) {
+            return { signature: '', status: 0 };
+          }
+          return {
+            signature: txReceipt.transactionHash,
+            status: txReceipt.status,
+            data: {
+              tokenIn: inputToken,
+              tokenOut: outputToken,
+              amountIn,
+              amountOut,
+              fee: 0.006,
+              baseTokenBalanceChange: 0,
+              quoteTokenBalanceChange: 0,
+            },
+          };
+        }),
     };
     (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
     (Ethereum.getWalletAddressExample as jest.Mock).mockResolvedValue('0x1234567890123456789012345678901234567890');
@@ -150,9 +170,8 @@ describe('POST /execute-quote', () => {
     const mockZeroXInstance = {
       formatTokenAmount: jest
         .fn()
-        .mockReturnValueOnce('0.006') // fee
-        .mockReturnValueOnce('0.1') // sellAmount
-        .mockReturnValueOnce('150'), // buyAmount
+        .mockReturnValueOnce('0.1') // sellAmount (amountIn)
+        .mockReturnValueOnce('150'), // buyAmount (amountOut)
     };
     (ZeroX.getInstance as jest.Mock).mockResolvedValue(mockZeroXInstance);
 
@@ -219,6 +238,26 @@ describe('POST /execute-quote', () => {
         if (address === mockUSDC.address) return mockUSDC;
         return null;
       }),
+      handleTransactionConfirmation: jest
+        .fn()
+        .mockImplementation((txReceipt, inputToken, outputToken, amountIn, amountOut) => {
+          if (!txReceipt) {
+            return { signature: '', status: 0 };
+          }
+          return {
+            signature: txReceipt.transactionHash,
+            status: txReceipt.status,
+            data: {
+              tokenIn: inputToken,
+              tokenOut: outputToken,
+              amountIn,
+              amountOut,
+              fee: 0.006,
+              baseTokenBalanceChange: 0,
+              quoteTokenBalanceChange: 0,
+            },
+          };
+        }),
     };
     (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
 
