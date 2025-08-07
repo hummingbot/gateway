@@ -1,12 +1,13 @@
 /**
  * Uniswap contract addresses for various networks
- * This file contains the contract addresses for Uniswap V2, V3, and V4 contracts
+ * This file contains the contract addresses for Uniswap V2, V3, V4, and Universal Router contracts
  * on different networks. These are not meant to be edited by users.
  *
  * Last updated: January 2025
  * Sources:
  * - V3: https://docs.uniswap.org/contracts/v3/reference/deployments/
  * - V4: https://docs.uniswap.org/contracts/v4/deployments
+ * - Universal Router: https://github.com/Uniswap/universal-router/tree/main/deploy-addresses
  */
 
 export interface UniswapContractAddresses {
@@ -15,10 +16,13 @@ export interface UniswapContractAddresses {
   uniswapV2FactoryAddress: string;
 
   // V3 contracts
-  uniswapV3SmartOrderRouterAddress: string; // This refers to SwapRouter02
+  uniswapV3SwapRouter02Address: string; // SwapRouter02 for V3 direct swaps
   uniswapV3NftManagerAddress: string;
   uniswapV3QuoterV2ContractAddress: string;
   uniswapV3FactoryAddress: string;
+
+  // Universal Router V2 (unified router for all protocols)
+  universalRouterV2Address: string;
 
   // V4 contracts
   uniswapV4PoolManagerAddress?: string;
@@ -35,10 +39,12 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV2RouterAddress: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D',
     uniswapV2FactoryAddress: '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f',
     // V3 contracts - Official Uniswap addresses
-    uniswapV3SmartOrderRouterAddress: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45', // SwapRouter02
+    uniswapV3SwapRouter02Address: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
     uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
     uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+    // Universal Router V2 - Official Uniswap address
+    universalRouterV2Address: '0x66a9893cc07d91d95644aedd05d03f95e1dba8af',
     // V4 contracts - Official Uniswap addresses
     uniswapV4PoolManagerAddress: '0x000000000004444c5dc75cB358380D2e3dE08A90',
     uniswapV4StateViewAddress: '0x7ffe42c4a5deea5b0fec41c94c136cf115597227',
@@ -48,10 +54,12 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV2RouterAddress: '0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24',
     uniswapV2FactoryAddress: '0xf1D7CC64Fb4452F05c498126312eBE29f30Fbcf9',
     // V3 contracts - Official Uniswap addresses
-    uniswapV3SmartOrderRouterAddress: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45', // SwapRouter02
+    uniswapV3SwapRouter02Address: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
     uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
     uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+    // Universal Router V2 - Official Uniswap address
+    universalRouterV2Address: '0xa51afafe0263b40edaef0df8781ea9aa03e381a3',
     // V4 contracts - Official Uniswap addresses
     uniswapV4PoolManagerAddress: '0x360e68faccca8ca495c1b759fd9eee466db9fb32',
     uniswapV4StateViewAddress: '0x76fd297e2d437cd7f76d50f01afe6160f86e9990',
@@ -61,10 +69,12 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV2RouterAddress: '0x4A7b5Da61326A6379179b40d00F57E5bbDC962c2',
     uniswapV2FactoryAddress: '0x0c3c1c532F1e39EdF36BE9Fe0bE1410313E074Bf',
     // V3 contracts - Official Uniswap addresses
-    uniswapV3SmartOrderRouterAddress: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45', // SwapRouter02
+    uniswapV3SwapRouter02Address: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
     uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
     uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+    // Universal Router V2 - Official Uniswap address
+    universalRouterV2Address: '0x851116d9223fabed8e56c0e6b8ad0c31d98b3507',
     // V4 contracts - Official Uniswap addresses
     uniswapV4PoolManagerAddress: '0x9a13f98cb987694c9f086b1f5eb990eea8264ec3',
     uniswapV4StateViewAddress: '0xc18a3169788f4f75a170290584eca6395c75ecdb',
@@ -74,10 +84,12 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV2RouterAddress: '0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24',
     uniswapV2FactoryAddress: '0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6',
     // V3 contracts - Official Uniswap addresses
-    uniswapV3SmartOrderRouterAddress: '0x2626664c2603336E57B271c5C0b26F421741e481', // SwapRouter02
+    uniswapV3SwapRouter02Address: '0x2626664c2603336E57B271c5C0b26F421741e481',
     uniswapV3NftManagerAddress: '0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1',
     uniswapV3QuoterV2ContractAddress: '0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a',
     uniswapV3FactoryAddress: '0x33128a8fC17869897dcE68Ed026d694621f6FDfD',
+    // Universal Router V2 - Official Uniswap address
+    universalRouterV2Address: '0x6ff5693b99212da76ad316178a184ab56d299b43',
     // V4 contracts - Official Uniswap addresses
     uniswapV4PoolManagerAddress: '0x498581ff718922c3f8e6a244956af099b2652b2b',
     uniswapV4StateViewAddress: '0xa3c0c9b65bad0b08107aa264b0f3db444b867a71',
@@ -86,54 +98,103 @@ export const contractAddresses: NetworkContractAddresses = {
     // V2 contracts - Official Uniswap addresses for Sepolia testnet
     uniswapV2RouterAddress: '0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3',
     uniswapV2FactoryAddress: '0xF62c03E08ada871A0bEb309762E260a7a6a880E6',
-    // V3 contracts - Note: Using mainnet addresses as fallback for Sepolia testnet
-    uniswapV3SmartOrderRouterAddress: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45', // Default mainnet SwapRouter02
-    uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88', // Default mainnet NonfungiblePositionManager
-    uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e', // Default mainnet QuoterV2
-    uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984', // Default mainnet factory
+    // V3 contracts - Official Uniswap addresses for Sepolia testnet
+    uniswapV3SwapRouter02Address: '0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E',
+    uniswapV3NftManagerAddress: '0x1238536071E1c677A632429e3655c799b22cDA52',
+    uniswapV3QuoterV2ContractAddress: '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3',
+    uniswapV3FactoryAddress: '0x0227628f3F023bb0B980b67D528571c95c6DaC1c',
+    // Universal Router V2 - Official Uniswap address for Sepolia
+    universalRouterV2Address: '0x3a9d48ab9751398bbfa63ad67599bb04e4bdf98b',
   },
   bsc: {
     // V2 contracts - Official Uniswap addresses
     uniswapV2RouterAddress: '0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24',
     uniswapV2FactoryAddress: '0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6',
     // V3 contracts - Official Uniswap addresses
-    uniswapV3SmartOrderRouterAddress: '0xB971eF87ede563556b2ED4b1C0b0019111Dd85d2', // SwapRouter02
+    uniswapV3SwapRouter02Address: '0xB971eF87ede563556b2ED4b1C0b0019111Dd85d2',
     uniswapV3NftManagerAddress: '0x7b8A01B39D58278b5DE7e48c8449c9f4F5170613',
     uniswapV3QuoterV2ContractAddress: '0x78D78E420Da98ad378D7799bE8f4AF69033EB077',
     uniswapV3FactoryAddress: '0xdB1d10011AD0Ff90774D0C6Bb92e5C5c8b4461F7',
+    // Universal Router V2 - Official Uniswap address
+    universalRouterV2Address: '0x1906c1d672b88cd1b9ac7593301ca990f94eae07',
   },
   avalanche: {
     // V2 contracts - Official Uniswap addresses
     uniswapV2RouterAddress: '0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24',
     uniswapV2FactoryAddress: '0x9e5A52f57b3038F1B8EeE45F28b3C1967e22799C',
     // V3 contracts - Official Uniswap addresses
-    uniswapV3SmartOrderRouterAddress: '0xbb00FF08d01D300023C629E8fFfFcb65A5a578cE', // SwapRouter02
+    uniswapV3SwapRouter02Address: '0xbb00FF08d01D300023C629E8fFfFcb65A5a578cE',
     uniswapV3NftManagerAddress: '0x655C406EBFa14EE2006250925e54ec43AD184f8B',
     uniswapV3QuoterV2ContractAddress: '0xbe0F5544EC67e9B3b2D979aaA43f18Fd87E6257F',
     uniswapV3FactoryAddress: '0x740b1c1de25031C31FF4fC9A62f554A55cdC1baD',
+    // Universal Router V2 - Official Uniswap address
+    universalRouterV2Address: '0x94b75331ae8d42c1b61065089b7d48fe14aa73b7',
   },
   celo: {
     // V2 contracts - No official Uniswap V2 deployment for Celo network
     uniswapV2RouterAddress: null, // Will use default from helper function
     uniswapV2FactoryAddress: null, // Will use default from helper function
     // V3 contracts - Official Uniswap addresses
-    uniswapV3SmartOrderRouterAddress: '0x5615CDAb10dc425a742d643d949a7F474C01abc4', // SwapRouter02
+    uniswapV3SwapRouter02Address: '0x5615CDAb10dc425a742d643d949a7F474C01abc4',
     uniswapV3NftManagerAddress: '0x3d79EdAaBC0EaB6F08ED885C05Fc0B014290D95A',
     uniswapV3QuoterV2ContractAddress: '0x82825d0554fA07f7FC52Ab63c961F330fdEFa8E8',
     uniswapV3FactoryAddress: '0xAfE208a311B21f13EF87E33A90049fC17A7acDEc',
+    // Universal Router V2 - Official Uniswap address
+    universalRouterV2Address: '0x643770e279d5d0733f21d6dc03a8efbabf3255b4',
   },
   polygon: {
     // V2 contracts - Official Uniswap addresses
     uniswapV2RouterAddress: '0xedf6066a2b290C185783862C7F4776A2C8077AD1',
     uniswapV2FactoryAddress: '0x9e5A52f57b3038F1B8EeE45F28b3C1967e22799C',
     // V3 contracts - Official Uniswap addresses
-    uniswapV3SmartOrderRouterAddress: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45', // SwapRouter02
+    uniswapV3SwapRouter02Address: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
     uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
     uniswapV3QuoterV2ContractAddress: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
     uniswapV3FactoryAddress: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+    // Universal Router V2 - Official Uniswap address
+    universalRouterV2Address: '0x1095692a6237d83c6a72f3f5efedb9a670c49223',
     // V4 contracts - Official Uniswap addresses
     uniswapV4PoolManagerAddress: '0x67366782805870060151383f4bbff9dab53e5cd6',
     uniswapV4StateViewAddress: '0x5ea1bd7974c8a611cbab0bdcafcb1d9cc9b3ba5a',
+  },
+  blast: {
+    // V2 contracts - Official Uniswap addresses
+    uniswapV2RouterAddress: '0x44889b52b71E60De6ed7dE82E2939fcc52fB2B4E',
+    uniswapV2FactoryAddress: '0x5C346464d33F90bABaf70dB6388507CC889C1070',
+    // V3 contracts - Official Uniswap addresses
+    uniswapV3SwapRouter02Address: '0x549FEB8c9bd4c12Ad2AB27022dA12492aC452B66',
+    uniswapV3NftManagerAddress: '0xB218e4f7cF0533d4696fDfC419A0023D33345F28',
+    uniswapV3QuoterV2ContractAddress: '0x6Cdcd65e03c1CEc3730AeeCd45bc140D57A25C77',
+    uniswapV3FactoryAddress: '0x792edAdE80af5fC680d96a2eD80A44247D2Cf6Fd',
+    // Universal Router V2 - Official Uniswap address
+    universalRouterV2Address: '0xeabbcb3e8e415306207ef514f660a3f820025be3',
+    // V4 contracts - Official Uniswap addresses
+    uniswapV4PoolManagerAddress: '0xbb39d4eca714e8058c4b09d45f53df68a1502285',
+    uniswapV4StateViewAddress: '0xa7dd9240eee60f0302f14c5f3f26ddfda43e0743',
+  },
+  zora: {
+    // V2 contracts - No official Uniswap V2 deployment for Zora network
+    uniswapV2RouterAddress: null,
+    uniswapV2FactoryAddress: null,
+    // V3 contracts - Official Uniswap addresses
+    uniswapV3SwapRouter02Address: '0x7De04c96BE5159c3b5CeffC82aa176dc81281557',
+    uniswapV3NftManagerAddress: '0xbC91e8DfA3fF18De43853372A3d7dfe585137D78',
+    uniswapV3QuoterV2ContractAddress: '0x11867e1b3348F3ce4FcC170BC5af3d23E07E64Df',
+    uniswapV3FactoryAddress: '0x7145F8aeef1f6510E92164038E1B6F8cB2c42Cbb',
+    // Universal Router V2 - Official Uniswap address
+    universalRouterV2Address: '0x3315ef7ca28db74abadc6c44570efdf06b04b020',
+  },
+  worldchain: {
+    // V2 contracts - No official Uniswap V2 deployment for Worldchain network
+    uniswapV2RouterAddress: null,
+    uniswapV2FactoryAddress: null,
+    // V3 contracts - Official Uniswap addresses
+    uniswapV3SwapRouter02Address: '0x091AD9e2e6e5eD44c1c66dB50e49A601F9f36cF6',
+    uniswapV3NftManagerAddress: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
+    uniswapV3QuoterV2ContractAddress: '0x4e0c6e1fF9ee77eC10D2E43baCe225aB37276369',
+    uniswapV3FactoryAddress: '0x7a5028BDa40e7B173C278C5342087826455ea25a',
+    // Universal Router V2 - Official Uniswap address
+    universalRouterV2Address: '0x8ac7bee993bb44dab564ea4bc9ea67bf9eb5e743',
   },
 };
 
@@ -169,11 +230,21 @@ export function getUniswapV2FactoryAddress(network: string): string {
   return address;
 }
 
-export function getUniswapV3SmartOrderRouterAddress(network: string): string {
-  const address = contractAddresses[network]?.uniswapV3SmartOrderRouterAddress;
+export function getUniswapV3SwapRouter02Address(network: string): string {
+  const address = contractAddresses[network]?.uniswapV3SwapRouter02Address;
 
   if (!address) {
-    throw new Error(`Uniswap V3 Smart Order Router address not configured for network: ${network}`);
+    throw new Error(`Uniswap V3 SwapRouter02 address not configured for network: ${network}`);
+  }
+
+  return address;
+}
+
+export function getUniversalRouterV2Address(network: string): string {
+  const address = contractAddresses[network]?.universalRouterV2Address;
+
+  if (!address) {
+    throw new Error(`Universal Router V2 address not configured for network: ${network}`);
   }
 
   return address;
@@ -232,7 +303,7 @@ export function getUniswapV4StateViewAddress(network: string): string {
 /**
  * Returns the appropriate spender address based on the connector name
  * @param network The network name (e.g. 'mainnet', 'base')
- * @param connectorName The connector name (uniswap/clmm, uniswap/amm, uniswap)
+ * @param connectorName The connector name (uniswap/clmm, uniswap/amm, uniswap/router, uniswap)
  * @returns The address of the contract that should be approved to spend tokens
  */
 export function getSpender(network: string, connectorName: string): string {
@@ -246,8 +317,13 @@ export function getSpender(network: string, connectorName: string): string {
     return getUniswapV3NftManagerAddress(network);
   }
 
-  // For regular uniswap connector or any other case, use the V3 Smart Order Router
-  return getUniswapV3SmartOrderRouterAddress(network);
+  // For router connector pattern or regular uniswap connector, use Universal Router V2
+  if (connectorName.includes('/router') || connectorName === 'uniswap') {
+    return getUniversalRouterV2Address(network);
+  }
+
+  // Default to Universal Router V2 for any other case
+  return getUniversalRouterV2Address(network);
 }
 
 /**

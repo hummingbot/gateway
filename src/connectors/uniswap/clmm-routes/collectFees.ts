@@ -16,6 +16,9 @@ import { Uniswap } from '../uniswap';
 import { POSITION_MANAGER_ABI, getUniswapV3NftManagerAddress } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
+// Default gas limit for CLMM collect fees operations
+const CLMM_COLLECT_FEES_GAS_LIMIT = 200000;
+
 export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
   const walletAddressExample = await Ethereum.getWalletAddressExample();
@@ -133,7 +136,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
 
         // Execute the transaction to collect fees
         // Use Ethereum's prepareGasOptions method
-        const txParams = await ethereum.prepareGasOptions();
+        const txParams = await ethereum.prepareGasOptions(undefined, CLMM_COLLECT_FEES_GAS_LIMIT);
         txParams.value = BigNumber.from(value.toString());
 
         const tx = await positionManager.multicall([calldata], txParams);

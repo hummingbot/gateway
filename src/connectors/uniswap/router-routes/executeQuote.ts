@@ -1,4 +1,4 @@
-import { BigNumber, utils } from 'ethers';
+import { BigNumber, utils, ethers } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
@@ -9,6 +9,12 @@ import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse }
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { UniswapExecuteQuoteRequest } from '../schemas';
+
+// Default gas limit for router swap operations (increased for Universal Router V2)
+const ROUTER_SWAP_GAS_LIMIT = 500000;
+
+// Permit2 address is constant across all chains
+const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
 
 async function executeQuote(
   fastify: FastifyInstance,
@@ -34,56 +40,65 @@ async function executeQuote(
     `Executing quote ${quoteId} for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}${isHardwareWallet ? ' with hardware wallet' : ''}`,
   );
 
-  // Check and approve allowance if needed
+  // Check and approve allowance if needed - Universal Router V2 uses Permit2
   if (inputToken.address !== ethereum.nativeTokenSymbol) {
-    const spender = quote.methodParameters.to; // Router address
     const requiredAllowance = BigNumber.from(quote.trade.inputAmount.quotient.toString());
+    const universalRouterAddress = quote.methodParameters.to;
 
-    // Use provider for both hardware and regular wallets to check allowance
+    // Step 1: Check token allowance to Permit2
+    logger.info(`Checking ${inputToken.symbol} allowance to Permit2`);
     const tokenContract = ethereum.getContract(inputToken.address, ethereum.provider);
-    const allowance = await tokenContract.allowance(walletAddress, spender);
+    const tokenToPermit2Allowance = await tokenContract.allowance(walletAddress, PERMIT2_ADDRESS);
 
-    if (BigNumber.from(allowance).lt(requiredAllowance)) {
-      if (isHardwareWallet) {
-        // Hardware wallet flow for approval
-        logger.info(`Hardware wallet detected. Building approve transaction for ${inputToken.symbol}`);
+    if (BigNumber.from(tokenToPermit2Allowance).lt(requiredAllowance)) {
+      const inputAmount = utils.formatUnits(requiredAllowance, inputToken.decimals);
+      const currentAllowance = utils.formatUnits(tokenToPermit2Allowance, inputToken.decimals);
 
-        const ledger = new EthereumLedger();
-        const nonce = await ethereum.provider.getTransactionCount(walletAddress, 'latest');
+      throw fastify.httpErrors.badRequest(
+        `Insufficient ${inputToken.symbol} allowance to Permit2. ` +
+          `Required: ${inputAmount}, Current: ${currentAllowance}. ` +
+          `Please approve ${inputToken.symbol} using spender: "uniswap/router"`,
+      );
+    }
 
-        // Build the approve transaction data
-        const iface = new utils.Interface(['function approve(address spender, uint256 amount)']);
-        const data = iface.encodeFunctionData('approve', [spender, requiredAllowance]);
+    // Step 2: Check Permit2's allowance to Universal Router
+    logger.info(`Checking Permit2 allowance to Universal Router (${universalRouterAddress})`);
 
-        // Get gas options using estimateGasPrice
-        const gasOptions = await ethereum.prepareGasOptions();
+    // Permit2 allowance function ABI
+    const permit2AllowanceABI = [
+      'function allowance(address owner, address token, address spender) external view returns (uint160 amount, uint48 expiration, uint48 nonce)',
+    ];
 
-        // Build unsigned transaction with gas parameters
-        const unsignedTx = {
-          to: inputToken.address,
-          data: data,
-          nonce: nonce,
-          chainId: ethereum.chainId,
-          ...gasOptions, // Include gas parameters from prepareGasOptions
-        };
+    const permit2Contract = new ethers.Contract(PERMIT2_ADDRESS, permit2AllowanceABI, ethereum.provider);
+    const [permit2Amount, expiration, nonce] = await permit2Contract.allowance(
+      walletAddress,
+      inputToken.address,
+      universalRouterAddress,
+    );
 
-        // Sign with Ledger
-        const signedTx = await ledger.signTransaction(walletAddress, unsignedTx as any);
+    // Check if the Permit2 allowance is expired
+    const currentTime = Math.floor(Date.now() / 1000);
+    const isExpired = expiration > 0 && expiration < currentTime;
 
-        // Send the signed transaction
-        const txResponse = await ethereum.provider.sendTransaction(signedTx);
+    if (isExpired || BigNumber.from(permit2Amount).lt(requiredAllowance)) {
+      const inputAmount = utils.formatUnits(requiredAllowance, inputToken.decimals);
+      const currentPermit2Allowance = utils.formatUnits(permit2Amount, inputToken.decimals);
 
-        // Wait for confirmation
-        await waitForTransactionWithTimeout(txResponse);
-        logger.info(`Approval transaction confirmed for ${inputToken.symbol}`);
+      if (isExpired) {
+        throw fastify.httpErrors.badRequest(
+          `Permit2 allowance for ${inputToken.symbol} to Universal Router has expired. ` +
+            `Please approve ${inputToken.symbol} again using spender: "uniswap/router"`,
+        );
       } else {
-        // Regular wallet flow for approval
-        const wallet = await ethereum.getWallet(walletAddress);
-        const tokenContractWithSigner = ethereum.getContract(inputToken.address, wallet);
-        logger.info(`Approving ${inputToken.symbol} for Universal Router`);
-        await ethereum.approveERC20(tokenContractWithSigner, wallet, spender, requiredAllowance);
+        throw fastify.httpErrors.badRequest(
+          `Insufficient Permit2 allowance for ${inputToken.symbol} to Universal Router. ` +
+            `Required: ${inputAmount}, Current: ${currentPermit2Allowance}. ` +
+            `Please approve ${inputToken.symbol} using spender: "uniswap/router"`,
+        );
       }
     }
+
+    logger.info(`Both allowances confirmed: Token->Permit2 and Permit2->UniversalRouter`);
   }
 
   // Execute the swap transaction
@@ -97,11 +112,9 @@ async function executeQuote(
       const ledger = new EthereumLedger();
       const nonce = await ethereum.provider.getTransactionCount(walletAddress, 'latest');
 
-      // Get gas options using estimateGasPrice
-      const gasOptions = await ethereum.prepareGasOptions();
-
-      // Always use a fixed gas limit to avoid estimation issues
-      const gasLimit = BigNumber.from(400000); // Use 400k to be safe
+      // Get gas options with increased gas limit for Universal Router V2
+      const gasLimit = 500000; // Increased for Universal Router V2
+      const gasOptions = await ethereum.prepareGasOptions(undefined, gasLimit);
 
       // Build unsigned transaction with gas parameters
       const unsignedTx = {
@@ -110,8 +123,7 @@ async function executeQuote(
         value: quote.methodParameters.value,
         nonce: nonce,
         chainId: ethereum.chainId,
-        gasLimit: gasLimit,
-        ...gasOptions, // Include gas parameters from prepareGasOptions
+        ...gasOptions, // Include gas parameters from prepareGasOptions (includes gasLimit)
       };
 
       // Sign with Ledger
@@ -132,13 +144,11 @@ async function executeQuote(
         throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
       }
 
-      // Get gas options using estimateGasPrice
-      const gasOptions = await ethereum.prepareGasOptions();
-
-      // Always use a fixed gas limit to avoid estimation issues
-      // Uniswap Universal Router swaps typically use between 200k-400k gas
-      const gasLimit = BigNumber.from(400000); // Use 400k to be safe
-      logger.info(`Using fixed gas limit: ${gasLimit.toString()}`);
+      // Get gas options with increased gas limit for Universal Router V2
+      // Uniswap Universal Router V2 swaps typically use between 200k-500k gas
+      const gasLimit = 500000; // Increased for Universal Router V2
+      const gasOptions = await ethereum.prepareGasOptions(undefined, gasLimit);
+      logger.info(`Using gas limit: ${gasOptions.gasLimit?.toString() || gasLimit}`);
 
       // Build transaction parameters with gas options
       const txData = {
@@ -146,8 +156,7 @@ async function executeQuote(
         data: quote.methodParameters.calldata,
         value: quote.methodParameters.value,
         nonce: await ethereum.provider.getTransactionCount(walletAddress, 'latest'),
-        gasLimit: gasLimit,
-        ...gasOptions, // Include gas parameters from prepareGasOptions
+        ...gasOptions, // Include gas parameters from prepareGasOptions (includes gasLimit)
       };
 
       logger.info(`Using gas options: ${JSON.stringify({ ...gasOptions, gasLimit: gasLimit.toString() })}`);
@@ -172,6 +181,13 @@ async function executeQuote(
     logger.info(`Gas used: ${txReceipt.gasUsed.toString()}`);
   } catch (error) {
     logger.error(`Swap execution error: ${error.message}`);
+    // Log more details about the error for debugging Universal Router issues
+    if (error.error && error.error.data) {
+      logger.error(`Error data: ${error.error.data}`);
+    }
+    if (error.reason) {
+      logger.error(`Error reason: ${error.reason}`);
+    }
     if (error.transaction) {
       logger.debug(`Transaction details: ${JSON.stringify(error.transaction)}`);
     }

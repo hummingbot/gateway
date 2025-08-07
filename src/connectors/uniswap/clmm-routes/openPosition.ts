@@ -13,6 +13,9 @@ import { BigNumber } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
+// Default gas limit for CLMM open position operations
+const CLMM_OPEN_POSITION_GAS_LIMIT = 600000;
+
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import {
   OpenPositionRequestType,
@@ -301,7 +304,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         let tx;
         try {
           // Use Ethereum's prepareGasOptions method
-          const txParams = await ethereum.prepareGasOptions();
+          const txParams = await ethereum.prepareGasOptions(undefined, CLMM_OPEN_POSITION_GAS_LIMIT);
           txParams.value = BigNumber.from(value.toString());
 
           tx = await positionManager.multicall([calldata], txParams);

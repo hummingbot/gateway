@@ -14,6 +14,9 @@ import { Uniswap } from '../uniswap';
 import { getUniswapV3NftManagerAddress, POSITION_MANAGER_ABI, ERC20_ABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
+// Default gas limit for CLMM add liquidity operations
+const CLMM_ADD_LIQUIDITY_GAS_LIMIT = 600000;
+
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
     Body: Static<typeof UniswapClmmAddLiquidityRequest>;
@@ -208,8 +211,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Execute the transaction to increase liquidity
         // Use Ethereum's prepareGasOptions method
-        const priorityFeeGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-        const txParams = await ethereum.prepareGasOptions(priorityFeeGwei, maxGas);
+        const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
+        const txParams = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || CLMM_ADD_LIQUIDITY_GAS_LIMIT);
         txParams.value = BigNumber.from(value.toString());
 
         const tx = await positionManagerWithSigner.multicall([calldata], txParams);

@@ -16,6 +16,9 @@ import { Uniswap } from '../uniswap';
 import { POSITION_MANAGER_ABI, getUniswapV3NftManagerAddress } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
+// Default gas limit for CLMM close position operations
+const CLMM_CLOSE_POSITION_GAS_LIMIT = 400000;
+
 export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
     Body: ClosePositionRequestType;
@@ -187,7 +190,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
 
         // Execute the transaction to remove liquidity and burn the position
         // Use Ethereum's prepareGasOptions method
-        const txParams = await ethereum.prepareGasOptions();
+        const txParams = await ethereum.prepareGasOptions(undefined, CLMM_CLOSE_POSITION_GAS_LIMIT);
         txParams.value = BigNumber.from(value.toString());
 
         const tx = await positionManagerWithSigner.multicall([calldata], txParams);

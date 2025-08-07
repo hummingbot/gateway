@@ -140,25 +140,24 @@ export class Ethereum {
 
   /**
    * Prepare gas options for a transaction
-   * @param priorityFeePerCU Priority fee in Gwei (optional)
-   * @param computeUnits Gas limit (optional)
+   * @param gasPrice Gas price in Gwei (optional)
+   * @param gasLimit Gas limit (optional, defaults to 300000)
    * @returns Gas options object for ethers.js transaction
    */
-  public async prepareGasOptions(priorityFeePerCU?: number, computeUnits?: number): Promise<any> {
+  public async prepareGasOptions(gasPrice?: number, gasLimit?: number): Promise<any> {
     const gasOptions: any = {};
 
-    // Set gas limit if provided
-    if (computeUnits !== undefined) {
-      gasOptions.gasLimit = computeUnits;
-    }
+    // Set default gas limit if not provided
+    const DEFAULT_GAS_LIMIT = 300000;
+    gasOptions.gasLimit = gasLimit ?? DEFAULT_GAS_LIMIT;
 
-    // If priorityFeePerCU not provided, estimate it
-    const feePerGasUnit = priorityFeePerCU ?? (await this.estimateGasPrice());
+    // If gasPrice not provided, estimate it
+    const gasPriceInGwei = gasPrice ?? (await this.estimateGasPrice());
 
     // Always use legacy transaction type for all networks
     gasOptions.type = 0;
-    gasOptions.gasPrice = utils.parseUnits(feePerGasUnit.toString(), 'gwei');
-    logger.info(`Using legacy gas pricing: ${feePerGasUnit} GWEI`);
+    gasOptions.gasPrice = utils.parseUnits(gasPriceInGwei.toString(), 'gwei');
+    logger.info(`Using legacy gas pricing: ${gasPriceInGwei} GWEI with gasLimit: ${gasOptions.gasLimit}`);
 
     return gasOptions;
   }

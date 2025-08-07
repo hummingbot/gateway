@@ -22,6 +22,7 @@ import {
 } from '@uniswap/v3-sdk';
 import { BigNumber, Contract } from 'ethers';
 
+import { Ethereum } from '../../chains/ethereum/ethereum';
 import { logger } from '../../services/logger';
 
 import {
@@ -54,11 +55,19 @@ export class UniversalRouterService {
   private provider: Provider;
   private chainId: number;
   private network: string;
+  private ethereum: Ethereum | null = null;
 
   constructor(provider: Provider, chainId: number, network: string) {
     this.provider = provider;
     this.chainId = chainId;
     this.network = network;
+  }
+
+  private async getEthereum(): Promise<Ethereum> {
+    if (!this.ethereum) {
+      this.ethereum = await Ethereum.getInstance(this.network);
+    }
+    return this.ethereum;
   }
 
   /**
@@ -76,46 +85,68 @@ export class UniversalRouterService {
       protocols?: Protocol[];
     },
   ): Promise<UniversalRouterQuoteResult> {
-    logger.info(`Getting Universal Router quote for ${amount.toExact()} ${tokenIn.symbol} -> ${tokenOut.symbol}`);
+    logger.info(`[UniversalRouter] Starting quote generation`);
+    logger.info(`[UniversalRouter] Input: ${amount.toExact()} ${tokenIn.symbol} (${tokenIn.address})`);
+    logger.info(`[UniversalRouter] Output: ${tokenOut.symbol} (${tokenOut.address})`);
+    logger.info(
+      `[UniversalRouter] Trade type: ${tradeType === TradeType.EXACT_INPUT ? 'EXACT_INPUT' : 'EXACT_OUTPUT'}`,
+    );
+    logger.info(`[UniversalRouter] Recipient: ${options.recipient}`);
+    logger.info(`[UniversalRouter] Slippage: ${options.slippageTolerance.toSignificant()}%`);
 
     const protocols = options.protocols || [Protocol.V2, Protocol.V3];
+    logger.info(`[UniversalRouter] Protocols to check: ${protocols.join(', ')}`);
     const routes: any[] = [];
 
     // Try to find routes through each protocol
     if (protocols.includes(Protocol.V3)) {
+      logger.info(`[UniversalRouter] Searching for V3 routes...`);
       try {
         const v3Trade = await this.findV3Route(tokenIn, tokenOut, amount, tradeType);
         if (v3Trade) {
+          logger.info(
+            `[UniversalRouter] Found V3 route: ${v3Trade.inputAmount.toExact()} -> ${v3Trade.outputAmount.toExact()}`,
+          );
           routes.push({
             routev3: v3Trade.route,
             inputAmount: v3Trade.inputAmount,
             outputAmount: v3Trade.outputAmount,
           });
+        } else {
+          logger.info(`[UniversalRouter] No V3 route found`);
         }
       } catch (error) {
-        logger.debug(`Failed to find V3 route: ${error.message}`);
+        logger.warn(`[UniversalRouter] Failed to find V3 route: ${error.message}`);
       }
     }
 
     if (protocols.includes(Protocol.V2)) {
+      logger.info(`[UniversalRouter] Searching for V2 routes...`);
       try {
         const v2Trade = await this.findV2Route(tokenIn, tokenOut, amount, tradeType);
         if (v2Trade) {
+          logger.info(
+            `[UniversalRouter] Found V2 route: ${v2Trade.inputAmount.toExact()} -> ${v2Trade.outputAmount.toExact()}`,
+          );
           routes.push({
             routev2: v2Trade.route,
             inputAmount: v2Trade.inputAmount,
             outputAmount: v2Trade.outputAmount,
           });
+        } else {
+          logger.info(`[UniversalRouter] No V2 route found`);
         }
       } catch (error) {
-        logger.debug(`Failed to find V2 route: ${error.message}`);
+        logger.warn(`[UniversalRouter] Failed to find V2 route: ${error.message}`);
       }
     }
 
     if (routes.length === 0) {
+      logger.error(`[UniversalRouter] No routes found for ${tokenIn.symbol} -> ${tokenOut.symbol}`);
       throw new Error(`No routes found for ${tokenIn.symbol} -> ${tokenOut.symbol}`);
     }
 
+    logger.info(`[UniversalRouter] Found ${routes.length} route(s), selecting best route`);
     // Pick the best route (for now, just use the first one)
     const bestRoute = routes[0];
 
@@ -123,6 +154,7 @@ export class UniversalRouterService {
     let bestTrade: RouterTrade<Currency, Currency, TradeType>;
 
     if (bestRoute.routev3) {
+      logger.info(`[UniversalRouter] Creating RouterTrade with V3 route`);
       bestTrade = new RouterTrade({
         v2Routes: [],
         v3Routes: [bestRoute],
@@ -130,6 +162,7 @@ export class UniversalRouterService {
         tradeType,
       });
     } else {
+      logger.info(`[UniversalRouter] Creating RouterTrade with V2 route`);
       bestTrade = new RouterTrade({
         v2Routes: [bestRoute],
         v3Routes: [],
@@ -145,15 +178,20 @@ export class UniversalRouterService {
       recipient: options.recipient,
     };
 
+    logger.info(`[UniversalRouter] Building swap parameters...`);
     // Create method parameters for the swap
     const { calldata, value } = SwapRouter.swapCallParameters(bestTrade, swapOptions);
+    logger.info(`[UniversalRouter] Calldata length: ${calldata.length}, Value: ${value}`);
 
     // Calculate route path
     const route = this.extractRoutePath(bestTrade);
     const routePath = route.join(' -> ');
+    logger.info(`[UniversalRouter] Route path: ${routePath}`);
 
-    // Estimate gas
+    // Estimate gas with proper gas options
+    logger.info(`[UniversalRouter] Estimating gas for swap...`);
     const estimatedGasUsed = await this.estimateGas(calldata, value, options.recipient);
+    logger.info(`[UniversalRouter] Estimated gas: ${estimatedGasUsed.toString()}`);
 
     // Simple gas cost estimation
     const estimatedGasUsedQuoteToken = CurrencyAmount.fromRawAmount(
@@ -161,7 +199,7 @@ export class UniversalRouterService {
       '0', // Simplified for now
     );
 
-    return {
+    const result = {
       trade: bestTrade,
       route,
       routePath,
@@ -176,6 +214,15 @@ export class UniversalRouterService {
         to: UNIVERSAL_ROUTER_ADDRESS(UniversalRouterVersion.V2_0, this.chainId),
       },
     };
+
+    logger.info(`[UniversalRouter] Quote generation complete`);
+    logger.info(`[UniversalRouter] Input: ${bestTrade.inputAmount.toExact()} ${bestTrade.inputAmount.currency.symbol}`);
+    logger.info(
+      `[UniversalRouter] Output: ${bestTrade.outputAmount.toExact()} ${bestTrade.outputAmount.currency.symbol}`,
+    );
+    logger.info(`[UniversalRouter] Price Impact: ${result.priceImpact}%`);
+
+    return result;
   }
 
   /**
@@ -302,17 +349,55 @@ export class UniversalRouterService {
    * Estimate gas for the swap
    */
   private async estimateGas(calldata: string, value: string, from: string): Promise<BigNumber> {
+    const ethereum = await this.getEthereum();
+    const routerAddress = UNIVERSAL_ROUTER_ADDRESS(UniversalRouterVersion.V2_0, this.chainId);
+
+    logger.info(`[UniversalRouter] Estimating gas...`);
+    logger.info(`[UniversalRouter] From: ${from}`);
+    logger.info(`[UniversalRouter] To: ${routerAddress}`);
+    logger.info(`[UniversalRouter] Value: ${value}`);
+    logger.info(`[UniversalRouter] Calldata length: ${calldata.length}`);
+
     try {
+      // Get gas options from Ethereum
+      const gasOptions = await ethereum.prepareGasOptions(undefined, 500000);
+      logger.info(`[UniversalRouter] Gas options: ${JSON.stringify(gasOptions)}`);
+
       const gasEstimate = await this.provider.estimateGas({
-        to: UNIVERSAL_ROUTER_ADDRESS(UniversalRouterVersion.V2_0, this.chainId),
+        to: routerAddress,
         data: calldata,
         value,
         from,
+        gasLimit: BigNumber.from(600000), // Increase gas limit for estimation
+        ...gasOptions, // Include gas price options
       });
+
+      logger.info(`[UniversalRouter] Gas estimation successful: ${gasEstimate.toString()}`);
       return gasEstimate;
     } catch (error) {
-      logger.warn(`Failed to estimate gas, using default: ${error.message}`);
-      return BigNumber.from(300000); // Default gas estimate
+      // Check if this is a Permit2 AllowanceExpired error (0xd81b2f2e)
+      const isPermit2Error = error.error && error.error.data && error.error.data.startsWith('0xd81b2f2e');
+
+      if (isPermit2Error) {
+        // This is expected if user hasn't approved tokens to Permit2 yet
+        logger.info(`[UniversalRouter] Gas estimation skipped - Permit2 approval needed`);
+        logger.debug(`[UniversalRouter] User needs to approve tokens to Permit2 before executing swap`);
+      } else {
+        // Log other errors as actual errors
+        logger.error(`[UniversalRouter] Gas estimation failed:`, error);
+        logger.error(`[UniversalRouter] Error message: ${error.message}`);
+        if (error.error && error.error.data) {
+          logger.error(`[UniversalRouter] Error data: ${error.error.data}`);
+        }
+        if (error.reason) {
+          logger.error(`[UniversalRouter] Error reason: ${error.reason}`);
+        }
+      }
+
+      // Use a higher default gas limit
+      const defaultGas = BigNumber.from(500000);
+      logger.info(`[UniversalRouter] Using default gas estimate: ${defaultGas.toString()}`);
+      return defaultGas;
     }
   }
 }

@@ -8,6 +8,9 @@ import { EthereumLedger } from '../ethereum-ledger';
 import { waitForTransactionWithTimeout } from '../ethereum.utils';
 import { UnwrapRequestSchema, UnwrapResponseSchema, UnwrapRequestType, UnwrapResponseType } from '../schemas';
 
+// Default gas limit for unwrap operations
+const UNWRAP_GAS_LIMIT = 50000;
+
 // WETH ABI for wrap/unwrap operations
 const WETH9ABI = [
   // Standard ERC20 functions
@@ -118,7 +121,7 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
       const data = iface.encodeFunctionData('withdraw', [amountInWei]);
 
       // Get gas options using estimateGasPrice
-      const gasOptions = await ethereum.prepareGasOptions();
+      const gasOptions = await ethereum.prepareGasOptions(undefined, UNWRAP_GAS_LIMIT);
 
       // Build unsigned transaction with gas parameters
       const unsignedTx = {
@@ -164,7 +167,7 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
       }
 
       // Prepare gas options for unwrap transaction
-      const gasOptions = await ethereum.prepareGasOptions();
+      const gasOptions = await ethereum.prepareGasOptions(undefined, UNWRAP_GAS_LIMIT);
       const params: any = {
         ...gasOptions,
         nonce: await ethereum.provider.getTransactionCount(wallet.address),

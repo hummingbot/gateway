@@ -14,6 +14,9 @@ import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
 import { checkLPAllowance } from './positionInfo';
 
+// Default gas limit for AMM remove liquidity operations
+const AMM_REMOVE_LIQUIDITY_GAS_LIMIT = 400000;
+
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
   const walletAddressExample = await Ethereum.getWalletAddressExample();
@@ -145,8 +148,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Prepare gas options
         // Convert gasPrice from wei to gwei if provided
-        const priorityFeeGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-        const gasOptions = await ethereum.prepareGasOptions(priorityFeeGwei, maxGas || 300000);
+        const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
+        const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_REMOVE_LIQUIDITY_GAS_LIMIT);
 
         // Check if one of the tokens is WETH
         if (baseTokenObj.symbol === 'WETH') {

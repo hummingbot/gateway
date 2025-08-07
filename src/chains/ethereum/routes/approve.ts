@@ -9,6 +9,12 @@ import { EthereumLedger } from '../ethereum-ledger';
 import { waitForTransactionWithTimeout } from '../ethereum.utils';
 import { ApproveRequestSchema, ApproveResponseSchema, ApproveRequestType, ApproveResponseType } from '../schemas';
 
+// Default gas limit for approve operations
+const APPROVE_GAS_LIMIT = 100000;
+
+// Permit2 address is constant across all chains
+const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
+
 export async function approveEthereumToken(
   fastify: FastifyInstance,
   network: string,
@@ -20,14 +26,31 @@ export async function approveEthereumToken(
   const ethereum = await Ethereum.getInstance(network);
   await ethereum.init();
 
+  // Track if this is a Universal Router approval that needs Permit2
+  let isUniversalRouter = false;
+  let universalRouterAddress: string | null = null;
+
   // Determine the spender address based on the input
   let spenderAddress: string;
   try {
     // Check if the spender parameter is a connector name
     if (spender.includes('/') || spender === 'uniswap') {
-      logger.info(`Looking up spender address for connector: ${spender}`);
-      spenderAddress = getSpender(network, spender);
-      logger.info(`Resolved connector ${spender} to spender address: ${spenderAddress}`);
+      // Special case: Universal Router V2 uses Permit2 for approvals
+      if (spender === 'uniswap/router') {
+        logger.info(`Universal Router V2 approval requested - will handle Permit2 flow`);
+        isUniversalRouter = true;
+        // First approve to Permit2
+        spenderAddress = PERMIT2_ADDRESS;
+        // Get the actual Universal Router address for the second step
+        universalRouterAddress = getSpender(network, spender);
+        logger.info(
+          `Will approve token to Permit2, then grant Universal Router (${universalRouterAddress}) permission via Permit2`,
+        );
+      } else {
+        logger.info(`Looking up spender address for connector: ${spender}`);
+        spenderAddress = getSpender(network, spender);
+        logger.info(`Resolved connector ${spender} to spender address: ${spenderAddress}`);
+      }
     } else {
       // Otherwise assume it's a direct address
       spenderAddress = spender;
@@ -65,7 +88,7 @@ export async function approveEthereumToken(
       const data = iface.encodeFunctionData('approve', [spenderAddress, amountBigNumber]);
 
       // Get gas options using estimateGasPrice
-      const gasOptions = await ethereum.prepareGasOptions();
+      const gasOptions = await ethereum.prepareGasOptions(undefined, APPROVE_GAS_LIMIT);
 
       // Build unsigned transaction with gas parameters
       const unsignedTx = {
@@ -118,11 +141,107 @@ export async function approveEthereumToken(
       };
     }
 
-    // Calculate the actual fee in ETH
+    // Calculate the actual fee in ETH for first approval
     let feeInEth = '0';
     if (approval.gasUsed && approval.effectiveGasPrice) {
       const feeInWei = approval.gasUsed.mul(approval.effectiveGasPrice);
       feeInEth = utils.formatEther(feeInWei);
+    }
+
+    // If this is a Universal Router approval, we need to do a second step
+    if (isUniversalRouter && universalRouterAddress) {
+      logger.info(`Step 2: Calling Permit2.approve() to grant Universal Router permission`);
+
+      // Permit2 approve function ABI
+      const permit2ApproveABI = [
+        'function approve(address token, address spender, uint160 amount, uint48 expiration) external',
+      ];
+
+      // Calculate expiration (48 hours from now)
+      const expiration = Math.floor(Date.now() / 1000) + 48 * 60 * 60;
+
+      // Convert amount to uint160 (Permit2 uses uint160 for amounts)
+      // Max uint160 is 2^160 - 1, which is smaller than uint256
+      const maxUint160 = ethers.BigNumber.from('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
+      const permit2Amount = amountBigNumber.gt(maxUint160) ? maxUint160 : amountBigNumber;
+
+      if (isHardware) {
+        // Hardware wallet flow for Permit2 approve
+        logger.info(`Hardware wallet: Building Permit2.approve() transaction`);
+
+        const ledger = new EthereumLedger();
+        const nonce = await ethereum.provider.getTransactionCount(address, 'latest');
+
+        // Build the Permit2 approve transaction data
+        const iface = new utils.Interface(permit2ApproveABI);
+        const data = iface.encodeFunctionData('approve', [
+          fullToken.address,
+          universalRouterAddress,
+          permit2Amount,
+          expiration,
+        ]);
+
+        // Get gas options
+        const gasOptions = await ethereum.prepareGasOptions(undefined, APPROVE_GAS_LIMIT);
+
+        // Build unsigned transaction
+        const unsignedTx = {
+          to: PERMIT2_ADDRESS,
+          data: data,
+          nonce: nonce,
+          chainId: ethereum.chainId,
+          ...gasOptions,
+        };
+
+        // Sign with Ledger
+        const signedTx = await ledger.signTransaction(address, unsignedTx as any);
+
+        // Send the signed transaction
+        const txResponse = await ethereum.provider.sendTransaction(signedTx);
+
+        // Wait for confirmation
+        const permit2Receipt = await waitForTransactionWithTimeout(txResponse);
+
+        logger.info(`Permit2 approval transaction confirmed: ${permit2Receipt.transactionHash}`);
+
+        // Update fee to include both transactions
+        if (permit2Receipt.gasUsed && permit2Receipt.effectiveGasPrice) {
+          const permit2FeeInWei = permit2Receipt.gasUsed.mul(permit2Receipt.effectiveGasPrice);
+          const totalFeeInWei = approval.gasUsed.mul(approval.effectiveGasPrice).add(permit2FeeInWei);
+          feeInEth = utils.formatEther(totalFeeInWei);
+        }
+      } else {
+        // Regular wallet flow for Permit2 approve
+        const wallet = await ethereum.getWallet(address);
+        const permit2Contract = new ethers.Contract(PERMIT2_ADDRESS, permit2ApproveABI, wallet);
+
+        logger.info(
+          `Calling Permit2.approve(${fullToken.address}, ${universalRouterAddress}, ${permit2Amount.toString()}, ${expiration})`,
+        );
+
+        const permit2Tx = await permit2Contract.approve(
+          fullToken.address,
+          universalRouterAddress,
+          permit2Amount,
+          expiration,
+        );
+
+        // Wait for confirmation
+        const permit2Receipt = await waitForTransactionWithTimeout(permit2Tx);
+
+        logger.info(`Permit2 approval transaction confirmed: ${permit2Receipt.transactionHash}`);
+
+        // Update fee to include both transactions
+        if (permit2Receipt.gasUsed && permit2Receipt.effectiveGasPrice) {
+          const permit2FeeInWei = permit2Receipt.gasUsed.mul(permit2Receipt.effectiveGasPrice);
+          const totalFeeInWei = approval.gasUsed.mul(approval.effectiveGasPrice).add(permit2FeeInWei);
+          feeInEth = utils.formatEther(totalFeeInWei);
+        }
+      }
+
+      logger.info(
+        `Universal Router V2 approval complete: Token approved to Permit2 and Permit2 approved to Universal Router`,
+      );
     }
 
     return {
@@ -130,7 +249,7 @@ export async function approveEthereumToken(
       status: 1, // CONFIRMED
       data: {
         tokenAddress: fullToken.address,
-        spender: spenderAddress,
+        spender: isUniversalRouter ? universalRouterAddress || spenderAddress : spenderAddress,
         amount: bigNumberWithDecimalToStr(amountBigNumber, fullToken.decimals),
         nonce: approval.nonce,
         fee: feeInEth,

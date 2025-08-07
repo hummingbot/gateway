@@ -199,8 +199,6 @@ export class Uniswap {
     side: 'BUY' | 'SELL',
     walletAddress: string,
   ): Promise<any> {
-    logger.info(`Getting Universal Router quote for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`);
-
     // Determine input/output based on side
     const exactIn = side === 'SELL';
     const tokenForAmount = exactIn ? inputToken : outputToken;

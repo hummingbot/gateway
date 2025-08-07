@@ -15,6 +15,9 @@ import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
 import { getUniswapAmmLiquidityQuote } from './quoteLiquidity';
 
+// Default gas limit for AMM add liquidity operations
+const AMM_ADD_LIQUIDITY_GAS_LIMIT = 500000;
+
 async function addLiquidity(
   fastify: any,
   network: string,
@@ -176,8 +179,8 @@ async function addLiquidity(
 
     // Add liquidity Token + ETH
     // Convert gasPrice from wei to gwei if provided
-    const priorityFeeGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-    const gasOptions = await ethereum.prepareGasOptions(priorityFeeGwei, maxGas);
+    const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
+    const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_ADD_LIQUIDITY_GAS_LIMIT);
     gasOptions.value = quote.rawQuoteTokenAmount;
 
     tx = await router.addLiquidityETH(
@@ -238,8 +241,8 @@ async function addLiquidity(
 
     // Add liquidity Token + Token
     // Convert gasPrice from wei to gwei if provided
-    const priorityFeeGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-    const gasOptions = await ethereum.prepareGasOptions(priorityFeeGwei, maxGas);
+    const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
+    const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_ADD_LIQUIDITY_GAS_LIMIT);
 
     tx = await router.addLiquidity(
       quote.baseTokenObj.address,

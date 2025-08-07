@@ -8,10 +8,13 @@ import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } 
 import { logger } from '../../../services/logger';
 import { UniswapExecuteSwapRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
-import { getUniswapV3SmartOrderRouterAddress, ISwapRouter02ABI } from '../uniswap.contracts';
+import { getUniswapV3SwapRouter02Address, ISwapRouter02ABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
 import { getUniswapClmmQuote } from './quoteSwap';
+
+// Default gas limit for CLMM swap operations
+const CLMM_SWAP_GAS_LIMIT = 350000;
 
 export async function executeClmmSwap(
   fastify: FastifyInstance,
@@ -50,7 +53,7 @@ export async function executeClmmSwap(
   const isHardwareWallet = await ethereum.isHardwareWallet(walletAddress);
 
   // Get SwapRouter02 contract address
-  const routerAddress = getUniswapV3SmartOrderRouterAddress(network);
+  const routerAddress = getUniswapV3SwapRouter02Address(network);
 
   logger.info(`Executing swap using SwapRouter02:`);
   logger.info(`Router address: ${routerAddress}`);
@@ -157,7 +160,7 @@ export async function executeClmmSwap(
       }
 
       // Get gas options using estimateGasPrice
-      const gasOptions = await ethereum.prepareGasOptions();
+      const gasOptions = await ethereum.prepareGasOptions(undefined, CLMM_SWAP_GAS_LIMIT);
 
       // Build unsigned transaction with gas parameters
       const unsignedTx = {
@@ -191,7 +194,7 @@ export async function executeClmmSwap(
       const routerContract = new Contract(routerAddress, ISwapRouter02ABI, wallet);
 
       // Use Ethereum's gas options
-      const txOptions = await ethereum.prepareGasOptions();
+      const txOptions = await ethereum.prepareGasOptions(undefined, CLMM_SWAP_GAS_LIMIT);
 
       let tx;
       if (side === 'SELL') {

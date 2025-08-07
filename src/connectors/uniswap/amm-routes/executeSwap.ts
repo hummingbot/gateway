@@ -14,6 +14,9 @@ import { formatTokenAmount } from '../uniswap.utils';
 
 import { getUniswapAmmQuote } from './quoteSwap';
 
+// Default gas limit for AMM swap operations
+const AMM_SWAP_GAS_LIMIT = 300000;
+
 export async function executeAmmSwap(
   fastify: FastifyInstance,
   walletAddress: string,
@@ -136,7 +139,7 @@ export async function executeAmmSwap(
       }
 
       // Get gas options using estimateGasPrice
-      const gasOptions = await ethereum.prepareGasOptions();
+      const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_SWAP_GAS_LIMIT);
 
       // Build unsigned transaction with gas parameters
       const unsignedTx = {
@@ -170,7 +173,7 @@ export async function executeAmmSwap(
       const routerContract = new Contract(routerAddress, IUniswapV2Router02ABI.abi, wallet);
 
       // Get gas options using estimateGasPrice
-      const gasOptions = await ethereum.prepareGasOptions();
+      const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_SWAP_GAS_LIMIT);
       const txOptions: any = { ...gasOptions };
 
       logger.info(`Using gas options: ${JSON.stringify(txOptions)}`);

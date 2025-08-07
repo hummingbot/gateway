@@ -8,6 +8,9 @@ import { EthereumLedger } from '../ethereum-ledger';
 import { waitForTransactionWithTimeout } from '../ethereum.utils';
 import { WrapRequestSchema, WrapResponseSchema, WrapRequestType, WrapResponseType } from '../schemas';
 
+// Default gas limit for wrap operations
+const WRAP_GAS_LIMIT = 50000;
+
 // WETH ABI for wrap/unwrap operations
 const WETH9ABI = [
   // Standard ERC20 functions
@@ -109,7 +112,7 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
       const data = iface.encodeFunctionData('deposit');
 
       // Get gas options using estimateGasPrice
-      const gasOptions = await ethereum.prepareGasOptions();
+      const gasOptions = await ethereum.prepareGasOptions(undefined, WRAP_GAS_LIMIT);
 
       // Build unsigned transaction with gas parameters
       const unsignedTx = {
@@ -148,7 +151,7 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
       const wrappedContract = new ethers.Contract(wrappedInfo.address, WETH9ABI, wallet);
 
       // Prepare gas options for wrap transaction
-      const gasOptions = await ethereum.prepareGasOptions();
+      const gasOptions = await ethereum.prepareGasOptions(undefined, WRAP_GAS_LIMIT);
       const params: any = {
         ...gasOptions,
         nonce: await ethereum.provider.getTransactionCount(wallet.address),
