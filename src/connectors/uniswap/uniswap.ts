@@ -23,7 +23,7 @@ import {
   getUniswapV3QuoterV2ContractAddress,
   getUniswapV3FactoryAddress,
 } from './uniswap.contracts';
-import { findPoolAddress, isValidV2Pool, isValidV3Pool } from './uniswap.utils';
+import { isValidV2Pool, isValidV3Pool } from './uniswap.utils';
 import { UniversalRouterService } from './universal-router';
 
 export class Uniswap {
@@ -250,14 +250,8 @@ export class Uniswap {
 
       // Find pool address if not provided
       if (!pairAddress) {
-        if (typeof tokenA === 'string' && typeof tokenB === 'string') {
-          pairAddress = findPoolAddress(tokenA, tokenB, 'amm', this.networkName);
-        }
-
-        // If still not found, try to get it from the factory
-        if (!pairAddress) {
-          pairAddress = await this.v2Factory.getPair(tokenAObj.address, tokenBObj.address);
-        }
+        // Try to get it from the factory
+        pairAddress = await this.v2Factory.getPair(tokenAObj.address, tokenBObj.address);
       }
 
       // If no pair exists or invalid address, return null
@@ -314,13 +308,8 @@ export class Uniswap {
 
       // Find pool address if not provided
       if (!poolAddr) {
-        if (typeof tokenA === 'string' && typeof tokenB === 'string') {
-          // Try to find pool from the config pools dictionary
-          poolAddr = findPoolAddress(tokenA, tokenB, 'clmm', this.networkName);
-        }
-
-        // If still not found and a fee is provided, try to get it from the factory
-        if (!poolAddr && fee) {
+        // If a fee is provided, try to get it from the factory
+        if (fee) {
           poolAddr = await this.v3Factory.getPool(tokenAObj.address, tokenBObj.address, fee);
         }
 
@@ -403,9 +392,33 @@ export class Uniswap {
     poolType: 'amm' | 'clmm',
   ): Promise<string | null> {
     try {
-      // Only use the config pools dictionary, passing in the network
-      const poolAddr = findPoolAddress(baseToken, quoteToken, poolType, this.networkName);
-      return poolAddr || null;
+      // Resolve token symbols if addresses are provided
+      const baseTokenInfo = this.getTokenBySymbol(baseToken) || this.getTokenByAddress(baseToken);
+      const quoteTokenInfo = this.getTokenBySymbol(quoteToken) || this.getTokenByAddress(quoteToken);
+
+      if (!baseTokenInfo || !quoteTokenInfo) {
+        logger.warn(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
+        return null;
+      }
+
+      // Use PoolService to find pool by token pair
+      const { PoolService } = await import('../../services/pool-service');
+      const poolService = PoolService.getInstance();
+
+      const pool = await poolService.getPool(
+        'uniswap',
+        this.networkName,
+        poolType,
+        baseTokenInfo.symbol,
+        quoteTokenInfo.symbol,
+      );
+
+      if (!pool) {
+        logger.debug(`No ${poolType} pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Uniswap`);
+        return null;
+      }
+
+      return pool.address;
     } catch (error) {
       logger.error(`Error finding default pool: ${error.message}`);
       return null;
