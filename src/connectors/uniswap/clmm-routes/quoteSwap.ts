@@ -372,7 +372,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         return await formatSwapQuote(
           fastify,
           networkToUse,
-          poolAddress,
+          poolAddressToUse,
           baseTokenToUse,
           quoteTokenToUse,
           amount,
