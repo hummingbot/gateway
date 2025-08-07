@@ -388,8 +388,8 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('Invalid request');
         }
         if (e.message?.includes('Pool not found') || e.message?.includes('No AMM pool found')) {
-          logger.error('Not found error:', e);
-          throw fastify.httpErrors.notFound('Resource not found');
+          logger.error('Pool not found error:', e);
+          throw fastify.httpErrors.notFound(e.message || 'Pool not found');
         }
         if (e.message?.includes('token not found')) {
           logger.error('Request error:', e);
@@ -398,7 +398,8 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Default to internal server error
         logger.error('Unexpected error getting swap quote:', e);
-        throw fastify.httpErrors.internalServerError('Error getting swap quote');
+        logger.error('Error stack:', e.stack);
+        throw fastify.httpErrors.internalServerError(e.message || 'Error getting swap quote');
       }
     },
   );

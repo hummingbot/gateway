@@ -392,6 +392,8 @@ export class Uniswap {
     poolType: 'amm' | 'clmm',
   ): Promise<string | null> {
     try {
+      logger.info(`Finding ${poolType} pool for ${baseToken}-${quoteToken} on ${this.networkName}`);
+
       // Resolve token symbols if addresses are provided
       const baseTokenInfo = this.getTokenBySymbol(baseToken) || this.getTokenByAddress(baseToken);
       const quoteTokenInfo = this.getTokenBySymbol(quoteToken) || this.getTokenByAddress(quoteToken);
@@ -400,6 +402,10 @@ export class Uniswap {
         logger.warn(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
         return null;
       }
+
+      logger.info(
+        `Resolved tokens: ${baseTokenInfo.symbol} (${baseTokenInfo.address}), ${quoteTokenInfo.symbol} (${quoteTokenInfo.address})`,
+      );
 
       // Use PoolService to find pool by token pair
       const { PoolService } = await import('../../services/pool-service');
@@ -414,13 +420,19 @@ export class Uniswap {
       );
 
       if (!pool) {
-        logger.debug(`No ${poolType} pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Uniswap`);
+        logger.warn(
+          `No ${poolType} pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Uniswap network ${this.networkName}`,
+        );
         return null;
       }
 
+      logger.info(`Found ${poolType} pool at ${pool.address}`);
       return pool.address;
     } catch (error) {
       logger.error(`Error finding default pool: ${error.message}`);
+      if (error.stack) {
+        logger.debug(`Stack trace: ${error.stack}`);
+      }
       return null;
     }
   }
