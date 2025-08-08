@@ -179,7 +179,8 @@ export class ConfigurationNamespace {
           }
 
           this.#configuration = configTemplateCandidate;
-          this.saveConfig();
+          // Do not save config after merging with template - this overwrites user settings
+          // Config was merged with template for missing/invalid fields but not saved to preserve user settings
           return;
         } catch (err) {
           throw new Error(`Failed to validate or merge with template: ${err.message}`);

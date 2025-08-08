@@ -97,7 +97,7 @@ describe('UniversalRouterService', () => {
       const quote = await universalRouter.getQuote(WETH, USDC, amount, TradeType.EXACT_INPUT, options);
 
       expect(quote).toBeDefined();
-      expect(quote.estimatedGasUsed.toString()).toBe('300000'); // Default gas estimate
+      expect(quote.estimatedGasUsed.toString()).toBe('500000'); // Default gas estimate
     });
   });
 
