@@ -1,6 +1,7 @@
 import { Contract } from '@ethersproject/contracts';
 import { Token } from '@uniswap/sdk-core';
 import { Pair as V2Pair } from '@uniswap/v2-sdk';
+import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { FeeAmount, Pool as V3Pool } from '@uniswap/v3-sdk';
 import { FastifyInstance } from 'fastify';
 import JSBI from 'jsbi';
@@ -236,19 +237,47 @@ export async function getV2PoolInfo(poolAddress: string, network: string): Promi
  * @param network The network name
  * @returns Pool information with base and quote token addresses
  */
-export async function getV3PoolInfo(poolAddress: string, _network: string): Promise<UniswapPoolInfo | null> {
+export async function getV3PoolInfo(poolAddress: string, network: string): Promise<UniswapPoolInfo | null> {
   try {
-    // For V3, we need to get the pool contract and extract token addresses
-    // This is a simplified approach - in production you'd use the pool contract ABI
-    // For now, we'll try to get the pool via the factory
+    const ethereum = await Ethereum.getInstance(network);
 
-    // Note: This requires the pool to exist in the Uniswap instance's token list
-    // A more robust solution would directly query the pool contract
+    // V3 Pool contract ABI (minimal - just what we need)
+    const v3PoolABI = [
+      {
+        inputs: [],
+        name: 'token0',
+        outputs: [{ internalType: 'address', name: '', type: 'address' }],
+        stateMutability: 'view',
+        type: 'function',
+      },
+      {
+        inputs: [],
+        name: 'token1',
+        outputs: [{ internalType: 'address', name: '', type: 'address' }],
+        stateMutability: 'view',
+        type: 'function',
+      },
+      {
+        inputs: [],
+        name: 'fee',
+        outputs: [{ internalType: 'uint24', name: '', type: 'uint24' }],
+        stateMutability: 'view',
+        type: 'function',
+      },
+    ];
 
-    // For now, return null - V3 pool info extraction needs to be implemented
-    // with proper pool contract ABI
-    logger.warn(`V3 pool info extraction not implemented for pool ${poolAddress}`);
-    return null;
+    // Create pool contract
+    const poolContract = new Contract(poolAddress, v3PoolABI, ethereum.provider);
+
+    // Get token addresses
+    const [token0Address, token1Address] = await Promise.all([poolContract.token0(), poolContract.token1()]);
+
+    // By convention, use token0 as base and token1 as quote
+    return {
+      baseTokenAddress: token0Address,
+      quoteTokenAddress: token1Address,
+      poolType: 'clmm',
+    };
   } catch (error) {
     logger.error(`Error getting V3 pool info: ${error.message}`);
     return null;

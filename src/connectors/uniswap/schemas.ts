@@ -11,6 +11,48 @@ const ethereumChainConfig = getEthereumChainConfig();
 const BASE_TOKEN = 'WETH';
 const QUOTE_TOKEN = 'USDC';
 const SWAP_AMOUNT = 0.001;
+const AMM_POOL_ADDRESS_EXAMPLE = '0x88A43bbDF9D098eEC7bCEda4e2494615dfD9bB9C'; // Uniswap V2 WETH-USDC pool on Base
+const CLMM_POOL_ADDRESS_EXAMPLE = '0xd0b53d9277642d899df5c87a3966a349a798f224'; // Uniswap V3 WETH-USDC pool on Base
+
+// ========================================
+// AMM Request Schemas
+// ========================================
+
+export const UniswapAmmGetPoolInfoRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'The EVM network to use',
+      default: ethereumChainConfig.defaultNetwork,
+      enum: [...UniswapConfig.networks],
+    }),
+  ),
+  poolAddress: Type.String({
+    description: 'Uniswap V2 pool address',
+    examples: [AMM_POOL_ADDRESS_EXAMPLE],
+  }),
+});
+
+// ========================================
+// CLMM Request Schemas
+// ========================================
+
+export const UniswapClmmGetPoolInfoRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'The EVM network to use',
+      default: ethereumChainConfig.defaultNetwork,
+      enum: [...UniswapConfig.networks],
+    }),
+  ),
+  poolAddress: Type.String({
+    description: 'Uniswap V3 pool address',
+    examples: [CLMM_POOL_ADDRESS_EXAMPLE],
+  }),
+});
+
+// ========================================
+// Router Request Schemas
+// ========================================
 
 // Uniswap-specific quote-swap request
 export const UniswapQuoteSwapRequest = Type.Object({

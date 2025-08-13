@@ -2,9 +2,10 @@ import { FeeAmount } from '@uniswap/v3-sdk';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { GetPoolInfoRequestType, GetPoolInfoRequest, PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
+import { GetPoolInfoRequestType, PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
+import { UniswapClmmGetPoolInfoRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
 import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
@@ -18,18 +19,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get CLMM pool information from Uniswap V3',
         tags: ['/connector/uniswap'],
-        querystring: {
-          ...GetPoolInfoRequest,
-          properties: {
-            network: { type: 'string', default: 'base' },
-            poolAddress: {
-              type: 'string',
-              examples: [''],
-            },
-            baseToken: { type: 'string', examples: ['WETH'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-          },
-        },
+        querystring: UniswapClmmGetPoolInfoRequest,
         response: {
           200: PoolInfoSchema,
         },

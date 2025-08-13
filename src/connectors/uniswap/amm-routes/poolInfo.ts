@@ -2,8 +2,9 @@ import { Contract } from '@ethersproject/contracts';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { GetPoolInfoRequestType, GetPoolInfoRequest, PoolInfo, PoolInfoSchema } from '../../../schemas/amm-schema';
+import { GetPoolInfoRequestType, PoolInfo, PoolInfoSchema } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
+import { UniswapAmmGetPoolInfoRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
 import { IUniswapV2PairABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
@@ -18,7 +19,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get AMM pool information from Uniswap V2',
         tags: ['/connector/uniswap'],
-        querystring: GetPoolInfoRequest,
+        querystring: UniswapAmmGetPoolInfoRequest,
         response: {
           200: PoolInfoSchema,
         },
