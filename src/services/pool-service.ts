@@ -64,7 +64,7 @@ export class PoolService {
   private getTemplatePath(connector: string): string {
     const sanitizedConnector = path.basename(connector);
 
-    return path.join(rootPath(), 'src', 'templates', 'pools', `${sanitizedConnector}.json`);
+    return path.join(rootPath(), 'dist', 'src', 'templates', 'pools', `${sanitizedConnector}.json`);
   }
 
   /**

@@ -307,10 +307,36 @@ export class ConfigManagerV2 {
         fs.copyFileSync(path.join(ConfigTemplatesDir, 'root.yml'), rootPath);
       }
 
-      const tokensPath = path.join(ConfigDir, 'tokens');
-      if (!fs.existsSync(tokensPath)) {
-        // copy from template
-        fse.copySync(path.join(ConfigTemplatesDir, 'tokens'), tokensPath);
+      // Copy all template directories recursively
+      const copyTemplateContents = (templateDir: string, targetDir: string) => {
+        if (!fs.existsSync(templateDir)) return;
+
+        // Ensure target directory exists
+        fse.ensureDirSync(targetDir);
+
+        const templateItems = fs.readdirSync(templateDir);
+        for (const item of templateItems) {
+          const templateItemPath = path.join(templateDir, item);
+          const targetItemPath = path.join(targetDir, item);
+
+          if (fs.statSync(templateItemPath).isDirectory()) {
+            // Recursively copy subdirectories
+            copyTemplateContents(templateItemPath, targetItemPath);
+          } else {
+            // Copy file if it doesn't exist
+            if (!fs.existsSync(targetItemPath)) {
+              fse.copySync(templateItemPath, targetItemPath);
+            }
+          }
+        }
+      };
+
+      // Copy all template directories
+      const templateDirectories = ['chains', 'connectors', 'namespace', 'pools', 'tokens'];
+      for (const dir of templateDirectories) {
+        const targetPath = path.join(ConfigDir, dir);
+        const templatePath = path.join(ConfigTemplatesDir, dir);
+        copyTemplateContents(templatePath, targetPath);
       }
 
       ConfigManagerV2._instance = new ConfigManagerV2(rootPath);

@@ -96,7 +96,7 @@ This file provides guidance to AI coding assistants when working with code in th
 - `test/`: Test files mirroring src structure
   - `mocks/`: Mock data organized by module type
 - `conf/`: Runtime configuration (created by setup)
-  - `lists/`: Token lists for each network
+  - `tokens/`: Token lists for each network
 
 ## Best Practices
 - Create tests for all new functionality (minimum 75% coverage for PRs)
@@ -118,9 +118,10 @@ This file provides guidance to AI coding assistants when working with code in th
 - Update chain.routes.ts or connector.routes.ts to list new modules
 
 ## Configuration
-- Chain configs: `src/templates/{chain}.yml`
+- Chain configs: `src/templates/{chain}/{network}.yml`
 - Connector configs: `src/templates/{connector}.yml`
-- Token lists: `src/templates/lists/{network}.json`
+- Token lists: `src/templates/tokens/{chain}/{network}.json`
+- AMM/CLMM pools: `src/templates/pools/{connector}.json`
 - All configs validated against JSON schemas in `src/templates/namespace/`
 
 ## Supported Networks

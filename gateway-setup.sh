@@ -253,18 +253,6 @@ link_certs () {
   fi
 }
 
-replace_lists_source () {
-  # Loop over chain .yml files
-  for file in $(find "conf" -type f -name "*.yml"); do
-    # Check for references to Docker lists folder
-    if grep -q "/home/gateway/conf/lists/" $file; then
-      # Replace with local lists folder
-      perl -pi -e 's|/home/gateway/conf/lists/|conf/tokens/|g' $file
-      echo "Replaced list locations in: $file"
-    fi
-  done
-}
-
 echo
 echo
 echo "===============  SETUP GATEWAY ==============="
@@ -398,7 +386,6 @@ prompt_proceed
 if [[ "$PROCEED" == "Y" || "$PROCEED" == "y" ]]
 then
   copy_configs
-  replace_lists_source
   
   # Link certificates if requested
   if [[ "$LINK_CERTS" == "Y" ||  "$LINK_CERTS" == "y" ]]

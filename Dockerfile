@@ -5,7 +5,15 @@ FROM node:20-bookworm-slim
 WORKDIR /home/gateway
 
 # Create mount points
-RUN mkdir -p /home/gateway/conf /home/gateway/logs /home/gateway/certs
+RUN mkdir -p    /home/gateway/conf \
+                /home/gateway/conf/chains \
+                /home/gateway/conf/connectors \
+                /home/gateway/conf/namespace \
+                /home/gateway/conf/pools \
+                /home/gateway/conf/tokens \
+                /home/gateway/conf/wallets \
+                /home/gateway/logs \
+                /home/gateway/certs
 
 # Install pnpm
 RUN npm install -g pnpm@latest
@@ -43,12 +51,6 @@ COPY . .
 RUN pnpm build
 
 # Create necessary conf directories
-RUN mkdir -p /home/gateway/conf/networks/ethereum \
-    /home/gateway/conf/networks/solana \
-    /home/gateway/conf/connectors \
-    /home/gateway/conf/tokens/ethereum \
-    /home/gateway/conf/tokens/solana \
-    /home/gateway/conf/pools
 
 # Expose default port and Swagger UI on http://localhost:15888/docs
 EXPOSE 15888

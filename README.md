@@ -272,7 +272,7 @@ docker build \
 ```bash
 docker run -p 15888:15888 \
   -e GATEWAY_PASSPHRASE=admin \
-  -e DEV=true \
+  -e GATEWAY_DEV=true \
   -v $(pwd)/conf:/home/gateway/conf \
   -v $(pwd)/logs:/home/gateway/logs \
   hummingbot/gateway:core-2.8
@@ -281,8 +281,8 @@ docker run -p 15888:15888 \
 **Production mode (Encypted HTTPS endpoints, requires Hummingbot certs):**
 ```bash
 docker run -p 15888:15888 \
-  -e GATEWAY_PASSPHRASE=admin \
-  -e DEV=false \
+  -e GATEWAY_PASSPHRASE=a \
+  -e GATEWAY_DEV=false \
   -v $(pwd)/conf:/home/gateway/conf \
   -v $(pwd)/logs:/home/gateway/logs \
   -v $(pwd)/certs:/home/gateway/certs \
