@@ -49,18 +49,16 @@ export const getTokenRoute: FastifyPluginAsync = async (fastify) => {
           network,
         };
       } catch (error) {
-        logger.error(`Failed to get token: ${error.message}`);
-
-        if (error.statusCode === 404) {
-          throw error;
+        // Don't log "not found" errors as they are expected when searching across chains
+        if (error.statusCode === 404 || error.message.includes('not found')) {
+          throw fastify.httpErrors.notFound(`Token ${symbolOrAddress} not found in ${chain}/${network}`);
         }
+
+        // Log actual errors
+        logger.error(`Failed to get token: ${error.message}`);
 
         if (error.message.includes('Unsupported chain')) {
           throw fastify.httpErrors.badRequest(error.message);
-        }
-
-        if (error.message.includes('not found')) {
-          throw fastify.httpErrors.notFound(error.message);
         }
 
         throw fastify.httpErrors.internalServerError('Failed to get token');
