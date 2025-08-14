@@ -413,3 +413,54 @@ export const MeteoraClmmGetPositionsOwnedRequest = Type.Intersect([
     }),
   }),
 ]);
+
+// Meteora CLMM Quote Position Request
+export const MeteoraClmmQuotePositionRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...MeteoraConfig.networks],
+    }),
+  ),
+  lowerPrice: Type.Number({
+    description: 'Lower price bound for the position',
+    examples: [LOWER_PRICE_BOUND],
+  }),
+  upperPrice: Type.Number({
+    description: 'Upper price bound for the position',
+    examples: [UPPER_PRICE_BOUND],
+  }),
+  poolAddress: Type.String({
+    description: 'Meteora DLMM pool address',
+    examples: [CLMM_POOL_ADDRESS_EXAMPLE],
+  }),
+  baseTokenAmount: Type.Optional(
+    Type.Number({
+      description: 'Amount of base token to deposit',
+      examples: [BASE_TOKEN_AMOUNT],
+    }),
+  ),
+  quoteTokenAmount: Type.Optional(
+    Type.Number({
+      description: 'Amount of quote token to deposit',
+      examples: [QUOTE_TOKEN_AMOUNT],
+    }),
+  ),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: MeteoraConfig.config.slippagePct,
+      examples: [MeteoraConfig.config.slippagePct],
+    }),
+  ),
+  strategyType: Type.Optional(
+    Type.Number({
+      description: 'Strategy type for the position',
+      examples: [StrategyType.SpotImBalanced],
+      enum: Object.values(StrategyType).filter((x) => typeof x === 'number'),
+    }),
+  ),
+});
