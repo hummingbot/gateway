@@ -154,6 +154,7 @@ async function openPosition(
   );
 
   // Send and confirm transaction using sendAndConfirmTransaction which handles signing
+  // Following Meteora SDK example: both wallet and newImbalancePosition need to sign
   const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(createPositionTx, [
     wallet,
     newImbalancePosition,

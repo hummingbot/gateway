@@ -54,12 +54,34 @@ export async function removeLiquidity(
     shouldClaimAndClose: false,
   });
 
-  if (Array.isArray(removeLiquidityTx)) {
-    throw fastify.httpErrors.internalServerError('Unexpected array of transactions');
-  }
+  // Handle both single transaction and array of transactions
+  let signature: string;
+  let fee: number;
 
-  // Send and confirm transaction using sendAndConfirmTransaction which handles signing
-  const { signature, fee } = await solana.sendAndConfirmTransaction(removeLiquidityTx, [wallet]);
+  if (Array.isArray(removeLiquidityTx)) {
+    // If multiple transactions are returned, execute them in sequence
+    logger.info(`Received ${removeLiquidityTx.length} transactions for removing liquidity`);
+
+    let totalFee = 0;
+    let lastSignature = '';
+
+    for (let i = 0; i < removeLiquidityTx.length; i++) {
+      const tx = removeLiquidityTx[i];
+      logger.info(`Executing transaction ${i + 1} of ${removeLiquidityTx.length}`);
+
+      const result = await solana.sendAndConfirmTransaction(tx, [wallet]);
+      totalFee += result.fee;
+      lastSignature = result.signature;
+    }
+
+    signature = lastSignature;
+    fee = totalFee;
+  } else {
+    // Single transaction case
+    const result = await solana.sendAndConfirmTransaction(removeLiquidityTx, [wallet]);
+    signature = result.signature;
+    fee = result.fee;
+  }
 
   // Get transaction data for confirmation
   const txData = await solana.connection.getTransaction(signature, {
