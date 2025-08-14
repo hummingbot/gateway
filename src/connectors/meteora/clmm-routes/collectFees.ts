@@ -48,6 +48,15 @@ export async function collectFees(
     position: position,
   });
 
+  // Set fee payer and signers for simulation
+  claimSwapFeeTx.feePayer = wallet.publicKey;
+  claimSwapFeeTx.setSigners(wallet.publicKey);
+
+  // Simulate with error handling
+  await solana.simulateWithErrorHandling(claimSwapFeeTx, fastify);
+
+  logger.info('Transaction simulated successfully, sending to network...');
+
   // Send and confirm transaction using sendAndConfirmTransaction which handles signing
   const { signature, fee } = await solana.sendAndConfirmTransaction(claimSwapFeeTx, [wallet]);
 

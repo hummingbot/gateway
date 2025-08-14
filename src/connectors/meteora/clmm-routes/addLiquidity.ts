@@ -105,8 +105,22 @@ async function addLiquidity(
     slippage: slippagePct ?? MeteoraConfig.config.slippagePct,
   });
 
+  // Set the fee payer and signers for simulation
+  addLiquidityTx.feePayer = wallet.publicKey;
+  addLiquidityTx.setSigners(wallet.publicKey);
+
+  // Simulate with error handling
+  await solana.simulateWithErrorHandling(addLiquidityTx, fastify);
+
+  logger.info('Transaction simulated successfully, sending to network...');
+
   // Send and confirm transaction using sendAndConfirmTransaction which handles signing
-  const { signature, fee } = await solana.sendAndConfirmTransaction(addLiquidityTx, [wallet]);
+  // Use higher compute units for addLiquidity operations
+  const { signature, fee } = await solana.sendAndConfirmTransaction(
+    addLiquidityTx,
+    [wallet],
+    400000, // Higher compute units for add liquidity
+  );
 
   // Get transaction data for confirmation
   const txData = await solana.connection.getTransaction(signature, {

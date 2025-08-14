@@ -69,6 +69,13 @@ export async function removeLiquidity(
       const tx = removeLiquidityTx[i];
       logger.info(`Executing transaction ${i + 1} of ${removeLiquidityTx.length}`);
 
+      // Set fee payer and signers for simulation
+      tx.feePayer = wallet.publicKey;
+      tx.setSigners(wallet.publicKey);
+
+      // Simulate before sending
+      await solana.simulateWithErrorHandling(tx, fastify);
+
       const result = await solana.sendAndConfirmTransaction(tx, [wallet]);
       totalFee += result.fee;
       lastSignature = result.signature;
@@ -78,6 +85,15 @@ export async function removeLiquidity(
     fee = totalFee;
   } else {
     // Single transaction case
+    // Set fee payer and signers for simulation
+    removeLiquidityTx.feePayer = wallet.publicKey;
+    removeLiquidityTx.setSigners(wallet.publicKey);
+
+    // Simulate with error handling
+    await solana.simulateWithErrorHandling(removeLiquidityTx, fastify);
+
+    logger.info('Transaction simulated successfully, sending to network...');
+
     const result = await solana.sendAndConfirmTransaction(removeLiquidityTx, [wallet]);
     signature = result.signature;
     fee = result.fee;

@@ -73,8 +73,22 @@ async function closePosition(
         position: position,
       });
 
+      // Set fee payer and signers for simulation
+      closePositionTx.feePayer = wallet.publicKey;
+      closePositionTx.setSigners(wallet.publicKey);
+
+      // Simulate with error handling
+      await solana.simulateWithErrorHandling(closePositionTx, fastify);
+
+      logger.info('Transaction simulated successfully, sending to network...');
+
       // Send and confirm transaction using sendAndConfirmTransaction which handles signing
-      const { signature, fee } = await solana.sendAndConfirmTransaction(closePositionTx, [wallet]);
+      // Use higher compute units for closePosition
+      const { signature, fee } = await solana.sendAndConfirmTransaction(
+        closePositionTx,
+        [wallet],
+        400000, // Higher compute units for close position
+      );
 
       // Get transaction data for confirmation
       const txData = await solana.connection.getTransaction(signature, {
