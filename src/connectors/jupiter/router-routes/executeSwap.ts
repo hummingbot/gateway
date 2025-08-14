@@ -45,6 +45,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Quote and execute a token swap on Jupiter in one step',
+        tags: ['/connector/jupiter'],
         body: JupiterExecuteSwapRequest,
         response: { 200: SwapExecuteResponse },
       },

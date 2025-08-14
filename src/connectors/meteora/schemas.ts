@@ -18,7 +18,7 @@ const BASE_TOKEN_AMOUNT = 0.01;
 const QUOTE_TOKEN_AMOUNT = 2;
 const LOWER_PRICE_BOUND = 100;
 const UPPER_PRICE_BOUND = 300;
-const CLMM_POOL_ADDRESS_EXAMPLE = '2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3';
+const CLMM_POOL_ADDRESS_EXAMPLE = '5rCf1DM8LjKTw4YqhnoLcngyZYeNnQqztScTogYHAS6';
 
 // Meteora Router-specific extensions for quote-swap
 export const MeteoraQuoteSwapRequest = Type.Intersect([

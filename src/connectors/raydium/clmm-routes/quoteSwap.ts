@@ -140,7 +140,7 @@ async function formatSwapQuote(
     poolAddress,
     slippagePct,
   );
-  logger.info(
+  logger.debug(
     `Raydium CLMM swap quote: ${side} ${amount} ${baseTokenSymbol}/${quoteTokenSymbol} in pool ${poolAddress}`,
     {
       inputToken: inputToken.symbol,
@@ -210,70 +210,71 @@ async function formatSwapQuote(
       exactOutResponse.maxAmountIn.amount,
     );
 
-    const price = estimatedAmountIn / estimatedAmountOut;
+    const price = estimatedAmountOut > 0 ? estimatedAmountIn / estimatedAmountOut : 0;
 
-    // Calculate price impact percentage
-    const priceImpactPct = exactOutResponse.priceImpact ? Number(exactOutResponse.priceImpact) * 100 : 0;
-
-    // Get current price/tick
-    const activeBinId = exactOutResponse.currentPrice ? Number(exactOutResponse.currentPrice) : 0;
+    // Calculate price impact percentage - ensure it's a valid number
+    const priceImpactRaw = exactOutResponse.priceImpact ? Number(exactOutResponse.priceImpact) * 100 : 0;
+    const priceImpactPct = isNaN(priceImpactRaw) || !isFinite(priceImpactRaw) ? 0 : priceImpactRaw;
 
     // Determine token addresses for computed fields
     const tokenIn = inputToken.address;
     const tokenOut = outputToken.address;
 
-    // Calculate fee
-    const fee = exactOutResponse.fee ? exactOutResponse.fee.toNumber() / 10 ** outputToken.decimals : 0;
-
-    return {
+    // Validate all numeric values before returning
+    const result = {
       // Base QuoteSwapResponse fields in correct order
       poolAddress,
       tokenIn,
       tokenOut,
-      amountIn: estimatedAmountIn,
-      amountOut: estimatedAmountOut,
-      price,
+      amountIn: isNaN(estimatedAmountIn) || !isFinite(estimatedAmountIn) ? 0 : estimatedAmountIn,
+      amountOut: isNaN(estimatedAmountOut) || !isFinite(estimatedAmountOut) ? 0 : estimatedAmountOut,
+      price: isNaN(price) || !isFinite(price) ? 0 : price,
       slippagePct: slippagePct || 1, // Default 1% if not provided
-      minAmountOut: estimatedAmountOut,
-      maxAmountIn,
+      minAmountOut: isNaN(estimatedAmountOut) || !isFinite(estimatedAmountOut) ? 0 : estimatedAmountOut,
+      maxAmountIn: isNaN(maxAmountIn) || !isFinite(maxAmountIn) ? 0 : maxAmountIn,
       // CLMM-specific fields
-      priceImpactPct,
+      priceImpactPct: isNaN(priceImpactPct) || !isFinite(priceImpactPct) ? 0 : priceImpactPct,
     };
+
+    logger.debug(`Returning CLMM quote result (BUY):`, result);
+    return result;
   } else {
     const exactInResponse = response as ReturnTypeComputeAmountOutFormat;
     const estimatedAmountIn = exactInResponse.realAmountIn.amount.raw.toNumber() / 10 ** inputToken.decimals;
     const estimatedAmountOut = exactInResponse.amountOut.amount.raw.toNumber() / 10 ** outputToken.decimals;
-    const minAmountOut = exactInResponse.minAmountOut.amount.raw.toNumber() / 10 ** outputToken.decimals;
 
-    const price = estimatedAmountOut / estimatedAmountIn;
+    // Calculate minAmountOut using slippage
+    const effectiveSlippage = slippagePct || 1;
+    const minAmountOut = estimatedAmountOut * (1 - effectiveSlippage / 100);
 
-    // Calculate price impact percentage
-    const priceImpactPct = exactInResponse.priceImpact ? Number(exactInResponse.priceImpact) * 100 : 0;
+    const price = estimatedAmountIn > 0 ? estimatedAmountOut / estimatedAmountIn : 0;
 
-    // Get current price/tick
-    const activeBinId = exactInResponse.currentPrice ? Number(exactInResponse.currentPrice) : 0;
+    // Calculate price impact percentage - ensure it's a valid number
+    const priceImpactRaw = exactInResponse.priceImpact ? Number(exactInResponse.priceImpact) * 100 : 0;
+    const priceImpactPct = isNaN(priceImpactRaw) || !isFinite(priceImpactRaw) ? 0 : priceImpactRaw;
 
     // Determine token addresses for computed fields
     const tokenIn = inputToken.address;
     const tokenOut = outputToken.address;
 
-    // Calculate fee
-    const fee = exactInResponse.fee ? Number(exactInResponse.fee) / 10 ** outputToken.decimals : 0;
-
-    return {
+    // Validate all numeric values before returning
+    const result = {
       // Base QuoteSwapResponse fields in correct order
       poolAddress,
       tokenIn,
       tokenOut,
-      amountIn: estimatedAmountIn,
-      amountOut: estimatedAmountOut,
-      price,
+      amountIn: isNaN(estimatedAmountIn) || !isFinite(estimatedAmountIn) ? 0 : estimatedAmountIn,
+      amountOut: isNaN(estimatedAmountOut) || !isFinite(estimatedAmountOut) ? 0 : estimatedAmountOut,
+      price: isNaN(price) || !isFinite(price) ? 0 : price,
       slippagePct: slippagePct || 1, // Default 1% if not provided
-      minAmountOut,
-      maxAmountIn: estimatedAmountIn,
+      minAmountOut: isNaN(minAmountOut) || !isFinite(minAmountOut) ? 0 : minAmountOut,
+      maxAmountIn: isNaN(estimatedAmountIn) || !isFinite(estimatedAmountIn) ? 0 : estimatedAmountIn,
       // CLMM-specific fields
-      priceImpactPct,
+      priceImpactPct: isNaN(priceImpactPct) || !isFinite(priceImpactPct) ? 0 : priceImpactPct,
     };
+
+    logger.info(`Returning CLMM quote result:`, result);
+    return result;
   }
 }
 
