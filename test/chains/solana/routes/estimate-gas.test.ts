@@ -32,7 +32,9 @@ describe('Solana Estimate Gas Route', () => {
       estimateGasPrice: jest.fn(),
       config: {
         minPriorityFeePerCU: 0.5,
+        defaultComputeUnits: 200000,
       },
+      nativeTokenSymbol: 'SOL',
     };
 
     beforeEach(() => {
@@ -53,6 +55,9 @@ describe('Solana Estimate Gas Route', () => {
       expect(data).toMatchObject({
         feePerComputeUnit: 2.5,
         denomination: 'lamports',
+        computeUnits: 200000,
+        feeAsset: 'SOL',
+        fee: expect.any(Number),
         timestamp: expect.any(Number),
       });
 
@@ -80,6 +85,9 @@ describe('Solana Estimate Gas Route', () => {
       expect(data).toMatchObject({
         feePerComputeUnit: 0.5, // minPriorityFeePerCU from mock instance config
         denomination: 'lamports',
+        computeUnits: 200000,
+        feeAsset: 'SOL',
+        fee: expect.any(Number),
         timestamp: expect.any(Number),
       });
 
@@ -90,7 +98,10 @@ describe('Solana Estimate Gas Route', () => {
     it('should use default minPriorityFeePerCU when config value is undefined', async () => {
       const instanceWithoutMinFee = {
         estimateGasPrice: jest.fn().mockRejectedValue(new Error('RPC unavailable')),
-        config: {}, // No minPriorityFeePerCU defined
+        config: {
+          defaultComputeUnits: 200000,
+        }, // No minPriorityFeePerCU defined
+        nativeTokenSymbol: 'SOL',
       };
 
       mockSolana.getInstance
@@ -108,6 +119,9 @@ describe('Solana Estimate Gas Route', () => {
       expect(data).toMatchObject({
         feePerComputeUnit: 0.1, // Default fallback value
         denomination: 'lamports',
+        computeUnits: 200000,
+        feeAsset: 'SOL',
+        fee: expect.any(Number),
         timestamp: expect.any(Number),
       });
     });
@@ -131,6 +145,9 @@ describe('Solana Estimate Gas Route', () => {
         expect(data).toMatchObject({
           feePerComputeUnit: 1.25,
           denomination: 'lamports',
+          computeUnits: 200000,
+          feeAsset: 'SOL',
+          fee: expect.any(Number),
           timestamp: expect.any(Number),
         });
 
@@ -152,6 +169,9 @@ describe('Solana Estimate Gas Route', () => {
       // Verify response schema
       expect(typeof data.feePerComputeUnit).toBe('number');
       expect(data.denomination).toBe('lamports');
+      expect(data.computeUnits).toBe(200000);
+      expect(data.feeAsset).toBe('SOL');
+      expect(typeof data.fee).toBe('number');
       expect(typeof data.timestamp).toBe('number');
       expect(data.timestamp).toBeGreaterThan(Date.now() - 5000); // Recent timestamp
     });
@@ -170,6 +190,9 @@ describe('Solana Estimate Gas Route', () => {
       expect(data).toMatchObject({
         feePerComputeUnit: 1.5,
         denomination: 'lamports',
+        computeUnits: 200000,
+        feeAsset: 'SOL',
+        fee: expect.any(Number),
         timestamp: expect.any(Number),
       });
     });
@@ -189,6 +212,9 @@ describe('Solana Estimate Gas Route', () => {
       expect(data).toMatchObject({
         feePerComputeUnit: 100.123456,
         denomination: 'lamports',
+        computeUnits: 200000,
+        feeAsset: 'SOL',
+        fee: expect.any(Number),
         timestamp: expect.any(Number),
       });
     });
@@ -208,6 +234,9 @@ describe('Solana Estimate Gas Route', () => {
       expect(data).toMatchObject({
         feePerComputeUnit: 0, // Should return the actual estimate even if 0
         denomination: 'lamports',
+        computeUnits: 200000,
+        feeAsset: 'SOL',
+        fee: expect.any(Number),
         timestamp: expect.any(Number),
       });
     });

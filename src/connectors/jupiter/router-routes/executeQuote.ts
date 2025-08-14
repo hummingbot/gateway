@@ -97,7 +97,6 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Execute a previously fetched quote from Jupiter',
-        tags: ['jupiter/swap'],
         body: JupiterExecuteQuoteRequest,
         response: { 200: SwapExecuteResponse },
       },

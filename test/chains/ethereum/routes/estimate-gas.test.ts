@@ -31,6 +31,7 @@ describe('Ethereum Estimate Gas Route', () => {
     const mockInstance = {
       estimateGasPrice: jest.fn(),
       minGasPrice: 1.5,
+      nativeTokenSymbol: 'ETH',
     };
 
     beforeEach(() => {
@@ -51,6 +52,9 @@ describe('Ethereum Estimate Gas Route', () => {
       expect(data).toMatchObject({
         feePerComputeUnit: 15.5,
         denomination: 'gwei',
+        computeUnits: 300000,
+        feeAsset: 'ETH',
+        fee: expect.any(Number),
         timestamp: expect.any(Number),
       });
 
@@ -78,6 +82,9 @@ describe('Ethereum Estimate Gas Route', () => {
       expect(data).toMatchObject({
         feePerComputeUnit: 1.5, // minGasPrice from mock instance
         denomination: 'gwei',
+        computeUnits: 300000,
+        feeAsset: 'ETH',
+        fee: expect.any(Number),
         timestamp: expect.any(Number),
       });
 
@@ -104,6 +111,9 @@ describe('Ethereum Estimate Gas Route', () => {
         expect(data).toMatchObject({
           feePerComputeUnit: 10.0,
           denomination: 'gwei',
+          computeUnits: 300000,
+          feeAsset: 'ETH',
+          fee: expect.any(Number),
           timestamp: expect.any(Number),
         });
 
@@ -125,6 +135,9 @@ describe('Ethereum Estimate Gas Route', () => {
       // Verify response schema
       expect(typeof data.feePerComputeUnit).toBe('number');
       expect(data.denomination).toBe('gwei');
+      expect(data.computeUnits).toBe(300000);
+      expect(data.feeAsset).toBe('ETH');
+      expect(typeof data.fee).toBe('number');
       expect(typeof data.timestamp).toBe('number');
       expect(data.timestamp).toBeGreaterThan(Date.now() - 5000); // Recent timestamp
     });
@@ -143,6 +156,9 @@ describe('Ethereum Estimate Gas Route', () => {
       expect(data).toMatchObject({
         feePerComputeUnit: 12.0,
         denomination: 'gwei',
+        computeUnits: 300000,
+        feeAsset: 'ETH',
+        fee: expect.any(Number),
         timestamp: expect.any(Number),
       });
     });

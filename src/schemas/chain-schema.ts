@@ -19,6 +19,9 @@ export const EstimateGasResponseSchema = Type.Object(
   {
     feePerComputeUnit: Type.Number(), // Fee per compute unit
     denomination: Type.String(), // Denomination: "lamports" or "gwei"
+    computeUnits: Type.Number(), // Default compute units/gas limit used for fee calculation
+    feeAsset: Type.String(), // Native currency symbol from network config (ETH, SOL, etc.)
+    fee: Type.Number(), // Total fee calculated using default gas/compute limits
     timestamp: Type.Number(), // Unix timestamp when estimate was made
   },
   { $id: 'EstimateGasResponse' },

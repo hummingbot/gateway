@@ -12,9 +12,21 @@ export async function estimateGasEthereum(fastify: FastifyInstance, network: str
     // Get gas price in GWEI (this already includes fallback to minGasPrice)
     const gasPrice = await ethereum.estimateGasPrice();
 
+    // Default gas limit for Ethereum is 300000
+    const DEFAULT_GAS_LIMIT = 300000;
+
+    // Calculate total fee in GWEI
+    const totalFeeInGwei = gasPrice * DEFAULT_GAS_LIMIT;
+
+    // Convert GWEI to ETH (1 ETH = 10^9 GWEI)
+    const totalFeeInEth = totalFeeInGwei / 1e9;
+
     return {
       feePerComputeUnit: gasPrice,
       denomination: 'gwei',
+      computeUnits: DEFAULT_GAS_LIMIT,
+      feeAsset: ethereum.nativeTokenSymbol,
+      fee: totalFeeInEth,
       timestamp: Date.now(),
     };
   } catch (error) {
@@ -23,9 +35,22 @@ export async function estimateGasEthereum(fastify: FastifyInstance, network: str
     try {
       // If estimation fails but we can still get the instance, return the minGasPrice
       const ethereum = await Ethereum.getInstance(network);
+
+      // Default gas limit for Ethereum is 300000
+      const DEFAULT_GAS_LIMIT = 300000;
+
+      // Calculate total fee in GWEI using minGasPrice
+      const totalFeeInGwei = ethereum.minGasPrice * DEFAULT_GAS_LIMIT;
+
+      // Convert GWEI to ETH (1 ETH = 10^9 GWEI)
+      const totalFeeInEth = totalFeeInGwei / 1e9;
+
       return {
         feePerComputeUnit: ethereum.minGasPrice,
         denomination: 'gwei',
+        computeUnits: DEFAULT_GAS_LIMIT,
+        feeAsset: ethereum.nativeTokenSymbol,
+        fee: totalFeeInEth,
         timestamp: Date.now(),
       };
     } catch (instanceError) {

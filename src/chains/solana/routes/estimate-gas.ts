@@ -10,9 +10,25 @@ export async function estimateGasSolana(fastify: FastifyInstance, network: strin
     const solana = await Solana.getInstance(network);
     const priorityFeePerCUInLamports = await solana.estimateGasPrice();
 
+    // Get default compute units from config (typically 200000)
+    const defaultComputeUnits = solana.config.defaultComputeUnits;
+
+    // Calculate total priority fee in lamports
+    const totalPriorityFeeInLamports = priorityFeePerCUInLamports * defaultComputeUnits;
+
+    // Add base fee (5000 lamports per signature)
+    const baseFeeInLamports = 5000;
+    const totalFeeInLamports = totalPriorityFeeInLamports + baseFeeInLamports;
+
+    // Convert lamports to SOL (1 SOL = 10^9 lamports)
+    const totalFeeInSol = totalFeeInLamports / 1e9;
+
     return {
       feePerComputeUnit: priorityFeePerCUInLamports,
       denomination: 'lamports',
+      computeUnits: defaultComputeUnits,
+      feeAsset: solana.nativeTokenSymbol,
+      fee: totalFeeInSol,
       timestamp: Date.now(),
     };
   } catch (error) {
@@ -21,9 +37,27 @@ export async function estimateGasSolana(fastify: FastifyInstance, network: strin
     try {
       // If estimation fails but we can still get the instance, return the minPriorityFeePerCU
       const solana = await Solana.getInstance(network);
+      const minPriorityFeePerCU = solana.config.minPriorityFeePerCU || 0.1;
+
+      // Get default compute units from config (typically 200000)
+      const defaultComputeUnits = solana.config.defaultComputeUnits;
+
+      // Calculate total priority fee in lamports
+      const totalPriorityFeeInLamports = minPriorityFeePerCU * defaultComputeUnits;
+
+      // Add base fee (5000 lamports per signature)
+      const baseFeeInLamports = 5000;
+      const totalFeeInLamports = totalPriorityFeeInLamports + baseFeeInLamports;
+
+      // Convert lamports to SOL (1 SOL = 10^9 lamports)
+      const totalFeeInSol = totalFeeInLamports / 1e9;
+
       return {
-        feePerComputeUnit: solana.config.minPriorityFeePerCU || 0.1,
+        feePerComputeUnit: minPriorityFeePerCU,
         denomination: 'lamports',
+        computeUnits: defaultComputeUnits,
+        feeAsset: solana.nativeTokenSymbol,
+        fee: totalFeeInSol,
         timestamp: Date.now(),
       };
     } catch (instanceError) {
