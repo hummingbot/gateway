@@ -153,30 +153,36 @@ async function openPosition(
     `Opening position in pool ${poolAddress} with price range ${lowerPrice.toFixed(4)} - ${upperPrice.toFixed(4)} ${tokenYSymbol}/${tokenXSymbol}`,
   );
 
-  // Sign the transaction
-  createPositionTx.sign(wallet);
-  createPositionTx.sign(newImbalancePosition);
+  // Send and confirm transaction using sendAndConfirmTransaction which handles signing
+  const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(createPositionTx, [
+    wallet,
+    newImbalancePosition,
+  ]);
 
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(createPositionTx);
+  // Get transaction data for confirmation
+  const txData = await solana.connection.getTransaction(signature, {
+    commitment: 'confirmed',
+    maxSupportedTransactionVersion: 0,
+  });
+
+  const confirmed = txData !== null;
 
   if (confirmed && txData) {
-    const { balanceChanges, fee: extractedFee } = await solana.extractBalanceChangesAndFee(
-      signature,
-      wallet.publicKey.toBase58(),
-      [tokenX.address, tokenY.address],
-    );
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+      tokenX.address,
+      tokenY.address,
+    ]);
 
     const baseTokenBalanceChange = balanceChanges[0];
     const quoteTokenBalanceChange = balanceChanges[1];
-    const txFee = txData.meta.fee / 1e9;
 
     // Calculate sentSOL based on which token is SOL
     const sentSOL =
       tokenXSymbol === 'SOL'
-        ? Math.abs(baseTokenBalanceChange - extractedFee)
+        ? Math.abs(baseTokenBalanceChange - txFee)
         : tokenYSymbol === 'SOL'
-          ? Math.abs(quoteTokenBalanceChange - extractedFee)
-          : extractedFee;
+          ? Math.abs(quoteTokenBalanceChange - txFee)
+          : txFee;
 
     logger.info(
       `Position opened at ${newImbalancePosition.publicKey.toBase58()}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${tokenXSymbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${tokenYSymbol}`,

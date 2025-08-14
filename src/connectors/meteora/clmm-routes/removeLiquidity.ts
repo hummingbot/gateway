@@ -58,10 +58,16 @@ export async function removeLiquidity(
     throw fastify.httpErrors.internalServerError('Unexpected array of transactions');
   }
 
-  // Sign the transaction
-  removeLiquidityTx.sign(wallet);
+  // Send and confirm transaction using sendAndConfirmTransaction which handles signing
+  const { signature, fee } = await solana.sendAndConfirmTransaction(removeLiquidityTx, [wallet]);
 
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(removeLiquidityTx);
+  // Get transaction data for confirmation
+  const txData = await solana.connection.getTransaction(signature, {
+    commitment: 'confirmed',
+    maxSupportedTransactionVersion: 0,
+  });
+
+  const confirmed = txData !== null;
 
   if (confirmed && txData) {
     const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
@@ -71,7 +77,6 @@ export async function removeLiquidity(
 
     const tokenXRemovedAmount = balanceChanges[0];
     const tokenYRemovedAmount = balanceChanges[1];
-    const fee = txData.meta.fee / 1e9;
 
     logger.info(
       `Liquidity removed from position ${positionAddress}: ${Math.abs(tokenXRemovedAmount).toFixed(4)} ${tokenXSymbol}, ${Math.abs(tokenYRemovedAmount).toFixed(4)} ${tokenYSymbol}`,
@@ -114,11 +119,11 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress, percentageToRemove } = request.body;
+        const { network, walletAddress, positionAddress, liquidityPct } = request.body;
 
         const networkToUse = network;
 
-        return await removeLiquidity(fastify, networkToUse, walletAddress, positionAddress, percentageToRemove);
+        return await removeLiquidity(fastify, networkToUse, walletAddress, positionAddress, liquidityPct);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

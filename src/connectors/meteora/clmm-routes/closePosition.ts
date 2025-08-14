@@ -73,10 +73,16 @@ async function closePosition(
         position: position,
       });
 
-      // Sign the transaction
-      closePositionTx.sign(wallet);
+      // Send and confirm transaction using sendAndConfirmTransaction which handles signing
+      const { signature, fee } = await solana.sendAndConfirmTransaction(closePositionTx, [wallet]);
 
-      const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(closePositionTx);
+      // Get transaction data for confirmation
+      const txData = await solana.connection.getTransaction(signature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      });
+
+      const confirmed = txData !== null;
 
       if (confirmed && txData) {
         logger.info(`Position ${positionAddress} closed successfully with signature: ${signature}`);
@@ -85,7 +91,6 @@ async function closePosition(
           'So11111111111111111111111111111111111111112',
         ]);
         const returnedSOL = Math.abs(balanceChanges[0]);
-        const fee = txData.meta.fee / 1e9;
 
         const totalFee = fee + (removeLiquidityResult.data?.fee || 0) + (collectFeesResult.data?.fee || 0);
 

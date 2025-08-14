@@ -105,10 +105,16 @@ async function addLiquidity(
     slippage: slippagePct ?? MeteoraConfig.config.slippagePct,
   });
 
-  // Sign the transaction
-  addLiquidityTx.sign(wallet);
+  // Send and confirm transaction using sendAndConfirmTransaction which handles signing
+  const { signature, fee } = await solana.sendAndConfirmTransaction(addLiquidityTx, [wallet]);
 
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(addLiquidityTx);
+  // Get transaction data for confirmation
+  const txData = await solana.connection.getTransaction(signature, {
+    commitment: 'confirmed',
+    maxSupportedTransactionVersion: 0,
+  });
+
+  const confirmed = txData !== null;
 
   if (confirmed && txData) {
     const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
@@ -118,7 +124,6 @@ async function addLiquidity(
 
     const tokenXAddedAmount = balanceChanges[0];
     const tokenYAddedAmount = balanceChanges[1];
-    const fee = txData.meta.fee / 1e9;
 
     logger.info(
       `Liquidity added to position ${positionAddress}: ${Math.abs(tokenXAddedAmount).toFixed(4)} ${tokenXSymbol}, ${Math.abs(tokenYAddedAmount).toFixed(4)} ${tokenYSymbol}`,

@@ -48,10 +48,16 @@ export async function collectFees(
     position: position,
   });
 
-  // Sign the transaction
-  claimSwapFeeTx.sign(wallet);
+  // Send and confirm transaction using sendAndConfirmTransaction which handles signing
+  const { signature, fee } = await solana.sendAndConfirmTransaction(claimSwapFeeTx, [wallet]);
 
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(claimSwapFeeTx);
+  // Get transaction data for confirmation
+  const txData = await solana.connection.getTransaction(signature, {
+    commitment: 'confirmed',
+    maxSupportedTransactionVersion: 0,
+  });
+
+  const confirmed = txData !== null;
 
   if (confirmed && txData) {
     const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
@@ -61,7 +67,6 @@ export async function collectFees(
 
     const collectedFeeX = balanceChanges[0];
     const collectedFeeY = balanceChanges[1];
-    const fee = txData.meta.fee / 1e9;
 
     logger.info(
       `Fees collected from position ${positionAddress}: ${Math.abs(collectedFeeX).toFixed(4)} ${tokenXSymbol}, ${Math.abs(collectedFeeY).toFixed(4)} ${tokenYSymbol}`,

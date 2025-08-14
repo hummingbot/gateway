@@ -68,19 +68,30 @@ async function executeSwap(
           binArraysPubkey: (swapQuote as SwapQuote).binArraysPubkey,
         });
 
-  // Sign the transaction
-  swapTx.sign(wallet);
-
-  // Simulate transaction with proper error handling
+  // Simulate transaction with proper error handling (before signing)
   await solana.simulateWithErrorHandling(swapTx, fastify);
 
-  // Send and confirm transaction
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(swapTx);
+  logger.info('Transaction simulated successfully, sending to network...');
+
+  // Send and confirm transaction using sendAndConfirmTransaction which handles signing
+  const { signature, fee } = await solana.sendAndConfirmTransaction(swapTx, [wallet]);
+
+  logger.info(`Transaction sent with signature: ${signature}`);
+
+  // Get transaction data for confirmation
+  const txData = await solana.connection.getTransaction(signature, {
+    commitment: 'confirmed',
+    maxSupportedTransactionVersion: 0,
+  });
+
+  const confirmed = txData !== null;
 
   // Handle confirmation status
   if (confirmed && txData) {
+    // Extract fee from the response
+    const txFee = fee;
     // Transaction confirmed, extract balance changes
-    const { balanceChanges, fee } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
       inputToken.address,
       outputToken.address,
     ]);
@@ -108,7 +119,7 @@ async function executeSwap(
         tokenOut: outputToken.address,
         amountIn,
         amountOut,
-        fee,
+        fee: txFee,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
       },
@@ -193,10 +204,22 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           poolAddressUsed,
           slippagePct,
         );
-      } catch (e) {
-        if (e.statusCode) return e;
-        logger.error('Error executing swap:', e);
-        throw fastify.httpErrors.internalServerError('Internal server error');
+      } catch (e: any) {
+        logger.error('Error executing swap:', e.message || e);
+        logger.error('Full error:', JSON.stringify(e, null, 2));
+
+        if (e.statusCode) {
+          // If it's already an HTTP error, throw it properly
+          throw e;
+        }
+
+        // Check for specific error messages
+        const errorMessage = e.message || e.toString();
+        if (errorMessage.includes('503') || errorMessage.includes('Service Unavailable')) {
+          throw fastify.httpErrors.serviceUnavailable('RPC service temporarily unavailable. Please try again.');
+        }
+
+        throw fastify.httpErrors.internalServerError(`Swap execution failed: ${errorMessage}`);
       }
     },
   );
