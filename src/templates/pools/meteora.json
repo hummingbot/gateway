@@ -4,7 +4,7 @@
     "network": "mainnet-beta",
     "baseSymbol": "SOL",
     "quoteSymbol": "USDC",
-    "address": "5rCf1DM8LjKTw4YqhnoLcngyZYeNnQqztScTogYHAS6"
+    "address": "2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3"
   },
   {
     "type": "clmm",

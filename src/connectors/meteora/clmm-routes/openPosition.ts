@@ -1,6 +1,6 @@
 import { DecimalUtil } from '@orca-so/common-sdk';
 import { Static } from '@sinclair/typebox';
-import { Keypair, PublicKey } from '@solana/web3.js';
+import { Keypair, PublicKey, Transaction } from '@solana/web3.js';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
@@ -123,42 +123,60 @@ async function openPosition(
   const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true);
   const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false);
 
-  const totalXAmount = new BN(
-    DecimalUtil.toBN(
-      new Decimal(baseTokenAmount || 0 + (tokenXSymbol === 'SOL' ? SOL_POSITION_RENT : 0)),
-      dlmmPool.tokenX.decimal,
-    ),
-  );
-  const totalYAmount = new BN(
-    DecimalUtil.toBN(
-      new Decimal(quoteTokenAmount || 0 + (tokenYSymbol === 'SOL' ? SOL_POSITION_RENT : 0)),
-      dlmmPool.tokenY.decimal,
-    ),
-  );
+  // Don't add SOL rent to the liquidity amounts - rent is separate
+  const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount || 0), dlmmPool.tokenX.decimal));
+  const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(quoteTokenAmount || 0), dlmmPool.tokenY.decimal));
+
+  // Create position transaction following SDK example
+  // Slippage needs to be in BPS (basis points): percentage * 100
+  const slippageBps = slippagePct ? slippagePct * 100 : undefined;
 
   const createPositionTx = await dlmmPool.initializePositionAndAddLiquidityByStrategy({
     positionPubKey: newImbalancePosition.publicKey,
     user: wallet.publicKey,
+    totalXAmount,
+    totalYAmount,
     strategy: {
       maxBinId,
       minBinId,
       strategyType: strategyType ?? MeteoraConfig.config.strategyType,
     },
-    totalXAmount,
-    totalYAmount,
-    slippage: slippagePct ?? MeteoraConfig.config.slippagePct,
+    // Only add slippage if provided and greater than 0
+    ...(slippageBps ? { slippage: slippageBps } : {}),
   });
 
   logger.info(
     `Opening position in pool ${poolAddress} with price range ${lowerPrice.toFixed(4)} - ${upperPrice.toFixed(4)} ${tokenYSymbol}/${tokenXSymbol}`,
   );
+  logger.info(
+    `Token amounts: ${(baseTokenAmount || 0).toFixed(6)} ${tokenXSymbol}, ${(quoteTokenAmount || 0).toFixed(6)} ${tokenYSymbol}`,
+  );
+  logger.info(`Bin IDs: min=${minBinId}, max=${maxBinId}, active=${activeBin.binId}`);
+  if (slippageBps) {
+    logger.info(`Slippage: ${slippagePct}% (${slippageBps} BPS)`);
+  }
 
-  // Send and confirm transaction using sendAndConfirmTransaction which handles signing
-  // Following Meteora SDK example: both wallet and newImbalancePosition need to sign
-  const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(createPositionTx, [
-    wallet,
-    newImbalancePosition,
-  ]);
+  // Log the transaction details before sending
+  logger.info(`Transaction details: ${createPositionTx.instructions.length} instructions`);
+
+  // Set the fee payer and add placeholder signatures for simulation
+  // This tells the simulation which accounts will sign
+  createPositionTx.feePayer = wallet.publicKey;
+  createPositionTx.setSigners(wallet.publicKey, newImbalancePosition.publicKey);
+
+  // Simulate with error handling (no signing needed for simulation)
+  await solana.simulateWithErrorHandling(createPositionTx, fastify);
+
+  logger.info('Transaction simulated successfully, sending to network...');
+
+  // Send and confirm the ORIGINAL unsigned transaction
+  // sendAndConfirmTransaction will handle the signing
+  // Pass higher compute units for openPosition (simulation showed ~390k needed)
+  const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(
+    createPositionTx,
+    [wallet, newImbalancePosition],
+    500000, // computeUnits - higher limit for position creation
+  );
 
   // Get transaction data for confirmation
   const txData = await solana.connection.getTransaction(signature, {
