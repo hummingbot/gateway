@@ -107,11 +107,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest(error.message);
         }
 
-        // Create position manager contract
+        // Create position manager contract for reading position data
         const positionManager = new Contract(positionManagerAddress, POSITION_MANAGER_ABI, ethereum.provider);
-
-        // Create position manager with signer
-        const positionManagerWithSigner = positionManager.connect(wallet);
 
         // Get position details
         const position = await positionManager.positions(positionAddress);
@@ -195,6 +192,21 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Get the calldata using the SDK
         const { calldata, value } = NonfungiblePositionManager.removeCallParameters(positionSDK, removeParams);
+
+        // Initialize position manager with multicall interface
+        const positionManagerWithSigner = new Contract(
+          positionManagerAddress,
+          [
+            {
+              inputs: [{ internalType: 'bytes[]', name: 'data', type: 'bytes[]' }],
+              name: 'multicall',
+              outputs: [{ internalType: 'bytes[]', name: 'results', type: 'bytes[]' }],
+              stateMutability: 'payable',
+              type: 'function',
+            },
+          ],
+          wallet,
+        );
 
         // Execute the transaction to remove liquidity
         // Use Ethereum's prepareGasOptions method

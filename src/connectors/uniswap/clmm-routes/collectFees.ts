@@ -95,8 +95,8 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest(error.message);
         }
 
-        // Create position manager contract
-        const positionManager = new Contract(positionManagerAddress, POSITION_MANAGER_ABI, wallet);
+        // Create position manager contract for reading position data
+        const positionManager = new Contract(positionManagerAddress, POSITION_MANAGER_ABI, ethereum.provider);
 
         // Get position details
         const position = await positionManager.positions(positionAddress);
@@ -134,12 +134,27 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         // Get calldata for collecting fees
         const { calldata, value } = NonfungiblePositionManager.collectCallParameters(collectParams);
 
+        // Initialize position manager with multicall interface
+        const positionManagerWithSigner = new Contract(
+          positionManagerAddress,
+          [
+            {
+              inputs: [{ internalType: 'bytes[]', name: 'data', type: 'bytes[]' }],
+              name: 'multicall',
+              outputs: [{ internalType: 'bytes[]', name: 'results', type: 'bytes[]' }],
+              stateMutability: 'payable',
+              type: 'function',
+            },
+          ],
+          wallet,
+        );
+
         // Execute the transaction to collect fees
         // Use Ethereum's prepareGasOptions method
         const txParams = await ethereum.prepareGasOptions(undefined, CLMM_COLLECT_FEES_GAS_LIMIT);
         txParams.value = BigNumber.from(value.toString());
 
-        const tx = await positionManager.multicall([calldata], txParams);
+        const tx = await positionManagerWithSigner.multicall([calldata], txParams);
 
         // Wait for transaction confirmation
         const receipt = await tx.wait();
