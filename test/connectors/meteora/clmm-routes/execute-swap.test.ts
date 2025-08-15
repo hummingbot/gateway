@@ -110,11 +110,16 @@ describe('POST /execute-swap', () => {
         meta: { fee: 5000 },
         transaction: {},
       }),
-      sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
-        confirmed: true,
+      sendAndConfirmTransaction: jest.fn().mockResolvedValue({
         signature: mockTransaction.signature,
-        txData: { meta: { fee: 5000 } },
+        fee: 0.000005,
       }),
+      connection: {
+        getTransaction: jest.fn().mockResolvedValue({
+          meta: { fee: 5000 },
+          blockTime: Date.now() / 1000,
+        }),
+      },
       simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
       extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
         balanceChanges: [-0.1, 14.85],
@@ -157,7 +162,7 @@ describe('POST /execute-swap', () => {
     expect(body).toHaveProperty('status', 1);
     expect(body.data).toHaveProperty('amountIn', 0.1);
     expect(body.data).toHaveProperty('amountOut', 14.85);
-    expect(body.data).toHaveProperty('fee', 5000); // Fee in lamports
+    expect(body.data).toHaveProperty('fee', 0.000005); // Fee in SOL
     expect(body.data).toHaveProperty('baseTokenBalanceChange', -0.1);
     expect(body.data).toHaveProperty('quoteTokenBalanceChange', 14.85);
     expect(body.data).toHaveProperty('tokenIn', mockSOL.address);
@@ -179,11 +184,16 @@ describe('POST /execute-swap', () => {
         meta: { fee: 5000 },
         transaction: {},
       }),
-      sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({
-        confirmed: true,
+      sendAndConfirmTransaction: jest.fn().mockResolvedValue({
         signature: mockTransaction.signature,
-        txData: { meta: { fee: 5000 } },
+        fee: 0.000005,
       }),
+      connection: {
+        getTransaction: jest.fn().mockResolvedValue({
+          meta: { fee: 5000 },
+          blockTime: Date.now() / 1000,
+        }),
+      },
       simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
       extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
         balanceChanges: [-15, 0.1], // For BUY: first is USDC (negative), second is SOL (positive)
