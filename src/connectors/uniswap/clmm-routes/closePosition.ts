@@ -1,8 +1,9 @@
 import { Contract } from '@ethersproject/contracts';
-import { Percent } from '@uniswap/sdk-core';
-import { NonfungiblePositionManager } from '@uniswap/v3-sdk';
-import { BigNumber, utils } from 'ethers';
+import { Percent, CurrencyAmount } from '@uniswap/sdk-core';
+import { NonfungiblePositionManager, Position } from '@uniswap/v3-sdk';
+import { BigNumber } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
+import JSBI from 'jsbi';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import {
@@ -70,6 +71,16 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         // Get position manager address
         const positionManagerAddress = getUniswapV3NftManagerAddress(networkToUse);
 
+        // Check NFT ownership
+        try {
+          await uniswap.checkNFTOwnership(positionAddress, walletAddress);
+        } catch (error: any) {
+          if (error.message.includes('is not owned by')) {
+            throw fastify.httpErrors.forbidden(error.message);
+          }
+          throw fastify.httpErrors.badRequest(error.message);
+        }
+
         // Create position manager contract
         const positionManager = new Contract(positionManagerAddress, POSITION_MANAGER_ABI, ethereum.provider);
 
@@ -80,12 +91,18 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         const token0 = uniswap.getTokenByAddress(position.token0);
         const token1 = uniswap.getTokenByAddress(position.token1);
 
-        // Determine base and quote tokens
-        const baseTokenSymbol = token0.symbol === 'WETH' ? token0.symbol : token1.symbol;
-        const isBaseToken0 = token0.symbol === baseTokenSymbol;
+        // Determine base and quote tokens - WETH or lower address is base
+        const isBaseToken0 =
+          token0.symbol === 'WETH' ||
+          (token1.symbol !== 'WETH' && token0.address.toLowerCase() < token1.address.toLowerCase());
 
         // Get current liquidity
         const currentLiquidity = position.liquidity;
+
+        // Check if position has already been closed
+        if (currentLiquidity.isZero() && position.tokensOwed0.isZero() && position.tokensOwed1.isZero()) {
+          throw fastify.httpErrors.badRequest('Position has already been closed or has no liquidity/fees to collect');
+        }
 
         // Get fees owned
         const feeAmount0 = position.tokensOwed0;
@@ -97,81 +114,49 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.notFound('Pool not found for position');
         }
 
-        // Calculate expected token amounts based on liquidity to remove
-        // This is a crude approximation - actual amounts will be calculated by the contract
-        const sqrtRatioX96 = BigNumber.from(pool.sqrtRatioX96.toString());
-        const liquidity = BigNumber.from(currentLiquidity.toString());
+        // Create a Position instance to calculate expected amounts
+        const positionSDK = new Position({
+          pool,
+          tickLower: position.tickLower,
+          tickUpper: position.tickUpper,
+          liquidity: currentLiquidity.toString(),
+        });
 
-        // Calculate token amounts using Uniswap V3 formulas (simplified)
-        const Q96 = BigNumber.from(2).pow(96);
-        let amount0, amount1;
+        // Get the expected amounts for 100% removal
+        const amount0 = positionSDK.amount0;
+        const amount1 = positionSDK.amount1;
 
-        if (position.tickLower < pool.tickCurrent && pool.tickCurrent < position.tickUpper) {
-          // Position straddles current tick
-          amount0 = liquidity
-            .mul(Q96)
-            .mul(BigNumber.from(Math.sqrt(2 ** 96)).sub(sqrtRatioX96))
-            .div(sqrtRatioX96)
-            .div(Q96);
+        // Apply slippage tolerance
+        const slippageTolerance = new Percent(100, 10000); // 1% slippage
+        const amount0Min = amount0.multiply(new Percent(1).subtract(slippageTolerance)).quotient;
+        const amount1Min = amount1.multiply(new Percent(1).subtract(slippageTolerance)).quotient;
 
-          amount1 = liquidity.mul(sqrtRatioX96.sub(BigNumber.from(Math.sqrt(2 ** 96)))).div(Q96);
-        } else if (pool.tickCurrent <= position.tickLower) {
-          // Position is below current tick
-          amount0 = liquidity.mul(BigNumber.from(2).pow(96 / 2)).div(Q96);
-          amount1 = BigNumber.from(0);
-        } else {
-          // Position is above current tick
-          amount0 = BigNumber.from(0);
-          amount1 = liquidity.mul(BigNumber.from(2).pow(96 / 2)).div(Q96);
-        }
+        // Add any fees that have been collected to the expected amounts
+        const totalAmount0 = CurrencyAmount.fromRawAmount(
+          token0,
+          JSBI.add(amount0.quotient, JSBI.BigInt(feeAmount0.toString())),
+        );
+        const totalAmount1 = CurrencyAmount.fromRawAmount(
+          token1,
+          JSBI.add(amount1.quotient, JSBI.BigInt(feeAmount1.toString())),
+        );
 
-        // Add in any uncollected fees
-        amount0 = amount0.add(feeAmount0);
-        amount1 = amount1.add(feeAmount1);
-
-        // Create parameters for removing liquidity
+        // Create parameters for removing all liquidity
         const removeParams = {
           tokenId: positionAddress,
           liquidityPercentage: new Percent(10000, 10000), // 100% of liquidity
-          slippageTolerance: new Percent(100, 10000), // 1% slippage tolerance
+          slippageTolerance,
           deadline: Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes from now
-          burnToken: true, // Burn the position token
+          burnToken: true, // Burn the position token since we're closing it
           collectOptions: {
-            expectedCurrencyOwed0: amount0,
-            expectedCurrencyOwed1: amount1,
+            expectedCurrencyOwed0: totalAmount0,
+            expectedCurrencyOwed1: totalAmount1,
             recipient: walletAddress,
           },
         };
 
-        // For the sake of simplicity, we'll use a different approach
-        // We'd normally use NonfungiblePositionManager.removeCallParameters, but it may need custom parameters
-        // Here we'll construct a basic calldata for decreaseLiquidity and collect operations
-
-        // Simplified approach to create calldata for removing all liquidity
-        const { calldata, value } = {
-          calldata: JSON.stringify([
-            {
-              method: 'decreaseLiquidity',
-              params: {
-                tokenId: positionAddress,
-                liquidity: currentLiquidity.toString(),
-                amount0Min: amount0.toString(),
-                amount1Min: amount1.toString(),
-                deadline: Math.floor(Date.now() / 1000) + 60 * 20,
-              },
-            },
-            {
-              method: 'collect',
-              params: {
-                tokenId: positionAddress,
-                recipient: walletAddress,
-                amount0Max: amount0.add(feeAmount0).toString(),
-                amount1Max: amount1.add(feeAmount1).toString(),
-              },
-            },
-          ]),
-          value: '0',
-        };
+        // Get the calldata using the SDK
+        const { calldata, value } = NonfungiblePositionManager.removeCallParameters(positionSDK, removeParams);
 
         // Initialize position manager with multicall interface
         const positionManagerWithSigner = new Contract(
@@ -204,9 +189,9 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
           18, // ETH has 18 decimals
         );
 
-        // Calculate token amounts removed
-        const token0AmountRemoved = formatTokenAmount(amount0.toString(), token0.decimals);
-        const token1AmountRemoved = formatTokenAmount(amount1.toString(), token1.decimals);
+        // Calculate token amounts removed including fees
+        const token0AmountRemoved = formatTokenAmount(totalAmount0.quotient.toString(), token0.decimals);
+        const token1AmountRemoved = formatTokenAmount(totalAmount1.quotient.toString(), token1.decimals);
 
         // Calculate fee amounts collected
         const token0FeeAmount = formatTokenAmount(feeAmount0.toString(), token0.decimals);
