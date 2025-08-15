@@ -50,11 +50,16 @@ async function addLiquidity(
     throw fastify.httpErrors.badRequest(MISSING_AMOUNTS_MESSAGE);
   }
 
-  const { position, info } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
+  // Get position - handle null return gracefully
+  const positionResult = await meteora.getRawPosition(positionAddress, wallet.publicKey);
 
-  if (!position) {
-    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+  if (!positionResult || !positionResult.position) {
+    throw fastify.httpErrors.notFound(
+      `Position not found: ${positionAddress}. Please provide a valid position address`,
+    );
   }
+
+  const { position, info } = positionResult;
 
   const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
   if (!dlmmPool) {
@@ -105,9 +110,8 @@ async function addLiquidity(
     slippage: slippagePct ?? MeteoraConfig.config.slippagePct,
   });
 
-  // Set the fee payer and signers for simulation
+  // Set the fee payer for simulation
   addLiquidityTx.feePayer = wallet.publicKey;
-  addLiquidityTx.setSigners(wallet.publicKey);
 
   // Simulate with error handling
   await solana.simulateWithErrorHandling(addLiquidityTx, fastify);

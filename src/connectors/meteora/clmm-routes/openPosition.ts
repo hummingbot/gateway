@@ -159,10 +159,8 @@ async function openPosition(
   // Log the transaction details before sending
   logger.info(`Transaction details: ${createPositionTx.instructions.length} instructions`);
 
-  // Set the fee payer and add placeholder signatures for simulation
-  // This tells the simulation which accounts will sign
+  // Set the fee payer for simulation
   createPositionTx.feePayer = wallet.publicKey;
-  createPositionTx.setSigners(wallet.publicKey, newImbalancePosition.publicKey);
 
   // Simulate with error handling (no signing needed for simulation)
   await solana.simulateWithErrorHandling(createPositionTx, fastify);

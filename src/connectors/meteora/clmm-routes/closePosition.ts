@@ -66,7 +66,15 @@ async function closePosition(
 
     // Now close the position
     try {
-      const { position } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
+      const positionResult = await meteora.getRawPosition(positionAddress, wallet.publicKey);
+
+      if (!positionResult || !positionResult.position) {
+        throw fastify.httpErrors.notFound(
+          `Position not found: ${positionAddress}. Please provide a valid position address`,
+        );
+      }
+
+      const { position } = positionResult;
 
       const closePositionTx = await dlmmPool.closePosition({
         owner: wallet.publicKey,
@@ -75,7 +83,6 @@ async function closePosition(
 
       // Set fee payer and signers for simulation
       closePositionTx.feePayer = wallet.publicKey;
-      closePositionTx.setSigners(wallet.publicKey);
 
       // Simulate with error handling
       await solana.simulateWithErrorHandling(closePositionTx, fastify);

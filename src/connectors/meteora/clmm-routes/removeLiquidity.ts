@@ -35,7 +35,15 @@ export async function removeLiquidity(
     throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress));
   }
 
-  const { position, info } = await meteora.getRawPosition(positionAddress, wallet.publicKey);
+  const positionResult = await meteora.getRawPosition(positionAddress, wallet.publicKey);
+
+  if (!positionResult || !positionResult.position) {
+    throw fastify.httpErrors.notFound(
+      `Position not found: ${positionAddress}. Please provide a valid position address`,
+    );
+  }
+
+  const { position, info } = positionResult;
   const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
   const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
   const tokenY = await solana.getToken(dlmmPool.tokenY.publicKey.toBase58());
@@ -69,14 +77,17 @@ export async function removeLiquidity(
       const tx = removeLiquidityTx[i];
       logger.info(`Executing transaction ${i + 1} of ${removeLiquidityTx.length}`);
 
-      // Set fee payer and signers for simulation
+      // Set fee payer for simulation
       tx.feePayer = wallet.publicKey;
-      tx.setSigners(wallet.publicKey);
 
       // Simulate before sending
       await solana.simulateWithErrorHandling(tx, fastify);
 
-      const result = await solana.sendAndConfirmTransaction(tx, [wallet]);
+      const result = await solana.sendAndConfirmTransaction(
+        tx,
+        [wallet],
+        400000, // Higher compute units for remove liquidity
+      );
       totalFee += result.fee;
       lastSignature = result.signature;
     }
@@ -85,16 +96,19 @@ export async function removeLiquidity(
     fee = totalFee;
   } else {
     // Single transaction case
-    // Set fee payer and signers for simulation
+    // Set fee payer for simulation
     removeLiquidityTx.feePayer = wallet.publicKey;
-    removeLiquidityTx.setSigners(wallet.publicKey);
 
     // Simulate with error handling
     await solana.simulateWithErrorHandling(removeLiquidityTx, fastify);
 
     logger.info('Transaction simulated successfully, sending to network...');
 
-    const result = await solana.sendAndConfirmTransaction(removeLiquidityTx, [wallet]);
+    const result = await solana.sendAndConfirmTransaction(
+      removeLiquidityTx,
+      [wallet],
+      400000, // Higher compute units for remove liquidity
+    );
     signature = result.signature;
     fee = result.fee;
   }

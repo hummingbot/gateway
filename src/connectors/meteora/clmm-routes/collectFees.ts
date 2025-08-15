@@ -20,16 +20,14 @@ export async function collectFees(
   // Get position result and check if it's null before destructuring
   const positionResult = await meteora.getRawPosition(positionAddress, wallet.publicKey);
 
-  if (!positionResult) {
-    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+  if (!positionResult || !positionResult.position) {
+    throw fastify.httpErrors.notFound(
+      `Position not found: ${positionAddress}. Please provide a valid position address`,
+    );
   }
 
   // Now safely destructure
   const { position, info } = positionResult;
-
-  if (!position) {
-    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
-  }
 
   const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
   if (!dlmmPool) {
@@ -48,9 +46,8 @@ export async function collectFees(
     position: position,
   });
 
-  // Set fee payer and signers for simulation
+  // Set fee payer for simulation
   claimSwapFeeTx.feePayer = wallet.publicKey;
-  claimSwapFeeTx.setSigners(wallet.publicKey);
 
   // Simulate with error handling
   await solana.simulateWithErrorHandling(claimSwapFeeTx, fastify);
