@@ -1,14 +1,15 @@
-import { Type } from '@sinclair/typebox';
 import { ethers, utils } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import {
-  WrapRequestType,
-  WrapResponseType,
-} from '../../../schemas/chain-schema';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
+import { EthereumLedger } from '../ethereum-ledger';
+import { waitForTransactionWithTimeout } from '../ethereum.utils';
+import { WrapRequestSchema, WrapResponseSchema, WrapRequestType, WrapResponseType } from '../schemas';
+
+// Default gas limit for wrap operations
+const WRAP_GAS_LIMIT = 50000;
 
 // WETH ABI for wrap/unwrap operations
 const WETH9ABI = [
@@ -73,41 +74,9 @@ const WRAPPED_ADDRESSES: {
     symbol: 'WCELO',
     nativeSymbol: 'CELO',
   },
-  blast: {
-    address: '0x4300000000000000000000000000000000000004',
-    symbol: 'WETH',
-    nativeSymbol: 'ETH',
-  },
-  zora: {
-    address: '0x4200000000000000000000000000000000000006',
-    symbol: 'WETH',
-    nativeSymbol: 'ETH',
-  },
-  worldchain: {
-    address: '0x4300000000000000000000000000000000000004',
-    symbol: 'WETH',
-    nativeSymbol: 'ETH',
-  },
 };
 
-// Helper function to convert transaction to a format matching the CustomTransactionSchema
-const toEthereumTransaction = (transaction: ethers.Transaction) => {
-  return {
-    data: transaction.data,
-    to: transaction.to || '',
-    maxPriorityFeePerGas: transaction.maxPriorityFeePerGas?.toString() || null,
-    maxFeePerGas: transaction.maxFeePerGas?.toString() || null,
-    gasLimit: transaction.gasLimit?.toString() || null,
-    value: transaction.value?.toString() || '0',
-  };
-};
-
-export async function wrapEthereum(
-  fastify: FastifyInstance,
-  network: string,
-  address: string,
-  amount: string,
-) {
+export async function wrapEthereum(fastify: FastifyInstance, network: string, address: string, amount: string) {
   // Get Ethereum instance for the specified network
   const ethereum = await Ethereum.getInstance(network);
   await ethereum.init();
@@ -115,75 +84,126 @@ export async function wrapEthereum(
   // Get wrapped token info for the network
   const wrappedInfo = WRAPPED_ADDRESSES[network];
   if (!wrappedInfo) {
-    throw fastify.httpErrors.badRequest(
-      `Wrapped token address not found for network: ${network}`,
-    );
+    throw fastify.httpErrors.badRequest(`Wrapped token address not found for network: ${network}`);
   }
 
-  // Get wallet for the provided address
-  let wallet: ethers.Wallet;
-  try {
-    wallet = await ethereum.getWallet(address);
-  } catch (err) {
-    logger.error(`Failed to load wallet: ${err.message}`);
-    throw fastify.httpErrors.internalServerError(
-      `Failed to load wallet: ${err.message}`,
-    );
-  }
+  // Check if this is a hardware wallet
+  const isHardware = await ethereum.isHardwareWallet(address);
 
   // Parse amount to wei
   const amountInWei = utils.parseEther(amount);
 
-  // Create wrapped token contract instance
-  const wrappedContract = new ethers.Contract(
-    wrappedInfo.address,
-    WETH9ABI,
-    wallet,
-  );
-
   try {
-    // Set transaction parameters
-    const params: any = {
-      gasLimit: ethereum.gasLimitTransaction,
-      nonce: await ethereum.provider.getTransactionCount(wallet.address),
-      value: amountInWei, // Send native token with the transaction
-    };
+    let transaction;
+    let nonce: number;
+    let receipt;
 
-    // Always fetch gas price from the network
-    const currentGasPrice = await ethereum.provider.getGasPrice();
-    params.gasPrice = currentGasPrice.toString();
-    logger.info(
-      `Using network gas price: ${utils.formatUnits(currentGasPrice, 'gwei')} GWEI`,
-    );
+    if (isHardware) {
+      // Hardware wallet flow
+      logger.info(`Hardware wallet detected for ${address}. Building wrap transaction for Ledger signing.`);
 
-    // Create transaction to call deposit() function
-    const depositTx = await wrappedContract.populateTransaction.deposit(params);
-    const transaction = await wallet.sendTransaction(depositTx);
+      const ledger = new EthereumLedger();
 
-    // Calculate estimated fee
-    const gasPrice = await ethereum.provider.getGasPrice();
-    const fee = transaction.gasLimit.mul(gasPrice);
+      // Get nonce for the address
+      nonce = await ethereum.provider.getTransactionCount(address, 'latest');
+
+      // Build the wrap transaction data
+      const iface = new utils.Interface(WETH9ABI);
+      const data = iface.encodeFunctionData('deposit');
+
+      // Get gas options using estimateGasPrice
+      const gasOptions = await ethereum.prepareGasOptions(undefined, WRAP_GAS_LIMIT);
+
+      // Build unsigned transaction with gas parameters
+      const unsignedTx = {
+        to: wrappedInfo.address,
+        data: data,
+        value: amountInWei,
+        nonce: nonce,
+        chainId: ethereum.chainId,
+        ...gasOptions, // Include gas parameters from prepareGasOptions
+      };
+
+      // Sign with Ledger
+      const signedTx = await ledger.signTransaction(address, unsignedTx as any);
+
+      // Send the signed transaction
+      const txResponse = await ethereum.provider.sendTransaction(signedTx);
+
+      // Wait for confirmation with timeout (30 seconds for hardware wallets)
+      receipt = await waitForTransactionWithTimeout(txResponse, 30000);
+
+      transaction = {
+        hash: receipt.transactionHash,
+        nonce: nonce,
+      };
+    } else {
+      // Regular wallet flow
+      let wallet: ethers.Wallet;
+      try {
+        wallet = await ethereum.getWallet(address);
+      } catch (err) {
+        logger.error(`Failed to load wallet: ${err.message}`);
+        throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
+      }
+
+      // Create wrapped token contract instance
+      const wrappedContract = new ethers.Contract(wrappedInfo.address, WETH9ABI, wallet);
+
+      // Prepare gas options for wrap transaction
+      const gasOptions = await ethereum.prepareGasOptions(undefined, WRAP_GAS_LIMIT);
+      const params: any = {
+        ...gasOptions,
+        nonce: await ethereum.provider.getTransactionCount(wallet.address),
+        value: amountInWei, // Send native token with the transaction
+      };
+
+      // Create transaction to call deposit() function
+      const depositTx = await wrappedContract.populateTransaction.deposit(params);
+      transaction = await wallet.sendTransaction(depositTx);
+      nonce = transaction.nonce;
+
+      // Wait for transaction confirmation with timeout
+      receipt = await waitForTransactionWithTimeout(transaction);
+    }
+
+    // Calculate actual fee from receipt
+    let feeInEth = '0';
+    if (receipt.gasUsed && receipt.effectiveGasPrice) {
+      const feeInWei = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+      feeInEth = utils.formatEther(feeInWei);
+    }
 
     return {
-      nonce: transaction.nonce,
       signature: transaction.hash,
-      fee: bigNumberWithDecimalToStr(fee, 18),
-      amount: bigNumberWithDecimalToStr(amountInWei, 18),
-      wrappedAddress: wrappedInfo.address,
-      nativeToken: wrappedInfo.nativeSymbol,
-      wrappedToken: wrappedInfo.symbol,
-      tx: toEthereumTransaction(transaction),
+      status: 1, // CONFIRMED
+      data: {
+        nonce: nonce,
+        fee: feeInEth,
+        amount: bigNumberWithDecimalToStr(amountInWei, 18),
+        wrappedAddress: wrappedInfo.address,
+        nativeToken: wrappedInfo.nativeSymbol,
+        wrappedToken: wrappedInfo.symbol,
+      },
     };
   } catch (error) {
-    logger.error(
-      `Error wrapping ${wrappedInfo.nativeSymbol} to ${wrappedInfo.symbol}: ${error.message}`,
-    );
+    logger.error(`Error wrapping ${wrappedInfo.nativeSymbol} to ${wrappedInfo.symbol}: ${error.message}`);
 
     // Handle specific error cases
     if (error.message && error.message.includes('insufficient funds')) {
       throw fastify.httpErrors.badRequest(
         `Insufficient funds for transaction. Please ensure you have enough ${wrappedInfo.nativeSymbol} to wrap.`,
       );
+    } else if (error.message && error.message.includes('timeout')) {
+      throw fastify.httpErrors.requestTimeout(
+        `Transaction timeout. The transaction may still be pending. Hash: ${error.transactionHash || 'unknown'}`,
+      );
+    } else if (error.message.includes('rejected on Ledger')) {
+      throw fastify.httpErrors.badRequest('Transaction rejected on Ledger device');
+    } else if (error.message.includes('Ledger device is locked')) {
+      throw fastify.httpErrors.badRequest(error.message);
+    } else if (error.message.includes('Wrong app is open')) {
+      throw fastify.httpErrors.badRequest(error.message);
     }
 
     throw fastify.httpErrors.internalServerError(
@@ -193,8 +213,6 @@ export async function wrapEthereum(
 }
 
 export const wrapRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
   fastify.post<{
     Body: WrapRequestType;
     Reply: WrapResponseType;
@@ -202,51 +220,11 @@ export const wrapRoute: FastifyPluginAsync = async (fastify) => {
     '/wrap',
     {
       schema: {
-        description:
-          'Wrap native token to wrapped token (e.g., ETH to WETH, BNB to WBNB)',
-        tags: ['ethereum'],
-        body: Type.Object({
-          network: Type.String({
-            examples: [
-              'mainnet',
-              'arbitrum',
-              'optimism',
-              'base',
-              'sepolia',
-              'bsc',
-              'avalanche',
-              'celo',
-              'polygon',
-              'blast',
-              'zora',
-              'worldchain',
-            ],
-          }),
-          address: Type.String({ examples: [walletAddressExample] }),
-          amount: Type.String({
-            examples: ['0.1', '1.0'],
-            description:
-              'The amount of native token to wrap (e.g., ETH, BNB, AVAX)',
-          }),
-        }),
+        description: 'Wrap native token to wrapped token (e.g., ETH to WETH, BNB to WBNB)',
+        tags: ['/chain/ethereum'],
+        body: WrapRequestSchema,
         response: {
-          200: Type.Object({
-            nonce: Type.Number(),
-            signature: Type.String(),
-            fee: Type.String(),
-            amount: Type.String(),
-            wrappedAddress: Type.String(),
-            nativeToken: Type.String(),
-            wrappedToken: Type.String(),
-            tx: Type.Object({
-              data: Type.String(),
-              to: Type.String(),
-              maxPriorityFeePerGas: Type.Union([Type.String(), Type.Null()]),
-              maxFeePerGas: Type.Union([Type.String(), Type.Null()]),
-              gasLimit: Type.Union([Type.String(), Type.Null()]),
-              value: Type.String(),
-            }),
-          }),
+          200: WrapResponseSchema,
         },
       },
     },

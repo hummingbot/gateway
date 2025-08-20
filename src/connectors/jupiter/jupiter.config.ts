@@ -1,32 +1,42 @@
+import { getAvailableSolanaNetworks } from '../../chains/solana/solana.utils';
+import { AvailableNetworks } from '../../services/base';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-
-interface AvailableNetworks {
-  chain: string;
-  networks: Array<string>;
-}
 
 export namespace JupiterConfig {
   // Supported networks for Jupiter
   export const chain = 'solana';
-  export const networks = ['mainnet-beta', 'devnet'];
+  export const networks = getAvailableSolanaNetworks();
+  export type Network = string;
 
-  export interface NetworkConfig {
-    allowedSlippage: string;
+  // Supported trading types
+  export const tradingTypes = ['router'] as const;
+
+  export interface RootConfig {
+    // Global configuration
+    slippagePct: number;
     priorityLevel: string;
+    maxLamports: number;
+    onlyDirectRoutes: boolean;
+    restrictIntermediateTokens: boolean;
     apiKey?: string;
-    tradingTypes: Array<string>;
+
+    // Available networks
     availableNetworks: Array<AvailableNetworks>;
   }
 
-  export const config: NetworkConfig = {
-    allowedSlippage: ConfigManagerV2.getInstance().get(
-      'jupiter.allowedSlippage',
-    ),
+  export const config: RootConfig = {
+    slippagePct: ConfigManagerV2.getInstance().get('jupiter.slippagePct'),
     priorityLevel: ConfigManagerV2.getInstance().get('jupiter.priorityLevel'),
+    maxLamports: ConfigManagerV2.getInstance().get('jupiter.maxLamports'),
+    onlyDirectRoutes: ConfigManagerV2.getInstance().get('jupiter.onlyDirectRoutes'),
+    restrictIntermediateTokens: ConfigManagerV2.getInstance().get('jupiter.restrictIntermediateTokens'),
     apiKey: ConfigManagerV2.getInstance().get('jupiter.apiKey'),
-    tradingTypes: ['swap'],
+
     availableNetworks: [
-      { chain: 'solana', networks: ['mainnet-beta', 'devnet'] },
+      {
+        chain,
+        networks: networks,
+      },
     ],
   };
 }

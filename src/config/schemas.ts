@@ -1,18 +1,18 @@
 import { Type, Static } from '@sinclair/typebox';
 
-// Configuration update schema
+// Configuration update schema - improved version
 export const ConfigUpdateRequestSchema = Type.Object({
-  configPath: Type.String({ description: 'Configuration path' }),
-  configValue: Type.Union(
-    [
-      Type.String(),
-      Type.Number(),
-      Type.Boolean(),
-      Type.Object({}),
-      Type.Array(Type.Any()),
-    ],
-    { description: 'Configuration value' },
-  ),
+  namespace: Type.String({
+    description: 'Configuration namespace (e.g., "server", "ethereum-mainnet", "solana-mainnet-beta", "uniswap")',
+    examples: ['server', 'ethereum-mainnet', 'solana-mainnet-beta', 'uniswap', 'jupiter'],
+  }),
+  path: Type.String({
+    description: 'Configuration path within the namespace (e.g., "nodeURL", "manualGasPrice")',
+    examples: ['nodeURL', 'nativeCurrencySymbol', 'manualGasPrice', 'slippagePct'],
+  }),
+  value: Type.Union([Type.String(), Type.Number(), Type.Boolean(), Type.Object({}), Type.Array(Type.Any())], {
+    description: 'Configuration value',
+  }),
 });
 
 export const ConfigUpdateResponseSchema = Type.Object({
@@ -28,13 +28,7 @@ export const DefaultPoolRequestSchema = Type.Object({
   connector: Type.String({
     description:
       'Connector name in format "connector/type" (e.g., raydium/amm, raydium/clmm, uniswap/amm, uniswap/clmm, meteora/clmm)',
-    examples: [
-      'raydium/amm',
-      'raydium/clmm',
-      'uniswap/amm',
-      'uniswap/clmm',
-      'meteora/clmm',
-    ],
+    examples: ['raydium/amm', 'raydium/clmm', 'uniswap/amm', 'uniswap/clmm', 'meteora/clmm'],
   }),
   baseToken: Type.String({
     description: 'Base token symbol',
@@ -74,11 +68,11 @@ export type DefaultPoolListResponse = Static<typeof DefaultPoolListSchema>;
 
 // Config query schema
 export const ConfigQuerySchema = Type.Object({
-  chainOrConnector: Type.Optional(
+  namespace: Type.Optional(
     Type.String({
       description:
-        'Optional chain or connector name (e.g., "solana", "ethereum", "uniswap")',
-      examples: ['solana'],
+        'Optional configuration namespace (e.g., "server", "ethereum-mainnet", "solana-mainnet-beta", "uniswap")',
+      examples: ['server', 'ethereum-mainnet', 'solana-mainnet-beta', 'uniswap'],
     }),
   ),
 });
@@ -90,13 +84,7 @@ export const PoolsQuerySchema = Type.Object({
   connector: Type.String({
     description:
       'Connector name in format "connector/type" (e.g., raydium/amm, raydium/clmm, uniswap/amm, uniswap/clmm, meteora/clmm)',
-    examples: [
-      'raydium/amm',
-      'raydium/clmm',
-      'uniswap/amm',
-      'uniswap/clmm',
-      'meteora/clmm',
-    ],
+    examples: ['raydium/amm', 'raydium/clmm', 'uniswap/amm', 'uniswap/clmm', 'meteora/clmm'],
   }),
 });
 

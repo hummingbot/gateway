@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "networks": {
+      "type": "object",
+      "patternProperties": {
+        "^\\w+$": {
+          "type": "object",
+          "properties": {
+            "chainID": { "type": "integer" },
+            "nodeURL": { "type": "string" },
+            "nativeCurrencySymbol": { "type": "string" }
+          },
+          "required": ["chainID", "nodeURL", "nativeCurrencySymbol"],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "manualGasPrice": { "type": "integer" },
+    "gasLimitTransaction": { "type": "integer" }
+  },
+  "additionalProperties": false
+}

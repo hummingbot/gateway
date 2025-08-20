@@ -1,24 +1,15 @@
 import { Provider } from '@ethersproject/abstract-provider';
-import {
-  BigNumber,
-  Contract,
-  ContractTransaction,
-  providers,
-  Transaction,
-  utils,
-  Wallet,
-  ethers,
-} from 'ethers';
+import { BigNumber, Contract, ContractTransaction, providers, utils, Wallet, ethers } from 'ethers';
 import { getAddress } from 'ethers/lib/utils';
 import fse from 'fs-extra';
 
-import { TokenListType, TokenValue } from '../../services/base';
+import { TokenValue, tokenValueToString } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
-import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
-import { walletPath } from '../../wallet/utils';
+import { TokenService } from '../../services/token-service';
+import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
 
-import { getEthereumConfig } from './ethereum.config';
+import { getEthereumNetworkConfig, getEthereumChainConfig } from './ethereum.config';
 
 // information about an Ethereum token
 export interface TokenInfo {
@@ -34,7 +25,6 @@ export type NewDebugMsgHandler = (msg: any) => void;
 
 export class Ethereum {
   private static _instances: { [name: string]: Ethereum };
-  private static _walletAddressExample: string | null = null;
   public provider: providers.StaticJsonRpcProvider;
   public tokenList: TokenInfo[] = [];
   public tokenMap: Record<string, TokenInfo> = {};
@@ -42,11 +32,14 @@ export class Ethereum {
   public nativeTokenSymbol: string;
   public chainId: number;
   public rpcUrl: string;
-  public gasPrice: number;
-  public gasLimitTransaction: number;
-  public tokenListSource: string;
-  public tokenListType: TokenListType;
+  public minGasPrice: number;
   private _initialized: boolean = false;
+
+  private static lastGasPriceEstimate: {
+    timestamp: number;
+    gasPrice: number;
+  } | null = null;
+  private static GAS_PRICE_CACHE_MS = 10000; // 10 second cache
 
   // For backward compatibility
   public get chain(): string {
@@ -54,19 +47,14 @@ export class Ethereum {
   }
 
   private constructor(network: string) {
-    const config = getEthereumConfig('ethereum', network);
-    this.chainId = config.network.chainID;
-    this.rpcUrl = config.network.nodeURL;
-    logger.info(
-      `Initializing Ethereum connector for network: ${network}, nodeURL: ${this.rpcUrl}`,
-    );
+    const config = getEthereumNetworkConfig(network);
+    this.chainId = config.chainID;
+    this.rpcUrl = config.nodeURL;
+    logger.info(`Initializing Ethereum connector for network: ${network}, nodeURL: ${this.rpcUrl}`);
     this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
-    this.tokenListSource = config.network.tokenListSource;
-    this.tokenListType = config.network.tokenListType;
     this.network = network;
     this.nativeTokenSymbol = config.nativeCurrencySymbol;
-    this.gasPrice = config.manualGasPrice;
-    this.gasLimitTransaction = config.gasLimitTransaction;
+    this.minGasPrice = config.minGasPrice || 0.1; // Default to 0.1 GWEI if not specified
   }
 
   public static async getInstance(network: string): Promise<Ethereum> {
@@ -105,60 +93,79 @@ export class Ethereum {
    * Returns the gas price in GWEI
    */
   public async estimateGasPrice(): Promise<number> {
+    // Check cache first
+    if (
+      Ethereum.lastGasPriceEstimate &&
+      Date.now() - Ethereum.lastGasPriceEstimate.timestamp < Ethereum.GAS_PRICE_CACHE_MS
+    ) {
+      return Ethereum.lastGasPriceEstimate.gasPrice;
+    }
+
     try {
       const baseFee: BigNumber = await this.provider.getGasPrice();
       let priorityFee: BigNumber = BigNumber.from('0');
-      let adjustedFee: BigNumber;
-
       // Only get priority fee for mainnet
       if (this.network === 'mainnet') {
-        priorityFee = BigNumber.from(
-          await this.provider.send('eth_maxPriorityFeePerGas', []),
-        );
+        priorityFee = BigNumber.from(await this.provider.send('eth_maxPriorityFeePerGas', []));
       }
 
-      // Base network needs special handling for gas prices
-      // Base network sometimes reports very low gas prices that don't match reality
-      if (this.network === 'base') {
-        // For Base, use at least 2.5 Gwei as minimum or 2x the current price
-        const minBaseGasPrice = utils.parseUnits('2.5', 'gwei');
-        const baseMultiplier = baseFee.mul(200).div(100); // 2x current
+      // Apply minimum gas price for all networks
+      const minGasPriceWei = utils.parseUnits(this.minGasPrice.toString(), 'gwei');
+      const baseWithPriority = baseFee.add(priorityFee);
 
-        // Use the larger of the two values
-        adjustedFee = baseFee.lt(minBaseGasPrice)
-          ? minBaseGasPrice
-          : baseMultiplier;
+      // Use the larger of the current gas price or the configured minimum
+      const adjustedFee = baseWithPriority.lt(minGasPriceWei) ? minGasPriceWei : baseWithPriority;
 
+      if (baseWithPriority.lt(minGasPriceWei)) {
         logger.info(
-          `[GAS PRICE] Base network detected: Using higher gas price. Reported gas price was too low.`,
+          `Using configured minimum gas price. Current: ${baseWithPriority.toNumber() * 1e-9} GWEI, Minimum: ${this.minGasPrice} GWEI`,
         );
-        logger.info(
-          `[GAS PRICE] Raw gas price: ${baseFee.toNumber() * 1e-9} GWEI, Adjusted: ${adjustedFee.toNumber() * 1e-9} GWEI`,
-        );
-      } else {
-        // For other networks, just add the priority fee
-        adjustedFee = baseFee.add(priorityFee);
       }
 
       const totalFeeGwei = adjustedFee.toNumber() * 1e-9;
-      logger.info(
-        `[GAS PRICE] Estimated: ${totalFeeGwei} GWEI for network ${this.network}`,
-      );
+      logger.info(`Estimated: ${totalFeeGwei} GWEI for network ${this.network}`);
+
+      // Cache the result
+      Ethereum.lastGasPriceEstimate = {
+        timestamp: Date.now(),
+        gasPrice: totalFeeGwei,
+      };
 
       return totalFeeGwei;
     } catch (error: any) {
       logger.error(`Failed to estimate gas price: ${error.message}`);
-      return this.gasPrice; // Return existing gas price as fallback
+      return this.minGasPrice; // Return minimum gas price as fallback
     }
+  }
+
+  /**
+   * Prepare gas options for a transaction
+   * @param gasPrice Gas price in Gwei (optional)
+   * @param gasLimit Gas limit (optional, defaults to 300000)
+   * @returns Gas options object for ethers.js transaction
+   */
+  public async prepareGasOptions(gasPrice?: number, gasLimit?: number): Promise<any> {
+    const gasOptions: any = {};
+
+    // Set default gas limit if not provided
+    const DEFAULT_GAS_LIMIT = 300000;
+    gasOptions.gasLimit = gasLimit ?? DEFAULT_GAS_LIMIT;
+
+    // If gasPrice not provided, estimate it
+    const gasPriceInGwei = gasPrice ?? (await this.estimateGasPrice());
+
+    // Always use legacy transaction type for all networks
+    gasOptions.type = 0;
+    gasOptions.gasPrice = utils.parseUnits(gasPriceInGwei.toString(), 'gwei');
+    logger.info(`Using legacy gas pricing: ${gasPriceInGwei} GWEI with gasLimit: ${gasOptions.gasLimit}`);
+
+    return gasOptions;
   }
 
   /**
    * Get a contract instance for a token using standard ERC20 interface
    */
-  public getContract(
-    tokenAddress: string,
-    signerOrProvider?: Wallet | Provider,
-  ): Contract {
+  public getContract(tokenAddress: string, signerOrProvider?: Wallet | Provider): Contract {
     // Standard ERC20 interface ABI - the minimum needed for our operations
     const erc20Interface = [
       'function name() view returns (string)',
@@ -174,11 +181,7 @@ export class Ethereum {
       'event Approval(address indexed owner, address indexed spender, uint256 amount)',
     ];
 
-    return new Contract(
-      tokenAddress,
-      erc20Interface,
-      signerOrProvider || this.provider,
-    );
+    return new Contract(tokenAddress, erc20Interface, signerOrProvider || this.provider);
   }
 
   /**
@@ -186,7 +189,7 @@ export class Ethereum {
    */
   public async init(): Promise<void> {
     try {
-      await this.loadTokens(this.tokenListSource, this.tokenListType);
+      await this.loadTokens();
       this._initialized = true;
     } catch (e) {
       logger.error(`Failed to initialize Ethereum chain: ${e}`);
@@ -197,50 +200,28 @@ export class Ethereum {
   /**
    * Load tokens from the token list source
    */
-  public async loadTokens(
-    tokenListSource: string,
-    tokenListType: TokenListType,
-  ): Promise<void> {
-    logger.info(
-      `Loading tokens for ethereum (${this.chainId}) from ${tokenListType} source: ${tokenListSource}`,
-    );
+  public async loadTokens(): Promise<void> {
+    logger.info(`Loading tokens for ethereum/${this.network} using TokenService`);
     try {
-      this.tokenList = await this.getTokenList(tokenListSource, tokenListType);
-      // Only keep tokens in the same chain
-      this.tokenList = this.tokenList.filter(
-        (token: TokenInfo) => token.chainId === this.chainId,
-      );
+      // Use TokenService to load tokens
+      const tokens = await TokenService.getInstance().loadTokenList('ethereum', this.network);
+
+      // Convert to TokenInfo format with chainId and normalize addresses
+      this.tokenList = tokens.map((token) => ({
+        ...token,
+        address: getAddress(token.address), // Normalize to checksummed address
+        chainId: this.chainId,
+      }));
 
       if (this.tokenList) {
-        logger.info(`Loaded ${this.tokenList.length} tokens for ethereum`);
+        logger.info(`Loaded ${this.tokenList.length} tokens for ethereum/${this.network}`);
         // Build token map for faster lookups
-        this.tokenList.forEach(
-          (token: TokenInfo) => (this.tokenMap[token.symbol] = token),
-        );
+        this.tokenList.forEach((token: TokenInfo) => (this.tokenMap[token.symbol] = token));
       }
     } catch (error) {
       logger.error(`Failed to load token list: ${error.message}`);
       throw error;
     }
-  }
-
-  /**
-   * Get token list from source
-   */
-  private async getTokenList(
-    tokenListSource: string,
-    tokenListType: TokenListType,
-  ): Promise<TokenInfo[]> {
-    const tokens = await new TokenListResolutionStrategy(
-      tokenListSource,
-      tokenListType,
-    ).resolve();
-
-    // Normalize addresses
-    return tokens.map((token) => {
-      token.address = getAddress(token.address);
-      return token;
-    });
   }
 
   /**
@@ -253,12 +234,10 @@ export class Ethereum {
   /**
    * Get token info by symbol or address
    */
-  public getTokenBySymbol(tokenSymbol: string): TokenInfo | undefined {
+  public getToken(tokenSymbol: string): TokenInfo | undefined {
     // First try to find token by symbol
     const tokenBySymbol = this.tokenList.find(
-      (token: TokenInfo) =>
-        token.symbol.toUpperCase() === tokenSymbol.toUpperCase() &&
-        token.chainId === this.chainId,
+      (token: TokenInfo) => token.symbol.toUpperCase() === tokenSymbol.toUpperCase() && token.chainId === this.chainId,
     );
 
     if (tokenBySymbol) {
@@ -271,13 +250,32 @@ export class Ethereum {
       // Try to find token by normalized address
       return this.tokenList.find(
         (token: TokenInfo) =>
-          token.address.toLowerCase() === normalizedAddress.toLowerCase() &&
-          token.chainId === this.chainId,
+          token.address.toLowerCase() === normalizedAddress.toLowerCase() && token.chainId === this.chainId,
       );
-    } catch (error) {
-      // Not a valid Ethereum address, return undefined
+    } catch {
+      // If not a valid address format, return undefined
       return undefined;
     }
+  }
+
+  /**
+   * Get multiple tokens and return a map with symbols as keys
+   * This helper function is used by routes like allowances and balances
+   * @param tokens Array of token symbols or addresses
+   * @returns Map of token symbol to TokenInfo for found tokens
+   */
+  public getTokensAsMap(tokens: string[]): Record<string, TokenInfo> {
+    const tokenMap: Record<string, TokenInfo> = {};
+
+    for (const symbolOrAddress of tokens) {
+      const tokenInfo = this.getToken(symbolOrAddress);
+      if (tokenInfo) {
+        // Use the actual token symbol as the key, not the input which might be an address
+        tokenMap[tokenInfo.symbol] = tokenInfo;
+      }
+    }
+
+    return tokenMap;
   }
 
   /**
@@ -308,10 +306,7 @@ export class Ethereum {
       const validatedAddress = Ethereum.validateAddress(address);
 
       const path = `${walletPath}/ethereum`;
-      const encryptedPrivateKey = await fse.readFile(
-        `${path}/${validatedAddress}.json`,
-        'utf8',
-      );
+      const encryptedPrivateKey = await fse.readFile(`${path}/${validatedAddress}.json`, 'utf8');
 
       const passphrase = ConfigManagerCertPassphrase.readPassphrase();
       if (!passphrase) {
@@ -353,13 +348,23 @@ export class Ethereum {
         // Attempt to validate the address
         return Ethereum.validateAddress(walletAddress);
       } catch (e) {
-        logger.warn(
-          `Invalid Ethereum address found in wallet directory: ${walletAddress}`,
-        );
+        logger.warn(`Invalid Ethereum address found in wallet directory: ${walletAddress}`);
         return null;
       }
     } catch (err) {
       return null;
+    }
+  }
+
+  /**
+   * Check if an address is a hardware wallet
+   */
+  public async isHardwareWallet(address: string): Promise<boolean> {
+    try {
+      return await checkIsHardwareWallet('ethereum', address);
+    } catch (error) {
+      logger.error(`Error checking hardware wallet status: ${error.message}`);
+      return false;
     }
   }
 
@@ -374,14 +379,8 @@ export class Ethereum {
   /**
    * Decrypt an encrypted private key
    */
-  public async decrypt(
-    encryptedPrivateKey: string,
-    password: string,
-  ): Promise<Wallet> {
-    const wallet = await Wallet.fromEncryptedJson(
-      encryptedPrivateKey,
-      password,
-    );
+  public async decrypt(encryptedPrivateKey: string, password: string): Promise<Wallet> {
+    const wallet = await Wallet.fromEncryptedJson(encryptedPrivateKey, password);
     return wallet.connect(this.provider);
   }
 
@@ -394,6 +393,14 @@ export class Ethereum {
   }
 
   /**
+   * Get native token balance by address
+   */
+  public async getNativeBalanceByAddress(address: string): Promise<TokenValue> {
+    const balance = await this.provider.getBalance(address);
+    return { value: balance, decimals: 18 };
+  }
+
+  /**
    * Get ERC-20 token balance
    */
   public async getERC20Balance(
@@ -401,6 +408,7 @@ export class Ethereum {
     wallet: Wallet,
     decimals: number,
     timeoutMs: number = 5000, // Default 5 second timeout
+    tokenSymbol?: string, // Optional token symbol for logging
   ): Promise<TokenValue> {
     // Add timeout to prevent hanging on problematic tokens
     const balancePromise = contract.balanceOf(wallet.address);
@@ -413,12 +421,40 @@ export class Ethereum {
     });
 
     // Race the balance request against the timeout
-    const balance: BigNumber = await Promise.race([
-      balancePromise,
-      timeoutPromise,
-    ]);
+    const balance: BigNumber = await Promise.race([balancePromise, timeoutPromise]);
 
-    logger.debug(`Token balance for ${wallet.address}: ${balance.toString()}`);
+    if (tokenSymbol) {
+      logger.debug(`Token balance for ${tokenSymbol}: ${balance.toString()}`);
+    }
+    return { value: balance, decimals: decimals };
+  }
+
+  /**
+   * Get ERC-20 token balance by address
+   */
+  public async getERC20BalanceByAddress(
+    contract: Contract,
+    address: string,
+    decimals: number,
+    timeoutMs: number = 5000, // Default 5 second timeout
+    tokenSymbol?: string, // Optional token symbol for logging
+  ): Promise<TokenValue> {
+    // Add timeout to prevent hanging on problematic tokens
+    const balancePromise = contract.balanceOf(address);
+
+    // Create a timeout promise that rejects after specified timeout
+    const timeoutPromise = new Promise<BigNumber>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Token balance request timed out'));
+      }, timeoutMs);
+    });
+
+    // Race the balance request against the timeout
+    const balance: BigNumber = await Promise.race([balancePromise, timeoutPromise]);
+
+    if (tokenSymbol) {
+      logger.debug(`Token balance for ${tokenSymbol}: ${balance.toString()}`);
+    }
     return { value: balance, decimals: decimals };
   }
 
@@ -436,20 +472,29 @@ export class Ethereum {
   }
 
   /**
+   * Get ERC-20 token allowance by address
+   */
+  public async getERC20AllowanceByAddress(
+    contract: Contract,
+    ownerAddress: string,
+    spender: string,
+    decimals: number,
+  ): Promise<TokenValue> {
+    const allowance = await contract.allowance(ownerAddress, spender);
+    return { value: allowance, decimals: decimals };
+  }
+
+  /**
    * Get transaction details
    */
-  public async getTransaction(
-    txHash: string,
-  ): Promise<providers.TransactionResponse> {
+  public async getTransaction(txHash: string): Promise<providers.TransactionResponse> {
     return this.provider.getTransaction(txHash);
   }
 
   /**
    * Get transaction receipt directly
    */
-  public async getTransactionReceipt(
-    txHash: string,
-  ): Promise<providers.TransactionReceipt | null> {
+  public async getTransactionReceipt(txHash: string): Promise<providers.TransactionReceipt | null> {
     return this.provider.getTransactionReceipt(txHash);
   }
 
@@ -461,21 +506,17 @@ export class Ethereum {
     wallet: Wallet,
     spender: string,
     amount: BigNumber,
-  ): Promise<Transaction> {
+  ): Promise<providers.TransactionResponse> {
     logger.info(`Approving ${amount.toString()} tokens for spender ${spender}`);
 
+    // Prepare gas options for approval transaction
+    const gasOptions = await this.prepareGasOptions();
     const params: any = {
-      gasLimit: this.gasLimitTransaction,
+      ...gasOptions,
       nonce: await this.provider.getTransactionCount(wallet.address),
     };
 
-    // Always fetch gas price from the network
-    const currentGasPrice = await this.provider.getGasPrice();
-    params.gasPrice = currentGasPrice.toString();
-    logger.info(
-      `Using network gas price: ${utils.formatUnits(currentGasPrice, 'gwei')} GWEI`,
-    );
-
+    // Don't add gasPrice when using EIP-1559 parameters
     return contract.approve(spender, amount, params);
   }
 
@@ -558,21 +599,6 @@ export class Ethereum {
       symbol: 'WCELO',
       nativeSymbol: 'CELO',
     },
-    blast: {
-      address: '0x4300000000000000000000000000000000000004',
-      symbol: 'WETH',
-      nativeSymbol: 'ETH',
-    },
-    zora: {
-      address: '0x4200000000000000000000000000000000000006',
-      symbol: 'WETH',
-      nativeSymbol: 'ETH',
-    },
-    worldchain: {
-      address: '0x4300000000000000000000000000000000000004',
-      symbol: 'WETH',
-      nativeSymbol: 'ETH',
-    },
   };
 
   /**
@@ -582,9 +608,7 @@ export class Ethereum {
   public getWrappedNativeTokenAddress(): string {
     const wrappedInfo = Ethereum.WRAPPED_ADDRESSES[this.network];
     if (!wrappedInfo) {
-      throw new Error(
-        `Wrapped token address not found for network: ${this.network}`,
-      );
+      throw new Error(`Wrapped token address not found for network: ${this.network}`);
     }
     return wrappedInfo.address;
   }
@@ -605,30 +629,21 @@ export class Ethereum {
    * @param amountInWei The amount of ETH to wrap in wei (as a BigNumber)
    * @returns The transaction receipt
    */
-  public async wrapNativeToken(
-    wallet: Wallet,
-    amountInWei: BigNumber,
-  ): Promise<ContractTransaction> {
+  public async wrapNativeToken(wallet: Wallet, amountInWei: BigNumber): Promise<ContractTransaction> {
     const wrappedAddress = this.getWrappedNativeTokenAddress();
 
     // Create wrapped token contract instance
-    const wrappedContract = new Contract(
-      wrappedAddress,
-      Ethereum.WETH9ABI,
-      wallet,
-    );
+    const wrappedContract = new Contract(wrappedAddress, Ethereum.WETH9ABI, wallet);
 
-    // Set transaction parameters
+    // Prepare gas options for wrap transaction
+    const gasOptions = await this.prepareGasOptions();
     const params: any = {
-      gasLimit: this.gasLimitTransaction,
+      ...gasOptions,
       nonce: await this.provider.getTransactionCount(wallet.address),
       value: amountInWei, // Send native token with the transaction
     };
 
-    // Always fetch gas price from the network
-    const currentGasPrice = await this.provider.getGasPrice();
-    params.gasPrice = currentGasPrice.toString();
-
+    // Don't add gasPrice when using EIP-1559 parameters
     // Create transaction to call deposit() function
     logger.info(`Wrapping ${utils.formatEther(amountInWei)} ETH to WETH`);
     return await wrappedContract.deposit(params);
@@ -638,29 +653,232 @@ export class Ethereum {
    * Get a wallet address example for schema documentation
    */
   public static async getWalletAddressExample(): Promise<string> {
-    if (Ethereum._walletAddressExample) {
-      return Ethereum._walletAddressExample;
-    }
-    const defaultAddress = '0x0000000000000000000000000000000000000000';
-    try {
-      const foundWallet = await Ethereum.getFirstWalletAddress();
-      if (foundWallet) {
-        Ethereum._walletAddressExample = foundWallet;
-        return foundWallet;
-      }
-      logger.debug('No wallets found for examples in schema, using default.');
-      Ethereum._walletAddressExample = defaultAddress;
-      return defaultAddress;
-    } catch (error) {
-      logger.error(
-        `Error getting Ethereum wallet address for example: ${error.message}`,
-      );
-      return defaultAddress;
-    }
+    const chainConfig = getEthereumChainConfig();
+    return chainConfig.defaultWallet;
   }
 
   // Check if the address is a valid EVM address
   public static isAddress(address: string): boolean {
     return ethers.utils.isAddress(address);
+  }
+
+  /**
+   * Handle transaction confirmation status and return appropriate response
+   * Similar to Solana's handleConfirmation helper
+   * @param txReceipt Transaction receipt
+   * @param inputToken Input token address
+   * @param outputToken Output token address
+   * @param expectedAmountIn Expected input amount
+   * @param expectedAmountOut Expected output amount
+   * @param side Trade side (optional)
+   * @returns Response object with status and data
+   */
+  public handleTransactionConfirmation(
+    txReceipt: providers.TransactionReceipt | null,
+    inputToken: string,
+    outputToken: string,
+    expectedAmountIn: number,
+    expectedAmountOut: number,
+    side?: 'BUY' | 'SELL',
+  ): {
+    signature: string;
+    status: number;
+    data?: {
+      tokenIn: string;
+      tokenOut: string;
+      amountIn: number;
+      amountOut: number;
+      fee: number;
+      baseTokenBalanceChange: number;
+      quoteTokenBalanceChange: number;
+    };
+  } {
+    if (!txReceipt) {
+      // Transaction receipt not available - still pending
+      logger.warn('Transaction pending, no receipt available yet');
+      return {
+        signature: '',
+        status: 0, // PENDING
+        data: undefined,
+      };
+    }
+
+    const signature = txReceipt.transactionHash;
+
+    if (txReceipt.status === 0) {
+      // Transaction failed on-chain
+      logger.error(`Transaction ${signature} failed on-chain`);
+      return {
+        signature,
+        status: -1, // FAILED
+        data: {
+          tokenIn: inputToken,
+          tokenOut: outputToken,
+          amountIn: 0,
+          amountOut: 0,
+          fee: 0,
+          baseTokenBalanceChange: 0,
+          quoteTokenBalanceChange: 0,
+        },
+      };
+    }
+
+    if (txReceipt.status === 1) {
+      // Transaction confirmed successfully
+      // Calculate fee from gas used
+      const fee = parseFloat(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice).toString()) / 1e18;
+
+      // Calculate balance changes based on side
+      let baseTokenBalanceChange: number;
+      let quoteTokenBalanceChange: number;
+
+      if (side) {
+        // For AMM/CLMM swaps with side information
+        baseTokenBalanceChange = side === 'SELL' ? -expectedAmountIn : expectedAmountOut;
+        quoteTokenBalanceChange = side === 'SELL' ? expectedAmountOut : -expectedAmountIn;
+      } else {
+        // For router swaps without side information
+        baseTokenBalanceChange = -expectedAmountIn;
+        quoteTokenBalanceChange = expectedAmountOut;
+      }
+
+      return {
+        signature,
+        status: 1, // CONFIRMED
+        data: {
+          tokenIn: inputToken,
+          tokenOut: outputToken,
+          amountIn: expectedAmountIn,
+          amountOut: expectedAmountOut,
+          fee,
+          baseTokenBalanceChange,
+          quoteTokenBalanceChange,
+        },
+      };
+    }
+
+    // Transaction is still pending (ethers returns status as undefined in some cases)
+    logger.warn(`Transaction ${signature} status unclear, treating as pending`);
+    return {
+      signature,
+      status: 0, // PENDING
+      data: {
+        tokenIn: inputToken,
+        tokenOut: outputToken,
+        amountIn: 0,
+        amountOut: 0,
+        fee: 0,
+        baseTokenBalanceChange: 0,
+        quoteTokenBalanceChange: 0,
+      },
+    };
+  }
+
+  /**
+   * Get all token balances for an address
+   * @param address Wallet address
+   * @param tokens Optional array of token symbols/addresses to fetch. If not provided, fetches all tokens in token list
+   * @returns Map of token symbol to balance
+   */
+  public async getBalances(address: string, tokens?: string[]): Promise<Record<string, number>> {
+    const balances: Record<string, number> = {};
+
+    // Treat empty array as if no tokens were specified
+    const effectiveTokens = tokens && tokens.length === 0 ? undefined : tokens;
+
+    // Check if this is a hardware wallet
+    const isHardware = await this.isHardwareWallet(address);
+    let wallet: Wallet | null = null;
+
+    if (!isHardware) {
+      wallet = await this.getWallet(address);
+    }
+
+    // Always get native token balance
+    const nativeBalance = isHardware
+      ? await this.getNativeBalanceByAddress(address)
+      : await this.getNativeBalance(wallet!);
+    balances[this.nativeTokenSymbol] = parseFloat(tokenValueToString(nativeBalance));
+
+    if (!effectiveTokens) {
+      // No tokens specified, check all tokens in token list
+      await this.getAllTokenBalances(address, wallet, isHardware, balances);
+    } else {
+      // Get specific token balances
+      await this.getSpecificTokenBalances(effectiveTokens, address, wallet, isHardware, balances);
+    }
+
+    return balances;
+  }
+
+  /**
+   * Get balances for all tokens in the token list
+   */
+  private async getAllTokenBalances(
+    address: string,
+    wallet: Wallet | null,
+    isHardware: boolean,
+    balances: Record<string, number>,
+  ): Promise<void> {
+    logger.info(`Checking balances for all ${this.storedTokenList.length} tokens in the token list`);
+
+    await Promise.all(
+      this.storedTokenList.map(async (token) => {
+        try {
+          const contract = this.getContract(token.address, this.provider);
+          const balance = isHardware
+            ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 2000, token.symbol)
+            : await this.getERC20Balance(contract, wallet!, token.decimals, 2000, token.symbol);
+
+          const balanceNum = parseFloat(tokenValueToString(balance));
+
+          // Only add tokens with non-zero balances
+          if (balanceNum > 0) {
+            balances[token.symbol] = balanceNum;
+            logger.debug(`Found non-zero balance for ${token.symbol}: ${balanceNum}`);
+          }
+        } catch (err) {
+          logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
+        }
+      }),
+    );
+  }
+
+  /**
+   * Get balances for specific tokens
+   */
+  private async getSpecificTokenBalances(
+    tokens: string[],
+    address: string,
+    wallet: Wallet | null,
+    isHardware: boolean,
+    balances: Record<string, number>,
+  ): Promise<void> {
+    await Promise.all(
+      tokens.map(async (symbolOrAddress) => {
+        // Don't process native token again
+        if (symbolOrAddress === this.nativeTokenSymbol) {
+          return;
+        }
+
+        const token = this.getToken(symbolOrAddress);
+        if (token) {
+          try {
+            const contract = this.getContract(token.address, this.provider);
+            const balance = isHardware
+              ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 5000, token.symbol)
+              : await this.getERC20Balance(contract, wallet!, token.decimals, 5000, token.symbol);
+
+            balances[token.symbol] = parseFloat(tokenValueToString(balance));
+          } catch (err) {
+            logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
+            balances[token.symbol] = 0;
+          }
+        } else {
+          logger.warn(`Token not recognized: ${symbolOrAddress}`);
+          balances[symbolOrAddress] = 0;
+        }
+      }),
+    );
   }
 }

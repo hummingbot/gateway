@@ -63,10 +63,8 @@ function validateStatusResponse(response) {
     response &&
     typeof response.network === 'string' &&
     typeof response.isConnected === 'boolean' &&
-    (response.latestBlock === undefined ||
-      typeof response.latestBlock === 'number') &&
-    (response.gasPrice === undefined ||
-      typeof response.gasPrice === 'string') &&
+    (response.latestBlock === undefined || typeof response.latestBlock === 'number') &&
+    (response.gasPrice === undefined || typeof response.gasPrice === 'string') &&
     (response.nativeCurrency === undefined ||
       (typeof response.nativeCurrency.name === 'string' &&
         typeof response.nativeCurrency.symbol === 'string' &&
@@ -94,16 +92,13 @@ describe('Solana Chain Tests (Mainnet Beta)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/chains/${CHAIN}/balances`,
-        {
-          params: {
-            network: NETWORK,
-            wallet: TEST_WALLET,
-            tokens: ['SOL', 'USDC', 'USDT'],
-          },
+      const response = await axios.get(`http://localhost:15888/chains/${CHAIN}/balances`, {
+        params: {
+          network: NETWORK,
+          wallet: TEST_WALLET,
+          tokens: ['SOL', 'USDC', 'USDT'],
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -142,16 +137,13 @@ describe('Solana Chain Tests (Mainnet Beta)', () => {
       });
 
       // Make the request with token addresses instead of symbols
-      const response = await axios.get(
-        `http://localhost:15888/chains/${CHAIN}/balances`,
-        {
-          params: {
-            network: NETWORK,
-            wallet: TEST_WALLET,
-            tokens: ['SOL', USDC_MINT, BONK_MINT],
-          },
+      const response = await axios.get(`http://localhost:15888/chains/${CHAIN}/balances`, {
+        params: {
+          network: NETWORK,
+          wallet: TEST_WALLET,
+          tokens: ['SOL', USDC_MINT, BONK_MINT],
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -188,16 +180,13 @@ describe('Solana Chain Tests (Mainnet Beta)', () => {
       });
 
       // Make the request with mixed token symbols and addresses
-      const response = await axios.get(
-        `http://localhost:15888/chains/${CHAIN}/balances`,
-        {
-          params: {
-            network: NETWORK,
-            wallet: TEST_WALLET,
-            tokens: ['SOL', 'BONK', USDC_MINT],
-          },
+      const response = await axios.get(`http://localhost:15888/chains/${CHAIN}/balances`, {
+        params: {
+          network: NETWORK,
+          wallet: TEST_WALLET,
+          tokens: ['SOL', 'BONK', USDC_MINT],
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -291,14 +280,11 @@ describe('Solana Chain Tests (Mainnet Beta)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/chains/${CHAIN}/tokens`,
-        {
-          params: {
-            network: NETWORK,
-          },
+      const response = await axios.get(`http://localhost:15888/chains/${CHAIN}/tokens`, {
+        params: {
+          network: NETWORK,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -332,14 +318,11 @@ describe('Solana Chain Tests (Mainnet Beta)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/chains/${CHAIN}/status`,
-        {
-          params: {
-            network: NETWORK,
-          },
+      const response = await axios.get(`http://localhost:15888/chains/${CHAIN}/status`, {
+        params: {
+          network: NETWORK,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);

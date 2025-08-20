@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Ethereum Network Config",
+  "description": "A schema for ethereum-specific network configuration parameters",
+  "type": "object",
+  "properties": {
+    "chainID": {
+      "description": "The chain ID of the network",
+      "type": "integer"
+    },
+    "nodeURL": {
+      "description": "The URL of the node to connect to",
+      "type": "string"
+    },
+    "nativeCurrencySymbol": {
+      "description": "The symbol of the native currency",
+      "type": "string"
+    }
+  },
+  "required": ["chainID", "nodeURL", "nativeCurrencySymbol"]
+}

@@ -3,9 +3,9 @@ configurations:
   $namespace server:
     configurationPath: server.yml
     schemaPath: server-schema.json
-  $namespace ethereum:
+  $namespace ethereum-mainnet:
     configurationPath: ethereum.yml
-    schemaPath: ethereum-schema.json
+    schemaPath: ethereum-network-schema.json
   not a namespace:
     configurationPath: no.yml
     schemaPath: no.json

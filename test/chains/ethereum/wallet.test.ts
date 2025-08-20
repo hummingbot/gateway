@@ -15,8 +15,7 @@ let eth: Ethereum;
 
 // Test wallet data
 const testAddress = '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf';
-const testPrivateKey =
-  '0000000000000000000000000000000000000000000000000000000000000001'; // noqa: mock
+const testPrivateKey = '0000000000000000000000000000000000000000000000000000000000000001'; // noqa: mock
 
 // Mock the encoded private key response
 const encodedPrivateKey = {
@@ -26,8 +25,7 @@ const encodedPrivateKey = {
   Crypto: {
     cipher: 'aes-128-ctr',
     cipherparams: { iv: '60276d7bf5fa57ce0ae8e65fc578c3ac' },
-    ciphertext:
-      'be98ee3d44744e1417531b15a7b1e47b945cfc100d3ff2680f757a824840fb67', // noqa: mock
+    ciphertext: 'be98ee3d44744e1417531b15a7b1e47b945cfc100d3ff2680f757a824840fb67', // noqa: mock
     kdf: 'scrypt',
     kdfparams: {
       salt: '90b7e0017b4f9df67aa5f2de73495c14de086b8abb5b68ce3329596eb14f991c', // noqa: mock
@@ -79,39 +77,35 @@ beforeEach(() => {
     return undefined;
   });
 
-  (mockFse.readdir as jest.Mock).mockImplementation(
-    async (dirPath: any, options?: any) => {
-      const pathStr = dirPath.toString();
+  (mockFse.readdir as jest.Mock).mockImplementation(async (dirPath: any, options?: any) => {
+    const pathStr = dirPath.toString();
 
-      // If asking for directories in wallet path
-      if (pathStr.endsWith('/wallets') && options?.withFileTypes) {
-        return Object.keys(mockWallets).map((chain) => ({
-          name: chain,
-          isDirectory: () => true,
-          isFile: () => false,
+    // If asking for directories in wallet path
+    if (pathStr.endsWith('/wallets') && options?.withFileTypes) {
+      return Object.keys(mockWallets).map((chain) => ({
+        name: chain,
+        isDirectory: () => true,
+        isFile: () => false,
+      }));
+    }
+
+    // If asking for files in a chain directory
+    const chain = pathStr.split('/').pop();
+    if (chain && mockWallets[chain]) {
+      if (options?.withFileTypes) {
+        return Array.from(mockWallets[chain]).map((addr) => ({
+          name: `${addr}.json`,
+          isDirectory: () => false,
+          isFile: () => true,
         }));
       }
+      return Array.from(mockWallets[chain]).map((addr) => `${addr}.json`);
+    }
 
-      // If asking for files in a chain directory
-      const chain = pathStr.split('/').pop();
-      if (chain && mockWallets[chain]) {
-        if (options?.withFileTypes) {
-          return Array.from(mockWallets[chain]).map((addr) => ({
-            name: `${addr}.json`,
-            isDirectory: () => false,
-            isFile: () => true,
-          }));
-        }
-        return Array.from(mockWallets[chain]).map((addr) => `${addr}.json`);
-      }
+    return [];
+  });
 
-      return [];
-    },
-  );
-
-  (mockFse.readFile as jest.Mock).mockResolvedValue(
-    Buffer.from(JSON.stringify(encodedPrivateKey)),
-  );
+  (mockFse.readFile as jest.Mock).mockResolvedValue(Buffer.from(JSON.stringify(encodedPrivateKey)));
   (mockFse.pathExists as jest.Mock).mockResolvedValue(true);
   (mockFse.ensureDir as jest.Mock).mockResolvedValue(undefined);
 
@@ -246,7 +240,8 @@ describe('Ethereum Wallet Operations', () => {
       expect(response.statusCode).toBe(200);
       expect(response.headers['content-type']).toMatch(/json/);
 
-      expect(response.payload).toBe('null');
+      const body = JSON.parse(response.payload);
+      expect(body.message).toContain('removed successfully');
       expect(mockWallets.ethereum.has(testAddress)).toBe(false);
     });
 
@@ -323,12 +318,8 @@ describe('Ethereum Wallet Operations', () => {
       });
       expect(finalGetResponse.statusCode).toBe(200);
 
-      const finalWallets: GetWalletResponse[] = JSON.parse(
-        finalGetResponse.payload,
-      );
-      const finalEthereumWallet = finalWallets.find(
-        (w) => w.chain === 'ethereum',
-      );
+      const finalWallets: GetWalletResponse[] = JSON.parse(finalGetResponse.payload);
+      const finalEthereumWallet = finalWallets.find((w) => w.chain === 'ethereum');
       expect(finalEthereumWallet?.walletAddresses).not.toContain(testAddress);
     });
   });

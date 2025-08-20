@@ -1,73 +1,184 @@
-![Hummingbot](https://i.ibb.co/X5zNkKw/blacklogo-with-text.png)
+```
+╔██████╗  █████╗ ████████╗███████╗██╗    ██╗ █████╗ ██╗   ██╗
+██╔════╝ ██╔══██╗╚══██╔══╝██╔════╝██║    ██║██╔══██╗╚██╗ ██╔╝
+██║  ███╗███████║   ██║   █████╗  ██║ █╗ ██║███████║ ╚████╔╝
+██║   ██║██╔══██║   ██║   ██╔══╝  ██║███╗██║██╔══██║  ╚██╔╝
+╚██████╔╝██║  ██║   ██║   ███████╗╚███╔███╔╝██║  ██║   ██║
+ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝
+```
 
 # Hummingbot Gateway
 
 ## Introduction
 
-Hummingbot Gateway is a REST API that provides a unified interface for interacting with **blockchain networks** (wallet, node & chain operations) and **decentralized exchanges (DEX)** (trading, liquidity provision, and market data).
+Hummingbot Gateway is a versatile API server that standardizes interactions with blockchain networks and decentralized exchanges (DEXs). It acts as a middleware layer, providing a unified interface for performing actions like checking balances, executing trades, and managing wallets across different protocols.
+
+Gateway can be accessed through:
+- **REST API**: Direct HTTP/HTTPS endpoints for programmatic access
+- **Hummingbot Client**: For automated trading strategies, use the [Hummingbot repository](https://github.com/hummingbot/hummingbot)
+
+### Key Features
+- **Standardized REST API**: Consistent endpoints for interacting with blockchains (Ethereum, Solana) and DEXs (Uniswap, Jupiter, Raydium, Meteora, 0x)
+- **Three Trading Types**: Router (DEX aggregators), AMM (V2-style pools), and CLMM (V3-style concentrated liquidity)
+- **Modular Architecture**: Clear separation of concerns with distinct modules for chains, connectors, configuration, and wallet management
+- **TypeScript-based**: Leverages the TypeScript ecosystem and popular libraries like Fastify, Ethers.js, and Solana/web3.js
+- **Security**: Built-in rate limiting (100 requests/minute) to prevent DoS attacks
+- **Extensible**: Easily extended with new chains and connectors
+
+### Core Technologies
+- **Backend**: Node.js, TypeScript, Fastify
+- **Blockchain Interaction**: Ethers.js (Ethereum), @solana/web3.js (Solana)
+- **Package Manager**: pnpm
+- **Testing**: Jest
+- **Linting/Formatting**: ESLint, Prettier
+- **API Documentation**: Swagger/OpenAPI
 
 Gateway abstracts the complexity of interacting with different blockchain protocols by providing standardized endpoints that work consistently across different chains and DEXs. Built with TypeScript to leverage native blockchain SDKs, it offers a language-agnostic API that can be integrated into any trading system.
 
-### Key Features
+Gateway may be used alongside the main [Hummingbot client](https://github.com/hummingbot/hummingbot) to enable trading and market making on DEXs, or as a standalone API server.
 
-- **Multi-Chain Support**: Ethereum (and EVM-compatible chains) and Solana
-- **DEX Integration**: Jupiter, Uniswap, Raydium, and Meteora
-- **Trading Types**: Simple swaps, AMM (V2-style), and CLMM (V3-style concentrated liquidity)
-- **Wallet Management**: Secure wallet storage and transaction signing
-- **Swagger Documentation**: Auto-generated interactive API docs at `/docs`
-- **TypeBox Validation**: Type-safe request/response schemas
+## Supported Networks and DEXs
 
-### Supported Networks
-
-#### Ethereum & EVM Networks
+### Ethereum & EVM Networks
 - Ethereum Mainnet
 - Arbitrum
-- Avalanche
+- Avalanche  
 - Base
 - BSC (Binance Smart Chain)
 - Celo
 - Optimism
 - Polygon
-- World Chain
 - Sepolia (testnet)
 
-#### Solana Networks
-- Solana Mainnet
+### Solana Networks
+- Solana Mainnet-Beta
 - Solana Devnet
 
 ### Supported DEX Protocols
 
-| Protocol | Chain | Swap | AMM | CLMM |
-|----------|-------|------|-----|------|
-| Jupiter | Solana | ✅ | ❌ | ❌ |
-| Meteora | Solana | ✅ | ❌ | ✅ |
-| Raydium | Solana | ✅ | ✅ | ✅ |
-| Uniswap | Ethereum/EVM | ✅ | ✅ | ✅ |
+| Protocol | Chain | Router | AMM | CLMM | Description |
+|----------|-------|--------|-----|------|-------------|
+| Jupiter | Solana | ✅ | ❌ | ❌ | DEX aggregator finding optimal swap routes |
+| Meteora | Solana | ❌ | ❌ | ✅ | Dynamic Liquidity Market Maker (DLMM) |
+| Raydium | Solana | ❌ | ✅ | ✅ | Full-featured DEX with V2 AMM and V3 CLMM |
+| Uniswap | Ethereum/EVM | ✅ | ✅ | ✅ | Complete V2 AMM, V3 CLMM, and Smart Order Router |
+| 0x | Ethereum/EVM | ✅ | ❌ | ❌ | DEX aggregator with professional market making features |
 
-Gateway uses [Swagger](https://swagger.io/) for API documentation. When running in development mode, access the interactive API documentation at: <http://localhost:15888/docs>
+#### Trading Types Explained:
+- **Router**: DEX aggregators that find optimal swap routes across multiple liquidity sources
+- **AMM** (Automated Market Maker): Traditional V2-style constant product pools (x*y=k)
+- **CLMM** (Concentrated Liquidity Market Maker): V3-style pools with capital efficiency through concentrated liquidity positions
+
+## API Documentation
+
+Gateway uses [Swagger](https://swagger.io/) for API documentation. When running Gateway, access the interactive API documentation at:
+- Development mode: <http://localhost:15888/docs>
+- Production mode: <https://localhost:15888/docs>
+
+### API Route Structure
+
+#### Configuration Routes (`/config/*`)
+- `GET /config/namespaces` - List all configuration namespaces
+- `GET /config/chains` - Get available chains and networks
+- `GET /config/connectors` - List available DEX connectors
+- `GET /config` - Get configuration for a namespace
+- `PUT /config` - Update configuration values
+
+#### Chain Routes (`/chains/{chain}/*`)
+- `GET /chains/{chain}/status` - Get chain status and block height
+- `GET /chains/{chain}/tokens` - List supported tokens
+- `POST /chains/{chain}/balances` - Get wallet token balances
+- `POST /chains/{chain}/allowances` - Check token allowances
+- `POST /chains/{chain}/approve` - Approve token spending
+- `POST /chains/{chain}/wrap` - Wrap/unwrap native tokens
+
+#### Connector Routes (`/connectors/{dex}/{type}/*`)
+
+**Router Operations** (e.g., `/connectors/jupiter/router/*`):
+- `POST /quote` - Get swap quote from aggregator
+- `POST /swap` - Execute swap through aggregator
+
+**AMM Operations** (e.g., `/connectors/raydium/amm/*`):
+- `POST /poolInfo` - Get pool details
+- `POST /positionInfo` - Get liquidity position info
+- `POST /quoteSwap` - Get swap quote
+- `POST /executeSwap` - Execute swap
+- `POST /quoteLiquidity` - Quote add/remove liquidity
+- `POST /addLiquidity` - Add liquidity to pool
+- `POST /removeLiquidity` - Remove liquidity from pool
+
+**CLMM Operations** (e.g., `/connectors/uniswap/clmm/*`):
+- `POST /poolInfo` - Get concentrated liquidity pool info
+- `POST /openPosition` - Open new position
+- `POST /closePosition` - Close existing position
+- `POST /addLiquidity` - Add liquidity to position
+- `POST /removeLiquidity` - Remove liquidity from position
+- `POST /collectFees` - Collect earned fees
+- `POST /positionsOwned` - List owned positions
+
+#### Wallet Routes (`/wallet/*`)
+- `GET /wallet` - List all wallets
+- `POST /wallet/add` - Add new wallet
+- `POST /wallet/addHardware` - Add hardware wallet
+- `DELETE /wallet/remove` - Remove wallet
+- `POST /wallet/setDefault` - Set default wallet per chain
 
 
 ## Installation from Source
+
+### Prerequisites
+
+#### System Requirements
+- NodeJS 20+ (required)
+- Python 3 (required for node-gyp)
+- C++ build tools (required for native dependencies)
+- USB libraries (required for hardware wallet support)
+
+#### Platform-specific Prerequisites
+
+**macOS:**
+```bash
+# Install Xcode Command Line Tools (for C++ compiler)
+xcode-select --install
+
+# Install Homebrew if not already installed
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install Node.js 20+ and required libraries
+brew install node@20 libusb python@3
+```
+
+**Ubuntu/Debian:**
+```bash
+# Update package list and install dependencies
+sudo apt update
+sudo apt install -y curl build-essential libusb-1.0-0-dev libudev-dev python3
+
+# Add Node 20.x repository
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+
+# Install Node.js
+sudo apt install -y nodejs
+```
+
+**Windows:**
+1. Install [Node.js 20+](https://nodejs.org/en/download/)
+2. Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022) or Visual Studio Community with C++ workload
+3. Install [Python 3](https://www.python.org/downloads/)
+4. Run PowerShell as Administrator and install windows-build-tools:
+   ```powershell
+   npm install --global windows-build-tools
+   ```
 
 ### Install NodeJS 20+
 
 We recommend downloading the graphical installer from the [NodeJS official site](https://nodejs.org/en/download/).
 
-For terminal-based users, follow the steps below to install from a Linux-based machine (Ubunbu 20+)
+For terminal-based users who haven't installed Node.js using the platform-specific instructions above:
 
 ```bash
-#  Ensure your package list is up to date and install curl
-sudo apt update && sudo apt install -y curl
-
-# Add Node 20.x repository
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-
-
-# Install the default versions from Ubuntu’s repository:
-sudo apt install -y nodejs
-
 # Check Node.js version: 
-nodejs --version
+node --version
 ```  
 
 ### Install `pnpm` package manager
@@ -91,20 +202,31 @@ git clone https://github.com/hummingbot/gateway.git
 # Go to newly created folder
 cd gateway
 
-# Switch to main branch (or a specific version branch like core-2.6)
-git checkout main
+# Switch to core-2.8 branch
+git checkout core-2.8
 ```
 
 ### Setup Gateway
 ```bash
-# Install JS libraries
+# Install JS libraries (this will compile native dependencies)
 pnpm install
 
-# Complile Typescript into JS
+# If you encounter USB HID errors during install, try:
+# macOS/Linux:
+pnpm install --force
+
+# Windows (run as Administrator):
+pnpm install --force
+
+# Compile Typescript into JS
 pnpm build
 
-# Run Gateway setup script, which helps you set configs and CERTS_PATH
+# Run Gateway setup script
+# Option 1: Interactive setup (choose which configs to update)
 pnpm run setup
+
+# Option 2: Setup with all defaults (updates all configs automatically)
+pnpm run setup:with-defaults
 ```
 
 ### Start Gateway
@@ -123,46 +245,55 @@ pnpm start --passphrase=<PASSPHRASE>
 
 ## Installation with Docker
 
-Build the Gateway Docker image locally by executing the below command. You may replace `development` with a tag of your choice.
+### Step 1: Get the Docker Image
 
+**Option A: Pull from Docker Hub**
 ```bash
+# Note: This image will be available after the v2.8 release
+docker pull hummingbot/gateway:latest
+```
+
+**Option B: Build locally**
+```bash
+# Simple build
+docker build -t hummingbot/gateway:core-2.8 .
+
+# Build with version tag and metadata
 docker build \
   --build-arg BRANCH=$(git rev-parse --abbrev-ref HEAD) \
   --build-arg COMMIT=$(git rev-parse HEAD) \
   --build-arg BUILD_DATE=$(date -u +"%Y-%m-%d") \
-  -t hummingbot/gateway:development -f Dockerfile .
+  -t hummingbot/gateway:core-2.8 .
 ```
 
-### Start Gateway from Docker
+### Step 2: Run the Gateway Container
 
-Start a container in HTTPS mode using this `development` Docker image. Make sure to replace `<PASSPHRASE>` with the passphrase you used to generate the certs in the Hummingbot client. 
-
+**Development mode (Unencrypted HTTP endpoints, default):**
 ```bash
-docker run --name gateway \
-  -p 15888:15888 \
-  -v "$(pwd)/conf:/home/gateway/conf" \
-  -v "$(pwd)/logs:/home/gateway/logs" \
-  -v "$(pwd)/db:/home/gateway/db" \
-  -v "$(pwd)/certs:/home/gateway/certs" \
-  -e GATEWAY_PASSPHRASE=<PASSPHRASE> \
-  hummingbot/gateway:development
+docker run -p 15888:15888 \
+  -e GATEWAY_PASSPHRASE=admin \
+  -e GATEWAY_DEV=true \
+  -v $(pwd)/conf:/home/gateway/conf \
+  -v $(pwd)/logs:/home/gateway/logs \
+  hummingbot/gateway:core-2.8
 ```
-Afterwards, clients with valid certificates can connect to Gateway at: <https://localhost:15888>
 
-You may also start the container in HTTP mode by setting the `DEV` environment variable to `true`. Note that this will disable HTTPS and allow unauthenticated access to Gateway and its endpoints.
-
+**Production mode (Encypted HTTPS endpoints, requires Hummingbot certs):**
 ```bash
-docker run --name gateway \
-  -p 15888:15888 \
-  -v "$(pwd)/conf:/home/gateway/conf" \
-  -v "$(pwd)/logs:/home/gateway/logs" \
-  -v "$(pwd)/db:/home/gateway/db" \
-  -v "$(pwd)/certs:/home/gateway/certs" \
-  -e DEV=true \
-  hummingbot/gateway:development
+docker run -p 15888:15888 \
+  -e GATEWAY_PASSPHRASE=a \
+  -e GATEWAY_DEV=false \
+  -v $(pwd)/conf:/home/gateway/conf \
+  -v $(pwd)/logs:/home/gateway/logs \
+  -v $(pwd)/certs:/home/gateway/certs \
+  hummingbot/gateway:core-2.8
 ```
 
-Afterwards, client may connect to Gateway at: <http://localhost:15888> and you can access the Swagger documentation UI at: <http://localhost:15888/docs>
+### Access Points
+
+- Development mode: http://localhost:15888
+- Production mode: https://localhost:15888  
+- Swagger API docs: http://localhost:15888/docs (dev mode only)
 
 
 ## API Endpoints Overview
@@ -200,9 +331,11 @@ Afterwards, client may connect to Gateway at: <http://localhost:15888> and you c
 
 ### DEX Trading Endpoints
 
-#### Simple Swaps
-- `GET /connectors/{dex}/quote-swap` - Get swap quote
-- `POST /connectors/{dex}/execute-swap` - Execute swap
+#### Router Operations (DEX Aggregators)
+- `GET /connectors/{dex}/router/quote-swap` - Get swap quote
+- `POST /connectors/{dex}/router/execute-swap` - Execute swap without quote
+- `POST /connectors/{dex}/router/execute-quote` - Execute pre-fetched quote
+- `GET /connectors/0x/router/get-price` - Get price estimate (0x only)
 
 #### AMM Operations (Uniswap V2, Raydium)
 - `GET /connectors/{dex}/amm/pool-info` - Pool information
@@ -235,72 +368,55 @@ Here are some ways that you can contribute to Gateway:
 
 - If you want Gateway to log to standard out, set `logToStdOut` to `true` in [conf/server.yml](./conf/server.yml).
 
-- The format of configuration files are dictated by [src/services/config-manager-v2.ts](./src/services/config-manager-v2.ts) and the corresponding schema files in [src/templates/json](./src/templates/json).
+- The format of configuration files are dictated by [src/services/config-manager-v2.ts](./src/services/config-manager-v2.ts) and the corresponding schema files in [src/templates/namespace](./src/templates/namespace).
 
-- For each supported chain, token lists that translate address to symbols for each chain are stored in `/conf/lists`. You can add tokens here to make them available to Gateway.
+- For each supported chain, token lists that translate address to symbols for each chain are stored in `/conf/tokens`. Use the `/tokens` API endpoints to manage tokens - changes require a Gateway restart to take effect.
 
 
 ## Architecture
 
-Gateway follows a modular architecture with clear separation between chains, connectors, and core services:
-
-### Directory Structure
+Gateway follows a modular architecture with clear separation of concerns:
 
 ```
-src/
-├── chains/              # Blockchain implementations
-│   ├── ethereum/        # Ethereum and EVM chains
-│   │   ├── ethereum.ts  # Core chain class
-│   │   ├── routes/      # Individual route handlers
-│   │   └── ethereum.routes.ts
-│   └── solana/          # Solana chain
-│       ├── solana.ts
-│       ├── routes/
-│       └── solana.routes.ts
-├── connectors/          # DEX implementations
-│   ├── jupiter/         # Jupiter aggregator (Solana)
-│   ├── meteora/         # Meteora CLMM (Solana)
-│   ├── raydium/         # Raydium AMM/CLMM (Solana)
-│   └── uniswap/         # Uniswap V2/V3 (Ethereum)
-├── schemas/             # TypeBox schemas
-│   ├── trading-types/   # AMM, CLMM, Swap schemas
-│   └── json/            # JSON schemas
-├── services/            # Core services
-├── wallet/              # Wallet management
-└── config/              # Configuration management
+/src
+├── chains/               # Blockchain-specific implementations
+├── connectors/           # DEX-specific implementations
+│   ├── {dex}/           # Each DEX connector directory
+│   │   ├── router-routes/   # DEX aggregator operations
+│   │   ├── amm-routes/      # AMM pool operations
+│   │   └── clmm-routes/     # Concentrated liquidity operations
+├── services/             # Core services (config, logging, tokens)
+├── schemas/              # API request/response schemas (TypeBox)
+│   ├── router-schema.ts  # Router operation schemas
+│   ├── amm-schema.ts     # AMM operation schemas
+│   └── clmm-schema.ts    # CLMM operation schemas
+├── config/               # Configuration routes and utilities
+└── wallet/               # Wallet management
 ```
-
-### Design Patterns
-
-- **Singleton Pattern**: Chains and connectors use singleton instances per network
-- **Route Organization**: Each module has a dedicated routes folder with operation-specific files
-- **Schema Validation**: All API requests/responses validated with TypeBox schemas
-- **Error Handling**: Consistent error responses using Fastify's httpErrors
 
 ### Key Components
 
 #### Chains
-Handle blockchain interactions including:
-- Wallet balance queries
-- Token information and lists
-- Transaction submission and monitoring
-- Gas estimation
-- Token approvals (EVM only)
+The `src/chains` directory contains blockchain network implementations. Each chain module includes:
+- Core chain class implementing operations like `getBalances`, `getTokens`
+- Chain-specific routes defining API endpoints
+- Configuration management for the chain
 
 #### Connectors
-Implement DEX-specific logic for:
-- Price quotes and routing
-- Swap execution
-- Liquidity pool operations
-- Position management (CLMM)
-- Fee collection
+The `src/connectors` directory houses DEX protocol implementations. Each connector provides:
+- **Router operations**: DEX aggregator functionality (router-routes/)
+  - Quote and execute swaps through aggregator protocols
+  - Support for execute-quote pattern for better execution
+- **AMM operations**: Automated Market Maker pools (amm-routes/)
+  - Manage liquidity positions in V2-style pools
+- **CLMM operations**: Concentrated Liquidity pools (clmm-routes/)
+  - Manage positions with custom price ranges
 
 #### Services
-Provide shared functionality:
-- Configuration management with YAML/JSON schemas
-- Structured logging with Winston
-- Database operations with LevelDB
-- API server setup with Fastify
+Essential services in `src/services` include:
+- **config-manager-v2.ts**: Robust configuration management with validation
+- **logger.ts**: Flexible logging service
+- **token-service.ts**: Token list management with security validation
 
 ## Testing
 
@@ -369,17 +485,21 @@ For more details on the test setup and structure, see [Test README](./test/READM
    }
    ```
 
-2. **Implement required methods**:
+2. **Implement required routes**:
    - `getWallet(address: string)`
    - `getBalance(address: string)`
    - `getTokens(tokenSymbols: string[])`
+   - `getPool(tradingPair: string)`
    - `getStatus()`
 
 3. **Create route handlers** in `src/chains/mychain/routes/`
 
-4. **Add configuration**:
-   - Create `src/templates/mychain.yml`
-   - Add JSON schema in `src/templates/json/mychain-schema.json`
+4. **Add configuration for each supported network**:
+   - Add chain schema in `src/templates/namespace/mychain-schema.json`
+   - Add network schema in `src/templates/namespace/mychain-network-schema.json`
+   - Create `src/templates/chains/mychain.yml` chain default YAML
+   - Create `src/templates/chains/mychain/` folder
+   - In this folder, create default YAML files for each support network titled `network-name.yml`
 
 5. **Register the chain** in `src/chains/chain.routes.ts`
 
@@ -409,9 +529,9 @@ For more details on the test setup and structure, see [Test README](./test/READM
 3. **Implement trading methods** based on supported operations
 
 4. **Create route files** following the pattern:
-   - Swap routes in `routes/`
-   - AMM routes in `amm-routes/`
-   - CLMM routes in `clmm-routes/`
+   - Router routes in `router-routes/` (for DEX aggregators)
+   - AMM routes in `amm-routes/` (for V2-style pools)
+   - CLMM routes in `clmm-routes/` (for concentrated liquidity)
 
 5. **Add configuration and register** in `src/connectors/connector.routes.ts`
 
@@ -451,3 +571,42 @@ pnpm rebuild-bigint
 ```
 
 Note that this requires having the necessary C++ build tools installed on your system.
+
+### Hardware Wallet (Ledger) Issues
+
+If you encounter errors when using hardware wallets (Ledger devices), here are common solutions:
+
+#### USB HID Errors
+If you see errors like `Cannot find module '@ledgerhq/hw-transport-node-hid'` or similar USB/HID-related errors:
+
+1. **Ensure prerequisites are installed** (see Prerequisites section above)
+2. **Rebuild native dependencies:**
+   ```bash
+   # Clean and reinstall
+   pnpm clean
+   pnpm install --force
+   ```
+
+3. **Platform-specific fixes:**
+   
+   **Linux:** Add udev rules for Ledger devices
+   ```bash
+   wget -q -O - https://raw.githubusercontent.com/LedgerHQ/udev-rules/master/add_udev_rules.sh | sudo bash
+   ```
+   
+   **macOS:** Grant Terminal/IDE USB permissions in System Preferences > Security & Privacy
+   
+   **Windows:** Run as Administrator and ensure drivers are installed from [Ledger Live](https://www.ledger.com/ledger-live)
+
+#### Permission Errors
+- **Linux/macOS:** Run Gateway with appropriate permissions or add your user to the `plugdev` group:
+  ```bash
+  sudo usermod -a -G plugdev $USER
+  # Logout and login again for changes to take effect
+  ```
+
+#### Device Not Found
+- Ensure Ledger device is connected and unlocked
+- Open the appropriate app (Ethereum or Solana) on the device
+- Try different USB ports or cables
+- Close Ledger Live if it's running (it may lock the device)

@@ -10,22 +10,11 @@ import { MeteoraConfig } from './meteora.config';
  * @returns Pool address or null if not found
  */
 export const findPoolAddress = (
-  baseToken: string,
-  quoteToken: string,
-  poolType: 'amm' | 'clmm',
-  network: string = 'mainnet-beta',
+  _baseToken: string,
+  _quoteToken: string,
+  _poolType: 'amm' | 'clmm',
+  _network: string = 'mainnet-beta',
 ): string | null => {
-  // Get the network-specific pools
-  const pools = MeteoraConfig.getNetworkPools(network, poolType);
-  if (!pools) return null;
-
-  // Try standard order (BASE-QUOTE)
-  const standardKey = `${baseToken}-${quoteToken}`;
-  if (pools[standardKey]) return pools[standardKey];
-
-  // Try reverse order (QUOTE-BASE)
-  const reverseKey = `${quoteToken}-${baseToken}`;
-  if (pools[reverseKey]) return pools[reverseKey];
-
+  // Pools are now managed separately, return null for dynamic pool discovery
   return null;
 };

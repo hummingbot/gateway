@@ -66,10 +66,8 @@ function validateStatusResponse(response) {
     typeof response.network === 'string' &&
     typeof response.isConnected === 'boolean' &&
     (response.chainId === undefined || typeof response.chainId === 'number') &&
-    (response.latestBlock === undefined ||
-      typeof response.latestBlock === 'number') &&
-    (response.gasPrice === undefined ||
-      typeof response.gasPrice === 'string') &&
+    (response.latestBlock === undefined || typeof response.latestBlock === 'number') &&
+    (response.gasPrice === undefined || typeof response.gasPrice === 'string') &&
     (response.nativeCurrency === undefined ||
       (typeof response.nativeCurrency.name === 'string' &&
         typeof response.nativeCurrency.symbol === 'string' &&
@@ -83,9 +81,7 @@ function validateAllowancesResponse(response) {
     response &&
     typeof response.spender === 'string' &&
     typeof response.approvals === 'object' &&
-    Object.values(response.approvals).every(
-      (value) => typeof value === 'string',
-    )
+    Object.values(response.approvals).every((value) => typeof value === 'string')
   );
 }
 
@@ -124,16 +120,13 @@ describe('Ethereum Chain Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/chains/${CHAIN}/balances`,
-        {
-          params: {
-            network: NETWORK,
-            wallet: TEST_WALLET,
-            tokens: ['ETH', 'USDC', 'WETH'],
-          },
+      const response = await axios.get(`http://localhost:15888/chains/${CHAIN}/balances`, {
+        params: {
+          network: NETWORK,
+          wallet: TEST_WALLET,
+          tokens: ['ETH', 'USDC', 'WETH'],
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -201,14 +194,11 @@ describe('Ethereum Chain Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/chains/${CHAIN}/tokens`,
-        {
-          params: {
-            network: NETWORK,
-          },
+      const response = await axios.get(`http://localhost:15888/chains/${CHAIN}/tokens`, {
+        params: {
+          network: NETWORK,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -242,14 +232,11 @@ describe('Ethereum Chain Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/chains/${CHAIN}/status`,
-        {
-          params: {
-            network: NETWORK,
-          },
+      const response = await axios.get(`http://localhost:15888/chains/${CHAIN}/status`, {
+        params: {
+          network: NETWORK,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -283,15 +270,12 @@ describe('Ethereum Chain Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/chains/${CHAIN}/allowances`,
-        {
-          network: NETWORK,
-          address: TEST_WALLET,
-          spenderAddress: TEST_SPENDER,
-          tokens: ['USDC', 'DAI'],
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/chains/${CHAIN}/allowances`, {
+        network: NETWORK,
+        address: TEST_WALLET,
+        spenderAddress: TEST_SPENDER,
+        tokens: ['USDC', 'DAI'],
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -325,18 +309,12 @@ describe('Ethereum Chain Tests (Base Network)', () => {
       });
 
       // Make the request with token addresses
-      const response = await axios.post(
-        `http://localhost:15888/chains/${CHAIN}/allowances`,
-        {
-          network: NETWORK,
-          address: TEST_WALLET,
-          spenderAddress: TEST_SPENDER,
-          tokens: [
-            TEST_TOKEN_ADDRESS,
-            '0x6B175474E89094C44Da98b954EedeAC495271d0F',
-          ], // USDC and DAI addresses
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/chains/${CHAIN}/allowances`, {
+        network: NETWORK,
+        address: TEST_WALLET,
+        spenderAddress: TEST_SPENDER,
+        tokens: [TEST_TOKEN_ADDRESS, '0x6B175474E89094C44Da98b954EedeAC495271d0F'], // USDC and DAI addresses
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -346,10 +324,7 @@ describe('Ethereum Chain Tests (Base Network)', () => {
       expect(axios.post).toHaveBeenCalledWith(
         `http://localhost:15888/chains/${CHAIN}/allowances`,
         expect.objectContaining({
-          tokens: [
-            TEST_TOKEN_ADDRESS,
-            '0x6B175474E89094C44Da98b954EedeAC495271d0F',
-          ],
+          tokens: [TEST_TOKEN_ADDRESS, '0x6B175474E89094C44Da98b954EedeAC495271d0F'],
         }),
       );
     });
@@ -378,9 +353,7 @@ describe('Ethereum Chain Tests (Base Network)', () => {
         response: {
           status: 400,
           data: {
-            error: expect.stringContaining(
-              'None of the provided tokens were found',
-            ),
+            error: expect.stringContaining('None of the provided tokens were found'),
           },
         },
       });
@@ -399,15 +372,12 @@ describe('Ethereum Chain Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/chains/${CHAIN}/approve`,
-        {
-          network: NETWORK,
-          address: TEST_WALLET,
-          spenderAddress: TEST_SPENDER,
-          token: 'USDC',
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/chains/${CHAIN}/approve`, {
+        network: NETWORK,
+        address: TEST_WALLET,
+        spenderAddress: TEST_SPENDER,
+        token: 'USDC',
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -440,15 +410,12 @@ describe('Ethereum Chain Tests (Base Network)', () => {
       });
 
       // Make the request with token address
-      const response = await axios.post(
-        `http://localhost:15888/chains/${CHAIN}/approve`,
-        {
-          network: NETWORK,
-          address: TEST_WALLET,
-          spenderAddress: TEST_SPENDER,
-          token: TEST_TOKEN_ADDRESS,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/chains/${CHAIN}/approve`, {
+        network: NETWORK,
+        address: TEST_WALLET,
+        spenderAddress: TEST_SPENDER,
+        token: TEST_TOKEN_ADDRESS,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -480,16 +447,13 @@ describe('Ethereum Chain Tests (Base Network)', () => {
       });
 
       // Make the request with amount
-      const response = await axios.post(
-        `http://localhost:15888/chains/${CHAIN}/approve`,
-        {
-          network: NETWORK,
-          address: TEST_WALLET,
-          spenderAddress: TEST_SPENDER,
-          token: 'USDC',
-          amount: '1',
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/chains/${CHAIN}/approve`, {
+        network: NETWORK,
+        address: TEST_WALLET,
+        spenderAddress: TEST_SPENDER,
+        token: 'USDC',
+        amount: '1',
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -505,8 +469,7 @@ describe('Ethereum Chain Tests (Base Network)', () => {
         response: {
           status: 400,
           data: {
-            error:
-              'Token not supported and not a valid Ethereum address: INVALID_TOKEN',
+            error: 'Token not supported and not a valid Ethereum address: INVALID_TOKEN',
             code: 400,
           },
         },
@@ -536,8 +499,7 @@ describe('Ethereum Chain Tests (Base Network)', () => {
         response: {
           status: 400,
           data: {
-            error:
-              'Invalid token address or not an ERC20 token: 0x1234567890abcdef',
+            error: 'Invalid token address or not an ERC20 token: 0x1234567890abcdef',
             code: 400,
           },
         },

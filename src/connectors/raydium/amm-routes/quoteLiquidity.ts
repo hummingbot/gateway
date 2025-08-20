@@ -9,14 +9,15 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import {
-  QuoteLiquidityRequest,
   QuoteLiquidityRequestType,
   QuoteLiquidityResponse,
   QuoteLiquidityResponseType,
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+import { RaydiumConfig } from '../raydium.config';
 import { isValidAmm, isValidCpmm } from '../raydium.utils';
+import { RaydiumAmmQuoteLiquidityRequest } from '../schemas';
 
 interface AmmComputePairResult {
   anotherAmount: TokenAmount;
@@ -35,11 +36,9 @@ interface CpmmComputePairResult {
 function parseAmmResult(result: AmmComputePairResult) {
   return {
     anotherAmount:
-      Number(result.anotherAmount.numerator.toString()) /
-      Number(result.anotherAmount.denominator.toString()),
+      Number(result.anotherAmount.numerator.toString()) / Number(result.anotherAmount.denominator.toString()),
     maxAnotherAmount:
-      Number(result.maxAnotherAmount.numerator.toString()) /
-      Number(result.maxAnotherAmount.denominator.toString()),
+      Number(result.maxAnotherAmount.numerator.toString()) / Number(result.maxAnotherAmount.denominator.toString()),
     anotherTokenSymbol: result.anotherAmount.token.symbol,
     liquidity: result.liquidity.toString(),
   };
@@ -47,12 +46,9 @@ function parseAmmResult(result: AmmComputePairResult) {
 
 function parseCpmmResult(result: CpmmComputePairResult, tokenDecimals: number) {
   return {
-    anotherAmount:
-      Number(result.anotherAmount.amount.toString()) / 10 ** tokenDecimals,
-    maxAnotherAmount:
-      Number(result.maxAnotherAmount.amount.toString()) / 10 ** tokenDecimals,
-    inputFee:
-      Number(result.inputAmountFee.amount.toString()) / 10 ** tokenDecimals,
+    anotherAmount: Number(result.anotherAmount.amount.toString()) / 10 ** tokenDecimals,
+    maxAnotherAmount: Number(result.maxAnotherAmount.amount.toString()) / 10 ** tokenDecimals,
+    inputFee: Number(result.inputAmountFee.amount.toString()) / 10 ** tokenDecimals,
     liquidity: result.liquidity.toString(),
   };
 }
@@ -87,15 +83,9 @@ export async function quoteLiquidity(
     }
 
     const epochInfo = await solana.connection.getEpochInfo();
-    // Convert percentage to basis points (multiply by 100 to handle decimals)
-    // e.g., 0.5% becomes 50/10000, 0% becomes 0/10000
-    const slippage = new Percent(
-      Math.floor(
-        ((slippagePct === 0 ? 0 : slippagePct || raydium.getSlippagePct()) *
-          100) /
-          10000,
-      ),
-    );
+    // Convert percentage to basis points (e.g., 1% = 100 basis points)
+    const slippageValue = slippagePct === 0 ? 0 : slippagePct || RaydiumConfig.config.slippagePct;
+    const slippage = new Percent(Math.floor(slippageValue * 100), 10000);
 
     const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
 
@@ -107,14 +97,9 @@ export async function quoteLiquidity(
         baseIn: true,
         slippage: slippage, // 1%
       });
-      console.log(
-        'resBase parsed:',
-        parseAmmResult(resBase as AmmComputePairResult),
-      );
+      console.log('resBase parsed:', parseAmmResult(resBase as AmmComputePairResult));
     } else if (ammPoolInfo.poolType === 'cpmm') {
-      const rawPool = await raydium.raydiumSDK.cpmm.getRpcPoolInfos([
-        poolAddress,
-      ]);
+      const rawPool = await raydium.raydiumSDK.cpmm.getRpcPoolInfos([poolAddress]);
       resBase = raydium.raydiumSDK.cpmm.computePairAmount({
         poolInfo: poolInfo as ApiV3PoolInfoStandardItemCpmm,
         amount: baseAmount,
@@ -124,10 +109,7 @@ export async function quoteLiquidity(
         baseIn: true,
         epochInfo: epochInfo,
       });
-      console.log(
-        'resBase:',
-        parseCpmmResult(resBase as CpmmComputePairResult, quoteToken.decimals),
-      );
+      console.log('resBase:', parseCpmmResult(resBase as CpmmComputePairResult, quoteToken.decimals));
     }
 
     let resQuote: AmmComputePairResult | CpmmComputePairResult;
@@ -138,14 +120,9 @@ export async function quoteLiquidity(
         baseIn: false,
         slippage: slippage, // 1%
       });
-      console.log(
-        'resQuote parsed:',
-        parseAmmResult(resQuote as AmmComputePairResult),
-      );
+      console.log('resQuote parsed:', parseAmmResult(resQuote as AmmComputePairResult));
     } else if (ammPoolInfo.poolType === 'cpmm') {
-      const rawPool = await raydium.raydiumSDK.cpmm.getRpcPoolInfos([
-        poolAddress,
-      ]);
+      const rawPool = await raydium.raydiumSDK.cpmm.getRpcPoolInfos([poolAddress]);
       resQuote = raydium.raydiumSDK.cpmm.computePairAmount({
         poolInfo: poolInfo as ApiV3PoolInfoStandardItemCpmm,
         amount: quoteAmount,
@@ -155,28 +132,21 @@ export async function quoteLiquidity(
         baseIn: false,
         epochInfo: epochInfo,
       });
-      console.log(
-        'resQuote:',
-        parseCpmmResult(resQuote as CpmmComputePairResult, baseToken.decimals),
-      );
+      console.log('resQuote:', parseCpmmResult(resQuote as CpmmComputePairResult, baseToken.decimals));
     }
 
     // Parse the result differently for AMM and CPMM
     if (ammPoolInfo.poolType === 'amm') {
       // Handle AMM case separately
       const useBaseResult = resBase.liquidity.lte(resQuote.liquidity);
-      const ammRes = useBaseResult
-        ? (resBase as AmmComputePairResult)
-        : (resQuote as AmmComputePairResult);
+      const ammRes = useBaseResult ? (resBase as AmmComputePairResult) : (resQuote as AmmComputePairResult);
       const isBaseIn = useBaseResult;
 
       const resParsed = {
         anotherAmount:
-          Number(ammRes.anotherAmount.numerator.toString()) /
-          Number(ammRes.anotherAmount.denominator.toString()),
+          Number(ammRes.anotherAmount.numerator.toString()) / Number(ammRes.anotherAmount.denominator.toString()),
         maxAnotherAmount:
-          Number(ammRes.maxAnotherAmount.numerator.toString()) /
-          Number(ammRes.maxAnotherAmount.denominator.toString()),
+          Number(ammRes.maxAnotherAmount.numerator.toString()) / Number(ammRes.maxAnotherAmount.denominator.toString()),
         anotherAmountToken: ammRes.anotherAmount.token.symbol,
         maxAnotherAmountToken: ammRes.maxAnotherAmount.token.symbol,
         liquidity: ammRes.liquidity.toString(),
@@ -206,9 +176,7 @@ export async function quoteLiquidity(
     } else if (ammPoolInfo.poolType === 'cpmm') {
       // Handle CPMM case
       const useBaseResult = resBase.liquidity.lte(resQuote.liquidity);
-      const cpmmRes = useBaseResult
-        ? (resBase as CpmmComputePairResult)
-        : (resQuote as CpmmComputePairResult);
+      const cpmmRes = useBaseResult ? (resBase as CpmmComputePairResult) : (resQuote as CpmmComputePairResult);
       const isBaseIn = useBaseResult;
 
       const resParsed = {
@@ -226,16 +194,14 @@ export async function quoteLiquidity(
           baseTokenAmount: baseTokenAmount,
           quoteTokenAmount: resParsed.anotherAmount / 10 ** quoteToken.decimals,
           baseTokenAmountMax: baseTokenAmount,
-          quoteTokenAmountMax:
-            resParsed.maxAnotherAmount / 10 ** quoteToken.decimals,
+          quoteTokenAmountMax: resParsed.maxAnotherAmount / 10 ** quoteToken.decimals,
         };
       } else {
         return {
           baseLimited: false,
           baseTokenAmount: resParsed.anotherAmount / 10 ** baseToken.decimals,
           quoteTokenAmount: quoteTokenAmount,
-          baseTokenAmountMax:
-            resParsed.maxAnotherAmount / 10 ** baseToken.decimals,
+          baseTokenAmountMax: resParsed.maxAnotherAmount / 10 ** baseToken.decimals,
           quoteTokenAmountMax: quoteTokenAmount,
         };
       }
@@ -255,22 +221,8 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Quote amounts for a new Raydium AMM liquidity position',
-        tags: ['raydium/amm'],
-        querystring: {
-          ...QuoteLiquidityRequest,
-          properties: {
-            ...QuoteLiquidityRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            poolAddress: {
-              type: 'string',
-              examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'],
-            }, // AMM RAY-USDC
-            // poolAddress: { type: 'string', examples: ['7JuwJuNU88gurFnyWeiyGKbFmExMWcmRZntn9imEzdny'] }, // CPMM SOL-USDC
-            baseTokenAmount: { type: 'number', examples: [1] },
-            quoteTokenAmount: { type: 'number', examples: [1] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        tags: ['/connector/raydium'],
+        querystring: RaydiumAmmQuoteLiquidityRequest,
         response: {
           200: QuoteLiquidityResponse,
           500: {
@@ -282,27 +234,12 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network = 'mainnet-beta',
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.query;
+        const { network = 'mainnet-beta', poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.query;
 
-        return await quoteLiquidity(
-          fastify,
-          network,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
+        return await quoteLiquidity(fastify, network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
       } catch (e) {
         logger.error(e);
-        throw fastify.httpErrors.internalServerError(
-          'Failed to quote position',
-        );
+        throw fastify.httpErrors.internalServerError('Failed to quote position');
       }
     },
   );

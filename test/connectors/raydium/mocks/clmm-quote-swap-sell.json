@@ -1,0 +1,11 @@
+{
+  "poolAddress": "61R1ndXxvsWXXkWSyNkCxnzwd3zUNB8Q2ibmkiLPC8ht",
+  "estimatedAmountIn": 10,
+  "estimatedAmountOut": 21.379539,
+  "minAmountOut": 21.379539,
+  "maxAmountIn": 10,
+  "baseTokenBalanceChange": -10,
+  "quoteTokenBalanceChange": 21.379539,
+  "price": 2.1379539,
+  "computeUnits": 600000
+}

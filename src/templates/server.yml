@@ -24,3 +24,7 @@ logToStdOut: true
 
 # If true, the server will print detailed Fastify logs for each request and response to stdout. If false, only standard logs will be emitted.
 fastifyLogs: false
+
+# Log level for the application (debug, info, warn, error)
+logLevel: debug
+

@@ -1,0 +1,9 @@
+# Test uniswap configuration
+slippagePct: '2/100'
+maximumHops: 4
+networks:
+  mainnet:
+    amm:
+      ETH-USDC: '0xtest'
+    clmm:
+      ETH-USDC: '0xtest'

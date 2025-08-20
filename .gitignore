@@ -17,3 +17,11 @@ package-lock.json
 .history
 
 **/.claude/settings.local.json
+
+# Compiled JS files in src (TypeScript source)
+src/**/*.js
+src/**/*.js.map
+*.log
+
+# MCP servers configuration
+.mcp.json

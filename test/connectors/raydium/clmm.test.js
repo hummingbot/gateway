@@ -55,9 +55,7 @@ function validateSwapQuote(response) {
     typeof response.baseTokenBalanceChange === 'number' &&
     typeof response.quoteTokenBalanceChange === 'number' &&
     typeof response.price === 'number' &&
-    typeof response.gasPrice === 'number' &&
-    typeof response.gasLimit === 'number' &&
-    typeof response.gasCost === 'number'
+    typeof response.computeUnits === 'number' // Updated to use computeUnits
   );
 }
 
@@ -81,13 +79,74 @@ function validatePositionInfo(response) {
 function validateQuotePosition(response) {
   return (
     response &&
-    typeof response.poolAddress === 'string' &&
-    typeof response.lowerTick === 'number' &&
-    typeof response.upperTick === 'number' &&
+    typeof response.baseLimited === 'boolean' &&
     typeof response.baseTokenAmount === 'number' &&
     typeof response.quoteTokenAmount === 'number' &&
-    typeof response.liquidity === 'string' &&
-    typeof response.shareOfPool === 'number'
+    typeof response.baseTokenAmountMax === 'number' &&
+    typeof response.quoteTokenAmountMax === 'number' &&
+    response.liquidity !== undefined && // Can be string or object
+    typeof response.computeUnits === 'number' // Added computeUnits
+  );
+}
+
+// Function to validate open position response
+function validateOpenPosition(response) {
+  return (
+    response &&
+    typeof response.signature === 'string' &&
+    typeof response.status === 'number' &&
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data &&
+        typeof response.data.fee === 'number' &&
+        typeof response.data.positionAddress === 'string' &&
+        typeof response.data.positionRent === 'number' &&
+        typeof response.data.baseTokenAmountAdded === 'number' &&
+        typeof response.data.quoteTokenAmountAdded === 'number'))
+  );
+}
+
+// Function to validate add liquidity response
+function validateAddLiquidity(response) {
+  return (
+    response &&
+    typeof response.signature === 'string' &&
+    typeof response.status === 'number' &&
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data &&
+        typeof response.data.fee === 'number' &&
+        typeof response.data.baseTokenAmountAdded === 'number' &&
+        typeof response.data.quoteTokenAmountAdded === 'number'))
+  );
+}
+
+// Function to validate remove liquidity response
+function validateRemoveLiquidity(response) {
+  return (
+    response &&
+    typeof response.signature === 'string' &&
+    typeof response.status === 'number' &&
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data &&
+        typeof response.data.fee === 'number' &&
+        typeof response.data.baseTokenAmountRemoved === 'number' &&
+        typeof response.data.quoteTokenAmountRemoved === 'number'))
+  );
+}
+
+// Function to validate close position response
+function validateClosePosition(response) {
+  return (
+    response &&
+    typeof response.signature === 'string' &&
+    typeof response.status === 'number' &&
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data &&
+        typeof response.data.fee === 'number' &&
+        typeof response.data.positionRentRefunded === 'number' &&
+        typeof response.data.baseTokenAmountRemoved === 'number' &&
+        typeof response.data.quoteTokenAmountRemoved === 'number' &&
+        typeof response.data.baseFeeAmountCollected === 'number' &&
+        typeof response.data.quoteFeeAmountCollected === 'number'))
   );
 }
 
@@ -111,16 +170,13 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -159,16 +215,13 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.get(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`,
-          {
-            params: {
-              network: NETWORK,
-              baseToken: BASE_TOKEN,
-              quoteToken: 'UNKNOWN',
-            },
+        axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`, {
+          params: {
+            network: NETWORK,
+            baseToken: BASE_TOKEN,
+            quoteToken: 'UNKNOWN',
           },
-        ),
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 404,
@@ -192,18 +245,15 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'SELL',
-            amount: 1.0,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'SELL',
+          amount: 1.0,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -226,6 +276,7 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
         minAmountOut: mockSellResponse.estimatedAmountIn * 0.99,
         baseTokenBalanceChange: 1.0, // Positive for BUY
         quoteTokenBalanceChange: -mockSellResponse.quoteTokenBalanceChange, // Negative for BUY
+        computeUnits: 300000,
       };
 
       // Setup mock axios
@@ -235,18 +286,15 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'BUY',
-            amount: 1.0,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'BUY',
+          amount: 1.0,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -270,17 +318,14 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`,
-        {
-          network: NETWORK,
-          baseToken: BASE_TOKEN,
-          quoteToken: QUOTE_TOKEN,
-          side: 'SELL',
-          amount: 1.0,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`, {
+        network: NETWORK,
+        baseToken: BASE_TOKEN,
+        quoteToken: QUOTE_TOKEN,
+        side: 'SELL',
+        amount: 1.0,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -301,15 +346,12 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`,
-        {
-          params: {
-            network: NETWORK,
-            positionId: TEST_POSITION_ID,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`, {
+        params: {
+          network: NETWORK,
+          positionId: TEST_POSITION_ID,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -333,15 +375,12 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.get(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`,
-          {
-            params: {
-              network: NETWORK,
-              positionId: 'invalid-position',
-            },
+        axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`, {
+          params: {
+            network: NETWORK,
+            positionId: 'invalid-position',
           },
-        ),
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 404,
@@ -365,15 +404,12 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/positions-owned`,
-        {
-          params: {
-            network: NETWORK,
-            walletAddress: TEST_WALLET,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/positions-owned`, {
+        params: {
+          network: NETWORK,
+          walletAddress: TEST_WALLET,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -392,10 +428,14 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
         poolAddress: TEST_POOL,
         lowerTick: -887272,
         upperTick: 887272,
+        baseLimited: false,
         baseTokenAmount: 1.0,
         quoteTokenAmount: 167.5,
+        baseTokenAmountMax: 1.0,
+        quoteTokenAmountMax: 167.5,
         liquidity: '1294000000',
         shareOfPool: 0.0001,
+        computeUnits: 150000,
       };
 
       // Setup mock axios
@@ -405,19 +445,16 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-position`,
-        {
-          params: {
-            network: NETWORK,
-            poolAddress: TEST_POOL,
-            lowerTick: -887272,
-            upperTick: 887272,
-            baseTokenAmount: 1.0,
-            quoteTokenAmount: 167.5,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-position`, {
+        params: {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          lowerTick: -887272,
+          upperTick: 887272,
+          baseTokenAmount: 1.0,
+          quoteTokenAmount: 167.5,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -441,19 +478,16 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.get(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-position`,
-          {
-            params: {
-              network: NETWORK,
-              poolAddress: TEST_POOL,
-              lowerTick: 100,
-              upperTick: 50, // Invalid: upper < lower
-              baseTokenAmount: 1.0,
-              quoteTokenAmount: 167.5,
-            },
+        axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-position`, {
+          params: {
+            network: NETWORK,
+            poolAddress: TEST_POOL,
+            lowerTick: 100,
+            upperTick: 50, // Invalid: upper < lower
+            baseTokenAmount: 1.0,
+            quoteTokenAmount: 167.5,
           },
-        ),
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 400,
@@ -477,18 +511,15 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/open-position`,
-        {
-          network: NETWORK,
-          poolAddress: TEST_POOL,
-          lowerTick: -887272,
-          upperTick: 887272,
-          baseTokenAmount: 1.0,
-          quoteTokenAmount: 167.5,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/open-position`, {
+        network: NETWORK,
+        poolAddress: TEST_POOL,
+        lowerTick: -887272,
+        upperTick: 887272,
+        baseTokenAmount: 1.0,
+        quoteTokenAmount: 167.5,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -512,18 +543,15 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.post(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/open-position`,
-          {
-            network: NETWORK,
-            poolAddress: TEST_POOL,
-            lowerTick: -887272,
-            upperTick: 887272,
-            baseTokenAmount: 10000.0, // Large amount
-            quoteTokenAmount: 1675000.0,
-            walletAddress: TEST_WALLET,
-          },
-        ),
+        axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/open-position`, {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          lowerTick: -887272,
+          upperTick: 887272,
+          baseTokenAmount: 10000.0, // Large amount
+          quoteTokenAmount: 1675000.0,
+          walletAddress: TEST_WALLET,
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 400,
@@ -547,16 +575,13 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`,
-        {
-          network: NETWORK,
-          positionId: TEST_POSITION_ID,
-          baseTokenAmount: 0.5,
-          quoteTokenAmount: 83.75,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`, {
+        network: NETWORK,
+        positionId: TEST_POSITION_ID,
+        baseTokenAmount: 0.5,
+        quoteTokenAmount: 83.75,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -569,8 +594,7 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
   describe('Remove Liquidity Endpoint', () => {
     test('returns successful liquidity removal', async () => {
       const mockResponse = {
-        signature:
-          '4bF7KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpU5Ay',
+        signature: '4bF7KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpU5Ay',
         positionId: TEST_POSITION_ID,
         baseTokenAmount: 0.95,
         quoteTokenAmount: 159.125,
@@ -585,15 +609,12 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`,
-        {
-          network: NETWORK,
-          positionId: TEST_POSITION_ID,
-          liquidity: '647000000',
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`, {
+        network: NETWORK,
+        positionId: TEST_POSITION_ID,
+        liquidity: '647000000',
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -607,8 +628,7 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
   describe('Close Position Endpoint', () => {
     test('returns successful position closure', async () => {
       const mockResponse = {
-        signature:
-          '5cG8KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpV6Bz',
+        signature: '5cG8KhhZTPixeNQVxjDv2LcX7VTxQN9vwMv8Z89FwqYKKQRmqPQCuwyWQMjGwUJKdRrPoKNL7Rn6fHZFvVbpV6Bz',
         positionId: TEST_POSITION_ID,
         baseTokenAmount: 1.0,
         quoteTokenAmount: 167.5,
@@ -623,14 +643,11 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/close-position`,
-        {
-          network: NETWORK,
-          positionId: TEST_POSITION_ID,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/close-position`, {
+        network: NETWORK,
+        positionId: TEST_POSITION_ID,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -653,14 +670,11 @@ describe('Raydium CLMM Tests (Solana Mainnet)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/collect-fees`,
-        {
-          network: NETWORK,
-          positionId: TEST_POSITION_ID,
-          walletAddress: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/collect-fees`, {
+        network: NETWORK,
+        positionId: TEST_POSITION_ID,
+        walletAddress: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);

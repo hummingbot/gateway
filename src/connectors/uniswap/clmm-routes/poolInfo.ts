@@ -2,15 +2,12 @@ import { FeeAmount } from '@uniswap/v3-sdk';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  GetPoolInfoRequestType,
-  GetPoolInfoRequest,
-  PoolInfo,
-  PoolInfoSchema,
-} from '../../../schemas/clmm-schema';
+import { GetPoolInfoRequestType, PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
+import { sanitizeErrorMessage } from '../../../services/sanitize';
+import { UniswapClmmGetPoolInfoRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
-import { formatTokenAmount } from '../uniswap.utils';
+import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -21,19 +18,8 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get CLMM pool information from Uniswap V3',
-        tags: ['uniswap/clmm'],
-        querystring: {
-          ...GetPoolInfoRequest,
-          properties: {
-            network: { type: 'string', default: 'base' },
-            poolAddress: {
-              type: 'string',
-              examples: [''],
-            },
-            baseToken: { type: 'string', examples: ['WETH'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-          },
-        },
+        tags: ['/connector/uniswap'],
+        querystring: UniswapClmmGetPoolInfoRequest,
         response: {
           200: PoolInfoSchema,
         },
@@ -41,51 +27,32 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request): Promise<PoolInfo> => {
       try {
-        const { poolAddress, baseToken, quoteToken } = request.query;
-        const network = request.query.network || 'base';
+        const { poolAddress } = request.query;
+        const network = request.query.network;
         const chain = 'ethereum'; // Default to ethereum
 
         const uniswap = await Uniswap.getInstance(network);
 
-        // Check if either poolAddress or both baseToken and quoteToken are provided
-        if (!poolAddress && (!baseToken || !quoteToken)) {
-          throw fastify.httpErrors.badRequest(
-            'Either poolAddress or both baseToken and quoteToken must be provided',
-          );
+        // Pool address is required
+        if (!poolAddress) {
+          throw fastify.httpErrors.badRequest('Pool address is required');
         }
 
-        let poolAddressToUse = poolAddress;
-
-        // If no pool address provided, find default pool using base and quote tokens
-        if (!poolAddressToUse) {
-          // Find pool using tokens
-          poolAddressToUse = await uniswap.findDefaultPool(
-            baseToken,
-            quoteToken,
-            'clmm',
-          );
-          if (!poolAddressToUse) {
-            throw fastify.httpErrors.notFound(
-              `No CLMM pool found for pair ${baseToken}-${quoteToken}`,
-            );
-          }
+        // Get pool information to determine tokens
+        const poolInfo = await getUniswapPoolInfo(poolAddress, network, 'clmm');
+        if (!poolInfo) {
+          throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
         }
 
-        // Get base and quote token objects
-        const baseTokenObj = baseToken
-          ? uniswap.getTokenBySymbol(baseToken)
-          : null;
-        const quoteTokenObj = quoteToken
-          ? uniswap.getTokenBySymbol(quoteToken)
-          : null;
+        const baseTokenObj = uniswap.getTokenByAddress(poolInfo.baseTokenAddress);
+        const quoteTokenObj = uniswap.getTokenByAddress(poolInfo.quoteTokenAddress);
 
-        // Get V3 pool details - using null coalescing with type assertion to handle type checking
-        const pool = await uniswap.getV3Pool(
-          baseTokenObj || (baseTokenObj as any),
-          quoteTokenObj || (quoteTokenObj as any),
-          undefined,
-          poolAddressToUse,
-        );
+        if (!baseTokenObj || !quoteTokenObj) {
+          throw fastify.httpErrors.badRequest('Token information not found for pool');
+        }
+
+        // Get V3 pool details
+        const pool = await uniswap.getV3Pool(baseTokenObj, quoteTokenObj, undefined, poolAddress);
 
         if (!pool) {
           throw fastify.httpErrors.notFound('Pool not found');
@@ -94,8 +61,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         // Determine token ordering
         const token0 = pool.token0;
         const token1 = pool.token1;
-        const isBaseToken0 =
-          baseTokenObj.address.toLowerCase() === token0.address.toLowerCase();
+        const isBaseToken0 = baseTokenObj.address.toLowerCase() === token0.address.toLowerCase();
 
         // Calculate price based on sqrtPriceX96
         // sqrtPriceX96 = sqrt(price) * 2^96
@@ -110,14 +76,8 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         // Get token reserves in the pool
         // This is a simplified calculation - actual reserves depend on the tick distribution
         const liquidity = pool.liquidity;
-        const token0Amount = formatTokenAmount(
-          liquidity.toString(),
-          token0.decimals,
-        );
-        const token1Amount = formatTokenAmount(
-          liquidity.toString(),
-          token1.decimals,
-        );
+        const token0Amount = formatTokenAmount(liquidity.toString(), token0.decimals);
+        const token1Amount = formatTokenAmount(liquidity.toString(), token1.decimals);
 
         // Map to base and quote amounts
         const baseTokenAmount = isBaseToken0 ? token0Amount : token1Amount;
@@ -133,7 +93,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         const activeBinId = pool.tickCurrent;
 
         return {
-          address: poolAddressToUse,
+          address: poolAddress,
           baseTokenAddress: baseTokenObj.address,
           quoteTokenAddress: quoteTokenObj.address,
           binStep: tickSpacing,
@@ -145,9 +105,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         };
       } catch (e) {
         logger.error(e);
-        throw fastify.httpErrors.internalServerError(
-          'Failed to fetch pool info',
-        );
+        throw fastify.httpErrors.internalServerError('Failed to fetch pool info');
       }
     },
   );

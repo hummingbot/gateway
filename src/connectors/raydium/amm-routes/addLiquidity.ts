@@ -7,21 +7,23 @@ import {
   TokenAmount,
   toToken,
 } from '@raydium-io/raydium-sdk-v2';
+import { Static } from '@sinclair/typebox';
 import { VersionedTransaction, Transaction } from '@solana/web3.js';
 import BN from 'bn.js';
-import Decimal from 'decimal.js';
+import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { Solana, BASE_FEE } from '../../../chains/solana/solana';
+import { Solana } from '../../../chains/solana/solana';
 import {
-  AddLiquidityRequest,
-  AddLiquidityResponse,
   AddLiquidityRequestType,
+  AddLiquidityResponse,
   AddLiquidityResponseType,
   QuoteLiquidityResponseType,
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+import { RaydiumConfig } from '../raydium.config';
+import { RaydiumAmmAddLiquidityRequest } from '../schemas';
 
 import { quoteLiquidity } from './quoteLiquidity';
 
@@ -35,23 +37,48 @@ async function createAddLiquidityTransaction(
   baseLimited: boolean,
   slippage: Percent,
   computeBudgetConfig: { units: number; microLamports: number },
+  userBaseAmount: number,
+  userQuoteAmount: number,
 ): Promise<VersionedTransaction | Transaction> {
   if (ammPoolInfo.poolType === 'amm') {
+    // Use user's provided amounts as the maximum they're willing to spend
+    const amountInA = new TokenAmount(
+      toToken(poolInfo.mintA),
+      new Decimal(userBaseAmount).mul(10 ** poolInfo.mintA.decimals).toFixed(0),
+    );
+    const amountInB = new TokenAmount(
+      toToken(poolInfo.mintB),
+      new Decimal(userQuoteAmount).mul(10 ** poolInfo.mintB.decimals).toFixed(0),
+    );
+
+    // Calculate otherAmountMin based on the quoted amounts and slippage
+    // Convert Percent to decimal (e.g., 1% = 0.01)
+    const slippageDecimal = slippage.numerator.toNumber() / slippage.denominator.toNumber();
+    const slippageMultiplier = new Decimal(1).minus(slippageDecimal);
+
+    // For minimum amounts, we use the quoted amounts (exact pool ratio) with slippage
+    const otherAmountMin = baseLimited
+      ? new TokenAmount(
+          toToken(poolInfo.mintB),
+          new Decimal(quoteTokenAmountAdded)
+            .mul(10 ** poolInfo.mintB.decimals)
+            .mul(slippageMultiplier)
+            .toFixed(0),
+        )
+      : new TokenAmount(
+          toToken(poolInfo.mintA),
+          new Decimal(baseTokenAmountAdded)
+            .mul(10 ** poolInfo.mintA.decimals)
+            .mul(slippageMultiplier)
+            .toFixed(0),
+        );
+
     const response = await raydium.raydiumSDK.liquidity.addLiquidity({
       poolInfo: poolInfo as ApiV3PoolInfoStandardItem,
       poolKeys: poolKeys as AmmV4Keys,
-      amountInA: new TokenAmount(
-        toToken(poolInfo.mintA),
-        new Decimal(baseTokenAmountAdded)
-          .mul(10 ** poolInfo.mintA.decimals)
-          .toFixed(0),
-      ),
-      amountInB: new TokenAmount(
-        toToken(poolInfo.mintB),
-        new Decimal(quoteTokenAmountAdded)
-          .mul(10 ** poolInfo.mintB.decimals)
-          .toFixed(0),
-      ),
+      amountInA,
+      amountInB,
+      otherAmountMin,
       fixedSide: baseLimited ? 'a' : 'b',
       txVersion: raydium.txVersion,
       computeBudgetConfig,
@@ -61,10 +88,7 @@ async function createAddLiquidityTransaction(
     const baseIn = baseLimited;
     const inputAmount = new BN(
       new Decimal(baseLimited ? baseTokenAmountAdded : quoteTokenAmountAdded)
-        .mul(
-          10 **
-            (baseLimited ? poolInfo.mintA.decimals : poolInfo.mintB.decimals),
-        )
+        .mul(10 ** (baseLimited ? poolInfo.mintA.decimals : poolInfo.mintB.decimals))
         .toFixed(0),
     );
     const response = await raydium.raydiumSDK.cpmm.addLiquidity({
@@ -88,162 +112,147 @@ async function addLiquidity(
   poolAddress: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
-  baseToken?: string,
-  quoteToken?: string,
   slippagePct?: number,
 ): Promise<AddLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
-  const wallet = await solana.getWallet(walletAddress);
 
-  // If no pool address provided, find default pool using base and quote tokens
-  let poolAddressToUse = poolAddress;
-  if (!poolAddressToUse) {
-    if (!baseToken || !quoteToken) {
-      throw new Error(
-        'Either poolAddress or both baseToken and quoteToken must be provided',
-      );
-    }
+  // Prepare wallet and check if it's hardware
+  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
 
-    poolAddressToUse = await raydium.findDefaultPool(
-      baseToken,
-      quoteToken,
-      'amm',
-    );
-    if (!poolAddressToUse) {
-      throw new Error(`No AMM pool found for pair ${baseToken}-${quoteToken}`);
-    }
+  const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
+  if (!ammPoolInfo) {
+    throw _fastify.httpErrors.notFound(`Pool not found for address: ${poolAddress}`);
   }
 
-  const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddressToUse);
-
   // Get pool info and keys since they're no longer in quoteLiquidity response
-  const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddressToUse);
+  const poolResponse = await raydium.getPoolfromAPI(poolAddress);
+  if (!poolResponse) {
+    throw _fastify.httpErrors.notFound(`Pool not found for address: ${poolAddress}`);
+  }
+  const [poolInfo, poolKeys] = poolResponse;
 
-  const { baseLimited, baseTokenAmountMax, quoteTokenAmountMax } =
-    (await quoteLiquidity(
-      _fastify,
-      network,
-      poolAddressToUse,
-      baseTokenAmount,
-      quoteTokenAmount,
-      slippagePct,
-    )) as QuoteLiquidityResponseType;
+  const quoteResponse = (await quoteLiquidity(
+    _fastify,
+    network,
+    poolAddress,
+    baseTokenAmount,
+    quoteTokenAmount,
+    slippagePct,
+  )) as QuoteLiquidityResponseType;
 
-  const baseTokenAmountAdded = baseLimited
-    ? baseTokenAmount
-    : baseTokenAmountMax;
-  const quoteTokenAmountAdded = baseLimited
-    ? quoteTokenAmount
-    : quoteTokenAmountMax;
+  const {
+    baseLimited,
+    baseTokenAmount: quotedBaseAmount,
+    quoteTokenAmount: quotedQuoteAmount,
+    baseTokenAmountMax,
+    quoteTokenAmountMax,
+  } = quoteResponse;
 
+  const baseTokenAmountAdded = baseLimited ? baseTokenAmount : quotedBaseAmount;
+  const quoteTokenAmountAdded = baseLimited ? quotedQuoteAmount : quoteTokenAmount;
+
+  logger.info(`Adding liquidity to Raydium ${ammPoolInfo.poolType} position...`);
   logger.info(
-    `Adding liquidity to Raydium ${ammPoolInfo.poolType} position...`,
+    `Quote response: baseLimited=${baseLimited}, quotedBase=${quotedBaseAmount}, quotedQuote=${quotedQuoteAmount}`,
   );
-  const COMPUTE_UNITS = 600000;
-  const slippage = new Percent(
-    Math.floor(
-      ((slippagePct === 0 ? 0 : slippagePct || raydium.getSlippagePct()) *
-        100) /
-        10000,
-    ),
+  logger.info(`Amounts to add: base=${baseTokenAmountAdded}, quote=${quoteTokenAmountAdded}`);
+  const slippageValue = slippagePct === 0 ? 0 : slippagePct || RaydiumConfig.config.slippagePct;
+  // Convert percentage to basis points (e.g., 1% = 100 basis points)
+  const slippage = new Percent(Math.floor(slippageValue * 100), 10000);
+
+  // Use hardcoded compute units for AMM add liquidity
+  const COMPUTE_UNITS = 400000;
+
+  // Get priority fee from solana (returns lamports/CU)
+  const priorityFeeInLamports = await solana.estimateGasPrice();
+  // Convert lamports to microLamports (1 lamport = 1,000,000 microLamports)
+  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
+
+  const transaction = await createAddLiquidityTransaction(
+    raydium,
+    ammPoolInfo,
+    poolInfo,
+    poolKeys,
+    baseTokenAmountAdded,
+    quoteTokenAmountAdded,
+    baseLimited,
+    slippage,
+    {
+      units: COMPUTE_UNITS,
+      microLamports: priorityFeePerCU,
+    },
+    baseTokenAmount,
+    quoteTokenAmount,
   );
 
-  let currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-  while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
-    const priorityFeePerCU = Math.floor(
-      (currentPriorityFee * 1e6) / COMPUTE_UNITS,
-    );
+  // Sign transaction using helper
+  let signedTransaction: VersionedTransaction | Transaction;
+  if (transaction instanceof VersionedTransaction) {
+    signedTransaction = (await raydium.signTransaction(
+      transaction,
+      walletAddress,
+      isHardwareWallet,
+      wallet,
+    )) as VersionedTransaction;
+  } else {
+    const txAsTransaction = transaction as Transaction;
+    const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash();
+    txAsTransaction.recentBlockhash = blockhash;
+    txAsTransaction.lastValidBlockHeight = lastValidBlockHeight;
+    txAsTransaction.feePayer = isHardwareWallet ? await solana.getPublicKey(walletAddress) : (wallet as any).publicKey;
+    signedTransaction = (await raydium.signTransaction(
+      txAsTransaction,
+      walletAddress,
+      isHardwareWallet,
+      wallet,
+    )) as Transaction;
+  }
 
-    const transaction = await createAddLiquidityTransaction(
-      raydium,
-      ammPoolInfo,
-      poolInfo,
-      poolKeys,
-      baseTokenAmountAdded,
-      quoteTokenAmountAdded,
-      baseLimited,
-      slippage,
-      {
-        units: COMPUTE_UNITS,
-        microLamports: priorityFeePerCU,
-      },
-    );
-    console.log('transaction', transaction);
+  await solana.simulateWithErrorHandling(signedTransaction, _fastify);
 
-    if (transaction instanceof VersionedTransaction) {
-      (transaction as VersionedTransaction).sign([wallet]);
-    } else {
-      const txAsTransaction = transaction as Transaction;
-      const { blockhash, lastValidBlockHeight } =
-        await solana.connection.getLatestBlockhash();
-      txAsTransaction.recentBlockhash = blockhash;
-      txAsTransaction.lastValidBlockHeight = lastValidBlockHeight;
-      txAsTransaction.feePayer = wallet.publicKey;
-      txAsTransaction.sign(wallet);
-    }
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(signedTransaction);
+  if (confirmed && txData) {
+    const tokenAInfo = await solana.getToken(poolInfo.mintA.address);
+    const tokenBInfo = await solana.getToken(poolInfo.mintB.address);
 
-    await solana.simulateTransaction(transaction);
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
+      tokenAInfo.address,
+      tokenBInfo.address,
+    ]);
 
-    console.log('signed transaction', transaction);
-
-    const { confirmed, signature, txData } =
-      await solana.sendAndConfirmRawTransaction(transaction);
-    if (confirmed && txData) {
-      const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-        await solana.extractPairBalanceChangesAndFee(
-          signature,
-          await solana.getToken(poolInfo.mintA.address),
-          await solana.getToken(poolInfo.mintB.address),
-          wallet.publicKey.toBase58(),
-        );
-      return {
-        signature,
+    const baseTokenBalanceChange = balanceChanges[0];
+    const quoteTokenBalanceChange = balanceChanges[1];
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      data: {
         fee: txData.meta.fee / 1e9,
         baseTokenAmountAdded: baseTokenBalanceChange,
         quoteTokenAmountAdded: quoteTokenBalanceChange,
-      };
-    }
-    currentPriorityFee =
-      currentPriorityFee * solana.config.priorityFeeMultiplier;
-    logger.info(
-      `Increasing max priority fee to ${(currentPriorityFee / 1e9).toFixed(6)} SOL`,
-    );
+      },
+    };
+  } else {
+    return {
+      signature,
+      status: 0, // PENDING
+    };
   }
-  throw new Error(
-    `Add liquidity failed after reaching max priority fee of ${(solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`,
-  );
 }
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
+  // const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
-    Body: AddLiquidityRequestType;
+    Body: Static<typeof RaydiumAmmAddLiquidityRequest>;
     Reply: AddLiquidityResponseType;
   }>(
     '/add-liquidity',
     {
       schema: {
         description: 'Add liquidity to a Raydium AMM/CPMM pool',
-        tags: ['raydium/amm'],
-        body: {
-          ...AddLiquidityRequest,
-          properties: {
-            ...AddLiquidityRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            poolAddress: {
-              type: 'string',
-              examples: ['6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg'],
-            }, // AMM RAY-USDC
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            slippagePct: { type: 'number', examples: [1] },
-            baseTokenAmount: { type: 'number', examples: [1] },
-            quoteTokenAmount: { type: 'number', examples: [1] },
-          },
-        },
+        tags: ['/connector/raydium'],
+        body: RaydiumAmmAddLiquidityRequest,
         response: {
           200: AddLiquidityResponse,
         },
@@ -251,37 +260,22 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress,
-          poolAddress,
-          baseToken,
-          quoteToken,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.body;
-
-        // Check if either poolAddress or both baseToken and quoteToken are provided
-        if (!poolAddress && (!baseToken || !quoteToken)) {
-          throw fastify.httpErrors.badRequest(
-            'Either poolAddress or both baseToken and quoteToken must be provided',
-          );
-        }
+        const { network, walletAddress, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.body;
 
         return await addLiquidity(
           fastify,
-          network || 'mainnet-beta',
+          network,
           walletAddress,
           poolAddress,
           baseTokenAmount,
           quoteTokenAmount,
-          baseToken,
-          quoteToken,
           slippagePct,
         );
       } catch (e) {
         logger.error(e);
+        if (e.statusCode) {
+          throw fastify.httpErrors.createError(e.statusCode, e.message);
+        }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
     },

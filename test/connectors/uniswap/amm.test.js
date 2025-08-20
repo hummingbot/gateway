@@ -23,11 +23,7 @@ axios.post = jest.fn();
 // Helper to load mock responses
 function loadMockResponse(filename) {
   // Use mocks from the same directory
-  const filePath = path.join(
-    __dirname,
-    'mocks',
-    `${PROTOCOL}-${filename}.json`,
-  );
+  const filePath = path.join(__dirname, 'mocks', `${PROTOCOL}-${filename}.json`);
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
@@ -84,16 +80,13 @@ describe('Uniswap AMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -130,16 +123,13 @@ describe('Uniswap AMM Tests (Base Network)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.get(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`,
-          {
-            params: {
-              network: NETWORK,
-              baseToken: 'UNKNOWN',
-              quoteToken: QUOTE_TOKEN,
-            },
+        axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`, {
+          params: {
+            network: NETWORK,
+            baseToken: 'UNKNOWN',
+            quoteToken: QUOTE_TOKEN,
           },
-        ),
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 404,
@@ -163,18 +153,15 @@ describe('Uniswap AMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'SELL',
-            amount: 1.0,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'SELL',
+          amount: 1.0,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -211,9 +198,7 @@ describe('Uniswap AMM Tests (Base Network)', () => {
         baseTokenBalanceChange: 1.0, // Positive for BUY
         quoteTokenBalanceChange: -mockSellResponse.quoteTokenBalanceChange, // Negative for BUY
         // For BUY: price = quote needed / base received
-        price:
-          mockSellResponse.estimatedAmountOut /
-          mockSellResponse.estimatedAmountIn,
+        price: mockSellResponse.estimatedAmountOut / mockSellResponse.estimatedAmountIn,
       };
 
       // Setup mock axios
@@ -223,18 +208,15 @@ describe('Uniswap AMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'BUY',
-            amount: 1.0,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'BUY',
+          amount: 1.0,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -254,10 +236,9 @@ describe('Uniswap AMM Tests (Base Network)', () => {
 
       // Mock a successful execution response
       const executeResponse = {
-        signature:
-          '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-        totalInputSwapped: quoteResponse.estimatedAmountIn,
-        totalOutputSwapped: quoteResponse.estimatedAmountOut,
+        signature: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+        amountIn: quoteResponse.estimatedAmountIn,
+        amountOut: quoteResponse.estimatedAmountOut,
         fee: 0.003,
         baseTokenBalanceChange: quoteResponse.baseTokenBalanceChange,
         quoteTokenBalanceChange: quoteResponse.quoteTokenBalanceChange,
@@ -270,27 +251,20 @@ describe('Uniswap AMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`,
-        {
-          network: NETWORK,
-          baseToken: BASE_TOKEN,
-          quoteToken: QUOTE_TOKEN,
-          side: 'SELL',
-          amount: 1.0,
-          wallet: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`, {
+        network: NETWORK,
+        baseToken: BASE_TOKEN,
+        quoteToken: QUOTE_TOKEN,
+        side: 'SELL',
+        amount: 1.0,
+        wallet: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
       expect(response.data.signature).toBeDefined();
-      expect(response.data.totalInputSwapped).toBe(
-        quoteResponse.estimatedAmountIn,
-      );
-      expect(response.data.totalOutputSwapped).toBe(
-        quoteResponse.estimatedAmountOut,
-      );
+      expect(response.data.amountIn).toBe(quoteResponse.estimatedAmountIn);
+      expect(response.data.amountOut).toBe(quoteResponse.estimatedAmountOut);
     });
 
     test('handles transaction simulation error', async () => {
@@ -308,17 +282,14 @@ describe('Uniswap AMM Tests (Base Network)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.post(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`,
-          {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'SELL',
-            amount: 1000000.0,
-            wallet: TEST_WALLET,
-          },
-        ),
+        axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`, {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'SELL',
+          amount: 1000000.0,
+          wallet: TEST_WALLET,
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 500,
@@ -347,17 +318,14 @@ describe('Uniswap AMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-liquidity`,
-        {
-          params: {
-            network: NETWORK,
-            poolAddress: TEST_POOL,
-            baseTokenAmount: 1.0,
-            quoteTokenAmount: 2340.5,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-liquidity`, {
+        params: {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          baseTokenAmount: 1.0,
+          quoteTokenAmount: 2340.5,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -381,17 +349,14 @@ describe('Uniswap AMM Tests (Base Network)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.get(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-liquidity`,
-          {
-            params: {
-              network: NETWORK,
-              poolAddress: TEST_POOL,
-              baseTokenAmount: 1.0,
-              quoteTokenAmount: 100.0, // Wrong ratio
-            },
+        axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-liquidity`, {
+          params: {
+            network: NETWORK,
+            poolAddress: TEST_POOL,
+            baseTokenAmount: 1.0,
+            quoteTokenAmount: 100.0, // Wrong ratio
           },
-        ),
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 400,
@@ -422,16 +387,13 @@ describe('Uniswap AMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`,
-        {
-          params: {
-            network: NETWORK,
-            poolAddress: TEST_POOL,
-            lpTokenAmount: 100.5,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`, {
+        params: {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          lpTokenAmount: 100.5,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -445,8 +407,7 @@ describe('Uniswap AMM Tests (Base Network)', () => {
   describe('Add Liquidity Endpoint', () => {
     test('returns successful liquidity addition', async () => {
       const mockResponse = {
-        signature:
-          '0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+        signature: '0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
         baseTokenAmount: 1.0,
         quoteTokenAmount: 2340.5,
         lpTokenAmount: 54.32,
@@ -461,16 +422,13 @@ describe('Uniswap AMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`,
-        {
-          network: NETWORK,
-          poolAddress: TEST_POOL,
-          baseTokenAmount: 1.0,
-          quoteTokenAmount: 2340.5,
-          wallet: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`, {
+        network: NETWORK,
+        poolAddress: TEST_POOL,
+        baseTokenAmount: 1.0,
+        quoteTokenAmount: 2340.5,
+        wallet: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -495,16 +453,13 @@ describe('Uniswap AMM Tests (Base Network)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.post(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`,
-          {
-            network: NETWORK,
-            poolAddress: TEST_POOL,
-            baseTokenAmount: 10000.0, // Large amount
-            quoteTokenAmount: 23405000.0,
-            wallet: TEST_WALLET,
-          },
-        ),
+        axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`, {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          baseTokenAmount: 10000.0, // Large amount
+          quoteTokenAmount: 23405000.0,
+          wallet: TEST_WALLET,
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 400,
@@ -520,8 +475,7 @@ describe('Uniswap AMM Tests (Base Network)', () => {
   describe('Remove Liquidity Endpoint', () => {
     test('returns successful liquidity removal', async () => {
       const mockResponse = {
-        signature:
-          '0xdef4567890abcdef1234567890abcdef1234567890abcdef1234567890abcd12',
+        signature: '0xdef4567890abcdef1234567890abcdef1234567890abcdef1234567890abcd12',
         baseTokenAmount: 0.95,
         quoteTokenAmount: 2223.475,
         lpTokenAmount: 54.32,
@@ -536,15 +490,12 @@ describe('Uniswap AMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`,
-        {
-          network: NETWORK,
-          poolAddress: TEST_POOL,
-          lpTokenAmount: 54.32,
-          wallet: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`, {
+        network: NETWORK,
+        poolAddress: TEST_POOL,
+        lpTokenAmount: 54.32,
+        wallet: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -569,15 +520,12 @@ describe('Uniswap AMM Tests (Base Network)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.post(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`,
-          {
-            network: NETWORK,
-            poolAddress: TEST_POOL,
-            lpTokenAmount: 10000.0, // Large amount
-            wallet: TEST_WALLET,
-          },
-        ),
+        axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`, {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          lpTokenAmount: 10000.0, // Large amount
+          wallet: TEST_WALLET,
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 400,
