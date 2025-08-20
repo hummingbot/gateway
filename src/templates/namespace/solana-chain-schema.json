@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "defaultNetwork": {
+      "type": "string",
+      "description": "Default network for Solana operations"
+    },
+    "defaultWallet": {
+      "type": "string",
+      "description": "Default wallet address for examples and testing"
+    }
+  },
+  "required": ["defaultNetwork", "defaultWallet"],
+  "additionalProperties": false
+}

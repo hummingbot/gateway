@@ -2,18 +2,15 @@ import { Wallet } from '@coral-xyz/anchor';
 import { VersionedTransaction } from '@solana/web3.js';
 import axios, { AxiosInstance } from 'axios';
 
-import { Solana, BASE_FEE } from '../../chains/solana/solana';
-import { percentRegexp } from '../../services/config-manager-v2';
+import { Solana } from '../../chains/solana/solana';
+import { getSolanaNetworkConfig } from '../../chains/solana/solana.config';
 import { logger } from '../../services/logger';
 
 import { JupiterConfig } from './jupiter.config';
 
-const JUPITER_API_RETRY_COUNT = 5;
-const JUPITER_API_RETRY_INTERVAL_MS = 1000;
-export const DECIMAL_MULTIPLIER = 10;
-
 // Jupiter API base URL
-const JUPITER_API_BASE = 'https://lite-api.jup.ag';
+const JUPITER_API_BASE_FREE = 'https://lite-api.jup.ag';
+const JUPITER_API_BASE_PAID = 'https://api.jup.ag';
 
 // Type definitions for Jupiter API responses
 interface QuoteResponse {
@@ -37,7 +34,7 @@ interface SwapResponse {
 export class Jupiter {
   private static _instances: { [name: string]: Jupiter };
   private solana: Solana;
-  public config: JupiterConfig.NetworkConfig;
+  public config: JupiterConfig.RootConfig;
   private httpClient: AxiosInstance;
 
   private constructor() {
@@ -45,25 +42,33 @@ export class Jupiter {
     this.solana = null;
 
     // Initialize HTTP client with Jupiter API base URL
-    const headers: any = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
-    // Add API key header if provided
+    let baseURL = JUPITER_API_BASE_FREE;
+
+    // Add API key header if provided and use paid endpoint
     if (this.config.apiKey && this.config.apiKey.length > 0) {
       headers['x-api-key'] = this.config.apiKey;
-      logger.info('Using Jupiter API key for requests');
+      baseURL = JUPITER_API_BASE_PAID;
+      logger.info('Using Jupiter paid API with key');
     } else {
       logger.info('Using Jupiter free tier (no API key)');
     }
 
     this.httpClient = axios.create({
-      baseURL: JUPITER_API_BASE,
+      baseURL,
       timeout: 30000,
       headers,
     });
   }
 
+  /**
+   * Gets or creates a singleton instance of Jupiter for the specified network
+   * @param network The Solana network to connect to (e.g., 'mainnet-beta', 'devnet')
+   * @returns Promise resolving to the Jupiter instance
+   */
   public static async getInstance(network: string): Promise<Jupiter> {
     if (!Jupiter._instances) {
       Jupiter._instances = {};
@@ -76,6 +81,11 @@ export class Jupiter {
     return Jupiter._instances[network];
   }
 
+  /**
+   * Initializes the Jupiter instance with the specified network
+   * @param network The Solana network to connect to
+   * @throws Error if initialization fails
+   */
   private async init(network: string): Promise<void> {
     try {
       this.solana = await Solana.getInstance(network);
@@ -87,42 +97,35 @@ export class Jupiter {
   }
 
   /**
-   * Gets the allowed slippage percentage from config
-   * @returns Slippage as a percentage (e.g., 1.0 for 1%)
+   * Gets a swap quote from Jupiter API for the specified token pair
+   * @param inputTokenIdentifier The input token symbol or address
+   * @param outputTokenIdentifier The output token symbol or address
+   * @param amount The amount of tokens to swap (in human-readable format)
+   * @param slippagePct Optional slippage percentage (e.g., 1 for 1%). Defaults to config value
+   * @param onlyDirectRoutes Whether to only use direct routes. Defaults to config value
+   * @param restrictIntermediateTokens Whether to restrict intermediate tokens to highly liquid ones. Defaults to config value
+   * @param swapMode Whether the amount is for input ('ExactIn') or output ('ExactOut'). Defaults to 'ExactIn'
+   * @returns Promise resolving to the quote response from Jupiter API
+   * @throws Error if tokens are not found or if no route is available
    */
-  getSlippagePct(): number {
-    const allowedSlippage = this.config.allowedSlippage;
-    const nd = allowedSlippage.match(percentRegexp);
-    let slippage = 0.0;
-    if (nd) {
-      slippage = Number(nd[1]) / Number(nd[2]);
-    } else {
-      logger.error('Failed to parse slippage value:', allowedSlippage);
-    }
-    return slippage * 100;
-  }
-
   async getQuote(
     inputTokenIdentifier: string,
     outputTokenIdentifier: string,
     amount: number,
     slippagePct?: number,
-    onlyDirectRoutes: boolean = false,
-    asLegacyTransaction: boolean = false,
+    onlyDirectRoutes: boolean = JupiterConfig.config.onlyDirectRoutes,
+    restrictIntermediateTokens: boolean = JupiterConfig.config.restrictIntermediateTokens,
     swapMode: 'ExactIn' | 'ExactOut' = 'ExactIn',
   ): Promise<QuoteResponse> {
     const inputToken = await this.solana.getToken(inputTokenIdentifier);
     const outputToken = await this.solana.getToken(outputTokenIdentifier);
 
     if (!inputToken || !outputToken) {
-      throw new Error(
-        `Token not found: ${!inputToken ? inputTokenIdentifier : outputTokenIdentifier}`,
-      );
+      throw new Error(`Token not found: ${!inputToken ? inputTokenIdentifier : outputTokenIdentifier}`);
     }
 
-    const slippageBps = slippagePct ? Math.round(slippagePct * 100) : 50; // Default to 0.5% if not provided
-    const tokenDecimals =
-      swapMode === 'ExactOut' ? outputToken.decimals : inputToken.decimals;
+    const slippageBps = Math.round((slippagePct ?? this.config.slippagePct) * 100);
+    const tokenDecimals = swapMode === 'ExactOut' ? outputToken.decimals : inputToken.decimals;
     const quoteAmount = Math.floor(amount * 10 ** tokenDecimals);
 
     // Build query parameters for the REST API
@@ -133,18 +136,14 @@ export class Jupiter {
       slippageBps: slippageBps.toString(),
       swapMode: swapMode,
       onlyDirectRoutes: onlyDirectRoutes.toString(),
-      asLegacyTransaction: asLegacyTransaction.toString(),
-      restrictIntermediateTokens: 'false',
+      restrictIntermediateTokens: restrictIntermediateTokens.toString(),
     });
 
-    // Only add maxAccounts for ExactIn mode (not supported for ExactOut)
-    if (swapMode === 'ExactIn') {
-      params.append('maxAccounts', '64');
-    }
+    // Note: maxAccounts parameter has been deprecated
 
     logger.debug(
       `Getting Jupiter quote for ${inputToken.symbol} to ${outputToken.symbol} with params:`,
-      params.toString(),
+      Object.fromEntries(params),
     );
 
     try {
@@ -158,40 +157,59 @@ export class Jupiter {
 
       logger.debug('Got Jupiter quote:', quote);
       return quote;
-    } catch (error: any) {
-      logger.error('Jupiter API error:', error.message);
-      if (error.response?.data) {
-        logger.error('Jupiter API error response:', error.response.data);
+    } catch (error) {
+      const axiosError = error as any; // Type assertion for axios error
+      logger.error('Jupiter API error:', axiosError.message);
+      if (axiosError.response?.data) {
+        logger.error('Jupiter API error response:', axiosError.response.data);
 
         // Handle specific error messages
-        if (typeof error.response.data === 'string') {
-          if (error.response.data === 'Route not found') {
+        if (typeof axiosError.response.data === 'string') {
+          if (axiosError.response.data === 'Route not found') {
             if (swapMode === 'ExactOut') {
               throw new Error('ExactOut not supported for this token pair');
             } else {
               throw new Error('No route found for this token pair');
             }
           }
-          throw new Error(`Jupiter API error: ${error.response.data}`);
-        } else if (error.response.data.error) {
-          throw new Error(`Jupiter API error: ${error.response.data.error}`);
+          throw new Error(`Jupiter API error: ${axiosError.response.data}`);
+        } else if (axiosError.response.data.error) {
+          throw new Error(`Jupiter API error: ${axiosError.response.data.error}`);
         }
       }
       throw error;
     }
   }
 
-  async getSwapObj(
+  /**
+   * Builds and prepares a swap transaction from a quote
+   * @param wallet The wallet to use for signing
+   * @param quote The quote response from Jupiter API
+   * @param maxLamports Maximum priority fee in lamports (optional)
+   * @param priorityLevel Priority level for transaction (optional)
+   * @returns Prepared and simulated transaction ready for execution
+   */
+  public async buildSwapTransaction(
     wallet: Wallet,
     quote: QuoteResponse,
-    priorityFee?: number,
-  ): Promise<SwapResponse> {
-    const feeLamports = priorityFee
-      ? Math.floor(priorityFee)
-      : Math.floor(this.solana.config.minPriorityFee * 1e9);
+    maxLamports?: number,
+    priorityLevel?: string,
+  ): Promise<VersionedTransaction> {
+    // Use provided values or fall back to config
+    const feeLamports = maxLamports ? Math.floor(maxLamports) : Math.floor(this.config.maxLamports);
+    const level = priorityLevel || this.config.priorityLevel;
 
+    logger.info(`Sending swap with priority level ${level} and max ${feeLamports} lamports`);
+
+    // Get swap object from Jupiter API with retry logic
     let lastError: Error | null = null;
-    for (let attempt = 1; attempt <= JUPITER_API_RETRY_COUNT; attempt++) {
+    let swapObj: SwapResponse;
+
+    const solanaConfig = getSolanaNetworkConfig(this.solana.network);
+    const retryCount = solanaConfig.confirmRetryCount;
+    const retryInterval = solanaConfig.confirmRetryInterval;
+
+    for (let attempt = 1; attempt <= retryCount; attempt++) {
       try {
         const swapRequest = {
           quoteResponse: quote,
@@ -200,232 +218,128 @@ export class Jupiter {
           prioritizationFeeLamports: {
             priorityLevelWithMaxLamports: {
               maxLamports: feeLamports,
-              priorityLevel: this.getPriorityLevel(this.config.priorityLevel),
+              priorityLevel: level,
             },
           },
         };
 
-        const response = await this.httpClient.post(
-          '/swap/v1/swap',
-          swapRequest,
-        );
-        const swapObj = response.data;
-
-        return swapObj;
-      } catch (error: any) {
-        lastError = error;
+        const response = await this.httpClient.post('/swap/v1/swap', swapRequest);
+        swapObj = response.data;
+        break; // Success, exit the retry loop
+      } catch (error) {
+        const axiosError = error as any; // Type assertion for axios error
+        lastError = axiosError;
         logger.error(
-          `[JUPITER] Fetching swap object attempt ${attempt}/${JUPITER_API_RETRY_COUNT} failed:`,
-          error.response?.status
+          `Fetching swap object attempt ${attempt}/${retryCount} failed:`,
+          axiosError.response?.status
             ? {
-                error: error.message,
-                status: error.response.status,
-                data: error.response.data,
+                error: axiosError.message,
+                status: axiosError.response.status,
+                data: axiosError.response.data,
               }
-            : error,
+            : axiosError,
         );
 
-        if (attempt < JUPITER_API_RETRY_COUNT) {
-          logger.info(
-            `[JUPITER] Waiting ${JUPITER_API_RETRY_INTERVAL_MS}ms before retry...`,
-          );
-          await new Promise((resolve) =>
-            setTimeout(resolve, JUPITER_API_RETRY_INTERVAL_MS),
-          );
+        if (attempt < retryCount) {
+          logger.info(`Waiting ${retryInterval}ms before retry...`);
+          await new Promise((resolve) => setTimeout(resolve, retryInterval));
         }
       }
     }
 
-    throw new Error(
-      `Failed to fetch swap route after ${JUPITER_API_RETRY_COUNT} attempts. Last error: ${lastError?.message}`,
-    );
-  }
-
-  public async simulateTransaction(transaction: VersionedTransaction) {
-    const { value: simulatedTransactionResponse } =
-      await this.solana.connection.simulateTransaction(transaction, {
-        replaceRecentBlockhash: true,
-        commitment: 'confirmed',
-        accounts: { encoding: 'base64', addresses: [] },
-        sigVerify: false,
-      });
-
-    // console.log('Simulation Result:', {
-    //   logs: simulatedTransactionResponse.logs,
-    //   unitsConsumed: simulatedTransactionResponse.unitsConsumed,
-    //   status: simulatedTransactionResponse.err ? 'FAILED' : 'SUCCESS'
-    // });
-
-    if (simulatedTransactionResponse.err) {
-      const logs = simulatedTransactionResponse.logs || [];
-      // console.log('Simulation Error Details:', {
-      //   error: simulatedTransactionResponse.err,
-      //   programLogs: logs,
-      //   accounts: simulatedTransactionResponse.accounts,
-      //   unitsConsumed: simulatedTransactionResponse.unitsConsumed,
-      // });
-
-      const errorMessage = `Transaction simulation failed: Error: ${JSON.stringify(simulatedTransactionResponse.err)}\nProgram Logs: ${logs.join('\n')}`;
-
-      throw new Error(errorMessage);
-    }
-  }
-
-  async executeSwap(
-    wallet: Wallet,
-    quote: QuoteResponse,
-  ): Promise<{
-    signature: string;
-    feeInLamports: number;
-    computeUnitLimit: number;
-    priorityFeePrice: number;
-  }> {
-    let currentPriorityFee = (await this.solana.estimateGas()) * 1e9 - BASE_FEE;
-
-    logger.info(
-      `Sending swap with max priority fee of ${(currentPriorityFee / 1e9).toFixed(6)} SOL`,
-    );
-
-    // Convert maxPriorityFee from SOL to lamports for comparison
-    while (currentPriorityFee <= this.solana.config.maxPriorityFee * 1e9) {
-      const swapObj = await this.getSwapObj(wallet, quote, currentPriorityFee);
-
-      const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
-      const transaction = VersionedTransaction.deserialize(
-        new Uint8Array(swapTransactionBuf),
-      );
-      await this.simulateTransaction(transaction);
-      transaction.sign([wallet.payer]);
-
-      let retryCount = 0;
-      while (retryCount < this.solana.config.retryCount) {
-        try {
-          const signature = await this.solana.connection.sendRawTransaction(
-            Buffer.from(transaction.serialize()),
-            { skipPreflight: true },
-          );
-
-          try {
-            const { confirmed, txData } =
-              await this.solana.confirmTransaction(signature);
-            if (confirmed && txData) {
-              const computeUnitsUsed = txData.meta.computeUnitsConsumed;
-              const totalFee = txData.meta.fee;
-              const priorityFee = totalFee - BASE_FEE;
-              const priorityFeePrice = (priorityFee / computeUnitsUsed) * 1e6;
-
-              return {
-                signature,
-                feeInLamports: totalFee,
-                computeUnitLimit: computeUnitsUsed,
-                priorityFeePrice,
-              };
-            }
-          } catch (error) {
-            logger.debug(
-              `[JUPITER] Swap confirmation attempt ${retryCount + 1}/${this.solana.config.retryCount} failed with priority fee ${(currentPriorityFee / 1e9).toFixed(6)} SOL: ${error.message}`,
-            );
-          }
-
-          retryCount++;
-          await new Promise((resolve) =>
-            setTimeout(resolve, this.solana.config.retryIntervalMs),
-          );
-        } catch (error) {
-          retryCount++;
-          await new Promise((resolve) =>
-            setTimeout(resolve, this.solana.config.retryIntervalMs),
-          );
-        }
-      }
-
-      // If we get here, swap wasn't confirmed after retryCount attempts
-      // Increase the priority fee and try again
-      currentPriorityFee =
-        currentPriorityFee * this.solana.config.priorityFeeMultiplier;
-      logger.info(
-        `[JUPITER] Increasing max priority fee to ${(currentPriorityFee / 1e9).toFixed(6)} SOL`,
-      );
+    if (!swapObj) {
+      throw new Error(`Failed to fetch swap route after ${retryCount} attempts. Last error: ${lastError?.message}`);
     }
 
-    throw new Error(
-      `[JUPITER] Swap failed after reaching max priority fee of ${(this.solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`,
-    );
-  }
+    const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
+    const transaction = VersionedTransaction.deserialize(new Uint8Array(swapTransactionBuf));
 
-  async extractSwapBalances(
-    signature: string,
-    inputMint: string,
-    outputMint: string,
-  ): Promise<{
-    totalInputSwapped: number;
-    totalOutputSwapped: number;
-    fee: number;
-  }> {
-    let inputBalanceChange: number, outputBalanceChange: number, fee: number;
+    // Sign and simulate the transaction
+    transaction.sign([wallet.payer]);
+    await this.solana.simulateTransaction(transaction);
 
-    // Get transaction info to extract the 'from' address
-    const txInfo = await this.solana.connection.getTransaction(signature);
-    if (!txInfo) {
-      throw new Error('Transaction not found');
-    }
-    const fromAddress = txInfo.transaction.message.accountKeys[0].toBase58();
-
-    if (inputMint === 'So11111111111111111111111111111111111111112') {
-      ({ balanceChange: inputBalanceChange, fee } =
-        await this.solana.extractAccountBalanceChangeAndFee(signature, 0));
-    } else {
-      ({ balanceChange: inputBalanceChange, fee } =
-        await this.solana.extractTokenBalanceChangeAndFee(
-          signature,
-          inputMint,
-          fromAddress,
-        ));
-    }
-
-    if (outputMint === 'So11111111111111111111111111111111111111112') {
-      ({ balanceChange: outputBalanceChange } =
-        await this.solana.extractAccountBalanceChangeAndFee(signature, 0));
-    } else {
-      ({ balanceChange: outputBalanceChange } =
-        await this.solana.extractTokenBalanceChangeAndFee(
-          signature,
-          outputMint,
-          fromAddress,
-        ));
-    }
-
-    return {
-      totalInputSwapped: Math.abs(inputBalanceChange),
-      totalOutputSwapped: Math.abs(outputBalanceChange),
-      fee,
-    };
-  }
-
-  public static getRequestAmount(amount: number, decimals: number): number {
-    return Math.floor(amount * DECIMAL_MULTIPLIER ** decimals);
+    return transaction;
   }
 
   /**
-   * Converts a priority level string to the expected format for Jupiter API
-   * @param priorityLevel The priority level from config
-   * @returns Properly formatted priority level for Jupiter API
+   * Builds a swap transaction for hardware wallets (returns unsigned transaction)
+   * @param walletAddress The public key of the hardware wallet
+   * @param quote The quote response from Jupiter API
+   * @param maxLamports Maximum priority fee in lamports (optional)
+   * @param priorityLevel Priority level for transaction (optional)
+   * @returns Unsigned transaction ready for hardware wallet signing
    */
-  private getPriorityLevel(
-    priorityLevel: string,
-  ): 'medium' | 'high' | 'veryHigh' {
-    const level = priorityLevel.toLowerCase();
+  public async buildSwapTransactionForHardwareWallet(
+    walletAddress: string,
+    quote: QuoteResponse,
+    maxLamports?: number,
+    priorityLevel?: string,
+  ): Promise<VersionedTransaction> {
+    // Use provided values or fall back to config
+    const feeLamports = maxLamports ? Math.floor(maxLamports) : Math.floor(this.config.maxLamports);
+    const level = priorityLevel || this.config.priorityLevel;
 
-    if (level === 'medium' || level === 'high') {
-      return level as 'medium' | 'high';
-    } else if (level === 'veryhigh') {
-      return 'veryHigh';
+    logger.info(
+      `Building unsigned swap transaction for hardware wallet ${walletAddress} with priority level ${level} and max ${feeLamports} lamports`,
+    );
+
+    // Get swap object from Jupiter API with retry logic
+    let lastError: Error | null = null;
+    let swapObj: SwapResponse;
+
+    const solanaConfig = getSolanaNetworkConfig(this.solana.network);
+    const retryCount = solanaConfig.confirmRetryCount;
+    const retryInterval = solanaConfig.confirmRetryInterval;
+
+    for (let attempt = 1; attempt <= retryCount; attempt++) {
+      try {
+        const swapRequest = {
+          quoteResponse: quote,
+          userPublicKey: walletAddress, // Use the hardware wallet address directly
+          dynamicComputeUnitLimit: true,
+          prioritizationFeeLamports: {
+            priorityLevelWithMaxLamports: {
+              maxLamports: feeLamports,
+              priorityLevel: level,
+            },
+          },
+        };
+
+        const response = await this.httpClient.post('/swap/v1/swap', swapRequest);
+        swapObj = response.data;
+        break; // Success, exit the retry loop
+      } catch (error) {
+        const axiosError = error as any;
+        lastError = axiosError;
+        logger.error(
+          `Fetching swap object attempt ${attempt}/${retryCount} failed:`,
+          axiosError.response?.status
+            ? {
+                error: axiosError.message,
+                status: axiosError.response.status,
+                data: axiosError.response.data,
+              }
+            : axiosError,
+        );
+
+        if (attempt < retryCount) {
+          logger.info(`Waiting ${retryInterval}ms before retry...`);
+          await new Promise((resolve) => setTimeout(resolve, retryInterval));
+        }
+      }
     }
 
-    // Default to medium if invalid value
-    logger.warn(
-      `Invalid priority level: ${priorityLevel}, defaulting to 'medium'`,
-    );
-    return 'medium';
+    if (!swapObj) {
+      throw new Error(`Failed to fetch swap route after ${retryCount} attempts. Last error: ${lastError?.message}`);
+    }
+
+    const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
+    const transaction = VersionedTransaction.deserialize(new Uint8Array(swapTransactionBuf));
+
+    // Don't sign the transaction - it will be signed by the hardware wallet
+    // But we still simulate it to ensure it's valid
+    await this.solana.simulateTransaction(transaction);
+
+    return transaction;
   }
 }

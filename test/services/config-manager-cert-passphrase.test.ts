@@ -1,3 +1,20 @@
+// Only mock the dependencies that ConfigManagerCertPassphrase needs
+jest.mock('../../src/services/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
+// Import shared mock for ConfigManagerV2 only
+import { mockConfigManagerV2 } from '../mocks/shared-mocks';
+
+jest.mock('../../src/services/config-manager-v2', () => ({
+  ConfigManagerV2: mockConfigManagerV2,
+}));
+
 import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
 
 import { patch, unpatch } from './patch';

@@ -76,11 +76,9 @@ jobs:
 
       - name: Setup configuration for CI
         run: |
-          mkdir -p conf/lists db
+          mkdir -p conf/
           # Copy template configurations
           cp -rf src/templates/* conf/
-          # Adjust paths for CI environment
-          sed -i 's|/home/gateway/conf/lists/|conf/lists/|g' ./conf/*.yml
 
       - name: Run unit test coverage
         if: github.event_name == 'pull_request'

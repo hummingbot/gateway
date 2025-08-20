@@ -4,10 +4,10 @@ configurations:
     configurationPath: server.yml
     schemaPath: server-schema.json
 
-  $namespace ethereum:
-    configurationPath: ethereum.yml
-    schemaPath: ethereum-schema.json
+  $namespace ethereum-mainnet:
+    configurationPath: networks/ethereum.yml
+    schemaPath: ethereum-network-schema.json
 
   $namespace uniswap:
-    configurationPath: uniswap.yml
+    configurationPath: connectors/uniswap.yml
     schemaPath: uniswap-schema.json

@@ -3,14 +3,13 @@ import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  ExecuteSwapResponseType,
-  ExecuteSwapResponse,
-  ExecuteSwapRequest,
-  ExecuteSwapRequestType,
-} from '../../../schemas/swap-schema';
+import { getSolanaChainConfig } from '../../../chains/solana/solana.config';
+import { ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
+import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Meteora } from '../meteora';
+import { MeteoraConfig } from '../meteora.config';
+import { MeteoraClmmExecuteSwapRequest, MeteoraClmmExecuteSwapRequestType } from '../schemas';
 
 import { getRawSwapQuote } from './quoteSwap';
 
@@ -43,12 +42,10 @@ async function executeSwap(
     amount,
     side,
     poolAddress,
-    slippagePct || meteora.getSlippagePct(),
+    slippagePct || MeteoraConfig.config.slippagePct,
   );
 
-  logger.info(
-    `Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`,
-  );
+  logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
 
   const swapTx =
     side === 'BUY'
@@ -71,93 +68,135 @@ async function executeSwap(
           binArraysPubkey: (swapQuote as SwapQuote).binArraysPubkey,
         });
 
-  const { signature, fee } = await solana.sendAndConfirmTransaction(
-    swapTx,
-    [wallet],
-    150_000,
-  );
+  // Simulate transaction with proper error handling (before signing)
+  await solana.simulateWithErrorHandling(swapTx, fastify);
 
-  const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-    await solana.extractPairBalanceChangesAndFee(
-      signature,
-      await solana.getToken(dlmmPool.tokenX.publicKey.toBase58()),
-      await solana.getToken(dlmmPool.tokenY.publicKey.toBase58()),
-      wallet.publicKey.toBase58(),
+  logger.info('Transaction simulated successfully, sending to network...');
+
+  // Send and confirm transaction using sendAndConfirmTransaction which handles signing
+  const { signature, fee } = await solana.sendAndConfirmTransaction(swapTx, [wallet]);
+
+  logger.info(`Transaction sent with signature: ${signature}`);
+
+  // Get transaction data for confirmation
+  const txData = await solana.connection.getTransaction(signature, {
+    commitment: 'confirmed',
+    maxSupportedTransactionVersion: 0,
+  });
+
+  const confirmed = txData !== null;
+
+  // Handle confirmation status
+  if (confirmed && txData) {
+    // Extract fee from the response
+    const txFee = fee;
+    // Transaction confirmed, extract balance changes
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+      inputToken.address,
+      outputToken.address,
+    ]);
+
+    const inputTokenBalanceChange = balanceChanges[0];
+    const outputTokenBalanceChange = balanceChanges[1];
+
+    // Calculate actual amounts swapped
+    const amountIn = Math.abs(inputTokenBalanceChange);
+    const amountOut = Math.abs(outputTokenBalanceChange);
+
+    // For CLMM swaps, determine base/quote changes based on side
+    const baseTokenBalanceChange = side === 'SELL' ? inputTokenBalanceChange : outputTokenBalanceChange;
+    const quoteTokenBalanceChange = side === 'SELL' ? outputTokenBalanceChange : inputTokenBalanceChange;
+
+    logger.info(
+      `Swap executed successfully: ${amountIn.toFixed(4)} ${inputToken.symbol} -> ${amountOut.toFixed(4)} ${outputToken.symbol}`,
     );
 
-  logger.info(
-    `Swap executed successfully: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${inputToken.symbol} -> ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${outputToken.symbol}`,
-  );
-
-  return {
-    signature,
-    totalInputSwapped: Math.abs(baseTokenBalanceChange),
-    totalOutputSwapped: Math.abs(quoteTokenBalanceChange),
-    fee,
-    baseTokenBalanceChange,
-    quoteTokenBalanceChange,
-  };
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      data: {
+        tokenIn: inputToken.address,
+        tokenOut: outputToken.address,
+        amountIn,
+        amountOut,
+        fee: txFee,
+        baseTokenBalanceChange,
+        quoteTokenBalanceChange,
+      },
+    };
+  } else {
+    // Transaction not confirmed
+    return {
+      signature,
+      status: 0, // PENDING
+    };
+  }
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
-
   fastify.post<{
-    Body: ExecuteSwapRequestType;
+    Body: MeteoraClmmExecuteSwapRequestType;
     Reply: ExecuteSwapResponseType;
   }>(
     '/execute-swap',
     {
       schema: {
-        description: 'Execute a token swap on Meteora',
-        tags: ['meteora/clmm'],
-        body: {
-          ...ExecuteSwapRequest,
-          properties: {
-            ...ExecuteSwapRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.01] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            poolAddress: { type: 'string', examples: [''] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        description: 'Execute a token swap on Meteora DLMM',
+        tags: ['/connector/meteora'],
+        body: MeteoraClmmExecuteSwapRequest,
         response: { 200: ExecuteSwapResponse },
       },
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          poolAddress,
-          slippagePct,
-        } = request.body;
-        const networkUsed = network || 'mainnet-beta';
-        const meteora = await Meteora.getInstance(networkUsed);
-        const poolAddressUsed =
-          poolAddress || (await meteora.findDefaultPool(baseToken, quoteToken));
+        const { network, walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body;
 
+        // Use defaults if not provided
+        const networkUsed = network || getSolanaChainConfig().defaultNetwork;
+        const walletAddressUsed = walletAddress || getSolanaChainConfig().defaultWallet;
+
+        let poolAddressUsed = poolAddress;
+
+        // If poolAddress is not provided, look it up by token pair
         if (!poolAddressUsed) {
-          throw fastify.httpErrors.notFound(
-            `No pool found for ${baseToken}-${quoteToken} pair`,
+          const solana = await Solana.getInstance(networkUsed);
+
+          // Resolve token symbols to get proper symbols for pool lookup
+          const baseTokenInfo = await solana.getToken(baseToken);
+          const quoteTokenInfo = await solana.getToken(quoteToken);
+
+          if (!baseTokenInfo || !quoteTokenInfo) {
+            throw fastify.httpErrors.badRequest(
+              sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
+            );
+          }
+
+          // Use PoolService to find pool by token pair
+          const { PoolService } = await import('../../../services/pool-service');
+          const poolService = PoolService.getInstance();
+
+          const pool = await poolService.getPool(
+            'meteora',
+            networkUsed,
+            'clmm',
+            baseTokenInfo.symbol,
+            quoteTokenInfo.symbol,
           );
+
+          if (!pool) {
+            throw fastify.httpErrors.notFound(
+              `No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Meteora`,
+            );
+          }
+
+          poolAddressUsed = pool.address;
         }
-        logger.info(
-          `Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddress}`,
-        );
+        logger.info(`Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddressUsed}`);
 
         return await executeSwap(
           fastify,
           networkUsed,
-          walletAddress,
+          walletAddressUsed,
           baseToken,
           quoteToken,
           amount,
@@ -165,10 +204,22 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           poolAddressUsed,
           slippagePct,
         );
-      } catch (e) {
-        if (e.statusCode) return e;
-        logger.error('Error executing swap:', e);
-        throw fastify.httpErrors.internalServerError('Internal server error');
+      } catch (e: any) {
+        logger.error('Error executing swap:', e.message || e);
+        logger.error('Full error:', JSON.stringify(e, null, 2));
+
+        if (e.statusCode) {
+          // If it's already an HTTP error, throw it properly
+          throw e;
+        }
+
+        // Check for specific error messages
+        const errorMessage = e.message || e.toString();
+        if (errorMessage.includes('503') || errorMessage.includes('Service Unavailable')) {
+          throw fastify.httpErrors.serviceUnavailable('RPC service temporarily unavailable. Please try again.');
+        }
+
+        throw fastify.httpErrors.internalServerError(`Swap execution failed: ${errorMessage}`);
       }
     },
   );

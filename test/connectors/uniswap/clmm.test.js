@@ -23,11 +23,7 @@ axios.post = jest.fn();
 // Helper to load mock responses
 function loadMockResponse(filename) {
   // Use mocks from the same directory
-  const filePath = path.join(
-    __dirname,
-    'mocks',
-    `${PROTOCOL}-${filename}.json`,
-  );
+  const filePath = path.join(__dirname, 'mocks', `${PROTOCOL}-${filename}.json`);
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
@@ -56,7 +52,97 @@ function validateSwapQuote(response) {
     typeof response.maxAmountIn === 'number' &&
     typeof response.baseTokenBalanceChange === 'number' &&
     typeof response.quoteTokenBalanceChange === 'number' &&
-    typeof response.price === 'number'
+    typeof response.price === 'number' &&
+    typeof response.computeUnits === 'number' // Added computeUnits
+  );
+}
+
+// Function to validate position info response structure
+function validatePositionInfo(response) {
+  return (
+    response &&
+    typeof response.poolAddress === 'string' &&
+    typeof response.positionId === 'string' &&
+    typeof response.lowerTick === 'number' &&
+    typeof response.upperTick === 'number' &&
+    typeof response.liquidity === 'string' &&
+    typeof response.baseTokenAmount === 'number' &&
+    typeof response.quoteTokenAmount === 'number' &&
+    typeof response.unclaimedFeeBaseAmount === 'number' &&
+    typeof response.unclaimedFeeQuoteAmount === 'number'
+  );
+}
+
+// Function to validate quote position response
+function validateQuotePosition(response) {
+  return (
+    response &&
+    typeof response.baseLimited === 'boolean' &&
+    typeof response.baseTokenAmount === 'number' &&
+    typeof response.quoteTokenAmount === 'number' &&
+    typeof response.baseTokenAmountMax === 'number' &&
+    typeof response.quoteTokenAmountMax === 'number' &&
+    response.liquidity !== undefined && // Can be string or object
+    typeof response.computeUnits === 'number' // Added computeUnits
+  );
+}
+
+// Function to validate open position response
+function validateOpenPosition(response) {
+  return (
+    response &&
+    typeof response.signature === 'string' &&
+    typeof response.status === 'number' &&
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data &&
+        typeof response.data.fee === 'number' &&
+        typeof response.data.positionId === 'string' &&
+        typeof response.data.baseTokenAmountAdded === 'number' &&
+        typeof response.data.quoteTokenAmountAdded === 'number'))
+  );
+}
+
+// Function to validate add liquidity response
+function validateAddLiquidity(response) {
+  return (
+    response &&
+    typeof response.signature === 'string' &&
+    typeof response.status === 'number' &&
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data &&
+        typeof response.data.fee === 'number' &&
+        typeof response.data.baseTokenAmountAdded === 'number' &&
+        typeof response.data.quoteTokenAmountAdded === 'number'))
+  );
+}
+
+// Function to validate remove liquidity response
+function validateRemoveLiquidity(response) {
+  return (
+    response &&
+    typeof response.signature === 'string' &&
+    typeof response.status === 'number' &&
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data &&
+        typeof response.data.fee === 'number' &&
+        typeof response.data.baseTokenAmountRemoved === 'number' &&
+        typeof response.data.quoteTokenAmountRemoved === 'number'))
+  );
+}
+
+// Function to validate close position response
+function validateClosePosition(response) {
+  return (
+    response &&
+    typeof response.signature === 'string' &&
+    typeof response.status === 'number' &&
+    (response.status !== 1 || // If not CONFIRMED
+      (response.data &&
+        typeof response.data.fee === 'number' &&
+        typeof response.data.baseTokenAmountRemoved === 'number' &&
+        typeof response.data.quoteTokenAmountRemoved === 'number' &&
+        typeof response.data.baseFeeAmountCollected === 'number' &&
+        typeof response.data.quoteFeeAmountCollected === 'number'))
   );
 }
 
@@ -80,16 +166,13 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -126,16 +209,13 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.get(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`,
-          {
-            params: {
-              network: NETWORK,
-              baseToken: 'UNKNOWN',
-              quoteToken: QUOTE_TOKEN,
-            },
+        axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`, {
+          params: {
+            network: NETWORK,
+            baseToken: 'UNKNOWN',
+            quoteToken: QUOTE_TOKEN,
           },
-        ),
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 404,
@@ -159,18 +239,15 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'SELL',
-            amount: 1.0,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'SELL',
+          amount: 1.0,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -207,9 +284,7 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
         baseTokenBalanceChange: 1.0, // Positive for BUY
         quoteTokenBalanceChange: -mockSellResponse.quoteTokenBalanceChange, // Negative for BUY
         // For BUY: price = quote needed / base received
-        price:
-          mockSellResponse.estimatedAmountOut /
-          mockSellResponse.estimatedAmountIn,
+        price: mockSellResponse.estimatedAmountOut / mockSellResponse.estimatedAmountIn,
       };
 
       // Setup mock axios
@@ -219,18 +294,15 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`,
-        {
-          params: {
-            network: NETWORK,
-            baseToken: BASE_TOKEN,
-            quoteToken: QUOTE_TOKEN,
-            side: 'BUY',
-            amount: 1.0,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-swap`, {
+        params: {
+          network: NETWORK,
+          baseToken: BASE_TOKEN,
+          quoteToken: QUOTE_TOKEN,
+          side: 'BUY',
+          amount: 1.0,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -250,10 +322,9 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
 
       // Mock a successful execution response
       const executeResponse = {
-        signature:
-          '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-        totalInputSwapped: quoteResponse.estimatedAmountIn,
-        totalOutputSwapped: quoteResponse.estimatedAmountOut,
+        signature: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+        amountIn: quoteResponse.estimatedAmountIn,
+        amountOut: quoteResponse.estimatedAmountOut,
         fee: 0.003,
         baseTokenBalanceChange: quoteResponse.baseTokenBalanceChange,
         quoteTokenBalanceChange: quoteResponse.quoteTokenBalanceChange,
@@ -266,27 +337,20 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`,
-        {
-          network: NETWORK,
-          baseToken: BASE_TOKEN,
-          quoteToken: QUOTE_TOKEN,
-          side: 'SELL',
-          amount: 1.0,
-          wallet: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/execute-swap`, {
+        network: NETWORK,
+        baseToken: BASE_TOKEN,
+        quoteToken: QUOTE_TOKEN,
+        side: 'SELL',
+        amount: 1.0,
+        wallet: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
       expect(response.data.signature).toBeDefined();
-      expect(response.data.totalInputSwapped).toBe(
-        quoteResponse.estimatedAmountIn,
-      );
-      expect(response.data.totalOutputSwapped).toBe(
-        quoteResponse.estimatedAmountOut,
-      );
+      expect(response.data.amountIn).toBe(quoteResponse.estimatedAmountIn);
+      expect(response.data.amountOut).toBe(quoteResponse.estimatedAmountOut);
     });
   });
 
@@ -311,15 +375,12 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`,
-        {
-          params: {
-            network: NETWORK,
-            positionId: '123456',
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`, {
+        params: {
+          network: NETWORK,
+          positionId: '123456',
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -344,15 +405,12 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.get(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`,
-          {
-            params: {
-              network: NETWORK,
-              positionId: 'invalid-position',
-            },
+        axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`, {
+          params: {
+            network: NETWORK,
+            positionId: 'invalid-position',
           },
-        ),
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 404,
@@ -398,15 +456,12 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/positions-owned`,
-        {
-          params: {
-            network: NETWORK,
-            wallet: TEST_WALLET,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/positions-owned`, {
+        params: {
+          network: NETWORK,
+          wallet: TEST_WALLET,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -436,19 +491,16 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.get(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-position`,
-        {
-          params: {
-            network: NETWORK,
-            poolAddress: TEST_POOL,
-            lowerTick: -887272,
-            upperTick: 887272,
-            baseTokenAmount: 1.0,
-            quoteTokenAmount: 2340.5,
-          },
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-position`, {
+        params: {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          lowerTick: -887272,
+          upperTick: 887272,
+          baseTokenAmount: 1.0,
+          quoteTokenAmount: 2340.5,
         },
-      );
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -471,19 +523,16 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.get(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-position`,
-          {
-            params: {
-              network: NETWORK,
-              poolAddress: TEST_POOL,
-              lowerTick: 100,
-              upperTick: 50, // Invalid: upper < lower
-              baseTokenAmount: 1.0,
-              quoteTokenAmount: 2340.5,
-            },
+        axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/quote-position`, {
+          params: {
+            network: NETWORK,
+            poolAddress: TEST_POOL,
+            lowerTick: 100,
+            upperTick: 50, // Invalid: upper < lower
+            baseTokenAmount: 1.0,
+            quoteTokenAmount: 2340.5,
           },
-        ),
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 400,
@@ -499,8 +548,7 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
   describe('Open Position Endpoint', () => {
     test('returns successful position opening', async () => {
       const mockResponse = {
-        signature:
-          '0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
+        signature: '0xabcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab',
         positionId: '345678',
         poolAddress: TEST_POOL,
         lowerTick: -887272,
@@ -518,18 +566,15 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/open-position`,
-        {
-          network: NETWORK,
-          poolAddress: TEST_POOL,
-          lowerTick: -887272,
-          upperTick: 887272,
-          baseTokenAmount: 1.0,
-          quoteTokenAmount: 2340.5,
-          wallet: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/open-position`, {
+        network: NETWORK,
+        poolAddress: TEST_POOL,
+        lowerTick: -887272,
+        upperTick: 887272,
+        baseTokenAmount: 1.0,
+        quoteTokenAmount: 2340.5,
+        wallet: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -553,18 +598,15 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
 
       // Make the request and expect it to be rejected
       await expect(
-        axios.post(
-          `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/open-position`,
-          {
-            network: NETWORK,
-            poolAddress: TEST_POOL,
-            lowerTick: -887272,
-            upperTick: 887272,
-            baseTokenAmount: 10000.0, // Large amount
-            quoteTokenAmount: 23405000.0,
-            wallet: TEST_WALLET,
-          },
-        ),
+        axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/open-position`, {
+          network: NETWORK,
+          poolAddress: TEST_POOL,
+          lowerTick: -887272,
+          upperTick: 887272,
+          baseTokenAmount: 10000.0, // Large amount
+          quoteTokenAmount: 23405000.0,
+          wallet: TEST_WALLET,
+        }),
       ).rejects.toMatchObject({
         response: {
           status: 400,
@@ -580,8 +622,7 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
   describe('Add Liquidity Endpoint', () => {
     test('returns successful liquidity addition to existing position', async () => {
       const mockResponse = {
-        signature:
-          '0xdef4567890abcdef1234567890abcdef1234567890abcdef1234567890abcd12',
+        signature: '0xdef4567890abcdef1234567890abcdef1234567890abcdef1234567890abcd12',
         positionId: '123456',
         liquidity: '340000000000000000',
         baseTokenAmount: 0.5,
@@ -596,16 +637,13 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`,
-        {
-          network: NETWORK,
-          positionId: '123456',
-          baseTokenAmount: 0.5,
-          quoteTokenAmount: 1170.25,
-          wallet: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`, {
+        network: NETWORK,
+        positionId: '123456',
+        baseTokenAmount: 0.5,
+        quoteTokenAmount: 1170.25,
+        wallet: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -618,8 +656,7 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
   describe('Remove Liquidity Endpoint', () => {
     test('returns successful liquidity removal', async () => {
       const mockResponse = {
-        signature:
-          '0x1234abcd5678efgh1234abcd5678efgh1234abcd5678efgh1234abcd5678efgh',
+        signature: '0x1234abcd5678efgh1234abcd5678efgh1234abcd5678efgh1234abcd5678efgh',
         positionId: '123456',
         baseTokenAmount: 0.75,
         quoteTokenAmount: 1755.375,
@@ -634,15 +671,12 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`,
-        {
-          network: NETWORK,
-          positionId: '123456',
-          liquidity: '500000000000000000',
-          wallet: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`, {
+        network: NETWORK,
+        positionId: '123456',
+        liquidity: '500000000000000000',
+        wallet: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -656,8 +690,7 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
   describe('Close Position Endpoint', () => {
     test('returns successful position closure', async () => {
       const mockResponse = {
-        signature:
-          '0xaaaa1111bbbb2222cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888',
+        signature: '0xaaaa1111bbbb2222cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888',
         positionId: '123456',
         baseTokenAmount: 1.5,
         quoteTokenAmount: 3510.75,
@@ -672,14 +705,11 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/close-position`,
-        {
-          network: NETWORK,
-          positionId: '123456',
-          wallet: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/close-position`, {
+        network: NETWORK,
+        positionId: '123456',
+        wallet: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -693,8 +723,7 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
   describe('Collect Fees Endpoint', () => {
     test('returns successful fee collection', async () => {
       const mockResponse = {
-        signature:
-          '0x9999888877776666555544443333222211110000aaaabbbbccccddddeeeeffff',
+        signature: '0x9999888877776666555544443333222211110000aaaabbbbccccddddeeeeffff',
         positionId: '123456',
         feeBaseAmount: 0.001,
         feeQuoteAmount: 2.34,
@@ -707,14 +736,11 @@ describe('Uniswap CLMM Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/collect-fees`,
-        {
-          network: NETWORK,
-          positionId: '123456',
-          wallet: TEST_WALLET,
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/collect-fees`, {
+        network: NETWORK,
+        positionId: '123456',
+        wallet: TEST_WALLET,
+      });
 
       // Validate the response
       expect(response.status).toBe(200);

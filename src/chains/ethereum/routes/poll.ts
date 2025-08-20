@@ -1,21 +1,15 @@
 import { ethers } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import {
-  PollRequestType,
-  PollResponseType,
-  PollRequestSchema,
-  PollResponseSchema,
-} from '../../../schemas/chain-schema';
+import { PollRequestType, PollResponseType, PollResponseSchema } from '../../../schemas/chain-schema';
 import { getConnector } from '../../../services/connection-manager';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
+import { EthereumPollRequest } from '../schemas';
 
 // Helper function for transaction response formatting
 
-const toEthereumTransactionResponse = (
-  response: ethers.providers.TransactionResponse | null,
-) => {
+const toEthereumTransactionResponse = (response: ethers.providers.TransactionResponse | null) => {
   if (response) {
     let gasPrice = null;
     if (response.gasPrice) {
@@ -58,9 +52,7 @@ export async function pollEthereumTransaction(
 
       if (!txData) {
         // tx not found after retries
-        logger.info(
-          `Transaction ${signature} not found in mempool or does not exist after ${MAX_RETRIES} retries.`,
-        );
+        logger.info(`Transaction ${signature} not found in mempool or does not exist after ${MAX_RETRIES} retries.`);
         txBlock = -1;
         txReceipt = null;
         txStatus = -1;
@@ -99,20 +91,12 @@ export async function pollEthereumTransaction(
         // decode logs
         if (connector) {
           try {
-            const connectorInstance: any = await getConnector(
-              'ethereum',
-              network,
-              connector,
-            );
+            const connectorInstance: any = await getConnector('ethereum', network, connector);
 
-            txReceipt.logs = connectorInstance.abiDecoder?.decodeLogs(
-              txReceipt.logs,
-            );
+            txReceipt.logs = connectorInstance.abiDecoder?.decodeLogs(txReceipt.logs);
           } catch (e) {
-            logger.error(`Error with connector: ${e.message}`);
-            throw fastify.httpErrors.internalServerError(
-              `Failed to decode logs: ${e.message}`,
-            );
+            logger.error('Error with connector:', e);
+            throw fastify.httpErrors.internalServerError('Failed to decode logs');
           }
         }
       }
@@ -133,9 +117,7 @@ export async function pollEthereumTransaction(
       throw error; // Re-throw if it's already a Fastify error
     }
     logger.error(`Error polling transaction: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(
-      `Failed to poll transaction: ${error.message}`,
-    );
+    throw fastify.httpErrors.internalServerError(`Failed to poll transaction: ${error.message}`);
   }
 }
 
@@ -148,31 +130,8 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Poll Ethereum transaction status',
-        tags: ['ethereum'],
-        body: {
-          ...PollRequestSchema,
-          properties: {
-            ...PollRequestSchema.properties,
-            network: {
-              type: 'string',
-              examples: [
-                'mainnet',
-                'arbitrum',
-                'optimism',
-                'base',
-                'sepolia',
-                'bsc',
-                'avalanche',
-                'celo',
-                'polygon',
-                'blast',
-                'zora',
-                'worldchain',
-              ],
-            },
-            signature: { type: 'string', examples: ['0x123...'] },
-          },
-        },
+        tags: ['/chain/ethereum'],
+        body: EthereumPollRequest,
         response: {
           200: PollResponseSchema,
         },

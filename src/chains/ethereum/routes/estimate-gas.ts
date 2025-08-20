@@ -1,88 +1,86 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import {
-  EstimateGasRequestType,
-  EstimateGasResponse,
-  EstimateGasRequestSchema,
-  EstimateGasResponseSchema,
-} from '../../../schemas/chain-schema';
-import { gasCostInEthString } from '../../../services/base';
+import { EstimateGasRequestType, EstimateGasResponse, EstimateGasResponseSchema } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
+import { EthereumEstimateGasRequest } from '../schemas';
 
-export async function estimateGasEthereum(
-  fastify: FastifyInstance,
-  network: string,
-  gasLimit?: number,
-): Promise<EstimateGasResponse> {
+export async function estimateGasEthereum(fastify: FastifyInstance, network: string): Promise<EstimateGasResponse> {
   try {
     const ethereum = await Ethereum.getInstance(network);
 
-    // Get gas price in GWEI
+    // Get gas price in GWEI (this already includes fallback to minGasPrice)
     const gasPrice = await ethereum.estimateGasPrice();
 
-    // Use provided gas limit or default from config
-    const gasLimitUsed = gasLimit || ethereum.gasLimitTransaction;
+    // Default gas limit for Ethereum is 300000
+    const DEFAULT_GAS_LIMIT = 300000;
 
-    // Calculate total gas cost in ETH
-    const gasCost = parseFloat(gasCostInEthString(gasPrice, gasLimitUsed));
+    // Calculate total fee in GWEI
+    const totalFeeInGwei = gasPrice * DEFAULT_GAS_LIMIT;
+
+    // Convert GWEI to ETH (1 ETH = 10^9 GWEI)
+    const totalFeeInEth = totalFeeInGwei / 1e9;
 
     return {
-      gasPrice: gasPrice,
-      gasPriceToken: ethereum.nativeTokenSymbol,
-      gasLimit: gasLimitUsed,
-      gasCost: gasCost,
+      feePerComputeUnit: gasPrice,
+      denomination: 'gwei',
+      computeUnits: DEFAULT_GAS_LIMIT,
+      feeAsset: ethereum.nativeTokenSymbol,
+      fee: totalFeeInEth,
+      timestamp: Date.now(),
     };
   } catch (error) {
-    logger.error(`Error estimating gas: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(
-      `Failed to estimate gas: ${error.message}`,
-    );
+    logger.error(`Error estimating gas for network ${network}: ${error.message}`);
+
+    try {
+      // If estimation fails but we can still get the instance, return the minGasPrice
+      const ethereum = await Ethereum.getInstance(network);
+
+      // Default gas limit for Ethereum is 300000
+      const DEFAULT_GAS_LIMIT = 300000;
+
+      // Calculate total fee in GWEI using minGasPrice
+      const totalFeeInGwei = ethereum.minGasPrice * DEFAULT_GAS_LIMIT;
+
+      // Convert GWEI to ETH (1 ETH = 10^9 GWEI)
+      const totalFeeInEth = totalFeeInGwei / 1e9;
+
+      return {
+        feePerComputeUnit: ethereum.minGasPrice,
+        denomination: 'gwei',
+        computeUnits: DEFAULT_GAS_LIMIT,
+        feeAsset: ethereum.nativeTokenSymbol,
+        fee: totalFeeInEth,
+        timestamp: Date.now(),
+      };
+    } catch (instanceError) {
+      logger.error(`Error getting Ethereum instance for network ${network}: ${instanceError.message}`);
+      throw fastify.httpErrors.internalServerError(
+        `Failed to get Ethereum instance for network ${network}: ${instanceError.message}`,
+      );
+    }
   }
 }
 
 export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: EstimateGasRequestType;
+  fastify.get<{
+    Querystring: EstimateGasRequestType;
     Reply: EstimateGasResponse;
   }>(
     '/estimate-gas',
     {
       schema: {
         description: 'Estimate gas prices for Ethereum transactions',
-        tags: ['ethereum'],
-        body: {
-          ...EstimateGasRequestSchema,
-          properties: {
-            ...EstimateGasRequestSchema.properties,
-            network: {
-              type: 'string',
-              examples: [
-                'mainnet',
-                'arbitrum',
-                'optimism',
-                'base',
-                'sepolia',
-                'bsc',
-                'avalanche',
-                'celo',
-                'polygon',
-                'blast',
-                'zora',
-                'worldchain',
-              ],
-            },
-            gasLimit: { type: 'number', examples: [21000] },
-          },
-        },
+        tags: ['/chain/ethereum'],
+        querystring: EthereumEstimateGasRequest,
         response: {
           200: EstimateGasResponseSchema,
         },
       },
     },
     async (request) => {
-      const { network, gasLimit } = request.body;
-      return await estimateGasEthereum(fastify, network, gasLimit);
+      const { network } = request.query;
+      return await estimateGasEthereum(fastify, network);
     },
   );
 };

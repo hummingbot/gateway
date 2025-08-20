@@ -16,9 +16,7 @@ export const isFloatString = (str: string): boolean => {
   }
   const decimalSplit = str.split('.');
   if (decimalSplit.length === 2) {
-    return (
-      isIntegerString(decimalSplit[0]) && isNaturalNumberString(decimalSplit[1])
-    );
+    return isIntegerString(decimalSplit[0]) && isNaturalNumberString(decimalSplit[1]);
   }
   return false;
 };
@@ -26,12 +24,9 @@ export const isFloatString = (str: string): boolean => {
 export const isFractionString = (str: string): boolean => {
   const fractionSplit = str.split('/');
   if (fractionSplit.length == 2) {
-    return (
-      isIntegerString(fractionSplit[0]) && isIntegerString(fractionSplit[1])
-    );
+    return isIntegerString(fractionSplit[0]) && isIntegerString(fractionSplit[1]);
   }
   return false;
 };
 
-export const isBase58 = (value: string): boolean =>
-  /^[A-HJ-NP-Za-km-z1-9]*$/.test(value);
+export const isBase58 = (value: string): boolean => /^[A-HJ-NP-Za-km-z1-9]*$/.test(value);

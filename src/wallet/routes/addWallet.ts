@@ -1,12 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 
 import { logger } from '../../services/logger';
-import {
-  AddWalletRequest,
-  AddWalletResponse,
-  AddWalletRequestSchema,
-  AddWalletResponseSchema,
-} from '../schemas';
+import { AddWalletRequest, AddWalletResponse, AddWalletRequestSchema, AddWalletResponseSchema } from '../schemas';
 import { addWallet } from '../utils';
 
 export const addWalletRoute: FastifyPluginAsync = async (fastify) => {
@@ -15,13 +10,14 @@ export const addWalletRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Add a new wallet using a private key',
-        tags: ['wallet'],
+        tags: ['/wallet'],
         body: {
           ...AddWalletRequestSchema,
           examples: [
             {
               chain: 'solana',
               privateKey: '<your-private-key>',
+              setDefault: true,
             },
           ],
         },

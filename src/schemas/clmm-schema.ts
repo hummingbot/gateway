@@ -1,8 +1,10 @@
 import { Type, Static } from '@sinclair/typebox';
 
+import { TransactionStatus } from './chain-schema';
+
 export const FetchPoolsRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()), // Network (defaults to mainnet)
+    network: Type.Optional(Type.String()), // Network
     limit: Type.Optional(Type.Number({ minimum: 1 })), // Maximum number of pools to return
     tokenA: Type.Optional(Type.String()), // First token symbol or address
     tokenB: Type.Optional(Type.String()), // Second token symbol or address
@@ -11,6 +13,17 @@ export const FetchPoolsRequest = Type.Object(
 );
 
 export type FetchPoolsRequestType = Static<typeof FetchPoolsRequest>;
+
+export const GetPositionsOwnedRequest = Type.Object(
+  {
+    network: Type.Optional(Type.String()),
+    walletAddress: Type.String(),
+    poolAddress: Type.Optional(Type.String()), // Optional for Meteora, required for others
+  },
+  { $id: 'GetPositionsOwnedRequest' },
+);
+
+export type GetPositionsOwnedRequestType = Static<typeof GetPositionsOwnedRequest>;
 
 export const BinLiquiditySchema = Type.Object(
   {
@@ -58,9 +71,7 @@ export type MeteoraPoolInfo = Static<typeof MeteoraPoolInfoSchema>;
 export const GetPoolInfoRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
-    poolAddress: Type.Optional(Type.String()),
-    baseToken: Type.Optional(Type.String({ examples: ['SOL'] })),
-    quoteToken: Type.Optional(Type.String({ examples: ['USDC'] })),
+    poolAddress: Type.String(),
   },
   { $id: 'GetPoolInfoRequest' },
 );
@@ -90,7 +101,7 @@ export const GetPositionInfoRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
     positionAddress: Type.String(),
-    walletAddress: Type.String(),
+    walletAddress: Type.Optional(Type.String()),
   },
   { $id: 'GetPositionInfoRequest' },
 );
@@ -99,12 +110,10 @@ export type GetPositionInfoRequestType = Static<typeof GetPositionInfoRequest>;
 export const OpenPositionRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
-    walletAddress: Type.String(),
+    walletAddress: Type.Optional(Type.String()),
     lowerPrice: Type.Number(),
     upperPrice: Type.Number(),
-    poolAddress: Type.Optional(Type.String()),
-    baseToken: Type.Optional(Type.String({ examples: ['SOL'] })),
-    quoteToken: Type.Optional(Type.String({ examples: ['USDC'] })),
+    poolAddress: Type.String(),
     baseTokenAmount: Type.Optional(Type.Number()),
     quoteTokenAmount: Type.Optional(Type.Number()),
     slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
@@ -116,11 +125,18 @@ export type OpenPositionRequestType = Static<typeof OpenPositionRequest>;
 export const OpenPositionResponse = Type.Object(
   {
     signature: Type.String(),
-    fee: Type.Number(),
-    positionAddress: Type.String(),
-    positionRent: Type.Number(),
-    baseTokenAmountAdded: Type.Number(),
-    quoteTokenAmountAdded: Type.Number(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object({
+        fee: Type.Number(),
+        positionAddress: Type.String(),
+        positionRent: Type.Number(),
+        baseTokenAmountAdded: Type.Number(),
+        quoteTokenAmountAdded: Type.Number(),
+      }),
+    ),
   },
   { $id: 'OpenPositionResponse' },
 );
@@ -129,7 +145,7 @@ export type OpenPositionResponseType = Static<typeof OpenPositionResponse>;
 export const AddLiquidityRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
-    walletAddress: Type.String(),
+    walletAddress: Type.Optional(Type.String()),
     positionAddress: Type.String(),
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
@@ -142,9 +158,16 @@ export type AddLiquidityRequestType = Static<typeof AddLiquidityRequest>;
 export const AddLiquidityResponse = Type.Object(
   {
     signature: Type.String(),
-    fee: Type.Number(),
-    baseTokenAmountAdded: Type.Number(),
-    quoteTokenAmountAdded: Type.Number(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object({
+        fee: Type.Number(),
+        baseTokenAmountAdded: Type.Number(),
+        quoteTokenAmountAdded: Type.Number(),
+      }),
+    ),
   },
   { $id: 'AddLiquidityResponse' },
 );
@@ -153,7 +176,7 @@ export type AddLiquidityResponseType = Static<typeof AddLiquidityResponse>;
 export const RemoveLiquidityRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
-    walletAddress: Type.String(),
+    walletAddress: Type.Optional(Type.String()),
     positionAddress: Type.String(),
     percentageToRemove: Type.Number({ minimum: 0, maximum: 100 }),
   },
@@ -164,20 +187,25 @@ export type RemoveLiquidityRequestType = Static<typeof RemoveLiquidityRequest>;
 export const RemoveLiquidityResponse = Type.Object(
   {
     signature: Type.String(),
-    fee: Type.Number(),
-    baseTokenAmountRemoved: Type.Number(),
-    quoteTokenAmountRemoved: Type.Number(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object({
+        fee: Type.Number(),
+        baseTokenAmountRemoved: Type.Number(),
+        quoteTokenAmountRemoved: Type.Number(),
+      }),
+    ),
   },
   { $id: 'RemoveLiquidityResponse' },
 );
-export type RemoveLiquidityResponseType = Static<
-  typeof RemoveLiquidityResponse
->;
+export type RemoveLiquidityResponseType = Static<typeof RemoveLiquidityResponse>;
 
 export const CollectFeesRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
-    walletAddress: Type.String(),
+    walletAddress: Type.Optional(Type.String()),
     positionAddress: Type.String(),
   },
   { $id: 'CollectFeesRequest' },
@@ -187,9 +215,16 @@ export type CollectFeesRequestType = Static<typeof CollectFeesRequest>;
 export const CollectFeesResponse = Type.Object(
   {
     signature: Type.String(),
-    fee: Type.Number(),
-    baseFeeAmountCollected: Type.Number(),
-    quoteFeeAmountCollected: Type.Number(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object({
+        fee: Type.Number(),
+        baseFeeAmountCollected: Type.Number(),
+        quoteFeeAmountCollected: Type.Number(),
+      }),
+    ),
   },
   { $id: 'CollectFeesResponse' },
 );
@@ -198,7 +233,7 @@ export type CollectFeesResponseType = Static<typeof CollectFeesResponse>;
 export const ClosePositionRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
-    walletAddress: Type.String(),
+    walletAddress: Type.Optional(Type.String()),
     positionAddress: Type.String(),
   },
   { $id: 'ClosePositionRequest' },
@@ -208,22 +243,25 @@ export type ClosePositionRequestType = Static<typeof ClosePositionRequest>;
 export const ClosePositionResponse = Type.Object(
   {
     signature: Type.String(),
-    fee: Type.Number(),
-    positionRentRefunded: Type.Number(),
-    baseTokenAmountRemoved: Type.Number(),
-    quoteTokenAmountRemoved: Type.Number(),
-    baseFeeAmountCollected: Type.Number(),
-    quoteFeeAmountCollected: Type.Number(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object({
+        fee: Type.Number(),
+        positionRentRefunded: Type.Number(),
+        baseTokenAmountRemoved: Type.Number(),
+        quoteTokenAmountRemoved: Type.Number(),
+        baseFeeAmountCollected: Type.Number(),
+        quoteFeeAmountCollected: Type.Number(),
+      }),
+    ),
   },
   { $id: 'ClosePositionResponse' },
 );
 export type ClosePositionResponseType = Static<typeof ClosePositionResponse>;
 
-export const QuotePositionRequest = Type.Omit(
-  OpenPositionRequest,
-  ['walletAddress'],
-  { $id: 'QuotePositionRequest' },
-);
+export const QuotePositionRequest = Type.Omit(OpenPositionRequest, ['walletAddress'], { $id: 'QuotePositionRequest' });
 export type QuotePositionRequestType = Static<typeof QuotePositionRequest>;
 
 export const QuotePositionResponse = Type.Object(
@@ -238,3 +276,98 @@ export const QuotePositionResponse = Type.Object(
   { $id: 'QuotePositionResponse' },
 );
 export type QuotePositionResponseType = Static<typeof QuotePositionResponse>;
+
+// ========================================
+// CLMM Swap Types
+// ========================================
+
+export const QuoteSwapRequest = Type.Object(
+  {
+    network: Type.Optional(Type.String()),
+    poolAddress: Type.Optional(
+      Type.String({
+        description: 'Pool address (optional - can be looked up from baseToken and quoteToken)',
+      }),
+    ),
+    baseToken: Type.String({
+      description: 'Token to determine swap direction',
+    }),
+    quoteToken: Type.Optional(
+      Type.String({
+        description: 'The other token in the pair (optional - required if poolAddress not provided)',
+      }),
+    ),
+    amount: Type.Number(),
+    side: Type.String({
+      description: 'Trade direction',
+      enum: ['BUY', 'SELL'],
+    }),
+    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+  },
+  { $id: 'ClmmQuoteSwapRequest' },
+);
+export type QuoteSwapRequestType = Static<typeof QuoteSwapRequest>;
+
+export const QuoteSwapResponse = Type.Object(
+  {
+    poolAddress: Type.String(),
+    tokenIn: Type.String(),
+    tokenOut: Type.String(),
+    amountIn: Type.Number(),
+    amountOut: Type.Number(),
+    price: Type.Number(),
+    slippagePct: Type.Optional(Type.Number()),
+    minAmountOut: Type.Number(),
+    maxAmountIn: Type.Number(),
+    priceImpactPct: Type.Number(),
+  },
+  { $id: 'ClmmQuoteSwapResponse' },
+);
+export type QuoteSwapResponseType = Static<typeof QuoteSwapResponse>;
+
+export const ExecuteSwapRequest = Type.Object(
+  {
+    walletAddress: Type.Optional(Type.String()),
+    network: Type.Optional(Type.String()),
+    poolAddress: Type.Optional(
+      Type.String({
+        description: 'Pool address (optional - can be looked up from baseToken and quoteToken)',
+      }),
+    ),
+    baseToken: Type.String(),
+    quoteToken: Type.Optional(
+      Type.String({
+        description: 'The other token in the pair (optional - required if poolAddress not provided)',
+      }),
+    ),
+    amount: Type.Number(),
+    side: Type.String({
+      enum: ['BUY', 'SELL'],
+    }),
+    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+  },
+  { $id: 'ClmmExecuteSwapRequest' },
+);
+export type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;
+
+export const ExecuteSwapResponse = Type.Object(
+  {
+    signature: Type.String(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object({
+        tokenIn: Type.String(),
+        tokenOut: Type.String(),
+        amountIn: Type.Number(),
+        amountOut: Type.Number(),
+        fee: Type.Number(),
+        baseTokenBalanceChange: Type.Number(),
+        quoteTokenBalanceChange: Type.Number(),
+      }),
+    ),
+  },
+  { $id: 'ClmmExecuteSwapResponse' },
+);
+export type ExecuteSwapResponseType = Static<typeof ExecuteSwapResponse>;

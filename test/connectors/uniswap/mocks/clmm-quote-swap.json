@@ -8,7 +8,5 @@
   "quoteTokenBalanceChange": 2202.75,
   "price": 2202.75,
   "routePath": "WETH → USDC",
-  "gasPrice": 1.5,
-  "gasLimit": 180000,
-  "gasCost": 0.00027
+  "computeUnits": 180000
 }

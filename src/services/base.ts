@@ -5,11 +5,14 @@ import { format, fraction, number } from 'mathjs';
 
 import { isFractionString, isFloatString } from './string-utils';
 
-// the type of information source for tokens
-export type TokenListType = 'FILE' | 'URL';
-
 // the type of information source for markets
 export type MarketListType = 'FILE' | 'URL';
+
+// Available networks configuration for connectors
+export interface AvailableNetworks {
+  chain: string;
+  networks: Array<string>;
+}
 
 // represent a token any chain, it may require some work arounds
 export interface TokenInfo {
@@ -33,9 +36,7 @@ export const stringInsert = (str: string, val: string, index: number) => {
 // counts decimal places of a value
 export const countDecimals = (value: number): number => {
   if (value >= 1 || value <= 0) {
-    throw new RangeError(
-      'countDecimals() is only valid for values between (0, 1).',
-    );
+    throw new RangeError('countDecimals() is only valid for values between (0, 1).');
   } else {
     return Number(value.toExponential().split('-')[1]);
   }
@@ -58,18 +59,6 @@ export const bigNumberWithDecimalToStr = (n: BigNumber, d: number): string => {
     .join('');
 };
 
-export const gasCostInEthString = (
-  gasPrice: number,
-  gasLimitTransaction: number,
-): string => {
-  return bigNumberWithDecimalToStr(
-    BigNumber.from(Math.ceil(gasPrice * gasLimitTransaction)).mul(
-      BigNumber.from(1e9),
-    ),
-    18,
-  );
-};
-
 // a nice way to represent the token value without carrying around as a string
 export interface TokenValue {
   value: BigNumber;
@@ -78,9 +67,7 @@ export interface TokenValue {
 
 // we should turn Token into a string when we return as a value in an API call
 export const tokenValueToString = (t: TokenValue | string): string => {
-  return typeof t === 'string'
-    ? t
-    : bigNumberWithDecimalToStr(t.value, t.decimals);
+  return typeof t === 'string' ? t : bigNumberWithDecimalToStr(t.value, t.decimals);
 };
 
 // safely parse a JSON from a string to a type.
@@ -131,10 +118,7 @@ export const toFractionString = (value: number | string): string | null => {
   return null;
 };
 
-export const floatStringWithDecimalToBigNumber = (
-  floatString: string,
-  d: number,
-): BigNumber | null => {
+export const floatStringWithDecimalToBigNumber = (floatString: string, d: number): BigNumber | null => {
   if (d < 0) {
     return null;
   }
@@ -153,10 +137,7 @@ export const floatStringWithDecimalToBigNumber = (
   }
 };
 
-export const floatStringWithDecimalToFixed = (
-  floatString: string,
-  d: number,
-): string | null => {
+export const floatStringWithDecimalToFixed = (floatString: string, d: number): string | null => {
   if (d < 0) {
     return null;
   }
@@ -182,8 +163,5 @@ export const floatStringWithDecimalToFixed = (
  * @returns The decimal string representation
  */
 export const convertDecimals = (value: any, decimals: number): string => {
-  return DecimalUtil.adjustDecimals(
-    new Decimal(value.toString()),
-    decimals,
-  ).toString();
+  return DecimalUtil.adjustDecimals(new Decimal(value.toString()), decimals).toString();
 };

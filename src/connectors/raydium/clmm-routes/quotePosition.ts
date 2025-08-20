@@ -1,17 +1,15 @@
 import { TickUtils, PoolUtils } from '@raydium-io/raydium-sdk-v2';
+import { Static } from '@sinclair/typebox';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  QuotePositionRequestType,
-  QuotePositionResponseType,
-  QuotePositionRequest,
-  QuotePositionResponse,
-} from '../../../schemas/clmm-schema';
+import { QuotePositionResponseType, QuotePositionResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+import { RaydiumConfig } from '../raydium.config';
+import { RaydiumClmmQuotePositionRequest } from '../schemas';
 
 export async function quotePosition(
   _fastify: FastifyInstance,
@@ -33,20 +31,12 @@ export async function quotePosition(
     let poolAddressToUse = poolAddress;
     if (!poolAddressToUse) {
       if (!baseTokenSymbol || !quoteTokenSymbol) {
-        throw new Error(
-          'Either poolAddress or both baseToken and quoteToken must be provided',
-        );
+        throw new Error('Either poolAddress or both baseToken and quoteToken must be provided');
       }
 
-      poolAddressToUse = await raydium.findDefaultPool(
-        baseTokenSymbol,
-        quoteTokenSymbol,
-        'clmm',
-      );
+      poolAddressToUse = await raydium.findDefaultPool(baseTokenSymbol, quoteTokenSymbol, 'clmm');
       if (!poolAddressToUse) {
-        throw new Error(
-          `No CLMM pool found for pair ${baseTokenSymbol}-${quoteTokenSymbol}`,
-        );
+        throw new Error(`No CLMM pool found for pair ${baseTokenSymbol}-${quoteTokenSymbol}`);
       }
     }
 
@@ -54,40 +44,29 @@ export async function quotePosition(
     const rpcData = await raydium.getClmmPoolfromRPC(poolAddressToUse);
     poolInfo.price = rpcData.currentPrice;
 
-    const { tick: lowerTick, price: tickLowerPrice } =
-      TickUtils.getPriceAndTick({
-        poolInfo,
-        price: new Decimal(lowerPrice),
-        baseIn: true,
-      });
-    const { tick: upperTick, price: tickUpperPrice } =
-      TickUtils.getPriceAndTick({
-        poolInfo,
-        price: new Decimal(upperPrice),
-        baseIn: true,
-      });
+    const { tick: lowerTick, price: tickLowerPrice } = TickUtils.getPriceAndTick({
+      poolInfo,
+      price: new Decimal(lowerPrice),
+      baseIn: true,
+    });
+    const { tick: upperTick, price: tickUpperPrice } = TickUtils.getPriceAndTick({
+      poolInfo,
+      price: new Decimal(upperPrice),
+      baseIn: true,
+    });
 
     const baseAmountBN = baseTokenAmount
-      ? new BN(
-          new Decimal(baseTokenAmount)
-            .mul(10 ** poolInfo.mintA.decimals)
-            .toFixed(0),
-        )
+      ? new BN(new Decimal(baseTokenAmount).mul(10 ** poolInfo.mintA.decimals).toFixed(0))
       : undefined;
     const quoteAmountBN = quoteTokenAmount
-      ? new BN(
-          new Decimal(quoteTokenAmount)
-            .mul(10 ** poolInfo.mintB.decimals)
-            .toFixed(0),
-        )
+      ? new BN(new Decimal(quoteTokenAmount).mul(10 ** poolInfo.mintB.decimals).toFixed(0))
       : undefined;
     if (!baseAmountBN && !quoteAmountBN) {
       throw new Error('Must provide baseTokenAmount or quoteTokenAmount');
     }
 
     const epochInfo = await solana.connection.getEpochInfo();
-    const slippage =
-      (slippagePct === 0 ? 0 : slippagePct || raydium.getSlippagePct()) / 100;
+    const slippage = (slippagePct === 0 ? 0 : slippagePct || RaydiumConfig.config.slippagePct) / 100;
 
     let resBase;
     if (baseAmountBN) {
@@ -104,28 +83,18 @@ export async function quotePosition(
       });
       console.log('resBase', {
         liquidity: Number(resBase.liquidity.toString()),
-        amountA:
-          Number(resBase.amountA.amount.toString()) /
-          10 ** poolInfo.mintA.decimals,
-        amountB:
-          Number(resBase.amountB.amount.toString()) /
-          10 ** poolInfo.mintB.decimals,
-        amountSlippageA:
-          Number(resBase.amountSlippageA.amount.toString()) /
-          10 ** poolInfo.mintA.decimals,
-        amountSlippageB:
-          Number(resBase.amountSlippageB.amount.toString()) /
-          10 ** poolInfo.mintB.decimals,
+        amountA: Number(resBase.amountA.amount.toString()) / 10 ** poolInfo.mintA.decimals,
+        amountB: Number(resBase.amountB.amount.toString()) / 10 ** poolInfo.mintB.decimals,
+        amountSlippageA: Number(resBase.amountSlippageA.amount.toString()) / 10 ** poolInfo.mintA.decimals,
+        amountSlippageB: Number(resBase.amountSlippageB.amount.toString()) / 10 ** poolInfo.mintB.decimals,
         price:
           Number(resBase.amountB.amount.toString()) /
           10 ** poolInfo.mintB.decimals /
-          (Number(resBase.amountA.amount.toString()) /
-            10 ** poolInfo.mintA.decimals),
+          (Number(resBase.amountA.amount.toString()) / 10 ** poolInfo.mintA.decimals),
         priceWithSlippage:
           Number(resBase.amountSlippageB.amount.toString()) /
           10 ** poolInfo.mintB.decimals /
-          (Number(resBase.amountSlippageA.amount.toString()) /
-            10 ** poolInfo.mintA.decimals),
+          (Number(resBase.amountSlippageA.amount.toString()) / 10 ** poolInfo.mintA.decimals),
         expirationTime: resBase.expirationTime,
       });
     }
@@ -145,28 +114,18 @@ export async function quotePosition(
       });
       console.log('resQuote', {
         liquidity: Number(resQuote.liquidity.toString()),
-        amountA:
-          Number(resQuote.amountA.amount.toString()) /
-          10 ** poolInfo.mintA.decimals,
-        amountB:
-          Number(resQuote.amountB.amount.toString()) /
-          10 ** poolInfo.mintB.decimals,
-        amountSlippageA:
-          Number(resQuote.amountSlippageA.amount.toString()) /
-          10 ** poolInfo.mintA.decimals,
-        amountSlippageB:
-          Number(resQuote.amountSlippageB.amount.toString()) /
-          10 ** poolInfo.mintB.decimals,
+        amountA: Number(resQuote.amountA.amount.toString()) / 10 ** poolInfo.mintA.decimals,
+        amountB: Number(resQuote.amountB.amount.toString()) / 10 ** poolInfo.mintB.decimals,
+        amountSlippageA: Number(resQuote.amountSlippageA.amount.toString()) / 10 ** poolInfo.mintA.decimals,
+        amountSlippageB: Number(resQuote.amountSlippageB.amount.toString()) / 10 ** poolInfo.mintB.decimals,
         price:
           Number(resQuote.amountB.amount.toString()) /
           10 ** poolInfo.mintB.decimals /
-          (Number(resQuote.amountA.amount.toString()) /
-            10 ** poolInfo.mintA.decimals),
+          (Number(resQuote.amountA.amount.toString()) / 10 ** poolInfo.mintA.decimals),
         priceWithSlippage:
           Number(resQuote.amountSlippageB.amount.toString()) /
           10 ** poolInfo.mintB.decimals /
-          (Number(resQuote.amountSlippageA.amount.toString()) /
-            10 ** poolInfo.mintA.decimals),
+          (Number(resQuote.amountSlippageA.amount.toString()) / 10 ** poolInfo.mintA.decimals),
         expirationTime: resQuote.expirationTime,
       });
     }
@@ -187,16 +146,10 @@ export async function quotePosition(
 
     return {
       baseLimited,
-      baseTokenAmount:
-        Number(res.amountA.amount.toString()) / 10 ** poolInfo.mintA.decimals,
-      quoteTokenAmount:
-        Number(res.amountB.amount.toString()) / 10 ** poolInfo.mintB.decimals,
-      baseTokenAmountMax:
-        Number(res.amountSlippageA.amount.toString()) /
-        10 ** poolInfo.mintA.decimals,
-      quoteTokenAmountMax:
-        Number(res.amountSlippageB.amount.toString()) /
-        10 ** poolInfo.mintB.decimals,
+      baseTokenAmount: Number(res.amountA.amount.toString()) / 10 ** poolInfo.mintA.decimals,
+      quoteTokenAmount: Number(res.amountB.amount.toString()) / 10 ** poolInfo.mintB.decimals,
+      baseTokenAmountMax: Number(res.amountSlippageA.amount.toString()) / 10 ** poolInfo.mintA.decimals,
+      quoteTokenAmountMax: Number(res.amountSlippageB.amount.toString()) / 10 ** poolInfo.mintB.decimals,
       liquidity: res.liquidity,
     };
   } catch (error) {
@@ -207,38 +160,17 @@ export async function quotePosition(
 
 export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: QuotePositionRequestType;
-    Reply: QuotePositionResponseType | { error: string };
+    Querystring: Static<typeof RaydiumClmmQuotePositionRequest>;
+    Reply: QuotePositionResponseType;
   }>(
     '/quote-position',
     {
       schema: {
         description: 'Quote amounts for a new Raydium CLMM position',
-        tags: ['raydium/clmm'],
-        querystring: {
-          ...QuotePositionRequest,
-          properties: {
-            ...QuotePositionRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            lowerPrice: { type: 'number', examples: [100] },
-            upperPrice: { type: 'number', examples: [180] },
-            poolAddress: {
-              type: 'string',
-              examples: ['3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'],
-            },
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            baseTokenAmount: { type: 'number', examples: [0.1] },
-            quoteTokenAmount: { type: 'number', examples: [15] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        tags: ['/connector/raydium'],
+        querystring: RaydiumClmmQuotePositionRequest,
         response: {
           200: QuotePositionResponse,
-          500: {
-            type: 'object',
-            properties: { error: { type: 'string' } },
-          },
         },
       },
     },
@@ -249,19 +181,10 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           lowerPrice,
           upperPrice,
           poolAddress,
-          baseToken,
-          quoteToken,
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
         } = request.query;
-
-        // Check if either poolAddress or both baseToken and quoteToken are provided
-        if (!poolAddress && (!baseToken || !quoteToken)) {
-          throw fastify.httpErrors.badRequest(
-            'Either poolAddress or both baseToken and quoteToken must be provided',
-          );
-        }
 
         return await quotePosition(
           fastify,
@@ -272,14 +195,12 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
-          baseToken,
-          quoteToken,
+          undefined, // baseToken not needed anymore
+          undefined, // quoteToken not needed anymore
         );
       } catch (e) {
         logger.error(e);
-        throw fastify.httpErrors.internalServerError(
-          'Failed to quote position',
-        );
+        throw fastify.httpErrors.internalServerError('Failed to quote position');
       }
     },
   );

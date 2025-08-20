@@ -9,24 +9,15 @@ export type ChainInstance = Ethereum | Solana;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
-    message =
-      message !== undefined
-        ? message
-        : 'Please provide a supported chain name.';
+    message = message !== undefined ? message : 'Please provide a supported chain name.';
     super(message);
     this.name = 'UnsupportedChainError';
     this.stack = (<any>new Error()).stack;
   }
 }
 
-export async function getInitializedChain<_T>(
-  chain: string,
-  network: string,
-): Promise<ChainInstance> {
-  const chainInstance = (await getChainInstance(
-    chain,
-    network,
-  )) as ChainInstance;
+export async function getInitializedChain<_T>(chain: string, network: string): Promise<ChainInstance> {
+  const chainInstance = (await getChainInstance(chain, network)) as ChainInstance;
 
   if (chainInstance === undefined) {
     throw new UnsupportedChainException(`unsupported chain ${chain}`);
@@ -44,10 +35,7 @@ export function getSupportedChains(): string[] {
   return ['ethereum', 'solana'];
 }
 
-export async function getChainInstance(
-  chain: string,
-  network: string,
-): Promise<ChainInstance | undefined> {
+export async function getChainInstance(chain: string, network: string): Promise<ChainInstance | undefined> {
   let connection: ChainInstance | undefined;
   const chainLower = chain.toLowerCase();
 

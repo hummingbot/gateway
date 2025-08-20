@@ -4,9 +4,7 @@ import { ConfigManagerCertPassphrase } from './services/config-manager-cert-pass
 import { ConfigManagerV2 } from './services/config-manager-v2';
 
 export const getHttpsOptions = () => {
-  const certPath = addSlashToPath(
-    ConfigManagerV2.getInstance().get('server.certificatePath'),
-  );
+  const certPath = addSlashToPath(ConfigManagerV2.getInstance().get('server.certificatePath'));
 
   return {
     key: fs.readFileSync(certPath + 'server_key.pem'),

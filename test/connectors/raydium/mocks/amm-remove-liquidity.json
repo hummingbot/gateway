@@ -1,0 +1,10 @@
+{
+  "signature": "2Ek4Xo5oGhQNUoVa9P7uXBjXzHcZQAhQqJrMcF8VKZRhTQkxvhLVVNjKfQQVBSvvzEKkUxTGSxgXvZeKuLKdWnqP",
+  "status": 1,
+  "data": {
+    "lpTokensRemoved": 0.001,
+    "baseTokenReceived": 0.01,
+    "quoteTokenReceived": 1.52,
+    "fee": 0.000005
+  }
+}

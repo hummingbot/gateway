@@ -2,14 +2,10 @@ import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  PoolInfo,
-  PoolInfoSchema,
-  FetchPoolsRequest,
-  FetchPoolsRequestType,
-} from '../../../schemas/clmm-schema';
+import { PoolInfo, PoolInfoSchema, FetchPoolsRequestType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
+import { MeteoraClmmFetchPoolsRequest } from '../schemas';
 // Using Fastify's native error handling
 
 export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
@@ -19,16 +15,8 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
   }>('/fetch-pools', {
     schema: {
       description: 'Fetch info about Meteora pools',
-      tags: ['meteora/clmm'],
-      querystring: {
-        ...FetchPoolsRequest,
-        properties: {
-          network: { type: 'string', default: 'mainnet-beta' },
-          limit: { type: 'number', minimum: 1, default: 10 },
-          tokenA: { type: 'string', examples: ['SOL'] },
-          tokenB: { type: 'string', examples: ['USDC'] },
-        },
-      },
+      tags: ['/connector/meteora'],
+      querystring: MeteoraClmmFetchPoolsRequest,
       response: {
         200: Type.Array(PoolInfoSchema),
       },
@@ -36,7 +24,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
     handler: async (request, _reply) => {
       try {
         const { limit, tokenA, tokenB } = request.query;
-        const network = request.query.network || 'mainnet-beta';
+        const network = request.query.network;
 
         const meteora = await Meteora.getInstance(network);
         const solana = await Solana.getInstance(network);
@@ -72,12 +60,8 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
               try {
                 return await meteora.getPoolInfo(pair.publicKey.toString());
               } catch (error) {
-                logger.error(
-                  `Failed to get pool info for ${pair.publicKey.toString()}: ${error.message}`,
-                );
-                throw fastify.httpErrors.notFound(
-                  `Pool not found: ${pair.publicKey.toString()}`,
-                );
+                logger.error(`Failed to get pool info for ${pair.publicKey.toString()}: ${error.message}`);
+                throw fastify.httpErrors.notFound(`Pool not found: ${pair.publicKey.toString()}`);
               }
             }),
         );
@@ -86,9 +70,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error('Error in fetch-pools:', e);
         if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError(
-          'Error processing the request',
-        );
+        throw fastify.httpErrors.internalServerError('Error processing the request');
       }
     },
   });

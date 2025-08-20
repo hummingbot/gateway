@@ -12,16 +12,32 @@ This directory contains comprehensive test suites for the Gateway API. The test 
     solana.test.js           # Solana chain tests
   /connectors/                # Connector endpoint tests by protocol
     /jupiter/                 # Jupiter connector tests
-      swap.test.js           # Swap operation tests
+      /router-routes/        # Router operation tests
+        quoteSwap.test.ts
+        executeSwap.test.ts
+        executeQuote.test.ts
     /uniswap/                 # Uniswap connector tests
-      amm.test.js            # V2 AMM tests
-      clmm.test.js           # V3 CLMM tests
-      swap.test.js           # Universal Router tests
+      /router-routes/        # Universal Router tests
+        quoteSwap.test.ts
+        executeSwap.test.ts
+        executeQuote.test.ts
+      /amm-routes/           # V2 AMM tests
+        quote-swap.test.ts
+        add-liquidity.test.ts
+      /clmm-routes/          # V3 CLMM tests
+        quote-swap.test.ts
+        pool-info.test.ts
     /raydium/                 # Raydium connector tests
-      amm.test.js            # AMM operation tests
-      clmm.test.js           # CLMM operation tests
+      /amm-routes/           # AMM operation tests
+      /clmm-routes/          # CLMM operation tests
     /meteora/                 # Meteora connector tests
-      clmm.test.js           # CLMM operation tests
+      /clmm-routes/          # CLMM operation tests
+    /0x/                      # 0x connector tests
+      /router-routes/        # Router operation tests
+        getPrice.test.ts
+        quoteSwap.test.ts
+        executeSwap.test.ts
+        executeQuote.test.ts
   /mocks/                     # Mock response data
     /chains/                  # Chain mock responses
       chains.json            # Chain list response
@@ -115,15 +131,16 @@ Tests use mock responses stored in JSON files in the `test/mocks` directory. Thi
 ### Mock File Naming Convention
 
 | Operation | Mock File Name |
-|-----------|----------------||
+|-----------|----------------|
 | Chain status | `status.json` |
 | Token balances | `balance.json` |
 | Token info | `tokens.json` |
 | Pool info | `{type}-pool-info.json` |
 | Swap quote | `{type}-quote-swap.json` |
 | Position info | `{type}-position-info.json` |
+| Router operations | `router-{operation}.json` |
 
-Where `{type}` is either `amm` or `clmm`.
+Where `{type}` is either `amm`, `clmm`, or `router`.
 
 ### Updating Mock Responses
 
