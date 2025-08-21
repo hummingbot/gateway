@@ -1,17 +1,15 @@
 import { TxVersion, TickUtils } from '@raydium-io/raydium-sdk-v2';
+import { Static } from '@sinclair/typebox';
+import { VersionedTransaction } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { Solana, BASE_FEE } from '../../../chains/solana/solana';
-import {
-  OpenPositionRequest,
-  OpenPositionResponse,
-  OpenPositionRequestType,
-  OpenPositionResponseType,
-} from '../../../schemas/clmm-schema';
+import { Solana } from '../../../chains/solana/solana';
+import { OpenPositionResponse, OpenPositionRequestType, OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+import { RaydiumClmmOpenPositionRequest } from '../schemas';
 
 import { quotePosition } from './quotePosition';
 
@@ -30,31 +28,28 @@ async function openPosition(
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
-  const wallet = await solana.getWallet(walletAddress);
+
+  // Prepare wallet and check if it's hardware
+  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
 
   // If no pool address provided, find default pool using base and quote tokens
   let poolAddressToUse = poolAddress;
   if (!poolAddressToUse) {
     if (!baseTokenSymbol || !quoteTokenSymbol) {
-      throw new Error(
-        'Either poolAddress or both baseToken and quoteToken must be provided',
-      );
+      throw new Error('Either poolAddress or both baseToken and quoteToken must be provided');
     }
 
-    poolAddressToUse = await raydium.findDefaultPool(
-      baseTokenSymbol,
-      quoteTokenSymbol,
-      'clmm',
-    );
+    poolAddressToUse = await raydium.findDefaultPool(baseTokenSymbol, quoteTokenSymbol, 'clmm');
     if (!poolAddressToUse) {
-      throw new Error(
-        `No CLMM pool found for pair ${baseTokenSymbol}-${quoteTokenSymbol}`,
-      );
+      throw new Error(`No CLMM pool found for pair ${baseTokenSymbol}-${quoteTokenSymbol}`);
     }
   }
 
-  const [poolInfo, poolKeys] =
-    await raydium.getClmmPoolfromAPI(poolAddressToUse);
+  const poolResponse = await raydium.getClmmPoolfromAPI(poolAddressToUse);
+  if (!poolResponse) {
+    throw _fastify.httpErrors.notFound(`Pool not found for address: ${poolAddressToUse}`);
+  }
+  const [poolInfo, poolKeys] = poolResponse;
   const rpcData = await raydium.getClmmPoolfromRPC(poolAddressToUse);
   poolInfo.price = rpcData.currentPrice;
 
@@ -72,6 +67,11 @@ async function openPosition(
     baseIn: true,
   });
 
+  // Validate price range
+  if (lowerPrice >= upperPrice) {
+    throw _fastify.httpErrors.badRequest('Lower price must be less than upper price');
+  }
+
   const quotePositionResponse = await quotePosition(
     _fastify,
     network,
@@ -84,117 +84,93 @@ async function openPosition(
   );
 
   logger.info('Opening Raydium CLMM position...');
-  const COMPUTE_UNITS = 300000;
-  let currentPriorityFee = (await solana.estimateGas()) * 1e9 - BASE_FEE;
-  while (currentPriorityFee <= solana.config.maxPriorityFee * 1e9) {
-    const priorityFeePerCU = Math.floor(
-      (currentPriorityFee * 1e6) / COMPUTE_UNITS,
+
+  // Use hardcoded compute units for open position
+  const COMPUTE_UNITS = 500000;
+
+  // Get priority fee from solana (returns lamports/CU)
+  const priorityFeeInLamports = await solana.estimateGasPrice();
+  // Convert lamports to microLamports (1 lamport = 1,000,000 microLamports)
+  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
+
+  const { transaction: txn, extInfo } = await raydium.raydiumSDK.clmm.openPositionFromBase({
+    poolInfo,
+    poolKeys,
+    tickUpper: Math.max(lowerTick, upperTick),
+    tickLower: Math.min(lowerTick, upperTick),
+    base: quotePositionResponse.baseLimited ? 'MintA' : 'MintB',
+    ownerInfo: { useSOLBalance: true },
+    baseAmount: quotePositionResponse.baseLimited
+      ? new BN(quotePositionResponse.baseTokenAmount * 10 ** baseTokenInfo.decimals)
+      : new BN(quotePositionResponse.quoteTokenAmount * 10 ** quoteTokenInfo.decimals),
+    otherAmountMax: quotePositionResponse.baseLimited
+      ? new BN(quotePositionResponse.quoteTokenAmountMax * 10 ** quoteTokenInfo.decimals)
+      : new BN(quotePositionResponse.baseTokenAmountMax * 10 ** baseTokenInfo.decimals),
+    txVersion: TxVersion.V0,
+    computeBudgetConfig: {
+      units: COMPUTE_UNITS,
+      microLamports: priorityFeePerCU,
+    },
+  });
+
+  // Sign transaction using helper
+  const transaction = (await raydium.signTransaction(
+    txn,
+    walletAddress,
+    isHardwareWallet,
+    wallet,
+  )) as VersionedTransaction;
+  await solana.simulateWithErrorHandling(transaction, _fastify);
+
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
+
+  // Return with status
+  if (confirmed && txData) {
+    // Transaction confirmed, return full data
+    const totalFee = txData.meta.fee;
+
+    // Use the new helper method to extract balance changes
+    const { baseTokenChange, quoteTokenChange, rent } = await solana.extractClmmBalanceChanges(
+      signature,
+      walletAddress,
+      baseTokenInfo,
+      quoteTokenInfo,
+      totalFee,
     );
-    const { transaction, extInfo } =
-      await raydium.raydiumSDK.clmm.openPositionFromBase({
-        poolInfo,
-        poolKeys,
-        tickUpper: Math.max(lowerTick, upperTick),
-        tickLower: Math.min(lowerTick, upperTick),
-        base: quotePositionResponse.baseLimited ? 'MintA' : 'MintB',
-        ownerInfo: { useSOLBalance: true },
-        baseAmount: quotePositionResponse.baseLimited
-          ? new BN(
-              quotePositionResponse.baseTokenAmount *
-                10 ** baseTokenInfo.decimals,
-            )
-          : new BN(
-              quotePositionResponse.quoteTokenAmount *
-                10 ** quoteTokenInfo.decimals,
-            ),
-        otherAmountMax: quotePositionResponse.baseLimited
-          ? new BN(
-              quotePositionResponse.quoteTokenAmountMax *
-                10 ** quoteTokenInfo.decimals,
-            )
-          : new BN(
-              quotePositionResponse.baseTokenAmountMax *
-                10 ** baseTokenInfo.decimals,
-            ),
-        txVersion: TxVersion.V0,
-        computeBudgetConfig: {
-          units: COMPUTE_UNITS,
-          microLamports: priorityFeePerCU,
-        },
-      });
 
-    transaction.sign([wallet]);
-    await solana.simulateTransaction(transaction);
-
-    const { confirmed, signature, txData } =
-      await solana.sendAndConfirmRawTransaction(transaction);
-    if (confirmed && txData) {
-      const totalFee = txData.meta.fee;
-      const { balanceChange } = await solana.extractAccountBalanceChangeAndFee(
-        signature,
-        0,
-      );
-      const positionRent = Math.abs(balanceChange);
-
-      const { baseTokenBalanceChange, quoteTokenBalanceChange } =
-        await solana.extractPairBalanceChangesAndFee(
-          signature,
-          baseTokenInfo,
-          quoteTokenInfo,
-          wallet.publicKey.toBase58(),
-        );
-
-      return {
-        signature,
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      data: {
         fee: totalFee / 1e9,
         positionAddress: extInfo.nftMint.toBase58(),
-        positionRent,
-        baseTokenAmountAdded: baseTokenBalanceChange,
-        quoteTokenAmountAdded: quoteTokenBalanceChange,
-      };
-    }
-    currentPriorityFee =
-      currentPriorityFee * solana.config.priorityFeeMultiplier;
-    logger.info(
-      `Increasing priority fee to ${currentPriorityFee} lamports/CU (max fee of ${(currentPriorityFee / 1e9).toFixed(6)} SOL)`,
-    );
+        positionRent: rent,
+        baseTokenAmountAdded: baseTokenChange,
+        quoteTokenAmountAdded: quoteTokenChange,
+      },
+    };
+  } else {
+    // Transaction pending, return for Hummingbot to handle retry
+    return {
+      signature,
+      status: 0, // PENDING
+    };
   }
-  throw new Error(
-    `Open position failed after reaching max priority fee of ${(solana.config.maxPriorityFee / 1e9).toFixed(6)} SOL`,
-  );
 }
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   const walletAddressExample = await Solana.getWalletAddressExample();
 
   fastify.post<{
-    Body: OpenPositionRequestType;
+    Body: Static<typeof RaydiumClmmOpenPositionRequest>;
     Reply: OpenPositionResponseType;
   }>(
     '/open-position',
     {
       schema: {
         description: 'Open a new Raydium CLMM position',
-        tags: ['raydium/clmm'],
-        body: {
-          ...OpenPositionRequest,
-          properties: {
-            ...OpenPositionRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            lowerPrice: { type: 'number', examples: [100] },
-            upperPrice: { type: 'number', examples: [180] },
-            poolAddress: {
-              type: 'string',
-              examples: ['3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv'],
-            },
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            slippagePct: { type: 'number', examples: [1] },
-            baseTokenAmount: { type: 'number', examples: [0.1] },
-            quoteTokenAmount: { type: 'number', examples: [15] },
-          },
-        },
+        tags: ['/connector/raydium'],
+        body: RaydiumClmmOpenPositionRequest,
         response: {
           200: OpenPositionResponse,
         },
@@ -208,20 +184,11 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           lowerPrice,
           upperPrice,
           poolAddress,
-          baseToken,
-          quoteToken,
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
         } = request.body;
-        const networkToUse = network || 'mainnet-beta';
-
-        // Check if either poolAddress or both baseToken and quoteToken are provided
-        if (!poolAddress && (!baseToken || !quoteToken)) {
-          throw fastify.httpErrors.badRequest(
-            'Either poolAddress or both baseToken and quoteToken must be provided',
-          );
-        }
+        const networkToUse = network;
 
         return await openPosition(
           fastify,
@@ -232,8 +199,8 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           poolAddress,
           baseTokenAmount,
           quoteTokenAmount,
-          baseToken,
-          quoteToken,
+          undefined, // baseToken not needed anymore
+          undefined, // quoteToken not needed anymore
           slippagePct,
         );
       } catch (e) {

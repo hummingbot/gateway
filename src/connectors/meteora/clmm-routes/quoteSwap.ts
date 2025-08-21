@@ -6,14 +6,12 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 import { Solana } from '../../../chains/solana/solana';
-import {
-  GetSwapQuoteResponseType,
-  GetSwapQuoteResponse,
-  GetSwapQuoteRequestType,
-  GetSwapQuoteRequest,
-} from '../../../schemas/swap-schema';
+import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
+import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Meteora } from '../meteora';
+import { MeteoraConfig } from '../meteora.config';
+import { MeteoraClmmQuoteSwapRequest, MeteoraClmmQuoteSwapRequestType } from '../schemas';
 
 export async function getRawSwapQuote(
   fastify: FastifyInstance,
@@ -31,9 +29,7 @@ export async function getRawSwapQuote(
   const quoteToken = await solana.getToken(quoteTokenSymbol);
 
   if (!baseToken || !quoteToken) {
-    throw fastify.httpErrors.notFound(
-      `Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`,
-    );
+    throw fastify.httpErrors.notFound(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
   }
 
   const dlmmPool = await meteora.getDlmmPool(poolAddress);
@@ -43,8 +39,7 @@ export async function getRawSwapQuote(
 
   // For buy orders, we're swapping quote token for base token (ExactOut)
   // For sell orders, we're swapping base token for quote token (ExactIn)
-  const [inputToken, outputToken] =
-    side === 'BUY' ? [quoteToken, baseToken] : [baseToken, quoteToken];
+  const [inputToken, outputToken] = side === 'BUY' ? [quoteToken, baseToken] : [baseToken, quoteToken];
 
   const amount_bn =
     side === 'BUY'
@@ -52,18 +47,11 @@ export async function getRawSwapQuote(
       : DecimalUtil.toBN(new Decimal(amount), inputToken.decimals);
   const swapForY = inputToken.address === dlmmPool.tokenX.publicKey.toBase58();
   const binArrays = await dlmmPool.getBinArrayForSwap(swapForY);
-  const effectiveSlippage = new BN(
-    (slippagePct ?? meteora.getSlippagePct()) * 100,
-  );
+  const effectiveSlippage = new BN((slippagePct ?? MeteoraConfig.config.slippagePct) * 100);
 
   const quote =
     side === 'BUY'
-      ? dlmmPool.swapQuoteExactOut(
-          amount_bn,
-          swapForY,
-          effectiveSlippage,
-          binArrays,
-        )
+      ? dlmmPool.swapQuoteExactOut(amount_bn, swapForY, effectiveSlippage, binArrays)
       : dlmmPool.swapQuote(amount_bn, swapForY, effectiveSlippage, binArrays);
 
   return {
@@ -85,7 +73,7 @@ async function formatSwapQuote(
   side: 'BUY' | 'SELL',
   poolAddress: string,
   slippagePct?: number,
-): Promise<GetSwapQuoteResponseType> {
+): Promise<QuoteSwapResponseType> {
   const { inputToken, outputToken, quote, dlmmPool } = await getRawSwapQuote(
     fastify,
     network,
@@ -108,48 +96,31 @@ async function formatSwapQuote(
 
   if (side === 'BUY') {
     const exactOutQuote = quote as SwapQuoteExactOut;
-    const estimatedAmountIn = DecimalUtil.fromBN(
-      exactOutQuote.inAmount,
-      inputToken.decimals,
-    ).toNumber();
-    const maxAmountIn = DecimalUtil.fromBN(
-      exactOutQuote.maxInAmount,
-      inputToken.decimals,
-    ).toNumber();
-    const amountOut = DecimalUtil.fromBN(
-      exactOutQuote.outAmount,
-      outputToken.decimals,
-    ).toNumber();
+    const estimatedAmountIn = DecimalUtil.fromBN(exactOutQuote.inAmount, inputToken.decimals).toNumber();
+    const maxAmountIn = DecimalUtil.fromBN(exactOutQuote.maxInAmount, inputToken.decimals).toNumber();
+    const amountOut = DecimalUtil.fromBN(exactOutQuote.outAmount, outputToken.decimals).toNumber();
 
     const price = amountOut / estimatedAmountIn;
 
     return {
+      // Base QuoteSwapResponse fields in correct order
       poolAddress,
-      estimatedAmountIn,
-      estimatedAmountOut: amountOut,
-      maxAmountIn,
-      minAmountOut: amountOut,
-      baseTokenBalanceChange: amountOut,
-      quoteTokenBalanceChange: -estimatedAmountIn,
+      tokenIn: inputToken.address,
+      tokenOut: outputToken.address,
+      amountIn: estimatedAmountIn,
+      amountOut: amountOut,
       price,
-      gasPrice: 0,
-      gasLimit: 0,
-      gasCost: 0,
+      slippagePct: slippagePct || 1, // Default 1% if not provided
+      minAmountOut: amountOut,
+      maxAmountIn,
+      // CLMM-specific fields
+      priceImpactPct: 0, // TODO: Calculate actual price impact
     };
   } else {
     const exactInQuote = quote as SwapQuote;
-    const estimatedAmountIn = DecimalUtil.fromBN(
-      exactInQuote.consumedInAmount,
-      inputToken.decimals,
-    ).toNumber();
-    const estimatedAmountOut = DecimalUtil.fromBN(
-      exactInQuote.outAmount,
-      outputToken.decimals,
-    ).toNumber();
-    const minAmountOut = DecimalUtil.fromBN(
-      exactInQuote.minOutAmount,
-      outputToken.decimals,
-    ).toNumber();
+    const estimatedAmountIn = DecimalUtil.fromBN(exactInQuote.consumedInAmount, inputToken.decimals).toNumber();
+    const estimatedAmountOut = DecimalUtil.fromBN(exactInQuote.outAmount, outputToken.decimals).toNumber();
+    const minAmountOut = DecimalUtil.fromBN(exactInQuote.minOutAmount, outputToken.decimals).toNumber();
 
     // For sell orders:
     // - Base token (input) decreases (negative)
@@ -160,73 +131,83 @@ async function formatSwapQuote(
     const price = estimatedAmountOut / estimatedAmountIn;
 
     return {
+      // Base QuoteSwapResponse fields in correct order
       poolAddress,
-      estimatedAmountIn,
-      estimatedAmountOut,
+      tokenIn: inputToken.address,
+      tokenOut: outputToken.address,
+      amountIn: estimatedAmountIn,
+      amountOut: estimatedAmountOut,
+      price,
+      slippagePct: slippagePct || 1, // Default 1% if not provided
       minAmountOut,
       maxAmountIn: estimatedAmountIn,
-      baseTokenBalanceChange: baseTokenChange,
-      quoteTokenBalanceChange: quoteTokenChange,
-      price,
-      gasPrice: 0,
-      gasLimit: 0,
-      gasCost: 0,
+      // CLMM-specific fields
+      priceImpactPct: 0, // TODO: Calculate actual price impact
     };
   }
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetSwapQuoteRequestType;
-    Reply: GetSwapQuoteResponseType;
+    Querystring: MeteoraClmmQuoteSwapRequestType;
+    Reply: QuoteSwapResponseType;
   }>(
     '/quote-swap',
     {
       schema: {
         description: 'Get swap quote for Meteora CLMM',
-        tags: ['meteora/clmm'],
-        querystring: {
-          ...GetSwapQuoteRequest,
-          properties: {
-            ...GetSwapQuoteRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            baseToken: { type: 'string', examples: ['SOL'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.01] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            // poolAddress: { type: 'string', examples: [''] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        tags: ['/connector/meteora'],
+        querystring: MeteoraClmmQuoteSwapRequest,
         response: {
-          200: {
-            properties: {
-              ...GetSwapQuoteResponse.properties,
-            },
-          },
+          200: QuoteSwapResponse,
         },
       },
     },
     async (request) => {
       try {
-        const {
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          poolAddress,
-          slippagePct,
-        } = request.query;
-        const networkUsed = network || 'mainnet-beta';
-        const meteora = await Meteora.getInstance(networkUsed);
-        const poolAddressUsed =
-          poolAddress || (await meteora.findDefaultPool(baseToken, quoteToken));
+        const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query;
+        const networkUsed = network;
 
-        if (!poolAddressUsed) {
-          throw fastify.httpErrors.notFound(
-            `No pool found for ${baseToken}-${quoteToken} pair`,
+        // Validate essential parameters
+        if (!baseToken || !quoteToken || !amount || !side) {
+          throw fastify.httpErrors.badRequest('baseToken, quoteToken, amount, and side are required');
+        }
+
+        const solana = await Solana.getInstance(networkUsed);
+
+        let poolAddressToUse = poolAddress;
+
+        // If poolAddress is not provided, look it up by token pair
+        if (!poolAddressToUse) {
+          // Resolve token symbols to get proper symbols for pool lookup
+          const baseTokenInfo = await solana.getToken(baseToken);
+          const quoteTokenInfo = await solana.getToken(quoteToken);
+
+          if (!baseTokenInfo || !quoteTokenInfo) {
+            throw fastify.httpErrors.badRequest(
+              sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
+            );
+          }
+
+          // Use PoolService to find pool by token pair
+          const { PoolService } = await import('../../../services/pool-service');
+          const poolService = PoolService.getInstance();
+
+          const pool = await poolService.getPool(
+            'meteora',
+            networkUsed,
+            'clmm',
+            baseTokenInfo.symbol,
+            quoteTokenInfo.symbol,
           );
+
+          if (!pool) {
+            throw fastify.httpErrors.notFound(
+              `No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Meteora`,
+            );
+          }
+
+          poolAddressToUse = pool.address;
         }
 
         const result = await formatSwapQuote(
@@ -236,25 +217,18 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           quoteToken,
           amount,
           side as 'BUY' | 'SELL',
-          poolAddressUsed,
+          poolAddressToUse,
           slippagePct,
         );
 
-        let gasEstimation = null;
         try {
-          gasEstimation = await estimateGasSolana(fastify, networkUsed);
+          // Note: estimateGasSolana returns feePerComputeUnit, not gasLimit
+          await estimateGasSolana(fastify, networkUsed);
         } catch (error) {
-          logger.warn(
-            `Failed to estimate gas for swap quote: ${error.message}`,
-          );
+          logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
         }
 
-        return {
-          ...result,
-          gasPrice: gasEstimation?.gasPrice,
-          gasLimit: gasEstimation?.gasLimit,
-          gasCost: gasEstimation?.gasCost,
-        };
+        return result;
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

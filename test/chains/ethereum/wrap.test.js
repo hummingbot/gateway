@@ -37,8 +37,7 @@ function validateWrapResponse(response) {
     typeof response.tx === 'object' &&
     typeof response.tx.data === 'string' &&
     typeof response.tx.to === 'string' &&
-    (response.tx.gasLimit === null ||
-      typeof response.tx.gasLimit === 'string') &&
+    (response.tx.gasLimit === null || typeof response.tx.gasLimit === 'string') &&
     typeof response.tx.value === 'string'
   );
 }
@@ -63,14 +62,11 @@ describe('Ethereum Wrap Native Token Tests (Base Network)', () => {
       });
 
       // Make the request
-      const response = await axios.post(
-        `http://localhost:15888/chains/${CHAIN}/wrap`,
-        {
-          network: NETWORK,
-          address: TEST_WALLET,
-          amount: '0.1', // 0.1 ETH
-        },
-      );
+      const response = await axios.post(`http://localhost:15888/chains/${CHAIN}/wrap`, {
+        network: NETWORK,
+        address: TEST_WALLET,
+        amount: '0.1', // 0.1 ETH
+      });
 
       // Validate the response
       expect(response.status).toBe(200);
@@ -161,8 +157,7 @@ describe('Ethereum Wrap Native Token Tests (Base Network)', () => {
         response: {
           status: 400,
           data: {
-            error:
-              'Insufficient funds for transaction. Please ensure you have enough ETH to wrap.',
+            error: 'Insufficient funds for transaction. Please ensure you have enough ETH to wrap.',
             code: 400,
           },
         },

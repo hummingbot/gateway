@@ -1,56 +1,33 @@
 import { Contract } from '@ethersproject/contracts';
+import { Static } from '@sinclair/typebox';
 import { Token, CurrencyAmount, Percent } from '@uniswap/sdk-core';
-import {
-  Position,
-  Pool as V3Pool,
-  NonfungiblePositionManager,
-  FeeAmount,
-} from '@uniswap/v3-sdk';
-import { BigNumber } from 'ethers';
+import { Position, Pool as V3Pool, NonfungiblePositionManager, FeeAmount } from '@uniswap/v3-sdk';
+import { BigNumber, utils } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  AddLiquidityRequestType,
-  AddLiquidityRequest,
-  AddLiquidityResponseType,
-  AddLiquidityResponse,
-} from '../../../schemas/clmm-schema';
+import { AddLiquidityResponseType, AddLiquidityResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
+import { UniswapClmmAddLiquidityRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
-import {
-  getUniswapV3NftManagerAddress,
-  POSITION_MANAGER_ABI,
-  ERC20_ABI,
-} from '../uniswap.contracts';
+import { getUniswapV3NftManagerAddress, POSITION_MANAGER_ABI, ERC20_ABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
+
+// Default gas limit for CLMM add liquidity operations
+const CLMM_ADD_LIQUIDITY_GAS_LIMIT = 600000;
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
-    Body: AddLiquidityRequestType;
+    Body: Static<typeof UniswapClmmAddLiquidityRequest>;
     Reply: AddLiquidityResponseType;
   }>(
     '/add-liquidity',
     {
       schema: {
         description: 'Add liquidity to an existing Uniswap V3 position',
-        tags: ['uniswap/clmm'],
-        body: {
-          ...AddLiquidityRequest,
-          properties: {
-            ...AddLiquidityRequest.properties,
-            network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: ['0x...'] },
-            positionAddress: {
-              type: 'string',
-              description: 'Position NFT token ID',
-            },
-            baseTokenAmount: { type: 'number', examples: [0.1] },
-            quoteTokenAmount: { type: 'number', examples: [200] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
+        tags: ['/connector/uniswap'],
+        body: UniswapClmmAddLiquidityRequest,
         response: {
           200: AddLiquidityResponse,
         },
@@ -65,15 +42,14 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
+          gasPrice,
+          maxGas,
         } = request.body;
 
-        const networkToUse = network || 'base';
+        const networkToUse = network;
 
         // Validate essential parameters
-        if (
-          !positionAddress ||
-          (baseTokenAmount === undefined && quoteTokenAmount === undefined)
-        ) {
+        if (!positionAddress || (baseTokenAmount === undefined && quoteTokenAmount === undefined)) {
           throw fastify.httpErrors.badRequest('Missing required parameters');
         }
 
@@ -86,9 +62,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         if (!walletAddress) {
           walletAddress = await uniswap.getFirstWalletAddress();
           if (!walletAddress) {
-            throw fastify.httpErrors.badRequest(
-              'No wallet address provided and no default wallet found',
-            );
+            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
           }
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
@@ -100,15 +74,10 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get position manager address
-        const positionManagerAddress =
-          uniswap.config.uniswapV3NftManagerAddress(networkToUse);
+        const positionManagerAddress = getUniswapV3NftManagerAddress(networkToUse);
 
         // Create position manager contract
-        const positionManager = new Contract(
-          positionManagerAddress,
-          POSITION_MANAGER_ABI,
-          ethereum.provider,
-        );
+        const positionManager = new Contract(positionManagerAddress, POSITION_MANAGER_ABI, ethereum.provider);
 
         // Get position details
         const position = await positionManager.positions(positionAddress);
@@ -128,14 +97,10 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Calculate slippage tolerance
         // Convert slippagePct to integer basis points (0.5% -> 50 basis points)
-        const slippageTolerance =
-          slippagePct !== undefined
-            ? new Percent(Math.floor(slippagePct * 100), 10000)
-            : uniswap.getAllowedSlippage();
+        const slippageTolerance = new Percent(Math.floor((slippagePct ?? uniswap.config.slippagePct) * 100), 10000);
 
         // Determine base and quote tokens
-        const baseTokenSymbol =
-          token0.symbol === 'WETH' ? token0.symbol : token1.symbol;
+        const baseTokenSymbol = token0.symbol === 'WETH' ? token0.symbol : token1.symbol;
         const isBaseToken0 = token0.symbol === baseTokenSymbol;
 
         // Calculate token amounts to add
@@ -145,40 +110,26 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         if (baseTokenAmount !== undefined) {
           // Convert baseTokenAmount to raw amount
           const baseAmountRaw = Math.floor(
-            baseTokenAmount *
-              Math.pow(10, isBaseToken0 ? token0.decimals : token1.decimals),
+            baseTokenAmount * Math.pow(10, isBaseToken0 ? token0.decimals : token1.decimals),
           );
 
           if (isBaseToken0) {
-            token0Amount = CurrencyAmount.fromRawAmount(
-              token0,
-              JSBI.BigInt(baseAmountRaw.toString()),
-            );
+            token0Amount = CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(baseAmountRaw.toString()));
           } else {
-            token1Amount = CurrencyAmount.fromRawAmount(
-              token1,
-              JSBI.BigInt(baseAmountRaw.toString()),
-            );
+            token1Amount = CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(baseAmountRaw.toString()));
           }
         }
 
         if (quoteTokenAmount !== undefined) {
           // Convert quoteTokenAmount to raw amount
           const quoteAmountRaw = Math.floor(
-            quoteTokenAmount *
-              Math.pow(10, isBaseToken0 ? token1.decimals : token0.decimals),
+            quoteTokenAmount * Math.pow(10, isBaseToken0 ? token1.decimals : token0.decimals),
           );
 
           if (isBaseToken0) {
-            token1Amount = CurrencyAmount.fromRawAmount(
-              token1,
-              JSBI.BigInt(quoteAmountRaw.toString()),
-            );
+            token1Amount = CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(quoteAmountRaw.toString()));
           } else {
-            token0Amount = CurrencyAmount.fromRawAmount(
-              token0,
-              JSBI.BigInt(quoteAmountRaw.toString()),
-            );
+            token0Amount = CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(quoteAmountRaw.toString()));
           }
         }
 
@@ -200,11 +151,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         };
 
         // Get calldata for increasing liquidity
-        const { calldata, value } =
-          NonfungiblePositionManager.addCallParameters(
-            newPosition,
-            increaseLiquidityOptions,
-          );
+        const { calldata, value } = NonfungiblePositionManager.addCallParameters(newPosition, increaseLiquidityOptions);
 
         // Check allowances instead of approving
         // Check token0 allowance if needed
@@ -218,9 +165,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           );
 
           const currentAllowance0 = BigNumber.from(allowance0.value);
-          const requiredAmount0 = BigNumber.from(
-            token0Amount.quotient.toString(),
-          );
+          const requiredAmount0 = BigNumber.from(token0Amount.quotient.toString());
 
           if (currentAllowance0.lt(requiredAmount0)) {
             throw fastify.httpErrors.badRequest(
@@ -240,9 +185,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           );
 
           const currentAllowance1 = BigNumber.from(allowance1.value);
-          const requiredAmount1 = BigNumber.from(
-            token1Amount.quotient.toString(),
-          );
+          const requiredAmount1 = BigNumber.from(token1Amount.quotient.toString());
 
           if (currentAllowance1.lt(requiredAmount1)) {
             throw fastify.httpErrors.badRequest(
@@ -256,13 +199,9 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           positionManagerAddress,
           [
             {
-              inputs: [
-                { internalType: 'bytes[]', name: 'data', type: 'bytes[]' },
-              ],
+              inputs: [{ internalType: 'bytes[]', name: 'data', type: 'bytes[]' }],
               name: 'multicall',
-              outputs: [
-                { internalType: 'bytes[]', name: 'results', type: 'bytes[]' },
-              ],
+              outputs: [{ internalType: 'bytes[]', name: 'results', type: 'bytes[]' }],
               stateMutability: 'payable',
               type: 'function',
             },
@@ -271,10 +210,12 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         );
 
         // Execute the transaction to increase liquidity
-        const tx = await positionManagerWithSigner.multicall([calldata], {
-          value: BigNumber.from(value.toString()),
-          gasLimit: 500000,
-        });
+        // Use Ethereum's prepareGasOptions method
+        const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
+        const txParams = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || CLMM_ADD_LIQUIDITY_GAS_LIMIT);
+        txParams.value = BigNumber.from(value.toString());
+
+        const tx = await positionManagerWithSigner.multicall([calldata], txParams);
 
         // Wait for transaction confirmation
         const receipt = await tx.wait();
@@ -286,29 +227,22 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         );
 
         // Calculate actual token amounts added from the position's mint amounts
-        const actualToken0Amount = formatTokenAmount(
-          newPosition.mintAmounts.amount0.toString(),
-          token0.decimals,
-        );
+        const actualToken0Amount = formatTokenAmount(newPosition.mintAmounts.amount0.toString(), token0.decimals);
 
-        const actualToken1Amount = formatTokenAmount(
-          newPosition.mintAmounts.amount1.toString(),
-          token1.decimals,
-        );
+        const actualToken1Amount = formatTokenAmount(newPosition.mintAmounts.amount1.toString(), token1.decimals);
 
         // Map back to base and quote amounts
-        const actualBaseAmount = isBaseToken0
-          ? actualToken0Amount
-          : actualToken1Amount;
-        const actualQuoteAmount = isBaseToken0
-          ? actualToken1Amount
-          : actualToken0Amount;
+        const actualBaseAmount = isBaseToken0 ? actualToken0Amount : actualToken1Amount;
+        const actualQuoteAmount = isBaseToken0 ? actualToken1Amount : actualToken0Amount;
 
         return {
           signature: receipt.transactionHash,
-          fee: gasFee,
-          baseTokenAmountAdded: actualBaseAmount,
-          quoteTokenAmountAdded: actualQuoteAmount,
+          status: 1, // CONFIRMED
+          data: {
+            fee: gasFee,
+            baseTokenAmountAdded: actualBaseAmount,
+            quoteTokenAmountAdded: actualQuoteAmount,
+          },
         };
       } catch (e) {
         logger.error(e);

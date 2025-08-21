@@ -1,5 +1,7 @@
+import { Contract } from '@ethersproject/contracts';
 import { Token } from '@uniswap/sdk-core';
 import { Pair as V2Pair } from '@uniswap/v2-sdk';
+import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { FeeAmount, Pool as V3Pool } from '@uniswap/v3-sdk';
 import { FastifyInstance } from 'fastify';
 import JSBI from 'jsbi';
@@ -7,7 +9,9 @@ import JSBI from 'jsbi';
 import { TokenInfo, Ethereum } from '../../chains/ethereum/ethereum';
 import { logger } from '../../services/logger';
 
+import { Uniswap } from './uniswap';
 import { UniswapConfig } from './uniswap.config';
+import { IUniswapV2PairABI } from './uniswap.contracts';
 
 /**
  * Check if a string is a valid fraction (in the form of 'a/b')
@@ -27,9 +31,7 @@ export const isValidV2Pool = async (poolAddress: string): Promise<boolean> => {
   try {
     // This would typically check if the contract at poolAddress conforms to the V2 Pair interface
     // For now, we'll just check if it's a valid address
-    return (
-      poolAddress && poolAddress.length === 42 && poolAddress.startsWith('0x')
-    );
+    return poolAddress && poolAddress.length === 42 && poolAddress.startsWith('0x');
   } catch (error) {
     logger.error(`Error validating V2 pool: ${error}`);
     return false;
@@ -45,9 +47,7 @@ export const isValidV3Pool = async (poolAddress: string): Promise<boolean> => {
   try {
     // This would typically check if the contract at poolAddress conforms to the V3 Pool interface
     // For now, we'll just check if it's a valid address
-    return (
-      poolAddress && poolAddress.length === 42 && poolAddress.startsWith('0x')
-    );
+    return poolAddress && poolAddress.length === 42 && poolAddress.startsWith('0x');
   } catch (error) {
     logger.error(`Error validating V3 pool: ${error}`);
     return false;
@@ -83,45 +83,13 @@ export const parseFeeTier = (feeTier: string): FeeAmount => {
  * @returns The pool address if found, otherwise null
  */
 export const findPoolAddress = (
-  baseToken: string,
-  quoteToken: string,
-  poolType: 'amm' | 'clmm',
-  network: string,
+  _baseToken: string,
+  _quoteToken: string,
+  _poolType: 'amm' | 'clmm',
+  _network: string,
 ): string | null => {
-  const poolKey = `${baseToken}-${quoteToken}`;
-  const reversePoolKey = `${quoteToken}-${baseToken}`;
-
-  try {
-    // Check if we have network-specific pools configuration
-    if (
-      !UniswapConfig.config.networks ||
-      !UniswapConfig.config.networks[network]
-    ) {
-      logger.error(
-        `Network pools configuration not found for network: ${network}`,
-      );
-      return null;
-    }
-
-    const networkConfig = UniswapConfig.config.networks[network];
-
-    if (poolType === 'amm') {
-      // Check AMM pools for the given network
-      return (
-        networkConfig.amm[poolKey] || networkConfig.amm[reversePoolKey] || null
-      );
-    } else {
-      // Check CLMM pools for the given network
-      return (
-        networkConfig.clmm[poolKey] ||
-        networkConfig.clmm[reversePoolKey] ||
-        null
-      );
-    }
-  } catch (error) {
-    logger.error(`Error finding pool address: ${error}`);
-    return null;
-  }
+  // Pools are now managed separately, return null for dynamic pool discovery
+  return null;
 };
 
 /**
@@ -130,10 +98,7 @@ export const findPoolAddress = (
  * @param decimals The token decimals
  * @returns The formatted token amount
  */
-export const formatTokenAmount = (
-  amount: string | number,
-  decimals: number,
-): number => {
+export const formatTokenAmount = (amount: string | number, decimals: number): number => {
   try {
     if (typeof amount === 'string') {
       return parseFloat(amount) / Math.pow(10, decimals);
@@ -162,12 +127,11 @@ export async function getFullTokenFromSymbol(
     await ethereum.init();
   }
 
-  const tokenInfo: TokenInfo = ethereum.getTokenBySymbol(tokenSymbol);
+  // Try to find token using ethereum's getToken method
+  const tokenInfo = ethereum.getToken(tokenSymbol);
 
   if (!tokenInfo) {
-    throw fastify.httpErrors.badRequest(
-      `Token ${tokenSymbol} is not supported`,
-    );
+    throw fastify.httpErrors.badRequest(`Token ${tokenSymbol} is not supported`);
   }
 
   const uniswapToken = new Token(
@@ -179,9 +143,7 @@ export async function getFullTokenFromSymbol(
   );
 
   if (!uniswapToken) {
-    throw fastify.httpErrors.internalServerError(
-      `Failed to create token for ${tokenSymbol}`,
-    );
+    throw fastify.httpErrors.internalServerError(`Failed to create token for ${tokenSymbol}`);
   }
 
   return uniswapToken;
@@ -229,4 +191,123 @@ export function getUniswapV3PoolWithTickProvider(
       },
     },
   );
+}
+
+/**
+ * Pool info interface for Uniswap pools
+ */
+export interface UniswapPoolInfo {
+  baseTokenAddress: string;
+  quoteTokenAddress: string;
+  poolType: 'amm' | 'clmm';
+}
+
+/**
+ * Get pool information for a Uniswap V2 (AMM) pool
+ * @param poolAddress The pool address
+ * @param network The network name
+ * @returns Pool information with base and quote token addresses
+ */
+export async function getV2PoolInfo(poolAddress: string, network: string): Promise<UniswapPoolInfo | null> {
+  try {
+    const ethereum = await Ethereum.getInstance(network);
+    const uniswap = await Uniswap.getInstance(network);
+
+    // Create pair contract
+    const pairContract = new Contract(poolAddress, IUniswapV2PairABI.abi, ethereum.provider);
+
+    // Get token addresses
+    const [token0Address, token1Address] = await Promise.all([pairContract.token0(), pairContract.token1()]);
+
+    // By convention, use token0 as base and token1 as quote
+    return {
+      baseTokenAddress: token0Address,
+      quoteTokenAddress: token1Address,
+      poolType: 'amm',
+    };
+  } catch (error) {
+    logger.error(`Error getting V2 pool info: ${error.message}`);
+    return null;
+  }
+}
+
+/**
+ * Get pool information for a Uniswap V3 (CLMM) pool
+ * @param poolAddress The pool address
+ * @param network The network name
+ * @returns Pool information with base and quote token addresses
+ */
+export async function getV3PoolInfo(poolAddress: string, network: string): Promise<UniswapPoolInfo | null> {
+  try {
+    const ethereum = await Ethereum.getInstance(network);
+
+    // V3 Pool contract ABI (minimal - just what we need)
+    const v3PoolABI = [
+      {
+        inputs: [],
+        name: 'token0',
+        outputs: [{ internalType: 'address', name: '', type: 'address' }],
+        stateMutability: 'view',
+        type: 'function',
+      },
+      {
+        inputs: [],
+        name: 'token1',
+        outputs: [{ internalType: 'address', name: '', type: 'address' }],
+        stateMutability: 'view',
+        type: 'function',
+      },
+      {
+        inputs: [],
+        name: 'fee',
+        outputs: [{ internalType: 'uint24', name: '', type: 'uint24' }],
+        stateMutability: 'view',
+        type: 'function',
+      },
+    ];
+
+    // Create pool contract
+    const poolContract = new Contract(poolAddress, v3PoolABI, ethereum.provider);
+
+    // Get token addresses
+    const [token0Address, token1Address] = await Promise.all([poolContract.token0(), poolContract.token1()]);
+
+    // By convention, use token0 as base and token1 as quote
+    return {
+      baseTokenAddress: token0Address,
+      quoteTokenAddress: token1Address,
+      poolType: 'clmm',
+    };
+  } catch (error) {
+    logger.error(`Error getting V3 pool info: ${error.message}`);
+    return null;
+  }
+}
+
+/**
+ * Get pool information for any Uniswap pool (V2 or V3)
+ * @param poolAddress The pool address
+ * @param network The network name
+ * @param poolType Optional pool type hint
+ * @returns Pool information with base and quote token addresses
+ */
+export async function getUniswapPoolInfo(
+  poolAddress: string,
+  network: string,
+  poolType?: 'amm' | 'clmm',
+): Promise<UniswapPoolInfo | null> {
+  // If pool type is specified, use the appropriate method
+  if (poolType === 'amm') {
+    return getV2PoolInfo(poolAddress, network);
+  } else if (poolType === 'clmm') {
+    return getV3PoolInfo(poolAddress, network);
+  }
+
+  // Otherwise, try V2 first, then V3
+  const v2Info = await getV2PoolInfo(poolAddress, network);
+  if (v2Info) {
+    return v2Info;
+  }
+
+  return getV3PoolInfo(poolAddress, network);
 }

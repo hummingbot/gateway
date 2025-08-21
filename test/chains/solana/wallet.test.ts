@@ -80,39 +80,35 @@ beforeEach(() => {
     return undefined;
   });
 
-  (mockFse.readdir as jest.Mock).mockImplementation(
-    async (dirPath: any, options?: any) => {
-      const pathStr = dirPath.toString();
+  (mockFse.readdir as jest.Mock).mockImplementation(async (dirPath: any, options?: any) => {
+    const pathStr = dirPath.toString();
 
-      // If asking for directories in wallet path
-      if (pathStr.endsWith('/wallets') && options?.withFileTypes) {
-        return Object.keys(mockWallets).map((chain) => ({
-          name: chain,
-          isDirectory: () => true,
-          isFile: () => false,
+    // If asking for directories in wallet path
+    if (pathStr.endsWith('/wallets') && options?.withFileTypes) {
+      return Object.keys(mockWallets).map((chain) => ({
+        name: chain,
+        isDirectory: () => true,
+        isFile: () => false,
+      }));
+    }
+
+    // If asking for files in a chain directory
+    const chain = pathStr.split('/').pop();
+    if (chain && mockWallets[chain]) {
+      if (options?.withFileTypes) {
+        return Array.from(mockWallets[chain]).map((addr) => ({
+          name: `${addr}.json`,
+          isDirectory: () => false,
+          isFile: () => true,
         }));
       }
+      return Array.from(mockWallets[chain]).map((addr) => `${addr}.json`);
+    }
 
-      // If asking for files in a chain directory
-      const chain = pathStr.split('/').pop();
-      if (chain && mockWallets[chain]) {
-        if (options?.withFileTypes) {
-          return Array.from(mockWallets[chain]).map((addr) => ({
-            name: `${addr}.json`,
-            isDirectory: () => false,
-            isFile: () => true,
-          }));
-        }
-        return Array.from(mockWallets[chain]).map((addr) => `${addr}.json`);
-      }
+    return [];
+  });
 
-      return [];
-    },
-  );
-
-  (mockFse.readFile as jest.Mock).mockResolvedValue(
-    Buffer.from(JSON.stringify(encodedPrivateKey)),
-  );
+  (mockFse.readFile as jest.Mock).mockResolvedValue(Buffer.from(JSON.stringify(encodedPrivateKey)));
   (mockFse.pathExists as jest.Mock).mockResolvedValue(true);
   (mockFse.ensureDir as jest.Mock).mockResolvedValue(undefined);
 
@@ -247,7 +243,8 @@ describe('Solana Wallet Operations', () => {
       expect(response.statusCode).toBe(200);
       expect(response.headers['content-type']).toMatch(/json/);
 
-      expect(response.payload).toBe('null');
+      const body = JSON.parse(response.payload);
+      expect(body.message).toContain('removed successfully');
       expect(mockWallets.solana.has(testAddress)).toBe(false);
     });
 
@@ -324,9 +321,7 @@ describe('Solana Wallet Operations', () => {
       });
       expect(finalGetResponse.statusCode).toBe(200);
 
-      const finalWallets: GetWalletResponse[] = JSON.parse(
-        finalGetResponse.payload,
-      );
+      const finalWallets: GetWalletResponse[] = JSON.parse(finalGetResponse.payload);
       const finalSolanaWallet = finalWallets.find((w) => w.chain === 'solana');
       expect(finalSolanaWallet?.walletAddresses).not.toContain(testAddress);
     });

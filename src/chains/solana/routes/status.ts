@@ -1,23 +1,16 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import {
-  StatusRequestType,
-  StatusResponseType,
-  StatusRequestSchema,
-  StatusResponseSchema,
-} from '../../../schemas/chain-schema';
+import { StatusRequestType, StatusResponseType, StatusResponseSchema } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
+import { SolanaStatusRequest } from '../schemas';
 import { Solana } from '../solana';
 
-export async function getSolanaStatus(
-  fastify: FastifyInstance,
-  network: string,
-): Promise<StatusResponseType> {
+export async function getSolanaStatus(fastify: FastifyInstance, network: string): Promise<StatusResponseType> {
   try {
     const solana = await Solana.getInstance(network);
     const chain = 'solana';
-    const rpcUrl = solana.config.network.nodeURL;
-    const nativeCurrency = solana.config.network.nativeCurrencySymbol;
+    const rpcUrl = solana.config.nodeURL;
+    const nativeCurrency = solana.config.nativeCurrencySymbol;
     const currentBlockNumber = await solana.getCurrentBlockNumber();
 
     return {
@@ -29,9 +22,7 @@ export async function getSolanaStatus(
     };
   } catch (error) {
     logger.error(`Error getting Solana status: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(
-      `Failed to get Solana status: ${error.message}`,
-    );
+    throw fastify.httpErrors.internalServerError(`Failed to get Solana status: ${error.message}`);
   }
 }
 
@@ -44,14 +35,8 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get Solana network status',
-        tags: ['solana'],
-        querystring: {
-          ...StatusRequestSchema,
-          properties: {
-            ...StatusRequestSchema.properties,
-            network: { type: 'string', examples: ['mainnet-beta', 'devnet'] },
-          },
-        },
+        tags: ['/chain/solana'],
+        querystring: SolanaStatusRequest,
         response: {
           200: StatusResponseSchema,
         },

@@ -1,0 +1,15 @@
+chainID: 1
+nodeURL: https://eth.llamarpc.com
+nativeCurrencySymbol: ETH
+\manualGasPrice: 110
+
+# For test compatibility - nested structure
+networks:
+  mainnet:
+    chainID: 1
+    nodeURL: https://eth.llamarpc.com
+    nativeCurrencySymbol: ETH
+  rinkeby:
+    chainID: 4
+    nodeURL: https://rinkeby.infura.io/v3/
+    nativeCurrencySymbol: ETH

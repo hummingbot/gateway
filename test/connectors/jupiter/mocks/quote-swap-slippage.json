@@ -1,13 +1,29 @@
 {
-  "estimatedAmountIn": 0.1,
-  "estimatedAmountOut": 16.391966,
+  "quoteId": "jupiter-quote-slippage-789",
+  "tokenIn": "So11111111111111111111111111111111111111112",
+  "tokenOut": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "amountIn": 0.1,
+  "amountOut": 16.391966,
+  "price": 163.91966,
+  "slippagePct": 2.5,
+  "priceWithSlippage": 159.821618,
   "minAmountOut": 15.98216585,
   "maxAmountIn": 0.1,
+  "estimatedAmountIn": 0.1,
+  "estimatedAmountOut": 16.391966,
   "baseTokenBalanceChange": -0.1,
   "quoteTokenBalanceChange": 16.391966,
-  "price": 163.91966,
-  "gasPrice": 0.5,
-  "gasLimit": 200000,
-  "gasCost": 0.000105,
-  "poolAddress": "jupiter-aggregator"
+  "computeUnits": 300000,
+  "poolAddress": "jupiter-aggregator",
+  "quoteResponse": {
+    "inputMint": "So11111111111111111111111111111111111111112",
+    "inAmount": "100000000",
+    "outputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "outAmount": "16391966",
+    "otherAmountThreshold": "15982166",
+    "swapMode": "ExactIn",
+    "slippageBps": 250,
+    "priceImpactPct": "0.001",
+    "routePlan": []
+  }
 }

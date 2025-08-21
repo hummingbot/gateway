@@ -5,10 +5,7 @@ import path from 'path';
 let patchedObjects: Set<any> = new Set();
 
 export const classHasGetter = (obj: any, prop: string): boolean => {
-  const description = Object.getOwnPropertyDescriptor(
-    Object.getPrototypeOf(obj),
-    prop,
-  );
+  const description = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(obj), prop);
   if (description) {
     return !!description.get;
   }
