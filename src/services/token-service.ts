@@ -234,27 +234,49 @@ export class TokenService {
   }
 
   /**
-   * Add new token
+   * Add new token or update existing token with same symbol
    */
   public async addToken(chain: string, network: string, token: Token): Promise<void> {
     await this.validateToken(chain, token);
 
     const tokens = await this.loadTokenList(chain, network);
 
-    // Check for duplicate address
-    const existingToken = tokens.find((t) => t.address.toLowerCase() === token.address.toLowerCase());
+    // Check if token with same symbol already exists
+    const existingSymbolIndex = tokens.findIndex((t) => t.symbol.toLowerCase() === token.symbol.toLowerCase());
 
-    if (existingToken) {
-      throw new Error(`Token with address ${token.address} already exists with symbol ${existingToken.symbol}`);
+    if (existingSymbolIndex !== -1) {
+      // Update existing token with same symbol
+      const oldToken = tokens[existingSymbolIndex];
+
+      // Check if new address conflicts with another token
+      if (oldToken.address.toLowerCase() !== token.address.toLowerCase()) {
+        const conflictingToken = tokens.find(
+          (t, idx) => idx !== existingSymbolIndex && t.address.toLowerCase() === token.address.toLowerCase(),
+        );
+        if (conflictingToken) {
+          throw new Error(`Token with address ${token.address} already exists with symbol ${conflictingToken.symbol}`);
+        }
+      }
+
+      // Update the existing token
+      tokens[existingSymbolIndex] = token;
+      logger.info(`Updated token ${token.symbol} (${token.address}) in ${chain}/${network}`);
+    } else {
+      // Check for duplicate address when adding new token
+      const existingAddressToken = tokens.find((t) => t.address.toLowerCase() === token.address.toLowerCase());
+      if (existingAddressToken) {
+        throw new Error(
+          `Token with address ${token.address} already exists with symbol ${existingAddressToken.symbol}`,
+        );
+      }
+
+      // Add the new token
+      tokens.push(token);
+      logger.info(`Added token ${token.symbol} (${token.address}) to ${chain}/${network}`);
     }
-
-    // Add the new token
-    tokens.push(token);
 
     // Save updated list
     await this.saveTokenList(chain, network, tokens);
-
-    logger.info(`Added token ${token.symbol} (${token.address}) to ${chain}/${network}`);
   }
 
   /**
