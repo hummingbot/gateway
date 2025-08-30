@@ -10,6 +10,8 @@
     "heliusAPIKey": { "type": "string" },
     "useHeliusRestRPC": { "type": "boolean" },
     "useHeliusWebSocketRPC": { "type": "boolean" },
+    "useHeliusSender": { "type": "boolean" },
+    "heliusRegionCode": { "type": "string" },
     "minPriorityFeePerCU": { "type": "number" }
   },
   "required": ["nodeURL", "nativeCurrencySymbol"],
