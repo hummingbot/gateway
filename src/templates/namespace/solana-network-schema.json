@@ -7,7 +7,9 @@
     "defaultComputeUnits": { "type": "number" },
     "confirmRetryInterval": { "type": "number" },
     "confirmRetryCount": { "type": "number" },
-    "basePriorityFeePct": { "type": "number" },
+    "heliusAPIKey": { "type": "string" },
+    "useHeliusRestRPC": { "type": "boolean" },
+    "useHeliusWebSocketRPC": { "type": "boolean" },
     "minPriorityFeePerCU": { "type": "number" }
   },
   "required": ["nodeURL", "nativeCurrencySymbol"],

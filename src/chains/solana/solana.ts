@@ -25,6 +25,7 @@ import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
+import { SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
 
 // Constants used for fee calculations
@@ -43,29 +44,6 @@ enum TransactionResponseStatusCode {
   CONFIRMED = 1,
 }
 
-// Add accounts from https://triton.one/solana-prioritization-fees/ to track general fees
-const PRIORITY_FEE_ACCOUNTS = [
-  '4qGj88CX3McdTXEviEaqeP2pnZJxRTsZFWyU3Mrnbku4',
-  '2oLNTQKRb4a2117kFi6BYTUDu3RPrMVAHFhCfPKMosxX',
-  'xKUz6fZ79SXnjGYaYhhYTYQBoRUBoCyuDMkBa1tL3zU',
-  'GASeo1wEK3Rwep6fsAt212Jw9zAYguDY5qUwTnyZ4RH',
-  'B8emFMG91JJsBELV4XVkTNe3YTs85x4nCqub7dRZUY1p',
-  'DteH7aNKykAG2b2KQo7DD9XvLBfNgAuf2ixj5HC7ppTk',
-  '5HngGmYzvSuh3XyU11brHDpMTHXQQRQQT4udGFtQSjgR',
-  'GD37bnQdGkDsjNqnVGr9qWTnQJSKMHbsiXX9tXLMUcaL',
-  '4po3YMfioHkNP4mL4N46UWJvBoQDS2HFjzGm1ifrUWuZ',
-  '5veMSa4ks66zydSaKSPMhV7H2eF88HvuKDArScNH9jaG',
-];
-
-interface PriorityFeeResponse {
-  jsonrpc: string;
-  result: Array<{
-    prioritizationFee: number;
-    slot: number;
-  }>;
-  id: number;
-}
-
 export class Solana {
   public connection: Connection;
   public network: string;
@@ -77,17 +55,23 @@ export class Solana {
 
   private static _instances: { [name: string]: Solana };
 
-  private static lastPriorityFeeEstimate: {
-    timestamp: number;
-    fee: number;
-  } | null = null;
-  private static PRIORITY_FEE_CACHE_MS = 10000; // 10 second cache
-
   private constructor(network: string) {
     this.network = network;
     this.config = getSolanaNetworkConfig(network);
     this.nativeTokenSymbol = this.config.nativeCurrencySymbol;
-    this.connection = new Connection(this.config.nodeURL, {
+
+    // Use Helius RPC if enabled and API key is available
+    let rpcUrl = this.config.nodeURL;
+    if (
+      this.config.useHeliusRestRPC &&
+      this.config.heliusAPIKey &&
+      this.config.heliusAPIKey.trim() !== '' &&
+      this.config.heliusAPIKey !== 'HELIUS_API_KEY'
+    ) {
+      rpcUrl = `https://mainnet.helius-rpc.com/?api-key=${this.config.heliusAPIKey}`;
+    }
+
+    this.connection = new Connection(rpcUrl, {
       commitment: 'confirmed',
     });
   }
@@ -106,7 +90,9 @@ export class Solana {
 
   private async init(): Promise<void> {
     try {
-      logger.info(`Initializing Solana connector for network: ${this.network}, nodeURL: ${this.config.nodeURL}`);
+      logger.info(
+        `Initializing Solana connector for network: ${this.network}, RPC URL: ${this.connection.rpcEndpoint}`,
+      );
       await this.loadTokens();
     } catch (e) {
       logger.error(`Failed to initialize ${this.network}: ${e}`);
@@ -894,83 +880,7 @@ export class Solana {
   }
 
   async estimateGasPrice(): Promise<number> {
-    // Check cache first
-    if (
-      Solana.lastPriorityFeeEstimate &&
-      Date.now() - Solana.lastPriorityFeeEstimate.timestamp < Solana.PRIORITY_FEE_CACHE_MS
-    ) {
-      return Solana.lastPriorityFeeEstimate.fee;
-    }
-
-    try {
-      const params: string[][] = [];
-      params.push(PRIORITY_FEE_ACCOUNTS);
-      const payload = {
-        method: 'getRecentPrioritizationFees',
-        params: params,
-        id: 1,
-        jsonrpc: '2.0',
-      };
-
-      const response = await fetch(this.connection.rpcEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        logger.error(`Failed to fetch priority fees, using minimum fee: ${response.status}`);
-        // Use configured minimum, default to 0.1
-        return this.config.minPriorityFeePerCU || 0.1;
-      }
-
-      const data: PriorityFeeResponse = await response.json();
-
-      // Extract fees and filter out zeros
-      const fees = data.result.map((item) => item.prioritizationFee).filter((fee) => fee > 0);
-
-      // Use configured minimum, default to 0.1
-      const minimumFeeLamports = this.config.minPriorityFeePerCU || 0.1;
-      if (fees.length === 0) {
-        return minimumFeeLamports;
-      }
-
-      // Sort fees in ascending order for percentile calculation
-      fees.sort((a, b) => a - b);
-
-      // Calculate statistics
-      const minFee = Math.min(...fees) / 1_000_000; // Convert to lamports
-      const maxFee = Math.max(...fees) / 1_000_000; // Convert to lamports
-      const averageFee = fees.reduce((sum, fee) => sum + fee, 0) / fees.length / 1_000_000; // Convert to lamports
-      logger.info(
-        `Recent priority fees paid: ${minFee.toFixed(4)} - ${maxFee.toFixed(4)} lamports/CU (avg: ${averageFee.toFixed(4)})`,
-      );
-
-      // Calculate index for percentile
-      const percentileIndex = Math.ceil((fees.length * this.config.basePriorityFeePct) / 100);
-      let basePriorityFee = fees[percentileIndex - 1] / 1_000_000; // Convert to lamports
-
-      // Ensure fee is not below minimum
-      basePriorityFee = Math.max(basePriorityFee, minimumFeeLamports);
-
-      logger.info(
-        `Base priority fee: ${basePriorityFee.toFixed(4)} lamports/CU (${basePriorityFee === minimumFeeLamports ? 'minimum' : `${this.config.basePriorityFeePct}th percentile`})`,
-      );
-
-      // Cache the result
-      Solana.lastPriorityFeeEstimate = {
-        timestamp: Date.now(),
-        fee: basePriorityFee,
-      };
-
-      return basePriorityFee;
-    } catch (error: any) {
-      logger.error(`Failed to fetch priority fees: ${error.message}, using minimum fee`);
-      // Use configured minimum, default to 0.1
-      return this.config.minPriorityFeePerCU || 0.1;
-    }
+    return await SolanaPriorityFees.estimatePriorityFee(this.config);
   }
 
   public async confirmTransaction(
