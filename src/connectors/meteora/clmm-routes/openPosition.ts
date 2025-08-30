@@ -168,13 +168,11 @@ async function openPosition(
   logger.info('Transaction simulated successfully, sending to network...');
 
   // Send and confirm the ORIGINAL unsigned transaction
-  // sendAndConfirmTransaction will handle the signing
-  // Pass higher compute units for openPosition (simulation showed ~390k needed)
-  const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(
-    createPositionTx,
-    [wallet, newImbalancePosition],
-    500000, // computeUnits - higher limit for position creation
-  );
+  // sendAndConfirmTransaction will handle the signing and auto-simulate for optimal compute units
+  const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(createPositionTx, [
+    wallet,
+    newImbalancePosition,
+  ]);
 
   // Get transaction data for confirmation
   const txData = await solana.connection.getTransaction(signature, {

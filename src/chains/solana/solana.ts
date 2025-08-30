@@ -1026,12 +1026,44 @@ export class Solana {
   public async sendAndConfirmTransaction(
     tx: Transaction | VersionedTransaction,
     signers: Signer[] = [],
-    computeUnits?: number,
     priorityFeePerCU?: number,
   ): Promise<{ signature: string; fee: number }> {
     // Use provided priority fee or estimate it
     const currentPriorityFee = priorityFeePerCU ?? (await this.estimateGasPrice());
-    const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
+
+    // Always simulate transaction to get actual compute units
+    let computeUnitsToUse: number;
+    try {
+      let simulationResult;
+
+      if (tx instanceof Transaction) {
+        // For regular transactions, simulate with the Transaction object
+        const result = await this.connection.simulateTransaction(tx);
+        simulationResult = result.value;
+      } else {
+        // For versioned transactions, use the config object
+        const result = await this.connection.simulateTransaction(tx, {
+          replaceRecentBlockhash: true,
+          sigVerify: false,
+        });
+        simulationResult = result.value;
+      }
+
+      if (simulationResult.unitsConsumed) {
+        // Add 10% margin for safety
+        computeUnitsToUse = Math.ceil(simulationResult.unitsConsumed * 1.1);
+        logger.info(
+          `Simulation consumed ${simulationResult.unitsConsumed} units, using ${computeUnitsToUse} with 10% margin`,
+        );
+      } else {
+        // Fallback to default if simulation doesn't return units
+        computeUnitsToUse = this.config.defaultComputeUnits;
+        logger.warn('Simulation did not return units consumed, using default');
+      }
+    } catch (error) {
+      logger.warn(`Failed to simulate for compute units: ${error.message}, using default`);
+      computeUnitsToUse = this.config.defaultComputeUnits;
+    }
 
     const basePriorityFeeLamports = currentPriorityFee * computeUnitsToUse;
     logger.info(
@@ -1043,7 +1075,6 @@ export class Solana {
       tx = await this.prepareTx(tx, currentPriorityFee, computeUnitsToUse, signers);
     } else {
       tx = await this.prepareVersionedTx(tx, currentPriorityFee, computeUnitsToUse, signers);
-      await this.connection.simulateTransaction(tx);
     }
 
     // Use the confirmation retry logic from sendAndConfirmRawTransaction
@@ -1240,25 +1271,67 @@ export class Solana {
     return this._sendAndConfirmRawTransaction(serializedTx);
   }
 
-  // Create a private method to handle the actual sending
+  // Create a private method to handle the actual sending with best practices
   private async _sendAndConfirmRawTransaction(
     serializedTx: Buffer | Uint8Array,
   ): Promise<{ confirmed: boolean; signature: string; txData: any }> {
+    // Get latest blockhash for confirmation
+    const latestBlockhash = await this.connection.getLatestBlockhash('confirmed');
+
     let retryCount = 0;
     while (retryCount < this.config.confirmRetryCount) {
-      const signature = await this.connection.sendRawTransaction(serializedTx, {
-        skipPreflight: true,
-      });
-      const { confirmed, txData } = await this.confirmTransaction(signature);
-      logger.info(
-        `[${retryCount + 1}/${this.config.confirmRetryCount}] Transaction ${signature} status: ${confirmed ? 'confirmed' : 'unconfirmed'}`,
-      );
-      if (confirmed && txData) {
-        return { confirmed, signature, txData };
+      try {
+        // Send transaction
+        const signature = await this.connection.sendRawTransaction(serializedTx, {
+          skipPreflight: true,
+          maxRetries: 0, // Handle retries ourselves
+        });
+
+        logger.info(
+          `[${retryCount + 1}/${this.config.confirmRetryCount}] Sent transaction ${signature}, confirming...`,
+        );
+
+        // Use the recommended confirmation method with blockhash
+        const confirmation = await this.connection.confirmTransaction({
+          signature,
+          blockhash: latestBlockhash.blockhash,
+          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+        });
+
+        if (confirmation.value.err) {
+          logger.error(`Transaction ${signature} failed with error:`, confirmation.value.err);
+          // Don't retry on transaction errors, return failure
+          return { confirmed: false, signature, txData: null };
+        }
+
+        // Get transaction data for fee calculation
+        const txData = await this.connection.getTransaction(signature, {
+          commitment: 'confirmed',
+          maxSupportedTransactionVersion: 0,
+        });
+
+        logger.info(
+          `[${retryCount + 1}/${this.config.confirmRetryCount}] Transaction ${signature} confirmed successfully`,
+        );
+        return { confirmed: true, signature, txData };
+      } catch (error) {
+        logger.warn(
+          `[${retryCount + 1}/${this.config.confirmRetryCount}] Transaction attempt failed: ${error.message}`,
+        );
+
+        // Check if this is a block height exceeded error
+        if (error.message?.includes('block height exceeded')) {
+          logger.error('Block height exceeded, transaction expired');
+          return { confirmed: false, signature: '', txData: null };
+        }
       }
+
       retryCount++;
-      await new Promise((resolve) => setTimeout(resolve, this.config.confirmRetryInterval * 1000));
+      if (retryCount < this.config.confirmRetryCount) {
+        await new Promise((resolve) => setTimeout(resolve, this.config.confirmRetryInterval * 1000));
+      }
     }
+
     return { confirmed: false, signature: '', txData: null };
   }
 
@@ -1494,31 +1567,6 @@ export class Solana {
       }
       throw new Error(`Error simulating transaction: ${error.message}`);
     }
-  }
-
-  // @deprecated Use sendAndConfirmRawTransaction instead
-  public async sendAndConfirmVersionedTransaction(
-    tx: VersionedTransaction,
-    signers: Signer[] = [],
-    computeUnits?: number,
-  ): Promise<{ signature: string; fee: number }> {
-    logger.warn('sendAndConfirmVersionedTransaction is deprecated. Use sendAndConfirmRawTransaction instead.');
-
-    const currentPriorityFee = Math.floor(await this.estimateGasPrice());
-    const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
-
-    // Prepare transaction with compute budget instructions
-    const modifiedTx = await this.prepareVersionedTx(tx, currentPriorityFee, computeUnitsToUse, signers);
-
-    // Use the new method
-    const result = await this.sendAndConfirmRawTransaction(modifiedTx);
-
-    if (result.confirmed && result.txData) {
-      const actualFee = this.getFee(result.txData);
-      return { signature: result.signature, fee: actualFee };
-    }
-
-    throw new Error(`Transaction ${result.signature} not confirmed after multiple attempts`);
   }
 
   /**
