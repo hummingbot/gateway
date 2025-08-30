@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, unpackAccount, getMint } from '@solana/spl-token';
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getMint } from '@solana/spl-token';
 import { TokenInfo } from '@solana/spl-token-registry';
 import {
   Connection,
@@ -327,12 +327,12 @@ export class Solana {
       return balances;
     }
 
-    // Get all token accounts for the provided address
+    // Get all token accounts for the provided address using jsonParsed encoding
     const [legacyAccounts, token2022Accounts] = await Promise.all([
-      this.connection.getTokenAccountsByOwner(publicKey, {
+      this.connection.getParsedTokenAccountsByOwner(publicKey, {
         programId: TOKEN_PROGRAM_ID,
       }),
-      this.connection.getTokenAccountsByOwner(publicKey, {
+      this.connection.getParsedTokenAccountsByOwner(publicKey, {
         programId: TOKEN_2022_PROGRAM_ID,
       }),
     ]);
@@ -345,14 +345,24 @@ export class Solana {
 
     // Create a mapping of all mint addresses to their token accounts
     const mintToAccount = new Map();
-    for (const value of allAccounts) {
+    for (const account of allAccounts) {
       try {
-        const programId = value.account.owner;
-        const parsedAccount = unpackAccount(value.pubkey, value.account, programId);
-        const mintAddress = parsedAccount.mint.toBase58();
-        mintToAccount.set(mintAddress, { parsedAccount, value });
+        const parsedInfo = account.account.data.parsed?.info;
+        if (!parsedInfo) {
+          logger.warn('Account data not parsed or missing info');
+          continue;
+        }
+        const mintAddress = parsedInfo.mint;
+        mintToAccount.set(mintAddress, {
+          parsedAccount: {
+            mint: new PublicKey(mintAddress),
+            amount: BigInt(parsedInfo.tokenAmount.amount),
+            decimals: parsedInfo.tokenAmount.decimals,
+          },
+          value: account,
+        });
       } catch (error) {
-        logger.warn(`Error unpacking account: ${error.message}`);
+        logger.warn(`Error processing parsed account: ${error.message}`);
         continue;
       }
     }
@@ -578,17 +588,19 @@ export class Solana {
   }
 
   /**
-   * Fetch all token accounts for a public key
+   * Fetch all token accounts for a public key using jsonParsed encoding for efficiency
    */
   private async fetchTokenAccounts(publicKey: PublicKey): Promise<Map<string, TokenAccount>> {
     const tokenAccountsMap = new Map<string, TokenAccount>();
 
     try {
+      // Use getParsedTokenAccountsByOwner - Helius optimization technique
+      // This returns pre-parsed data, avoiding manual unpacking
       const tokenAccountsPromise = Promise.all([
-        this.connection.getTokenAccountsByOwner(publicKey, {
+        this.connection.getParsedTokenAccountsByOwner(publicKey, {
           programId: TOKEN_PROGRAM_ID,
         }),
-        this.connection.getTokenAccountsByOwner(publicKey, {
+        this.connection.getParsedTokenAccountsByOwner(publicKey, {
           programId: TOKEN_2022_PROGRAM_ID,
         }),
       ]);
@@ -602,15 +614,36 @@ export class Solana {
       const allAccounts = [...legacyAccounts.value, ...token2022Accounts.value];
       logger.info(`Found ${allAccounts.length} token accounts for ${publicKey.toString()}`);
 
-      // Create mapping of mint addresses to token accounts
-      for (const value of allAccounts) {
+      // With getParsedTokenAccountsByOwner, data is already structured - no unpacking needed
+      for (const account of allAccounts) {
         try {
-          const programId = value.account.owner;
-          const parsedAccount = unpackAccount(value.pubkey, value.account, programId);
-          const mintAddress = parsedAccount.mint.toBase58();
-          tokenAccountsMap.set(mintAddress, { parsedAccount, value });
+          const parsedInfo = account.account.data.parsed?.info;
+          if (!parsedInfo) {
+            logger.warn('Account data not parsed or missing info');
+            continue;
+          }
+          const mintAddress = parsedInfo.mint;
+
+          // Store in format compatible with existing code
+          tokenAccountsMap.set(mintAddress, {
+            parsedAccount: {
+              mint: new PublicKey(mintAddress),
+              owner: new PublicKey(parsedInfo.owner),
+              amount: BigInt(parsedInfo.tokenAmount.amount),
+              decimals: parsedInfo.tokenAmount.decimals,
+              isNative: parsedInfo.isNative || false,
+              delegatedAmount: parsedInfo.delegatedAmount ? BigInt(parsedInfo.delegatedAmount.amount) : BigInt(0),
+              delegate: parsedInfo.delegate ? new PublicKey(parsedInfo.delegate) : null,
+              state: parsedInfo.state,
+              isInitialized: parsedInfo.state !== 'uninitialized',
+              isFrozen: parsedInfo.state === 'frozen',
+              rentExemptReserve: parsedInfo.isNative ? BigInt(parsedInfo.isNative) : null,
+              closeAuthority: parsedInfo.closeAuthority ? new PublicKey(parsedInfo.closeAuthority) : null,
+            },
+            value: account,
+          });
         } catch (error) {
-          logger.warn(`Error unpacking account: ${error.message}`);
+          logger.warn(`Error processing parsed account: ${error.message}`);
         }
       }
     } catch (error) {
