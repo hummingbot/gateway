@@ -23,6 +23,12 @@ useHeliusRestRPC: true
 # If true and API key is valid, uses Helius WebSocket endpoint for subscriptions
 useHeliusWebSocketRPC: true
 
+# If true and API key is valid, uses Helius Sender endpoint for faster transaction delivery
+useHeliusSender: true
+
+# Helius region code for Sender endpoint (slc, ewr, lon, fra, ams, sg, tyo)
+heliusRegionCode: 'slc'
+
 # Minimum priority fee per compute unit in lamports
 # This sets the floor for priority fees to ensure transactions are processed (default: 0.1 lamports/CU)
 minPriorityFeePerCU: 0.01

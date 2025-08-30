@@ -99,6 +99,7 @@
     "uuid": "^8.3.2",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^4.7.1",
+    "ws": "^8.18.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -115,7 +116,7 @@
     "@types/node": "^15.14.9",
     "@types/node-fetch": "^2.6.12",
     "@types/uuid": "^8.3.4",
-    "@types/ws": "^8.18.0",
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "bs58": "^4.0.1",

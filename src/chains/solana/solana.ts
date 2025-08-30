@@ -25,6 +25,7 @@ import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
+import { HeliusService } from './helius-service';
 import { SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
 
@@ -52,6 +53,7 @@ export class Solana {
   public tokenList: TokenInfo[] = [];
   public config: SolanaNetworkConfig;
   private _tokenMap: Record<string, TokenInfo> = {};
+  private heliusService: HeliusService;
 
   private static _instances: { [name: string]: Solana };
 
@@ -74,6 +76,9 @@ export class Solana {
     this.connection = new Connection(rpcUrl, {
       commitment: 'confirmed',
     });
+
+    // Initialize Helius service for WebSocket monitoring and connection warming
+    this.heliusService = new HeliusService(this.config);
   }
 
   public static async getInstance(network: string): Promise<Solana> {
@@ -94,6 +99,12 @@ export class Solana {
         `Initializing Solana connector for network: ${this.network}, RPC URL: ${this.connection.rpcEndpoint}`,
       );
       await this.loadTokens();
+
+      // Initialize Helius services (WebSocket monitoring + connection warming)
+      logger.info(
+        `Helius config: WebSocket=${this.config.useHeliusWebSocketRPC}, Sender=${this.config.useHeliusSender}, hasAPIKey=${!!this.config.heliusAPIKey}`,
+      );
+      await this.heliusService.initialize();
     } catch (e) {
       logger.error(`Failed to initialize ${this.network}: ${e}`);
       throw e;
@@ -888,6 +899,14 @@ export class Solana {
     timeout: number = 3000,
   ): Promise<{ confirmed: boolean; txData?: any }> {
     try {
+      // Use Helius WebSocket monitoring if available for real-time confirmation
+      if (this.heliusService.isWebSocketConnected()) {
+        logger.info(`Using WebSocket monitoring for transaction ${signature}`);
+        return await this.heliusService.monitorTransaction(signature, timeout);
+      }
+
+      // Fallback to polling-based confirmation
+      logger.info(`Using polling-based confirmation for transaction ${signature}`);
       const confirmationPromise = new Promise<{
         confirmed: boolean;
         txData?: any;
@@ -1181,68 +1200,110 @@ export class Solana {
     return this._sendAndConfirmRawTransaction(serializedTx);
   }
 
-  // Create a private method to handle the actual sending with best practices
+  // Create a private method to handle the actual sending with Helius best practices
   private async _sendAndConfirmRawTransaction(
     serializedTx: Buffer | Uint8Array,
   ): Promise<{ confirmed: boolean; signature: string; txData: any }> {
-    // Get latest blockhash for confirmation
-    const latestBlockhash = await this.connection.getLatestBlockhash('confirmed');
+    // Get latest blockhash for expiration checking
+    const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
 
-    let retryCount = 0;
-    while (retryCount < this.config.confirmRetryCount) {
+    let signature: string | null = null;
+
+    try {
+      // Use Helius Sender if available, otherwise use standard RPC
       try {
-        // Send transaction
-        const signature = await this.connection.sendRawTransaction(serializedTx, {
-          skipPreflight: true,
-          maxRetries: 0, // Handle retries ourselves
-        });
-
-        logger.info(
-          `[${retryCount + 1}/${this.config.confirmRetryCount}] Sent transaction ${signature}, confirming...`,
-        );
-
-        // Use the recommended confirmation method with blockhash
-        const confirmation = await this.connection.confirmTransaction({
-          signature,
-          blockhash: latestBlockhash.blockhash,
-          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-        });
-
-        if (confirmation.value.err) {
-          logger.error(`Transaction ${signature} failed with error:`, confirmation.value.err);
-          // Don't retry on transaction errors, return failure
-          return { confirmed: false, signature, txData: null };
-        }
-
-        // Get transaction data for fee calculation
-        const txData = await this.connection.getTransaction(signature, {
-          commitment: 'confirmed',
-          maxSupportedTransactionVersion: 0,
-        });
-
-        logger.info(
-          `[${retryCount + 1}/${this.config.confirmRetryCount}] Transaction ${signature} confirmed successfully`,
-        );
-        return { confirmed: true, signature, txData };
+        signature = await this.heliusService.sendWithSender(serializedTx);
       } catch (error) {
-        logger.warn(
-          `[${retryCount + 1}/${this.config.confirmRetryCount}] Transaction attempt failed: ${error.message}`,
-        );
+        // Fallback to standard RPC if Sender fails or is not configured
+        logger.info('Falling back to standard RPC transaction sending');
+        signature = await this.connection.sendRawTransaction(serializedTx, {
+          skipPreflight: true,
+          maxRetries: 0, // Don't rely on RPC provider's retry logic
+        });
+      }
 
-        // Check if this is a block height exceeded error
-        if (error.message?.includes('block height exceeded')) {
-          logger.error('Block height exceeded, transaction expired');
-          return { confirmed: false, signature: '', txData: null };
+      // Use WebSocket monitoring if available, otherwise fall back to robust polling
+      if (this.heliusService.isWebSocketConnected()) {
+        logger.info(`🚀 Sent transaction ${signature}, monitoring via WebSocket...`);
+        const confirmationResult = await this.heliusService.monitorTransaction(signature, 60000);
+
+        if (confirmationResult.confirmed) {
+          logger.info(`✅ Transaction ${signature} confirmed via WebSocket`);
+          return { confirmed: true, signature, txData: confirmationResult.txData };
+        } else {
+          logger.warn(`❌ Transaction ${signature} not confirmed via WebSocket within timeout`);
+          return { confirmed: false, signature, txData: confirmationResult.txData };
         }
       }
 
-      retryCount++;
-      if (retryCount < this.config.confirmRetryCount) {
-        await new Promise((resolve) => setTimeout(resolve, this.config.confirmRetryInterval * 1000));
-      }
-    }
+      logger.info(`🚀 Sent transaction ${signature}, implementing robust polling confirmation...`);
 
-    return { confirmed: false, signature: '', txData: null };
+      // Implement robust polling mechanism as per Helius best practices
+      const confirmed = false;
+      let attempts = 0;
+      const maxPollingAttempts = 30; // 30 attempts * 2s = 60s total timeout
+
+      while (!confirmed && attempts < maxPollingAttempts) {
+        attempts++;
+
+        try {
+          // Check signature status
+          const statuses = await this.connection.getSignatureStatuses([signature]);
+          const status = statuses && statuses.value && statuses.value[0];
+
+          if (status) {
+            if (status.err) {
+              logger.error(`❌ Transaction ${signature} failed with error:`, status.err);
+              return { confirmed: false, signature, txData: null };
+            }
+
+            if (status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized') {
+              logger.info(`✅ Transaction ${signature} confirmed after ${attempts} attempts`);
+
+              // Get full transaction data
+              const txData = await this.connection.getTransaction(signature, {
+                commitment: 'confirmed',
+                maxSupportedTransactionVersion: 0,
+              });
+
+              return { confirmed: true, signature, txData };
+            }
+          }
+
+          // Check if blockhash has expired
+          const currentBlockHeight = await this.connection.getBlockHeight();
+          if (currentBlockHeight > lastValidBlockHeight) {
+            logger.warn(`Blockhash expired for transaction ${signature}, re-broadcasting...`);
+
+            // Re-broadcast the same transaction (don't re-sign with same blockhash)
+            try {
+              await this.connection.sendRawTransaction(serializedTx, {
+                skipPreflight: true,
+                maxRetries: 0,
+              });
+              logger.info(`Re-broadcasted transaction ${signature}`);
+            } catch (rebroadcastError: any) {
+              logger.warn(`Failed to re-broadcast: ${rebroadcastError.message}`);
+            }
+
+            // Continue polling with original signature
+          }
+
+          // Wait before next poll
+          await new Promise((resolve) => setTimeout(resolve, this.config.confirmRetryInterval * 1000));
+        } catch (pollingError: any) {
+          logger.warn(`Polling attempt ${attempts} failed: ${pollingError.message}`);
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      }
+
+      // If we exit the loop without confirmation
+      logger.warn(`❌ Transaction ${signature} not confirmed after ${attempts} attempts`);
+      return { confirmed: false, signature, txData: null };
+    } catch (sendError: any) {
+      logger.error(`Failed to send transaction: ${sendError.message}`);
+      return { confirmed: false, signature: signature || '', txData: null };
+    }
   }
 
   async sendRawTransaction(rawTx: Buffer | Uint8Array | Array<number>, lastValidBlockHeight: number): Promise<string> {
@@ -1625,6 +1686,25 @@ export class Solana {
         status: 0, // PENDING
         data: undefined,
       };
+    }
+  }
+
+  /**
+   * Clean up resources including WebSocket connections and connection warming
+   */
+  public disconnect(): void {
+    this.heliusService.disconnect();
+    logger.info('Helius services disconnected and cleaned up');
+  }
+
+  /**
+   * Static method to clean up all instances
+   */
+  public static disconnectAll(): void {
+    if (Solana._instances) {
+      for (const instance of Object.values(Solana._instances)) {
+        instance.disconnect();
+      }
     }
   }
 }
