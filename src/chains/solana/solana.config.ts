@@ -8,7 +8,9 @@ export interface SolanaNetworkConfig {
   defaultComputeUnits: number;
   confirmRetryInterval: number;
   confirmRetryCount: number;
-  basePriorityFeePct: number;
+  heliusAPIKey: string;
+  useHeliusRestRPC: boolean;
+  useHeliusWebSocketRPC: boolean;
   minPriorityFeePerCU: number;
 }
 
@@ -28,7 +30,9 @@ export function getSolanaNetworkConfig(network: string): SolanaNetworkConfig {
     defaultComputeUnits: ConfigManagerV2.getInstance().get(namespaceId + '.defaultComputeUnits'),
     confirmRetryInterval: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryInterval'),
     confirmRetryCount: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryCount'),
-    basePriorityFeePct: ConfigManagerV2.getInstance().get(namespaceId + '.basePriorityFeePct'),
+    heliusAPIKey: ConfigManagerV2.getInstance().get(namespaceId + '.heliusAPIKey'),
+    useHeliusRestRPC: ConfigManagerV2.getInstance().get(namespaceId + '.useHeliusRestRPC'),
+    useHeliusWebSocketRPC: ConfigManagerV2.getInstance().get(namespaceId + '.useHeliusWebSocketRPC'),
     minPriorityFeePerCU: ConfigManagerV2.getInstance().get(namespaceId + '.minPriorityFeePerCU'),
   };
 }
