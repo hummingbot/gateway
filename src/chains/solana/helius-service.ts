@@ -135,7 +135,7 @@ export class HeliusService {
       ? `wss://devnet.helius-rpc.com/?api-key=${this.config.heliusAPIKey}`
       : `wss://mainnet.helius-rpc.com/?api-key=${this.config.heliusAPIKey}`;
 
-    logger.info(`Connecting to Helius WebSocket: ${wsUrl.replace(this.config.heliusAPIKey, '[API_KEY]')}`);
+    logger.info(`Connecting to Helius WebSocket (${isDevnet ? 'devnet' : 'mainnet'}) endpoint`);
 
     return new Promise((resolve, reject) => {
       try {
