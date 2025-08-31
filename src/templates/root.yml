@@ -79,3 +79,8 @@ configurations:
   $namespace 0x:
     configurationPath: connectors/0x.yml
     schemaPath: 0x-schema.json
+
+  # RPC providers
+  $namespace helius:
+    configurationPath: rpc/helius.yml
+    schemaPath: helius-schema.json
