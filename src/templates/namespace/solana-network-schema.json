@@ -12,7 +12,8 @@
     "useHeliusWebSocketRPC": { "type": "boolean" },
     "useHeliusSender": { "type": "boolean" },
     "heliusRegionCode": { "type": "string" },
-    "minPriorityFeePerCU": { "type": "number" }
+    "minPriorityFeePerCU": { "type": "number" },
+    "jitoTipSOL": { "type": "number" }
   },
   "required": ["nodeURL", "nativeCurrencySymbol"],
   "additionalProperties": false

@@ -14,6 +14,7 @@ export interface SolanaNetworkConfig {
   useHeliusSender: boolean;
   heliusRegionCode: string;
   minPriorityFeePerCU: number;
+  jitoTipSOL: number;
 }
 
 export interface SolanaChainConfig {
@@ -38,6 +39,7 @@ export function getSolanaNetworkConfig(network: string): SolanaNetworkConfig {
     useHeliusSender: ConfigManagerV2.getInstance().get(namespaceId + '.useHeliusSender'),
     heliusRegionCode: ConfigManagerV2.getInstance().get(namespaceId + '.heliusRegionCode'),
     minPriorityFeePerCU: ConfigManagerV2.getInstance().get(namespaceId + '.minPriorityFeePerCU'),
+    jitoTipSOL: ConfigManagerV2.getInstance().get(namespaceId + '.jitoTipSOL'),
   };
 }
 
