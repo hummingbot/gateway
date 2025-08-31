@@ -23,6 +23,7 @@ import fse from 'fs-extra';
 const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
 
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
+import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
@@ -78,23 +79,52 @@ export class Solana {
     this.config = getSolanaNetworkConfig(network);
     this.nativeTokenSymbol = this.config.nativeCurrencySymbol;
 
-    // Use Helius RPC if enabled and API key is available
-    let rpcUrl = this.config.nodeURL;
-    if (
-      this.config.useHeliusRestRPC &&
-      this.config.heliusAPIKey &&
-      this.config.heliusAPIKey.trim() !== '' &&
-      this.config.heliusAPIKey !== 'HELIUS_API_KEY'
-    ) {
-      rpcUrl = `https://mainnet.helius-rpc.com/?api-key=${this.config.heliusAPIKey}`;
+    // Initialize RPC connection based on provider
+    if (this.config.rpcProvider === 'helius') {
+      this.initializeHeliusProvider();
+    } else {
+      // Default: use nodeURL
+      this.connection = new Connection(this.config.nodeURL, {
+        commitment: 'confirmed',
+      });
+    }
+  }
+
+  /**
+   * Initialize Helius RPC provider
+   */
+  private initializeHeliusProvider() {
+    // Load Helius config from rpc/helius.yml
+    const heliusConfig = ConfigManagerV2.getInstance().get('helius');
+
+    // Merge configs for HeliusService
+    const mergedConfig = {
+      ...this.config,
+      heliusAPIKey: heliusConfig.apiKey,
+      useHeliusRestRPC: true, // Always true when using Helius provider
+      useHeliusWebSocketRPC: heliusConfig.useWebSocketRPC,
+      useHeliusSender: heliusConfig.useSender,
+      heliusRegionCode: heliusConfig.regionCode,
+      jitoTipSOL: heliusConfig.jitoTipSOL,
+    };
+
+    // Always use Helius RPC URL when Helius provider is selected
+    if (heliusConfig.apiKey && heliusConfig.apiKey.trim() !== '') {
+      const rpcUrl = this.network.includes('devnet')
+        ? `https://devnet.helius-rpc.com/?api-key=${heliusConfig.apiKey}`
+        : `https://mainnet.helius-rpc.com/?api-key=${heliusConfig.apiKey}`;
+      this.connection = new Connection(rpcUrl, {
+        commitment: 'confirmed',
+      });
+    } else {
+      // Fallback to standard nodeURL if no API key
+      this.connection = new Connection(this.config.nodeURL, {
+        commitment: 'confirmed',
+      });
     }
 
-    this.connection = new Connection(rpcUrl, {
-      commitment: 'confirmed',
-    });
-
-    // Initialize Helius service for WebSocket monitoring and connection warming
-    this.heliusService = new HeliusService(this.config);
+    // Initialize HeliusService with merged config
+    this.heliusService = new HeliusService(mergedConfig);
   }
 
   public static async getInstance(network: string): Promise<Solana> {
@@ -116,11 +146,13 @@ export class Solana {
       );
       await this.loadTokens();
 
-      // Initialize Helius services (WebSocket monitoring + connection warming)
-      logger.info(
-        `Helius config: WebSocket=${this.config.useHeliusWebSocketRPC}, Sender=${this.config.useHeliusSender}, hasAPIKey=${!!this.config.heliusAPIKey}`,
-      );
-      await this.heliusService.initialize();
+      // Initialize Helius services only if using Helius provider
+      if (this.config.rpcProvider === 'helius' && this.heliusService) {
+        logger.info(`Initializing Helius services for provider: ${this.config.rpcProvider}`);
+        await this.heliusService.initialize();
+      } else {
+        logger.info(`Using standard RPC provider: ${this.config.rpcProvider || 'url'}`);
+      }
     } catch (e) {
       logger.error(`Failed to initialize ${this.network}: ${e}`);
       throw e;
@@ -1342,19 +1374,27 @@ export class Solana {
 
     try {
       // Use Helius Sender if available, otherwise use standard RPC
-      try {
-        signature = await this.heliusService.sendWithSender(serializedTx);
-      } catch (error) {
-        // Fallback to standard RPC if Sender fails or is not configured
-        logger.info('Falling back to standard RPC transaction sending');
+      if (this.heliusService) {
+        try {
+          signature = await this.heliusService.sendWithSender(serializedTx);
+        } catch (error) {
+          // Fallback to standard RPC if Sender fails or is not configured
+          logger.info('Falling back to standard RPC transaction sending');
+          signature = await this.connection.sendRawTransaction(serializedTx, {
+            skipPreflight: true,
+            maxRetries: 0, // Don't rely on RPC provider's retry logic
+          });
+        }
+      } else {
+        // No Helius service, use standard RPC
         signature = await this.connection.sendRawTransaction(serializedTx, {
           skipPreflight: true,
-          maxRetries: 0, // Don't rely on RPC provider's retry logic
+          maxRetries: 0,
         });
       }
 
       // Use WebSocket monitoring if available, otherwise fall back to robust polling
-      if (this.heliusService.isWebSocketConnected()) {
+      if (this.heliusService && this.heliusService.isWebSocketConnected()) {
         logger.info(`🚀 Sent transaction ${signature}, monitoring via WebSocket...`);
         const confirmationResult = await this.heliusService.monitorTransaction(signature, 60000);
 
@@ -1824,8 +1864,10 @@ export class Solana {
    * Clean up resources including WebSocket connections and connection warming
    */
   public disconnect(): void {
-    this.heliusService.disconnect();
-    logger.info('Helius services disconnected and cleaned up');
+    if (this.heliusService) {
+      this.heliusService.disconnect();
+      logger.info('Helius services disconnected and cleaned up');
+    }
   }
 
   /**

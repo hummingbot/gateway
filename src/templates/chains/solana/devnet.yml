@@ -1,6 +1,9 @@
 nodeURL: https://api.devnet.solana.com
 nativeCurrencySymbol: SOL
 
+# RPC provider: 'url' uses nodeURL, 'helius' uses Helius service  
+rpcProvider: 'url'
+
 # Default compute units for a transaction
 # This sets the compute unit limit for transactions when not specified by the user
 defaultComputeUnits: 200000
@@ -13,25 +16,6 @@ confirmRetryInterval: 1
 # How many times to poll for confirmation before considering the transaction unconfirmed
 confirmRetryCount: 10
 
-# Helius API key for enhanced RPC services
-# Get a free API key from https://helius.dev - leave empty to disable Helius
-heliusAPIKey: ''
-
-# If true and API key is valid, ignores nodeURL and uses Helius RPC endpoint
-useHeliusRestRPC: true
-
-# If true and API key is valid, uses Helius WebSocket endpoint for subscriptions
-useHeliusWebSocketRPC: true
-
-# If true and API key is valid, uses Helius Sender endpoint for faster transaction delivery
-useHeliusSender: false
-
-# Helius region code for Sender endpoint (slc, ewr, lon, fra, ams, sg, tyo)
-heliusRegionCode: 'slc'
-
 # Minimum priority fee per compute unit in lamports
 # This sets the floor for priority fees to ensure transactions are processed (default: 0.1 lamports/CU)
 minPriorityFeePerCU: 0.01
-
-# Jito tip amount in SOL for Helius Sender endpoint (minimum 0.001 SOL required)
-jitoTipSOL: 0.001
