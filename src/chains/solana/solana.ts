@@ -13,6 +13,8 @@ import {
   TransactionResponse,
   VersionedTransaction,
   VersionedTransactionResponse,
+  SystemProgram,
+  LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
 import bs58 from 'bs58';
 import fse from 'fs-extra';
@@ -32,6 +34,20 @@ import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } fro
 // Constants used for fee calculations
 export const BASE_FEE = 5000;
 const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
+
+// Jito tip accounts for bundles
+const JITO_TIP_ACCOUNTS = [
+  '4ACfpUFoaSD9bfPdeu6DBt89gB6ENTeHBXCAi87NhDEE',
+  'D2L6yPZ2FmmmTKPgzaMKdhu6EWZcTpLy1Vhx8uvZe7NZ',
+  '9bnz4RShgq1hAnLnZbP8kbgBg1kEmcJBYQq3gQbmnSta',
+  '5VY91ws6B2hMmBFRsXkoAAdsPHBJwRfBht4DXox3xkwn',
+  '2nyhqdwKcJZR2vcqCyrYsaPVdAnFoJjiksCXJ7hfEYgD',
+  '2q5pghRs6arqVjRvT5gfgWfWcHWmw1ZuCzphgd5KfWkcJ',
+  'wyvPkWjVZz1M8fHQnMMCDTQDbkManefNNhweYk5WkcF',
+  '3KCKozbAaF75qEU33jtzozcJ29yJuaLJTy2jFdzUY8bT',
+  '4vieeGHPYPG2MmyPRcYjdiDmmhN3ww7hsFNap8pVN3Ey',
+  '4TQLFNWK8AovT1gFvda5jfw2oJeRMKEmw7aH6MGBJ3or',
+];
 
 // Interface for token account data
 interface TokenAccount {
@@ -1180,6 +1196,113 @@ export class Solana {
     return modifiedTx;
   }
 
+  /**
+   * Add Jito tip instruction to a VersionedTransaction for Helius Sender
+   */
+  private async addJitoTipToTransaction(
+    transaction: VersionedTransaction,
+    payerPublicKey: PublicKey,
+  ): Promise<VersionedTransaction> {
+    if (!this.config.useHeliusSender || !this.config.jitoTipSOL) {
+      return transaction;
+    }
+
+    const tipAmount = Math.floor(this.config.jitoTipSOL * LAMPORTS_PER_SOL);
+    const randomTipAccount = JITO_TIP_ACCOUNTS[Math.floor(Math.random() * JITO_TIP_ACCOUNTS.length)];
+
+    // Validate tip account
+    if (!randomTipAccount || typeof randomTipAccount !== 'string') {
+      throw new Error(`Invalid tip account selected: ${randomTipAccount}`);
+    }
+
+    // Create tip instruction
+    let tipAccountKey: PublicKey;
+    try {
+      tipAccountKey = new PublicKey(randomTipAccount);
+    } catch (error: any) {
+      throw new Error(`Failed to create PublicKey for tip account ${randomTipAccount}: ${error.message}`);
+    }
+
+    const tipInstruction = SystemProgram.transfer({
+      fromPubkey: payerPublicKey,
+      toPubkey: tipAccountKey,
+      lamports: tipAmount,
+    });
+
+    const originalMessage = transaction.message;
+    const originalStaticCount = originalMessage.staticAccountKeys.length;
+
+    // Add SystemProgram to static keys if not already present
+    const newStaticKeys = [...originalMessage.staticAccountKeys];
+    const systemProgramIndex = newStaticKeys.findIndex((key) => key.equals(SystemProgram.programId));
+
+    if (systemProgramIndex === -1) {
+      newStaticKeys.push(SystemProgram.programId);
+    }
+
+    // Add payer to static keys if not already present
+    const payerIndex = newStaticKeys.findIndex((key) => key.equals(payerPublicKey));
+    if (payerIndex === -1) {
+      newStaticKeys.push(payerPublicKey);
+    }
+
+    // Add tip account to static keys if not already present
+    const tipAccountIndex = newStaticKeys.findIndex((key) => key.equals(tipAccountKey));
+
+    if (tipAccountIndex === -1) {
+      newStaticKeys.push(tipAccountKey);
+    }
+
+    // Process original instructions with index adjustment
+    const indexOffset = newStaticKeys.length - originalStaticCount;
+    const originalInstructions = originalMessage.compiledInstructions.map((ix) => ({
+      ...ix,
+      accountKeyIndexes: ix.accountKeyIndexes.map((index) =>
+        index >= originalStaticCount ? index + indexOffset : index,
+      ),
+    }));
+
+    // Create tip instruction - find final indexes after all accounts are added
+    const finalPayerIndex = newStaticKeys.findIndex((key) => key.equals(payerPublicKey));
+    const finalTipAccountIdx = newStaticKeys.findIndex((key) => key.equals(tipAccountKey));
+    const finalSystemProgramIdx = newStaticKeys.findIndex((key) => key.equals(SystemProgram.programId));
+
+    const tipInstructionCompiled = {
+      programIdIndex: finalSystemProgramIdx,
+      accountKeyIndexes: [
+        finalPayerIndex, // from
+        finalTipAccountIdx, // to
+      ],
+      data: tipInstruction.data instanceof Buffer ? new Uint8Array(tipInstruction.data) : tipInstruction.data,
+    };
+
+    // Combine all instructions (tip instruction first)
+    const allInstructions = [tipInstructionCompiled, ...originalInstructions];
+
+    // Create new transaction with tip instruction
+    const modifiedTx = new VersionedTransaction(
+      new MessageV0({
+        header: originalMessage.header,
+        staticAccountKeys: newStaticKeys,
+        recentBlockhash: originalMessage.recentBlockhash,
+        compiledInstructions: allInstructions.map((ix) => ({
+          programIdIndex: ix.programIdIndex,
+          accountKeyIndexes: ix.accountKeyIndexes,
+          data: ix.data instanceof Buffer ? new Uint8Array(ix.data) : ix.data,
+        })),
+        addressTableLookups: originalMessage.addressTableLookups,
+      }),
+    );
+
+    // Copy original signatures - transaction will need to be re-signed by caller
+    modifiedTx.signatures = [...transaction.signatures];
+
+    logger.info(
+      `Jito tip transaction created successfully with ${modifiedTx.message.staticAccountKeys.length} accounts`,
+    );
+    return modifiedTx;
+  }
+
   async sendAndConfirmRawTransaction(
     transaction: VersionedTransaction | Transaction,
   ): Promise<{ confirmed: boolean; signature: string; txData: any }> {
@@ -1195,8 +1318,16 @@ export class Solana {
       return this._sendAndConfirmRawTransaction(serializedTx);
     }
 
-    // For VersionedTransaction, use existing logic
-    const serializedTx = transaction.serialize();
+    // For VersionedTransaction, add Jito tip if using Helius Sender
+    let finalTransaction = transaction;
+    if (this.config.useHeliusSender && this.config.jitoTipSOL > 0) {
+      // Extract payer from the transaction
+      const payer = transaction.message.staticAccountKeys[0]; // First account is always the payer
+      finalTransaction = await this.addJitoTipToTransaction(transaction, payer);
+    }
+
+    // Serialize the final transaction
+    const serializedTx = finalTransaction.serialize();
     return this._sendAndConfirmRawTransaction(serializedTx);
   }
 

@@ -32,3 +32,6 @@ heliusRegionCode: 'slc'
 # Minimum priority fee per compute unit in lamports
 # This sets the floor for priority fees to ensure transactions are processed (default: 0.1 lamports/CU)
 minPriorityFeePerCU: 0.01
+
+# Jito tip amount in SOL for Helius Sender endpoint (minimum 0.001 SOL required)
+jitoTipSOL: 0.001
