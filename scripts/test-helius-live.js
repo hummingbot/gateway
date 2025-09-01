@@ -68,9 +68,21 @@ async function testHeliusRPCConnection() {
     throw new Error('RPC URL not returned in status');
   }
   
-  // Check if using Helius RPC
-  if (!response.data.rpcUrl.includes('helius-rpc.com')) {
-    log('Warning: Not using Helius RPC URL', 'warn');
+  // Check if using Helius RPC - parse URL to properly validate hostname
+  try {
+    const urlObj = new URL(response.data.rpcUrl);
+    const allowedHeliusHosts = [
+      'mainnet.helius-rpc.com',
+      'devnet.helius-rpc.com',
+      'rpc.helius.xyz',
+      'mainnet-beta.helius-rpc.com'
+    ];
+    
+    if (!allowedHeliusHosts.includes(urlObj.hostname)) {
+      log('Warning: Not using Helius RPC URL', 'warn');
+    }
+  } catch (error) {
+    log(`Warning: Could not parse RPC URL: ${error.message}`, 'warn');
   }
   
   return response.data;
