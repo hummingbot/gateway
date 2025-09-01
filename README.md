@@ -619,6 +619,282 @@ For more details on the test setup and structure, see [Test README](./test/READM
 
 5. **Register the chain** in `src/chains/chain.routes.ts`
 
+### Adding a New RPC Provider
+
+Gateway's RPC provider abstraction allows integration of optimized RPC services. Follow this guide to add support for a new provider:
+
+#### Step 1: Create Configuration Template
+
+1. **Create provider configuration template** (`src/templates/rpc/myprovider.yml`):
+   ```yaml
+   # MyProvider RPC Configuration
+   # Get your API key from https://myprovider.com
+   
+   # Required: Your MyProvider API key
+   apiKey: ''
+   
+   # Optional: Enable WebSocket connections
+   useWebSocket: true
+   
+   # Optional: Provider-specific settings
+   region: 'us-east'
+   rateLimit: 100
+   ```
+
+2. **Create JSON schema for validation** (`src/templates/namespace/myprovider-schema.json`):
+   ```json
+   {
+     "type": "object",
+     "properties": {
+       "apiKey": {
+         "type": "string",
+         "minLength": 1,
+         "description": "MyProvider API key"
+       },
+       "useWebSocket": {
+         "type": "boolean",
+         "default": true,
+         "description": "Enable WebSocket connections"
+       },
+       "region": {
+         "type": "string",
+         "enum": ["us-east", "us-west", "eu", "asia"],
+         "description": "Provider region"
+       }
+     },
+     "required": ["apiKey"],
+     "additionalProperties": false
+   }
+   ```
+
+3. **Register namespace in root.yml** (`src/templates/root.yml`):
+   ```yaml
+   # RPC providers
+   $namespace myprovider:
+     configurationPath: rpc/myprovider.yml
+     schemaPath: myprovider-schema.json
+   ```
+
+#### Step 2: Implement Service Class
+
+Create the provider service (`src/chains/{chain}/myprovider-service.ts`):
+
+```typescript
+import { providers } from 'ethers';
+import { logger } from '../../services/logger';
+import { ChainNetworkConfig } from './{chain}.config';
+
+export class MyProviderService {
+  private config: ChainNetworkConfig;
+  private provider: providers.JsonRpcProvider | providers.WebSocketProvider;
+  private wsProvider?: providers.WebSocketProvider;
+
+  constructor(config: ChainNetworkConfig) {
+    this.config = config;
+    this.initializeProvider();
+  }
+
+  private initializeProvider(): void {
+    const httpUrl = this.getProviderHttpUrl();
+    
+    // Initialize HTTP provider
+    this.provider = new providers.JsonRpcProvider(httpUrl, {
+      name: this.getNetworkName(),
+      chainId: this.config.chainID
+    });
+
+    // Initialize WebSocket if enabled
+    if (this.shouldUseWebSocket()) {
+      try {
+        const wsUrl = this.getProviderWebSocketUrl();
+        this.wsProvider = new providers.WebSocketProvider(wsUrl);
+        logger.info(`✅ MyProvider WebSocket initialized for ${this.getNetworkName()}`);
+      } catch (error: any) {
+        logger.warn(`Failed to initialize WebSocket: ${error.message}`);
+      }
+    }
+  }
+
+  private getProviderHttpUrl(): string {
+    const network = this.mapChainToProviderNetwork();
+    return `https://${network}.myprovider.com/v1/${this.config.myProviderAPIKey}`;
+  }
+
+  private mapChainToProviderNetwork(): string {
+    // Map chain IDs to provider network names
+    const networkMap: Record<number, string> = {
+      1: 'eth-mainnet',
+      137: 'polygon-mainnet',
+      // Add more mappings
+    };
+
+    const network = networkMap[this.config.chainID];
+    if (!network) {
+      throw new Error(`Network not supported by MyProvider: ${this.config.chainID}`);
+    }
+    return network;
+  }
+
+  public getProvider(): providers.JsonRpcProvider | providers.WebSocketProvider {
+    return this.wsProvider || this.provider;
+  }
+
+  public async healthCheck(): Promise<boolean> {
+    try {
+      await this.provider.getBlockNumber();
+      return true;
+    } catch (error: any) {
+      logger.error(`Health check failed: ${error.message}`);
+      return false;
+    }
+  }
+
+  public disconnect(): void {
+    if (this.wsProvider) {
+      this.wsProvider.destroy();
+    }
+  }
+}
+```
+
+#### Step 3: Update Chain Connector
+
+1. **Update chain config interface** (`src/chains/{chain}/{chain}.config.ts`):
+   ```typescript
+   export interface ChainNetworkConfig {
+     // Existing fields...
+     rpcProvider?: string;
+     myProviderAPIKey?: string;
+     useMyProviderWebSocket?: boolean;
+   }
+   ```
+
+2. **Update chain connector** (`src/chains/{chain}/{chain}.ts`):
+   ```typescript
+   import { MyProviderService } from './myprovider-service';
+   
+   export class ChainConnector {
+     private myProviderService?: MyProviderService;
+     
+     private constructor(network: string) {
+       const config = getChainNetworkConfig(network);
+       
+       // Initialize RPC based on provider
+       if (config.rpcProvider === 'myprovider') {
+         logger.info(`Initializing MyProvider for: ${network}`);
+         this.initializeMyProvider(config);
+       } else {
+         // Standard RPC initialization
+       }
+     }
+     
+     private initializeMyProvider(config: ChainNetworkConfig): void {
+       try {
+         const apiKey = ConfigManagerV2.getInstance().get('myprovider.apiKey');
+         
+         if (!apiKey || apiKey.trim() === '') {
+           logger.warn('MyProvider selected but no API key, using standard RPC');
+           this.provider = new providers.StaticJsonRpcProvider(config.nodeURL);
+           return;
+         }
+         
+         const mergedConfig = {
+           ...config,
+           myProviderAPIKey: apiKey,
+           useMyProviderWebSocket: ConfigManagerV2.getInstance().get('myprovider.useWebSocket')
+         };
+         
+         this.myProviderService = new MyProviderService(mergedConfig);
+         this.provider = this.myProviderService.getProvider();
+         
+       } catch (error: any) {
+         logger.warn(`Failed to initialize MyProvider: ${error.message}`);
+         this.provider = new providers.StaticJsonRpcProvider(config.nodeURL);
+       }
+     }
+   }
+   ```
+
+#### Step 4: Update Network Configurations
+
+1. **Update network schema** (`src/templates/namespace/{chain}-network-schema.json`):
+   ```json
+   {
+     "properties": {
+       "rpcProvider": {
+         "type": "string",
+         "enum": ["url", "myprovider"],
+         "default": "url",
+         "description": "RPC provider to use"
+       }
+     }
+   }
+   ```
+
+2. **Update network configs** (`src/templates/chains/{chain}/{network}.yml`):
+   ```yaml
+   chainID: 1
+   nodeURL: https://default-rpc.com
+   nativeCurrencySymbol: ETH
+   rpcProvider: myprovider  # Enable new provider
+   ```
+
+#### Step 5: Create Testing Scripts
+
+Create live integration test (`scripts/test-myprovider-live.js`):
+
+```javascript
+#!/usr/bin/env node
+
+const axios = require('axios');
+
+const GATEWAY_URL = 'http://localhost:15888';
+
+async function testProviderIntegration() {
+  console.log('🚀 Testing MyProvider Integration');
+  
+  try {
+    // Test chain status
+    const response = await axios.get(`${GATEWAY_URL}/chains/{chain}/status?network=mainnet`);
+    console.log('✅ Provider working:', response.data);
+    
+    // Test specific features
+    // Add provider-specific tests here
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error.message);
+    process.exit(1);
+  }
+}
+
+testProviderIntegration();
+```
+
+#### Step 6: Documentation
+
+1. **Update README.md** with:
+   - Provider overview in "RPC Provider Integration" section
+   - Configuration instructions
+   - Supported networks and features
+   - Testing documentation
+
+2. **Create provider documentation** detailing:
+   - API key acquisition process
+   - Feature capabilities
+   - Performance benchmarks
+   - Troubleshooting guide
+
+#### Best Practices
+
+- **Graceful Fallback**: Always fall back to standard RPC if provider unavailable
+- **Comprehensive Logging**: Log provider selection, initialization, and errors
+- **Configuration Isolation**: Store API keys in separate config files
+- **Network Mapping**: Clearly map chain IDs to provider-specific network names
+- **Health Checks**: Implement health check methods for monitoring
+- **WebSocket Support**: Optional WebSocket for real-time features
+- **Testing**: Create comprehensive live integration tests
+- **Documentation**: Document all configuration options and features
+
 ### Adding a New Connector
 
 1. **Choose the appropriate base class**:
