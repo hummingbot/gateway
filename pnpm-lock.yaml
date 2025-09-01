@@ -199,9 +199,6 @@ importers:
       fs-extra:
         specifier: ^10.1.0
         version: 10.1.0
-      js-yaml:
-        specifier: ^4.1.0
-        version: 4.1.0
       level:
         specifier: ^8.0.1
         version: 8.0.1
@@ -238,9 +235,6 @@ importers:
       winston-daily-rotate-file:
         specifier: ^4.7.1
         version: 4.7.1(winston@3.17.0)
-      ws:
-        specifier: ^8.18.3
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       zod:
         specifier: ^3.24.2
         version: 3.24.4
@@ -296,6 +290,9 @@ importers:
       bs58:
         specifier: ^4.0.1
         version: 4.0.1
+      chalk:
+        specifier: ^5.6.0
+        version: 5.6.0
       copyfiles:
         specifier: ^2.4.1
         version: 2.4.1
@@ -338,6 +335,9 @@ importers:
       jest-extended:
         specifier: ^0.11.5
         version: 0.11.5
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.1.0
       jsbi:
         specifier: ^3.2.5
         version: 3.2.5
@@ -365,6 +365,9 @@ importers:
       typescript:
         specifier: ^5.8.2
         version: 5.8.3
+      ws:
+        specifier: ^8.18.3
+        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
 
 packages:
 
@@ -3024,8 +3027,8 @@ packages:
     resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
     engines: {node: '>=10'}
 
-  chalk@5.4.1:
-    resolution: {integrity: sha512-zgVZuo2WcZgfUEmsn6eO3kINexW8RAE4maiQ8QNs8CtpPCSyMiYsULR3HQYkm3w8FIA3SberyMJMSldGsW+U3w==}
+  chalk@5.6.0:
+    resolution: {integrity: sha512-46QrSQFyVSEyYAgQ22hQ+zDa60YHA4fBstHmtSApj1Y5vKtG27fWowW03jCk5KcbXEWPZUIR894aARCA/G1kfQ==}
     engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
 
   char-regex@1.0.2:
@@ -9802,19 +9805,19 @@ snapshots:
 
   '@solana/errors@2.0.0-preview.4(typescript@5.8.3)':
     dependencies:
-      chalk: 5.4.1
+      chalk: 5.6.0
       commander: 12.1.0
       typescript: 5.8.3
 
   '@solana/errors@2.0.0-rc.1(typescript@5.8.3)':
     dependencies:
-      chalk: 5.4.1
+      chalk: 5.6.0
       commander: 12.1.0
       typescript: 5.8.3
 
   '@solana/errors@2.1.0(typescript@5.8.3)':
     dependencies:
-      chalk: 5.4.1
+      chalk: 5.6.0
       commander: 13.1.0
       typescript: 5.8.3
 
@@ -11280,7 +11283,7 @@ snapshots:
       ansi-styles: 4.3.0
       supports-color: 7.2.0
 
-  chalk@5.4.1: {}
+  chalk@5.6.0: {}
 
   char-regex@1.0.2: {}
 
@@ -13710,7 +13713,7 @@ snapshots:
 
   lint-staged@16.1.2:
     dependencies:
-      chalk: 5.4.1
+      chalk: 5.6.0
       commander: 14.0.0
       debug: 4.4.1(supports-color@8.1.1)
       lilconfig: 3.1.3

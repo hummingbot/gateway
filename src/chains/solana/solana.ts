@@ -94,37 +94,50 @@ export class Solana {
    * Initialize Helius RPC provider
    */
   private initializeHeliusProvider() {
-    // Load Helius config from rpc/helius.yml
-    const heliusConfig = ConfigManagerV2.getInstance().get('helius');
+    try {
+      // Load Helius config from rpc/helius.yml
+      const configManager = ConfigManagerV2.getInstance();
+      const heliusApiKey = configManager.get('helius.apiKey') || '';
+      const useWebSocketRPC = configManager.get('helius.useWebSocketRPC') || false;
+      const useSender = configManager.get('helius.useSender') || false;
+      const regionCode = configManager.get('helius.regionCode') || '';
+      const jitoTipSOL = configManager.get('helius.jitoTipSOL') || 0;
 
-    // Merge configs for HeliusService
-    const mergedConfig = {
-      ...this.config,
-      heliusAPIKey: heliusConfig.apiKey,
-      useHeliusRestRPC: true, // Always true when using Helius provider
-      useHeliusWebSocketRPC: heliusConfig.useWebSocketRPC,
-      useHeliusSender: heliusConfig.useSender,
-      heliusRegionCode: heliusConfig.regionCode,
-      jitoTipSOL: heliusConfig.jitoTipSOL,
-    };
+      // Merge configs for HeliusService
+      const mergedConfig = {
+        ...this.config,
+        heliusAPIKey: heliusApiKey,
+        useHeliusRestRPC: true, // Always true when using Helius provider
+        useHeliusWebSocketRPC: useWebSocketRPC,
+        useHeliusSender: useSender,
+        heliusRegionCode: regionCode,
+        jitoTipSOL: jitoTipSOL,
+      };
 
-    // Always use Helius RPC URL when Helius provider is selected
-    if (heliusConfig.apiKey && heliusConfig.apiKey.trim() !== '') {
-      const rpcUrl = this.network.includes('devnet')
-        ? `https://devnet.helius-rpc.com/?api-key=${heliusConfig.apiKey}`
-        : `https://mainnet.helius-rpc.com/?api-key=${heliusConfig.apiKey}`;
-      this.connection = new Connection(rpcUrl, {
-        commitment: 'confirmed',
-      });
-    } else {
-      // Fallback to standard nodeURL if no API key
+      // Always use Helius RPC URL when Helius provider is selected
+      if (heliusApiKey && heliusApiKey.trim() !== '') {
+        const rpcUrl = this.network.includes('devnet')
+          ? `https://devnet.helius-rpc.com/?api-key=${heliusApiKey}`
+          : `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`;
+        this.connection = new Connection(rpcUrl, {
+          commitment: 'confirmed',
+        });
+      } else {
+        // Fallback to standard nodeURL if no API key
+        this.connection = new Connection(this.config.nodeURL, {
+          commitment: 'confirmed',
+        });
+      }
+
+      // Initialize HeliusService with merged config
+      this.heliusService = new HeliusService(mergedConfig);
+    } catch (error) {
+      // If Helius config not found (e.g., in tests), fallback to standard RPC
+      logger.warn(`Failed to initialize Helius provider: ${error.message}, falling back to standard RPC`);
       this.connection = new Connection(this.config.nodeURL, {
         commitment: 'confirmed',
       });
     }
-
-    // Initialize HeliusService with merged config
-    this.heliusService = new HeliusService(mergedConfig);
   }
 
   public static async getInstance(network: string): Promise<Solana> {
