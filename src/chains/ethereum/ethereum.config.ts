@@ -7,6 +7,9 @@ export interface EthereumNetworkConfig {
   nodeURL: string;
   nativeCurrencySymbol: string;
   minGasPrice?: number;
+  rpcProvider?: string;
+  infuraAPIKey?: string;
+  useInfuraWebSocket?: boolean;
 }
 
 export interface EthereumChainConfig {
@@ -24,6 +27,7 @@ export function getEthereumNetworkConfig(network: string): EthereumNetworkConfig
     nodeURL: ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL'),
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
     minGasPrice: ConfigManagerV2.getInstance().get(namespaceId + '.minGasPrice'),
+    rpcProvider: ConfigManagerV2.getInstance().get(namespaceId + '.rpcProvider') || 'url',
   };
 }
 

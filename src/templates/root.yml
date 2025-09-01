@@ -84,3 +84,7 @@ configurations:
   $namespace helius:
     configurationPath: rpc/helius.yml
     schemaPath: helius-schema.json
+
+  $namespace infura:
+    configurationPath: rpc/infura.yml
+    schemaPath: infura-schema.json

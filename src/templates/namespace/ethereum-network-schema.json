@@ -8,6 +8,12 @@
     "minGasPrice": {
       "type": "number",
       "description": "Minimum gas price in GWEI"
+    },
+    "rpcProvider": {
+      "type": "string",
+      "enum": ["url", "infura"],
+      "default": "url",
+      "description": "RPC provider to use: 'url' for standard nodeURL, 'infura' for Infura service"
     }
   },
   "required": ["chainID", "nodeURL", "nativeCurrencySymbol"],
