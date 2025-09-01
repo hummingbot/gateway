@@ -81,9 +81,12 @@ export class Solana {
 
     // Initialize RPC connection based on provider
     if (this.config.rpcProvider === 'helius') {
+      logger.info(`Initializing Helius services for provider: ${this.config.rpcProvider}`);
       this.initializeHeliusProvider();
     } else {
       // Default: use nodeURL
+      logger.info(`Using standard RPC provider: ${this.config.rpcProvider || 'url'}`);
+      logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${this.config.nodeURL}`);
       this.connection = new Connection(this.config.nodeURL, {
         commitment: 'confirmed',
       });
@@ -119,11 +122,20 @@ export class Solana {
         const rpcUrl = this.network.includes('devnet')
           ? `https://devnet.helius-rpc.com/?api-key=${heliusApiKey}`
           : `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`;
+
+        logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${rpcUrl}`);
+        logger.info(`✅ Helius API key configured (length: ${heliusApiKey.length} chars)`);
+        logger.info(
+          `Helius features enabled - WebSocket: ${useWebSocketRPC}, Sender: ${useSender}, Region: ${regionCode || 'default'}`,
+        );
+
         this.connection = new Connection(rpcUrl, {
           commitment: 'confirmed',
         });
       } else {
         // Fallback to standard nodeURL if no API key
+        logger.warn(`⚠️ Helius provider selected but no API key configured, falling back to standard RPC`);
+        logger.info(`Using fallback RPC URL: ${this.config.nodeURL}`);
         this.connection = new Connection(this.config.nodeURL, {
           commitment: 'confirmed',
         });
