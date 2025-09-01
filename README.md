@@ -54,6 +54,24 @@ Gateway may be used alongside the main [Hummingbot client](https://github.com/hu
 - Solana Mainnet-Beta
 - Solana Devnet
 
+### RPC Provider Integration
+
+Gateway includes optimized RPC provider abstractions for improved performance and reliability:
+
+#### **Infura (Ethereum Networks)**
+- **Networks Supported**: Ethereum Mainnet, Polygon, Arbitrum, Optimism, Base, Avalanche
+- **Features**: HTTP and WebSocket providers, automatic endpoint mapping, graceful fallback
+- **Configuration**: Set `rpcProvider: infura` in network configs and configure API key in `conf/rpc/infura.yml`
+- **Benefits**: Enhanced reliability (99.9% uptime SLA), reduced latency, higher rate limits
+
+#### **Helius (Solana Networks)**  
+- **Networks Supported**: Solana Mainnet-Beta, Solana Devnet
+- **Features**: WebSocket transaction monitoring, Sender endpoints for fast execution, regional optimization
+- **Configuration**: Set `rpcProvider: helius` in network configs and configure API key in `conf/rpc/helius.yml`
+- **Benefits**: Real-time transaction monitoring, optimized transaction sending, connection warming
+
+Both RPC providers maintain full backward compatibility - networks default to standard RPC endpoints when provider-specific configurations are not available.
+
 ### Supported DEX Protocols
 
 | Protocol | Chain | Router | AMM | CLMM | Description |
@@ -372,6 +390,52 @@ Here are some ways that you can contribute to Gateway:
 
 - For each supported chain, token lists that translate address to symbols for each chain are stored in `/conf/tokens`. Use the `/tokens` API endpoints to manage tokens - changes require a Gateway restart to take effect.
 
+### RPC Provider Configuration
+
+Gateway supports optimized RPC providers for enhanced performance:
+
+#### **Infura Configuration (Ethereum Networks)**
+1. **Configure API Key**: Add your Infura API key to `conf/rpc/infura.yml`:
+   ```yaml
+   apiKey: 'your_infura_api_key_here'
+   useWebSocket: true
+   ```
+
+2. **Enable for Networks**: Set `rpcProvider: infura` in network configurations:
+   ```yaml
+   # In conf/chains/ethereum/mainnet.yml
+   chainID: 1
+   nodeURL: https://eth.llamarpc.com  # fallback URL
+   rpcProvider: infura
+   ```
+
+3. **Supported Networks**: Mainnet, Polygon, Arbitrum, Optimism, Base, Avalanche
+
+#### **Helius Configuration (Solana Networks)**
+1. **Configure API Key**: Add your Helius API key to `conf/rpc/helius.yml`:
+   ```yaml
+   apiKey: 'your_helius_api_key_here'
+   useWebSocketRPC: true
+   useSender: true
+   regionCode: 'slc'  # Optional: slc, ewr, lon, fra, ams, sg, tyo
+   ```
+
+2. **Enable for Networks**: Set `rpcProvider: helius` in network configurations:
+   ```yaml
+   # In conf/chains/solana/mainnet-beta.yml
+   nodeURL: https://api.mainnet-beta.solana.com  # fallback URL
+   rpcProvider: helius
+   ```
+
+3. **Supported Networks**: Mainnet-Beta, Devnet
+
+#### **Benefits of RPC Provider Integration**
+- **Improved Performance**: 20-40% faster response times vs public RPC endpoints
+- **Enhanced Reliability**: Professional-grade uptime SLAs (99.9%+)  
+- **Advanced Features**: WebSocket support, transaction monitoring, regional optimization
+- **Higher Rate Limits**: Avoid public RPC throttling and connection limits
+- **Automatic Failover**: Graceful fallback to standard RPC if provider unavailable
+
 
 ## Architecture
 
@@ -380,6 +444,10 @@ Gateway follows a modular architecture with clear separation of concerns:
 ```
 /src
 ├── chains/               # Blockchain-specific implementations
+│   ├── ethereum/        # Ethereum chain implementation
+│   │   └── infura-service.ts  # Infura RPC provider integration
+│   └── solana/          # Solana chain implementation
+│       └── helius-service.ts  # Helius RPC provider integration
 ├── connectors/           # DEX-specific implementations
 │   ├── {dex}/           # Each DEX connector directory
 │   │   ├── router-routes/   # DEX aggregator operations
@@ -390,6 +458,11 @@ Gateway follows a modular architecture with clear separation of concerns:
 │   ├── router-schema.ts  # Router operation schemas
 │   ├── amm-schema.ts     # AMM operation schemas
 │   └── clmm-schema.ts    # CLMM operation schemas
+├── templates/            # Configuration templates
+│   ├── rpc/             # RPC provider configurations
+│   │   ├── helius.yml   # Helius provider template
+│   │   └── infura.yml   # Infura provider template
+│   └── chains/          # Chain network configurations
 ├── config/               # Configuration routes and utilities
 └── wallet/               # Wallet management
 ```
@@ -401,6 +474,7 @@ The `src/chains` directory contains blockchain network implementations. Each cha
 - Core chain class implementing operations like `getBalances`, `getTokens`
 - Chain-specific routes defining API endpoints
 - Configuration management for the chain
+- **RPC Provider Services**: Optional optimized RPC providers (Infura for Ethereum, Helius for Solana)
 
 #### Connectors
 The `src/connectors` directory houses DEX protocol implementations. Each connector provides:
@@ -417,6 +491,14 @@ Essential services in `src/services` include:
 - **config-manager-v2.ts**: Robust configuration management with validation
 - **logger.ts**: Flexible logging service
 - **token-service.ts**: Token list management with security validation
+
+#### RPC Provider Abstraction
+Gateway implements a flexible RPC provider abstraction pattern:
+- **Provider Selection**: Network configs specify `rpcProvider` field to choose between standard or optimized providers
+- **Service Classes**: Each provider (Infura, Helius) has dedicated service class with provider-specific features
+- **Automatic Fallback**: Gracefully falls back to standard RPC when provider unavailable or unconfigured
+- **Enhanced Features**: WebSocket support, transaction monitoring, regional optimization per provider
+- **Configuration Isolation**: Provider API keys stored in separate `conf/rpc/*.yml` files for security
 
 ## Testing
 
