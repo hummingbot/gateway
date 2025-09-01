@@ -544,7 +544,41 @@ The test directory is organized as follows:
   /wallet/                    # Wallet tests
   /config/                    # Configuration tests
   /jest-setup.js              # Test environment configuration
+
+/scripts                      # Live testing and utility scripts
+  test-helius-live.js        # Helius RPC provider integration tests
+  test-infura-live.js        # Infura RPC provider integration tests
+  test-provider-switching.js  # RPC provider switching tests
 ```
+
+#### RPC Provider Testing
+
+Gateway includes comprehensive testing for RPC provider integrations:
+
+**Live Integration Tests** (`scripts/test-*-live.js`):
+- Test real API connectivity with configured keys
+- Verify WebSocket connections and features
+- Measure performance improvements vs standard RPC
+- Validate network-specific endpoint mappings
+
+**Running RPC Provider Tests**:
+```bash
+# Test Infura integration (requires API key in conf/rpc/infura.yml)
+node scripts/test-infura-live.js
+
+# Test Helius integration (requires API key in conf/rpc/helius.yml)
+node scripts/test-helius-live.js
+
+# Test provider switching functionality
+node scripts/test-provider-switching.js
+```
+
+**Test Coverage Areas**:
+- Provider initialization and configuration loading
+- Automatic fallback to standard RPC on failures
+- Network-specific endpoint resolution
+- WebSocket connection establishment
+- Performance benchmarking and health checks
 
 For more details on the test setup and structure, see [Test README](./test/README.md).
 
