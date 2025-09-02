@@ -22,7 +22,7 @@ module.exports = {
     'no-console': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-    'semi': [2, 'always'],
+    semi: [2, 'always'],
     'prettier/prettier': 'error',
     '@typescript-eslint/no-var-requires': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
@@ -32,19 +32,27 @@ module.exports = {
     'no-useless-escape': 'warn',
     'no-constant-condition': 'warn',
     'no-async-promise-executor': 'warn',
-    'import/order': ['warn', {
-      'groups': ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
-      'newlines-between': 'always',
-      'alphabetize': { 'order': 'asc', 'caseInsensitive': true }
-    }],
+    'import/order': [
+      'warn',
+      {
+        groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
+        'newlines-between': 'always',
+        alphabetize: { order: 'asc', caseInsensitive: true },
+      },
+    ],
     'import/no-named-as-default-member': 'off',
-    'import/no-duplicates': 'warn'
+    'import/no-duplicates': 'warn',
   },
   settings: {
-    'import/resolver': [
-      ['typescript', { alwaysTryTypes: true, project: './tsconfig.json' }],
-      ['node', { extensions: ['.js', '.jsx', '.ts', '.tsx'] }],
-    ],
+    'import/resolver': {
+      typescript: {
+        alwaysTryTypes: true,
+        project: './tsconfig.json',
+      },
+      node: {
+        extensions: ['.js', '.jsx', '.ts', '.tsx'],
+      },
+    },
   },
   overrides: [
     {
@@ -52,8 +60,8 @@ module.exports = {
       rules: {
         '@typescript-eslint/no-unused-vars': 'off',
         'no-unused-vars': 'off',
-        'no-undef': 'off'
-      }
-    }
-  ]
+        'no-undef': 'off',
+      },
+    },
+  ],
 };
