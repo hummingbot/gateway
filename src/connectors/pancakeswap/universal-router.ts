@@ -1,6 +1,14 @@
 import { Provider } from '@ethersproject/providers';
 import { TradeType, Percent, Currency, CurrencyAmount, Token } from '@pancakeswap/sdk';
-import { SmartRouter, SmartRouterTrade, SwapOptions, SwapRouter } from '@pancakeswap/smart-router';
+import {
+  Pool,
+  PoolType,
+  SmartRouter,
+  SmartRouterTrade,
+  SwapOptions,
+  SwapRouter,
+  TradeConfig,
+} from '@pancakeswap/smart-router';
 import { getUniversalRouterAddress } from '@pancakeswap/universal-router-sdk';
 import { Pair as V2Pair, Route as V2Route, Trade as V2Trade, computePairAddress } from '@pancakeswap/v2-sdk';
 import IPancakeswapV3Pool from '@pancakeswap/v3-core/artifacts/contracts/PancakeV3Pool.sol/PancakeV3Pool.json';
@@ -13,7 +21,6 @@ import {
   nearestUsableTick,
   TICK_SPACINGS,
 } from '@pancakeswap/v3-sdk';
-import { Protocol, Trade as RouterTrade } from '@uniswap/router-sdk';
 import { BigNumber, Contract } from 'ethers';
 import { Address } from 'viem';
 
@@ -76,7 +83,7 @@ export class UniversalRouterService {
       slippageTolerance: Percent;
       deadline: number;
       recipient: string;
-      protocols?: Protocol[];
+      protocols?: PoolType[];
     },
   ): Promise<UniversalRouterQuoteResult> {
     logger.info(`[UniversalRouter] Starting quote generation`);
@@ -88,12 +95,12 @@ export class UniversalRouterService {
     logger.info(`[UniversalRouter] Recipient: ${options.recipient}`);
     logger.info(`[UniversalRouter] Slippage: ${options.slippageTolerance.toSignificant()}%`);
 
-    const protocols = options.protocols || [Protocol.V2, Protocol.V3];
+    const protocols = options.protocols || [PoolType.V2, PoolType.V3];
     logger.info(`[UniversalRouter] Protocols to check: ${protocols.join(', ')}`);
-    const routes: any[] = [];
+    const allPools = [];
 
     // Try to find routes through each protocol
-    if (protocols.includes(Protocol.V3)) {
+    if (protocols.includes(PoolType.V3)) {
       logger.info(`[UniversalRouter] Searching for V3 routes...`);
       try {
         const v3Trade = await this.findV3Route(tokenIn, tokenOut, amount, tradeType);
@@ -101,11 +108,12 @@ export class UniversalRouterService {
           logger.info(
             `[UniversalRouter] Found V3 route: ${v3Trade.inputAmount.toExact()} -> ${v3Trade.outputAmount.toExact()}`,
           );
-          routes.push({
-            routev3: v3Trade.route,
-            inputAmount: v3Trade.inputAmount,
-            outputAmount: v3Trade.outputAmount,
-          });
+          for (const swap of v3Trade.swaps) {
+            for (const pool of swap.route.pools as unknown as Pool[]) {
+              pool.type = PoolType.V3;
+              allPools.push(pool);
+            }
+          }
         } else {
           logger.info(`[UniversalRouter] No V3 route found`);
         }
@@ -114,7 +122,7 @@ export class UniversalRouterService {
       }
     }
 
-    if (protocols.includes(Protocol.V2)) {
+    if (protocols.includes(PoolType.V2)) {
       logger.info(`[UniversalRouter] Searching for V2 routes...`);
       try {
         const v2Trade = await this.findV2Route(tokenIn, tokenOut, amount, tradeType);
@@ -122,11 +130,10 @@ export class UniversalRouterService {
           logger.info(
             `[UniversalRouter] Found V2 route: ${v2Trade.inputAmount.toExact()} -> ${v2Trade.outputAmount.toExact()}`,
           );
-          routes.push({
-            routev2: v2Trade.route,
-            inputAmount: v2Trade.inputAmount,
-            outputAmount: v2Trade.outputAmount,
-          });
+          for (const pair of v2Trade.route.pairs as unknown as Pool[]) {
+            pair.type = PoolType.V2;
+            allPools.push(pair);
+          }
         } else {
           logger.info(`[UniversalRouter] No V2 route found`);
         }
@@ -135,19 +142,41 @@ export class UniversalRouterService {
       }
     }
 
-    if (routes.length === 0) {
+    if (allPools.length === 0) {
       logger.error(`[UniversalRouter] No routes found for ${tokenIn.symbol} -> ${tokenOut.symbol}`);
       throw new Error(`No routes found for ${tokenIn.symbol} -> ${tokenOut.symbol}`);
     }
 
-    logger.info(`[UniversalRouter] Found ${routes.length} route(s), selecting best route`);
-    // Pick the best route (for now, just use the first one)
-    const bestRoute = routes[0];
+    const ethereum = await this.getEthereum();
+
+    // const publicClient = createPublicClient({
+    //   chain: ethereum.chainId as unknown as Chain, // or the equivalent constant for BNB Chain
+    //   transport: http(ethereum.rpcUrl),
+    // });
+    const quoteProvider = SmartRouter.createQuoteProvider({
+      onChainProvider: undefined,
+    });
+
+    const gasPriceWei = async (): Promise<bigint> => {
+      const gasPrice = await ethereum.provider.getGasPrice();
+      return gasPrice.toBigInt(); // ✅ convert to bigint
+    };
+
+    const tradeConfig: TradeConfig = {
+      allowedPoolTypes: protocols,
+      poolProvider: SmartRouter.createStaticPoolProvider(allPools),
+      quoteProvider,
+      quoterOptimization: true,
+      gasPriceWei,
+    };
 
     // Create RouterTrade based on the best route
-    const bestTrade: SmartRouterTrade<TradeType> | null = await SmartRouter.getBestTrade(amount, tokenIn, tradeType, [
-      bestRoute,
-    ]);
+    const bestTrade: SmartRouterTrade<TradeType> | null = await SmartRouter.getBestTrade(
+      amount,
+      tokenIn,
+      tradeType,
+      tradeConfig,
+    );
 
     // Build the Universal Router swap
     const swapOptions: SwapOptions = {
@@ -343,8 +372,7 @@ export class UniversalRouterService {
         data: calldata,
         value,
         from,
-        gasLimit: BigNumber.from(600000), // Increase gas limit for estimation
-        ...gasOptions, // Include gas price options
+        // ...gasOptions, // Include gas price options
       });
 
       logger.info(`[UniversalRouter] Gas estimation successful: ${gasEstimate.toString()}`);

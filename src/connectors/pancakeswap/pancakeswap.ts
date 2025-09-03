@@ -1,10 +1,10 @@
 // V3 (CLMM) imports
 import { Token, CurrencyAmount, Percent, TradeType } from '@pancakeswap/sdk';
+import { PoolType } from '@pancakeswap/smart-router';
 import { Pair as V2Pair } from '@pancakeswap/v2-sdk';
 import { abi as IPancakeswapV3FactoryABI } from '@pancakeswap/v3-core/artifacts/contracts/interfaces/IPancakeV3Factory.sol/IPancakeV3Factory.json';
 import { abi as IPancakeswapV3PoolABI } from '@pancakeswap/v3-core/artifacts/contracts/interfaces/IPancakeV3Pool.sol/IPancakeV3Pool.json';
 import { FeeAmount, Pool as V3Pool } from '@pancakeswap/v3-sdk';
-import { Protocol } from '@uniswap/router-sdk';
 import { Contract, constants } from 'ethers';
 import { getAddress } from 'ethers/lib/utils';
 import { Address } from 'viem';
@@ -220,8 +220,8 @@ export class Pancakeswap {
     const rawAmount = amountStr.replace('.', '');
     const tradeAmount = CurrencyAmount.fromRawAmount(tokenForAmount, rawAmount);
 
-    // Use default protocols (V2 and V3)
-    const protocolsToUse = [Protocol.V2, Protocol.V3]; // V4 requires different approach
+    // Use default PoolType (V2 and V3)
+    const protocolsToUse = [PoolType.V2, PoolType.V3]; // V4 requires different approach
 
     // Get slippage from config
     const slippageTolerance = new Percent(Math.floor(this.config.slippagePct * 100), 10000);
