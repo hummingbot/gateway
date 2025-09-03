@@ -5,11 +5,17 @@ import { getAvailableSolanaNetworks } from './solana.utils';
 export interface SolanaNetworkConfig {
   nodeURL: string;
   nativeCurrencySymbol: string;
+  rpcProvider: string;
   defaultComputeUnits: number;
   confirmRetryInterval: number;
   confirmRetryCount: number;
-  basePriorityFeePct: number;
+  heliusAPIKey: string;
+  useHeliusRestRPC: boolean;
+  useHeliusWebSocketRPC: boolean;
+  useHeliusSender: boolean;
+  heliusRegionCode: string;
   minPriorityFeePerCU: number;
+  jitoTipSOL: number;
 }
 
 export interface SolanaChainConfig {
@@ -25,11 +31,17 @@ export function getSolanaNetworkConfig(network: string): SolanaNetworkConfig {
   return {
     nodeURL: ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL'),
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
+    rpcProvider: ConfigManagerV2.getInstance().get(namespaceId + '.rpcProvider') || 'url',
     defaultComputeUnits: ConfigManagerV2.getInstance().get(namespaceId + '.defaultComputeUnits'),
     confirmRetryInterval: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryInterval'),
     confirmRetryCount: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryCount'),
-    basePriorityFeePct: ConfigManagerV2.getInstance().get(namespaceId + '.basePriorityFeePct'),
+    heliusAPIKey: ConfigManagerV2.getInstance().get(namespaceId + '.heliusAPIKey'),
+    useHeliusRestRPC: ConfigManagerV2.getInstance().get(namespaceId + '.useHeliusRestRPC'),
+    useHeliusWebSocketRPC: ConfigManagerV2.getInstance().get(namespaceId + '.useHeliusWebSocketRPC'),
+    useHeliusSender: ConfigManagerV2.getInstance().get(namespaceId + '.useHeliusSender'),
+    heliusRegionCode: ConfigManagerV2.getInstance().get(namespaceId + '.heliusRegionCode'),
     minPriorityFeePerCU: ConfigManagerV2.getInstance().get(namespaceId + '.minPriorityFeePerCU'),
+    jitoTipSOL: ConfigManagerV2.getInstance().get(namespaceId + '.jitoTipSOL'),
   };
 }
 
