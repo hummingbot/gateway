@@ -3,13 +3,13 @@ import { TradeType, Percent, Currency, CurrencyAmount, Token } from '@pancakeswa
 import {
   Pool,
   PoolType,
+  SMART_ROUTER_ADDRESSES,
   SmartRouter,
   SmartRouterTrade,
   SwapOptions,
   SwapRouter,
   TradeConfig,
 } from '@pancakeswap/smart-router';
-import { getUniversalRouterAddress } from '@pancakeswap/universal-router-sdk';
 import { Pair as V2Pair, Route as V2Route, Trade as V2Trade, computePairAddress } from '@pancakeswap/v2-sdk';
 import IPancakeswapV3Pool from '@pancakeswap/v3-core/artifacts/contracts/PancakeV3Pool.sol/PancakeV3Pool.json';
 import {
@@ -29,8 +29,8 @@ import { logger } from '../../services/logger';
 
 import {
   IPancakeswapV2PairABI,
-  getPancakeswapV3FactoryAddress,
   getPancakeswapV2FactoryAddress,
+  getPancakeswapV3PoolDeployerAddress,
 } from './pancakeswap.contracts';
 
 // Common fee tiers for V3
@@ -173,7 +173,7 @@ export class UniversalRouterService {
     // Create RouterTrade based on the best route
     const bestTrade: SmartRouterTrade<TradeType> | null = await SmartRouter.getBestTrade(
       amount,
-      tokenIn,
+      tradeType === TradeType.EXACT_INPUT ? tokenOut : tokenIn,
       tradeType,
       tradeConfig,
     );
@@ -210,7 +210,7 @@ export class UniversalRouterService {
       trade: bestTrade,
       route,
       routePath,
-      priceImpact: parseFloat(bestTrade.inputAmountWithGasAdjusted.toSignificant(6)),
+      priceImpact: parseFloat(bestTrade.inputAmount.divide(bestTrade.outputAmount).toSignificant(6)),
       estimatedGasUsed,
       estimatedGasUsedQuoteToken,
       quote: bestTrade.outputAmount,
@@ -218,7 +218,7 @@ export class UniversalRouterService {
       methodParameters: {
         calldata,
         value,
-        to: getUniversalRouterAddress(this.chainId),
+        to: SMART_ROUTER_ADDRESSES[this.chainId],
       },
     };
 
@@ -246,7 +246,7 @@ export class UniversalRouterService {
       try {
         // Compute pool address
         const poolAddress = computePoolAddress({
-          deployerAddress: getPancakeswapV3FactoryAddress(this.network),
+          deployerAddress: getPancakeswapV3PoolDeployerAddress(this.network),
           tokenA: tokenIn,
           tokenB: tokenOut,
           fee,
@@ -354,7 +354,7 @@ export class UniversalRouterService {
    */
   private async estimateGas(calldata: string, value: string, from: string): Promise<BigNumber> {
     const ethereum = await this.getEthereum();
-    const routerAddress = getUniversalRouterAddress(this.chainId);
+    const routerAddress = SMART_ROUTER_ADDRESSES[this.chainId];
 
     logger.info(`[UniversalRouter] Estimating gas...`);
     logger.info(`[UniversalRouter] From: ${from}`);
@@ -372,6 +372,7 @@ export class UniversalRouterService {
         data: calldata,
         value,
         from,
+        gasLimit: BigNumber.from(600000), // Increase gas limit for estimation
         // ...gasOptions, // Include gas price options
       });
 

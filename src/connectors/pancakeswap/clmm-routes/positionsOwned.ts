@@ -10,7 +10,7 @@ import { Pancakeswap } from '../pancakeswap';
 import {
   POSITION_MANAGER_ABI,
   getPancakeswapV3NftManagerAddress,
-  getPancakeswapV3FactoryAddress,
+  getPancakeswapV3PoolDeployerAddress,
 } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
 
@@ -180,7 +180,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
 
             // Get the actual pool address using computePoolAddress
             const poolAddress = computePoolAddress({
-              deployerAddress: getPancakeswapV3FactoryAddress(network),
+              deployerAddress: getPancakeswapV3PoolDeployerAddress(network),
               tokenA: token0,
               tokenB: token1,
               fee,
