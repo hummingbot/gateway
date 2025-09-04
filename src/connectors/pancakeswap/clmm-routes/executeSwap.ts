@@ -211,6 +211,7 @@ export async function executeClmmSwap(
           tokenOut: swapParams.tokenOut,
           fee: swapParams.fee,
           recipient: swapParams.recipient,
+          deadline: Date.now() + 300,
           amountIn: swapParams.amountIn,
           amountOutMinimum: swapParams.amountOutMinimum,
           sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
