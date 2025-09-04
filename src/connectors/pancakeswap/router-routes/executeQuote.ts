@@ -1,4 +1,4 @@
-import { BigNumber, utils, ethers } from 'ethers';
+import { BigNumber, utils } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
@@ -9,9 +9,6 @@ import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse }
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { PancakeswapExecuteQuoteRequest } from '../schemas';
-
-// Permit2 address is constant across all chains
-const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
 
 async function executeQuote(
   fastify: FastifyInstance,
@@ -37,65 +34,28 @@ async function executeQuote(
     `Executing quote ${quoteId} for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}${isHardwareWallet ? ' with hardware wallet' : ''}`,
   );
 
-  // Check and approve allowance if needed - Universal Router V2 uses Permit2
+  // Check and approve allowance if needed
   if (inputToken.address !== ethereum.nativeTokenSymbol) {
     const requiredAllowance = BigNumber.from(quote.trade.inputAmount.quotient.toString());
     const universalRouterAddress = quote.methodParameters.to;
 
-    // Step 1: Check token allowance to Permit2
-    logger.info(`Checking ${inputToken.symbol} allowance to Permit2`);
+    // Step 1: Check token allowance
+    logger.info(`Checking ${inputToken.symbol} allowance`);
     const tokenContract = ethereum.getContract(inputToken.address, ethereum.provider);
-    const tokenToPermit2Allowance = await tokenContract.allowance(walletAddress, PERMIT2_ADDRESS);
+    const tokenAllowance = await tokenContract.allowance(walletAddress, universalRouterAddress);
 
-    if (BigNumber.from(tokenToPermit2Allowance).lt(requiredAllowance)) {
+    if (BigNumber.from(tokenAllowance).lt(requiredAllowance)) {
       const inputAmount = utils.formatUnits(requiredAllowance, inputToken.decimals);
-      const currentAllowance = utils.formatUnits(tokenToPermit2Allowance, inputToken.decimals);
+      const currentAllowance = utils.formatUnits(tokenAllowance, inputToken.decimals);
 
       throw fastify.httpErrors.badRequest(
-        `Insufficient ${inputToken.symbol} allowance to Permit2. ` +
+        `Insufficient ${inputToken.symbol} allowance to ${universalRouterAddress}. ` +
           `Required: ${inputAmount}, Current: ${currentAllowance}. ` +
           `Please approve ${inputToken.symbol} using spender: "pancakeswap/router"`,
       );
     }
 
-    // Step 2: Check Permit2's allowance to Universal Router
-    logger.info(`Checking Permit2 allowance to Universal Router (${universalRouterAddress})`);
-
-    // Permit2 allowance function ABI
-    const permit2AllowanceABI = [
-      'function allowance(address owner, address token, address spender) external view returns (uint160 amount, uint48 expiration, uint48 nonce)',
-    ];
-
-    const permit2Contract = new ethers.Contract(PERMIT2_ADDRESS, permit2AllowanceABI, ethereum.provider);
-    const [permit2Amount, expiration] = await permit2Contract.allowance(
-      walletAddress,
-      inputToken.address,
-      universalRouterAddress,
-    );
-
-    // Check if the Permit2 allowance is expired
-    const currentTime = Math.floor(Date.now() / 1000);
-    const isExpired = expiration > 0 && expiration < currentTime;
-
-    if (isExpired || BigNumber.from(permit2Amount).lt(requiredAllowance)) {
-      const inputAmount = utils.formatUnits(requiredAllowance, inputToken.decimals);
-      const currentPermit2Allowance = utils.formatUnits(permit2Amount, inputToken.decimals);
-
-      if (isExpired) {
-        throw fastify.httpErrors.badRequest(
-          `Permit2 allowance for ${inputToken.symbol} to Universal Router has expired. ` +
-            `Please approve ${inputToken.symbol} again using spender: "pancakeswap/router"`,
-        );
-      } else {
-        throw fastify.httpErrors.badRequest(
-          `Insufficient Permit2 allowance for ${inputToken.symbol} to Universal Router. ` +
-            `Required: ${inputAmount}, Current: ${currentPermit2Allowance}. ` +
-            `Please approve ${inputToken.symbol} using spender: "pancakeswap/router"`,
-        );
-      }
-    }
-
-    logger.info(`Both allowances confirmed: Token->Permit2 and Permit2->UniversalRouter`);
+    logger.info(`Allowance confirmed: Token->UniversalRouter`);
   }
 
   // Execute the swap transaction
