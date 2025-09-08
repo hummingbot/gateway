@@ -1,6 +1,8 @@
 import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
+import { PancakeswapConfig } from '#src/connectors/pancakeswap/pancakeswap.config';
+
 import { ZeroXConfig } from '../../connectors/0x/0x.config';
 import { JupiterConfig } from '../../connectors/jupiter/jupiter.config';
 import { MeteoraConfig } from '../../connectors/meteora/meteora.config';
@@ -69,6 +71,12 @@ export const getConnectorsRoute: FastifyPluginAsync = async (fastify) => {
           trading_types: [...ZeroXConfig.tradingTypes],
           chain: ZeroXConfig.chain,
           networks: [...ZeroXConfig.networks],
+        },
+        {
+          name: 'pancakeswap',
+          trading_types: [...PancakeswapConfig.tradingTypes],
+          chain: PancakeswapConfig.chain,
+          networks: [...PancakeswapConfig.networks],
         },
       ];
 

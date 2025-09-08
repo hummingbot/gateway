@@ -1,0 +1,12 @@
+{
+  "poolAddress": "0xd0b53d9277642d899df5c87a3966a349a798f224",
+  "estimatedAmountIn": 1.0,
+  "estimatedAmountOut": 2202.75,
+  "minAmountOut": 2180.72,
+  "maxAmountIn": 1.01,
+  "baseTokenBalanceChange": -1.0,
+  "quoteTokenBalanceChange": 2202.75,
+  "price": 2202.75,
+  "routePath": "WBNB → USDC",
+  "computeUnits": 180000
+}

@@ -80,6 +80,10 @@ configurations:
     configurationPath: connectors/0x.yml
     schemaPath: 0x-schema.json
 
+  $namespace pancakeswap:
+    configurationPath: connectors/pancakeswap.yml
+    schemaPath: uniswap-schema.json
+
   # RPC providers
   $namespace helius:
     configurationPath: rpc/helius.yml
