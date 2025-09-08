@@ -3,7 +3,7 @@
 
 # Required: Your Helius API key
 # IMPORTANT: Set your API key here to enable Helius features
-apiKey: ''
+apiKey: 'YOUR_HELIUS_API_KEY_HERE'
 
 # Use Helius WebSocket for real-time transaction monitoring
 # Provides faster confirmation notifications than polling

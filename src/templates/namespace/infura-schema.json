@@ -3,7 +3,6 @@
   "properties": {
     "apiKey": {
       "type": "string",
-      "minLength": 1,
       "description": "Infura API key"
     },
     "useWebSocket": {
