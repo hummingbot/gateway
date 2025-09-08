@@ -2,7 +2,7 @@ nodeURL: https://api.mainnet-beta.solana.com
 nativeCurrencySymbol: SOL
 
 # RPC provider: 'url' uses nodeURL, 'helius' uses Helius service
-rpcProvider: 'helius'
+rpcProvider: url
 
 # Default compute units for a transaction
 # This sets the compute unit limit for transactions when not specified by the user

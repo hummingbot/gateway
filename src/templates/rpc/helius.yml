@@ -7,11 +7,11 @@ apiKey: 'YOUR_HELIUS_API_KEY_HERE'
 
 # Use Helius WebSocket for real-time transaction monitoring
 # Provides faster confirmation notifications than polling
-useWebSocketRPC: true
+useWebSocketRPC: false
 
 # Use Helius Sender endpoint for ultra-fast transaction delivery
 # Routes transactions through optimized infrastructure
-useSender: true
+useSender: false
 
 # Regional endpoint for Helius Sender
 # Options: slc (Salt Lake City), ewr (Newark), lon (London), 

@@ -5,4 +5,4 @@
 apiKey: 'YOUR_INFURA_API_KEY_HERE'
 
 # Enable WebSocket connections for real-time events
-useWebSocket: true
+useWebSocket: false

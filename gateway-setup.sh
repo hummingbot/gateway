@@ -130,7 +130,7 @@ ask_config_choices () {
   fi
   
   # Ask about rpc folder
-  if prompt_yes_no "  - rpc/ (RPC provider configurations like Helius)?" "Y"; then
+  if prompt_yes_no "  - rpc/ (RPC provider configurations like Helius, Infura)?" "Y"; then
     UPDATE_RPC="Y"
     PLANNED_UPDATES="${PLANNED_UPDATES}rpc/, "
   else
@@ -349,7 +349,7 @@ if [ "$UPDATE_POOLS" = "Y" ]; then
   echo "   - pools/ (default pool lists for each DEX connector)"
 fi
 if [ "$UPDATE_RPC" = "Y" ]; then
-  echo "   - rpc/ (RPC provider configurations like Helius)"
+  echo "   - rpc/ (RPC provider configurations like Helius, Infura)"
 fi
 echo "   - root.yml (always updated - essential file)"
 echo "   - namespaces/ (always updated - config schemas)"
