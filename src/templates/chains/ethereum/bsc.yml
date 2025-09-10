@@ -2,4 +2,3 @@ chainID: 56
 nodeURL: https://binance.llamarpc.com
 nativeCurrencySymbol: BNB
 minGasPrice: 0.1
-rpcProvider: url

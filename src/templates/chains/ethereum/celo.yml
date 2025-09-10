@@ -2,4 +2,3 @@ chainID: 42220
 nodeURL: https://rpc.ankr.com/celo
 nativeCurrencySymbol: CELO
 minGasPrice: 0.1
-rpcProvider: url

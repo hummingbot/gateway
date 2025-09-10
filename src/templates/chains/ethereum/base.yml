@@ -2,4 +2,3 @@ chainID: 8453
 nodeURL: https://mainnet.base.org
 nativeCurrencySymbol: ETH
 minGasPrice: 0.1
-rpcProvider: url

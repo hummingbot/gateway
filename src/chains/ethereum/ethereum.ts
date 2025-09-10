@@ -57,12 +57,16 @@ export class Ethereum {
     this.nativeTokenSymbol = config.nativeCurrencySymbol;
     this.minGasPrice = config.minGasPrice || 0.1; // Default to 0.1 GWEI if not specified
 
+    // Get rpcProvider from chain config
+    const chainConfig = getEthereumChainConfig();
+    const rpcProvider = chainConfig.rpcProvider || 'url';
+
     // Initialize RPC connection based on provider
-    if (config.rpcProvider === 'infura') {
-      logger.info(`Initializing Infura services for provider: ${config.rpcProvider}`);
+    if (rpcProvider === 'infura') {
+      logger.info(`Initializing Infura services for provider: ${rpcProvider}`);
       this.initializeInfuraProvider(config);
     } else {
-      logger.info(`Using standard RPC provider: ${config.rpcProvider || 'url'}`);
+      logger.info(`Using standard RPC provider: ${rpcProvider}`);
       logger.info(`Initializing Ethereum connector for network: ${network}, RPC URL: ${this.rpcUrl}`);
       this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
     }

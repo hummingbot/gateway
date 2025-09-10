@@ -2,4 +2,3 @@ chainID: 1
 nodeURL: https://eth.llamarpc.com
 nativeCurrencySymbol: ETH
 minGasPrice: 0.1
-rpcProvider: url

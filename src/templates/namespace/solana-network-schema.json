@@ -4,11 +4,6 @@
   "properties": {
     "nodeURL": { "type": "string" },
     "nativeCurrencySymbol": { "type": "string" },
-    "rpcProvider": {
-      "type": "string",
-      "enum": ["url", "helius"],
-      "description": "RPC provider to use: 'url' for standard nodeURL, 'helius' for Helius service"
-    },
     "defaultComputeUnits": { "type": "number" },
     "confirmRetryInterval": { "type": "number" },
     "confirmRetryCount": { "type": "number" },
