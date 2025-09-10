@@ -70,13 +70,38 @@ export class InfuraService {
    */
   private getInfuraNetworkName(): string {
     const networkMap: Record<number, string> = {
+      // Mainnets
       1: 'mainnet',
-      137: 'polygon-mainnet',
-      42161: 'arbitrum-mainnet',
       10: 'optimism-mainnet',
+      56: 'bsc-mainnet',
+      137: 'polygon-mainnet',
+      324: 'zksync-mainnet',
+      534352: 'scroll-mainnet',
+      5000: 'mantle-mainnet',
       8453: 'base-mainnet',
+      42161: 'arbitrum-mainnet',
+      42220: 'celo-mainnet',
       43114: 'avalanche-mainnet',
+      59144: 'linea-mainnet',
+      81457: 'blast-mainnet',
+      204: 'opbnb-mainnet',
+      11297108109: 'palm-mainnet',
+      // Testnets
       11155111: 'sepolia',
+      421614: 'arbitrum-sepolia',
+      43113: 'avalanche-fuji',
+      84532: 'base-sepolia',
+      168587773: 'blast-sepolia',
+      97: 'bsc-testnet',
+      44787: 'celo-alfajores',
+      59141: 'linea-sepolia',
+      5003: 'mantle-sepolia',
+      5611: 'opbnb-testnet',
+      11155420: 'optimism-sepolia',
+      11297108099: 'palm-testnet',
+      80002: 'polygon-amoy',
+      534351: 'scroll-sepolia',
+      300: 'zksync-sepolia',
     };
 
     const network = networkMap[this.config.chainID];
@@ -92,13 +117,38 @@ export class InfuraService {
    */
   private getNetworkName(): string {
     const nameMap: Record<number, string> = {
+      // Mainnets
       1: 'Ethereum Mainnet',
-      137: 'Polygon',
-      42161: 'Arbitrum',
       10: 'Optimism',
+      56: 'BSC',
+      137: 'Polygon',
+      324: 'ZKsync Era',
+      534352: 'Scroll',
+      5000: 'Mantle',
       8453: 'Base',
+      42161: 'Arbitrum',
+      42220: 'Celo',
       43114: 'Avalanche',
+      59144: 'Linea',
+      81457: 'Blast',
+      204: 'opBNB',
+      11297108109: 'Palm',
+      // Testnets
       11155111: 'Sepolia',
+      421614: 'Arbitrum Sepolia',
+      43113: 'Avalanche Fuji',
+      84532: 'Base Sepolia',
+      168587773: 'Blast Sepolia',
+      97: 'BSC Testnet',
+      44787: 'Celo Alfajores',
+      59141: 'Linea Sepolia',
+      5003: 'Mantle Sepolia',
+      5611: 'opBNB Testnet',
+      11155420: 'Optimism Sepolia',
+      11297108099: 'Palm Testnet',
+      80002: 'Polygon Amoy',
+      534351: 'Scroll Sepolia',
+      300: 'ZKsync Sepolia',
     };
 
     return nameMap[this.config.chainID] || `Chain ${this.config.chainID}`;
