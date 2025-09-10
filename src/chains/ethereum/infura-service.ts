@@ -19,6 +19,13 @@ export class InfuraService {
   }
 
   /**
+   * Get the Infura RPC URL for a specific network
+   */
+  public getUrlForNetwork(_network: string): string {
+    return this.getInfuraHttpUrl();
+  }
+
+  /**
    * Initialize HTTP and WebSocket providers
    */
   private initializeProvider(): void {

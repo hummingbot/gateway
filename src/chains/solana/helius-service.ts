@@ -79,6 +79,16 @@ export class HeliusService {
   constructor(private config: SolanaNetworkConfig) {}
 
   /**
+   * Get the Helius RPC URL for a specific network
+   */
+  public getUrlForNetwork(network: string): string {
+    const isDevnet = network.includes('devnet');
+    return isDevnet
+      ? `https://devnet.helius-rpc.com/?api-key=${this.config.heliusAPIKey}`
+      : `https://mainnet.helius-rpc.com/?api-key=${this.config.heliusAPIKey}`;
+  }
+
+  /**
    * Get regional endpoints for the configured region
    */
   private getRegionalEndpoints(): { base: string; sender: string; ping: string } {

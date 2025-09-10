@@ -334,6 +334,13 @@ export class Solana {
   }
 
   /**
+   * Get the HeliusService instance if initialized
+   */
+  public getHeliusService(): HeliusService | null {
+    return this.heliusService || null;
+  }
+
+  /**
    * Get the PublicKey object for a wallet address
    * This is used for hardware wallets where we only need the public key
    */

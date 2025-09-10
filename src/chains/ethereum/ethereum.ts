@@ -405,6 +405,13 @@ export class Ethereum {
   }
 
   /**
+   * Get the InfuraService instance if initialized
+   */
+  public getInfuraService(): InfuraService | null {
+    return this.infuraService || null;
+  }
+
+  /**
    * Check if an address is a hardware wallet
    */
   public async isHardwareWallet(address: string): Promise<boolean> {
