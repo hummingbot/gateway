@@ -195,6 +195,11 @@ export function getSpender(network: string, connectorName: string): string {
     return getPancakeswapV2RouterAddress(network);
   }
 
+  // Check for CLMM swap-specific pattern - use SwapRouter02
+  if (connectorName.includes('/clmm/swap')) {
+    return getPancakeswapV3SwapRouter02Address(network);
+  }
+
   // Check for CLMM (V3) connector pattern
   if (connectorName.includes('/clmm')) {
     return getPancakeswapV3NftManagerAddress(network);
