@@ -47,6 +47,17 @@ export function validateChainName(chain: string): boolean {
   }
 }
 
+// Validate address based on chain type and return the validated address
+export function validateAddressByChain(chain: string, address: string): string {
+  if (chain.toLowerCase() === 'ethereum') {
+    return Ethereum.validateAddress(address);
+  } else if (chain.toLowerCase() === 'solana') {
+    return Solana.validateAddress(address);
+  } else {
+    throw new Error(`Unsupported chain: ${chain}`);
+  }
+}
+
 // Get safe path for wallet files, with chain and address validation
 export function getSafeWalletFilePath(chain: string, address: string): string {
   // Validate chain name
@@ -151,11 +162,9 @@ export async function removeWallet(fastify: FastifyInstance, req: RemoveWalletRe
 
     // Validate the address based on chain type
     let validatedAddress: string;
-    if (req.chain.toLowerCase() === 'ethereum') {
-      validatedAddress = Ethereum.validateAddress(req.address);
-    } else if (req.chain.toLowerCase() === 'solana') {
-      validatedAddress = Solana.validateAddress(req.address);
-    } else {
+    try {
+      validatedAddress = validateAddressByChain(req.chain, req.address);
+    } catch (error) {
       // This should not happen due to validateChainName check, but just in case
       throw new Error(`Unsupported chain: ${req.chain}`);
     }
@@ -184,11 +193,9 @@ export async function signMessage(fastify: FastifyInstance, req: SignMessageRequ
 
     // Validate the address based on chain type
     let validatedAddress: string;
-    if (req.chain.toLowerCase() === 'ethereum') {
-      validatedAddress = Ethereum.validateAddress(req.address);
-    } else if (req.chain.toLowerCase() === 'solana') {
-      validatedAddress = Solana.validateAddress(req.address);
-    } else {
+    try {
+      validatedAddress = validateAddressByChain(req.chain, req.address);
+    } catch (error) {
       throw new Error(`Unsupported chain: ${req.chain}`);
     }
 
@@ -246,7 +253,7 @@ export async function getWallets(
     await mkdirIfDoesNotExist(walletPath);
 
     // Get only valid chain directories
-    const validChains = ['ethereum', 'solana'];
+    const validChains = getSupportedChains();
     const allDirs = await getDirectories(walletPath);
     const chains = allDirs.filter((dir) => validChains.includes(dir.toLowerCase()));
 
