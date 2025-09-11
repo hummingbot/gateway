@@ -21,9 +21,7 @@ export const callPrototypeDepRoute: FastifyPluginAsync = async (fastify) => {
         return await rnpExample.callPrototypeDep();
       } catch (error) {
         logger.error(`Error getting callPrototypeDep status: ${error.message}`);
-        throw fastify.httpErrors.internalServerError(
-          `Failed to callPrototypeDep: ${error.message}`,
-        );
+        throw fastify.httpErrors.internalServerError(`Failed to callPrototypeDep: ${error.message}`);
       }
     },
   );

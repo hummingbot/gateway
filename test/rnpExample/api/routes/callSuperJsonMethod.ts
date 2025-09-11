@@ -20,12 +20,8 @@ export const callSuperJsonMethodRoute: FastifyPluginAsync = async (fastify) => {
         const rnpExample = await RnpExample.getInstance(request.query.network);
         return await rnpExample.callSuperJsonMethod();
       } catch (error) {
-        logger.error(
-          `Error getting callSuperJsonMethod status: ${error.message}`,
-        );
-        throw fastify.httpErrors.internalServerError(
-          `Failed to callSuperJsonMethod: ${error.message}`,
-        );
+        logger.error(`Error getting callSuperJsonMethod status: ${error.message}`);
+        throw fastify.httpErrors.internalServerError(`Failed to callSuperJsonMethod: ${error.message}`);
       }
     },
   );

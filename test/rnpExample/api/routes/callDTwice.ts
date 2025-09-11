@@ -21,9 +21,7 @@ export const callDTwiceRoute: FastifyPluginAsync = async (fastify) => {
         return await rnpExample.callDTwice();
       } catch (error) {
         logger.error(`Error getting callDTwice status: ${error.message}`);
-        throw fastify.httpErrors.internalServerError(
-          `Failed to callDTwice: ${error.message}`,
-        );
+        throw fastify.httpErrors.internalServerError(`Failed to callDTwice: ${error.message}`);
       }
     },
   );

@@ -21,9 +21,7 @@ export const callUnlistedDepRoute: FastifyPluginAsync = async (fastify) => {
         return await rnpExample.callUnlistedDep();
       } catch (error) {
         logger.error(`Error getting callUnlistedDep status: ${error.message}`);
-        throw fastify.httpErrors.internalServerError(
-          `Failed to callUnlistedDep: ${error.message}`,
-        );
+        throw fastify.httpErrors.internalServerError(`Failed to callUnlistedDep: ${error.message}`);
       }
     },
   );

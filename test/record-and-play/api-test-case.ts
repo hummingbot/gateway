@@ -21,9 +21,7 @@ interface APITestCaseParams<Harness extends AbstractGatewayTestHarness<any>> {
    * The key must match a key in the harness's `dependencyContracts`.
    * The value is the name of the mock file (or an array of names for sequential calls).
    */
-  requiredMocks?: Partial<
-    Record<keyof Harness['dependencyContracts'], string | string[]>
-  >;
+  requiredMocks?: Partial<Record<keyof Harness['dependencyContracts'], string | string[]>>;
   /** An object of Jest property matchers (e.g., `{ a: expect.any(String) }`)
    * to allow for non-deterministic values in snapshot testing. */
   propertyMatchers?: Record<string, any>;
@@ -39,17 +37,13 @@ interface APITestCaseParams<Harness extends AbstractGatewayTestHarness<any>> {
  *
  * @template Harness The type of the test harness this case will be run with.
  */
-export class APITestCase<Harness extends AbstractGatewayTestHarness<any>>
-  implements InjectOptions
-{
+export class APITestCase<Harness extends AbstractGatewayTestHarness<any>> implements InjectOptions {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD';
   url: string;
   expectedStatus: number;
   query: Record<string, string>;
   payload: Record<string, any>;
-  requiredMocks: Partial<
-    Record<keyof Harness['dependencyContracts'], string | string[]>
-  >;
+  requiredMocks: Partial<Record<keyof Harness['dependencyContracts'], string | string[]>>;
   propertyMatchers?: Partial<any>;
   private params: APITestCaseParams<Harness>;
 
@@ -80,9 +74,7 @@ export class APITestCase<Harness extends AbstractGatewayTestHarness<any>>
     this.assertStatusCode(response);
     const errorEntries = Object.entries(saveMockErrors);
     if (errorEntries.length > 0) {
-      const errorMessages = errorEntries
-        .map(([key, error]) => `${key}: ${error.message}`)
-        .join('\n');
+      const errorMessages = errorEntries.map(([key, error]) => `${key}: ${error.message}`).join('\n');
       throw new Error(`Failed to save mocks:\n${errorMessages}`);
     }
     const body = JSON.parse(response.body);

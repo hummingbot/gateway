@@ -23,12 +23,7 @@ export abstract class TestDependencyContract<TInstance, TObject, TMock> {
    * Attaches a mock implementation to the spy.
    * Can be called multiple times to mock subsequent calls.
    */
-  setupMock(
-    spy: jest.SpyInstance,
-    provider: MockProvider<TInstance>,
-    fileName: string,
-    isAsync = true,
-  ): void {
+  setupMock(spy: jest.SpyInstance, provider: MockProvider<TInstance>, fileName: string, isAsync = true): void {
     const mock = provider.getMock<TMock>(fileName);
     if (isAsync) {
       spy.mockResolvedValueOnce(mock);
@@ -44,11 +39,11 @@ export abstract class TestDependencyContract<TInstance, TObject, TMock> {
  * dependency that is a property of the main service instance being tested.
  * It is required for methods defined with arrow functions.
  */
-export class InstancePropertyDependency<
+export class InstancePropertyDependency<TInstance, TObject, TMock> extends TestDependencyContract<
   TInstance,
   TObject,
-  TMock,
-> extends TestDependencyContract<TInstance, TObject, TMock> {
+  TMock
+> {
   constructor(
     private getObjectFn: (provider: MockProvider<TInstance>) => TObject,
     public readonly methodName: keyof TObject,
@@ -75,11 +70,7 @@ export class InstancePropertyDependency<
  * IMPORTANT: This will NOT work for methods defined with arrow functions, as they
  * do not exist on the prototype.
  */
-export class PrototypeDependency<
-  TInstance,
-  TObject,
-  TMock,
-> extends TestDependencyContract<TInstance, TObject, TMock> {
+export class PrototypeDependency<TInstance, TObject, TMock> extends TestDependencyContract<TInstance, TObject, TMock> {
   constructor(
     private ClassConstructor: { new (...args: any[]): TObject },
     public readonly methodName: keyof TObject,
@@ -102,9 +93,7 @@ export class PrototypeDependency<
  * This should be used within a concrete TestHarness class.
  */
 export class DependencyFactory<TInstance> {
-  private _extractMethodName<T, TMethod extends (...args: any[]) => any>(
-    selector: (obj: T) => TMethod,
-  ): keyof T {
+  private _extractMethodName<T, TMethod extends (...args: any[]) => any>(selector: (obj: T) => TMethod): keyof T {
     // This is a hack: create a Proxy to intercept the property access
     let prop: string | symbol | undefined;
     const proxy = new Proxy(
@@ -130,10 +119,7 @@ export class DependencyFactory<TInstance> {
    * @param methodSelector A lambda function that selects the method on the dependency object (e.g., `x => x.myMethod`).
    * @param allowPassThrough If true, the real method is called during "Play" mode.
    */
-  instanceProperty<
-    K extends keyof TInstance,
-    TMethod extends (...args: any[]) => any = any,
-  >(
+  instanceProperty<K extends keyof TInstance, TMethod extends (...args: any[]) => any = any>(
     instancePropertyName: K,
     methodSelector: (dep: TInstance[K]) => TMethod,
     allowPassThrough = false,
@@ -143,8 +129,7 @@ export class DependencyFactory<TInstance> {
     type TMock = Awaited<ReturnType<TMethod>>;
 
     return new InstancePropertyDependency<TInstance, TInstance[K], TMock>(
-      (p: MockProvider<TInstance>): TInstance[K] =>
-        p.instance[instancePropertyName],
+      (p: MockProvider<TInstance>): TInstance[K] => p.instance[instancePropertyName],
       methodName,
       allowPassThrough,
     );
@@ -164,10 +149,6 @@ export class DependencyFactory<TInstance> {
   ) {
     const methodName = this._extractMethodName(methodSelector);
     type TMock = Awaited<ReturnType<TMethod>>;
-    return new PrototypeDependency<TInstance, TObject, TMock>(
-      ClassConstructor,
-      methodName,
-      allowPassThrough,
-    );
+    return new PrototypeDependency<TInstance, TObject, TMock>(ClassConstructor, methodName, allowPassThrough);
   }
 }

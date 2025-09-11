@@ -21,9 +21,7 @@ export const callABCRoute: FastifyPluginAsync = async (fastify) => {
         return await rnpExample.callABC();
       } catch (error) {
         logger.error(`Error getting callABC status: ${error.message}`);
-        throw fastify.httpErrors.internalServerError(
-          `Failed to callABC: ${error.message}`,
-        );
+        throw fastify.httpErrors.internalServerError(`Failed to callABC: ${error.message}`);
       }
     },
   );
