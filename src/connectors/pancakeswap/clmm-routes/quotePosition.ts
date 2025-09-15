@@ -1,4 +1,5 @@
 import { Position, nearestUsableTick, tickToPrice } from '@pancakeswap/v3-sdk';
+import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
@@ -9,9 +10,8 @@ import {
   QuotePositionResponse,
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
-import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Pancakeswap } from '../pancakeswap';
-import { getPancakeswapPoolInfo } from '../pancakeswap.utils';
+import { PancakeswapConfig } from '../pancakeswap.config';
 
 export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -27,7 +27,13 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           ...QuotePositionRequest,
           properties: {
             ...QuotePositionRequest.properties,
-            network: { type: 'string', default: 'base' },
+            network: Type.Optional(
+              Type.String({
+                description: 'The EVM network to use',
+                default: 'bsc',
+                enum: [...PancakeswapConfig.networks],
+              }),
+            ),
             lowerPrice: { type: 'number', examples: [1000] },
             upperPrice: { type: 'number', examples: [4000] },
             poolAddress: {
@@ -47,7 +53,16 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, lowerPrice, upperPrice, poolAddress, baseTokenAmount, quoteTokenAmount } = request.query;
+        const {
+          network,
+          lowerPrice,
+          upperPrice,
+          poolAddress,
+          baseTokenAmount,
+          quoteTokenAmount,
+          baseToken,
+          quoteToken,
+        } = request.query;
 
         const networkToUse = network;
 
@@ -56,6 +71,8 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           !lowerPrice ||
           !upperPrice ||
           !poolAddress ||
+          !quoteToken ||
+          !baseToken ||
           (baseTokenAmount === undefined && quoteTokenAmount === undefined)
         ) {
           throw fastify.httpErrors.badRequest('Missing required parameters');
@@ -64,14 +81,8 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         // Get Pancakeswap and Ethereum instances
         const pancakeswap = await Pancakeswap.getInstance(networkToUse);
 
-        // Get pool information to determine tokens
-        const poolInfo = await getPancakeswapPoolInfo(poolAddress, networkToUse, 'clmm');
-        if (!poolInfo) {
-          throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
-        }
-
-        const baseTokenObj = pancakeswap.getTokenByAddress(poolInfo.baseTokenAddress);
-        const quoteTokenObj = pancakeswap.getTokenByAddress(poolInfo.quoteTokenAddress);
+        const baseTokenObj = pancakeswap.getTokenBySymbol(baseToken);
+        const quoteTokenObj = pancakeswap.getTokenBySymbol(quoteToken);
 
         if (!baseTokenObj || !quoteTokenObj) {
           throw fastify.httpErrors.badRequest('Token information not found for pool');
@@ -130,12 +141,9 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           return Math.floor(Math.log(rawPrice) / Math.log(1.0001));
         };
 
-        lowerTick = priceToTickWithDecimals(lowerPrice);
-        upperTick = priceToTickWithDecimals(upperPrice);
+        lowerTick = priceToTickWithDecimals(isBaseToken0 ? lowerPrice : 1 / upperPrice);
+        upperTick = priceToTickWithDecimals(isBaseToken0 ? upperPrice : 1 / lowerPrice);
 
-        const currentHumanPrice = 2637; // Approximate current price
-        const expectedCurrentTick = priceToTickWithDecimals(currentHumanPrice);
-        console.log('DEBUG: Expected current tick for price', currentHumanPrice, ':', expectedCurrentTick);
         console.log('DEBUG: Lower price', lowerPrice, '-> tick', lowerTick);
         console.log('DEBUG: Upper price', upperPrice, '-> tick', upperTick);
 

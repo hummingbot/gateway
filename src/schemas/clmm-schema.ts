@@ -1,7 +1,5 @@
 import { Type, Static } from '@sinclair/typebox';
 
-import { TransactionStatus } from './chain-schema';
-
 export const FetchPoolsRequest = Type.Object(
   {
     network: Type.Optional(Type.String()), // Network
@@ -120,6 +118,10 @@ export const OpenPositionRequest = Type.Object(
   },
   { $id: 'OpenPositionRequest' },
 );
+export const BaseTokenQuoteToken = Type.Object({
+  baseToken: Type.String(),
+  quoteToken: Type.String(),
+});
 export type OpenPositionRequestType = Static<typeof OpenPositionRequest>;
 
 export const OpenPositionResponse = Type.Object(
@@ -261,7 +263,10 @@ export const ClosePositionResponse = Type.Object(
 );
 export type ClosePositionResponseType = Static<typeof ClosePositionResponse>;
 
-export const QuotePositionRequest = Type.Omit(OpenPositionRequest, ['walletAddress'], { $id: 'QuotePositionRequest' });
+export const QuotePositionRequest = Type.Intersect(
+  [Type.Omit(OpenPositionRequest, ['walletAddress']), BaseTokenQuoteToken],
+  { $id: 'QuotePositionRequest' },
+);
 export type QuotePositionRequestType = Static<typeof QuotePositionRequest>;
 
 export const QuotePositionResponse = Type.Object(
