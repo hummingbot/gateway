@@ -25,6 +25,46 @@ const ConnectorsResponseSchema = Type.Object({
 // Type for TypeScript
 type ConnectorsResponse = Static<typeof ConnectorsResponseSchema>;
 
+// Export the connectors configuration for reuse in other parts of the codebase
+export const connectorsConfig = [
+  {
+    name: 'jupiter',
+    trading_types: [...JupiterConfig.tradingTypes],
+    chain: JupiterConfig.chain,
+    networks: [...JupiterConfig.networks],
+  },
+  {
+    name: 'meteora',
+    trading_types: [...MeteoraConfig.tradingTypes],
+    chain: MeteoraConfig.chain,
+    networks: [...MeteoraConfig.networks],
+  },
+  {
+    name: 'raydium',
+    trading_types: [...RaydiumConfig.tradingTypes],
+    chain: RaydiumConfig.chain,
+    networks: [...RaydiumConfig.networks],
+  },
+  {
+    name: 'uniswap',
+    trading_types: [...UniswapConfig.tradingTypes],
+    chain: UniswapConfig.chain,
+    networks: [...UniswapConfig.networks],
+  },
+  {
+    name: '0x',
+    trading_types: [...ZeroXConfig.tradingTypes],
+    chain: ZeroXConfig.chain,
+    networks: [...ZeroXConfig.networks],
+  },
+  {
+    name: 'pancakeswap',
+    trading_types: [...PancakeswapConfig.tradingTypes],
+    chain: PancakeswapConfig.chain,
+    networks: [...PancakeswapConfig.networks],
+  },
+];
+
 export const getConnectorsRoute: FastifyPluginAsync = async (fastify) => {
   // List available connectors
   fastify.get<{ Reply: ConnectorsResponse }>(
@@ -41,44 +81,7 @@ export const getConnectorsRoute: FastifyPluginAsync = async (fastify) => {
     async () => {
       logger.info('Getting available DEX connectors and networks');
 
-      const connectors = [
-        {
-          name: 'jupiter',
-          trading_types: [...JupiterConfig.tradingTypes],
-          chain: JupiterConfig.chain,
-          networks: [...JupiterConfig.networks],
-        },
-        {
-          name: 'meteora',
-          trading_types: [...MeteoraConfig.tradingTypes],
-          chain: MeteoraConfig.chain,
-          networks: [...MeteoraConfig.networks],
-        },
-        {
-          name: 'raydium',
-          trading_types: [...RaydiumConfig.tradingTypes],
-          chain: RaydiumConfig.chain,
-          networks: [...RaydiumConfig.networks],
-        },
-        {
-          name: 'uniswap',
-          trading_types: [...UniswapConfig.tradingTypes],
-          chain: UniswapConfig.chain,
-          networks: [...UniswapConfig.networks],
-        },
-        {
-          name: '0x',
-          trading_types: [...ZeroXConfig.tradingTypes],
-          chain: ZeroXConfig.chain,
-          networks: [...ZeroXConfig.networks],
-        },
-        {
-          name: 'pancakeswap',
-          trading_types: [...PancakeswapConfig.tradingTypes],
-          chain: PancakeswapConfig.chain,
-          networks: [...PancakeswapConfig.networks],
-        },
-      ];
+      const connectors = connectorsConfig;
 
       logger.info('Available connectors: ' + connectors.map((c) => c.name).join(', '));
 
