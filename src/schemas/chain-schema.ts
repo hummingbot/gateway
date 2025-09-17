@@ -130,6 +130,7 @@ export const StatusResponseSchema = Type.Object(
     chain: Type.String(),
     network: Type.String(),
     rpcUrl: Type.String(),
+    rpcProvider: Type.String(),
     currentBlockNumber: Type.Number(),
     nativeCurrency: Type.String(),
   },

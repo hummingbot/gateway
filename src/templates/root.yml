@@ -82,9 +82,13 @@ configurations:
 
   $namespace pancakeswap:
     configurationPath: connectors/pancakeswap.yml
-    schemaPath: uniswap-schema.json
+    schemaPath: pancakeswap-schema.json
 
   # RPC providers
   $namespace helius:
     configurationPath: rpc/helius.yml
     schemaPath: helius-schema.json
+
+  $namespace infura:
+    configurationPath: rpc/infura.yml
+    schemaPath: infura-schema.json

@@ -66,6 +66,15 @@ const ajv: Ajv = new Ajv();
 
 export const percentRegexp = new RegExp(/^(\d+)\/(\d+)$/);
 
+/**
+ * Fix unquoted Ethereum addresses in YAML content
+ * Ethereum addresses starting with 0x can be misinterpreted as octal numbers by YAML parser
+ */
+function fixEthereumAddresses(yamlContent: string): string {
+  // Match patterns like "defaultWallet: 0x..." and add quotes
+  return yamlContent.replace(/(defaultWallet|walletAddress):\s*(0x[a-fA-F0-9]{40})(?!\s*['"])/g, "$1: '$2'");
+}
+
 export class ConfigurationNamespace {
   /**
    * This class encapsulates a namespace under the configuration tree.
@@ -148,9 +157,9 @@ export class ConfigurationNamespace {
 
   loadConfig() {
     try {
-      const configCandidate: Configuration = yaml.load(
-        fs.readFileSync(this.#configurationPath, 'utf8'),
-      ) as Configuration;
+      const rawConfigContent = fs.readFileSync(this.#configurationPath, 'utf8');
+      const fixedConfigContent = fixEthereumAddresses(rawConfigContent);
+      const configCandidate: Configuration = yaml.load(fixedConfigContent) as Configuration;
 
       if (!this.#validator(configCandidate)) {
         try {
@@ -159,9 +168,9 @@ export class ConfigurationNamespace {
             throw new Error(`Template file not found: ${this.#templatePath}`);
           }
 
-          const configTemplateCandidate: Configuration = yaml.load(
-            fs.readFileSync(this.#templatePath, 'utf8'),
-          ) as Configuration;
+          const rawTemplateContent = fs.readFileSync(this.#templatePath, 'utf8');
+          const fixedTemplateContent = fixEthereumAddresses(rawTemplateContent);
+          const configTemplateCandidate: Configuration = yaml.load(fixedTemplateContent) as Configuration;
 
           deepCopy(configCandidate, configTemplateCandidate);
           if (!this.#validator(configTemplateCandidate)) {
@@ -435,7 +444,9 @@ export class ConfigManagerV2 {
     // Load the config root file.
     const configRootFullPath: string = fs.realpathSync(configRootPath);
     const configRootDir: string = path.dirname(configRootFullPath);
-    const configRoot: ConfigurationRoot = yaml.load(fs.readFileSync(configRootFullPath, 'utf8')) as ConfigurationRoot;
+    const rawRootContent = fs.readFileSync(configRootFullPath, 'utf8');
+    const fixedRootContent = fixEthereumAddresses(rawRootContent);
+    const configRoot: ConfigurationRoot = yaml.load(fixedRootContent) as ConfigurationRoot;
 
     // Validate the config root file.
     const validator: ValidateFunction = ajv.compile(JSON.parse(fs.readFileSync(ConfigRootSchemaPath).toString()));
