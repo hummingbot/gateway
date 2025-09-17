@@ -68,7 +68,9 @@ This file provides guidance to AI coding assistants when working with code in th
 - `src/`: Source code
   - `chains/`: Chain-specific implementations
     - `ethereum/`: Ethereum chain implementation with route handlers
+      - `infura-service.ts`: Infura RPC provider integration
     - `solana/`: Solana chain implementation with route handlers
+      - `helius-service.ts`: Helius RPC provider integration
   - `connectors/`: DEX and protocol connectors
     - `jupiter/router-routes/`: Jupiter aggregator routes
     - `meteora/clmm-routes/`: Meteora DLMM routes
@@ -109,6 +111,7 @@ This file provides guidance to AI coding assistants when working with code in th
 - Define schemas using TypeBox
 - Prefer async/await over promise chains
 - Follow singleton pattern for chains/connectors
+- RPC provider services should gracefully fall back to standard RPC on failure
 
 ## Adding New Features
 - Follow existing patterns in chains/connectors directories
@@ -118,11 +121,18 @@ This file provides guidance to AI coding assistants when working with code in th
 - Update chain.routes.ts or connector.routes.ts to list new modules
 
 ## Configuration
-- Chain configs: `src/templates/{chain}/{network}.yml`
-- Connector configs: `src/templates/{connector}.yml`
+- Chain configs: `src/templates/chains/{chain}/{network}.yml`
+- Connector configs: `src/templates/connectors/{connector}.yml`
 - Token lists: `src/templates/tokens/{chain}/{network}.json`
 - AMM/CLMM pools: `src/templates/pools/{connector}.json`
+- RPC provider configs: `src/templates/rpc/{provider}.yml`
 - All configs validated against JSON schemas in `src/templates/namespace/`
+
+### RPC Provider Configuration
+Gateway supports optimized RPC providers for enhanced performance:
+- **Infura** (Ethereum): `conf/rpc/infura.yml` - Set `rpcProvider: infura` in network configs
+- **Helius** (Solana): `conf/rpc/helius.yml` - Set `rpcProvider: helius` in network configs
+- Default fallback to standard `nodeURL` when provider unconfigured
 
 ## Supported Networks
 
@@ -163,6 +173,49 @@ This file provides guidance to AI coding assistants when working with code in th
 - `GATEWAY_TEST_MODE=dev`: Run tests in development mode
 - `START_SERVER=true`: Required to start the server
 - `DEV=true`: Run in HTTP mode (Docker)
+
+## RPC Provider Abstraction
+
+### Overview
+Gateway implements RPC provider abstraction for optimized blockchain connectivity:
+- **Pattern**: Factory-like selection based on `rpcProvider` field in network configs
+- **Services**: Dedicated service classes per provider (InfuraService, HeliusService)
+- **Fallback**: Automatic fallback to standard RPC when provider unavailable
+- **Features**: WebSocket support, transaction monitoring, regional optimization
+
+### Supported Providers
+- **Infura** (Ethereum/EVM): Mainnet, Polygon, Arbitrum, Optimism, Base, Avalanche
+  - WebSocket support for real-time events
+  - Automatic network endpoint mapping
+  - Health checks and monitoring
+- **Helius** (Solana): Mainnet-Beta, Devnet
+  - WebSocket transaction monitoring
+  - Sender endpoints for fast execution
+  - Regional optimization (slc, ewr, lon, fra, ams, sg, tyo)
+  - Connection warming for reduced latency
+
+### Testing RPC Providers
+Live integration tests in `scripts/`:
+- `test-infura-live.js`: Test Infura integration with real API key
+- `test-helius-live.js`: Test Helius integration with real API key
+- `test-provider-switching.js`: Test provider switching functionality
+
+Run tests:
+```bash
+# Requires configured API keys in conf/rpc/*.yml
+node scripts/test-infura-live.js
+node scripts/test-helius-live.js
+```
+
+### Adding New RPC Provider
+1. Create config template: `src/templates/rpc/{provider}.yml`
+2. Create JSON schema: `src/templates/namespace/{provider}-schema.json`
+3. Register in `src/templates/root.yml`
+4. Implement service class: `src/chains/{chain}/{provider}-service.ts`
+5. Update chain connector to support provider selection
+6. Add `rpcProvider` enum to network schema
+7. Create live integration test script
+8. Document configuration and usage
 
 ## Hummingbot Gateway Endpoint Standardization
 - This repo standardized DEX and chain endpoints that are used by Hummingbot strategies. See this branch for the matching code, especially the Gateway connector classes https://github.com/hummingbot/hummingbot/tree/development

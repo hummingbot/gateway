@@ -71,6 +71,7 @@ export class Solana {
   public config: SolanaNetworkConfig;
   private _tokenMap: Record<string, TokenInfo> = {};
   private heliusService: HeliusService;
+  private heliusConfig: { useHeliusSender?: boolean; jitoTipSOL?: number } = {};
 
   private static _instances: { [name: string]: Solana };
 
@@ -79,13 +80,17 @@ export class Solana {
     this.config = getSolanaNetworkConfig(network);
     this.nativeTokenSymbol = this.config.nativeCurrencySymbol;
 
+    // Get rpcProvider from chain config
+    const chainConfig = getSolanaChainConfig();
+    const rpcProvider = chainConfig.rpcProvider || 'url';
+
     // Initialize RPC connection based on provider
-    if (this.config.rpcProvider === 'helius') {
-      logger.info(`Initializing Helius services for provider: ${this.config.rpcProvider}`);
+    if (rpcProvider === 'helius') {
+      logger.info(`Initializing Helius services for provider: ${rpcProvider}`);
       this.initializeHeliusProvider();
     } else {
       // Default: use nodeURL
-      logger.info(`Using standard RPC provider: ${this.config.rpcProvider || 'url'}`);
+      logger.info(`Using standard RPC provider: ${rpcProvider}`);
       logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${this.config.nodeURL}`);
       this.connection = new Connection(this.config.nodeURL, {
         commitment: 'confirmed',
@@ -105,6 +110,12 @@ export class Solana {
       const useSender = configManager.get('helius.useSender') || false;
       const regionCode = configManager.get('helius.regionCode') || '';
       const jitoTipSOL = configManager.get('helius.jitoTipSOL') || 0;
+
+      // Store Helius-specific config
+      this.heliusConfig = {
+        useHeliusSender: useSender,
+        jitoTipSOL: jitoTipSOL,
+      };
 
       // Merge configs for HeliusService
       const mergedConfig = {
@@ -172,11 +183,13 @@ export class Solana {
       await this.loadTokens();
 
       // Initialize Helius services only if using Helius provider
-      if (this.config.rpcProvider === 'helius' && this.heliusService) {
-        logger.info(`Initializing Helius services for provider: ${this.config.rpcProvider}`);
+      const chainConfig = getSolanaChainConfig();
+      const rpcProvider = chainConfig.rpcProvider || 'url';
+      if (rpcProvider === 'helius' && this.heliusService) {
+        logger.info(`Initializing Helius services for provider: ${rpcProvider}`);
         await this.heliusService.initialize();
       } else {
-        logger.info(`Using standard RPC provider: ${this.config.rpcProvider || 'url'}`);
+        logger.info(`Using standard RPC provider: ${rpcProvider}`);
       }
     } catch (e) {
       logger.error(`Failed to initialize ${this.network}: ${e}`);
@@ -318,6 +331,13 @@ export class Solana {
       logger.error(`Error checking hardware wallet status: ${error.message}`);
       return false;
     }
+  }
+
+  /**
+   * Get the HeliusService instance if initialized
+   */
+  public getHeliusService(): HeliusService | null {
+    return this.heliusService || null;
   }
 
   /**
@@ -1260,11 +1280,11 @@ export class Solana {
     transaction: VersionedTransaction,
     payerPublicKey: PublicKey,
   ): Promise<VersionedTransaction> {
-    if (!this.config.useHeliusSender || !this.config.jitoTipSOL) {
+    if (!this.heliusConfig.useHeliusSender || !this.heliusConfig.jitoTipSOL) {
       return transaction;
     }
 
-    const tipAmount = Math.floor(this.config.jitoTipSOL * LAMPORTS_PER_SOL);
+    const tipAmount = Math.floor(this.heliusConfig.jitoTipSOL * LAMPORTS_PER_SOL);
     const randomTipAccount = JITO_TIP_ACCOUNTS[Math.floor(Math.random() * JITO_TIP_ACCOUNTS.length)];
 
     // Validate tip account
@@ -1377,7 +1397,7 @@ export class Solana {
 
     // For VersionedTransaction, add Jito tip if using Helius Sender
     let finalTransaction = transaction;
-    if (this.config.useHeliusSender && this.config.jitoTipSOL > 0) {
+    if (this.heliusConfig.useHeliusSender && this.heliusConfig.jitoTipSOL && this.heliusConfig.jitoTipSOL > 0) {
       // Extract payer from the transaction
       const payer = transaction.message.staticAccountKeys[0]; // First account is always the payer
       finalTransaction = await this.addJitoTipToTransaction(transaction, payer);

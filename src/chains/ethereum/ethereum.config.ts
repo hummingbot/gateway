@@ -7,11 +7,14 @@ export interface EthereumNetworkConfig {
   nodeURL: string;
   nativeCurrencySymbol: string;
   minGasPrice?: number;
+  infuraAPIKey?: string;
+  useInfuraWebSocket?: boolean;
 }
 
 export interface EthereumChainConfig {
   defaultNetwork: string;
   defaultWallet: string;
+  rpcProvider: string;
 }
 
 // Export available networks
@@ -31,5 +34,6 @@ export function getEthereumChainConfig(): EthereumChainConfig {
   return {
     defaultNetwork: ConfigManagerV2.getInstance().get('ethereum.defaultNetwork'),
     defaultWallet: ConfigManagerV2.getInstance().get('ethereum.defaultWallet'),
+    rpcProvider: ConfigManagerV2.getInstance().get('ethereum.rpcProvider') || 'url',
   };
 }

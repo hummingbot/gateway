@@ -5,11 +5,13 @@ import fse from 'fs-extra';
 
 import { TokenValue, tokenValueToString } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
+import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
 
 import { getEthereumNetworkConfig, getEthereumChainConfig } from './ethereum.config';
+import { InfuraService } from './infura-service';
 
 // information about an Ethereum token
 export interface TokenInfo {
@@ -34,6 +36,7 @@ export class Ethereum {
   public rpcUrl: string;
   public minGasPrice: number;
   private _initialized: boolean = false;
+  private infuraService?: InfuraService;
 
   private static lastGasPriceEstimate: {
     timestamp: number;
@@ -50,11 +53,23 @@ export class Ethereum {
     const config = getEthereumNetworkConfig(network);
     this.chainId = config.chainID;
     this.rpcUrl = config.nodeURL;
-    logger.info(`Initializing Ethereum connector for network: ${network}, nodeURL: ${this.rpcUrl}`);
-    this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
     this.network = network;
     this.nativeTokenSymbol = config.nativeCurrencySymbol;
     this.minGasPrice = config.minGasPrice || 0.1; // Default to 0.1 GWEI if not specified
+
+    // Get rpcProvider from chain config
+    const chainConfig = getEthereumChainConfig();
+    const rpcProvider = chainConfig.rpcProvider || 'url';
+
+    // Initialize RPC connection based on provider
+    if (rpcProvider === 'infura') {
+      logger.info(`Initializing Infura services for provider: ${rpcProvider}`);
+      this.initializeInfuraProvider(config);
+    } else {
+      logger.info(`Using standard RPC provider: ${rpcProvider}`);
+      logger.info(`Initializing Ethereum connector for network: ${network}, RPC URL: ${this.rpcUrl}`);
+      this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
+    }
   }
 
   public static async getInstance(network: string): Promise<Ethereum> {
@@ -182,6 +197,39 @@ export class Ethereum {
     ];
 
     return new Contract(tokenAddress, erc20Interface, signerOrProvider || this.provider);
+  }
+
+  /**
+   * Initialize Infura provider with configuration
+   */
+  private initializeInfuraProvider(config: any): void {
+    try {
+      const configManager = ConfigManagerV2.getInstance();
+      const infuraApiKey = configManager.get('infura.apiKey') || '';
+      const useWebSocket = configManager.get('infura.useWebSocket') || false;
+
+      if (!infuraApiKey || infuraApiKey.trim() === '') {
+        logger.warn(`⚠️ Infura provider selected but no API key configured, falling back to standard RPC`);
+        this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
+        return;
+      }
+
+      // Merge configs for InfuraService
+      const mergedConfig = {
+        ...config,
+        infuraAPIKey: infuraApiKey,
+        useInfuraWebSocket: useWebSocket,
+      };
+
+      logger.info(`✅ Infura API key configured (length: ${infuraApiKey.length} chars)`);
+      logger.info(`Infura features enabled - WebSocket: ${useWebSocket}`);
+
+      this.infuraService = new InfuraService(mergedConfig);
+      this.provider = this.infuraService.getProvider() as providers.StaticJsonRpcProvider;
+    } catch (error: any) {
+      logger.warn(`Failed to initialize Infura provider: ${error.message}, falling back to standard RPC`);
+      this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
+    }
   }
 
   /**
@@ -354,6 +402,13 @@ export class Ethereum {
     } catch (err) {
       return null;
     }
+  }
+
+  /**
+   * Get the InfuraService instance if initialized
+   */
+  public getInfuraService(): InfuraService | null {
+    return this.infuraService || null;
   }
 
   /**

@@ -4,12 +4,29 @@ import { StatusRequestType, StatusResponseType, StatusResponseSchema } from '../
 import { logger } from '../../../services/logger';
 import { SolanaStatusRequest } from '../schemas';
 import { Solana } from '../solana';
+import { getSolanaChainConfig } from '../solana.config';
 
 export async function getSolanaStatus(fastify: FastifyInstance, network: string): Promise<StatusResponseType> {
   try {
     const solana = await Solana.getInstance(network);
+    const chainConfig = getSolanaChainConfig();
     const chain = 'solana';
-    const rpcUrl = solana.config.nodeURL;
+    const rpcProvider = chainConfig.rpcProvider || 'url';
+
+    // Get the actual RPC URL based on provider
+    let rpcUrl = solana.config.nodeURL; // Default to nodeURL
+    if (rpcProvider === 'helius') {
+      const heliusService = solana.getHeliusService();
+      if (heliusService) {
+        try {
+          rpcUrl = heliusService.getUrlForNetwork(network);
+        } catch (error) {
+          // If Helius URL generation fails, fall back to nodeURL
+          logger.warn(`Failed to get Helius URL, using nodeURL: ${error.message}`);
+        }
+      }
+    }
+
     const nativeCurrency = solana.config.nativeCurrencySymbol;
     const currentBlockNumber = await solana.getCurrentBlockNumber();
 
@@ -17,6 +34,7 @@ export async function getSolanaStatus(fastify: FastifyInstance, network: string)
       chain,
       network,
       rpcUrl,
+      rpcProvider,
       currentBlockNumber,
       nativeCurrency,
     };

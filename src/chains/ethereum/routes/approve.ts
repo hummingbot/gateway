@@ -1,7 +1,8 @@
 import { ethers, constants, utils } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { getSpender } from '../../../connectors/uniswap/uniswap.contracts';
+import { getSpender as pancakeswapSpender } from '../../../connectors/pancakeswap/pancakeswap.contracts';
+import { getSpender as uniswapSpender } from '../../../connectors/uniswap/uniswap.contracts';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
@@ -42,13 +43,14 @@ export async function approveEthereumToken(
         // First approve to Permit2
         spenderAddress = PERMIT2_ADDRESS;
         // Get the actual Universal Router address for the second step
-        universalRouterAddress = getSpender(network, spender);
+        universalRouterAddress = uniswapSpender(network, spender);
         logger.info(
           `Will approve token to Permit2, then grant Universal Router (${universalRouterAddress}) permission via Permit2`,
         );
       } else {
         logger.info(`Looking up spender address for connector: ${spender}`);
-        spenderAddress = getSpender(network, spender);
+        spenderAddress = uniswapSpender(network, spender);
+        if (spender.startsWith('pancakeswap')) spenderAddress = pancakeswapSpender(network, spender);
         logger.info(`Resolved connector ${spender} to spender address: ${spenderAddress}`);
       }
     } else {

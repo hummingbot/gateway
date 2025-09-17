@@ -16,7 +16,6 @@
 const axios = require('axios');
 const fs = require('fs');
 const yaml = require('js-yaml');
-const chalk = require('chalk');
 
 const GATEWAY_URL = 'http://localhost:15888';
 const TEST_WALLET = 'AabEVCB1sWgCPxbn6hFYM4Ukj7UubpBRbbYqRnqRXnZD';
@@ -29,11 +28,11 @@ const tests = { passed: 0, failed: 0, results: [] };
 function log(message, type = 'info') {
   const timestamp = new Date().toISOString();
   const prefix = {
-    info: chalk.blue('[INFO]'),
-    success: chalk.green('[✓]'),
-    error: chalk.red('[✗]'),
-    warn: chalk.yellow('[WARN]'),
-    test: chalk.cyan('[TEST]')
+    info: '[INFO]',
+    success: '[✓]',
+    error: '[✗]',
+    warn: '[WARN]',
+    test: '[TEST]'
   };
   console.log(`${timestamp} ${prefix[type] || prefix.info} ${message}`);
 }
@@ -305,8 +304,8 @@ async function testConfigurationSchema() {
 
 // Main test runner
 async function runTests() {
-  console.log(chalk.bold.cyan('\n🔄 RPC Provider Switching Tests\n'));
-  console.log(chalk.gray('Testing dynamic provider switching between URL and Helius...\n'));
+  console.log('\n🔄 RPC Provider Switching Tests\n');
+  console.log('Testing dynamic provider switching between URL and Helius...\n');
   
   // Check if server is running
   try {
@@ -326,23 +325,22 @@ async function runTests() {
   await testCase('Configuration Schema Validation', testConfigurationSchema);
   
   // Print summary
-  console.log(chalk.bold.cyan('\n📊 Test Summary\n'));
-  console.log(chalk.green(`✓ Passed: ${tests.passed}`));
-  console.log(chalk.red(`✗ Failed: ${tests.failed}`));
-  console.log(chalk.blue(`Total: ${tests.passed + tests.failed}`));
+  console.log('\n📊 Test Summary\n');
+  console.log(`✓ Passed: ${tests.passed}`);
+  console.log(`✗ Failed: ${tests.failed}`);
+  console.log(`Total: ${tests.passed + tests.failed}`);
   
   // Print detailed results
-  console.log(chalk.bold.cyan('\n📋 Detailed Results\n'));
+  console.log('\n📋 Detailed Results\n');
   tests.results.forEach(result => {
     const icon = result.status === 'passed' ? '✓' : '✗';
-    const color = result.status === 'passed' ? chalk.green : chalk.red;
     const duration = result.duration ? ` (${result.duration}ms)` : '';
     const error = result.error ? ` - ${result.error}` : '';
-    console.log(color(`${icon} ${result.name}${duration}${error}`));
+    console.log(`${icon} ${result.name}${duration}${error}`);
   });
   
-  console.log(chalk.bold.yellow('\n⚠️  Note: Some tests modify configs temporarily'));
-  console.log(chalk.gray('Server restart may be required to fully test provider switching\n'));
+  console.log('\n⚠️  Note: Some tests modify configs temporarily');
+  console.log('Server restart may be required to fully test provider switching\n');
   
   // Exit code based on test results
   process.exit(tests.failed > 0 ? 1 : 0);
