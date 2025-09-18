@@ -173,6 +173,12 @@ export class Jupiter {
             }
           }
           throw new Error(`Jupiter API error: ${axiosError.response.data}`);
+        } else if (axiosError.response.data.errorCode === 'COULD_NOT_FIND_ANY_ROUTE') {
+          if (swapMode === 'ExactOut') {
+            throw new Error('ExactOut not supported for this token pair');
+          } else {
+            throw new Error('No route found for this token pair');
+          }
         } else if (axiosError.response.data.error) {
           throw new Error(`Jupiter API error: ${axiosError.response.data.error}`);
         }

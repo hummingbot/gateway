@@ -165,7 +165,7 @@ describe('Token Routes', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body).toEqual({
-        message: 'Token TEST added successfully to ethereum/mainnet. Gateway restart required.',
+        message: 'Token TEST added/updated successfully in ethereum/mainnet. Gateway restart required.',
         requiresRestart: true,
       });
     });
@@ -185,6 +185,35 @@ describe('Token Routes', () => {
       });
 
       expect(response.statusCode).toBe(400);
+    });
+
+    it('should update existing token with same symbol', async () => {
+      const mockService = TokenService.getInstance();
+      (mockService.addToken as jest.Mock).mockResolvedValue(undefined);
+
+      const updatedToken = {
+        symbol: 'TEST',
+        name: 'Updated Test Token',
+        address: '0xNewAddress1234567890123456789012345678',
+        decimals: 9,
+      };
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/',
+        payload: {
+          chain: 'ethereum',
+          network: 'mainnet',
+          token: updatedToken,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body).toEqual({
+        message: 'Token TEST added/updated successfully in ethereum/mainnet. Gateway restart required.',
+        requiresRestart: true,
+      });
     });
   });
 

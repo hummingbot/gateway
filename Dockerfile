@@ -10,6 +10,7 @@ RUN mkdir -p    /home/gateway/conf \
                 /home/gateway/conf/connectors \
                 /home/gateway/conf/namespace \
                 /home/gateway/conf/pools \
+                /home/gateway/conf/rpc \
                 /home/gateway/conf/tokens \
                 /home/gateway/conf/wallets \
                 /home/gateway/logs \

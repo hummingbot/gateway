@@ -124,6 +124,19 @@ export const mockHttpsOptions = {
   getHttpsOptions: jest.fn().mockReturnValue(null),
 };
 
+// Chain config mocks
+export const mockSolanaChainConfig = {
+  defaultNetwork: 'mainnet-beta',
+  defaultWallet: 'test-wallet',
+  rpcProvider: 'url',
+};
+
+export const mockEthereumChainConfig = {
+  defaultNetwork: 'mainnet',
+  defaultWallet: 'test-wallet',
+  rpcProvider: 'url',
+};
+
 // Setup all common mocks
 export function setupCommonMocks(options: { skipLogger?: boolean } = {}) {
   // Mock logger only if not skipped
@@ -146,6 +159,17 @@ export function setupCommonMocks(options: { skipLogger?: boolean } = {}) {
 
   // Mock HTTPS
   jest.mock('../../src/https', () => mockHttpsOptions);
+
+  // Mock chain configs
+  jest.mock('../../src/chains/solana/solana.config', () => ({
+    ...jest.requireActual('../../src/chains/solana/solana.config'),
+    getSolanaChainConfig: jest.fn().mockReturnValue(mockSolanaChainConfig),
+  }));
+
+  jest.mock('../../src/chains/ethereum/ethereum.config', () => ({
+    ...jest.requireActual('../../src/chains/ethereum/ethereum.config'),
+    getEthereumChainConfig: jest.fn().mockReturnValue(mockEthereumChainConfig),
+  }));
 
   // Mock fs for token lists
   jest.mock('fs', () => {

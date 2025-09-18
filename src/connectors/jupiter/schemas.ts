@@ -134,6 +134,11 @@ export const JupiterQuoteSwapResponse = Type.Object({
       }),
     ),
   }),
+  approximation: Type.Optional(
+    Type.Boolean({
+      description: 'Indicates if ExactIn approximation was used when ExactOut route was not available',
+    }),
+  ),
 });
 
 // Jupiter-specific execute-quote request (superset of base ExecuteQuoteRequest)

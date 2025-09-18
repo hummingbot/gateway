@@ -19,6 +19,7 @@ import { configRoutes } from './config/config.routes';
 import { register0xRoutes } from './connectors/0x/0x.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
+import { pancakeswapRoutes } from './connectors/pancakeswap/pancakeswap.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { getHttpsOptions } from './https';
@@ -239,6 +240,13 @@ const configureGatewayServer = () => {
 
     // 0x routes
     app.register(register0xRoutes);
+
+    // Pancakeswap routes
+    app.register(pancakeswapRoutes.router, {
+      prefix: '/connectors/pancakeswap/router',
+    });
+    app.register(pancakeswapRoutes.amm, { prefix: '/connectors/pancakeswap/amm' });
+    app.register(pancakeswapRoutes.clmm, { prefix: '/connectors/pancakeswap/clmm' });
   };
 
   // Register routes on main server

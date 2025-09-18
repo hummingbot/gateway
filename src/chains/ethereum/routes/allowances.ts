@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
+import { getSpender as pancakeswapSpender } from '../../../connectors/pancakeswap/pancakeswap.contracts';
 import { getSpender } from '../../../connectors/uniswap/uniswap.contracts';
 import { tokenValueToString } from '../../../services/base';
 import { logger } from '../../../services/logger';
@@ -82,6 +83,7 @@ export async function getEthereumAllowances(
         } else {
           logger.info(`Looking up spender address for connector: ${spender}`);
           spenderAddress = getSpender(network, spender);
+          if (spender.startsWith('pancakeswap')) spenderAddress = pancakeswapSpender(network, spender);
           logger.info(`Resolved connector ${spender} to spender address: ${spenderAddress}`);
         }
       } else {
