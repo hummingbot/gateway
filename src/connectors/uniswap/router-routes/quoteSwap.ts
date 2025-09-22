@@ -86,7 +86,11 @@ async function quoteSwap(
   const minAmountOut = side === 'SELL' ? estimatedAmountOut * (1 - slippagePct / 100) : estimatedAmountOut;
   const maxAmountIn = side === 'BUY' ? estimatedAmountIn * (1 + slippagePct / 100) : estimatedAmountIn;
 
-  const price = estimatedAmountOut / estimatedAmountIn;
+  // Calculate price consistently as quote token per base token
+  const price =
+    side === 'SELL'
+      ? estimatedAmountOut / estimatedAmountIn // SELL: USDC per HBOT
+      : estimatedAmountIn / estimatedAmountOut; // BUY: USDC per HBOT
   logger.info(`[quoteSwap] Price: ${price}, Min out: ${minAmountOut}, Max in: ${maxAmountIn}`);
 
   // Cache the quote for execution
