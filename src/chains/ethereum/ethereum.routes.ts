@@ -1,3 +1,4 @@
+import sensible from '@fastify/sensible';
 import { FastifyPluginAsync } from 'fastify';
 
 import { allowancesRoute } from './routes/allowances';
@@ -18,6 +19,9 @@ declare module 'fastify' {
 }
 
 export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
+  // Register @fastify/sensible plugin to enable httpErrors
+  await fastify.register(sensible);
+
   // Register all the route handlers
   fastify.register(statusRoute);
   fastify.register(estimateGasRoute);

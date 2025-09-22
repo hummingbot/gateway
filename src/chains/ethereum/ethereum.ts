@@ -166,10 +166,47 @@ export class Ethereum {
     const DEFAULT_GAS_LIMIT = 300000;
     gasOptions.gasLimit = gasLimit ?? DEFAULT_GAS_LIMIT;
 
-    // If gasPrice not provided, estimate it
-    const gasPriceInGwei = gasPrice ?? (await this.estimateGasPrice());
+    // Check if the network supports EIP-1559
+    const supportsEIP1559 =
+      this.chainId === 1 ||
+      this.chainId === 137 ||
+      this.chainId === 42161 ||
+      this.chainId === 10 ||
+      this.chainId === 8453;
 
-    // Always use legacy transaction type for all networks
+    if (supportsEIP1559) {
+      try {
+        // Use EIP-1559 gas pricing (type 2)
+        const feeData = await this.provider.getFeeData();
+
+        if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+          // Get current base fee from latest block
+          const block = await this.provider.getBlock('latest');
+          const baseFee = block.baseFeePerGas || BigNumber.from('0');
+
+          // Calculate recommended maxFeePerGas as 2 * baseFee + maxPriorityFeePerGas
+          const recommendedMaxFee = baseFee.mul(2).add(feeData.maxPriorityFeePerGas);
+
+          // Use the higher of network estimate or our calculation
+          const maxFeePerGas = feeData.maxFeePerGas.gt(recommendedMaxFee) ? feeData.maxFeePerGas : recommendedMaxFee;
+
+          gasOptions.type = 2;
+          gasOptions.maxFeePerGas = maxFeePerGas;
+          gasOptions.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
+
+          logger.info(
+            `Using EIP-1559 pricing: baseFee=${utils.formatUnits(baseFee, 'gwei')} GWEI, maxFee=${utils.formatUnits(maxFeePerGas, 'gwei')} GWEI, priority=${utils.formatUnits(feeData.maxPriorityFeePerGas, 'gwei')} GWEI`,
+          );
+
+          return gasOptions;
+        }
+      } catch (error: any) {
+        logger.warn(`Failed to get EIP-1559 fee data, falling back to legacy pricing: ${error.message}`);
+      }
+    }
+
+    // Fallback to legacy gas pricing (type 0)
+    const gasPriceInGwei = gasPrice ?? (await this.estimateGasPrice());
     gasOptions.type = 0;
     gasOptions.gasPrice = utils.parseUnits(gasPriceInGwei.toString(), 'gwei');
     logger.info(`Using legacy gas pricing: ${gasPriceInGwei} GWEI with gasLimit: ${gasOptions.gasLimit}`);

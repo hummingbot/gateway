@@ -203,10 +203,10 @@ export class Uniswap {
     const exactIn = side === 'SELL';
     const tokenForAmount = exactIn ? inputToken : outputToken;
 
-    // Convert amount to token units using string manipulation to avoid BigInt conversion issues
-    const amountStr = amount.toFixed(tokenForAmount.decimals);
-    const rawAmount = amountStr.replace('.', '');
-    const tradeAmount = CurrencyAmount.fromRawAmount(tokenForAmount, rawAmount);
+    // Convert amount to token units using ethers parseUnits for proper decimal handling
+    const { parseUnits } = await import('ethers/lib/utils');
+    const rawAmount = parseUnits(amount.toString(), tokenForAmount.decimals);
+    const tradeAmount = CurrencyAmount.fromRawAmount(tokenForAmount, rawAmount.toString());
 
     // Use default protocols (V2 and V3)
     const protocolsToUse = [Protocol.V2, Protocol.V3]; // V4 requires different approach

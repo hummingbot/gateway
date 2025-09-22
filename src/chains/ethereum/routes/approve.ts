@@ -7,7 +7,7 @@ import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
 import { EthereumLedger } from '../ethereum-ledger';
-import { waitForTransactionWithTimeout } from '../ethereum.utils';
+import { waitForTransactionWithTimeout, APPROVAL_TRANSACTION_TIMEOUT } from '../ethereum.utils';
 import { ApproveRequestSchema, ApproveResponseSchema, ApproveRequestType, ApproveResponseType } from '../schemas';
 
 // Default gas limit for approve operations
@@ -76,70 +76,147 @@ export async function approveEthereumToken(
   try {
     let approval;
 
-    if (isHardware) {
-      // Hardware wallet flow
-      logger.info(`Hardware wallet detected for ${address}. Building approve transaction for Ledger signing.`);
+    // For Universal Router, check if we already have sufficient allowances
+    let skipERC20Approval = false;
+    let skipPermit2Approval = false;
 
-      const ledger = new EthereumLedger();
+    if (isUniversalRouter && universalRouterAddress) {
+      logger.info(`Checking existing allowances for Universal Router flow`);
 
-      // Get nonce for the address
-      const nonce = await ethereum.provider.getTransactionCount(address, 'latest');
+      // Step 1: Check ERC20 allowance (Token → Permit2)
+      const tokenContract = ethereum.getContract(fullToken.address);
+      const erc20Allowance = await tokenContract.allowance(address, PERMIT2_ADDRESS);
+      logger.info(`ERC20 allowance (${fullToken.symbol} → Permit2): ${erc20Allowance.toString()}`);
 
-      // Build the approve transaction data
-      const iface = new utils.Interface(['function approve(address spender, uint256 amount)']);
-      const data = iface.encodeFunctionData('approve', [spenderAddress, amountBigNumber]);
+      if (erc20Allowance.gte(amountBigNumber)) {
+        logger.info(`Sufficient ERC20 allowance exists, skipping step 1`);
+        skipERC20Approval = true;
 
-      // Get gas options using estimateGasPrice
-      const gasOptions = await ethereum.prepareGasOptions(undefined, APPROVE_GAS_LIMIT);
+        // Step 2: Check Permit2 allowance (Permit2 → Universal Router)
+        const permit2Contract = new ethers.Contract(
+          PERMIT2_ADDRESS,
+          [
+            'function allowance(address owner, address token, address spender) view returns (uint160 amount, uint48 expiration, uint48 nonce)',
+          ],
+          ethereum.provider,
+        );
 
-      // Build unsigned transaction with gas parameters
-      const unsignedTx = {
-        to: fullToken.address,
-        data: data,
-        nonce: nonce,
-        chainId: ethereum.chainId,
-        ...gasOptions, // Include gas parameters from prepareGasOptions
-      };
+        const allowanceData = await permit2Contract.allowance(address, fullToken.address, universalRouterAddress);
+        const permit2Allowance = allowanceData.amount;
+        const expiration = allowanceData.expiration;
+        const currentTime = Math.floor(Date.now() / 1000);
 
-      // Sign with Ledger
-      const signedTx = await ledger.signTransaction(address, unsignedTx as any);
+        logger.info(
+          `Permit2 allowance: ${permit2Allowance.toString()}, expiration: ${expiration}, current time: ${currentTime}`,
+        );
 
-      // Send the signed transaction
-      const txResponse = await ethereum.provider.sendTransaction(signedTx);
-
-      // Wait for confirmation with timeout
-      const receipt = await waitForTransactionWithTimeout(txResponse);
-
-      approval = {
-        hash: receipt.transactionHash,
-        nonce: nonce,
-        gasUsed: receipt.gasUsed,
-        effectiveGasPrice: receipt.effectiveGasPrice,
-      };
-    } else {
-      // Regular wallet flow
-      let wallet: ethers.Wallet;
-      try {
-        wallet = await ethereum.getWallet(address);
-      } catch (err) {
-        logger.error(`Failed to load wallet: ${err.message}`);
-        throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
+        if (permit2Allowance.gte(amountBigNumber) && expiration > currentTime) {
+          logger.info(`Sufficient Permit2 allowance exists, skipping step 2 as well`);
+          skipPermit2Approval = true;
+        }
       }
 
-      // Instantiate a contract and pass in wallet, which act on behalf of that signer
-      const contract = ethereum.getContract(fullToken.address, wallet);
+      // If both allowances are sufficient, return immediately
+      if (skipERC20Approval && skipPermit2Approval) {
+        logger.info(`Both allowances are sufficient, no approval needed`);
+        return {
+          signature: '0x0000000000000000000000000000000000000000000000000000000000000000',
+          status: 1,
+          data: {
+            tokenAddress: fullToken.address,
+            spender: universalRouterAddress,
+            amount: bigNumberWithDecimalToStr(amountBigNumber, fullToken.decimals),
+            nonce: 0,
+            fee: '0',
+          },
+        };
+      }
+    }
 
-      // Call approve function
-      const tx = await ethereum.approveERC20(contract, wallet, spenderAddress, amountBigNumber);
+    // Only do ERC20 approval if we haven't skipped it
+    if (!skipERC20Approval) {
+      if (isHardware) {
+        // Hardware wallet flow
+        logger.info(`Hardware wallet detected for ${address}. Building approve transaction for Ledger signing.`);
 
-      // Wait for the transaction to be mined with timeout
-      const receipt = await waitForTransactionWithTimeout(tx as any);
+        const ledger = new EthereumLedger();
 
+        // Get nonce for the address
+        const nonce = await ethereum.provider.getTransactionCount(address, 'latest');
+
+        // Build the approve transaction data
+        const iface = new utils.Interface(['function approve(address spender, uint256 amount)']);
+        const data = iface.encodeFunctionData('approve', [spenderAddress, amountBigNumber]);
+
+        // Get gas options using estimateGasPrice
+        const gasOptions = await ethereum.prepareGasOptions(undefined, APPROVE_GAS_LIMIT);
+
+        // Build unsigned transaction with gas parameters
+        const unsignedTx = {
+          to: fullToken.address,
+          data: data,
+          nonce: nonce,
+          chainId: ethereum.chainId,
+          ...gasOptions, // Include gas parameters from prepareGasOptions
+        };
+
+        // Sign with Ledger
+        const signedTx = await ledger.signTransaction(address, unsignedTx as any);
+
+        // Send the signed transaction
+        const txResponse = await ethereum.provider.sendTransaction(signedTx);
+
+        // Wait for confirmation with timeout (60 seconds for approvals)
+        const receipt = await waitForTransactionWithTimeout(txResponse, APPROVAL_TRANSACTION_TIMEOUT);
+
+        if (!receipt) {
+          throw new Error('Transaction timed out or failed to get receipt');
+        }
+
+        approval = {
+          hash: receipt.transactionHash,
+          nonce: nonce,
+          gasUsed: receipt.gasUsed,
+          effectiveGasPrice: receipt.effectiveGasPrice,
+        };
+      } else {
+        // Regular wallet flow
+        let wallet: ethers.Wallet;
+        try {
+          wallet = await ethereum.getWallet(address);
+        } catch (err) {
+          logger.error(`Failed to load wallet: ${err.message}`);
+          throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
+        }
+
+        // Instantiate a contract and pass in wallet, which act on behalf of that signer
+        const contract = ethereum.getContract(fullToken.address, wallet);
+
+        // Call approve function
+        const tx = await ethereum.approveERC20(contract, wallet, spenderAddress, amountBigNumber);
+
+        // Wait for the transaction to be mined with timeout (60 seconds for approvals)
+        const receipt = await waitForTransactionWithTimeout(tx as any, APPROVAL_TRANSACTION_TIMEOUT);
+
+        if (!receipt) {
+          throw new Error('Transaction timed out or failed to get receipt');
+        }
+
+        approval = {
+          hash: tx.hash,
+          nonce: tx.nonce,
+          gasUsed: receipt.gasUsed,
+          effectiveGasPrice: receipt.effectiveGasPrice,
+        };
+      }
+    } else {
+      // Skipped ERC20 approval, set dummy values
+      logger.info(`Skipped ERC20 approval, using dummy values`);
       approval = {
-        hash: tx.hash,
-        nonce: tx.nonce,
-        gasUsed: receipt.gasUsed,
-        effectiveGasPrice: receipt.effectiveGasPrice,
+        hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        nonce: 0,
+        gasUsed: ethers.BigNumber.from('0'),
+        effectiveGasPrice: ethers.BigNumber.from('0'),
       };
     }
 
@@ -150,8 +227,8 @@ export async function approveEthereumToken(
       feeInEth = utils.formatEther(feeInWei);
     }
 
-    // If this is a Universal Router approval, we need to do a second step
-    if (isUniversalRouter && universalRouterAddress) {
+    // If this is a Universal Router approval, we need to do a second step (unless we can skip it)
+    if (isUniversalRouter && universalRouterAddress && !skipPermit2Approval) {
       logger.info(`Step 2: Calling Permit2.approve() to grant Universal Router permission`);
 
       // Permit2 approve function ABI
@@ -201,8 +278,12 @@ export async function approveEthereumToken(
         // Send the signed transaction
         const txResponse = await ethereum.provider.sendTransaction(signedTx);
 
-        // Wait for confirmation
-        const permit2Receipt = await waitForTransactionWithTimeout(txResponse);
+        // Wait for confirmation with extended timeout
+        const permit2Receipt = await waitForTransactionWithTimeout(txResponse, APPROVAL_TRANSACTION_TIMEOUT);
+
+        if (!permit2Receipt) {
+          throw new Error('Permit2 transaction timed out or failed to get receipt');
+        }
 
         logger.info(`Permit2 approval transaction confirmed: ${permit2Receipt.transactionHash}`);
 
@@ -228,8 +309,12 @@ export async function approveEthereumToken(
           expiration,
         );
 
-        // Wait for confirmation
-        const permit2Receipt = await waitForTransactionWithTimeout(permit2Tx);
+        // Wait for confirmation with extended timeout
+        const permit2Receipt = await waitForTransactionWithTimeout(permit2Tx, APPROVAL_TRANSACTION_TIMEOUT);
+
+        if (!permit2Receipt) {
+          throw new Error('Permit2 transaction timed out or failed to get receipt');
+        }
 
         logger.info(`Permit2 approval transaction confirmed: ${permit2Receipt.transactionHash}`);
 
