@@ -1,6 +1,19 @@
 import fs from 'fs';
 
 import { Pool } from '../../src/pools/types';
+
+// Mock the connectorsConfig before importing PoolService to prevent ConfigManagerV2 initialization
+jest.mock('../../src/config/routes/getConnectors', () => ({
+  connectorsConfig: [
+    { name: 'raydium', chain: 'solana', trading_types: ['amm', 'clmm'], networks: ['mainnet-beta', 'devnet'] },
+    { name: 'meteora', chain: 'solana', trading_types: ['clmm'], networks: ['mainnet-beta', 'devnet'] },
+    { name: 'uniswap', chain: 'ethereum', trading_types: ['amm', 'clmm', 'router'], networks: ['mainnet', 'sepolia'] },
+    { name: 'pancakeswap', chain: 'ethereum', trading_types: ['amm', 'clmm', 'router'], networks: ['mainnet', 'bsc'] },
+    { name: '0x', chain: 'ethereum', trading_types: ['router'], networks: ['mainnet', 'polygon'] },
+    { name: 'jupiter', chain: 'solana', trading_types: ['router'], networks: ['mainnet-beta', 'devnet'] },
+  ],
+}));
+
 import { PoolService } from '../../src/services/pool-service';
 
 jest.mock('fs');
