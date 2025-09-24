@@ -179,14 +179,14 @@ export class Solana {
    * Monkey-patch the connection's getTokenAccountBalance method to handle Token2022
    */
   private patchConnectionForToken2022(): void {
-    logger.info('🔧 Applying Token2022 monkey-patch to connection.getTokenAccountBalance');
+    logger.error('🔧 Applying Token2022 monkey-patch to connection.getTokenAccountBalance');
 
     // Store the original method
     const originalGetTokenAccountBalance = this.connection.getTokenAccountBalance.bind(this.connection);
 
     // Override with our Token2022-compatible version
     this.connection.getTokenAccountBalance = async (tokenAccount: PublicKey, commitment?: any) => {
-      logger.info(`🔧 Monkey-patched getTokenAccountBalance called for: ${tokenAccount.toBase58()}`);
+      logger.error(`🔧 Monkey-patched getTokenAccountBalance called for: ${tokenAccount.toBase58()}`);
       try {
         // First try the original method
         return await originalGetTokenAccountBalance(tokenAccount, commitment);

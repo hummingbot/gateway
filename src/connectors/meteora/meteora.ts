@@ -63,10 +63,14 @@ export class Meteora {
 
     // Create a promise for the DLMM instance
     logger.info(`Creating new DLMM pool instance for ${poolAddress}`);
+    logger.info(`Connection object: ${this.solana.connection.constructor.name}`);
+    logger.info(`Connection RPC endpoint: ${this.solana.connection.rpcEndpoint}`);
+
     const dlmmPoolPromise = DLMM.create(this.solana.connection, new PublicKey(poolAddress), {
       cluster: this.solana.network as any,
     }).then(async (dlmmPool) => {
       logger.info(`DLMM pool created, refetching states for ${poolAddress}`);
+      logger.info(`About to call dlmmPool.refetchStates() for ${poolAddress}`);
       await dlmmPool.refetchStates();
       logger.info(`DLMM pool states refetched for ${poolAddress}`);
       this.dlmmPools.set(poolAddress, dlmmPool);
