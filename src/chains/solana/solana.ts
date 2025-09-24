@@ -176,41 +176,45 @@ export class Solana {
   }
 
   /**
-   * Monkey-patch the connection's getTokenAccountBalance method to handle Token2022
+   * Global patch for all Connection instances to handle Token2022
    */
   private patchConnectionForToken2022(): void {
-    logger.error('🔧 Applying Token2022 monkey-patch to connection.getTokenAccountBalance');
+    logger.error('🔧 Applying GLOBAL Token2022 patch to Connection.prototype.getTokenAccountBalance');
 
-    // Store the original method
-    const originalGetTokenAccountBalance = this.connection.getTokenAccountBalance.bind(this.connection);
+    // Patch the Connection prototype globally
+    const OriginalConnection = Connection;
+    const originalGetTokenAccountBalance = OriginalConnection.prototype.getTokenAccountBalance;
 
-    // Override with our Token2022-compatible version
-    this.connection.getTokenAccountBalance = async (tokenAccount: PublicKey, commitment?: any) => {
-      logger.error(`🔧 Monkey-patched getTokenAccountBalance called for: ${tokenAccount.toBase58()}`);
+    OriginalConnection.prototype.getTokenAccountBalance = async function (tokenAccount: PublicKey, commitment?: any) {
+      logger.error(`🔧 GLOBAL patched getTokenAccountBalance called for: ${tokenAccount.toBase58()}`);
       try {
         // First try the original method
-        return await originalGetTokenAccountBalance(tokenAccount, commitment);
+        return await originalGetTokenAccountBalance.call(this, tokenAccount, commitment);
       } catch (error) {
-        logger.info(`🔧 Original method failed, trying Token2022 fallback: ${error.message}`);
+        logger.error(`🔧 GLOBAL patch - Original method failed: ${error.message}`);
         if (error.message && error.message.includes('TokenInvalidAccountOwnerError')) {
+          logger.error(`🔧 GLOBAL patch - Attempting Token2022 fallback for: ${tokenAccount.toBase58()}`);
           try {
             // Check if account exists and get its owner
-            const accountInfo = await this.connection.getAccountInfo(tokenAccount);
+            const accountInfo = await this.getAccountInfo(tokenAccount);
             if (!accountInfo) {
-              logger.warn(`🔧 Token account ${tokenAccount.toBase58()} not found`);
+              logger.warn(`🔧 GLOBAL patch - Token account ${tokenAccount.toBase58()} not found`);
               return { value: { uiAmount: 0, amount: '0', decimals: 0 } };
             }
 
+            logger.error(`🔧 GLOBAL patch - Account owner: ${accountInfo.owner.toBase58()}`);
+            logger.error(`🔧 GLOBAL patch - TOKEN_2022_PROGRAM_ID: ${TOKEN_2022_PROGRAM_ID.toBase58()}`);
+
             // Check if it's a Token2022 account
             if (accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)) {
-              logger.info(`🔧 Token2022 account detected: ${tokenAccount.toBase58()}`);
+              logger.error(`🔧 GLOBAL patch - Token2022 account detected: ${tokenAccount.toBase58()}`);
               // Try parsing as Token2022 account
-              const parsedAccountInfo = await this.connection.getParsedAccountInfo(tokenAccount);
+              const parsedAccountInfo = await this.getParsedAccountInfo(tokenAccount);
               const parsedData = parsedAccountInfo.value?.data;
 
               if (parsedData && 'parsed' in parsedData && parsedData.parsed?.info?.tokenAmount) {
                 const tokenAmount = parsedData.parsed.info.tokenAmount;
-                logger.info(`🔧 Token2022 parsing succeeded: ${tokenAmount.uiAmount}`);
+                logger.error(`🔧 GLOBAL patch - Token2022 parsing succeeded: ${tokenAmount.uiAmount}`);
                 return {
                   value: {
                     uiAmount: tokenAmount.uiAmount,
@@ -218,10 +222,14 @@ export class Solana {
                     decimals: tokenAmount.decimals,
                   },
                 };
+              } else {
+                logger.error(`🔧 GLOBAL patch - Failed to parse Token2022 data`);
               }
+            } else {
+              logger.error(`🔧 GLOBAL patch - Not a Token2022 account, owner: ${accountInfo.owner.toBase58()}`);
             }
           } catch (fallbackError) {
-            logger.error(`🔧 Token2022 fallback failed: ${fallbackError.message}`);
+            logger.error(`🔧 GLOBAL patch - Token2022 fallback failed: ${fallbackError.message}`);
           }
         }
         throw error; // Re-throw if we can't handle it
