@@ -12,7 +12,6 @@ import {
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Sundaeswap } from '../sundaeswap';
-import { formatTokenAmount } from '../sundaeswap.utils';
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
@@ -23,7 +22,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Remove liquidity from a Sundaeswap pool',
-        tags: ['sundaeswap/amm'],
+        tags: ['/connector/sundaeswap/amm'],
         body: {
           ...RemoveLiquidityRequest,
           properties: {

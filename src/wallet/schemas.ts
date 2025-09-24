@@ -9,6 +9,7 @@ export const AddWalletRequestSchema = Type.Object({
   chain: Type.String(),
   privateKey: Type.String(),
   network: Type.Optional(Type.String()),
+  setDefault: Type.Optional(Type.Boolean()),
 });
 
 export const AddWalletResponseSchema = Type.Object({
@@ -39,8 +40,8 @@ export const GetWalletResponseSchema = Type.Object({
 export const RemoveWalletRequestSchema = Type.Object({
   chain: Type.String({
     description: 'Blockchain to remove wallet from',
-    enum: ['ethereum', 'solana'],
-    examples: ['solana', 'ethereum'],
+    enum: ['ethereum', 'solana', 'cardano'],
+    examples: ['solana', 'ethereum', 'cardano'],
   }),
   address: Type.String({
     description: 'Wallet address to remove',
@@ -126,8 +127,8 @@ export const ListHardwareWalletsResponseSchema = Type.Object({
 export const SetDefaultWalletRequestSchema = Type.Object({
   chain: Type.String({
     description: 'Blockchain to set default wallet for',
-    enum: ['ethereum', 'solana'],
-    examples: ['solana', 'ethereum'],
+    enum: ['ethereum', 'solana', 'cardano'],
+    examples: ['solana', 'ethereum', 'cardano'],
   }),
   address: Type.String({
     description: 'Wallet address to set as default',

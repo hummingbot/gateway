@@ -20,7 +20,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Remove liquidity from a Minswap pool',
-        tags: ['minswap/amm'],
+        tags: ['/connector/minswap/amm'],
         body: {
           ...RemoveLiquidityRequest,
           properties: {

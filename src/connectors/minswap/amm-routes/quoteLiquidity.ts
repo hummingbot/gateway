@@ -148,7 +148,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get liquidity quote for Minswap',
-        tags: ['minswap/amm'],
+        tags: ['/connector/minswap/amm'],
         querystring: {
           ...QuoteLiquidityRequest,
           properties: {

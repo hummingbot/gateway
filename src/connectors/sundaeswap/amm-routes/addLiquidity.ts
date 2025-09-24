@@ -99,7 +99,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Add liquidity to a Sundaeswap pool',
-        tags: ['sundaeswap/amm'],
+        tags: ['/connector/sundaeswap/amm'],
         body: {
           ...AddLiquidityRequest,
           properties: {

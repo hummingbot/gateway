@@ -76,7 +76,7 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Poll for the status of a Cardano transaction',
-        tags: ['cardano'],
+        tags: ['/chain/cardano'],
         body: {
           ...PollRequestSchema,
           properties: {
@@ -87,9 +87,7 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
             },
             signature: {
               type: 'string',
-              examples: [
-                '66f5f15d15124a77418cfa3ec0e72cc1d2295647e528a9ecb4636f9ed5342d06',
-              ],
+              examples: ['66f5f15d15124a77418cfa3ec0e72cc1d2295647e528a9ecb4636f9ed5342d06'],
             },
           },
         },

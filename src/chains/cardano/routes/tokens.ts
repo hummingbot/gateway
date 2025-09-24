@@ -36,9 +36,7 @@ export async function getCardanoTokens(
     return { tokens };
   } catch (error) {
     logger.error(`Error getting tokens: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(
-      `Failed to get tokens: ${error.message}`,
-    );
+    throw fastify.httpErrors.internalServerError(`Failed to get tokens: ${error.message}`);
   }
 }
 
@@ -50,9 +48,8 @@ export const tokensRoute: FastifyPluginAsync = async (fastify) => {
     '/tokens',
     {
       schema: {
-        description:
-          'Get list of supported Cardano tokens with their addresses and decimals',
-        tags: ['cardano'],
+        description: 'Get list of supported Cardano tokens with their addresses and decimals',
+        tags: ['/chain/cardano'],
         querystring: {
           ...TokensRequestSchema,
           properties: {

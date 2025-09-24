@@ -13,7 +13,7 @@ export const ammPoolInfoRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get AMM pool information from Minswap',
-        tags: ['minswap/amm'],
+        tags: ['/connector/minswap/amm'],
         querystring: {
           ...GetPoolInfoRequest,
           properties: {

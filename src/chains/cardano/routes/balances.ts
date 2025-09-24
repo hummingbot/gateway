@@ -18,7 +18,7 @@ export async function getCardanoBalances(
 ): Promise<BalanceResponseType> {
   try {
     const cardano = await Cardano.getInstance(network);
-    await cardano.init();
+    // await cardano.init();
 
     let wallet: string;
     const balances: Record<string, number> = {};
@@ -33,23 +33,17 @@ export async function getCardanoBalances(
       wallet = await cardano.getWalletFromAddress(address);
     } catch (err) {
       logger.error(`Failed to load wallet: ${err.message}`);
-      throw fastify.httpErrors.internalServerError(
-        `Failed to load wallet: ${err.message}`,
-      );
+      throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
     }
 
     // Always get native token balance
     const nativeBalance = await cardano.getNativeBalance(wallet);
     // Convert string to number as required by schema
-    balances[cardano.nativeTokenSymbol] = parseFloat(
-      tokenValueToString(nativeBalance),
-    );
+    balances[cardano.nativeTokenSymbol] = parseFloat(tokenValueToString(nativeBalance));
 
     if (checkAllTokens) {
       // No tokens specified, check all tokens in the token list
-      logger.info(
-        `Checking balances for all ${cardano.storedTokenList.length} tokens in the token list`,
-      );
+      logger.info(`Checking balances for all ${cardano.storedTokenList.length} tokens in the token list`);
 
       // Process tokens in batches to avoid overwhelming the provider
       // This allows for provider-specific rate limiting while still being efficient
@@ -62,24 +56,18 @@ export async function getCardanoBalances(
       const startTime = Date.now();
       let timeExceeded = false;
 
-      logger.info(
-        `Processing ${totalTokens} tokens in batches of ${batchSize} with ${maxScanTimeMs}ms time limit`,
-      );
+      logger.info(`Processing ${totalTokens} tokens in batches of ${batchSize} with ${maxScanTimeMs}ms time limit`);
 
       for (let i = 0; i < totalTokens && !timeExceeded; i += batchSize) {
         // Check if we've exceeded the time limit
         if (Date.now() - startTime > maxScanTimeMs) {
-          logger.warn(
-            `Time limit of ${maxScanTimeMs}ms exceeded after checking ${i} tokens. Stopping scan.`,
-          );
+          logger.warn(`Time limit of ${maxScanTimeMs}ms exceeded after checking ${i} tokens. Stopping scan.`);
           timeExceeded = true;
           break;
         }
 
         const batch = tokenList.slice(i, i + batchSize);
-        logger.debug(
-          `Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(totalTokens / batchSize)}`,
-        );
+        logger.debug(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(totalTokens / batchSize)}`);
 
         // Process batch in parallel with timeout
         await Promise.all(
@@ -92,15 +80,11 @@ export async function getCardanoBalances(
               // Only add tokens with non-zero balances
               if (balanceNum > 0) {
                 balances[token.symbol] = balanceNum;
-                logger.debug(
-                  `Found non-zero balance for ${token.symbol}: ${balanceNum}`,
-                );
+                logger.debug(`Found non-zero balance for ${token.symbol}: ${balanceNum}`);
               }
             } catch (err) {
               // Log error but continue with other tokens
-              logger.warn(
-                `Error getting balance for ${token.symbol}: ${err.message}`,
-              );
+              logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
             }
           }),
         );
@@ -125,9 +109,7 @@ export async function getCardanoBalances(
     }
 
     if (!Object.keys(balances).length) {
-      throw fastify.httpErrors.badRequest(
-        'No token balances found for the given wallet',
-      );
+      throw fastify.httpErrors.badRequest('No token balances found for the given wallet');
     }
 
     return { balances };
@@ -136,41 +118,11 @@ export async function getCardanoBalances(
       throw error; // Re-throw if it's already a Fastify error
     }
     logger.error(`Error getting balances: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(
-      `Failed to get balances: ${error.message}`,
-    );
+    throw fastify.httpErrors.internalServerError(`Failed to get balances: ${error.message}`);
   }
 }
 
 export const balancesRoute: FastifyPluginAsync = async (fastify) => {
-  // Get first wallet address for example
-  const cardano = await Cardano.getInstance('preprod');
-
-  // Default Cardano address for examples if no wallet is available
-  let firstWalletAddress = '';
-
-  try {
-    // Try to get user's first Cardano wallet if available
-    // getFirstWalletAddress specifically looks in the /cardano directory
-    const userWallet = await cardano.getFirstWalletAddress();
-    if (userWallet) {
-      // Make sure it's a valid Cardano address
-      const isValidCardanoAddress = /^(addr|addr_test)[0-9a-zA-Z]{1,}$/i.test(
-        userWallet,
-      );
-      if (isValidCardanoAddress) {
-        firstWalletAddress = userWallet;
-        logger.info(
-          `Using user's Cardano wallet for examples: ${firstWalletAddress}`,
-        );
-      }
-    }
-  } catch (error) {
-    logger.warn('No Cardano wallets found for examples in schema');
-  }
-
-  BalanceRequestSchema.properties.address.examples = [firstWalletAddress];
-
   fastify.post<{
     Body: BalanceRequestType;
     Reply: BalanceResponseType;
@@ -180,7 +132,7 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description:
           'Get Cardano balances. If no tokens specified or empty array provided, returns native token (ADA) and only non-zero balances for tokens from the token list. If specific tokens are requested, returns those exact tokens with their balances, including zeros.',
-        tags: ['cardano'],
+        tags: ['/chain/cardano'],
         body: {
           ...BalanceRequestSchema,
           properties: {
@@ -189,7 +141,7 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
               type: 'string',
               examples: ['mainnet', 'preprod', 'preview'],
             },
-            address: { type: 'string', examples: [firstWalletAddress] },
+            address: { type: 'string', examples: ['address'] },
             tokens: {
               type: 'array',
               items: { type: 'string' },

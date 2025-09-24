@@ -96,6 +96,7 @@ export async function addWallet(fastify: FastifyInstance, req: AddWalletRequest)
   try {
     if (req.chain.toLowerCase() === 'cardano') {
       connection = await getInitializedChain<Cardano>(req.chain, cardanoNetwork);
+      console.log('working upto here!', connection);
     } else {
       // For Ethereum and Solana, use the default network
       connection = await getInitializedChain<Chain>(req.chain, network);
@@ -146,9 +147,9 @@ export async function addWallet(fastify: FastifyInstance, req: AddWalletRequest)
   await fse.writeFile(`${path}/${safeAddress}.json`, encryptedPrivateKey);
 
   // Update default wallet if requested
-  // if (req.setDefault) {
-  //   updateDefaultWallet(fastify, req.chain, address);
-  // }
+  if (req.setDefault) {
+    updateDefaultWallet(fastify, req.chain, address);
+  }
 
   return { address };
 }

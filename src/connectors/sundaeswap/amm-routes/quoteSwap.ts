@@ -293,7 +293,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get swap quote for Sundaeswap AMM',
-        tags: ['sundaeswap/amm'],
+        tags: ['/connector/sundaeswap/amm'],
         querystring: {
           ...QuoteSwapRequest,
           properties: {

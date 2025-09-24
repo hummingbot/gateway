@@ -23,20 +23,20 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             tradingPair: {
               type: 'string',
-              description: 'Trading pair (e.g., ETH-USDC, SOL-USDC)',
-              examples: ['ETH-USDC', 'SOL-USDC'],
+              description: 'Trading pair (e.g., ETH-USDC, SOL-USDC, ADA-MIN)',
+              examples: ['ETH-USDC', 'SOL-USDC', 'ADA-MIN'],
             },
           },
           required: ['tradingPair'],
         },
         querystring: Type.Object({
           connector: Type.String({
-            description: 'Connector (raydium, meteora, uniswap)',
-            examples: ['raydium', 'meteora', 'uniswap'],
+            description: 'Connector (raydium, meteora, uniswap, minswap)',
+            examples: ['raydium', 'meteora', 'uniswap', 'minswap'],
           }),
           network: Type.String({
-            description: 'Network name (mainnet, mainnet-beta, etc)',
-            examples: ['mainnet', 'mainnet-beta'],
+            description: 'Network name (mainnet, mainnet-beta, preprod, etc)',
+            examples: ['mainnet', 'mainnet-beta', 'preprod'],
           }),
           type: Type.Union([Type.Literal('amm'), Type.Literal('clmm')], {
             description: 'Pool type',

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-import { Lucid, Blockfrost, UTxO } from '@aiquant/lucid-cardano';
+import { Lucid, Blockfrost, UTxO, Network } from '@aiquant/lucid-cardano';
 import fse from 'fs-extra';
 
 import { TokenService } from '#src/services/token-service';
@@ -25,7 +25,6 @@ export class Cardano {
   public tokenList: CardanoToken[] = [];
   public config: Config;
   public tokenMap: Record<string, CardanoToken> = {};
-  private _tokenListSource: string;
   public lucidInstance: Lucid | null = null;
   public network: string;
   private _chain: string;
@@ -35,41 +34,52 @@ export class Cardano {
   public projectId: string;
 
   private constructor(network: string) {
-    // Throw error if network is not 'mainnet' or 'preprod'
-    if (network !== 'mainnet' && network !== 'preprod' && network !== 'preview') {
-      throw new HttpException(503, NETWORK_ERROR_MESSAGE, NETWORK_ERROR_CODE);
-    }
-    this.config = getCardanoConfig('cardano', network);
+    this.config = getCardanoConfig(network);
     this._chain = 'cardano';
     // Determine the appropriate Blockfrost Project ID and API URL
-    this.apiURL = this.config.network.apiurl;
-    this.network = this.config.network.name;
-    this.nativeTokenSymbol = this.config.network.nativeCurrencySymbol;
-    this._tokenListSource = this.config.network.tokenListSource;
-    this.projectId = this.config.network.projectId;
+    this.apiURL = this.config.apiurl;
+    this.network = network;
+    this.nativeTokenSymbol = this.config.nativeCurrencySymbol;
+    this.projectId = this.config.projectId;
   }
+
   public static async getInstance(network: string): Promise<Cardano> {
-    if (Cardano._instances === undefined) {
+    // Add stack trace to find WHO is calling this
+    // console.log(`🔍 Cardano.getInstance('${network}') called from:`);
+    // console.trace();
+    if (!Cardano._instances) {
       Cardano._instances = {};
     }
-
     if (!Cardano._instances[network]) {
       const instance = new Cardano(network);
-
-      if (instance.projectId && instance.projectId.toLowerCase().startsWith(network.toLowerCase())) {
-        try {
-          await instance.init();
-        } catch (err: any) {
-          logger.warn(`[Cardano] initial init() skipped for network="${network}": ${err.message}`);
-        }
-      } else {
-        logger.info(`[Cardano] skipped init() for network="${network}" because projectId is still placeholder`);
-      }
-
+      await instance.init();
       Cardano._instances[network] = instance;
     }
-
     return Cardano._instances[network];
+  }
+
+  private async init(): Promise<void> {
+    // Add validation here instead of constructor
+    if (this.network !== 'mainnet' && this.network !== 'preprod' && this.network !== 'preview') {
+      throw new HttpException(503, NETWORK_ERROR_MESSAGE, NETWORK_ERROR_CODE);
+    }
+    try {
+      logger.info(
+        `Initializing Cardano connector for network: ${this.network}, API URL: ${this.apiURL}, Project ID: ${this.projectId}`,
+      );
+      if (!this.lucidInstance) {
+        this.lucidInstance = await Lucid.new(
+          new Blockfrost(this.apiURL, this.projectId),
+          this.network === 'preprod' ? 'Preprod' : this.network === 'preview' ? 'Preview' : 'Mainnet',
+        );
+      }
+      await this.loadTokens();
+      this._ready = true;
+      logger.info(`Cardano chain initialized for network=${this.network}`);
+    } catch (e) {
+      logger.error(`Failed to initialize ${this.network}: ${e}`);
+      throw e;
+    }
   }
 
   public static getConnectedInstances(): { [name: string]: Cardano } {
@@ -82,24 +92,6 @@ export class Cardano {
 
   public ready(): boolean {
     return this._ready;
-  }
-
-  public async init(): Promise<void> {
-    if (!this.lucidInstance) {
-      this.lucidInstance = await Lucid.new(
-        new Blockfrost(this.apiURL, this.projectId),
-        this.network === 'preprod' ? 'Preprod' : this.network === 'preview' ? 'Preview' : 'Mainnet',
-      );
-    }
-
-    try {
-      await this.loadTokens();
-      this._ready = true;
-      logger.info(`Cardano chain initialized for network=${this.network}`);
-    } catch (e) {
-      logger.error(`Failed to initialize Cardano chain: ${e}`);
-      throw e;
-    }
   }
 
   private getLucid(): Lucid {

@@ -1,6 +1,6 @@
+import { Cardano } from '../chains/cardano/cardano';
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
-import { Cardano } from '../chains/cardano/cardano';
 
 export interface Chain {
   // TODO: Add shared chain properties (e.g., network, chainId, etc.)
@@ -45,6 +45,7 @@ export async function getChainInstance(chain: string, network: string): Promise<
   } else if (chainLower === 'solana') {
     connection = await Solana.getInstance(network);
   } else if (chainLower === 'cardano') {
+    // initialize Cardano
     connection = await Cardano.getInstance(network);
   } else {
     connection = undefined;

@@ -56,7 +56,7 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get Cardano chain status',
-        tags: ['cardano'],
+        tags: ['/chain/cardano'],
         querystring: {
           ...StatusRequestSchema,
           properties: {

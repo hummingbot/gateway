@@ -1,10 +1,11 @@
 import sensible from '@fastify/sensible';
 import type { FastifyPluginAsync } from 'fastify';
-import { ammPoolInfoRoute } from './amm-routes/poolInfo';
-import { quoteSwapRoute as ammQuoteSwapRoute } from './amm-routes/quoteSwap';
-import quoteLiquidityRoute from './amm-routes/quoteLiquidity';
-import { executeSwapRoute as ammExecuteSwapRoute } from './amm-routes/executeSwap';
+
 import { addLiquidityRoute as ammAddLiquidityRoute } from './amm-routes/addLiquidity';
+import { executeSwapRoute as ammExecuteSwapRoute } from './amm-routes/executeSwap';
+import { ammPoolInfoRoute } from './amm-routes/poolInfo';
+import quoteLiquidityRoute from './amm-routes/quoteLiquidity';
+import { quoteSwapRoute as ammQuoteSwapRoute } from './amm-routes/quoteSwap';
 import { removeLiquidityRoute as ammRemoveLiquidityRoute } from './amm-routes/removeLiquidity';
 
 // AMM routes including swap endpoints
@@ -14,7 +15,7 @@ const sundaeswapAmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(async (instance) => {
     instance.addHook('onRoute', (routeOptions) => {
       if (routeOptions.schema && routeOptions.schema.tags) {
-        routeOptions.schema.tags = ['sundaeswap/amm'];
+        routeOptions.schema.tags = ['/connector/sundaeswap/amm'];
       }
     });
 

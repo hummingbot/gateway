@@ -26,7 +26,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Execute a swap on Sundaeswap AMM (Cardano)',
-        tags: ['sundaeswap/amm'],
+        tags: ['/connector/sundaeswap/amm'],
         body: {
           ...ExecuteSwapRequest,
           properties: {

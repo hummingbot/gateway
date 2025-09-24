@@ -150,7 +150,7 @@ export async function getMinswapAmmQuote(
 
   if (!cardano.ready()) {
     logger.info('Cardano instance not ready, initializing...');
-    await cardano.init();
+    // await cardano.init();
   }
 
   // Resolve tokens
@@ -291,7 +291,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get swap quote for Minswap AMM',
-        tags: ['minswap/amm'],
+        tags: ['/connector/minswap/amm'],
         querystring: {
           ...QuoteSwapRequest,
           properties: {
