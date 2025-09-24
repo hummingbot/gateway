@@ -1,27 +1,27 @@
+import { Asset, calculateSwapExactIn, calculateSwapExactOut } from '@aiquant/minswap-sdk';
+import { BN } from 'bn.js';
 import { BigNumber } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { Cardano, CardanoTokenInfo } from '../../../chains/cardano/cardano';
+
+import { CardanoToken } from '#src/tokens/types';
+
+import { Cardano } from '../../../chains/cardano/cardano';
+// NEW - v2.8 schema structure
 import {
-  GetSwapQuoteResponseType,
-  GetSwapQuoteResponse,
-  GetSwapQuoteRequestType,
-  GetSwapQuoteRequest,
-} from '../../../schemas/swap-schema';
+  QuoteSwapRequestType,
+  QuoteSwapResponseType,
+  QuoteSwapRequest,
+  QuoteSwapResponse,
+} from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Minswap } from '../minswap';
 import { formatTokenAmount } from '../minswap.utils';
-import {
-  Asset,
-  calculateSwapExactIn,
-  calculateSwapExactOut,
-} from '@aiquant/minswap-sdk';
-import { BN } from 'bn.js';
 
 async function quoteAmmSwap(
   minswap: Minswap,
   poolAddress: string,
-  baseToken: CardanoTokenInfo,
-  quoteToken: CardanoTokenInfo,
+  baseToken: CardanoToken,
+  quoteToken: CardanoToken,
   amount: number, // now always refers to quote‐token units
   side: 'BUY' | 'SELL',
   slippagePct?: number,
@@ -42,31 +42,21 @@ async function quoteAmmSwap(
   if (side === 'BUY') {
     // For BUY, amount represents the desired quoteToken (output), but we need exactOut calculation
     // So convert amount using quoteToken decimals
-    amountInSmallestUnit = BigNumber.from(
-      Math.floor(amount * 10 ** quoteToken.decimals),
-    ).toBigInt();
+    amountInSmallestUnit = BigNumber.from(Math.floor(amount * 10 ** quoteToken.decimals)).toBigInt();
   } else {
     // For SELL, amount represents the quoteToken to spend (input)
     // So convert amount using quoteToken decimals
-    amountInSmallestUnit = BigNumber.from(
-      Math.floor(amount * 10 ** quoteToken.decimals),
-    ).toBigInt();
+    amountInSmallestUnit = BigNumber.from(Math.floor(amount * 10 ** quoteToken.decimals)).toBigInt();
   }
 
   const { poolState, poolDatum } = await minswap.getPoolData(poolAddress);
 
-  if (!poolState)
-    throw new Error(
-      `Pool not found for ${baseToken.symbol}-${quoteToken.symbol}`,
-    );
+  if (!poolState) throw new Error(`Pool not found for ${baseToken.symbol}-${quoteToken.symbol}`);
 
   // Figure out reserves & fee depending on input/output
   const idA = poolState.assetA;
   const idB = poolState.assetB;
-  const assetIdIn =
-    inputToken.symbol === 'ADA'
-      ? 'lovelace'
-      : inputToken.policyId + inputToken.assetName;
+  const assetIdIn = inputToken.symbol === 'ADA' ? 'lovelace' : inputToken.policyId + inputToken.assetName;
   let reserveIn: bigint, reserveOut: bigint;
   if (assetIdIn === idA) {
     reserveIn = poolState.reserveA;
@@ -102,40 +92,21 @@ async function quoteAmmSwap(
     priceImpact = pi.toNumber();
   }
 
-  const effectiveSlippage =
-    slippagePct !== undefined
-      ? slippagePct / 100
-      : minswap.getAllowedSlippage();
+  const effectiveSlippage = slippagePct !== undefined ? slippagePct / 100 : minswap.getAllowedSlippage();
 
   const minAmountOut = exactIn
-    ? new BN(outputAmount.toString())
-        .mul(new BN(Math.floor((1 - effectiveSlippage) * 10000)))
-        .div(new BN(10000))
+    ? new BN(outputAmount.toString()).mul(new BN(Math.floor((1 - effectiveSlippage) * 10000))).div(new BN(10000))
     : outputAmount;
 
   const maxAmountIn = exactIn
     ? inputAmount
-    : new BN(inputAmount.toString())
-        .mul(new BN(Math.floor((1 + effectiveSlippage) * 10000)))
-        .div(new BN(10000));
+    : new BN(inputAmount.toString()).mul(new BN(Math.floor((1 + effectiveSlippage) * 10000))).div(new BN(10000));
 
   // Format human‐readable
-  const estimatedIn = formatTokenAmount(
-    inputAmount.toString(),
-    inputToken.decimals,
-  );
-  const estimatedOut = formatTokenAmount(
-    outputAmount.toString(),
-    outputToken.decimals,
-  );
-  const minOutHuman = formatTokenAmount(
-    minAmountOut.toString(),
-    outputToken.decimals,
-  );
-  const maxInHuman = formatTokenAmount(
-    maxAmountIn.toString(),
-    inputToken.decimals,
-  );
+  const estimatedIn = formatTokenAmount(inputAmount.toString(), inputToken.decimals);
+  const estimatedOut = formatTokenAmount(outputAmount.toString(), outputToken.decimals);
+  const minOutHuman = formatTokenAmount(minAmountOut.toString(), outputToken.decimals);
+  const maxInHuman = formatTokenAmount(maxAmountIn.toString(), inputToken.decimals);
 
   return {
     poolAddress,
@@ -196,9 +167,7 @@ export async function getMinswapAmmQuote(
     throw new Error(`Quote token not found: ${quoteToken}`);
   }
 
-  logger.info(
-    `Base token: ${baseTokenObj.symbol}, address=${baseTokenObj.address}, decimals=${baseTokenObj.decimals}`,
-  );
+  logger.info(`Base token: ${baseTokenObj.symbol}, address=${baseTokenObj.address}, decimals=${baseTokenObj.decimals}`);
   logger.info(
     `Quote token: ${quoteTokenObj.symbol}, address=${quoteTokenObj.address}, decimals=${quoteTokenObj.decimals}`,
   );
@@ -236,24 +205,23 @@ async function formatSwapQuote(
   amount: number,
   side: 'BUY' | 'SELL',
   slippagePct?: number,
-): Promise<GetSwapQuoteResponseType> {
+): Promise<QuoteSwapResponseType> {
   logger.info(
     `formatSwapQuote: poolAddress=${poolAddress}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}, network=${network}`,
   );
 
   try {
     // Use the extracted quote function
-    const { quote, minswap, cardano, baseTokenObj, quoteTokenObj } =
-      await getMinswapAmmQuote(
-        fastify,
-        network,
-        poolAddress,
-        baseToken,
-        quoteToken,
-        amount,
-        side,
-        slippagePct,
-      );
+    const { quote, minswap, cardano, baseTokenObj, quoteTokenObj } = await getMinswapAmmQuote(
+      fastify,
+      network,
+      poolAddress,
+      baseToken,
+      quoteToken,
+      amount,
+      side,
+      slippagePct,
+    );
 
     logger.info(
       `Quote result: estimatedAmountIn=${quote.estimatedAmountIn}, estimatedAmountOut=${quote.estimatedAmountOut}`,
@@ -289,17 +257,18 @@ async function formatSwapQuote(
         : quote.estimatedAmountIn / quote.estimatedAmountOut;
 
     return {
+      // Base QuoteSwapResponse fields (matching Uniswap structure)
       poolAddress,
-      estimatedAmountIn: quote.estimatedAmountIn,
-      estimatedAmountOut: quote.estimatedAmountOut,
+      tokenIn: quote.inputToken.address || `${quote.inputToken.policyId}.${quote.inputToken.assetName}`,
+      tokenOut: quote.outputToken.address || `${quote.outputToken.policyId}.${quote.outputToken.assetName}`,
+      amountIn: quote.estimatedAmountIn,
+      amountOut: quote.estimatedAmountOut,
+      price,
+      slippagePct: slippagePct || 1,
       minAmountOut: quote.minAmountOut,
       maxAmountIn: quote.maxAmountIn,
-      baseTokenBalanceChange,
-      quoteTokenBalanceChange,
-      price,
-      gasPrice: 0,
-      gasLimit: 0,
-      gasCost: 0,
+      // AMM-specific fields
+      priceImpactPct: quote.priceImpact,
     };
   } catch (error) {
     logger.error(`Error formatting swap quote: ${error.message}`);
@@ -315,8 +284,8 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
 
   fastify.get<{
-    Querystring: GetSwapQuoteRequestType;
-    Reply: GetSwapQuoteResponseType;
+    Querystring: QuoteSwapRequestType;
+    Reply: QuoteSwapResponseType;
   }>(
     '/quote-swap',
     {
@@ -324,9 +293,9 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         description: 'Get swap quote for Minswap AMM',
         tags: ['minswap/amm'],
         querystring: {
-          ...GetSwapQuoteRequest,
+          ...QuoteSwapRequest,
           properties: {
-            ...GetSwapQuoteRequest.properties,
+            ...QuoteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet' },
             baseToken: { type: 'string', examples: ['ADA'] },
             quoteToken: { type: 'string', examples: ['MIN'] },
@@ -339,7 +308,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         response: {
           200: {
             properties: {
-              ...GetSwapQuoteResponse.properties,
+              ...QuoteSwapResponse.properties,
             },
           },
         },
@@ -364,16 +333,10 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         if (!poolAddress) {
           // Look up the pool from configuration pools dictionary
-          poolAddress = await minswap.findDefaultPool(
-            baseToken,
-            quoteToken,
-            'amm',
-          );
+          poolAddress = await minswap.findDefaultPool(baseToken, quoteToken, 'amm');
 
           if (!poolAddress) {
-            throw fastify.httpErrors.notFound(
-              `No AMM pool found for pair ${baseToken}-${quoteToken}`,
-            );
+            throw fastify.httpErrors.notFound(`No AMM pool found for pair ${baseToken}-${quoteToken}`);
           }
         }
 
@@ -399,10 +362,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         if (e.message?.includes('Insufficient liquidity')) {
           throw fastify.httpErrors.badRequest(e.message);
         }
-        if (
-          e.message?.includes('Pool not found') ||
-          e.message?.includes('No AMM pool found')
-        ) {
+        if (e.message?.includes('Pool not found') || e.message?.includes('No AMM pool found')) {
           throw fastify.httpErrors.notFound(e.message);
         }
         if (e.message?.includes('token not found')) {
@@ -410,9 +370,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Default to internal server error with the actual error message
-        throw fastify.httpErrors.internalServerError(
-          `Error getting swap quote: ${e.message || 'Unknown error'}`,
-        );
+        throw fastify.httpErrors.internalServerError(`Error getting swap quote: ${e.message || 'Unknown error'}`);
       }
     },
   );

@@ -9,6 +9,8 @@ export namespace SundaeswapConfig {
   // Supported networks for Sundaeswap
   export const chain = 'cardano';
   export const networks = ['mainnet', 'preview'];
+  // Supported trading types
+  export const tradingTypes = ['amm'] as const;
 
   export interface PoolsConfig {
     [pairKey: string]: string;
@@ -37,9 +39,7 @@ export namespace SundaeswapConfig {
 
   export const config: RootConfig = {
     // Global configuration
-    allowedSlippage: ConfigManagerV2.getInstance().get(
-      'sundaeswap.allowedSlippage',
-    ),
+    allowedSlippage: ConfigManagerV2.getInstance().get('sundaeswap.allowedSlippage'),
 
     // Network-specific pools
     networks: ConfigManagerV2.getInstance().get('sundaeswap.networks'),
@@ -53,10 +53,7 @@ export namespace SundaeswapConfig {
   };
 
   // Helper methods to get pools for a specific network
-  export const getNetworkPools = (
-    network: string,
-    poolType: 'amm',
-  ): PoolsConfig => {
+  export const getNetworkPools = (network: string, poolType: 'amm'): PoolsConfig => {
     return config.networks[network]?.[poolType] || {};
   };
 }

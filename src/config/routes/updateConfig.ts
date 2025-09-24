@@ -9,7 +9,6 @@ import {
   ConfigUpdateResponseSchema,
 } from '../schemas';
 import { updateConfig } from '../utils';
-import { Cardano } from '../../chains/cardano/cardano';
 
 export const updateConfigRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{ Body: ConfigUpdateRequest; Reply: ConfigUpdateResponse }>(
@@ -85,14 +84,15 @@ export const updateConfigRoute: FastifyPluginAsync = async (fastify) => {
 
         // Build descriptive message
         const description = `'${namespace}.${path}'`;
-        // If they updated the projectId for one of the Cardano networks:
-        if (configPath.startsWith('cardano.') && configPath.endsWith('.projectId')) {
-          const network = configPath.split('.')[2]; // e.g. 'preprod || mainnet || preview'
-          console.log('network', network);
-          const cardano = await Cardano.getInstance(network);
-          cardano.projectId = String(processedValue); // assign the new key as string
-          await cardano.init(); // re‐init Lucid on the fly
-        }
+
+        // // If they updated the projectId for one of the Cardano networks:
+        // if (fullPath.startsWith('cardano.') && fullPath.endsWith('.projectId')) {
+        //   const network = fullPath.split('.')[2];
+        //   console.log('network', network);
+        //   const cardano = await Cardano.getInstance(network);
+        //   cardano.projectId = String(processedValue); // assign the new key as string
+        //   await cardano.init(); // re‐init Lucid on the fly
+        // }
 
         return {
           message: `Configuration updated successfully: ${description} set to ${JSON.stringify(processedValue)}`,

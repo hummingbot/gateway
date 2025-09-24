@@ -3,13 +3,13 @@ import { Type } from '@sinclair/typebox';
 // Pool list request
 export const PoolListRequestSchema = Type.Object({
   connector: Type.String({
-    description: 'Connector (raydium, meteora, uniswap)',
-    examples: ['raydium', 'meteora', 'uniswap'],
+    description: 'Connector (raydium, meteora, uniswap, minswap)',
+    examples: ['raydium', 'meteora', 'uniswap', 'minswap'],
   }),
   network: Type.Optional(
     Type.String({
       description: 'Optional: filter by network (mainnet, mainnet-beta, etc)',
-      examples: ['mainnet', 'mainnet-beta', 'base'],
+      examples: ['mainnet', 'mainnet-beta', 'base', 'preprod'],
     }),
   ),
   type: Type.Optional(
@@ -38,23 +38,23 @@ export const PoolListResponseSchema = Type.Array(
 // Add pool request
 export const PoolAddRequestSchema = Type.Object({
   connector: Type.String({
-    description: 'Connector (raydium, meteora, uniswap)',
-    examples: ['raydium', 'meteora', 'uniswap'],
+    description: 'Connector (raydium, meteora, uniswap, minswap)',
+    examples: ['raydium', 'meteora', 'uniswap', 'minswap'],
   }),
   type: Type.Union([Type.Literal('amm'), Type.Literal('clmm')], {
     description: 'Pool type',
   }),
   network: Type.String({
     description: 'Network name (mainnet, mainnet-beta, etc)',
-    examples: ['mainnet', 'mainnet-beta'],
+    examples: ['mainnet', 'mainnet-beta', 'preprod'],
   }),
   baseSymbol: Type.String({
     description: 'Base token symbol',
-    examples: ['ETH', 'SOL'],
+    examples: ['ETH', 'SOL', 'ADA'],
   }),
   quoteSymbol: Type.String({
     description: 'Quote token symbol',
-    examples: ['USDC', 'USDT'],
+    examples: ['USDC', 'USDT', 'MIN'],
   }),
   address: Type.String({
     description: 'Pool contract address',

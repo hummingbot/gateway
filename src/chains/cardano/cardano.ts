@@ -1,11 +1,16 @@
-import { Config, getCardanoConfig } from './cardano.config';
-import { Lucid, Blockfrost, C, UTxO } from '@aiquant/lucid-cardano';
-import { TokenListType, TokenValue } from '../../services/base';
-import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
-import { walletPath } from '../../wallet/utils';
-import { promises as fs } from 'fs';
-import fse from 'fs-extra';
 import crypto from 'crypto';
+
+import { Lucid, Blockfrost, UTxO } from '@aiquant/lucid-cardano';
+import fse from 'fs-extra';
+
+import { TokenService } from '#src/services/token-service';
+import { CardanoToken } from '#src/tokens/types';
+
+import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
+import { logger } from '../../services/logger';
+import { walletPath } from '../../wallet/utils';
+
+import { Config, getCardanoConfig } from './cardano.config';
 import {
   NETWORK_ERROR_CODE,
   NETWORK_ERROR_MESSAGE,
@@ -14,27 +19,13 @@ import {
   TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
   TransactionStatus,
 } from './cardano.utils';
-import { logger } from '../../services/logger';
-import { TokenListResolutionStrategy } from '../../services/token-list-resolution';
-
-//import { Cardanoish } from "../../services/common-interfaces";
-export type CardanoTokenInfo = {
-  policyId: string;
-  assetName: string;
-  decimals: number;
-  name: string;
-  symbol: string;
-  logoURI: string;
-  address: string;
-};
 
 export class Cardano {
   private static _instances: { [name: string]: Cardano };
-  public tokenList: CardanoTokenInfo[] = [];
+  public tokenList: CardanoToken[] = [];
   public config: Config;
-  public tokenMap: Record<string, CardanoTokenInfo> = {};
+  public tokenMap: Record<string, CardanoToken> = {};
   private _tokenListSource: string;
-  private _tokenListType: TokenListType;
   public lucidInstance: Lucid | null = null;
   public network: string;
   private _chain: string;
@@ -45,11 +36,7 @@ export class Cardano {
 
   private constructor(network: string) {
     // Throw error if network is not 'mainnet' or 'preprod'
-    if (
-      network !== 'mainnet' &&
-      network !== 'preprod' &&
-      network !== 'preview'
-    ) {
+    if (network !== 'mainnet' && network !== 'preprod' && network !== 'preview') {
       throw new HttpException(503, NETWORK_ERROR_MESSAGE, NETWORK_ERROR_CODE);
     }
     this.config = getCardanoConfig('cardano', network);
@@ -59,7 +46,6 @@ export class Cardano {
     this.network = this.config.network.name;
     this.nativeTokenSymbol = this.config.network.nativeCurrencySymbol;
     this._tokenListSource = this.config.network.tokenListSource;
-    this._tokenListType = <TokenListType>this.config.network.tokenListType;
     this.projectId = this.config.network.projectId;
   }
   public static async getInstance(network: string): Promise<Cardano> {
@@ -70,21 +56,14 @@ export class Cardano {
     if (!Cardano._instances[network]) {
       const instance = new Cardano(network);
 
-      if (
-        instance.projectId &&
-        instance.projectId.toLowerCase().startsWith(network.toLowerCase())
-      ) {
+      if (instance.projectId && instance.projectId.toLowerCase().startsWith(network.toLowerCase())) {
         try {
           await instance.init();
         } catch (err: any) {
-          logger.warn(
-            `[Cardano] initial init() skipped for network="${network}": ${err.message}`,
-          );
+          logger.warn(`[Cardano] initial init() skipped for network="${network}": ${err.message}`);
         }
       } else {
-        logger.info(
-          `[Cardano] skipped init() for network="${network}" because projectId is still placeholder`,
-        );
+        logger.info(`[Cardano] skipped init() for network="${network}" because projectId is still placeholder`);
       }
 
       Cardano._instances[network] = instance;
@@ -109,18 +88,17 @@ export class Cardano {
     if (!this.lucidInstance) {
       this.lucidInstance = await Lucid.new(
         new Blockfrost(this.apiURL, this.projectId),
-        this.network === 'preprod'
-          ? 'Preprod'
-          : this.network === 'preview'
-            ? 'Preview'
-            : 'Mainnet',
+        this.network === 'preprod' ? 'Preprod' : this.network === 'preview' ? 'Preview' : 'Mainnet',
       );
     }
 
-    if (!this._ready) {
-      // Ensure we only set ready once
+    try {
+      await this.loadTokens();
       this._ready = true;
-      await this.loadTokens(this._tokenListSource, this._tokenListType);
+      logger.info(`Cardano chain initialized for network=${this.network}`);
+    } catch (e) {
+      logger.error(`Failed to initialize Cardano chain: ${e}`);
+      throw e;
     }
   }
 
@@ -136,9 +114,7 @@ export class Cardano {
     address: string;
   }> {
     if (!this._ready) {
-      throw new Error(
-        'Cardano instance is not initialized. Call `init` first.',
-      );
+      throw new Error('Cardano instance is not initialized. Call `init` first.');
     }
 
     try {
@@ -149,18 +125,13 @@ export class Cardano {
       const address = await lucid.wallet.address();
       return { address };
     } catch (error: any) {
-      throw new Error(
-        `Error retrieving wallet from private key: ${error.message}`,
-      );
+      throw new Error(`Error retrieving wallet from private key: ${error.message}`);
     }
   }
 
   public async getWalletFromAddress(address: string): Promise<string> {
     const path = `${walletPath}/${this._chain}`;
-    const encryptedPrivateKey: string = await fse.readFile(
-      `${path}/${address}.json`,
-      'utf8',
-    );
+    const encryptedPrivateKey: string = await fse.readFile(`${path}/${address}.json`, 'utf8');
     const passphrase = ConfigManagerCertPassphrase.readPassphrase();
     if (!passphrase) {
       throw new Error('missing passphrase');
@@ -182,10 +153,7 @@ export class Cardano {
     const utxos = await Lucid.utxosAt(address);
 
     // Calculate total balance in ADA using BigInt
-    const totalLovelace = utxos.reduce(
-      (acc, utxo) => acc + (utxo.assets.lovelace || 0n),
-      0n,
-    );
+    const totalLovelace = utxos.reduce((acc, utxo) => acc + (utxo.assets.lovelace || 0n), 0n);
 
     // Convert Lovelace (BigInt) to ADA (Number)
     const balanceInADA = Number(totalLovelace) / 1_000_000;
@@ -193,18 +161,12 @@ export class Cardano {
     return balanceInADA.toString();
   }
   // get Asset balance like MIN and LP
-  async getAssetBalance(
-    privateKey: string,
-    token: CardanoTokenInfo,
-  ): Promise<string> {
-    let tokenAdress: string;
-
+  async getAssetBalance(privateKey: string, token: CardanoToken): Promise<string> {
     // If token information is not found, throw an error
     if (!token || Object.keys(token).length === 0) {
       throw new Error(`Token ${token} is not supported.`);
     }
-
-    tokenAdress = token.policyId + token.assetName;
+    const tokenAddress: string = token.policyId + token.assetName;
 
     const Lucid = this.getLucid();
     Lucid.selectWalletFromPrivateKey(privateKey);
@@ -217,17 +179,15 @@ export class Cardano {
 
     // Calculate token balance
     const calculatedTokenBalance = utxos.reduce((acc, utxo) => {
-      if (utxo.assets[tokenAdress]) {
-        return acc + Number(utxo.assets[tokenAdress]);
+      if (utxo.assets[tokenAddress]) {
+        return acc + Number(utxo.assets[tokenAddress]);
       }
       return acc;
     }, 0);
     // Divide raw balance by 10^decimals to get the actual amount
     const decimals = token.decimals;
     const actualTokenBalance = calculatedTokenBalance / Math.pow(10, decimals);
-    logger.debug(
-      `Token balance for ${address}: ${actualTokenBalance.toString()}`,
-    );
+    logger.debug(`Token balance for ${address}: ${actualTokenBalance.toString()}`);
     return actualTokenBalance.toString();
   }
 
@@ -235,18 +195,8 @@ export class Cardano {
     const algorithm = 'aes-256-ctr';
     const iv = crypto.randomBytes(16);
     const salt = crypto.randomBytes(32);
-    const key = crypto.pbkdf2Sync(
-      password,
-      new Uint8Array(salt),
-      5000,
-      32,
-      'sha512',
-    );
-    const cipher = crypto.createCipheriv(
-      algorithm,
-      new Uint8Array(key),
-      new Uint8Array(iv),
-    );
+    const key = crypto.pbkdf2Sync(password, new Uint8Array(salt), 5000, 32, 'sha512');
+    const cipher = crypto.createCipheriv(algorithm, new Uint8Array(key), new Uint8Array(iv));
 
     const encryptedBuffers = [
       new Uint8Array(cipher.update(new Uint8Array(Buffer.from(secret)))),
@@ -273,16 +223,10 @@ export class Cardano {
 
     const key = crypto.pbkdf2Sync(password, salt, 5000, 32, 'sha512');
 
-    const decipher = crypto.createDecipheriv(
-      hash.algorithm,
-      new Uint8Array(key),
-      iv,
-    );
+    const decipher = crypto.createDecipheriv(hash.algorithm, new Uint8Array(key), iv);
 
     const decryptedBuffers = [
-      new Uint8Array(
-        decipher.update(new Uint8Array(Buffer.from(hash.encrypted, 'hex'))),
-      ),
+      new Uint8Array(decipher.update(new Uint8Array(Buffer.from(hash.encrypted, 'hex')))),
       new Uint8Array(decipher.final()),
     ];
     const decrypted = Buffer.concat(decryptedBuffers);
@@ -342,22 +286,44 @@ export class Cardano {
   /**
    * Load tokens from the token list source
    */
-  public async loadTokens(
-    tokenListSource: string,
-    tokenListType: TokenListType,
-  ): Promise<void> {
-    logger.info(
-      `Loading tokens for cardano from ${tokenListType} source: ${tokenListSource}`,
-    );
+  public async loadTokens(): Promise<void> {
+    logger.info(`Loading tokens for cardano/${this.network} using TokenService`);
+
     try {
-      this.tokenList = await this.getTokenList(tokenListSource, tokenListType);
+      // Use TokenService to load tokens
+      const tokens = await TokenService.getInstance().loadTokenList('cardano', this.network);
+
+      // Transform to CardanoToken format with required Cardano-specific properties
+      this.tokenList = tokens.map((token): CardanoToken => {
+        let policyId: string;
+        let assetName: string;
+
+        // Check if this is a Cardano native token (ADA)
+        if (token.address === 'ada.lovelace' || token.symbol.toLowerCase() === 'ada') {
+          // Native ADA token - empty policyId and assetName
+          policyId = '';
+          assetName = '';
+        } else if (token.address.includes('.')) {
+          // Custom token with format: policyId.assetName
+          const addressParts = token.address.split('.');
+          policyId = addressParts[0];
+          assetName = addressParts[1] || '';
+        } else {
+          // Custom token with just policyId (no asset name)
+          policyId = token.address;
+          assetName = '';
+        }
+        return {
+          ...token,
+          policyId: policyId,
+          assetName: assetName,
+        };
+      });
 
       if (this.tokenList) {
-        logger.info(`Loaded ${this.tokenList.length} tokens for cardano`);
+        logger.info(`Loaded ${this.tokenList.length} tokens for cardano/${this.network}`);
         // Build token map for faster lookups
-        this.tokenList.forEach(
-          (token: CardanoTokenInfo) => (this.tokenMap[token.symbol] = token),
-        );
+        this.tokenList.forEach((token: CardanoToken) => (this.tokenMap[token.symbol] = token));
       }
     } catch (error) {
       logger.error(`Failed to load token list: ${error.message}`);
@@ -365,34 +331,17 @@ export class Cardano {
     }
   }
 
-  /**
-   * Get token list from source
-   */
-  private async getTokenList(
-    tokenListSource: string,
-    tokenListType: TokenListType,
-  ): Promise<CardanoTokenInfo[]> {
-    const tokensList = await new TokenListResolutionStrategy(
-      tokenListSource,
-      tokenListType,
-    ).resolve();
-
-    // Normalize addresses
-    return tokensList.tokens;
-  }
-
-  public get storedTokenList(): CardanoTokenInfo[] {
+  public get storedTokenList(): CardanoToken[] {
     return this.tokenList;
   }
 
   /**
    * Get token info by symbol or address
    */
-  public getTokenBySymbol(tokenSymbol: string): CardanoTokenInfo | undefined {
+  public getTokenBySymbol(tokenSymbol: string): CardanoToken | undefined {
     // First try to find token by symbol
     const tokenBySymbol = this.tokenList.find(
-      (token: CardanoTokenInfo) =>
-        token.symbol.toUpperCase() === tokenSymbol.toUpperCase(),
+      (token: CardanoToken) => token.symbol.toUpperCase() === tokenSymbol.toUpperCase(),
     );
 
     if (tokenBySymbol) {
@@ -402,15 +351,11 @@ export class Cardano {
 
   public getTokenAddress(symbol: string): string {
     let tokenAddress: string = '';
-    let tokenInfo = this.getTokenBySymbol(symbol);
+    const tokenInfo = this.getTokenBySymbol(symbol);
     // If token information is not found, throw an error
     if (!tokenInfo || Object.keys(tokenInfo).length === 0) {
       // Handle token not supported errors
-      throw new HttpException(
-        500,
-        TOKEN_NOT_SUPPORTED_ERROR_MESSAGE,
-        TOKEN_NOT_SUPPORTED_ERROR_CODE,
-      );
+      throw new HttpException(500, TOKEN_NOT_SUPPORTED_ERROR_MESSAGE, TOKEN_NOT_SUPPORTED_ERROR_CODE);
     }
 
     tokenAddress = tokenInfo[0]?.policyId + tokenInfo[0]?.assetName;
@@ -441,9 +386,7 @@ export class Cardano {
 
       // Validate it looks like an Cardano address
       if (!walletAddress.startsWith('addr')) {
-        logger.warn(
-          `Invalid Cardano address found in wallet directory: ${walletAddress}`,
-        );
+        logger.warn(`Invalid Cardano address found in wallet directory: ${walletAddress}`);
         return null;
       }
 
@@ -474,13 +417,9 @@ export class Cardano {
       return utxos;
     } catch (error: any) {
       // 4) log the failure for debugging
-      logger.error(
-        `Cardano.getUtxos failed for address ${address}: ${error.message || error}`,
-      );
+      logger.error(`Cardano.getUtxos failed for address ${address}: ${error.message || error}`);
       // 5) rethrow a trimmed error
-      throw new Error(
-        `Unable to fetch UTxOs for ${address}: ${error.message || error}`,
-      );
+      throw new Error(`Unable to fetch UTxOs for ${address}: ${error.message || error}`);
     }
   }
 

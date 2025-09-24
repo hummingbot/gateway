@@ -1,10 +1,10 @@
 import { FastifyInstance } from 'fastify';
 import fse from 'fs-extra';
 
+import { Cardano } from '../chains/cardano/cardano';
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
 import { updateDefaultWallet } from '../config/utils';
-import { Cardano } from '../chains/cardano/cardano';
 import { ConfigManagerCertPassphrase } from '../services/config-manager-cert-passphrase';
 import {
   getInitializedChain,
@@ -146,9 +146,9 @@ export async function addWallet(fastify: FastifyInstance, req: AddWalletRequest)
   await fse.writeFile(`${path}/${safeAddress}.json`, encryptedPrivateKey);
 
   // Update default wallet if requested
-  if (req.setDefault) {
-    updateDefaultWallet(fastify, req.chain, address);
-  }
+  // if (req.setDefault) {
+  //   updateDefaultWallet(fastify, req.chain, address);
+  // }
 
   return { address };
 }

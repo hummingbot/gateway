@@ -1,7 +1,9 @@
 import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
+import { MinswapConfig } from '#src/connectors/minswap/minswap.config';
 import { PancakeswapConfig } from '#src/connectors/pancakeswap/pancakeswap.config';
+import { SundaeswapConfig } from '#src/connectors/sundaeswap/sundaeswap.config';
 
 import { ZeroXConfig } from '../../connectors/0x/0x.config';
 import { JupiterConfig } from '../../connectors/jupiter/jupiter.config';
@@ -62,6 +64,18 @@ export const connectorsConfig = [
     trading_types: [...PancakeswapConfig.tradingTypes],
     chain: PancakeswapConfig.chain,
     networks: [...PancakeswapConfig.networks],
+  },
+  {
+    name: 'minswap',
+    trading_types: [...MinswapConfig.tradingTypes],
+    chain: MinswapConfig.chain,
+    networks: [...MinswapConfig.networks],
+  },
+  {
+    name: 'sundaeswap',
+    trading_types: [...SundaeswapConfig.tradingTypes],
+    chain: SundaeswapConfig.chain,
+    networks: [...SundaeswapConfig.networks],
   },
 ];
 

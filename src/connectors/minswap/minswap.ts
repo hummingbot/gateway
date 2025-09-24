@@ -1,22 +1,13 @@
-import { Cardano } from '../../chains/cardano/cardano';
 import { Data, PrivateKey, TxComplete, UTxO } from '@aiquant/lucid-cardano';
+import { ADA, Asset, BlockfrostAdapter, NetworkId, PoolV1 } from '@aiquant/minswap-sdk';
 import { BlockFrostAPI } from '@blockfrost/blockfrost-js';
-import {
-  ADA,
-  Asset,
-  BlockfrostAdapter,
-  NetworkId,
-  PoolV1,
-} from '@aiquant/minswap-sdk';
 
-import {
-  percentRegexp,
-  ConfigManagerV2,
-} from '../../services/config-manager-v2';
+import { Cardano } from '../../chains/cardano/cardano';
+import { PoolInfo } from '../../schemas/amm-schema';
+import { percentRegexp, ConfigManagerV2 } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';
 
 import { MinswapConfig } from './minswap.config';
-import { PoolInfo } from '../../schemas/amm-schema';
 import { findPoolAddress, isFractionString } from './minswap.utils';
 
 export class Minswap {
@@ -60,19 +51,13 @@ export class Minswap {
         this.owner = await this.cardano.getWalletFromAddress(walletAddress);
       }
       this.blockfrostAdapter = new BlockfrostAdapter({
-        networkId:
-          this.cardano.network === 'preprod'
-            ? NetworkId.TESTNET
-            : NetworkId.MAINNET,
+        networkId: this.cardano.network === 'preprod' ? NetworkId.TESTNET : NetworkId.MAINNET,
         blockFrost: new BlockFrostAPI({
           projectId: this.cardano.projectId,
         }),
       });
 
-      logger.info(
-        'Minswap initialized' +
-          (walletAddress ? ` with wallet: ${walletAddress}` : 'with no wallet'),
-      );
+      logger.info('Minswap initialized' + (walletAddress ? ` with wallet: ${walletAddress}` : 'with no wallet'));
     } catch (error) {
       logger.error('Minswap initialization failed:', error);
       throw error;
@@ -95,25 +80,69 @@ export class Minswap {
     return slippage * 100;
   }
 
-  private getPairKey(baseToken: string, quoteToken: string): string {
-    return `${baseToken}-${quoteToken}`;
-  }
+  // private getPairKey(baseToken: string, quoteToken: string): string {
+  //   return `${baseToken}-${quoteToken}`;
+  // }
 
-  async findDefaultPool(
-    baseToken: string,
-    quoteToken: string,
-    routeType: 'amm',
-  ): Promise<string | null> {
-    // Get the network-specific pools
-    const network = this.cardano.network;
-    const pools = MinswapConfig.getNetworkPools(network, routeType);
+  // async findDefaultPool(routeType: 'amm'): Promise<string | null> {
+  //   // Get the network-specific pools
+  //   const network = this.cardano.network;
+  //   const pools = MinswapConfig.getNetworkPools(network, routeType);
 
-    if (!pools) return null;
+  //   if (!pools) return null;
+  //   // For simplicity, return the first pool in the list
+  //   const firstPoolAddress = Object.values(pools)[0];
+  //   return firstPoolAddress || null;
+  // }
 
-    const pairKey = this.getPairKey(baseToken, quoteToken);
-    const reversePairKey = this.getPairKey(quoteToken, baseToken);
+  /**
+   * Find a default pool for a token pair in either AMM or CLMM
+   */
+  public async findDefaultPool(baseToken: string, quoteToken: string, poolType: 'amm'): Promise<string | null> {
+    try {
+      logger.info(`Finding ${poolType} pool for ${baseToken}-${quoteToken} on ${this.networkName}`);
 
-    return pools[pairKey] || pools[reversePairKey] || null;
+      // Resolve token symbols if addresses are provided
+      const baseTokenInfo = this.cardano.getTokenBySymbol(baseToken);
+      const quoteTokenInfo = this.cardano.getTokenBySymbol(quoteToken);
+
+      if (!baseTokenInfo || !quoteTokenInfo) {
+        logger.warn(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
+        return null;
+      }
+
+      logger.info(
+        `Resolved tokens: ${baseTokenInfo.symbol} (${baseTokenInfo.address}), ${quoteTokenInfo.symbol} (${quoteTokenInfo.address})`,
+      );
+
+      // Use PoolService to find pool by token pair
+      const { PoolService } = await import('../../services/pool-service');
+      const poolService = PoolService.getInstance();
+
+      const pool = await poolService.getPool(
+        'minswap',
+        this.networkName,
+        poolType,
+        baseTokenInfo.symbol,
+        quoteTokenInfo.symbol,
+      );
+
+      if (!pool) {
+        logger.warn(
+          `No ${poolType} pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Uniswap network ${this.networkName}`,
+        );
+        return null;
+      }
+
+      logger.info(`Found ${poolType} pool at ${pool.address}`);
+      return pool.address;
+    } catch (error) {
+      logger.error(`Error finding default pool: ${error.message}`);
+      if (error.stack) {
+        logger.debug(`Stack trace: ${error.stack}`);
+      }
+      return null;
+    }
   }
 
   async getAmmPoolInfo(poolAddress: string): Promise<PoolInfo> {
@@ -148,11 +177,6 @@ export class Minswap {
       price: price[0],
       baseTokenAmount: baseTokenAmount,
       quoteTokenAmount: quoteTokenAmount,
-      poolType: 'amm',
-      lpMint: {
-        address: pool.assetLP,
-        decimals: 0,
-      },
     };
   }
 
@@ -173,9 +197,7 @@ export class Minswap {
     const nd = allowedSlippage.match(percentRegexp);
     if (nd) return Number(nd[1]) / Number(nd[2]);
 
-    throw new Error(
-      'Encountered a malformed percent string in the config for allowed slippage.',
-    );
+    throw new Error('Encountered a malformed percent string in the config for allowed slippage.');
   }
 
   public calculateAssetAmount(utxos: UTxO[], asset: string): bigint {
@@ -195,9 +217,7 @@ export class Minswap {
     if (!poolState) {
       throw new Error(`Not found PoolState of ID: ${poolAddress}`);
     }
-    const rawPoolDatum = await this.blockfrostAdapter.getDatumByDatumHash(
-      poolState.datumHash,
-    );
+    const rawPoolDatum = await this.blockfrostAdapter.getDatumByDatumHash(poolState.datumHash);
     const poolDatum = PoolV1.Datum.fromPlutusData(
       this.networkName === 'mainnet' ? NetworkId.MAINNET : NetworkId.TESTNET,
       Data.from(rawPoolDatum),

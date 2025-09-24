@@ -7,22 +7,15 @@ Math.pow = function (base, exponent) {
   return originalMathPow(base, exponent);
 };
 
-import { Cardano, CardanoTokenInfo } from '../../chains/cardano/cardano';
 import { PrivateKey, UTxO } from '@aiquant/lucid-cardano';
-import {
-  IPoolDataAsset,
-  QueryProviderSundaeSwap,
-  TSupportedNetworks,
-} from '@aiquant/sundaeswap-core';
+import { IPoolDataAsset, QueryProviderSundaeSwap, TSupportedNetworks } from '@aiquant/sundaeswap-core';
 
-import {
-  percentRegexp,
-  ConfigManagerV2,
-} from '../../services/config-manager-v2';
+import { Cardano } from '../../chains/cardano/cardano';
+import { PoolInfo } from '../../schemas/amm-schema';
+import { percentRegexp, ConfigManagerV2 } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';
 
 import { SundaeswapConfig } from './sundaeswap.config';
-import { PoolInfo } from '../../schemas/amm-schema';
 import { isFractionString } from './sundaeswap.utils';
 
 export class Sundaeswap {
@@ -65,10 +58,7 @@ export class Sundaeswap {
         this.owner = await this.cardano.getWalletFromAddress(walletAddress);
       }
 
-      logger.info(
-        'Sundaeswap initialized' +
-          (walletAddress ? ` with wallet: ${walletAddress}` : 'with no wallet'),
-      );
+      logger.info('Sundaeswap initialized' + (walletAddress ? ` with wallet: ${walletAddress}` : 'with no wallet'));
     } catch (error) {
       logger.error('Sundaeswap initialization failed:', error);
       throw error;
@@ -95,11 +85,7 @@ export class Sundaeswap {
     return `${baseToken}-${quoteToken}`;
   }
 
-  async findDefaultPool(
-    baseToken: string,
-    quoteToken: string,
-    routeType: 'amm',
-  ): Promise<string | null> {
+  async findDefaultPool(baseToken: string, quoteToken: string, routeType: 'amm'): Promise<string | null> {
     // Get the network-specific pools
     const network = this.cardano.network;
     const pools = SundaeswapConfig.getNetworkPools(network, routeType);
@@ -113,32 +99,20 @@ export class Sundaeswap {
   }
 
   async getAmmPoolInfo(ident: string): Promise<PoolInfo> {
-    const queryProvider = new QueryProviderSundaeSwap(
-      this.networkName as TSupportedNetworks,
-    );
+    const queryProvider = new QueryProviderSundaeSwap(this.networkName as TSupportedNetworks);
     const raw = await queryProvider.findPoolData({ ident });
 
-    const aReserveSmallest =
-      raw.liquidity.aReserve / BigInt(10 ** raw.assetA.decimals);
-    const bReserveSmallest =
-      raw.liquidity.bReserve / BigInt(10 ** raw.assetB.decimals);
+    const aReserveSmallest = raw.liquidity.aReserve / BigInt(10 ** raw.assetA.decimals);
+    const bReserveSmallest = raw.liquidity.bReserve / BigInt(10 ** raw.assetB.decimals);
 
     const info: PoolInfo = {
       address: raw.ident,
       baseTokenAddress: raw.assetA.assetId,
       quoteTokenAddress: raw.assetB.assetId,
       feePct: raw.currentFee * 100,
-      price:
-        raw.liquidity.aReserve > 0n
-          ? Number(aReserveSmallest) / Number(bReserveSmallest)
-          : 0,
+      price: raw.liquidity.aReserve > 0n ? Number(aReserveSmallest) / Number(bReserveSmallest) : 0,
       baseTokenAmount: Number(raw.liquidity.aReserve), // ← explicit cast
       quoteTokenAmount: Number(raw.liquidity.bReserve), // ← explicit cast
-      poolType: 'amm',
-      lpMint: {
-        address: raw.assetLP.assetId,
-        decimals: raw.assetLP.decimals,
-      },
     };
 
     return info;
@@ -161,9 +135,7 @@ export class Sundaeswap {
     const nd = allowedSlippage.match(percentRegexp);
     if (nd) return Number(nd[1]) / Number(nd[2]);
 
-    throw new Error(
-      'Encountered a malformed percent string in the config for allowed slippage.',
-    );
+    throw new Error('Encountered a malformed percent string in the config for allowed slippage.');
   }
 
   public calculateAssetAmount(utxos: UTxO[], asset: IPoolDataAsset): bigint {
@@ -178,9 +150,7 @@ export class Sundaeswap {
   }
 
   async getPoolData(poolIdent: string) {
-    const queryProvider = new QueryProviderSundaeSwap(
-      this.networkName as TSupportedNetworks,
-    );
+    const queryProvider = new QueryProviderSundaeSwap(this.networkName as TSupportedNetworks);
 
     // 2) Fetch the raw pool data
     const raw = await queryProvider.findPoolData({ ident: poolIdent });

@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "chainID": { "type": "integer" },
+    "nativeCurrencySymbol": { "type": "string" },
+    "apiurl": { "type": "string" },
+    "projectId": {
+      "type": "string",
+      "description": "Blockfrost Project ID for Cardano operations"
+    }
+  },
+  "required": ["chainID", "apiurl", "nativeCurrencySymbol", "projectId"],
+  "additionalProperties": false
+}

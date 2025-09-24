@@ -9,14 +9,13 @@ import {
 import { logger } from '../../../services/logger';
 import { Cardano } from '../cardano';
 
-export async function getCardanoStatus(
-  network: string,
-): Promise<StatusResponseType> {
+export async function getCardanoStatus(network: string): Promise<StatusResponseType> {
   try {
     const cardano = await Cardano.getInstance(network);
     const chain = 'cardano';
     const rpcUrl = cardano.apiURL;
     const nativeCurrency = cardano.nativeTokenSymbol;
+    const rpcProvider = 'blockfrost'; // Currently only Blockfrost is supported
 
     // Directly try to get the current block number with a timeout
     let currentBlockNumber = 0;
@@ -38,6 +37,7 @@ export async function getCardanoStatus(
       chain,
       network,
       rpcUrl,
+      rpcProvider,
       currentBlockNumber,
       nativeCurrency,
     };
@@ -86,6 +86,7 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
           chain: 'cardano',
           network,
           rpcUrl: 'unavailable',
+          rpcProvider: 'unavailable',
           currentBlockNumber: 0,
           nativeCurrency: 'ADA',
         };

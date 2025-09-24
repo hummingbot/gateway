@@ -1,0 +1,4 @@
+chainID: 1
+nativeCurrencySymbol: 'ADA'
+apiurl: 'https://cardano-mainnet.blockfrost.io/api/v0'
+projectId: 'your_api_key'

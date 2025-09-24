@@ -17,6 +17,12 @@ export interface SolanaToken extends Token {
   // Solana-specific fields can be added here if needed
 }
 
+export interface CardanoToken extends Token {
+  // Cardano-specific fields can be added here if needed
+  policyId: string;
+  assetName: string;
+}
+
 // Token list format
 export interface TokenList {
   tokens: Token[];
@@ -29,6 +35,7 @@ export type TokenFileFormat = Token[];
 export enum SupportedChain {
   ETHEREUM = 'ethereum',
   SOLANA = 'solana',
+  CARDANO = 'cardano',
 }
 
 // Chain validation

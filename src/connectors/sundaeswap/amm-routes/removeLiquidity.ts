@@ -1,3 +1,6 @@
+import { EDatumType, IWithdrawConfigArgs, TSupportedNetworks } from '@aiquant/sundaeswap-core';
+import { DatumBuilderLucidV3, TxBuilderLucidV3 } from '@aiquant/sundaeswap-core/lucid';
+import { AssetAmount } from '@sundaeswap/asset';
 import { BigNumber } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
@@ -9,18 +12,7 @@ import {
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Sundaeswap } from '../sundaeswap';
-
 import { formatTokenAmount } from '../sundaeswap.utils';
-import { AssetAmount } from '@sundaeswap/asset';
-import {
-  EDatumType,
-  IWithdrawConfigArgs,
-  TSupportedNetworks,
-} from '@aiquant/sundaeswap-core';
-import {
-  DatumBuilderLucidV3,
-  TxBuilderLucidV3,
-} from '@aiquant/sundaeswap-core/lucid';
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
@@ -57,8 +49,6 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const {
           network,
           poolAddress: requestedPoolAddress,
-          baseToken,
-          quoteToken,
           percentageToRemove,
           walletAddress: requestedWalletAddress,
         } = request.body;
@@ -66,14 +56,12 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const networkToUse = network || 'mainnet';
 
         // Validate essential parameters
-        if (!baseToken || !quoteToken || !percentageToRemove) {
+        if (!percentageToRemove) {
           throw fastify.httpErrors.badRequest('Missing required parameters');
         }
 
         if (percentageToRemove <= 0 || percentageToRemove > 100) {
-          throw fastify.httpErrors.badRequest(
-            'Percentage to remove must be between 0 and 100',
-          );
+          throw fastify.httpErrors.badRequest('Percentage to remove must be between 0 and 100');
         }
 
         // Get Sundaeswap and Cardano instances
@@ -84,62 +72,52 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         if (!walletAddress) {
           walletAddress = await sundaeswap.cardano.getFirstWalletAddress();
           if (!walletAddress) {
-            throw fastify.httpErrors.badRequest(
-              'No wallet address provided and no default wallet found',
-            );
+            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
           }
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
+
+        // Check if poolAddress is provided
+        if (!requestedPoolAddress) {
+          throw fastify.httpErrors.badRequest('poolAddress must be provided');
+        }
+
+        const poolInfo = await sundaeswap.getAmmPoolInfo(requestedPoolAddress);
+
+        const baseToken = poolInfo.baseTokenAddress;
+        const quoteToken = poolInfo.quoteTokenAddress;
 
         // Resolve tokens
         const baseTokenObj = sundaeswap.cardano.getTokenBySymbol(baseToken);
         const quoteTokenObj = sundaeswap.cardano.getTokenBySymbol(quoteToken);
 
         if (!baseTokenObj || !quoteTokenObj) {
-          throw fastify.httpErrors.badRequest(
-            `Token not found: ${!baseTokenObj ? baseToken : quoteToken}`,
-          );
+          throw fastify.httpErrors.badRequest(`Token not found: ${!baseTokenObj ? baseToken : quoteToken}`);
         }
 
         // Find pool address if not provided
         let poolAddress = requestedPoolAddress;
         if (!poolAddress) {
-          poolAddress = await sundaeswap.findDefaultPool(
-            baseToken,
-            quoteToken,
-            'amm',
-          );
+          poolAddress = await sundaeswap.findDefaultPool(baseToken, quoteToken, 'amm');
 
           if (!poolAddress) {
-            throw fastify.httpErrors.notFound(
-              `No AMM pool found for pair ${baseToken}-${quoteToken}`,
-            );
+            throw fastify.httpErrors.notFound(`No AMM pool found for pair ${baseToken}-${quoteToken}`);
           }
         }
 
         const poolData = await sundaeswap.getPoolData(poolAddress);
-        const wallet =
-          await sundaeswap.cardano.getWalletFromAddress(walletAddress);
+        const wallet = await sundaeswap.cardano.getWalletFromAddress(walletAddress);
         sundaeswap.cardano.lucidInstance.selectWalletFromPrivateKey(wallet);
-        const utxos =
-          await sundaeswap.cardano.lucidInstance.utxosAt(walletAddress);
+        const utxos = await sundaeswap.cardano.lucidInstance.utxosAt(walletAddress);
 
         // 8) Calculate withdrawal amounts
-        const totalLpInWallet = sundaeswap.calculateAssetAmount(
-          utxos,
-          poolData.assetLP,
-        );
+        const totalLpInWallet = sundaeswap.calculateAssetAmount(utxos, poolData.assetLP);
 
         // Calculate how much LP token will be withdrawn based on the percentage
-        const withdrawalAmount = BigInt(
-          (BigInt(totalLpInWallet) * BigInt(percentageToRemove)) / BigInt(100),
-        );
+        const withdrawalAmount = BigInt((BigInt(totalLpInWallet) * BigInt(percentageToRemove)) / BigInt(100));
 
         // Define the LP Token to withdraw
-        const lpTokenAmount = new AssetAmount(
-          withdrawalAmount,
-          poolData.assetLP,
-        ); // Specify LP token amount
+        const lpTokenAmount = new AssetAmount(withdrawalAmount, poolData.assetLP); // Specify LP token amount
 
         // Build withdraw arguments (Added `pool` property)
         const withdrawArgs: IWithdrawConfigArgs = {
@@ -175,8 +153,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const lpTokensToWithdraw = withdrawalAmount; // Amount of LP tokens being withdrawn
 
         // Calculate the proportion of the pool being withdrawn
-        const withdrawalProportion =
-          Number(lpTokensToWithdraw) / Number(totalLpSupply);
+        const withdrawalProportion = Number(lpTokensToWithdraw) / Number(totalLpSupply);
 
         // Get current pool reserves
         const baseTokenReserve = poolData.liquidity.aReserve; // Base token reserve in the pool
@@ -184,20 +161,21 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Calculate the amounts that will be received (proportional to LP tokens withdrawn)
         const baseTokenAmountRemoved = Math.floor(
-          (Number(baseTokenReserve) * withdrawalProportion) /
-            baseTokenObj.decimals,
+          (Number(baseTokenReserve) * withdrawalProportion) / baseTokenObj.decimals,
         );
 
         const quoteTokenAmountRemoved = Math.floor(
-          (Number(quoteTokenReserve) * withdrawalProportion) /
-            quoteTokenObj.decimals,
+          (Number(quoteTokenReserve) * withdrawalProportion) / quoteTokenObj.decimals,
         );
 
         return {
           signature: txHash,
-          fee: builtTx.builtTx.fee,
-          baseTokenAmountRemoved: baseTokenAmountRemoved,
-          quoteTokenAmountRemoved: quoteTokenAmountRemoved,
+          status: 1, // 1 = CONFIRMED, 0 = PENDING, -1 = FAILED
+          data: {
+            fee: builtTx.builtTx.fee,
+            baseTokenAmountRemoved,
+            quoteTokenAmountRemoved,
+          },
         };
       } catch (e) {
         logger.error(e);
@@ -205,9 +183,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           throw e;
         }
 
-        throw fastify.httpErrors.internalServerError(
-          'Failed to remove liquidity',
-        );
+        throw fastify.httpErrors.internalServerError('Failed to remove liquidity');
       }
     },
   );

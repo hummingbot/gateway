@@ -19,6 +19,8 @@ export enum SupportedConnector {
   PANCAKESWAP = 'pancakeswap',
   ZEROX = '0x',
   JUPITER = 'jupiter',
+  MINSWAP = 'minswap',
+  SUNDAESWAP = 'sundaeswap',
 }
 
 export function isSupportedConnector(connector: string): connector is SupportedConnector {

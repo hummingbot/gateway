@@ -9,9 +9,6 @@ configurations:
     configurationPath: chains/ethereum.yml
     schemaPath: ethereum-chain-schema.json
 
-  $namespace solana:
-    configurationPath: chains/solana.yml
-    schemaPath: solana-chain-schema.json
 
   # Ethereum networks
   $namespace ethereum-mainnet:
@@ -51,6 +48,10 @@ configurations:
     schemaPath: ethereum-network-schema.json
 
   # Solana networks
+  $namespace solana:
+    configurationPath: chains/solana.yml
+    schemaPath: solana-chain-schema.json
+
   $namespace solana-mainnet-beta:
     configurationPath: chains/solana/mainnet-beta.yml
     schemaPath: solana-network-schema.json
@@ -64,9 +65,6 @@ configurations:
     configurationPath: connectors/uniswap.yml
     schemaPath: uniswap-schema.json
 
-  $namespace solana:
-    configurationPath: solana.yml
-    schemaPath: solana-schema.json
 
   $namespace jupiter:
     configurationPath: connectors/jupiter.yml
@@ -97,9 +95,22 @@ configurations:
     configurationPath: rpc/infura.yml
     schemaPath: infura-schema.json
 
+  # Cardano networks
   $namespace cardano:
     configurationPath: chains/cardano.yml
-    schemaPath: cardano-schema.json
+    schemaPath: cardano-chain-schema.json
+    
+  $namespace cardano-mainnet:
+    configurationPath: chains/cardano/mainnet.yml
+    schemaPath: cardano-network-schema.json
+
+  $namespace cardano-preprod:
+    configurationPath: chains/cardano/preprod.yml
+    schemaPath: cardano-network-schema.json
+
+  $namespace cardano-preview:
+    configurationPath: chains/cardano/preview.yml
+    schemaPath: cardano-network-schema.json
 
   $namespace minswap:
     configurationPath: connectors/minswap.yml

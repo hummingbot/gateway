@@ -1,0 +1,23 @@
+[
+  {
+    "type": "amm",
+    "network": "mainnet",
+    "baseSymbol": "ADA",
+    "quoteSymbol": "MIN",
+    "address": "6aa2153e1ae896a95539c9d62f76cedcdabdcdf144e564b8955f609d660cf6a2"
+  },
+  {
+    "type": "amm",
+    "network": "preprod",
+    "baseSymbol": "ADA",
+    "quoteSymbol": "MIN",
+    "address": "3bb0079303c57812462dec9de8fb867cef8fd3768de7f12c77f6f0dd80381d0d"
+  },
+  {
+    "type": "amm",
+    "network": "preprod",
+    "baseSymbol": "ADA",
+    "quoteSymbol": "USDM",
+    "address": "3bb0079303c57812462dec9de8fb867cef8fd3768de7f12c77f6f0dd80381d0d"
+  }
+]

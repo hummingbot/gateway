@@ -1,4 +1,5 @@
-import { BigNumber } from 'ethers';
+import { TxComplete } from '@aiquant/lucid-cardano';
+import { calculateDeposit, Dex } from '@aiquant/minswap-sdk';
 import { FastifyPluginAsync } from 'fastify';
 
 import {
@@ -9,10 +10,8 @@ import {
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Minswap } from '../minswap';
-import { formatTokenAmount } from '../minswap.utils';
+
 import { getMinswapAmmLiquidityQuote } from './quoteLiquidity';
-import { Assets, TxComplete } from '@aiquant/lucid-cardano';
-import { Asset, calculateDeposit, Dex } from '@aiquant/minswap-sdk';
 
 async function addLiquidity(
   fastify: any,
@@ -50,8 +49,7 @@ async function addLiquidity(
   cardano.lucidInstance.selectWalletFromPrivateKey(privateKey);
 
   // 4) Determine slippage
-  const slippage =
-    slippagePct !== undefined ? slippagePct : minswap.getAllowedSlippage(); // returns decimal, e.g. 0.005
+  const slippage = slippagePct !== undefined ? slippagePct : minswap.getAllowedSlippage(); // returns decimal, e.g. 0.005
 
   const { poolState, poolDatum } = await minswap.getPoolData(poolAddress);
   if (!poolState) {
@@ -72,8 +70,7 @@ async function addLiquidity(
   });
 
   // 7) Apply slippage to LP minimum
-  const minLP =
-    (lpAmount * BigInt(Math.floor((1 - slippage) * 1e6))) / BigInt(1e6);
+  const minLP = (lpAmount * BigInt(Math.floor((1 - slippage) * 1e6))) / BigInt(1e6);
 
   // 8) Build tx
   const dex = new Dex(cardano.lucidInstance);
@@ -95,9 +92,12 @@ async function addLiquidity(
 
   return {
     signature: txHash,
-    fee: txBuild.fee,
-    baseTokenAmountAdded: quote.baseTokenAmount,
-    quoteTokenAmountAdded: quote.quoteTokenAmount,
+    status: 1,
+    data: {
+      fee: txBuild.fee,
+      baseTokenAmountAdded: quote.baseTokenAmount,
+      quoteTokenAmountAdded: quote.quoteTokenAmount,
+    },
   };
 }
 
@@ -134,44 +134,37 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const {
           network,
           poolAddress: reqPool,
-          baseToken,
-          quoteToken,
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
           walletAddress: reqWallet,
         } = request.body;
 
-        if (
-          !baseToken ||
-          !quoteToken ||
-          !baseTokenAmount ||
-          !quoteTokenAmount
-        ) {
+        if (!baseTokenAmount || !quoteTokenAmount) {
           throw fastify.httpErrors.badRequest('Missing parameters');
         }
 
         const minswap = await Minswap.getInstance(network || 'mainnet');
-        const walletAddr =
-          reqWallet || (await minswap.cardano.getFirstWalletAddress());
+        const walletAddr = reqWallet || (await minswap.cardano.getFirstWalletAddress());
         if (!walletAddr) {
           throw fastify.httpErrors.badRequest('No wallet address');
         }
 
-        const poolAddr =
-          reqPool ||
-          (await minswap.findDefaultPool(baseToken, quoteToken, 'amm'));
-        if (!poolAddr) {
-          throw fastify.httpErrors.notFound(
-            `Pool not found for ${baseToken}-${quoteToken}`,
-          );
+        // Check if poolAddress is provided
+        if (!reqPool) {
+          throw fastify.httpErrors.badRequest('poolAddress must be provided');
         }
+
+        const poolInfo = await minswap.getAmmPoolInfo(reqPool);
+
+        const baseToken = poolInfo.baseTokenAddress;
+        const quoteToken = poolInfo.quoteTokenAddress;
 
         return await addLiquidity(
           fastify,
           network || 'mainnet',
           walletAddr,
-          poolAddr,
+          reqPool,
           baseToken,
           quoteToken,
           baseTokenAmount,

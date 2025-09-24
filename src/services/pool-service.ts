@@ -281,6 +281,18 @@ export class PoolService {
       if (!ethers.utils.isAddress(pool.address)) {
         throw new Error('Invalid Ethereum pool address');
       }
+    } else if (chain === SupportedChain.CARDANO) {
+      // Basic validation for all pool addresses
+      const address = pool.address;
+      if (!address || typeof address !== 'string') {
+        throw new Error('Pool address is required and must be a string');
+      }
+
+      // Pool addresses are hexadecimal script hashes
+      const hexRegex = /^[0-9a-fA-F]+$/;
+      if (!hexRegex.test(address)) {
+        throw new Error('Pool address must be a valid hexadecimal string');
+      }
     }
   }
 

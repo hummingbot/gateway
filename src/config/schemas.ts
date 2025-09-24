@@ -80,7 +80,7 @@ export const ConfigQuerySchema = Type.Object({
     Type.String({
       description:
         'Optional configuration namespace (e.g., "server", "ethereum-mainnet", "solana-mainnet-beta", "uniswap")',
-      examples: ['server', 'ethereum-mainnet', 'solana-mainnet-beta', 'uniswap'],
+      examples: ['server', 'ethereum-mainnet', 'solana-mainnet-beta', 'uniswap', 'cardano-mainnet', 'cardano-preprod'],
     }),
   ),
 });

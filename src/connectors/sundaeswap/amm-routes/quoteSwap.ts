@@ -1,12 +1,14 @@
 import { BigNumber } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
-import { CardanoTokenInfo } from '../../../chains/cardano/cardano';
+
+import { CardanoToken } from '#src/tokens/types';
+
 import {
-  GetSwapQuoteResponseType,
-  GetSwapQuoteResponse,
-  GetSwapQuoteRequestType,
-  GetSwapQuoteRequest,
-} from '../../../schemas/swap-schema';
+  QuoteSwapRequestType,
+  QuoteSwapResponseType,
+  QuoteSwapRequest,
+  QuoteSwapResponse,
+} from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Sundaeswap } from '../sundaeswap';
 import { formatTokenAmount } from '../sundaeswap.utils';
@@ -14,8 +16,8 @@ import { formatTokenAmount } from '../sundaeswap.utils';
 export async function quoteAmmSwap(
   sundaeswap: Sundaeswap,
   poolIdent: string,
-  baseToken: CardanoTokenInfo,
-  quoteToken: CardanoTokenInfo,
+  baseToken: CardanoToken,
+  quoteToken: CardanoToken,
   amount: number, // now always refers to quote‐token units
   side: 'BUY' | 'SELL',
   slippagePct: number = 1, // Default to 1% if not provided
@@ -31,10 +33,8 @@ export async function quoteAmmSwap(
   const reserveB = BigInt(poolData.liquidity.bReserve);
 
   // Determine which token corresponds to which asset in the pool
-  const baseAssetId =
-    baseToken.address || `${baseToken.policyId}.${baseToken.assetName}`;
-  const quoteAssetId =
-    quoteToken.address || `${quoteToken.policyId}.${quoteToken.assetName}`;
+  const baseAssetId = baseToken.address || `${baseToken.policyId}.${baseToken.assetName}`;
+  const quoteAssetId = quoteToken.address || `${quoteToken.policyId}.${quoteToken.assetName}`;
 
   let baseReserve: bigint;
   let quoteReserve: bigint;
@@ -51,8 +51,7 @@ export async function quoteAmmSwap(
   }
 
   // Validate quote token is in the pool
-  const quoteInPool =
-    quoteAssetId.trim() === assetA || quoteAssetId.trim() === assetB;
+  const quoteInPool = quoteAssetId.trim() === assetA || quoteAssetId.trim() === assetB;
   if (!quoteInPool) {
     throw new Error(`Quote token ${quoteAssetId} not found in pool`);
   }
@@ -68,10 +67,8 @@ export async function quoteAmmSwap(
     inputAmount = BigInt(Math.floor(amount * 10 ** quoteToken.decimals));
 
     // Apply AMM formula for sell (exactIn): dy = (y * dx * (1 - fee)) / (x + dx * (1 - fee))
-    const inputAfterFee =
-      (inputAmount * BigInt(Math.floor((1 - fee) * 10000))) / 10000n;
-    outputAmount =
-      (baseReserve * inputAfterFee) / (quoteReserve + inputAfterFee);
+    const inputAfterFee = (inputAmount * BigInt(Math.floor((1 - fee) * 10000))) / 10000n;
+    outputAmount = (baseReserve * inputAfterFee) / (quoteReserve + inputAfterFee);
   } else {
     // BUY: wanting to receive `amount` of quoteToken, paying baseToken
     // This is exactOut scenario
@@ -79,49 +76,32 @@ export async function quoteAmmSwap(
 
     // Check if we have enough liquidity
     if (outputAmount >= quoteReserve) {
-      throw new Error(
-        'Insufficient liquidity: requested amount exceeds available reserves',
-      );
+      throw new Error('Insufficient liquidity: requested amount exceeds available reserves');
     }
 
     // Apply AMM formula for buy (exactOut): dx = (x * dy) / ((y - dy) * (1 - fee))
     const numerator = baseReserve * outputAmount;
-    const denominator =
-      ((quoteReserve - outputAmount) * BigInt(Math.floor((1 - fee) * 10000))) /
-      10000n;
+    const denominator = ((quoteReserve - outputAmount) * BigInt(Math.floor((1 - fee) * 10000))) / 10000n;
     inputAmount = numerator / denominator;
   }
 
   // Calculate slippage protection amounts
   const slippageTolerance = slippagePct / 100;
-  const slippageMultiplier = BigInt(
-    Math.floor((1 - slippageTolerance) * 10000),
-  );
+  const slippageMultiplier = BigInt(Math.floor((1 - slippageTolerance) * 10000));
   const slippageDenominator = 10000n;
 
-  const minAmountOut =
-    side === 'SELL'
-      ? (outputAmount * slippageMultiplier) / slippageDenominator
-      : outputAmount;
+  const minAmountOut = side === 'SELL' ? (outputAmount * slippageMultiplier) / slippageDenominator : outputAmount;
 
   const maxAmountIn =
     side === 'BUY'
-      ? (inputAmount *
-          (slippageDenominator +
-            BigInt(Math.floor(slippageTolerance * 10000)))) /
-        slippageDenominator
+      ? (inputAmount * (slippageDenominator + BigInt(Math.floor(slippageTolerance * 10000)))) / slippageDenominator
       : inputAmount;
 
   // Calculate price impact
-  const midPrice =
-    Number(baseReserve) /
-    10 ** baseToken.decimals /
-    (Number(quoteReserve) / 10 ** quoteToken.decimals);
+  const midPrice = Number(baseReserve) / 10 ** baseToken.decimals / (Number(quoteReserve) / 10 ** quoteToken.decimals);
 
   const executionPrice =
-    Number(inputAmount) /
-    10 ** baseToken.decimals /
-    (Number(outputAmount) / 10 ** quoteToken.decimals);
+    Number(inputAmount) / 10 ** baseToken.decimals / (Number(outputAmount) / 10 ** quoteToken.decimals);
 
   const priceImpact = Math.abs((executionPrice - midPrice) / midPrice);
 
@@ -189,9 +169,7 @@ export async function getSundaeswapAmmQuote(
     throw new Error(`Quote token not found: ${quoteToken}`);
   }
 
-  logger.info(
-    `Base token: ${baseTokenObj.symbol}, address=${baseTokenObj.address}, decimals=${baseTokenObj.decimals}`,
-  );
+  logger.info(`Base token: ${baseTokenObj.symbol}, address=${baseTokenObj.address}, decimals=${baseTokenObj.decimals}`);
   logger.info(
     `Quote token: ${quoteTokenObj.symbol}, address=${quoteTokenObj.address}, decimals=${quoteTokenObj.decimals}`,
   );
@@ -230,24 +208,23 @@ async function formatSwapQuote(
   amount: number,
   side: 'BUY' | 'SELL',
   slippagePct: number = 1,
-): Promise<GetSwapQuoteResponseType> {
+): Promise<QuoteSwapResponseType> {
   logger.info(
     `formatSwapQuote: poolIdent=${poolIdent}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}, slippagePct=${slippagePct}, network=${network}`,
   );
 
   try {
     // Use the extracted quote function with slippage percentage
-    const { quote, sundaeswap, cardano, baseTokenObj, quoteTokenObj } =
-      await getSundaeswapAmmQuote(
-        fastify,
-        network,
-        poolIdent,
-        baseToken,
-        quoteToken,
-        amount,
-        side,
-        slippagePct,
-      );
+    const { quote, sundaeswap, cardano, baseTokenObj, quoteTokenObj } = await getSundaeswapAmmQuote(
+      fastify,
+      network,
+      poolIdent,
+      baseToken,
+      quoteToken,
+      amount,
+      side,
+      slippagePct,
+    );
 
     logger.info(
       `Quote result: estimatedAmountIn=${quote.estimatedAmountIn}, estimatedAmountOut=${quote.estimatedAmountOut}, slippagePct=${quote.slippagePct}`,
@@ -283,16 +260,17 @@ async function formatSwapQuote(
         : quote.estimatedAmountIn / quote.estimatedAmountOut;
 
     return {
-      estimatedAmountIn: quote.estimatedAmountIn,
-      estimatedAmountOut: quote.estimatedAmountOut,
+      //
+      poolAddress: poolIdent,
+      tokenIn: quoteTokenObj.symbol,
+      tokenOut: baseTokenObj.symbol,
+      amountIn: quote.estimatedAmountIn,
+      amountOut: quote.estimatedAmountOut,
+      price: price,
       minAmountOut: quote.minAmountOut,
       maxAmountIn: quote.maxAmountIn,
-      baseTokenBalanceChange,
-      quoteTokenBalanceChange,
-      price,
-      gasPrice: 0,
-      gasLimit: 0,
-      gasCost: 0,
+      slippagePct: quote.slippagePct,
+      priceImpactPct: quote.priceImpactPct,
     };
   } catch (error) {
     logger.error(`Error formatting swap quote: ${error.message}`);
@@ -308,8 +286,8 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
 
   fastify.get<{
-    Querystring: GetSwapQuoteRequestType;
-    Reply: GetSwapQuoteResponseType;
+    Querystring: QuoteSwapRequestType;
+    Reply: QuoteSwapResponseType;
   }>(
     '/quote-swap',
     {
@@ -317,9 +295,9 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         description: 'Get swap quote for Sundaeswap AMM',
         tags: ['sundaeswap/amm'],
         querystring: {
-          ...GetSwapQuoteRequest,
+          ...QuoteSwapRequest,
           properties: {
-            ...GetSwapQuoteRequest.properties,
+            ...QuoteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet' },
             baseToken: { type: 'string', examples: ['ADA'] },
             quoteToken: { type: 'string', examples: ['SUNDAE'] },
@@ -332,7 +310,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         response: {
           200: {
             properties: {
-              ...GetSwapQuoteResponse.properties,
+              ...QuoteSwapResponse.properties,
             },
           },
         },
@@ -358,16 +336,10 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         if (!poolIdent) {
           // Look up the pool from configuration pools dictionary
-          poolIdent = await sundaeswap.findDefaultPool(
-            baseToken,
-            quoteToken,
-            'amm',
-          );
+          poolIdent = await sundaeswap.findDefaultPool(baseToken, quoteToken, 'amm');
 
           if (!poolIdent) {
-            throw fastify.httpErrors.notFound(
-              `No AMM pool found for pair ${baseToken}-${quoteToken}`,
-            );
+            throw fastify.httpErrors.notFound(`No AMM pool found for pair ${baseToken}-${quoteToken}`);
           }
         }
 
@@ -393,10 +365,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         if (e.message?.includes('Insufficient liquidity')) {
           throw fastify.httpErrors.badRequest(e.message);
         }
-        if (
-          e.message?.includes('Pool not found') ||
-          e.message?.includes('No AMM pool found')
-        ) {
+        if (e.message?.includes('Pool not found') || e.message?.includes('No AMM pool found')) {
           throw fastify.httpErrors.notFound(e.message);
         }
         if (e.message?.includes('token not found')) {
@@ -404,9 +373,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Default to internal server error with the actual error message
-        throw fastify.httpErrors.internalServerError(
-          `Error getting swap quote: ${e.message || 'Unknown error'}`,
-        );
+        throw fastify.httpErrors.internalServerError(`Error getting swap quote: ${e.message || 'Unknown error'}`);
       }
     },
   );

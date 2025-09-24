@@ -1,28 +1,23 @@
+import { TxComplete } from '@aiquant/lucid-cardano';
+import { ADA, Asset, Dex, calculateSwapExactIn, calculateSwapExactOut } from '@aiquant/minswap-sdk';
 import { FastifyPluginAsync } from 'fastify';
+
 import {
   ExecuteSwapRequestType,
+  SwapExecuteResponseType,
+  SwapExecuteResponse,
   ExecuteSwapRequest,
-  ExecuteSwapResponseType,
-  ExecuteSwapResponse,
-} from '../../../schemas/swap-schema';
+} from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { Minswap } from '../minswap';
-import {
-  ADA,
-  Asset,
-  Dex,
-  calculateSwapExactIn,
-  calculateSwapExactOut,
-} from '@aiquant/minswap-sdk';
 import { formatTokenAmount } from '../minswap.utils';
-import { Blockfrost, Lucid, TxComplete } from '@aiquant/lucid-cardano';
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
 
   fastify.post<{
     Body: ExecuteSwapRequestType;
-    Reply: ExecuteSwapResponseType;
+    Reply: SwapExecuteResponseType;
   }>(
     '/execute-swap',
     {
@@ -43,7 +38,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             slippagePct: { type: 'number', examples: [1] },
           },
         },
-        response: { 200: ExecuteSwapResponse },
+        response: { 200: SwapExecuteResponse },
       },
     },
     async (request) => {
@@ -56,25 +51,20 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           amount, // this is always quote quantity
           side,
           slippagePct = 1,
-          poolAddress: reqPool,
         } = request.body;
 
         const net = network || 'mainnet';
         const minswap = await Minswap.getInstance(net);
 
-        const walletAddr =
-          reqAddr || (await minswap.cardano.getFirstWalletAddress());
+        const walletAddr = reqAddr || (await minswap.cardano.getFirstWalletAddress());
         if (!walletAddr) {
           throw fastify.httpErrors.badRequest('No wallet address provided');
         }
 
-        const poolAddr =
-          reqPool ||
-          (await minswap.findDefaultPool(baseToken, quoteToken, 'amm'));
+        const poolAddr = await minswap.findDefaultPool(baseToken, quoteToken, 'amm');
+
         if (!poolAddr) {
-          throw fastify.httpErrors.notFound(
-            `Pool not found for ${baseToken}-${quoteToken}`,
-          );
+          throw fastify.httpErrors.notFound(`Pool not found for ${baseToken}-${quoteToken}`);
         }
 
         const baseInfo = minswap.cardano.getTokenBySymbol(baseToken)!;
@@ -92,7 +82,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // On‑chain reserves
 
-        const { poolState, poolDatum } = await minswap.getPoolData(poolAddr);
+        const { poolState } = await minswap.getPoolData(poolAddr);
         if (!poolState) {
           throw fastify.httpErrors.notFound('Pool state unavailable');
         }
@@ -102,8 +92,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         const pct = BigInt(slippagePct);
 
         // 2) build via SDK
-        const privateKey =
-          await minswap.cardano.getWalletFromAddress(walletAddr);
+        const privateKey = await minswap.cardano.getWalletFromAddress(walletAddr);
         minswap.cardano.lucidInstance.selectWalletFromPrivateKey(privateKey);
         const dex = new Dex(minswap.cardano.lucidInstance);
 
@@ -116,9 +105,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         if (side === 'SELL') {
           // SELL: selling quote tokens to get base tokens
           // `amount` is the amount of quote tokens to sell (input)
-          const amountIn = BigInt(
-            Math.floor(amount * 10 ** quoteInfo.decimals).toString(),
-          );
+          const amountIn = BigInt(Math.floor(amount * 10 ** quoteInfo.decimals).toString());
 
           const { amountOut: idealBaseOut } = calculateSwapExactIn({
             amountIn,
@@ -129,8 +116,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           txBuild = await dex.buildSwapExactInTx({
             sender: walletAddr,
-            availableUtxos:
-              await minswap.cardano.lucidInstance.utxosAt(walletAddr),
+            availableUtxos: await minswap.cardano.lucidInstance.utxosAt(walletAddr),
             assetIn: quoteToken === 'ADA' ? ADA : assetB,
             amountIn,
             assetOut: baseToken === 'ADA' ? ADA : assetA,
@@ -140,19 +126,13 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           // SELL: spending quote tokens (-), receiving base tokens (+)
           quoteAmountChange = -Number(amount);
-          baseAmountChange = +Number(
-            formatTokenAmount(minBaseOut.toString(), baseInfo.decimals),
-          );
+          baseAmountChange = +Number(formatTokenAmount(minBaseOut.toString(), baseInfo.decimals));
           totalInputSwapped = amount; // quote tokens spent
-          totalOutputSwapped = Number(
-            formatTokenAmount(minBaseOut.toString(), baseInfo.decimals),
-          ); // base tokens received
+          totalOutputSwapped = Number(formatTokenAmount(minBaseOut.toString(), baseInfo.decimals)); // base tokens received
         } else {
           // BUY: buying quote tokens with base tokens
           // `amount` is the amount of quote tokens to buy (output)
-          const exactQuoteOut = BigInt(
-            Math.floor(amount * 10 ** quoteInfo.decimals).toString(),
-          );
+          const exactQuoteOut = BigInt(Math.floor(amount * 10 ** quoteInfo.decimals).toString());
 
           const { amountIn: idealBaseIn } = calculateSwapExactOut({
             exactAmountOut: exactQuoteOut,
@@ -164,8 +144,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
           txBuild = await dex.buildSwapExactOutTx({
             sender: walletAddr,
-            availableUtxos:
-              await minswap.cardano.lucidInstance.utxosAt(walletAddr),
+            availableUtxos: await minswap.cardano.lucidInstance.utxosAt(walletAddr),
             assetIn: baseToken === 'ADA' ? ADA : assetA,
             maximumAmountIn: maxBaseIn,
             assetOut: quoteToken === 'ADA' ? ADA : assetB,
@@ -173,13 +152,9 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           });
 
           // BUY: spending base tokens (-), receiving quote tokens (+)
-          baseAmountChange = -Number(
-            formatTokenAmount(maxBaseIn.toString(), baseInfo.decimals),
-          );
+          baseAmountChange = -Number(formatTokenAmount(maxBaseIn.toString(), baseInfo.decimals));
           quoteAmountChange = +Number(amount);
-          totalInputSwapped = Number(
-            formatTokenAmount(maxBaseIn.toString(), baseInfo.decimals),
-          ); // base tokens spent
+          totalInputSwapped = Number(formatTokenAmount(maxBaseIn.toString(), baseInfo.decimals)); // base tokens spent
           totalOutputSwapped = amount; // quote tokens received
         }
 
@@ -190,18 +165,21 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         return {
           signature: txHash,
-          totalInputSwapped: totalInputSwapped,
-          totalOutputSwapped: totalOutputSwapped,
-          fee: txBuild.fee,
-          baseTokenBalanceChange: baseAmountChange,
-          quoteTokenBalanceChange: quoteAmountChange,
+          status: 1, // 1 = CONFIRMED, 0 = PENDING, -1 = FAILED
+          data: {
+            tokenIn: side === 'SELL' ? quoteToken : baseToken,
+            tokenOut: side === 'SELL' ? baseToken : quoteToken,
+            amountIn: side === 'SELL' ? totalInputSwapped : totalInputSwapped,
+            amountOut: side === 'SELL' ? totalOutputSwapped : totalOutputSwapped,
+            fee: txBuild.fee,
+            baseTokenBalanceChange: baseAmountChange,
+            quoteTokenBalanceChange: quoteAmountChange,
+          },
         };
       } catch (err: any) {
         logger.error('Swap failed:', err);
         if (err.statusCode) throw err;
-        throw fastify.httpErrors.internalServerError(
-          `Swap execution error: ${err.message}`,
-        );
+        throw fastify.httpErrors.internalServerError(`Swap execution error: ${err.message}`);
       }
     },
   );

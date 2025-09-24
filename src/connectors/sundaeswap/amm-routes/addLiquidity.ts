@@ -1,3 +1,7 @@
+import { Assets, TxComplete } from '@aiquant/lucid-cardano';
+import { EDatumType, IDepositConfigArgs, TSupportedNetworks } from '@aiquant/sundaeswap-core';
+import { DatumBuilderLucidV3, TxBuilderLucidV3 } from '@aiquant/sundaeswap-core/lucid';
+import { AssetAmount, IAssetAmountMetadata } from '@sundaeswap/asset';
 import { BigNumber } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
@@ -10,18 +14,8 @@ import {
 import { logger } from '../../../services/logger';
 import { Sundaeswap } from '../sundaeswap';
 import { formatTokenAmount } from '../sundaeswap.utils';
+
 import { getSundaeswapAmmLiquidityQuote } from './quoteLiquidity';
-import { Assets, TxComplete } from '@aiquant/lucid-cardano';
-import {
-  EDatumType,
-  IDepositConfigArgs,
-  TSupportedNetworks,
-} from '@aiquant/sundaeswap-core';
-import { AssetAmount, IAssetAmountMetadata } from '@sundaeswap/asset';
-import {
-  DatumBuilderLucidV3,
-  TxBuilderLucidV3,
-} from '@aiquant/sundaeswap-core/lucid';
 
 async function addLiquidity(
   fastify: any,
@@ -86,9 +80,12 @@ async function addLiquidity(
 
   return {
     signature: txHash,
-    fee: builtTx.builtTx.fee,
-    baseTokenAmountAdded: quote.baseTokenAmount,
-    quoteTokenAmountAdded: quote.quoteTokenAmount,
+    status: 1, // 1 = CONFIRMED, 0 = PENDING, -1 = FAILED
+    data: {
+      fee: builtTx.builtTx.fee,
+      baseTokenAmountAdded: quote.baseTokenAmount,
+      quoteTokenAmountAdded: quote.quoteTokenAmount,
+    },
   };
 }
 
@@ -125,44 +122,36 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const {
           network,
           poolAddress: reqPool,
-          baseToken,
-          quoteToken,
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
           walletAddress: reqWallet,
         } = request.body;
 
-        if (
-          !baseToken ||
-          !quoteToken ||
-          !baseTokenAmount ||
-          !quoteTokenAmount
-        ) {
+        if (!baseTokenAmount || !quoteTokenAmount) {
           throw fastify.httpErrors.badRequest('Missing parameters');
         }
 
         const sundaeswap = await Sundaeswap.getInstance(network || 'mainnet');
-        const walletAddr =
-          reqWallet || (await sundaeswap.cardano.getFirstWalletAddress());
+        const walletAddr = reqWallet || (await sundaeswap.cardano.getFirstWalletAddress());
         if (!walletAddr) {
           throw fastify.httpErrors.badRequest('No wallet address');
         }
 
-        const poolAddr =
-          reqPool ||
-          (await sundaeswap.findDefaultPool(baseToken, quoteToken, 'amm'));
-        if (!poolAddr) {
-          throw fastify.httpErrors.notFound(
-            `Pool not found for ${baseToken}-${quoteToken}`,
-          );
+        // Check if poolAddress is provided
+        if (!reqPool) {
+          throw fastify.httpErrors.badRequest('poolAddress must be provided');
         }
 
+        const poolInfo = await sundaeswap.getAmmPoolInfo(reqPool);
+
+        const baseToken = poolInfo.baseTokenAddress;
+        const quoteToken = poolInfo.quoteTokenAddress;
         return await addLiquidity(
           fastify,
           network || 'mainnet',
           walletAddr,
-          poolAddr,
+          reqPool,
           baseToken,
           quoteToken,
           baseTokenAmount,
