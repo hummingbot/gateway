@@ -175,11 +175,69 @@ export class Solana {
     return Solana._instances[network];
   }
 
+  /**
+   * Monkey-patch the connection's getTokenAccountBalance method to handle Token2022
+   */
+  private patchConnectionForToken2022(): void {
+    logger.info('🔧 Applying Token2022 monkey-patch to connection.getTokenAccountBalance');
+
+    // Store the original method
+    const originalGetTokenAccountBalance = this.connection.getTokenAccountBalance.bind(this.connection);
+
+    // Override with our Token2022-compatible version
+    this.connection.getTokenAccountBalance = async (tokenAccount: PublicKey, commitment?: any) => {
+      logger.info(`🔧 Monkey-patched getTokenAccountBalance called for: ${tokenAccount.toBase58()}`);
+      try {
+        // First try the original method
+        return await originalGetTokenAccountBalance(tokenAccount, commitment);
+      } catch (error) {
+        logger.info(`🔧 Original method failed, trying Token2022 fallback: ${error.message}`);
+        if (error.message && error.message.includes('TokenInvalidAccountOwnerError')) {
+          try {
+            // Check if account exists and get its owner
+            const accountInfo = await this.connection.getAccountInfo(tokenAccount);
+            if (!accountInfo) {
+              logger.warn(`🔧 Token account ${tokenAccount.toBase58()} not found`);
+              return { value: { uiAmount: 0, amount: '0', decimals: 0 } };
+            }
+
+            // Check if it's a Token2022 account
+            if (accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)) {
+              logger.info(`🔧 Token2022 account detected: ${tokenAccount.toBase58()}`);
+              // Try parsing as Token2022 account
+              const parsedAccountInfo = await this.connection.getParsedAccountInfo(tokenAccount);
+              const parsedData = parsedAccountInfo.value?.data;
+
+              if (parsedData && 'parsed' in parsedData && parsedData.parsed?.info?.tokenAmount) {
+                const tokenAmount = parsedData.parsed.info.tokenAmount;
+                logger.info(`🔧 Token2022 parsing succeeded: ${tokenAmount.uiAmount}`);
+                return {
+                  value: {
+                    uiAmount: tokenAmount.uiAmount,
+                    amount: tokenAmount.amount,
+                    decimals: tokenAmount.decimals,
+                  },
+                };
+              }
+            }
+          } catch (fallbackError) {
+            logger.error(`🔧 Token2022 fallback failed: ${fallbackError.message}`);
+          }
+        }
+        throw error; // Re-throw if we can't handle it
+      }
+    };
+  }
+
   private async init(): Promise<void> {
     try {
       logger.info(
         `Initializing Solana connector for network: ${this.network}, RPC URL: ${this.connection.rpcEndpoint}`,
       );
+
+      // Monkey-patch the connection's getTokenAccountBalance to handle Token2022
+      this.patchConnectionForToken2022();
+
       await this.loadTokens();
 
       // Initialize Helius services only if using Helius provider
