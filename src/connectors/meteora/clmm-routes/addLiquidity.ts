@@ -72,7 +72,7 @@ async function addLiquidity(
   const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
   // Check balances with transaction buffer
-  const balances = await solana.getBalance(wallet, [tokenXSymbol, tokenYSymbol, 'SOL']);
+  const balances = await solana.getBalances(wallet.publicKey.toString(), [tokenXSymbol, tokenYSymbol, 'SOL']);
   const requiredBase = baseTokenAmount + (tokenXSymbol === 'SOL' ? SOL_TRANSACTION_BUFFER : 0);
   const requiredQuote = quoteTokenAmount + (tokenYSymbol === 'SOL' ? SOL_TRANSACTION_BUFFER : 0);
 

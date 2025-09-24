@@ -167,8 +167,8 @@ export class Raydium {
         }
       }
 
-      const vaultABalance = (await this.solana.connection.getTokenAccountBalance(rawPool.vaultA)).value.uiAmount;
-      const vaultBBalance = (await this.solana.connection.getTokenAccountBalance(rawPool.vaultB)).value.uiAmount;
+      const vaultABalance = (await this.solana.getTokenAccountBalance(rawPool.vaultA)).value.uiAmount;
+      const vaultBBalance = (await this.solana.getTokenAccountBalance(rawPool.vaultB)).value.uiAmount;
 
       const poolInfo: ClmmPoolInfo = {
         address: poolAddress,

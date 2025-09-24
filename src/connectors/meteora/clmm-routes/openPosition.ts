@@ -75,7 +75,7 @@ async function openPosition(
   }
 
   // Check balances with SOL buffer
-  const balances = await solana.getBalance(wallet, [tokenXSymbol, tokenYSymbol, 'SOL']);
+  const balances = await solana.getBalances(wallet.publicKey.toString(), [tokenXSymbol, tokenYSymbol, 'SOL']);
   const requiredBaseAmount =
     (baseTokenAmount || 0) + (tokenXSymbol === 'SOL' ? SOL_POSITION_RENT + SOL_TRANSACTION_BUFFER : 0);
   const requiredQuoteAmount =

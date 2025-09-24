@@ -396,216 +396,6 @@ export class Solana {
   }
 
   /**
-   * @deprecated Use the optimized implementation in routes/balances.ts instead
-   */
-  async getBalance(wallet: Keypair, symbols?: string[]): Promise<Record<string, number>> {
-    const publicKey = wallet.publicKey;
-    const balances: Record<string, number> = {};
-
-    // Treat empty array as if no tokens were specified
-    const effectiveSymbols = symbols && symbols.length === 0 ? undefined : symbols;
-
-    // Fetch SOL balance only if symbols is undefined or includes "SOL" (case-insensitive)
-    if (!effectiveSymbols || effectiveSymbols.some((s) => s.toUpperCase() === 'SOL')) {
-      const solBalance = await this.connection.getBalance(publicKey);
-      const solBalanceInSol = solBalance * LAMPORT_TO_SOL;
-      balances['SOL'] = solBalanceInSol;
-    }
-
-    // Return early if only SOL balance was requested
-    if (effectiveSymbols && effectiveSymbols.length === 1 && effectiveSymbols[0].toUpperCase() === 'SOL') {
-      return balances;
-    }
-
-    // Get all token accounts for the provided address using jsonParsed encoding
-    const [legacyAccounts, token2022Accounts] = await Promise.all([
-      this.connection.getParsedTokenAccountsByOwner(publicKey, {
-        programId: TOKEN_PROGRAM_ID,
-      }),
-      this.connection.getParsedTokenAccountsByOwner(publicKey, {
-        programId: TOKEN_2022_PROGRAM_ID,
-      }),
-    ]);
-
-    const allAccounts = [...legacyAccounts.value, ...token2022Accounts.value];
-
-    // Track tokens that were found and those that still need to be fetched
-    const foundTokens = new Set<string>();
-    const tokensToFetch = new Map<string, string>(); // Maps address -> display symbol
-
-    // Create a mapping of all mint addresses to their token accounts
-    const mintToAccount = new Map();
-    for (const account of allAccounts) {
-      try {
-        const parsedInfo = account.account.data.parsed?.info;
-        if (!parsedInfo) {
-          logger.warn('Account data not parsed or missing info');
-          continue;
-        }
-        const mintAddress = parsedInfo.mint;
-        mintToAccount.set(mintAddress, {
-          parsedAccount: {
-            mint: new PublicKey(mintAddress),
-            amount: BigInt(parsedInfo.tokenAmount.amount),
-            decimals: parsedInfo.tokenAmount.decimals,
-          },
-          value: account,
-        });
-      } catch (error) {
-        logger.warn(`Error processing parsed account: ${error.message}`);
-        continue;
-      }
-    }
-
-    // Process requested specific symbols
-    if (effectiveSymbols) {
-      for (const s of effectiveSymbols) {
-        // Skip SOL as it's handled separately
-        if (s.toUpperCase() === 'SOL') {
-          foundTokens.add('SOL');
-          continue;
-        }
-
-        // Check if it's a token symbol in our list
-        const tokenBySymbol = this.tokenList.find((t) => t.symbol.toUpperCase() === s.toUpperCase());
-
-        if (tokenBySymbol) {
-          foundTokens.add(tokenBySymbol.symbol);
-
-          // Check if we have this token in the wallet
-          if (mintToAccount.has(tokenBySymbol.address)) {
-            const { parsedAccount } = mintToAccount.get(tokenBySymbol.address);
-            const amount = parsedAccount.amount;
-            const uiAmount = Number(amount) / Math.pow(10, tokenBySymbol.decimals);
-            balances[tokenBySymbol.symbol] = uiAmount;
-            logger.debug(`Found balance for ${tokenBySymbol.symbol}: ${uiAmount}`);
-          } else {
-            // Token not found in wallet, set balance to 0
-            balances[tokenBySymbol.symbol] = 0;
-            logger.debug(`No balance found for ${tokenBySymbol.symbol}, setting to 0`);
-          }
-        }
-        // If it looks like a Solana address, prepare to fetch it directly
-        else if (s.length >= 32 && s.length <= 44) {
-          try {
-            // Validate it's a proper public key
-            const pubKey = new PublicKey(s);
-            const mintAddress = pubKey.toBase58();
-
-            // Check if we have this mint in the wallet
-            if (mintToAccount.has(mintAddress)) {
-              const { parsedAccount } = mintToAccount.get(mintAddress);
-
-              // Try to get token from our token list
-              const token = this.tokenList.find((t) => t.address === mintAddress);
-
-              if (token) {
-                // Token is in our list
-                foundTokens.add(token.symbol);
-                const amount = parsedAccount.amount;
-                const uiAmount = Number(amount) / Math.pow(10, token.decimals);
-                balances[token.symbol] = uiAmount;
-                logger.debug(`Found balance for ${token.symbol} (${mintAddress}): ${uiAmount}`);
-              } else {
-                // Token is not in our list, need to fetch its metadata
-                tokensToFetch.set(mintAddress, s);
-              }
-            } else {
-              // Mint not found in wallet, add to tokens to fetch for metadata
-              tokensToFetch.set(mintAddress, s);
-            }
-          } catch (e) {
-            logger.warn(`Invalid token address format: ${s}`);
-          }
-        } else {
-          logger.warn(`Token not recognized: ${s} (not a known symbol or valid address)`);
-        }
-      }
-    } else {
-      // No symbols provided or empty array - check all tokens in the token list
-      // Note: When symbols is an empty array, we check all tokens in the token list
-      logger.info(`Checking balances for all ${this.tokenList.length} tokens in the token list`);
-
-      // Process all tokens from the token list
-      for (const token of this.tokenList) {
-        // Skip if already processed
-        if (token.symbol === 'SOL' || foundTokens.has(token.symbol)) {
-          continue;
-        }
-
-        // Check if we have this token in the wallet
-        if (mintToAccount.has(token.address)) {
-          const { parsedAccount } = mintToAccount.get(token.address);
-          const amount = parsedAccount.amount;
-          const uiAmount = Number(amount) / Math.pow(10, token.decimals);
-          balances[token.symbol] = uiAmount;
-          logger.debug(`Found balance for ${token.symbol} (${token.address}): ${uiAmount}`);
-        } else {
-          // Set balance to 0 for tokens in the list but not in wallet
-          balances[token.symbol] = 0;
-          logger.debug(`No balance found for ${token.symbol} (${token.address}), setting to 0`);
-        }
-      }
-    }
-
-    // Fetch metadata for unknown tokens
-    for (const [mintAddress] of tokensToFetch.entries()) {
-      try {
-        // Check if we have this mint in the wallet
-        let balance = 0;
-        let decimals = 0;
-
-        if (mintToAccount.has(mintAddress)) {
-          const { parsedAccount } = mintToAccount.get(mintAddress);
-          // Fetch mint info to get decimals
-          const mintInfo = await getMint(this.connection, parsedAccount.mint);
-          decimals = mintInfo.decimals;
-
-          // Calculate balance
-          const amount = parsedAccount.amount;
-          balance = Number(amount) / Math.pow(10, decimals);
-        } else {
-          // Try to get decimals anyway for the display
-          try {
-            const mintInfo = await getMint(this.connection, new PublicKey(mintAddress));
-            decimals = mintInfo.decimals;
-          } catch (error) {
-            logger.warn(`Could not fetch mint info for ${mintAddress}: ${error.message}`);
-            decimals = 9; // Default to 9 decimals
-          }
-        }
-
-        // Use the full mint address as the display key for the balance
-        balances[mintAddress] = balance;
-        logger.debug(`Using full address as display key for ${mintAddress} with balance ${balance}`);
-      } catch (error) {
-        logger.error(`Failed to process token ${mintAddress}: ${error.message}`);
-      }
-    }
-
-    // Filter out zero balances when no specific tokens are requested
-    if (!symbols || (symbols && symbols.length === 0)) {
-      const filteredBalances: Record<string, number> = {};
-
-      // Keep SOL balance regardless of its value
-      if ('SOL' in balances) {
-        filteredBalances['SOL'] = balances['SOL'];
-      }
-
-      // Filter other tokens with zero balances
-      Object.entries(balances).forEach(([key, value]) => {
-        if (key !== 'SOL' && value > 0) {
-          filteredBalances[key] = value;
-        }
-      });
-
-      return filteredBalances;
-    }
-
-    return balances;
-  }
-
-  /**
    * Get balances for a given address
    * @param address Wallet address
    * @param tokens Optional array of token symbols/addresses to fetch. If not provided, fetches tokens from token list
@@ -1912,6 +1702,58 @@ export class Solana {
     if (this.heliusService) {
       this.heliusService.disconnect();
       logger.info('Helius services disconnected and cleaned up');
+    }
+  }
+
+  /**
+   * Get token account balance supporting both Token and Token2022 programs
+   * @param accountPubkey The token account public key
+   * @returns Token account balance response
+   */
+  public async getTokenAccountBalance(
+    accountPubkey: PublicKey,
+  ): Promise<{ value: { uiAmount: number | null; amount: string; decimals: number } }> {
+    try {
+      // First try with standard getTokenAccountBalance (handles both Token and Token2022)
+      return await this.connection.getTokenAccountBalance(accountPubkey);
+    } catch (error) {
+      if (error.message && error.message.includes('TokenInvalidAccountOwnerError')) {
+        try {
+          // Check if account exists and get its owner
+          const accountInfo = await this.connection.getAccountInfo(accountPubkey);
+          if (!accountInfo) {
+            logger.warn(`Token account ${accountPubkey.toBase58()} not found`);
+            return { value: { uiAmount: 0, amount: '0', decimals: 0 } };
+          }
+
+          // Check if it's a Token2022 account by trying to parse it
+          if (accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)) {
+            // Try parsing as Token2022 account
+            const parsedAccountInfo = await this.connection.getParsedAccountInfo(accountPubkey);
+            const parsedData = parsedAccountInfo.value?.data;
+
+            if (parsedData && 'parsed' in parsedData && parsedData.parsed?.info?.tokenAmount) {
+              const tokenAmount = parsedData.parsed.info.tokenAmount;
+              return {
+                value: {
+                  uiAmount: tokenAmount.uiAmount,
+                  amount: tokenAmount.amount,
+                  decimals: tokenAmount.decimals,
+                },
+              };
+            }
+          }
+
+          logger.warn(`Failed to get token account balance for ${accountPubkey.toBase58()}: ${error.message}`);
+          return { value: { uiAmount: 0, amount: '0', decimals: 0 } };
+        } catch (fallbackError) {
+          logger.warn(`Fallback failed for token account ${accountPubkey.toBase58()}: ${fallbackError.message}`);
+          return { value: { uiAmount: 0, amount: '0', decimals: 0 } };
+        }
+      }
+
+      logger.warn(`Failed to get token account balance for ${accountPubkey.toBase58()}: ${error.message}`);
+      return { value: { uiAmount: 0, amount: '0', decimals: 0 } };
     }
   }
 

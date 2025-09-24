@@ -126,7 +126,7 @@ async function calculateLpAmountToRemove(
 
   // Get LP token balance
   const lpTokenAccount = lpTokenAccounts.value[0].pubkey;
-  const accountInfo = await solana.connection.getTokenAccountBalance(lpTokenAccount);
+  const accountInfo = await solana.getTokenAccountBalance(lpTokenAccount);
   const lpBalance = new BN(new Decimal(accountInfo.value.uiAmount).mul(10 ** accountInfo.value.decimals).toFixed(0));
 
   if (lpBalance.isZero()) {

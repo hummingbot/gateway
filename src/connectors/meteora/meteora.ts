@@ -134,8 +134,8 @@ export class Meteora {
       }
 
       const [reserveXBalance, reserveYBalance] = await Promise.all([
-        this.solana.connection.getTokenAccountBalance(dlmmPool.lbPair.reserveX),
-        this.solana.connection.getTokenAccountBalance(dlmmPool.lbPair.reserveY),
+        this.solana.getTokenAccountBalance(dlmmPool.lbPair.reserveX),
+        this.solana.getTokenAccountBalance(dlmmPool.lbPair.reserveY),
       ]);
       const feeInfo = await dlmmPool.getFeeInfo();
       const activeBin = await dlmmPool.getActiveBin();

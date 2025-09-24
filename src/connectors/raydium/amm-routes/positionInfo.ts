@@ -48,7 +48,7 @@ async function calculateLpAmount(
 
   // Get LP token balance
   const lpTokenAccount = lpTokenAccounts.value[0].pubkey;
-  const accountInfo = await solana.connection.getTokenAccountBalance(lpTokenAccount);
+  const accountInfo = await solana.getTokenAccountBalance(lpTokenAccount);
   const lpTokenAmount = accountInfo.value.uiAmount || 0;
 
   if (lpTokenAmount === 0) {
