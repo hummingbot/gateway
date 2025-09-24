@@ -1713,28 +1713,40 @@ export class Solana {
   public async getTokenAccountBalance(
     accountPubkey: PublicKey,
   ): Promise<{ value: { uiAmount: number | null; amount: string; decimals: number } }> {
+    logger.info(`🔍 getTokenAccountBalance called for account: ${accountPubkey.toBase58()}`);
     try {
       // First try with standard getTokenAccountBalance (handles both Token and Token2022)
-      return await this.connection.getTokenAccountBalance(accountPubkey);
+      logger.info(`🟢 Trying standard getTokenAccountBalance for ${accountPubkey.toBase58()}`);
+      const result = await this.connection.getTokenAccountBalance(accountPubkey);
+      logger.info(
+        `✅ Standard getTokenAccountBalance succeeded for ${accountPubkey.toBase58()}: ${result.value.uiAmount}`,
+      );
+      return result;
     } catch (error) {
-      logger.debug(`getTokenAccountBalance failed for ${accountPubkey.toBase58()}: ${error.message}`);
+      logger.error(`❌ getTokenAccountBalance failed for ${accountPubkey.toBase58()}: ${error.message}`);
       if (error.message && error.message.includes('TokenInvalidAccountOwnerError')) {
+        logger.info(`🔄 Attempting Token2022 fallback for ${accountPubkey.toBase58()}`);
         try {
           // Check if account exists and get its owner
           const accountInfo = await this.connection.getAccountInfo(accountPubkey);
           if (!accountInfo) {
-            logger.warn(`Token account ${accountPubkey.toBase58()} not found`);
+            logger.warn(`🚫 Token account ${accountPubkey.toBase58()} not found`);
             return { value: { uiAmount: 0, amount: '0', decimals: 0 } };
           }
 
+          logger.info(`🔍 Account owner for ${accountPubkey.toBase58()}: ${accountInfo.owner.toBase58()}`);
+          logger.info(`🔍 TOKEN_2022_PROGRAM_ID: ${TOKEN_2022_PROGRAM_ID.toBase58()}`);
+
           // Check if it's a Token2022 account by trying to parse it
           if (accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)) {
+            logger.info(`🎯 Account ${accountPubkey.toBase58()} is owned by Token2022 program, parsing...`);
             // Try parsing as Token2022 account
             const parsedAccountInfo = await this.connection.getParsedAccountInfo(accountPubkey);
             const parsedData = parsedAccountInfo.value?.data;
 
             if (parsedData && 'parsed' in parsedData && parsedData.parsed?.info?.tokenAmount) {
               const tokenAmount = parsedData.parsed.info.tokenAmount;
+              logger.info(`✅ Token2022 parsing succeeded for ${accountPubkey.toBase58()}: ${tokenAmount.uiAmount}`);
               return {
                 value: {
                   uiAmount: tokenAmount.uiAmount,
@@ -1742,18 +1754,24 @@ export class Solana {
                   decimals: tokenAmount.decimals,
                 },
               };
+            } else {
+              logger.error(`❌ Failed to parse Token2022 account data for ${accountPubkey.toBase58()}`);
             }
+          } else {
+            logger.warn(
+              `⚠️ Account ${accountPubkey.toBase58()} is not owned by Token2022 program, owner: ${accountInfo.owner.toBase58()}`,
+            );
           }
 
-          logger.warn(`Failed to get token account balance for ${accountPubkey.toBase58()}: ${error.message}`);
+          logger.warn(`🛑 Failed to get token account balance for ${accountPubkey.toBase58()}: ${error.message}`);
           return { value: { uiAmount: 0, amount: '0', decimals: 0 } };
         } catch (fallbackError) {
-          logger.warn(`Fallback failed for token account ${accountPubkey.toBase58()}: ${fallbackError.message}`);
+          logger.error(`💥 Fallback failed for token account ${accountPubkey.toBase58()}: ${fallbackError.message}`);
           return { value: { uiAmount: 0, amount: '0', decimals: 0 } };
         }
       }
 
-      logger.warn(`Failed to get token account balance for ${accountPubkey.toBase58()}: ${error.message}`);
+      logger.error(`💥 Failed to get token account balance for ${accountPubkey.toBase58()}: ${error.message}`);
       return { value: { uiAmount: 0, amount: '0', decimals: 0 } };
     }
   }
