@@ -1717,6 +1717,7 @@ export class Solana {
       // First try with standard getTokenAccountBalance (handles both Token and Token2022)
       return await this.connection.getTokenAccountBalance(accountPubkey);
     } catch (error) {
+      logger.debug(`getTokenAccountBalance failed for ${accountPubkey.toBase58()}: ${error.message}`);
       if (error.message && error.message.includes('TokenInvalidAccountOwnerError')) {
         try {
           // Check if account exists and get its owner

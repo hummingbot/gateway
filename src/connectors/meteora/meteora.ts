@@ -51,19 +51,24 @@ export class Meteora {
   async getDlmmPool(poolAddress: string): Promise<DLMM> {
     // Check if we already have the pool instance
     if (this.dlmmPools.has(poolAddress)) {
+      logger.debug(`Using cached DLMM pool for ${poolAddress}`);
       return this.dlmmPools.get(poolAddress);
     }
 
     // Check if we have a pending promise for this pool
     if (this.dlmmPoolPromises.has(poolAddress)) {
+      logger.debug(`Using pending DLMM pool promise for ${poolAddress}`);
       return this.dlmmPoolPromises.get(poolAddress);
     }
 
     // Create a promise for the DLMM instance
+    logger.info(`Creating new DLMM pool instance for ${poolAddress}`);
     const dlmmPoolPromise = DLMM.create(this.solana.connection, new PublicKey(poolAddress), {
       cluster: this.solana.network as any,
     }).then(async (dlmmPool) => {
+      logger.info(`DLMM pool created, refetching states for ${poolAddress}`);
       await dlmmPool.refetchStates();
+      logger.info(`DLMM pool states refetched for ${poolAddress}`);
       this.dlmmPools.set(poolAddress, dlmmPool);
       this.dlmmPoolPromises.delete(poolAddress);
       return dlmmPool;
@@ -127,11 +132,15 @@ export class Meteora {
   /** Gets comprehensive pool information */
   async getPoolInfo(poolAddress: string): Promise<MeteoraPoolInfo | null> {
     try {
+      logger.info(`Getting pool info for ${poolAddress}`);
       const dlmmPool = await this.getDlmmPool(poolAddress);
       if (!dlmmPool) {
         logger.error(`Pool not found: ${poolAddress}`);
         return null;
       }
+
+      logger.info(`DLMM pool loaded, fetching reserve balances for ${poolAddress}`);
+      logger.info(`ReserveX: ${dlmmPool.lbPair.reserveX.toBase58()}, ReserveY: ${dlmmPool.lbPair.reserveY.toBase58()}`);
 
       const [reserveXBalance, reserveYBalance] = await Promise.all([
         this.solana.getTokenAccountBalance(dlmmPool.lbPair.reserveX),
