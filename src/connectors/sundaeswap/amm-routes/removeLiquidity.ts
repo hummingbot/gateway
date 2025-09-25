@@ -83,21 +83,20 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         const poolInfo = await sundaeswap.getAmmPoolInfo(requestedPoolAddress);
 
-        const baseToken = poolInfo.baseTokenAddress;
-        const quoteToken = poolInfo.quoteTokenAddress;
+        const baseTokenAddress = poolInfo.baseTokenAddress;
+        const quoteTokenAddress = poolInfo.quoteTokenAddress;
+        // Find token symbol from token address
+        const baseToken = await sundaeswap.cardano.getTokenByAddress(baseTokenAddress);
+        const quoteToken = await sundaeswap.cardano.getTokenByAddress(quoteTokenAddress);
 
-        // Resolve tokens
-        const baseTokenObj = sundaeswap.cardano.getTokenBySymbol(baseToken);
-        const quoteTokenObj = sundaeswap.cardano.getTokenBySymbol(quoteToken);
-
-        if (!baseTokenObj || !quoteTokenObj) {
-          throw fastify.httpErrors.badRequest(`Token not found: ${!baseTokenObj ? baseToken : quoteToken}`);
+        if (!baseToken || !quoteToken) {
+          throw fastify.httpErrors.badRequest(`Token not found: ${!baseToken ? baseToken : quoteToken}`);
         }
 
         // Find pool address if not provided
         let poolAddress = requestedPoolAddress;
         if (!poolAddress) {
-          poolAddress = await sundaeswap.findDefaultPool(baseToken, quoteToken, 'amm');
+          poolAddress = await sundaeswap.findDefaultPool(baseToken.symbol, quoteToken.symbol, 'amm');
 
           if (!poolAddress) {
             throw fastify.httpErrors.notFound(`No AMM pool found for pair ${baseToken}-${quoteToken}`);
@@ -160,11 +159,11 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         // Calculate the amounts that will be received (proportional to LP tokens withdrawn)
         const baseTokenAmountRemoved = Math.floor(
-          (Number(baseTokenReserve) * withdrawalProportion) / baseTokenObj.decimals,
+          (Number(baseTokenReserve) * withdrawalProportion) / baseToken.decimals,
         );
 
         const quoteTokenAmountRemoved = Math.floor(
-          (Number(quoteTokenReserve) * withdrawalProportion) / quoteTokenObj.decimals,
+          (Number(quoteTokenReserve) * withdrawalProportion) / quoteToken.decimals,
         );
 
         return {

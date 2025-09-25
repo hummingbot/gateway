@@ -171,8 +171,8 @@ export class Minswap {
 
     return {
       address: poolAddress,
-      baseTokenAddress: pool.assetA,
-      quoteTokenAddress: pool.assetB,
+      baseTokenAddress: pool.assetA === 'lovelace' ? 'adalovelace' : pool.assetA,
+      quoteTokenAddress: pool.assetB === 'lovelace' ? 'adalovelace' : pool.assetB,
       feePct: 2,
       price: price[0],
       baseTokenAmount: baseTokenAmount,

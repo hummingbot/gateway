@@ -18,7 +18,7 @@ export const ammPoolInfoRoute: FastifyPluginAsync = async (fastify) => {
           ...GetPoolInfoRequest,
           properties: {
             network: { type: 'string', examples: ['mainnet'] },
-            poolIdent: {
+            poolAddress: {
               type: 'string',
               examples: ['2f36866691fa75a9aab66dec99f7cc2d297ca09e34d9ce68cde04773'],
             },
@@ -33,18 +33,18 @@ export const ammPoolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request): Promise<PoolInfo> => {
       try {
-        const { poolAddress: poolIdent } = request.query;
+        const { poolAddress } = request.query;
         const network = request.query.network || 'mainnet';
 
         const sundaeswap = await Sundaeswap.getInstance(network);
+        // console.log('sundaeswap ', sundaeswap);
 
-        // Check if either poolIdent or both baseToken and quoteToken are provided
-        if (!poolIdent) {
-          throw fastify.httpErrors.badRequest('poolIdent is required');
+        // Check if either poolAddress or both baseToken and quoteToken are provided
+        if (!poolAddress) {
+          throw fastify.httpErrors.badRequest('poolAddress is required');
         }
 
-        const poolIdentToUse = poolIdent;
-        const poolInfo = await sundaeswap.getAmmPoolInfo(poolIdentToUse);
+        const poolInfo = await sundaeswap.getAmmPoolInfo(poolAddress);
         if (!poolInfo) throw fastify.httpErrors.notFound('Pool not found');
         return poolInfo;
       } catch (e) {

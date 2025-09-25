@@ -436,6 +436,15 @@ export class Cardano {
     }
   }
 
+  public async getTokenByAddress(tokenAddress: string): Promise<CardanoToken | undefined> {
+    const token = this.tokenList.find((token: CardanoToken) => {
+      const splitAddress = token.address.split('.').join('');
+      const splitTokenAddress = tokenAddress.split('.').join('');
+      return splitTokenAddress === splitAddress;
+    });
+    return token;
+  }
+
   async close() {
     if (this._chain in Cardano._instances) {
       delete Cardano._instances[this._chain];

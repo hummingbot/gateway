@@ -17,8 +17,8 @@ import { formatTokenAmount } from '../sundaeswap.utils';
 export async function getSundaeswapAmmLiquidityQuote(
   network: string,
   poolAddress?: string,
-  baseToken?: string,
-  quoteToken?: string,
+  baseToken?: CardanoToken,
+  quoteToken?: CardanoToken,
   baseTokenAmount?: number,
   quoteTokenAmount?: number,
   _slippagePct?: number,
@@ -28,8 +28,8 @@ export async function getSundaeswapAmmLiquidityQuote(
   quoteTokenAmount: number;
   baseTokenAmountMax: number;
   quoteTokenAmountMax: number;
-  baseTokenObj: CardanoToken;
-  quoteTokenObj: CardanoToken;
+  baseToken: CardanoToken;
+  quoteToken: CardanoToken;
   poolAddress?: string;
   rawBaseTokenAmount: string;
   rawQuoteTokenAmount: string;
@@ -46,16 +46,10 @@ export async function getSundaeswapAmmLiquidityQuote(
 
   const sundaeswap = await Sundaeswap.getInstance(networkToUse);
 
-  const baseTokenObj = sundaeswap.cardano.getTokenBySymbol(baseToken);
-  const quoteTokenObj = sundaeswap.cardano.getTokenBySymbol(quoteToken);
-  if (!baseTokenObj || !quoteTokenObj) {
-    throw new Error(`Token not found: ${!baseTokenObj ? baseToken : quoteToken}`);
-  }
-
   let poolAddressToUse = poolAddress;
   let existingPool = true;
   if (!poolAddressToUse) {
-    poolAddressToUse = await sundaeswap.findDefaultPool(baseToken, quoteToken, 'amm');
+    poolAddressToUse = await sundaeswap.findDefaultPool(baseToken.symbol, quoteToken.symbol, 'amm');
     if (!poolAddressToUse) {
       existingPool = false;
       logger.info(`No existing pool found for ${baseToken}-${quoteToken}, providing theoretical quote`);
@@ -79,11 +73,9 @@ export async function getSundaeswapAmmLiquidityQuote(
     const quoteReserve: bigint = poolState.liquidity.bReserve || BigInt(0);
 
     // ── 3) Convert user inputs into raw bigints ───────────
-    const baseRaw = baseTokenAmount
-      ? BigInt(Math.floor(baseTokenAmount * 10 ** baseTokenObj.decimals).toString())
-      : null;
+    const baseRaw = baseTokenAmount ? BigInt(Math.floor(baseTokenAmount * 10 ** baseToken.decimals).toString()) : null;
     const quoteRaw = quoteTokenAmount
-      ? BigInt(Math.floor(quoteTokenAmount * 10 ** quoteTokenObj.decimals).toString())
+      ? BigInt(Math.floor(quoteTokenAmount * 10 ** quoteToken.decimals).toString())
       : null;
 
     // ── 4) Compute the "optimal" opposite amount ───────────
@@ -92,21 +84,21 @@ export async function getSundaeswapAmmLiquidityQuote(
       const quoteOptimal = (baseRaw * quoteReserve) / baseReserve;
       if (quoteOptimal <= quoteRaw) {
         baseLimited = true;
-        quoteTokenAmountOptimal = Number(formatTokenAmount(quoteOptimal.toString(), quoteTokenObj.decimals));
+        quoteTokenAmountOptimal = Number(formatTokenAmount(quoteOptimal.toString(), quoteToken.decimals));
       } else {
         baseLimited = false;
         const baseOptimal = (quoteRaw * baseReserve) / quoteReserve;
-        baseTokenAmountOptimal = Number(formatTokenAmount(baseOptimal.toString(), baseTokenObj.decimals));
+        baseTokenAmountOptimal = Number(formatTokenAmount(baseOptimal.toString(), baseToken.decimals));
       }
     } else if (baseRaw !== null) {
       // only base provided
       const quoteOptimal = baseReserve === BigInt(0) ? BigInt(0) : (baseRaw * quoteReserve) / baseReserve;
-      quoteTokenAmountOptimal = Number(formatTokenAmount(quoteOptimal.toString(), quoteTokenObj.decimals));
+      quoteTokenAmountOptimal = Number(formatTokenAmount(quoteOptimal.toString(), quoteToken.decimals));
       baseLimited = true;
     } else if (quoteRaw !== null) {
       // only quote provided
       const baseOptimal = quoteReserve === BigInt(0) ? BigInt(0) : (quoteRaw * baseReserve) / quoteReserve;
-      baseTokenAmountOptimal = Number(formatTokenAmount(baseOptimal.toString(), baseTokenObj.decimals));
+      baseTokenAmountOptimal = Number(formatTokenAmount(baseOptimal.toString(), baseToken.decimals));
       baseLimited = false;
     }
   } else {
@@ -118,9 +110,9 @@ export async function getSundaeswapAmmLiquidityQuote(
   }
 
   // ── 5) Convert back into Ethers BigNumber for any on‐chain tx ───
-  const rawBaseTokenAmount = Math.floor(baseTokenAmountOptimal * 10 ** baseTokenObj.decimals).toString();
+  const rawBaseTokenAmount = Math.floor(baseTokenAmountOptimal * 10 ** baseToken.decimals).toString();
 
-  const rawQuoteTokenAmount = Math.floor(quoteTokenAmountOptimal * 10 ** quoteTokenObj.decimals).toString();
+  const rawQuoteTokenAmount = Math.floor(quoteTokenAmountOptimal * 10 ** quoteToken.decimals).toString();
 
   return {
     baseLimited,
@@ -128,8 +120,8 @@ export async function getSundaeswapAmmLiquidityQuote(
     quoteTokenAmount: quoteTokenAmountOptimal,
     baseTokenAmountMax: baseTokenAmount ?? baseTokenAmountOptimal,
     quoteTokenAmountMax: quoteTokenAmount ?? quoteTokenAmountOptimal,
-    baseTokenObj,
-    quoteTokenObj,
+    baseToken,
+    quoteToken,
     poolAddress: poolAddressToUse,
     rawBaseTokenAmount,
     rawQuoteTokenAmount,
@@ -182,8 +174,20 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         const poolInfo = await sundaeswap.getAmmPoolInfo(poolAddress);
 
-        const baseToken = poolInfo.baseTokenAddress;
-        const quoteToken = poolInfo.quoteTokenAddress;
+        const baseTokenAddress = poolInfo.baseTokenAddress;
+        // console.log('baseTokenAddress ', baseTokenAddress);
+
+        const quoteTokenAddress = poolInfo.quoteTokenAddress;
+        // console.log('quoteTokenAddress ', quoteTokenAddress);
+
+        // Find token symbol from token address
+        const baseToken = await sundaeswap.cardano.getTokenByAddress(baseTokenAddress);
+
+        // console.log('baseToken ', baseToken);
+
+        const quoteToken = await sundaeswap.cardano.getTokenByAddress(quoteTokenAddress);
+
+        // console.log('quoteToken ', quoteToken);
 
         const quote = await getSundaeswapAmmLiquidityQuote(
           network,

@@ -303,7 +303,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             quoteToken: { type: 'string', examples: ['SUNDAE'] },
             amount: { type: 'number', examples: [0.001] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            poolIdent: { type: 'string', examples: [''] },
             slippagePct: { type: 'number', examples: [1] },
           },
         },

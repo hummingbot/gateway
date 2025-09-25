@@ -76,35 +76,33 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         const poolInfo = await minswap.getAmmPoolInfo(requestedPoolAddress);
 
-        const baseToken = poolInfo.baseTokenAddress;
-        const quoteToken = poolInfo.quoteTokenAddress;
+        const baseTokenAddress = poolInfo.baseTokenAddress;
+        // console.log('baseTokenAddress', baseTokenAddress);
 
-        // Resolve tokens
-        const baseTokenObj = minswap.cardano.getTokenBySymbol(baseToken);
-        const quoteTokenObj = minswap.cardano.getTokenBySymbol(quoteToken);
+        const quoteTokenAddress = poolInfo.quoteTokenAddress;
+        // console.log('quoteTokenAddress', quoteTokenAddress);
 
-        if (!baseTokenObj || !quoteTokenObj) {
-          throw fastify.httpErrors.badRequest(`Token not found: ${!baseTokenObj ? baseToken : quoteToken}`);
+        // Find token symbol from token address
+        const baseToken = await minswap.cardano.getTokenByAddress(baseTokenAddress);
+        // console.log('baseToken', baseToken);
+
+        const quoteToken = await minswap.cardano.getTokenByAddress(quoteTokenAddress);
+        // console.log('quoteToken', quoteToken);
+
+        if (!baseToken || !quoteToken) {
+          throw fastify.httpErrors.badRequest(`Token not found: ${!baseToken ? baseToken : quoteToken}`);
         }
 
         // Find pool address if not provided
         let poolAddress = requestedPoolAddress;
         if (!poolAddress) {
-          poolAddress = await minswap.findDefaultPool(baseToken, quoteToken, 'amm');
+          poolAddress = await minswap.findDefaultPool(baseToken.symbol, quoteToken.symbol, 'amm');
 
           if (!poolAddress) {
             throw fastify.httpErrors.notFound(`No AMM pool found for pair ${baseToken}-${quoteToken}`);
           }
         }
         // 5) Fetch on-chain pool state for withdraw calculation
-        const assetA: Asset = {
-          policyId: baseTokenObj.policyId,
-          tokenName: baseTokenObj.assetName,
-        };
-        const assetB: Asset = {
-          policyId: quoteTokenObj.policyId,
-          tokenName: quoteTokenObj.assetName,
-        };
         const { poolState, poolDatum } = await minswap.getPoolData(poolAddress);
 
         // 6) Fetch wallet UTxOs (this also selects the key in Lucid)
@@ -143,8 +141,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const fee = txBuild.fee;
 
         // 10) Compute how many tokens were removed (roughly)
-        const baseTokenAmountRemoved = formatTokenAmount(amountAReceive, baseTokenObj.decimals);
-        const quoteTokenAmountRemoved = formatTokenAmount(amountBReceive, quoteTokenObj.decimals);
+        const baseTokenAmountRemoved = formatTokenAmount(amountAReceive, baseToken.decimals);
+        const quoteTokenAmountRemoved = formatTokenAmount(amountBReceive, quoteToken.decimals);
 
         return {
           signature: txHash,

@@ -2,6 +2,8 @@ import { TxComplete } from '@aiquant/lucid-cardano';
 import { calculateDeposit, Dex } from '@aiquant/minswap-sdk';
 import { FastifyPluginAsync } from 'fastify';
 
+import { CardanoToken } from '#src/tokens/types';
+
 import {
   AddLiquidityRequestType,
   AddLiquidityRequest,
@@ -18,8 +20,8 @@ async function addLiquidity(
   network: string,
   walletAddress: string,
   poolAddress: string,
-  baseToken: string,
-  quoteToken: string,
+  baseToken: CardanoToken,
+  quoteToken: CardanoToken,
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct?: number, // decimal, e.g. 0.01 for 1%
@@ -157,8 +159,18 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         const poolInfo = await minswap.getAmmPoolInfo(reqPool);
 
-        const baseToken = poolInfo.baseTokenAddress;
-        const quoteToken = poolInfo.quoteTokenAddress;
+        const baseTokenAddress = poolInfo.baseTokenAddress;
+        // console.log('baseTokenAddress', baseTokenAddress);
+
+        const quoteTokenAddress = poolInfo.quoteTokenAddress;
+        // console.log('quoteTokenAddress', quoteTokenAddress);
+
+        // Find token symbol from token address
+        const baseToken = await minswap.cardano.getTokenByAddress(baseTokenAddress);
+        // console.log('baseToken', baseToken);
+
+        const quoteToken = await minswap.cardano.getTokenByAddress(quoteTokenAddress);
+        // console.log('quoteToken', quoteToken);
 
         return await addLiquidity(
           fastify,

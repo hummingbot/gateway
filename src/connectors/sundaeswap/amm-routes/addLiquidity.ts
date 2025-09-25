@@ -5,6 +5,8 @@ import { AssetAmount, IAssetAmountMetadata } from '@sundaeswap/asset';
 import { BigNumber } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
+import { CardanoToken } from '#src/tokens/types';
+
 import {
   AddLiquidityRequestType,
   AddLiquidityRequest,
@@ -22,8 +24,8 @@ async function addLiquidity(
   network: string,
   walletAddress: string,
   poolAddress: string,
-  baseToken: string,
-  quoteToken: string,
+  baseToken: CardanoToken,
+  quoteToken: CardanoToken,
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct?: number, // decimal, e.g. 0.01 for 1%
@@ -145,8 +147,12 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         const poolInfo = await sundaeswap.getAmmPoolInfo(reqPool);
 
-        const baseToken = poolInfo.baseTokenAddress;
-        const quoteToken = poolInfo.quoteTokenAddress;
+        const baseTokenAddress = poolInfo.baseTokenAddress;
+        const quoteTokenAddress = poolInfo.quoteTokenAddress;
+        // Find token symbol from token address
+        const baseToken = await sundaeswap.cardano.getTokenByAddress(baseTokenAddress);
+        const quoteToken = await sundaeswap.cardano.getTokenByAddress(quoteTokenAddress);
+
         return await addLiquidity(
           fastify,
           network || 'mainnet',

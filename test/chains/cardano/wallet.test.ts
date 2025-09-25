@@ -1,3 +1,6 @@
+// Prevent src/index.ts from running the real server/startup side-effects during tests
+jest.mock('../../../src/index', () => ({}));
+
 // Mock fs-extra to prevent actual file writes
 jest.mock('fs-extra');
 
@@ -13,11 +16,9 @@ const mockFse = fse as jest.Mocked<typeof fse>;
 
 let cardano: Cardano;
 
-// Test wallet data
-const testAddress =
-  'addr_test1vrvqa7ytgmptew2qy3ec0lqdk9n94vcgwu4wy07kqp2he0srll8mg';
-const testPrivateKey =
-  'ed25519_sk1n24dk27xar2skjef5a5xvpk0uy0sqw62tt7hlv7wcpd4xp4fhy5sdask94'; // noqa: mock
+// --- Test wallet data ---
+const testAddress = 'addr_test1vrvqa7ytgmptew2qy3ec0lqdk9n94vcgwu4wy07kqp2he0srll8mg';
+const testPrivateKey = 'ed25519_sk1n24dk27xar2skjef5a5xvpk0uy0sqw62tt7hlv7wcpd4xp4fhy5sdask94'; // noqa: mock
 
 // Mock the encoded private key response
 const encodedPrivateKey = {
@@ -45,9 +46,29 @@ const mockWallets: { [key: string]: Set<string> } = {
   cardano: new Set<string>(),
 };
 
+// Create a fully mocked Cardano instance so no real network / API calls happen
+const mockCardanoInstance = {
+  // method used by tests and by app routes
+  getWalletFromPrivateKey: (_pk: string) => ({ address: testAddress }),
+  encrypt: (_pk: string, _opts?: any) => JSON.stringify(encodedPrivateKey),
+  // ensure any lifecycle methods are present
+  close: async () => undefined,
+} as unknown as Cardano;
+
 beforeAll(async () => {
+  // Prevent reading passphrase from real config
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
+
+  // Mock the static getInstance so the real Cardano initialization (and any network calls)
+  // is never performed — it will return the in-memory mock instead.
+  patch(Cardano, 'getInstance', async (_network?: string) => {
+    return mockCardanoInstance;
+  });
+
+  // Obtain the mocked instance
   cardano = await Cardano.getInstance('preprod');
+
+  // Start the app (fastify inject will be used, no external HTTP calls)
   await gatewayApp.ready();
 });
 
@@ -57,7 +78,7 @@ beforeEach(() => {
   // Clear mock wallets
   mockWallets.cardano.clear();
 
-  // Mock wallet operations to work with in-memory storage
+  // Ensure per-test overrides can change behavior of the mocked instance
   patch(cardano, 'getWalletFromPrivateKey', () => {
     return { address: testAddress };
   });
@@ -79,39 +100,35 @@ beforeEach(() => {
     return undefined;
   });
 
-  (mockFse.readdir as jest.Mock).mockImplementation(
-    async (dirPath: any, options?: any) => {
-      const pathStr = dirPath.toString();
+  (mockFse.readdir as jest.Mock).mockImplementation(async (dirPath: any, options?: any) => {
+    const pathStr = dirPath.toString();
 
-      // If asking for directories in wallet path
-      if (pathStr.endsWith('/wallets') && options?.withFileTypes) {
-        return Object.keys(mockWallets).map((chain) => ({
-          name: chain,
-          isDirectory: () => true,
-          isFile: () => false,
+    // If asking for directories in wallet path
+    if (pathStr.endsWith('/wallets') && options?.withFileTypes) {
+      return Object.keys(mockWallets).map((chain) => ({
+        name: chain,
+        isDirectory: () => true,
+        isFile: () => false,
+      }));
+    }
+
+    // If asking for files in a chain directory
+    const chain = pathStr.split('/').pop();
+    if (chain && mockWallets[chain]) {
+      if (options?.withFileTypes) {
+        return Array.from(mockWallets[chain]).map((addr) => ({
+          name: `${addr}.json`,
+          isDirectory: () => false,
+          isFile: () => true,
         }));
       }
+      return Array.from(mockWallets[chain]).map((addr) => `${addr}.json`);
+    }
 
-      // If asking for files in a chain directory
-      const chain = pathStr.split('/').pop();
-      if (chain && mockWallets[chain]) {
-        if (options?.withFileTypes) {
-          return Array.from(mockWallets[chain]).map((addr) => ({
-            name: `${addr}.json`,
-            isDirectory: () => false,
-            isFile: () => true,
-          }));
-        }
-        return Array.from(mockWallets[chain]).map((addr) => `${addr}.json`);
-      }
+    return [];
+  });
 
-      return [];
-    },
-  );
-
-  (mockFse.readFile as jest.Mock).mockResolvedValue(
-    Buffer.from(JSON.stringify(encodedPrivateKey)),
-  );
+  (mockFse.readFile as jest.Mock).mockResolvedValue(Buffer.from(JSON.stringify(encodedPrivateKey)));
   (mockFse.pathExists as jest.Mock).mockResolvedValue(true);
   (mockFse.ensureDir as jest.Mock).mockResolvedValue(undefined);
 
@@ -129,6 +146,7 @@ beforeEach(() => {
 });
 
 afterAll(async () => {
+  // close the mocked cardano instance and the app
   await cardano.close();
   await gatewayApp.close();
 });
@@ -259,8 +277,7 @@ describe('Cardano Wallet Operations', () => {
         method: 'DELETE',
         url: '/wallet/remove',
         payload: {
-          address:
-            'addr_test1vrvqa7ytgmptew2qy3ec0lqdk9n94vcgwu4wy07kqp2he0srll8mg',
+          address: 'addr_test1vrvqa7ytgmptew2qy3ec0lqdk9n94vcgwu4wy07kqp2he0srll8mg',
           chain: 'cardano',
         },
       });
@@ -327,12 +344,8 @@ describe('Cardano Wallet Operations', () => {
       });
       expect(finalGetResponse.statusCode).toBe(200);
 
-      const finalWallets: GetWalletResponse[] = JSON.parse(
-        finalGetResponse.payload,
-      );
-      const finalCardanoWallet = finalWallets.find(
-        (w) => w.chain === 'cardano',
-      );
+      const finalWallets: GetWalletResponse[] = JSON.parse(finalGetResponse.payload);
+      const finalCardanoWallet = finalWallets.find((w) => w.chain === 'cardano');
       expect(finalCardanoWallet?.walletAddresses).not.toContain(testAddress);
     });
   });
