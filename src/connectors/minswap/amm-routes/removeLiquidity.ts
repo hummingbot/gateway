@@ -27,18 +27,13 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             ...RemoveLiquidityRequest.properties,
             network: { type: 'string', default: 'preprod' },
             walletAddress: { type: 'string', examples: ['addr...'] },
-            poolAddress: {
-              type: 'string',
-              examples: [''],
-            },
+            poolAddress: { type: 'string', examples: [''] },
             baseToken: { type: 'string', examples: ['ADA'] },
             quoteToken: { type: 'string', examples: ['MIN'] },
             percentageToRemove: { type: 'number', examples: [100] },
           },
         },
-        response: {
-          200: RemoveLiquidityResponse,
-        },
+        response: { 200: RemoveLiquidityResponse },
       },
     },
     async (request) => {
@@ -56,10 +51,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('Percentage to remove must be between 0 and 100');
         }
 
-        // Get Minswap and Cardano instances
         const minswap = await Minswap.getInstance(networkToUse);
 
-        // Get wallet address - either from request or first available
         let walletAddress = requestedWalletAddress;
         if (!walletAddress) {
           walletAddress = await minswap.cardano.getFirstWalletAddress();
@@ -69,7 +62,6 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
-        // Check if poolAddress is provided
         if (!requestedPoolAddress) {
           throw fastify.httpErrors.badRequest('poolAddress must be provided');
         }
@@ -77,45 +69,36 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const poolInfo = await minswap.getAmmPoolInfo(requestedPoolAddress);
 
         const baseTokenAddress = poolInfo.baseTokenAddress;
-        // console.log('baseTokenAddress', baseTokenAddress);
-
         const quoteTokenAddress = poolInfo.quoteTokenAddress;
-        // console.log('quoteTokenAddress', quoteTokenAddress);
 
-        // Find token symbol from token address
         const baseToken = await minswap.cardano.getTokenByAddress(baseTokenAddress);
-        // console.log('baseToken', baseToken);
-
         const quoteToken = await minswap.cardano.getTokenByAddress(quoteTokenAddress);
-        // console.log('quoteToken', quoteToken);
 
         if (!baseToken || !quoteToken) {
-          throw fastify.httpErrors.badRequest(`Token not found: ${!baseToken ? baseToken : quoteToken}`);
+          throw fastify.httpErrors.badRequest(`Token not found: ${!baseToken ? 'base' : 'quote'}`);
         }
 
-        // Find pool address if not provided
         let poolAddress = requestedPoolAddress;
         if (!poolAddress) {
           poolAddress = await minswap.findDefaultPool(baseToken.symbol, quoteToken.symbol, 'amm');
-
           if (!poolAddress) {
-            throw fastify.httpErrors.notFound(`No AMM pool found for pair ${baseToken}-${quoteToken}`);
+            throw fastify.httpErrors.notFound(`No AMM pool found for pair ${baseToken.symbol}-${quoteToken.symbol}`);
           }
         }
-        // 5) Fetch on-chain pool state for withdraw calculation
+
+        // Fetch on-chain pool state
         const { poolState, poolDatum } = await minswap.getPoolData(poolAddress);
 
-        // 6) Fetch wallet UTxOs (this also selects the key in Lucid)
+        // Setup wallet
         const wallet = await minswap.cardano.getWalletFromAddress(walletAddress);
         minswap.cardano.lucidInstance.selectWalletFromPrivateKey(wallet);
         const utxos = await minswap.cardano.lucidInstance.utxosAt(walletAddress);
 
-        // 8) Calculate withdrawal amounts
+        // Calculate withdrawal amounts
         const totalLpInWallet = minswap.calculateAssetAmount(utxos, poolState.assetLP);
-
         const withdrawLpAmount = (totalLpInWallet * BigInt(percentageToRemove)) / 100n;
 
-        // 9) Calculate the assets to be received upon withdrawal
+        // Calculate the assets to be received upon withdrawal
         const { amountAReceive, amountBReceive } = calculateWithdraw({
           withdrawalLPAmount: withdrawLpAmount,
           reserveA: poolState.reserveA,
@@ -123,8 +106,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           totalLiquidity: poolDatum.totalLiquidity,
         });
 
+        // Build withdrawal transaction
         const lpAsset = Asset.fromString(poolState.assetLP);
-        // minimums = 0 here; you could tighten via slippage
         const dex = new Dex(minswap.cardano.lucidInstance);
         const txBuild = await dex.buildWithdrawTx({
           sender: walletAddress,
@@ -135,18 +118,33 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           availableUtxos: utxos,
         });
 
-        // 9) Sign & submit
+        // Sign & submit
         const signed = await txBuild.sign().complete();
         const txHash = await signed.submit();
         const fee = txBuild.fee;
 
-        // 10) Compute how many tokens were removed (roughly)
-        const baseTokenAmountRemoved = formatTokenAmount(amountAReceive, baseToken.decimals);
-        const quoteTokenAmountRemoved = formatTokenAmount(amountBReceive, quoteToken.decimals);
+        // Map withdrawal amounts based on actual asset positions
+        const baseTokenId = baseToken.symbol === 'ADA' ? 'lovelace' : baseToken.policyId + baseToken.assetName;
+        const quoteTokenId = quoteToken.symbol === 'ADA' ? 'lovelace' : quoteToken.policyId + quoteToken.assetName;
+
+        let baseTokenAmountRemoved: number;
+        let quoteTokenAmountRemoved: number;
+
+        if (baseTokenId === poolState.assetA) {
+          // Base token is assetA, quote token is assetB
+          baseTokenAmountRemoved = Number(formatTokenAmount(amountAReceive.toString(), baseToken.decimals));
+          quoteTokenAmountRemoved = Number(formatTokenAmount(amountBReceive.toString(), quoteToken.decimals));
+        } else if (baseTokenId === poolState.assetB) {
+          // Base token is assetB, quote token is assetA
+          baseTokenAmountRemoved = Number(formatTokenAmount(amountBReceive.toString(), baseToken.decimals));
+          quoteTokenAmountRemoved = Number(formatTokenAmount(amountAReceive.toString(), quoteToken.decimals));
+        } else {
+          throw new Error(`Base token ${baseToken.symbol} not found in pool`);
+        }
 
         return {
           signature: txHash,
-          status: 1, // 1 = CONFIRMED, 0 = PENDING, -1 = FAILED
+          status: 1,
           data: {
             fee,
             baseTokenAmountRemoved,
@@ -158,7 +156,6 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         if (e.statusCode) {
           throw e;
         }
-
         throw fastify.httpErrors.internalServerError('Failed to remove liquidity');
       }
     },

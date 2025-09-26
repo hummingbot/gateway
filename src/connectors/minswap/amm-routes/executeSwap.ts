@@ -30,9 +30,9 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             ...ExecuteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet' },
             walletAddress: { type: 'string' },
-            baseToken: { type: 'string', examples: ['ADA'] },
-            quoteToken: { type: 'string', examples: ['MIN'] },
-            amount: { type: 'number', examples: [1.5] }, // now always quote
+            baseToken: { type: 'string', examples: ['MIN'] },
+            quoteToken: { type: 'string', examples: ['ADA'] },
+            amount: { type: 'number', examples: [10000] }, // now always BASE token amount
             side: { type: 'string', enum: ['BUY', 'SELL'] },
             poolAddress: { type: 'string' },
             slippagePct: { type: 'number', examples: [1] },
@@ -48,7 +48,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           walletAddress: reqAddr,
           baseToken,
           quoteToken,
-          amount, // this is always quote quantity
+          amount, // this is always BASE token quantity
           side,
           slippagePct = 1,
         } = request.body;
@@ -80,18 +80,34 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           tokenName: quoteInfo.assetName,
         };
 
-        // On‑chain reserves
-
         const { poolState } = await minswap.getPoolData(poolAddr);
         if (!poolState) {
           throw fastify.httpErrors.notFound('Pool state unavailable');
         }
-        const baseReserve = poolState.reserveA;
-        const quoteReserve = poolState.reserveB;
+
+        // Determine reserves based on input/output tokens, not base/quote
+        const exactIn = side === 'SELL';
+        const [inputToken, outputToken] = exactIn ? [baseToken, quoteToken] : [quoteToken, baseToken];
+        const [inputInfo, outputInfo] = exactIn ? [baseInfo, quoteInfo] : [quoteInfo, baseInfo];
+
+        // Determine reserves based on actual input token
+        const inputAssetId = inputToken === 'ADA' ? 'lovelace' : inputInfo.policyId + inputInfo.assetName;
+        const idA = poolState.assetA;
+        const idB = poolState.assetB;
+
+        let reserveIn: bigint, reserveOut: bigint;
+        if (inputAssetId === idA) {
+          reserveIn = poolState.reserveA;
+          reserveOut = poolState.reserveB;
+        } else if (inputAssetId === idB) {
+          reserveIn = poolState.reserveB;
+          reserveOut = poolState.reserveA;
+        } else {
+          throw new Error(`Input token not in pool`);
+        }
 
         const pct = BigInt(slippagePct);
 
-        // 2) build via SDK
         const privateKey = await minswap.cardano.getWalletFromAddress(walletAddr);
         minswap.cardano.lucidInstance.selectWalletFromPrivateKey(privateKey);
         const dex = new Dex(minswap.cardano.lucidInstance);
@@ -103,74 +119,73 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         let totalOutputSwapped: number;
 
         if (side === 'SELL') {
-          // SELL: selling quote tokens to get base tokens
-          // `amount` is the amount of quote tokens to sell (input)
-          const amountIn = BigInt(Math.floor(amount * 10 ** quoteInfo.decimals).toString());
+          // SELL = selling BASE tokens to get QUOTE tokens
+          // `amount` is the amount of base tokens to sell (input)
+          const amountIn = BigInt(Math.floor(amount * 10 ** baseInfo.decimals).toString());
 
-          const { amountOut: idealBaseOut } = calculateSwapExactIn({
+          const { amountOut: idealQuoteOut } = calculateSwapExactIn({
             amountIn,
-            reserveIn: quoteReserve,
-            reserveOut: baseReserve,
+            reserveIn,
+            reserveOut,
           });
-          const minBaseOut = (idealBaseOut * (100n - pct)) / 100n;
+          const minQuoteOut = (idealQuoteOut * (100n - pct)) / 100n;
 
           txBuild = await dex.buildSwapExactInTx({
             sender: walletAddr,
             availableUtxos: await minswap.cardano.lucidInstance.utxosAt(walletAddr),
-            assetIn: quoteToken === 'ADA' ? ADA : assetB,
+            assetIn: baseToken === 'ADA' ? ADA : assetA,
             amountIn,
-            assetOut: baseToken === 'ADA' ? ADA : assetA,
-            minimumAmountOut: minBaseOut,
+            assetOut: quoteToken === 'ADA' ? ADA : assetB,
+            minimumAmountOut: minQuoteOut,
             isLimitOrder: false,
           });
 
-          // SELL: spending quote tokens (-), receiving base tokens (+)
-          quoteAmountChange = -Number(amount);
-          baseAmountChange = +Number(formatTokenAmount(minBaseOut.toString(), baseInfo.decimals));
-          totalInputSwapped = amount; // quote tokens spent
-          totalOutputSwapped = Number(formatTokenAmount(minBaseOut.toString(), baseInfo.decimals)); // base tokens received
+          // SELL: spending base tokens (-), receiving quote tokens (+)
+          baseAmountChange = -Number(amount);
+          quoteAmountChange = +Number(formatTokenAmount(minQuoteOut.toString(), quoteInfo.decimals));
+          totalInputSwapped = amount; // base tokens spent
+          totalOutputSwapped = Number(formatTokenAmount(minQuoteOut.toString(), quoteInfo.decimals)); // quote tokens received
         } else {
-          // BUY: buying quote tokens with base tokens
-          // `amount` is the amount of quote tokens to buy (output)
-          const exactQuoteOut = BigInt(Math.floor(amount * 10 ** quoteInfo.decimals).toString());
+          // BUY = buying BASE tokens with QUOTE tokens
+          // `amount` is the amount of base tokens to buy (output)
+          const exactBaseOut = BigInt(Math.floor(amount * 10 ** baseInfo.decimals).toString());
 
-          const { amountIn: idealBaseIn } = calculateSwapExactOut({
-            exactAmountOut: exactQuoteOut,
-            reserveIn: baseReserve,
-            reserveOut: quoteReserve,
+          const { amountIn: idealQuoteIn } = calculateSwapExactOut({
+            exactAmountOut: exactBaseOut,
+            reserveIn,
+            reserveOut,
           });
 
-          const maxBaseIn = (idealBaseIn * (100n + pct)) / 100n;
+          const maxQuoteIn = (idealQuoteIn * (100n + pct)) / 100n;
 
           txBuild = await dex.buildSwapExactOutTx({
             sender: walletAddr,
             availableUtxos: await minswap.cardano.lucidInstance.utxosAt(walletAddr),
-            assetIn: baseToken === 'ADA' ? ADA : assetA,
-            maximumAmountIn: maxBaseIn,
-            assetOut: quoteToken === 'ADA' ? ADA : assetB,
-            expectedAmountOut: exactQuoteOut,
+            assetIn: quoteToken === 'ADA' ? ADA : assetB,
+            maximumAmountIn: maxQuoteIn,
+            assetOut: baseToken === 'ADA' ? ADA : assetA,
+            expectedAmountOut: exactBaseOut,
           });
 
-          // BUY: spending base tokens (-), receiving quote tokens (+)
-          baseAmountChange = -Number(formatTokenAmount(maxBaseIn.toString(), baseInfo.decimals));
-          quoteAmountChange = +Number(amount);
-          totalInputSwapped = Number(formatTokenAmount(maxBaseIn.toString(), baseInfo.decimals)); // base tokens spent
-          totalOutputSwapped = amount; // quote tokens received
+          // BUY: spending quote tokens (-), receiving base tokens (+)
+          quoteAmountChange = -Number(formatTokenAmount(maxQuoteIn.toString(), quoteInfo.decimals));
+          baseAmountChange = +Number(amount);
+          totalInputSwapped = Number(formatTokenAmount(maxQuoteIn.toString(), quoteInfo.decimals)); // quote tokens spent
+          totalOutputSwapped = amount; // base tokens received
         }
 
-        // 3) sign & submit
         const signed = await txBuild.sign().complete();
-
         const txHash = await signed.submit();
 
+        // Return correct token addresses and amounts
         return {
           signature: txHash,
-          status: 1, // 1 = CONFIRMED, 0 = PENDING, -1 = FAILED
+          status: 1,
           data: {
-            tokenIn: side === 'SELL' ? quoteToken : baseToken,
-            tokenOut: side === 'SELL' ? baseToken : quoteToken,
-            amountIn: side === 'SELL' ? totalInputSwapped : totalInputSwapped,
-            amountOut: side === 'SELL' ? totalOutputSwapped : totalOutputSwapped,
+            tokenIn: side === 'SELL' ? baseToken : quoteToken,
+            tokenOut: side === 'SELL' ? quoteToken : baseToken,
+            amountIn: totalInputSwapped,
+            amountOut: totalOutputSwapped,
             fee: txBuild.fee,
             baseTokenBalanceChange: baseAmountChange,
             quoteTokenBalanceChange: quoteAmountChange,

@@ -60,25 +60,51 @@ export async function getSundaeswapAmmLiquidityQuote(
   let quoteTokenAmountOptimal = quoteTokenAmount!;
   let baseLimited = false;
   let poolState: IPoolData;
+
   if (existingPool) {
-    // Get pool state from Sundaeswap (adjust method name based on their SDK)
     poolState = await sundaeswap.getPoolData(poolAddressToUse);
+
     if (!poolState) {
       throw new Error(`Unable to load pool ${poolAddressToUse}`);
     }
 
-    // ── 2) Pull reserves as bigints ────────────────────────
-    // Adjust property names based on Sundaeswap's pool structure
-    const baseReserve: bigint = poolState.liquidity.aReserve || BigInt(0);
-    const quoteReserve: bigint = poolState.liquidity.bReserve || BigInt(0);
+    // Handle SundaeSwap's specific asset ID format
+    const baseTokenId =
+      baseToken.symbol === 'ADA'
+        ? 'ada.lovelace' // SundaeSwap format for ADA
+        : `${baseToken.policyId}.${baseToken.assetName}`; // SundaeSwap format for other tokens
 
-    // ── 3) Convert user inputs into raw bigints ───────────
+    const quoteTokenId =
+      quoteToken.symbol === 'ADA'
+        ? 'ada.lovelace' // SundaeSwap format for ADA
+        : `${quoteToken.policyId}.${quoteToken.assetName}`; // SundaeSwap format for other tokens
+
+    // Get asset IDs from pool data
+    const assetAId = poolState.assetA.assetId.trim();
+    const assetBId = poolState.assetB.assetId.trim();
+
+    let baseReserve: bigint;
+    let quoteReserve: bigint;
+
+    if (baseTokenId === assetAId) {
+      // Base token is assetA, quote token is assetB
+      baseReserve = BigInt(poolState.liquidity.aReserve || 0);
+      quoteReserve = BigInt(poolState.liquidity.bReserve || 0);
+    } else if (baseTokenId === assetBId) {
+      // Base token is assetB, quote token is assetA
+      baseReserve = BigInt(poolState.liquidity.bReserve || 0);
+      quoteReserve = BigInt(poolState.liquidity.aReserve || 0);
+    } else {
+      throw new Error(`Base token ${baseToken.symbol} not found in pool`);
+    }
+
+    // Convert user inputs into raw bigints
     const baseRaw = baseTokenAmount ? BigInt(Math.floor(baseTokenAmount * 10 ** baseToken.decimals).toString()) : null;
     const quoteRaw = quoteTokenAmount
       ? BigInt(Math.floor(quoteTokenAmount * 10 ** quoteToken.decimals).toString())
       : null;
 
-    // ── 4) Compute the "optimal" opposite amount ───────────
+    // Compute the "optimal" opposite amount
     if (baseRaw !== null && quoteRaw !== null) {
       // both sides provided → pick the limiting one
       const quoteOptimal = (baseRaw * quoteReserve) / baseReserve;
@@ -109,9 +135,8 @@ export async function getSundaeswapAmmLiquidityQuote(
     baseLimited = false; // arbitrary; both get used
   }
 
-  // ── 5) Convert back into Ethers BigNumber for any on‐chain tx ───
+  // Convert back to raw amounts
   const rawBaseTokenAmount = Math.floor(baseTokenAmountOptimal * 10 ** baseToken.decimals).toString();
-
   const rawQuoteTokenAmount = Math.floor(quoteTokenAmountOptimal * 10 ** quoteToken.decimals).toString();
 
   return {
@@ -145,10 +170,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...QuoteLiquidityRequest.properties,
             network: { type: 'string', default: 'mainnet' },
-            poolAddress: {
-              type: 'string',
-              examples: [''],
-            },
+            poolAddress: { type: 'string', examples: [''] },
             baseToken: { type: 'string', examples: ['ADA'] },
             quoteToken: { type: 'string', examples: ['SUNDAE'] },
             baseTokenAmount: { type: 'number', examples: [0.029314] },
@@ -156,9 +178,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             slippagePct: { type: 'number', examples: [1] },
           },
         },
-        response: {
-          200: QuoteLiquidityResponse,
-        },
+        response: { 200: QuoteLiquidityResponse },
       },
     },
     async (request) => {
@@ -167,7 +187,6 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         const sundaeswap = await Sundaeswap.getInstance(network);
 
-        // Check if poolAddress is provided
         if (!poolAddress) {
           throw fastify.httpErrors.badRequest('poolAddress must be provided');
         }
@@ -175,19 +194,10 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const poolInfo = await sundaeswap.getAmmPoolInfo(poolAddress);
 
         const baseTokenAddress = poolInfo.baseTokenAddress;
-        // console.log('baseTokenAddress ', baseTokenAddress);
-
         const quoteTokenAddress = poolInfo.quoteTokenAddress;
-        // console.log('quoteTokenAddress ', quoteTokenAddress);
 
-        // Find token symbol from token address
         const baseToken = await sundaeswap.cardano.getTokenByAddress(baseTokenAddress);
-
-        // console.log('baseToken ', baseToken);
-
         const quoteToken = await sundaeswap.cardano.getTokenByAddress(quoteTokenAddress);
-
-        // console.log('quoteToken ', quoteToken);
 
         const quote = await getSundaeswapAmmLiquidityQuote(
           network,

@@ -24,7 +24,7 @@ async function addLiquidity(
   quoteToken: CardanoToken,
   baseTokenAmount: number,
   quoteTokenAmount: number,
-  slippagePct?: number, // decimal, e.g. 0.01 for 1%
+  slippagePct?: number,
 ): Promise<AddLiquidityResponseType> {
   const networkToUse = network || 'mainnet';
 
@@ -51,21 +51,43 @@ async function addLiquidity(
   cardano.lucidInstance.selectWalletFromPrivateKey(privateKey);
 
   // 4) Determine slippage
-  const slippage = slippagePct !== undefined ? slippagePct : minswap.getAllowedSlippage(); // returns decimal, e.g. 0.005
+  const slippage = slippagePct !== undefined ? slippagePct : minswap.getAllowedSlippage();
 
   const { poolState, poolDatum } = await minswap.getPoolData(poolAddress);
   if (!poolState) {
     throw fastify.httpErrors.internalServerError('Pool state not found');
   }
+
   const { reserveA, reserveB } = poolState;
   const { totalLiquidity, assetA, assetB } = poolDatum;
 
-  // 6) Compute necessary amounts and LP tokens
+  // Use poolState asset IDs (which are already strings)
+  const baseTokenId = baseToken.symbol === 'ADA' ? 'lovelace' : baseToken.policyId + baseToken.assetName;
+  const quoteTokenId = quoteToken.symbol === 'ADA' ? 'lovelace' : quoteToken.policyId + quoteToken.assetName;
+
   const baseRaw = quote.rawBaseTokenAmount.toBigInt();
   const quoteRaw = quote.rawQuoteTokenAmount.toBigInt();
+
+  let depositedAmountA: bigint;
+  let depositedAmountB: bigint;
+
+  // Use poolState.assetA and poolState.assetB (these are strings)
+  if (baseTokenId === poolState.assetA) {
+    // Base token is assetA, quote token is assetB
+    depositedAmountA = baseRaw;
+    depositedAmountB = quoteRaw;
+  } else if (baseTokenId === poolState.assetB) {
+    // Base token is assetB, quote token is assetA
+    depositedAmountA = quoteRaw; // Quote amount goes to assetA
+    depositedAmountB = baseRaw; // Base amount goes to assetB
+  } else {
+    throw new Error(`Base token ${baseToken.symbol} not found in pool`);
+  }
+
+  // 6) Compute necessary amounts and LP tokens
   const { necessaryAmountA, necessaryAmountB, lpAmount } = calculateDeposit({
-    depositedAmountA: baseRaw,
-    depositedAmountB: quoteRaw,
+    depositedAmountA,
+    depositedAmountB,
     reserveA,
     reserveB,
     totalLiquidity,
@@ -74,7 +96,7 @@ async function addLiquidity(
   // 7) Apply slippage to LP minimum
   const minLP = (lpAmount * BigInt(Math.floor((1 - slippage) * 1e6))) / BigInt(1e6);
 
-  // 8) Build tx
+  // 8) Build tx - amounts are already correctly mapped to assetA/assetB
   const dex = new Dex(cardano.lucidInstance);
   const utxos = await cardano.lucidInstance.utxosAt(walletAddress);
 
@@ -160,17 +182,13 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const poolInfo = await minswap.getAmmPoolInfo(reqPool);
 
         const baseTokenAddress = poolInfo.baseTokenAddress;
-        // console.log('baseTokenAddress', baseTokenAddress);
 
         const quoteTokenAddress = poolInfo.quoteTokenAddress;
-        // console.log('quoteTokenAddress', quoteTokenAddress);
 
         // Find token symbol from token address
         const baseToken = await minswap.cardano.getTokenByAddress(baseTokenAddress);
-        // console.log('baseToken', baseToken);
 
         const quoteToken = await minswap.cardano.getTokenByAddress(quoteTokenAddress);
-        // console.log('quoteToken', quoteToken);
 
         return await addLiquidity(
           fastify,

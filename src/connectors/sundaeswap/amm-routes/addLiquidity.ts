@@ -28,7 +28,7 @@ async function addLiquidity(
   quoteToken: CardanoToken,
   baseTokenAmount: number,
   quoteTokenAmount: number,
-  slippagePct?: number, // decimal, e.g. 0.01 for 1%
+  slippagePct?: number,
 ): Promise<AddLiquidityResponseType> {
   const networkToUse = network || 'mainnet';
 
@@ -54,11 +54,36 @@ async function addLiquidity(
   }
   cardano.lucidInstance.selectWalletFromPrivateKey(privateKey);
 
+  // Map base/quote amounts to correct assetA/assetB based on pool structure
+  const baseTokenId = baseToken.symbol === 'ADA' ? 'ada.lovelace' : `${baseToken.policyId}.${baseToken.assetName}`;
+
+  const quoteTokenId = quoteToken.symbol === 'ADA' ? 'ada.lovelace' : `${quoteToken.policyId}.${quoteToken.assetName}`;
+
+  // Get asset IDs from pool data
+  const assetAId = quote.poolData.assetA.assetId.trim();
+  const assetBId = quote.poolData.assetB.assetId.trim();
+
+  let assetAAmount: string;
+  let assetBAmount: string;
+
+  if (baseTokenId === assetAId) {
+    // Base token is assetA, quote token is assetB
+    assetAAmount = quote.rawBaseTokenAmount;
+    assetBAmount = quote.rawQuoteTokenAmount;
+  } else if (baseTokenId === assetBId) {
+    // Base token is assetB, quote token is assetA
+    assetAAmount = quote.rawQuoteTokenAmount; // Quote amount goes to assetA
+    assetBAmount = quote.rawBaseTokenAmount; // Base amount goes to assetB
+  } else {
+    throw new Error(`Base token ${baseToken.symbol} not found in pool`);
+  }
+
+  // Create asset amounts with correct mapping
   const depositArgs: IDepositConfigArgs = {
     suppliedAssets: [
-      new AssetAmount(quote.rawBaseTokenAmount, quote.poolData.assetA),
-      new AssetAmount(quote.rawQuoteTokenAmount, quote.poolData.assetB),
-    ] as [AssetAmount<IAssetAmountMetadata>, AssetAmount<IAssetAmountMetadata>], // Explicit tuple
+      new AssetAmount(assetAAmount, quote.poolData.assetA),
+      new AssetAmount(assetBAmount, quote.poolData.assetB),
+    ] as [AssetAmount<IAssetAmountMetadata>, AssetAmount<IAssetAmountMetadata>],
     pool: quote.poolData,
     orderAddresses: {
       DestinationAddress: {
@@ -82,7 +107,7 @@ async function addLiquidity(
 
   return {
     signature: txHash,
-    status: 1, // 1 = CONFIRMED, 0 = PENDING, -1 = FAILED
+    status: 1,
     data: {
       fee: builtTx.builtTx.fee,
       baseTokenAmountAdded: quote.baseTokenAmount,
@@ -140,7 +165,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('No wallet address');
         }
 
-        // Check if poolAddress is provided
         if (!reqPool) {
           throw fastify.httpErrors.badRequest('poolAddress must be provided');
         }
@@ -149,7 +173,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         const baseTokenAddress = poolInfo.baseTokenAddress;
         const quoteTokenAddress = poolInfo.quoteTokenAddress;
-        // Find token symbol from token address
+
         const baseToken = await sundaeswap.cardano.getTokenByAddress(baseTokenAddress);
         const quoteToken = await sundaeswap.cardano.getTokenByAddress(quoteTokenAddress);
 
@@ -162,7 +186,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           quoteToken,
           baseTokenAmount,
           quoteTokenAmount,
-          slippagePct !== undefined ? slippagePct / 100 : undefined, // convert % to decimal
+          slippagePct !== undefined ? slippagePct / 100 : undefined,
         );
       } catch (e: any) {
         logger.error(e);

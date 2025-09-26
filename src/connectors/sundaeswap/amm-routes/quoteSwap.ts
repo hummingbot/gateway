@@ -18,12 +18,13 @@ export async function quoteAmmSwap(
   poolIdent: string,
   baseToken: CardanoToken,
   quoteToken: CardanoToken,
-  amount: number, // now always refers to quote‐token units
+  amount: number, //  now always refers to BASE token units
   side: 'BUY' | 'SELL',
-  slippagePct: number = 1, // Default to 1% if not provided
+  slippagePct: number = 1,
 ): Promise<any> {
-  // BUY: you want to RECEIVE `amount` of quoteToken, paying baseToken
-  // SELL: you want to SPEND `amount` of quoteToken, receiving baseToken
+  // BUY: you want to RECEIVE `amount` of baseToken, paying quoteToken
+  // SELL: you want to SPEND `amount` of baseToken, receiving quoteToken
+
   const poolData = await sundaeswap.getPoolData(poolIdent);
 
   // Get pool assets and reserves
@@ -32,82 +33,75 @@ export async function quoteAmmSwap(
   const reserveA = BigInt(poolData.liquidity.aReserve);
   const reserveB = BigInt(poolData.liquidity.bReserve);
 
-  // Determine which token corresponds to which asset in the pool
-  const baseAssetId = baseToken.address || `${baseToken.policyId}.${baseToken.assetName}`;
-  const quoteAssetId = quoteToken.address || `${quoteToken.policyId}.${quoteToken.assetName}`;
+  const exactIn = side === 'SELL';
+  const [inputToken, outputToken] = exactIn ? [baseToken, quoteToken] : [quoteToken, baseToken];
 
-  let baseReserve: bigint;
-  let quoteReserve: bigint;
+  // Map input/output tokens to pool reserves
+  const inputAssetId = inputToken.address || `${inputToken.policyId}.${inputToken.assetName}`;
+  const outputAssetId = outputToken.address || `${outputToken.policyId}.${outputToken.assetName}`;
 
-  // Match tokens to pool reserves
-  if (baseAssetId.trim() === assetA) {
-    baseReserve = reserveA;
-    quoteReserve = reserveB;
-  } else if (baseAssetId.trim() === assetB) {
-    baseReserve = reserveB;
-    quoteReserve = reserveA;
+  let inputReserve: bigint;
+  let outputReserve: bigint;
+
+  if (inputAssetId.trim() === assetA) {
+    inputReserve = reserveA;
+    outputReserve = reserveB;
+  } else if (inputAssetId.trim() === assetB) {
+    inputReserve = reserveB;
+    outputReserve = reserveA;
   } else {
-    throw new Error(`Base token ${baseAssetId} not found in pool`);
+    throw new Error(`Input token ${inputAssetId} not found in pool`);
   }
 
-  // Validate quote token is in the pool
-  const quoteInPool = quoteAssetId.trim() === assetA || quoteAssetId.trim() === assetB;
-  if (!quoteInPool) {
-    throw new Error(`Quote token ${quoteAssetId} not found in pool`);
+  // Validate output token is in the pool
+  const outputInPool = outputAssetId.trim() === assetA || outputAssetId.trim() === assetB;
+  if (!outputInPool) {
+    throw new Error(`Output token ${outputAssetId} not found in pool`);
   }
 
-  // Convert amount to smallest units
+  // Convert amount using BASE token decimals
   const fee = poolData.currentFee; // e.g., 0.005 for 0.5%
   let inputAmount: bigint;
   let outputAmount: bigint;
 
-  if (side === 'SELL') {
-    // SELL: spending `amount` of quoteToken, receiving baseToken
-    // This is exactIn scenario
-    inputAmount = BigInt(Math.floor(amount * 10 ** quoteToken.decimals));
+  if (exactIn) {
+    // SELL: spending exact amount of baseToken
+    inputAmount = BigInt(Math.floor(amount * 10 ** baseToken.decimals));
 
-    // Apply AMM formula for sell (exactIn): dy = (y * dx * (1 - fee)) / (x + dx * (1 - fee))
+    // Apply AMM formula: dy = (y * dx * (1 - fee)) / (x + dx * (1 - fee))
     const inputAfterFee = (inputAmount * BigInt(Math.floor((1 - fee) * 10000))) / 10000n;
-    outputAmount = (baseReserve * inputAfterFee) / (quoteReserve + inputAfterFee);
+    outputAmount = (outputReserve * inputAfterFee) / (inputReserve + inputAfterFee);
   } else {
-    // BUY: wanting to receive `amount` of quoteToken, paying baseToken
-    // This is exactOut scenario
-    outputAmount = BigInt(Math.floor(amount * 10 ** quoteToken.decimals));
+    // BUY: wanting to receive exact amount of baseToken
+    outputAmount = BigInt(Math.floor(amount * 10 ** baseToken.decimals));
 
-    // Check if we have enough liquidity
-    if (outputAmount >= quoteReserve) {
+    // Check liquidity
+    if (outputAmount >= outputReserve) {
       throw new Error('Insufficient liquidity: requested amount exceeds available reserves');
     }
 
-    // Apply AMM formula for buy (exactOut): dx = (x * dy) / ((y - dy) * (1 - fee))
-    const numerator = baseReserve * outputAmount;
-    const denominator = ((quoteReserve - outputAmount) * BigInt(Math.floor((1 - fee) * 10000))) / 10000n;
+    // Apply AMM formula: dx = (x * dy) / ((y - dy) * (1 - fee))
+    const numerator = inputReserve * outputAmount;
+    const denominator = ((outputReserve - outputAmount) * BigInt(Math.floor((1 - fee) * 10000))) / 10000n;
     inputAmount = numerator / denominator;
   }
 
-  // Calculate slippage protection amounts
+  // Calculate slippage protection
   const slippageTolerance = slippagePct / 100;
   const slippageMultiplier = BigInt(Math.floor((1 - slippageTolerance) * 10000));
   const slippageDenominator = 10000n;
 
-  const minAmountOut = side === 'SELL' ? (outputAmount * slippageMultiplier) / slippageDenominator : outputAmount;
-
-  const maxAmountIn =
-    side === 'BUY'
-      ? (inputAmount * (slippageDenominator + BigInt(Math.floor(slippageTolerance * 10000)))) / slippageDenominator
-      : inputAmount;
+  const minAmountOut = exactIn ? (outputAmount * slippageMultiplier) / slippageDenominator : outputAmount;
+  const maxAmountIn = exactIn
+    ? inputAmount
+    : (inputAmount * (slippageDenominator + BigInt(Math.floor(slippageTolerance * 10000)))) / slippageDenominator;
 
   // Calculate price impact
-  const midPrice = Number(baseReserve) / 10 ** baseToken.decimals / (Number(quoteReserve) / 10 ** quoteToken.decimals);
-
+  const midPrice =
+    Number(inputReserve) / 10 ** inputToken.decimals / (Number(outputReserve) / 10 ** outputToken.decimals);
   const executionPrice =
-    Number(inputAmount) / 10 ** baseToken.decimals / (Number(outputAmount) / 10 ** quoteToken.decimals);
-
+    Number(inputAmount) / 10 ** inputToken.decimals / (Number(outputAmount) / 10 ** outputToken.decimals);
   const priceImpact = Math.abs((executionPrice - midPrice) / midPrice);
-
-  // Determine which token is input and output based on side
-  const inputToken = side === 'SELL' ? quoteToken : baseToken;
-  const outputToken = side === 'SELL' ? baseToken : quoteToken;
 
   // Convert amounts to human-readable format
   const estimatedIn = formatTokenAmount(inputAmount, inputToken.decimals);
@@ -129,11 +123,75 @@ export async function quoteAmmSwap(
     rawMinAmountOut: minAmountOut.toString(),
     rawMaxAmountIn: maxAmountIn.toString(),
     slippagePct,
-    pathAddresses: [
-      inputToken.address || `${inputToken.policyId}.${inputToken.assetName}`,
-      outputToken.address || `${outputToken.policyId}.${outputToken.assetName}`,
-    ],
+    pathAddresses: [inputToken.address, outputToken.address],
   };
+}
+
+// FIXED: Balance changes and response formatting
+async function formatSwapQuote(
+  fastify: FastifyInstance,
+  network: string,
+  poolIdent: string,
+  baseToken: string,
+  quoteToken: string,
+  amount: number,
+  side: 'BUY' | 'SELL',
+  slippagePct: number = 1,
+): Promise<QuoteSwapResponseType> {
+  logger.info(
+    `formatSwapQuote: poolIdent=${poolIdent}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}, slippagePct=${slippagePct}, network=${network}`,
+  );
+
+  try {
+    const { quote, sundaeswap, cardano, baseTokenObj, quoteTokenObj } = await getSundaeswapAmmQuote(
+      fastify,
+      network,
+      poolIdent,
+      baseToken,
+      quoteToken,
+      amount,
+      side,
+      slippagePct,
+    );
+
+    logger.info(
+      `Quote result: estimatedAmountIn=${quote.estimatedAmountIn}, estimatedAmountOut=${quote.estimatedAmountOut}, slippagePct=${quote.slippagePct}`,
+    );
+
+    // Balance changes (match Uniswap logic)
+    const baseTokenBalanceChange = side === 'BUY' ? quote.estimatedAmountOut : -quote.estimatedAmountIn;
+    const quoteTokenBalanceChange = side === 'BUY' ? -quote.estimatedAmountIn : quote.estimatedAmountOut;
+
+    logger.info(
+      `Balance changes: baseTokenBalanceChange=${baseTokenBalanceChange}, quoteTokenBalanceChange=${quoteTokenBalanceChange}`,
+    );
+
+    // Calculate price
+    const price =
+      side === 'SELL'
+        ? quote.estimatedAmountOut / quote.estimatedAmountIn
+        : quote.estimatedAmountIn / quote.estimatedAmountOut;
+
+    return {
+      poolAddress: poolIdent,
+      // Use correct token addresses like Uniswap
+      tokenIn: quote.inputToken.address,
+      tokenOut: quote.outputToken.address,
+      amountIn: quote.estimatedAmountIn,
+      amountOut: quote.estimatedAmountOut,
+      price: price,
+      minAmountOut: quote.minAmountOut,
+      maxAmountIn: quote.maxAmountIn,
+      slippagePct: quote.slippagePct,
+      priceImpactPct: quote.priceImpact,
+    };
+  } catch (error) {
+    logger.error(`Error formatting swap quote: ${error.message}`);
+    if (error.stack) {
+      logger.debug(`Stack trace: ${error.stack}`);
+    }
+    throw error;
+  }
 }
 
 export async function getSundaeswapAmmQuote(
@@ -198,89 +256,6 @@ export async function getSundaeswapAmmQuote(
   };
 }
 
-// Fixed formatSwapQuote function with corrected balance changes
-async function formatSwapQuote(
-  fastify: FastifyInstance,
-  network: string,
-  poolIdent: string,
-  baseToken: string,
-  quoteToken: string,
-  amount: number,
-  side: 'BUY' | 'SELL',
-  slippagePct: number = 1,
-): Promise<QuoteSwapResponseType> {
-  logger.info(
-    `formatSwapQuote: poolIdent=${poolIdent}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}, slippagePct=${slippagePct}, network=${network}`,
-  );
-
-  try {
-    // Use the extracted quote function with slippage percentage
-    const { quote, sundaeswap, cardano, baseTokenObj, quoteTokenObj } = await getSundaeswapAmmQuote(
-      fastify,
-      network,
-      poolIdent,
-      baseToken,
-      quoteToken,
-      amount,
-      side,
-      slippagePct,
-    );
-
-    logger.info(
-      `Quote result: estimatedAmountIn=${quote.estimatedAmountIn}, estimatedAmountOut=${quote.estimatedAmountOut}, slippagePct=${quote.slippagePct}`,
-    );
-
-    // Calculate balance changes based on which tokens are being swapped
-    // The quote object tells us which token is input and which is output
-    let baseTokenBalanceChange: number;
-    let quoteTokenBalanceChange: number;
-
-    if (side === 'SELL') {
-      // SELL: spending quoteToken, receiving baseToken
-      // Input token is quoteToken, output token is baseToken
-      baseTokenBalanceChange = quote.estimatedAmountOut; // positive (receiving)
-      quoteTokenBalanceChange = -quote.estimatedAmountIn; // negative (spending)
-    } else {
-      // BUY: spending baseToken, receiving quoteToken
-      // Input token is baseToken, output token is quoteToken
-      baseTokenBalanceChange = -quote.estimatedAmountIn; // negative (spending)
-      quoteTokenBalanceChange = quote.estimatedAmountOut; // positive (receiving)
-    }
-
-    logger.info(
-      `Balance changes: baseTokenBalanceChange=${baseTokenBalanceChange}, quoteTokenBalanceChange=${quoteTokenBalanceChange}`,
-    );
-
-    // Calculate price based on side
-    // For SELL: price = quote received / base sold
-    // For BUY: price = quote needed / base received
-    const price =
-      side === 'SELL'
-        ? quote.estimatedAmountOut / quote.estimatedAmountIn
-        : quote.estimatedAmountIn / quote.estimatedAmountOut;
-
-    return {
-      //
-      poolAddress: poolIdent,
-      tokenIn: quoteTokenObj.symbol,
-      tokenOut: baseTokenObj.symbol,
-      amountIn: quote.estimatedAmountIn,
-      amountOut: quote.estimatedAmountOut,
-      price: price,
-      minAmountOut: quote.minAmountOut,
-      maxAmountIn: quote.maxAmountIn,
-      slippagePct: quote.slippagePct,
-      priceImpactPct: quote.priceImpactPct,
-    };
-  } catch (error) {
-    logger.error(`Error formatting swap quote: ${error.message}`);
-    if (error.stack) {
-      logger.debug(`Stack trace: ${error.stack}`);
-    }
-    throw error;
-  }
-}
-
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   // Import the httpErrors plugin to ensure it's available
   await fastify.register(require('@fastify/sensible'));
@@ -299,10 +274,10 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...QuoteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet' },
-            baseToken: { type: 'string', examples: ['ADA'] },
-            quoteToken: { type: 'string', examples: ['SUNDAE'] },
-            amount: { type: 'number', examples: [0.001] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
+            baseToken: { type: 'string', examples: ['SUNDAE'] },
+            quoteToken: { type: 'string', examples: ['ADA'] },
+            amount: { type: 'number', examples: [1000] },
+            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['BUY'] },
             slippagePct: { type: 'number', examples: [1] },
           },
         },

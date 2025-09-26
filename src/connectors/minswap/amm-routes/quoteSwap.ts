@@ -22,41 +22,32 @@ async function quoteAmmSwap(
   poolAddress: string,
   baseToken: CardanoToken,
   quoteToken: CardanoToken,
-  amount: number, // now always refers to quote‐token units
+  amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  _slippagePct?: number,
 ): Promise<any> {
-  // BUY: you want to RECEIVE `amount` of quoteToken, paying baseToken
-  // SELL: you want to SPEND `amount` of quoteToken, receiving baseToken
   const exactIn = side === 'SELL';
 
-  // Figure out which asset is input vs. output
-  const inputToken = exactIn ? quoteToken : baseToken;
-  const outputToken = exactIn ? baseToken : quoteToken;
+  const [inputToken, outputToken] = exactIn ? [baseToken, quoteToken] : [quoteToken, baseToken];
 
-  // FIXED: Convert `amount` to smallest‐unit based on what the amount represents
-  // For BUY: amount = desired quoteToken amount (output)
-  // For SELL: amount = available quoteToken amount (input)
   let amountInSmallestUnit: bigint;
-
-  if (side === 'BUY') {
-    // For BUY, amount represents the desired quoteToken (output), but we need exactOut calculation
-    // So convert amount using quoteToken decimals
-    amountInSmallestUnit = BigNumber.from(Math.floor(amount * 10 ** quoteToken.decimals)).toBigInt();
+  if (exactIn) {
+    // SELL: amount is in baseToken units, inputToken is baseToken
+    amountInSmallestUnit = BigNumber.from(Math.floor(amount * 10 ** baseToken.decimals)).toBigInt();
   } else {
-    // For SELL, amount represents the quoteToken to spend (input)
-    // So convert amount using quoteToken decimals
-    amountInSmallestUnit = BigNumber.from(Math.floor(amount * 10 ** quoteToken.decimals)).toBigInt();
+    // BUY: amount is in baseToken units, outputToken is baseToken
+    amountInSmallestUnit = BigNumber.from(Math.floor(amount * 10 ** baseToken.decimals)).toBigInt();
   }
 
+  // Rest of your pool logic...
   const { poolState, poolDatum } = await minswap.getPoolData(poolAddress);
-
   if (!poolState) throw new Error(`Pool not found for ${baseToken.symbol}-${quoteToken.symbol}`);
 
-  // Figure out reserves & fee depending on input/output
+  // Figure out reserves
   const idA = poolState.assetA;
   const idB = poolState.assetB;
   const assetIdIn = inputToken.symbol === 'ADA' ? 'lovelace' : inputToken.policyId + inputToken.assetName;
+
   let reserveIn: bigint, reserveOut: bigint;
   if (assetIdIn === idA) {
     reserveIn = poolState.reserveA;
@@ -68,10 +59,10 @@ async function quoteAmmSwap(
     throw new Error(`Input token not in pool`);
   }
 
-  // Do the math
+  // Calculate swap amounts
   let inputAmount: bigint, outputAmount: bigint, priceImpact: number;
   if (exactIn) {
-    // SELL: spending exact amount of quoteToken
+    // SELL: spending exact amount of baseToken
     inputAmount = amountInSmallestUnit;
     const { amountOut, priceImpact: pi } = calculateSwapExactIn({
       amountIn: inputAmount,
@@ -81,7 +72,7 @@ async function quoteAmmSwap(
     outputAmount = amountOut;
     priceImpact = pi.toNumber();
   } else {
-    // BUY: want to receive exact amount of quoteToken
+    // BUY: want to receive exact amount of baseToken
     outputAmount = amountInSmallestUnit;
     const { amountIn, priceImpact: pi } = calculateSwapExactOut({
       exactAmountOut: outputAmount,
@@ -92,39 +83,19 @@ async function quoteAmmSwap(
     priceImpact = pi.toNumber();
   }
 
-  const effectiveSlippage = slippagePct !== undefined ? slippagePct / 100 : minswap.getAllowedSlippage();
-
-  const minAmountOut = exactIn
-    ? new BN(outputAmount.toString()).mul(new BN(Math.floor((1 - effectiveSlippage) * 10000))).div(new BN(10000))
-    : outputAmount;
-
-  const maxAmountIn = exactIn
-    ? inputAmount
-    : new BN(inputAmount.toString()).mul(new BN(Math.floor((1 + effectiveSlippage) * 10000))).div(new BN(10000));
-
-  // Format human‐readable
+  // Format amounts
   const estimatedIn = formatTokenAmount(inputAmount.toString(), inputToken.decimals);
   const estimatedOut = formatTokenAmount(outputAmount.toString(), outputToken.decimals);
-  const minOutHuman = formatTokenAmount(minAmountOut.toString(), outputToken.decimals);
-  const maxInHuman = formatTokenAmount(maxAmountIn.toString(), inputToken.decimals);
 
+  // Return with proper token references
   return {
     poolAddress,
     estimatedAmountIn: estimatedIn,
     estimatedAmountOut: estimatedOut,
-    minAmountOut: minOutHuman,
-    maxAmountIn: maxInHuman,
-    priceImpact,
     inputToken,
     outputToken,
-    rawAmountIn: inputAmount.toString(),
-    rawAmountOut: outputAmount.toString(),
-    rawMinAmountOut: minAmountOut.toString(),
-    rawMaxAmountIn: maxAmountIn.toString(),
-    pathAddresses: [
-      inputToken.address || `${inputToken.policyId}.${inputToken.assetName}`,
-      outputToken.address || `${outputToken.policyId}.${outputToken.assetName}`,
-    ],
+    // FIXED: Simple path addresses like Uniswap
+    pathAddresses: [inputToken.address, outputToken.address],
   };
 }
 
@@ -297,11 +268,11 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             ...QuoteSwapRequest.properties,
             network: { type: 'string', default: 'mainnet' },
-            baseToken: { type: 'string', examples: ['ADA'] },
-            quoteToken: { type: 'string', examples: ['MIN'] },
-            amount: { type: 'number', examples: [0.001] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            poolAddress: { type: 'string', examples: [''] },
+            baseToken: { type: 'string', examples: ['MIN'] },
+            quoteToken: { type: 'string', examples: ['ADA'] },
+            amount: { type: 'number', examples: [1000] },
+            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['BUY'] },
+            poolAddress: { type: 'string', examples: ['addr'] },
             slippagePct: { type: 'number', examples: [1] },
           },
         },

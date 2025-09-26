@@ -66,17 +66,30 @@ export async function getMinswapAmmLiquidityQuote(
       throw new Error(`Unable to load pool ${poolAddressToUse}`);
     }
 
-    // ── 2) Pull reserves as bigints ────────────────────────
-    const baseReserve: bigint = poolState.reserveA;
-    const quoteReserve: bigint = poolState.reserveB;
+    // Map reserves based on actual token addresses
+    const baseTokenId = baseToken.symbol === 'ADA' ? 'lovelace' : baseToken.policyId + baseToken.assetName;
+    const quoteTokenId = quoteToken.symbol === 'ADA' ? 'lovelace' : quoteToken.policyId + quoteToken.assetName;
 
-    // ── 3) Convert user inputs into raw bigints ───────────
+    let baseReserve: bigint;
+    let quoteReserve: bigint;
+
+    if (baseTokenId === poolState.assetA) {
+      baseReserve = poolState.reserveA;
+      quoteReserve = poolState.reserveB;
+    } else if (baseTokenId === poolState.assetB) {
+      baseReserve = poolState.reserveB;
+      quoteReserve = poolState.reserveA;
+    } else {
+      throw new Error(`Base token ${baseToken.symbol} not found in pool`);
+    }
+
+    // Convert user inputs into raw bigints
     const baseRaw = baseTokenAmount ? BigInt(Math.floor(baseTokenAmount * 10 ** baseToken.decimals).toString()) : null;
     const quoteRaw = quoteTokenAmount
       ? BigInt(Math.floor(quoteTokenAmount * 10 ** quoteToken.decimals).toString())
       : null;
 
-    // ── 4) Compute the “optimal” opposite amount ───────────
+    // Compute the "optimal" opposite amount
     if (baseRaw !== null && quoteRaw !== null) {
       // both sides provided → pick the limiting one
       const quoteOptimal = (baseRaw * quoteReserve) / baseReserve;
@@ -107,7 +120,7 @@ export async function getMinswapAmmLiquidityQuote(
     baseLimited = false; // arbitrary; both get used
   }
 
-  // ── 5) Convert back into Ethers BigNumber for any on‐chain tx ───
+  // Convert back into Ethers BigNumber for any on‐chain tx
   const rawBaseTokenAmount = BigNumber.from(Math.floor(baseTokenAmountOptimal * 10 ** baseToken.decimals).toString());
   const rawQuoteTokenAmount = BigNumber.from(
     Math.floor(quoteTokenAmountOptimal * 10 ** quoteToken.decimals).toString(),

@@ -35,7 +35,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             walletAddress: { type: 'string' },
             baseToken: { type: 'string', examples: ['ADA'] },
             quoteToken: { type: 'string', examples: ['SUNDAE'] },
-            amount: { type: 'number', examples: [100] }, // always quote amount
+            amount: { type: 'number', examples: [100] }, // always BASE token amount
             side: { type: 'string', enum: ['BUY', 'SELL'] },
             poolAddress: { type: 'string' },
             slippagePct: { type: 'number', examples: [1] },
@@ -51,7 +51,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         const net = (network || 'mainnet') as TSupportedNetworks;
         const sundaeswap = await Sundaeswap.getInstance(net);
 
-        // determine wallet
+        // Determine wallet
         const walletAddr = reqAddr || (await sundaeswap.cardano.getFirstWalletAddress());
         if (!walletAddr) {
           throw fastify.httpErrors.badRequest('No wallet address provided');
@@ -59,7 +59,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         const wallet = await sundaeswap.cardano.getWalletFromAddress(walletAddr);
         sundaeswap.cardano.lucidInstance.selectWalletFromPrivateKey(wallet);
 
-        // determine pool
+        // Determine pool
         const poolAddr = await sundaeswap.findDefaultPool(baseToken, quoteToken, 'amm');
         if (!poolAddr) {
           throw fastify.httpErrors.notFound(`Pool not found for ${baseToken}-${quoteToken}`);
@@ -74,70 +74,71 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('Token not found');
         }
 
+        // Match Uniswap logic exactly
+        const exactIn = side === 'SELL';
+        const [inputTokenObj, outputTokenObj] = exactIn ? [baseTokenObj, quoteTokenObj] : [quoteTokenObj, baseTokenObj];
+
+        // Handle SundaeSwap's asset ID format
+        const inputAssetId =
+          inputTokenObj.symbol === 'ADA' ? 'ada.lovelace' : `${inputTokenObj.policyId}.${inputTokenObj.assetName}`;
+
+        const outputAssetId =
+          outputTokenObj.symbol === 'ADA' ? 'ada.lovelace' : `${outputTokenObj.policyId}.${outputTokenObj.assetName}`;
+
         // Get pool assets and reserves
         const assetA = poolData.assetA.assetId.trim();
         const assetB = poolData.assetB.assetId.trim();
         const reserveA = BigInt(poolData.liquidity.aReserve);
         const reserveB = BigInt(poolData.liquidity.bReserve);
 
-        // Determine which token corresponds to which asset in the pool
-        const baseAssetId = baseTokenObj.address || `${baseTokenObj.policyId}.${baseTokenObj.assetName}`;
-        const quoteAssetId = quoteTokenObj.address || `${quoteTokenObj.policyId}.${quoteTokenObj.assetName}`;
+        // Map input/output tokens to pool reserves
+        let inputReserve: bigint;
+        let outputReserve: bigint;
 
-        let baseReserve: bigint;
-        let quoteReserve: bigint;
-
-        // Match tokens to pool reserves
-        if (baseAssetId.trim() === assetA) {
-          baseReserve = reserveA;
-          quoteReserve = reserveB;
-        } else if (baseAssetId.trim() === assetB) {
-          baseReserve = reserveB;
-          quoteReserve = reserveA;
+        if (inputAssetId === assetA) {
+          inputReserve = reserveA;
+          outputReserve = reserveB;
+        } else if (inputAssetId === assetB) {
+          inputReserve = reserveB;
+          outputReserve = reserveA;
         } else {
-          throw fastify.httpErrors.badRequest(`Base token ${baseAssetId} not found in pool`);
+          throw fastify.httpErrors.badRequest(`Input token ${inputAssetId} not found in pool`);
         }
 
-        // Validate quote token is in the pool
-        const quoteInPool = quoteAssetId.trim() === assetA || quoteAssetId.trim() === assetB;
-        if (!quoteInPool) {
-          throw fastify.httpErrors.badRequest(`Quote token ${quoteAssetId} not found in pool`);
+        // Validate output token is in pool
+        const outputInPool = outputAssetId === assetA || outputAssetId === assetB;
+        if (!outputInPool) {
+          throw fastify.httpErrors.badRequest(`Output token ${outputAssetId} not found in pool`);
         }
 
-        // Convert amount to smallest units and calculate swap amounts
+        //  Convert amount using BASE token decimals (like Uniswap)
         const fee = poolData.currentFee; // e.g., 0.005 for 0.5%
         let inputAmount: bigint;
         let outputAmount: bigint;
-        let inputTokenObj: CardanoToken;
-        let outputTokenObj: CardanoToken;
 
-        if (side === 'SELL') {
-          // SELL: spending `amount` of quoteToken, receiving baseToken
-          inputTokenObj = quoteTokenObj;
-          outputTokenObj = baseTokenObj;
-          inputAmount = BigInt(Math.floor(amount * 10 ** quoteTokenObj.decimals));
+        if (exactIn) {
+          // SELL: spending exact amount of baseToken
+          inputAmount = BigInt(Math.floor(amount * 10 ** baseTokenObj.decimals));
 
-          // Apply AMM formula for sell (exactIn): dy = (y * dx * (1 - fee)) / (x + dx * (1 - fee))
+          // Apply AMM formula: dy = (y * dx * (1 - fee)) / (x + dx * (1 - fee))
           const inputAfterFee = (inputAmount * BigInt(Math.floor((1 - fee) * 10000))) / 10000n;
-          outputAmount = (baseReserve * inputAfterFee) / (quoteReserve + inputAfterFee);
+          outputAmount = (outputReserve * inputAfterFee) / (inputReserve + inputAfterFee);
         } else {
-          // BUY: wanting to receive `amount` of quoteToken, paying baseToken
-          inputTokenObj = baseTokenObj;
-          outputTokenObj = quoteTokenObj;
-          outputAmount = BigInt(Math.floor(amount * 10 ** quoteTokenObj.decimals));
+          // BUY: wanting to receive exact amount of baseToken
+          outputAmount = BigInt(Math.floor(amount * 10 ** baseTokenObj.decimals));
 
-          // Check if we have enough liquidity
-          if (outputAmount >= quoteReserve) {
+          // Check liquidity
+          if (outputAmount >= outputReserve) {
             throw fastify.httpErrors.badRequest('Insufficient liquidity: requested amount exceeds available reserves');
           }
 
-          // Apply AMM formula for buy (exactOut): dx = (x * dy) / ((y - dy) * (1 - fee))
-          const numerator = baseReserve * outputAmount;
-          const denominator = ((quoteReserve - outputAmount) * BigInt(Math.floor((1 - fee) * 10000))) / 10000n;
+          // Apply AMM formula: dx = (x * dy) / ((y - dy) * (1 - fee))
+          const numerator = inputReserve * outputAmount;
+          const denominator = ((outputReserve - outputAmount) * BigInt(Math.floor((1 - fee) * 10000))) / 10000n;
           inputAmount = numerator / denominator;
         }
 
-        // Prepare asset metadata for the input token
+        // Prepare asset metadata for the input token with correct format
         const asset: IAssetAmountMetadata =
           inputTokenObj.symbol === 'ADA'
             ? {
@@ -145,7 +146,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
                 decimals: 6,
               }
             : {
-                assetId: inputTokenObj.address || `${inputTokenObj.policyId}.${inputTokenObj.assetName}`,
+                assetId: `${inputTokenObj.policyId}.${inputTokenObj.assetName}`,
                 decimals: inputTokenObj.decimals,
               };
 
@@ -173,32 +174,20 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         const txHash = await submit();
 
-        // Format response values - convert back to human readable amounts
+        // Format response values
         const inputAmountHuman = Number(inputAmount) / 10 ** inputTokenObj.decimals;
         const outputAmountHuman = Number(outputAmount) / 10 ** outputTokenObj.decimals;
 
-        // Calculate balance changes correctly
-        let baseTokenBalanceChange: number;
-        let quoteTokenBalanceChange: number;
-
-        if (side === 'BUY') {
-          // BUY: spending baseToken to get quoteToken
-          // baseToken decreases (negative), quoteToken increases (positive)
-          baseTokenBalanceChange = -inputAmountHuman; // spending baseToken
-          quoteTokenBalanceChange = outputAmountHuman; // receiving quoteToken
-        } else {
-          // SELL: spending quoteToken to get baseToken
-          // quoteToken decreases (negative), baseToken increases (positive)
-          quoteTokenBalanceChange = -inputAmountHuman; // spending quoteToken
-          baseTokenBalanceChange = outputAmountHuman; // receiving baseToken
-        }
+        // Balance changes
+        const baseTokenBalanceChange = side === 'BUY' ? outputAmountHuman : -inputAmountHuman;
+        const quoteTokenBalanceChange = side === 'BUY' ? -inputAmountHuman : outputAmountHuman;
 
         return {
           signature: txHash,
-          status: 1, // 1 = CONFIRMED, 0 = PENDING, -1 = FAILED
+          status: 1,
           data: {
-            tokenIn: side === 'SELL' ? quoteToken : baseToken,
-            tokenOut: side === 'SELL' ? baseToken : quoteToken,
+            tokenIn: side === 'SELL' ? baseToken : quoteToken,
+            tokenOut: side === 'SELL' ? quoteToken : baseToken,
             amountIn: inputAmountHuman,
             amountOut: outputAmountHuman,
             fee: builtTx.builtTx.fee,
