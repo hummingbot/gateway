@@ -1,0 +1,12 @@
+{
+  "estimatedAmountIn": 10000,
+  "estimatedAmountOut": 0.956992,
+  "minAmountOut": 0.947422,
+  "maxAmountIn": 10000,
+  "baseTokenBalanceChange": -10000,
+  "quoteTokenBalanceChange": 0.956992,
+  "price": 0.0000956992,
+  "gasPrice": 0,
+  "gasLimit": 0,
+  "gasCost": 0
+}

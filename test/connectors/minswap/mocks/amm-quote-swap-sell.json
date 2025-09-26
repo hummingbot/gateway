@@ -1,0 +1,13 @@
+{
+  "poolAddress": "3bb0079303c57812462dec9de8fb867cef8fd3768de7f12c77f6f0dd80381d0d",
+  "estimatedAmountIn": 10000,
+  "estimatedAmountOut": 0.000013,
+  "minAmountOut": 0.000012,
+  "maxAmountIn": 10000,
+  "baseTokenBalanceChange": -10000,
+  "quoteTokenBalanceChange": 0.000013,
+  "price": 1.2999999999999999e-9,
+  "gasPrice": 0,
+  "gasLimit": 0,
+  "gasCost": 0
+}

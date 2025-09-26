@@ -1,0 +1,4 @@
+chainID: 0
+nativeCurrencySymbol: 'ADA'
+apiurl: 'https://cardano-preprod.blockfrost.io/api/v0'
+projectId: 'your_api_key'

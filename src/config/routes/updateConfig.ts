@@ -1,5 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import { Cardano } from '#src/chains/cardano/cardano';
+
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';
 import {

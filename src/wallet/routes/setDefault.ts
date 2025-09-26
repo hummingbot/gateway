@@ -1,5 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import { Cardano } from '#src/chains/cardano/cardano';
+
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { Solana } from '../../chains/solana/solana';
 import { updateDefaultWallet } from '../../config/utils';
@@ -54,6 +56,8 @@ export const setDefaultRoute: FastifyPluginAsync = async (fastify) => {
           validatedAddress = Ethereum.validateAddress(address);
         } else if (chain.toLowerCase() === 'solana') {
           validatedAddress = Solana.validateAddress(address);
+        } else if (chain.toLowerCase() === 'cardano') {
+          validatedAddress = Cardano.validateAddress(address);
         } else {
           throw new Error(`Unsupported chain: ${chain}`);
         }

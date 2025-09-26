@@ -1,0 +1,16 @@
+[
+  {
+    "type": "amm",
+    "network": "mainnet",
+    "baseSymbol": "ADA",
+    "quoteSymbol": "SUNDAE",
+    "address": "2f36866691fa75a9aab66dec99f7cc2d297ca09e34d9ce68cde04773"
+  },
+  {
+    "type": "amm",
+    "network": "preview",
+    "baseSymbol": "ADA",
+    "quoteSymbol": "SBERRY",
+    "address": "2baab4c73a1cd60176f903a29a9c92ed4237c88622da51e9179121a3"
+  }
+]

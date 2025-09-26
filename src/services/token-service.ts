@@ -228,6 +228,56 @@ export class TokenService {
         }
         break;
 
+      case SupportedChain.CARDANO:
+        try {
+          // Validate Cardano address format
+          const address = token.address;
+          // Special case for ADA (lovelace) - represented as empty string or "lovelace"
+          if (
+            address === '' ||
+            address.toLowerCase() === 'lovelace' ||
+            address.toLowerCase() === 'ada' ||
+            address.toLowerCase() === 'ada.lovelace'
+          ) {
+            break; // Valid ADA token
+          }
+
+          // Check for required dot notation format: policyId.assetName
+          if (!address.includes('.')) {
+            throw new Error('Invalid format. Expected policyId.assetName with dot separator');
+          }
+
+          const parts = address.split('.');
+          if (parts.length !== 2) {
+            throw new Error('Invalid format. Expected exactly one dot separator (policyId.assetName)');
+          }
+
+          const [policyId, assetName] = parts;
+
+          // Validate policy ID (must be exactly 56 hex characters)
+          const policyIdRegex = /^[0-9a-fA-F]{56}$/;
+          if (!policyIdRegex.test(policyId)) {
+            throw new Error('Invalid policy ID. Must be exactly 56 hex characters (28 bytes)');
+          }
+
+          // Validate asset name (hex characters, even length, max 64 characters)
+          const assetNameRegex = /^[0-9a-fA-F]*$/;
+          if (!assetNameRegex.test(assetName)) {
+            throw new Error('Asset name must contain only hexadecimal characters');
+          }
+
+          if (assetName.length > 64) {
+            throw new Error('Asset name too long. Maximum 64 hex characters (32 bytes)');
+          }
+
+          if (assetName.length % 2 !== 0) {
+            throw new Error('Asset name must have even number of hex characters (complete bytes)');
+          }
+        } catch (error) {
+          throw new Error(`Invalid Cardano Token address: ${error.message}`);
+        }
+        break;
+
       default:
         throw new Error(`Unsupported chain for validation: ${chain}`);
     }

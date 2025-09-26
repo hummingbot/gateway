@@ -13,14 +13,17 @@ import Fastify, { FastifyInstance } from 'fastify';
 // Internal dependencies
 
 // Routes
+import { cardanoRoutes } from './chains/cardano/cardano.routes';
 import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
 import { configRoutes } from './config/config.routes';
 import { register0xRoutes } from './connectors/0x/0x.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
+import { minswapRoutes } from './connectors/minswap/minswap.routes';
 import { pancakeswapRoutes } from './connectors/pancakeswap/pancakeswap.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
+import { sundaeswapRoutes } from './connectors/sundaeswap/sundaeswap.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { getHttpsOptions } from './https';
 import { poolRoutes } from './pools/pools.routes';
@@ -71,6 +74,10 @@ const swaggerOptions = {
         name: '/chain/ethereum',
         description: 'Ethereum and EVM-based chain endpoints',
       },
+      {
+        name: '/chain/cardano',
+        description: 'Cardano chain endpoints',
+      },
 
       // Connectors
       {
@@ -90,6 +97,14 @@ const swaggerOptions = {
         description: 'Uniswap connector endpoints',
       },
       { name: '/connector/0x', description: '0x connector endpoints' },
+      {
+        name: '/connector/minswap/amm',
+        description: 'Minswap pool connector (Cardano)',
+      },
+      {
+        name: '/connector/sundaeswap/amm',
+        description: 'Sundaeswap pool connector (Cardano)',
+      },
     ],
     components: {
       parameters: {
@@ -216,6 +231,7 @@ const configureGatewayServer = () => {
     // Register chain routes
     app.register(solanaRoutes, { prefix: '/chains/solana' });
     app.register(ethereumRoutes, { prefix: '/chains/ethereum' });
+    app.register(cardanoRoutes, { prefix: '/chains/cardano' });
 
     // Register DEX connector routes - organized by connector
 
@@ -237,6 +253,14 @@ const configureGatewayServer = () => {
     });
     app.register(uniswapRoutes.amm, { prefix: '/connectors/uniswap/amm' });
     app.register(uniswapRoutes.clmm, { prefix: '/connectors/uniswap/clmm' });
+
+    // Minswap routes
+    app.register(minswapRoutes.amm, { prefix: '/connectors/minswap/amm' });
+
+    // Sundaeswap routes
+    app.register(sundaeswapRoutes.amm, {
+      prefix: '/connectors/sundaeswap/amm',
+    });
 
     // 0x routes
     app.register(register0xRoutes);
