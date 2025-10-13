@@ -68,6 +68,21 @@ export const MeteoraPoolInfoSchema = Type.Composite(
 );
 export type MeteoraPoolInfo = Static<typeof MeteoraPoolInfoSchema>;
 
+// Orca-specific extension
+export const OrcaPoolInfoSchema = Type.Composite(
+  [
+    PoolInfoSchema,
+    Type.Object({
+      tickSpacing: Type.Number(),
+      protocolFeePct: Type.Number(),
+      liquidity: Type.String(),
+      sqrtPrice: Type.String(),
+    }),
+  ],
+  { $id: 'OrcaPoolInfo' },
+);
+export type OrcaPoolInfo = Static<typeof OrcaPoolInfoSchema>;
+
 export const GetPoolInfoRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),

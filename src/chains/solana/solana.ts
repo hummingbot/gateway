@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 
+import { createSolanaRpc, mainnet, devnet } from '@solana/kit';
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getMint } from '@solana/spl-token';
 import { TokenInfo } from '@solana/spl-token-registry';
 import {
@@ -65,6 +66,7 @@ enum TransactionResponseStatusCode {
 export class Solana {
   public connection: Connection;
   public network: string;
+  public solanaKitRpc: any;
   public nativeTokenSymbol: string;
 
   public tokenList: TokenInfo[] = [];
@@ -91,6 +93,9 @@ export class Solana {
         commitment: 'confirmed',
       });
     }
+
+    // Initialize Solana Kit RPC
+    this.initializeSolanaKitRpc();
   }
 
   /**
@@ -181,6 +186,20 @@ export class Solana {
     } catch (e) {
       logger.error(`Failed to initialize ${this.network}: ${e}`);
       throw e;
+    }
+  }
+
+  private initializeSolanaKitRpc(): void {
+    try {
+      if (this.network === 'mainnet-beta') {
+        this.solanaKitRpc = createSolanaRpc(mainnet(this.config.nodeURL));
+      } else {
+        this.solanaKitRpc = createSolanaRpc(devnet(this.config.nodeURL));
+      }
+      logger.info(`Initialized Solana Kit RPC for network: ${this.network}`);
+    } catch (error) {
+      logger.error(`Failed to initialize Solana Kit RPC: ${error.message}`);
+      this.solanaKitRpc = null;
     }
   }
 
