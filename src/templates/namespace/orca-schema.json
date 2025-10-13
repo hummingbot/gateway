@@ -5,12 +5,8 @@
     "slippagePct": {
       "type": "number",
       "description": "Default slippage percentage (e.g., 1 for 1%)"
-    },
-    "strategyType": {
-      "type": "number",
-      "description": "Default CLMM strategy type for positions"
     }
   },
   "additionalProperties": false,
-  "required": ["slippagePct", "strategyType"]
+  "required": ["slippagePct"]
 }
