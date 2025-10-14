@@ -31,6 +31,9 @@ export const PoolListResponseSchema = Type.Array(
     network: Type.String(),
     baseSymbol: Type.String(),
     quoteSymbol: Type.String(),
+    baseTokenAddress: Type.String(),
+    quoteTokenAddress: Type.String(),
+    feePct: Type.Number(),
     address: Type.String(),
   }),
 );
@@ -48,17 +51,21 @@ export const PoolAddRequestSchema = Type.Object({
     description: 'Network name (mainnet, mainnet-beta, etc)',
     examples: ['mainnet', 'mainnet-beta'],
   }),
-  baseSymbol: Type.String({
-    description: 'Base token symbol',
-    examples: ['ETH', 'SOL'],
-  }),
-  quoteSymbol: Type.String({
-    description: 'Quote token symbol',
-    examples: ['USDC', 'USDT'],
-  }),
   address: Type.String({
     description: 'Pool contract address',
   }),
+  baseSymbol: Type.Optional(
+    Type.String({
+      description: 'Base token symbol (optional - fetched from pool-info if not provided)',
+      examples: ['ETH', 'SOL'],
+    }),
+  ),
+  quoteSymbol: Type.Optional(
+    Type.String({
+      description: 'Quote token symbol (optional - fetched from pool-info if not provided)',
+      examples: ['USDC', 'USDT'],
+    }),
+  ),
 });
 
 // Success response

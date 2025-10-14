@@ -266,21 +266,52 @@ export class PoolService {
       throw new Error('Network is required');
     }
 
+    // Validate token addresses
+    if (!pool.baseTokenAddress || pool.baseTokenAddress.trim() === '') {
+      throw new Error('Base token address is required');
+    }
+
+    if (!pool.quoteTokenAddress || pool.quoteTokenAddress.trim() === '') {
+      throw new Error('Quote token address is required');
+    }
+
+    // Validate fee percentage
+    if (pool.feePct === undefined || pool.feePct === null) {
+      throw new Error('Fee percentage is required');
+    }
+
+    if (pool.feePct < 0 || pool.feePct > 100) {
+      throw new Error('Fee percentage must be between 0 and 100');
+    }
+
     // Validate address format based on chain
     const chain = this.getChainForConnector(connector);
 
     if (chain === SupportedChain.SOLANA) {
-      // Validate Solana address
+      // Validate Solana addresses
       try {
         new PublicKey(pool.address);
+        new PublicKey(pool.baseTokenAddress);
+        new PublicKey(pool.quoteTokenAddress);
       } catch {
-        throw new Error('Invalid Solana pool address');
+        throw new Error('Invalid Solana address');
       }
     } else if (chain === SupportedChain.ETHEREUM) {
-      // Validate Ethereum address
+      // Validate Ethereum addresses
       if (!ethers.utils.isAddress(pool.address)) {
         throw new Error('Invalid Ethereum pool address');
       }
+      if (!ethers.utils.isAddress(pool.baseTokenAddress)) {
+        throw new Error('Invalid Ethereum base token address');
+      }
+      if (!ethers.utils.isAddress(pool.quoteTokenAddress)) {
+        throw new Error('Invalid Ethereum quote token address');
+      }
+    }
+
+    // Validate that base and quote tokens are different
+    if (pool.baseTokenAddress.toLowerCase() === pool.quoteTokenAddress.toLowerCase()) {
+      throw new Error('Base and quote tokens must be different');
     }
   }
 

@@ -42,11 +42,14 @@ describe('PoolService', () => {
   });
 
   describe('validatePool', () => {
-    it('should validate Solana pool', async () => {
+    it('should validate Solana pool with new fields', async () => {
       const pool: Pool = {
         type: 'amm',
         baseSymbol: 'SOL',
         quoteSymbol: 'USDC',
+        baseTokenAddress: 'So11111111111111111111111111111111111111112',
+        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        feePct: 0.25,
         network: 'mainnet-beta',
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       };
@@ -59,11 +62,40 @@ describe('PoolService', () => {
         type: 'amm',
         baseSymbol: 'SOL',
         quoteSymbol: 'USDC',
+        baseTokenAddress: 'So11111111111111111111111111111111111111112',
+        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        feePct: 0.25,
         network: 'mainnet-beta',
         address: 'invalid-address',
       };
 
-      await expect(poolService.validatePool('raydium', pool)).rejects.toThrow('Invalid Solana pool address');
+      await expect(poolService.validatePool('raydium', pool)).rejects.toThrow('Invalid Solana address');
+    });
+
+    it('should reject pool without token addresses', async () => {
+      const pool: any = {
+        type: 'amm',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        network: 'mainnet-beta',
+        address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+      };
+
+      await expect(poolService.validatePool('raydium', pool)).rejects.toThrow('Base token address is required');
+    });
+
+    it('should reject pool without fee percentage', async () => {
+      const pool: any = {
+        type: 'amm',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        baseTokenAddress: 'So11111111111111111111111111111111111111112',
+        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        network: 'mainnet-beta',
+        address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+      };
+
+      await expect(poolService.validatePool('raydium', pool)).rejects.toThrow('Fee percentage is required');
     });
   });
 });
