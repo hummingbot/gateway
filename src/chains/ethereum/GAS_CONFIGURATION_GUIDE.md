@@ -18,11 +18,11 @@ Gas settings are configured per network in `conf/chains/ethereum/{network}.yml`:
 chainID: 8453
 nodeURL: https://mainnet.base.org
 nativeCurrencySymbol: ETH
-minGasPrice: 0.1
+minGasPrice: 0.01
 
 # EIP-1559 gas parameters (in GWEI)
 # If not set, will fetch from Etherscan API (if etherscanAPIKey is set in ethereum.yml) or network RPC
-# maxFeePerGas: 0.1
+# maxFeePerGas: 0.01
 # maxPriorityFeePerGas: 0.01
 ```
 
@@ -137,10 +137,10 @@ These networks use Type 0 (legacy) transactions:
 ## Configuration Strategies
 
 ### Strategy 1: Use Network Values (Default)
-**Config**:
+**Config** (example for Base):
 ```yaml
-minGasPrice: 0.1
-# maxFeePerGas: 0.1          # Commented out
+minGasPrice: 0.01
+# maxFeePerGas: 0.01         # Commented out
 # maxPriorityFeePerGas: 0.01 # Commented out
 ```
 
@@ -153,10 +153,10 @@ minGasPrice: 0.1
 **Best for**: Production environments where reliability is critical
 
 ### Strategy 2: Fixed Low Fees
-**Config**:
+**Config** (example for Base):
 ```yaml
-minGasPrice: 0.1
-maxFeePerGas: 0.1
+minGasPrice: 0.01
+maxFeePerGas: 0.01
 maxPriorityFeePerGas: 0.01
 ```
 
@@ -174,11 +174,11 @@ maxPriorityFeePerGas: 0.01
 etherscanAPIKey: 'YOUR_ETHERSCAN_API_KEY'
 ```
 
-**Config in network.yml**:
+**Config in network.yml** (example for Ethereum Mainnet):
 ```yaml
-minGasPrice: 0.1
-# maxFeePerGas: 0.1          # Commented out - fetch from Etherscan
-# maxPriorityFeePerGas: 0.01 # Commented out - fetch from Etherscan
+minGasPrice: 1.0
+# maxFeePerGas: 10           # Commented out - fetch from Etherscan
+# maxPriorityFeePerGas: 2    # Commented out - fetch from Etherscan
 ```
 
 **Behavior**:
@@ -258,14 +258,14 @@ minGasPrice: 30.0
 chainID: 8453
 nodeURL: https://mainnet.base.org
 nativeCurrencySymbol: ETH
-minGasPrice: 0.1
-# maxFeePerGas: 0.1          # Commented out - fetch from RPC
+minGasPrice: 0.01
+# maxFeePerGas: 0.01         # Commented out - fetch from RPC
 # maxPriorityFeePerGas: 0.01 # Commented out - fetch from RPC
 ```
 - ❌ Base does not support Etherscan gastracker module
 - ✅ Automatically falls back to RPC provider for gas estimates
 - ⚠️ Base RPC may report inaccurate priority fees (e.g., 1.5 GWEI when actual is <0.001)
-- ✅ Base typically has very low fees despite RPC overestimation
+- ✅ Base typically has very low fees (0.01 GWEI minimum)
 
 ### BSC (Legacy Network)
 ```yaml
@@ -282,29 +282,30 @@ minGasPrice: 3.0
 
 Gateway logs provide visibility into gas pricing:
 
-### EIP-1559 Transaction Logs (With Etherscan API)
+### EIP-1559 Transaction Logs (With Etherscan API - Supported Networks)
 ```
-2025-10-15 11:16:22 | info | ✅ Etherscan API configured for base (key length: 34 chars)
-2025-10-15 11:16:22 | info | Etherscan base: baseFee=0.0050 GWEI, priority (safe/propose/fast)=0.001/0.001/0.002 GWEI
-2025-10-15 11:16:22 | info | Etherscan API EIP-1559 fees: baseFee≈0.0495 GWEI, maxFee=0.1000 GWEI, priority=0.0010 GWEI
-2025-10-15 11:16:22 | info | Using network EIP-1559 fees: maxFee=0.1000 GWEI, priority=0.0010 GWEI
-2025-10-15 11:16:22 | info | Estimated: 0.1 GWEI for network base
+2025-10-15 11:16:22 | info | ✅ Etherscan V2 API configured for mainnet (chainId: 1, key length: 34 chars)
+2025-10-15 11:16:22 | info | Etherscan mainnet: baseFee=1.2500 GWEI, priority (safe/propose/fast)=0.5/1.0/2.0 GWEI
+2025-10-15 11:16:22 | info | Etherscan API EIP-1559 fees: baseFee≈1.2500 GWEI, maxFee=3.5000 GWEI, priority=1.0000 GWEI
+2025-10-15 11:16:22 | info | Using network EIP-1559 fees: maxFee=3.5000 GWEI, priority=1.0000 GWEI
+2025-10-15 11:16:22 | info | Estimated: 3.5 GWEI for network mainnet
 ```
 
-### EIP-1559 Transaction Logs (RPC Fallback)
+### EIP-1559 Transaction Logs (RPC Fallback - Unsupported Networks)
 ```
-2025-10-15 10:34:01 | info | Failed to fetch from Etherscan API: timeout, falling back to RPC
-2025-10-15 10:34:01 | info | Network RPC EIP-1559 fees: baseFee=0.0049 GWEI, maxFee=1.5097 GWEI, priority=1.5000 GWEI
-2025-10-15 10:34:01 | info | Using network EIP-1559 fees: maxFee=1.5097 GWEI, priority=1.5000 GWEI
-2025-10-15 10:34:01 | info | Estimated: 1.5097 GWEI for network base
+2025-10-15 10:34:01 | info | Network RPC EIP-1559 fees: baseFee=0.0004 GWEI, maxFee=0.0104 GWEI, priority=0.0100 GWEI
+2025-10-15 10:34:01 | info | Using network EIP-1559 fees: maxFee=0.0104 GWEI, priority=0.0100 GWEI
+2025-10-15 10:34:01 | info | Estimated: 0.01 GWEI for network base
 ```
+Note: Base does not support Etherscan gastracker and automatically uses RPC. The minGasPrice floor (0.01 GWEI) is applied to ensure minimum confirmation.
 
 ### Legacy Transaction Logs
 ```
-2025-10-15 10:45:49 | info | Network legacy gas price: 0.0500 GWEI
-2025-10-15 10:45:49 | info | Using configured minimum gas price: 0.1 GWEI (network: 0.0500 GWEI)
-2025-10-15 10:45:49 | info | Estimated: 0.1 GWEI for network bsc
+2025-10-15 10:45:49 | info | Network legacy gas price: 1.5000 GWEI
+2025-10-15 10:45:49 | info | Using configured minimum gas price: 3.0 GWEI (network: 1.5000 GWEI)
+2025-10-15 10:45:49 | info | Estimated: 3.0 GWEI for network bsc
 ```
+Note: BSC uses legacy gas pricing. The minGasPrice (3.0 GWEI) ensures transactions meet BSC's recommended minimum.
 
 The logs show:
 1. **Source**: Whether using Etherscan API or RPC provider
@@ -322,29 +323,29 @@ curl -X 'GET' \
   -H 'accept: application/json'
 ```
 
-**EIP-1559 Response**:
+**EIP-1559 Response** (Base network):
 ```json
 {
-  "feePerComputeUnit": 0.1,
+  "feePerComputeUnit": 0.01,
   "denomination": "gwei",
   "computeUnits": 300000,
   "feeAsset": "ETH",
-  "fee": 0.00003,
+  "fee": 0.000003,
   "timestamp": 1760553074872,
   "gasType": "eip1559",
-  "maxFeePerGas": 0.1,
+  "maxFeePerGas": 0.01,
   "maxPriorityFeePerGas": 0.01
 }
 ```
 
-**Legacy Response**:
+**Legacy Response** (BSC network):
 ```json
 {
-  "feePerComputeUnit": 0.1,
+  "feePerComputeUnit": 3.0,
   "denomination": "gwei",
   "computeUnits": 300000,
   "feeAsset": "BNB",
-  "fee": 0.00003,
+  "fee": 0.0009,
   "timestamp": 1760553074872,
   "gasType": "legacy"
 }
