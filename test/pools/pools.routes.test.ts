@@ -118,6 +118,9 @@ describe('Pool Routes Tests', () => {
           network: 'mainnet-beta',
           baseSymbol: 'SOL',
           quoteSymbol: 'USDC',
+          baseTokenAddress: 'So11111111111111111111111111111111111111112',
+          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          feePct: 0.25,
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         },
         {
@@ -125,6 +128,9 @@ describe('Pool Routes Tests', () => {
           network: 'mainnet-beta',
           baseSymbol: 'RAY',
           quoteSymbol: 'USDC',
+          baseTokenAddress: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R',
+          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          feePct: 0.25,
           address: '6UmmUiYoBjSrhakAobJw8BvkmJtDVxaeBtbt7rxWo1mg',
         },
       ];
@@ -148,6 +154,9 @@ describe('Pool Routes Tests', () => {
           network: 'mainnet-beta',
           baseSymbol: 'SOL',
           quoteSymbol: 'USDC',
+          baseTokenAddress: 'So11111111111111111111111111111111111111112',
+          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          feePct: 0.25,
           address: '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
         },
       ];
@@ -171,6 +180,9 @@ describe('Pool Routes Tests', () => {
           network: 'mainnet-beta',
           baseSymbol: 'SOL',
           quoteSymbol: 'USDC',
+          baseTokenAddress: 'So11111111111111111111111111111111111111112',
+          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          feePct: 0.25,
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         },
       ];
@@ -207,6 +219,9 @@ describe('Pool Routes Tests', () => {
         network: 'mainnet-beta',
         baseSymbol: 'SOL',
         quoteSymbol: 'USDC',
+        baseTokenAddress: 'So11111111111111111111111111111111111111112',
+        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        feePct: 0.25,
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       };
 
@@ -267,13 +282,20 @@ describe('Pool Routes Tests', () => {
       expect(JSON.parse(response.payload)).toHaveProperty('message');
       expect(JSON.parse(response.payload).message).toContain('Pool WIF-SOL added successfully');
 
-      expect(mockPoolService.addPool).toHaveBeenCalledWith('raydium', {
-        type: 'amm',
-        network: 'mainnet-beta',
-        baseSymbol: 'WIF',
-        quoteSymbol: 'SOL',
-        address: 'EP2ib6dYdEeqD8MfE2ezHCxX3kP3K2eLKkirfPm5eyMx',
-      });
+      // Verify addPool was called with enhanced pool data from pool-info
+      expect(mockPoolService.addPool).toHaveBeenCalledWith(
+        'raydium',
+        expect.objectContaining({
+          type: 'amm',
+          network: 'mainnet-beta',
+          baseSymbol: 'WIF',
+          quoteSymbol: 'SOL',
+          address: 'EP2ib6dYdEeqD8MfE2ezHCxX3kP3K2eLKkirfPm5eyMx',
+          baseTokenAddress: expect.any(String),
+          quoteTokenAddress: expect.any(String),
+          feePct: expect.any(Number),
+        }),
+      );
     });
 
     it('should return 400 for duplicate pool', async () => {
