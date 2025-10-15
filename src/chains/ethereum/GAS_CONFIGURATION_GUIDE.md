@@ -18,10 +18,15 @@ chainID: 8453
 nodeURL: https://mainnet.base.org
 nativeCurrencySymbol: ETH
 minGasPrice: 0.1
+
 # EIP-1559 gas parameters (in GWEI)
-# If not set, will fetch from network
-maxFeePerGas: 0.1
-maxPriorityFeePerGas: 0.01
+# If not set, will fetch from network (or from scanAPIKey if provided)
+# maxFeePerGas: 0.1
+# maxPriorityFeePerGas: 0.01
+
+# BaseScan API key for more accurate gas estimates (optional)
+# Get your key from https://basescan.org/myapikey
+# scanAPIKey: 'YOUR_BASESCAN_API_KEY_HERE'
 ```
 
 ## Gas Parameters Explained
@@ -36,6 +41,19 @@ maxPriorityFeePerGas: 0.01
   - For EIP-1559: Ensures `maxFeePerGas` doesn't go below this value
   - For legacy: Ensures `gasPrice` doesn't go below this value
 - **Use case**: Prevent transactions from using extremely low gas prices that may not confirm
+
+#### `scanAPIKey` (String)
+- **Purpose**: API key for Etherscan-compatible block explorer gas price APIs
+- **Optional**: If not set, uses standard RPC provider for gas estimates
+- **Applies to**: EIP-1559 networks only (mainnet, base, polygon, arbitrum, optimism)
+- **Benefit**: More accurate priority fee estimates compared to RPC providers
+- **Where to get keys**:
+  - Mainnet: https://etherscan.io/myapikey
+  - Base: https://basescan.org/myapikey
+  - Polygon: https://polygonscan.com/myapikey
+  - Arbitrum: https://arbiscan.io/myapikey
+  - Optimism: https://optimistic.etherscan.io/myapikey
+- **Note**: API keys are free, but rate-limited. Consider paid plans for high-volume usage
 
 ### EIP-1559 Parameters (Type 2 Transactions)
 
@@ -135,7 +153,29 @@ maxPriorityFeePerGas: 0.01
 
 **Best for**: Development, testing, or low-priority operations
 
-### Strategy 3: Hybrid Approach
+### Strategy 3: Use Etherscan API (Recommended for EIP-1559)
+**Config**:
+```yaml
+minGasPrice: 0.1
+# maxFeePerGas: 0.1          # Commented out
+# maxPriorityFeePerGas: 0.01 # Commented out
+scanAPIKey: 'YOUR_API_KEY_HERE'
+```
+
+**Behavior**:
+- Fetches accurate gas prices from block explorer APIs
+- More reliable priority fee estimates than RPC
+- Automatically falls back to RPC if API fails
+- Respects `minGasPrice` as a floor
+
+**Best for**: Production environments on EIP-1559 networks (mainnet, base, polygon, arbitrum, optimism)
+
+**Why use this**:
+- RPC providers sometimes return inaccurate priority fees
+- Example: Base RPC may report 1.5 GWEI when actual is <0.001 GWEI
+- Etherscan APIs provide real-time data from block explorers
+
+### Strategy 4: Hybrid Approach
 **Config**:
 ```yaml
 minGasPrice: 0.5
@@ -152,20 +192,22 @@ minGasPrice: 0.5
 
 ## Example Configurations
 
-### Base Network (Low Fees)
+### Base Network (Recommended)
 ```yaml
 chainID: 8453
 nodeURL: https://mainnet.base.org
 nativeCurrencySymbol: ETH
 minGasPrice: 0.1
-maxFeePerGas: 0.1
-maxPriorityFeePerGas: 0.01
+# maxFeePerGas: 0.1          # Commented out - fetch from API
+# maxPriorityFeePerGas: 0.01 # Commented out - fetch from API
+scanAPIKey: 'YOUR_BASESCAN_API_KEY'
 ```
 - Base typically has very low fees
-- 0.1 GWEI max fee is usually sufficient
-- Transactions confirm quickly even with low priority fee
+- BaseScan API provides accurate priority fees (often <0.001 GWEI)
+- Transactions confirm quickly with API-sourced estimates
+- **Why API**: RPC may report incorrect 1.5 GWEI priority fee
 
-### Ethereum Mainnet (Use Network Prices)
+### Ethereum Mainnet (With Etherscan API)
 ```yaml
 chainID: 1
 nodeURL: https://eth.llamarpc.com
@@ -173,10 +215,12 @@ nativeCurrencySymbol: ETH
 minGasPrice: 1.0
 # maxFeePerGas: 10
 # maxPriorityFeePerGas: 2
+scanAPIKey: 'YOUR_ETHERSCAN_API_KEY'
 ```
 - Mainnet fees vary significantly
-- Better to use network prices
+- Etherscan API provides real-time gas oracle data
 - Set higher `minGasPrice` to ensure confirmation
+- Falls back to RPC if API unavailable
 
 ### BSC (Legacy Network)
 ```yaml
@@ -193,11 +237,21 @@ minGasPrice: 3.0
 
 Gateway logs provide visibility into gas pricing:
 
-### EIP-1559 Transaction Logs
+### EIP-1559 Transaction Logs (With Etherscan API)
 ```
-2025-10-15 10:34:01 | info | Network EIP-1559 fees: baseFee=0.0012 GWEI, maxFee=1.5043 GWEI, priority=0.0001 GWEI
-2025-10-15 10:34:01 | info | Using configured EIP-1559 fees: maxFee=0.1 GWEI, priority=0.01 GWEI
-2025-10-15 10:34:01 | info | Estimated: 0.1 GWEI for network base
+2025-10-15 11:16:22 | info | ✅ Etherscan API configured for base (key length: 34 chars)
+2025-10-15 11:16:22 | info | Etherscan base: baseFee=0.0050 GWEI, priority (safe/propose/fast)=0.001/0.001/0.002 GWEI
+2025-10-15 11:16:22 | info | Etherscan API EIP-1559 fees: baseFee≈0.0495 GWEI, maxFee=0.1000 GWEI, priority=0.0010 GWEI
+2025-10-15 11:16:22 | info | Using network EIP-1559 fees: maxFee=0.1000 GWEI, priority=0.0010 GWEI
+2025-10-15 11:16:22 | info | Estimated: 0.1 GWEI for network base
+```
+
+### EIP-1559 Transaction Logs (RPC Fallback)
+```
+2025-10-15 10:34:01 | info | Failed to fetch from Etherscan API: timeout, falling back to RPC
+2025-10-15 10:34:01 | info | Network RPC EIP-1559 fees: baseFee=0.0049 GWEI, maxFee=1.5097 GWEI, priority=1.5000 GWEI
+2025-10-15 10:34:01 | info | Using network EIP-1559 fees: maxFee=1.5097 GWEI, priority=1.5000 GWEI
+2025-10-15 10:34:01 | info | Estimated: 1.5097 GWEI for network base
 ```
 
 ### Legacy Transaction Logs
@@ -208,9 +262,10 @@ Gateway logs provide visibility into gas pricing:
 ```
 
 The logs show:
-1. **Network values**: What the network currently reports
-2. **Configured values**: What you've set in config
-3. **Used values**: What will actually be used for transactions
+1. **Source**: Whether using Etherscan API or RPC provider
+2. **Network values**: What the network/API currently reports
+3. **Configured values**: What you've set in config (if any)
+4. **Used values**: What will actually be used for transactions
 
 ## Estimating Gas Costs
 
@@ -259,6 +314,7 @@ curl -X 'GET' \
 1. Increase `maxFeePerGas` (EIP-1559) or `minGasPrice` (legacy)
 2. Increase `maxPriorityFeePerGas` for faster inclusion
 3. Comment out fixed values to use network prices
+4. **Recommended**: Add `scanAPIKey` for more accurate gas estimates
 
 ### Paying Too Much for Gas
 **Problem**: Transaction fees higher than expected
@@ -267,6 +323,16 @@ curl -X 'GET' \
 1. Set explicit `maxFeePerGas` and `maxPriorityFeePerGas` values
 2. Use lower values during off-peak hours
 3. Check if `minGasPrice` is set too high
+4. **Recommended**: Use `scanAPIKey` - RPC providers may overestimate fees
+
+### Inaccurate Priority Fees from RPC
+**Problem**: RPC returns inflated priority fees (e.g., 1.5 GWEI when actual is 0.001 GWEI)
+
+**Solutions**:
+1. Add `scanAPIKey` to your network config
+2. Check logs for "Etherscan API configured" message
+3. Verify API key is valid (get free key from block explorer)
+4. Check logs show "Etherscan API EIP-1559 fees" instead of "Network RPC EIP-1559 fees"
 
 ### Configuration Not Taking Effect
 **Problem**: Changes to config file not reflected in transactions
@@ -275,19 +341,65 @@ curl -X 'GET' \
 1. Restart Gateway after changing config files
 2. Check that values are **not commented out** (no `#` at start of line)
 3. Verify config file location: `conf/chains/ethereum/{network}.yml`
+4. For `scanAPIKey`: Check logs for "✅ Etherscan API configured" message
+
+### Etherscan API Not Working
+**Problem**: Logs show "Failed to fetch from Etherscan API"
+
+**Solutions**:
+1. Verify API key is correct and not expired
+2. Check rate limits (free tier: 5 calls/second)
+3. Ensure network is supported (mainnet, base, polygon, arbitrum, optimism)
+4. Gateway automatically falls back to RPC if API fails
 
 ## Best Practices
 
 1. **Always test with small amounts first** when changing gas configurations
-2. **Monitor network conditions** before setting fixed gas prices
-3. **Use block explorers** to verify actual gas prices paid
-4. **Set appropriate minimums** to balance cost and reliability
-5. **Document your strategy** in config file comments
-6. **Review periodically** as network conditions change
+2. **Use `scanAPIKey` for production** - More accurate than RPC for EIP-1559 networks
+3. **Get free API keys** from block explorers (Etherscan, BaseScan, etc.)
+4. **Monitor network conditions** before setting fixed gas prices
+5. **Use block explorers** to verify actual gas prices paid
+6. **Set appropriate minimums** to balance cost and reliability
+7. **Document your strategy** in config file comments
+8. **Review periodically** as network conditions change
+9. **Check logs** to confirm which gas source is being used (API vs RPC)
+
+## API Key Setup Guide
+
+### Step 1: Get API Keys
+Get free API keys from these block explorers:
+
+- **Mainnet**: [Etherscan](https://etherscan.io/myapikey)
+- **Base**: [BaseScan](https://basescan.org/myapikey)
+- **Polygon**: [PolygonScan](https://polygonscan.com/myapikey)
+- **Arbitrum**: [Arbiscan](https://arbiscan.io/myapikey)
+- **Optimism**: [Optimistic Etherscan](https://optimistic.etherscan.io/myapikey)
+
+### Step 2: Add to Network Config
+Edit `conf/chains/ethereum/{network}.yml`:
+
+```yaml
+scanAPIKey: 'YOUR_API_KEY_HERE'
+```
+
+### Step 3: Restart Gateway
+```bash
+pnpm start --passphrase=<PASSPHRASE>
+```
+
+### Step 4: Verify in Logs
+Look for:
+```
+✅ Etherscan API configured for {network} (key length: XX chars)
+```
 
 ## References
 
 - [EIP-1559 Specification](https://eips.ethereum.org/EIPS/eip-1559)
 - [Ethereum Gas Tracker](https://etherscan.io/gastracker)
 - [Base Gas Tracker](https://basescan.org/gastracker)
+- [Polygon Gas Tracker](https://polygonscan.com/gastracker)
+- [Arbitrum Gas Tracker](https://arbiscan.io/gastracker)
+- [Optimism Gas Tracker](https://optimistic.etherscan.io/gastracker)
+- [Etherscan API Documentation](https://docs.etherscan.io/api-endpoints/gas-tracker)
 - Gateway API Docs: `http://localhost:15888/docs`

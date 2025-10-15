@@ -11,6 +11,7 @@ import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
 
 import { getEthereumNetworkConfig, getEthereumChainConfig } from './ethereum.config';
+import { EtherscanService } from './etherscan-service';
 import { InfuraService } from './infura-service';
 
 // information about an Ethereum token
@@ -39,6 +40,7 @@ export class Ethereum {
   public maxPriorityFeePerGas?: number;
   private _initialized: boolean = false;
   private infuraService?: InfuraService;
+  private etherscanService?: EtherscanService;
 
   private static lastGasPriceEstimate: {
     timestamp: number;
@@ -64,8 +66,22 @@ export class Ethereum {
     this.maxFeePerGas = config.maxFeePerGas;
     this.maxPriorityFeePerGas = config.maxPriorityFeePerGas;
 
-    // Get rpcProvider from chain config
+    // Get chain config for etherscanAPIKey
     const chainConfig = getEthereumChainConfig();
+
+    // Initialize Etherscan service if API key is provided and chain is supported
+    if (chainConfig.etherscanAPIKey && EtherscanService.isSupported(this.chainId)) {
+      try {
+        this.etherscanService = new EtherscanService(this.chainId, network, chainConfig.etherscanAPIKey);
+        logger.info(
+          `✅ Etherscan V2 API configured for ${network} (chainId: ${this.chainId}, key length: ${chainConfig.etherscanAPIKey.length} chars)`,
+        );
+      } catch (error: any) {
+        logger.warn(`Failed to initialize Etherscan service: ${error.message}`);
+      }
+    }
+
+    // Get rpcProvider from chain config
     const rpcProvider = chainConfig.rpcProvider || 'url';
 
     // Initialize RPC connection based on provider
@@ -139,27 +155,47 @@ export class Ethereum {
         let networkPriorityFeeGwei: number | undefined;
         let networkBaseFeeGwei: number | undefined;
 
-        // Always fetch network values for comparison/logging
-        try {
-          const feeData = await this.provider.getFeeData();
-          if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
-            const block = await this.provider.getBlock('latest');
-            const baseFee = block.baseFeePerGas || BigNumber.from('0');
-
-            // Calculate recommended maxFeePerGas as 2 * baseFee + maxPriorityFeePerGas
-            const recommendedMaxFee = baseFee.mul(2).add(feeData.maxPriorityFeePerGas);
-            const maxFeePerGas = feeData.maxFeePerGas.gt(recommendedMaxFee) ? feeData.maxFeePerGas : recommendedMaxFee;
-
-            networkBaseFeeGwei = parseFloat(utils.formatUnits(baseFee, 'gwei'));
-            networkMaxFeeGwei = parseFloat(utils.formatUnits(maxFeePerGas, 'gwei'));
-            networkPriorityFeeGwei = parseFloat(utils.formatUnits(feeData.maxPriorityFeePerGas, 'gwei'));
-
+        // Try to fetch from Etherscan API first if available
+        if (this.etherscanService) {
+          try {
+            const gasPrices = await this.etherscanService.getRecommendedGasPrices('propose');
+            networkMaxFeeGwei = gasPrices.maxFeePerGas;
+            networkPriorityFeeGwei = gasPrices.maxPriorityFeePerGas;
+            // Estimate baseFee from the formula: baseFee ≈ (maxFee - priority) / 2
+            networkBaseFeeGwei = (networkMaxFeeGwei - networkPriorityFeeGwei) / 2;
             logger.info(
-              `Network EIP-1559 fees: baseFee=${networkBaseFeeGwei.toFixed(4)} GWEI, maxFee=${networkMaxFeeGwei.toFixed(4)} GWEI, priority=${networkPriorityFeeGwei.toFixed(4)} GWEI`,
+              `Etherscan API EIP-1559 fees: baseFee≈${networkBaseFeeGwei.toFixed(4)} GWEI, maxFee=${networkMaxFeeGwei.toFixed(4)} GWEI, priority=${networkPriorityFeeGwei.toFixed(4)} GWEI`,
             );
+          } catch (scanError: any) {
+            logger.warn(`Failed to fetch from Etherscan API: ${scanError.message}, falling back to RPC`);
           }
-        } catch (networkError: any) {
-          logger.warn(`Failed to fetch network EIP-1559 data: ${networkError.message}`);
+        }
+
+        // Fallback to RPC provider if Etherscan not available or failed
+        if (networkMaxFeeGwei === undefined || networkPriorityFeeGwei === undefined) {
+          try {
+            const feeData = await this.provider.getFeeData();
+            if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+              const block = await this.provider.getBlock('latest');
+              const baseFee = block.baseFeePerGas || BigNumber.from('0');
+
+              // Calculate recommended maxFeePerGas as 2 * baseFee + maxPriorityFeePerGas
+              const recommendedMaxFee = baseFee.mul(2).add(feeData.maxPriorityFeePerGas);
+              const maxFeePerGas = feeData.maxFeePerGas.gt(recommendedMaxFee)
+                ? feeData.maxFeePerGas
+                : recommendedMaxFee;
+
+              networkBaseFeeGwei = parseFloat(utils.formatUnits(baseFee, 'gwei'));
+              networkMaxFeeGwei = parseFloat(utils.formatUnits(maxFeePerGas, 'gwei'));
+              networkPriorityFeeGwei = parseFloat(utils.formatUnits(feeData.maxPriorityFeePerGas, 'gwei'));
+
+              logger.info(
+                `Network RPC EIP-1559 fees: baseFee=${networkBaseFeeGwei.toFixed(4)} GWEI, maxFee=${networkMaxFeeGwei.toFixed(4)} GWEI, priority=${networkPriorityFeeGwei.toFixed(4)} GWEI`,
+              );
+            }
+          } catch (networkError: any) {
+            logger.warn(`Failed to fetch network EIP-1559 data: ${networkError.message}`);
+          }
         }
 
         // Use configured values if available, otherwise use network values

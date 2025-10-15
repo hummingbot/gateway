@@ -17,6 +17,7 @@ export interface EthereumChainConfig {
   defaultNetwork: string;
   defaultWallet: string;
   rpcProvider: string;
+  etherscanAPIKey?: string;
 }
 
 // Export available networks
@@ -39,5 +40,6 @@ export function getEthereumChainConfig(): EthereumChainConfig {
     defaultNetwork: ConfigManagerV2.getInstance().get('ethereum.defaultNetwork'),
     defaultWallet: ConfigManagerV2.getInstance().get('ethereum.defaultWallet'),
     rpcProvider: ConfigManagerV2.getInstance().get('ethereum.rpcProvider') || 'url',
+    etherscanAPIKey: ConfigManagerV2.getInstance().get('ethereum.etherscanAPIKey'),
   };
 }

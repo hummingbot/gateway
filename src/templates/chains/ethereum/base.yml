@@ -1,8 +1,9 @@
 chainID: 8453
 nodeURL: https://mainnet.base.org
 nativeCurrencySymbol: ETH
-minGasPrice: 0.1
+minGasPrice: 0.01
+
 # EIP-1559 gas parameters (in GWEI)
-# If not set, will fetch from network
-maxFeePerGas: 0.1
+# If not set, will fetch from Etherscan API (if etherscanAPIKey is set in ethereum.yml) or network RPC
+maxFeePerGas: 0.01
 maxPriorityFeePerGas: 0.01
