@@ -2,3 +2,7 @@ chainID: 137
 nodeURL: https://rpc.ankr.com/polygon
 nativeCurrencySymbol: POL
 minGasPrice: 0.1
+# EIP-1559 gas parameters (in GWEI)
+# If not set, will fetch from network
+# maxFeePerGas: 0.1
+# maxPriorityFeePerGas: 0.01

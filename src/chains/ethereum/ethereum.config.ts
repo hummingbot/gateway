@@ -7,6 +7,8 @@ export interface EthereumNetworkConfig {
   nodeURL: string;
   nativeCurrencySymbol: string;
   minGasPrice?: number;
+  maxFeePerGas?: number;
+  maxPriorityFeePerGas?: number;
   infuraAPIKey?: string;
   useInfuraWebSocket?: boolean;
 }
@@ -27,6 +29,8 @@ export function getEthereumNetworkConfig(network: string): EthereumNetworkConfig
     nodeURL: ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL'),
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
     minGasPrice: ConfigManagerV2.getInstance().get(namespaceId + '.minGasPrice'),
+    maxFeePerGas: ConfigManagerV2.getInstance().get(namespaceId + '.maxFeePerGas'),
+    maxPriorityFeePerGas: ConfigManagerV2.getInstance().get(namespaceId + '.maxPriorityFeePerGas'),
   };
 }
 

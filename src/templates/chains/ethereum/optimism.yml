@@ -2,3 +2,7 @@ chainID: 10
 nodeURL: https://mainnet.optimism.io
 nativeCurrencySymbol: OETH
 minGasPrice: 0.1
+# EIP-1559 gas parameters (in GWEI)
+# If not set, will fetch from network
+# maxFeePerGas: 0.1
+# maxPriorityFeePerGas: 0.01
