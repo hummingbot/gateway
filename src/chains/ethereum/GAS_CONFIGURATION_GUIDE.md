@@ -242,11 +242,11 @@ etherscanAPIKey: 'YOUR_ETHERSCAN_API_KEY'
 **polygon.yml**:
 ```yaml
 chainID: 137
-nodeURL: https://polygon-rpc.com
-nativeCurrencySymbol: MATIC
-minGasPrice: 30.0
-# maxFeePerGas: 100          # Commented out - fetch from Etherscan
-# maxPriorityFeePerGas: 50   # Commented out - fetch from Etherscan
+nodeURL: https://rpc.ankr.com/polygon
+nativeCurrencySymbol: POL
+minGasPrice: 10
+# maxFeePerGas: 10           # Commented out - fetch from Etherscan
+# maxPriorityFeePerGas: 10   # Commented out - fetch from Etherscan
 ```
 - ✅ Polygon has higher gas prices than Ethereum in GWEI terms
 - ✅ Etherscan gastracker provides accurate priority fee estimates
