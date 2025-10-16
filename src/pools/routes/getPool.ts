@@ -22,13 +22,22 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             tradingPair: {
               type: 'string',
-              description: 'Trading pair (e.g., ETH-USDC, SOL-USDC)',
-              examples: ['ETH-USDC', 'SOL-USDC'],
+              description: 'Trading pair (e.g., SOL-USDC, ETH-USDC)',
+              examples: ['SOL-USDC', 'ETH-USDC'],
             },
           },
           required: ['tradingPair'],
         },
-        querystring: GetPoolRequestSchema,
+        querystring: {
+          ...GetPoolRequestSchema,
+          properties: {
+            ...GetPoolRequestSchema.properties,
+            network: {
+              ...GetPoolRequestSchema.properties.network,
+              default: 'mainnet-beta',
+            },
+          },
+        },
         response: {
           200: PoolListResponseSchema.items,
           404: {
