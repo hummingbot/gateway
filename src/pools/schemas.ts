@@ -68,6 +68,23 @@ export const PoolAddRequestSchema = Type.Object({
   ),
 });
 
+// Get pool request
+export const GetPoolRequestSchema = Type.Object({
+  connector: Type.String({
+    description: 'Connector (raydium, meteora, uniswap)',
+    examples: ['raydium', 'meteora', 'uniswap'],
+  }),
+  network: Type.String({
+    description: 'Network name (mainnet, mainnet-beta, etc)',
+    examples: ['mainnet', 'mainnet-beta'],
+  }),
+  type: Type.String({
+    description: 'Pool type',
+    examples: ['amm', 'clmm'],
+    enum: ['amm', 'clmm'],
+  }),
+});
+
 // Success response
 export const PoolSuccessResponseSchema = Type.Object({
   message: Type.String(),

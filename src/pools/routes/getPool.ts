@@ -1,8 +1,7 @@
-import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
 import { PoolService } from '../../services/pool-service';
-import { PoolListResponseSchema } from '../schemas';
+import { GetPoolRequestSchema, PoolListResponseSchema } from '../schemas';
 
 export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -29,20 +28,7 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
           },
           required: ['tradingPair'],
         },
-        querystring: Type.Object({
-          connector: Type.String({
-            description: 'Connector (raydium, meteora, uniswap)',
-            examples: ['raydium', 'meteora', 'uniswap'],
-          }),
-          network: Type.String({
-            description: 'Network name (mainnet, mainnet-beta, etc)',
-            examples: ['mainnet', 'mainnet-beta'],
-          }),
-          type: Type.Union([Type.Literal('amm'), Type.Literal('clmm')], {
-            description: 'Pool type',
-            examples: ['amm', 'clmm'],
-          }),
-        }),
+        querystring: GetPoolRequestSchema,
         response: {
           200: PoolListResponseSchema.items,
           404: {
