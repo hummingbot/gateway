@@ -42,4 +42,7 @@ export interface PoolAddRequest {
   address: string;
   baseSymbol?: string;
   quoteSymbol?: string;
+  baseTokenAddress?: string;
+  quoteTokenAddress?: string;
+  feePct?: number;
 }

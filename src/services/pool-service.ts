@@ -323,22 +323,9 @@ export class PoolService {
 
     const pools = await this.loadPoolList(connector);
 
-    // Check for duplicate address
+    // Check for duplicate address only
     if (pools.some((p) => p.address.toLowerCase() === pool.address.toLowerCase())) {
       throw new Error(`Pool with address ${pool.address} already exists`);
-    }
-
-    // Check for duplicate token pair on same network and type
-    if (
-      pools.some(
-        (p) =>
-          p.network === pool.network &&
-          p.type === pool.type &&
-          ((p.baseSymbol === pool.baseSymbol && p.quoteSymbol === pool.quoteSymbol) ||
-            (p.baseSymbol === pool.quoteSymbol && p.quoteSymbol === pool.baseSymbol)),
-      )
-    ) {
-      throw new Error(`Pool for ${pool.baseSymbol}-${pool.quoteSymbol} already exists on ${pool.network} ${pool.type}`);
     }
 
     pools.push(pool);

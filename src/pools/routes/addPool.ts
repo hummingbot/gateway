@@ -25,19 +25,42 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { connector, type, network, address, baseSymbol, quoteSymbol } = request.body;
+      const {
+        connector,
+        type,
+        network,
+        address,
+        baseSymbol,
+        quoteSymbol,
+        baseTokenAddress,
+        quoteTokenAddress,
+        feePct,
+      } = request.body;
 
       const poolService = PoolService.getInstance();
 
       try {
-        // Step 1: Fetch pool-info to get authoritative token addresses and fee
-        const poolInfo = await fetchPoolInfo(connector, type, network, address);
+        // Step 1: Determine if we need to fetch pool-info
+        const needsPoolInfo = !baseTokenAddress || !quoteTokenAddress || feePct === undefined;
 
-        if (!poolInfo) {
-          throw fastify.httpErrors.notFound(`Pool not found or unable to fetch pool info: ${address}`);
+        let finalBaseTokenAddress = baseTokenAddress;
+        let finalQuoteTokenAddress = quoteTokenAddress;
+        let finalFeePct = feePct;
+
+        if (needsPoolInfo) {
+          // Fetch pool-info to get missing data
+          const poolInfo = await fetchPoolInfo(connector, type, network, address);
+
+          if (!poolInfo) {
+            throw fastify.httpErrors.notFound(`Pool not found or unable to fetch pool info: ${address}`);
+          }
+
+          finalBaseTokenAddress = finalBaseTokenAddress || poolInfo.baseTokenAddress;
+          finalQuoteTokenAddress = finalQuoteTokenAddress || poolInfo.quoteTokenAddress;
+          finalFeePct = finalFeePct !== undefined ? finalFeePct : poolInfo.feePct;
         }
 
-        // Step 2: Resolve token symbols from addresses (if not provided by user)
+        // Step 2: Resolve token symbols (if not provided by user)
         let finalBaseSymbol = baseSymbol;
         let finalQuoteSymbol = quoteSymbol;
 
@@ -45,8 +68,8 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
           const { baseSymbol: resolvedBase, quoteSymbol: resolvedQuote } = await resolveTokenSymbols(
             connector,
             network,
-            poolInfo.baseTokenAddress,
-            poolInfo.quoteTokenAddress,
+            finalBaseTokenAddress,
+            finalQuoteTokenAddress,
           );
 
           finalBaseSymbol = finalBaseSymbol || resolvedBase;
@@ -59,9 +82,9 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
           network,
           baseSymbol: finalBaseSymbol,
           quoteSymbol: finalQuoteSymbol,
-          baseTokenAddress: poolInfo.baseTokenAddress,
-          quoteTokenAddress: poolInfo.quoteTokenAddress,
-          feePct: poolInfo.feePct,
+          baseTokenAddress: finalBaseTokenAddress,
+          quoteTokenAddress: finalQuoteTokenAddress,
+          feePct: finalFeePct,
           address,
         };
 
@@ -72,13 +95,13 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
           // Update existing pool
           await poolService.updatePool(connector, pool);
           return {
-            message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} updated successfully in ${connector} ${type} on ${network}`,
+            message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} (${finalFeePct}% fee) updated successfully in ${connector} ${type} on ${network}`,
           };
         } else {
           // Add new pool
           await poolService.addPool(connector, pool);
           return {
-            message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} added successfully to ${connector} ${type} on ${network}`,
+            message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} (${finalFeePct}% fee) added successfully to ${connector} ${type} on ${network}`,
           };
         }
       } catch (error) {

@@ -49,7 +49,8 @@ export const PoolAddRequestSchema = Type.Object({
   }),
   network: Type.String({
     description: 'Network name (mainnet, mainnet-beta, etc)',
-    examples: ['mainnet', 'mainnet-beta'],
+    examples: ['mainnet-beta', 'mainnet'],
+    default: 'mainnet-beta',
   }),
   address: Type.String({
     description: 'Pool contract address',
@@ -57,13 +58,33 @@ export const PoolAddRequestSchema = Type.Object({
   baseSymbol: Type.Optional(
     Type.String({
       description: 'Base token symbol (optional - fetched from pool-info if not provided)',
-      examples: ['ETH', 'SOL'],
+      examples: ['SOL', 'ETH'],
     }),
   ),
   quoteSymbol: Type.Optional(
     Type.String({
       description: 'Quote token symbol (optional - fetched from pool-info if not provided)',
       examples: ['USDC', 'USDT'],
+    }),
+  ),
+  baseTokenAddress: Type.Optional(
+    Type.String({
+      description: 'Base token contract address (optional - fetched from pool-info if not provided)',
+      examples: ['So11111111111111111111111111111111111111112'],
+    }),
+  ),
+  quoteTokenAddress: Type.Optional(
+    Type.String({
+      description: 'Quote token contract address (optional - fetched from pool-info if not provided)',
+      examples: ['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'],
+    }),
+  ),
+  feePct: Type.Optional(
+    Type.Number({
+      description: 'Pool fee percentage (optional - fetched from pool-info if not provided)',
+      examples: [0.25, 0.3, 1],
+      minimum: 0,
+      maximum: 100,
     }),
   ),
 });
