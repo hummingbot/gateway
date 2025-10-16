@@ -359,6 +359,31 @@ export class PoolService {
   }
 
   /**
+   * Get a pool by metadata (type, network, feePct, token addresses)
+   * This finds pools with identical characteristics but potentially different addresses
+   */
+  public async getPoolByMetadata(
+    connector: string,
+    type: 'amm' | 'clmm',
+    network: string,
+    baseTokenAddress: string,
+    quoteTokenAddress: string,
+    feePct: number,
+  ): Promise<Pool | null> {
+    const pools = await this.loadPoolList(connector);
+    return (
+      pools.find(
+        (p) =>
+          p.type === type &&
+          p.network === network &&
+          p.feePct === feePct &&
+          p.baseTokenAddress.toLowerCase() === baseTokenAddress.toLowerCase() &&
+          p.quoteTokenAddress.toLowerCase() === quoteTokenAddress.toLowerCase(),
+      ) || null
+    );
+  }
+
+  /**
    * Update an existing pool
    */
   public async updatePool(connector: string, pool: Pool): Promise<void> {

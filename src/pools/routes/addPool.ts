@@ -82,22 +82,50 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
           address,
         };
 
-        // Step 4: Check if pool already exists by address
-        const existingPool = await poolService.getPoolByAddress(connector, address);
+        // Step 4: Check if a pool with identical metadata already exists
+        const existingPoolByMetadata = await poolService.getPoolByMetadata(
+          connector,
+          type,
+          network,
+          baseTokenAddress,
+          quoteTokenAddress,
+          finalFeePct,
+        );
 
-        if (existingPool) {
-          // Update existing pool
+        if (existingPoolByMetadata) {
+          if (existingPoolByMetadata.address.toLowerCase() === address.toLowerCase()) {
+            // Same pool (same address and metadata), just update it
+            await poolService.updatePool(connector, pool);
+            return {
+              message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} (${finalFeePct}% fee) updated successfully in ${connector} ${type} on ${network}`,
+            };
+          } else {
+            // Different address but same metadata - replace the old pool
+            await poolService.removePool(connector, network, type, existingPoolByMetadata.address);
+            await poolService.addPool(connector, pool);
+            return {
+              message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} (${finalFeePct}% fee) replaced (old address: ${existingPoolByMetadata.address}, new address: ${address}) in ${connector} ${type} on ${network}`,
+            };
+          }
+        }
+
+        // Step 5: No pool with matching metadata exists - check if address is used
+        const existingPoolByAddress = await poolService.getPoolByAddress(connector, address);
+
+        if (existingPoolByAddress) {
+          // Address exists but with different metadata - this shouldn't happen normally
+          // but we'll update it anyway
           await poolService.updatePool(connector, pool);
           return {
             message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} (${finalFeePct}% fee) updated successfully in ${connector} ${type} on ${network}`,
           };
-        } else {
-          // Add new pool
-          await poolService.addPool(connector, pool);
-          return {
-            message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} (${finalFeePct}% fee) added successfully to ${connector} ${type} on ${network}`,
-          };
         }
+
+        // Step 6: Completely new pool - add it
+        await poolService.addPool(connector, pool);
+        return {
+          message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} (${finalFeePct}% fee) added successfully to ${connector} ${type} on ${network}`,
+        };
       } catch (error) {
         if (error.statusCode) {
           throw error; // Already a Fastify error
