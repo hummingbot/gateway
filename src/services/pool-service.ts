@@ -359,8 +359,8 @@ export class PoolService {
   }
 
   /**
-   * Get a pool by metadata (type, network, feePct, token addresses)
-   * This finds pools with identical characteristics but potentially different addresses
+   * Get a pool by metadata (type, network, token addresses)
+   * This finds pools with identical token pair but potentially different fee tiers or addresses
    */
   public async getPoolByMetadata(
     connector: string,
@@ -368,7 +368,6 @@ export class PoolService {
     network: string,
     baseTokenAddress: string,
     quoteTokenAddress: string,
-    feePct: number,
   ): Promise<Pool | null> {
     const pools = await this.loadPoolList(connector);
     return (
@@ -376,7 +375,6 @@ export class PoolService {
         (p) =>
           p.type === type &&
           p.network === network &&
-          p.feePct === feePct &&
           p.baseTokenAddress.toLowerCase() === baseTokenAddress.toLowerCase() &&
           p.quoteTokenAddress.toLowerCase() === quoteTokenAddress.toLowerCase(),
       ) || null

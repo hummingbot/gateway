@@ -82,29 +82,28 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
           address,
         };
 
-        // Step 4: Check if a pool with identical metadata already exists
+        // Step 4: Check if a pool with same token pair already exists (ignoring feePct)
         const existingPoolByMetadata = await poolService.getPoolByMetadata(
           connector,
           type,
           network,
           baseTokenAddress,
           quoteTokenAddress,
-          finalFeePct,
         );
 
         if (existingPoolByMetadata) {
           if (existingPoolByMetadata.address.toLowerCase() === address.toLowerCase()) {
-            // Same pool (same address and metadata), just update it
+            // Same pool (same address and token pair), just update it (fee tier may have changed)
             await poolService.updatePool(connector, pool);
             return {
-              message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} (${finalFeePct}% fee) updated successfully in ${connector} ${type} on ${network}`,
+              message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} updated to ${finalFeePct}% fee in ${connector} ${type} on ${network}`,
             };
           } else {
-            // Different address but same metadata - replace the old pool
+            // Different address but same token pair - replace the old pool
             await poolService.removePool(connector, network, type, existingPoolByMetadata.address);
             await poolService.addPool(connector, pool);
             return {
-              message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} (${finalFeePct}% fee) replaced (old address: ${existingPoolByMetadata.address}, new address: ${address}) in ${connector} ${type} on ${network}`,
+              message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} (${finalFeePct}% fee) replaced (old: ${existingPoolByMetadata.address} ${existingPoolByMetadata.feePct}% fee, new: ${address}) in ${connector} ${type} on ${network}`,
             };
           }
         }
