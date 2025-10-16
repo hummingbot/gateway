@@ -10,6 +10,9 @@ import { rootPath } from '../../paths';
 // Default transaction confirmation timeout in milliseconds (12 seconds)
 export const DEFAULT_TRANSACTION_TIMEOUT = 12000;
 
+// Longer timeout for approval transactions (60 seconds)
+export const APPROVAL_TRANSACTION_TIMEOUT = 60000;
+
 // Validates if the input string is a valid Ethereum address
 export const isAddress = (address: string): boolean => {
   return /^0x[a-fA-F0-9]{40}$/.test(address);

@@ -43,16 +43,94 @@ export async function quoteSwap(
 
   logger.info(`Getting quote for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`);
 
-  // Get quote from Jupiter API
-  const quoteResponse = await jupiter.getQuote(
-    inputToken.address,
-    outputToken.address,
-    inputAmount / Math.pow(10, inputToken.decimals),
-    slippagePct,
-    onlyDirectRoutes ?? JupiterConfig.config.onlyDirectRoutes,
-    restrictIntermediateTokens ?? JupiterConfig.config.restrictIntermediateTokens,
-    side === 'BUY' ? 'ExactOut' : 'ExactIn',
-  );
+  let quoteResponse;
+  let usedApproximation = false;
+
+  try {
+    // Try to get quote with the requested swap mode
+    quoteResponse = await jupiter.getQuote(
+      inputToken.address,
+      outputToken.address,
+      inputAmount / Math.pow(10, inputToken.decimals),
+      slippagePct,
+      onlyDirectRoutes ?? JupiterConfig.config.onlyDirectRoutes,
+      restrictIntermediateTokens ?? JupiterConfig.config.restrictIntermediateTokens,
+      side === 'BUY' ? 'ExactOut' : 'ExactIn',
+    );
+  } catch (error) {
+    // If BUY side (ExactOut) fails, try approximation with ExactIn
+    if (
+      side === 'BUY' &&
+      error.message &&
+      (error.message.includes('ExactOut not supported') ||
+        error.message.includes('Route not found') ||
+        error.message.includes('Could not find any route'))
+    ) {
+      logger.info('ExactOut not supported, falling back to ExactIn with approximation');
+
+      // For approximation, we need to estimate the input amount
+      // Start with an initial estimate based on a simple conversion
+      // We'll use iterative refinement to get closer to the desired output
+      let estimatedInputAmount = amount; // Start with 1:1 ratio as initial guess
+      let lastQuote;
+      let attempts = 0;
+      const maxAttempts = 5;
+      const tolerance = 0.01; // 1% tolerance
+
+      while (attempts < maxAttempts) {
+        attempts++;
+
+        try {
+          // Get quote with ExactIn mode
+          lastQuote = await jupiter.getQuote(
+            quoteTokenInfo.address, // Swap input/output for ExactIn
+            baseTokenInfo.address,
+            estimatedInputAmount,
+            slippagePct,
+            onlyDirectRoutes ?? JupiterConfig.config.onlyDirectRoutes,
+            restrictIntermediateTokens ?? JupiterConfig.config.restrictIntermediateTokens,
+            'ExactIn',
+          );
+
+          if (!lastQuote) break;
+
+          // Check how close we are to the target output
+          const actualOutput = Number(lastQuote.outAmount) / Math.pow(10, baseTokenInfo.decimals);
+          const targetOutput = amount;
+          const difference = Math.abs(actualOutput - targetOutput) / targetOutput;
+
+          logger.debug(
+            `Approximation attempt ${attempts}: input=${estimatedInputAmount}, output=${actualOutput}, target=${targetOutput}, diff=${difference}`,
+          );
+
+          if (difference < tolerance) {
+            // Close enough, use this quote
+            quoteResponse = lastQuote;
+            usedApproximation = true;
+            logger.info(`Approximation successful after ${attempts} attempts`);
+            break;
+          }
+
+          // Adjust the input amount based on the ratio
+          estimatedInputAmount = estimatedInputAmount * (targetOutput / actualOutput);
+        } catch (innerError) {
+          logger.debug(`Approximation attempt ${attempts} failed:`, innerError.message);
+          break;
+        }
+      }
+
+      if (!quoteResponse && lastQuote) {
+        // Use the last quote even if not perfectly accurate
+        quoteResponse = lastQuote;
+        usedApproximation = true;
+        logger.info('Using approximate quote (may not match exact output amount)');
+      }
+    }
+
+    if (!quoteResponse) {
+      throw error; // Re-throw the original error if fallback didn't work
+    }
+  }
 
   if (!quoteResponse) {
     throw fastify.httpErrors.notFound('No routes found for this swap');
@@ -88,7 +166,7 @@ export async function quoteSwap(
     tokenIn: inputToken.address,
     tokenOut: outputToken.address,
     amountIn: side === 'SELL' ? amount : estimatedAmountIn,
-    amountOut: side === 'SELL' ? estimatedAmountOut : amount,
+    amountOut: side === 'SELL' ? estimatedAmountOut : usedApproximation ? estimatedAmountOut : amount,
     price,
     priceImpactPct: parseFloat(quoteResponse.priceImpactPct || '0'),
     minAmountOut,
@@ -107,6 +185,8 @@ export async function quoteSwap(
       contextSlot: quoteResponse.contextSlot,
       timeTaken: quoteResponse.timeTaken,
     },
+    // Include approximation flag if used
+    ...(usedApproximation && { approximation: true }),
   };
 }
 

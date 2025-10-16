@@ -129,6 +129,14 @@ ask_config_choices () {
     UPDATE_POOLS="N"
   fi
   
+  # Ask about rpc folder
+  if prompt_yes_no "  - rpc/ (RPC provider configurations like Helius, Infura)?" "Y"; then
+    UPDATE_RPC="Y"
+    PLANNED_UPDATES="${PLANNED_UPDATES}rpc/, "
+  else
+    UPDATE_RPC="N"
+  fi
+  
   # Remove trailing comma and space
   PLANNED_UPDATES=${PLANNED_UPDATES%, }
 }
@@ -211,6 +219,12 @@ copy_configs () {
   if [ "$UPDATE_POOLS" = "Y" ]; then
     cp -r $TEMPLATE_DIR/pools $HOST_CONF_PATH/
     UPDATED_ITEMS="${UPDATED_ITEMS}pools/, "
+  fi
+  
+  # Copy rpc folder if selected
+  if [ "$UPDATE_RPC" = "Y" ]; then
+    cp -r $TEMPLATE_DIR/rpc $HOST_CONF_PATH/
+    UPDATED_ITEMS="${UPDATED_ITEMS}rpc/, "
   fi
   
   # Note: wallets folder is preserved and never overwritten
@@ -333,6 +347,9 @@ if [ "$UPDATE_TOKENS" = "Y" ]; then
 fi
 if [ "$UPDATE_POOLS" = "Y" ]; then
   echo "   - pools/ (default pool lists for each DEX connector)"
+fi
+if [ "$UPDATE_RPC" = "Y" ]; then
+  echo "   - rpc/ (RPC provider configurations like Helius, Infura)"
 fi
 echo "   - root.yml (always updated - essential file)"
 echo "   - namespaces/ (always updated - config schemas)"

@@ -9,6 +9,12 @@
     "defaultWallet": {
       "type": "string",
       "description": "Default wallet address for examples and testing"
+    },
+    "rpcProvider": {
+      "type": "string",
+      "enum": ["url", "infura"],
+      "default": "url",
+      "description": "RPC provider to use: 'url' for standard nodeURL from network config, 'infura' for Infura service across all networks"
     }
   },
   "required": ["defaultNetwork", "defaultWallet"],

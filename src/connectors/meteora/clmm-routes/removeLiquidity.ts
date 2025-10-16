@@ -83,11 +83,7 @@ export async function removeLiquidity(
       // Simulate before sending
       await solana.simulateWithErrorHandling(tx, fastify);
 
-      const result = await solana.sendAndConfirmTransaction(
-        tx,
-        [wallet],
-        400000, // Higher compute units for remove liquidity
-      );
+      const result = await solana.sendAndConfirmTransaction(tx, [wallet]);
       totalFee += result.fee;
       lastSignature = result.signature;
     }
@@ -104,11 +100,7 @@ export async function removeLiquidity(
 
     logger.info('Transaction simulated successfully, sending to network...');
 
-    const result = await solana.sendAndConfirmTransaction(
-      removeLiquidityTx,
-      [wallet],
-      400000, // Higher compute units for remove liquidity
-    );
+    const result = await solana.sendAndConfirmTransaction(removeLiquidityTx, [wallet]);
     signature = result.signature;
     fee = result.fee;
   }

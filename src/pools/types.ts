@@ -16,6 +16,9 @@ export enum SupportedConnector {
   RAYDIUM = 'raydium',
   METEORA = 'meteora',
   UNISWAP = 'uniswap',
+  PANCAKESWAP = 'pancakeswap',
+  ZEROX = '0x',
+  JUPITER = 'jupiter',
 }
 
 export function isSupportedConnector(connector: string): connector is SupportedConnector {
