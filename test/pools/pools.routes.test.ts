@@ -63,10 +63,12 @@ describe('Pool Routes Tests', () => {
       getPool: jest.fn(),
       addPool: jest.fn(),
       removePool: jest.fn(),
+      updatePool: jest.fn(),
       loadPoolList: jest.fn(),
       savePoolList: jest.fn(),
       validatePool: jest.fn(),
       getPoolByAddress: jest.fn(),
+      getPoolByMetadata: jest.fn(),
       getDefaultPools: jest.fn(),
     } as any;
 
@@ -264,6 +266,8 @@ describe('Pool Routes Tests', () => {
   describe('POST /pools', () => {
     it('should add new pool successfully', async () => {
       mockPoolService.addPool.mockResolvedValue(undefined);
+      mockPoolService.getPoolByMetadata.mockResolvedValue(null);
+      mockPoolService.getPoolByAddress.mockResolvedValue(null);
 
       const response = await fastify.inject({
         method: 'POST',
@@ -275,14 +279,17 @@ describe('Pool Routes Tests', () => {
           baseSymbol: 'WIF',
           quoteSymbol: 'SOL',
           address: 'EP2ib6dYdEeqD8MfE2ezHCxX3kP3K2eLKkirfPm5eyMx',
+          baseTokenAddress: 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm',
+          quoteTokenAddress: 'So11111111111111111111111111111111111111112',
+          feePct: 0.25,
         },
       });
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toHaveProperty('message');
-      expect(JSON.parse(response.payload).message).toContain('Pool WIF-SOL added successfully');
+      expect(JSON.parse(response.payload).message).toContain('Pool WIF-SOL');
 
-      // Verify addPool was called with enhanced pool data from pool-info
+      // Verify addPool was called with pool data
       expect(mockPoolService.addPool).toHaveBeenCalledWith(
         'raydium',
         expect.objectContaining({
@@ -291,15 +298,26 @@ describe('Pool Routes Tests', () => {
           baseSymbol: 'WIF',
           quoteSymbol: 'SOL',
           address: 'EP2ib6dYdEeqD8MfE2ezHCxX3kP3K2eLKkirfPm5eyMx',
-          baseTokenAddress: expect.any(String),
-          quoteTokenAddress: expect.any(String),
-          feePct: expect.any(Number),
+          baseTokenAddress: 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm',
+          quoteTokenAddress: 'So11111111111111111111111111111111111111112',
+          feePct: 0.25,
         }),
       );
     });
 
-    it('should return 400 for duplicate pool', async () => {
-      mockPoolService.addPool.mockRejectedValue(new Error('Pool with address already exists'));
+    it('should update existing pool with same address', async () => {
+      mockPoolService.getPoolByMetadata.mockResolvedValue(null);
+      mockPoolService.getPoolByAddress.mockResolvedValue({
+        type: 'amm',
+        network: 'mainnet-beta',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        baseTokenAddress: 'So11111111111111111111111111111111111111112',
+        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        feePct: 0.25,
+        address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+      });
+      mockPoolService.updatePool.mockResolvedValue(undefined);
 
       const response = await fastify.inject({
         method: 'POST',
@@ -311,11 +329,15 @@ describe('Pool Routes Tests', () => {
           baseSymbol: 'SOL',
           quoteSymbol: 'USDC',
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+          baseTokenAddress: 'So11111111111111111111111111111111111111112',
+          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          feePct: 0.3,
         },
       });
 
-      expect(response.statusCode).toBe(400);
+      expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toHaveProperty('message');
+      expect(mockPoolService.updatePool).toHaveBeenCalled();
     });
 
     it('should return 400 for missing required fields', async () => {
