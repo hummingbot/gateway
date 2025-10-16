@@ -40,24 +40,18 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
       const poolService = PoolService.getInstance();
 
       try {
-        // Step 1: Determine if we need to fetch pool-info
-        const needsPoolInfo = !baseTokenAddress || !quoteTokenAddress || feePct === undefined;
-
-        let finalBaseTokenAddress = baseTokenAddress;
-        let finalQuoteTokenAddress = quoteTokenAddress;
+        // Step 1: Determine if we need to fetch pool-info for feePct
         let finalFeePct = feePct;
 
-        if (needsPoolInfo) {
-          // Fetch pool-info to get missing data
+        if (finalFeePct === undefined) {
+          // Fetch pool-info to get fee percentage
           const poolInfo = await fetchPoolInfo(connector, type, network, address);
 
           if (!poolInfo) {
             throw fastify.httpErrors.notFound(`Pool not found or unable to fetch pool info: ${address}`);
           }
 
-          finalBaseTokenAddress = finalBaseTokenAddress || poolInfo.baseTokenAddress;
-          finalQuoteTokenAddress = finalQuoteTokenAddress || poolInfo.quoteTokenAddress;
-          finalFeePct = finalFeePct !== undefined ? finalFeePct : poolInfo.feePct;
+          finalFeePct = poolInfo.feePct;
         }
 
         // Step 2: Resolve token symbols (if not provided by user)
@@ -68,8 +62,8 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
           const { baseSymbol: resolvedBase, quoteSymbol: resolvedQuote } = await resolveTokenSymbols(
             connector,
             network,
-            finalBaseTokenAddress,
-            finalQuoteTokenAddress,
+            baseTokenAddress,
+            quoteTokenAddress,
           );
 
           finalBaseSymbol = finalBaseSymbol || resolvedBase;
@@ -82,8 +76,8 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
           network,
           baseSymbol: finalBaseSymbol,
           quoteSymbol: finalQuoteSymbol,
-          baseTokenAddress: finalBaseTokenAddress,
-          quoteTokenAddress: finalQuoteTokenAddress,
+          baseTokenAddress,
+          quoteTokenAddress,
           feePct: finalFeePct,
           address,
         };
