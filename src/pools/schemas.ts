@@ -76,7 +76,8 @@ export const GetPoolRequestSchema = Type.Object({
   }),
   network: Type.String({
     description: 'Network name (mainnet, mainnet-beta, etc)',
-    examples: ['mainnet', 'mainnet-beta'],
+    examples: ['mainnet-beta', 'mainnet'],
+    default: 'mainnet-beta',
   }),
   type: Type.String({
     description: 'Pool type',
