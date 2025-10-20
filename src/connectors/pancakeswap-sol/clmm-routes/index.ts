@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import addLiquidityRoute from './addLiquidity';
 import closePositionRoute from './closePosition';
 import collectFeesRoute from './collectFees';
 import executeSwapRoute from './executeSwap';
@@ -15,13 +16,10 @@ export const pancakeswapSolClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(positionsOwnedRoute);
   await fastify.register(quoteSwapRoute);
   await fastify.register(executeSwapRoute);
+  await fastify.register(addLiquidityRoute);
   await fastify.register(removeLiquidityRoute);
   await fastify.register(collectFeesRoute);
   await fastify.register(closePositionRoute);
-  // Additional routes will be added here:
-  // - quotePosition
-  // - openPosition
-  // - addLiquidity
 };
 
 export default pancakeswapSolClmmRoutes;

@@ -89,18 +89,57 @@ Key features:
   - Includes compute budget and priority fees
   - Simulates before sending
 
+### Position Management Routes (Implemented)
+
+#### 6. Add Liquidity
+- **Endpoint**: `POST /connectors/pancakeswap-sol/clmm/add-liquidity`
+- **Description**: Add liquidity to an existing position
+- **Parameters**:
+  - `network`: Solana network
+  - `walletAddress`: Wallet address
+  - `positionAddress`: Position NFT address
+  - `baseTokenAmount`: Base token amount to add
+  - `quoteTokenAmount`: Quote token amount to add
+- **Returns**: Transaction signature and amounts added
+- **Implementation**: Uses increase_liquidity_v2 instruction with manual building
+
+#### 7. Remove Liquidity
+- **Endpoint**: `POST /connectors/pancakeswap-sol/clmm/remove-liquidity`
+- **Description**: Remove liquidity from a position by percentage
+- **Parameters**:
+  - `network`: Solana network
+  - `walletAddress`: Wallet address
+  - `positionAddress`: Position NFT address
+  - `percentageToRemove`: Percentage (0-100)
+- **Returns**: Transaction signature and amounts removed
+- **Implementation**: Uses decrease_liquidity_v2 instruction with tick array calculation
+
+#### 8. Collect Fees
+- **Endpoint**: `POST /connectors/pancakeswap-sol/clmm/collect-fees`
+- **Description**: Collect accumulated fees from a position
+- **Parameters**:
+  - `network`: Solana network
+  - `walletAddress`: Wallet address
+  - `positionAddress`: Position NFT address
+- **Returns**: Transaction signature and fees collected
+- **Implementation**: Uses the clever approach of removing 1% liquidity to collect fees
+
+#### 9. Close Position
+- **Endpoint**: `POST /connectors/pancakeswap-sol/clmm/close-position`
+- **Description**: Close an empty position (must have zero liquidity)
+- **Parameters**:
+  - `network`: Solana network
+  - `walletAddress`: Wallet address
+  - `positionAddress`: Position NFT address
+- **Returns**: Transaction signature
+- **Implementation**: Uses close_position instruction, requires position to be emptied first
+
 ## Not Yet Implemented
 
-### Position Management Routes (Pending)
-
-The following position management routes require more complex instruction building:
+### Advanced Routes (Pending)
 
 Routes pending implementation:
 - ❌ `POST /open-position` - Open a new CLMM position (requires NFT minting)
-- ❌ `POST /close-position` - Close an existing position
-- ❌ `POST /add-liquidity` - Add liquidity to a position
-- ❌ `POST /remove-liquidity` - Remove liquidity from a position
-- ❌ `POST /collect-fees` - Collect accumulated fees
 - ❌ `GET /quote-position` - Quote amounts for position operations (requires tick math)
 
 ## Example Usage

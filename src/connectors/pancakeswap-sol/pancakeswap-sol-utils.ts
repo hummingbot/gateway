@@ -481,3 +481,157 @@ export async function buildRemoveLiquidityTransaction(
 
   return new VersionedTransaction(messageV0);
 }
+
+/**
+ * Build an increase_liquidity_v2 instruction for PancakeSwap Solana CLMM
+ * Simplified version: takes token amounts, lets program calculate liquidity
+ */
+export async function buildIncreaseLiquidityV2Instruction(
+  solana: Solana,
+  positionNftMint: PublicKey,
+  walletPubkey: PublicKey,
+  amount0Max: BN,
+  amount1Max: BN,
+  baseFlag: boolean, // true = base amount_0, false = base amount_1
+): Promise<TransactionInstruction> {
+  // Get position account to extract pool and ticks
+  const [personalPosition] = PublicKey.findProgramAddressSync(
+    [Buffer.from('position'), positionNftMint.toBuffer()],
+    PANCAKESWAP_CLMM_PROGRAM_ID,
+  );
+
+  const positionAccountInfo = await solana.connection.getAccountInfo(personalPosition);
+  if (!positionAccountInfo) {
+    throw new Error(`Position account not found: ${personalPosition.toString()}`);
+  }
+
+  const { poolId, tickLowerIndex, tickUpperIndex } = parsePositionData(positionAccountInfo.data);
+
+  // Get pool account
+  const poolAccountInfo = await solana.connection.getAccountInfo(poolId);
+  if (!poolAccountInfo) {
+    throw new Error(`Pool account not found: ${poolId.toString()}`);
+  }
+
+  const poolData = poolAccountInfo.data;
+
+  // Parse pool data
+  let offset = 9;
+  offset += 64;
+  const tokenMint0 = new PublicKey(poolData.slice(offset, offset + 32));
+  offset += 32;
+  const tokenMint1 = new PublicKey(poolData.slice(offset, offset + 32));
+  offset += 32;
+  const tokenVault0 = new PublicKey(poolData.slice(offset, offset + 32));
+  offset += 32;
+  const tokenVault1 = new PublicKey(poolData.slice(offset, offset + 32));
+
+  const tickSpacing = parsePoolTickSpacing(poolData);
+
+  // Calculate tick array addresses
+  const tickArrayLowerStartIndex = getTickArrayStartIndexFromTick(tickLowerIndex, tickSpacing);
+  const tickArrayUpperStartIndex = getTickArrayStartIndexFromTick(tickUpperIndex, tickSpacing);
+  const tickArrayLower = getTickArrayAddress(poolId, tickArrayLowerStartIndex);
+  const tickArrayUpper = getTickArrayAddress(poolId, tickArrayUpperStartIndex);
+
+  // Derive protocol_position PDA
+  const tickLowerBuffer = Buffer.alloc(4);
+  tickLowerBuffer.writeInt32LE(tickLowerIndex, 0);
+  const tickUpperBuffer = Buffer.alloc(4);
+  tickUpperBuffer.writeInt32LE(tickUpperIndex, 0);
+
+  const [protocolPosition] = PublicKey.findProgramAddressSync(
+    [Buffer.from('position'), poolId.toBuffer(), tickLowerBuffer, tickUpperBuffer],
+    PANCAKESWAP_CLMM_PROGRAM_ID,
+  );
+
+  // Get NFT account
+  let nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_2022_PROGRAM_ID);
+  const accountInfo = await solana.connection.getAccountInfo(nftAccount);
+
+  if (!accountInfo) {
+    nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_PROGRAM_ID);
+  }
+
+  // Get user token accounts
+  const tokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, false, TOKEN_PROGRAM_ID);
+  const tokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, false, TOKEN_PROGRAM_ID);
+
+  // Create instruction - use liquidity=0 to let program calculate from amounts
+  const coder = new BorshCoder(clmmIdl);
+  const instructionData = coder.instruction.encode('increase_liquidity_v2', {
+    liquidity: new BN(0), // Let program calculate
+    amount0Max,
+    amount1Max,
+    baseFlag: baseFlag ? { some: true } : { some: false }, // Option<bool> encoding
+  });
+
+  return new TransactionInstruction({
+    programId: PANCAKESWAP_CLMM_PROGRAM_ID,
+    keys: [
+      { pubkey: walletPubkey, isSigner: true, isWritable: false }, // nft_owner
+      { pubkey: nftAccount, isSigner: false, isWritable: false }, // nft_account
+      { pubkey: poolId, isSigner: false, isWritable: true }, // pool_state
+      { pubkey: protocolPosition, isSigner: false, isWritable: true }, // protocol_position
+      { pubkey: personalPosition, isSigner: false, isWritable: true }, // personal_position
+      { pubkey: tickArrayLower, isSigner: false, isWritable: true }, // tick_array_lower
+      { pubkey: tickArrayUpper, isSigner: false, isWritable: true }, // tick_array_upper
+      { pubkey: tokenAccount0, isSigner: false, isWritable: true }, // token_account_0
+      { pubkey: tokenAccount1, isSigner: false, isWritable: true }, // token_account_1
+      { pubkey: tokenVault0, isSigner: false, isWritable: true }, // token_vault_0
+      { pubkey: tokenVault1, isSigner: false, isWritable: true }, // token_vault_1
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
+      { pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program_2022
+      { pubkey: tokenMint0, isSigner: false, isWritable: false }, // vault_0_mint
+      { pubkey: tokenMint1, isSigner: false, isWritable: false }, // vault_1_mint
+    ],
+    data: instructionData,
+  });
+}
+
+/**
+ * Build a complete add liquidity transaction with compute budget
+ */
+export async function buildAddLiquidityTransaction(
+  solana: Solana,
+  positionNftMint: PublicKey,
+  walletPubkey: PublicKey,
+  amount0Max: BN,
+  amount1Max: BN,
+  baseFlag: boolean,
+  computeUnits: number = 600000,
+  priorityFeePerCU?: number,
+): Promise<VersionedTransaction> {
+  const addLiqIx = await buildIncreaseLiquidityV2Instruction(
+    solana,
+    positionNftMint,
+    walletPubkey,
+    amount0Max,
+    amount1Max,
+    baseFlag,
+  );
+
+  const instructions: TransactionInstruction[] = [];
+
+  instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
+
+  if (priorityFeePerCU !== undefined && priorityFeePerCU > 0) {
+    instructions.push(
+      ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: priorityFeePerCU,
+      }),
+    );
+  }
+
+  instructions.push(addLiqIx);
+
+  const { blockhash } = await solana.connection.getLatestBlockhash('confirmed');
+
+  const messageV0 = new TransactionMessage({
+    payerKey: walletPubkey,
+    recentBlockhash: blockhash,
+    instructions,
+  }).compileToV0Message();
+
+  return new VersionedTransaction(messageV0);
+}

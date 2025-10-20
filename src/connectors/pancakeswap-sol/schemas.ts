@@ -100,3 +100,16 @@ export const PancakeswapSolClmmCollectFeesRequest = Type.Intersect([
 ]);
 
 export type PancakeswapSolClmmCollectFeesRequestType = Static<typeof PancakeswapSolClmmCollectFeesRequest>;
+
+// CLMM Add Liquidity Request
+export const PancakeswapSolClmmAddLiquidityRequest = Type.Intersect([
+  BaseRequest,
+  Type.Object({
+    walletAddress: Type.String({ description: 'Wallet address' }),
+    positionAddress: Type.String({ description: 'Position NFT address' }),
+    baseTokenAmount: Type.Number({ description: 'Base token amount to add' }),
+    quoteTokenAmount: Type.Number({ description: 'Quote token amount to add' }),
+  }),
+]);
+
+export type PancakeswapSolClmmAddLiquidityRequestType = Static<typeof PancakeswapSolClmmAddLiquidityRequest>;
