@@ -66,3 +66,37 @@ export const PancakeswapSolClmmQuoteSwapRequest = Type.Intersect([
 ]);
 
 export type PancakeswapSolClmmQuoteSwapRequestType = Static<typeof PancakeswapSolClmmQuoteSwapRequest>;
+
+// CLMM Close Position Request
+export const PancakeswapSolClmmClosePositionRequest = Type.Intersect([
+  BaseRequest,
+  Type.Object({
+    walletAddress: Type.String({ description: 'Wallet address' }),
+    positionAddress: Type.String({ description: 'Position NFT address to close' }),
+  }),
+]);
+
+export type PancakeswapSolClmmClosePositionRequestType = Static<typeof PancakeswapSolClmmClosePositionRequest>;
+
+// CLMM Remove Liquidity Request
+export const PancakeswapSolClmmRemoveLiquidityRequest = Type.Intersect([
+  BaseRequest,
+  Type.Object({
+    walletAddress: Type.String({ description: 'Wallet address' }),
+    positionAddress: Type.String({ description: 'Position NFT address' }),
+    percentageToRemove: Type.Number({ description: 'Percentage of liquidity to remove (0-100)' }),
+  }),
+]);
+
+export type PancakeswapSolClmmRemoveLiquidityRequestType = Static<typeof PancakeswapSolClmmRemoveLiquidityRequest>;
+
+// CLMM Collect Fees Request
+export const PancakeswapSolClmmCollectFeesRequest = Type.Intersect([
+  BaseRequest,
+  Type.Object({
+    walletAddress: Type.String({ description: 'Wallet address' }),
+    positionAddress: Type.String({ description: 'Position NFT address' }),
+  }),
+]);
+
+export type PancakeswapSolClmmCollectFeesRequestType = Static<typeof PancakeswapSolClmmCollectFeesRequest>;

@@ -164,3 +164,320 @@ export async function buildSwapTransaction(
 
   return new VersionedTransaction(messageV0);
 }
+
+/**
+ * Build a close_position instruction for PancakeSwap Solana CLMM
+ */
+export async function buildClosePositionInstruction(
+  solana: Solana,
+  positionNftMint: PublicKey,
+  walletPubkey: PublicKey,
+): Promise<TransactionInstruction> {
+  // Derive personal_position PDA: ["position", position_nft_mint]
+  const [personalPosition] = PublicKey.findProgramAddressSync(
+    [Buffer.from('position'), positionNftMint.toBuffer()],
+    PANCAKESWAP_CLMM_PROGRAM_ID,
+  );
+
+  // Get the position NFT account (try both SPL Token and Token2022)
+  // First check Token2022 since PancakeSwap uses it for position NFTs
+  let positionNftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_2022_PROGRAM_ID);
+  let accountInfo = await solana.connection.getAccountInfo(positionNftAccount);
+
+  // If not found in Token2022, try SPL Token
+  if (!accountInfo) {
+    positionNftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_PROGRAM_ID);
+    accountInfo = await solana.connection.getAccountInfo(positionNftAccount);
+
+    if (!accountInfo) {
+      throw new Error(`Position NFT account not found for mint: ${positionNftMint.toString()}`);
+    }
+  }
+
+  // Create instruction using Anchor coder
+  const coder = new BorshCoder(clmmIdl);
+  const instructionData = coder.instruction.encode('close_position', {});
+
+  return new TransactionInstruction({
+    programId: PANCAKESWAP_CLMM_PROGRAM_ID,
+    keys: [
+      { pubkey: walletPubkey, isSigner: true, isWritable: true }, // nft_owner
+      { pubkey: positionNftMint, isSigner: false, isWritable: true }, // position_nft_mint
+      { pubkey: positionNftAccount, isSigner: false, isWritable: true }, // position_nft_account
+      { pubkey: personalPosition, isSigner: false, isWritable: true }, // personal_position
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
+    ],
+    data: instructionData,
+  });
+}
+
+/**
+ * Build a complete close position transaction with compute budget
+ */
+export async function buildClosePositionTransaction(
+  solana: Solana,
+  positionNftMint: PublicKey,
+  walletPubkey: PublicKey,
+  computeUnits: number = 400000,
+  priorityFeePerCU?: number,
+): Promise<VersionedTransaction> {
+  const closePositionIx = await buildClosePositionInstruction(solana, positionNftMint, walletPubkey);
+
+  const instructions: TransactionInstruction[] = [];
+
+  // Add compute budget instructions
+  instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
+
+  if (priorityFeePerCU !== undefined && priorityFeePerCU > 0) {
+    instructions.push(
+      ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: priorityFeePerCU,
+      }),
+    );
+  }
+
+  // Add close position instruction
+  instructions.push(closePositionIx);
+
+  // Get recent blockhash
+  const { blockhash } = await solana.connection.getLatestBlockhash('confirmed');
+
+  // Build message
+  const messageV0 = new TransactionMessage({
+    payerKey: walletPubkey,
+    recentBlockhash: blockhash,
+    instructions,
+  }).compileToV0Message();
+
+  return new VersionedTransaction(messageV0);
+}
+
+/**
+ * Calculate tick array start index from tick and tick spacing
+ */
+function getTickArrayStartIndexFromTick(tick: number, tickSpacing: number): number {
+  const ticksPerArray = tickSpacing * 60; // CLMM uses 60 ticks per array
+  return Math.floor(tick / ticksPerArray) * ticksPerArray;
+}
+
+/**
+ * Derive tick array address from pool and start index
+ */
+function getTickArrayAddress(poolAddress: PublicKey, startIndex: number): PublicKey {
+  const startIndexBuffer = Buffer.alloc(4);
+  startIndexBuffer.writeInt32LE(startIndex, 0);
+
+  const [tickArrayAddress] = PublicKey.findProgramAddressSync(
+    [Buffer.from('tick_array'), poolAddress.toBuffer(), startIndexBuffer],
+    PANCAKESWAP_CLMM_PROGRAM_ID,
+  );
+
+  return tickArrayAddress;
+}
+
+/**
+ * Parse position account data to extract key fields
+ */
+export function parsePositionData(data: Buffer): {
+  poolId: PublicKey;
+  tickLowerIndex: number;
+  tickUpperIndex: number;
+  liquidity: BN;
+} {
+  // Based on PersonalPositionState struct:
+  // discriminator (8) + bump (1) + nft_mint (32) = 41 bytes
+  let offset = 41;
+
+  // pool_id (32 bytes)
+  const poolId = new PublicKey(data.slice(offset, offset + 32));
+  offset += 32;
+
+  // tick_lower_index (i32 = 4 bytes)
+  const tickLowerIndex = data.readInt32LE(offset);
+  offset += 4;
+
+  // tick_upper_index (i32 = 4 bytes)
+  const tickUpperIndex = data.readInt32LE(offset);
+  offset += 4;
+
+  // liquidity (u128 = 16 bytes)
+  const liquidityBytes = data.slice(offset, offset + 16);
+  const liquidity = new BN(liquidityBytes, 'le');
+
+  return { poolId, tickLowerIndex, tickUpperIndex, liquidity };
+}
+
+/**
+ * Parse pool account data to extract tick spacing
+ */
+function parsePoolTickSpacing(data: Buffer): number {
+  // Skip discriminator (8) + bump (1) + amm_config (32) + owner (32) = 73 bytes
+  // Skip token_mint_0 (32) + token_mint_1 (32) = 64 bytes
+  // Skip token_vault_0 (32) + token_vault_1 (32) = 64 bytes
+  // Skip observation_key (32) = 32 bytes
+  // Skip mint_decimals_0 (1) + mint_decimals_1 (1) = 2 bytes
+  // Total offset = 73 + 64 + 64 + 32 + 2 = 235
+  const offset = 235;
+
+  // tick_spacing is u16 (2 bytes)
+  const tickSpacing = data.readUInt16LE(offset);
+  return tickSpacing;
+}
+
+/**
+ * Build a decrease_liquidity_v2 instruction for PancakeSwap Solana CLMM
+ */
+export async function buildDecreaseLiquidityV2Instruction(
+  solana: Solana,
+  positionNftMint: PublicKey,
+  walletPubkey: PublicKey,
+  liquidityToRemove: BN,
+  amount0Min: BN,
+  amount1Min: BN,
+): Promise<TransactionInstruction> {
+  // Get position account to extract pool and ticks
+  const [personalPosition] = PublicKey.findProgramAddressSync(
+    [Buffer.from('position'), positionNftMint.toBuffer()],
+    PANCAKESWAP_CLMM_PROGRAM_ID,
+  );
+
+  const positionAccountInfo = await solana.connection.getAccountInfo(personalPosition);
+  if (!positionAccountInfo) {
+    throw new Error(`Position account not found: ${personalPosition.toString()}`);
+  }
+
+  const { poolId, tickLowerIndex, tickUpperIndex } = parsePositionData(positionAccountInfo.data);
+
+  // Get pool account to extract vaults and tick spacing
+  const poolAccountInfo = await solana.connection.getAccountInfo(poolId);
+  if (!poolAccountInfo) {
+    throw new Error(`Pool account not found: ${poolId.toString()}`);
+  }
+
+  const poolData = poolAccountInfo.data;
+
+  // Parse pool data (same as swap)
+  let offset = 9; // Skip discriminator + bump
+  offset += 64; // Skip amm_config + owner
+  const tokenMint0 = new PublicKey(poolData.slice(offset, offset + 32));
+  offset += 32;
+  const tokenMint1 = new PublicKey(poolData.slice(offset, offset + 32));
+  offset += 32;
+  const tokenVault0 = new PublicKey(poolData.slice(offset, offset + 32));
+  offset += 32;
+  const tokenVault1 = new PublicKey(poolData.slice(offset, offset + 32));
+
+  const tickSpacing = parsePoolTickSpacing(poolData);
+
+  // Calculate tick array addresses
+  const tickArrayLowerStartIndex = getTickArrayStartIndexFromTick(tickLowerIndex, tickSpacing);
+  const tickArrayUpperStartIndex = getTickArrayStartIndexFromTick(tickUpperIndex, tickSpacing);
+  const tickArrayLower = getTickArrayAddress(poolId, tickArrayLowerStartIndex);
+  const tickArrayUpper = getTickArrayAddress(poolId, tickArrayUpperStartIndex);
+
+  // Derive protocol_position PDA
+  const tickLowerBuffer = Buffer.alloc(4);
+  tickLowerBuffer.writeInt32LE(tickLowerIndex, 0);
+  const tickUpperBuffer = Buffer.alloc(4);
+  tickUpperBuffer.writeInt32LE(tickUpperIndex, 0);
+
+  const [protocolPosition] = PublicKey.findProgramAddressSync(
+    [Buffer.from('position'), poolId.toBuffer(), tickLowerBuffer, tickUpperBuffer],
+    PANCAKESWAP_CLMM_PROGRAM_ID,
+  );
+
+  // Get NFT account (try Token2022 first)
+  let nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_2022_PROGRAM_ID);
+  const accountInfo = await solana.connection.getAccountInfo(nftAccount);
+
+  if (!accountInfo) {
+    nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_PROGRAM_ID);
+  }
+
+  // Get recipient token accounts
+  const recipientTokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, false, TOKEN_PROGRAM_ID);
+  const recipientTokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, false, TOKEN_PROGRAM_ID);
+
+  // Create instruction using Anchor coder
+  const coder = new BorshCoder(clmmIdl);
+  const instructionData = coder.instruction.encode('decrease_liquidity_v2', {
+    liquidity: liquidityToRemove,
+    amount0Min,
+    amount1Min,
+  });
+
+  return new TransactionInstruction({
+    programId: PANCAKESWAP_CLMM_PROGRAM_ID,
+    keys: [
+      { pubkey: walletPubkey, isSigner: true, isWritable: false }, // nft_owner
+      { pubkey: nftAccount, isSigner: false, isWritable: false }, // nft_account
+      { pubkey: personalPosition, isSigner: false, isWritable: true }, // personal_position
+      { pubkey: poolId, isSigner: false, isWritable: true }, // pool_state
+      { pubkey: protocolPosition, isSigner: false, isWritable: true }, // protocol_position
+      { pubkey: tokenVault0, isSigner: false, isWritable: true }, // token_vault_0
+      { pubkey: tokenVault1, isSigner: false, isWritable: true }, // token_vault_1
+      { pubkey: tickArrayLower, isSigner: false, isWritable: true }, // tick_array_lower
+      { pubkey: tickArrayUpper, isSigner: false, isWritable: true }, // tick_array_upper
+      { pubkey: recipientTokenAccount0, isSigner: false, isWritable: true }, // recipient_token_account_0
+      { pubkey: recipientTokenAccount1, isSigner: false, isWritable: true }, // recipient_token_account_1
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
+      { pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program_2022
+      { pubkey: MEMO_PROGRAM_ID, isSigner: false, isWritable: false }, // memo_program
+      { pubkey: tokenMint0, isSigner: false, isWritable: false }, // vault_0_mint
+      { pubkey: tokenMint1, isSigner: false, isWritable: false }, // vault_1_mint
+    ],
+    data: instructionData,
+  });
+}
+
+/**
+ * Build a complete remove liquidity transaction with compute budget
+ */
+export async function buildRemoveLiquidityTransaction(
+  solana: Solana,
+  positionNftMint: PublicKey,
+  walletPubkey: PublicKey,
+  liquidityToRemove: BN,
+  amount0Min: BN,
+  amount1Min: BN,
+  computeUnits: number = 600000,
+  priorityFeePerCU?: number,
+): Promise<VersionedTransaction> {
+  const removeLiqIx = await buildDecreaseLiquidityV2Instruction(
+    solana,
+    positionNftMint,
+    walletPubkey,
+    liquidityToRemove,
+    amount0Min,
+    amount1Min,
+  );
+
+  const instructions: TransactionInstruction[] = [];
+
+  // Add compute budget instructions
+  instructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
+
+  if (priorityFeePerCU !== undefined && priorityFeePerCU > 0) {
+    instructions.push(
+      ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: priorityFeePerCU,
+      }),
+    );
+  }
+
+  // Add remove liquidity instruction
+  instructions.push(removeLiqIx);
+
+  // Get recent blockhash
+  const { blockhash } = await solana.connection.getLatestBlockhash('confirmed');
+
+  // Build message
+  const messageV0 = new TransactionMessage({
+    payerKey: walletPubkey,
+    recentBlockhash: blockhash,
+    instructions,
+  }).compileToV0Message();
+
+  return new VersionedTransaction(messageV0);
+}
