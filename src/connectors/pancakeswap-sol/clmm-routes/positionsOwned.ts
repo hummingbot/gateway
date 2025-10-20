@@ -53,17 +53,25 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
 
         logger.info(`Fetching positions for wallet ${walletAddress} in pool ${poolAddress}`);
 
-        // Get all token accounts owned by the wallet
+        // Get all token accounts owned by the wallet from both SPL Token and Token2022 programs
         const walletPubkey = new PublicKey(walletAddress);
-        const tokenAccounts = await solana.connection.getParsedTokenAccountsByOwner(walletPubkey, {
-          programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
-        });
+        const [splTokenAccounts, token2022Accounts] = await Promise.all([
+          solana.connection.getParsedTokenAccountsByOwner(walletPubkey, {
+            programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
+          }),
+          solana.connection.getParsedTokenAccountsByOwner(walletPubkey, {
+            programId: new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'),
+          }),
+        ]);
 
-        logger.info(`Found ${tokenAccounts.value.length} token accounts`);
+        const allTokenAccounts = [...splTokenAccounts.value, ...token2022Accounts.value];
+        logger.info(
+          `Found ${splTokenAccounts.value.length} SPL token accounts and ${token2022Accounts.value.length} Token2022 accounts (${allTokenAccounts.length} total)`,
+        );
 
         // Filter for NFTs (amount = 1, decimals = 0) and get position info
         const positions = [];
-        for (const tokenAccount of tokenAccounts.value) {
+        for (const tokenAccount of allTokenAccounts) {
           const accountData = tokenAccount.account.data.parsed.info;
 
           // Check if this is an NFT (supply = 1, decimals = 0)
