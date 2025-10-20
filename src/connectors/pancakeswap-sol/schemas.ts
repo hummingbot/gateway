@@ -51,3 +51,18 @@ export const PancakeswapSolClmmGetPositionsOwnedRequest = Type.Intersect([
 ]);
 
 export type PancakeswapSolClmmGetPositionsOwnedRequestType = Static<typeof PancakeswapSolClmmGetPositionsOwnedRequest>;
+
+// CLMM Quote Swap Request
+export const PancakeswapSolClmmQuoteSwapRequest = Type.Intersect([
+  BaseRequest,
+  Type.Object({
+    baseToken: Type.String({ description: 'Base token symbol or address' }),
+    quoteToken: Type.String({ description: 'Quote token symbol or address' }),
+    amount: Type.Number({ description: 'Amount to swap' }),
+    side: Type.Union([Type.Literal('BUY'), Type.Literal('SELL')], { description: 'Trade direction' }),
+    poolAddress: Type.Optional(Type.String({ description: 'Pool address (optional)' })),
+    slippagePct: Type.Optional(Type.Number({ description: 'Slippage percentage (default: 1%)' })),
+  }),
+]);
+
+export type PancakeswapSolClmmQuoteSwapRequestType = Static<typeof PancakeswapSolClmmQuoteSwapRequest>;
