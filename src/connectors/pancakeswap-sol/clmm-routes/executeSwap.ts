@@ -1,0 +1,230 @@
+import { Type, Static } from '@sinclair/typebox';
+import { PublicKey, VersionedTransaction } from '@solana/web3.js';
+import BN from 'bn.js';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+
+import { Solana } from '../../../chains/solana/solana';
+import { ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
+import { logger } from '../../../services/logger';
+import { PancakeswapSol } from '../pancakeswap-sol';
+import { buildSwapTransaction } from '../pancakeswap-sol-utils';
+
+// Schema definition for execute swap
+const BaseRequest = Type.Object({
+  network: Type.String({ description: 'Solana network (mainnet-beta or devnet)' }),
+});
+
+const ExecuteSwapRequest = Type.Intersect([
+  BaseRequest,
+  Type.Object({
+    walletAddress: Type.String({ description: 'Wallet address' }),
+    baseToken: Type.String({ description: 'Base token symbol or address' }),
+    quoteToken: Type.String({ description: 'Quote token symbol or address' }),
+    amount: Type.Number({ description: 'Amount to swap' }),
+    side: Type.Union([Type.Literal('BUY'), Type.Literal('SELL')], { description: 'Trade direction' }),
+    poolAddress: Type.Optional(Type.String({ description: 'Pool address (optional)' })),
+    slippagePct: Type.Optional(Type.Number({ description: 'Slippage percentage (default: 1%)' })),
+  }),
+]);
+
+type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;
+
+/**
+ * Execute a swap on PancakeSwap Solana CLMM
+ *
+ * NOTE: This uses manual transaction building with Anchor instruction encoding
+ */
+async function executeSwap(
+  _fastify: FastifyInstance,
+  network: string,
+  walletAddress: string,
+  baseTokenSymbol: string,
+  quoteTokenSymbol: string,
+  amount: number,
+  side: 'BUY' | 'SELL',
+  poolAddress?: string,
+  slippagePct?: number,
+): Promise<ExecuteSwapResponseType> {
+  const solana = await Solana.getInstance(network);
+  const pancakeswapSol = await PancakeswapSol.getInstance(network);
+
+  // Get token info
+  const baseToken = await solana.getToken(baseTokenSymbol);
+  const quoteToken = await solana.getToken(quoteTokenSymbol);
+
+  if (!baseToken || !quoteToken) {
+    throw _fastify.httpErrors.notFound(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
+  }
+
+  // If no pool address provided, try to find it from pool service
+  let poolAddressToUse = poolAddress;
+  if (!poolAddressToUse) {
+    const { PoolService } = await import('../../../services/pool-service');
+    const poolService = PoolService.getInstance();
+
+    const pool = await poolService.getPool('pancakeswap-sol', network, 'clmm', baseToken.symbol, quoteToken.symbol);
+
+    if (!pool) {
+      throw _fastify.httpErrors.notFound(`No CLMM pool found for ${baseToken.symbol}-${quoteToken.symbol}`);
+    }
+
+    poolAddressToUse = pool.address;
+  }
+
+  // Get pool info
+  const poolInfo = await pancakeswapSol.getClmmPoolInfo(poolAddressToUse);
+  if (!poolInfo) {
+    throw _fastify.httpErrors.notFound(`Pool not found: ${poolAddressToUse}`);
+  }
+
+  // Determine if baseToken matches pool's base or quote
+  const isBaseTokenFirst = poolInfo.baseTokenAddress === baseToken.address;
+  const currentPrice = isBaseTokenFirst ? poolInfo.price : 1 / poolInfo.price;
+
+  const effectiveSlippage = slippagePct ?? 1.0;
+
+  // Calculate amounts
+  let amountIn: number;
+  let amountOut: number;
+  let inputMint: PublicKey;
+  let outputMint: PublicKey;
+  let isBaseInput: boolean;
+
+  if (side === 'SELL') {
+    // Selling base token for quote token
+    amountIn = amount;
+    amountOut = amount * currentPrice;
+    inputMint = new PublicKey(baseToken.address);
+    outputMint = new PublicKey(quoteToken.address);
+    isBaseInput = poolInfo.baseTokenAddress === baseToken.address;
+  } else {
+    // Buying base token with quote token
+    amountOut = amount;
+    amountIn = amount * currentPrice;
+    inputMint = new PublicKey(quoteToken.address);
+    outputMint = new PublicKey(baseToken.address);
+    isBaseInput = poolInfo.baseTokenAddress === quoteToken.address;
+  }
+
+  // Convert to BN with decimals
+  const inputToken = side === 'SELL' ? baseToken : quoteToken;
+  const outputToken = side === 'SELL' ? quoteToken : baseToken;
+
+  const amountBN = new BN(Math.floor(amountIn * 10 ** inputToken.decimals));
+  const minAmountOut = amountOut * (1 - effectiveSlippage / 100);
+  const otherAmountThresholdBN = new BN(Math.floor(minAmountOut * 10 ** outputToken.decimals));
+
+  // sqrt_price_limit_x64: 0 means no limit
+  const sqrtPriceLimitX64 = new BN(0);
+
+  logger.info(
+    `Executing ${side} swap: ${amountIn.toFixed(6)} ${inputToken.symbol} for ${amountOut.toFixed(6)} ${outputToken.symbol} (min: ${minAmountOut.toFixed(6)})`,
+  );
+
+  // Get wallet keypair
+  const wallet = await solana.getWallet(walletAddress);
+  const walletPubkey = wallet.publicKey;
+
+  // Get priority fee
+  const priorityFeeInLamports = await solana.estimateGasPrice();
+  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
+
+  // Build transaction
+  const transaction = await buildSwapTransaction(
+    solana,
+    poolAddressToUse,
+    walletPubkey,
+    inputMint,
+    outputMint,
+    amountBN,
+    otherAmountThresholdBN,
+    sqrtPriceLimitX64,
+    isBaseInput,
+    600000,
+    priorityFeePerCU,
+  );
+
+  // Sign transaction
+  transaction.sign([wallet]);
+
+  // Simulate transaction
+  await solana.simulateWithErrorHandling(transaction, _fastify);
+
+  // Send and confirm transaction
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
+
+  if (confirmed && txData) {
+    const totalFee = txData.meta.fee;
+
+    // Extract balance changes
+    const { baseTokenChange, quoteTokenChange } = await solana.extractClmmBalanceChanges(
+      signature,
+      walletAddress,
+      baseToken,
+      quoteToken,
+      totalFee,
+    );
+
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      data: {
+        tokenIn: inputToken.address,
+        tokenOut: outputToken.address,
+        amountIn: Math.abs(side === 'SELL' ? baseTokenChange : quoteTokenChange),
+        amountOut: Math.abs(side === 'SELL' ? quoteTokenChange : baseTokenChange),
+        fee: totalFee / 1e9,
+        baseTokenBalanceChange: baseTokenChange,
+        quoteTokenBalanceChange: quoteTokenChange,
+      },
+    };
+  } else {
+    // Transaction pending
+    return {
+      signature,
+      status: 0, // PENDING
+    };
+  }
+}
+
+export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
+  fastify.post<{
+    Body: ExecuteSwapRequestType;
+    Reply: ExecuteSwapResponseType;
+  }>(
+    '/execute-swap',
+    {
+      schema: {
+        description: 'Execute a swap on PancakeSwap Solana CLMM',
+        tags: ['/connector/pancakeswap-sol'],
+        body: ExecuteSwapRequest,
+        response: { 200: ExecuteSwapResponse },
+      },
+    },
+    async (request) => {
+      try {
+        const { network, walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body;
+
+        return await executeSwap(
+          fastify,
+          network,
+          walletAddress,
+          baseToken,
+          quoteToken,
+          amount,
+          side,
+          poolAddress,
+          slippagePct,
+        );
+      } catch (e) {
+        logger.error(e);
+        if (e.statusCode) {
+          throw e;
+        }
+        throw fastify.httpErrors.internalServerError('Failed to execute swap');
+      }
+    },
+  );
+};
+
+export default executeSwapRoute;
