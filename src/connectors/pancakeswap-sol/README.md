@@ -10,10 +10,15 @@ PancakeSwap Solana is a fork of Raydium CLMM using the same IDL but with a diffe
 
 ## Implementation Approach
 
-This connector uses **manual buffer decoding** to read on-chain account data directly, avoiding the need for Anchor Program clients or SDKs. This approach:
+This connector uses two approaches:
+1. **Manual buffer decoding** for read-only operations (pool info, position info)
+2. **Anchor instruction encoding** for transactions (swap execution)
+
+Key features:
 - ✅ Works with PancakeSwap's different program ID
-- ✅ Provides read-only pool and position information
-- ❌ Does not yet support transaction building (write operations)
+- ✅ Read-only pool and position information
+- ✅ Swap execution with manual transaction building
+- ✅ No dependency on Raydium SDK
 
 ## Implemented Routes
 
@@ -43,29 +48,60 @@ This connector uses **manual buffer decoding** to read on-chain account data dir
   - `poolAddress`: Pool address to filter by
   - `walletAddress`: Wallet address to query
 - **Returns**: Array of position info for all positions in the specified pool
+- **Note**: Queries both SPL Token and Token2022 programs for position NFTs
+
+### Swap Routes (Implemented)
+
+#### 4. Quote Swap
+- **Endpoint**: `GET /connectors/pancakeswap-sol/clmm/quote-swap`
+- **Description**: Get swap quote for a token pair (simplified - uses spot price)
+- **Parameters**:
+  - `network`: Solana network
+  - `baseToken`: Base token symbol or address
+  - `quoteToken`: Quote token symbol or address
+  - `amount`: Amount to swap
+  - `side`: Trade direction (BUY or SELL)
+  - `poolAddress`: Pool address (optional)
+  - `slippagePct`: Slippage percentage (default: 1%)
+- **Returns**: Quote including price, amounts, and slippage protection
+- **Limitations**:
+  - Uses current pool spot price (no tick calculations)
+  - Does not calculate price impact across ticks
+  - Does not account for liquidity depth
+  - Suitable for small trades where price impact is minimal
+
+#### 5. Execute Swap
+- **Endpoint**: `POST /connectors/pancakeswap-sol/clmm/execute-swap`
+- **Description**: Execute a swap on PancakeSwap Solana CLMM
+- **Parameters**:
+  - `network`: Solana network
+  - `walletAddress`: Wallet address to execute swap
+  - `baseToken`: Base token symbol or address
+  - `quoteToken`: Quote token symbol or address
+  - `amount`: Amount to swap
+  - `side`: Trade direction (BUY or SELL)
+  - `poolAddress`: Pool address (optional)
+  - `slippagePct`: Slippage percentage (default: 1%)
+- **Returns**: Transaction signature and balance changes
+- **Implementation**:
+  - Manual transaction building using Anchor's BorshCoder
+  - Encodes swap_v2 instruction with proper accounts
+  - Includes compute budget and priority fees
+  - Simulates before sending
 
 ## Not Yet Implemented
 
-### Transaction Routes (Require SDK or Manual Instruction Building)
+### Position Management Routes (Pending)
 
-The following routes require building and signing Solana transactions with PancakeSwap CLMM instructions. These are not yet implemented because they require either:
-1. A dedicated PancakeSwap Solana SDK (doesn't exist yet)
-2. Manual implementation of instruction encoding and transaction building
-3. Forking the Raydium SDK with PancakeSwap's program ID
+The following position management routes require more complex instruction building:
 
 Routes pending implementation:
-- ❌ `POST /open-position` - Open a new CLMM position
+- ❌ `POST /open-position` - Open a new CLMM position (requires NFT minting)
 - ❌ `POST /close-position` - Close an existing position
 - ❌ `POST /add-liquidity` - Add liquidity to a position
 - ❌ `POST /remove-liquidity` - Remove liquidity from a position
 - ❌ `POST /collect-fees` - Collect accumulated fees
-- ❌ `GET /quote-position` - Quote amounts for position operations
-- ❌ `GET /quote-swap` - Quote swap amounts
-- ❌ `POST /execute-swap` - Execute a swap
-
-### Quote Routes (Require Complex AMM Math)
-
-Quote routes require implementing the concentrated liquidity math formulas (tick-to-price conversions, liquidity calculations, etc.) which are currently provided by the Raydium SDK. These could be implemented but would require significant effort.
+- ❌ `GET /quote-position` - Quote amounts for position operations (requires tick math)
 
 ## Example Usage
 
@@ -84,6 +120,32 @@ curl "http://localhost:15888/connectors/pancakeswap-sol/clmm/position-info?netwo
 curl "http://localhost:15888/connectors/pancakeswap-sol/clmm/positions-owned?network=mainnet-beta&poolAddress=DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ&walletAddress=<YOUR_WALLET>"
 ```
 
+### Quote Swap
+```bash
+# SELL 0.01 SOL for USDC
+curl "http://localhost:15888/connectors/pancakeswap-sol/clmm/quote-swap?network=mainnet-beta&baseToken=SOL&quoteToken=USDC&amount=0.01&side=SELL&poolAddress=DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ"
+
+# BUY 0.01 SOL with USDC
+curl "http://localhost:15888/connectors/pancakeswap-sol/clmm/quote-swap?network=mainnet-beta&baseToken=SOL&quoteToken=USDC&amount=0.01&side=BUY&poolAddress=DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ"
+```
+
+### Execute Swap
+```bash
+# SELL 0.01 SOL for USDC
+curl -X POST "http://localhost:15888/connectors/pancakeswap-sol/clmm/execute-swap" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "network": "mainnet-beta",
+    "walletAddress": "<YOUR_WALLET>",
+    "baseToken": "SOL",
+    "quoteToken": "USDC",
+    "amount": 0.01,
+    "side": "SELL",
+    "poolAddress": "DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ",
+    "slippagePct": 1
+  }'
+```
+
 ## Testing
 
 Run the connector tests:
@@ -95,17 +157,49 @@ GATEWAY_TEST_MODE=dev jest --runInBand test/connectors/pancakeswap-sol/pancakesw
 
 ### Account Data Decoding
 
-The connector manually decodes two account types:
+The connector manually decodes account data for read operations:
 
 #### PoolState Account
 - **Discriminator**: 8 bytes
-- **Structure**: Contains pool configuration, token mints, liquidity, price, fees
-- **Decoding**: Uses Buffer methods to read fields at specific offsets
+- **Structure**: Contains pool configuration, token mints, vaults, liquidity, price, fees
+- **Fields Extracted**:
+  - amm_config: Pool configuration account
+  - token_mint_0, token_mint_1: Token mints
+  - token_vault_0, token_vault_1: Vault addresses
+  - observation_state: Oracle observation account
+  - tick_spacing, liquidity, sqrt_price_x64, tick_current
+- **Decoding**: Uses Buffer methods to read fields at specific byte offsets
 
 #### PersonalPositionState Account
 - **Discriminator**: 8 bytes (from PDA derived from NFT mint)
 - **Structure**: Contains position bounds, liquidity, fees owed
 - **Decoding**: Reads from PDA `[b"position", nft_mint]`
+
+### Transaction Building
+
+For swap execution, the connector uses Anchor's instruction encoding:
+
+#### Instruction Encoding
+```typescript
+const coder = new BorshCoder(clmmIdl);
+const instructionData = coder.instruction.encode('swap_v2', {
+  amount,
+  otherAmountThreshold,
+  sqrtPriceLimitX64,
+  isBaseInput,
+});
+```
+
+#### Account Resolution
+- Parses pool data to extract required accounts (vaults, observation, config)
+- Derives user token accounts using getAssociatedTokenAddressSync
+- Builds TransactionInstruction with all 13 required accounts
+
+#### Transaction Construction
+- Adds ComputeBudgetProgram instructions (compute units, priority fee)
+- Builds VersionedTransaction with TransactionMessage
+- Signs with wallet keypair
+- Simulates before sending
 
 ### Price Calculations
 
@@ -123,14 +217,24 @@ const price = Math.pow(1.0001, tick) * Math.pow(10, decimalDiff);
 
 ## Future Work
 
-To implement transaction routes, we need to:
-1. Build instruction encoders for PancakeSwap CLMM instructions
-2. Create transaction builders that assemble instructions with proper accounts
-3. Handle compute budget, priority fees, and transaction signing
-4. Implement position creation logic including NFT minting
-5. Add liquidity calculation math for concentrated liquidity
+### Position Management
+To implement position management routes, we need to:
+1. Implement NFT minting logic for position creation
+2. Add tick math for precise position quoting (similar to Raydium SDK)
+3. Build instructions for addLiquidity, removeLiquidity, collectFees
+4. Implement liquidity calculation math across tick ranges
 
-Alternatively, wait for PancakeSwap to release an official Solana SDK.
+### Improved Swap Quoting
+For production-grade swap quoting:
+1. Fetch and parse tick array accounts
+2. Implement concentrated liquidity math to calculate exact output
+3. Calculate price impact based on available liquidity
+4. Account for fees at each tick
+
+### Testing
+- Needs testing with funded wallet for execute-swap
+- Integration tests for position management routes
+- End-to-end tests with real pool operations
 
 ## References
 
