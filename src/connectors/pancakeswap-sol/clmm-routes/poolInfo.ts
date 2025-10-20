@@ -23,7 +23,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request): Promise<PoolInfo> => {
       try {
-        const { network, poolAddress } = request.query;
+        const { network = 'mainnet-beta', poolAddress } = request.query;
 
         const pancakeswap = await PancakeswapSol.getInstance(network);
 

@@ -1,4 +1,4 @@
-import { Type, Static } from '@sinclair/typebox';
+import { Static } from '@sinclair/typebox';
 import { PublicKey, VersionedTransaction } from '@solana/web3.js';
 import BN from 'bn.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
@@ -8,26 +8,7 @@ import { ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/c
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { buildSwapTransaction } from '../pancakeswap-sol-utils';
-
-// Schema definition for execute swap
-const BaseRequest = Type.Object({
-  network: Type.String({ description: 'Solana network (mainnet-beta or devnet)' }),
-});
-
-const ExecuteSwapRequest = Type.Intersect([
-  BaseRequest,
-  Type.Object({
-    walletAddress: Type.String({ description: 'Wallet address' }),
-    baseToken: Type.String({ description: 'Base token symbol or address' }),
-    quoteToken: Type.String({ description: 'Quote token symbol or address' }),
-    amount: Type.Number({ description: 'Amount to swap' }),
-    side: Type.Union([Type.Literal('BUY'), Type.Literal('SELL')], { description: 'Trade direction' }),
-    poolAddress: Type.Optional(Type.String({ description: 'Pool address (optional)' })),
-    slippagePct: Type.Optional(Type.Number({ description: 'Slippage percentage (default: 1%)' })),
-  }),
-]);
-
-type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;
+import { PancakeswapSolClmmExecuteSwapRequest, PancakeswapSolClmmExecuteSwapRequestType } from '../schemas';
 
 /**
  * Execute a swap on PancakeSwap Solana CLMM
@@ -189,7 +170,7 @@ async function executeSwap(
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
-    Body: ExecuteSwapRequestType;
+    Body: PancakeswapSolClmmExecuteSwapRequestType;
     Reply: ExecuteSwapResponseType;
   }>(
     '/execute-swap',
@@ -197,22 +178,31 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Execute a swap on PancakeSwap Solana CLMM',
         tags: ['/connector/pancakeswap-sol'],
-        body: ExecuteSwapRequest,
+        body: PancakeswapSolClmmExecuteSwapRequest,
         response: { 200: ExecuteSwapResponse },
       },
     },
     async (request) => {
       try {
-        const { network, walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body;
-
-        return await executeSwap(
-          fastify,
-          network,
+        const {
+          network = 'mainnet-beta',
           walletAddress,
           baseToken,
           quoteToken,
           amount,
           side,
+          poolAddress,
+          slippagePct,
+        } = request.body;
+
+        return await executeSwap(
+          fastify,
+          network,
+          walletAddress!,
+          baseToken,
+          quoteToken,
+          amount,
+          side as 'BUY' | 'SELL',
           poolAddress,
           slippagePct,
         );

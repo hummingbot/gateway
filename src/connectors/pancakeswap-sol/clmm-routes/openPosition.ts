@@ -186,7 +186,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         return await openPosition(
           fastify,
           network,
-          walletAddress,
+          walletAddress!,
           poolAddress,
           lowerPrice,
           upperPrice,

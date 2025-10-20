@@ -23,7 +23,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request): Promise<PositionInfo> => {
       try {
-        const { network, positionAddress } = request.query;
+        const { network = 'mainnet-beta', positionAddress } = request.query;
 
         const pancakeswap = await PancakeswapSol.getInstance(network);
 

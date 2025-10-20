@@ -128,9 +128,26 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query;
+        const {
+          network = 'mainnet-beta',
+          baseToken,
+          quoteToken,
+          amount,
+          side,
+          poolAddress,
+          slippagePct,
+        } = request.query;
 
-        return await quoteSwap(fastify, network, baseToken, quoteToken, amount, side, poolAddress, slippagePct);
+        return await quoteSwap(
+          fastify,
+          network,
+          baseToken,
+          quoteToken,
+          amount,
+          side as 'BUY' | 'SELL',
+          poolAddress,
+          slippagePct,
+        );
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

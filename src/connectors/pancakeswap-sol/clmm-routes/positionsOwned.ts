@@ -32,8 +32,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { poolAddress, walletAddress } = request.query;
-        const network = request.query.network;
+        const { network = 'mainnet-beta', poolAddress, walletAddress } = request.query;
         const solana = await Solana.getInstance(network);
         const pancakeswapSol = await PancakeswapSol.getInstance(network);
 
