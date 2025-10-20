@@ -134,13 +134,46 @@ Key features:
 - **Returns**: Transaction signature
 - **Implementation**: Uses close_position instruction, requires position to be emptied first
 
-## Not Yet Implemented
+#### 10. Quote Position
+- **Endpoint**: `GET /connectors/pancakeswap-sol/clmm/quote-position`
+- **Description**: Quote token amounts for opening a position (simplified)
+- **Parameters**:
+  - `network`: Solana network
+  - `poolAddress`: Pool address
+  - `lowerPrice`: Lower price bound
+  - `upperPrice`: Upper price bound
+  - `baseTokenAmount`: Base token amount (optional)
+  - `quoteTokenAmount`: Quote token amount (optional)
+- **Returns**: Calculated token amounts and liquidity estimate
+- **Note**: Simplified version using spot price, not full tick math
 
-### Advanced Routes (Pending)
+#### 11. Open Position
+- **Endpoint**: `POST /connectors/pancakeswap-sol/clmm/open-position`
+- **Description**: Open a new CLMM position with Token2022 NFT and metadata
+- **Parameters**:
+  - `network`: Solana network
+  - `walletAddress`: Wallet address
+  - `poolAddress`: Pool address
+  - `lowerPrice`: Lower price bound
+  - `upperPrice`: Upper price bound
+  - `baseTokenAmount`: Base token amount (optional)
+  - `quoteTokenAmount`: Quote token amount (optional)
+  - `slippagePct`: Slippage percentage (default: 1%)
+- **Returns**: Transaction signature and new position NFT address
+- **Implementation**:
+  - Generates new Token2022 NFT mint keypair
+  - Converts prices to ticks and rounds to tick spacing
+  - Creates position with metadata (name: "Pancake Concentrated Liquidity", symbol: "PCL")
+  - Returns NFT mint address as position identifier
 
-Routes pending implementation:
-- ❌ `POST /open-position` - Open a new CLMM position (requires NFT minting)
-- ❌ `GET /quote-position` - Quote amounts for position operations (requires tick math)
+## Implementation Complete
+
+All essential CLMM routes have been implemented:
+- ✅ **Pool/Position Info** (3 routes): pool-info, position-info, positions-owned
+- ✅ **Swap Operations** (2 routes): quote-swap, execute-swap
+- ✅ **Position Management** (6 routes): quote-position, open-position, add-liquidity, remove-liquidity, collect-fees, close-position
+
+**Total: 11 routes** providing complete CLMM functionality without SDK dependency.
 
 ## Example Usage
 

@@ -113,3 +113,17 @@ export const PancakeswapSolClmmAddLiquidityRequest = Type.Intersect([
 ]);
 
 export type PancakeswapSolClmmAddLiquidityRequestType = Static<typeof PancakeswapSolClmmAddLiquidityRequest>;
+
+// CLMM Quote Position Request
+export const PancakeswapSolClmmQuotePositionRequest = Type.Intersect([
+  BaseRequest,
+  Type.Object({
+    poolAddress: Type.String({ description: 'Pool address' }),
+    lowerPrice: Type.Number({ description: 'Lower price bound' }),
+    upperPrice: Type.Number({ description: 'Upper price bound' }),
+    baseTokenAmount: Type.Optional(Type.Number({ description: 'Base token amount' })),
+    quoteTokenAmount: Type.Optional(Type.Number({ description: 'Quote token amount' })),
+  }),
+]);
+
+export type PancakeswapSolClmmQuotePositionRequestType = Static<typeof PancakeswapSolClmmQuotePositionRequest>;
