@@ -40,3 +40,14 @@ export const PancakeswapSolClmmGetPositionInfoRequest = Type.Intersect([
 ]);
 
 export type PancakeswapSolClmmGetPositionInfoRequestType = Static<typeof PancakeswapSolClmmGetPositionInfoRequest>;
+
+// CLMM Get Positions Owned Request
+export const PancakeswapSolClmmGetPositionsOwnedRequest = Type.Intersect([
+  BaseRequest,
+  Type.Object({
+    poolAddress: Type.String({ description: 'Pool address' }),
+    walletAddress: Type.String({ description: 'Wallet address' }),
+  }),
+]);
+
+export type PancakeswapSolClmmGetPositionsOwnedRequestType = Static<typeof PancakeswapSolClmmGetPositionsOwnedRequest>;
