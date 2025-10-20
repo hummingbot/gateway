@@ -20,6 +20,7 @@ import { register0xRoutes } from './connectors/0x/0x.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { pancakeswapRoutes } from './connectors/pancakeswap/pancakeswap.routes';
+import { pancakeswapSolRoutes } from './connectors/pancakeswap-sol/pancakeswap-sol.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { getHttpsOptions } from './https';
@@ -90,6 +91,10 @@ const swaggerOptions = {
         description: 'Uniswap connector endpoints',
       },
       { name: '/connector/0x', description: '0x connector endpoints' },
+      {
+        name: '/connector/pancakeswap-sol',
+        description: 'PancakeSwap Solana connector endpoints',
+      },
     ],
     components: {
       parameters: {
@@ -247,6 +252,9 @@ const configureGatewayServer = () => {
     });
     app.register(pancakeswapRoutes.amm, { prefix: '/connectors/pancakeswap/amm' });
     app.register(pancakeswapRoutes.clmm, { prefix: '/connectors/pancakeswap/clmm' });
+
+    // PancakeSwap Solana routes
+    app.register(pancakeswapSolRoutes, { prefix: '/connectors/pancakeswap-sol' });
   };
 
   // Register routes on main server
