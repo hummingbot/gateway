@@ -161,14 +161,18 @@ describeTest('PancakeSwap Solana CLMM Position Lifecycle - MANUAL TEST', () => {
       priorityFeePerCU,
     );
 
-    // Sign transaction (NFT mint keypair + wallet)
-    transaction.sign([positionNftMint, wallet]);
+    // Sign transaction (wallet + NFT mint keypair)
+    transaction.sign([wallet, positionNftMint]);
 
     // Save for next steps
     positionNftMintKeypair = positionNftMint;
     positionAddress = positionNftMint.publicKey.toString();
 
     console.log(`   Position NFT mint: ${positionAddress}`);
+
+    // Simulate transaction
+    await solana.simulateWithErrorHandling(transaction);
+
     console.log(`   Sending transaction...`);
 
     // Send and confirm transaction
@@ -242,8 +246,11 @@ describeTest('PancakeSwap Solana CLMM Position Lifecycle - MANUAL TEST', () => {
       priorityFeePerCU,
     );
 
-    // Sign and send
+    // Sign transaction
     transaction.sign([wallet]);
+
+    // Simulate transaction
+    await solana.simulateWithErrorHandling(transaction);
 
     console.log(`   Sending transaction...`);
 
@@ -304,8 +311,11 @@ describeTest('PancakeSwap Solana CLMM Position Lifecycle - MANUAL TEST', () => {
       priorityFeePerCU,
     );
 
-    // Sign and send
+    // Sign transaction
     transaction.sign([wallet]);
+
+    // Simulate transaction
+    await solana.simulateWithErrorHandling(transaction);
 
     console.log(`   Sending transaction...`);
 
@@ -343,8 +353,11 @@ describeTest('PancakeSwap Solana CLMM Position Lifecycle - MANUAL TEST', () => {
       priorityFeePerCU,
     );
 
-    // Sign and send
+    // Sign transaction
     transaction.sign([wallet]);
+
+    // Simulate transaction
+    await solana.simulateWithErrorHandling(transaction);
 
     console.log(`   Sending transaction...`);
 
