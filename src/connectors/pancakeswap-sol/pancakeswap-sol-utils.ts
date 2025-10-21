@@ -149,9 +149,9 @@ export async function buildSwapV2Instruction(
 
   const instructionData = coder.instruction.encode('swap_v2', {
     amount,
-    otherAmountThreshold,
-    sqrtPriceLimitX64,
-    isBaseInput,
+    other_amount_threshold: otherAmountThreshold,
+    sqrt_price_limit_x64: sqrtPriceLimitX64,
+    is_base_input: isBaseInput,
   });
 
   const accounts = [
