@@ -98,6 +98,13 @@ export async function buildSwapV2Instruction(
   const inputVault = inputMint.equals(tokenMint0) ? tokenVault0 : tokenVault1;
   const outputVault = outputMint.equals(tokenMint0) ? tokenVault0 : tokenVault1;
 
+  // Debug logging
+  const { logger } = await import('../../services/logger');
+  logger.info(`Pool tokens: mint0=${tokenMint0.toString()}, mint1=${tokenMint1.toString()}`);
+  logger.info(`Swap tokens: input=${inputMint.toString()}, output=${outputMint.toString()}`);
+  logger.info(`Vaults: input=${inputVault.toString()}, output=${outputVault.toString()}`);
+  logger.info(`isBaseInput=${isBaseInput}`);
+
   // Detect token programs for input/output mints
   const [inputTokenProgram, outputTokenProgram] = await Promise.all([
     getTokenProgramForMint(solana, inputMint),
@@ -107,6 +114,9 @@ export async function buildSwapV2Instruction(
   // Get user token accounts with correct token programs
   const inputTokenAccount = getAssociatedTokenAddressSync(inputMint, walletPubkey, false, inputTokenProgram);
   const outputTokenAccount = getAssociatedTokenAddressSync(outputMint, walletPubkey, false, outputTokenProgram);
+
+  logger.info(`Token accounts: input=${inputTokenAccount.toString()}, output=${outputTokenAccount.toString()}`);
+  logger.info(`Token programs: input=${inputTokenProgram.toString()}, output=${outputTokenProgram.toString()}`);
 
   // Create instruction using Anchor coder
   const coder = new BorshCoder(clmmIdl);
@@ -184,8 +194,8 @@ export async function buildSwapTransaction(
     solana.connection.getAccountInfo(outputTokenAccount),
   ]);
 
-  // Track if we created WSOL account (to close it after swap)
-  let createdInputWSOL = false;
+  // Track if we're using WSOL (to close it after swap)
+  const isInputSOL = inputMint.equals(NATIVE_MINT);
 
   // Create input token account if needed
   if (!inputAccountInfo) {
@@ -198,21 +208,20 @@ export async function buildSwapTransaction(
         inputTokenProgram, // token program
       ),
     );
+  }
 
-    // If input is native SOL, wrap it
-    if (inputMint.equals(NATIVE_MINT)) {
-      createdInputWSOL = true;
-      // Transfer SOL to WSOL account
-      instructions.push(
-        SystemProgram.transfer({
-          fromPubkey: walletPubkey,
-          toPubkey: inputTokenAccount,
-          lamports: amount.toNumber(),
-        }),
-      );
-      // Sync native (wraps SOL to WSOL)
-      instructions.push(createSyncNativeInstruction(inputTokenAccount, inputTokenProgram));
-    }
+  // If input is native SOL, wrap it (regardless of whether account exists)
+  if (isInputSOL) {
+    // Transfer SOL to WSOL account to wrap it
+    instructions.push(
+      SystemProgram.transfer({
+        fromPubkey: walletPubkey,
+        toPubkey: inputTokenAccount,
+        lamports: amount.toNumber(),
+      }),
+    );
+    // Sync native (wraps SOL to WSOL)
+    instructions.push(createSyncNativeInstruction(inputTokenAccount, inputTokenProgram));
   }
 
   // Create output token account if needed
@@ -241,19 +250,6 @@ export async function buildSwapTransaction(
     isBaseInput,
   );
   instructions.push(swapIx);
-
-  // Close WSOL account after swap to get remaining SOL back
-  if (createdInputWSOL) {
-    instructions.push(
-      createCloseAccountInstruction(
-        inputTokenAccount, // account to close
-        walletPubkey, // destination for lamports
-        walletPubkey, // authority
-        [], // multisigners
-        inputTokenProgram, // token program
-      ),
-    );
-  }
 
   // Get recent blockhash
   const { blockhash } = await solana.connection.getLatestBlockhash('confirmed');
