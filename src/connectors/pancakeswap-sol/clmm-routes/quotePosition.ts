@@ -4,8 +4,8 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Solana } from '../../../chains/solana/solana';
 import { QuotePositionResponse, QuotePositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
-import { getLiquidityFromAmounts } from '../pancakeswap-clmm-math';
 import { PancakeswapSol } from '../pancakeswap-sol';
+import { getLiquidityFromAmounts } from '../pancakeswap-sol.math';
 import { PancakeswapSolClmmQuotePositionRequest } from '../schemas';
 
 /**

@@ -8,7 +8,8 @@ import { Solana } from '../../../chains/solana/solana';
 import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol, PANCAKESWAP_CLMM_PROGRAM_ID } from '../pancakeswap-sol';
-import { buildRemoveLiquidityTransaction, parsePositionData } from '../pancakeswap-sol-utils';
+import { parsePositionData } from '../pancakeswap-sol.parser';
+import { buildRemoveLiquidityTransaction } from '../pancakeswap-sol.transactions';
 import { PancakeswapSolClmmRemoveLiquidityRequest } from '../schemas';
 
 export async function removeLiquidity(

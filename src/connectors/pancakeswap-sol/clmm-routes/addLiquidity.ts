@@ -7,7 +7,7 @@ import { Solana } from '../../../chains/solana/solana';
 import { AddLiquidityResponse, AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
-import { buildAddLiquidityTransaction } from '../pancakeswap-sol-utils';
+import { buildAddLiquidityTransaction } from '../pancakeswap-sol.transactions';
 import { PancakeswapSolClmmAddLiquidityRequest } from '../schemas';
 
 import { quotePosition } from './quotePosition';

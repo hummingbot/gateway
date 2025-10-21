@@ -1,4 +1,4 @@
-import { Keypair, PublicKey } from '@solana/web3.js';
+import { Keypair, PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
 
 import { Solana } from '../../chains/solana/solana';
 import { SolanaLedger } from '../../chains/solana/solana-ledger';
@@ -54,7 +54,7 @@ export class PancakeswapSol {
   }
 
   /** Get CLMM pool info from RPC using manual decoding */
-  async getClmmPoolInfo(poolAddress: string): Promise<ClmmPoolInfo | null> {
+  async getClmmPoolInfo(poolAddress: string): Promise<ClmmPoolInfo> {
     try {
       const poolPubkey = new PublicKey(poolAddress);
 
@@ -71,7 +71,31 @@ export class PancakeswapSol {
 
       const data = accountInfo.data;
 
-      // Manual decoding of PoolState account
+      /**
+       * Manual decoding of PancakeSwap Solana CLMM PoolState struct
+       *
+       * Struct layout (from PancakeSwap Solana CLMM program):
+       * Offset | Size  | Field              | Type    | Description
+       * -------|-------|--------------------|---------|---------------------------------
+       * 0      | 8     | discriminator      | [u8; 8] | Anchor discriminator
+       * 8      | 1     | bump               | u8      | PDA bump seed
+       * 9      | 32    | amm_config         | Pubkey  | AMM config account
+       * 41     | 32    | owner              | Pubkey  | Pool owner
+       * 73     | 32    | token_mint_0       | Pubkey  | First token mint
+       * 105    | 32    | token_mint_1       | Pubkey  | Second token mint
+       * 137    | 32    | token_vault_0      | Pubkey  | First token vault
+       * 169    | 32    | token_vault_1      | Pubkey  | Second token vault
+       * 201    | 32    | observation_key    | Pubkey  | Observation account
+       * 233    | 1     | mint_decimals_0    | u8      | First token decimals
+       * 234    | 1     | mint_decimals_1    | u8      | Second token decimals
+       * 235    | 2     | tick_spacing       | u16     | Tick spacing
+       * 237    | 16    | liquidity          | u128    | Total liquidity
+       * 253    | 16    | sqrt_price_x64     | u128    | Square root price (Q64.64)
+       * 269    | 4     | tick_current       | i32     | Current tick
+       * ...    | ...   | (remaining fields) | ...     | (not parsed)
+       *
+       * Total struct size: ~508 bytes
+       */
       // Skip discriminator (8 bytes) + bump (1 byte) = 9 bytes
       let offset = 9;
 
@@ -153,12 +177,12 @@ export class PancakeswapSol {
       return poolInfo;
     } catch (error) {
       logger.error(`Error getting CLMM pool info for ${poolAddress}:`, error);
-      return null;
+      throw error;
     }
   }
 
   /** Get position info from position NFT */
-  async getPositionInfo(positionAddress: string): Promise<PositionInfo | null> {
+  async getPositionInfo(positionAddress: string): Promise<PositionInfo> {
     try {
       // Get position PDA
       const positionNftMint = new PublicKey(positionAddress);
@@ -175,7 +199,30 @@ export class PancakeswapSol {
 
       const data = accountInfo.data;
 
-      // Manual decoding of PersonalPositionState
+      /**
+       * Manual decoding of PancakeSwap Solana CLMM PersonalPositionState struct
+       *
+       * Struct layout (from PancakeSwap Solana CLMM program):
+       * Offset | Size  | Field                    | Type    | Description
+       * -------|-------|--------------------------|---------|----------------------------------------
+       * 0      | 8     | discriminator            | [u8; 8] | Anchor discriminator
+       * 8      | 1     | bump                     | u8      | PDA bump seed
+       * 9      | 32    | nft_mint                 | Pubkey  | Position NFT mint
+       * 41     | 32    | pool_id                  | Pubkey  | Associated pool
+       * 73     | 4     | tick_lower_index         | i32     | Lower tick boundary
+       * 77     | 4     | tick_upper_index         | i32     | Upper tick boundary
+       * 81     | 16    | liquidity                | u128    | Position liquidity
+       * 97     | 16    | fee_growth_inside_0_last | u128    | Last fee growth inside (token 0)
+       * 113    | 16    | fee_growth_inside_1_last | u128    | Last fee growth inside (token 1)
+       * 129    | 8     | token_fees_owed_0        | u64     | Uncollected fees (token 0)
+       * 137    | 8     | token_fees_owed_1        | u64     | Uncollected fees (token 1)
+       * 145    | ...   | reward_infos             | ...     | Reward tracking info
+       *
+       * Total struct size: ~285 bytes
+       *
+       * Note: This manual parsing is used instead of parsePositionData for demonstration.
+       * For production use, consider using parsePositionData helper from pancakeswap-sol-utils.
+       */
       // Skip discriminator (8 bytes) + bump (1 byte) = 9 bytes
       let offset = 9;
 
@@ -210,10 +257,6 @@ export class PancakeswapSol {
 
       const poolInfo = await this.getClmmPoolInfo(poolId.toString());
 
-      if (!poolInfo) {
-        throw new Error('Pool not found');
-      }
-
       // Calculate prices from ticks
       const lowerPrice = Math.pow(1.0001, tickLowerIndex);
       const upperPrice = Math.pow(1.0001, tickUpperIndex);
@@ -223,8 +266,7 @@ export class PancakeswapSol {
       const quoteTokenInfo = await this.solana.getToken(poolInfo.quoteTokenAddress);
 
       if (!baseTokenInfo || !quoteTokenInfo) {
-        logger.error(`Token info not found for position ${positionAddress}`);
-        return null;
+        throw new Error(`Token info not found for position ${positionAddress}`);
       }
 
       // Calculate position amounts (simplified - proper calculation needs tick math)
@@ -252,7 +294,7 @@ export class PancakeswapSol {
       };
     } catch (error) {
       logger.error('Error in getPositionInfo:', error);
-      return null;
+      throw error;
     }
   }
 
@@ -276,13 +318,23 @@ export class PancakeswapSol {
   /**
    * Helper function to sign transaction with hardware or regular wallet
    */
-  public async signTransaction(transaction: any, walletAddress: string, isHardwareWallet: boolean, wallet: any) {
+  public async signTransaction(
+    transaction: VersionedTransaction | Transaction,
+    walletAddress: string,
+    isHardwareWallet: boolean,
+    wallet: Keypair | PublicKey,
+  ): Promise<VersionedTransaction | Transaction> {
     if (isHardwareWallet) {
       logger.info(`Hardware wallet detected for ${walletAddress}. Signing transaction with Ledger.`);
       const ledger = new SolanaLedger();
       return await ledger.signTransaction(walletAddress, transaction);
     } else {
-      transaction.sign([wallet as Keypair]);
+      // Regular wallet - sign normally
+      if (transaction instanceof VersionedTransaction) {
+        transaction.sign([wallet as Keypair]);
+      } else {
+        (transaction as Transaction).sign(wallet as Keypair);
+      }
       return transaction;
     }
   }

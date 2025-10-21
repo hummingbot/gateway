@@ -7,7 +7,8 @@ import { Solana } from '../../../chains/solana/solana';
 import { ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
-import { buildSwapTransaction, MIN_SQRT_PRICE_X64, MAX_SQRT_PRICE_X64 } from '../pancakeswap-sol-utils';
+import { MIN_SQRT_PRICE_X64, MAX_SQRT_PRICE_X64 } from '../pancakeswap-sol.parser';
+import { buildSwapTransaction } from '../pancakeswap-sol.transactions';
 import { PancakeswapSolClmmExecuteSwapRequest, PancakeswapSolClmmExecuteSwapRequestType } from '../schemas';
 
 /**
