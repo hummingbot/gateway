@@ -10,6 +10,8 @@ import { PancakeswapSol } from '../pancakeswap-sol';
 import { buildAddLiquidityTransaction } from '../pancakeswap-sol-utils';
 import { PancakeswapSolClmmAddLiquidityRequest } from '../schemas';
 
+import { quotePosition } from './quotePosition';
+
 async function addLiquidity(
   _fastify: FastifyInstance,
   network: string,
@@ -40,17 +42,38 @@ async function addLiquidity(
     throw _fastify.httpErrors.notFound('Token information not found');
   }
 
-  // Convert amounts to BN with slippage buffer (same as openPosition)
-  const effectiveSlippage = slippagePct || 1.0;
-  const amount0Max = new BN((baseTokenAmount * (1 + effectiveSlippage / 100) * 10 ** baseToken.decimals).toFixed(0));
-  const amount1Max = new BN((quoteTokenAmount * (1 + effectiveSlippage / 100) * 10 ** quoteToken.decimals).toFixed(0));
-
-  // Use baseTokenAmount as the base (baseFlag=true means base on token0/base)
-  const baseFlag = baseTokenAmount > 0;
+  // Get quote for position amounts (same as Raydium approach)
+  // This calculates proper amounts based on position's tick range and current pool price
+  const quote = await quotePosition(
+    _fastify,
+    network,
+    positionInfo.lowerPrice,
+    positionInfo.upperPrice,
+    positionInfo.poolAddress,
+    baseTokenAmount,
+    quoteTokenAmount,
+  );
 
   logger.info(
     `Adding liquidity to position ${positionAddress}: ${baseTokenAmount} ${baseToken.symbol}, ${quoteTokenAmount} ${quoteToken.symbol}`,
   );
+  logger.info(
+    `Quote: baseLimited=${quote.baseLimited}, base=${quote.baseTokenAmount}, quote=${quote.quoteTokenAmount}`,
+  );
+  logger.info(`Quote Max: base=${quote.baseTokenAmountMax}, quote=${quote.quoteTokenAmountMax}`);
+
+  // Apply slippage buffer (same as openPosition and Raydium)
+  const effectiveSlippage = slippagePct || 1.0;
+  const amount0Max = new BN(
+    (quote.baseTokenAmountMax * (1 + effectiveSlippage / 100) * 10 ** baseToken.decimals).toFixed(0),
+  );
+  const amount1Max = new BN(
+    (quote.quoteTokenAmountMax * (1 + effectiveSlippage / 100) * 10 ** quoteToken.decimals).toFixed(0),
+  );
+
+  // Use quote result to determine base flag (same as Raydium)
+  const baseFlag = quote.baseLimited;
+
   logger.info(`Amounts with slippage (${effectiveSlippage}%):`);
   logger.info(`  amount0Max: ${amount0Max.toString()} (${baseToken.symbol})`);
   logger.info(`  amount1Max: ${amount1Max.toString()} (${quoteToken.symbol})`);
