@@ -14,6 +14,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { Solana } from '../../../src/chains/solana/solana';
+import { ConfigManagerV2 } from '../../../src/services/config-manager-v2';
 
 describe('Helius Configuration Regression Test', () => {
   const isTestMode = process.env.GATEWAY_TEST_MODE === 'dev';
@@ -37,7 +38,7 @@ rpcProvider: helius
 `;
 
       const heliusConfig = `apiKey: 'test-api-key-for-regression-test'
-useWebSocket: false
+useWebSocketRPC: false
 useSender: false
 regionCode: 'slc'
 jitoTipSOL: 0.001
@@ -51,7 +52,9 @@ jitoTipSOL: 0.001
       fs.writeFileSync(chainConfigPath, chainConfig);
       fs.writeFileSync(heliusConfigPath, heliusConfig);
 
-      // Clear singleton instance to force reload with new config
+      // Clear singletons to force reload with new config
+      // CRITICAL: Must clear ConfigManagerV2 first so it reloads the configs we just wrote
+      (ConfigManagerV2 as any)._instance = undefined;
       (Solana as any)._instances = {};
 
       solana = await Solana.getInstance('mainnet-beta');
@@ -65,7 +68,8 @@ jitoTipSOL: 0.001
       if (originalHeliusConfig) {
         fs.writeFileSync(heliusConfigPath, originalHeliusConfig);
       }
-      // Clear singleton to reset state
+      // Clear singletons to reset state
+      (ConfigManagerV2 as any)._instance = undefined;
       (Solana as any)._instances = {};
     });
 
