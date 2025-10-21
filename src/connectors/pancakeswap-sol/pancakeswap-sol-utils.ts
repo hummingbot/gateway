@@ -133,7 +133,7 @@ export async function buildSwapV2Instruction(
     isBaseInput,
   });
 
-  return new TransactionInstruction({
+  const instruction = new TransactionInstruction({
     programId: PANCAKESWAP_CLMM_PROGRAM_ID,
     keys: [
       { pubkey: walletPubkey, isSigner: true, isWritable: true }, // payer
@@ -152,6 +152,17 @@ export async function buildSwapV2Instruction(
     ],
     data: instructionData,
   });
+
+  logger.info(`SwapV2 Instruction Details:
+    Program: ${PANCAKESWAP_CLMM_PROGRAM_ID.toString()}
+    Accounts: ${instruction.keys.length}
+    Instruction Data (hex): ${instructionData.toString('hex')}
+    amount: ${amount.toString()}
+    otherAmountThreshold: ${otherAmountThreshold.toString()}
+    sqrtPriceLimitX64: ${sqrtPriceLimitX64.toString()}
+    isBaseInput: ${isBaseInput}`);
+
+  return instruction;
 }
 
 /**
