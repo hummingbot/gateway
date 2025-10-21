@@ -1792,6 +1792,17 @@ export class Solana {
 
       // Known program-specific messages
       if (
+        errorMessage.includes('Error Code: PriceSlippageCheck') ||
+        errorMessage.includes('custom program error: 0x1785')
+      ) {
+        throw asBadRequest(
+          'Position/Swap failed: Price slippage check failed. The calculated price from ticks does not match expected values. ' +
+            "This can happen if: (1) price moved significantly since quote was calculated, (2) token amounts don't match the price range, " +
+            'or (3) tick spacing constraints are not met. Try: increasing slippage tolerance, adjusting token amounts to better match current price, ' +
+            'or using a wider price range.',
+        );
+      }
+      if (
         errorMessage.includes('Error Code: TooLittleOutputReceived') ||
         errorMessage.includes('custom program error: 0x1786')
       ) {
@@ -1813,11 +1824,11 @@ export class Solana {
         );
       }
       if (errorMessage.includes('InsufficientFunds') || errorMessage.toLowerCase().includes('insufficient')) {
-        throw asBadRequest('Swap failed: Insufficient funds. Please check your token balance.');
+        throw asBadRequest('Transaction failed: Insufficient funds. Please check your token balance.');
       }
       if (errorMessage.includes('AccountNotFound')) {
         throw asBadRequest(
-          'Swap failed: One or more required accounts not found. The pool or token accounts may not be initialized.',
+          'Transaction failed: One or more required accounts not found. The pool or token accounts may not be initialized.',
         );
       }
 
