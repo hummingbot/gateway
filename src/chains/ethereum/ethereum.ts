@@ -167,7 +167,8 @@ export class Ethereum {
               `Etherscan API EIP-1559 fees: baseFee≈${networkBaseFeeGwei.toFixed(4)} GWEI, maxFee=${networkMaxFeeGwei.toFixed(4)} GWEI, priority=${networkPriorityFeeGwei.toFixed(4)} GWEI`,
             );
           } catch (scanError: any) {
-            logger.warn(`Failed to fetch from Etherscan API: ${scanError.message}, falling back to RPC`);
+            logger.warn(`Failed to fetch from Etherscan API: ${scanError.message}`);
+            logger.info('Using RPC provider for gas price estimation');
           }
         }
 
@@ -407,7 +408,8 @@ export class Ethereum {
       const useWebSocket = configManager.get('infura.useWebSocket') || false;
 
       if (!infuraApiKey || infuraApiKey.trim() === '') {
-        logger.warn(`⚠️ Infura provider selected but no API key configured, falling back to standard RPC`);
+        logger.warn(`⚠️ Infura provider selected but no API key configured`);
+        logger.info(`Using standard RPC from nodeURL: ${this.rpcUrl}`);
         this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
         return;
       }
@@ -425,7 +427,8 @@ export class Ethereum {
       this.infuraService = new InfuraService(mergedConfig);
       this.provider = this.infuraService.getProvider() as providers.StaticJsonRpcProvider;
     } catch (error: any) {
-      logger.warn(`Failed to initialize Infura provider: ${error.message}, falling back to standard RPC`);
+      logger.warn(`Failed to initialize Infura provider: ${error.message}`);
+      logger.info(`Using standard RPC from nodeURL: ${this.rpcUrl}`);
       this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
     }
   }
