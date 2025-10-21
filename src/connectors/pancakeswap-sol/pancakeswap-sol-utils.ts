@@ -73,7 +73,7 @@ export async function buildSwapV2Instruction(
     throw new Error(`Pool account not found: ${poolAddress}`);
   }
 
-  // Decode pool data to get amm_config, vaults, and observation_state addresses
+  // Decode pool data to get amm_config, vaults, observation_state, and tick info
   const data = poolAccountInfo.data;
 
   // Based on PoolState struct layout from IDL:
@@ -98,6 +98,27 @@ export async function buildSwapV2Instruction(
 
   // observation_key (32)
   const observationState = new PublicKey(data.slice(offset, offset + 32));
+  offset += 32;
+
+  // mint_decimals (2 bytes) - skip
+  offset += 2;
+
+  // tick_spacing (2 bytes, u16)
+  const tickSpacing = data.readUInt16LE(offset);
+  offset += 2;
+
+  // liquidity (16 bytes, u128) - skip
+  offset += 16;
+
+  // sqrt_price_x64 (16 bytes, u128) - skip
+  offset += 16;
+
+  // tick_current (4 bytes, i32)
+  const tickCurrent = data.readInt32LE(offset);
+
+  // Calculate tick array for current tick
+  const tickArrayStartIndex = getTickArrayStartIndexFromTick(tickCurrent, tickSpacing);
+  const tickArrayAddress = getTickArrayAddress(poolPubkey, tickArrayStartIndex);
 
   // Determine which vault is input/output based on mints
   const inputVault = inputMint.equals(tokenMint0) ? tokenVault0 : tokenVault1;
@@ -133,29 +154,37 @@ export async function buildSwapV2Instruction(
     isBaseInput,
   });
 
+  const accounts = [
+    { pubkey: walletPubkey, isSigner: true, isWritable: true }, // payer
+    { pubkey: ammConfig, isSigner: false, isWritable: false }, // amm_config
+    { pubkey: poolPubkey, isSigner: false, isWritable: true }, // pool_state
+    { pubkey: inputTokenAccount, isSigner: false, isWritable: true }, // input_token_account
+    { pubkey: outputTokenAccount, isSigner: false, isWritable: true }, // output_token_account
+    { pubkey: inputVault, isSigner: false, isWritable: true }, // input_vault
+    { pubkey: outputVault, isSigner: false, isWritable: true }, // output_vault
+    { pubkey: observationState, isSigner: false, isWritable: true }, // observation_state
+    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
+    { pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program_2022
+    { pubkey: MEMO_PROGRAM_ID, isSigner: false, isWritable: false }, // memo_program
+    { pubkey: inputMint, isSigner: false, isWritable: false }, // input_vault_mint
+    { pubkey: outputMint, isSigner: false, isWritable: false }, // output_vault_mint
+    // Remaining accounts: tick arrays needed for swap
+    { pubkey: tickArrayAddress, isSigner: false, isWritable: true }, // tick_array for current tick
+  ];
+
   const instruction = new TransactionInstruction({
     programId: PANCAKESWAP_CLMM_PROGRAM_ID,
-    keys: [
-      { pubkey: walletPubkey, isSigner: true, isWritable: true }, // payer
-      { pubkey: ammConfig, isSigner: false, isWritable: false }, // amm_config
-      { pubkey: poolPubkey, isSigner: false, isWritable: true }, // pool_state
-      { pubkey: inputTokenAccount, isSigner: false, isWritable: true }, // input_token_account
-      { pubkey: outputTokenAccount, isSigner: false, isWritable: true }, // output_token_account
-      { pubkey: inputVault, isSigner: false, isWritable: true }, // input_vault
-      { pubkey: outputVault, isSigner: false, isWritable: true }, // output_vault
-      { pubkey: observationState, isSigner: false, isWritable: true }, // observation_state
-      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
-      { pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program_2022
-      { pubkey: MEMO_PROGRAM_ID, isSigner: false, isWritable: false }, // memo_program
-      { pubkey: inputMint, isSigner: false, isWritable: false }, // input_vault_mint
-      { pubkey: outputMint, isSigner: false, isWritable: false }, // output_vault_mint
-    ],
+    keys: accounts,
     data: instructionData,
   });
 
   logger.info(`SwapV2 Instruction Details:
     Program: ${PANCAKESWAP_CLMM_PROGRAM_ID.toString()}
     Accounts: ${instruction.keys.length}
+    Tick Current: ${tickCurrent}
+    Tick Spacing: ${tickSpacing}
+    Tick Array Start: ${tickArrayStartIndex}
+    Tick Array Address: ${tickArrayAddress.toString()}
     Instruction Data (hex): ${instructionData.toString('hex')}
     amount: ${amount.toString()}
     otherAmountThreshold: ${otherAmountThreshold.toString()}
