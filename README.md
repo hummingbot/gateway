@@ -18,7 +18,7 @@ Gateway can be accessed through:
 - **Hummingbot Client**: For automated trading strategies, use the [Hummingbot repository](https://github.com/hummingbot/hummingbot)
 
 ### Key Features
-- **Standardized REST API**: Consistent endpoints for interacting with blockchains (Ethereum, Solana) and DEXs (Uniswap, Jupiter, Raydium, Meteora, 0x, Pancakeswap)
+- **Standardized REST API**: Consistent endpoints for interacting with blockchains (Ethereum, Solana) and DEXs (Uniswap, Jupiter, Raydium, Meteora, PancakeSwap, 0x)
 - **Three Trading Types**: Router (DEX aggregators), AMM (V2-style pools), and CLMM (V3-style concentrated liquidity)
 - **Modular Architecture**: Clear separation of concerns with distinct modules for chains, connectors, configuration, and wallet management
 - **TypeScript-based**: Leverages the TypeScript ecosystem and popular libraries like Fastify, Ethers.js, and Solana/web3.js
@@ -78,7 +78,9 @@ Both RPC providers maintain full backward compatibility - networks default to st
 |----------|-------|--------|-----|------|-------------|
 | Jupiter | Solana | ✅ | ❌ | ❌ | DEX aggregator finding optimal swap routes |
 | Meteora | Solana | ❌ | ❌ | ✅ | Dynamic Liquidity Market Maker (DLMM) |
+| PancakeSwap (Solana) | Solana | ❌ | ❌ | ✅ | V3 concentrated liquidity pools with single-sided positions |
 | Raydium | Solana | ❌ | ✅ | ✅ | Full-featured DEX with V2 AMM and V3 CLMM |
+| PancakeSwap | Ethereum/EVM | ✅ | ✅ | ✅ | Multi-chain DEX with V2 AMM, V3 CLMM, and Smart Router |
 | Uniswap | Ethereum/EVM | ✅ | ✅ | ✅ | Complete V2 AMM, V3 CLMM, and Smart Order Router |
 | 0x | Ethereum/EVM | ✅ | ❌ | ❌ | DEX aggregator with professional market making features |
 
@@ -383,13 +385,13 @@ docker run -p 15888:15888 \
 - `POST /connectors/{dex}/router/execute-quote` - Execute pre-fetched quote
 - `GET /connectors/0x/router/get-price` - Get price estimate (0x only)
 
-#### AMM Operations (Uniswap V2, Raydium, Pancakeswap V2)
+#### AMM Operations (Uniswap V2, PancakeSwap V2, Raydium)
 - `GET /connectors/{dex}/amm/pool-info` - Pool information
 - `GET /connectors/{dex}/amm/position-info` - LP position details
 - `POST /connectors/{dex}/amm/add-liquidity` - Add liquidity
 - `POST /connectors/{dex}/amm/remove-liquidity` - Remove liquidity
 
-#### CLMM Operations (Uniswap V3, Raydium, Meteora, Pancakeswap V3)
+#### CLMM Operations (Uniswap V3, PancakeSwap V3, Raydium, Meteora)
 - `GET /connectors/{dex}/clmm/pool-info` - Pool information
 - `GET /connectors/{dex}/clmm/positions-owned` - List positions
 - `POST /connectors/{dex}/clmm/open-position` - Open position
@@ -425,6 +427,8 @@ Gateway stores pool configurations for AMM and CLMM connectors in `src/templates
 **Pool Template Files:**
 - `src/templates/pools/raydium.json` - Raydium AMM and CLMM pools
 - `src/templates/pools/meteora.json` - Meteora DLMM pools
+- `src/templates/pools/pancakeswap.json` - PancakeSwap (EVM) V2 AMM and V3 CLMM pools
+- `src/templates/pools/pancakeswap-sol.json` - PancakeSwap Solana CLMM pools
 - `src/templates/pools/uniswap.json` - Uniswap V2 and V3 pools
 
 **Migrating Pool Templates:**
@@ -433,8 +437,8 @@ If you need to migrate pool templates from an older format (without token addres
 
 ```bash
 # Ensure RPC endpoints are configured in conf/rpc/*.yml
-# Raydium/Meteora require Helius or standard Solana RPC
-# Uniswap requires Infura or standard Ethereum RPC
+# Raydium/Meteora/PancakeSwap-Sol require Helius or standard Solana RPC
+# Uniswap/PancakeSwap require Infura or standard Ethereum RPC
 
 npx ts-node scripts/migrate-pool-templates.ts
 ```
@@ -591,7 +595,8 @@ The test directory is organized as follows:
     /uniswap/                 # Uniswap connector tests
     /raydium/                 # Raydium connector tests
     /meteora/                 # Meteora connector tests
-    /pancakeswap/             # Pancakeswap connector tests
+    /pancakeswap/             # PancakeSwap (EVM) connector tests
+    /pancakeswap-sol/         # PancakeSwap Solana connector tests
   /mocks/                     # Mock response data
     /chains/                  # Chain mock responses
       chains.json            # Chain routes mock response
