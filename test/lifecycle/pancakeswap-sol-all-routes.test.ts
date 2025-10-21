@@ -1,25 +1,21 @@
 import { PublicKey } from '@solana/web3.js';
 
-import { Solana } from '../../../src/chains/solana/solana';
-import { PancakeswapSol } from '../../../src/connectors/pancakeswap-sol/pancakeswap-sol';
-
-import poolInfoFixture from './fixtures/pool-info.json';
-import positionInfoFixture from './fixtures/position-info.json';
-import positionsOwnedFixture from './fixtures/positions-owned.json';
-import quoteSwapBuyFixture from './fixtures/quote-swap-buy.json';
-import quoteSwapSellFixture from './fixtures/quote-swap-sell.json';
+import { Solana } from '../../src/chains/solana/solana';
+import { PancakeswapSol } from '../../src/connectors/pancakeswap-sol/pancakeswap-sol';
+import poolInfoFixture from '../connectors/pancakeswap-sol/fixtures/pool-info.json';
+import positionInfoFixture from '../connectors/pancakeswap-sol/fixtures/position-info.json';
+import positionsOwnedFixture from '../connectors/pancakeswap-sol/fixtures/positions-owned.json';
+import quoteSwapBuyFixture from '../connectors/pancakeswap-sol/fixtures/quote-swap-buy.json';
+import quoteSwapSellFixture from '../connectors/pancakeswap-sol/fixtures/quote-swap-sell.json';
 
 /**
  * Comprehensive tests for all PancakeSwap Solana routes
  * Tests connector methods directly against mainnet data
  *
  * NOTE: These are integration tests that require live RPC access.
- * They are skipped in CI to avoid rate limiting issues.
+ * Run manually - not executed in CI to avoid rate limiting issues.
  */
-// Skip in CI - these are integration tests that require live RPC
-const describeOrSkip = process.env.CI ? describe.skip : describe;
-
-describeOrSkip('PancakeSwap Solana - All Routes Integration', () => {
+describe('PancakeSwap Solana - All Routes Integration', () => {
   let pancakeswapSol: PancakeswapSol;
   let solana: Solana;
   const network = 'mainnet-beta';

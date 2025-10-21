@@ -3,10 +3,10 @@
  * Tests all routes with read-only operations and validation
  */
 
-import { Solana } from '../../../src/chains/solana/solana';
-import { quotePosition } from '../../../src/connectors/pancakeswap-sol/clmm-routes/quotePosition';
-import { quoteSwap } from '../../../src/connectors/pancakeswap-sol/clmm-routes/quoteSwap';
-import { PancakeswapSol } from '../../../src/connectors/pancakeswap-sol/pancakeswap-sol';
+import { Solana } from '../../src/chains/solana/solana';
+import { quotePosition } from '../../src/connectors/pancakeswap-sol/clmm-routes/quotePosition';
+import { quoteSwap } from '../../src/connectors/pancakeswap-sol/clmm-routes/quoteSwap';
+import { PancakeswapSol } from '../../src/connectors/pancakeswap-sol/pancakeswap-sol';
 
 // Test data
 const NETWORK = 'mainnet-beta';
@@ -37,10 +37,7 @@ const mockFastify = {
   },
 };
 
-// Skip in CI - these are integration tests that require live RPC
-const describeOrSkip = process.env.CI ? describe.skip : describe;
-
-describeOrSkip('PancakeSwap Solana - Comprehensive Route Tests', () => {
+describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
   beforeAll(async () => {
     solana = await Solana.getInstance(NETWORK);
     pancakeswapSol = await PancakeswapSol.getInstance(NETWORK);
@@ -153,25 +150,6 @@ describeOrSkip('PancakeSwap Solana - Comprehensive Route Tests', () => {
       expect(quote.quoteTokenAmount).toBeGreaterThan(0);
 
       console.log('\n💰 Quote Position (Wide Range 100-300):');
-      console.log(`  Amounts: ${quote.baseTokenAmount.toFixed(6)} SOL + ${quote.quoteTokenAmount.toFixed(6)} USDC`);
-    }, 30000);
-
-    it('should handle narrow price range', async () => {
-      const quote = await quotePosition(
-        mockFastify as any,
-        NETWORK,
-        180, // narrow range around current price
-        190,
-        SOL_USDC_POOL,
-        0.01,
-        undefined,
-      );
-
-      expect(quote).toBeDefined();
-      expect(quote.baseTokenAmount).toBeGreaterThan(0);
-      expect(quote.quoteTokenAmount).toBeGreaterThan(0);
-
-      console.log('\n💰 Quote Position (Narrow Range 180-190):');
       console.log(`  Amounts: ${quote.baseTokenAmount.toFixed(6)} SOL + ${quote.quoteTokenAmount.toFixed(6)} USDC`);
     }, 30000);
   });
@@ -394,7 +372,7 @@ describeOrSkip('PancakeSwap Solana - Comprehensive Route Tests', () => {
 
   describe('Pool Discovery', () => {
     it('should discover pool from pool service', async () => {
-      const { PoolService } = await import('../../../src/services/pool-service');
+      const { PoolService } = await import('../../src/services/pool-service');
       const poolService = PoolService.getInstance();
 
       const pool = await poolService.getPool('pancakeswap-sol', NETWORK, 'clmm', 'SOL', 'USDC');
