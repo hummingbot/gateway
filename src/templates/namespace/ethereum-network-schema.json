@@ -8,6 +8,14 @@
     "minGasPrice": {
       "type": "number",
       "description": "Minimum gas price in GWEI"
+    },
+    "maxFeePerGas": {
+      "type": "number",
+      "description": "EIP-1559 maximum fee per gas in GWEI (optional, will fetch from network or Etherscan API if not set)"
+    },
+    "maxPriorityFeePerGas": {
+      "type": "number",
+      "description": "EIP-1559 maximum priority fee per gas in GWEI (optional, will fetch from network or Etherscan API if not set)"
     }
   },
   "required": ["chainID", "nodeURL", "nativeCurrencySymbol"],

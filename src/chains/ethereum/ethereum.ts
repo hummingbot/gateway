@@ -11,6 +11,7 @@ import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
 
 import { getEthereumNetworkConfig, getEthereumChainConfig } from './ethereum.config';
+import { EtherscanService } from './etherscan-service';
 import { InfuraService } from './infura-service';
 
 // information about an Ethereum token
@@ -35,12 +36,18 @@ export class Ethereum {
   public chainId: number;
   public rpcUrl: string;
   public minGasPrice: number;
+  public maxFeePerGas?: number;
+  public maxPriorityFeePerGas?: number;
   private _initialized: boolean = false;
   private infuraService?: InfuraService;
+  private etherscanService?: EtherscanService;
 
   private static lastGasPriceEstimate: {
     timestamp: number;
     gasPrice: number;
+    maxFeePerGas?: number;
+    maxPriorityFeePerGas?: number;
+    isEIP1559?: boolean;
   } | null = null;
   private static GAS_PRICE_CACHE_MS = 10000; // 10 second cache
 
@@ -56,9 +63,25 @@ export class Ethereum {
     this.network = network;
     this.nativeTokenSymbol = config.nativeCurrencySymbol;
     this.minGasPrice = config.minGasPrice || 0.1; // Default to 0.1 GWEI if not specified
+    this.maxFeePerGas = config.maxFeePerGas;
+    this.maxPriorityFeePerGas = config.maxPriorityFeePerGas;
+
+    // Get chain config for etherscanAPIKey
+    const chainConfig = getEthereumChainConfig();
+
+    // Initialize Etherscan service if API key is provided and chain is supported
+    if (chainConfig.etherscanAPIKey && EtherscanService.isSupported(this.chainId)) {
+      try {
+        this.etherscanService = new EtherscanService(this.chainId, network, chainConfig.etherscanAPIKey);
+        logger.info(
+          `✅ Etherscan V2 API configured for ${network} (chainId: ${this.chainId}, key length: ${chainConfig.etherscanAPIKey.length} chars)`,
+        );
+      } catch (error: any) {
+        logger.warn(`Failed to initialize Etherscan service: ${error.message}`);
+      }
+    }
 
     // Get rpcProvider from chain config
-    const chainConfig = getEthereumChainConfig();
     const rpcProvider = chainConfig.rpcProvider || 'url';
 
     // Initialize RPC connection based on provider
@@ -116,6 +139,110 @@ export class Ethereum {
       return Ethereum.lastGasPriceEstimate.gasPrice;
     }
 
+    // Check if the network supports EIP-1559
+    const supportsEIP1559 =
+      this.network === 'mainnet' ||
+      this.network === 'polygon' ||
+      this.network === 'arbitrum' ||
+      this.network === 'optimism' ||
+      this.network === 'base';
+
+    if (supportsEIP1559) {
+      try {
+        let maxFeePerGasGwei: number;
+        let maxPriorityFeePerGasGwei: number;
+        let networkMaxFeeGwei: number | undefined;
+        let networkPriorityFeeGwei: number | undefined;
+        let networkBaseFeeGwei: number | undefined;
+
+        // Try to fetch from Etherscan API first if available
+        if (this.etherscanService) {
+          try {
+            const gasPrices = await this.etherscanService.getRecommendedGasPrices('propose');
+            networkMaxFeeGwei = gasPrices.maxFeePerGas;
+            networkPriorityFeeGwei = gasPrices.maxPriorityFeePerGas;
+            // Estimate baseFee from the formula: baseFee ≈ (maxFee - priority) / 2
+            networkBaseFeeGwei = (networkMaxFeeGwei - networkPriorityFeeGwei) / 2;
+            logger.info(
+              `Etherscan API EIP-1559 fees: baseFee≈${networkBaseFeeGwei.toFixed(4)} GWEI, maxFee=${networkMaxFeeGwei.toFixed(4)} GWEI, priority=${networkPriorityFeeGwei.toFixed(4)} GWEI`,
+            );
+          } catch (scanError: any) {
+            logger.warn(`Failed to fetch from Etherscan API: ${scanError.message}`);
+            logger.info('Using RPC provider for gas price estimation');
+          }
+        }
+
+        // Fallback to RPC provider if Etherscan not available or failed
+        if (networkMaxFeeGwei === undefined || networkPriorityFeeGwei === undefined) {
+          try {
+            const feeData = await this.provider.getFeeData();
+            if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+              const block = await this.provider.getBlock('latest');
+              const baseFee = block.baseFeePerGas || BigNumber.from('0');
+
+              // Calculate recommended maxFeePerGas as 2 * baseFee + maxPriorityFeePerGas
+              const recommendedMaxFee = baseFee.mul(2).add(feeData.maxPriorityFeePerGas);
+              const maxFeePerGas = feeData.maxFeePerGas.gt(recommendedMaxFee)
+                ? feeData.maxFeePerGas
+                : recommendedMaxFee;
+
+              networkBaseFeeGwei = parseFloat(utils.formatUnits(baseFee, 'gwei'));
+              networkMaxFeeGwei = parseFloat(utils.formatUnits(maxFeePerGas, 'gwei'));
+              networkPriorityFeeGwei = parseFloat(utils.formatUnits(feeData.maxPriorityFeePerGas, 'gwei'));
+
+              logger.info(
+                `Network RPC EIP-1559 fees: baseFee=${networkBaseFeeGwei.toFixed(4)} GWEI, maxFee=${networkMaxFeeGwei.toFixed(4)} GWEI, priority=${networkPriorityFeeGwei.toFixed(4)} GWEI`,
+              );
+            }
+          } catch (networkError: any) {
+            logger.warn(`Failed to fetch network EIP-1559 data: ${networkError.message}`);
+          }
+        }
+
+        // Use configured values if available, otherwise use network values
+        if (this.maxFeePerGas !== undefined && this.maxPriorityFeePerGas !== undefined) {
+          maxFeePerGasGwei = this.maxFeePerGas;
+          maxPriorityFeePerGasGwei = this.maxPriorityFeePerGas;
+          logger.info(
+            `Using configured EIP-1559 fees: maxFee=${maxFeePerGasGwei} GWEI, priority=${maxPriorityFeePerGasGwei} GWEI`,
+          );
+        } else if (networkMaxFeeGwei !== undefined && networkPriorityFeeGwei !== undefined) {
+          // Use network values
+          maxFeePerGasGwei = networkMaxFeeGwei;
+          maxPriorityFeePerGasGwei = networkPriorityFeeGwei;
+          logger.info(
+            `Using network EIP-1559 fees: maxFee=${maxFeePerGasGwei.toFixed(4)} GWEI, priority=${maxPriorityFeePerGasGwei.toFixed(4)} GWEI`,
+          );
+        } else {
+          throw new Error('EIP-1559 fee data not available from network or config');
+        }
+
+        // Apply minimum gas price
+        const minGasPrice = this.minGasPrice;
+        if (maxFeePerGasGwei < minGasPrice) {
+          logger.info(
+            `Using configured minimum gas price. Current maxFee: ${maxFeePerGasGwei} GWEI, Minimum: ${minGasPrice} GWEI`,
+          );
+          maxFeePerGasGwei = minGasPrice;
+        }
+
+        // Cache the result
+        Ethereum.lastGasPriceEstimate = {
+          timestamp: Date.now(),
+          gasPrice: maxFeePerGasGwei,
+          maxFeePerGas: maxFeePerGasGwei,
+          maxPriorityFeePerGas: maxPriorityFeePerGasGwei,
+          isEIP1559: true,
+        };
+
+        logger.info(`Estimated: ${maxFeePerGasGwei} GWEI for network ${this.network}`);
+        return maxFeePerGasGwei;
+      } catch (error: any) {
+        logger.warn(`Failed to get EIP-1559 fee data, falling back to legacy pricing: ${error.message}`);
+      }
+    }
+
+    // Legacy gas price estimation
     try {
       const baseFee: BigNumber = await this.provider.getGasPrice();
       let priorityFee: BigNumber = BigNumber.from('0');
@@ -124,17 +251,24 @@ export class Ethereum {
         priorityFee = BigNumber.from(await this.provider.send('eth_maxPriorityFeePerGas', []));
       }
 
+      const baseWithPriority = baseFee.add(priorityFee);
+      const networkGasPriceGwei = baseWithPriority.toNumber() * 1e-9;
+
+      // Always log the network gas price
+      logger.info(`Network legacy gas price: ${networkGasPriceGwei.toFixed(4)} GWEI`);
+
       // Apply minimum gas price for all networks
       const minGasPriceWei = utils.parseUnits(this.minGasPrice.toString(), 'gwei');
-      const baseWithPriority = baseFee.add(priorityFee);
 
       // Use the larger of the current gas price or the configured minimum
       const adjustedFee = baseWithPriority.lt(minGasPriceWei) ? minGasPriceWei : baseWithPriority;
 
       if (baseWithPriority.lt(minGasPriceWei)) {
         logger.info(
-          `Using configured minimum gas price. Current: ${baseWithPriority.toNumber() * 1e-9} GWEI, Minimum: ${this.minGasPrice} GWEI`,
+          `Using configured minimum gas price: ${this.minGasPrice} GWEI (network: ${networkGasPriceGwei.toFixed(4)} GWEI)`,
         );
+      } else {
+        logger.info(`Using network gas price: ${networkGasPriceGwei.toFixed(4)} GWEI`);
       }
 
       const totalFeeGwei = adjustedFee.toNumber() * 1e-9;
@@ -144,6 +278,7 @@ export class Ethereum {
       Ethereum.lastGasPriceEstimate = {
         timestamp: Date.now(),
         gasPrice: totalFeeGwei,
+        isEIP1559: false,
       };
 
       return totalFeeGwei;
@@ -155,7 +290,7 @@ export class Ethereum {
 
   /**
    * Prepare gas options for a transaction
-   * @param gasPrice Gas price in Gwei (optional)
+   * @param gasPrice Gas price in Gwei (optional, uses cached estimate if not provided)
    * @param gasLimit Gas limit (optional, defaults to 300000)
    * @returns Gas options object for ethers.js transaction
    */
@@ -168,40 +303,67 @@ export class Ethereum {
 
     // Check if the network supports EIP-1559
     const supportsEIP1559 =
-      this.chainId === 1 ||
-      this.chainId === 137 ||
-      this.chainId === 42161 ||
-      this.chainId === 10 ||
-      this.chainId === 8453;
+      this.network === 'mainnet' ||
+      this.network === 'polygon' ||
+      this.network === 'arbitrum' ||
+      this.network === 'optimism' ||
+      this.network === 'base';
 
     if (supportsEIP1559) {
-      try {
-        // Use EIP-1559 gas pricing (type 2)
-        const feeData = await this.provider.getFeeData();
+      // Use cached EIP-1559 values from estimateGasPrice if available and gasPrice not explicitly provided
+      if (
+        !gasPrice &&
+        Ethereum.lastGasPriceEstimate?.isEIP1559 &&
+        Ethereum.lastGasPriceEstimate?.maxFeePerGas !== undefined &&
+        Ethereum.lastGasPriceEstimate?.maxPriorityFeePerGas !== undefined
+      ) {
+        gasOptions.type = 2;
+        gasOptions.maxFeePerGas = utils.parseUnits(Ethereum.lastGasPriceEstimate.maxFeePerGas.toString(), 'gwei');
+        gasOptions.maxPriorityFeePerGas = utils.parseUnits(
+          Ethereum.lastGasPriceEstimate.maxPriorityFeePerGas.toString(),
+          'gwei',
+        );
 
-        if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
-          // Get current base fee from latest block
-          const block = await this.provider.getBlock('latest');
-          const baseFee = block.baseFeePerGas || BigNumber.from('0');
+        logger.info(
+          `Using cached EIP-1559 pricing: maxFee=${Ethereum.lastGasPriceEstimate.maxFeePerGas} GWEI, priority=${Ethereum.lastGasPriceEstimate.maxPriorityFeePerGas} GWEI`,
+        );
+        return gasOptions;
+      }
 
-          // Calculate recommended maxFeePerGas as 2 * baseFee + maxPriorityFeePerGas
-          const recommendedMaxFee = baseFee.mul(2).add(feeData.maxPriorityFeePerGas);
+      // If gasPrice is provided, use it as maxFeePerGas with a default priority fee
+      if (gasPrice) {
+        const priorityFee = this.maxPriorityFeePerGas || 0.01; // Default 0.01 GWEI priority fee
+        gasOptions.type = 2;
+        gasOptions.maxFeePerGas = utils.parseUnits(gasPrice.toString(), 'gwei');
+        gasOptions.maxPriorityFeePerGas = utils.parseUnits(priorityFee.toString(), 'gwei');
 
-          // Use the higher of network estimate or our calculation
-          const maxFeePerGas = feeData.maxFeePerGas.gt(recommendedMaxFee) ? feeData.maxFeePerGas : recommendedMaxFee;
+        logger.info(
+          `Using EIP-1559 pricing with provided gasPrice: maxFee=${gasPrice} GWEI, priority=${priorityFee} GWEI`,
+        );
+        return gasOptions;
+      }
 
-          gasOptions.type = 2;
-          gasOptions.maxFeePerGas = maxFeePerGas;
-          gasOptions.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
+      // If no cached values and no gasPrice provided, call estimateGasPrice to fetch/cache values
+      logger.warn('No cached EIP-1559 data available, calling estimateGasPrice()');
+      await this.estimateGasPrice();
 
-          logger.info(
-            `Using EIP-1559 pricing: baseFee=${utils.formatUnits(baseFee, 'gwei')} GWEI, maxFee=${utils.formatUnits(maxFeePerGas, 'gwei')} GWEI, priority=${utils.formatUnits(feeData.maxPriorityFeePerGas, 'gwei')} GWEI`,
-          );
+      // Try again with newly cached values
+      if (
+        Ethereum.lastGasPriceEstimate?.isEIP1559 &&
+        Ethereum.lastGasPriceEstimate?.maxFeePerGas !== undefined &&
+        Ethereum.lastGasPriceEstimate?.maxPriorityFeePerGas !== undefined
+      ) {
+        gasOptions.type = 2;
+        gasOptions.maxFeePerGas = utils.parseUnits(Ethereum.lastGasPriceEstimate.maxFeePerGas.toString(), 'gwei');
+        gasOptions.maxPriorityFeePerGas = utils.parseUnits(
+          Ethereum.lastGasPriceEstimate.maxPriorityFeePerGas.toString(),
+          'gwei',
+        );
 
-          return gasOptions;
-        }
-      } catch (error: any) {
-        logger.warn(`Failed to get EIP-1559 fee data, falling back to legacy pricing: ${error.message}`);
+        logger.info(
+          `Using newly fetched EIP-1559 pricing: maxFee=${Ethereum.lastGasPriceEstimate.maxFeePerGas} GWEI, priority=${Ethereum.lastGasPriceEstimate.maxPriorityFeePerGas} GWEI`,
+        );
+        return gasOptions;
       }
     }
 
@@ -246,7 +408,8 @@ export class Ethereum {
       const useWebSocket = configManager.get('infura.useWebSocket') || false;
 
       if (!infuraApiKey || infuraApiKey.trim() === '') {
-        logger.warn(`⚠️ Infura provider selected but no API key configured, falling back to standard RPC`);
+        logger.warn(`⚠️ Infura provider selected but no API key configured`);
+        logger.info(`Using standard RPC from nodeURL: ${this.rpcUrl}`);
         this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
         return;
       }
@@ -264,7 +427,8 @@ export class Ethereum {
       this.infuraService = new InfuraService(mergedConfig);
       this.provider = this.infuraService.getProvider() as providers.StaticJsonRpcProvider;
     } catch (error: any) {
-      logger.warn(`Failed to initialize Infura provider: ${error.message}, falling back to standard RPC`);
+      logger.warn(`Failed to initialize Infura provider: ${error.message}`);
+      logger.info(`Using standard RPC from nodeURL: ${this.rpcUrl}`);
       this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
     }
   }

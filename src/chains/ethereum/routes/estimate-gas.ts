@@ -21,7 +21,15 @@ export async function estimateGasEthereum(fastify: FastifyInstance, network: str
     // Convert GWEI to ETH (1 ETH = 10^9 GWEI)
     const totalFeeInEth = totalFeeInGwei / 1e9;
 
-    return {
+    // Check if we have EIP-1559 data cached
+    const isEIP1559Network =
+      network === 'mainnet' ||
+      network === 'polygon' ||
+      network === 'arbitrum' ||
+      network === 'optimism' ||
+      network === 'base';
+
+    const response: EstimateGasResponse = {
       feePerComputeUnit: gasPrice,
       denomination: 'gwei',
       computeUnits: DEFAULT_GAS_LIMIT,
@@ -29,6 +37,18 @@ export async function estimateGasEthereum(fastify: FastifyInstance, network: str
       fee: totalFeeInEth,
       timestamp: Date.now(),
     };
+
+    // Add EIP-1559 details if available
+    if (isEIP1559Network && (ethereum as any).constructor.lastGasPriceEstimate?.isEIP1559) {
+      const cached = (ethereum as any).constructor.lastGasPriceEstimate;
+      response.gasType = 'eip1559';
+      response.maxFeePerGas = cached.maxFeePerGas;
+      response.maxPriorityFeePerGas = cached.maxPriorityFeePerGas;
+    } else if (!isEIP1559Network) {
+      response.gasType = 'legacy';
+    }
+
+    return response;
   } catch (error) {
     logger.error(`Error estimating gas for network ${network}: ${error.message}`);
 
@@ -52,6 +72,7 @@ export async function estimateGasEthereum(fastify: FastifyInstance, network: str
         feeAsset: ethereum.nativeTokenSymbol,
         fee: totalFeeInEth,
         timestamp: Date.now(),
+        gasType: 'legacy',
       };
     } catch (instanceError) {
       logger.error(`Error getting Ethereum instance for network ${network}: ${instanceError.message}`);

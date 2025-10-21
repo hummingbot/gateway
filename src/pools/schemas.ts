@@ -31,6 +31,9 @@ export const PoolListResponseSchema = Type.Array(
     network: Type.String(),
     baseSymbol: Type.String(),
     quoteSymbol: Type.String(),
+    baseTokenAddress: Type.String(),
+    quoteTokenAddress: Type.String(),
+    feePct: Type.Number(),
     address: Type.String(),
   }),
 );
@@ -46,18 +49,57 @@ export const PoolAddRequestSchema = Type.Object({
   }),
   network: Type.String({
     description: 'Network name (mainnet, mainnet-beta, etc)',
-    examples: ['mainnet', 'mainnet-beta'],
-  }),
-  baseSymbol: Type.String({
-    description: 'Base token symbol',
-    examples: ['ETH', 'SOL'],
-  }),
-  quoteSymbol: Type.String({
-    description: 'Quote token symbol',
-    examples: ['USDC', 'USDT'],
+    examples: ['mainnet-beta', 'mainnet'],
+    default: 'mainnet-beta',
   }),
   address: Type.String({
     description: 'Pool contract address',
+  }),
+  baseSymbol: Type.Optional(
+    Type.String({
+      description: 'Base token symbol (optional - fetched from pool-info if not provided)',
+      examples: ['SOL', 'ETH'],
+    }),
+  ),
+  quoteSymbol: Type.Optional(
+    Type.String({
+      description: 'Quote token symbol (optional - fetched from pool-info if not provided)',
+      examples: ['USDC', 'USDT'],
+    }),
+  ),
+  baseTokenAddress: Type.String({
+    description: 'Base token contract address',
+    examples: ['So11111111111111111111111111111111111111112'],
+  }),
+  quoteTokenAddress: Type.String({
+    description: 'Quote token contract address',
+    examples: ['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'],
+  }),
+  feePct: Type.Optional(
+    Type.Number({
+      description: 'Pool fee percentage (optional - fetched from pool-info if not provided)',
+      examples: [0.25, 0.3, 1],
+      minimum: 0,
+      maximum: 100,
+    }),
+  ),
+});
+
+// Get pool request
+export const GetPoolRequestSchema = Type.Object({
+  connector: Type.String({
+    description: 'Connector (raydium, meteora, uniswap)',
+    examples: ['raydium', 'meteora', 'uniswap'],
+  }),
+  network: Type.String({
+    description: 'Network name (mainnet, mainnet-beta, etc)',
+    examples: ['mainnet-beta', 'mainnet'],
+    default: 'mainnet-beta',
+  }),
+  type: Type.String({
+    description: 'Pool type',
+    examples: ['amm', 'clmm'],
+    enum: ['amm', 'clmm'],
   }),
 });
 

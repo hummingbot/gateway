@@ -15,6 +15,10 @@
       "enum": ["url", "infura"],
       "default": "url",
       "description": "RPC provider to use: 'url' for standard nodeURL from network config, 'infura' for Infura service across all networks"
+    },
+    "etherscanAPIKey": {
+      "type": "string",
+      "description": "Etherscan API key for gas price estimates (works across all Etherscan V2 supported chains)"
     }
   },
   "required": ["defaultNetwork", "defaultWallet"],

@@ -7,6 +7,9 @@ export interface Pool {
   network: string;
   baseSymbol: string;
   quoteSymbol: string;
+  baseTokenAddress: string;
+  quoteTokenAddress: string;
+  feePct: number;
   address: string;
 }
 
@@ -36,7 +39,10 @@ export interface PoolAddRequest {
   connector: string;
   type: 'amm' | 'clmm';
   network: string;
-  baseSymbol: string;
-  quoteSymbol: string;
   address: string;
+  baseSymbol?: string;
+  quoteSymbol?: string;
+  baseTokenAddress: string;
+  quoteTokenAddress: string;
+  feePct?: number;
 }

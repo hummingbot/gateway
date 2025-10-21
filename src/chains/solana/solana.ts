@@ -143,17 +143,21 @@ export class Solana {
         this.connection = new Connection(rpcUrl, {
           commitment: 'confirmed',
         });
+
+        // Update this.config with Helius-specific fields so they're available throughout the class
+        this.config = mergedConfig;
+
+        // Initialize HeliusService with merged config (always use mergedConfig, not this.config)
+        // This ensures HeliusService gets all Helius fields even if this.config wasn't updated
+        this.heliusService = new HeliusService(mergedConfig);
       } else {
         // Fallback to standard nodeURL if no API key
-        logger.warn(`⚠️ Helius provider selected but no API key configured, falling back to standard RPC`);
-        logger.info(`Using fallback RPC URL: ${this.config.nodeURL}`);
+        logger.warn(`⚠️ Helius provider selected but no API key configured`);
+        logger.info(`Using standard RPC from nodeURL: ${this.config.nodeURL}`);
         this.connection = new Connection(this.config.nodeURL, {
           commitment: 'confirmed',
         });
       }
-
-      // Initialize HeliusService with merged config
-      this.heliusService = new HeliusService(mergedConfig);
     } catch (error) {
       // If Helius config not found (e.g., in tests), fallback to standard RPC
       logger.warn(`Failed to initialize Helius provider: ${error.message}, falling back to standard RPC`);
@@ -1422,9 +1426,16 @@ export class Solana {
       if (this.heliusService) {
         try {
           signature = await this.heliusService.sendWithSender(serializedTx);
+          logger.info('Using Helius Sender for optimized transaction delivery');
         } catch (error) {
-          // Fallback to standard RPC if Sender fails or is not configured
-          logger.info('Falling back to standard RPC transaction sending');
+          // Helius Sender not enabled/configured - use standard sendRawTransaction via Helius RPC
+          const chainConfig = getSolanaChainConfig();
+          const rpcProvider = chainConfig.rpcProvider || 'url';
+          if (rpcProvider === 'helius') {
+            logger.info('Using standard sendRawTransaction via Helius RPC (Sender disabled)');
+          } else {
+            logger.info('Using standard sendRawTransaction');
+          }
           signature = await this.connection.sendRawTransaction(serializedTx, {
             skipPreflight: true,
             maxRetries: 0, // Don't rely on RPC provider's retry logic
@@ -1432,6 +1443,7 @@ export class Solana {
         }
       } else {
         // No Helius service, use standard RPC
+        logger.info('Using standard sendRawTransaction');
         signature = await this.connection.sendRawTransaction(serializedTx, {
           skipPreflight: true,
           maxRetries: 0,

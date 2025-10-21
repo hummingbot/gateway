@@ -71,7 +71,15 @@ export async function approveEthereumToken(
     throw fastify.httpErrors.badRequest(`Token not found in token list: ${token}`);
   }
 
-  const amountBigNumber = amount ? utils.parseUnits(amount, fullToken.decimals) : constants.MaxUint256;
+  // Handle empty string, whitespace, undefined, or null as max approval
+  const amountBigNumber =
+    amount && amount.trim() !== '' ? utils.parseUnits(amount, fullToken.decimals) : constants.MaxUint256;
+
+  if (amountBigNumber.eq(constants.MaxUint256)) {
+    logger.info(`Approving maximum amount (MaxUint256) for ${fullToken.symbol}`);
+  } else {
+    logger.info(`Approving ${amount} ${fullToken.symbol} (${amountBigNumber.toString()} in wei)`);
+  }
 
   try {
     let approval;
