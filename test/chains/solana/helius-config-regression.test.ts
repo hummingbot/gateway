@@ -8,13 +8,21 @@
  * Fix: Update this.config with mergedConfig after successful Helius initialization
  *
  * This test ensures the merged config is properly applied throughout the Solana class.
+ *
+ * Requirements:
+ * - GATEWAY_TEST_MODE=dev environment variable
+ * - conf/chains/solana.yml with rpcProvider: helius
+ * - conf/rpc/helius.yml with valid apiKey
  */
 
 import { Solana } from '../../../src/chains/solana/solana';
+import { getSolanaChainConfig } from '../../../src/chains/solana/solana.config';
 
 describe('Helius Configuration Regression Test', () => {
-  // Skip if not in test mode or if Helius not configured
-  const isHeliusConfigured = process.env.GATEWAY_TEST_MODE === 'dev';
+  // Only run if GATEWAY_TEST_MODE=dev AND rpcProvider is set to helius
+  const isTestMode = process.env.GATEWAY_TEST_MODE === 'dev';
+  const chainConfig = isTestMode ? getSolanaChainConfig() : { rpcProvider: 'url' };
+  const isHeliusConfigured = isTestMode && chainConfig.rpcProvider === 'helius';
 
   (isHeliusConfigured ? describe : describe.skip)('When Helius provider is enabled', () => {
     let solana: Solana;
