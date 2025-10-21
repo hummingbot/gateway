@@ -14,9 +14,10 @@
  * - Wallet configured in conf/wallets/solana/
  * - Sufficient SOL for transaction fees (~0.02-0.05 SOL total)
  * - Sufficient PENGU and USDC tokens for the position
+ * - Gateway passphrase to decrypt wallet
  *
  * Run in one line:
- * GATEWAY_TEST_MODE=dev MANUAL_TEST=true jest --runInBand test/lifecycle/pancakeswap-sol-position-lifecycle.test.ts
+ * GATEWAY_TEST_MODE=dev MANUAL_TEST=true GATEWAY_PASSPHRASE=<your_passphrase> jest --runInBand test/lifecycle/pancakeswap-sol-position-lifecycle.test.ts
  */
 
 // ============================================================================
@@ -79,12 +80,13 @@ let positionNftMintKeypair: Keypair;
  * Requirements:
  * - GATEWAY_TEST_MODE=dev environment variable
  * - MANUAL_TEST=true environment variable to enable this test
+ * - GATEWAY_PASSPHRASE environment variable to decrypt wallet
  * - Wallet configured in conf/wallets/solana/
- * - Sufficient SOL for transaction fees (~0.01 SOL)
+ * - Sufficient SOL for transaction fees (~0.02-0.05 SOL)
  * - Sufficient PENGU and USDC tokens for the position
  *
  * Run with:
- * GATEWAY_TEST_MODE=dev MANUAL_TEST=true jest --runInBand test/lifecycle/pancakeswap-sol-position-lifecycle.test.ts
+ * GATEWAY_TEST_MODE=dev MANUAL_TEST=true GATEWAY_PASSPHRASE=<your_passphrase> jest --runInBand test/lifecycle/pancakeswap-sol-position-lifecycle.test.ts
  */
 const describeTest = process.env.MANUAL_TEST === 'true' ? describe : describe.skip;
 
