@@ -436,8 +436,9 @@ export function roundTickToSpacing(tick: number, tickSpacing: number): number {
  * Derive tick array address from pool and start index
  */
 function getTickArrayAddress(poolAddress: PublicKey, startIndex: number): PublicKey {
+  // Note: PDA seeds use big-endian encoding for i32 values
   const startIndexBuffer = Buffer.alloc(4);
-  startIndexBuffer.writeInt32LE(startIndex, 0);
+  startIndexBuffer.writeInt32BE(startIndex, 0);
 
   const [tickArrayAddress] = PublicKey.findProgramAddressSync(
     [Buffer.from('tick_array'), poolAddress.toBuffer(), startIndexBuffer],
@@ -548,10 +549,11 @@ export async function buildDecreaseLiquidityV2Instruction(
   const tickArrayUpper = getTickArrayAddress(poolId, tickArrayUpperStartIndex);
 
   // Derive protocol_position PDA
+  // Note: PDA seeds use big-endian encoding for i32 values
   const tickLowerBuffer = Buffer.alloc(4);
-  tickLowerBuffer.writeInt32LE(tickLowerIndex, 0);
+  tickLowerBuffer.writeInt32BE(tickLowerIndex, 0);
   const tickUpperBuffer = Buffer.alloc(4);
-  tickUpperBuffer.writeInt32LE(tickUpperIndex, 0);
+  tickUpperBuffer.writeInt32BE(tickUpperIndex, 0);
 
   const [protocolPosition] = PublicKey.findProgramAddressSync(
     [Buffer.from('position'), poolId.toBuffer(), tickLowerBuffer, tickUpperBuffer],
@@ -566,16 +568,22 @@ export async function buildDecreaseLiquidityV2Instruction(
     nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_PROGRAM_ID);
   }
 
-  // Get recipient token accounts
-  const recipientTokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, false, TOKEN_PROGRAM_ID);
-  const recipientTokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, false, TOKEN_PROGRAM_ID);
+  // Detect token programs for pool mints
+  const [tokenProgram0, tokenProgram1] = await Promise.all([
+    getTokenProgramForMint(solana, tokenMint0),
+    getTokenProgramForMint(solana, tokenMint1),
+  ]);
+
+  // Get recipient token accounts with correct token programs
+  const recipientTokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, false, tokenProgram0);
+  const recipientTokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, false, tokenProgram1);
 
   // Create instruction using Anchor coder
   const coder = new BorshCoder(clmmIdl);
   const instructionData = coder.instruction.encode('decrease_liquidity_v2', {
     liquidity: liquidityToRemove,
-    amount0Min,
-    amount1Min,
+    amount_0_min: amount0Min,
+    amount_1_min: amount1Min,
   });
 
   return new TransactionInstruction({
@@ -706,10 +714,11 @@ export async function buildIncreaseLiquidityV2Instruction(
   const tickArrayUpper = getTickArrayAddress(poolId, tickArrayUpperStartIndex);
 
   // Derive protocol_position PDA
+  // Note: PDA seeds use big-endian encoding for i32 values
   const tickLowerBuffer = Buffer.alloc(4);
-  tickLowerBuffer.writeInt32LE(tickLowerIndex, 0);
+  tickLowerBuffer.writeInt32BE(tickLowerIndex, 0);
   const tickUpperBuffer = Buffer.alloc(4);
-  tickUpperBuffer.writeInt32LE(tickUpperIndex, 0);
+  tickUpperBuffer.writeInt32BE(tickUpperIndex, 0);
 
   const [protocolPosition] = PublicKey.findProgramAddressSync(
     [Buffer.from('position'), poolId.toBuffer(), tickLowerBuffer, tickUpperBuffer],
@@ -724,17 +733,23 @@ export async function buildIncreaseLiquidityV2Instruction(
     nftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_PROGRAM_ID);
   }
 
-  // Get user token accounts
-  const tokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, false, TOKEN_PROGRAM_ID);
-  const tokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, false, TOKEN_PROGRAM_ID);
+  // Detect token programs for pool mints
+  const [tokenProgram0, tokenProgram1] = await Promise.all([
+    getTokenProgramForMint(solana, tokenMint0),
+    getTokenProgramForMint(solana, tokenMint1),
+  ]);
+
+  // Get user token accounts with correct token programs
+  const tokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, false, tokenProgram0);
+  const tokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, false, tokenProgram1);
 
   // Create instruction - use liquidity=0 to let program calculate from amounts
   const coder = new BorshCoder(clmmIdl);
   const instructionData = coder.instruction.encode('increase_liquidity_v2', {
     liquidity: new BN(0), // Let program calculate
-    amount0Max,
-    amount1Max,
-    baseFlag: baseFlag ? { some: true } : { some: false }, // Option<bool> encoding
+    amount_0_max: amount0Max,
+    amount_1_max: amount1Max,
+    base_flag: baseFlag ? { some: true } : { some: false }, // Option<bool> encoding
   });
 
   return new TransactionInstruction({
@@ -849,10 +864,11 @@ export async function buildOpenPositionWithToken22NftInstruction(
   const tickArrayUpperStartIndex = getTickArrayStartIndexFromTick(tickUpperIndex, tickSpacing);
 
   // Derive PDAs
+  // Note: PDA seeds use big-endian encoding for i32 values
   const tickLowerBuffer = Buffer.alloc(4);
-  tickLowerBuffer.writeInt32LE(tickLowerIndex, 0);
+  tickLowerBuffer.writeInt32BE(tickLowerIndex, 0);
   const tickUpperBuffer = Buffer.alloc(4);
-  tickUpperBuffer.writeInt32LE(tickUpperIndex, 0);
+  tickUpperBuffer.writeInt32BE(tickUpperIndex, 0);
 
   const [protocolPosition] = PublicKey.findProgramAddressSync(
     [Buffer.from('position'), poolAddress.toBuffer(), tickLowerBuffer, tickUpperBuffer],
@@ -875,23 +891,53 @@ export async function buildOpenPositionWithToken22NftInstruction(
     TOKEN_2022_PROGRAM_ID,
   );
 
-  // Get user token accounts
-  const tokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, false, TOKEN_PROGRAM_ID);
-  const tokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, false, TOKEN_PROGRAM_ID);
+  // Detect token programs for pool mints (like we do for swap)
+  const [tokenProgram0, tokenProgram1] = await Promise.all([
+    getTokenProgramForMint(solana, tokenMint0),
+    getTokenProgramForMint(solana, tokenMint1),
+  ]);
+
+  // Get user token accounts with correct token programs
+  const tokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, false, tokenProgram0);
+  const tokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, false, tokenProgram1);
+
+  // Log all instruction parameters
+  const { logger } = await import('../../services/logger');
+  logger.info(`=== OpenPosition Instruction Parameters ===`);
+  logger.info(`Pool: ${poolAddress.toString()}`);
+  logger.info(`Pool tokens: mint0=${tokenMint0.toString()}, mint1=${tokenMint1.toString()}`);
+  logger.info(`Token programs: token0=${tokenProgram0.toString()}, token1=${tokenProgram1.toString()}`);
+  logger.info(`Token accounts: token0=${tokenAccount0.toString()}, token1=${tokenAccount1.toString()}`);
+  logger.info(`NFT Mint: ${positionNftMint.publicKey.toString()}`);
+  logger.info(`NFT Account: ${positionNftAccount.toString()}`);
+  logger.info(`Tick Lower: ${tickLowerIndex}, Tick Upper: ${tickUpperIndex}`);
+  logger.info(`Tick Spacing: ${tickSpacing}`);
+  logger.info(`Tick Array Lower Start: ${tickArrayLowerStartIndex}`);
+  logger.info(`Tick Array Upper Start: ${tickArrayUpperStartIndex}`);
+  logger.info(`Tick Array Lower: ${tickArrayLower.toString()}`);
+  logger.info(`Tick Array Upper: ${tickArrayUpper.toString()}`);
+  logger.info(`Protocol Position: ${protocolPosition.toString()}`);
+  logger.info(`Personal Position: ${personalPosition.toString()}`);
+  logger.info(`Amount0 Max: ${amount0Max.toString()}`);
+  logger.info(`Amount1 Max: ${amount1Max.toString()}`);
+  logger.info(`Base Flag: ${baseFlag}`);
+  logger.info(`With Metadata: ${withMetadata}`);
 
   // Create instruction
   const coder = new BorshCoder(clmmIdl);
   const instructionData = coder.instruction.encode('open_position_with_token22_nft', {
-    tickLowerIndex,
-    tickUpperIndex,
-    tickArrayLowerStartIndex,
-    tickArrayUpperStartIndex,
+    tick_lower_index: tickLowerIndex,
+    tick_upper_index: tickUpperIndex,
+    tick_array_lower_start_index: tickArrayLowerStartIndex,
+    tick_array_upper_start_index: tickArrayUpperStartIndex,
     liquidity: new BN(0), // Let program calculate from amounts
-    amount0Max,
-    amount1Max,
-    withMetadata,
-    baseFlag: baseFlag ? { some: true } : { some: false },
+    amount_0_max: amount0Max,
+    amount_1_max: amount1Max,
+    with_metadata: withMetadata,
+    base_flag: baseFlag ? { some: true } : { some: false },
   });
+
+  logger.info(`Instruction Data (hex): ${instructionData.toString('hex')}`);
 
   return new TransactionInstruction({
     programId: PANCAKESWAP_CLMM_PROGRAM_ID,

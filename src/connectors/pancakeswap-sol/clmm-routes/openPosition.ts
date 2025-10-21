@@ -28,6 +28,14 @@ async function openPosition(
   quoteTokenAmount?: number,
   slippagePct?: number,
 ): Promise<OpenPositionResponseType> {
+  logger.info(`=== OpenPosition Request ===`);
+  logger.info(`Network: ${network}`);
+  logger.info(`Wallet: ${walletAddress}`);
+  logger.info(`Pool: ${poolAddress}`);
+  logger.info(`Price Range: ${lowerPrice} - ${upperPrice}`);
+  logger.info(`Amounts: base=${baseTokenAmount}, quote=${quoteTokenAmount}`);
+  logger.info(`Slippage: ${slippagePct}%`);
+
   const solana = await Solana.getInstance(network);
   const pancakeswapSol = await PancakeswapSol.getInstance(network);
 
@@ -37,6 +45,13 @@ async function openPosition(
     throw _fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
   }
 
+  logger.info(`Pool Info:`);
+  logger.info(`  Current Price: ${poolInfo.price}`);
+  logger.info(`  Base Token: ${poolInfo.baseTokenAddress}`);
+  logger.info(`  Quote Token: ${poolInfo.quoteTokenAddress}`);
+  logger.info(`  Bin Step: ${poolInfo.binStep}`);
+  logger.info(`  Fee: ${poolInfo.feePct}%`);
+
   // Get tokens
   const baseToken = await solana.getToken(poolInfo.baseTokenAddress);
   const quoteToken = await solana.getToken(poolInfo.quoteTokenAddress);
@@ -44,6 +59,10 @@ async function openPosition(
   if (!baseToken || !quoteToken) {
     throw _fastify.httpErrors.notFound('Token information not found');
   }
+
+  logger.info(
+    `Tokens: ${baseToken.symbol}/${quoteToken.symbol} (${baseToken.decimals}/${quoteToken.decimals} decimals)`,
+  );
 
   const wallet = await solana.getWallet(walletAddress);
   const walletPubkey = new PublicKey(walletAddress);
@@ -70,15 +89,24 @@ async function openPosition(
   // Calculate decimal difference for tick conversion
   const decimalDiff = baseToken.decimals - quoteToken.decimals;
 
+  logger.info(`Tick Spacing: ${tickSpacing}`);
+  logger.info(`Decimal Difference: ${decimalDiff}`);
+
   // Convert prices to ticks
   const tickLowerRaw = priceToTick(lowerPrice, decimalDiff);
   const tickUpperRaw = priceToTick(upperPrice, decimalDiff);
+
+  logger.info(`Raw Ticks: lower=${tickLowerRaw}, upper=${tickUpperRaw}`);
 
   // Round ticks to tick spacing
   const tickLower = roundTickToSpacing(tickLowerRaw, tickSpacing);
   const tickUpper = roundTickToSpacing(tickUpperRaw, tickSpacing);
 
-  logger.info(`Opening position: ticks ${tickLower} to ${tickUpper} (prices ${lowerPrice} to ${upperPrice})`);
+  logger.info(`Rounded Ticks: lower=${tickLower}, upper=${tickUpper}`);
+  logger.info(
+    `Quote: baseLimited=${quote.baseLimited}, base=${quote.baseTokenAmount}, quote=${quote.quoteTokenAmount}`,
+  );
+  logger.info(`Quote Max: base=${quote.baseTokenAmountMax}, quote=${quote.quoteTokenAmountMax}`);
 
   // Convert amounts to BN with slippage
   const effectiveSlippage = slippagePct || 1.0;
@@ -89,8 +117,13 @@ async function openPosition(
     (quote.quoteTokenAmountMax * (1 + effectiveSlippage / 100) * 10 ** quoteToken.decimals).toFixed(0),
   );
 
+  logger.info(`Amounts with slippage (${effectiveSlippage}%):`);
+  logger.info(`  amount0Max: ${amount0Max.toString()} (${baseToken.symbol})`);
+  logger.info(`  amount1Max: ${amount1Max.toString()} (${quoteToken.symbol})`);
+
   // Determine base flag
   const baseFlag = quote.baseLimited;
+  logger.info(`Base Flag: ${baseFlag} (${baseFlag ? 'amount0' : 'amount1'} is base)`);
 
   // Get priority fee
   const priorityFeeInLamports = await solana.estimateGasPrice();

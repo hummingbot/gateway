@@ -1762,40 +1762,59 @@ export class Solana {
    * @param fastify Fastify instance for error responses
    * @returns Promise that resolves if simulation succeeds, throws descriptive error otherwise
    */
-  public async simulateWithErrorHandling(transaction: VersionedTransaction | Transaction, fastify: any): Promise<void> {
+  public async simulateWithErrorHandling(
+    transaction: VersionedTransaction | Transaction,
+    fastify?: any,
+  ): Promise<void> {
     try {
       await this.simulateTransaction(transaction);
     } catch (simulationError: any) {
-      // Parse the error to provide more descriptive messages
-      const errorMessage = simulationError.message || '';
+      const errorMessage = simulationError?.message || '';
 
-      // Check for specific Raydium/Meteora error codes
+      // Helpers to safely create HTTP-style errors even if fastify is undefined
+      const httpErrors = fastify?.httpErrors;
+      const asBadRequest = (msg: string) => {
+        if (httpErrors?.badRequest) return httpErrors.badRequest(msg);
+        const e = new Error(msg) as Error & { statusCode?: number };
+        e.statusCode = 400;
+        return e;
+      };
+
+      // Known program-specific messages
       if (
         errorMessage.includes('Error Code: TooLittleOutputReceived') ||
         errorMessage.includes('custom program error: 0x1786')
       ) {
-        throw fastify.httpErrors.badRequest(
-          `Swap failed: Slippage tolerance exceeded. The output amount would be less than your minimum. Try increasing slippage tolerance.`,
+        throw asBadRequest(
+          'Swap failed: Slippage tolerance exceeded. Output would be less than your minimum. Consider increasing slippage.',
         );
-      } else if (
+      }
+      if (
         errorMessage.includes('Error Code: TooMuchInputPaid') ||
         errorMessage.includes('custom program error: 0x1787')
       ) {
-        throw fastify.httpErrors.badRequest(
-          `Swap failed: Slippage tolerance exceeded. The input amount would be more than your maximum. Try increasing slippage tolerance.`,
+        throw asBadRequest(
+          'Swap failed: Slippage tolerance exceeded. Input would be more than your maximum. Consider increasing slippage.',
         );
-      } else if (errorMessage.includes('InsufficientFunds') || errorMessage.includes('insufficient')) {
-        throw fastify.httpErrors.badRequest(`Swap failed: Insufficient funds. Please check your token balance.`);
-      } else if (errorMessage.includes('AccountNotFound')) {
-        throw fastify.httpErrors.badRequest(
-          `Swap failed: One or more required accounts not found. The pool or token accounts may not be initialized.`,
+      }
+      if (errorMessage.includes('SqrtPriceLimitOverflow') || errorMessage.includes('custom program error: 0x177d')) {
+        throw asBadRequest(
+          'Swap failed: Square root price limit overflow. Adjust price limit/direction or retry with default limits.',
+        );
+      }
+      if (errorMessage.includes('InsufficientFunds') || errorMessage.toLowerCase().includes('insufficient')) {
+        throw asBadRequest('Swap failed: Insufficient funds. Please check your token balance.');
+      }
+      if (errorMessage.includes('AccountNotFound')) {
+        throw asBadRequest(
+          'Swap failed: One or more required accounts not found. The pool or token accounts may not be initialized.',
         );
       }
 
-      // For other simulation errors, provide a cleaner message
+      // Generic fallback
       logger.error('Transaction simulation failed:', simulationError);
-      throw fastify.httpErrors.badRequest(
-        `Transaction simulation failed. This usually means the swap parameters are invalid or market conditions have changed. Please try again.`,
+      throw asBadRequest(
+        'Transaction simulation failed. This usually means the swap parameters are invalid or market conditions changed. Try again.',
       );
     }
   }
