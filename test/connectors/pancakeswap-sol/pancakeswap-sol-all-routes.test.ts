@@ -62,9 +62,8 @@ describe('PancakeSwap Solana - All Routes Integration', () => {
       }
     }, 30000);
 
-    it('should handle invalid pool address gracefully', async () => {
-      const poolInfo = await pancakeswapSol.getClmmPoolInfo('11111111111111111111111111111111');
-      expect(poolInfo).toBeNull();
+    it('should throw error for invalid pool address', async () => {
+      await expect(pancakeswapSol.getClmmPoolInfo('11111111111111111111111111111111')).rejects.toThrow();
     }, 30000);
   });
 
@@ -107,9 +106,8 @@ describe('PancakeSwap Solana - All Routes Integration', () => {
       }
     }, 30000);
 
-    it('should handle invalid position address gracefully', async () => {
-      const positionInfo = await pancakeswapSol.getPositionInfo('11111111111111111111111111111111');
-      expect(positionInfo).toBeNull();
+    it('should throw error for invalid position address', async () => {
+      await expect(pancakeswapSol.getPositionInfo('11111111111111111111111111111111')).rejects.toThrow();
     }, 30000);
   });
 
