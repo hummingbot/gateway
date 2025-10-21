@@ -5,12 +5,16 @@ import { Solana } from '../../../chains/solana/solana';
 import { QuotePositionResponse, QuotePositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
-import { getLiquidityFromAmounts } from '../pancakeswap-sol.math';
+import {
+  getLiquidityFromAmounts,
+  getLiquidityFromSingleAmount,
+  getAmountsFromLiquidity,
+} from '../pancakeswap-sol.math';
 import { PancakeswapSolClmmQuotePositionRequest } from '../schemas';
 
 /**
- * Simplified position quoting - calculates token amounts based on current pool price
- * This is a simplified version that doesn't use tick math or Raydium SDK
+ * Quote position with proper CLMM math
+ * Calculates token amounts needed for a position based on price range and current price
  */
 async function quotePosition(
   _fastify: FastifyInstance,
@@ -37,61 +41,6 @@ async function quotePosition(
     throw _fastify.httpErrors.badRequest('Lower price must be less than upper price');
   }
 
-  // Determine which amount to use as base
-  let baseLimited = false;
-  let calculatedBaseAmount = 0;
-  let calculatedQuoteAmount = 0;
-
-  if (baseTokenAmount && !quoteTokenAmount) {
-    // User specified base amount, calculate quote
-    baseLimited = true;
-    calculatedBaseAmount = baseTokenAmount;
-
-    // Simplified: assume position will be at current price
-    // In reality, liquidity distribution depends on price range
-    if (currentPrice >= lowerPrice && currentPrice <= upperPrice) {
-      // Price is in range - need both tokens
-      calculatedQuoteAmount = baseTokenAmount * currentPrice;
-    } else if (currentPrice < lowerPrice) {
-      // Price below range - position will be all quote token
-      calculatedQuoteAmount = baseTokenAmount * lowerPrice;
-    } else {
-      // Price above range - position will be all base token
-      calculatedQuoteAmount = 0;
-    }
-  } else if (quoteTokenAmount && !baseTokenAmount) {
-    // User specified quote amount, calculate base
-    baseLimited = false;
-    calculatedQuoteAmount = quoteTokenAmount;
-
-    if (currentPrice >= lowerPrice && currentPrice <= upperPrice) {
-      calculatedBaseAmount = quoteTokenAmount / currentPrice;
-    } else if (currentPrice < lowerPrice) {
-      calculatedBaseAmount = 0;
-    } else {
-      calculatedBaseAmount = quoteTokenAmount / upperPrice;
-    }
-  } else if (baseTokenAmount && quoteTokenAmount) {
-    // Both specified - use the smaller ratio
-    const baseRatio = baseTokenAmount;
-    const quoteRatio = quoteTokenAmount / currentPrice;
-
-    baseLimited = baseRatio < quoteRatio;
-    if (baseLimited) {
-      calculatedBaseAmount = baseTokenAmount;
-      calculatedQuoteAmount = baseTokenAmount * currentPrice;
-    } else {
-      calculatedBaseAmount = quoteTokenAmount / currentPrice;
-      calculatedQuoteAmount = quoteTokenAmount;
-    }
-  } else {
-    throw _fastify.httpErrors.badRequest('Must specify baseTokenAmount or quoteTokenAmount');
-  }
-
-  logger.info(
-    `Quote position for pool ${poolAddress}: ${calculatedBaseAmount.toFixed(4)} base, ${calculatedQuoteAmount.toFixed(4)} quote`,
-  );
-
   // Get token info for decimals
   const baseToken = await solana.getToken(poolInfo.baseTokenAddress);
   const quoteToken = await solana.getToken(poolInfo.quoteTokenAddress);
@@ -100,25 +49,124 @@ async function quotePosition(
     throw _fastify.httpErrors.notFound('Token information not found');
   }
 
-  // Calculate actual liquidity using CLMM math
-  const liquidity = getLiquidityFromAmounts(
-    currentPrice,
-    lowerPrice,
-    upperPrice,
-    calculatedBaseAmount,
-    calculatedQuoteAmount,
-    baseToken.decimals,
-    quoteToken.decimals,
+  let liquidity;
+  let baseLimited = false;
+  let calculatedBaseAmount = 0;
+  let calculatedQuoteAmount = 0;
+
+  if (baseTokenAmount && !quoteTokenAmount) {
+    // User specified only base amount - calculate liquidity from it
+    baseLimited = true;
+    liquidity = getLiquidityFromSingleAmount(
+      currentPrice,
+      lowerPrice,
+      upperPrice,
+      baseTokenAmount,
+      baseToken.decimals,
+      true, // isToken0 (base)
+      baseToken.decimals,
+      quoteToken.decimals,
+    );
+
+    // Calculate both amounts from liquidity
+    const amounts = getAmountsFromLiquidity(
+      currentPrice,
+      lowerPrice,
+      upperPrice,
+      liquidity,
+      baseToken.decimals,
+      quoteToken.decimals,
+    );
+
+    calculatedBaseAmount = amounts.amount0;
+    calculatedQuoteAmount = amounts.amount1;
+  } else if (quoteTokenAmount && !baseTokenAmount) {
+    // User specified only quote amount - calculate liquidity from it
+    baseLimited = false;
+    liquidity = getLiquidityFromSingleAmount(
+      currentPrice,
+      lowerPrice,
+      upperPrice,
+      quoteTokenAmount,
+      quoteToken.decimals,
+      false, // isToken1 (quote)
+      baseToken.decimals,
+      quoteToken.decimals,
+    );
+
+    // Calculate both amounts from liquidity
+    const amounts = getAmountsFromLiquidity(
+      currentPrice,
+      lowerPrice,
+      upperPrice,
+      liquidity,
+      baseToken.decimals,
+      quoteToken.decimals,
+    );
+
+    calculatedBaseAmount = amounts.amount0;
+    calculatedQuoteAmount = amounts.amount1;
+  } else if (baseTokenAmount && quoteTokenAmount) {
+    // Both specified - calculate liquidity from each and use the minimum (limiting factor)
+    const liquidityFromBase = getLiquidityFromSingleAmount(
+      currentPrice,
+      lowerPrice,
+      upperPrice,
+      baseTokenAmount,
+      baseToken.decimals,
+      true,
+      baseToken.decimals,
+      quoteToken.decimals,
+    );
+
+    const liquidityFromQuote = getLiquidityFromSingleAmount(
+      currentPrice,
+      lowerPrice,
+      upperPrice,
+      quoteTokenAmount,
+      quoteToken.decimals,
+      false,
+      baseToken.decimals,
+      quoteToken.decimals,
+    );
+
+    // Use the smaller liquidity (limiting factor)
+    if (liquidityFromBase.lt(liquidityFromQuote)) {
+      baseLimited = true;
+      liquidity = liquidityFromBase;
+    } else {
+      baseLimited = false;
+      liquidity = liquidityFromQuote;
+    }
+
+    // Calculate actual amounts from the limiting liquidity
+    const amounts = getAmountsFromLiquidity(
+      currentPrice,
+      lowerPrice,
+      upperPrice,
+      liquidity,
+      baseToken.decimals,
+      quoteToken.decimals,
+    );
+
+    calculatedBaseAmount = amounts.amount0;
+    calculatedQuoteAmount = amounts.amount1;
+  } else {
+    throw _fastify.httpErrors.badRequest('Must specify baseTokenAmount or quoteTokenAmount');
+  }
+
+  logger.info(
+    `Quote position for pool ${poolAddress}: ${calculatedBaseAmount.toFixed(6)} base (${baseToken.symbol}), ${calculatedQuoteAmount.toFixed(6)} quote (${quoteToken.symbol})`,
   );
+  logger.info(`Current price: ${currentPrice.toFixed(6)}, Range: ${lowerPrice}-${upperPrice}`);
+  logger.info(`Liquidity: ${liquidity.toString()}, Base limited: ${baseLimited}`);
 
-  logger.info(`Calculated liquidity: ${liquidity.toString()}`);
-
-  // Return quote with actual liquidity
+  // Return quote with calculated amounts
   return {
     baseLimited,
     baseTokenAmount: calculatedBaseAmount,
     quoteTokenAmount: calculatedQuoteAmount,
-    baseTokenAmountMax: calculatedBaseAmount * 1.01, // 1% slippage buffer
+    baseTokenAmountMax: calculatedBaseAmount * 1.01, // 1% buffer for precision
     quoteTokenAmountMax: calculatedQuoteAmount * 1.01,
     liquidity: liquidity.toString(),
   };
