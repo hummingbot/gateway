@@ -1,6 +1,15 @@
 import crypto from 'crypto';
 
-import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getMint } from '@solana/spl-token';
+import {
+  TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
+  getMint,
+  NATIVE_MINT,
+  getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountInstruction,
+  createSyncNativeInstruction,
+  createCloseAccountInstruction,
+} from '@solana/spl-token';
 import { TokenInfo } from '@solana/spl-token-registry';
 import {
   Connection,
@@ -15,6 +24,7 @@ import {
   VersionedTransactionResponse,
   SystemProgram,
   LAMPORTS_PER_SOL,
+  TransactionInstruction,
 } from '@solana/web3.js';
 import bs58 from 'bs58';
 import fse from 'fs-extra';
@@ -1922,6 +1932,54 @@ export class Solana {
         data: undefined,
       };
     }
+  }
+
+  /**
+   * Create instructions to wrap native SOL to WSOL
+   * @param walletPubkey Wallet public key
+   * @param amount Amount of SOL to wrap in lamports
+   * @param tokenProgram Token program (default TOKEN_PROGRAM_ID)
+   * @returns Array of instructions to wrap SOL
+   */
+  public async wrapSOL(
+    walletPubkey: PublicKey,
+    amount: number,
+    tokenProgram: PublicKey = TOKEN_PROGRAM_ID,
+  ): Promise<TransactionInstruction[]> {
+    const instructions: TransactionInstruction[] = [];
+    const wsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, walletPubkey, false, tokenProgram);
+
+    // Check if WSOL account exists
+    const accountInfo = await this.connection.getAccountInfo(wsolAccount);
+
+    if (!accountInfo) {
+      instructions.push(
+        createAssociatedTokenAccountInstruction(walletPubkey, wsolAccount, walletPubkey, NATIVE_MINT, tokenProgram),
+      );
+    }
+
+    // Transfer SOL and sync
+    instructions.push(
+      SystemProgram.transfer({
+        fromPubkey: walletPubkey,
+        toPubkey: wsolAccount,
+        lamports: amount,
+      }),
+    );
+    instructions.push(createSyncNativeInstruction(wsolAccount, tokenProgram));
+
+    return instructions;
+  }
+
+  /**
+   * Create instruction to unwrap WSOL back to native SOL
+   * @param walletPubkey Wallet public key
+   * @param tokenProgram Token program (default TOKEN_PROGRAM_ID)
+   * @returns Instruction to close WSOL account and return SOL
+   */
+  public unwrapSOL(walletPubkey: PublicKey, tokenProgram: PublicKey = TOKEN_PROGRAM_ID): TransactionInstruction {
+    const wsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, walletPubkey, false, tokenProgram);
+    return createCloseAccountInstruction(wsolAccount, walletPubkey, walletPubkey, [], tokenProgram);
   }
 
   /**
