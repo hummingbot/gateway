@@ -222,9 +222,18 @@ export class PancakeswapSol {
       const baseTokenInfo = await this.solana.getToken(poolInfo.baseTokenAddress);
       const quoteTokenInfo = await this.solana.getToken(poolInfo.quoteTokenAddress);
 
+      if (!baseTokenInfo || !quoteTokenInfo) {
+        logger.error(`Token info not found for position ${positionAddress}`);
+        return null;
+      }
+
       // Calculate position amounts (simplified - proper calculation needs tick math)
       const baseTokenAmount = Number(liquidity) / Math.pow(10, baseTokenInfo.decimals);
       const quoteTokenAmount = Number(liquidity) / Math.pow(10, quoteTokenInfo.decimals);
+
+      // Convert fees to decimal amounts
+      const baseFeeAmount = Number(tokenFeesOwed0) / Math.pow(10, baseTokenInfo.decimals);
+      const quoteFeeAmount = Number(tokenFeesOwed1) / Math.pow(10, quoteTokenInfo.decimals);
 
       return {
         address: positionAddress,
@@ -236,8 +245,8 @@ export class PancakeswapSol {
         price: poolInfo.price,
         baseTokenAmount,
         quoteTokenAmount,
-        baseFeeAmount: Number(tokenFeesOwed0),
-        quoteFeeAmount: Number(tokenFeesOwed1),
+        baseFeeAmount,
+        quoteFeeAmount,
         lowerBinId: tickLowerIndex,
         upperBinId: tickUpperIndex,
       };
