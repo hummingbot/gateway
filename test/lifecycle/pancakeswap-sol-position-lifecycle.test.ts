@@ -11,7 +11,7 @@
  * Make sure the wallet has sufficient SOL and tokens before running.
  *
  * Run in one line:
- * GATEWAY_TEST_MODE=dev MANUAL_TEST=true jest --runInBand test/connectors/pancakeswap-sol/pancakeswap-sol-position-lifecycle.test.ts
+ * GATEWAY_TEST_MODE=dev MANUAL_TEST=true jest --runInBand test/lifecycle/pancakeswap-sol-position-lifecycle.test.ts
  */
 
 // ============================================================================
@@ -44,24 +44,24 @@ const TEST_CONFIG = {
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 
-import { Solana } from '../../../src/chains/solana/solana';
-import { PancakeswapSol } from '../../../src/connectors/pancakeswap-sol/pancakeswap-sol';
+import { Solana } from '../../src/chains/solana/solana';
+import { PancakeswapSol } from '../../src/connectors/pancakeswap-sol/pancakeswap-sol';
 import {
   buildDecreaseLiquidityV2Instruction,
   buildClosePositionInstruction,
-} from '../../../src/connectors/pancakeswap-sol/pancakeswap-sol.instructions';
+} from '../../src/connectors/pancakeswap-sol/pancakeswap-sol.instructions';
 import {
   parsePositionData,
   priceToTick,
   roundTickToSpacing,
   parsePoolTickSpacing,
-} from '../../../src/connectors/pancakeswap-sol/pancakeswap-sol.parser';
+} from '../../src/connectors/pancakeswap-sol/pancakeswap-sol.parser';
 import {
   buildOpenPositionTransaction,
   buildAddLiquidityTransaction,
   buildRemoveLiquidityTransaction,
   buildTransactionWithInstructions,
-} from '../../../src/connectors/pancakeswap-sol/pancakeswap-sol.transactions';
+} from '../../src/connectors/pancakeswap-sol/pancakeswap-sol.transactions';
 
 let solana: Solana;
 let pancakeswapSol: PancakeswapSol;
@@ -80,7 +80,7 @@ let positionAddress: string;
  * - Sufficient PENGU and USDC tokens for the position
  *
  * Run with:
- * GATEWAY_TEST_MODE=dev MANUAL_TEST=true jest --runInBand test/connectors/pancakeswap-sol/pancakeswap-sol-position-lifecycle.test.ts
+ * GATEWAY_TEST_MODE=dev MANUAL_TEST=true jest --runInBand test/lifecycle/pancakeswap-sol-position-lifecycle.test.ts
  */
 const describeTest = process.env.MANUAL_TEST === 'true' ? describe : describe.skip;
 
