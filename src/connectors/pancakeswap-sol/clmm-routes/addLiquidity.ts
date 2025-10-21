@@ -17,6 +17,7 @@ async function addLiquidity(
   positionAddress: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
+  slippagePct?: number,
 ): Promise<AddLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const pancakeswapSol = await PancakeswapSol.getInstance(network);
@@ -39,9 +40,10 @@ async function addLiquidity(
     throw _fastify.httpErrors.notFound('Token information not found');
   }
 
-  // Convert amounts to BN with decimals
-  const amount0Max = new BN(baseTokenAmount * 10 ** baseToken.decimals);
-  const amount1Max = new BN(quoteTokenAmount * 10 ** quoteToken.decimals);
+  // Convert amounts to BN with slippage buffer (same as openPosition)
+  const effectiveSlippage = slippagePct || 1.0;
+  const amount0Max = new BN((baseTokenAmount * (1 + effectiveSlippage / 100) * 10 ** baseToken.decimals).toFixed(0));
+  const amount1Max = new BN((quoteTokenAmount * (1 + effectiveSlippage / 100) * 10 ** quoteToken.decimals).toFixed(0));
 
   // Use baseTokenAmount as the base (baseFlag=true means base on token0/base)
   const baseFlag = baseTokenAmount > 0;
@@ -49,6 +51,10 @@ async function addLiquidity(
   logger.info(
     `Adding liquidity to position ${positionAddress}: ${baseTokenAmount} ${baseToken.symbol}, ${quoteTokenAmount} ${quoteToken.symbol}`,
   );
+  logger.info(`Amounts with slippage (${effectiveSlippage}%):`);
+  logger.info(`  amount0Max: ${amount0Max.toString()} (${baseToken.symbol})`);
+  logger.info(`  amount1Max: ${amount1Max.toString()} (${quoteToken.symbol})`);
+  logger.info(`Base Flag: ${baseFlag}`);
 
   // Get priority fee
   const priorityFeeInLamports = await solana.estimateGasPrice();
@@ -130,9 +136,18 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           positionAddress,
           baseTokenAmount,
           quoteTokenAmount,
+          slippagePct,
         } = request.body;
 
-        return await addLiquidity(fastify, network, walletAddress!, positionAddress, baseTokenAmount, quoteTokenAmount);
+        return await addLiquidity(
+          fastify,
+          network,
+          walletAddress!,
+          positionAddress,
+          baseTokenAmount,
+          quoteTokenAmount,
+          slippagePct,
+        );
       } catch (e: any) {
         logger.error('Add liquidity error:', e);
         // Re-throw httpErrors as-is
