@@ -7,18 +7,19 @@ import { PancakeswapSol } from '../pancakeswap-sol';
 import { PancakeswapSolClmmQuoteSwapRequest, PancakeswapSolClmmQuoteSwapRequestType } from '../schemas';
 
 /**
- * IMPORTANT: This is a SIMPLIFIED quote implementation that uses current pool price.
+ * Quote swap implementation using pool data with fee and price impact estimation.
+ *
+ * Features:
+ * - Uses actual pool fee from AMM config
+ * - Estimates price impact based on swap amount vs pool liquidity
+ * - Accounts for fee deduction from output amount
  *
  * Limitations:
- * - Does NOT account for price impact across ticks
- * - Does NOT use actual tick array data for precise calculations
- * - Does NOT calculate real slippage based on pool depth
- * - Uses spot price from pool, not execution price
+ * - Price impact is estimated, not calculated from tick arrays
+ * - Does NOT use full tick-by-tick liquidity distribution
+ * - May underestimate impact for very large swaps that cross many ticks
  *
- * For production use, this should be replaced with a full implementation using:
- * - Tick array fetching and processing
- * - Concentrated liquidity math (similar to Raydium SDK)
- * - Proper price impact calculation based on available liquidity
+ * For highest precision, this should be replaced with full tick array calculation.
  */
 async function quoteSwap(
   _fastify: FastifyInstance,
@@ -66,28 +67,60 @@ async function quoteSwap(
   const isBaseTokenFirst = poolInfo.baseTokenAddress === baseToken.address;
   const currentPrice = isBaseTokenFirst ? poolInfo.price : 1 / poolInfo.price;
 
+  // Get pool balances for price impact calculation
+  const poolBaseBalance = isBaseTokenFirst ? poolInfo.baseTokenAmount : poolInfo.quoteTokenAmount;
+  const poolQuoteBalance = isBaseTokenFirst ? poolInfo.quoteTokenAmount : poolInfo.baseTokenAmount;
+
   const effectiveSlippage = slippagePct ?? 1.0; // Default 1% slippage
+  const feePct = poolInfo.feePct;
 
   let amountIn: number;
   let amountOut: number;
   let minAmountOut: number;
   let maxAmountIn: number;
   let price: number;
+  let priceImpactPct: number;
 
   if (side === 'SELL') {
     // Selling base token for quote token
     amountIn = amount;
-    amountOut = amount * currentPrice;
+
+    // Estimate price impact based on swap size vs pool liquidity
+    // For CLMM, impact is roughly proportional to (amountIn / poolBalance)
+    // but amplified since liquidity is concentrated
+    const impactRatio = amountIn / poolBaseBalance;
+    priceImpactPct = impactRatio * 100; // Simplified: 1% of pool = ~1% impact
+
+    // Calculate execution price with impact (price moves against trader)
+    const executionPrice = currentPrice * (1 - priceImpactPct / 100);
+
+    // Calculate output before fees
+    const outputBeforeFee = amountIn * executionPrice;
+
+    // Deduct protocol fee from output
+    amountOut = outputBeforeFee * (1 - feePct / 100);
+
     minAmountOut = amountOut * (1 - effectiveSlippage / 100);
     maxAmountIn = amountIn;
-    price = currentPrice;
+    price = amountOut / amountIn; // Effective price after fees and impact
   } else {
     // Buying base token with quote token
     amountOut = amount;
-    amountIn = amount * currentPrice;
+
+    // Estimate price impact for buy (impact on quote side)
+    const estimatedQuoteIn = amount * currentPrice;
+    const impactRatio = estimatedQuoteIn / poolQuoteBalance;
+    priceImpactPct = impactRatio * 100;
+
+    // Calculate execution price with impact (price moves against trader)
+    const executionPrice = currentPrice * (1 + priceImpactPct / 100);
+
+    // Account for fee: need more input to cover fee
+    amountIn = (amount * executionPrice) / (1 - feePct / 100);
+
     minAmountOut = amountOut;
     maxAmountIn = amountIn * (1 + effectiveSlippage / 100);
-    price = currentPrice;
+    price = amountIn / amountOut; // Effective price after fees and impact
   }
 
   const result: QuoteSwapResponseType = {
@@ -100,13 +133,12 @@ async function quoteSwap(
     slippagePct: effectiveSlippage,
     minAmountOut,
     maxAmountIn,
-    priceImpactPct: 0, // Cannot calculate without tick array data
+    priceImpactPct,
   };
 
   logger.info(
-    `PancakeSwap CLMM quote: ${side} ${amount} ${baseTokenSymbol}/${quoteTokenSymbol} - Price: ${price.toFixed(6)}`,
+    `PancakeSwap CLMM quote: ${side} ${amount} ${baseTokenSymbol}/${quoteTokenSymbol} - Price: ${price.toFixed(6)}, Impact: ${priceImpactPct.toFixed(4)}%, Fee: ${feePct}%`,
   );
-  logger.warn('Using simplified quote calculation - does not account for price impact or tick liquidity');
 
   return result;
 }
@@ -120,7 +152,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description:
-          'Get swap quote for PancakeSwap Solana CLMM (simplified - uses spot price without tick calculations)',
+          'Get swap quote for PancakeSwap Solana CLMM with fee and estimated price impact based on pool liquidity',
         tags: ['/connector/pancakeswap-sol'],
         querystring: PancakeswapSolClmmQuoteSwapRequest,
         response: { 200: QuoteSwapResponse },
