@@ -154,6 +154,10 @@ export async function buildSwapV2Instruction(
     is_base_input: isBaseInput,
   });
 
+  // TODO: Implement proper tick array discovery
+  // For now, only include tick array if it exists on-chain
+  const tickArrayInfo = await solana.connection.getAccountInfo(tickArrayAddress);
+
   const accounts = [
     { pubkey: walletPubkey, isSigner: true, isWritable: true }, // payer
     { pubkey: ammConfig, isSigner: false, isWritable: false }, // amm_config
@@ -168,9 +172,15 @@ export async function buildSwapV2Instruction(
     { pubkey: MEMO_PROGRAM_ID, isSigner: false, isWritable: false }, // memo_program
     { pubkey: inputMint, isSigner: false, isWritable: false }, // input_vault_mint
     { pubkey: outputMint, isSigner: false, isWritable: false }, // output_vault_mint
-    // Remaining accounts: tick arrays needed for swap
-    { pubkey: tickArrayAddress, isSigner: false, isWritable: true }, // tick_array for current tick
   ];
+
+  // Add tick array as remaining account only if it exists
+  if (tickArrayInfo) {
+    accounts.push({ pubkey: tickArrayAddress, isSigner: false, isWritable: true });
+    logger.info(`Including tick array: ${tickArrayAddress.toString()}`);
+  } else {
+    logger.warn(`Tick array not initialized: ${tickArrayAddress.toString()}, skipping`);
+  }
 
   const instruction = new TransactionInstruction({
     programId: PANCAKESWAP_CLMM_PROGRAM_ID,
