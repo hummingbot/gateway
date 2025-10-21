@@ -280,8 +280,95 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
       console.log(`  Amounts: ${quote1.baseTokenAmount.toFixed(6)} SOL + ${quote1.quoteTokenAmount.toFixed(6)} USDC`);
     }, 30000);
 
-    // Note: Out-of-range tests removed because CLMM math currently doesn't handle
-    // positions where current price is outside the range (returns 0 liquidity)
+    it('should handle price out of range (above upper) with quote token', async () => {
+      // Pool price is ~184, set range below it
+      const quote = await quotePosition(
+        mockFastify as any,
+        NETWORK,
+        50, // lower
+        100, // upper (both below current price)
+        SOL_USDC_POOL,
+        undefined,
+        100, // quote token - will be converted to base
+      );
+
+      expect(quote).toBeDefined();
+      expect(quote.baseTokenAmount).toBeGreaterThan(0);
+      expect(quote.quoteTokenAmount).toBe(0); // All in base token when price above range
+      expect(quote.liquidity).toBeDefined();
+
+      console.log('\n🔢 Price Above Range (Quote → Base):');
+      console.log(`  Range: 50-100, Current: ~184`);
+      console.log(`  Input: 100 USDC`);
+      console.log(`  Output: ${quote.baseTokenAmount.toFixed(6)} SOL (all base token)`);
+    }, 30000);
+
+    it('should handle price out of range (above upper) with base token', async () => {
+      // Pool price is ~184, set range below it
+      const quote = await quotePosition(
+        mockFastify as any,
+        NETWORK,
+        50, // lower
+        100, // upper (both below current price)
+        SOL_USDC_POOL,
+        0.5, // base token - used directly
+        undefined,
+      );
+
+      expect(quote).toBeDefined();
+      expect(quote.baseTokenAmount).toBeGreaterThan(0);
+      expect(quote.quoteTokenAmount).toBe(0);
+
+      console.log('\n🔢 Price Above Range (Base Direct):');
+      console.log(`  Range: 50-100, Current: ~184`);
+      console.log(`  Input: 0.5 SOL`);
+      console.log(`  Output: ${quote.baseTokenAmount.toFixed(6)} SOL`);
+    }, 30000);
+
+    it('should handle price out of range (below lower) with base token', async () => {
+      // Pool price is ~184, set range above it
+      const quote = await quotePosition(
+        mockFastify as any,
+        NETWORK,
+        250, // lower (above current price)
+        300, // upper
+        SOL_USDC_POOL,
+        0.1, // base token - will be converted to quote
+        undefined,
+      );
+
+      expect(quote).toBeDefined();
+      expect(quote.baseTokenAmount).toBe(0); // All in quote token when price below range
+      expect(quote.quoteTokenAmount).toBeGreaterThan(0);
+      expect(quote.liquidity).toBeDefined();
+
+      console.log('\n🔢 Price Below Range (Base → Quote):');
+      console.log(`  Range: 250-300, Current: ~184`);
+      console.log(`  Input: 0.1 SOL`);
+      console.log(`  Output: ${quote.quoteTokenAmount.toFixed(6)} USDC (all quote token)`);
+    }, 30000);
+
+    it('should handle price out of range (below lower) with quote token', async () => {
+      // Pool price is ~184, set range above it
+      const quote = await quotePosition(
+        mockFastify as any,
+        NETWORK,
+        250, // lower (above current price)
+        300, // upper
+        SOL_USDC_POOL,
+        undefined,
+        50, // quote token - used directly
+      );
+
+      expect(quote).toBeDefined();
+      expect(quote.baseTokenAmount).toBe(0);
+      expect(quote.quoteTokenAmount).toBeGreaterThan(0);
+
+      console.log('\n🔢 Price Below Range (Quote Direct):');
+      console.log(`  Range: 250-300, Current: ~184`);
+      console.log(`  Input: 50 USDC`);
+      console.log(`  Output: ${quote.quoteTokenAmount.toFixed(6)} USDC`);
+    }, 30000);
   });
 
   describe('Error Handling', () => {

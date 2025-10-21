@@ -54,19 +54,43 @@ async function quotePosition(
   let calculatedBaseAmount = 0;
   let calculatedQuoteAmount = 0;
 
+  // Determine position type based on price range
+  const priceAboveRange = currentPrice >= upperPrice;
+  const priceBelowRange = currentPrice < lowerPrice;
+
   if (baseTokenAmount && !quoteTokenAmount) {
-    // User specified only base amount - calculate liquidity from it
-    baseLimited = true;
-    liquidity = getLiquidityFromSingleAmount(
-      currentPrice,
-      lowerPrice,
-      upperPrice,
-      baseTokenAmount,
-      baseToken.decimals,
-      true, // isToken0 (base)
-      baseToken.decimals,
-      quoteToken.decimals,
-    );
+    // User specified only base amount
+    const effectiveBaseAmount = baseTokenAmount;
+
+    // If price is below range, position needs only quote token
+    // Convert base amount to quote equivalent
+    if (priceBelowRange) {
+      const quoteEquivalent = baseTokenAmount * currentPrice;
+      liquidity = getLiquidityFromSingleAmount(
+        currentPrice,
+        lowerPrice,
+        upperPrice,
+        quoteEquivalent,
+        quoteToken.decimals,
+        false, // use quote token
+        baseToken.decimals,
+        quoteToken.decimals,
+      );
+      baseLimited = false; // quote token is the limiting factor
+    } else {
+      // Price in range or above range - use base token directly
+      liquidity = getLiquidityFromSingleAmount(
+        currentPrice,
+        lowerPrice,
+        upperPrice,
+        effectiveBaseAmount,
+        baseToken.decimals,
+        true, // isToken0 (base)
+        baseToken.decimals,
+        quoteToken.decimals,
+      );
+      baseLimited = true;
+    }
 
     // Calculate both amounts from liquidity
     const amounts = getAmountsFromLiquidity(
@@ -81,18 +105,38 @@ async function quotePosition(
     calculatedBaseAmount = amounts.amount0;
     calculatedQuoteAmount = amounts.amount1;
   } else if (quoteTokenAmount && !baseTokenAmount) {
-    // User specified only quote amount - calculate liquidity from it
-    baseLimited = false;
-    liquidity = getLiquidityFromSingleAmount(
-      currentPrice,
-      lowerPrice,
-      upperPrice,
-      quoteTokenAmount,
-      quoteToken.decimals,
-      false, // isToken1 (quote)
-      baseToken.decimals,
-      quoteToken.decimals,
-    );
+    // User specified only quote amount
+    const effectiveQuoteAmount = quoteTokenAmount;
+
+    // If price is above range, position needs only base token
+    // Convert quote amount to base equivalent
+    if (priceAboveRange) {
+      const baseEquivalent = quoteTokenAmount / currentPrice;
+      liquidity = getLiquidityFromSingleAmount(
+        currentPrice,
+        lowerPrice,
+        upperPrice,
+        baseEquivalent,
+        baseToken.decimals,
+        true, // use base token
+        baseToken.decimals,
+        quoteToken.decimals,
+      );
+      baseLimited = true; // base token is the limiting factor
+    } else {
+      // Price in range or below range - use quote token directly
+      liquidity = getLiquidityFromSingleAmount(
+        currentPrice,
+        lowerPrice,
+        upperPrice,
+        effectiveQuoteAmount,
+        quoteToken.decimals,
+        false, // isToken1 (quote)
+        baseToken.decimals,
+        quoteToken.decimals,
+      );
+      baseLimited = false;
+    }
 
     // Calculate both amounts from liquidity
     const amounts = getAmountsFromLiquidity(
@@ -107,36 +151,74 @@ async function quotePosition(
     calculatedBaseAmount = amounts.amount0;
     calculatedQuoteAmount = amounts.amount1;
   } else if (baseTokenAmount && quoteTokenAmount) {
-    // Both specified - calculate liquidity from each and use the minimum (limiting factor)
-    const liquidityFromBase = getLiquidityFromSingleAmount(
-      currentPrice,
-      lowerPrice,
-      upperPrice,
-      baseTokenAmount,
-      baseToken.decimals,
-      true,
-      baseToken.decimals,
-      quoteToken.decimals,
-    );
+    // Both specified - handle based on price range
+    let liquidityFromBase;
+    let liquidityFromQuote;
 
-    const liquidityFromQuote = getLiquidityFromSingleAmount(
-      currentPrice,
-      lowerPrice,
-      upperPrice,
-      quoteTokenAmount,
-      quoteToken.decimals,
-      false,
-      baseToken.decimals,
-      quoteToken.decimals,
-    );
-
-    // Use the smaller liquidity (limiting factor)
-    if (liquidityFromBase.lt(liquidityFromQuote)) {
-      baseLimited = true;
-      liquidity = liquidityFromBase;
-    } else {
+    if (priceBelowRange) {
+      // Price below range - only quote token matters
+      // Convert base to quote equivalent and add to provided quote amount
+      const baseAsQuote = baseTokenAmount * currentPrice;
+      const totalQuote = quoteTokenAmount + baseAsQuote;
+      liquidity = getLiquidityFromSingleAmount(
+        currentPrice,
+        lowerPrice,
+        upperPrice,
+        totalQuote,
+        quoteToken.decimals,
+        false,
+        baseToken.decimals,
+        quoteToken.decimals,
+      );
       baseLimited = false;
-      liquidity = liquidityFromQuote;
+    } else if (priceAboveRange) {
+      // Price above range - only base token matters
+      // Convert quote to base equivalent and add to provided base amount
+      const quoteAsBase = quoteTokenAmount / currentPrice;
+      const totalBase = baseTokenAmount + quoteAsBase;
+      liquidity = getLiquidityFromSingleAmount(
+        currentPrice,
+        lowerPrice,
+        upperPrice,
+        totalBase,
+        baseToken.decimals,
+        true,
+        baseToken.decimals,
+        quoteToken.decimals,
+      );
+      baseLimited = true;
+    } else {
+      // Price in range - calculate liquidity from each and use the minimum (limiting factor)
+      liquidityFromBase = getLiquidityFromSingleAmount(
+        currentPrice,
+        lowerPrice,
+        upperPrice,
+        baseTokenAmount,
+        baseToken.decimals,
+        true,
+        baseToken.decimals,
+        quoteToken.decimals,
+      );
+
+      liquidityFromQuote = getLiquidityFromSingleAmount(
+        currentPrice,
+        lowerPrice,
+        upperPrice,
+        quoteTokenAmount,
+        quoteToken.decimals,
+        false,
+        baseToken.decimals,
+        quoteToken.decimals,
+      );
+
+      // Use the smaller liquidity (limiting factor)
+      if (liquidityFromBase.lt(liquidityFromQuote)) {
+        baseLimited = true;
+        liquidity = liquidityFromBase;
+      } else {
+        baseLimited = false;
+        liquidity = liquidityFromQuote;
+      }
     }
 
     // Calculate actual amounts from the limiting liquidity
