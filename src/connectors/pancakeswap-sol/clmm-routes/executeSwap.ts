@@ -114,17 +114,33 @@ export async function executeSwap(
   const inputToken = side === 'SELL' ? baseToken : quoteToken;
   const outputToken = side === 'SELL' ? quoteToken : baseToken;
 
-  const amountBN = new BN(Math.floor(amountIn * 10 ** inputToken.decimals));
-  const minAmountOut = amountOut * (1 - effectiveSlippage / 100);
-  const otherAmountThresholdBN = new BN(Math.floor(minAmountOut * 10 ** outputToken.decimals));
+  // The swap_v2 instruction interprets parameters differently based on is_base_input:
+  // - When is_base_input = true: amount is exact INPUT, other_amount_threshold is minimum OUTPUT
+  // - When is_base_input = false: amount is exact OUTPUT, other_amount_threshold is maximum INPUT
+  let amountBN: BN;
+  let otherAmountThresholdBN: BN;
+
+  if (isBaseInput) {
+    // Exact input swap: we specify exact input amount and minimum output
+    amountBN = new BN(Math.floor(amountIn * 10 ** inputToken.decimals));
+    const minAmountOut = amountOut * (1 - effectiveSlippage / 100);
+    otherAmountThresholdBN = new BN(Math.floor(minAmountOut * 10 ** outputToken.decimals));
+    logger.info(
+      `Executing ${side} swap (exact input): ${amountIn.toFixed(6)} ${inputToken.symbol} for min ${minAmountOut.toFixed(6)} ${outputToken.symbol}`,
+    );
+  } else {
+    // Exact output swap: we specify exact output amount and maximum input
+    amountBN = new BN(Math.floor(amountOut * 10 ** outputToken.decimals));
+    const maxAmountIn = amountIn * (1 + effectiveSlippage / 100);
+    otherAmountThresholdBN = new BN(Math.floor(maxAmountIn * 10 ** inputToken.decimals));
+    logger.info(
+      `Executing ${side} swap (exact output): max ${maxAmountIn.toFixed(6)} ${inputToken.symbol} for ${amountOut.toFixed(6)} ${outputToken.symbol}`,
+    );
+  }
 
   // Set sqrt price limit to 0 for no limit
   // The slippage protection is handled by otherAmountThreshold
   const sqrtPriceLimitX64 = new BN(0);
-
-  logger.info(
-    `Executing ${side} swap: ${amountIn.toFixed(6)} ${inputToken.symbol} for ${amountOut.toFixed(6)} ${outputToken.symbol} (min: ${minAmountOut.toFixed(6)})`,
-  );
 
   // Get wallet keypair
   const wallet = await solana.getWallet(walletAddress);
