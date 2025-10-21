@@ -59,6 +59,18 @@ export async function executeSwap(
     throw _fastify.httpErrors.notFound(`Pool not found: ${poolAddressToUse}`);
   }
 
+  // Validate pool contains the requested tokens
+  const poolTokens = new Set([poolInfo.baseTokenAddress, poolInfo.quoteTokenAddress]);
+  const requestedTokens = new Set([baseToken.address, quoteToken.address]);
+
+  if (!poolTokens.has(baseToken.address) || !poolTokens.has(quoteToken.address)) {
+    throw _fastify.httpErrors.badRequest(
+      `Pool ${poolAddressToUse} does not contain the requested token pair. ` +
+        `Pool has: ${poolInfo.baseTokenAddress}, ${poolInfo.quoteTokenAddress}. ` +
+        `Requested: ${baseToken.symbol} (${baseToken.address}), ${quoteToken.symbol} (${quoteToken.address})`,
+    );
+  }
+
   // Determine if baseToken matches pool's base or quote
   const isBaseTokenFirst = poolInfo.baseTokenAddress === baseToken.address;
   const currentPrice = isBaseTokenFirst ? poolInfo.price : 1 / poolInfo.price;
