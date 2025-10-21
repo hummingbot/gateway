@@ -47,11 +47,14 @@ async function closePosition(
   // Parse liquidity from position account (offset 41, u128)
   const liquidityLow = positionAccountInfo.data.readBigUInt64LE(41);
   const liquidityHigh = positionAccountInfo.data.readBigUInt64LE(49);
-  const hasLiquidity = liquidityLow > 0n || liquidityHigh > 0n;
+
+  // Construct full u128 value: (high << 64) | low
+  const liquidity128 = (liquidityHigh << 64n) | liquidityLow;
+  const hasLiquidity = liquidity128 > 0n;
 
   logger.info(`Closing position ${positionAddress}, has liquidity: ${hasLiquidity}`);
   if (hasLiquidity) {
-    logger.info(`  Liquidity: ${liquidityLow.toString()} (will be removed)`);
+    logger.info(`  Liquidity: ${liquidity128.toString()} (will be removed)`);
   }
 
   // Get tokens for balance tracking
@@ -71,7 +74,7 @@ async function closePosition(
 
   // 1. If position has liquidity, remove it all first
   if (hasLiquidity) {
-    const liquidityBN = new BN(liquidityLow.toString());
+    const liquidityBN = new BN(liquidity128.toString());
     const removeLiquidityIx = await buildDecreaseLiquidityV2Instruction(
       solana,
       positionNftMint,
