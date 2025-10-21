@@ -143,7 +143,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     '/close-position',
     {
       schema: {
-        description: 'Close an empty PancakeSwap Solana CLMM position (NFT must have zero liquidity)',
+        description: 'Close a PancakeSwap Solana CLMM position and remove all liquidity and fees if present',
         tags: ['/connector/pancakeswap-sol'],
         body: PancakeswapSolClmmClosePositionRequest,
         response: {
