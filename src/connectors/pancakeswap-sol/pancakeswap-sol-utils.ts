@@ -542,6 +542,32 @@ export async function buildDecreaseLiquidityV2Instruction(
 
   const tickSpacing = parsePoolTickSpacing(poolData);
 
+  // Parse reward vault addresses from pool state
+  // reward_infos is at offset 399 in the pool state
+  // Each RewardInfo is 169 bytes, and token_vault is at offset 89 within each RewardInfo
+  const rewardInfosOffset = 399;
+  const rewardInfoSize = 169;
+  const tokenVaultOffsetInRewardInfo = 89;
+
+  const rewardVault0 = new PublicKey(
+    poolData.slice(
+      rewardInfosOffset + 0 * rewardInfoSize + tokenVaultOffsetInRewardInfo,
+      rewardInfosOffset + 0 * rewardInfoSize + tokenVaultOffsetInRewardInfo + 32,
+    ),
+  );
+  const rewardVault1 = new PublicKey(
+    poolData.slice(
+      rewardInfosOffset + 1 * rewardInfoSize + tokenVaultOffsetInRewardInfo,
+      rewardInfosOffset + 1 * rewardInfoSize + tokenVaultOffsetInRewardInfo + 32,
+    ),
+  );
+  const rewardVault2 = new PublicKey(
+    poolData.slice(
+      rewardInfosOffset + 2 * rewardInfoSize + tokenVaultOffsetInRewardInfo,
+      rewardInfosOffset + 2 * rewardInfoSize + tokenVaultOffsetInRewardInfo + 32,
+    ),
+  );
+
   // Calculate tick array addresses
   const tickArrayLowerStartIndex = getTickArrayStartIndexFromTick(tickLowerIndex, tickSpacing);
   const tickArrayUpperStartIndex = getTickArrayStartIndexFromTick(tickUpperIndex, tickSpacing);
@@ -605,6 +631,9 @@ export async function buildDecreaseLiquidityV2Instruction(
       { pubkey: MEMO_PROGRAM_ID, isSigner: false, isWritable: false }, // memo_program
       { pubkey: tokenMint0, isSigner: false, isWritable: false }, // vault_0_mint
       { pubkey: tokenMint1, isSigner: false, isWritable: false }, // vault_1_mint
+      { pubkey: rewardVault0, isSigner: false, isWritable: true }, // reward_vault_0
+      { pubkey: rewardVault1, isSigner: false, isWritable: true }, // reward_vault_1
+      { pubkey: rewardVault2, isSigner: false, isWritable: true }, // reward_vault_2
     ],
     data: instructionData,
   });
