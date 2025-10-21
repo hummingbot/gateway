@@ -141,6 +141,13 @@ export async function buildSwapTransaction(
   );
   instructions.push(swapIx);
 
+  // If output is native SOL, unwrap WSOL back to SOL
+  const isOutputSOL = outputMint.equals(NATIVE_MINT);
+  if (isOutputSOL) {
+    const unwrapIx = solana.unwrapSOL(walletPubkey, outputTokenProgram);
+    instructions.push(unwrapIx);
+  }
+
   // Get recent blockhash
   const { blockhash } = await solana.connection.getLatestBlockhash('confirmed');
 
