@@ -28,15 +28,15 @@ const TEST_CONFIG = {
   network: 'mainnet-beta',
   walletAddress: '82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5',
 
-  // PENGU/USDC Pool on PancakeSwap Solana
-  poolAddress: 'CbvdQYoaykHHQ9k27W7WCEMJL8jY99NZ7FoNPfa2vEVx',
+  // SOL/USDC Pool on PancakeSwap Solana (tests WSOL wrapping)
+  poolAddress: '4QU2NpRaqmKMvPSwVKQDeW4V6JFEKJdkzbzdauumD9qN',
 
   // Initial position parameters
-  lowerPrice: 0.02, // Lower price bound
-  upperPrice: 0.025, // Upper price bound
-  baseTokenAmount: 10, // Initial base token amount (PENGU)
-  quoteTokenAmount: 0.25, // Initial quote token amount (USDC)
-  slippagePct: 1, // Slippage tolerance (1%)
+  lowerPrice: 150, // Lower price bound (SOL/USDC - wide range)
+  upperPrice: 250, // Upper price bound (SOL/USDC - wide range)
+  baseTokenAmount: 0.005, // Initial base token amount (SOL - $1 worth)
+  quoteTokenAmount: 1, // Initial quote token amount (USDC - $1 worth)
+  slippagePct: 2, // Slippage tolerance (2% - wider for safety)
 
   // Liquidity modification percentages
   addLiquidityPct: 50, // Add 50% more liquidity

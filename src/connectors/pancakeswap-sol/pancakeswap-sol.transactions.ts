@@ -286,14 +286,44 @@ export async function buildAddLiquidityTransaction(
   computeUnits: number = 600000,
   priorityFeePerCU?: number,
 ): Promise<VersionedTransaction> {
-  const addLiqIx = await buildIncreaseLiquidityV2Instruction(
-    solana,
-    positionNftMint,
-    walletPubkey,
-    liquidity,
-    amount0Max,
-    amount1Max,
+  // Get position account to extract pool info
+  const [personalPosition] = PublicKey.findProgramAddressSync(
+    [Buffer.from('position'), positionNftMint.toBuffer()],
+    PANCAKESWAP_CLMM_PROGRAM_ID,
   );
+
+  const positionAccountInfo = await solana.connection.getAccountInfo(personalPosition);
+  if (!positionAccountInfo) {
+    throw new Error(`Position account not found: ${personalPosition.toString()}`);
+  }
+
+  const { poolId } = parsePositionData(positionAccountInfo.data);
+
+  // Get pool account to determine token mints
+  const poolAccountInfo = await solana.connection.getAccountInfo(poolId);
+  if (!poolAccountInfo) {
+    throw new Error(`Pool account not found: ${poolId.toString()}`);
+  }
+
+  // Parse pool data to get token mints (offsets from pool state struct)
+  const token0Mint = new PublicKey(poolAccountInfo.data.slice(73, 105));
+  const token1Mint = new PublicKey(poolAccountInfo.data.slice(105, 137));
+
+  // Detect token programs for both mints
+  const [token0Program, token1Program] = await Promise.all([
+    getTokenProgramForMint(solana, token0Mint),
+    getTokenProgramForMint(solana, token1Mint),
+  ]);
+
+  // Get token accounts
+  const token0Account = getAssociatedTokenAddressSync(token0Mint, walletPubkey, false, token0Program);
+  const token1Account = getAssociatedTokenAddressSync(token1Mint, walletPubkey, false, token1Program);
+
+  // Check if token accounts exist
+  const [token0AccountInfo, token1AccountInfo] = await Promise.all([
+    solana.connection.getAccountInfo(token0Account),
+    solana.connection.getAccountInfo(token1Account),
+  ]);
 
   const instructions: TransactionInstruction[] = [];
 
@@ -306,6 +336,54 @@ export async function buildAddLiquidityTransaction(
       }),
     );
   }
+
+  // Handle token0 (create ATA if needed, wrap SOL if native)
+  const isToken0SOL = token0Mint.equals(NATIVE_MINT);
+  if (!token0AccountInfo) {
+    instructions.push(
+      createAssociatedTokenAccountInstruction(walletPubkey, token0Account, walletPubkey, token0Mint, token0Program),
+    );
+  }
+  if (isToken0SOL) {
+    // Transfer SOL to WSOL account and sync
+    instructions.push(
+      SystemProgram.transfer({
+        fromPubkey: walletPubkey,
+        toPubkey: token0Account,
+        lamports: amount0Max.toNumber(),
+      }),
+    );
+    instructions.push(createSyncNativeInstruction(token0Account, token0Program));
+  }
+
+  // Handle token1 (create ATA if needed, wrap SOL if native)
+  const isToken1SOL = token1Mint.equals(NATIVE_MINT);
+  if (!token1AccountInfo) {
+    instructions.push(
+      createAssociatedTokenAccountInstruction(walletPubkey, token1Account, walletPubkey, token1Mint, token1Program),
+    );
+  }
+  if (isToken1SOL) {
+    // Transfer SOL to WSOL account and sync
+    instructions.push(
+      SystemProgram.transfer({
+        fromPubkey: walletPubkey,
+        toPubkey: token1Account,
+        lamports: amount1Max.toNumber(),
+      }),
+    );
+    instructions.push(createSyncNativeInstruction(token1Account, token1Program));
+  }
+
+  // Build add liquidity instruction
+  const addLiqIx = await buildIncreaseLiquidityV2Instruction(
+    solana,
+    positionNftMint,
+    walletPubkey,
+    liquidity,
+    amount0Max,
+    amount1Max,
+  );
 
   instructions.push(addLiqIx);
 
@@ -336,18 +414,31 @@ export async function buildOpenPositionTransaction(
   // Generate new keypair for NFT mint
   const positionNftMint = Keypair.generate();
 
-  const openPositionIx = await buildOpenPositionWithToken22NftInstruction(
-    solana,
-    poolAddress,
-    walletPubkey,
-    positionNftMint,
-    tickLowerIndex,
-    tickUpperIndex,
-    amount0Max,
-    amount1Max,
-    withMetadata,
-    baseFlag,
-  );
+  // Get pool info to determine token mints
+  const poolAccountInfo = await solana.connection.getAccountInfo(poolAddress);
+  if (!poolAccountInfo) {
+    throw new Error(`Pool account not found: ${poolAddress.toString()}`);
+  }
+
+  // Parse pool data to get token mints (offsets from pool state struct)
+  const token0Mint = new PublicKey(poolAccountInfo.data.slice(73, 105));
+  const token1Mint = new PublicKey(poolAccountInfo.data.slice(105, 137));
+
+  // Detect token programs for both mints
+  const [token0Program, token1Program] = await Promise.all([
+    getTokenProgramForMint(solana, token0Mint),
+    getTokenProgramForMint(solana, token1Mint),
+  ]);
+
+  // Get token accounts
+  const token0Account = getAssociatedTokenAddressSync(token0Mint, walletPubkey, false, token0Program);
+  const token1Account = getAssociatedTokenAddressSync(token1Mint, walletPubkey, false, token1Program);
+
+  // Check if token accounts exist
+  const [token0AccountInfo, token1AccountInfo] = await Promise.all([
+    solana.connection.getAccountInfo(token0Account),
+    solana.connection.getAccountInfo(token1Account),
+  ]);
 
   const instructions: TransactionInstruction[] = [];
 
@@ -360,6 +451,58 @@ export async function buildOpenPositionTransaction(
       }),
     );
   }
+
+  // Handle token0 (create ATA if needed, wrap SOL if native)
+  const isToken0SOL = token0Mint.equals(NATIVE_MINT);
+  if (!token0AccountInfo) {
+    instructions.push(
+      createAssociatedTokenAccountInstruction(walletPubkey, token0Account, walletPubkey, token0Mint, token0Program),
+    );
+  }
+  if (isToken0SOL) {
+    // Transfer SOL to WSOL account and sync
+    instructions.push(
+      SystemProgram.transfer({
+        fromPubkey: walletPubkey,
+        toPubkey: token0Account,
+        lamports: amount0Max.toNumber(),
+      }),
+    );
+    instructions.push(createSyncNativeInstruction(token0Account, token0Program));
+  }
+
+  // Handle token1 (create ATA if needed, wrap SOL if native)
+  const isToken1SOL = token1Mint.equals(NATIVE_MINT);
+  if (!token1AccountInfo) {
+    instructions.push(
+      createAssociatedTokenAccountInstruction(walletPubkey, token1Account, walletPubkey, token1Mint, token1Program),
+    );
+  }
+  if (isToken1SOL) {
+    // Transfer SOL to WSOL account and sync
+    instructions.push(
+      SystemProgram.transfer({
+        fromPubkey: walletPubkey,
+        toPubkey: token1Account,
+        lamports: amount1Max.toNumber(),
+      }),
+    );
+    instructions.push(createSyncNativeInstruction(token1Account, token1Program));
+  }
+
+  // Build open position instruction
+  const openPositionIx = await buildOpenPositionWithToken22NftInstruction(
+    solana,
+    poolAddress,
+    walletPubkey,
+    positionNftMint,
+    tickLowerIndex,
+    tickUpperIndex,
+    amount0Max,
+    amount1Max,
+    withMetadata,
+    baseFlag,
+  );
 
   instructions.push(openPositionIx);
 

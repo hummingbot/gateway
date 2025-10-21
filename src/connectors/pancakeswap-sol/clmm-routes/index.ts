@@ -16,9 +16,9 @@ export const pancakeswapSolClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(poolInfoRoute);
   await fastify.register(positionInfoRoute);
   await fastify.register(positionsOwnedRoute);
+  await fastify.register(quotePositionRoute);
   await fastify.register(quoteSwapRoute);
   await fastify.register(executeSwapRoute);
-  await fastify.register(quotePositionRoute);
   await fastify.register(openPositionRoute);
   await fastify.register(addLiquidityRoute);
   await fastify.register(removeLiquidityRoute);

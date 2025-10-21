@@ -95,6 +95,10 @@ const swaggerOptions = {
         name: '/connector/pancakeswap-sol',
         description: 'PancakeSwap Solana connector endpoints',
       },
+      {
+        name: '/connector/pancakeswap',
+        description: 'PancakeSwap EVM connector endpoints',
+      },
     ],
     components: {
       parameters: {
