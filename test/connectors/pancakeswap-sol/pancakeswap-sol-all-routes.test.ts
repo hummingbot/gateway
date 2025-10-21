@@ -12,8 +12,14 @@ import quoteSwapSellFixture from './fixtures/quote-swap-sell.json';
 /**
  * Comprehensive tests for all PancakeSwap Solana routes
  * Tests connector methods directly against mainnet data
+ *
+ * NOTE: These are integration tests that require live RPC access.
+ * They are skipped in CI to avoid rate limiting issues.
  */
-describe('PancakeSwap Solana - All Routes Integration', () => {
+// Skip in CI - these are integration tests that require live RPC
+const describeOrSkip = process.env.CI ? describe.skip : describe;
+
+describeOrSkip('PancakeSwap Solana - All Routes Integration', () => {
   let pancakeswapSol: PancakeswapSol;
   let solana: Solana;
   const network = 'mainnet-beta';

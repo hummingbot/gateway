@@ -37,7 +37,10 @@ const mockFastify = {
   },
 };
 
-describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
+// Skip in CI - these are integration tests that require live RPC
+const describeOrSkip = process.env.CI ? describe.skip : describe;
+
+describeOrSkip('PancakeSwap Solana - Comprehensive Route Tests', () => {
   beforeAll(async () => {
     solana = await Solana.getInstance(NETWORK);
     pancakeswapSol = await PancakeswapSol.getInstance(NETWORK);
