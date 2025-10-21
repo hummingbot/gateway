@@ -9,6 +9,9 @@
  *
  * This is a LIVE integration test that executes real transactions on Solana mainnet-beta.
  * Make sure the wallet has sufficient SOL and tokens before running.
+ *
+ * Run in one line:
+ * GATEWAY_TEST_MODE=dev MANUAL_TEST=true jest --runInBand test/connectors/pancakeswap-sol/pancakeswap-sol-position-lifecycle.test.ts
  */
 
 // ============================================================================
@@ -69,17 +72,19 @@ let positionAddress: string;
  *
  * IMPORTANT: This test is SKIPPED by default and should be run manually by QA users.
  *
- * To run this test, change `describe.skip` to `describe` below.
- *
  * Requirements:
  * - GATEWAY_TEST_MODE=dev environment variable
+ * - MANUAL_TEST=true environment variable to enable this test
  * - Wallet configured in conf/wallets/solana/
  * - Sufficient SOL for transaction fees (~0.01 SOL)
  * - Sufficient PENGU and USDC tokens for the position
  *
- * Run with: GATEWAY_TEST_MODE=dev jest --runInBand test/connectors/pancakeswap-sol/pancakeswap-sol-position-lifecycle.test.ts
+ * Run with:
+ * GATEWAY_TEST_MODE=dev MANUAL_TEST=true jest --runInBand test/connectors/pancakeswap-sol/pancakeswap-sol-position-lifecycle.test.ts
  */
-describe.skip('PancakeSwap Solana CLMM Position Lifecycle - MANUAL TEST', () => {
+const describeTest = process.env.MANUAL_TEST === 'true' ? describe : describe.skip;
+
+describeTest('PancakeSwap Solana CLMM Position Lifecycle - MANUAL TEST', () => {
   beforeAll(async () => {
     solana = await Solana.getInstance(TEST_CONFIG.network);
     pancakeswapSol = await PancakeswapSol.getInstance(TEST_CONFIG.network);
