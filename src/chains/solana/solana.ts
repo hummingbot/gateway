@@ -156,18 +156,18 @@ export class Solana {
 
         // Update this.config with Helius-specific fields so they're available throughout the class
         this.config = mergedConfig;
+
+        // Initialize HeliusService with merged config (always use mergedConfig, not this.config)
+        // This ensures HeliusService gets all Helius fields even if this.config wasn't updated
+        this.heliusService = new HeliusService(mergedConfig);
       } else {
         // Fallback to standard nodeURL if no API key
-        logger.warn(`⚠️ Helius provider selected but no API key configured, falling back to standard RPC`);
-        logger.info(`Using fallback RPC URL: ${this.config.nodeURL}`);
+        logger.warn(`⚠️ Helius provider selected but no API key configured`);
+        logger.info(`Using standard RPC from nodeURL: ${this.config.nodeURL}`);
         this.connection = new Connection(this.config.nodeURL, {
           commitment: 'confirmed',
         });
       }
-
-      // Initialize HeliusService with merged config (always use mergedConfig, not this.config)
-      // This ensures HeliusService gets all Helius fields even if this.config wasn't updated
-      this.heliusService = new HeliusService(mergedConfig);
     } catch (error) {
       // If Helius config not found (e.g., in tests), fallback to standard RPC
       logger.warn(`Failed to initialize Helius provider: ${error.message}, falling back to standard RPC`);
