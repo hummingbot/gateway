@@ -30,6 +30,11 @@ const clmmIdl = require('./idl/clmm.json') as Idl;
 // Memo program
 const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
 
+// Price limit constants for CLMM swaps
+// These represent the min/max sqrt(price) * 2^64 based on tick bounds
+export const MIN_SQRT_PRICE_X64 = new BN('4295048016'); // Minimum sqrt price
+export const MAX_SQRT_PRICE_X64 = new BN('79226673515401279992447579055'); // Maximum sqrt price
+
 /**
  * Helper to detect which token program a mint uses
  */

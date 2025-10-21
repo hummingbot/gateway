@@ -7,7 +7,7 @@ import { Solana } from '../../../chains/solana/solana';
 import { ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
-import { buildSwapTransaction } from '../pancakeswap-sol-utils';
+import { buildSwapTransaction, MIN_SQRT_PRICE_X64, MAX_SQRT_PRICE_X64 } from '../pancakeswap-sol-utils';
 import { PancakeswapSolClmmExecuteSwapRequest, PancakeswapSolClmmExecuteSwapRequestType } from '../schemas';
 
 /**
@@ -105,8 +105,10 @@ async function executeSwap(
   const minAmountOut = amountOut * (1 - effectiveSlippage / 100);
   const otherAmountThresholdBN = new BN(Math.floor(minAmountOut * 10 ** outputToken.decimals));
 
-  // sqrt_price_limit_x64: 0 means no limit
-  const sqrtPriceLimitX64 = new BN(0);
+  // Set sqrt price limit based on swap direction
+  // isBaseInput=true: selling token0 for token1, price decreases, use MIN
+  // isBaseInput=false: selling token1 for token0, price increases, use MAX
+  const sqrtPriceLimitX64 = isBaseInput ? MIN_SQRT_PRICE_X64 : MAX_SQRT_PRICE_X64;
 
   logger.info(
     `Executing ${side} swap: ${amountIn.toFixed(6)} ${inputToken.symbol} for ${amountOut.toFixed(6)} ${outputToken.symbol} (min: ${minAmountOut.toFixed(6)})`,
