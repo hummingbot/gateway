@@ -16,7 +16,7 @@ import { PancakeswapSolClmmExecuteSwapRequest, PancakeswapSolClmmExecuteSwapRequ
  *
  * NOTE: This uses manual transaction building with Anchor instruction encoding
  */
-async function executeSwap(
+export async function executeSwap(
   _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
