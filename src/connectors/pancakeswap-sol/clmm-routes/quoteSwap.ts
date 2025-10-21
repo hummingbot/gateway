@@ -143,6 +143,8 @@ async function quoteSwap(
   return result;
 }
 
+export { quoteSwap };
+
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: PancakeswapSolClmmQuoteSwapRequestType;
