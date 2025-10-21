@@ -408,6 +408,46 @@ export async function buildClosePositionTransaction(
 }
 
 /**
+ * Build a transaction with custom instructions and compute budget
+ * Generic helper for building transactions with multiple instructions
+ */
+export async function buildTransactionWithInstructions(
+  solana: Solana,
+  walletPubkey: PublicKey,
+  instructions: TransactionInstruction[],
+  computeUnits: number = 600000,
+  priorityFeePerCU?: number,
+): Promise<VersionedTransaction> {
+  const allInstructions: TransactionInstruction[] = [];
+
+  // Add compute budget instructions
+  allInstructions.push(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }));
+
+  if (priorityFeePerCU !== undefined && priorityFeePerCU > 0) {
+    allInstructions.push(
+      ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: priorityFeePerCU,
+      }),
+    );
+  }
+
+  // Add provided instructions
+  allInstructions.push(...instructions);
+
+  // Get recent blockhash
+  const { blockhash } = await solana.connection.getLatestBlockhash('confirmed');
+
+  // Build message
+  const messageV0 = new TransactionMessage({
+    payerKey: walletPubkey,
+    recentBlockhash: blockhash,
+    instructions: allInstructions,
+  }).compileToV0Message();
+
+  return new VersionedTransaction(messageV0);
+}
+
+/**
  * Calculate tick array start index from tick and tick spacing
  */
 function getTickArrayStartIndexFromTick(tick: number, tickSpacing: number): number {

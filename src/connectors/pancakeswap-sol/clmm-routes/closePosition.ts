@@ -1,12 +1,17 @@
 import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
+import BN from 'bn.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { ClosePositionResponse, ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
-import { PancakeswapSol } from '../pancakeswap-sol';
-import { buildClosePositionTransaction } from '../pancakeswap-sol-utils';
+import { PancakeswapSol, PANCAKESWAP_CLMM_PROGRAM_ID } from '../pancakeswap-sol';
+import {
+  buildDecreaseLiquidityV2Instruction,
+  buildClosePositionInstruction,
+  buildTransactionWithInstructions,
+} from '../pancakeswap-sol-utils';
 import { PancakeswapSolClmmClosePositionRequest } from '../schemas';
 
 async function closePosition(
@@ -18,35 +23,76 @@ async function closePosition(
   const solana = await Solana.getInstance(network);
   const pancakeswapSol = await PancakeswapSol.getInstance(network);
 
-  // Validate position exists
+  // Validate position exists and get info
   const positionInfo = await pancakeswapSol.getPositionInfo(positionAddress);
   if (!positionInfo) {
     throw _fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
-  }
-
-  // Check that position has no liquidity
-  if (positionInfo.baseTokenAmount > 0 || positionInfo.quoteTokenAmount > 0) {
-    throw _fastify.httpErrors.badRequest(
-      'Position must have zero liquidity before closing. Use removeLiquidity to remove all liquidity first.',
-    );
   }
 
   const wallet = await solana.getWallet(walletAddress);
   const walletPubkey = new PublicKey(walletAddress);
   const positionNftMint = new PublicKey(positionAddress);
 
-  logger.info('Closing PancakeSwap Solana CLMM position...');
+  // Get position account to read actual liquidity
+  const [personalPosition] = PublicKey.findProgramAddressSync(
+    [Buffer.from('position'), positionNftMint.toBuffer()],
+    PANCAKESWAP_CLMM_PROGRAM_ID,
+  );
+
+  const positionAccountInfo = await solana.connection.getAccountInfo(personalPosition);
+  if (!positionAccountInfo) {
+    throw _fastify.httpErrors.notFound(`Position account not found: ${personalPosition.toString()}`);
+  }
+
+  // Parse liquidity from position account (offset 41, u128)
+  const liquidityLow = positionAccountInfo.data.readBigUInt64LE(41);
+  const liquidityHigh = positionAccountInfo.data.readBigUInt64LE(49);
+  const hasLiquidity = liquidityLow > 0n || liquidityHigh > 0n;
+
+  logger.info(`Closing position ${positionAddress}, has liquidity: ${hasLiquidity}`);
+  if (hasLiquidity) {
+    logger.info(`  Liquidity: ${liquidityLow.toString()} (will be removed)`);
+  }
+
+  // Get tokens for balance tracking
+  const baseToken = await solana.getToken(positionInfo.baseTokenAddress);
+  const quoteToken = await solana.getToken(positionInfo.quoteTokenAddress);
+
+  if (!baseToken || !quoteToken) {
+    throw _fastify.httpErrors.notFound('Token information not found');
+  }
 
   // Get priority fee
   const priorityFeeInLamports = await solana.estimateGasPrice();
   const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
 
-  // Build transaction
-  const transaction = await buildClosePositionTransaction(
+  // Build transaction with both instructions (like successful manual transaction)
+  const instructions = [];
+
+  // 1. If position has liquidity, remove it all first
+  if (hasLiquidity) {
+    const liquidityBN = new BN(liquidityLow.toString());
+    const removeLiquidityIx = await buildDecreaseLiquidityV2Instruction(
+      solana,
+      positionNftMint,
+      walletPubkey,
+      liquidityBN, // Remove all liquidity
+      new BN(0), // amount0Min = 0 (accept any amount)
+      new BN(0), // amount1Min = 0
+    );
+    instructions.push(removeLiquidityIx);
+  }
+
+  // 2. Close position and burn NFT
+  const closePositionIx = await buildClosePositionInstruction(solana, positionNftMint, walletPubkey);
+  instructions.push(closePositionIx);
+
+  // Build complete transaction
+  const transaction = await buildTransactionWithInstructions(
     solana,
-    positionNftMint,
     walletPubkey,
-    400000, // Compute units
+    instructions,
+    800000, // Compute units for both operations
     priorityFeePerCU,
   );
 
@@ -59,18 +105,30 @@ async function closePosition(
   if (confirmed && txData) {
     const totalFee = txData.meta.fee;
 
+    // Extract balance changes
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
+      baseToken.address,
+      quoteToken.address,
+    ]);
+
+    const baseTokenChange = balanceChanges[0];
+    const quoteTokenChange = balanceChanges[1];
+
     logger.info(`Position closed successfully. Signature: ${signature}`);
+    logger.info(
+      `Removed ${Math.abs(baseTokenChange).toFixed(4)} ${baseToken.symbol}, ${Math.abs(quoteTokenChange).toFixed(4)} ${quoteToken.symbol}`,
+    );
 
     return {
       signature,
       status: 1, // CONFIRMED
       data: {
         fee: totalFee / 1e9,
-        positionRentRefunded: 0, // Position rent refund (simplified - not calculated)
-        baseTokenAmountRemoved: 0,
-        quoteTokenAmountRemoved: 0,
-        baseFeeAmountCollected: 0,
-        quoteFeeAmountCollected: 0,
+        positionRentRefunded: 0, // Position rent refund (simplified)
+        baseTokenAmountRemoved: Math.abs(baseTokenChange),
+        quoteTokenAmountRemoved: Math.abs(quoteTokenChange),
+        baseFeeAmountCollected: 0, // Included in balance changes
+        quoteFeeAmountCollected: 0, // Included in balance changes
       },
     };
   }
