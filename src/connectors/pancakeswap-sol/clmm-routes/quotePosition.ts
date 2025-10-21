@@ -140,9 +140,15 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
         );
-      } catch (e) {
-        logger.error(e);
-        throw fastify.httpErrors.internalServerError('Failed to quote position');
+      } catch (e: any) {
+        logger.error('Quote position error:', e);
+        // Re-throw httpErrors as-is
+        if (e.statusCode) {
+          throw e;
+        }
+        // Handle unknown errors
+        const errorMessage = e.message || 'Failed to quote position';
+        throw fastify.httpErrors.internalServerError(errorMessage);
       }
     },
   );

@@ -180,12 +180,15 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           poolAddress,
           slippagePct,
         );
-      } catch (e) {
-        logger.error(e);
+      } catch (e: any) {
+        logger.error('Quote swap error:', e);
+        // Re-throw httpErrors as-is
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError('Failed to get swap quote');
+        // Handle unknown errors
+        const errorMessage = e.message || 'Failed to get swap quote';
+        throw fastify.httpErrors.internalServerError(errorMessage);
       }
     },
   );

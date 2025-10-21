@@ -140,9 +140,15 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const { network = 'mainnet-beta', walletAddress, positionAddress, percentageToRemove } = request.body;
 
         return await removeLiquidity(fastify, network, walletAddress!, positionAddress, percentageToRemove);
-      } catch (e) {
-        logger.error(e);
-        throw fastify.httpErrors.internalServerError('Failed to remove liquidity');
+      } catch (e: any) {
+        logger.error('Remove liquidity error:', e);
+        // Re-throw httpErrors as-is
+        if (e.statusCode) {
+          throw e;
+        }
+        // Handle unknown errors
+        const errorMessage = e.message || 'Failed to remove liquidity';
+        throw fastify.httpErrors.internalServerError(errorMessage);
       }
     },
   );

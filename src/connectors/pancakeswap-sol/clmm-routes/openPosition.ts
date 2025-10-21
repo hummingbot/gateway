@@ -194,9 +194,15 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           quoteTokenAmount,
           slippagePct,
         );
-      } catch (e) {
-        logger.error(e);
-        throw fastify.httpErrors.internalServerError('Failed to open position');
+      } catch (e: any) {
+        logger.error('Open position error:', e);
+        // Re-throw httpErrors as-is
+        if (e.statusCode) {
+          throw e;
+        }
+        // Handle unknown errors
+        const errorMessage = e.message || 'Failed to open position';
+        throw fastify.httpErrors.internalServerError(errorMessage);
       }
     },
   );

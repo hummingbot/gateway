@@ -37,12 +37,15 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         return poolInfo;
-      } catch (e) {
-        logger.error(e);
+      } catch (e: any) {
+        logger.error('Pool info error:', e);
+        // Re-throw httpErrors as-is
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError('Failed to fetch pool info');
+        // Handle unknown errors
+        const errorMessage = e.message || 'Failed to fetch pool info';
+        throw fastify.httpErrors.internalServerError(errorMessage);
       }
     },
   );

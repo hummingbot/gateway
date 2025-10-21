@@ -37,12 +37,15 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         return positionInfo;
-      } catch (e) {
-        logger.error(e);
+      } catch (e: any) {
+        logger.error('Position info error:', e);
+        // Re-throw httpErrors as-is
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError('Failed to fetch position info');
+        // Handle unknown errors
+        const errorMessage = e.message || 'Failed to fetch position info';
+        throw fastify.httpErrors.internalServerError(errorMessage);
       }
     },
   );

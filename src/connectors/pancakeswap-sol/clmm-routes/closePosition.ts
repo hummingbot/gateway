@@ -102,9 +102,15 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         const { network = 'mainnet-beta', walletAddress, positionAddress } = request.body;
 
         return await closePosition(fastify, network, walletAddress!, positionAddress);
-      } catch (e) {
-        logger.error(e);
-        throw fastify.httpErrors.internalServerError('Failed to close position');
+      } catch (e: any) {
+        logger.error('Close position error:', e);
+        // Re-throw httpErrors as-is
+        if (e.statusCode) {
+          throw e;
+        }
+        // Handle unknown errors
+        const errorMessage = e.message || 'Failed to close position';
+        throw fastify.httpErrors.internalServerError(errorMessage);
       }
     },
   );

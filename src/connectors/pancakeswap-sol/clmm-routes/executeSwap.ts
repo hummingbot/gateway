@@ -62,6 +62,10 @@ async function executeSwap(
   const isBaseTokenFirst = poolInfo.baseTokenAddress === baseToken.address;
   const currentPrice = isBaseTokenFirst ? poolInfo.price : 1 / poolInfo.price;
 
+  logger.info(
+    `Token addresses - base: ${baseToken.address}, quote: ${quoteToken.address}, pool base: ${poolInfo.baseTokenAddress}, pool quote: ${poolInfo.quoteTokenAddress}`,
+  );
+
   const effectiveSlippage = slippagePct ?? 1.0;
 
   // Calculate amounts
@@ -77,14 +81,20 @@ async function executeSwap(
     amountOut = amount * currentPrice;
     inputMint = new PublicKey(baseToken.address);
     outputMint = new PublicKey(quoteToken.address);
-    isBaseInput = poolInfo.baseTokenAddress === baseToken.address;
+    // isBaseInput means: is the input token the pool's token0 (base)?
+    isBaseInput = inputMint.toString() === poolInfo.baseTokenAddress;
+
+    logger.info(`SELL: input=${inputMint.toString()}, output=${outputMint.toString()}, isBaseInput=${isBaseInput}`);
   } else {
     // Buying base token with quote token
     amountOut = amount;
     amountIn = amount * currentPrice;
     inputMint = new PublicKey(quoteToken.address);
     outputMint = new PublicKey(baseToken.address);
-    isBaseInput = poolInfo.baseTokenAddress === quoteToken.address;
+    // isBaseInput means: is the input token the pool's token0 (base)?
+    isBaseInput = inputMint.toString() === poolInfo.baseTokenAddress;
+
+    logger.info(`BUY: input=${inputMint.toString()}, output=${outputMint.toString()}, isBaseInput=${isBaseInput}`);
   }
 
   // Convert to BN with decimals
@@ -206,12 +216,15 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           poolAddress,
           slippagePct,
         );
-      } catch (e) {
-        logger.error(e);
+      } catch (e: any) {
+        logger.error('Execute swap error:', e);
+        // Re-throw httpErrors as-is
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError('Failed to execute swap');
+        // Handle unknown errors
+        const errorMessage = e.message || 'Failed to execute swap';
+        throw fastify.httpErrors.internalServerError(errorMessage);
       }
     },
   );

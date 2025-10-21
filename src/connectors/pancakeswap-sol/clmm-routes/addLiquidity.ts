@@ -133,9 +133,15 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         } = request.body;
 
         return await addLiquidity(fastify, network, walletAddress!, positionAddress, baseTokenAmount, quoteTokenAmount);
-      } catch (e) {
-        logger.error(e);
-        throw fastify.httpErrors.internalServerError('Failed to add liquidity');
+      } catch (e: any) {
+        logger.error('Add liquidity error:', e);
+        // Re-throw httpErrors as-is
+        if (e.statusCode) {
+          throw e;
+        }
+        // Handle unknown errors
+        const errorMessage = e.message || 'Failed to add liquidity';
+        throw fastify.httpErrors.internalServerError(errorMessage);
       }
     },
   );

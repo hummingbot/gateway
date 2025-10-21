@@ -95,12 +95,15 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
 
         logger.info(`Found ${positions.length} positions in pool ${poolAddress}`);
         return positions;
-      } catch (e) {
-        logger.error(e);
+      } catch (e: any) {
+        logger.error('Positions owned error:', e);
+        // Re-throw httpErrors as-is
         if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+          throw e;
         }
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        // Handle unknown errors
+        const errorMessage = e.message || 'Failed to fetch positions';
+        throw fastify.httpErrors.internalServerError(errorMessage);
       }
     },
   );
