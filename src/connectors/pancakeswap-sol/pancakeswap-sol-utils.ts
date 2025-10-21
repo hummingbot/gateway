@@ -337,11 +337,13 @@ export async function buildClosePositionInstruction(
   // First check Token2022 since PancakeSwap uses it for position NFTs
   let positionNftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_2022_PROGRAM_ID);
   let accountInfo = await solana.connection.getAccountInfo(positionNftAccount);
+  let nftTokenProgram = TOKEN_2022_PROGRAM_ID;
 
   // If not found in Token2022, try SPL Token
   if (!accountInfo) {
     positionNftAccount = getAssociatedTokenAddressSync(positionNftMint, walletPubkey, false, TOKEN_PROGRAM_ID);
     accountInfo = await solana.connection.getAccountInfo(positionNftAccount);
+    nftTokenProgram = TOKEN_PROGRAM_ID;
 
     if (!accountInfo) {
       throw new Error(`Position NFT account not found for mint: ${positionNftMint.toString()}`);
@@ -360,7 +362,7 @@ export async function buildClosePositionInstruction(
       { pubkey: positionNftAccount, isSigner: false, isWritable: true }, // position_nft_account
       { pubkey: personalPosition, isSigner: false, isWritable: true }, // personal_position
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
-      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
+      { pubkey: nftTokenProgram, isSigner: false, isWritable: false }, // token_program (detected)
     ],
     data: instructionData,
   });

@@ -11,6 +11,7 @@ import {
   buildDecreaseLiquidityV2Instruction,
   buildClosePositionInstruction,
   buildTransactionWithInstructions,
+  parsePositionData,
 } from '../pancakeswap-sol-utils';
 import { PancakeswapSolClmmClosePositionRequest } from '../schemas';
 
@@ -44,17 +45,13 @@ async function closePosition(
     throw _fastify.httpErrors.notFound(`Position account not found: ${personalPosition.toString()}`);
   }
 
-  // Parse liquidity from position account (offset 41, u128)
-  const liquidityLow = positionAccountInfo.data.readBigUInt64LE(41);
-  const liquidityHigh = positionAccountInfo.data.readBigUInt64LE(49);
-
-  // Construct full u128 value: (high << 64) | low
-  const liquidity128 = (liquidityHigh << 64n) | liquidityLow;
-  const hasLiquidity = liquidity128 > 0n;
+  // Parse position data to get liquidity (like removeLiquidity.ts)
+  const { liquidity } = parsePositionData(positionAccountInfo.data);
+  const hasLiquidity = liquidity.gt(new BN(0));
 
   logger.info(`Closing position ${positionAddress}, has liquidity: ${hasLiquidity}`);
   if (hasLiquidity) {
-    logger.info(`  Liquidity: ${liquidity128.toString()} (will be removed)`);
+    logger.info(`  Liquidity: ${liquidity.toString()} (will be removed)`);
   }
 
   // Get tokens for balance tracking
@@ -74,12 +71,11 @@ async function closePosition(
 
   // 1. If position has liquidity, remove it all first
   if (hasLiquidity) {
-    const liquidityBN = new BN(liquidity128.toString());
     const removeLiquidityIx = await buildDecreaseLiquidityV2Instruction(
       solana,
       positionNftMint,
       walletPubkey,
-      liquidityBN, // Remove all liquidity
+      liquidity, // Remove all liquidity (already a BN)
       new BN(0), // amount0Min = 0 (accept any amount)
       new BN(0), // amount1Min = 0
     );
