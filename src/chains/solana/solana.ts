@@ -153,6 +153,9 @@ export class Solana {
         this.connection = new Connection(rpcUrl, {
           commitment: 'confirmed',
         });
+
+        // Update this.config with Helius-specific fields so they're available throughout the class
+        this.config = mergedConfig;
       } else {
         // Fallback to standard nodeURL if no API key
         logger.warn(`⚠️ Helius provider selected but no API key configured, falling back to standard RPC`);
@@ -163,7 +166,7 @@ export class Solana {
       }
 
       // Initialize HeliusService with merged config
-      this.heliusService = new HeliusService(mergedConfig);
+      this.heliusService = new HeliusService(this.config);
     } catch (error) {
       // If Helius config not found (e.g., in tests), fallback to standard RPC
       logger.warn(`Failed to initialize Helius provider: ${error.message}, falling back to standard RPC`);
