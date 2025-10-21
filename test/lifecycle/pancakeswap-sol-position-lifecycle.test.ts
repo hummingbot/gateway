@@ -47,30 +47,12 @@ const TEST_CONFIG = {
 // TEST IMPLEMENTATION
 // ============================================================================
 
-import { Keypair, PublicKey } from '@solana/web3.js';
-import BN from 'bn.js';
-import Decimal from 'decimal.js';
-
 import { Solana } from '../../src/chains/solana/solana';
-import { PancakeswapSol, PANCAKESWAP_CLMM_PROGRAM_ID } from '../../src/connectors/pancakeswap-sol/pancakeswap-sol';
-import { getLiquidityFromAmounts } from '../../src/connectors/pancakeswap-sol/pancakeswap-sol.math';
-import {
-  parsePositionData,
-  priceToTick,
-  roundTickToSpacing,
-  parsePoolTickSpacing,
-} from '../../src/connectors/pancakeswap-sol/pancakeswap-sol.parser';
-import {
-  buildOpenPositionTransaction,
-  buildAddLiquidityTransaction,
-  buildRemoveLiquidityTransaction,
-  buildClosePositionTransaction,
-} from '../../src/connectors/pancakeswap-sol/pancakeswap-sol.transactions';
+import { PancakeswapSol } from '../../src/connectors/pancakeswap-sol/pancakeswap-sol';
 
 let solana: Solana;
 let pancakeswapSol: PancakeswapSol;
 let positionAddress: string;
-let positionNftMintKeypair: Keypair;
 
 /**
  * Position Lifecycle Integration Test
@@ -106,85 +88,44 @@ describeTest('PancakeSwap Solana CLMM Position Lifecycle - MANUAL TEST', () => {
     console.log(`Price Range: ${TEST_CONFIG.lowerPrice} - ${TEST_CONFIG.upperPrice}`);
     console.log(`Initial Amounts: ${TEST_CONFIG.baseTokenAmount} base, ${TEST_CONFIG.quoteTokenAmount} quote`);
 
-    // Get pool info to determine tick spacing and decimals
-    const poolInfo = await pancakeswapSol.getClmmPoolInfo(TEST_CONFIG.poolAddress);
-    expect(poolInfo).toBeTruthy();
+    // Import openPosition route function
+    const { openPosition } = await import('../../src/connectors/pancakeswap-sol/clmm-routes/openPosition');
 
-    const baseToken = await solana.getToken(poolInfo.baseTokenAddress);
-    const quoteToken = await solana.getToken(poolInfo.quoteTokenAddress);
-    expect(baseToken).toBeTruthy();
-    expect(quoteToken).toBeTruthy();
+    // Create mock fastify instance
+    const mockFastify = {
+      httpErrors: {
+        notFound: (msg: string) => new Error(msg),
+        badRequest: (msg: string) => new Error(msg),
+        internalServerError: (msg: string) => new Error(msg),
+      },
+    };
 
-    console.log(`   Pool tokens: ${baseToken!.symbol}/${quoteToken!.symbol}`);
-    console.log(`   Current price: ${poolInfo.price}`);
-
-    // Convert prices to ticks
-    const decimalDiff = baseToken!.decimals - quoteToken!.decimals;
-    const lowerTick = priceToTick(TEST_CONFIG.lowerPrice, decimalDiff);
-    const upperTick = priceToTick(TEST_CONFIG.upperPrice, decimalDiff);
-
-    // Get pool account to read tick spacing
-    const poolAccountInfo = await solana.connection.getAccountInfo(new PublicKey(TEST_CONFIG.poolAddress));
-    expect(poolAccountInfo).toBeTruthy();
-    const tickSpacing = parsePoolTickSpacing(poolAccountInfo!.data);
-
-    // Round ticks to tick spacing
-    const tickLowerIndex = roundTickToSpacing(lowerTick, tickSpacing);
-    const tickUpperIndex = roundTickToSpacing(upperTick, tickSpacing);
-
-    console.log(`   Tick spacing: ${tickSpacing}`);
-    console.log(`   Lower tick: ${tickLowerIndex}, Upper tick: ${tickUpperIndex}`);
-
-    // Get wallet and priority fee
-    const wallet = await solana.getWallet(TEST_CONFIG.walletAddress);
-    const walletPubkey = wallet.publicKey;
-    const priorityFeeInLamports = await solana.estimateGasPrice();
-    const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
-
-    console.log(`   Priority fee: ${priorityFeeInLamports} SOL (${priorityFeePerCU} microlamports/CU)`);
-
-    // Build transaction
-    const amount0Max = new BN((TEST_CONFIG.baseTokenAmount * Math.pow(10, baseToken!.decimals)).toFixed(0));
-    const amount1Max = new BN((TEST_CONFIG.quoteTokenAmount * Math.pow(10, quoteToken!.decimals)).toFixed(0));
-
-    const { transaction, positionNftMint } = await buildOpenPositionTransaction(
-      solana,
-      new PublicKey(TEST_CONFIG.poolAddress),
-      walletPubkey,
-      tickLowerIndex,
-      tickUpperIndex,
-      amount0Max,
-      amount1Max,
-      false, // withMetadata
-      true, // baseFlag
-      800000, // computeUnits
-      priorityFeePerCU,
+    // Call the route function directly
+    const result = await openPosition(
+      mockFastify as any,
+      TEST_CONFIG.network,
+      TEST_CONFIG.walletAddress,
+      TEST_CONFIG.poolAddress,
+      TEST_CONFIG.lowerPrice,
+      TEST_CONFIG.upperPrice,
+      TEST_CONFIG.baseTokenAmount,
+      TEST_CONFIG.quoteTokenAmount,
+      TEST_CONFIG.slippagePct,
     );
 
-    // Sign transaction (wallet + NFT mint keypair)
-    transaction.sign([wallet, positionNftMint]);
+    expect(result.status).toBe(1); // CONFIRMED
+    expect(result.signature).toBeTruthy();
+    expect(result.data).toBeTruthy();
 
-    // Save for next steps
-    positionNftMintKeypair = positionNftMint;
-    positionAddress = positionNftMint.publicKey.toString();
-
-    console.log(`   Position NFT mint: ${positionAddress}`);
-
-    // Simulate transaction
-    await solana.simulateWithErrorHandling(transaction);
-
-    console.log(`   Sending transaction...`);
-
-    // Send and confirm transaction
-    const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
-
-    expect(confirmed).toBe(true);
-    expect(signature).toBeTruthy();
+    // Save position address for next steps
+    positionAddress = result.data!.positionAddress;
 
     console.log(`\n✅ Position opened successfully!`);
-    console.log(`   Signature: ${signature}`);
-    console.log(`   Fee: ${txData?.meta.fee ? (txData.meta.fee / 1e9).toFixed(6) : 'unknown'} SOL`);
+    console.log(`   Signature: ${result.signature}`);
+    console.log(`   Fee: ${result.data!.fee.toFixed(6)} SOL`);
     console.log(`   Position NFT: ${positionAddress}`);
+    console.log(`   Base added: ${result.data!.baseTokenAmountAdded.toFixed(6)}`);
+    console.log(`   Quote added: ${result.data!.quoteTokenAmountAdded.toFixed(6)}`);
   }, 120000);
 
   // ==========================================================================
@@ -202,66 +143,40 @@ describeTest('PancakeSwap Solana CLMM Position Lifecycle - MANUAL TEST', () => {
     console.log(`Adding: ${addBaseAmount} base (${TEST_CONFIG.addLiquidityPct}% of original)`);
     console.log(`Adding: ${addQuoteAmount} quote (${TEST_CONFIG.addLiquidityPct}% of original)`);
 
-    // Get position info to calculate liquidity
-    const positionInfo = await pancakeswapSol.getPositionInfo(positionAddress);
-    expect(positionInfo).toBeTruthy();
+    // Import addLiquidity route function
+    const { addLiquidity } = await import('../../src/connectors/pancakeswap-sol/clmm-routes/addLiquidity');
 
-    const baseToken = await solana.getToken(positionInfo!.baseTokenAddress);
-    const quoteToken = await solana.getToken(positionInfo!.quoteTokenAddress);
+    // Create mock fastify instance
+    const mockFastify = {
+      httpErrors: {
+        notFound: (msg: string) => new Error(msg),
+        badRequest: (msg: string) => new Error(msg),
+        internalServerError: (msg: string) => new Error(msg),
+      },
+    };
 
-    // Get pool info for current price
-    const poolInfo = await pancakeswapSol.getClmmPoolInfo(TEST_CONFIG.poolAddress);
-
-    // Calculate liquidity to add
-    const liquidityToAdd = getLiquidityFromAmounts(
-      poolInfo.price,
+    // Call the route function
+    const result = await addLiquidity(
+      mockFastify as any,
+      TEST_CONFIG.network,
+      TEST_CONFIG.walletAddress,
+      positionAddress,
       TEST_CONFIG.lowerPrice,
       TEST_CONFIG.upperPrice,
       addBaseAmount,
       addQuoteAmount,
-      baseToken!.decimals,
-      quoteToken!.decimals,
+      TEST_CONFIG.slippagePct,
     );
 
-    const amount0Max = new BN((addBaseAmount * Math.pow(10, baseToken!.decimals)).toFixed(0));
-    const amount1Max = new BN((addQuoteAmount * Math.pow(10, quoteToken!.decimals)).toFixed(0));
-
-    console.log(`   Liquidity to add: ${liquidityToAdd.toString()}`);
-
-    // Get wallet and priority fee
-    const wallet = await solana.getWallet(TEST_CONFIG.walletAddress);
-    const walletPubkey = wallet.publicKey;
-    const priorityFeeInLamports = await solana.estimateGasPrice();
-    const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
-
-    // Build transaction
-    const transaction = await buildAddLiquidityTransaction(
-      solana,
-      positionNftMintKeypair.publicKey,
-      walletPubkey,
-      liquidityToAdd,
-      amount0Max,
-      amount1Max,
-      600000, // computeUnits
-      priorityFeePerCU,
-    );
-
-    // Sign transaction
-    transaction.sign([wallet]);
-
-    // Simulate transaction
-    await solana.simulateWithErrorHandling(transaction);
-
-    console.log(`   Sending transaction...`);
-
-    const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
-
-    expect(confirmed).toBe(true);
-    expect(signature).toBeTruthy();
+    expect(result.status).toBe(1); // CONFIRMED
+    expect(result.signature).toBeTruthy();
+    expect(result.data).toBeTruthy();
 
     console.log(`\n✅ Liquidity added successfully!`);
-    console.log(`   Signature: ${signature}`);
-    console.log(`   Fee: ${txData?.meta.fee ? (txData.meta.fee / 1e9).toFixed(6) : 'unknown'} SOL`);
+    console.log(`   Signature: ${result.signature}`);
+    console.log(`   Fee: ${result.data!.fee.toFixed(6)} SOL`);
+    console.log(`   Base added: ${result.data!.baseTokenAmountAdded.toFixed(6)}`);
+    console.log(`   Quote added: ${result.data!.quoteTokenAmountAdded.toFixed(6)}`);
   }, 120000);
 
   // ==========================================================================
@@ -273,60 +188,36 @@ describeTest('PancakeSwap Solana CLMM Position Lifecycle - MANUAL TEST', () => {
     console.log(`Position: ${positionAddress}`);
     console.log(`Removing: ${TEST_CONFIG.removeLiquidityPct}% of current liquidity`);
 
-    // Get position account to read current liquidity
-    const positionNftMint = new PublicKey(positionAddress);
-    const [personalPosition] = PublicKey.findProgramAddressSync(
-      [Buffer.from('position'), positionNftMint.toBuffer()],
-      PANCAKESWAP_CLMM_PROGRAM_ID,
+    // Import removeLiquidity route function
+    const { removeLiquidity } = await import('../../src/connectors/pancakeswap-sol/clmm-routes/removeLiquidity');
+
+    // Create mock fastify instance
+    const mockFastify = {
+      httpErrors: {
+        notFound: (msg: string) => new Error(msg),
+        badRequest: (msg: string) => new Error(msg),
+        internalServerError: (msg: string) => new Error(msg),
+      },
+    };
+
+    // Call the route function
+    const result = await removeLiquidity(
+      mockFastify as any,
+      TEST_CONFIG.network,
+      TEST_CONFIG.walletAddress,
+      positionAddress,
+      TEST_CONFIG.removeLiquidityPct,
     );
 
-    const positionAccountInfo = await solana.connection.getAccountInfo(personalPosition);
-    expect(positionAccountInfo).toBeTruthy();
-
-    const { liquidity } = parsePositionData(positionAccountInfo!.data);
-
-    // Calculate liquidity to remove (50% of current)
-    const liquidityToRemove = new BN(
-      new Decimal(liquidity.toString()).mul(TEST_CONFIG.removeLiquidityPct / 100).toFixed(0),
-    );
-
-    console.log(`   Current liquidity: ${liquidity.toString()}`);
-    console.log(`   Liquidity to remove: ${liquidityToRemove.toString()}`);
-
-    // Get wallet and priority fee
-    const wallet = await solana.getWallet(TEST_CONFIG.walletAddress);
-    const walletPubkey = wallet.publicKey;
-    const priorityFeeInLamports = await solana.estimateGasPrice();
-    const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
-
-    // Build transaction (using 0 for min amounts - no slippage protection)
-    const transaction = await buildRemoveLiquidityTransaction(
-      solana,
-      positionNftMint,
-      walletPubkey,
-      liquidityToRemove,
-      new BN(0), // amount0Min
-      new BN(0), // amount1Min
-      600000, // computeUnits
-      priorityFeePerCU,
-    );
-
-    // Sign transaction
-    transaction.sign([wallet]);
-
-    // Simulate transaction
-    await solana.simulateWithErrorHandling(transaction);
-
-    console.log(`   Sending transaction...`);
-
-    const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
-
-    expect(confirmed).toBe(true);
-    expect(signature).toBeTruthy();
+    expect(result.status).toBe(1); // CONFIRMED
+    expect(result.signature).toBeTruthy();
+    expect(result.data).toBeTruthy();
 
     console.log(`\n✅ Liquidity removed successfully!`);
-    console.log(`   Signature: ${signature}`);
-    console.log(`   Fee: ${txData?.meta.fee ? (txData.meta.fee / 1e9).toFixed(6) : 'unknown'} SOL`);
+    console.log(`   Signature: ${result.signature}`);
+    console.log(`   Fee: ${result.data!.fee.toFixed(6)} SOL`);
+    console.log(`   Base removed: ${result.data!.baseTokenAmountRemoved.toFixed(6)}`);
+    console.log(`   Quote removed: ${result.data!.quoteTokenAmountRemoved.toFixed(6)}`);
   }, 120000);
 
   // ==========================================================================
@@ -338,38 +229,39 @@ describeTest('PancakeSwap Solana CLMM Position Lifecycle - MANUAL TEST', () => {
     console.log(`Position: ${positionAddress}`);
     console.log(`This will remove all remaining liquidity and burn the position NFT`);
 
-    // Get wallet and priority fee
-    const wallet = await solana.getWallet(TEST_CONFIG.walletAddress);
-    const walletPubkey = wallet.publicKey;
-    const priorityFeeInLamports = await solana.estimateGasPrice();
-    const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
+    // Import closePosition route function
+    const { closePosition } = await import('../../src/connectors/pancakeswap-sol/clmm-routes/closePosition');
 
-    // Build transaction
-    const transaction = await buildClosePositionTransaction(
-      solana,
-      positionNftMintKeypair.publicKey,
-      walletPubkey,
-      400000, // computeUnits
-      priorityFeePerCU,
+    // Create mock fastify instance
+    const mockFastify = {
+      httpErrors: {
+        notFound: (msg: string) => new Error(msg),
+        badRequest: (msg: string) => new Error(msg),
+        internalServerError: (msg: string) => new Error(msg),
+      },
+    };
+
+    // Call the route function (automatically removes remaining liquidity)
+    const result = await closePosition(
+      mockFastify as any,
+      TEST_CONFIG.network,
+      TEST_CONFIG.walletAddress,
+      positionAddress,
     );
 
-    // Sign transaction
-    transaction.sign([wallet]);
-
-    // Simulate transaction
-    await solana.simulateWithErrorHandling(transaction);
-
-    console.log(`   Sending transaction...`);
-
-    const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
-
-    expect(confirmed).toBe(true);
-    expect(signature).toBeTruthy();
+    expect(result.status).toBe(1); // CONFIRMED
+    expect(result.signature).toBeTruthy();
+    expect(result.data).toBeTruthy();
 
     console.log(`\n✅ Position closed successfully!`);
-    console.log(`   Signature: ${signature}`);
-    console.log(`   Fee: ${txData?.meta.fee ? (txData.meta.fee / 1e9).toFixed(6) : 'unknown'} SOL`);
+    console.log(`   Signature: ${result.signature}`);
+    console.log(`   Fee: ${result.data!.fee.toFixed(6)} SOL`);
     console.log(`   NFT burned: ${positionAddress}`);
+    if (result.data!.baseTokenAmountRemoved > 0 || result.data!.quoteTokenAmountRemoved > 0) {
+      console.log(`   Final liquidity removed:`);
+      console.log(`     Base: ${result.data!.baseTokenAmountRemoved.toFixed(6)}`);
+      console.log(`     Quote: ${result.data!.quoteTokenAmountRemoved.toFixed(6)}`);
+    }
   }, 120000);
 
   // ==========================================================================

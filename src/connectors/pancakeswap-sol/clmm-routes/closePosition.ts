@@ -7,15 +7,12 @@ import { Solana } from '../../../chains/solana/solana';
 import { ClosePositionResponse, ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol, PANCAKESWAP_CLMM_PROGRAM_ID } from '../pancakeswap-sol';
-import {
-  buildDecreaseLiquidityV2Instruction,
-  buildClosePositionInstruction,
-  buildTransactionWithInstructions,
-  parsePositionData,
-} from '../pancakeswap-sol-utils';
+import { buildDecreaseLiquidityV2Instruction, buildClosePositionInstruction } from '../pancakeswap-sol.instructions';
+import { parsePositionData } from '../pancakeswap-sol.parser';
+import { buildTransactionWithInstructions } from '../pancakeswap-sol.transactions';
 import { PancakeswapSolClmmClosePositionRequest } from '../schemas';
 
-async function closePosition(
+export async function closePosition(
   _fastify: FastifyInstance,
   network: string,
   walletAddress: string,

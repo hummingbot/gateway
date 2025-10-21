@@ -7,17 +7,13 @@ import { Solana } from '../../../chains/solana/solana';
 import { OpenPositionResponse, OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
-import {
-  buildOpenPositionTransaction,
-  priceToTick,
-  roundTickToSpacing,
-  parsePoolTickSpacing,
-} from '../pancakeswap-sol-utils';
+import { priceToTick, roundTickToSpacing, parsePoolTickSpacing } from '../pancakeswap-sol.parser';
+import { buildOpenPositionTransaction } from '../pancakeswap-sol.transactions';
 import { PancakeswapSolClmmOpenPositionRequest } from '../schemas';
 
 import { quotePosition } from './quotePosition';
 
-async function openPosition(
+export async function openPosition(
   _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
