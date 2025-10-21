@@ -105,10 +105,9 @@ async function executeSwap(
   const minAmountOut = amountOut * (1 - effectiveSlippage / 100);
   const otherAmountThresholdBN = new BN(Math.floor(minAmountOut * 10 ** outputToken.decimals));
 
-  // Set sqrt price limit based on swap direction
-  // isBaseInput=true: selling token0 for token1, price decreases, use MIN
-  // isBaseInput=false: selling token1 for token0, price increases, use MAX
-  const sqrtPriceLimitX64 = isBaseInput ? MIN_SQRT_PRICE_X64 : MAX_SQRT_PRICE_X64;
+  // Set sqrt price limit to 0 for no limit
+  // The slippage protection is handled by otherAmountThreshold
+  const sqrtPriceLimitX64 = new BN(0);
 
   logger.info(
     `Executing ${side} swap: ${amountIn.toFixed(6)} ${inputToken.symbol} for ${amountOut.toFixed(6)} ${outputToken.symbol} (min: ${minAmountOut.toFixed(6)})`,
