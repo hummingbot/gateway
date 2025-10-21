@@ -3,7 +3,11 @@ import {
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
+  NATIVE_MINT,
   getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountInstruction,
+  createSyncNativeInstruction,
+  createCloseAccountInstruction,
 } from '@solana/spl-token';
 import {
   PublicKey,
@@ -115,7 +119,7 @@ export async function buildSwapV2Instruction(
 }
 
 /**
- * Build a complete swap transaction with compute budget
+ * Build a complete swap transaction with compute budget and token account setup
  */
 export async function buildSwapTransaction(
   solana: Solana,
@@ -130,18 +134,6 @@ export async function buildSwapTransaction(
   computeUnits: number = 600000,
   priorityFeePerCU?: number,
 ): Promise<VersionedTransaction> {
-  const swapIx = await buildSwapV2Instruction(
-    solana,
-    poolAddress,
-    walletPubkey,
-    inputMint,
-    outputMint,
-    amount,
-    otherAmountThreshold,
-    sqrtPriceLimitX64,
-    isBaseInput,
-  );
-
   const instructions: TransactionInstruction[] = [];
 
   // Add compute budget instructions
@@ -155,11 +147,85 @@ export async function buildSwapTransaction(
     );
   }
 
-  // Add swap instruction
+  // Get token accounts
+  const inputTokenAccount = getAssociatedTokenAddressSync(inputMint, walletPubkey, false, TOKEN_PROGRAM_ID);
+  const outputTokenAccount = getAssociatedTokenAddressSync(outputMint, walletPubkey, false, TOKEN_PROGRAM_ID);
+
+  // Check if token accounts exist
+  const [inputAccountInfo, outputAccountInfo] = await Promise.all([
+    solana.connection.getAccountInfo(inputTokenAccount),
+    solana.connection.getAccountInfo(outputTokenAccount),
+  ]);
+
+  // Track if we created WSOL account (to close it after swap)
+  let createdInputWSOL = false;
+
+  // Create input token account if needed
+  if (!inputAccountInfo) {
+    instructions.push(
+      createAssociatedTokenAccountInstruction(
+        walletPubkey, // payer
+        inputTokenAccount, // ata
+        walletPubkey, // owner
+        inputMint, // mint
+      ),
+    );
+
+    // If input is native SOL, wrap it
+    if (inputMint.equals(NATIVE_MINT)) {
+      createdInputWSOL = true;
+      // Transfer SOL to WSOL account
+      instructions.push(
+        SystemProgram.transfer({
+          fromPubkey: walletPubkey,
+          toPubkey: inputTokenAccount,
+          lamports: amount.toNumber(),
+        }),
+      );
+      // Sync native (wraps SOL to WSOL)
+      instructions.push(createSyncNativeInstruction(inputTokenAccount));
+    }
+  }
+
+  // Create output token account if needed
+  if (!outputAccountInfo) {
+    instructions.push(
+      createAssociatedTokenAccountInstruction(
+        walletPubkey, // payer
+        outputTokenAccount, // ata
+        walletPubkey, // owner
+        outputMint, // mint
+      ),
+    );
+  }
+
+  // Build and add swap instruction
+  const swapIx = await buildSwapV2Instruction(
+    solana,
+    poolAddress,
+    walletPubkey,
+    inputMint,
+    outputMint,
+    amount,
+    otherAmountThreshold,
+    sqrtPriceLimitX64,
+    isBaseInput,
+  );
   instructions.push(swapIx);
 
+  // Close WSOL account after swap to get remaining SOL back
+  if (createdInputWSOL) {
+    instructions.push(
+      createCloseAccountInstruction(
+        inputTokenAccount, // account to close
+        walletPubkey, // destination for lamports
+        walletPubkey, // authority
+      ),
+    );
+  }
+
   // Get recent blockhash
-  const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash('confirmed');
+  const { blockhash } = await solana.connection.getLatestBlockhash('confirmed');
 
   // Build message
   const messageV0 = new TransactionMessage({
