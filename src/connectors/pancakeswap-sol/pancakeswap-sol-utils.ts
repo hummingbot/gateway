@@ -31,6 +31,22 @@ const clmmIdl = require('./idl/clmm.json') as Idl;
 const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
 
 /**
+ * Helper to detect which token program a mint uses
+ */
+async function getTokenProgramForMint(solana: Solana, mint: PublicKey): Promise<PublicKey> {
+  // Try Token2022 first
+  try {
+    const accountInfo = await solana.connection.getAccountInfo(mint);
+    if (accountInfo && accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)) {
+      return TOKEN_2022_PROGRAM_ID;
+    }
+  } catch (e) {
+    // Fall through to TOKEN_PROGRAM_ID
+  }
+  return TOKEN_PROGRAM_ID;
+}
+
+/**
  * Build a swap_v2 instruction for PancakeSwap Solana CLMM
  */
 export async function buildSwapV2Instruction(
@@ -82,10 +98,15 @@ export async function buildSwapV2Instruction(
   const inputVault = inputMint.equals(tokenMint0) ? tokenVault0 : tokenVault1;
   const outputVault = outputMint.equals(tokenMint0) ? tokenVault0 : tokenVault1;
 
-  // Get user token accounts (try both SPL Token and Token2022)
-  // For now, assume SPL Token - can be enhanced to check token program
-  const inputTokenAccount = getAssociatedTokenAddressSync(inputMint, walletPubkey, false, TOKEN_PROGRAM_ID);
-  const outputTokenAccount = getAssociatedTokenAddressSync(outputMint, walletPubkey, false, TOKEN_PROGRAM_ID);
+  // Detect token programs for input/output mints
+  const [inputTokenProgram, outputTokenProgram] = await Promise.all([
+    getTokenProgramForMint(solana, inputMint),
+    getTokenProgramForMint(solana, outputMint),
+  ]);
+
+  // Get user token accounts with correct token programs
+  const inputTokenAccount = getAssociatedTokenAddressSync(inputMint, walletPubkey, false, inputTokenProgram);
+  const outputTokenAccount = getAssociatedTokenAddressSync(outputMint, walletPubkey, false, outputTokenProgram);
 
   // Create instruction using Anchor coder
   const coder = new BorshCoder(clmmIdl);
@@ -147,9 +168,15 @@ export async function buildSwapTransaction(
     );
   }
 
-  // Get token accounts
-  const inputTokenAccount = getAssociatedTokenAddressSync(inputMint, walletPubkey, false, TOKEN_PROGRAM_ID);
-  const outputTokenAccount = getAssociatedTokenAddressSync(outputMint, walletPubkey, false, TOKEN_PROGRAM_ID);
+  // Detect token programs for input/output mints
+  const [inputTokenProgram, outputTokenProgram] = await Promise.all([
+    getTokenProgramForMint(solana, inputMint),
+    getTokenProgramForMint(solana, outputMint),
+  ]);
+
+  // Get token accounts with correct token programs
+  const inputTokenAccount = getAssociatedTokenAddressSync(inputMint, walletPubkey, false, inputTokenProgram);
+  const outputTokenAccount = getAssociatedTokenAddressSync(outputMint, walletPubkey, false, outputTokenProgram);
 
   // Check if token accounts exist
   const [inputAccountInfo, outputAccountInfo] = await Promise.all([
@@ -168,6 +195,7 @@ export async function buildSwapTransaction(
         inputTokenAccount, // ata
         walletPubkey, // owner
         inputMint, // mint
+        inputTokenProgram, // token program
       ),
     );
 
@@ -183,7 +211,7 @@ export async function buildSwapTransaction(
         }),
       );
       // Sync native (wraps SOL to WSOL)
-      instructions.push(createSyncNativeInstruction(inputTokenAccount));
+      instructions.push(createSyncNativeInstruction(inputTokenAccount, inputTokenProgram));
     }
   }
 
@@ -195,6 +223,7 @@ export async function buildSwapTransaction(
         outputTokenAccount, // ata
         walletPubkey, // owner
         outputMint, // mint
+        outputTokenProgram, // token program
       ),
     );
   }
@@ -220,6 +249,8 @@ export async function buildSwapTransaction(
         inputTokenAccount, // account to close
         walletPubkey, // destination for lamports
         walletPubkey, // authority
+        [], // multisigners
+        inputTokenProgram, // token program
       ),
     );
   }
