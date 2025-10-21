@@ -161,8 +161,6 @@ describeTest('PancakeSwap Solana CLMM Position Lifecycle - MANUAL TEST', () => {
       TEST_CONFIG.network,
       TEST_CONFIG.walletAddress,
       positionAddress,
-      TEST_CONFIG.lowerPrice,
-      TEST_CONFIG.upperPrice,
       addBaseAmount,
       addQuoteAmount,
       TEST_CONFIG.slippagePct,
