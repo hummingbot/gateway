@@ -61,6 +61,7 @@ async function addLiquidity(
     `Quote: baseLimited=${quote.baseLimited}, base=${quote.baseTokenAmount}, quote=${quote.quoteTokenAmount}`,
   );
   logger.info(`Quote Max: base=${quote.baseTokenAmountMax}, quote=${quote.quoteTokenAmountMax}`);
+  logger.info(`Quote Liquidity: ${quote.liquidity}`);
 
   // Apply slippage buffer (same as openPosition and Raydium)
   const effectiveSlippage = slippagePct || 1.0;
@@ -71,26 +72,26 @@ async function addLiquidity(
     (quote.quoteTokenAmountMax * (1 + effectiveSlippage / 100) * 10 ** quoteToken.decimals).toFixed(0),
   );
 
-  // Use quote result to determine base flag (same as Raydium)
-  const baseFlag = quote.baseLimited;
+  // Use actual liquidity from quote (like your successful transaction)
+  const liquidity = new BN(quote.liquidity);
 
   logger.info(`Amounts with slippage (${effectiveSlippage}%):`);
+  logger.info(`  liquidity: ${liquidity.toString()}`);
   logger.info(`  amount0Max: ${amount0Max.toString()} (${baseToken.symbol})`);
   logger.info(`  amount1Max: ${amount1Max.toString()} (${quoteToken.symbol})`);
-  logger.info(`Base Flag: ${baseFlag}`);
 
   // Get priority fee
   const priorityFeeInLamports = await solana.estimateGasPrice();
   const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
 
-  // Build transaction
+  // Build transaction with actual liquidity (like your successful transaction)
   const transaction = await buildAddLiquidityTransaction(
     solana,
     positionNftMint,
     walletPubkey,
+    liquidity,
     amount0Max,
     amount1Max,
-    baseFlag,
     600000,
     priorityFeePerCU,
   );

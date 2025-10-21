@@ -4,6 +4,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Solana } from '../../../chains/solana/solana';
 import { QuotePositionResponse, QuotePositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
+import { getLiquidityFromAmounts } from '../pancakeswap-clmm-math';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { PancakeswapSolClmmQuotePositionRequest } from '../schemas';
 
@@ -91,14 +92,35 @@ async function quotePosition(
     `Quote position for pool ${poolAddress}: ${calculatedBaseAmount.toFixed(4)} base, ${calculatedQuoteAmount.toFixed(4)} quote`,
   );
 
-  // Return simplified quote (no actual liquidity calculation)
+  // Get token info for decimals
+  const baseToken = await solana.getToken(poolInfo.baseTokenAddress);
+  const quoteToken = await solana.getToken(poolInfo.quoteTokenAddress);
+
+  if (!baseToken || !quoteToken) {
+    throw _fastify.httpErrors.notFound('Token information not found');
+  }
+
+  // Calculate actual liquidity using CLMM math
+  const liquidity = getLiquidityFromAmounts(
+    currentPrice,
+    lowerPrice,
+    upperPrice,
+    calculatedBaseAmount,
+    calculatedQuoteAmount,
+    baseToken.decimals,
+    quoteToken.decimals,
+  );
+
+  logger.info(`Calculated liquidity: ${liquidity.toString()}`);
+
+  // Return quote with actual liquidity
   return {
     baseLimited,
     baseTokenAmount: calculatedBaseAmount,
     quoteTokenAmount: calculatedQuoteAmount,
     baseTokenAmountMax: calculatedBaseAmount * 1.01, // 1% slippage buffer
     quoteTokenAmountMax: calculatedQuoteAmount * 1.01,
-    liquidity: '0', // Simplified - not calculating actual liquidity
+    liquidity: liquidity.toString(),
   };
 }
 

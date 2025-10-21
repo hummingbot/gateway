@@ -722,15 +722,14 @@ export async function buildRemoveLiquidityTransaction(
 
 /**
  * Build an increase_liquidity_v2 instruction for PancakeSwap Solana CLMM
- * Simplified version: takes token amounts, lets program calculate liquidity
  */
 export async function buildIncreaseLiquidityV2Instruction(
   solana: Solana,
   positionNftMint: PublicKey,
   walletPubkey: PublicKey,
+  liquidity: BN, // The exact liquidity to add (from quote calculation)
   amount0Max: BN,
   amount1Max: BN,
-  baseFlag: boolean, // true = base amount_0, false = base amount_1
 ): Promise<TransactionInstruction> {
   // Get position account to extract pool and ticks
   const [personalPosition] = PublicKey.findProgramAddressSync(
@@ -802,13 +801,13 @@ export async function buildIncreaseLiquidityV2Instruction(
   const tokenAccount0 = getAssociatedTokenAddressSync(tokenMint0, walletPubkey, false, tokenProgram0);
   const tokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, false, tokenProgram1);
 
-  // Create instruction - use liquidity=0 to let program calculate from amounts
+  // Create instruction - use actual liquidity value (like your successful transaction)
   const coder = new BorshCoder(clmmIdl);
   const instructionData = coder.instruction.encode('increase_liquidity_v2', {
-    liquidity: new BN(0), // Let program calculate
+    liquidity: liquidity, // Use calculated liquidity
     amount_0_max: amount0Max,
     amount_1_max: amount1Max,
-    base_flag: baseFlag ? { some: true } : { some: false }, // Option<bool> encoding
+    base_flag: null, // Not needed when liquidity is non-zero
   });
 
   return new TransactionInstruction({
@@ -841,9 +840,9 @@ export async function buildAddLiquidityTransaction(
   solana: Solana,
   positionNftMint: PublicKey,
   walletPubkey: PublicKey,
+  liquidity: BN,
   amount0Max: BN,
   amount1Max: BN,
-  baseFlag: boolean,
   computeUnits: number = 600000,
   priorityFeePerCU?: number,
 ): Promise<VersionedTransaction> {
@@ -851,9 +850,9 @@ export async function buildAddLiquidityTransaction(
     solana,
     positionNftMint,
     walletPubkey,
+    liquidity,
     amount0Max,
     amount1Max,
-    baseFlag,
   );
 
   const instructions: TransactionInstruction[] = [];
