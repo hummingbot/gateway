@@ -542,31 +542,53 @@ export async function buildDecreaseLiquidityV2Instruction(
 
   const tickSpacing = parsePoolTickSpacing(poolData);
 
-  // Parse reward vault addresses from pool state
-  // reward_infos is at offset 399 in the pool state
-  // Each RewardInfo is 169 bytes, and token_vault is at offset 89 within each RewardInfo
-  const rewardInfosOffset = 399;
+  // Parse active reward infos from pool state
+  // reward_infos array is at offset 397 in the pool state (after status + padding)
+  // Each RewardInfo structure:
+  //   - reward_state (u8, offset 0)
+  //   - ... other fields ...
+  //   - token_mint (pubkey, offset 57)
+  //   - token_vault (pubkey, offset 89)
+  // Total size: 169 bytes
+  const rewardInfosOffset = 397;
   const rewardInfoSize = 169;
+  const rewardStateOffset = 0;
+  const tokenMintOffsetInRewardInfo = 57;
   const tokenVaultOffsetInRewardInfo = 89;
 
-  const rewardVault0 = new PublicKey(
-    poolData.slice(
-      rewardInfosOffset + 0 * rewardInfoSize + tokenVaultOffsetInRewardInfo,
-      rewardInfosOffset + 0 * rewardInfoSize + tokenVaultOffsetInRewardInfo + 32,
-    ),
-  );
-  const rewardVault1 = new PublicKey(
-    poolData.slice(
-      rewardInfosOffset + 1 * rewardInfoSize + tokenVaultOffsetInRewardInfo,
-      rewardInfosOffset + 1 * rewardInfoSize + tokenVaultOffsetInRewardInfo + 32,
-    ),
-  );
-  const rewardVault2 = new PublicKey(
-    poolData.slice(
-      rewardInfosOffset + 2 * rewardInfoSize + tokenVaultOffsetInRewardInfo,
-      rewardInfosOffset + 2 * rewardInfoSize + tokenVaultOffsetInRewardInfo + 32,
-    ),
-  );
+  // Collect active rewards (reward_state != 0)
+  interface ActiveReward {
+    vault: PublicKey;
+    mint: PublicKey;
+    userAta: PublicKey;
+  }
+  const activeRewards: ActiveReward[] = [];
+
+  for (let i = 0; i < 3; i++) {
+    const rewardOffset = rewardInfosOffset + i * rewardInfoSize;
+    const rewardState = poolData.readUInt8(rewardOffset + rewardStateOffset);
+
+    if (rewardState !== 0) {
+      // Reward is active
+      const mintOffset = rewardOffset + tokenMintOffsetInRewardInfo;
+      const vaultOffset = rewardOffset + tokenVaultOffsetInRewardInfo;
+
+      const rewardMint = new PublicKey(poolData.slice(mintOffset, mintOffset + 32));
+      const rewardVault = new PublicKey(poolData.slice(vaultOffset, vaultOffset + 32));
+
+      // Get token program for reward mint
+      const rewardTokenProgram = await getTokenProgramForMint(solana, rewardMint);
+
+      // Get user's ATA for reward token
+      const userRewardAta = getAssociatedTokenAddressSync(rewardMint, walletPubkey, false, rewardTokenProgram);
+
+      activeRewards.push({
+        vault: rewardVault,
+        mint: rewardMint,
+        userAta: userRewardAta,
+      });
+    }
+  }
 
   // Calculate tick array addresses
   const tickArrayLowerStartIndex = getTickArrayStartIndexFromTick(tickLowerIndex, tickSpacing);
@@ -612,29 +634,37 @@ export async function buildDecreaseLiquidityV2Instruction(
     amount_1_min: amount1Min,
   });
 
+  // Build base accounts
+  const keys = [
+    { pubkey: walletPubkey, isSigner: true, isWritable: false }, // nft_owner
+    { pubkey: nftAccount, isSigner: false, isWritable: false }, // nft_account
+    { pubkey: personalPosition, isSigner: false, isWritable: true }, // personal_position
+    { pubkey: poolId, isSigner: false, isWritable: true }, // pool_state
+    { pubkey: protocolPosition, isSigner: false, isWritable: true }, // protocol_position
+    { pubkey: tokenVault0, isSigner: false, isWritable: true }, // token_vault_0
+    { pubkey: tokenVault1, isSigner: false, isWritable: true }, // token_vault_1
+    { pubkey: tickArrayLower, isSigner: false, isWritable: true }, // tick_array_lower
+    { pubkey: tickArrayUpper, isSigner: false, isWritable: true }, // tick_array_upper
+    { pubkey: recipientTokenAccount0, isSigner: false, isWritable: true }, // recipient_token_account_0
+    { pubkey: recipientTokenAccount1, isSigner: false, isWritable: true }, // recipient_token_account_1
+    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
+    { pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program_2022
+    { pubkey: MEMO_PROGRAM_ID, isSigner: false, isWritable: false }, // memo_program
+    { pubkey: tokenMint0, isSigner: false, isWritable: false }, // vault_0_mint
+    { pubkey: tokenMint1, isSigner: false, isWritable: false }, // vault_1_mint
+  ];
+
+  // Add reward accounts for active rewards (remaining accounts)
+  // For each active reward, add: reward_vault, user_reward_ata, reward_mint
+  for (const reward of activeRewards) {
+    keys.push({ pubkey: reward.vault, isSigner: false, isWritable: true }); // reward_vault
+    keys.push({ pubkey: reward.userAta, isSigner: false, isWritable: true }); // user_reward_ata
+    keys.push({ pubkey: reward.mint, isSigner: false, isWritable: false }); // reward_mint
+  }
+
   return new TransactionInstruction({
     programId: PANCAKESWAP_CLMM_PROGRAM_ID,
-    keys: [
-      { pubkey: walletPubkey, isSigner: true, isWritable: false }, // nft_owner
-      { pubkey: nftAccount, isSigner: false, isWritable: false }, // nft_account
-      { pubkey: personalPosition, isSigner: false, isWritable: true }, // personal_position
-      { pubkey: poolId, isSigner: false, isWritable: true }, // pool_state
-      { pubkey: protocolPosition, isSigner: false, isWritable: true }, // protocol_position
-      { pubkey: tokenVault0, isSigner: false, isWritable: true }, // token_vault_0
-      { pubkey: tokenVault1, isSigner: false, isWritable: true }, // token_vault_1
-      { pubkey: tickArrayLower, isSigner: false, isWritable: true }, // tick_array_lower
-      { pubkey: tickArrayUpper, isSigner: false, isWritable: true }, // tick_array_upper
-      { pubkey: recipientTokenAccount0, isSigner: false, isWritable: true }, // recipient_token_account_0
-      { pubkey: recipientTokenAccount1, isSigner: false, isWritable: true }, // recipient_token_account_1
-      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
-      { pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program_2022
-      { pubkey: MEMO_PROGRAM_ID, isSigner: false, isWritable: false }, // memo_program
-      { pubkey: tokenMint0, isSigner: false, isWritable: false }, // vault_0_mint
-      { pubkey: tokenMint1, isSigner: false, isWritable: false }, // vault_1_mint
-      { pubkey: rewardVault0, isSigner: false, isWritable: true }, // reward_vault_0
-      { pubkey: rewardVault1, isSigner: false, isWritable: true }, // reward_vault_1
-      { pubkey: rewardVault2, isSigner: false, isWritable: true }, // reward_vault_2
-    ],
+    keys,
     data: instructionData,
   });
 }
