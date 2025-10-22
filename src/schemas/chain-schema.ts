@@ -17,12 +17,15 @@ export type EstimateGasRequestType = Static<typeof EstimateGasRequestSchema>;
 
 export const EstimateGasResponseSchema = Type.Object(
   {
-    feePerComputeUnit: Type.Number(), // Fee per compute unit
+    feePerComputeUnit: Type.Number(), // Fee per compute unit (legacy gas price or maxFeePerGas for EIP-1559)
     denomination: Type.String(), // Denomination: "lamports" or "gwei"
     computeUnits: Type.Number(), // Default compute units/gas limit used for fee calculation
     feeAsset: Type.String(), // Native currency symbol from network config (ETH, SOL, etc.)
     fee: Type.Number(), // Total fee calculated using default gas/compute limits
     timestamp: Type.Number(), // Unix timestamp when estimate was made
+    gasType: Type.Optional(Type.String()), // Gas type: "legacy" or "eip1559"
+    maxFeePerGas: Type.Optional(Type.Number()), // EIP-1559: Maximum fee per gas in gwei
+    maxPriorityFeePerGas: Type.Optional(Type.Number()), // EIP-1559: Maximum priority fee per gas in gwei
   },
   { $id: 'EstimateGasResponse' },
 );
