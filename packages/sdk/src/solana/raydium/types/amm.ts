@@ -95,11 +95,16 @@ export interface QuoteSwapParams extends BaseAmmParams {
 }
 
 export interface QuoteSwapResult {
+  poolAddress: string;
+  tokenIn: string;
+  tokenOut: string;
   amountIn: number;
   amountOut: number;
+  price: number;
+  slippagePct: number;
   minAmountOut: number;
-  priceImpact: number;
-  fee: number;
+  maxAmountIn: number;
+  priceImpactPct: number;
 }
 
 // ============================================================================
