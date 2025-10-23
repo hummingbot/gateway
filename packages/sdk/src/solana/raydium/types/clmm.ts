@@ -138,26 +138,12 @@ export interface CollectFeesResult {
 export interface PositionsOwnedParams {
   network: string;
   walletAddress: string;
-  poolAddress?: string; // Optional filter by pool
+  poolAddress: string; // Pool address to filter positions
 }
 
-export interface PositionSummary {
-  positionAddress: string;
-  poolAddress: string;
-  lowerPrice: number;
-  upperPrice: number;
-  liquidity: string;
-  baseTokenAmount: number;
-  quoteTokenAmount: number;
-  unclaimedFeesBase: number;
-  unclaimedFeesQuote: number;
-  inRange: boolean;
-}
-
-export interface PositionsOwnedResult {
-  positions: PositionSummary[];
-  totalCount: number;
-}
+// The API returns an array of PositionInfoResult
+// (Importing PositionInfoResult type defined below)
+export type PositionsOwnedResult = PositionInfoResult[];
 
 // ============================================================================
 // POSITION INFO
@@ -169,33 +155,19 @@ export interface PositionInfoParams {
 }
 
 export interface PositionInfoResult {
-  positionAddress: string;
+  address: string;
   poolAddress: string;
-  owner: string;
-  nftMint: string;
+  baseTokenAddress: string;
+  quoteTokenAddress: string;
+  baseTokenAmount: number;
+  quoteTokenAmount: number;
+  baseFeeAmount: number;
+  quoteFeeAmount: number;
+  lowerBinId: number;     // Note: For Raydium CLMM, this is tickLower
+  upperBinId: number;     // Note: For Raydium CLMM, this is tickUpper
   lowerPrice: number;
   upperPrice: number;
-  tickLower: number;
-  tickUpper: number;
-  liquidity: string;
-  baseToken: {
-    address: string;
-    symbol: string;
-    decimals: number;
-    amount: number;
-  };
-  quoteToken: {
-    address: string;
-    symbol: string;
-    decimals: number;
-    amount: number;
-  };
-  unclaimedFees: {
-    base: number;
-    quote: number;
-  };
-  inRange: boolean;
-  currentPrice: number;
+  price: number;
 }
 
 // ============================================================================
@@ -208,26 +180,15 @@ export interface PoolInfoParams {
 }
 
 export interface PoolInfoResult {
-  poolAddress: string;
-  baseToken: {
-    address: string;
-    symbol: string;
-    decimals: number;
-  };
-  quoteToken: {
-    address: string;
-    symbol: string;
-    decimals: number;
-  };
-  currentPrice: number;
-  tickCurrent: number;
-  tickSpacing: number;
-  sqrtPriceX64: string;
-  liquidity: string;
-  feeRate: number;
-  volume24h?: number;
-  tvl?: number;
-  apr?: number;
+  address: string;
+  baseTokenAddress: string;
+  quoteTokenAddress: string;
+  binStep: number;        // Note: For Raydium CLMM, this is tickSpacing
+  feePct: number;
+  price: number;
+  baseTokenAmount: number;
+  quoteTokenAmount: number;
+  activeBinId: number;    // Note: For Raydium CLMM, this is tickCurrent
 }
 
 // ============================================================================

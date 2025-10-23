@@ -178,11 +178,12 @@ export interface PositionInfoParams {
 export interface PositionInfoResult {
   poolAddress: string;
   walletAddress: string;
-  lpTokenBalance: number;
-  lpTokenBalanceUI: number;
-  baseTokenShare: number;
-  quoteTokenShare: number;
-  shareOfPool: number; // Percentage (0-100)
+  baseTokenAddress: string;
+  quoteTokenAddress: string;
+  lpTokenAmount: number;
+  baseTokenAmount: number;
+  quoteTokenAmount: number;
+  price: number;
 }
 
 // ============================================================================

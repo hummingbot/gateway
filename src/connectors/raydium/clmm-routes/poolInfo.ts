@@ -4,6 +4,7 @@ import { GetPoolInfoRequestType, PoolInfo, PoolInfoSchema } from '../../../schem
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumClmmGetPoolInfoRequest } from '../schemas';
+import { getPoolInfo } from '../../../../packages/sdk/src/solana/raydium/operations/clmm/pool-info';
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -23,14 +24,17 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request): Promise<PoolInfo> => {
       try {
-        const { poolAddress } = request.query;
-        const network = request.query.network;
+        const { poolAddress, network } = request.query;
 
         const raydium = await Raydium.getInstance(network);
 
-        const poolInfo = await raydium.getClmmPoolInfo(poolAddress);
-        if (!poolInfo) throw fastify.httpErrors.notFound('Pool not found');
-        return poolInfo;
+        // Call SDK operation
+        const result = await getPoolInfo(raydium, {
+          network,
+          poolAddress,
+        });
+
+        return result;
       } catch (e) {
         logger.error(e);
         throw fastify.httpErrors.internalServerError('Failed to fetch pool info');
