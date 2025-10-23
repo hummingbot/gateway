@@ -407,13 +407,24 @@ export class AddLiquidityOperation implements OperationBuilder<AddLiquidityParam
   /**
    * Get liquidity quote
    * (Private helper method - calls quoteLiquidity operation)
+   *
+   * NOTE: Temporarily imports from existing Gateway code.
+   * Will be extracted as proper SDK operation in PR #2.
    */
   private async getQuote(params: AddLiquidityParams): Promise<any> {
-    // This would call the quoteLiquidity operation
-    // For now, we'll import it directly from the existing implementation
-    // In a full SDK implementation, this would be another operation in the SDK
+    // Import quoteLiquidity from existing Gateway implementation
+    // This is temporary - will be extracted as QuoteLiquidityOperation in PR #2
+    const { quoteLiquidity } = await import(
+      '../../../../../src/connectors/raydium/amm-routes/quoteLiquidity'
+    );
 
-    // Temporary implementation - will be replaced with SDK quoteLiquidity operation
-    throw new Error('Quote liquidity not yet implemented in SDK');
+    return await quoteLiquidity(
+      null, // fastify instance (not needed for business logic)
+      this.solana.network,
+      params.poolAddress,
+      params.baseTokenAmount,
+      params.quoteTokenAmount,
+      params.slippagePct,
+    );
   }
 }
