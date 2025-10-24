@@ -3,6 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { PositionInfo, PositionInfoSchema, GetPositionInfoRequestType } from '../../../schemas/clmm-schema';
 import { Raydium } from '../raydium';
 import { RaydiumClmmGetPositionInfoRequest } from '../schemas';
+import { getPositionInfo } from '../../../../packages/sdk/src/solana/raydium/operations/clmm/position-info';
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -23,7 +24,14 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const { network = 'mainnet-beta', positionAddress } = request.query;
       const raydium = await Raydium.getInstance(network);
-      return raydium.getPositionInfo(positionAddress);
+
+      // Call SDK operation
+      const result = await getPositionInfo(raydium, {
+        network,
+        positionAddress,
+      });
+
+      return result;
     },
   );
 };

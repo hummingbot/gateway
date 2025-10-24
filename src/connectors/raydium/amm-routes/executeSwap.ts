@@ -1,6 +1,4 @@
-import { VersionedTransaction } from '@solana/web3.js';
-import BN from 'bn.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { ExecuteSwapResponse, ExecuteSwapResponseType, ExecuteSwapRequestType } from '../../../schemas/amm-schema';
@@ -9,11 +7,9 @@ import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
 import { RaydiumAmmExecuteSwapRequest } from '../schemas';
-
-import { getRawSwapQuote } from './quoteSwap';
+import { ExecuteSwapOperation } from '../../../../packages/sdk/src/solana/raydium/operations/amm/execute-swap';
 
 async function executeSwap(
-  fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   baseToken: string,
@@ -26,151 +22,39 @@ async function executeSwap(
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
 
-  // Prepare wallet and check if it's hardware
-  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
-
-  // Get pool info from address
-  const poolInfo = await raydium.getAmmPoolInfo(poolAddress);
-  if (!poolInfo) {
-    throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
-  }
+  // Create SDK operation
+  const operation = new ExecuteSwapOperation(raydium, solana);
 
   // Use configured slippage if not provided
   const effectiveSlippage = slippagePct || RaydiumConfig.config.slippagePct;
 
-  // Get swap quote
-  const quote = await getRawSwapQuote(
-    raydium,
+  // Determine tokenIn/tokenOut and amount based on side
+  const [tokenIn, tokenOut, amountIn, amountOut] =
+    side === 'SELL'
+      ? [baseToken, quoteToken, amount, undefined]
+      : [quoteToken, baseToken, undefined, amount];
+
+  // Execute using SDK
+  const result = await operation.execute({
     network,
     poolAddress,
-    baseToken,
-    quoteToken,
-    amount,
-    side,
-    effectiveSlippage,
-  );
-
-  const inputToken = quote.inputToken;
-  const outputToken = quote.outputToken;
-
-  logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
-
-  // Use hardcoded compute units for AMM swaps
-  const COMPUTE_UNITS = 300000;
-
-  // Get priority fee from solana (returns lamports/CU)
-  const priorityFeeInLamports = await solana.estimateGasPrice();
-  // Convert lamports to microLamports (1 lamport = 1,000,000 microLamports)
-  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
-  let transaction: VersionedTransaction;
-
-  // Get transaction based on pool type
-  if (poolInfo.poolType === 'amm') {
-    if (side === 'BUY') {
-      // AMM swap base out (exact output)
-      ({ transaction } = (await raydium.raydiumSDK.liquidity.swap({
-        poolInfo: quote.poolInfo,
-        poolKeys: quote.poolKeys,
-        amountIn: quote.maxAmountIn,
-        amountOut: new BN(quote.amountOut),
-        fixedSide: 'out',
-        inputMint: inputToken.address,
-        txVersion: raydium.txVersion,
-        computeBudgetConfig: {
-          units: COMPUTE_UNITS,
-          microLamports: priorityFeePerCU,
-        },
-      })) as { transaction: VersionedTransaction });
-    } else {
-      // AMM swap (exact input)
-      ({ transaction } = (await raydium.raydiumSDK.liquidity.swap({
-        poolInfo: quote.poolInfo,
-        poolKeys: quote.poolKeys,
-        amountIn: new BN(quote.amountIn),
-        amountOut: quote.minAmountOut,
-        fixedSide: 'in',
-        inputMint: inputToken.address,
-        txVersion: raydium.txVersion,
-        computeBudgetConfig: {
-          units: COMPUTE_UNITS,
-          microLamports: priorityFeePerCU,
-        },
-      })) as { transaction: VersionedTransaction });
-    }
-  } else if (poolInfo.poolType === 'cpmm') {
-    if (side === 'BUY') {
-      // CPMM swap base out (exact output)
-      ({ transaction } = (await raydium.raydiumSDK.cpmm.swap({
-        poolInfo: quote.poolInfo,
-        poolKeys: quote.poolKeys,
-        inputAmount: new BN(0), // not used when fixedOut is true
-        fixedOut: true,
-        swapResult: {
-          sourceAmountSwapped: quote.amountIn,
-          destinationAmountSwapped: new BN(quote.amountOut),
-        },
-        slippage: effectiveSlippage / 100,
-        baseIn: inputToken.address === quote.poolInfo.mintA.address,
-        txVersion: raydium.txVersion,
-        computeBudgetConfig: {
-          units: COMPUTE_UNITS,
-          microLamports: priorityFeePerCU,
-        },
-      })) as { transaction: VersionedTransaction });
-    } else {
-      // CPMM swap (exact input)
-      ({ transaction } = (await raydium.raydiumSDK.cpmm.swap({
-        poolInfo: quote.poolInfo,
-        poolKeys: quote.poolKeys,
-        inputAmount: quote.amountIn,
-        swapResult: {
-          sourceAmountSwapped: quote.amountIn,
-          destinationAmountSwapped: quote.amountOut,
-        },
-        slippage: effectiveSlippage / 100,
-        baseIn: inputToken.address === quote.poolInfo.mintA.address,
-        txVersion: raydium.txVersion,
-        computeBudgetConfig: {
-          units: COMPUTE_UNITS,
-          microLamports: priorityFeePerCU,
-        },
-      })) as { transaction: VersionedTransaction });
-    }
-  } else {
-    throw new Error(`Unsupported pool type: ${poolInfo.poolType}`);
-  }
-
-  // Sign transaction using helper
-  transaction = (await raydium.signTransaction(
-    transaction,
     walletAddress,
-    isHardwareWallet,
-    wallet,
-  )) as VersionedTransaction;
+    tokenIn,
+    tokenOut,
+    amountIn,
+    amountOut,
+    slippagePct: effectiveSlippage,
+  });
 
-  // Simulate transaction with proper error handling
-  await solana.simulateWithErrorHandling(transaction as VersionedTransaction, fastify);
-
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
-
-  // Handle confirmation status
-  const result = await solana.handleConfirmation(
-    signature,
-    confirmed,
-    txData,
-    inputToken.address,
-    outputToken.address,
-    walletAddress,
-    side,
-  );
-
-  if (result.status === 1) {
+  if (result.status === 1 && result.data) {
+    const inputToken = await solana.getToken(tokenIn);
+    const outputToken = await solana.getToken(tokenOut);
     logger.info(
-      `Swap executed successfully: ${result.data?.amountIn.toFixed(4)} ${inputToken.symbol} -> ${result.data?.amountOut.toFixed(4)} ${outputToken.symbol}`,
+      `Swap executed successfully: ${result.data.amountIn.toFixed(4)} ${inputToken.symbol} -> ${result.data.amountOut.toFixed(4)} ${outputToken.symbol}`,
     );
   }
 
-  return result as ExecuteSwapResponseType;
+  return result;
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
@@ -245,7 +129,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         return await executeSwap(
-          fastify,
           networkToUse,
           walletAddress,
           baseToken,

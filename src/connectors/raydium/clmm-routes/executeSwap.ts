@@ -1,20 +1,63 @@
-import { ReturnTypeComputeAmountOutFormat, ReturnTypeComputeAmountOutBaseOut } from '@raydium-io/raydium-sdk-v2';
-import { VersionedTransaction } from '@solana/web3.js';
-import BN from 'bn.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
-import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
 import { RaydiumClmmExecuteSwapRequest, RaydiumClmmExecuteSwapRequestType } from '../schemas';
+import { ExecuteSwapOperation } from '../../../../packages/sdk/src/solana/raydium/operations/clmm/execute-swap';
 
-import { getSwapQuote, convertAmountIn } from './quoteSwap';
+export async function executeSwap(
+  network: string,
+  walletAddress: string,
+  baseToken: string,
+  quoteToken: string,
+  amount: number,
+  side: 'BUY' | 'SELL',
+  poolAddress: string,
+  slippagePct?: number,
+): Promise<ExecuteSwapResponseType> {
+  const solana = await Solana.getInstance(network);
+  const raydium = await Raydium.getInstance(network);
 
-async function executeSwap(
-  fastify: FastifyInstance,
+  // Create SDK operation
+  const operation = new ExecuteSwapOperation(raydium, solana);
+
+  // Use configured slippage if not provided
+  const effectiveSlippage = slippagePct || RaydiumConfig.config.slippagePct;
+
+  // Determine tokenIn/tokenOut and amount based on side
+  const [tokenIn, tokenOut, amountIn, amountOut] =
+    side === 'SELL'
+      ? [baseToken, quoteToken, amount, undefined]
+      : [quoteToken, baseToken, undefined, amount];
+
+  // Execute using SDK
+  const result = await operation.execute({
+    network,
+    poolAddress,
+    walletAddress,
+    tokenIn,
+    tokenOut,
+    amountIn,
+    amountOut,
+    slippagePct: effectiveSlippage,
+  });
+
+  if (result.status === 1 && result.data) {
+    const inputToken = await solana.getToken(tokenIn);
+    const outputToken = await solana.getToken(tokenOut);
+    logger.info(
+      `CLMM swap executed: ${result.data.amountIn.toFixed(4)} ${inputToken.symbol} -> ${result.data.amountOut.toFixed(4)} ${outputToken.symbol}`,
+    );
+  }
+
+  return result;
+}
+
+// Legacy function body for reference - kept for backward compatibility
+async function executeSwapLegacy(
   network: string,
   walletAddress: string,
   baseToken: string,
