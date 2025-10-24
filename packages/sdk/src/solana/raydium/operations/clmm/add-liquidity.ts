@@ -16,6 +16,7 @@ import {
   SimulationResult,
 } from '../../../../../../core/src/types/protocol';
 import { AddLiquidityParams, AddLiquidityResult } from '../../types/clmm';
+import { quotePosition } from './quote-position';
 
 /**
  * Add Liquidity Operation
@@ -121,19 +122,15 @@ export class AddLiquidityOperation
     const quoteToken = await this.solana.getToken(poolInfo.mintB.address);
 
     // Get quote
-    const { quotePosition } = await import(
-      '../../../../../../src/connectors/raydium/clmm-routes/quotePosition'
-    );
-    const quotePositionResponse = await quotePosition(
-      null,
-      params.network,
-      positionInfo.lowerPrice,
-      positionInfo.upperPrice,
-      positionInfo.poolAddress,
-      params.baseTokenAmount,
-      params.quoteTokenAmount,
-      params.slippagePct,
-    );
+    const quotePositionResponse = await quotePosition(this.raydium, this.solana, {
+      network: params.network,
+      poolAddress: positionInfo.poolAddress,
+      lowerPrice: positionInfo.lowerPrice,
+      upperPrice: positionInfo.upperPrice,
+      baseTokenAmount: params.baseTokenAmount,
+      quoteTokenAmount: params.quoteTokenAmount,
+      slippagePct: params.slippagePct,
+    });
 
     const COMPUTE_UNITS = 600000;
     const priorityFeeInLamports = await this.solana.estimateGasPrice();

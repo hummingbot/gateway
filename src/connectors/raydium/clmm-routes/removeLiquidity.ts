@@ -1,6 +1,7 @@
 import { Static } from '@sinclair/typebox';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
+import { RemoveLiquidityOperation } from '../../../../packages/sdk/src/solana/raydium/operations/clmm/remove-liquidity';
 import { Solana } from '../../../chains/solana/solana';
 import {
   RemoveLiquidityResponse,
@@ -10,7 +11,6 @@ import {
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumClmmRemoveLiquidityRequest } from '../schemas';
-import { RemoveLiquidityOperation } from '../../../../packages/sdk/src/solana/raydium/operations/clmm/remove-liquidity';
 
 export async function removeLiquidity(
   _fastify: FastifyInstance,
@@ -18,7 +18,7 @@ export async function removeLiquidity(
   walletAddress: string,
   positionAddress: string,
   percentageToRemove: number,
-  closePosition: boolean = false,
+  _closePosition: boolean = false,
 ): Promise<RemoveLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);

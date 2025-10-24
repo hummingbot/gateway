@@ -14,6 +14,7 @@ import {
   SimulationResult,
 } from '../../../../../../core/src/types/protocol';
 import { ExecuteSwapParams, ExecuteSwapResult } from '../../types/clmm';
+import { quoteSwap } from './quote-swap';
 
 /**
  * Execute Swap Operation
@@ -111,7 +112,7 @@ export class ExecuteSwapOperation implements OperationBuilder<ExecuteSwapParams,
   /**
    * Build unsigned transaction
    */
-  async build(params: ExecuteSwapParams): Promise<SDKTransaction> {
+  async build(_params: ExecuteSwapParams): Promise<SDKTransaction> {
     // Note: CLMM executeSwap is complex with multiple SDK types
     // For now, delegate to the route function
     throw new Error('Build not yet fully implemented for CLMM executeSwap - use execute() instead');
@@ -119,27 +120,16 @@ export class ExecuteSwapOperation implements OperationBuilder<ExecuteSwapParams,
 
   /**
    * Execute transaction
+   *
+   * NOTE: This method is not yet fully implemented in the SDK.
+   * The route handler (src/connectors/raydium/clmm-routes/executeSwap.ts) contains
+   * the working implementation that uses this SDK operation. To avoid circular dependencies,
+   * this SDK operation should not be called directly until it's fully implemented.
    */
-  async execute(params: ExecuteSwapParams): Promise<ExecuteSwapResult> {
-    // Delegate to existing route function temporarily
-    // In a full SDK implementation, this would be self-contained
-    const { executeSwap: routeExecuteSwap } = await import(
-      '../../../../../../src/connectors/raydium/clmm-routes/executeSwap'
-    );
-
-    const side: 'BUY' | 'SELL' = params.amountIn !== undefined ? 'SELL' : 'BUY';
-    const amount = params.amountIn !== undefined ? params.amountIn : params.amountOut!;
-
-    return await routeExecuteSwap(
-      null,
-      params.network,
-      params.walletAddress,
-      params.tokenIn, // baseToken
-      params.tokenOut, // quoteToken
-      amount,
-      side,
-      params.poolAddress,
-      params.slippagePct,
+  async execute(_params: ExecuteSwapParams): Promise<ExecuteSwapResult> {
+    throw new Error(
+      'CLMM ExecuteSwapOperation.execute() is not yet fully implemented. ' +
+      'Please use the route handler at /connectors/raydium/clmm/execute-swap instead.'
     );
   }
 }

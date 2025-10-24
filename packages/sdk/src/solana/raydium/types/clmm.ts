@@ -228,13 +228,20 @@ export interface QuoteSwapParams extends BaseClmmParams {
 }
 
 export interface QuoteSwapResult {
+  poolAddress: string;
+  tokenIn: string;
+  tokenOut: string;
   amountIn: number;
   amountOut: number;
+  price: number;
+  slippagePct: number;
   minAmountOut: number;
+  maxAmountIn: number;
   priceImpact: number;
-  fee: number;
-  ticksBefore: number[];
-  ticksAfter: number[];
+  priceImpactPct: number;
+  fee?: number;
+  ticksBefore?: number[];
+  ticksAfter?: number[];
 }
 
 // ============================================================================

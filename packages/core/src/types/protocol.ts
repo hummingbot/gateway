@@ -71,6 +71,7 @@ export interface SimulationResult {
       token: string;
       amount: string;
       direction: 'in' | 'out';
+      note?: string; // Optional explanation of the balance change
     }>;
 
     positionChanges?: Array<{
@@ -84,6 +85,9 @@ export interface SimulationResult {
     amount: string;
     token: string;
   };
+
+  /** Additional metadata specific to the operation */
+  metadata?: Record<string, any>;
 }
 
 /**

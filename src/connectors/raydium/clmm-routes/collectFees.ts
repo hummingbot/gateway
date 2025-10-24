@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import { CollectFeesOperation } from '../../../../packages/sdk/src/solana/raydium/operations/clmm/collect-fees';
 import { Solana } from '../../../chains/solana/solana';
 import {
   CollectFeesRequest,
@@ -9,7 +10,6 @@ import {
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
-import { CollectFeesOperation } from '../../../../packages/sdk/src/solana/raydium/operations/clmm/collect-fees';
 
 export async function collectFees(
   network: string,
@@ -32,7 +32,7 @@ export async function collectFees(
 
   if (result.status === 1 && result.data) {
     logger.info(
-      `Fees collected from position ${positionAddress}: ${result.data.baseFeeCollected.toFixed(4)} + ${result.data.quoteFeeCollected.toFixed(4)}`,
+      `Fees collected from position ${positionAddress}: ${result.data.baseTokenFeesCollected.toFixed(4)} + ${result.data.quoteTokenFeesCollected.toFixed(4)}`,
     );
   }
 

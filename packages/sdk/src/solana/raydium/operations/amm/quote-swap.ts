@@ -201,9 +201,9 @@ async function quoteCpmmSwap(
 }
 
 /**
- * Get raw swap quote (internal helper)
+ * Get raw swap quote (internal helper exported for use by execute-swap)
  */
-async function getRawSwapQuote(
+export async function getRawSwapQuote(
   raydium: any,
   solana: any,
   network: string,

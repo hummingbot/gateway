@@ -13,6 +13,7 @@ import {
   SimulationResult,
 } from '../../../../../../core/src/types/protocol';
 import { CollectFeesParams, CollectFeesResult } from '../../types/clmm';
+import { RemoveLiquidityOperation } from './remove-liquidity';
 
 /**
  * Collect Fees Operation
@@ -65,7 +66,7 @@ export class CollectFeesOperation
    *
    * Returns estimated fees to be collected
    */
-  async simulate(params: CollectFeesParams): Promise<SimulationResult> {
+  async simulate(_params: CollectFeesParams): Promise<SimulationResult> {
     try {
       // Get priority fee estimate
       const priorityFeeInLamports = await this.solana.estimateGasPrice();
@@ -110,33 +111,32 @@ export class CollectFeesOperation
    * Build unsigned transaction
    */
   async build(params: CollectFeesParams): Promise<SDKTransaction> {
-    // Delegate to removeLiquidity operation with 1% to collect fees
-    const { removeLiquidity } = await import(
-      '../../../../../../src/connectors/raydium/clmm-routes/removeLiquidity'
-    );
+    // Delegate to RemoveLiquidityOperation with 1% to collect fees
+    const removeLiquidityOperation = new RemoveLiquidityOperation(this.raydium, this.solana);
 
-    // Note: This uses the route function temporarily
-    // In a full SDK implementation, this would use RemoveLiquidityOperation
-    throw new Error('Build not yet implemented for CollectFees - use execute() instead');
+    return await removeLiquidityOperation.build({
+      network: params.network,
+      walletAddress: params.walletAddress,
+      poolAddress: '', // Not needed for remove liquidity
+      positionAddress: params.positionAddress,
+      percentageToRemove: 1, // Remove 1% of liquidity to collect fees
+    });
   }
 
   /**
    * Execute transaction (signs and submits)
    */
   async execute(params: CollectFeesParams): Promise<CollectFeesResult> {
-    // Use removeLiquidity helper to collect fees (removes 1% liquidity)
-    const { removeLiquidity } = await import(
-      '../../../../../../src/connectors/raydium/clmm-routes/removeLiquidity'
-    );
+    // Use SDK RemoveLiquidityOperation to collect fees (removes 1% liquidity)
+    const removeLiquidityOperation = new RemoveLiquidityOperation(this.raydium, this.solana);
 
-    const removeLiquidityResponse = await removeLiquidity(
-      null,
-      params.network,
-      params.walletAddress,
-      params.positionAddress,
-      1, // Remove 1% of liquidity to collect fees
-      false, // Don't close position
-    );
+    const removeLiquidityResponse = await removeLiquidityOperation.execute({
+      network: params.network,
+      walletAddress: params.walletAddress,
+      poolAddress: '', // Not needed for remove liquidity
+      positionAddress: params.positionAddress,
+      percentageToRemove: 1, // Remove 1% of liquidity to collect fees
+    });
 
     if (removeLiquidityResponse.status === 1 && removeLiquidityResponse.data) {
       const position = await this.raydium.getClmmPosition(params.positionAddress);
@@ -165,8 +165,8 @@ export class CollectFeesOperation
         status: 1, // CONFIRMED
         data: {
           fee: removeLiquidityResponse.data.fee,
-          baseFeeCollected: Math.max(0, baseFeeCollected),
-          quoteFeeCollected: Math.max(0, quoteFeeCollected),
+          baseTokenFeesCollected: Math.max(0, baseFeeCollected),
+          quoteTokenFeesCollected: Math.max(0, quoteFeeCollected),
         },
       };
     } else {

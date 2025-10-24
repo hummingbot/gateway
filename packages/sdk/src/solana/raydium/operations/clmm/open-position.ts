@@ -18,6 +18,7 @@ import {
   SimulationResult,
 } from '../../../../../../core/src/types/protocol';
 import { OpenPositionParams, OpenPositionResult } from '../../types/clmm';
+import { quotePosition } from './quote-position';
 
 /**
  * Open Position Operation
@@ -96,19 +97,15 @@ export class OpenPositionOperation
       const poolAddress = await this.resolvePoolAddress(params);
 
       // Get quote for position
-      const { quotePosition } = await import(
-        '../../../../../../src/connectors/raydium/clmm-routes/quotePosition'
-      );
-      const quote = await quotePosition(
-        null,
-        params.network,
-        params.lowerPrice,
-        params.upperPrice,
+      const quote = await quotePosition(this.raydium, this.solana, {
+        network: params.network,
         poolAddress,
-        params.baseTokenAmount,
-        params.quoteTokenAmount,
-        params.slippagePct,
-      );
+        lowerPrice: params.lowerPrice,
+        upperPrice: params.upperPrice,
+        baseTokenAmount: params.baseTokenAmount,
+        quoteTokenAmount: params.quoteTokenAmount,
+        slippagePct: params.slippagePct,
+      });
 
       // Get priority fee estimate
       const priorityFeeInLamports = await this.solana.estimateGasPrice();
@@ -192,19 +189,15 @@ export class OpenPositionOperation
     });
 
     // Get quote for position
-    const { quotePosition } = await import(
-      '../../../../../../src/connectors/raydium/clmm-routes/quotePosition'
-    );
-    const quotePositionResponse = await quotePosition(
-      null,
-      params.network,
-      params.lowerPrice,
-      params.upperPrice,
+    const quotePositionResponse = await quotePosition(this.raydium, this.solana, {
+      network: params.network,
       poolAddress,
-      params.baseTokenAmount,
-      params.quoteTokenAmount,
-      params.slippagePct,
-    );
+      lowerPrice: params.lowerPrice,
+      upperPrice: params.upperPrice,
+      baseTokenAmount: params.baseTokenAmount,
+      quoteTokenAmount: params.quoteTokenAmount,
+      slippagePct: params.slippagePct,
+    });
 
     // Get priority fee
     const COMPUTE_UNITS = 500000;
@@ -273,19 +266,15 @@ export class OpenPositionOperation
       baseIn: true,
     });
 
-    const { quotePosition } = await import(
-      '../../../../../../src/connectors/raydium/clmm-routes/quotePosition'
-    );
-    const quotePositionResponse = await quotePosition(
-      null,
-      params.network,
-      params.lowerPrice,
-      params.upperPrice,
+    const quotePositionResponse = await quotePosition(this.raydium, this.solana, {
+      network: params.network,
       poolAddress,
-      params.baseTokenAmount,
-      params.quoteTokenAmount,
-      params.slippagePct,
-    );
+      lowerPrice: params.lowerPrice,
+      upperPrice: params.upperPrice,
+      baseTokenAmount: params.baseTokenAmount,
+      quoteTokenAmount: params.quoteTokenAmount,
+      slippagePct: params.slippagePct,
+    });
 
     const COMPUTE_UNITS = 500000;
     const priorityFeeInLamports = await this.solana.estimateGasPrice();

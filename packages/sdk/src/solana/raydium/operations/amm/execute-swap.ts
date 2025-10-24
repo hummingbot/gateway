@@ -15,7 +15,7 @@ import {
   SimulationResult,
 } from '../../../../../../core/src/types/protocol';
 import { ExecuteSwapParams, ExecuteSwapResult } from '../../types/amm';
-import { quoteSwap } from './quote-swap';
+import { quoteSwap, getRawSwapQuote } from './quote-swap';
 
 /**
  * Execute Swap Operation
@@ -161,18 +161,14 @@ export class ExecuteSwapOperation implements OperationBuilder<ExecuteSwapParams,
       throw new Error(`Pool not found: ${params.poolAddress}`);
     }
 
-    // Get quote using SDK quote operation
+    // Get quote using SDK quote helper
     const side: 'BUY' | 'SELL' = params.amountIn !== undefined ? 'SELL' : 'BUY';
     const amount = params.amountIn !== undefined ? params.amountIn : params.amountOut!;
     const effectiveSlippage = params.slippagePct || 1;
 
-    // Use the internal quote helper from the route file
-    // @ts-expect-error - Circular dependency, will be refactored in future PR
-    const { getRawSwapQuote } = await import(
-      '../../../../../../src/connectors/raydium/amm-routes/quoteSwap'
-    );
     const quote = await getRawSwapQuote(
       this.raydium,
+      this.solana,
       params.network,
       params.poolAddress,
       params.tokenIn,

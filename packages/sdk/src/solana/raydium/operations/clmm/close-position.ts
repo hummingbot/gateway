@@ -17,6 +17,7 @@ import {
   SimulationResult,
 } from '../../../../../../core/src/types/protocol';
 import { ClosePositionParams, ClosePositionResult } from '../../types/clmm';
+import { RemoveLiquidityOperation } from './remove-liquidity';
 
 /**
  * Close Position Operation
@@ -208,19 +209,16 @@ export class ClosePositionOperation
    * Execute close for position with remaining liquidity
    */
   private async executeWithLiquidity(params: ClosePositionParams, position: any): Promise<ClosePositionResult> {
-    // Use removeLiquidity helper from route file temporarily
-    const { removeLiquidity } = await import(
-      '../../../../../../src/connectors/raydium/clmm-routes/removeLiquidity'
-    );
+    // Use SDK RemoveLiquidityOperation
+    const removeLiquidityOperation = new RemoveLiquidityOperation(this.raydium, this.solana);
 
-    const removeLiquidityResponse = await removeLiquidity(
-      null,
-      params.network,
-      params.walletAddress,
-      params.positionAddress,
-      100, // Remove 100% of liquidity
-      true, // closePosition flag
-    );
+    const removeLiquidityResponse = await removeLiquidityOperation.execute({
+      network: params.network,
+      walletAddress: params.walletAddress,
+      poolAddress: '', // Not needed for remove liquidity
+      positionAddress: params.positionAddress,
+      percentageToRemove: 100, // Remove 100% of liquidity
+    });
 
     if (removeLiquidityResponse.status === 1 && removeLiquidityResponse.data) {
       const [poolInfo] = await this.raydium.getClmmPoolfromAPI(position.poolId.toBase58());
