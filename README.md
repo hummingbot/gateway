@@ -296,7 +296,7 @@ docker run -p 15888:15888 \
   hummingbot/gateway:core-2.8
 ```
 
-**Production mode (Encypted HTTPS endpoints, requires Hummingbot certs):**
+**Production mode (Encrypted HTTPS endpoints, requires Hummingbot certs):**
 ```bash
 docker run -p 15888:15888 \
   -e GATEWAY_PASSPHRASE=a \
