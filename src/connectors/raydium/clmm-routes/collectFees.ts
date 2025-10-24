@@ -1,4 +1,4 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import {
@@ -9,11 +9,9 @@ import {
 } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
-
-import { removeLiquidity } from './removeLiquidity';
+import { CollectFeesOperation } from '../../../../packages/sdk/src/solana/raydium/operations/clmm/collect-fees';
 
 export async function collectFees(
-  fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   positionAddress: string,
@@ -21,70 +19,24 @@ export async function collectFees(
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
 
-  // Prepare wallet and check if it's hardware
-  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
+  // Create SDK operation
+  const operation = new CollectFeesOperation(raydium, solana);
 
-  // Set the owner for SDK operations
-  await raydium.setOwner(wallet);
-
-  const position = await raydium.getClmmPosition(positionAddress);
-  if (!position) {
-    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
-  }
-
-  const [poolInfo] = await raydium.getClmmPoolfromAPI(position.poolId.toBase58());
-
-  const tokenA = await solana.getToken(poolInfo.mintA.address);
-  const tokenB = await solana.getToken(poolInfo.mintB.address);
-
-  logger.info(`Collecting fees from CLMM position ${positionAddress} by removing 1% liquidity`);
-
-  // Remove 1% of liquidity to collect fees
-  const removeLiquidityResponse = await removeLiquidity(
-    fastify,
+  // Execute using SDK
+  const result = await operation.execute({
     network,
     walletAddress,
+    poolAddress: '', // Not needed for collect fees
     positionAddress,
-    1, // 1% of position
-    false, // don't close position
-  );
+  });
 
-  if (removeLiquidityResponse.status === 1 && removeLiquidityResponse.data) {
-    // Use the new helper to extract balance changes including fees
-    const { baseTokenChange, quoteTokenChange } = await solana.extractClmmBalanceChanges(
-      removeLiquidityResponse.signature,
-      walletAddress,
-      tokenA,
-      tokenB,
-      removeLiquidityResponse.data.fee * 1e9,
-    );
-
-    // The total balance change includes both liquidity removal and fee collection
-    // Since we know the liquidity amounts from removeLiquidity response,
-    // we can calculate the fee amounts
-    const baseFeeCollected = Math.abs(baseTokenChange) - removeLiquidityResponse.data.baseTokenAmountRemoved;
-    const quoteFeeCollected = Math.abs(quoteTokenChange) - removeLiquidityResponse.data.quoteTokenAmountRemoved;
-
+  if (result.status === 1 && result.data) {
     logger.info(
-      `Fees collected from position ${positionAddress}: ${Math.max(0, baseFeeCollected).toFixed(4)} ${tokenA.symbol}, ${Math.max(0, quoteFeeCollected).toFixed(4)} ${tokenB.symbol}`,
+      `Fees collected from position ${positionAddress}: ${result.data.baseFeeCollected.toFixed(4)} + ${result.data.quoteFeeCollected.toFixed(4)}`,
     );
-
-    return {
-      signature: removeLiquidityResponse.signature,
-      status: 1, // CONFIRMED
-      data: {
-        fee: removeLiquidityResponse.data.fee,
-        baseFeeAmountCollected: Math.max(0, baseFeeCollected),
-        quoteFeeAmountCollected: Math.max(0, quoteFeeCollected),
-      },
-    };
-  } else {
-    // Return pending status
-    return {
-      signature: removeLiquidityResponse.signature,
-      status: removeLiquidityResponse.status,
-    };
   }
+
+  return result;
 }
 
 export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
@@ -113,7 +65,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { network, walletAddress, positionAddress } = request.body;
-        return await collectFees(fastify, network, walletAddress, positionAddress);
+        return await collectFees(network, walletAddress, positionAddress);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
