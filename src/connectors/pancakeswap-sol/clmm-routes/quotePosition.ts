@@ -10,6 +10,7 @@ import {
   getLiquidityFromSingleAmount,
   getAmountsFromLiquidity,
 } from '../pancakeswap-sol.math';
+import { priceToTick, roundTickToSpacing, tickToPrice } from '../pancakeswap-sol.parser';
 import { PancakeswapSolClmmQuotePositionRequest } from '../schemas';
 
 /**
@@ -28,13 +29,14 @@ async function quotePosition(
   const solana = await Solana.getInstance(network);
   const pancakeswapSol = await PancakeswapSol.getInstance(network);
 
-  // Get pool info to get current price
+  // Get pool info to get current price and tick spacing
   const poolInfo = await pancakeswapSol.getClmmPoolInfo(poolAddress);
   if (!poolInfo) {
     throw _fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
   }
 
   const currentPrice = poolInfo.price;
+  const tickSpacing = poolInfo.binStep; // binStep is the tick spacing
 
   // Validate price range
   if (lowerPrice >= upperPrice) {
@@ -49,14 +51,34 @@ async function quotePosition(
     throw _fastify.httpErrors.notFound('Token information not found');
   }
 
+  // Calculate decimal difference for tick conversions
+  const decimalDiff = baseToken.decimals - quoteToken.decimals;
+
+  // Convert prices to ticks and round to valid tick spacing
+  // This ensures we use tick-aligned prices like the PancakeSwap website
+  const lowerTick = roundTickToSpacing(priceToTick(lowerPrice, decimalDiff), tickSpacing);
+  const upperTick = roundTickToSpacing(priceToTick(upperPrice, decimalDiff), tickSpacing);
+
+  // Convert ticks back to actual prices (tick-aligned)
+  const tickAlignedLowerPrice = tickToPrice(lowerTick, decimalDiff);
+  const tickAlignedUpperPrice = tickToPrice(upperTick, decimalDiff);
+
+  logger.info(`Input prices: ${lowerPrice}-${upperPrice}`);
+  logger.info(`Tick-aligned prices: ${tickAlignedLowerPrice}-${tickAlignedUpperPrice}`);
+  logger.info(`Ticks: ${lowerTick}-${upperTick} (spacing: ${tickSpacing})`);
+
+  // Use tick-aligned prices for calculations
+  const effectiveLowerPrice = tickAlignedLowerPrice;
+  const effectiveUpperPrice = tickAlignedUpperPrice;
+
   let liquidity;
   let baseLimited = false;
   let calculatedBaseAmount = 0;
   let calculatedQuoteAmount = 0;
 
-  // Determine position type based on price range
-  const priceAboveRange = currentPrice >= upperPrice;
-  const priceBelowRange = currentPrice < lowerPrice;
+  // Determine position type based on price range (use tick-aligned prices)
+  const priceAboveRange = currentPrice >= effectiveUpperPrice;
+  const priceBelowRange = currentPrice < effectiveLowerPrice;
 
   if (baseTokenAmount && !quoteTokenAmount) {
     // User specified only base amount
@@ -68,8 +90,8 @@ async function quotePosition(
       const quoteEquivalent = baseTokenAmount * currentPrice;
       liquidity = getLiquidityFromSingleAmount(
         currentPrice,
-        lowerPrice,
-        upperPrice,
+        effectiveLowerPrice,
+        effectiveUpperPrice,
         quoteEquivalent,
         quoteToken.decimals,
         false, // use quote token
@@ -81,8 +103,8 @@ async function quotePosition(
       // Price in range or above range - use base token directly
       liquidity = getLiquidityFromSingleAmount(
         currentPrice,
-        lowerPrice,
-        upperPrice,
+        effectiveLowerPrice,
+        effectiveUpperPrice,
         effectiveBaseAmount,
         baseToken.decimals,
         true, // isToken0 (base)
@@ -95,8 +117,8 @@ async function quotePosition(
     // Calculate both amounts from liquidity
     const amounts = getAmountsFromLiquidity(
       currentPrice,
-      lowerPrice,
-      upperPrice,
+      effectiveLowerPrice,
+      effectiveUpperPrice,
       liquidity,
       baseToken.decimals,
       quoteToken.decimals,
@@ -114,8 +136,8 @@ async function quotePosition(
       const baseEquivalent = quoteTokenAmount / currentPrice;
       liquidity = getLiquidityFromSingleAmount(
         currentPrice,
-        lowerPrice,
-        upperPrice,
+        effectiveLowerPrice,
+        effectiveUpperPrice,
         baseEquivalent,
         baseToken.decimals,
         true, // use base token
@@ -127,8 +149,8 @@ async function quotePosition(
       // Price in range or below range - use quote token directly
       liquidity = getLiquidityFromSingleAmount(
         currentPrice,
-        lowerPrice,
-        upperPrice,
+        effectiveLowerPrice,
+        effectiveUpperPrice,
         effectiveQuoteAmount,
         quoteToken.decimals,
         false, // isToken1 (quote)
@@ -141,8 +163,8 @@ async function quotePosition(
     // Calculate both amounts from liquidity
     const amounts = getAmountsFromLiquidity(
       currentPrice,
-      lowerPrice,
-      upperPrice,
+      effectiveLowerPrice,
+      effectiveUpperPrice,
       liquidity,
       baseToken.decimals,
       quoteToken.decimals,
@@ -162,8 +184,8 @@ async function quotePosition(
       const totalQuote = quoteTokenAmount + baseAsQuote;
       liquidity = getLiquidityFromSingleAmount(
         currentPrice,
-        lowerPrice,
-        upperPrice,
+        effectiveLowerPrice,
+        effectiveUpperPrice,
         totalQuote,
         quoteToken.decimals,
         false,
@@ -178,8 +200,8 @@ async function quotePosition(
       const totalBase = baseTokenAmount + quoteAsBase;
       liquidity = getLiquidityFromSingleAmount(
         currentPrice,
-        lowerPrice,
-        upperPrice,
+        effectiveLowerPrice,
+        effectiveUpperPrice,
         totalBase,
         baseToken.decimals,
         true,
@@ -191,8 +213,8 @@ async function quotePosition(
       // Price in range - calculate liquidity from each and use the minimum (limiting factor)
       liquidityFromBase = getLiquidityFromSingleAmount(
         currentPrice,
-        lowerPrice,
-        upperPrice,
+        effectiveLowerPrice,
+        effectiveUpperPrice,
         baseTokenAmount,
         baseToken.decimals,
         true,
@@ -202,8 +224,8 @@ async function quotePosition(
 
       liquidityFromQuote = getLiquidityFromSingleAmount(
         currentPrice,
-        lowerPrice,
-        upperPrice,
+        effectiveLowerPrice,
+        effectiveUpperPrice,
         quoteTokenAmount,
         quoteToken.decimals,
         false,
@@ -224,8 +246,8 @@ async function quotePosition(
     // Calculate actual amounts from the limiting liquidity
     const amounts = getAmountsFromLiquidity(
       currentPrice,
-      lowerPrice,
-      upperPrice,
+      effectiveLowerPrice,
+      effectiveUpperPrice,
       liquidity,
       baseToken.decimals,
       quoteToken.decimals,
@@ -240,7 +262,9 @@ async function quotePosition(
   logger.info(
     `Quote position for pool ${poolAddress}: ${calculatedBaseAmount.toFixed(6)} base (${baseToken.symbol}), ${calculatedQuoteAmount.toFixed(6)} quote (${quoteToken.symbol})`,
   );
-  logger.info(`Current price: ${currentPrice.toFixed(6)}, Range: ${lowerPrice}-${upperPrice}`);
+  logger.info(
+    `Current price: ${currentPrice.toFixed(6)}, Tick-aligned range: ${tickAlignedLowerPrice.toFixed(6)}-${tickAlignedUpperPrice.toFixed(6)}`,
+  );
   logger.info(`Liquidity: ${liquidity.toString()}, Base limited: ${baseLimited}`);
 
   // Return quote with calculated amounts

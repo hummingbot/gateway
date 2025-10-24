@@ -1,4 +1,5 @@
 import { Keypair, PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
+import BN from 'bn.js';
 
 import { Solana } from '../../chains/solana/solana';
 import { SolanaLedger } from '../../chains/solana/solana-ledger';
@@ -6,6 +7,8 @@ import { PoolInfo as ClmmPoolInfo, PositionInfo } from '../../schemas/clmm-schem
 import { logger } from '../../services/logger';
 
 import { PancakeswapSolConfig } from './pancakeswap-sol.config';
+import { getAmountsFromLiquidity } from './pancakeswap-sol.math';
+import { tickToPrice } from './pancakeswap-sol.parser';
 
 // PancakeSwap CLMM Program ID
 export const PANCAKESWAP_CLMM_PROGRAM_ID = new PublicKey('HpNfyc2Saw7RKkQd8nEL4khUcuPhQ7WwY1B2qjx8jxFq');
@@ -241,8 +244,9 @@ export class PancakeswapSol {
       const tickUpperIndex = data.readInt32LE(offset);
       offset += 4;
 
-      // Read liquidity (16 bytes, u128)
-      const liquidity = data.readBigUInt64LE(offset);
+      // Read liquidity (16 bytes, u128) - must read as BN from 16 bytes, not BigUInt64
+      const liquidityBytes = data.slice(offset, offset + 16);
+      const liquidity = new BN(liquidityBytes, 'le');
       offset += 16;
 
       // Skip fee_growth fields (32 bytes)
@@ -257,10 +261,6 @@ export class PancakeswapSol {
 
       const poolInfo = await this.getClmmPoolInfo(poolId.toString());
 
-      // Calculate prices from ticks
-      const lowerPrice = Math.pow(1.0001, tickLowerIndex);
-      const upperPrice = Math.pow(1.0001, tickUpperIndex);
-
       // Get token info for decimals
       const baseTokenInfo = await this.solana.getToken(poolInfo.baseTokenAddress);
       const quoteTokenInfo = await this.solana.getToken(poolInfo.quoteTokenAddress);
@@ -269,9 +269,26 @@ export class PancakeswapSol {
         throw new Error(`Token info not found for position ${positionAddress}`);
       }
 
-      // Calculate position amounts (simplified - proper calculation needs tick math)
-      const baseTokenAmount = Number(liquidity) / Math.pow(10, baseTokenInfo.decimals);
-      const quoteTokenAmount = Number(liquidity) / Math.pow(10, quoteTokenInfo.decimals);
+      // Calculate decimal difference for tick-to-price conversion
+      const decimalDiff = baseTokenInfo.decimals - quoteTokenInfo.decimals;
+
+      // Convert ticks to actual prices using tickToPrice
+      const lowerPrice = tickToPrice(tickLowerIndex, decimalDiff);
+      const upperPrice = tickToPrice(tickUpperIndex, decimalDiff);
+
+      // Calculate position amounts using proper CLMM math
+      // This uses the current pool price and the position's tick range
+      const amounts = getAmountsFromLiquidity(
+        poolInfo.price, // current price
+        lowerPrice, // lower tick price
+        upperPrice, // upper tick price
+        liquidity, // position liquidity
+        baseTokenInfo.decimals,
+        quoteTokenInfo.decimals,
+      );
+
+      const baseTokenAmount = amounts.amount0;
+      const quoteTokenAmount = amounts.amount1;
 
       // Convert fees to decimal amounts
       const baseFeeAmount = Number(tokenFeesOwed0) / Math.pow(10, baseTokenInfo.decimals);

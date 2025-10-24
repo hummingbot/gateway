@@ -56,6 +56,16 @@ export function roundTickToSpacing(tick: number, tickSpacing: number): number {
 }
 
 /**
+ * Convert tick index to price
+ * price = 1.0001^tick
+ */
+export function tickToPrice(tick: number, decimalDiff: number): number {
+  const price = Math.pow(1.0001, tick);
+  // Adjust for decimal difference
+  return price * Math.pow(10, decimalDiff);
+}
+
+/**
  * Derive tick array address from pool and start index
  */
 export function getTickArrayAddress(poolAddress: PublicKey, startIndex: number): PublicKey {
