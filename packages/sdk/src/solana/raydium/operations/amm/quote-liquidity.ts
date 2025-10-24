@@ -65,7 +65,7 @@ export async function quoteLiquidity(
   const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
 
   // Compute pair amount for base token input
-  let resBase: AmmComputePairResult | CpmmComputePairResult;
+  let resBase: any; // Raw SDK result with BN objects
   if (ammPoolInfo.poolType === 'amm') {
     resBase = raydium.raydiumSDK.liquidity.computePairAmount({
       poolInfo: poolInfo as ApiV3PoolInfoStandardItem,
@@ -87,7 +87,7 @@ export async function quoteLiquidity(
   }
 
   // Compute pair amount for quote token input
-  let resQuote: AmmComputePairResult | CpmmComputePairResult;
+  let resQuote: any; // Raw SDK result with BN objects
   if (ammPoolInfo.poolType === 'amm') {
     resQuote = raydium.raydiumSDK.liquidity.computePairAmount({
       poolInfo: poolInfo as ApiV3PoolInfoStandardItem,

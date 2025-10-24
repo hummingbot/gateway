@@ -16,7 +16,7 @@ import {
   Transaction as SDKTransaction,
   ValidationResult,
   SimulationResult,
-} from '../../../../../core/src/types/protocol';
+} from '../../../../../../core/src/types/protocol';
 import { OpenPositionParams, OpenPositionResult } from '../../types/clmm';
 
 /**

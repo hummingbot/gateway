@@ -13,7 +13,7 @@ import {
   Transaction as SDKTransaction,
   ValidationResult,
   SimulationResult,
-} from '../../../../../core/src/types/protocol';
+} from '../../../../../../core/src/types/protocol';
 import { ExecuteSwapParams, ExecuteSwapResult } from '../../types/amm';
 import { quoteSwap } from './quote-swap';
 
@@ -167,6 +167,7 @@ export class ExecuteSwapOperation implements OperationBuilder<ExecuteSwapParams,
     const effectiveSlippage = params.slippagePct || 1;
 
     // Use the internal quote helper from the route file
+    // @ts-expect-error - Circular dependency, will be refactored in future PR
     const { getRawSwapQuote } = await import(
       '../../../../../../src/connectors/raydium/amm-routes/quoteSwap'
     );
