@@ -1,20 +1,14 @@
-import { TxVersion, TickUtils } from '@raydium-io/raydium-sdk-v2';
 import { Static } from '@sinclair/typebox';
-import { VersionedTransaction } from '@solana/web3.js';
-import BN from 'bn.js';
-import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { OpenPositionResponse, OpenPositionRequestType, OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumClmmOpenPositionRequest } from '../schemas';
-
-import { quotePosition } from './quotePosition';
+import { OpenPositionOperation } from '../../../../packages/sdk/src/solana/raydium/operations/clmm/open-position';
 
 async function openPosition(
-  _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   lowerPrice: number,
@@ -29,133 +23,30 @@ async function openPosition(
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
 
-  // Prepare wallet and check if it's hardware
-  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
+  // Create SDK operation
+  const operation = new OpenPositionOperation(raydium, solana);
 
-  // If no pool address provided, find default pool using base and quote tokens
-  let poolAddressToUse = poolAddress;
-  if (!poolAddressToUse) {
-    if (!baseTokenSymbol || !quoteTokenSymbol) {
-      throw new Error('Either poolAddress or both baseToken and quoteToken must be provided');
-    }
-
-    poolAddressToUse = await raydium.findDefaultPool(baseTokenSymbol, quoteTokenSymbol, 'clmm');
-    if (!poolAddressToUse) {
-      throw new Error(`No CLMM pool found for pair ${baseTokenSymbol}-${quoteTokenSymbol}`);
-    }
-  }
-
-  const poolResponse = await raydium.getClmmPoolfromAPI(poolAddressToUse);
-  if (!poolResponse) {
-    throw _fastify.httpErrors.notFound(`Pool not found for address: ${poolAddressToUse}`);
-  }
-  const [poolInfo, poolKeys] = poolResponse;
-  const rpcData = await raydium.getClmmPoolfromRPC(poolAddressToUse);
-  poolInfo.price = rpcData.currentPrice;
-
-  const baseTokenInfo = await solana.getToken(poolInfo.mintA.address);
-  const quoteTokenInfo = await solana.getToken(poolInfo.mintB.address);
-
-  const { tick: lowerTick } = TickUtils.getPriceAndTick({
-    poolInfo,
-    price: new Decimal(lowerPrice),
-    baseIn: true,
-  });
-  const { tick: upperTick } = TickUtils.getPriceAndTick({
-    poolInfo,
-    price: new Decimal(upperPrice),
-    baseIn: true,
-  });
-
-  // Validate price range
-  if (lowerPrice >= upperPrice) {
-    throw _fastify.httpErrors.badRequest('Lower price must be less than upper price');
-  }
-
-  const quotePositionResponse = await quotePosition(
-    _fastify,
+  // Execute using SDK
+  const result = await operation.execute({
     network,
+    walletAddress,
     lowerPrice,
     upperPrice,
-    poolAddressToUse,
+    poolAddress,
     baseTokenAmount,
     quoteTokenAmount,
+    baseTokenSymbol,
+    quoteTokenSymbol,
     slippagePct,
-  );
-
-  logger.info('Opening Raydium CLMM position...');
-
-  // Use hardcoded compute units for open position
-  const COMPUTE_UNITS = 500000;
-
-  // Get priority fee from solana (returns lamports/CU)
-  const priorityFeeInLamports = await solana.estimateGasPrice();
-  // Convert lamports to microLamports (1 lamport = 1,000,000 microLamports)
-  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
-
-  const { transaction: txn, extInfo } = await raydium.raydiumSDK.clmm.openPositionFromBase({
-    poolInfo,
-    poolKeys,
-    tickUpper: Math.max(lowerTick, upperTick),
-    tickLower: Math.min(lowerTick, upperTick),
-    base: quotePositionResponse.baseLimited ? 'MintA' : 'MintB',
-    ownerInfo: { useSOLBalance: true },
-    baseAmount: quotePositionResponse.baseLimited
-      ? new BN(quotePositionResponse.baseTokenAmount * 10 ** baseTokenInfo.decimals)
-      : new BN(quotePositionResponse.quoteTokenAmount * 10 ** quoteTokenInfo.decimals),
-    otherAmountMax: quotePositionResponse.baseLimited
-      ? new BN(quotePositionResponse.quoteTokenAmountMax * 10 ** quoteTokenInfo.decimals)
-      : new BN(quotePositionResponse.baseTokenAmountMax * 10 ** baseTokenInfo.decimals),
-    txVersion: TxVersion.V0,
-    computeBudgetConfig: {
-      units: COMPUTE_UNITS,
-      microLamports: priorityFeePerCU,
-    },
   });
 
-  // Sign transaction using helper
-  const transaction = (await raydium.signTransaction(
-    txn,
-    walletAddress,
-    isHardwareWallet,
-    wallet,
-  )) as VersionedTransaction;
-  await solana.simulateWithErrorHandling(transaction, _fastify);
-
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
-
-  // Return with status
-  if (confirmed && txData) {
-    // Transaction confirmed, return full data
-    const totalFee = txData.meta.fee;
-
-    // Use the new helper method to extract balance changes
-    const { baseTokenChange, quoteTokenChange, rent } = await solana.extractClmmBalanceChanges(
-      signature,
-      walletAddress,
-      baseTokenInfo,
-      quoteTokenInfo,
-      totalFee,
+  if (result.status === 1 && result.data) {
+    logger.info(
+      `CLMM position opened: ${result.data.positionAddress} with ${result.data.baseTokenAmountAdded.toFixed(4)} + ${result.data.quoteTokenAmountAdded.toFixed(4)}`,
     );
-
-    return {
-      signature,
-      status: 1, // CONFIRMED
-      data: {
-        fee: totalFee / 1e9,
-        positionAddress: extInfo.nftMint.toBase58(),
-        positionRent: rent,
-        baseTokenAmountAdded: baseTokenChange,
-        quoteTokenAmountAdded: quoteTokenChange,
-      },
-    };
-  } else {
-    // Transaction pending, return for Hummingbot to handle retry
-    return {
-      signature,
-      status: 0, // PENDING
-    };
   }
+
+  return result;
 }
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
@@ -191,7 +82,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         const networkToUse = network;
 
         return await openPosition(
-          fastify,
           networkToUse,
           walletAddress,
           lowerPrice,
