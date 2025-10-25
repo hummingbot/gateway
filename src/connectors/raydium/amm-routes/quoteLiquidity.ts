@@ -1,5 +1,6 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 
+import { quoteLiquidity as sdkQuoteLiquidity } from '../../../../packages/sdk/src/solana/raydium/operations/amm/quote-liquidity';
 import { Solana } from '../../../chains/solana/solana';
 import {
   QuoteLiquidityRequestType,
@@ -9,8 +10,32 @@ import {
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumAmmQuoteLiquidityRequest } from '../schemas';
-import { quoteLiquidity as sdkQuoteLiquidity } from '../../../../packages/sdk/src/solana/raydium/operations/amm/quote-liquidity';
 
+/**
+ * Helper function for quoting liquidity (used by addLiquidity)
+ */
+export async function quoteLiquidity(
+  _fastify: FastifyInstance,
+  network: string,
+  poolAddress: string,
+  baseTokenAmount?: number,
+  quoteTokenAmount?: number,
+  slippagePct?: number,
+): Promise<QuoteLiquidityResponseType> {
+  const raydium = await Raydium.getInstance(network);
+  const solana = await Solana.getInstance(network);
+
+  // Call SDK operation
+  const result = await sdkQuoteLiquidity(raydium, solana, {
+    network,
+    poolAddress,
+    baseTokenAmount,
+    quoteTokenAmount,
+    slippagePct,
+  });
+
+  return result;
+}
 
 export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -36,19 +61,8 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { network = 'mainnet-beta', poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.query;
 
-        const raydium = await Raydium.getInstance(network);
-        const solana = await Solana.getInstance(network);
-
-        // Call SDK operation
-        const result = await sdkQuoteLiquidity(raydium, solana, {
-          network,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        });
-
-        return result;
+        // Use the helper function
+        return await quoteLiquidity(fastify, network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
       } catch (e) {
         logger.error(e);
         throw fastify.httpErrors.internalServerError('Failed to quote position');

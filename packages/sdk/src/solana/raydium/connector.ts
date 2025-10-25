@@ -82,7 +82,7 @@ export class RaydiumConnector implements Protocol<RaydiumConnectorConfig> {
     /**
      * Get position information
      */
-    getPosition: async (params: { poolAddress: string; walletAddress: string }) => {
+    getPosition: async (_params: { poolAddress: string; walletAddress: string }) => {
       // This would fetch user's position in the pool
       // Implementation depends on pool type (AMM vs CLMM)
       throw new Error('getPosition not yet implemented');

@@ -1,6 +1,7 @@
 import { Static } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
+import { ClosePositionOperation } from '../../../../packages/sdk/src/solana/raydium/operations/clmm/close-position';
 import { Solana } from '../../../chains/solana/solana';
 import {
   ClosePositionResponse,
@@ -10,7 +11,6 @@ import {
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumClmmClosePositionRequest } from '../schemas';
-import { ClosePositionOperation } from '../../../../packages/sdk/src/solana/raydium/operations/clmm/close-position';
 
 async function closePosition(
   network: string,
@@ -37,7 +37,23 @@ async function closePosition(
     );
   }
 
-  return result;
+  // Transform SDK result to API response format
+  const apiResponse: ClosePositionResponseType = {
+    signature: result.signature,
+    status: result.status,
+    data: result.data
+      ? {
+          fee: result.data.fee,
+          baseTokenAmountRemoved: result.data.baseTokenAmountRemoved,
+          quoteTokenAmountRemoved: result.data.quoteTokenAmountRemoved,
+          baseFeeAmountCollected: result.data.feesCollected.base,
+          quoteFeeAmountCollected: result.data.feesCollected.quote,
+          positionRentRefunded: result.data.positionRentReclaimed,
+        }
+      : undefined,
+  };
+
+  return apiResponse;
 }
 
 export const closePositionRoute: FastifyPluginAsync = async (fastify) => {

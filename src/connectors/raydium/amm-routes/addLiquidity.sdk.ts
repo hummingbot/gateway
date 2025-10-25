@@ -13,15 +13,12 @@
 import { Static } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
-import {
-  AddLiquidityResponse,
-  AddLiquidityResponseType,
-} from '../../../schemas/amm-schema';
+import { RaydiumConnector } from '../../../../packages/sdk/src/solana/raydium';
+import { AddLiquidityResponse, AddLiquidityResponseType } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { RaydiumAmmAddLiquidityRequest } from '../schemas';
 
 // Import SDK
-import { RaydiumConnector } from '../../../../../packages/sdk/src/solana/raydium';
 
 /**
  * Add Liquidity using SDK
@@ -77,14 +74,7 @@ export const addLiquidityRouteSdk: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          walletAddress,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.body;
+        const { network, walletAddress, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.body;
 
         return await addLiquidityViaSdk(
           network,

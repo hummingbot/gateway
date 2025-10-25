@@ -137,6 +137,7 @@ export async function quoteSwap(
     slippagePct: slippagePct ?? 1,
     minAmountOut,
     maxAmountIn,
+    priceImpact: priceImpactPct / 100, // Convert from percentage to decimal
     priceImpactPct,
   };
 }

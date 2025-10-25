@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import { ExecuteSwapOperation } from '../../../../packages/sdk/src/solana/raydium/operations/amm/execute-swap';
 import { Solana } from '../../../chains/solana/solana';
 import { ExecuteSwapResponse, ExecuteSwapResponseType, ExecuteSwapRequestType } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
@@ -7,7 +8,6 @@ import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
 import { RaydiumAmmExecuteSwapRequest } from '../schemas';
-import { ExecuteSwapOperation } from '../../../../packages/sdk/src/solana/raydium/operations/amm/execute-swap';
 
 async function executeSwap(
   network: string,
@@ -30,9 +30,7 @@ async function executeSwap(
 
   // Determine tokenIn/tokenOut and amount based on side
   const [tokenIn, tokenOut, amountIn, amountOut] =
-    side === 'SELL'
-      ? [baseToken, quoteToken, amount, undefined]
-      : [quoteToken, baseToken, undefined, amount];
+    side === 'SELL' ? [baseToken, quoteToken, amount, undefined] : [quoteToken, baseToken, undefined, amount];
 
   // Execute using SDK
   const result = await operation.execute({
@@ -54,7 +52,24 @@ async function executeSwap(
     );
   }
 
-  return result;
+  // Transform SDK result to API response format
+  const apiResponse: ExecuteSwapResponseType = {
+    signature: result.signature,
+    status: result.status,
+    data: result.data
+      ? {
+          amountIn: result.data.amountIn,
+          amountOut: result.data.amountOut,
+          tokenIn,
+          tokenOut,
+          fee: result.data.fee,
+          baseTokenBalanceChange: side === 'SELL' ? -result.data.amountIn : result.data.amountOut,
+          quoteTokenBalanceChange: side === 'SELL' ? result.data.amountOut : -result.data.amountIn,
+        }
+      : undefined,
+  };
+
+  return apiResponse;
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {

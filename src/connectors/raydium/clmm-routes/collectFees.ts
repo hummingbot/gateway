@@ -36,7 +36,20 @@ export async function collectFees(
     );
   }
 
-  return result;
+  // Transform SDK result to API response format
+  const apiResponse: CollectFeesResponseType = {
+    signature: result.signature,
+    status: result.status,
+    data: result.data
+      ? {
+          fee: result.data.fee,
+          baseFeeAmountCollected: result.data.baseTokenFeesCollected,
+          quoteFeeAmountCollected: result.data.quoteTokenFeesCollected,
+        }
+      : undefined,
+  };
+
+  return apiResponse;
 }
 
 export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
