@@ -40,6 +40,7 @@ describe('Ethereum Status Route', () => {
     const mockEthereumInstance = {
       rpcUrl: 'https://eth.llamarpc.com',
       nativeTokenSymbol: 'ETH',
+      swapProvider: 'uniswap/router',
       provider: {
         getBlockNumber: jest.fn(),
       },
@@ -73,6 +74,7 @@ describe('Ethereum Status Route', () => {
         rpcProvider: 'url',
         currentBlockNumber: 23329000,
         nativeCurrency: 'ETH',
+        swapProvider: 'uniswap/router',
       });
     });
 
@@ -95,6 +97,7 @@ describe('Ethereum Status Route', () => {
         rpcProvider: 'infura',
         currentBlockNumber: 23329000,
         nativeCurrency: 'ETH',
+        swapProvider: 'uniswap/router',
       });
 
       expect(mockInfuraService.getUrlForNetwork).toHaveBeenCalledWith('mainnet');
@@ -118,6 +121,7 @@ describe('Ethereum Status Route', () => {
         rpcProvider: 'infura',
         currentBlockNumber: 23329000,
         nativeCurrency: 'ETH',
+        swapProvider: 'uniswap/router',
       });
     });
 
@@ -145,6 +149,7 @@ describe('Ethereum Status Route', () => {
         rpcProvider: 'infura',
         currentBlockNumber: 23329000,
         nativeCurrency: 'ETH',
+        swapProvider: 'uniswap/router',
       });
 
       expect(mockWarn).toHaveBeenCalledWith('Failed to get Infura URL, using standard rpcUrl: Infura service error');
@@ -168,6 +173,7 @@ describe('Ethereum Status Route', () => {
         rpcProvider: 'url',
         currentBlockNumber: 23329000,
         nativeCurrency: 'ETH',
+        swapProvider: 'uniswap/router',
       });
     });
 
@@ -191,6 +197,7 @@ describe('Ethereum Status Route', () => {
         rpcProvider: 'infura',
         currentBlockNumber: 23329000,
         nativeCurrency: 'ETH',
+        swapProvider: 'uniswap/router',
       });
 
       expect(mockInfuraService.getUrlForNetwork).toHaveBeenCalledWith('polygon');
@@ -220,6 +227,7 @@ describe('Ethereum Status Route', () => {
         rpcProvider: 'url',
         currentBlockNumber: 0,
         nativeCurrency: 'ETH',
+        swapProvider: 'uniswap/router',
       });
 
       expect(mockWarn).toHaveBeenCalledWith('Failed to get block number: Request timed out');
@@ -232,6 +240,7 @@ describe('Ethereum Status Route', () => {
     const mockEthereumInstance = {
       rpcUrl: 'https://eth.llamarpc.com',
       nativeTokenSymbol: 'ETH',
+      swapProvider: 'uniswap/router',
       provider: {
         getBlockNumber: jest.fn(),
       },
@@ -266,6 +275,7 @@ describe('Ethereum Status Route', () => {
         rpcProvider: 'url',
         currentBlockNumber: 23329000,
         nativeCurrency: 'ETH',
+        swapProvider: 'uniswap/router',
       });
     });
 
@@ -305,6 +315,7 @@ describe('Ethereum Status Route', () => {
         rpcProvider: 'unavailable',
         currentBlockNumber: 0,
         nativeCurrency: 'ETH',
+        swapProvider: '',
       });
 
       mockError.mockRestore();

@@ -35,6 +35,7 @@ export class Ethereum {
   public nativeTokenSymbol: string;
   public chainId: number;
   public rpcUrl: string;
+  public swapProvider: string;
   public minGasPrice: number;
   public maxFeePerGas?: number;
   public maxPriorityFeePerGas?: number;
@@ -62,6 +63,7 @@ export class Ethereum {
     this.rpcUrl = config.nodeURL;
     this.network = network;
     this.nativeTokenSymbol = config.nativeCurrencySymbol;
+    this.swapProvider = config.swapProvider || '';
     this.minGasPrice = config.minGasPrice || 0.1; // Default to 0.1 GWEI if not specified
     this.maxFeePerGas = config.maxFeePerGas;
     this.maxPriorityFeePerGas = config.maxPriorityFeePerGas;

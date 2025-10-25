@@ -136,6 +136,7 @@ export const StatusResponseSchema = Type.Object(
     rpcProvider: Type.String(),
     currentBlockNumber: Type.Number(),
     nativeCurrency: Type.String(),
+    swapProvider: Type.String(),
   },
   { $id: 'StatusResponse' },
 );

@@ -4,6 +4,10 @@
   "properties": {
     "nodeURL": { "type": "string" },
     "nativeCurrencySymbol": { "type": "string" },
+    "swapProvider": {
+      "type": "string",
+      "description": "Default swap provider for this network (e.g., jupiter/router, raydium/amm, etc.)"
+    },
     "defaultComputeUnits": { "type": "number" },
     "confirmRetryInterval": { "type": "number" },
     "confirmRetryCount": { "type": "number" },

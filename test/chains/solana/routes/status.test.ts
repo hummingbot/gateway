@@ -41,6 +41,7 @@ describe('Solana Status Route', () => {
       config: {
         nodeURL: 'https://api.mainnet-beta.solana.com',
         nativeCurrencySymbol: 'SOL',
+        swapProvider: 'jupiter/router',
       },
       getCurrentBlockNumber: jest.fn(),
       getHeliusService: jest.fn(),
@@ -71,6 +72,7 @@ describe('Solana Status Route', () => {
         rpcProvider: 'url',
         currentBlockNumber: 365795000,
         nativeCurrency: 'SOL',
+        swapProvider: 'jupiter/router',
       });
     });
 
@@ -93,6 +95,7 @@ describe('Solana Status Route', () => {
         rpcProvider: 'helius',
         currentBlockNumber: 365795000,
         nativeCurrency: 'SOL',
+        swapProvider: 'jupiter/router',
       });
 
       expect(mockHeliusService.getUrlForNetwork).toHaveBeenCalledWith('mainnet-beta');
@@ -116,6 +119,7 @@ describe('Solana Status Route', () => {
         rpcProvider: 'helius',
         currentBlockNumber: 365795000,
         nativeCurrency: 'SOL',
+        swapProvider: 'jupiter/router',
       });
     });
 
@@ -143,6 +147,7 @@ describe('Solana Status Route', () => {
         rpcProvider: 'helius',
         currentBlockNumber: 365795000,
         nativeCurrency: 'SOL',
+        swapProvider: 'jupiter/router',
       });
 
       expect(mockWarn).toHaveBeenCalledWith('Failed to get Helius URL, using nodeURL: Helius service error');
@@ -166,6 +171,7 @@ describe('Solana Status Route', () => {
         rpcProvider: 'url',
         currentBlockNumber: 365795000,
         nativeCurrency: 'SOL',
+        swapProvider: 'jupiter/router',
       });
     });
 
@@ -189,6 +195,7 @@ describe('Solana Status Route', () => {
         rpcProvider: 'helius',
         currentBlockNumber: 365795000,
         nativeCurrency: 'SOL',
+        swapProvider: 'jupiter/router',
       });
 
       expect(mockHeliusService.getUrlForNetwork).toHaveBeenCalledWith('devnet');
@@ -200,6 +207,7 @@ describe('Solana Status Route', () => {
       config: {
         nodeURL: 'https://api.mainnet-beta.solana.com',
         nativeCurrencySymbol: 'SOL',
+        swapProvider: 'jupiter/router',
       },
       getCurrentBlockNumber: jest.fn(),
       getHeliusService: jest.fn(),
@@ -233,6 +241,7 @@ describe('Solana Status Route', () => {
         rpcProvider: 'url',
         currentBlockNumber: 365795000,
         nativeCurrency: 'SOL',
+        swapProvider: 'jupiter/router',
       });
     });
 

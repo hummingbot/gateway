@@ -6,6 +6,7 @@ export interface EthereumNetworkConfig {
   chainID: number;
   nodeURL: string;
   nativeCurrencySymbol: string;
+  swapProvider?: string;
   minGasPrice?: number;
   maxFeePerGas?: number;
   maxPriorityFeePerGas?: number;
@@ -29,6 +30,7 @@ export function getEthereumNetworkConfig(network: string): EthereumNetworkConfig
     chainID: ConfigManagerV2.getInstance().get(namespaceId + '.chainID'),
     nodeURL: ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL'),
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
+    swapProvider: ConfigManagerV2.getInstance().get(namespaceId + '.swapProvider'),
     minGasPrice: ConfigManagerV2.getInstance().get(namespaceId + '.minGasPrice'),
     maxFeePerGas: ConfigManagerV2.getInstance().get(namespaceId + '.maxFeePerGas'),
     maxPriorityFeePerGas: ConfigManagerV2.getInstance().get(namespaceId + '.maxPriorityFeePerGas'),
