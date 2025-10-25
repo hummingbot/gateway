@@ -1,26 +1,56 @@
 import { FastifyInstance } from 'fastify';
 
-// Import shared mocks before importing app
-import '../../../mocks/app-mocks';
-
-import { gatewayApp } from '../../../../src/app';
 import { executeSolanaSwap } from '../../../../src/chains/solana/routes/execute-swap';
+import { Solana } from '../../../../src/chains/solana/solana';
+import { MOCK_WALLET_ADDRESSES } from '../../../constants/mockTokens';
+import { createMockSolanaExecuteResponse } from '../../../helpers/mockResponses';
 
-// Mock getSolanaNetworkConfig
+// Setup common mocks
+jest.mock('../../../../src/services/logger', () => require('../../../helpers/commonMocks').createLoggerMock());
+jest.mock('../../../../src/services/config-manager-v2', () =>
+  require('../../../helpers/commonMocks').createConfigManagerMock(),
+);
+
+// Mock the Solana class
+jest.mock('../../../../src/chains/solana/solana');
+
+// Mock getSolanaNetworkConfig - must come BEFORE app import
 jest.mock('../../../../src/chains/solana/solana.config', () => ({
   ...jest.requireActual('../../../../src/chains/solana/solana.config'),
   getSolanaNetworkConfig: jest.fn(),
+  getSolanaChainConfig: jest.fn().mockReturnValue({
+    defaultNetwork: 'mainnet-beta',
+    defaultWallet: 'test-wallet',
+  }),
 }));
 
-const { getSolanaNetworkConfig } = require('../../../../src/chains/solana/solana.config');
+// Mock all Solana connector executeSwap routes
+jest.mock('../../../../src/connectors/jupiter/router-routes/executeSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('executeSwap'),
+);
+jest.mock('../../../../src/connectors/raydium/amm-routes/executeSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('executeSwap', true),
+);
+jest.mock('../../../../src/connectors/raydium/clmm-routes/executeSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('executeSwap', true),
+);
+jest.mock('../../../../src/connectors/meteora/clmm-routes/executeSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('executeSwap', true),
+);
+jest.mock('../../../../src/connectors/pancakeswap-sol/clmm-routes/executeSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('executeSwap', true),
+);
 
-// Mock Jupiter executeSwap function
-jest.mock('../../../../src/connectors/jupiter/router-routes/executeSwap', () => ({
-  executeSwap: jest.fn(),
-}));
+import { gatewayApp } from '../../../../src/app';
+
+const solanaConfig = require('../../../../src/chains/solana/solana.config');
+const getSolanaNetworkConfig = solanaConfig.getSolanaNetworkConfig as jest.Mock;
 
 describe('Solana Execute Swap Route', () => {
   let fastify: FastifyInstance;
+
+  // Define mock response once at describe level (no duplication)
+  const mockExecuteResponse = createMockSolanaExecuteResponse();
 
   beforeAll(async () => {
     fastify = gatewayApp;
@@ -36,21 +66,6 @@ describe('Solana Execute Swap Route', () => {
   });
 
   describe('executeSolanaSwap function', () => {
-    const mockExecuteResponse = {
-      signature: '5ZxW8vK2...',
-      status: 1,
-      data: {
-        baseToken: 'SOL',
-        quoteToken: 'USDC',
-        side: 'BUY' as const,
-        baseAmount: 1,
-        quoteAmount: 150,
-        price: 150,
-        fee: '0.000005',
-        nonce: 0,
-      },
-    };
-
     it('should route to jupiter when swapProvider is jupiter/router', async () => {
       getSolanaNetworkConfig.mockReturnValue({
         defaultNetwork: 'mainnet-beta',
@@ -66,7 +81,7 @@ describe('Solana Execute Swap Route', () => {
       const result = await executeSolanaSwap(
         fastify,
         'mainnet-beta',
-        'SolWalletAddress123',
+        MOCK_WALLET_ADDRESSES.SOLANA,
         'SOL',
         'USDC',
         1,
@@ -77,8 +92,8 @@ describe('Solana Execute Swap Route', () => {
       expect(result).toEqual(mockExecuteResponse);
       expect(mockJupiterExecuteSwap).toHaveBeenCalledWith(
         fastify,
+        MOCK_WALLET_ADDRESSES.SOLANA,
         'mainnet-beta',
-        'SolWalletAddress123',
         'SOL',
         'USDC',
         1,
@@ -104,7 +119,7 @@ describe('Solana Execute Swap Route', () => {
       const result = await executeSolanaSwap(
         fastify,
         'mainnet-beta',
-        'SolWalletAddress123',
+        MOCK_WALLET_ADDRESSES.SOLANA,
         'SOL',
         'USDC',
         1,
@@ -124,7 +139,7 @@ describe('Solana Execute Swap Route', () => {
       });
 
       await expect(
-        executeSolanaSwap(fastify, 'mainnet-beta', 'SolWalletAddress123', 'SOL', 'USDC', 1, 'BUY', 1),
+        executeSolanaSwap(fastify, 'mainnet-beta', MOCK_WALLET_ADDRESSES.SOLANA, 'SOL', 'USDC', 1, 'BUY', 1),
       ).rejects.toThrow();
     });
 
@@ -141,7 +156,7 @@ describe('Solana Execute Swap Route', () => {
       mockJupiterExecuteSwap.mockRejectedValue(new Error('Transaction failed'));
 
       await expect(
-        executeSolanaSwap(fastify, 'mainnet-beta', 'SolWalletAddress123', 'SOL', 'USDC', 1, 'BUY', 1),
+        executeSolanaSwap(fastify, 'mainnet-beta', MOCK_WALLET_ADDRESSES.SOLANA, 'SOL', 'USDC', 1, 'BUY', 1),
       ).rejects.toThrow();
     });
 
@@ -157,13 +172,22 @@ describe('Solana Execute Swap Route', () => {
       } = require('../../../../src/connectors/jupiter/router-routes/executeSwap');
       mockJupiterExecuteSwap.mockResolvedValue(mockExecuteResponse);
 
-      const result = await executeSolanaSwap(fastify, 'devnet', 'SolWalletAddress456', 'SOL', 'USDC', 1, 'SELL', 2);
+      const result = await executeSolanaSwap(
+        fastify,
+        'devnet',
+        MOCK_WALLET_ADDRESSES.SOLANA,
+        'SOL',
+        'USDC',
+        1,
+        'SELL',
+        2,
+      );
 
       expect(result).toEqual(mockExecuteResponse);
       expect(mockJupiterExecuteSwap).toHaveBeenCalledWith(
         fastify,
+        MOCK_WALLET_ADDRESSES.SOLANA,
         'devnet',
-        'SolWalletAddress456',
         'SOL',
         'USDC',
         1,
@@ -176,21 +200,6 @@ describe('Solana Execute Swap Route', () => {
   });
 
   describe('POST /chains/solana/execute-swap', () => {
-    const mockExecuteResponse = {
-      signature: '5ZxW8vK2...',
-      status: 1,
-      data: {
-        baseToken: 'SOL',
-        quoteToken: 'USDC',
-        side: 'BUY' as const,
-        baseAmount: 1,
-        quoteAmount: 150,
-        price: 150,
-        fee: '0.000005',
-        nonce: 0,
-      },
-    };
-
     beforeEach(() => {
       getSolanaNetworkConfig.mockReturnValue({
         defaultNetwork: 'mainnet-beta',
@@ -210,7 +219,7 @@ describe('Solana Execute Swap Route', () => {
         url: '/chains/solana/execute-swap',
         payload: {
           network: 'mainnet-beta',
-          walletAddress: 'SolWalletAddress123',
+          walletAddress: MOCK_WALLET_ADDRESSES.SOLANA,
           baseToken: 'SOL',
           quoteToken: 'USDC',
           amount: 1,
@@ -235,7 +244,7 @@ describe('Solana Execute Swap Route', () => {
         method: 'POST',
         url: '/chains/solana/execute-swap',
         payload: {
-          walletAddress: 'SolWalletAddress123',
+          walletAddress: MOCK_WALLET_ADDRESSES.SOLANA,
           baseToken: 'SOL',
           quoteToken: 'USDC',
           amount: 1,

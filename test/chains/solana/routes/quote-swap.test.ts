@@ -1,26 +1,56 @@
 import { FastifyInstance } from 'fastify';
 
-// Import shared mocks before importing app
-import '../../../mocks/app-mocks';
-
-import { gatewayApp } from '../../../../src/app';
 import { getSolanaQuoteSwap } from '../../../../src/chains/solana/routes/quote-swap';
+import { Solana } from '../../../../src/chains/solana/solana';
+import { MOCK_WALLET_ADDRESSES } from '../../../constants/mockTokens';
+import { createMockSolanaQuoteResponse } from '../../../helpers/mockResponses';
 
-// Mock getSolanaNetworkConfig
+// Setup common mocks
+jest.mock('../../../../src/services/logger', () => require('../../../helpers/commonMocks').createLoggerMock());
+jest.mock('../../../../src/services/config-manager-v2', () =>
+  require('../../../helpers/commonMocks').createConfigManagerMock(),
+);
+
+// Mock the Solana class
+jest.mock('../../../../src/chains/solana/solana');
+
+// Mock getSolanaNetworkConfig - must come BEFORE app import
 jest.mock('../../../../src/chains/solana/solana.config', () => ({
   ...jest.requireActual('../../../../src/chains/solana/solana.config'),
   getSolanaNetworkConfig: jest.fn(),
+  getSolanaChainConfig: jest.fn().mockReturnValue({
+    defaultNetwork: 'mainnet-beta',
+    defaultWallet: 'test-wallet',
+  }),
 }));
 
-const { getSolanaNetworkConfig } = require('../../../../src/chains/solana/solana.config');
+// Mock all Solana connector quoteSwap routes
+jest.mock('../../../../src/connectors/jupiter/router-routes/quoteSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('quoteSwap'),
+);
+jest.mock('../../../../src/connectors/raydium/amm-routes/quoteSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('quoteSwap', true),
+);
+jest.mock('../../../../src/connectors/raydium/clmm-routes/quoteSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('quoteSwap', true),
+);
+jest.mock('../../../../src/connectors/meteora/clmm-routes/quoteSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('quoteSwap', true),
+);
+jest.mock('../../../../src/connectors/pancakeswap-sol/clmm-routes/quoteSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('quoteSwap', true),
+);
 
-// Mock Jupiter quoteSwap function
-jest.mock('../../../../src/connectors/jupiter/router-routes/quoteSwap', () => ({
-  quoteSwap: jest.fn(),
-}));
+import { gatewayApp } from '../../../../src/app';
+
+const solanaConfig = require('../../../../src/chains/solana/solana.config');
+const getSolanaNetworkConfig = solanaConfig.getSolanaNetworkConfig as jest.Mock;
 
 describe('Solana Quote Swap Route', () => {
   let fastify: FastifyInstance;
+
+  // Define mock response once at describe level (no duplication)
+  const mockQuoteResponse = createMockSolanaQuoteResponse();
 
   beforeAll(async () => {
     fastify = gatewayApp;
@@ -36,18 +66,6 @@ describe('Solana Quote Swap Route', () => {
   });
 
   describe('getSolanaQuoteSwap function', () => {
-    const mockQuoteResponse = {
-      quoteId: 'quote-jupiter-123',
-      baseToken: 'SOL',
-      quoteToken: 'USDC',
-      side: 'BUY' as const,
-      baseAmount: 1,
-      quoteAmount: 150,
-      price: 150,
-      fee: 0.0025,
-      gasEstimate: 5000,
-    };
-
     it('should route to jupiter when swapProvider is jupiter/router', async () => {
       getSolanaNetworkConfig.mockReturnValue({
         defaultNetwork: 'mainnet-beta',
@@ -141,18 +159,6 @@ describe('Solana Quote Swap Route', () => {
   });
 
   describe('POST /chains/solana/quote-swap', () => {
-    const mockQuoteResponse = {
-      quoteId: 'quote-jupiter-123',
-      baseToken: 'SOL',
-      quoteToken: 'USDC',
-      side: 'BUY' as const,
-      baseAmount: 1,
-      quoteAmount: 150,
-      price: 150,
-      fee: 0.0025,
-      gasEstimate: 5000,
-    };
-
     beforeEach(() => {
       getSolanaNetworkConfig.mockReturnValue({
         defaultNetwork: 'mainnet-beta',

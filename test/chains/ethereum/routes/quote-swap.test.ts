@@ -1,34 +1,62 @@
 import { FastifyInstance } from 'fastify';
 
-// Import shared mocks before importing app
-import '../../../mocks/app-mocks';
-
-import { gatewayApp } from '../../../../src/app';
+import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { getEthereumQuoteSwap } from '../../../../src/chains/ethereum/routes/quote-swap';
+import { MOCK_WALLET_ADDRESSES } from '../../../constants/mockTokens';
+import { createMockEthereumQuoteResponse } from '../../../helpers/mockResponses';
 
-// Mock getEthereumNetworkConfig
+// Setup common mocks
+jest.mock('../../../../src/services/logger', () => require('../../../helpers/commonMocks').createLoggerMock());
+
+// Mock the Ethereum class
+jest.mock('../../../../src/chains/ethereum/ethereum');
+
+// Mock the Solana class
+jest.mock('../../../../src/chains/solana/solana');
+
+// Mock getEthereumNetworkConfig - must come BEFORE app import
 jest.mock('../../../../src/chains/ethereum/ethereum.config', () => ({
   ...jest.requireActual('../../../../src/chains/ethereum/ethereum.config'),
   getEthereumNetworkConfig: jest.fn(),
+  getEthereumChainConfig: jest.fn().mockReturnValue({
+    defaultNetwork: 'mainnet',
+    defaultWallet: 'test-wallet',
+  }),
 }));
 
-const { getEthereumNetworkConfig } = require('../../../../src/chains/ethereum/ethereum.config');
+// Mock all Ethereum connector quoteSwap routes
+jest.mock('../../../../src/connectors/uniswap/router-routes/quoteSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('quoteSwap'),
+);
+jest.mock('../../../../src/connectors/uniswap/amm-routes/quoteSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('quoteSwap'),
+);
+jest.mock('../../../../src/connectors/uniswap/clmm-routes/quoteSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('quoteSwap'),
+);
+jest.mock('../../../../src/connectors/pancakeswap/router-routes/quoteSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('quoteSwap'),
+);
+jest.mock('../../../../src/connectors/pancakeswap/amm-routes/quoteSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('quoteSwap'),
+);
+jest.mock('../../../../src/connectors/pancakeswap/clmm-routes/quoteSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('quoteSwap'),
+);
+jest.mock('../../../../src/connectors/0x/router-routes/quoteSwap', () =>
+  require('../../../helpers/connectorMocks').createRouteMock('quoteSwap'),
+);
 
-// Mock connector quoteSwap functions
-jest.mock('../../../../src/connectors/uniswap/router-routes/quoteSwap', () => ({
-  quoteSwap: jest.fn(),
-}));
+import { gatewayApp } from '../../../../src/app';
 
-jest.mock('../../../../src/connectors/pancakeswap/router-routes/quoteSwap', () => ({
-  quoteSwap: jest.fn(),
-}));
-
-jest.mock('../../../../src/connectors/0x/router-routes/quoteSwap', () => ({
-  quoteSwap: jest.fn(),
-}));
+const ethereumConfig = require('../../../../src/chains/ethereum/ethereum.config');
+const getEthereumNetworkConfig = ethereumConfig.getEthereumNetworkConfig as jest.Mock;
 
 describe('Ethereum Quote Swap Route', () => {
   let fastify: FastifyInstance;
+
+  // Define mock response once at describe level (no duplication)
+  const mockQuoteResponse = createMockEthereumQuoteResponse();
 
   beforeAll(async () => {
     fastify = gatewayApp;
@@ -44,18 +72,6 @@ describe('Ethereum Quote Swap Route', () => {
   });
 
   describe('getEthereumQuoteSwap function', () => {
-    const mockQuoteResponse = {
-      quoteId: 'quote-123',
-      baseToken: 'ETH',
-      quoteToken: 'USDC',
-      side: 'BUY' as const,
-      baseAmount: 1,
-      quoteAmount: 3000,
-      price: 3000,
-      fee: 0.003,
-      gasEstimate: 150000,
-    };
-
     it('should route to uniswap when swapProvider is uniswap/router', async () => {
       getEthereumNetworkConfig.mockReturnValue({
         defaultNetwork: 'mainnet',
@@ -66,10 +82,28 @@ describe('Ethereum Quote Swap Route', () => {
       const { quoteSwap: mockUniswapQuoteSwap } = require('../../../../src/connectors/uniswap/router-routes/quoteSwap');
       mockUniswapQuoteSwap.mockResolvedValue(mockQuoteResponse);
 
-      const result = await getEthereumQuoteSwap(fastify, 'mainnet', 'ETH', 'USDC', 1, 'BUY', 1, '0x123');
+      const result = await getEthereumQuoteSwap(
+        fastify,
+        'mainnet',
+        'ETH',
+        'USDC',
+        1,
+        'BUY',
+        1,
+        MOCK_WALLET_ADDRESSES.ETHEREUM,
+      );
 
       expect(result).toEqual(mockQuoteResponse);
-      expect(mockUniswapQuoteSwap).toHaveBeenCalledWith(fastify, 'mainnet', '0x123', 'ETH', 'USDC', 1, 'BUY', 1);
+      expect(mockUniswapQuoteSwap).toHaveBeenCalledWith(
+        fastify,
+        'mainnet',
+        MOCK_WALLET_ADDRESSES.ETHEREUM,
+        'ETH',
+        'USDC',
+        1,
+        'BUY',
+        1,
+      );
     });
 
     it('should route to pancakeswap when swapProvider is pancakeswap/router', async () => {
@@ -84,10 +118,28 @@ describe('Ethereum Quote Swap Route', () => {
       } = require('../../../../src/connectors/pancakeswap/router-routes/quoteSwap');
       mockPancakeswapQuoteSwap.mockResolvedValue(mockQuoteResponse);
 
-      const result = await getEthereumQuoteSwap(fastify, 'bsc', 'BNB', 'BUSD', 1, 'SELL', 1, '0x456');
+      const result = await getEthereumQuoteSwap(
+        fastify,
+        'bsc',
+        'BNB',
+        'BUSD',
+        1,
+        'SELL',
+        1,
+        MOCK_WALLET_ADDRESSES.ETHEREUM,
+      );
 
       expect(result).toEqual(mockQuoteResponse);
-      expect(mockPancakeswapQuoteSwap).toHaveBeenCalledWith(fastify, 'bsc', '0x456', 'BNB', 'BUSD', 1, 'SELL', 1);
+      expect(mockPancakeswapQuoteSwap).toHaveBeenCalledWith(
+        fastify,
+        'bsc',
+        MOCK_WALLET_ADDRESSES.ETHEREUM,
+        'BNB',
+        'BUSD',
+        1,
+        'SELL',
+        1,
+      );
     });
 
     it('should route to 0x when swapProvider is 0x/router', async () => {
@@ -100,7 +152,16 @@ describe('Ethereum Quote Swap Route', () => {
       const { quoteSwap: mock0xQuoteSwap } = require('../../../../src/connectors/0x/router-routes/quoteSwap');
       mock0xQuoteSwap.mockResolvedValue(mockQuoteResponse);
 
-      const result = await getEthereumQuoteSwap(fastify, 'mainnet', 'ETH', 'DAI', 1, 'BUY', 2, '0x789');
+      const result = await getEthereumQuoteSwap(
+        fastify,
+        'mainnet',
+        'ETH',
+        'DAI',
+        1,
+        'BUY',
+        2,
+        MOCK_WALLET_ADDRESSES.ETHEREUM,
+      );
 
       expect(result).toEqual(mockQuoteResponse);
       expect(mock0xQuoteSwap).toHaveBeenCalled();
@@ -116,7 +177,16 @@ describe('Ethereum Quote Swap Route', () => {
       const { quoteSwap: mockUniswapQuoteSwap } = require('../../../../src/connectors/uniswap/router-routes/quoteSwap');
       mockUniswapQuoteSwap.mockResolvedValue(mockQuoteResponse);
 
-      const result = await getEthereumQuoteSwap(fastify, 'mainnet', 'ETH', 'USDC', 1, 'BUY', 1, '0x123');
+      const result = await getEthereumQuoteSwap(
+        fastify,
+        'mainnet',
+        'ETH',
+        'USDC',
+        1,
+        'BUY',
+        1,
+        MOCK_WALLET_ADDRESSES.ETHEREUM,
+      );
 
       expect(result).toEqual(mockQuoteResponse);
       expect(mockUniswapQuoteSwap).toHaveBeenCalled();
@@ -129,7 +199,9 @@ describe('Ethereum Quote Swap Route', () => {
         swapProvider: 'unsupported/provider',
       });
 
-      await expect(getEthereumQuoteSwap(fastify, 'mainnet', 'ETH', 'USDC', 1, 'BUY', 1, '0x123')).rejects.toThrow();
+      await expect(
+        getEthereumQuoteSwap(fastify, 'mainnet', 'ETH', 'USDC', 1, 'BUY', 1, MOCK_WALLET_ADDRESSES.ETHEREUM),
+      ).rejects.toThrow();
     });
 
     it('should handle connector errors', async () => {
@@ -142,23 +214,13 @@ describe('Ethereum Quote Swap Route', () => {
       const { quoteSwap: mockUniswapQuoteSwap } = require('../../../../src/connectors/uniswap/router-routes/quoteSwap');
       mockUniswapQuoteSwap.mockRejectedValue(new Error('Insufficient liquidity'));
 
-      await expect(getEthereumQuoteSwap(fastify, 'mainnet', 'ETH', 'USDC', 1, 'BUY', 1, '0x123')).rejects.toThrow();
+      await expect(
+        getEthereumQuoteSwap(fastify, 'mainnet', 'ETH', 'USDC', 1, 'BUY', 1, MOCK_WALLET_ADDRESSES.ETHEREUM),
+      ).rejects.toThrow();
     });
   });
 
   describe('POST /chains/ethereum/quote-swap', () => {
-    const mockQuoteResponse = {
-      quoteId: 'quote-123',
-      baseToken: 'ETH',
-      quoteToken: 'USDC',
-      side: 'BUY' as const,
-      baseAmount: 1,
-      quoteAmount: 3000,
-      price: 3000,
-      fee: 0.003,
-      gasEstimate: 150000,
-    };
-
     beforeEach(() => {
       getEthereumNetworkConfig.mockReturnValue({
         defaultNetwork: 'mainnet',
@@ -173,7 +235,7 @@ describe('Ethereum Quote Swap Route', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/chains/ethereum/quote-swap?network=mainnet&walletAddress=0x123&baseToken=ETH&quoteToken=USDC&amount=1&side=BUY&slippagePct=1',
+        url: `/chains/ethereum/quote-swap?network=mainnet&walletAddress=${MOCK_WALLET_ADDRESSES.ETHEREUM}&baseToken=ETH&quoteToken=USDC&amount=1&side=BUY&slippagePct=1`,
       });
 
       expect(response.statusCode).toBe(200);
