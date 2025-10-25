@@ -1,4 +1,4 @@
-import { Type } from '@sinclair/typebox';
+import { Type, Static } from '@sinclair/typebox';
 
 import { getSolanaChainConfig, networks as SolanaNetworks } from './solana.config';
 
@@ -77,3 +77,68 @@ export const SolanaPollRequest = Type.Object({
     }),
   ),
 });
+
+// Quote swap request schema
+export const SolanaQuoteSwapRequest = Type.Object({
+  network: SolanaNetworkParameter,
+  baseToken: Type.String({
+    description: 'Token to determine swap direction',
+    examples: ['SOL'],
+  }),
+  quoteToken: Type.String({
+    description: 'The other token in the pair',
+    examples: ['USDC'],
+  }),
+  amount: Type.Number({
+    description: 'Amount of base token to trade',
+    examples: [1],
+  }),
+  side: Type.String({
+    description:
+      'Trade direction - BUY means buying base token with quote token, SELL means selling base token for quote token',
+    enum: ['BUY', 'SELL'],
+  }),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: 1,
+    }),
+  ),
+});
+
+// Execute swap request schema
+export const SolanaExecuteSwapRequest = Type.Object({
+  network: SolanaNetworkParameter,
+  walletAddress: SolanaAddressParameter,
+  baseToken: Type.String({
+    description: 'Token to determine swap direction',
+    examples: ['SOL'],
+  }),
+  quoteToken: Type.String({
+    description: 'The other token in the pair',
+    examples: ['USDC'],
+  }),
+  amount: Type.Number({
+    description: 'Amount of base token to trade',
+    examples: [1],
+  }),
+  side: Type.String({
+    description:
+      'Trade direction - BUY means buying base token with quote token, SELL means selling base token for quote token',
+    enum: ['BUY', 'SELL'],
+  }),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: 1,
+    }),
+  ),
+});
+
+// Type exports
+export type SolanaQuoteSwapRequestType = Static<typeof SolanaQuoteSwapRequest>;
+export type SolanaExecuteSwapRequestType = Static<typeof SolanaExecuteSwapRequest>;

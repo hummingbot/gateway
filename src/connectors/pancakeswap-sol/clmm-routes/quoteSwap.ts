@@ -21,7 +21,7 @@ import { PancakeswapSolClmmQuoteSwapRequest, PancakeswapSolClmmQuoteSwapRequestT
  *
  * For highest precision, this should be replaced with full tick array calculation.
  */
-async function quoteSwap(
+export async function quoteSwap(
   _fastify: FastifyInstance,
   network: string,
   baseTokenSymbol: string,
@@ -142,8 +142,6 @@ async function quoteSwap(
 
   return result;
 }
-
-export { quoteSwap };
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
