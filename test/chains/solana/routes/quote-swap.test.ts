@@ -166,16 +166,8 @@ describe('Solana Quote Swap Route', () => {
       mockJupiterQuoteSwap.mockResolvedValue(mockQuoteResponse);
 
       const response = await fastify.inject({
-        method: 'POST',
-        url: '/chains/solana/quote-swap',
-        payload: {
-          network: 'mainnet-beta',
-          baseToken: 'SOL',
-          quoteToken: 'USDC',
-          amount: 1,
-          side: 'BUY',
-          slippagePct: 1,
-        },
+        method: 'GET',
+        url: '/chains/solana/quote-swap?network=mainnet-beta&baseToken=SOL&quoteToken=USDC&amount=1&side=BUY&slippagePct=1',
       });
 
       expect(response.statusCode).toBe(200);
@@ -189,14 +181,8 @@ describe('Solana Quote Swap Route', () => {
       mockJupiterQuoteSwap.mockResolvedValue(mockQuoteResponse);
 
       const response = await fastify.inject({
-        method: 'POST',
-        url: '/chains/solana/quote-swap',
-        payload: {
-          baseToken: 'SOL',
-          quoteToken: 'USDC',
-          amount: 1,
-          side: 'SELL',
-        },
+        method: 'GET',
+        url: '/chains/solana/quote-swap?baseToken=SOL&quoteToken=USDC&amount=1&side=SELL',
       });
 
       expect(response.statusCode).toBe(200);
@@ -204,11 +190,9 @@ describe('Solana Quote Swap Route', () => {
 
     it('should return error on invalid request', async () => {
       const response = await fastify.inject({
-        method: 'POST',
+        method: 'GET',
         url: '/chains/solana/quote-swap',
-        payload: {
-          // Missing required fields
-        },
+        // Missing required query parameters
       });
 
       expect(response.statusCode).toBe(400);

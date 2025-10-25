@@ -172,17 +172,8 @@ describe('Ethereum Quote Swap Route', () => {
       mockUniswapQuoteSwap.mockResolvedValue(mockQuoteResponse);
 
       const response = await fastify.inject({
-        method: 'POST',
-        url: '/chains/ethereum/quote-swap',
-        payload: {
-          network: 'mainnet',
-          walletAddress: '0x123',
-          baseToken: 'ETH',
-          quoteToken: 'USDC',
-          amount: 1,
-          side: 'BUY',
-          slippagePct: 1,
-        },
+        method: 'GET',
+        url: '/chains/ethereum/quote-swap?network=mainnet&walletAddress=0x123&baseToken=ETH&quoteToken=USDC&amount=1&side=BUY&slippagePct=1',
       });
 
       expect(response.statusCode).toBe(200);
@@ -196,14 +187,8 @@ describe('Ethereum Quote Swap Route', () => {
       mockUniswapQuoteSwap.mockResolvedValue(mockQuoteResponse);
 
       const response = await fastify.inject({
-        method: 'POST',
-        url: '/chains/ethereum/quote-swap',
-        payload: {
-          baseToken: 'ETH',
-          quoteToken: 'USDC',
-          amount: 1,
-          side: 'SELL',
-        },
+        method: 'GET',
+        url: '/chains/ethereum/quote-swap?baseToken=ETH&quoteToken=USDC&amount=1&side=SELL',
       });
 
       expect(response.statusCode).toBe(200);
@@ -211,11 +196,9 @@ describe('Ethereum Quote Swap Route', () => {
 
     it('should return error on invalid request', async () => {
       const response = await fastify.inject({
-        method: 'POST',
+        method: 'GET',
         url: '/chains/ethereum/quote-swap',
-        payload: {
-          // Missing required fields
-        },
+        // Missing required query parameters
       });
 
       expect(response.statusCode).toBe(400);

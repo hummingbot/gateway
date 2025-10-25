@@ -1,11 +1,13 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 // Import all connector quoteSwap functions
+import { JupiterConfig } from '../../../connectors/jupiter/jupiter.config';
 import { quoteSwap as jupiterRouterQuoteSwap } from '../../../connectors/jupiter/router-routes/quoteSwap';
 import { quoteSwap as meteoraClmmQuoteSwap } from '../../../connectors/meteora/clmm-routes/quoteSwap';
 import { quoteSwap as pancakeswapSolClmmQuoteSwap } from '../../../connectors/pancakeswap-sol/clmm-routes/quoteSwap';
 import { quoteSwap as raydiumAmmQuoteSwap } from '../../../connectors/raydium/amm-routes/quoteSwap';
 import { quoteSwap as raydiumClmmQuoteSwap } from '../../../connectors/raydium/clmm-routes/quoteSwap';
+import { ChainQuoteSwapResponseSchema } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
 import { PoolService } from '../../../services/pool-service';
 import { SolanaQuoteSwapRequest, SolanaQuoteSwapRequestType } from '../schemas';
@@ -120,19 +122,27 @@ export async function getSolanaQuoteSwap(
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: SolanaQuoteSwapRequestType;
+  fastify.get<{
+    Querystring: SolanaQuoteSwapRequestType;
   }>(
     '/quote-swap',
     {
       schema: {
         description: "Get a swap quote using the network's configured swap provider (router/amm/clmm)",
         tags: ['/chain/solana'],
-        body: SolanaQuoteSwapRequest,
+        querystring: SolanaQuoteSwapRequest,
+        response: { 200: ChainQuoteSwapResponseSchema },
       },
     },
     async (request) => {
-      const { network, baseToken, quoteToken, amount, side, slippagePct } = request.body;
+      const {
+        network,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct = JupiterConfig.config.slippagePct,
+      } = request.query;
       return await getSolanaQuoteSwap(
         fastify,
         network,

@@ -7,9 +7,11 @@ import { quoteSwap as pancakeswapRouterQuoteSwap } from '../../../connectors/pan
 import { quoteSwap as uniswapAmmQuoteSwap } from '../../../connectors/uniswap/amm-routes/quoteSwap';
 import { quoteSwap as uniswapClmmQuoteSwap } from '../../../connectors/uniswap/clmm-routes/quoteSwap';
 import { quoteSwap as uniswapRouterQuoteSwap } from '../../../connectors/uniswap/router-routes/quoteSwap';
+import { UniswapConfig } from '../../../connectors/uniswap/uniswap.config';
+import { ChainQuoteSwapResponseSchema } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
 import { PoolService } from '../../../services/pool-service';
-import { getEthereumNetworkConfig } from '../ethereum.config';
+import { getEthereumNetworkConfig, getEthereumChainConfig } from '../ethereum.config';
 import { EthereumQuoteSwapRequest, EthereumQuoteSwapRequestType } from '../schemas';
 
 // Import all connector quoteSwap functions
@@ -136,19 +138,30 @@ export async function getEthereumQuoteSwap(
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: EthereumQuoteSwapRequestType;
+  const chainConfig = getEthereumChainConfig();
+
+  fastify.get<{
+    Querystring: EthereumQuoteSwapRequestType;
   }>(
     '/quote-swap',
     {
       schema: {
         description: "Get a swap quote using the network's configured swap provider (router/amm/clmm)",
         tags: ['/chain/ethereum'],
-        body: EthereumQuoteSwapRequest,
+        querystring: EthereumQuoteSwapRequest,
+        response: { 200: ChainQuoteSwapResponseSchema },
       },
     },
     async (request) => {
-      const { network, baseToken, quoteToken, amount, side, slippagePct, walletAddress } = request.body;
+      const {
+        network = chainConfig.defaultNetwork,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct = UniswapConfig.config.slippagePct,
+        walletAddress = chainConfig.defaultWallet,
+      } = request.query;
       return await getEthereumQuoteSwap(
         fastify,
         network,

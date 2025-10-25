@@ -7,9 +7,11 @@ import { executeSwap as pancakeswapRouterExecuteSwap } from '../../../connectors
 import { executeSwap as uniswapAmmExecuteSwap } from '../../../connectors/uniswap/amm-routes/executeSwap';
 import { executeSwap as uniswapClmmExecuteSwap } from '../../../connectors/uniswap/clmm-routes/executeSwap';
 import { executeSwap as uniswapRouterExecuteSwap } from '../../../connectors/uniswap/router-routes/executeSwap';
+import { UniswapConfig } from '../../../connectors/uniswap/uniswap.config';
+import { ChainExecuteSwapResponseSchema } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
 import { PoolService } from '../../../services/pool-service';
-import { getEthereumNetworkConfig } from '../ethereum.config';
+import { getEthereumNetworkConfig, getEthereumChainConfig } from '../ethereum.config';
 import { EthereumExecuteSwapRequest, EthereumExecuteSwapRequestType } from '../schemas';
 
 // Import all connector executeSwap functions
@@ -146,6 +148,8 @@ export async function executeEthereumSwap(
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
+  const chainConfig = getEthereumChainConfig();
+
   fastify.post<{
     Body: EthereumExecuteSwapRequestType;
   }>(
@@ -155,10 +159,19 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         description: "Execute a swap using the network's configured swap provider (router/amm/clmm)",
         tags: ['/chain/ethereum'],
         body: EthereumExecuteSwapRequest,
+        response: { 200: ChainExecuteSwapResponseSchema },
       },
     },
     async (request) => {
-      const { network, walletAddress, baseToken, quoteToken, amount, side, slippagePct } = request.body;
+      const {
+        network = chainConfig.defaultNetwork,
+        walletAddress = chainConfig.defaultWallet,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct = UniswapConfig.config.slippagePct,
+      } = request.body;
       return await executeEthereumSwap(
         fastify,
         network,

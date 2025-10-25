@@ -287,7 +287,7 @@ const configureGatewayServer = () => {
       });
     }
 
-    // Handle Fastify's native errors
+    // Handle Fastify's native errors (includes rate limit errors with statusCode 429)
     if (error.statusCode && error.statusCode >= 400) {
       return reply.status(error.statusCode).send({
         statusCode: error.statusCode,

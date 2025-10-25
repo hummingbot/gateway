@@ -1,11 +1,13 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 // Import all connector executeSwap functions
+import { JupiterConfig } from '../../../connectors/jupiter/jupiter.config';
 import { executeSwap as jupiterRouterExecuteSwap } from '../../../connectors/jupiter/router-routes/executeSwap';
 import { executeSwap as meteoraClmmExecuteSwap } from '../../../connectors/meteora/clmm-routes/executeSwap';
 import { executeSwap as pancakeswapSolClmmExecuteSwap } from '../../../connectors/pancakeswap-sol/clmm-routes/executeSwap';
 import { executeSwap as raydiumAmmExecuteSwap } from '../../../connectors/raydium/amm-routes/executeSwap';
 import { executeSwap as raydiumClmmExecuteSwap } from '../../../connectors/raydium/clmm-routes/executeSwap';
+import { ChainExecuteSwapResponseSchema } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
 import { PoolService } from '../../../services/pool-service';
 import { SolanaExecuteSwapRequest, SolanaExecuteSwapRequestType } from '../schemas';
@@ -135,10 +137,19 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         description: "Execute a swap using the network's configured swap provider (router/amm/clmm)",
         tags: ['/chain/solana'],
         body: SolanaExecuteSwapRequest,
+        response: { 200: ChainExecuteSwapResponseSchema },
       },
     },
     async (request) => {
-      const { network, walletAddress, baseToken, quoteToken, amount, side, slippagePct } = request.body;
+      const {
+        network,
+        walletAddress,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct = JupiterConfig.config.slippagePct,
+      } = request.body;
       return await executeSolanaSwap(
         fastify,
         network,

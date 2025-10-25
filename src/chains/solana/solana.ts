@@ -39,6 +39,7 @@ import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
 import { HeliusService } from './helius-service';
+import { createRateLimitAwareConnection } from './solana-connection-interceptor';
 import { SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
 
@@ -102,9 +103,12 @@ export class Solana {
       // Default: use nodeURL
       logger.info(`Using standard RPC provider: ${rpcProvider}`);
       logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${this.config.nodeURL}`);
-      this.connection = new Connection(this.config.nodeURL, {
-        commitment: 'confirmed',
-      });
+      this.connection = createRateLimitAwareConnection(
+        new Connection(this.config.nodeURL, {
+          commitment: 'confirmed',
+        }),
+        this.config.nodeURL,
+      );
     }
   }
 
@@ -150,9 +154,12 @@ export class Solana {
           `Helius features enabled - WebSocket: ${useWebSocketRPC}, Sender: ${useSender}, Region: ${regionCode || 'default'}`,
         );
 
-        this.connection = new Connection(rpcUrl, {
-          commitment: 'confirmed',
-        });
+        this.connection = createRateLimitAwareConnection(
+          new Connection(rpcUrl, {
+            commitment: 'confirmed',
+          }),
+          rpcUrl,
+        );
 
         // Update this.config with Helius-specific fields so they're available throughout the class
         this.config = mergedConfig;
@@ -164,16 +171,22 @@ export class Solana {
         // Fallback to standard nodeURL if no API key
         logger.warn(`⚠️ Helius provider selected but no API key configured`);
         logger.info(`Using standard RPC from nodeURL: ${this.config.nodeURL}`);
-        this.connection = new Connection(this.config.nodeURL, {
-          commitment: 'confirmed',
-        });
+        this.connection = createRateLimitAwareConnection(
+          new Connection(this.config.nodeURL, {
+            commitment: 'confirmed',
+          }),
+          this.config.nodeURL,
+        );
       }
     } catch (error) {
       // If Helius config not found (e.g., in tests), fallback to standard RPC
       logger.warn(`Failed to initialize Helius provider: ${error.message}, falling back to standard RPC`);
-      this.connection = new Connection(this.config.nodeURL, {
-        commitment: 'confirmed',
-      });
+      this.connection = createRateLimitAwareConnection(
+        new Connection(this.config.nodeURL, {
+          commitment: 'confirmed',
+        }),
+        this.config.nodeURL,
+      );
     }
   }
 
@@ -687,6 +700,12 @@ export class Solana {
       return solBalance * LAMPORT_TO_SOL;
     } catch (error) {
       logger.error(`Error fetching SOL balance: ${error.message}`);
+
+      // Re-throw rate limit errors (statusCode 429) so they propagate to the API response
+      if (error.statusCode === 429) {
+        throw error;
+      }
+      // For other errors, return 0 to avoid failing the entire request
       return 0;
     }
   }
@@ -752,6 +771,12 @@ export class Solana {
       }
     } catch (error) {
       logger.error(`Error fetching token accounts: ${error.message}`);
+
+      // Re-throw rate limit errors (statusCode 429) so they propagate to the API response
+      if (error.statusCode === 429) {
+        throw error;
+      }
+      // For other errors, log but don't fail the request (return empty map)
     }
 
     return tokenAccountsMap;
@@ -1014,10 +1039,7 @@ export class Solana {
 
       // Fallback to polling-based confirmation
       logger.info(`Using polling-based confirmation for transaction ${signature}`);
-      const confirmationPromise = new Promise<{
-        confirmed: boolean;
-        txData?: any;
-      }>(async (resolve, reject) => {
+      const confirmationPromise = (async () => {
         // Use getTransaction instead of getSignatureStatuses for more reliability
         const txData = await this.connection.getTransaction(signature, {
           commitment: 'confirmed',
@@ -1025,12 +1047,12 @@ export class Solana {
         });
 
         if (!txData) {
-          return resolve({ confirmed: false });
+          return { confirmed: false };
         }
 
         // Check if transaction is already confirmed but had an error
         if (txData.meta?.err) {
-          return reject(new Error(`Transaction failed with error: ${JSON.stringify(txData.meta.err)}`));
+          throw new Error(`Transaction failed with error: ${JSON.stringify(txData.meta.err)}`);
         }
 
         // More definitive check using slot confirmation
@@ -1038,8 +1060,8 @@ export class Solana {
         const isConfirmed =
           status.value?.confirmationStatus === 'confirmed' || status.value?.confirmationStatus === 'finalized';
 
-        resolve({ confirmed: !!isConfirmed, txData });
-      });
+        return { confirmed: !!isConfirmed, txData };
+      })();
 
       const timeoutPromise = new Promise<{ confirmed: boolean }>((_, reject) =>
         setTimeout(() => reject(new Error('Confirmation timed out')), timeout),
@@ -1047,6 +1069,11 @@ export class Solana {
 
       return await Promise.race([confirmationPromise, timeoutPromise]);
     } catch (error: any) {
+      // Re-throw rate limit errors without wrapping
+      if (error.statusCode === 429) {
+        throw error;
+      }
+
       throw new Error(`Failed to confirm transaction: ${error.message}`);
     }
   }
@@ -1427,7 +1454,7 @@ export class Solana {
     serializedTx: Buffer | Uint8Array,
   ): Promise<{ confirmed: boolean; signature: string; txData: any }> {
     // Get latest blockhash for expiration checking
-    const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
+    const { lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
 
     let signature: string | null = null;
 
@@ -1521,6 +1548,12 @@ export class Solana {
               });
               logger.info(`Re-broadcasted transaction ${signature}`);
             } catch (rebroadcastError: any) {
+              // Re-throw rate limit errors immediately
+              if (rebroadcastError.statusCode === 429) {
+                logger.error(`Rate limit error while re-broadcasting transaction ${signature}`);
+                throw rebroadcastError;
+              }
+
               logger.warn(`Failed to re-broadcast: ${rebroadcastError.message}`);
             }
 
@@ -1530,6 +1563,12 @@ export class Solana {
           // Wait before next poll
           await new Promise((resolve) => setTimeout(resolve, this.config.confirmRetryInterval * 1000));
         } catch (pollingError: any) {
+          // Re-throw rate limit errors immediately
+          if (pollingError.statusCode === 429) {
+            logger.error(`Rate limit error while polling transaction ${signature}`);
+            throw pollingError;
+          }
+
           logger.warn(`Polling attempt ${attempts} failed: ${pollingError.message}`);
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
@@ -1539,6 +1578,11 @@ export class Solana {
       logger.warn(`❌ Transaction ${signature} not confirmed after ${attempts} attempts`);
       return { confirmed: false, signature, txData: null };
     } catch (sendError: any) {
+      // Re-throw rate limit errors
+      if (sendError.statusCode === 429) {
+        throw sendError;
+      }
+
       logger.error(`Failed to send transaction: ${sendError.message}`);
       return { confirmed: false, signature: signature || '', txData: null };
     }
