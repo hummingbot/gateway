@@ -6,7 +6,8 @@
     "nativeCurrencySymbol": { "type": "string" },
     "swapProvider": {
       "type": "string",
-      "description": "Default swap provider for this network (e.g., jupiter/router, raydium/amm, etc.)"
+      "description": "Default swap router provider for this network (format: connector/type, e.g., jupiter/router)",
+      "default": "jupiter/router"
     },
     "defaultComputeUnits": { "type": "number" },
     "confirmRetryInterval": { "type": "number" },

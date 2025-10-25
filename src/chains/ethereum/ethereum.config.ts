@@ -7,9 +7,10 @@ export interface EthereumNetworkConfig {
   nodeURL: string;
   nativeCurrencySymbol: string;
   swapProvider?: string;
-  minGasPrice?: number;
-  maxFeePerGas?: number;
-  maxPriorityFeePerGas?: number;
+  gasPrice?: number | null;
+  baseFee?: number | null;
+  priorityFee?: number | null;
+  baseFeeMultiplier?: number;
   infuraAPIKey?: string;
   useInfuraWebSocket?: boolean;
 }
@@ -31,9 +32,10 @@ export function getEthereumNetworkConfig(network: string): EthereumNetworkConfig
     nodeURL: ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL'),
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
     swapProvider: ConfigManagerV2.getInstance().get(namespaceId + '.swapProvider'),
-    minGasPrice: ConfigManagerV2.getInstance().get(namespaceId + '.minGasPrice'),
-    maxFeePerGas: ConfigManagerV2.getInstance().get(namespaceId + '.maxFeePerGas'),
-    maxPriorityFeePerGas: ConfigManagerV2.getInstance().get(namespaceId + '.maxPriorityFeePerGas'),
+    gasPrice: ConfigManagerV2.getInstance().get(namespaceId + '.gasPrice'),
+    baseFee: ConfigManagerV2.getInstance().get(namespaceId + '.baseFee'),
+    priorityFee: ConfigManagerV2.getInstance().get(namespaceId + '.priorityFee'),
+    baseFeeMultiplier: ConfigManagerV2.getInstance().get(namespaceId + '.baseFeeMultiplier'),
   };
 }
 

@@ -7,7 +7,7 @@
     "nativeCurrencySymbol": { "type": "string" },
     "swapProvider": {
       "type": "string",
-      "description": "Default swap provider for this network (format: connector/type, e.g., uniswap/router)",
+      "description": "Default swap router provider for this network (format: connector/type, e.g., uniswap/router)",
       "default": "uniswap/router"
     },
     "gasPrice": {
