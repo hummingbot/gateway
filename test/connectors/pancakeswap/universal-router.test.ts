@@ -59,8 +59,9 @@ describe('UniversalRouterService', () => {
       );
     });
 
-    it('should handle gas estimation failures gracefully', async () => {
-      // Mock successful pool data but failed gas estimation
+    it('should skip gas estimation during quote phase', async () => {
+      // Gas estimation is skipped during quote phase (returns 0)
+      // Actual estimation happens during execution phase
       const mockContract = {
         // V2 Pair methods
         getReserves: jest.fn().mockResolvedValue([
@@ -82,9 +83,6 @@ describe('UniversalRouterService', () => {
       // Mock Contract constructor
       (Contract as any).mockImplementation(() => mockContract);
 
-      // Override estimateGas to fail
-      mockProvider.estimateGas = jest.fn().mockRejectedValue(new Error('Gas estimation failed'));
-
       const amount = CurrencyAmount.fromRawAmount(WBNB, '1000000000000000000');
       const options = {
         slippageTolerance: new Percent(1, 100),
@@ -93,11 +91,10 @@ describe('UniversalRouterService', () => {
         protocols: [PoolType.V2],
       };
 
-      // This should not throw but use default gas estimate
       const quote = await universalRouter.getQuote(WBNB, USDC, amount, TradeType.EXACT_INPUT, options);
 
       expect(quote).toBeDefined();
-      expect(quote.estimatedGasUsed.toString()).toBe('500000'); // Default gas estimate
+      expect(quote.estimatedGasUsed.toString()).toBe('0'); // Gas estimation skipped during quote
     });
   });
 
