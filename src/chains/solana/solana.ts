@@ -998,7 +998,7 @@ export class Solana {
   }
 
   async estimateGasPrice(): Promise<number> {
-    return await SolanaPriorityFees.estimatePriorityFee(this.config);
+    return await SolanaPriorityFees.estimatePriorityFee(this.config, this.network);
   }
 
   public async confirmTransaction(

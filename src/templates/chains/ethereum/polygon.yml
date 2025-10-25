@@ -1,9 +1,10 @@
 chainID: 137
 nodeURL: https://rpc.ankr.com/polygon
 nativeCurrencySymbol: POL
-minGasPrice: 10
+swapProvider: uniswap/router
 
 # EIP-1559 gas parameters (in GWEI)
 # If not set, will fetch from Etherscan API (if etherscanAPIKey is set in ethereum.yml) or network RPC
-# maxFeePerGas: 10
-# maxPriorityFeePerGas: 10
+baseFee:
+baseFeeMultiplier: 1.2
+priorityFee: 0.001
