@@ -8,11 +8,12 @@ import { logger } from '../../services/logger';
 
 /**
  * Unified swap quote request schema
- * Accepts chain-network parameter like "solana-mainnet-beta" or "ethereum-mainnet"
+ * Accepts chain-network parameter like "solana-mainnet-beta", "ethereum-mainnet", or "ethereum-polygon"
  */
 const UnifiedQuoteSwapRequestSchema = Type.Object({
   chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
+    description:
+      'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet, ethereum-polygon)',
   }),
   baseToken: Type.String({ description: 'Symbol or address of the base token' }),
   quoteToken: Type.String({ description: 'Symbol or address of the quote token' }),
@@ -30,6 +31,7 @@ type UnifiedQuoteSwapRequest = Static<typeof UnifiedQuoteSwapRequestSchema>;
  * Parse chain-network parameter into chain and network
  * Examples: "solana-mainnet-beta" -> {chain: "solana", network: "mainnet-beta"}
  *          "ethereum-mainnet" -> {chain: "ethereum", network: "mainnet"}
+ *          "ethereum-polygon" -> {chain: "ethereum", network: "polygon"}
  */
 function parseChainNetwork(chainNetwork: string): { chain: string; network: string } {
   const parts = chainNetwork.split('-');
@@ -68,14 +70,6 @@ export async function getUnifiedQuoteSwap(
 
   switch (chain.toLowerCase()) {
     case 'ethereum':
-    case 'arbitrum':
-    case 'avalanche':
-    case 'base':
-    case 'bsc':
-    case 'celo':
-    case 'optimism':
-    case 'polygon':
-    case 'sepolia':
       return getEthereumQuoteSwap(fastify, network, baseToken, quoteToken, amount, side, slippagePct, walletAddress);
 
     case 'solana':
