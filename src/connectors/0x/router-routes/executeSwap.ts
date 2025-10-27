@@ -1,15 +1,18 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
+import { ZeroXConnector, executeSwap as sdkExecuteSwap } from '../../../../packages/sdk/src/ethereum/zeroex';
 import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { waitForTransactionWithTimeout } from '../../../chains/ethereum/ethereum.utils';
 import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
+import { quoteCache } from '../../../services/quote-cache';
+import { ZeroXConfig } from '../0x.config';
 import { ZeroXExecuteSwapRequest } from '../schemas';
 
-import { executeQuote } from './executeQuote';
-import { quoteSwap } from './quoteSwap';
+// SDK imports
 
 async function executeSwap(
-  fastify: FastifyInstance,
+  _fastify: FastifyInstance,
   walletAddress: string,
   network: string,
   baseToken: string,
@@ -20,23 +23,55 @@ async function executeSwap(
   gasPrice?: string,
   maxGas?: number,
 ): Promise<SwapExecuteResponseType> {
-  // Step 1: Get a fresh firm quote using the quoteSwap function
-  const quoteResult = await quoteSwap(
-    fastify,
+  const ethereum = await Ethereum.getInstance(network);
+
+  // Create SDK connector
+  const connector = new ZeroXConnector({
     network,
-    baseToken,
-    quoteToken,
-    amount,
-    side,
-    slippagePct,
-    false, // indicativePrice = false for firm quote
-    walletAddress, // takerAddress
+    chainId: ethereum.chainId,
+    apiKey: ZeroXConfig.config.apiKey,
+    apiEndpoint: ZeroXConfig.getApiEndpoint(network),
+    slippagePct: ZeroXConfig.config.slippagePct,
+  });
+
+  // Setup dependencies for SDK operation
+  const deps = {
+    connector,
+    quoteCache,
+    getTokenInfo: (symbol: string) => ethereum.getToken(symbol),
+    getWalletAddressExample: async () => Ethereum.getWalletAddressExample(),
+    getWallet: async (address: string) => ethereum.getWallet(address),
+    getERC20Allowance: (tokenContract: any, wallet: any, spender: string, decimals: number) =>
+      ethereum.getERC20Allowance(tokenContract, wallet, spender, decimals),
+    getContract: (address: string, wallet: any) => ethereum.getContract(address, wallet),
+    waitForTransaction: (txResponse: any) => waitForTransactionWithTimeout(txResponse),
+    handleTransactionConfirmation: (
+      receipt: any,
+      tokenIn: string,
+      tokenOut: string,
+      amountIn: number,
+      amountOut: number,
+    ) => ethereum.handleTransactionConfirmation(receipt, tokenIn, tokenOut, amountIn, amountOut),
+    nativeTokenSymbol: ethereum.nativeTokenSymbol,
+  };
+
+  // Call SDK operation
+  const result = await sdkExecuteSwap(
+    {
+      walletAddress,
+      network,
+      baseToken,
+      quoteToken,
+      amount,
+      side,
+      slippagePct,
+      gasPrice,
+      maxGas,
+    },
+    deps,
   );
 
-  // Step 2: Execute the quote immediately using executeQuote function
-  const executeResult = await executeQuote(fastify, walletAddress, network, quoteResult.quoteId, gasPrice, maxGas);
-
-  return executeResult;
+  return result;
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {

@@ -19,8 +19,8 @@
  */
 
 // Export core types
-export * from '../core/src/types/protocol';
-export * from '../core/src/types/prediction-market';
+export * from '../../core/src/types/protocol';
+export * from '../../core/src/types/prediction-market';
 
 // Export Solana connectors
 export * from './solana/raydium';

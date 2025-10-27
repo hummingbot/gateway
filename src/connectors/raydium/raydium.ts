@@ -26,7 +26,7 @@ import { RaydiumConfig } from './raydium.config';
 import { isValidClmm, isValidAmm, isValidCpmm } from './raydium.utils';
 
 // Internal type that includes poolType for internal use
-interface InternalAmmPoolInfo extends AmmPoolInfo {
+export interface InternalAmmPoolInfo extends AmmPoolInfo {
   poolType?: 'amm' | 'cpmm';
 }
 

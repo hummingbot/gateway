@@ -2,7 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "incremental": true,
     "composite": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
@@ -10,5 +10,6 @@
     "sourceMap": true,
     "inlineSourceMap": false
   },
+  "include": ["src/**/*.ts", "packages/**/*.ts"],
   "exclude": ["node_modules", "dist", "coverage", "test", "test-scripts"]
 }

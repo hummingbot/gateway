@@ -202,7 +202,7 @@ export interface GetOrderbookParams {
 /**
  * Prediction Market Protocol Operations
  */
-export interface PredictionMarketOperations {
+export interface PredictionMarketOperations extends Record<string, OperationBuilder<any, any>> {
   /** Create a new prediction market */
   createMarket: OperationBuilder<CreateMarketParams, { marketId: string }>;
 
@@ -219,7 +219,7 @@ export interface PredictionMarketOperations {
 /**
  * Prediction Market Protocol Queries
  */
-export interface PredictionMarketQueries {
+export interface PredictionMarketQueries extends Record<string, QueryFunction<any, any>> {
   /** Get market information */
   getMarket: QueryFunction<GetMarketParams, MarketInfo>;
 

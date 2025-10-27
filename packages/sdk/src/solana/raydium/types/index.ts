@@ -4,8 +4,8 @@
  * Centralized export for all Raydium operation types
  */
 
-// Export all AMM types
-export * from './amm';
+// Export AMM types with namespace to avoid conflicts
+export * as Amm from './amm';
 
-// Export all CLMM types
-export * from './clmm';
+// Export CLMM types with namespace to avoid conflicts
+export * as Clmm from './clmm';
