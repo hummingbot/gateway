@@ -30,5 +30,5 @@
     "skipLibCheck": true
   },
   "exclude": ["node_modules", "dist", "coverage"],
-  "include": ["src/**/*.ts", "test/**/*.ts", "test-scripts/**/*.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts", "test-record/**/*.ts", "test-play/**/*.ts"]
 }

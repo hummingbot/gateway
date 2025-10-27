@@ -1,4 +1,3 @@
-import sensible from '@fastify/sensible';
 import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
@@ -11,11 +10,16 @@ import {
   RemoveWalletRequestSchema,
   RemoveWalletResponseSchema,
 } from '../schemas';
-import { removeWallet, validateChainName, isHardwareWallet, getHardwareWallets, saveHardwareWallets } from '../utils';
+import {
+  removeWallet,
+  validateChainName,
+  validateAddressByChain,
+  isHardwareWallet,
+  getHardwareWallets,
+  saveHardwareWallets,
+} from '../utils';
 
 export const removeWalletRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(sensible);
-
   fastify.delete<{ Body: RemoveWalletRequest; Reply: RemoveWalletResponse }>(
     '/remove',
     {
@@ -38,12 +42,13 @@ export const removeWalletRoute: FastifyPluginAsync = async (fastify) => {
 
       // Validate the address based on chain type
       let validatedAddress: string;
-      if (chain.toLowerCase() === 'ethereum') {
-        validatedAddress = Ethereum.validateAddress(address);
-      } else if (chain.toLowerCase() === 'solana') {
-        validatedAddress = Solana.validateAddress(address);
-      } else {
-        throw new Error(`Unsupported chain: ${chain}`);
+      try {
+        validatedAddress = validateAddressByChain(chain, address);
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('Invalid')) {
+          throw fastify.httpErrors.badRequest(error.message);
+        }
+        throw fastify.httpErrors.badRequest(error.message);
       }
 
       // Check if it's a hardware wallet
@@ -64,8 +69,7 @@ export const removeWalletRoute: FastifyPluginAsync = async (fastify) => {
         };
       }
 
-      // Otherwise, it's a regular wallet
-      logger.info(`Removing wallet: ${validatedAddress} from chain: ${chain}`);
+      // Otherwise, it's a regular wallet - use the consolidated removeWallet function
       await removeWallet(fastify, request.body);
 
       return {

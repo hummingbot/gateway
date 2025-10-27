@@ -10,7 +10,12 @@ import { Ethereum } from '../../src/chains/ethereum/ethereum';
 import { Solana } from '../../src/chains/solana/solana';
 import { HardwareWalletService } from '../../src/services/hardware-wallet-service';
 import { addHardwareWalletRoute } from '../../src/wallet/routes/addHardwareWallet';
-import { getHardwareWallets, saveHardwareWallets, validateChainName } from '../../src/wallet/utils';
+import {
+  getHardwareWallets,
+  saveHardwareWallets,
+  validateChainName,
+  validateAddressByChain,
+} from '../../src/wallet/utils';
 
 describe('Hardware Wallet Routes', () => {
   let app: FastifyInstance;
@@ -33,6 +38,7 @@ describe('Hardware Wallet Routes', () => {
     (getHardwareWallets as jest.Mock).mockResolvedValue([]);
     (saveHardwareWallets as jest.Mock).mockResolvedValue(undefined);
     (validateChainName as jest.Mock).mockReturnValue(true);
+    (validateAddressByChain as jest.Mock).mockImplementation((_chain, address) => address);
 
     // Setup Solana and Ethereum static method mocks
     (Solana.validateAddress as jest.Mock).mockImplementation((address) => address);

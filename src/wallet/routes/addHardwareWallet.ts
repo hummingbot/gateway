@@ -12,7 +12,13 @@ import {
   AddHardwareWalletRequestSchema,
   AddHardwareWalletResponseSchema,
 } from '../schemas';
-import { validateChainName, getHardwareWallets, saveHardwareWallets, HardwareWalletData } from '../utils';
+import {
+  validateChainName,
+  validateAddressByChain,
+  getHardwareWallets,
+  saveHardwareWallets,
+  HardwareWalletData,
+} from '../utils';
 
 // Maximum number of account indices to check when searching for an address
 const MAX_ACCOUNTS_TO_CHECK = 8;
@@ -41,12 +47,13 @@ async function addHardwareWallet(
     let validatedAddress: string;
 
     // Validate the provided address based on chain type
-    if (req.chain.toLowerCase() === 'ethereum') {
-      validatedAddress = Ethereum.validateAddress(req.address);
-    } else if (req.chain.toLowerCase() === 'solana') {
-      validatedAddress = Solana.validateAddress(req.address);
-    } else {
-      throw new Error(`Unsupported chain: ${req.chain}`);
+    try {
+      validatedAddress = validateAddressByChain(req.chain, req.address);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Invalid')) {
+        throw fastify.httpErrors.badRequest(error.message);
+      }
+      throw fastify.httpErrors.badRequest(error.message);
     }
 
     // Search for the address on the Ledger device

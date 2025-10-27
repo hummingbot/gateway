@@ -38,7 +38,13 @@ import { asciiLogo } from './index';
 // When false, runs server in HTTPS mode (secure, default for production)
 // Use --dev flag to enable HTTP mode, e.g.: pnpm start --dev
 // Tests automatically run in dev mode via GATEWAY_TEST_MODE=dev
-const devMode = process.argv.includes('--dev') || process.env.GATEWAY_TEST_MODE === 'dev';
+const testMode =
+  process.argv.includes('--test') || process.env.GATEWAY_TEST_MODE === 'test';
+
+const devMode =
+  process.argv.includes('--dev') ||
+  process.env.GATEWAY_TEST_MODE === 'dev' ||
+  testMode;
 
 // Promisify exec for async/await usage
 const execPromise = promisify(exec);
@@ -121,7 +127,7 @@ const swaggerOptions = {
 let docsServer: FastifyInstance | null = null;
 
 // Create gateway app configuration function
-const configureGatewayServer = () => {
+export const configureGatewayServer = () => {
   const server = Fastify({
     logger: ConfigManagerV2.getInstance().get('server.fastifyLogs')
       ? {
@@ -203,6 +209,8 @@ const configureGatewayServer = () => {
 
   // Register routes on both servers
   const registerRoutes = async (app: FastifyInstance) => {
+    app.register(require('@fastify/sensible'));
+
     // Register system routes
     app.register(configRoutes, { prefix: '/config' });
 
@@ -292,11 +300,21 @@ const configureGatewayServer = () => {
       params: request.params,
     });
 
-    reply.status(500).send({
-      statusCode: 500,
-      error: 'Internal Server Error',
-      message: 'An unexpected error occurred',
-    });
+    if (testMode) {
+      // When in test mode, we want to see the full error stack always
+      reply.status(500).send({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        stack: error.stack,
+        message: error.message,
+      });
+    } else {
+      reply.status(500).send({
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: 'An unexpected error occurred',
+      });
+    }
   });
 
   // Health check route (outside registerRoutes, only on main server)
