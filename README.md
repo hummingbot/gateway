@@ -141,6 +141,34 @@ Gateway uses [Swagger](https://swagger.io/) for API documentation. When running 
 - `DELETE /wallet/remove` - Remove wallet
 - `POST /wallet/setDefault` - Set default wallet per chain
 
+#### Pool Management Routes (`/pools/*`)
+- `GET /pools` - List all configured pools for a connector
+- `POST /pools` - Add a new pool (automatically fetches token addresses and fees from pool-info)
+- `PUT /pools` - Update an existing pool
+- `DELETE /pools` - Remove a pool
+
+**Pool Storage Format:**
+Pools are stored with complete on-chain information to ensure accurate token ordering and fees:
+```json
+{
+  "type": "amm",
+  "network": "mainnet-beta",
+  "baseSymbol": "SOL",
+  "quoteSymbol": "USDC",
+  "baseTokenAddress": "So11111111111111111111111111111111111111112",
+  "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "feePct": 0.25,
+  "address": "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2"
+}
+```
+
+When adding a pool via `POST /pools`, Gateway automatically:
+1. Fetches pool-info from the DEX connector
+2. Extracts authoritative baseTokenAddress, quoteTokenAddress, and feePct
+3. Resolves token symbols from addresses
+4. Validates and stores the enhanced pool object
+
+This ensures stored pool data always matches the actual on-chain pool state.
 
 ## Installation from Source
 
@@ -296,7 +324,7 @@ docker run -p 15888:15888 \
   hummingbot/gateway:core-2.8
 ```
 
-**Production mode (Encypted HTTPS endpoints, requires Hummingbot certs):**
+**Production mode (Encrypted HTTPS endpoints, requires Hummingbot certs):**
 ```bash
 docker run -p 15888:15888 \
   -e GATEWAY_PASSPHRASE=a \
@@ -389,6 +417,36 @@ Here are some ways that you can contribute to Gateway:
 - The format of configuration files are dictated by [src/services/config-manager-v2.ts](./src/services/config-manager-v2.ts) and the corresponding schema files in [src/templates/namespace](./src/templates/namespace).
 
 - For each supported chain, token lists that translate address to symbols for each chain are stored in `/conf/tokens`. Use the `/tokens` API endpoints to manage tokens - changes require a Gateway restart to take effect.
+
+### Pool Configuration and Migration
+
+Gateway stores pool configurations for AMM and CLMM connectors in `src/templates/pools/{connector}.json`. These pool templates include complete on-chain information (token addresses and fees) to ensure accurate trading operations.
+
+**Pool Template Files:**
+- `src/templates/pools/raydium.json` - Raydium AMM and CLMM pools
+- `src/templates/pools/meteora.json` - Meteora DLMM pools
+- `src/templates/pools/uniswap.json` - Uniswap V2 and V3 pools
+
+**Migrating Pool Templates:**
+
+If you need to migrate pool templates from an older format (without token addresses and fees) to the new format, use the migration script:
+
+```bash
+# Ensure RPC endpoints are configured in conf/rpc/*.yml
+# Raydium/Meteora require Helius or standard Solana RPC
+# Uniswap requires Infura or standard Ethereum RPC
+
+npx ts-node scripts/migrate-pool-templates.ts
+```
+
+The migration script will:
+1. Read existing pool templates from `src/templates/pools/`
+2. Fetch pool-info for each pool address from the respective connector
+3. Extract authoritative baseTokenAddress, quoteTokenAddress, and feePct
+4. Write updated template files with enhanced pool data
+5. Report success/failure counts for each connector
+
+After migration, review the updated template files to ensure all pools were successfully migrated before committing changes.
 
 ### RPC Provider Configuration
 

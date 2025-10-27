@@ -90,12 +90,7 @@ async function closePosition(
       logger.info('Transaction simulated successfully, sending to network...');
 
       // Send and confirm transaction using sendAndConfirmTransaction which handles signing
-      // Use higher compute units for closePosition
-      const { signature, fee } = await solana.sendAndConfirmTransaction(
-        closePositionTx,
-        [wallet],
-        400000, // Higher compute units for close position
-      );
+      const { signature, fee } = await solana.sendAndConfirmTransaction(closePositionTx, [wallet]);
 
       // Get transaction data for confirmation
       const txData = await solana.connection.getTransaction(signature, {

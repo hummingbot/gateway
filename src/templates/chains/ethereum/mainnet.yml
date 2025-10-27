@@ -2,3 +2,8 @@ chainID: 1
 nodeURL: https://eth.llamarpc.com
 nativeCurrencySymbol: ETH
 minGasPrice: 0.1
+
+# EIP-1559 gas parameters (in GWEI)
+# If not set, will fetch from Etherscan API (if etherscanAPIKey is set in ethereum.yml) or network RPC
+# maxFeePerGas: 0.1
+# maxPriorityFeePerGas: 0.01
