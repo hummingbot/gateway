@@ -25,6 +25,8 @@ import { raydiumRoutes } from './connectors/raydium/raydium.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { getHttpsOptions } from './https';
 import { poolRoutes } from './pools/pools.routes';
+import { executeSwapRoute } from './routes/swap/execute';
+import { quoteSwapRoute } from './routes/swap/quote';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { logger } from './services/logger';
 import { quoteCache } from './services/quote-cache';
@@ -221,6 +223,10 @@ const configureGatewayServer = () => {
     app.register(tokensRoutes, { prefix: '/tokens' });
     // Register pool routes
     app.register(poolRoutes, { prefix: '/pools' });
+
+    // Register unified swap routes (cross-chain)
+    app.register(quoteSwapRoute);
+    app.register(executeSwapRoute);
 
     // Register chain routes
     app.register(solanaRoutes, { prefix: '/chains/solana' });
