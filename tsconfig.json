@@ -23,12 +23,14 @@
       "#src": ["src/index.ts"],
       "#src/*": ["src/*"],
       "#test": ["test"],
-      "#test/*": ["test/*"]
+      "#test/*": ["test/*"],
+      "@gateway-sdk/*": ["packages/sdk/src/*"],
+      "@gateway-core/*": ["packages/core/src/*"]
     },
     "typeRoots": ["node_modules/@types", "src/@types"],
     "downlevelIteration": true,
     "skipLibCheck": true
   },
   "exclude": ["node_modules", "dist", "coverage"],
-  "include": ["src/**/*.ts", "test/**/*.ts", "test-scripts/**/*.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts", "test-scripts/**/*.ts", "packages/**/*.ts"]
 }

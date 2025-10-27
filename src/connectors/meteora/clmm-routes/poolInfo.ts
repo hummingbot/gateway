@@ -1,5 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import { getPoolInfo } from '@gateway-sdk/solana/meteora/operations/clmm';
+
 import { MeteoraPoolInfo, MeteoraPoolInfoSchema, GetPoolInfoRequestType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
@@ -23,15 +25,17 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { poolAddress } = request.query;
-        const network = request.query.network;
+        const { poolAddress, network } = request.query;
 
         const meteora = await Meteora.getInstance(network);
         if (!meteora) {
           throw fastify.httpErrors.serviceUnavailable('Meteora service unavailable');
         }
 
-        return (await meteora.getPoolInfo(poolAddress)) as MeteoraPoolInfo;
+        // Use SDK operation
+        const result = await getPoolInfo(meteora, { network, poolAddress });
+
+        return result as MeteoraPoolInfo;
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

@@ -1,6 +1,6 @@
-import { SwapQuoteExactOut, SwapQuote } from '@meteora-ag/dlmm';
-import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+
+import { ExecuteSwapOperation } from '@gateway-sdk/solana/meteora/operations/clmm';
 
 import { Solana } from '../../../chains/solana/solana';
 import { getSolanaChainConfig } from '../../../chains/solana/solana.config';
@@ -8,13 +8,10 @@ import { ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/c
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Meteora } from '../meteora';
-import { MeteoraConfig } from '../meteora.config';
 import { MeteoraClmmExecuteSwapRequest, MeteoraClmmExecuteSwapRequestType } from '../schemas';
 
-import { getRawSwapQuote } from './quoteSwap';
-
 async function executeSwap(
-  fastify: FastifyInstance,
+  _fastify: FastifyInstance,
   network: string,
   address: string,
   baseTokenIdentifier: string,
@@ -26,111 +23,56 @@ async function executeSwap(
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
-  const wallet = await solana.getWallet(address);
 
-  const {
-    inputToken,
-    outputToken,
-    swapAmount,
-    quote: swapQuote,
-    dlmmPool,
-  } = await getRawSwapQuote(
-    fastify,
+  // Resolve tokens
+  const baseToken = await solana.getToken(baseTokenIdentifier);
+  const quoteToken = await solana.getToken(quoteTokenIdentifier);
+
+  const [tokenIn, tokenOut] =
+    side === 'BUY' ? [quoteToken.address, baseToken.address] : [baseToken.address, quoteToken.address];
+  const amountIn = side === 'SELL' ? amount : undefined;
+  const amountOut = side === 'BUY' ? amount : undefined;
+
+  // Create SDK operation
+  const operation = new ExecuteSwapOperation(meteora, solana);
+
+  // Execute using SDK
+  const result = await operation.execute({
     network,
-    baseTokenIdentifier,
-    quoteTokenIdentifier,
-    amount,
-    side,
+    walletAddress: address,
     poolAddress,
-    slippagePct || MeteoraConfig.config.slippagePct,
-  );
-
-  logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
-
-  const swapTx =
-    side === 'BUY'
-      ? await dlmmPool.swapExactOut({
-          inToken: new PublicKey(inputToken.address),
-          outToken: new PublicKey(outputToken.address),
-          outAmount: (swapQuote as SwapQuoteExactOut).outAmount,
-          maxInAmount: (swapQuote as SwapQuoteExactOut).maxInAmount,
-          lbPair: dlmmPool.pubkey,
-          user: wallet.publicKey,
-          binArraysPubkey: (swapQuote as SwapQuoteExactOut).binArraysPubkey,
-        })
-      : await dlmmPool.swap({
-          inToken: new PublicKey(inputToken.address),
-          outToken: new PublicKey(outputToken.address),
-          inAmount: swapAmount,
-          minOutAmount: (swapQuote as SwapQuote).minOutAmount,
-          lbPair: dlmmPool.pubkey,
-          user: wallet.publicKey,
-          binArraysPubkey: (swapQuote as SwapQuote).binArraysPubkey,
-        });
-
-  // Simulate transaction with proper error handling (before signing)
-  await solana.simulateWithErrorHandling(swapTx, fastify);
-
-  logger.info('Transaction simulated successfully, sending to network...');
-
-  // Send and confirm transaction using sendAndConfirmTransaction which handles signing
-  const { signature, fee } = await solana.sendAndConfirmTransaction(swapTx, [wallet]);
-
-  logger.info(`Transaction sent with signature: ${signature}`);
-
-  // Get transaction data for confirmation
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
+    tokenIn,
+    tokenOut,
+    amountIn,
+    amountOut,
+    slippagePct,
   });
 
-  const confirmed = txData !== null;
-
-  // Handle confirmation status
-  if (confirmed && txData) {
-    // Extract fee from the response
-    const txFee = fee;
-    // Transaction confirmed, extract balance changes
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
-      inputToken.address,
-      outputToken.address,
-    ]);
-
-    const inputTokenBalanceChange = balanceChanges[0];
-    const outputTokenBalanceChange = balanceChanges[1];
-
-    // Calculate actual amounts swapped
-    const amountIn = Math.abs(inputTokenBalanceChange);
-    const amountOut = Math.abs(outputTokenBalanceChange);
-
-    // For CLMM swaps, determine base/quote changes based on side
-    const baseTokenBalanceChange = side === 'SELL' ? inputTokenBalanceChange : outputTokenBalanceChange;
-    const quoteTokenBalanceChange = side === 'SELL' ? outputTokenBalanceChange : inputTokenBalanceChange;
+  // Transform to API response format
+  if (result.status === 1 && result.data) {
+    const baseTokenBalanceChange = side === 'SELL' ? -result.data.amountIn : result.data.amountOut;
+    const quoteTokenBalanceChange = side === 'SELL' ? result.data.amountOut : -result.data.amountIn;
 
     logger.info(
-      `Swap executed successfully: ${amountIn.toFixed(4)} ${inputToken.symbol} -> ${amountOut.toFixed(4)} ${outputToken.symbol}`,
+      `Swap executed successfully: ${result.data.amountIn.toFixed(4)} -> ${result.data.amountOut.toFixed(4)}`,
     );
 
     return {
-      signature,
-      status: 1, // CONFIRMED
+      signature: result.signature,
+      status: result.status,
       data: {
-        tokenIn: inputToken.address,
-        tokenOut: outputToken.address,
-        amountIn,
-        amountOut,
-        fee: txFee,
+        tokenIn: result.data.tokenIn,
+        tokenOut: result.data.tokenOut,
+        amountIn: result.data.amountIn,
+        amountOut: result.data.amountOut,
+        fee: result.data.fee,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
       },
     };
-  } else {
-    // Transaction not confirmed
-    return {
-      signature,
-      status: 0, // PENDING
-    };
   }
+
+  return result as ExecuteSwapResponseType;
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
