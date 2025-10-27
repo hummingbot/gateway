@@ -7,6 +7,7 @@ import { waitForTransactionWithTimeout } from '../../../chains/ethereum/ethereum
 import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
+import { PancakeswapConfig } from '../pancakeswap.config';
 import { getPancakeswapV3SwapRouter02Address, ISwapRouter02ABI } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
 import { PancakeswapExecuteSwapRequest } from '../schemas';
@@ -24,7 +25,7 @@ export async function executeClmmSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<SwapExecuteResponseType> {
   const ethereum = await Ethereum.getInstance(network);
   await ethereum.init();

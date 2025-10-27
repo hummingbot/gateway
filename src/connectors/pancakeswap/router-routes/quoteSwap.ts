@@ -20,7 +20,7 @@ async function quoteSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<Static<typeof PancakeswapQuoteSwapResponse>> {
   logger.info(`[quoteSwap] Starting quote generation`);
   logger.info(`[quoteSwap] Network: ${network}, Wallet: ${walletAddress}`);
@@ -164,7 +164,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           quoteToken,
           amount,
           side,
-          slippagePct = PancakeswapConfig.config.slippagePct,
+          slippagePct,
         } = request.query as typeof PancakeswapQuoteSwapRequest._type;
 
         return await quoteSwap(

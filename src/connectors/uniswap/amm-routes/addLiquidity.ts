@@ -10,7 +10,8 @@ import { AddLiquidityResponseType, AddLiquidityResponse } from '../../../schemas
 import { logger } from '../../../services/logger';
 import { UniswapAmmAddLiquidityRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
-import { getUniswapV2RouterAddress, IUniswapV2Router02ABI } from '../uniswap.contracts';
+import { UniswapConfig } from '../uniswap.config';
+import { IUniswapV2Router02ABI } from '../uniswap.contracts';
 import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
 import { getUniswapAmmLiquidityQuote } from './quoteLiquidity';
@@ -27,7 +28,7 @@ async function addLiquidity(
   quoteToken: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
-  slippagePct?: number,
+  slippagePct: number = UniswapConfig.config.slippagePct,
   gasPrice?: string,
   maxGas?: number,
 ): Promise<AddLiquidityResponseType> {
@@ -96,7 +97,7 @@ async function addLiquidity(
   const router = new Contract(quote.routerAddress, IUniswapV2Router02ABI.abi, wallet);
 
   // Calculate slippage-adjusted amounts
-  const slippageTolerance = new Percent(Math.floor((slippagePct ?? uniswap.config.slippagePct) * 100), 10000);
+  const slippageTolerance = new Percent(Math.floor(slippagePct * 100), 10000);
 
   const slippageMultiplier = new Percent(1).subtract(slippageTolerance);
 

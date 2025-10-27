@@ -9,6 +9,7 @@ import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } 
 import { logger } from '../../../services/logger';
 import { UniswapAmmExecuteSwapRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
+import { UniswapConfig } from '../uniswap.config';
 import { getUniswapV2RouterAddress, IUniswapV2Router02ABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
@@ -25,7 +26,7 @@ export async function executeAmmSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct: number,
+  slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<SwapExecuteResponseType> {
   const ethereum = await Ethereum.getInstance(network);
   await ethereum.init();
@@ -310,7 +311,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           quoteToken,
           amount,
           side = 'SELL',
-          slippagePct = 1,
+          slippagePct,
         } = request.body as typeof UniswapAmmExecuteSwapRequest._type;
 
         return await executeAmmSwap(

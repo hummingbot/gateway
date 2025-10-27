@@ -13,6 +13,7 @@ import {
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Pancakeswap } from '../pancakeswap';
+import { PancakeswapConfig } from '../pancakeswap.config';
 import { formatTokenAmount, getPancakeswapPoolInfo } from '../pancakeswap.utils';
 
 async function quoteClmmSwap(
@@ -22,7 +23,7 @@ async function quoteClmmSwap(
   quoteToken: Token,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<any> {
   try {
     // Get the V3 pool - only use poolAddress
@@ -63,7 +64,7 @@ async function quoteClmmSwap(
 
     // Calculate slippage-adjusted amounts
     // Convert slippagePct to integer basis points (0.5% -> 50 basis points)
-    const slippageTolerance = new Percent(Math.floor((slippagePct ?? pancakeswap.config.slippagePct) * 100), 10000);
+    const slippageTolerance = new Percent(Math.floor(slippagePct * 100), 10000);
 
     const minAmountOut = exactIn
       ? trade.minimumAmountOut(slippageTolerance).quotient.toString()
@@ -115,7 +116,7 @@ export async function getPancakeswapClmmQuote(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<{
   quote: any;
   pancakeswap: any;
@@ -183,7 +184,7 @@ async function formatSwapQuote(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
   logger.info(
     `formatSwapQuote: poolAddress=${poolAddress}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}, network=${network}`,
@@ -256,7 +257,7 @@ async function formatSwapQuote(
       amountIn: quote.estimatedAmountIn,
       amountOut: quote.estimatedAmountOut,
       price,
-      slippagePct: slippagePct || 1, // Default 1% if not provided
+      slippagePct,
       minAmountOut: quote.minAmountOut,
       maxAmountIn: quote.maxAmountIn,
       // CLMM-specific fields

@@ -8,6 +8,7 @@ import { waitForTransactionWithTimeout } from '../../../chains/ethereum/ethereum
 import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
+import { PancakeswapConfig } from '../pancakeswap.config';
 import { getPancakeswapV2RouterAddress, IPancakeswapV2Router02ABI } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
 import { PancakeswapAmmExecuteSwapRequest } from '../schemas';
@@ -25,7 +26,7 @@ export async function executeAmmSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<SwapExecuteResponseType> {
   const ethereum = await Ethereum.getInstance(network);
   await ethereum.init();
@@ -310,7 +311,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           quoteToken,
           amount,
           side = 'SELL',
-          slippagePct = 1,
+          slippagePct,
         } = request.body as typeof PancakeswapAmmExecuteSwapRequest._type;
 
         return await executeAmmSwap(

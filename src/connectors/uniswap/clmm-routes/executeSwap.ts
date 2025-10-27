@@ -8,6 +8,7 @@ import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } 
 import { logger } from '../../../services/logger';
 import { UniswapExecuteSwapRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
+import { UniswapConfig } from '../uniswap.config';
 import { getUniswapV3SwapRouter02Address, ISwapRouter02ABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
@@ -24,7 +25,7 @@ export async function executeClmmSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct: number,
+  slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<SwapExecuteResponseType> {
   const ethereum = await Ethereum.getInstance(network);
   await ethereum.init();
