@@ -1,582 +1,227 @@
 # Gateway SDK Extraction - Continuation Prompt
 
-## Current Status
-
-**Branch**: `main` (all work merged)
-**Completion**: ✅ Raydium SDK Complete + Type Safety 100%
-**Last Updated**: 2025-01-27
-
-## 🎯 What Has Been Completed
-
-### Phase 1: Raydium SDK Extraction (100% Complete)
-
-**All 18 Raydium Operations Extracted to SDK Layer:**
-
-**AMM Operations (7/7)**:
-- ✅ addLiquidity, removeLiquidity, quoteLiquidity
-- ✅ quoteSwap, executeSwap
-- ✅ poolInfo, positionInfo
-
-**CLMM Operations (11/11)**:
-- ✅ openPosition, closePosition
-- ✅ addLiquidity, removeLiquidity, collectFees
-- ✅ executeSwap, quoteSwap
-- ✅ poolInfo, positionInfo, positionsOwned, quotePosition
-
-**Type Safety Cleanup (100% Complete)**:
-- ✅ Zero TypeScript errors (was 60+)
-- ✅ All circular dependencies removed
-- ✅ API schema adapters in place
-- ✅ Type completeness achieved
-
-### Key Metrics
-
-| Metric | Result |
-|--------|--------|
-| SDK Code Created | ~3,250 lines |
-| API Code Reduced | -243 lines (net) |
-| TypeScript Errors | 60 → 0 |
-| Test Coverage | Maintained >75% |
-| Breaking Changes | 0 |
+**Date**: 2025-01-27
+**Current Branch**: `feature/sdk-meteora-extraction` (PR #535)
+**Overall Progress**: **62% Complete** (33/53 operations)
+**Last Completed**: Meteora DLMM (12/12 operations - 100%)
 
 ---
 
-## 📚 Documentation Locations
+## 🎯 Quick Start
 
-### Project Planning
+You are continuing the Gateway SDK extraction project. This is a systematic effort to extract all protocol connector logic from the API layer into a reusable SDK layer.
 
-**Master Plan**:
-- `docs/Protocol_SDK_PLAN.md` (1,963 lines)
-  - Complete 6-week roadmap
-  - All 17 PRs planned out
-  - Phase breakdown and timelines
-  - Testing strategy
-  - Success criteria
+### Key Documentation Files
 
-### Raydium SDK Work (Completed)
+**Master Planning Document**:
+- **`docs/Protocol_SDK_PLAN.md`** (1,963 lines) - Complete 6-week roadmap with all 17 PRs planned
 
-**PR #1 Description**:
-- `docs/PR_1_DESCRIPTION.md`
-  - Initial SDK structure and addLiquidity extraction
-  - Architecture decisions and patterns
+**Current Status**:
+- **`docs/CURRENT_STATUS.md`** (this gets updated each session)
+- **`docs/CONTINUATION_PROMPT.md`** (this file - quick start guide)
 
-**PR #1 Progress**:
-- `docs/PR_1_PROGRESS.md`
-  - Phase-by-phase implementation details
-  - Lessons learned from first extraction
+**Completed Work**:
+- **Raydium**: `docs/COMPLETION_SUMMARY.md`, `docs/PR_2_STATUS.md`
+- **Jupiter**: See commit `4949c87c`
+- **Meteora**: PR #535 (just completed)
 
-**PR #2 Plan**:
-- `docs/PR_2_PLAN.md` (500+ lines)
-  - Complete roadmap for extracting remaining 17 operations
-  - Time estimates and phase breakdown
-  - Success criteria
-
-**PR #2 Status**:
-- `docs/PR_2_STATUS.md` (480+ lines)
-  - Final completion report (18/18 operations)
-  - Code metrics and velocity analysis
-  - Known issues and next steps
-
-**Session Summary**:
-- `docs/SESSION_SUMMARY.md`
-  - Detailed session-by-session progress
-  - Technical decisions and insights
-
-**Completion Summary**:
-- `docs/COMPLETION_SUMMARY.md`
-  - Overall project summary
-  - Final metrics and achievements
-
-### Architecture Reference
-
-**Gateway Instructions**:
-- `CLAUDE.md` (in repo root)
-  - Build & command reference
-  - Architecture overview
-  - Coding style guidelines
-  - Best practices
+**Architecture Reference**:
+- **`CLAUDE.md`** - Build commands, architecture, coding standards
 
 ---
 
-## 📂 Code Locations
+## 📊 Current State
 
-### SDK Layer (Pure Business Logic)
+### Overall Progress
 
-```
-packages/sdk/src/solana/raydium/
-├── operations/
-│   ├── amm/                    # 7 AMM operations
-│   │   ├── add-liquidity.ts
-│   │   ├── remove-liquidity.ts
-│   │   ├── quote-liquidity.ts
-│   │   ├── execute-swap.ts
-│   │   ├── quote-swap.ts
-│   │   ├── pool-info.ts
-│   │   └── position-info.ts
-│   └── clmm/                   # 11 CLMM operations
-│       ├── open-position.ts
-│       ├── close-position.ts
-│       ├── add-liquidity.ts
-│       ├── remove-liquidity.ts
-│       ├── collect-fees.ts
-│       ├── execute-swap.ts
-│       ├── quote-swap.ts
-│       ├── pool-info.ts
-│       ├── position-info.ts
-│       ├── positions-owned.ts
-│       └── quote-position.ts
-├── types/
-│   ├── amm.ts                  # AMM type definitions (256 lines)
-│   └── clmm.ts                 # CLMM type definitions (327 lines)
-├── connector.ts                # RaydiumConnector class
-├── add-liquidity-operation.ts  # Legacy from PR #1
-└── index.ts                    # Public exports
-```
+| Connector | Operations | Status | Completion | PR/Commit |
+|-----------|------------|--------|------------|-----------|
+| **Raydium** | 18 | ✅ Complete | 100% | Merged to main |
+| **Jupiter** | 3 | ✅ Complete | 100% | Commit `4949c87c` |
+| **Meteora** | 12 | ✅ Complete | 100% | PR #535 (pending) |
+| **Uniswap** | 15 | ⏳ Planned | 0% | Not started |
+| **0x** | 5 | ⏳ Planned | 0% | Not started |
+| **TOTAL** | **53** | **62%** | **33/53** | 3/5 connectors |
 
-### API Layer (Thin HTTP Wrappers)
+### Latest Achievement (Meteora)
 
-```
-src/connectors/raydium/
-├── amm-routes/                 # AMM HTTP endpoints
-│   ├── addLiquidity.ts         # Now ~40 lines (was 286)
-│   ├── removeLiquidity.ts
-│   ├── quoteLiquidity.ts
-│   ├── executeSwap.ts
-│   ├── quoteSwap.ts
-│   ├── poolInfo.ts
-│   └── positionInfo.ts
-└── clmm-routes/                # CLMM HTTP endpoints
-    ├── openPosition.ts
-    ├── closePosition.ts
-    ├── addLiquidity.ts
-    ├── removeLiquidity.ts
-    ├── collectFees.ts
-    ├── executeSwap.ts
-    ├── quoteSwap.ts
-    ├── poolInfo.ts
-    ├── positionInfo.ts
-    ├── positionsOwned.ts
-    └── quotePosition.ts
-```
+**Just Completed**:
+- ✅ All 12 Meteora DLMM operations extracted to SDK
+- ✅ 5 new transaction operations (OpenPosition, ClosePosition, AddLiquidity, RemoveLiquidity, CollectFees)
+- ✅ 6 API routes updated to thin wrappers
+- ✅ -691 lines of code removed (net)
+- ✅ 0 TypeScript errors
+- ✅ 0 breaking changes
+- ✅ PR #535 created and ready for review
 
-### Core Types
-
-```
-packages/core/src/types/
-├── protocol.ts                 # Base protocol interfaces
-│   ├── OperationBuilder<TParams, TResult>
-│   ├── ValidationResult
-│   ├── SimulationResult (with metadata, note)
-│   └── Transaction
-└── chains.ts                   # Chain abstractions
-```
-
-### Tests
-
-```
-test/connectors/raydium/
-├── amm-routes/*.test.ts        # AMM integration tests
-└── clmm-routes/*.test.ts       # CLMM integration tests
-```
+**Branch**: `feature/sdk-meteora-extraction`
+**Commit**: `65e3330b` - "feat: Complete Meteora SDK extraction - all 12 operations (100%)"
 
 ---
 
-## 🎨 Architecture Patterns Established
+## 🚀 Next Steps - Decision Matrix
 
-### 1. Query Operations (Simple Async Functions)
+### Option A: Complete 0x (Recommended for Momentum)
 
-**Pattern for read-only operations:**
+**Time**: 4-6 hours
+**Operations**: 5 (all router-based)
+**Complexity**: Low (similar to Jupiter)
 
-```typescript
-// packages/sdk/src/solana/raydium/operations/amm/pool-info.ts
-export async function getPoolInfo(
-  raydium: any,
-  solana: any,
-  params: PoolInfoParams
-): Promise<PoolInfoResult> {
-  // Fetch data from blockchain
-  // Transform and return
-}
-```
+**Pros**:
+- Quick win, maintains momentum
+- Router-only pattern (already proven with Jupiter)
+- Validates Ethereum chain patterns
+- Gets you to 71% completion (38/53 ops)
 
-**Best Example**: `packages/sdk/src/solana/raydium/operations/amm/pool-info.ts` (44 lines)
+**Reference Locations**:
+- Similar to Jupiter: `packages/sdk/src/solana/jupiter/`
+- Existing API: `src/connectors/0x/router-routes/`
+- Master plan: `docs/Protocol_SDK_PLAN.md` lines 495-536
 
-### 2. Transaction Operations (OperationBuilder Class)
+### Option B: Complete Uniswap (Highest Value)
 
-**Pattern for transaction-building operations:**
+**Time**: 12-16 hours
+**Operations**: 15 (Router + AMM + CLMM)
+**Complexity**: High (three different patterns)
 
-```typescript
-// packages/sdk/src/solana/raydium/operations/clmm/open-position.ts
-export class OpenPositionOperation implements OperationBuilder<Params, Result> {
-  constructor(
-    private raydium: any,
-    private solana: any
-  ) {}
+**Pros**:
+- Most widely used protocol
+- Highest impact on project
+- Establishes all Ethereum patterns
+- Completes 91% of project (48/53 ops)
 
-  async validate(params: Params): Promise<ValidationResult>
-  async simulate(params: Params): Promise<SimulationResult>
-  async build(params: Params): Promise<Transaction>
-  async execute(params: Params): Promise<Result>
-}
-```
-
-**Best Example**: `packages/sdk/src/solana/raydium/operations/clmm/open-position.ts` (312 lines)
-
-### 3. API Layer (Thin HTTP Wrappers)
-
-**Pattern for route handlers:**
-
-```typescript
-// src/connectors/raydium/amm-routes/addLiquidity.ts
-async function addLiquidity(
-  network: string,
-  walletAddress: string,
-  poolAddress: string,
-  baseTokenAmount: number,
-  quoteTokenAmount: number,
-  slippagePct?: number,
-): Promise<AddLiquidityResponseType> {
-  const raydium = await Raydium.getInstance(network);
-  const solana = await Solana.getInstance(network);
-
-  // Create SDK operation
-  const operation = new AddLiquidityOperation(raydium, solana);
-
-  // Execute using SDK
-  const result = await operation.execute({
-    network,
-    poolAddress,
-    walletAddress,
-    baseTokenAmount,
-    quoteTokenAmount,
-    slippagePct,
-  });
-
-  return result;
-}
-```
-
-**Best Example**: `src/connectors/raydium/amm-routes/poolInfo.ts` (now ~30 lines)
-
-### 4. Type Adapters (SDK ↔ API Schemas)
-
-**Pattern for transforming SDK results to API responses:**
-
-```typescript
-// Transform SDK result to API response format
-const apiResponse: ExecuteSwapResponseType = {
-  signature: result.signature,
-  status: result.status,
-  data: result.data
-    ? {
-        amountIn: result.data.amountIn,
-        amountOut: result.data.amountOut,
-        tokenIn,
-        tokenOut,
-        fee: result.data.fee,
-        baseTokenBalanceChange: side === 'SELL' ? -result.data.amountIn : result.data.amountOut,
-        quoteTokenBalanceChange: side === 'SELL' ? result.data.amountOut : -result.data.amountIn,
-      }
-    : undefined,
-};
-
-return apiResponse;
-```
-
-**Best Examples**:
-- `src/connectors/raydium/amm-routes/executeSwap.ts`
-- `src/connectors/raydium/clmm-routes/closePosition.ts`
-- `src/connectors/raydium/clmm-routes/collectFees.ts`
+**Reference Locations**:
+- Router: Similar to Jupiter/0x
+- AMM: `packages/sdk/src/solana/raydium/operations/amm/`
+- CLMM: `packages/sdk/src/solana/raydium/operations/clmm/`
+- Existing API: `src/connectors/uniswap/`
 
 ---
 
-## 📋 Next Steps (Per Protocol_SDK_PLAN.md)
-
-### Recommended Order
-
-Based on the master plan in `docs/Protocol_SDK_PLAN.md`, the next steps are:
-
-### Option 1: Continue with Remaining Connectors (Recommended)
-
-**PR #3: Standardize All Connectors** (from line 495 of Protocol_SDK_PLAN.md)
-
-Extract remaining connectors following established Raydium pattern:
-
-1. **Jupiter** (6-8 hours) - Router-only, 5 operations
-   - Simpler than Raydium (no AMM/CLMM complexity)
-   - Operations: quoteSwap, executeSwap, getRoutes, getTokens, priceInfo
-   - Files: `packages/sdk/src/solana/jupiter/`
-
-2. **Meteora** (8-10 hours) - CLMM-only, 8 operations
-   - Similar to Raydium CLMM
-   - Operations: poolInfo, positionInfo, positionsOwned, quotePosition, openPosition, closePosition, addLiquidity, removeLiquidity
-   - Files: `packages/sdk/src/solana/meteora/`
-
-3. **Uniswap** (12-16 hours) - Most complex (Router + AMM + CLMM)
-   - Router (5 ops), AMM V2 (5 ops), CLMM V3 (5 ops)
-   - Files: `packages/sdk/src/ethereum/uniswap/`
-
-4. **PancakeSwap** (8-12 hours) - Similar to Uniswap
-   - Files: `packages/sdk/src/ethereum/pancakeswap/`
-
-5. **0x** (4-6 hours) - Router-only aggregator
-   - Operations: quoteSwap, executeSwap, getSources, priceInfo
-   - Files: `packages/sdk/src/ethereum/0x/`
-
-**Total Estimated Time**: 38-52 hours
-
-### Option 2: Add Pool Creation (Phase 2)
-
-**PR #4-6: Pool Creation** (from line 538 of Protocol_SDK_PLAN.md)
-
-Add missing pool creation functionality:
-
-1. **Raydium Pool Creation** (3 days)
-   - AMM factory integration
-   - CLMM pool initialization
-   - Files: `packages/sdk/src/solana/raydium/factory.ts`
-
-2. **Uniswap/PancakeSwap Pool Creation** (2 days)
-   - V2 factory integration
-   - V3 factory with fee tiers
-   - Files: `packages/sdk/src/ethereum/uniswap/factory.ts`
-
-3. **Meteora Pool Creation** (2 days)
-   - DLMM factory integration
-   - Files: `packages/sdk/src/solana/meteora/factory.ts`
-
-### Option 3: Add Missing Connectors (Phase 3)
-
-**PR #7-9: New Connectors** (from line 641 of Protocol_SDK_PLAN.md)
-
-1. **Orca** (4 days) - Solana Whirlpools CLMM
-2. **Curve** (3 days) - Ethereum stable swap
-3. **Balancer** (4 days) - Ethereum weighted pools
-
----
-
-## 🔑 Key Commands
-
-### Development
+## 📋 Standard Extraction Workflow
 
 ```bash
-# Build TypeScript
-pnpm build
+# 1. Create new feature branch
+git checkout main
+git pull origin main
+git checkout -b feature/sdk-{connector}-extraction
 
-# Start server
-pnpm start --passphrase=xxx
+# 2. Create SDK structure
+mkdir -p packages/sdk/src/{chain}/{connector}/operations/{type}
+mkdir -p packages/sdk/src/{chain}/{connector}/types
 
-# Start in dev mode (HTTP, no SSL)
-pnpm start --passphrase=xxx --dev
+# 3. For each operation:
+#    a. Read existing API route
+#    b. Define types in SDK types file
+#    c. Create SDK operation file
+#    d. Export from index.ts
+#    e. Update API route to use SDK
+#    f. Test: pnpm typecheck
+
+# 4. Commit and PR
+git add packages/sdk/ src/connectors/
+git commit -m "feat: Complete {connector} SDK extraction..."
+git push -u nfttoolz feature/sdk-{connector}-extraction
+gh pr create --repo hummingbot/gateway --base main \
+  --head NFTToolz:feature/sdk-{connector}-extraction
 ```
 
-### Testing
+---
 
-```bash
-# Run all tests
-pnpm test
+## 🎨 Established Patterns
 
-# Run with coverage
-pnpm test:cov
+### Query Operations (Simple Async Functions)
+- **Example**: `packages/sdk/src/solana/meteora/operations/clmm/pool-info.ts`
+- **Pattern**: Async function that fetches data and returns result
+- **When**: Read-only operations
 
-# Run specific test file
-GATEWAY_TEST_MODE=dev jest --runInBand path/to/file.test.ts
+### Transaction Operations (OperationBuilder Class)
+- **Example**: `packages/sdk/src/solana/meteora/operations/clmm/execute-swap.ts`
+- **Pattern**: Class with validate(), simulate(), build(), execute()
+- **When**: Operations that create/execute transactions
 
-# Type checking
-pnpm typecheck
+### API Routes (Thin Wrappers)
+- **Example**: `src/connectors/meteora/clmm-routes/poolInfo.ts`
+- **Pattern**: ~30-50 lines, parameter extraction → SDK call
+- **Target**: -30% to -70% code reduction
+
+### Type Adapters
+- **Example**: `src/connectors/meteora/clmm-routes/closePosition.ts`
+- **Pattern**: Transform SDK types to API schema types
+- **When**: SDK and API types differ (for backward compatibility)
+
+---
+
+## 🔑 Key File Locations
+
+### Completed SDK Operations
+```
+packages/sdk/src/
+├── solana/
+│   ├── raydium/          ✅ 18 operations (AMM + CLMM)
+│   ├── jupiter/          ✅ 3 operations (Router)
+│   └── meteora/          ✅ 12 operations (CLMM)
+└── ethereum/             ⏳ To be created
+    ├── uniswap/          (15 operations to extract)
+    └── zeroex/           (5 operations to extract)
 ```
 
-### Code Quality
+### Reference Documents
+- **Overall Plan**: `docs/Protocol_SDK_PLAN.md`
+- **Current Status**: `docs/CURRENT_STATUS.md`
+- **Raydium Complete**: `docs/COMPLETION_SUMMARY.md`
+- **Architecture**: `CLAUDE.md`
+
+---
+
+## ✅ Success Criteria Per Connector
+
+- [ ] All operations extracted to SDK layer
+- [ ] API routes reduced to thin wrappers (~30-50 lines)
+- [ ] Zero connector-specific TypeScript errors
+- [ ] All tests passing
+- [ ] Code reduction >30%
+- [ ] Zero breaking changes
+- [ ] PR created with comprehensive description
+
+---
+
+## 💡 Quick Commands
 
 ```bash
-# Lint code
-pnpm lint
+# Check TypeScript errors
+pnpm typecheck 2>&1 | grep -i {connector}
 
-# Format code
-pnpm format
-```
+# See changes
+git diff --stat main...HEAD
 
-### Git
-
-```bash
-# Check current state
-git status
-
-# Recent commits
+# View recent commits
 git log --oneline -10
 
-# Compare branches
-git diff main...feature-branch
+# Check overall progress
+cat docs/CURRENT_STATUS.md
 ```
 
 ---
 
-## 🎯 Design Principles (From Raydium Extraction)
+## 🎯 Immediate Action Items
 
-1. **Zero Breaking Changes**: API layer must remain backward compatible
-2. **Types First**: Define types before implementing operations
-3. **Incremental**: Extract one operation at a time, test, commit
-4. **Pattern Consistency**: Follow established patterns for similar operations
-5. **Documentation**: Update docs as you go, not at the end
+**To Continue**:
 
-### Code Quality Standards
+1. Choose next connector (0x recommended for momentum)
+2. Create new branch: `git checkout -b feature/sdk-{connector}-extraction`
+3. Study existing routes: `src/connectors/{connector}/`
+4. Follow established patterns from completed work
+5. Create SDK structure and extract operations
+6. Update API routes to thin wrappers
+7. Test, commit, and create PR
 
-- Test coverage >75% for new code
-- Zero TypeScript errors (`pnpm typecheck` passes)
-- Follow ESLint rules
-- Use type adapters to bridge SDK ↔ API schemas
-- Prefix unused parameters with underscore (`_param`)
-
----
-
-## 📊 Success Criteria for Next Connector
-
-Based on Raydium completion, the next connector should achieve:
-
-- ✅ All operations extracted to SDK layer
-- ✅ API routes updated to thin wrappers
-- ✅ Full type definitions created
-- ✅ All tests passing (no regressions)
-- ✅ Documentation updated
-- ✅ Code reduction >30% in API layer
-- ✅ Pattern documented for future use
-- ✅ Zero TypeScript errors
-
----
-
-## 💡 Known Issues & Considerations
-
-### Non-Blocking Issues (Documented)
-
-1. **CLMM ExecuteSwap SDK Operation**
-   - Status: Not fully implemented
-   - Location: `packages/sdk/src/solana/raydium/operations/clmm/execute-swap.ts`
-   - Impact: None (route handler has working implementation)
-   - Note: Throws clear error directing to route handler
-
-### Type Safety Notes
-
-- `tsconfig.json` has `strict: false`
-- This is intentional to allow gradual migration
-- All new code should aim for strict compatibility
-- No `any` types without comments explaining why
-
----
-
-## 🚀 Quick Start for Next Connector
-
-### 1. Choose Connector
-
-Review `docs/Protocol_SDK_PLAN.md` lines 495-536 for connector details.
-
-**Recommended**: Start with **Jupiter** (simplest, 5 operations, router-only)
-
-### 2. Create Feature Branch
-
-```bash
-git checkout -b feature/sdk-jupiter-extraction
-```
-
-### 3. Create SDK Directory Structure
-
-```bash
-mkdir -p packages/sdk/src/solana/jupiter/operations/router
-mkdir -p packages/sdk/src/solana/jupiter/types
-```
-
-### 4. Follow Raydium Pattern
-
-Reference files:
-- Type definitions: `packages/sdk/src/solana/raydium/types/amm.ts`
-- Query operation: `packages/sdk/src/solana/raydium/operations/amm/pool-info.ts`
-- Transaction operation: `packages/sdk/src/solana/raydium/operations/amm/execute-swap.ts`
-
-### 5. Update API Routes
-
-Pattern: Keep existing route, extract logic to SDK, call SDK from route
-
-### 6. Test & Commit
-
-```bash
-pnpm test
-pnpm typecheck
-git add -A
-git commit -m "feat: Extract Jupiter connector to SDK"
-```
-
----
-
-## 📖 Important Context for AI Assistants
-
-### Repository
-
-- **Location**: `/Users/admin/Library/CloudStorage/Dropbox/NFTtoolz/Cendars/Development/Turbo/LP_SDK/hummingbot/gateway`
-- **Branch**: `main` (fully up to date)
-- **All tests**: Currently passing
-- **TypeScript errors**: 0 (was 60+)
-- **Pattern**: Proven and ready to replicate
-
-### Previous Work
-
-- **Raydium SDK**: 18/18 operations complete (100%)
-- **Time Investment**: ~18.5 hours total
-  - Raydium extraction: ~16.5 hours
-  - Type safety cleanup: ~2 hours
-- **Code Changes**: +3,250 lines SDK, -243 lines net
-- **Velocity**: ~1 operation per hour
-
-### Master Plan
-
-All phases planned in detail at:
-`docs/Protocol_SDK_PLAN.md`
-
-Key sections:
-- Lines 1-53: Executive Summary
-- Lines 54-109: Current State Analysis
-- Lines 391-1021: Phase Breakdown (17 PRs)
-- Lines 1611-1799: Success Metrics
-- Lines 1800-1853: Timeline
-
----
-
-## ❓ Questions to Ask When Starting
-
-1. **Which connector should I work on next?**
-   - Jupiter (simplest) vs Meteora (most similar to Raydium) vs Uniswap (most valuable)?
-
-2. **Should I focus on Phase 1 (extraction) or Phase 2 (pool creation)?**
-   - Extraction establishes patterns, pool creation adds new features
-
-3. **What's the priority?**
-   - Speed (finish one phase) vs completeness (cover all connectors)?
-
-4. **Should I create a new feature branch or work on main?**
-   - Feature branches recommended per `Protocol_SDK_PLAN.md` guidelines
-
-5. **Documentation-first or code-first approach?**
-   - Both work; Raydium was code-first with docs during
-
----
-
-## 📝 File Locations Quick Reference
-
-| Purpose | File Path |
-|---------|-----------|
-| Master Plan | `docs/Protocol_SDK_PLAN.md` |
-| Raydium Completion | `docs/COMPLETION_SUMMARY.md` |
-| PR #2 Status | `docs/PR_2_STATUS.md` |
-| Architecture Guide | `CLAUDE.md` |
-| SDK Types (AMM) | `packages/sdk/src/solana/raydium/types/amm.ts` |
-| SDK Types (CLMM) | `packages/sdk/src/solana/raydium/types/clmm.ts` |
-| Core Protocol Types | `packages/core/src/types/protocol.ts` |
-| Example Operation | `packages/sdk/src/solana/raydium/operations/amm/pool-info.ts` |
-| Example OperationBuilder | `packages/sdk/src/solana/raydium/operations/clmm/open-position.ts` |
-| Example Route Wrapper | `src/connectors/raydium/amm-routes/poolInfo.ts` |
-| Example Type Adapter | `src/connectors/raydium/amm-routes/executeSwap.ts` |
+**Current Progress**: 62% (33/53 operations)
+**Remaining**: 20 operations across 2 connectors
+**Estimated Time to 100%**: 16-22 hours (3-4 sessions)
 
 ---
 
 **Last Updated**: 2025-01-27
-**Status**: ✅ Raydium Complete + Type Safety 100%
-**Next**: Choose next connector per master plan
-**Ready**: Proven patterns, zero errors, fully tested
+**Status**: Meteora complete (PR #535), ready for next connector
+**Recommendation**: Start with 0x (quick win), then Uniswap (high value)
