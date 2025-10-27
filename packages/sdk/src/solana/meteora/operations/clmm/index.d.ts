@@ -1,18 +1,9 @@
-/**
- * Meteora CLMM Operations
- *
- * Exports all CLMM operations for Meteora DLMM.
- */
-
-// Query operations (read-only)
 export { fetchPools } from './fetch-pools';
 export { getPoolInfo } from './pool-info';
 export { getPositionsOwned } from './positions-owned';
 export { getPositionInfo } from './position-info';
 export { quotePosition } from './quote-position';
 export { getSwapQuote, getRawSwapQuote } from './quote-swap';
-
-// Transaction operations (OperationBuilder pattern)
 export { ExecuteSwapOperation } from './execute-swap';
 export { OpenPositionOperation } from './open-position';
 export { ClosePositionOperation } from './close-position';

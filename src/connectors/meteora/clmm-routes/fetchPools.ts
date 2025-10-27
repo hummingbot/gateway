@@ -1,12 +1,13 @@
 import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
+import { fetchPools } from '@gateway-sdk/solana/meteora/operations/clmm';
+
 import { Solana } from '../../../chains/solana/solana';
 import { PoolInfo, PoolInfoSchema, FetchPoolsRequestType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 import { MeteoraClmmFetchPoolsRequest } from '../schemas';
-// Using Fastify's native error handling
 
 export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -23,47 +24,29 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
     },
     handler: async (request, _reply) => {
       try {
-        const { limit, tokenA, tokenB } = request.query;
-        const network = request.query.network;
+        const { network, limit, tokenA, tokenB } = request.query;
 
         const meteora = await Meteora.getInstance(network);
         const solana = await Solana.getInstance(network);
 
-        let tokenMintA, tokenMintB;
+        // Use SDK operation to get pool summaries
+        const result = await fetchPools(meteora, solana, {
+          network,
+          limit,
+          tokenA,
+          tokenB,
+        });
 
-        if (tokenA) {
-          const tokenInfoA = await solana.getToken(tokenA);
-          if (!tokenInfoA) {
-            throw fastify.httpErrors.notFound(`Token ${tokenA} not found`);
-          }
-          tokenMintA = tokenInfoA.address;
-        }
-
-        if (tokenB) {
-          const tokenInfoB = await solana.getToken(tokenB);
-          if (!tokenInfoB) {
-            throw fastify.httpErrors.notFound(`Token ${tokenB} not found`);
-          }
-          tokenMintB = tokenInfoB.address;
-        }
-
-        const pairs = await meteora.getPools(limit, tokenMintA, tokenMintB);
-        if (!Array.isArray(pairs)) {
-          logger.error('No matching Meteora pools found');
-          return [];
-        }
-
+        // Get full pool info for each pool
         const poolInfos = await Promise.all(
-          pairs
-            .filter((pair) => pair?.publicKey?.toString)
-            .map(async (pair) => {
-              try {
-                return await meteora.getPoolInfo(pair.publicKey.toString());
-              } catch (error) {
-                logger.error(`Failed to get pool info for ${pair.publicKey.toString()}: ${error.message}`);
-                throw fastify.httpErrors.notFound(`Pool not found: ${pair.publicKey.toString()}`);
-              }
-            }),
+          result.pools.map(async (poolSummary) => {
+            try {
+              return await meteora.getPoolInfo(poolSummary.publicKey);
+            } catch (error) {
+              logger.error(`Failed to get pool info for ${poolSummary.publicKey}: ${error.message}`);
+              throw fastify.httpErrors.notFound(`Pool not found: ${poolSummary.publicKey}`);
+            }
+          }),
         );
 
         return poolInfos.filter(Boolean);
