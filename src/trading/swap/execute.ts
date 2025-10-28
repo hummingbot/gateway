@@ -2,8 +2,8 @@ import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 // Solana connector imports
-import { getEthereumNetworkConfig } from '../../chains/ethereum/ethereum.config';
-import { getSolanaNetworkConfig } from '../../chains/solana/solana.config';
+import { getEthereumChainConfig, getEthereumNetworkConfig } from '../../chains/ethereum/ethereum.config';
+import { getSolanaChainConfig, getSolanaNetworkConfig } from '../../chains/solana/solana.config';
 import { executeSwap as zeroXRouterExecuteSwap } from '../../connectors/0x/router-routes/executeSwap';
 import { executeSwap as jupiterRouterExecuteSwap } from '../../connectors/jupiter/router-routes/executeSwap';
 import { executeSwap as meteoraClmmExecuteSwap } from '../../connectors/meteora/clmm-routes/executeSwap';
@@ -24,25 +24,58 @@ import { ChainExecuteSwapResponseSchema } from '../../schemas/chain-schema';
 import { logger } from '../../services/logger';
 import { PoolService } from '../../services/pool-service';
 
+// Get default wallet from Solana config, fallback to Ethereum if Solana doesn't exist
+let defaultWallet: string;
+try {
+  const solanaChainConfig = getSolanaChainConfig();
+  defaultWallet = solanaChainConfig.defaultWallet;
+} catch {
+  const ethereumChainConfig = getEthereumChainConfig();
+  defaultWallet = ethereumChainConfig.defaultWallet;
+}
+
 /**
  * Unified swap execute request schema
  * Accepts chain-network parameter like "solana-mainnet-beta", "ethereum-mainnet", or "ethereum-polygon"
  */
 const UnifiedExecuteSwapRequestSchema = Type.Object({
+  walletAddress: Type.String({
+    description: 'Wallet address to execute swap from',
+    default: defaultWallet,
+  }),
   chainNetwork: Type.String({
     description:
       'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet, ethereum-polygon)',
+    default: 'solana-mainnet-beta',
   }),
-  walletAddress: Type.String({ description: 'Wallet address to execute swap from' }),
-  baseToken: Type.String({ description: 'Symbol or address of the base token' }),
-  quoteToken: Type.String({ description: 'Symbol or address of the quote token' }),
-  amount: Type.Number({ description: 'Amount to swap' }),
-  side: Type.Union([Type.Literal('BUY'), Type.Literal('SELL')], { description: 'Side of the swap (BUY or SELL)' }),
-  slippagePct: Type.Optional(Type.Number({ description: 'Slippage tolerance percentage (optional)' })),
   connector: Type.Optional(
     Type.String({
       description:
         "Connector to use in format: connector/type (e.g., jupiter/router, raydium/amm, uniswap/clmm). If not provided, uses network's configured swapProvider",
+      default: 'jupiter/router',
+    }),
+  ),
+  baseToken: Type.String({
+    description: 'Symbol or address of the base token',
+    default: 'SOL',
+  }),
+  quoteToken: Type.String({
+    description: 'Symbol or address of the quote token',
+    default: 'USDC',
+  }),
+  amount: Type.Number({
+    description: 'Amount to swap',
+    default: 1,
+  }),
+  side: Type.String({
+    description: 'Side of the swap',
+    enum: ['BUY', 'SELL'],
+    default: 'SELL',
+  }),
+  slippagePct: Type.Optional(
+    Type.Number({
+      description: 'Slippage tolerance percentage (optional)',
+      default: 1,
     }),
   ),
 });
@@ -405,7 +438,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           baseToken,
           quoteToken,
           amount,
-          side,
+          side as 'BUY' | 'SELL',
           slippagePct,
           connector,
         );
