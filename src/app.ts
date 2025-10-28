@@ -25,12 +25,11 @@ import { raydiumRoutes } from './connectors/raydium/raydium.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { getHttpsOptions } from './https';
 import { poolRoutes } from './pools/pools.routes';
-import { executeSwapRoute } from './routes/swap/execute';
-import { quoteSwapRoute } from './routes/swap/quote';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { logger } from './services/logger';
 import { quoteCache } from './services/quote-cache';
 import { tokensRoutes } from './tokens/tokens.routes';
+import { tradingRoutes } from './trading/trading.routes';
 import { GATEWAY_VERSION } from './version';
 import { walletRoutes } from './wallet/wallet.routes';
 
@@ -64,6 +63,7 @@ const swaggerOptions = {
       { name: '/wallet', description: 'Wallet management endpoints' },
       { name: '/tokens', description: 'Token management endpoints' },
       { name: '/pools', description: 'Pool management endpoints' },
+      { name: '/trading/swap', description: 'Unified cross-chain swap endpoints' },
 
       // Chains
       {
@@ -224,9 +224,8 @@ const configureGatewayServer = () => {
     // Register pool routes
     app.register(poolRoutes, { prefix: '/pools' });
 
-    // Register unified swap routes (cross-chain)
-    app.register(quoteSwapRoute);
-    app.register(executeSwapRoute);
+    // Register trading routes (unified cross-chain swap)
+    app.register(tradingRoutes, { prefix: '/trading/swap' });
 
     // Register chain routes
     app.register(solanaRoutes, { prefix: '/chains/solana' });

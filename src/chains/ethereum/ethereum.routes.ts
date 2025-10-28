@@ -5,9 +5,7 @@ import { allowancesRoute } from './routes/allowances';
 import { approveRoute } from './routes/approve';
 import { balancesRoute } from './routes/balances';
 import { estimateGasRoute } from './routes/estimate-gas';
-import { executeSwapRoute } from './routes/execute-swap';
 import { pollRoute } from './routes/poll';
-import { quoteSwapRoute } from './routes/quote-swap';
 import { statusRoute } from './routes/status';
 import { unwrapRoute } from './routes/unwrap';
 import { wrapRoute } from './routes/wrap';
@@ -33,8 +31,6 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(approveRoute);
   fastify.register(wrapRoute);
   fastify.register(unwrapRoute);
-  fastify.register(quoteSwapRoute);
-  fastify.register(executeSwapRoute);
 };
 
 export default ethereumRoutes;

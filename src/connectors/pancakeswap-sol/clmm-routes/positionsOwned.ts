@@ -22,7 +22,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     '/positions-owned',
     {
       schema: {
-        description: "Retrieve a list of positions owned by a user's wallet in a specific PancakeSwap Solana CLMM pool",
+        description: "Retrieve all positions owned by a user's wallet across all PancakeSwap Solana CLMM pools",
         tags: ['/connector/pancakeswap-sol'],
         querystring: PancakeswapSolClmmGetPositionsOwnedRequest,
         response: {
@@ -32,16 +32,9 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network = 'mainnet-beta', poolAddress, walletAddress } = request.query;
+        const { network = 'mainnet-beta', walletAddress } = request.query;
         const solana = await Solana.getInstance(network);
         const pancakeswapSol = await PancakeswapSol.getInstance(network);
-
-        // Validate pool address
-        try {
-          new PublicKey(poolAddress);
-        } catch (error) {
-          throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('pool'));
-        }
 
         // Validate wallet address
         try {
@@ -50,7 +43,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
         }
 
-        logger.info(`Fetching positions for wallet ${walletAddress} in pool ${poolAddress}`);
+        logger.info(`Fetching all positions for wallet ${walletAddress}`);
 
         // Get all token accounts owned by the wallet from both SPL Token and Token2022 programs
         const walletPubkey = new PublicKey(walletAddress);
@@ -81,8 +74,8 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
               // Try to get position info - this will return null if not a PancakeSwap position
               const positionInfo = await pancakeswapSol.getPositionInfo(mintAddress);
 
-              // If position exists and matches the pool, add it
-              if (positionInfo && positionInfo.poolAddress === poolAddress) {
+              // If position exists, add it
+              if (positionInfo) {
                 positions.push(positionInfo);
                 logger.info(`Found position: ${mintAddress}`);
               }
@@ -93,7 +86,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
           }
         }
 
-        logger.info(`Found ${positions.length} positions in pool ${poolAddress}`);
+        logger.info(`Found ${positions.length} positions`);
         return positions;
       } catch (e: any) {
         logger.error('Positions owned error:', e);

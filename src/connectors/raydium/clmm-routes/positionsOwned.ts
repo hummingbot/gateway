@@ -25,7 +25,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     '/positions-owned',
     {
       schema: {
-        description: "Retrieve a list of positions owned by a user's wallet in a specific Raydium CLMM pool",
+        description: "Retrieve all positions owned by a user's wallet across all Raydium CLMM pools",
         tags: ['/connector/raydium'],
         querystring: RaydiumClmmGetPositionsOwnedRequest,
         response: {
@@ -35,7 +35,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { poolAddress, walletAddress } = request.query;
+        const { walletAddress } = request.query;
         const network = request.query.network;
         const solana = await Solana.getInstance(network);
         const raydium = await Raydium.getInstance(network);
@@ -46,13 +46,6 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         // Set the owner for SDK operations
         await raydium.setOwner(wallet);
 
-        // Validate pool address
-        try {
-          new PublicKey(poolAddress);
-        } catch (error) {
-          throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('pool'));
-        }
-
         // Validate wallet address
         try {
           new PublicKey(walletAddress);
@@ -60,35 +53,43 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
         }
 
-        console.log('poolAddress', poolAddress, 'walletAddress', walletAddress);
+        logger.info(`Fetching all positions for wallet ${walletAddress}`);
 
-        // Get pool info to extract program ID
-        const apiResponse = await raydium.getClmmPoolfromAPI(poolAddress);
+        // Get all positions owned by the wallet
+        // Note: Raydium SDK requires programId, so we get positions for all known program IDs
+        const allPositions = [];
 
-        if (apiResponse !== null) {
-          const poolInfo = apiResponse[0]; // Direct array access instead of destructuring
-          console.log('poolInfo', poolInfo, 'Program ID:', poolInfo.programId);
+        // Try both CLMM program IDs (standard and new)
+        const programIds = [
+          'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK', // CLMM program
+          'devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH', // Devnet CLMM (if applicable)
+        ];
 
-          // Get all positions owned by the wallet for this program
-          const positions = await raydium.raydiumSDK.clmm.getOwnerPositionInfo({
-            programId: poolInfo.programId,
-          });
-          console.log('All positions for program:', positions.length);
+        for (const programId of programIds) {
+          try {
+            const positions = await raydium.raydiumSDK.clmm.getOwnerPositionInfo({
+              programId,
+            });
+            logger.info(`Found ${positions.length} positions for program ${programId}`);
 
-          // Filter positions for this specific pool
-          const poolPositions = [];
-          for (const pos of positions) {
-            const positionInfo = await raydium.getPositionInfo(pos.nftMint.toString());
-            if (positionInfo && positionInfo.poolAddress === poolAddress) {
-              poolPositions.push(positionInfo);
+            // Convert SDK positions to our format
+            for (const pos of positions) {
+              try {
+                const positionInfo = await raydium.getPositionInfo(pos.nftMint.toString());
+                if (positionInfo) {
+                  allPositions.push(positionInfo);
+                }
+              } catch (error) {
+                logger.debug(`Error fetching position info for ${pos.nftMint.toString()}:`, error);
+              }
             }
+          } catch (error) {
+            logger.debug(`No positions found for program ${programId}:`, error);
           }
-
-          console.log(`Found ${poolPositions.length} positions in pool ${poolAddress}`);
-          return poolPositions;
         }
-        console.log('Pool not found:', poolAddress);
-        return [];
+
+        logger.info(`Found ${allPositions.length} total positions`);
+        return allPositions;
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
