@@ -13,7 +13,7 @@ import { MeteoraClmmExecuteSwapRequest, MeteoraClmmExecuteSwapRequestType } from
 
 import { getRawSwapQuote } from './quoteSwap';
 
-async function executeSwap(
+export async function executeSwap(
   fastify: FastifyInstance,
   network: string,
   address: string,

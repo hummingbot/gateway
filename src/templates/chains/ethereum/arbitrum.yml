@@ -1,10 +1,11 @@
 chainID: 42161
 nodeURL: https://arb1.arbitrum.io/rpc
 nativeCurrencySymbol: ETH
-minGasPrice: 0.01
 transactionExecutionTimeoutMs: 10000 # Timeout for waiting for transaction execution (in milliseconds)
+swapProvider: uniswap/router
 
 # EIP-1559 gas parameters (in GWEI)
 # If not set, will fetch from Etherscan API (if etherscanAPIKey is set in ethereum.yml) or network RPC
-maxFeePerGas: 0.01
-maxPriorityFeePerGas: 0.001
+baseFee:
+baseFeeMultiplier: 1.2
+priorityFee: 0.001

@@ -41,6 +41,8 @@ async function executeSwap(
   return executeResponse;
 }
 
+export { executeSwap };
+
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
     Body: ExecuteSwapRequestType;

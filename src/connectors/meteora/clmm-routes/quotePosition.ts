@@ -42,9 +42,6 @@ export async function quotePosition(
       strategyType: strategyType ?? StrategyType.SpotBalanced,
     };
 
-    // Quote the position creation to get cost estimates
-    const quoteResult = await dlmmPool.quoteCreatePosition({ strategy });
-
     // Get token amounts needed for the position
     const slippage = slippagePct / 100;
 
@@ -54,16 +51,14 @@ export async function quotePosition(
     let baseAmountMax = 0;
     let quoteAmountMax = 0;
     let baseLimited = false;
+    let liquidityValue = '0';
 
     if (baseTokenAmount || quoteTokenAmount) {
-      // Get pool token info
-      const tokenX = await solana.getToken(dlmmPool.lbPair.tokenXMint.toString());
-      const tokenY = await solana.getToken(dlmmPool.lbPair.tokenYMint.toString());
-
-      // Determine which token is base and which is quote
-      const baseIsTokenX =
-        tokenX.symbol === dlmmPool.lbPair.tokenXMint.toString() ||
-        tokenX.address === dlmmPool.lbPair.tokenXMint.toString();
+      // Get current price adjusted for decimals
+      const rawPrice = getPriceOfBinByBinId(activeBinId, binStep).toNumber();
+      const decimalDiff = dlmmPool.tokenX.decimal - dlmmPool.tokenY.decimal;
+      const adjustmentFactor = Math.pow(10, decimalDiff);
+      const currentPrice = rawPrice * adjustmentFactor;
 
       // Calculate amounts based on strategy
       if (baseTokenAmount && !quoteTokenAmount) {
@@ -71,7 +66,6 @@ export async function quotePosition(
         baseAmount = baseTokenAmount;
         baseAmountMax = baseTokenAmount * (1 + slippage);
         // Estimate quote amount based on price range and strategy
-        const currentPrice = getPriceOfBinByBinId(activeBinId, binStep).toNumber();
         const avgPrice = (lowerPrice + upperPrice) / 2;
         quoteAmount = baseAmount * avgPrice;
         quoteAmountMax = quoteAmount * (1 + slippage);
@@ -80,13 +74,11 @@ export async function quotePosition(
         quoteAmount = quoteTokenAmount;
         quoteAmountMax = quoteTokenAmount * (1 + slippage);
         // Estimate base amount based on price range and strategy
-        const currentPrice = getPriceOfBinByBinId(activeBinId, binStep).toNumber();
         const avgPrice = (lowerPrice + upperPrice) / 2;
         baseAmount = quoteAmount / avgPrice;
         baseAmountMax = baseAmount * (1 + slippage);
       } else if (baseTokenAmount && quoteTokenAmount) {
         // Both amounts provided - use ratio to determine limiting token
-        const currentPrice = getPriceOfBinByBinId(activeBinId, binStep).toNumber();
         const providedRatio = quoteTokenAmount / baseTokenAmount;
         baseLimited = providedRatio > currentPrice;
 
@@ -102,6 +94,21 @@ export async function quotePosition(
           baseAmountMax = baseAmount * (1 + slippage);
         }
       }
+
+      // Calculate liquidity estimate
+      // For DLMM pools, liquidity is distributed across bins based on the strategy
+      // We'll estimate it based on the token amounts in lamports
+      try {
+        const tokenXAmountLamports = baseAmount * Math.pow(10, dlmmPool.tokenX.decimal);
+        const tokenYAmountLamports = quoteAmount * Math.pow(10, dlmmPool.tokenY.decimal);
+
+        // For a balanced position, liquidity can be approximated as the geometric mean
+        // This is a simplified estimate; actual distribution depends on bin strategy
+        const estimatedLiquidity = Math.floor(Math.sqrt(tokenXAmountLamports * tokenYAmountLamports));
+        liquidityValue = estimatedLiquidity.toString();
+      } catch (error) {
+        logger.warn('Failed to calculate liquidity estimate:', error);
+      }
     }
 
     return {
@@ -110,7 +117,7 @@ export async function quotePosition(
       quoteTokenAmount: quoteAmount,
       baseTokenAmountMax: baseAmountMax,
       quoteTokenAmountMax: quoteAmountMax,
-      liquidity: Math.floor(quoteResult.positionCost || 0).toString(), // Using positionCost as a proxy for liquidity
+      liquidity: liquidityValue,
     };
   } catch (error) {
     logger.error(error);

@@ -21,6 +21,12 @@ export async function getSolanaBalances(
     return { balances };
   } catch (error) {
     logger.error(`Error getting balances: ${error.message}`);
+
+    // Re-throw rate limit errors (statusCode 429) without wrapping
+    if (error.statusCode === 429) {
+      throw error;
+    }
+
     throw fastify.httpErrors.internalServerError(`Failed to get balances: ${error.message}`);
   }
 }

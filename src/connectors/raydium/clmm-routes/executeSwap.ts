@@ -13,7 +13,7 @@ import { RaydiumClmmExecuteSwapRequest, RaydiumClmmExecuteSwapRequestType } from
 
 import { getSwapQuote, convertAmountIn } from './quoteSwap';
 
-async function executeSwap(
+export async function executeSwap(
   fastify: FastifyInstance,
   network: string,
   walletAddress: string,

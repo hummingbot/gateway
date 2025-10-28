@@ -23,7 +23,7 @@ const INSUFFICIENT_BALANCE_MESSAGE = (token: string, required: string, actual: s
 
 const SOL_TRANSACTION_BUFFER = 0.01; // SOL buffer for transaction costs
 
-async function addLiquidity(
+export async function addLiquidity(
   fastify: FastifyInstance,
   network: string,
   address: string,

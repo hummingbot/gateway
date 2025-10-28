@@ -24,6 +24,7 @@ module.exports = {
     '/node_modules/',
     'test-helpers',
     '<rootDir>/test-scripts/',
+    '<rootDir>/test/lifecycle/',
   ],
   testMatch: ['<rootDir>/test/**/*.test.ts', '<rootDir>/test/**/*.test.js'],
   transform: {

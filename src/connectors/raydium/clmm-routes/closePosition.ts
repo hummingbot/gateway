@@ -11,7 +11,7 @@ import { RaydiumClmmClosePositionRequest } from '../schemas';
 
 import { removeLiquidity } from './removeLiquidity';
 
-async function closePosition(
+export async function closePosition(
   _fastify: FastifyInstance,
   network: string,
   walletAddress: string,

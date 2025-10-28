@@ -433,16 +433,9 @@ export const MeteoraClmmGetPositionsOwnedRequest = Type.Object({
       enum: [...MeteoraConfig.networks],
     }),
   ),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Solana wallet address to check for positions',
-      default: solanaChainConfig.defaultWallet,
-      examples: [solanaChainConfig.defaultWallet],
-    }),
-  ),
-  poolAddress: Type.String({
-    description: 'Meteora DLMM pool address',
-    examples: [CLMM_POOL_ADDRESS_EXAMPLE],
+  walletAddress: Type.String({
+    description: 'Solana wallet address to check for positions',
+    examples: [solanaChainConfig.defaultWallet],
   }),
 });
 
