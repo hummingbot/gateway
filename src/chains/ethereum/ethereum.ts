@@ -66,7 +66,7 @@ export class Ethereum {
     this.minGasPrice = config.minGasPrice || 0.1; // Default to 0.1 GWEI if not specified
     this.maxFeePerGas = config.maxFeePerGas;
     this.maxPriorityFeePerGas = config.maxPriorityFeePerGas;
-    this._transactionExecutionTimeoutMs = config.transactionWaitTimeoutMs ?? 30000; // Default to 30 seconds
+    this._transactionExecutionTimeoutMs = config.transactionExecutionTimeoutMs ?? 30000; // Default to 30 seconds
 
     // Get chain config for etherscanAPIKey
     const chainConfig = getEthereumChainConfig();
