@@ -8,7 +8,7 @@ import * as fse from 'fs-extra';
 
 import { connectorsConfig } from '../config/routes/getConnectors';
 import { rootPath } from '../paths';
-import { Pool, PoolFileFormat, SupportedConnector, isSupportedConnector } from '../pools/types';
+import { Pool, PoolFileFormat, getSupportedConnectors, isSupportedConnector } from '../pools/types';
 import { SupportedChain } from '../tokens/types';
 
 import { logger } from './logger';
@@ -74,7 +74,7 @@ export class PoolService {
   private async validateConnector(connector: string): Promise<void> {
     if (!isSupportedConnector(connector)) {
       throw new Error(
-        `Unsupported connector: ${connector}. Supported connectors: ${Object.values(SupportedConnector).join(', ')}`,
+        `Unsupported connector: ${connector}. Supported connectors: ${getSupportedConnectors().join(', ')}`,
       );
     }
   }

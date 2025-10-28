@@ -18,7 +18,6 @@ export const GetPositionsOwnedRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
     walletAddress: Type.String(),
-    poolAddress: Type.Optional(Type.String()), // Optional for Meteora, required for others
   },
   { $id: 'GetPositionsOwnedRequest' },
 );

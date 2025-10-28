@@ -7,21 +7,22 @@ import { SolanaNetworkConfig } from './solana.config';
  */
 export class SolanaPriorityFees {
   private static lastPriorityFeeEstimate: {
-    timestamp: number;
-    fee: number;
-  } | null = null;
+    [network: string]: {
+      timestamp: number;
+      fee: number;
+    };
+  } = {};
   private static readonly PRIORITY_FEE_CACHE_MS = 10000; // 10 second cache
 
   /**
    * Estimates priority fees using Helius getPriorityFeeEstimate RPC method
    */
-  public static async estimatePriorityFee(config: SolanaNetworkConfig): Promise<number> {
-    // Check cache first
-    if (
-      SolanaPriorityFees.lastPriorityFeeEstimate &&
-      Date.now() - SolanaPriorityFees.lastPriorityFeeEstimate.timestamp < SolanaPriorityFees.PRIORITY_FEE_CACHE_MS
-    ) {
-      return SolanaPriorityFees.lastPriorityFeeEstimate.fee;
+  public static async estimatePriorityFee(config: SolanaNetworkConfig, network: string): Promise<number> {
+    // Check cache first (per-network)
+    const cachedEstimate = SolanaPriorityFees.lastPriorityFeeEstimate[network];
+    if (cachedEstimate && Date.now() - cachedEstimate.timestamp < SolanaPriorityFees.PRIORITY_FEE_CACHE_MS) {
+      logger.debug(`Using cached priority fee for ${network}: ${cachedEstimate.fee.toFixed(4)} lamports/CU`);
+      return cachedEstimate.fee;
     }
 
     try {
@@ -88,8 +89,8 @@ export class SolanaPriorityFees {
         `Priority fee estimate: ${priorityFeeLamports.toFixed(4)} lamports/CU -> using ${finalFee.toFixed(4)} lamports/CU (${finalFee === minimumFee ? 'minimum enforced' : 'recommended'})`,
       );
 
-      // Cache the result
-      SolanaPriorityFees.lastPriorityFeeEstimate = {
+      // Cache the result (per-network)
+      SolanaPriorityFees.lastPriorityFeeEstimate[network] = {
         timestamp: Date.now(),
         fee: finalFee,
       };

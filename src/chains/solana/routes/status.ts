@@ -28,6 +28,7 @@ export async function getSolanaStatus(fastify: FastifyInstance, network: string)
     }
 
     const nativeCurrency = solana.config.nativeCurrencySymbol;
+    const swapProvider = solana.config.swapProvider || '';
     const currentBlockNumber = await solana.getCurrentBlockNumber();
 
     return {
@@ -37,6 +38,7 @@ export async function getSolanaStatus(fastify: FastifyInstance, network: string)
       rpcProvider,
       currentBlockNumber,
       nativeCurrency,
+      swapProvider,
     };
   } catch (error) {
     logger.error(`Error getting Solana status: ${error.message}`);

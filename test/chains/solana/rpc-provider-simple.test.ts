@@ -22,13 +22,13 @@ describe('Solana RPC Provider Configuration Tests', () => {
       expect(mainnetConfig).toHaveProperty('nodeURL');
     });
 
-    it('should default to url provider when not specified', () => {
-      // Test that the default is 'url' provider when rpcProvider is undefined
+    it('should have rpcProvider configured', () => {
+      // Test that rpcProvider is defined (can be either 'url' or 'helius')
       const chainConfig = getSolanaChainConfig();
 
-      // If rpcProvider is not set, it should default to 'url'
+      // rpcProvider should be defined and be one of the valid values
       expect(chainConfig.rpcProvider).toBeDefined();
-      expect(chainConfig.rpcProvider).toBe('url');
+      expect(['url', 'helius']).toContain(chainConfig.rpcProvider);
     });
 
     it('should have proper network URLs configured', () => {

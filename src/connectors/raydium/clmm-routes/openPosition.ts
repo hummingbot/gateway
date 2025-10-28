@@ -13,7 +13,7 @@ import { RaydiumClmmOpenPositionRequest } from '../schemas';
 
 import { quotePosition } from './quotePosition';
 
-async function openPosition(
+export async function openPosition(
   _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
