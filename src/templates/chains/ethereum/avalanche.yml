@@ -7,4 +7,3 @@ swapProvider: uniswap/router
 # Legacy gas price (in GWEI)
 # If not set, will fetch from network RPC
 gasPrice:
-transactionExecutionTimeoutMs: 10000 # Timeout for waiting for transaction execution (in milliseconds)
