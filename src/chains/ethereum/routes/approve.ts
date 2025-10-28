@@ -1,3 +1,5 @@
+import { stat } from 'fs';
+
 import { ethers, constants, utils } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
@@ -7,7 +9,6 @@ import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
 import { EthereumLedger } from '../ethereum-ledger';
-import { waitForTransactionWithTimeout, APPROVAL_TRANSACTION_TIMEOUT } from '../ethereum.utils';
 import { ApproveRequestSchema, ApproveResponseSchema, ApproveRequestType, ApproveResponseType } from '../schemas';
 
 // Default gas limit for approve operations
@@ -174,10 +175,10 @@ export async function approveEthereumToken(
         // Send the signed transaction
         const txResponse = await ethereum.provider.sendTransaction(signedTx);
 
-        // Wait for confirmation with timeout (60 seconds for approvals)
-        const receipt = await waitForTransactionWithTimeout(txResponse, APPROVAL_TRANSACTION_TIMEOUT);
+        // Wait for confirmation with timeout
+        const receipt = await ethereum.handleTransactionExecution(txResponse);
 
-        if (!receipt) {
+        if (!receipt || receipt.status === -1) {
           throw new Error('Transaction timed out or failed to get receipt');
         }
 
@@ -204,9 +205,9 @@ export async function approveEthereumToken(
         const tx = await ethereum.approveERC20(contract, wallet, spenderAddress, amountBigNumber);
 
         // Wait for the transaction to be mined with timeout (60 seconds for approvals)
-        const receipt = await waitForTransactionWithTimeout(tx as any, APPROVAL_TRANSACTION_TIMEOUT);
+        const receipt = await ethereum.handleTransactionExecution(tx);
 
-        if (!receipt) {
+        if (receipt.status === -1) {
           throw new Error('Transaction timed out or failed to get receipt');
         }
 
@@ -215,6 +216,7 @@ export async function approveEthereumToken(
           nonce: tx.nonce,
           gasUsed: receipt.gasUsed,
           effectiveGasPrice: receipt.effectiveGasPrice,
+          status: receipt.status,
         };
       }
     } else {
@@ -225,6 +227,7 @@ export async function approveEthereumToken(
         nonce: 0,
         gasUsed: ethers.BigNumber.from('0'),
         effectiveGasPrice: ethers.BigNumber.from('0'),
+        status: 1,
       };
     }
 
@@ -287,7 +290,7 @@ export async function approveEthereumToken(
         const txResponse = await ethereum.provider.sendTransaction(signedTx);
 
         // Wait for confirmation with extended timeout
-        const permit2Receipt = await waitForTransactionWithTimeout(txResponse, APPROVAL_TRANSACTION_TIMEOUT);
+        const permit2Receipt = await ethereum.handleTransactionExecution(txResponse);
 
         if (!permit2Receipt) {
           throw new Error('Permit2 transaction timed out or failed to get receipt');
@@ -318,9 +321,9 @@ export async function approveEthereumToken(
         );
 
         // Wait for confirmation with extended timeout
-        const permit2Receipt = await waitForTransactionWithTimeout(permit2Tx, APPROVAL_TRANSACTION_TIMEOUT);
+        const permit2Receipt = await ethereum.handleTransactionExecution(permit2Tx);
 
-        if (!permit2Receipt) {
+        if (!permit2Receipt || permit2Receipt.status === -1) {
           throw new Error('Permit2 transaction timed out or failed to get receipt');
         }
 
@@ -341,7 +344,7 @@ export async function approveEthereumToken(
 
     return {
       signature: approval.hash,
-      status: 1, // CONFIRMED
+      status: approval.status ?? -1,
       data: {
         tokenAddress: fullToken.address,
         spender: isUniversalRouter ? universalRouterAddress || spenderAddress : spenderAddress,

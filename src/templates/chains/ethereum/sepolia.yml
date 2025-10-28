@@ -2,3 +2,4 @@ chainID: 11155111
 nodeURL: https://rpc.ankr.com/eth_sepolia 
 nativeCurrencySymbol: ETH
 minGasPrice: 0.1
+transactionExecutionTimeoutMs: 10000 # Timeout for waiting for transaction execution (in milliseconds)

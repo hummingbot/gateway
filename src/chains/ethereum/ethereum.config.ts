@@ -11,6 +11,7 @@ export interface EthereumNetworkConfig {
   maxPriorityFeePerGas?: number;
   infuraAPIKey?: string;
   useInfuraWebSocket?: boolean;
+  transactionExecutionTimeoutMs?: number;
 }
 
 export interface EthereumChainConfig {
@@ -32,6 +33,7 @@ export function getEthereumNetworkConfig(network: string): EthereumNetworkConfig
     minGasPrice: ConfigManagerV2.getInstance().get(namespaceId + '.minGasPrice'),
     maxFeePerGas: ConfigManagerV2.getInstance().get(namespaceId + '.maxFeePerGas'),
     maxPriorityFeePerGas: ConfigManagerV2.getInstance().get(namespaceId + '.maxPriorityFeePerGas'),
+    transactionExecutionTimeoutMs: ConfigManagerV2.getInstance().get(namespaceId + '.transactionExecutionTimeoutMs'),
   };
 }
 

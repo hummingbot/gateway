@@ -4,7 +4,6 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
 import { getEthereumChainConfig } from '../../../chains/ethereum/ethereum.config';
-import { waitForTransactionWithTimeout } from '../../../chains/ethereum/ethereum.utils';
 import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { UniswapAmmExecuteSwapRequest } from '../schemas';
@@ -159,8 +158,8 @@ export async function executeAmmSwap(
 
       logger.info(`Transaction sent: ${txResponse.hash}`);
 
-      // Wait for confirmation with timeout (30 seconds for hardware wallets)
-      receipt = await waitForTransactionWithTimeout(txResponse, 30000);
+      // Wait for confirmation with timeout
+      receipt = await ethereum.handleTransactionExecution(txResponse);
     } else {
       // Regular wallet flow
       let wallet;
@@ -217,7 +216,7 @@ export async function executeAmmSwap(
       logger.info(`Transaction sent: ${tx.hash}`);
 
       // Wait for transaction confirmation
-      receipt = await tx.wait();
+      receipt = await ethereum.handleTransactionExecution(tx);
     }
 
     // Check if the transaction was successful
@@ -251,7 +250,7 @@ export async function executeAmmSwap(
 
     return {
       signature: receipt.transactionHash,
-      status: 1, // CONFIRMED
+      status: receipt.status,
       data: {
         tokenIn,
         tokenOut,

@@ -2,7 +2,6 @@ import { BigNumber } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { waitForTransactionWithTimeout } from '../../../chains/ethereum/ethereum.utils';
 import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
@@ -62,7 +61,7 @@ async function executeQuote(
   };
 
   const txResponse = await wallet.sendTransaction(txData);
-  const txReceipt = await waitForTransactionWithTimeout(txResponse);
+  const txReceipt = await ethereum.handleTransactionExecution(txResponse);
 
   // Get token info for formatting amounts
   const sellTokenInfo = ethereum.getToken(quote.sellTokenAddress);
@@ -76,8 +75,8 @@ async function executeQuote(
   const expectedAmountIn = parseFloat(zeroX.formatTokenAmount(quote.sellAmount, sellTokenInfo.decimals));
   const expectedAmountOut = parseFloat(zeroX.formatTokenAmount(quote.buyAmount, buyTokenInfo.decimals));
 
-  // Use the new handleTransactionConfirmation helper
-  const result = ethereum.handleTransactionConfirmation(
+  // Use the new handleExecuteQuoteTransactionConfirmation helper
+  const result = ethereum.handleExecuteQuoteTransactionConfirmation(
     txReceipt,
     quote.sellTokenAddress,
     quote.buyTokenAddress,

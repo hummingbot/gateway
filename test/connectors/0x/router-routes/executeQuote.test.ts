@@ -143,7 +143,7 @@ describe('POST /execute-quote', () => {
         if (address === mockUSDC.address) return mockUSDC;
         return null;
       }),
-      handleTransactionConfirmation: jest
+      handleExecuteQuoteTransactionConfirmation: jest
         .fn()
         .mockImplementation((txReceipt, inputToken, outputToken, amountIn, amountOut) => {
           if (!txReceipt) {
@@ -238,7 +238,7 @@ describe('POST /execute-quote', () => {
         if (address === mockUSDC.address) return mockUSDC;
         return null;
       }),
-      handleTransactionConfirmation: jest
+      handleExecuteQuoteTransactionConfirmation: jest
         .fn()
         .mockImplementation((txReceipt, inputToken, outputToken, amountIn, amountOut) => {
           if (!txReceipt) {

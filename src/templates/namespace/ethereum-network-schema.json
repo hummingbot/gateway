@@ -9,6 +9,10 @@
       "type": "number",
       "description": "Minimum gas price in GWEI"
     },
+    "transactionExecutionTimeoutMs": {
+      "type": "number",
+      "description": " Timeout for waiting for transaction execution (in milliseconds)"
+    },
     "maxFeePerGas": {
       "type": "number",
       "description": "EIP-1559 maximum fee per gas in GWEI (optional, will fetch from network or Etherscan API if not set)"

@@ -258,7 +258,7 @@ async function addLiquidity(
   }
 
   // Wait for transaction confirmation
-  const receipt = await tx.wait();
+  const receipt = await ethereum.handleTransactionExecution(tx);
 
   // Calculate gas fee
   const gasFee = formatTokenAmount(
@@ -268,7 +268,7 @@ async function addLiquidity(
 
   return {
     signature: receipt.transactionHash,
-    status: 1, // CONFIRMED
+    status: receipt.status,
     data: {
       fee: gasFee,
       baseTokenAmountAdded: quote.baseTokenAmount,

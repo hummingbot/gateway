@@ -217,7 +217,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const tx = await positionManagerWithSigner.multicall([calldata], txParams);
 
         // Wait for transaction confirmation
-        const receipt = await tx.wait();
+        const receipt = await ethereum.handleTransactionExecution(tx);
 
         // Calculate gas fee
         const gasFee = formatTokenAmount(
@@ -236,7 +236,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         return {
           signature: receipt.transactionHash,
-          status: 1, // CONFIRMED
+          status: receipt.status,
           data: {
             fee: gasFee,
             baseTokenAmountAdded: actualBaseAmount,

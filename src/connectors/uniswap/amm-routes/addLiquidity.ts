@@ -3,6 +3,7 @@ import { Static } from '@sinclair/typebox';
 import { Percent } from '@uniswap/sdk-core';
 import { BigNumber, utils } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
+import { re } from 'mathjs';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { wrapEthereum } from '../../../chains/ethereum/routes/wrap';
@@ -259,7 +260,7 @@ async function addLiquidity(
   }
 
   // Wait for transaction confirmation
-  const receipt = await tx.wait();
+  const receipt = await ethereum.handleTransactionExecution(tx);
 
   // Calculate gas fee
   const gasFee = formatTokenAmount(
@@ -269,7 +270,7 @@ async function addLiquidity(
 
   return {
     signature: receipt.transactionHash,
-    status: 1, // CONFIRMED
+    status: receipt.status,
     data: {
       fee: gasFee,
       baseTokenAmountAdded: quote.baseTokenAmount,
