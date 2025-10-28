@@ -18,6 +18,10 @@
       "type": ["number", "null"],
       "description": "Gas price in GWEI for legacy (non-EIP-1559) networks (optional, will fetch from network RPC if not set)"
     },
+    "transactionExecutionTimeoutMs": {
+      "type": "number",
+      "description": " Timeout for waiting for transaction execution (in milliseconds)"
+    },
     "baseFee": {
       "type": ["number", "null"],
       "description": "EIP-1559 base fee in GWEI (optional, will fetch from network or Etherscan API if not set)"
