@@ -1026,7 +1026,7 @@ export class Ethereum {
       logger.warn('Transaction pending, no receipt available yet');
       return {
         signature: '',
-        status: 0, // PENDING
+        status: -1, // PENDING
         data: undefined,
       };
     }
@@ -1038,7 +1038,7 @@ export class Ethereum {
       logger.error(`Transaction ${signature} failed on-chain`);
       return {
         signature,
-        status: -1, // FAILED
+        status: 0, // FAILED
         data: {
           tokenIn: inputToken,
           tokenOut: outputToken,
@@ -1089,7 +1089,7 @@ export class Ethereum {
     logger.warn(`Transaction ${signature} status unclear, treating as pending`);
     return {
       signature,
-      status: 0, // PENDING
+      status: -1, // PENDING
       data: {
         tokenIn: inputToken,
         tokenOut: outputToken,
