@@ -15,6 +15,7 @@ import {
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Pancakeswap } from '../pancakeswap';
+import { PancakeswapConfig } from '../pancakeswap.config';
 import { getPancakeswapV3NftManagerAddress } from '../pancakeswap.contracts';
 import { formatTokenAmount, getPancakeswapPoolInfo } from '../pancakeswap.utils';
 
@@ -30,7 +31,7 @@ export async function openPosition(
   poolAddress: string,
   baseTokenAmount?: number,
   quoteTokenAmount?: number,
-  slippagePct?: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<OpenPositionResponseType> {
   // Validate essential parameters
   if (!lowerPrice || !upperPrice || !poolAddress || (baseTokenAmount === undefined && quoteTokenAmount === undefined)) {
@@ -67,7 +68,7 @@ export async function openPosition(
   }
 
   // Calculate slippage tolerance
-  const slippageTolerance = new Percent(Math.floor((slippagePct ?? pancakeswap.config.slippagePct) * 100), 10000);
+  const slippageTolerance = new Percent(Math.floor(slippagePct * 100), 10000);
 
   // Convert price range to ticks
   const token0 = pool.token0;

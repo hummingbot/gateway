@@ -229,7 +229,7 @@ async function formatSwapQuote(
       amountIn: isNaN(estimatedAmountIn) || !isFinite(estimatedAmountIn) ? 0 : estimatedAmountIn,
       amountOut: isNaN(estimatedAmountOut) || !isFinite(estimatedAmountOut) ? 0 : estimatedAmountOut,
       price: isNaN(price) || !isFinite(price) ? 0 : price,
-      slippagePct: slippagePct,
+      slippagePct,
       minAmountOut: isNaN(estimatedAmountOut) || !isFinite(estimatedAmountOut) ? 0 : estimatedAmountOut,
       maxAmountIn: isNaN(maxAmountIn) || !isFinite(maxAmountIn) ? 0 : maxAmountIn,
       // CLMM-specific fields
@@ -266,7 +266,7 @@ async function formatSwapQuote(
       amountIn: isNaN(estimatedAmountIn) || !isFinite(estimatedAmountIn) ? 0 : estimatedAmountIn,
       amountOut: isNaN(estimatedAmountOut) || !isFinite(estimatedAmountOut) ? 0 : estimatedAmountOut,
       price: isNaN(price) || !isFinite(price) ? 0 : price,
-      slippagePct: slippagePct,
+      slippagePct,
       minAmountOut: isNaN(minAmountOut) || !isFinite(minAmountOut) ? 0 : minAmountOut,
       maxAmountIn: isNaN(estimatedAmountIn) || !isFinite(estimatedAmountIn) ? 0 : estimatedAmountIn,
       // CLMM-specific fields
@@ -385,7 +385,7 @@ export async function quoteSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
   return await formatSwapQuote(fastify, network, baseToken, quoteToken, amount, side, poolAddress, slippagePct);
 }

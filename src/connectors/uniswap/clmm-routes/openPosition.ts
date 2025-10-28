@@ -1,22 +1,12 @@
 import { Contract } from '@ethersproject/contracts';
-import { Token, CurrencyAmount, Percent } from '@uniswap/sdk-core';
-import {
-  Position,
-  Pool as V3Pool,
-  NonfungiblePositionManager,
-  MintOptions,
-  nearestUsableTick,
-  tickToPrice,
-  FeeAmount,
-} from '@uniswap/v3-sdk';
+import { CurrencyAmount, Percent } from '@uniswap/sdk-core';
+import { Position, NonfungiblePositionManager, MintOptions, nearestUsableTick } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import JSBI from 'jsbi';
 
 // Default gas limit for CLMM open position operations
 const CLMM_OPEN_POSITION_GAS_LIMIT = 600000;
-
-import { re } from 'mathjs';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import {
@@ -28,8 +18,9 @@ import {
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Uniswap } from '../uniswap';
+import { UniswapConfig } from '../uniswap.config';
 import { getUniswapV3NftManagerAddress } from '../uniswap.contracts';
-import { formatTokenAmount, parseFeeTier, getUniswapPoolInfo } from '../uniswap.utils';
+import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
 export async function openPosition(
   fastify: FastifyInstance,
@@ -40,7 +31,7 @@ export async function openPosition(
   poolAddress: string,
   baseTokenAmount?: number,
   quoteTokenAmount?: number,
-  slippagePct?: number,
+  slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<OpenPositionResponseType> {
   // Validate essential parameters
   if (!lowerPrice || !upperPrice || !poolAddress || (baseTokenAmount === undefined && quoteTokenAmount === undefined)) {
@@ -77,7 +68,7 @@ export async function openPosition(
   }
 
   // Calculate slippage tolerance
-  const slippageTolerance = new Percent(Math.floor((slippagePct ?? uniswap.config.slippagePct) * 100), 10000);
+  const slippageTolerance = new Percent(Math.floor(slippagePct * 100), 10000);
 
   // Convert price range to ticks
   const token0 = pool.token0;

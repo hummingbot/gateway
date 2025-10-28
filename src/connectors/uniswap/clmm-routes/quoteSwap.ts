@@ -403,7 +403,7 @@ export async function quoteSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
   return await formatSwapQuote(fastify, network, poolAddress, baseToken, quoteToken, amount, side, slippagePct);
 }

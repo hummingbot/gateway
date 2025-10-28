@@ -2,13 +2,14 @@ import { Contract } from '@ethersproject/contracts';
 import { CurrencyAmount, Percent } from '@pancakeswap/sdk';
 import { Position, NonfungiblePositionManager } from '@pancakeswap/v3-sdk';
 import { Static } from '@sinclair/typebox';
-import { BigNumber, utils } from 'ethers';
+import { BigNumber } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { AddLiquidityResponseType, AddLiquidityResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
+import { PancakeswapConfig } from '../pancakeswap.config';
 import { getPancakeswapV3NftManagerAddress, POSITION_MANAGER_ABI } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
 import { PancakeswapClmmAddLiquidityRequest } from '../schemas';
@@ -23,7 +24,7 @@ export async function addLiquidity(
   positionAddress: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
-  slippagePct?: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<AddLiquidityResponseType> {
   if (!positionAddress || (baseTokenAmount === undefined && quoteTokenAmount === undefined)) {
     throw fastify.httpErrors.badRequest('Missing required parameters');
@@ -51,7 +52,7 @@ export async function addLiquidity(
     throw fastify.httpErrors.notFound('Pool not found for position');
   }
 
-  const slippageTolerance = new Percent(Math.floor((slippagePct ?? pancakeswap.config.slippagePct) * 100), 10000);
+  const slippageTolerance = new Percent(Math.floor(slippagePct * 100), 10000);
 
   const baseTokenSymbol = token0.symbol === 'WETH' ? token0.symbol : token1.symbol;
   const isBaseToken0 = token0.symbol === baseTokenSymbol;
