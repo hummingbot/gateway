@@ -1,9 +1,28 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { GetPositionInfoRequestType, PositionInfo, PositionInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { PancakeswapSolClmmGetPositionInfoRequest } from '../schemas';
+
+export async function getPositionInfo(
+  fastify: FastifyInstance,
+  network: string,
+  positionAddress: string,
+): Promise<PositionInfo> {
+  const pancakeswap = await PancakeswapSol.getInstance(network);
+
+  if (!positionAddress) {
+    throw fastify.httpErrors.badRequest('Position address is required');
+  }
+
+  const positionInfo = await pancakeswap.getPositionInfo(positionAddress);
+  if (!positionInfo) {
+    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+  }
+
+  return positionInfo;
+}
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -24,19 +43,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     async (request): Promise<PositionInfo> => {
       try {
         const { network = 'mainnet-beta', positionAddress } = request.query;
-
-        const pancakeswap = await PancakeswapSol.getInstance(network);
-
-        if (!positionAddress) {
-          throw fastify.httpErrors.badRequest('Position address is required');
-        }
-
-        const positionInfo = await pancakeswap.getPositionInfo(positionAddress);
-        if (!positionInfo) {
-          throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
-        }
-
-        return positionInfo;
+        return await getPositionInfo(fastify, network, positionAddress);
       } catch (e: any) {
         logger.error('Position info error:', e);
         // Re-throw httpErrors as-is

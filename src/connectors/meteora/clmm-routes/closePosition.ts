@@ -16,7 +16,7 @@ import { MeteoraClmmClosePositionRequest } from '../schemas';
 import { collectFees } from './collectFees';
 import { removeLiquidity } from './removeLiquidity';
 
-async function closePosition(
+export async function closePosition(
   fastify: FastifyInstance,
   network: string,
   walletAddress: string,

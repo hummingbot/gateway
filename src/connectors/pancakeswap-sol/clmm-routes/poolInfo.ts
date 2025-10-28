@@ -1,9 +1,24 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { GetPoolInfoRequestType, PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { PancakeswapSolClmmGetPoolInfoRequest } from '../schemas';
+
+export async function getPoolInfo(fastify: FastifyInstance, network: string, poolAddress: string): Promise<PoolInfo> {
+  const pancakeswap = await PancakeswapSol.getInstance(network);
+
+  if (!poolAddress) {
+    throw fastify.httpErrors.badRequest('Pool address is required');
+  }
+
+  const poolInfo = await pancakeswap.getClmmPoolInfo(poolAddress);
+  if (!poolInfo) {
+    throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+  }
+
+  return poolInfo;
+}
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -24,19 +39,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     async (request): Promise<PoolInfo> => {
       try {
         const { network = 'mainnet-beta', poolAddress } = request.query;
-
-        const pancakeswap = await PancakeswapSol.getInstance(network);
-
-        if (!poolAddress) {
-          throw fastify.httpErrors.badRequest('Pool address is required');
-        }
-
-        const poolInfo = await pancakeswap.getClmmPoolInfo(poolAddress);
-        if (!poolInfo) {
-          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
-        }
-
-        return poolInfo;
+        return await getPoolInfo(fastify, network, poolAddress);
       } catch (e: any) {
         logger.error('Pool info error:', e);
         // Re-throw httpErrors as-is

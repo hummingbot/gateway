@@ -1,6 +1,6 @@
 import { Type } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { GetPositionsOwnedRequestType, PositionInfo, PositionInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
@@ -8,6 +8,24 @@ import { Meteora } from '../meteora';
 import { MeteoraClmmGetPositionsOwnedRequest } from '../schemas';
 // Using Fastify's native error handling
 const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
+
+export async function getPositionsOwned(
+  fastify: FastifyInstance,
+  network: string,
+  walletAddress: string,
+): Promise<PositionInfo[]> {
+  const meteora = await Meteora.getInstance(network);
+
+  // Validate wallet address
+  try {
+    new PublicKey(walletAddress);
+  } catch (error) {
+    throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
+  }
+
+  const positions = await meteora.getAllPositionsForWallet(new PublicKey(walletAddress));
+  return positions;
+}
 
 export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -28,20 +46,8 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const network = request.query.network;
-        const meteora = await Meteora.getInstance(network);
-
-        const walletAddressToUse = request.query.walletAddress;
-
-        // Validate wallet address
-        try {
-          new PublicKey(walletAddressToUse);
-        } catch (error) {
-          throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
-        }
-
-        const positions = await meteora.getAllPositionsForWallet(new PublicKey(walletAddressToUse));
-
-        return positions;
+        const walletAddress = request.query.walletAddress;
+        return await getPositionsOwned(fastify, network, walletAddress);
       } catch (e: any) {
         logger.error(e);
         if (e.statusCode) {

@@ -25,7 +25,7 @@ const OPEN_POSITION_ERROR_MESSAGE = (error: any) => `Failed to open position: ${
 const SOL_POSITION_RENT = 0.05; // SOL amount required for position rent
 const SOL_TRANSACTION_BUFFER = 0.01; // Additional SOL buffer for transaction costs
 
-async function openPosition(
+export async function openPosition(
   fastify: FastifyInstance,
   network: string,
   walletAddress: string,

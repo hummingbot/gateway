@@ -57,7 +57,7 @@ const mockTokenAccounts = {
         data: {
           parsed: {
             info: {
-              tokenAmount: { decimals: 0, amount: '1' },
+              tokenAmount: { decimals: 0, amount: '1', uiAmount: 1 },
               mint: 'nftmint1',
             },
           },
@@ -69,7 +69,7 @@ const mockTokenAccounts = {
         data: {
           parsed: {
             info: {
-              tokenAmount: { decimals: 0, amount: '1' },
+              tokenAmount: { decimals: 0, amount: '1', uiAmount: 1 },
               mint: 'nftmint2',
             },
           },
@@ -84,10 +84,24 @@ describe('GET /positions-owned', () => {
 
   beforeAll(async () => {
     app = await buildApp();
+  });
 
-    // Mock Solana.getInstance
+  beforeEach(() => {
+    // Reset all mocks before each test
+    jest.clearAllMocks();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('should return all positions for a wallet across all pools', async () => {
+    // Mock Solana.getInstance - needs to handle TWO calls to getParsedTokenAccountsByOwner
     const mockConnection = {
-      getParsedTokenAccountsByOwner: jest.fn().mockResolvedValue(mockTokenAccounts),
+      getParsedTokenAccountsByOwner: jest
+        .fn()
+        .mockResolvedValueOnce(mockTokenAccounts) // SPL Token program
+        .mockResolvedValueOnce({ value: [] }), // Token2022 program
     };
     const mockSolana = {
       connection: mockConnection,
@@ -99,13 +113,7 @@ describe('GET /positions-owned', () => {
       getPositionInfo: jest.fn().mockResolvedValueOnce(mockPositions[0]).mockResolvedValueOnce(mockPositions[1]),
     };
     (PancakeswapSol.getInstance as jest.Mock).mockResolvedValue(mockPancakeswapSol);
-  });
 
-  afterAll(async () => {
-    await app.close();
-  });
-
-  it('should return all positions for a wallet across all pools', async () => {
     const response = await app.inject({
       method: 'GET',
       url: '/positions-owned',
@@ -126,7 +134,10 @@ describe('GET /positions-owned', () => {
 
   it('should return empty array when wallet has no NFT positions', async () => {
     const mockConnection = {
-      getParsedTokenAccountsByOwner: jest.fn().mockResolvedValue({ value: [] }),
+      getParsedTokenAccountsByOwner: jest
+        .fn()
+        .mockResolvedValueOnce({ value: [] }) // SPL Token program
+        .mockResolvedValueOnce({ value: [] }), // Token2022 program
     };
     const mockSolana = {
       connection: mockConnection,
@@ -175,7 +186,10 @@ describe('GET /positions-owned', () => {
 
   it('should skip non-PancakeSwap NFTs', async () => {
     const mockConnection = {
-      getParsedTokenAccountsByOwner: jest.fn().mockResolvedValue(mockTokenAccounts),
+      getParsedTokenAccountsByOwner: jest
+        .fn()
+        .mockResolvedValueOnce(mockTokenAccounts) // SPL Token program
+        .mockResolvedValueOnce({ value: [] }), // Token2022 program
     };
     const mockSolana = {
       connection: mockConnection,

@@ -29,7 +29,7 @@ import { ConfigManagerV2 } from './services/config-manager-v2';
 import { logger } from './services/logger';
 import { quoteCache } from './services/quote-cache';
 import { tokensRoutes } from './tokens/tokens.routes';
-import { tradingRoutes } from './trading/trading.routes';
+import { tradingRoutes, tradingClmmRoutes } from './trading/trading.routes';
 import { GATEWAY_VERSION } from './version';
 import { walletRoutes } from './wallet/wallet.routes';
 
@@ -64,6 +64,7 @@ const swaggerOptions = {
       { name: '/tokens', description: 'Token management endpoints' },
       { name: '/pools', description: 'Pool management endpoints' },
       { name: '/trading/swap', description: 'Unified cross-chain swap endpoints' },
+      { name: '/trading/clmm', description: 'Unified cross-chain CLMM (Concentrated Liquidity) endpoints' },
 
       // Chains
       {
@@ -226,6 +227,9 @@ const configureGatewayServer = () => {
 
     // Register trading routes (unified cross-chain swap)
     app.register(tradingRoutes, { prefix: '/trading/swap' });
+
+    // Register trading CLMM routes (unified cross-chain concentrated liquidity)
+    app.register(tradingClmmRoutes, { prefix: '/trading/clmm' });
 
     // Register chain routes
     app.register(solanaRoutes, { prefix: '/chains/solana' });
