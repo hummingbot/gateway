@@ -225,7 +225,7 @@ export const MeteoraClmmOpenPositionRequest = Type.Object({
   strategyType: Type.Optional(
     Type.Number({
       description: 'Strategy type for the position',
-      examples: [StrategyType.SpotImBalanced],
+      examples: [StrategyType.Spot],
       enum: Object.values(StrategyType).filter((x) => typeof x === 'number'),
     }),
   ),
@@ -275,7 +275,7 @@ export const MeteoraClmmAddLiquidityRequest = Type.Object({
   strategyType: Type.Optional(
     Type.Number({
       description: 'Strategy type for the position',
-      examples: [StrategyType.SpotImBalanced],
+      examples: [StrategyType.Spot],
       enum: Object.values(StrategyType).filter((x) => typeof x === 'number'),
     }),
   ),
@@ -491,7 +491,7 @@ export const MeteoraClmmQuotePositionRequest = Type.Object({
   strategyType: Type.Optional(
     Type.Number({
       description: 'Strategy type for the position',
-      examples: [StrategyType.SpotImBalanced],
+      examples: [StrategyType.Spot],
       enum: Object.values(StrategyType).filter((x) => typeof x === 'number'),
     }),
   ),

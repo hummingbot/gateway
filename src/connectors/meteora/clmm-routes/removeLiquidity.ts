@@ -51,76 +51,71 @@ export async function removeLiquidity(
   const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
   logger.info(`Removing ${percentageToRemove.toFixed(4)}% liquidity from position ${positionAddress}`);
-  const binIdsToRemove = position.positionData.positionBinData.map((bin) => bin.binId);
   const bps = new BN(percentageToRemove * 100);
 
   const removeLiquidityTx = await dlmmPool.removeLiquidity({
     position: position.publicKey,
     user: wallet.publicKey,
-    binIds: binIdsToRemove,
+    fromBinId: position.positionData.lowerBinId,
+    toBinId: position.positionData.upperBinId,
     bps: bps,
     shouldClaimAndClose: false,
   });
 
-  // Handle both single transaction and array of transactions
   let signature: string;
   let fee: number;
 
-  if (Array.isArray(removeLiquidityTx)) {
-    // If multiple transactions are returned, execute them in sequence
-    logger.info(`Received ${removeLiquidityTx.length} transactions for removing liquidity`);
+  // If multiple transactions are returned, execute them in sequence
+  logger.info(`Received ${removeLiquidityTx.length} transactions for removing liquidity`);
 
-    let totalFee = 0;
-    let lastSignature = '';
+  let totalFee = 0;
+  let lastSignature: string;
+  const signatures: string[] = [];
 
-    for (let i = 0; i < removeLiquidityTx.length; i++) {
-      const tx = removeLiquidityTx[i];
-      logger.info(`Executing transaction ${i + 1} of ${removeLiquidityTx.length}`);
+  for (let i = 0; i < removeLiquidityTx.length; i++) {
+    const tx = removeLiquidityTx[i];
+    logger.info(`Executing transaction ${i + 1} of ${removeLiquidityTx.length}`);
 
-      // Set fee payer for simulation
-      tx.feePayer = wallet.publicKey;
-
-      // Simulate before sending
-      await solana.simulateWithErrorHandling(tx, fastify);
-
-      const result = await solana.sendAndConfirmTransaction(tx, [wallet]);
-      totalFee += result.fee;
-      lastSignature = result.signature;
-    }
-
-    signature = lastSignature;
-    fee = totalFee;
-  } else {
-    // Single transaction case
     // Set fee payer for simulation
-    removeLiquidityTx.feePayer = wallet.publicKey;
+    tx.feePayer = wallet.publicKey;
 
-    // Simulate with error handling
-    await solana.simulateWithErrorHandling(removeLiquidityTx, fastify);
+    // Simulate before sending
+    await solana.simulateWithErrorHandling(tx, fastify);
 
-    logger.info('Transaction simulated successfully, sending to network...');
+    const result = await solana.sendAndConfirmTransaction(tx, [wallet]);
+    totalFee += result.fee;
+    signatures.push(result.signature);
 
-    const result = await solana.sendAndConfirmTransaction(removeLiquidityTx, [wallet]);
-    signature = result.signature;
-    fee = result.fee;
+    lastSignature = result.signature;
   }
 
+  fee = totalFee;
+  signature = lastSignature;
+
   // Get transaction data for confirmation
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  const txsData = await Promise.all(
+    signatures.map((signature) =>
+      solana.connection.getTransaction(signature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      }),
+    ),
+  );
 
-  const confirmed = txData !== null;
+  const confirmed = txsData.every((txData) => txData !== null);
 
-  if (confirmed && txData) {
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
-      dlmmPool.tokenX.publicKey.toBase58(),
-      dlmmPool.tokenY.publicKey.toBase58(),
-    ]);
+  if (confirmed) {
+    const balancesChanges = await Promise.all(
+      signatures.map((signature) =>
+        solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
+          dlmmPool.tokenX.publicKey.toBase58(),
+          dlmmPool.tokenY.publicKey.toBase58(),
+        ]),
+      ),
+    );
 
-    const tokenXRemovedAmount = balanceChanges[0];
-    const tokenYRemovedAmount = balanceChanges[1];
+    const tokenXRemovedAmount = balancesChanges.reduce((acc, { balanceChanges }) => acc + balanceChanges[0], 0);
+    const tokenYRemovedAmount = balancesChanges.reduce((acc, { balanceChanges }) => acc + balanceChanges[1], 0);
 
     logger.info(
       `Liquidity removed from position ${positionAddress}: ${Math.abs(tokenXRemovedAmount).toFixed(4)} ${tokenXSymbol}, ${Math.abs(tokenYRemovedAmount).toFixed(4)} ${tokenYSymbol}`,

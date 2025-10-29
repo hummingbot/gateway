@@ -39,7 +39,7 @@ export async function quotePosition(
     const strategy = {
       minBinId: Math.min(lowerBinId, upperBinId),
       maxBinId: Math.max(lowerBinId, upperBinId),
-      strategyType: strategyType ?? StrategyType.SpotBalanced,
+      strategyType: strategyType ?? StrategyType.Spot,
     };
 
     // Quote the position creation to get cost estimates

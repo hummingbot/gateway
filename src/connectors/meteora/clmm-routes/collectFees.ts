@@ -46,33 +46,61 @@ export async function collectFees(
     position: position,
   });
 
-  // Set fee payer for simulation
-  claimSwapFeeTx.feePayer = wallet.publicKey;
+  let signature: string;
+  let fee: number;
 
-  // Simulate with error handling
-  await solana.simulateWithErrorHandling(claimSwapFeeTx, fastify);
+  logger.info(`Received ${claimSwapFeeTx.length} transactions for collecting fees`);
 
-  logger.info('Transaction simulated successfully, sending to network...');
+  let totalFee = 0;
+  let lastSignature: string;
+  const signatures: string[] = [];
 
-  // Send and confirm transaction using sendAndConfirmTransaction which handles signing
-  const { signature, fee } = await solana.sendAndConfirmTransaction(claimSwapFeeTx, [wallet]);
+  for (let i = 0; i < claimSwapFeeTx.length; i++) {
+    const tx = claimSwapFeeTx[i];
+
+    // Set fee payer for simulation
+    tx.feePayer = wallet.publicKey;
+
+    // Simulate with error handling
+    await solana.simulateWithErrorHandling(tx, fastify);
+
+    logger.info('Transaction simulated successfully, sending to network...');
+
+    // Send and confirm transaction using sendAndConfirmTransaction which handles signing
+    const result = await solana.sendAndConfirmTransaction(tx, [wallet]);
+    totalFee += result.fee;
+    signatures.push(result.signature);
+
+    lastSignature = result.signature;
+  }
+
+  fee = totalFee;
+  signature = lastSignature;
 
   // Get transaction data for confirmation
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  const txsData = await Promise.all(
+    signatures.map((signature) =>
+      solana.connection.getTransaction(signature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      }),
+    ),
+  );
 
-  const confirmed = txData !== null;
+  const confirmed = txsData.every((txData) => txData !== null);
 
-  if (confirmed && txData) {
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
-      dlmmPool.tokenX.publicKey.toBase58(),
-      dlmmPool.tokenY.publicKey.toBase58(),
-    ]);
+  if (confirmed) {
+    const balancesChanges = await Promise.all(
+      signatures.map((signature) =>
+        solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
+          dlmmPool.tokenX.publicKey.toBase58(),
+          dlmmPool.tokenY.publicKey.toBase58(),
+        ]),
+      ),
+    );
 
-    const collectedFeeX = balanceChanges[0];
-    const collectedFeeY = balanceChanges[1];
+    const collectedFeeX = balancesChanges.reduce((acc, { balanceChanges }) => acc + balanceChanges[0], 0);
+    const collectedFeeY = balancesChanges.reduce((acc, { balanceChanges }) => acc + balanceChanges[1], 0);
 
     logger.info(
       `Fees collected from position ${positionAddress}: ${Math.abs(collectedFeeX).toFixed(4)} ${tokenXSymbol}, ${Math.abs(collectedFeeY).toFixed(4)} ${tokenYSymbol}`,

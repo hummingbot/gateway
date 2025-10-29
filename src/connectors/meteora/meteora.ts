@@ -177,8 +177,8 @@ export class Meteora {
     return binData.bins.map((bin) => ({
       binId: bin.binId,
       price: Number(bin.pricePerToken),
-      baseTokenAmount: Number(convertDecimals(bin.xAmount, dlmmPool.tokenX.decimal)),
-      quoteTokenAmount: Number(convertDecimals(bin.yAmount, dlmmPool.tokenY.decimal)),
+      baseTokenAmount: Number(convertDecimals(bin.xAmount, dlmmPool.tokenX.mint.decimals)),
+      quoteTokenAmount: Number(convertDecimals(bin.yAmount, dlmmPool.tokenY.mint.decimals)),
     }));
   }
 
@@ -202,7 +202,7 @@ export class Meteora {
       const upperPrice = getPriceOfBinByBinId(positionData.upperBinId, dlmmPool.lbPair.binStep);
 
       // Adjust for decimal difference (tokenX.decimal - tokenY.decimal)
-      const decimalDiff = dlmmPool.tokenX.decimal - dlmmPool.tokenY.decimal; // 9 - 6 = 3
+      const decimalDiff = dlmmPool.tokenX.mint.decimals - dlmmPool.tokenY.mint.decimals; // 9 - 6 = 3
       const adjustmentFactor = Math.pow(10, decimalDiff);
 
       const adjustedLowerPrice = Number(lowerPrice) * adjustmentFactor;
@@ -213,10 +213,10 @@ export class Meteora {
         poolAddress,
         baseTokenAddress: dlmmPool.tokenX.publicKey.toBase58(),
         quoteTokenAddress: dlmmPool.tokenY.publicKey.toBase58(),
-        baseTokenAmount: Number(convertDecimals(positionData.totalXAmount, dlmmPool.tokenX.decimal)),
-        quoteTokenAmount: Number(convertDecimals(positionData.totalYAmount, dlmmPool.tokenY.decimal)),
-        baseFeeAmount: Number(convertDecimals(positionData.feeX, dlmmPool.tokenX.decimal)),
-        quoteFeeAmount: Number(convertDecimals(positionData.feeY, dlmmPool.tokenY.decimal)),
+        baseTokenAmount: Number(convertDecimals(positionData.totalXAmount, dlmmPool.tokenX.mint.decimals)),
+        quoteTokenAmount: Number(convertDecimals(positionData.totalYAmount, dlmmPool.tokenY.mint.decimals)),
+        baseFeeAmount: Number(convertDecimals(positionData.feeX, dlmmPool.tokenX.mint.decimals)),
+        quoteFeeAmount: Number(convertDecimals(positionData.feeY, dlmmPool.tokenY.mint.decimals)),
         lowerBinId: positionData.lowerBinId,
         upperBinId: positionData.upperBinId,
         lowerPrice: adjustedLowerPrice,
@@ -266,7 +266,7 @@ export class Meteora {
     const upperPrice = getPriceOfBinByBinId(position.positionData.upperBinId, dlmmPool.lbPair.binStep);
 
     // Adjust for decimal difference (tokenX.decimal - tokenY.decimal)
-    const decimalDiff = dlmmPool.tokenX.decimal - dlmmPool.tokenY.decimal;
+    const decimalDiff = dlmmPool.tokenX.mint.decimals - dlmmPool.tokenY.mint.decimals;
     const adjustmentFactor = Math.pow(10, decimalDiff);
 
     const adjustedLowerPrice = Number(lowerPrice) * adjustmentFactor;
@@ -277,10 +277,10 @@ export class Meteora {
       poolAddress: info.publicKey.toString(),
       baseTokenAddress: dlmmPool.tokenX.publicKey.toBase58(),
       quoteTokenAddress: dlmmPool.tokenY.publicKey.toBase58(),
-      baseTokenAmount: Number(convertDecimals(position.positionData.totalXAmount, dlmmPool.tokenX.decimal)),
-      quoteTokenAmount: Number(convertDecimals(position.positionData.totalYAmount, dlmmPool.tokenY.decimal)),
-      baseFeeAmount: Number(convertDecimals(position.positionData.feeX, dlmmPool.tokenX.decimal)),
-      quoteFeeAmount: Number(convertDecimals(position.positionData.feeY, dlmmPool.tokenY.decimal)),
+      baseTokenAmount: Number(convertDecimals(position.positionData.totalXAmount, dlmmPool.tokenX.mint.decimals)),
+      quoteTokenAmount: Number(convertDecimals(position.positionData.totalYAmount, dlmmPool.tokenY.mint.decimals)),
+      baseFeeAmount: Number(convertDecimals(position.positionData.feeX, dlmmPool.tokenX.mint.decimals)),
+      quoteFeeAmount: Number(convertDecimals(position.positionData.feeY, dlmmPool.tokenY.mint.decimals)),
       lowerBinId: position.positionData.lowerBinId,
       upperBinId: position.positionData.upperBinId,
       lowerPrice: adjustedLowerPrice,
