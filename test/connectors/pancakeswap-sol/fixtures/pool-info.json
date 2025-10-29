@@ -1,0 +1,11 @@
+{
+  "address": "DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ",
+  "baseTokenAddress": "So11111111111111111111111111111111111111112",
+  "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "binStep": 10,
+  "feePct": 0.01,
+  "price": 190.56511437059862,
+  "baseTokenAmount": 2956.268982425,
+  "quoteTokenAmount": 354101.171926,
+  "activeBinId": -16579
+}

@@ -357,4 +357,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   );
 };
 
+// Export executeSwap alias for uniform chain route imports
+export { executeClmmSwap as executeSwap };
+
 export default executeSwapRoute;

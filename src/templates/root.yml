@@ -84,6 +84,10 @@ configurations:
     configurationPath: connectors/pancakeswap.yml
     schemaPath: pancakeswap-schema.json
 
+  $namespace pancakeswap-sol:
+    configurationPath: connectors/pancakeswap-sol.yml
+    schemaPath: pancakeswap-sol-schema.json
+
   # RPC providers
   $namespace helius:
     configurationPath: rpc/helius.yml

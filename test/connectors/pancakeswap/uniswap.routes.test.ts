@@ -47,8 +47,8 @@ describe('Pancakeswap Routes Structure', () => {
     it('should register all Pancakeswap route types', async () => {
       const routes = fastify.printRoutes();
 
-      // Check that Pancakeswap router routes are registered
-      expect(routes).toContain('pancakeswap/');
+      // Check that Pancakeswap routes are registered (both EVM and Solana)
+      expect(routes).toContain('pancakeswap');
       expect(routes).toContain('router/');
 
       // Check that Pancakeswap AMM routes are registered

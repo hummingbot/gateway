@@ -13,7 +13,7 @@ import { RaydiumClmmAddLiquidityRequest } from '../schemas';
 
 import { quotePosition } from './quotePosition';
 
-async function addLiquidity(
+export async function addLiquidity(
   _fastify: FastifyInstance,
   network: string,
   walletAddress: string,

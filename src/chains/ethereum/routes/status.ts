@@ -52,6 +52,7 @@ export async function getEthereumStatus(network: string): Promise<StatusResponse
       rpcProvider,
       currentBlockNumber,
       nativeCurrency,
+      swapProvider: ethereum.swapProvider,
     };
   } catch (error) {
     logger.error(`Error getting Ethereum status: ${error.message}`);
@@ -92,6 +93,7 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
           rpcProvider: 'unavailable',
           currentBlockNumber: 0,
           nativeCurrency: 'ETH',
+          swapProvider: '',
         };
       }
     },

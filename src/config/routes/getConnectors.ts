@@ -6,6 +6,7 @@ import { PancakeswapConfig } from '#src/connectors/pancakeswap/pancakeswap.confi
 import { ZeroXConfig } from '../../connectors/0x/0x.config';
 import { JupiterConfig } from '../../connectors/jupiter/jupiter.config';
 import { MeteoraConfig } from '../../connectors/meteora/meteora.config';
+import { PancakeswapSolConfig } from '../../connectors/pancakeswap-sol/pancakeswap-sol.config';
 import { RaydiumConfig } from '../../connectors/raydium/raydium.config';
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 import { logger } from '../../services/logger';
@@ -62,6 +63,12 @@ export const connectorsConfig = [
     trading_types: [...PancakeswapConfig.tradingTypes],
     chain: PancakeswapConfig.chain,
     networks: [...PancakeswapConfig.networks],
+  },
+  {
+    name: 'pancakeswap-sol',
+    trading_types: [...PancakeswapSolConfig.tradingTypes],
+    chain: PancakeswapSolConfig.chain,
+    networks: [...PancakeswapSolConfig.networks],
   },
 ];
 

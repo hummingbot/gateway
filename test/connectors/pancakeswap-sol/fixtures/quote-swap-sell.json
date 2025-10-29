@@ -1,0 +1,12 @@
+{
+  "poolAddress": "DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ",
+  "tokenIn": "So11111111111111111111111111111111111111112",
+  "tokenOut": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "amountIn": 0.01,
+  "amountOut": 1.9054973543691325,
+  "price": 190.54973543691324,
+  "minAmountOut": 1.8864423808254411,
+  "maxAmountIn": 0.01,
+  "priceImpactPct": 0,
+  "slippagePct": 1
+}

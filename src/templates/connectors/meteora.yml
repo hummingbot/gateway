@@ -1,6 +1,6 @@
 # Global settings for Meteora
 # Default slippage percentage for swaps (e.g., 1 = 1%)
-slippagePct: 1
+slippagePct: 2
 
 # default DLMM strategy type for positions
 # SpotImBalanced = 0,

@@ -10,7 +10,6 @@ describe('InfuraService', () => {
       chainID: 1,
       nodeURL: 'https://eth.llamarpc.com',
       nativeCurrencySymbol: 'ETH',
-      minGasPrice: 0.1,
       infuraAPIKey: 'test-infura-key-123',
       useInfuraWebSocket: false,
     };

@@ -188,10 +188,9 @@ export class UniversalRouterService {
     const routePath = route.join(' -> ');
     logger.info(`[UniversalRouter] Route path: ${routePath}`);
 
-    // Estimate gas with proper gas options
-    logger.info(`[UniversalRouter] Estimating gas for swap...`);
-    const estimatedGasUsed = await this.estimateGas(calldata, value, options.recipient);
-    logger.info(`[UniversalRouter] Estimated gas: ${estimatedGasUsed.toString()}`);
+    // Skip gas estimation during quote phase - it will be done during execution
+    logger.info(`[UniversalRouter] Skipping gas estimation for quote (will estimate during execution)`);
+    const estimatedGasUsed = BigNumber.from(0); // Placeholder, actual estimation happens during execution
 
     // Simple gas cost estimation
     const estimatedGasUsedQuoteToken = CurrencyAmount.fromRawAmount(
