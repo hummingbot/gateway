@@ -1,5 +1,3 @@
-import { stat } from 'fs';
-
 import { ethers, constants, utils } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
