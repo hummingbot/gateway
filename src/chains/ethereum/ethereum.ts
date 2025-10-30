@@ -506,6 +506,45 @@ export class Ethereum {
   }
 
   /**
+   * Get token info by symbol or address. If token is not in the token list but is a valid
+   * address, fetches token info from the blockchain.
+   * @param tokenSymbolOrAddress Token symbol or contract address
+   * @returns TokenInfo object or undefined if token not found
+   */
+  public async getOrFetchToken(tokenSymbolOrAddress: string): Promise<TokenInfo | undefined> {
+    // First try to get from token list
+    const tokenFromList = this.getToken(tokenSymbolOrAddress);
+    if (tokenFromList) {
+      return tokenFromList;
+    }
+
+    // If not in list, check if it's a valid address and fetch from blockchain
+    try {
+      const address = utils.getAddress(tokenSymbolOrAddress);
+      logger.info(`Token ${address} not in token list, fetching from blockchain...`);
+
+      const contract = this.getContract(address, this.provider);
+
+      // Fetch token details from contract
+      const [name, symbol, decimals] = await Promise.all([contract.name(), contract.symbol(), contract.decimals()]);
+
+      const tokenInfo: TokenInfo = {
+        chainId: this.chainId,
+        address,
+        name,
+        symbol,
+        decimals,
+      };
+
+      logger.info(`Fetched token info from blockchain: ${symbol} (${name}) with ${decimals} decimals`);
+      return tokenInfo;
+    } catch (error) {
+      logger.warn(`Failed to fetch token info for ${tokenSymbolOrAddress}: ${error.message}`);
+      return undefined;
+    }
+  }
+
+  /**
    * Get multiple tokens and return a map with symbols as keys
    * This helper function is used by routes like allowances and balances
    * @param tokens Array of token symbols or addresses
