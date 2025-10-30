@@ -129,7 +129,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         querystring: {
           ...GetPositionInfoRequest,
           properties: {
-            network: { type: 'string', default: 'base' },
+            network: { type: 'string', default: 'bsc', examples: ['bsc'] },
             positionAddress: {
               type: 'string',
               description: 'Position NFT token ID',

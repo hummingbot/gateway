@@ -1,23 +1,49 @@
 import { Static, Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
+import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
+import { getSolanaChainConfig } from '../../chains/solana/solana.config';
+import { closePosition as meteoraClosePosition } from '../../connectors/meteora/clmm-routes/closePosition';
+import { closePosition as pancakeswapClosePosition } from '../../connectors/pancakeswap/clmm-routes/closePosition';
+import { closePosition as pancakeswapSolClosePosition } from '../../connectors/pancakeswap-sol/clmm-routes/closePosition';
+import { closePosition as raydiumClosePosition } from '../../connectors/raydium/clmm-routes/closePosition';
+import { closePosition as uniswapClosePosition } from '../../connectors/uniswap/clmm-routes/closePosition';
 import { ClosePositionResponseType, ClosePositionResponse } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
 
+// Get default wallet from Solana config, fallback to Ethereum if Solana doesn't exist
+let defaultWallet: string;
+try {
+  const solanaChainConfig = getSolanaChainConfig();
+  defaultWallet = solanaChainConfig.defaultWallet;
+} catch {
+  const ethereumChainConfig = getEthereumChainConfig();
+  defaultWallet = ethereumChainConfig.defaultWallet;
+}
+
 // Unified schema with connector field
 const UnifiedClosePositionRequest = Type.Object({
-  connector: Type.String({ description: 'Connector name' }),
-  network: Type.String({ description: 'Network name' }),
-  walletAddress: Type.String({ description: 'Wallet address' }),
-  positionAddress: Type.String({ description: 'Position address' }),
+  connector: Type.String({
+    description: 'Connector name (uniswap, pancakeswap, raydium, meteora, pancakeswap-sol)',
+    default: 'meteora',
+    examples: ['meteora'],
+  }),
+  network: Type.String({
+    description: 'Network name',
+    default: 'mainnet-beta',
+    examples: ['mainnet-beta'],
+  }),
+  walletAddress: Type.String({
+    description: 'Wallet address',
+    default: defaultWallet,
+  }),
+  positionAddress: Type.String({
+    description: 'Position address',
+    examples: ['<sample-position-address>'],
+  }),
 });
 
 // Import connector functions
-import { closePosition as uniswapClosePosition } from '../../connectors/uniswap/clmm-routes/closePosition';
-import { closePosition as pancakeswapClosePosition } from '../../connectors/pancakeswap/clmm-routes/closePosition';
-import { closePosition as raydiumClosePosition } from '../../connectors/raydium/clmm-routes/closePosition';
-import { closePosition as meteoraClosePosition } from '../../connectors/meteora/clmm-routes/closePosition';
-import { closePosition as pancakeswapSolClosePosition } from '../../connectors/pancakeswap-sol/clmm-routes/closePosition';
 
 export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{

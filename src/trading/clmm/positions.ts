@@ -1,6 +1,8 @@
 import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
+import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
+import { getSolanaChainConfig } from '../../chains/solana/solana.config';
 import { getPositionInfo as meteoraGetPositionInfo } from '../../connectors/meteora/clmm-routes/positionInfo';
 import { getPositionInfo as pancakeswapGetPositionInfo } from '../../connectors/pancakeswap/clmm-routes/positionInfo';
 import { getPositionInfo as pancakeswapSolGetPositionInfo } from '../../connectors/pancakeswap-sol/clmm-routes/positionInfo';
@@ -9,7 +11,15 @@ import { getPositionInfo as uniswapGetPositionInfo } from '../../connectors/unis
 import { PositionInfo, PositionInfoSchema } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
 
-// Import position info functions from connectors
+// Get default wallet from Solana config, fallback to Ethereum if Solana doesn't exist
+let defaultWallet: string;
+try {
+  const solanaChainConfig = getSolanaChainConfig();
+  defaultWallet = solanaChainConfig.defaultWallet;
+} catch {
+  const ethereumChainConfig = getEthereumChainConfig();
+  defaultWallet = ethereumChainConfig.defaultWallet;
+}
 
 /**
  * Unified position info request schema
@@ -18,18 +28,22 @@ const UnifiedPositionInfoRequestSchema = Type.Object({
   connector: Type.String({
     description: 'CLMM connector (raydium, meteora, pancakeswap-sol, uniswap, pancakeswap)',
     enum: ['raydium', 'meteora', 'pancakeswap-sol', 'uniswap', 'pancakeswap'],
-    default: 'raydium',
+    default: 'meteora',
+    examples: ['meteora'],
   }),
   chainNetwork: Type.String({
     description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
     default: 'solana-mainnet-beta',
+    examples: ['solana-mainnet-beta'],
   }),
   positionAddress: Type.String({
     description: 'Position address or NFT token ID',
+    examples: ['<sample-position-address>'],
   }),
   walletAddress: Type.Optional(
     Type.String({
       description: 'Wallet address (required for Meteora, optional for others)',
+      default: defaultWallet,
     }),
   ),
 });
