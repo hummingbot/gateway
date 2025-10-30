@@ -129,9 +129,9 @@ export async function getUniswapAmmQuote(
     await ethereum.init();
   }
 
-  // Resolve tokens
-  const baseTokenObj = uniswap.getTokenBySymbol(baseToken);
-  const quoteTokenObj = uniswap.getTokenBySymbol(quoteToken);
+  // Resolve tokens (supports unlisted tokens via blockchain fetching)
+  const baseTokenObj = await uniswap.getOrFetchTokenBySymbol(baseToken);
+  const quoteTokenObj = await uniswap.getOrFetchTokenBySymbol(quoteToken);
 
   if (!baseTokenObj) {
     logger.error(`Base token not found: ${baseToken}`);
