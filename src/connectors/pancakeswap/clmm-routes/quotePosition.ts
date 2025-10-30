@@ -1,4 +1,5 @@
 import { Position, nearestUsableTick, tickToPrice } from '@pancakeswap/v3-sdk';
+import { utils } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
@@ -203,11 +204,12 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         if (baseTokenAmount !== undefined && quoteTokenAmount !== undefined) {
           console.log('DEBUG: Using fromAmounts (both amounts provided)');
           // Both amounts provided - use fromAmounts to calculate optimal position
+          // Use parseUnits to avoid scientific notation issues with large numbers
           const baseAmountRaw = JSBI.BigInt(
-            Math.floor(baseTokenAmount * Math.pow(10, baseTokenObj.decimals)).toString(),
+            utils.parseUnits(baseTokenAmount.toString(), baseTokenObj.decimals).toString(),
           );
           const quoteAmountRaw = JSBI.BigInt(
-            Math.floor(quoteTokenAmount * Math.pow(10, quoteTokenObj.decimals)).toString(),
+            utils.parseUnits(quoteTokenAmount.toString(), quoteTokenObj.decimals).toString(),
           );
 
           console.log('DEBUG: Raw amounts:');
@@ -250,8 +252,9 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         } else if (baseTokenAmount !== undefined) {
           console.log('DEBUG: Using fromAmount (only base amount provided)');
           // Only base amount provided
+          // Use parseUnits to avoid scientific notation issues with large numbers
           const baseAmountRaw = JSBI.BigInt(
-            Math.floor(baseTokenAmount * Math.pow(10, baseTokenObj.decimals)).toString(),
+            utils.parseUnits(baseTokenAmount.toString(), baseTokenObj.decimals).toString(),
           );
 
           console.log('DEBUG: baseAmountRaw:', baseAmountRaw.toString());
@@ -278,8 +281,9 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         } else if (quoteTokenAmount !== undefined) {
           console.log('DEBUG: Using fromAmount (only quote amount provided)');
           // Only quote amount provided
+          // Use parseUnits to avoid scientific notation issues with large numbers
           const quoteAmountRaw = JSBI.BigInt(
-            Math.floor(quoteTokenAmount * Math.pow(10, quoteTokenObj.decimals)).toString(),
+            utils.parseUnits(quoteTokenAmount.toString(), quoteTokenObj.decimals).toString(),
           );
 
           console.log('DEBUG: quoteAmountRaw:', quoteAmountRaw.toString());

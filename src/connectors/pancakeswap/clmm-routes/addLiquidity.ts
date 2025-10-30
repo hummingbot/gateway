@@ -60,7 +60,11 @@ export async function addLiquidity(
   let token1Amount = CurrencyAmount.fromRawAmount(token1, 0);
 
   if (baseTokenAmount !== undefined) {
-    const baseAmountRaw = Math.floor(baseTokenAmount * Math.pow(10, isBaseToken0 ? token0.decimals : token1.decimals));
+    // Use parseUnits to avoid scientific notation issues with large numbers
+    const baseAmountRaw = utils.parseUnits(
+      baseTokenAmount.toString(),
+      isBaseToken0 ? token0.decimals : token1.decimals,
+    );
     if (isBaseToken0) {
       token0Amount = CurrencyAmount.fromRawAmount(token0, baseAmountRaw.toString());
     } else {
@@ -69,8 +73,10 @@ export async function addLiquidity(
   }
 
   if (quoteTokenAmount !== undefined) {
-    const quoteAmountRaw = Math.floor(
-      quoteTokenAmount * Math.pow(10, isBaseToken0 ? token1.decimals : token0.decimals),
+    // Use parseUnits to avoid scientific notation issues with large numbers
+    const quoteAmountRaw = utils.parseUnits(
+      quoteTokenAmount.toString(),
+      isBaseToken0 ? token1.decimals : token0.decimals,
     );
     if (isBaseToken0) {
       token1Amount = CurrencyAmount.fromRawAmount(token1, quoteAmountRaw.toString());
