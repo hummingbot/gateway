@@ -312,7 +312,74 @@ export class Meteora {
     return matchingPosition;
   }
 
-  /** Gets position information */
+  /** Gets position information directly by position address (without needing wallet) */
+  async getPositionInfoByAddress(positionAddress: string): Promise<PositionInfo> {
+    // Fetch the position account to extract pool address
+    const positionPubkey = new PublicKey(positionAddress);
+    const positionAccount = await this.solana.connection.getAccountInfo(positionPubkey);
+
+    if (!positionAccount) {
+      throw new Error(`Position ${positionAddress} not found`);
+    }
+
+    // Parse the position account to extract the pool address (lbPair)
+    // Meteora position account structure: lbPair is at offset 8-40 (after discriminator)
+    const lbPairPubkey = new PublicKey(positionAccount.data.slice(8, 40));
+    const poolAddress = lbPairPubkey.toBase58();
+
+    // Get the pool and position using SDK methods
+    const dlmmPool = await this.getDlmmPool(poolAddress);
+    const position = await dlmmPool.getPosition(positionPubkey);
+
+    if (!position) {
+      throw new Error(`Position ${positionAddress} not found in pool ${poolAddress}`);
+    }
+
+    const activeBin = await dlmmPool.getActiveBin();
+
+    if (!activeBin || !activeBin.price || !activeBin.pricePerToken) {
+      throw new Error(`Invalid active bin data for pool: ${poolAddress}`);
+    }
+
+    // Get prices from bin IDs
+    const lowerPrice = getPriceOfBinByBinId(position.positionData.lowerBinId, dlmmPool.lbPair.binStep);
+    const upperPrice = getPriceOfBinByBinId(position.positionData.upperBinId, dlmmPool.lbPair.binStep);
+
+    // Adjust for decimal difference (tokenX.mint.decimals - tokenY.mint.decimals)
+    const decimalDiff = dlmmPool.tokenX.mint.decimals - dlmmPool.tokenY.mint.decimals;
+    const adjustmentFactor = Math.pow(10, decimalDiff);
+
+    const adjustedLowerPrice = Number(lowerPrice) * adjustmentFactor;
+    const adjustedUpperPrice = Number(upperPrice) * adjustmentFactor;
+
+    // Try to get fees - may fail if internal state isn't initialized
+    let baseFeeAmount = 0;
+    let quoteFeeAmount = 0;
+    try {
+      baseFeeAmount = Number(convertDecimals(position.positionData.feeX, dlmmPool.tokenX.mint.decimals));
+      quoteFeeAmount = Number(convertDecimals(position.positionData.feeY, dlmmPool.tokenY.mint.decimals));
+    } catch (feeError) {
+      logger.warn(`Could not calculate fees for position ${positionAddress}, setting to 0: ${feeError.message}`);
+    }
+
+    return {
+      address: positionAddress,
+      poolAddress: poolAddress,
+      baseTokenAddress: dlmmPool.tokenX.publicKey.toBase58(),
+      quoteTokenAddress: dlmmPool.tokenY.publicKey.toBase58(),
+      baseTokenAmount: Number(convertDecimals(position.positionData.totalXAmount, dlmmPool.tokenX.mint.decimals)),
+      quoteTokenAmount: Number(convertDecimals(position.positionData.totalYAmount, dlmmPool.tokenY.mint.decimals)),
+      baseFeeAmount,
+      quoteFeeAmount,
+      lowerBinId: position.positionData.lowerBinId,
+      upperBinId: position.positionData.upperBinId,
+      lowerPrice: adjustedLowerPrice,
+      upperPrice: adjustedUpperPrice,
+      price: Number(activeBin.pricePerToken),
+    };
+  }
+
+  /** Gets position information (legacy method using wallet) */
   async getPositionInfo(positionAddress: string, wallet: PublicKey): Promise<PositionInfo> {
     const { position, info } = await this.getRawPosition(positionAddress, wallet);
     if (!position) {

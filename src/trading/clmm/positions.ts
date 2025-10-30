@@ -42,7 +42,7 @@ const UnifiedPositionInfoRequestSchema = Type.Object({
   }),
   walletAddress: Type.Optional(
     Type.String({
-      description: 'Wallet address (required for Meteora, optional for others)',
+      description: 'Wallet address (optional for all connectors)',
       default: defaultWallet,
     }),
   ),
@@ -76,7 +76,7 @@ async function getSolanaPositionInfo(
   connector: string,
   network: string,
   positionAddress: string,
-  walletAddress?: string,
+  _walletAddress?: string,
 ): Promise<PositionInfo> {
   logger.info(`[CLMM] Getting position info from ${connector} on solana/${network}`);
 
@@ -84,11 +84,7 @@ async function getSolanaPositionInfo(
     case 'raydium':
       return await raydiumGetPositionInfo(fastify, network, positionAddress);
     case 'meteora':
-      // Meteora requires walletAddress
-      if (!walletAddress) {
-        throw fastify.httpErrors.badRequest('walletAddress is required for Meteora connector');
-      }
-      return await meteoraGetPositionInfo(fastify, network, positionAddress, walletAddress);
+      return await meteoraGetPositionInfo(fastify, network, positionAddress);
     case 'pancakeswap-sol':
       return await pancakeswapSolGetPositionInfo(fastify, network, positionAddress);
     default:

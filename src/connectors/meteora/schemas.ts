@@ -415,13 +415,6 @@ export const MeteoraClmmGetPositionInfoRequest = Type.Object({
     description: 'Position NFT address',
     examples: ['<sample-position-address>'],
   }),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Solana wallet address',
-      default: solanaChainConfig.defaultWallet,
-      examples: [solanaChainConfig.defaultWallet],
-    }),
-  ),
 });
 
 // Meteora CLMM Get Positions Owned Request
