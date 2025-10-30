@@ -1,6 +1,6 @@
 import { Token, CurrencyAmount, Percent, TradeType } from '@uniswap/sdk-core';
 import { Pool as V3Pool, SwapQuoter, SwapOptions, Route as V3Route, Trade as V3Trade } from '@uniswap/v3-sdk';
-import { BigNumber } from 'ethers';
+import { BigNumber, utils } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import JSBI from 'jsbi';
 
@@ -48,17 +48,15 @@ async function quoteClmmSwap(
     let trade;
     if (exactIn) {
       // For SELL (exactIn), we use the input amount and EXACT_INPUT trade type
-      const inputAmount = CurrencyAmount.fromRawAmount(
-        inputToken,
-        JSBI.BigInt(Math.floor(amount * Math.pow(10, inputToken.decimals)).toString()),
-      );
+      // Use parseUnits to avoid scientific notation issues with large numbers
+      const rawAmount = utils.parseUnits(amount.toString(), inputToken.decimals);
+      const inputAmount = CurrencyAmount.fromRawAmount(inputToken, JSBI.BigInt(rawAmount.toString()));
       trade = await V3Trade.fromRoute(route, inputAmount, TradeType.EXACT_INPUT);
     } else {
       // For BUY (exactOut), we use the output amount and EXACT_OUTPUT trade type
-      const outputAmount = CurrencyAmount.fromRawAmount(
-        outputToken,
-        JSBI.BigInt(Math.floor(amount * Math.pow(10, outputToken.decimals)).toString()),
-      );
+      // Use parseUnits to avoid scientific notation issues with large numbers
+      const rawAmount = utils.parseUnits(amount.toString(), outputToken.decimals);
+      const outputAmount = CurrencyAmount.fromRawAmount(outputToken, JSBI.BigInt(rawAmount.toString()));
       trade = await V3Trade.fromRoute(route, outputAmount, TradeType.EXACT_OUTPUT);
     }
 
