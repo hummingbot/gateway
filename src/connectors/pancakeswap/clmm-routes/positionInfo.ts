@@ -22,21 +22,12 @@ export async function getPositionInfo(
   fastify: FastifyInstance,
   network: string,
   positionAddress: string,
-  walletAddress?: string,
 ): Promise<PositionInfo> {
   const pancakeswap = await Pancakeswap.getInstance(network);
   const ethereum = await Ethereum.getInstance(network);
 
   if (!positionAddress) {
     throw fastify.httpErrors.badRequest('Position token ID is required');
-  }
-
-  if (!walletAddress) {
-    walletAddress = await pancakeswap.getFirstWalletAddress();
-    if (!walletAddress) {
-      throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
-    }
-    logger.info(`Using first available wallet address: ${walletAddress}`);
   }
 
   const positionManagerAddress = getPancakeswapV3NftManagerAddress(network);
@@ -115,7 +106,6 @@ export async function getPositionInfo(
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
 
   fastify.get<{
     Querystring: GetPositionInfoRequestType;
@@ -135,7 +125,6 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
               description: 'Position NFT token ID',
               examples: ['1234'],
             },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
           },
         },
         response: {
@@ -145,8 +134,8 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, positionAddress, walletAddress } = request.query;
-        return await getPositionInfo(fastify, network, positionAddress, walletAddress);
+        const { network, positionAddress } = request.query;
+        return await getPositionInfo(fastify, network, positionAddress);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

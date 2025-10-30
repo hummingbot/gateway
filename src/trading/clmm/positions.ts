@@ -1,8 +1,6 @@
 import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
-import { getSolanaChainConfig } from '../../chains/solana/solana.config';
 import { getPositionInfo as meteoraGetPositionInfo } from '../../connectors/meteora/clmm-routes/positionInfo';
 import { getPositionInfo as pancakeswapGetPositionInfo } from '../../connectors/pancakeswap/clmm-routes/positionInfo';
 import { getPositionInfo as pancakeswapSolGetPositionInfo } from '../../connectors/pancakeswap-sol/clmm-routes/positionInfo';
@@ -10,16 +8,6 @@ import { getPositionInfo as raydiumGetPositionInfo } from '../../connectors/rayd
 import { getPositionInfo as uniswapGetPositionInfo } from '../../connectors/uniswap/clmm-routes/positionInfo';
 import { PositionInfo, PositionInfoSchema } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
-
-// Get default wallet from Solana config, fallback to Ethereum if Solana doesn't exist
-let defaultWallet: string;
-try {
-  const solanaChainConfig = getSolanaChainConfig();
-  defaultWallet = solanaChainConfig.defaultWallet;
-} catch {
-  const ethereumChainConfig = getEthereumChainConfig();
-  defaultWallet = ethereumChainConfig.defaultWallet;
-}
 
 /**
  * Unified position info request schema
@@ -40,12 +28,6 @@ const UnifiedPositionInfoRequestSchema = Type.Object({
     description: 'Position address or NFT token ID',
     examples: ['<sample-position-address>'],
   }),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address (optional for all connectors)',
-      default: defaultWallet,
-    }),
-  ),
 });
 
 type UnifiedPositionInfoRequest = Static<typeof UnifiedPositionInfoRequestSchema>;
@@ -76,7 +58,6 @@ async function getSolanaPositionInfo(
   connector: string,
   network: string,
   positionAddress: string,
-  _walletAddress?: string,
 ): Promise<PositionInfo> {
   logger.info(`[CLMM] Getting position info from ${connector} on solana/${network}`);
 
@@ -100,15 +81,14 @@ async function getEthereumPositionInfo(
   connector: string,
   network: string,
   positionAddress: string,
-  walletAddress?: string,
 ): Promise<PositionInfo> {
   logger.info(`[CLMM] Getting position info from ${connector} on ethereum/${network}`);
 
   switch (connector) {
     case 'uniswap':
-      return await uniswapGetPositionInfo(fastify, network, positionAddress, walletAddress);
+      return await uniswapGetPositionInfo(fastify, network, positionAddress);
     case 'pancakeswap':
-      return await pancakeswapGetPositionInfo(fastify, network, positionAddress, walletAddress);
+      return await pancakeswapGetPositionInfo(fastify, network, positionAddress);
     default:
       throw fastify.httpErrors.badRequest(`Unsupported Ethereum CLMM connector: ${connector}`);
   }
@@ -122,7 +102,6 @@ export async function getUnifiedPositionInfo(
   connector: string,
   chainNetwork: string,
   positionAddress: string,
-  walletAddress?: string,
 ): Promise<PositionInfo> {
   const { chain, network } = parseChainNetwork(chainNetwork);
 
@@ -130,10 +109,10 @@ export async function getUnifiedPositionInfo(
 
   switch (chain.toLowerCase()) {
     case 'ethereum':
-      return getEthereumPositionInfo(fastify, connector, network, positionAddress, walletAddress);
+      return getEthereumPositionInfo(fastify, connector, network, positionAddress);
 
     case 'solana':
-      return getSolanaPositionInfo(fastify, connector, network, positionAddress, walletAddress);
+      return getSolanaPositionInfo(fastify, connector, network, positionAddress);
 
     default:
       throw fastify.httpErrors.badRequest(`Unsupported chain: ${chain}`);
@@ -161,10 +140,10 @@ export const positionsRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request, reply) => {
-      const { connector, chainNetwork, positionAddress, walletAddress } = request.query;
+      const { connector, chainNetwork, positionAddress } = request.query;
 
       try {
-        const result = await getUnifiedPositionInfo(fastify, connector, chainNetwork, positionAddress, walletAddress);
+        const result = await getUnifiedPositionInfo(fastify, connector, chainNetwork, positionAddress);
         return reply.code(200).send(result);
       } catch (error: any) {
         logger.error(`[UnifiedCLMM] Position info error: ${error.message}`);
