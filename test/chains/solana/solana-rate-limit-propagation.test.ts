@@ -8,6 +8,7 @@ jest.mock('../../../src/services/logger', () => ({
     warn: jest.fn(),
     debug: jest.fn(),
   },
+  redactUrl: jest.fn((url: string) => url), // Mock redactUrl to return URL as-is
 }));
 
 // Mock config manager
