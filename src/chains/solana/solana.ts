@@ -34,7 +34,7 @@ const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
 
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { logger } from '../../services/logger';
+import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
@@ -87,7 +87,9 @@ export class Solana {
     } else {
       // Default: use nodeURL
       logger.info(`Using standard RPC provider: ${rpcProvider}`);
-      logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${this.config.nodeURL}`);
+      logger.info(
+        `Initializing Solana connector for network: ${this.network}, RPC URL: ${redactUrl(this.config.nodeURL)}`,
+      );
       this.connection = createRateLimitAwareConnection(
         new Connection(this.config.nodeURL, {
           commitment: 'confirmed',
@@ -121,7 +123,7 @@ export class Solana {
           ? `https://devnet.helius-rpc.com/?api-key=${heliusApiKey}`
           : `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`;
 
-        logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${rpcUrl}`);
+        logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${redactUrl(rpcUrl)}`);
         logger.info(`✅ Helius API key configured (length: ${heliusApiKey.length} chars)`);
         logger.info(`Helius features enabled - WebSocket: ${useWebSocketRPC}`);
 
@@ -141,7 +143,7 @@ export class Solana {
       } else {
         // Fallback to standard nodeURL if no API key
         logger.warn(`⚠️ Helius provider selected but no API key configured`);
-        logger.info(`Using standard RPC from nodeURL: ${this.config.nodeURL}`);
+        logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.config.nodeURL)}`);
         this.connection = createRateLimitAwareConnection(
           new Connection(this.config.nodeURL, {
             commitment: 'confirmed',
@@ -176,7 +178,7 @@ export class Solana {
   private async init(): Promise<void> {
     try {
       logger.info(
-        `Initializing Solana connector for network: ${this.network}, RPC URL: ${this.connection.rpcEndpoint}`,
+        `Initializing Solana connector for network: ${this.network}, RPC URL: ${redactUrl(this.connection.rpcEndpoint)}`,
       );
       await this.loadTokens();
 

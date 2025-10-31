@@ -7,7 +7,7 @@ import { HeliusService } from '../chains/solana/helius-service';
 import { getSolanaNetworkConfig } from '../chains/solana/solana.config';
 
 import { ConfigManagerV2 } from './config-manager-v2';
-import { logger } from './logger';
+import { logger, redactUrl } from './logger';
 
 /**
  * Display chain configuration information at startup
@@ -72,9 +72,13 @@ async function displaySolanaConfig(): Promise<void> {
       const connection = new Connection(nodeURL, 'confirmed');
       const slot = await connection.getSlot();
 
-      logger.info(`   📡 Solana (defaultNetwork: ${defaultNetwork}): Block #${slot.toLocaleString()} - ${nodeURL}`);
+      logger.info(
+        `   📡 Solana (defaultNetwork: ${defaultNetwork}): Block #${slot.toLocaleString()} - ${redactUrl(nodeURL)}`,
+      );
     } catch (error: any) {
-      logger.info(`   📡 Solana (defaultNetwork: ${defaultNetwork}): Unable to fetch block number - ${nodeURL}`);
+      logger.info(
+        `   📡 Solana (defaultNetwork: ${defaultNetwork}): Unable to fetch block number - ${redactUrl(nodeURL)}`,
+      );
       logger.debug(`Solana block fetch error: ${error.message}`);
     }
   } catch (error: any) {
@@ -128,10 +132,12 @@ async function displayEthereumConfig(): Promise<void> {
       const blockNumber = await provider.getBlockNumber();
 
       logger.info(
-        `   📡 Ethereum (defaultNetwork: ${defaultNetwork}): Block #${blockNumber.toLocaleString()} - ${nodeURL}`,
+        `   📡 Ethereum (defaultNetwork: ${defaultNetwork}): Block #${blockNumber.toLocaleString()} - ${redactUrl(nodeURL)}`,
       );
     } catch (error: any) {
-      logger.info(`   📡 Ethereum (defaultNetwork: ${defaultNetwork}): Unable to fetch block number - ${nodeURL}`);
+      logger.info(
+        `   📡 Ethereum (defaultNetwork: ${defaultNetwork}): Unable to fetch block number - ${redactUrl(nodeURL)}`,
+      );
       logger.debug(`Ethereum block fetch error: ${error.message}`);
     }
   } catch (error: any) {

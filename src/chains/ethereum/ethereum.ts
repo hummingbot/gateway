@@ -6,7 +6,7 @@ import fse from 'fs-extra';
 import { TokenValue, tokenValueToString } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { logger } from '../../services/logger';
+import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
 
@@ -96,7 +96,7 @@ export class Ethereum {
       this.initializeInfuraProvider(config);
     } else {
       logger.info(`Using standard RPC provider: ${rpcProvider}`);
-      logger.info(`Initializing Ethereum connector for network: ${network}, RPC URL: ${this.rpcUrl}`);
+      logger.info(`Initializing Ethereum connector for network: ${network}, RPC URL: ${redactUrl(this.rpcUrl)}`);
       this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
     }
   }
@@ -407,7 +407,7 @@ export class Ethereum {
 
       if (!infuraApiKey || infuraApiKey.trim() === '') {
         logger.warn(`⚠️ Infura provider selected but no API key configured`);
-        logger.info(`Using standard RPC from nodeURL: ${this.rpcUrl}`);
+        logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
         this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
         return;
       }
@@ -426,7 +426,7 @@ export class Ethereum {
       this.provider = this.infuraService.getProvider() as providers.StaticJsonRpcProvider;
     } catch (error: any) {
       logger.warn(`Failed to initialize Infura provider: ${error.message}`);
-      logger.info(`Using standard RPC from nodeURL: ${this.rpcUrl}`);
+      logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
       this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
     }
   }
