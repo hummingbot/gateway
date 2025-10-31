@@ -21,7 +21,14 @@ interface WebSocketMessage {
   method?: string;
   params?: {
     result: {
-      value: any;
+      context: {
+        slot: number;
+      };
+      value:
+        | {
+            err: any;
+          }
+        | string;
     };
     subscription: number;
   };
@@ -197,8 +204,8 @@ export class HeliusService {
         // Unsubscribe from this signature
         this.unsubscribeFromSignature(subscriptionId);
 
-        if (result && typeof result === 'object' && 'err' in result && result.err) {
-          logger.info(`Transaction ${subscription.signature} failed: ${JSON.stringify(result.err)}`);
+        if (result && result.value && typeof result.value === 'object' && 'err' in result.value && result.value.err) {
+          logger.info(`Transaction ${subscription.signature} failed: ${JSON.stringify(result.value.err)}`);
           subscription.resolve({ confirmed: false, txData: result });
         } else {
           logger.info(`Transaction ${subscription.signature} confirmed via WebSocket`);
