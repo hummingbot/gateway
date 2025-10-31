@@ -502,8 +502,9 @@ export class Solana {
           // Check if we have this token in the wallet
           if (mintToAccount.has(tokenBySymbol.address)) {
             const { parsedAccount } = mintToAccount.get(tokenBySymbol.address);
-            const amount = parsedAccount.amount;
-            const uiAmount = Number(amount) / Math.pow(10, tokenBySymbol.decimals);
+            // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
+            const uiAmount =
+              parsedAccount.uiAmount ?? Number(parsedAccount.amount) / Math.pow(10, tokenBySymbol.decimals);
             balances[tokenBySymbol.symbol] = uiAmount;
             logger.debug(`Found balance for ${tokenBySymbol.symbol}: ${uiAmount}`);
           } else {
@@ -529,8 +530,8 @@ export class Solana {
               if (token) {
                 // Token is in our list
                 foundTokens.add(token.symbol);
-                const amount = parsedAccount.amount;
-                const uiAmount = Number(amount) / Math.pow(10, token.decimals);
+                // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
+                const uiAmount = parsedAccount.uiAmount ?? Number(parsedAccount.amount) / Math.pow(10, token.decimals);
                 balances[token.symbol] = uiAmount;
                 logger.debug(`Found balance for ${token.symbol} (${mintAddress}): ${uiAmount}`);
               } else {
@@ -563,8 +564,8 @@ export class Solana {
         // Check if we have this token in the wallet
         if (mintToAccount.has(token.address)) {
           const { parsedAccount } = mintToAccount.get(token.address);
-          const amount = parsedAccount.amount;
-          const uiAmount = Number(amount) / Math.pow(10, token.decimals);
+          // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
+          const uiAmount = parsedAccount.uiAmount ?? Number(parsedAccount.amount) / Math.pow(10, token.decimals);
           balances[token.symbol] = uiAmount;
           logger.debug(`Found balance for ${token.symbol} (${token.address}): ${uiAmount}`);
         } else {
@@ -588,9 +589,8 @@ export class Solana {
           const mintInfo = await getMint(this.connection, parsedAccount.mint);
           decimals = mintInfo.decimals;
 
-          // Calculate balance
-          const amount = parsedAccount.amount;
-          balance = Number(amount) / Math.pow(10, decimals);
+          // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
+          balance = parsedAccount.uiAmount ?? Number(parsedAccount.amount) / Math.pow(10, decimals);
         } else {
           // Try to get decimals anyway for the display
           try {
@@ -748,12 +748,14 @@ export class Solana {
           const mintAddress = parsedInfo.mint;
 
           // Store in format compatible with existing code
+          // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
           tokenAccountsMap.set(mintAddress, {
             parsedAccount: {
               mint: new PublicKey(mintAddress),
               owner: new PublicKey(parsedInfo.owner),
               amount: BigInt(parsedInfo.tokenAmount.amount),
               decimals: parsedInfo.tokenAmount.decimals,
+              uiAmount: parsedInfo.tokenAmount.uiAmount, // Pre-calculated by RPC node
               isNative: parsedInfo.isNative || false,
               delegatedAmount: parsedInfo.delegatedAmount ? BigInt(parsedInfo.delegatedAmount.amount) : BigInt(0),
               delegate: parsedInfo.delegate ? new PublicKey(parsedInfo.delegate) : null,
@@ -894,8 +896,8 @@ export class Solana {
   private getTokenBalance(tokenAccount: TokenAccount | undefined, decimals: number): number {
     if (!tokenAccount) return 0;
 
-    const amount = tokenAccount.parsedAccount.amount;
-    return Number(amount) / Math.pow(10, decimals);
+    // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
+    return tokenAccount.parsedAccount.uiAmount ?? Number(tokenAccount.parsedAccount.amount) / Math.pow(10, decimals);
   }
 
   /**
@@ -909,13 +911,16 @@ export class Solana {
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Mint info timeout')), 1000)),
       ]);
 
-      const amount = tokenAccount.parsedAccount.amount;
-      return Number(amount) / Math.pow(10, mintInfo.decimals);
+      // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
+      return (
+        tokenAccount.parsedAccount.uiAmount ??
+        Number(tokenAccount.parsedAccount.amount) / Math.pow(10, mintInfo.decimals)
+      );
     } catch (error) {
       // Use default 9 decimals if mint info fails
       logger.debug(`Failed to get mint info for ${mintAddress}, using default decimals`);
-      const amount = tokenAccount.parsedAccount.amount;
-      return Number(amount) / Math.pow(10, 9);
+      // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
+      return tokenAccount.parsedAccount.uiAmount ?? Number(tokenAccount.parsedAccount.amount) / Math.pow(10, 9);
     }
   }
 
