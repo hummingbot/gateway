@@ -46,9 +46,6 @@ async function displaySolanaConfig(): Promise<void> {
       try {
         const heliusApiKey = config.get('helius.apiKey') || '';
         const useWebSocketRPC = config.get('helius.useWebSocketRPC') || false;
-        const useSender = config.get('helius.useSender') || false;
-        const regionCode = config.get('helius.regionCode') || '';
-        const jitoTipSOL = config.get('helius.jitoTipSOL') || 0;
 
         const networkConfig = getSolanaNetworkConfig(defaultNetwork);
         const mergedConfig = {
@@ -56,9 +53,6 @@ async function displaySolanaConfig(): Promise<void> {
           heliusAPIKey: heliusApiKey,
           useHeliusRestRPC: true,
           useHeliusWebSocketRPC: useWebSocketRPC,
-          useHeliusSender: useSender,
-          heliusRegionCode: regionCode,
-          jitoTipSOL: jitoTipSOL,
         };
 
         const heliusService = new HeliusService(mergedConfig);

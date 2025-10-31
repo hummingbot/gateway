@@ -21,10 +21,7 @@ describe('HeliusService WebSocket Functionality', () => {
       heliusAPIKey: 'test-api-key-123',
       useHeliusRestRPC: true,
       useHeliusWebSocketRPC: true,
-      useHeliusSender: false,
-      heliusRegionCode: 'slc',
       minPriorityFeePerCU: 0.01,
-      jitoTipSOL: 0,
     };
 
     // Create mock WebSocket instance with automatic 'open' event triggering

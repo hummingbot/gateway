@@ -47,20 +47,6 @@ import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } fro
 export const BASE_FEE = 5000;
 const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
 
-// Jito tip accounts for bundles
-const JITO_TIP_ACCOUNTS = [
-  '4ACfpUFoaSD9bfPdeu6DBt89gB6ENTeHBXCAi87NhDEE',
-  'D2L6yPZ2FmmmTKPgzaMKdhu6EWZcTpLy1Vhx8uvZe7NZ',
-  '9bnz4RShgq1hAnLnZbP8kbgBg1kEmcJBYQq3gQbmnSta',
-  '5VY91ws6B2hMmBFRsXkoAAdsPHBJwRfBht4DXox3xkwn',
-  '2nyhqdwKcJZR2vcqCyrYsaPVdAnFoJjiksCXJ7hfEYgD',
-  '2q5pghRs6arqVjRvT5gfgWfWcHWmw1ZuCzphgd5KfWkcJ',
-  'wyvPkWjVZz1M8fHQnMMCDTQDbkManefNNhweYk5WkcF',
-  '3KCKozbAaF75qEU33jtzozcJ29yJuaLJTy2jFdzUY8bT',
-  '4vieeGHPYPG2MmyPRcYjdiDmmhN3ww7hsFNap8pVN3Ey',
-  '4TQLFNWK8AovT1gFvda5jfw2oJeRMKEmw7aH6MGBJ3or',
-];
-
 // Interface for token account data
 interface TokenAccount {
   parsedAccount: any;
@@ -82,7 +68,6 @@ export class Solana {
   public config: SolanaNetworkConfig;
   private _tokenMap: Record<string, TokenInfo> = {};
   private heliusService: HeliusService;
-  private heliusConfig: { useHeliusSender?: boolean; jitoTipSOL?: number } = {};
 
   private static _instances: { [name: string]: Solana };
 
@@ -121,15 +106,6 @@ export class Solana {
       const configManager = ConfigManagerV2.getInstance();
       const heliusApiKey = configManager.get('helius.apiKey') || '';
       const useWebSocketRPC = configManager.get('helius.useWebSocketRPC') || false;
-      const useSender = configManager.get('helius.useSender') || false;
-      const regionCode = configManager.get('helius.regionCode') || '';
-      const jitoTipSOL = configManager.get('helius.jitoTipSOL') || 0;
-
-      // Store Helius-specific config
-      this.heliusConfig = {
-        useHeliusSender: useSender,
-        jitoTipSOL: jitoTipSOL,
-      };
 
       // Merge configs for HeliusService
       const mergedConfig = {
@@ -137,9 +113,6 @@ export class Solana {
         heliusAPIKey: heliusApiKey,
         useHeliusRestRPC: true, // Always true when using Helius provider
         useHeliusWebSocketRPC: useWebSocketRPC,
-        useHeliusSender: useSender,
-        heliusRegionCode: regionCode,
-        jitoTipSOL: jitoTipSOL,
       };
 
       // Always use Helius RPC URL when Helius provider is selected
@@ -150,9 +123,7 @@ export class Solana {
 
         logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${rpcUrl}`);
         logger.info(`✅ Helius API key configured (length: ${heliusApiKey.length} chars)`);
-        logger.info(
-          `Helius features enabled - WebSocket: ${useWebSocketRPC}, Sender: ${useSender}, Region: ${regionCode || 'default'}`,
-        );
+        logger.info(`Helius features enabled - WebSocket: ${useWebSocketRPC}`);
 
         this.connection = createRateLimitAwareConnection(
           new Connection(rpcUrl, {
@@ -1370,113 +1341,6 @@ export class Solana {
     return modifiedTx;
   }
 
-  /**
-   * Add Jito tip instruction to a VersionedTransaction for Helius Sender
-   */
-  private async addJitoTipToTransaction(
-    transaction: VersionedTransaction,
-    payerPublicKey: PublicKey,
-  ): Promise<VersionedTransaction> {
-    if (!this.heliusConfig.useHeliusSender || !this.heliusConfig.jitoTipSOL) {
-      return transaction;
-    }
-
-    const tipAmount = Math.floor(this.heliusConfig.jitoTipSOL * LAMPORTS_PER_SOL);
-    const randomTipAccount = JITO_TIP_ACCOUNTS[Math.floor(Math.random() * JITO_TIP_ACCOUNTS.length)];
-
-    // Validate tip account
-    if (!randomTipAccount || typeof randomTipAccount !== 'string') {
-      throw new Error(`Invalid tip account selected: ${randomTipAccount}`);
-    }
-
-    // Create tip instruction
-    let tipAccountKey: PublicKey;
-    try {
-      tipAccountKey = new PublicKey(randomTipAccount);
-    } catch (error: any) {
-      throw new Error(`Failed to create PublicKey for tip account ${randomTipAccount}: ${error.message}`);
-    }
-
-    const tipInstruction = SystemProgram.transfer({
-      fromPubkey: payerPublicKey,
-      toPubkey: tipAccountKey,
-      lamports: tipAmount,
-    });
-
-    const originalMessage = transaction.message;
-    const originalStaticCount = originalMessage.staticAccountKeys.length;
-
-    // Add SystemProgram to static keys if not already present
-    const newStaticKeys = [...originalMessage.staticAccountKeys];
-    const systemProgramIndex = newStaticKeys.findIndex((key) => key.equals(SystemProgram.programId));
-
-    if (systemProgramIndex === -1) {
-      newStaticKeys.push(SystemProgram.programId);
-    }
-
-    // Add payer to static keys if not already present
-    const payerIndex = newStaticKeys.findIndex((key) => key.equals(payerPublicKey));
-    if (payerIndex === -1) {
-      newStaticKeys.push(payerPublicKey);
-    }
-
-    // Add tip account to static keys if not already present
-    const tipAccountIndex = newStaticKeys.findIndex((key) => key.equals(tipAccountKey));
-
-    if (tipAccountIndex === -1) {
-      newStaticKeys.push(tipAccountKey);
-    }
-
-    // Process original instructions with index adjustment
-    const indexOffset = newStaticKeys.length - originalStaticCount;
-    const originalInstructions = originalMessage.compiledInstructions.map((ix) => ({
-      ...ix,
-      accountKeyIndexes: ix.accountKeyIndexes.map((index) =>
-        index >= originalStaticCount ? index + indexOffset : index,
-      ),
-    }));
-
-    // Create tip instruction - find final indexes after all accounts are added
-    const finalPayerIndex = newStaticKeys.findIndex((key) => key.equals(payerPublicKey));
-    const finalTipAccountIdx = newStaticKeys.findIndex((key) => key.equals(tipAccountKey));
-    const finalSystemProgramIdx = newStaticKeys.findIndex((key) => key.equals(SystemProgram.programId));
-
-    const tipInstructionCompiled = {
-      programIdIndex: finalSystemProgramIdx,
-      accountKeyIndexes: [
-        finalPayerIndex, // from
-        finalTipAccountIdx, // to
-      ],
-      data: tipInstruction.data instanceof Buffer ? new Uint8Array(tipInstruction.data) : tipInstruction.data,
-    };
-
-    // Combine all instructions (tip instruction first)
-    const allInstructions = [tipInstructionCompiled, ...originalInstructions];
-
-    // Create new transaction with tip instruction
-    const modifiedTx = new VersionedTransaction(
-      new MessageV0({
-        header: originalMessage.header,
-        staticAccountKeys: newStaticKeys,
-        recentBlockhash: originalMessage.recentBlockhash,
-        compiledInstructions: allInstructions.map((ix) => ({
-          programIdIndex: ix.programIdIndex,
-          accountKeyIndexes: ix.accountKeyIndexes,
-          data: ix.data instanceof Buffer ? new Uint8Array(ix.data) : ix.data,
-        })),
-        addressTableLookups: originalMessage.addressTableLookups,
-      }),
-    );
-
-    // Copy original signatures - transaction will need to be re-signed by caller
-    modifiedTx.signatures = [...transaction.signatures];
-
-    logger.info(
-      `Jito tip transaction created successfully with ${modifiedTx.message.staticAccountKeys.length} accounts`,
-    );
-    return modifiedTx;
-  }
-
   async sendAndConfirmRawTransaction(
     transaction: VersionedTransaction | Transaction,
   ): Promise<{ confirmed: boolean; signature: string; txData: any }> {
@@ -1492,16 +1356,8 @@ export class Solana {
       return this._sendAndConfirmRawTransaction(serializedTx);
     }
 
-    // For VersionedTransaction, add Jito tip if using Helius Sender
-    let finalTransaction = transaction;
-    if (this.heliusConfig.useHeliusSender && this.heliusConfig.jitoTipSOL && this.heliusConfig.jitoTipSOL > 0) {
-      // Extract payer from the transaction
-      const payer = transaction.message.staticAccountKeys[0]; // First account is always the payer
-      finalTransaction = await this.addJitoTipToTransaction(transaction, payer);
-    }
-
-    // Serialize the final transaction
-    const serializedTx = finalTransaction.serialize();
+    // For VersionedTransaction, serialize directly
+    const serializedTx = transaction.serialize();
     return this._sendAndConfirmRawTransaction(serializedTx);
   }
 
@@ -1515,33 +1371,12 @@ export class Solana {
     let signature: string | null = null;
 
     try {
-      // Use Helius Sender if available, otherwise use standard RPC
-      if (this.heliusService) {
-        try {
-          signature = await this.heliusService.sendWithSender(serializedTx);
-          logger.info('Using Helius Sender for optimized transaction delivery');
-        } catch (error) {
-          // Helius Sender not enabled/configured - use standard sendRawTransaction via Helius RPC
-          const chainConfig = getSolanaChainConfig();
-          const rpcProvider = chainConfig.rpcProvider || 'url';
-          if (rpcProvider === 'helius') {
-            logger.info('Using standard sendRawTransaction via Helius RPC (Sender disabled)');
-          } else {
-            logger.info('Using standard sendRawTransaction');
-          }
-          signature = await this.connection.sendRawTransaction(serializedTx, {
-            skipPreflight: true,
-            maxRetries: 0, // Don't rely on RPC provider's retry logic
-          });
-        }
-      } else {
-        // No Helius service, use standard RPC
-        logger.info('Using standard sendRawTransaction');
-        signature = await this.connection.sendRawTransaction(serializedTx, {
-          skipPreflight: true,
-          maxRetries: 0,
-        });
-      }
+      // Use standard sendRawTransaction
+      logger.info('Sending transaction via sendRawTransaction');
+      signature = await this.connection.sendRawTransaction(serializedTx, {
+        skipPreflight: true,
+        maxRetries: 0,
+      });
 
       // Use WebSocket monitoring if available, otherwise fall back to robust polling
       if (this.heliusService && this.heliusService.isWebSocketConnected()) {

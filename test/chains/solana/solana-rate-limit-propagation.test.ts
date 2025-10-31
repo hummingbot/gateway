@@ -24,7 +24,6 @@ jest.mock('../../../src/services/config-manager-v2', () => ({
         if (key === 'solana-mainnet-beta.confirmRetryInterval') return 2;
         if (key === 'solana-mainnet-beta.confirmRetryCount') return 30;
         if (key === 'solana-mainnet-beta.minPriorityFeePerCU') return 0;
-        if (key === 'solana-mainnet-beta.jitoTipSOL') return 0.0001;
         return undefined;
       }),
     })),
