@@ -213,8 +213,18 @@ export class HeliusService {
         }
       }
     } else if (message.result && typeof message.id === 'number') {
-      // Subscription confirmation
-      logger.debug(`WebSocket subscription ${message.id} confirmed with ID ${message.result}`);
+      // Subscription confirmation - remap from local ID to server subscription ID
+      const localId = message.id;
+      const serverSubscriptionId = message.result;
+      logger.debug(`WebSocket subscription ${localId} confirmed with server ID ${serverSubscriptionId}`);
+
+      // Move subscription from local ID to server subscription ID
+      const subscription = this.subscriptions.get(localId);
+      if (subscription) {
+        this.subscriptions.delete(localId);
+        this.subscriptions.set(serverSubscriptionId, subscription);
+        logger.debug(`Remapped subscription from local ID ${localId} to server ID ${serverSubscriptionId}`);
+      }
     } else if (message.error) {
       logger.error(`WebSocket subscription error: ${JSON.stringify(message.error)}`);
       const subscription = this.subscriptions.get(message.id!);
