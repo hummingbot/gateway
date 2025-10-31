@@ -11,6 +11,8 @@ import { MeteoraConfig } from './meteora.config';
 
 export class Meteora {
   private static _instances: { [name: string]: Meteora };
+  // Recommended maximum bins per position (aligns with SDK's DEFAULT_BIN_PER_POSITION)
+  // Ensures single-transaction operations. SDK supports up to 1400 bins via multiple transactions.
   private static readonly MAX_BINS = 70;
   private solana: Solana;
   public config: MeteoraConfig.RootConfig;
@@ -457,7 +459,11 @@ export class Meteora {
     const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false) + padBins;
 
     if (maxBinId - minBinId > Meteora.MAX_BINS) {
-      throw new Error(`Position range too wide. Maximum ${Meteora.MAX_BINS} bins allowed`);
+      throw new Error(
+        `Position range too wide: ${maxBinId - minBinId} bins requested. ` +
+          `Recommended maximum is ${Meteora.MAX_BINS} bins for single-transaction operations. ` +
+          `For wider ranges, create multiple positions or narrow your price range.`,
+      );
     }
 
     return { minBinId, maxBinId };
