@@ -23,6 +23,24 @@ const LOWER_PRICE_BOUND = 150;
 const UPPER_PRICE_BOUND = 250;
 const CLMM_POOL_ADDRESS_EXAMPLE = '2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3';
 
+/**
+ * Parse chain-network parameter into chain and network
+ */
+function parseChainNetwork(chainNetwork: string): { chain: string; network: string } {
+  const parts = chainNetwork.split('-');
+
+  if (parts.length < 2) {
+    throw new Error(
+      `Invalid chain-network format: ${chainNetwork}. Expected format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)`,
+    );
+  }
+
+  const chain = parts[0];
+  const network = parts.slice(1).join('-');
+
+  return { chain, network };
+}
+
 // Unified schema with connector field
 const UnifiedOpenPositionRequest = Type.Object({
   connector: Type.String({
@@ -30,10 +48,10 @@ const UnifiedOpenPositionRequest = Type.Object({
     default: 'meteora',
     examples: ['meteora'],
   }),
-  network: Type.String({
-    description: 'Network name',
-    default: 'mainnet-beta',
-    examples: ['mainnet-beta'],
+  chainNetwork: Type.String({
+    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
+    default: 'solana-mainnet-beta',
+    examples: ['solana-mainnet-beta'],
   }),
   walletAddress: Type.String({
     description: 'Wallet address',
@@ -103,7 +121,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const {
           connector,
-          network,
+          chainNetwork,
           walletAddress,
           lowerPrice,
           upperPrice,
@@ -112,6 +130,9 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           quoteTokenAmount,
           slippagePct,
         } = request.body;
+
+        // Parse chain and network from chainNetwork parameter
+        const { network } = parseChainNetwork(chainNetwork);
 
         // Route to appropriate connector
         switch (connector) {
