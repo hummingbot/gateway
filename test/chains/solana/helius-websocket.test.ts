@@ -27,9 +27,15 @@ describe('HeliusService WebSocket Functionality', () => {
       jitoTipSOL: 0,
     };
 
-    // Create mock WebSocket instance
+    // Create mock WebSocket instance with automatic 'open' event triggering
     mockWs = {
-      on: jest.fn(),
+      on: jest.fn((event: string, callback: (...args: any[]) => void) => {
+        // Store callbacks for later manual triggering
+        if (event === 'open') {
+          // Automatically trigger 'open' event to resolve connectWebSocket promise
+          setImmediate(() => callback());
+        }
+      }),
       send: jest.fn(),
       close: jest.fn(),
       readyState: WebSocket.OPEN,
@@ -47,18 +53,9 @@ describe('HeliusService WebSocket Functionality', () => {
 
   describe('WebSocket Connection', () => {
     it('should connect to mainnet WebSocket endpoint with API key', async () => {
-      // Trigger 'open' event immediately after initialization
-      const onOpenCallback = mockWs.on.mock.calls.find((call) => call[0] === 'open')?.[1];
-
       await heliusService.initialize();
 
       expect(WebSocket).toHaveBeenCalledWith('wss://mainnet.helius-rpc.com/?api-key=test-api-key-123');
-
-      // Simulate connection open
-      if (onOpenCallback) {
-        onOpenCallback.call(mockWs);
-      }
-
       expect(heliusService.isWebSocketConnected()).toBe(true);
     });
 
@@ -72,6 +69,7 @@ describe('HeliusService WebSocket Functionality', () => {
       await heliusService.initialize();
 
       expect(WebSocket).toHaveBeenCalledWith('wss://devnet.helius-rpc.com/?api-key=test-api-key-123');
+      expect(heliusService.isWebSocketConnected()).toBe(true);
     });
 
     it('should not initialize WebSocket if useHeliusWebSocketRPC is false', async () => {
@@ -103,11 +101,9 @@ describe('HeliusService WebSocket Functionality', () => {
 
   describe('Transaction Monitoring - Successful Transaction', () => {
     it('should resolve with confirmed=true when transaction succeeds (err=null)', async () => {
-      const onOpenCallback = mockWs.on.mock.calls.find((call) => call[0] === 'open')?.[1];
-      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
-
       await heliusService.initialize();
-      if (onOpenCallback) onOpenCallback.call(mockWs);
+
+      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
 
       const signature = '2EBVM6cB8vAAD93Ktr6Vd8p67XPbQzCJX47MpReuiCXJAtcjaxpvWpcg9Ege1Nr5Tk3a2GFrByT7WPBjdsTycY9b';
       const monitorPromise = heliusService.monitorTransaction(signature, 30000);
@@ -116,7 +112,18 @@ describe('HeliusService WebSocket Functionality', () => {
       expect(mockWs.send).toHaveBeenCalledWith(expect.stringContaining('"method":"signatureSubscribe"'));
       expect(mockWs.send).toHaveBeenCalledWith(expect.stringContaining(signature));
 
-      // Simulate successful transaction notification
+      // First send subscription confirmation (maps local ID 1 to server ID 20100749)
+      const subscriptionConfirmation = {
+        jsonrpc: '2.0',
+        result: 20100749,
+        id: 1,
+      };
+
+      if (onMessageCallback) {
+        onMessageCallback.call(mockWs, Buffer.from(JSON.stringify(subscriptionConfirmation)));
+      }
+
+      // Then simulate successful transaction notification with server subscription ID
       const successNotification = {
         jsonrpc: '2.0',
         method: 'signatureNotification',
@@ -129,7 +136,7 @@ describe('HeliusService WebSocket Functionality', () => {
               err: null,
             },
           },
-          subscription: 1,
+          subscription: 20100749,
         },
       };
 
@@ -147,16 +154,25 @@ describe('HeliusService WebSocket Functionality', () => {
 
   describe('Transaction Monitoring - Failed Transaction', () => {
     it('should resolve with confirmed=false when transaction fails (err present)', async () => {
-      const onOpenCallback = mockWs.on.mock.calls.find((call) => call[0] === 'open')?.[1];
-      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
-
       await heliusService.initialize();
-      if (onOpenCallback) onOpenCallback.call(mockWs);
+
+      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
 
       const signature = 'FailedTransactionSignature123';
       const monitorPromise = heliusService.monitorTransaction(signature, 30000);
 
-      // Simulate failed transaction notification
+      // First send subscription confirmation
+      const subscriptionConfirmation = {
+        jsonrpc: '2.0',
+        result: 20100750,
+        id: 1,
+      };
+
+      if (onMessageCallback) {
+        onMessageCallback.call(mockWs, Buffer.from(JSON.stringify(subscriptionConfirmation)));
+      }
+
+      // Then simulate failed transaction notification
       const failedNotification = {
         jsonrpc: '2.0',
         method: 'signatureNotification',
@@ -171,7 +187,7 @@ describe('HeliusService WebSocket Functionality', () => {
               },
             },
           },
-          subscription: 1,
+          subscription: 20100750,
         },
       };
 
@@ -189,11 +205,9 @@ describe('HeliusService WebSocket Functionality', () => {
     });
 
     it('should handle various transaction error types correctly', async () => {
-      const onOpenCallback = mockWs.on.mock.calls.find((call) => call[0] === 'open')?.[1];
-      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
-
       await heliusService.initialize();
-      if (onOpenCallback) onOpenCallback.call(mockWs);
+
+      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
 
       const errorTypes = [
         { InsufficientFundsForFee: {} },
@@ -204,8 +218,22 @@ describe('HeliusService WebSocket Functionality', () => {
 
       for (let i = 0; i < errorTypes.length; i++) {
         const signature = `ErrorTestSignature${i}`;
+        const localId = i + 1;
+        const serverSubId = 20100751 + i;
         const monitorPromise = heliusService.monitorTransaction(signature, 30000);
 
+        // Send subscription confirmation first
+        const subscriptionConfirmation = {
+          jsonrpc: '2.0',
+          result: serverSubId,
+          id: localId,
+        };
+
+        if (onMessageCallback) {
+          onMessageCallback.call(mockWs, Buffer.from(JSON.stringify(subscriptionConfirmation)));
+        }
+
+        // Then send failed notification
         const failedNotification = {
           jsonrpc: '2.0',
           method: 'signatureNotification',
@@ -216,7 +244,7 @@ describe('HeliusService WebSocket Functionality', () => {
                 err: errorTypes[i],
               },
             },
-            subscription: i + 1,
+            subscription: serverSubId,
           },
         };
 
@@ -234,10 +262,7 @@ describe('HeliusService WebSocket Functionality', () => {
 
   describe('Transaction Monitoring - Timeout', () => {
     it('should resolve with confirmed=false when timeout is reached', async () => {
-      const onOpenCallback = mockWs.on.mock.calls.find((call) => call[0] === 'open')?.[1];
-
       await heliusService.initialize();
-      if (onOpenCallback) onOpenCallback.call(mockWs);
 
       const signature = 'TimeoutTestSignature';
       const monitorPromise = heliusService.monitorTransaction(signature, 100); // 100ms timeout
@@ -254,19 +279,28 @@ describe('HeliusService WebSocket Functionality', () => {
 
   describe('Subscription Management', () => {
     it('should send unsubscribe message after receiving notification', async () => {
-      const onOpenCallback = mockWs.on.mock.calls.find((call) => call[0] === 'open')?.[1];
-      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
-
       await heliusService.initialize();
-      if (onOpenCallback) onOpenCallback.call(mockWs);
+
+      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
 
       const signature = 'UnsubscribeTestSignature';
       const monitorPromise = heliusService.monitorTransaction(signature, 30000);
 
+      // First send subscription confirmation
+      const subscriptionConfirmation = {
+        jsonrpc: '2.0',
+        result: 20100755,
+        id: 1,
+      };
+
+      if (onMessageCallback) {
+        onMessageCallback.call(mockWs, Buffer.from(JSON.stringify(subscriptionConfirmation)));
+      }
+
       // Clear previous send calls
       mockWs.send.mockClear();
 
-      // Simulate successful notification
+      // Then simulate successful notification
       const successNotification = {
         jsonrpc: '2.0',
         method: 'signatureNotification',
@@ -275,7 +309,7 @@ describe('HeliusService WebSocket Functionality', () => {
             context: { slot: 5207624 },
             value: { err: null },
           },
-          subscription: 1,
+          subscription: 20100755,
         },
       };
 
@@ -285,19 +319,17 @@ describe('HeliusService WebSocket Functionality', () => {
 
       await monitorPromise;
 
-      // Verify unsubscribe was sent
+      // Verify unsubscribe was sent with server subscription ID
       expect(mockWs.send).toHaveBeenCalledWith(expect.stringContaining('"method":"signatureUnsubscribe"'));
-      expect(mockWs.send).toHaveBeenCalledWith(expect.stringContaining('"params":[1]'));
+      expect(mockWs.send).toHaveBeenCalledWith(expect.stringContaining('"params":[20100755]'));
     });
   });
 
   describe('WebSocket Error Handling', () => {
     it('should reject monitor promise when WebSocket subscription returns error', async () => {
-      const onOpenCallback = mockWs.on.mock.calls.find((call) => call[0] === 'open')?.[1];
-      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
-
       await heliusService.initialize();
-      if (onOpenCallback) onOpenCallback.call(mockWs);
+
+      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
 
       const signature = 'ErrorSubscriptionSignature';
       const monitorPromise = heliusService.monitorTransaction(signature, 30000);
@@ -329,14 +361,24 @@ describe('HeliusService WebSocket Functionality', () => {
 
   describe('WebSocket Reconnection', () => {
     it('should reject pending subscriptions on disconnect', async () => {
-      const onOpenCallback = mockWs.on.mock.calls.find((call) => call[0] === 'open')?.[1];
-      const onCloseCallback = mockWs.on.mock.calls.find((call) => call[0] === 'close')?.[1];
-
       await heliusService.initialize();
-      if (onOpenCallback) onOpenCallback.call(mockWs);
+
+      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
+      const onCloseCallback = mockWs.on.mock.calls.find((call) => call[0] === 'close')?.[1];
 
       const signature = 'DisconnectTestSignature';
       const monitorPromise = heliusService.monitorTransaction(signature, 30000);
+
+      // Send subscription confirmation to establish the subscription
+      const subscriptionConfirmation = {
+        jsonrpc: '2.0',
+        result: 20100756,
+        id: 1,
+      };
+
+      if (onMessageCallback) {
+        onMessageCallback.call(mockWs, Buffer.from(JSON.stringify(subscriptionConfirmation)));
+      }
 
       // Simulate disconnect
       if (onCloseCallback) {
@@ -349,11 +391,9 @@ describe('HeliusService WebSocket Functionality', () => {
 
   describe('Message Parsing', () => {
     it('should handle malformed JSON messages gracefully', async () => {
-      const onOpenCallback = mockWs.on.mock.calls.find((call) => call[0] === 'open')?.[1];
-      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
-
       await heliusService.initialize();
-      if (onOpenCallback) onOpenCallback.call(mockWs);
+
+      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
 
       // Send malformed JSON
       if (onMessageCallback) {
@@ -365,11 +405,9 @@ describe('HeliusService WebSocket Functionality', () => {
     });
 
     it('should ignore unknown notification types', async () => {
-      const onOpenCallback = mockWs.on.mock.calls.find((call) => call[0] === 'open')?.[1];
-      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
-
       await heliusService.initialize();
-      if (onOpenCallback) onOpenCallback.call(mockWs);
+
+      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
 
       const unknownNotification = {
         jsonrpc: '2.0',
@@ -391,11 +429,9 @@ describe('HeliusService WebSocket Functionality', () => {
 
   describe('Subscription Confirmation', () => {
     it('should handle subscription confirmation response', async () => {
-      const onOpenCallback = mockWs.on.mock.calls.find((call) => call[0] === 'open')?.[1];
-      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
-
       await heliusService.initialize();
-      if (onOpenCallback) onOpenCallback.call(mockWs);
+
+      const onMessageCallback = mockWs.on.mock.calls.find((call) => call[0] === 'message')?.[1];
 
       const signature = 'ConfirmationTestSignature';
       heliusService.monitorTransaction(signature, 30000);
