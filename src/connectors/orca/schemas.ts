@@ -294,6 +294,15 @@ export const OrcaClmmRemoveLiquidityRequest = Type.Object({
       examples: [100],
     }),
   ),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: 1,
+      examples: [1],
+    }),
+  ),
 });
 
 // Orca CLMM Close Position Request

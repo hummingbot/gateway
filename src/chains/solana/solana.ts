@@ -1551,41 +1551,20 @@ export class Solana {
     // Calculate fee (always in SOL)
     const fee = (txDetails.meta?.fee || 0) * LAMPORT_TO_SOL;
 
-    const preBalances = txDetails.meta?.preBalances || [];
-    const postBalances = txDetails.meta?.postBalances || [];
     const preTokenBalances = txDetails.meta?.preTokenBalances || [];
     const postTokenBalances = txDetails.meta?.postTokenBalances || [];
-    const ownerPubkey = new PublicKey(owner);
 
     // Process each token and return array of balance changes
     const balanceChanges = tokens.map((token) => {
-      // Check if this is native SOL
-      if (token === 'So11111111111111111111111111111111111111112') {
-        // For native SOL, we need to calculate from lamport balance changes
-        const accountIndex = txDetails.transaction.message.accountKeys.findIndex((key) =>
-          key.pubkey.equals(ownerPubkey),
-        );
+      // Token mint address provided - get SPL token balance change
+      const preBalanceEntry = preTokenBalances.find((balance) => balance.mint === token && balance.owner === owner);
+      const preBalance = preBalanceEntry?.uiTokenAmount.uiAmount || 0;
 
-        if (accountIndex === -1) {
-          logger.warn(`Owner ${owner} not found in transaction accounts`);
-          return 0;
-        }
+      const postBalanceEntry = postTokenBalances.find((balance) => balance.mint === token && balance.owner === owner);
+      const postBalance = postBalanceEntry?.uiTokenAmount.uiAmount || 0;
 
-        // Calculate SOL change including fees
-        const lamportChange = postBalances[accountIndex] - preBalances[accountIndex];
-        return lamportChange * LAMPORT_TO_SOL;
-      } else {
-        // Token mint address provided - get SPL token balance change
-        const preBalance =
-          preTokenBalances.find((balance) => balance.mint === token && balance.owner === owner)?.uiTokenAmount
-            .uiAmount || 0;
-
-        const postBalance =
-          postTokenBalances.find((balance) => balance.mint === token && balance.owner === owner)?.uiTokenAmount
-            .uiAmount || 0;
-
-        return postBalance - preBalance;
-      }
+      const diff = postBalance - preBalance;
+      return diff;
     });
 
     return { balanceChanges, fee };
