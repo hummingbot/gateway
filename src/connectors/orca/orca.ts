@@ -1,21 +1,35 @@
+import { AnchorProvider, Wallet } from '@coral-xyz/anchor';
+import { fetchPositionsForOwner } from '@orca-so/whirlpools';
 import { fetchWhirlpool, fetchPosition } from '@orca-so/whirlpools-client';
-import { Address } from '@solana/kit';
+import {
+  WhirlpoolContext,
+  buildWhirlpoolClient,
+  ORCA_WHIRLPOOL_PROGRAM_ID,
+  WhirlpoolClient,
+} from '@orca-so/whirlpools-sdk';
+import { address, createSolanaRpc, mainnet, devnet } from '@solana/kit';
 import { PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../chains/solana/solana';
-import { OrcaPoolInfo, PositionInfo } from '../../schemas/clmm-schema';
+import { OrcaPoolInfo, PositionInfo, OrcaPosition } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
 
 import { OrcaConfig } from './orca.config';
+import { getPositionDetails } from './orca.utils';
 
 export class Orca {
   private static _instances: { [name: string]: Orca };
   private solana: Solana;
+  protected whirlpoolContextMap: { [key: string]: WhirlpoolContext };
+  protected whirlpoolClientMap: { [key: string]: WhirlpoolClient };
   public config: OrcaConfig.RootConfig;
+  public solanaKitRpc: any;
 
   private constructor() {
     this.config = OrcaConfig.config;
     this.solana = null; // Initialize as null since we need to await getInstance
+    this.whirlpoolContextMap = {}; // key: wallet address, value: WhirlpoolContext
+    this.whirlpoolClientMap = {}; // key: wallet address, value: WhirlpoolClient
   }
 
   /** Gets singleton instance of Orca */
@@ -35,6 +49,13 @@ export class Orca {
   private async init(network: string) {
     try {
       this.solana = await Solana.getInstance(network);
+
+      if (this.solana.network === 'mainnet-beta') {
+        this.solanaKitRpc = createSolanaRpc(mainnet(this.solana.connection.rpcEndpoint));
+      } else {
+        this.solanaKitRpc = createSolanaRpc(devnet(this.solana.connection.rpcEndpoint));
+      }
+
       logger.info('Orca connector initialized successfully');
     } catch (error) {
       logger.error('Failed to initialize Orca:', error);
@@ -42,20 +63,52 @@ export class Orca {
     }
   }
 
+  async getWhirlpoolContextForWallet(walletAddress: string): Promise<WhirlpoolContext> {
+    if (!this.whirlpoolContextMap[walletAddress]) {
+      const walletKeypair = await this.solana.getWallet(walletAddress);
+      const wallet = new Wallet(walletKeypair);
+      const provider = new AnchorProvider(this.solana.connection, wallet, {
+        commitment: 'processed',
+      });
+      this.whirlpoolContextMap[walletAddress] = WhirlpoolContext.withProvider(provider, ORCA_WHIRLPOOL_PROGRAM_ID);
+    }
+    return this.whirlpoolContextMap[walletAddress];
+  }
+
+  async getWhirlpoolClientForWallet(walletAddress: string): Promise<WhirlpoolClient> {
+    if (!this.whirlpoolClientMap[walletAddress]) {
+      const context = await this.getWhirlpoolContextForWallet(walletAddress);
+      this.whirlpoolClientMap[walletAddress] = buildWhirlpoolClient(context);
+    }
+    return this.whirlpoolClientMap[walletAddress];
+  }
+
   /**
-   * Fetches pools from Orca API
-   * @param limit Maximum number of pools to return
-   * @param tokenMintA Optional first token mint address
-   * @param tokenMintB Optional second token mint address
-   * @returns Array of pool addresses/info
+   * Fetches pools from Orca API and maps them to OrcaPoolInfo format
+   * @param limit Maximum number of pools to return (maps to 'size' parameter)
+   * @param tokenSymbolA Optional first token symbol (e.g., 'SOL')
+   * @param tokenSymbolB Optional second token symbol (e.g., 'USDC')
+   * @returns Array of OrcaPoolInfo objects
    */
-  async getPools(limit?: number, tokenMintA?: string, tokenMintB?: string): Promise<any[]> {
+  async getPools(limit?: number, tokenSymbolA?: string, tokenSymbolB?: string): Promise<OrcaPoolInfo[]> {
     try {
-      const baseUrl = 'https://api.orca.so/v1/whirlpool/list';
+      const network = this.solana.network === 'mainnet-beta' ? 'solana' : 'solana-devnet';
+      const baseUrl = `https://api.orca.so/v2/${network}/pools/search`;
       const params = new URLSearchParams();
 
-      if (tokenMintA) params.append('tokenA', tokenMintA);
-      if (tokenMintB) params.append('tokenB', tokenMintB);
+      // Build search query from token symbols
+      if (tokenSymbolA && tokenSymbolB) {
+        params.append('q', `${tokenSymbolA} ${tokenSymbolB}`);
+      } else if (tokenSymbolA) {
+        params.append('q', tokenSymbolA);
+      } else if (tokenSymbolB) {
+        params.append('q', tokenSymbolB);
+      }
+
+      // Add size parameter (limit)
+      if (limit) {
+        params.append('size', limit.toString());
+      }
 
       const url = `${baseUrl}?${params.toString()}`;
       const response = await fetch(url);
@@ -65,10 +118,10 @@ export class Orca {
       }
 
       const data = await response.json();
-      const pools = data.whirlpools || [];
+      const pools = data.data || [];
 
-      // Apply limit if specified
-      return limit ? pools.slice(0, limit) : pools;
+      // Map API response to OrcaPoolInfo format
+      return pools.map((pool: any) => this.mapApiPoolToPoolInfo(pool));
     } catch (error) {
       logger.error('Error fetching pools from Orca API:', error);
       throw error;
@@ -76,58 +129,67 @@ export class Orca {
   }
 
   /**
-   * Gets comprehensive pool information for a Whirlpool
+   * Maps Orca API v2 pool data to OrcaPoolInfo format
+   * @param apiPool Pool data from Orca API v2
+   * @returns OrcaPoolInfo object
+   */
+  private mapApiPoolToPoolInfo(apiPool: any): OrcaPoolInfo {
+    // Convert fee rate (stored in hundredths of basis points)
+    // 400 = 4 basis points = 0.04%
+    const feePct = Number(apiPool.feeRate) / 10000;
+    const protocolFeeRate = Number(apiPool.protocolFeeRate) / 10000;
+
+    return {
+      address: apiPool.address,
+      baseTokenAddress: apiPool.tokenMintA,
+      quoteTokenAddress: apiPool.tokenMintB,
+      binStep: apiPool.tickSpacing,
+      feePct,
+      price: Number(apiPool.price),
+      baseTokenAmount: Number(apiPool.tokenBalanceA) / Math.pow(10, apiPool.tokenA.decimals),
+      quoteTokenAmount: Number(apiPool.tokenBalanceB) / Math.pow(10, apiPool.tokenB.decimals),
+      activeBinId: apiPool.tickCurrentIndex,
+      // Orca-specific fields
+      liquidity: apiPool.liquidity,
+      sqrtPrice: apiPool.sqrtPrice,
+      tvlUsdc: apiPool.tvlUsdc,
+      protocolFeeRate,
+      yieldOverTvl: Number(apiPool.yieldOverTvl),
+    };
+  }
+
+  /**
+   * Gets comprehensive pool information for a Whirlpool using Orca API v2
    * @param poolAddress The whirlpool address
    * @returns OrcaPoolInfo or null if not found
    */
   async getPoolInfo(poolAddress: string): Promise<OrcaPoolInfo | null> {
     try {
-      const rpc = this.solana.solanaKitRpc;
-      const poolAddr = poolAddress as Address;
+      const network = this.solana.network === 'mainnet-beta' ? 'solana' : 'solana-devnet';
+      const baseUrl = `https://api.orca.so/v2/${network}/pools/search`;
+      const params = new URLSearchParams();
 
-      // Fetch whirlpool account data
-      const whirlpool = await fetchWhirlpool(rpc, poolAddr);
+      // Search by pool address
+      params.append('q', poolAddress);
+      params.append('size', '1');
 
-      if (!whirlpool.data) {
-        logger.error(`Whirlpool not found: ${poolAddress}`);
+      const url = `${baseUrl}?${params.toString()}`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Orca API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const pools = data.data || [];
+
+      if (pools.length === 0) {
+        logger.error(`Pool not found: ${poolAddress}`);
         return null;
       }
 
-      const pool = whirlpool.data;
-
-      // Fetch token vault balances
-      const [vaultABalance, vaultBBalance] = await Promise.all([
-        this.solana.connection.getTokenAccountBalance(new PublicKey(pool.tokenVaultA)),
-        this.solana.connection.getTokenAccountBalance(new PublicKey(pool.tokenVaultB)),
-      ]);
-
-      // Calculate price from sqrtPrice
-      // Price = (sqrtPrice / 2^64)^2
-      const sqrtPrice = BigInt(pool.sqrtPrice);
-      const Q64 = BigInt(2 ** 64);
-      const price = Number(sqrtPrice * sqrtPrice) / Number(Q64 * Q64);
-
-      // Convert fee rate (stored in hundredths of basis points)
-      // 300 = 3 basis points = 0.03%
-      const feePct = Number(pool.feeRate) / 10000;
-      const protocolFeePct = Number(pool.protocolFeeRate) / 10000;
-
-      return {
-        address: poolAddress,
-        baseTokenAddress: pool.tokenMintA.toString(),
-        quoteTokenAddress: pool.tokenMintB.toString(),
-        binStep: pool.tickSpacing, // Map tickSpacing to binStep (universal abstraction)
-        feePct,
-        price,
-        baseTokenAmount: vaultABalance.value.uiAmount || 0,
-        quoteTokenAmount: vaultBBalance.value.uiAmount || 0,
-        activeBinId: pool.tickCurrentIndex, // Map tickCurrentIndex to activeBinId (universal abstraction)
-        // Orca-specific fields
-        tickSpacing: pool.tickSpacing,
-        protocolFeePct,
-        liquidity: pool.liquidity.toString(),
-        sqrtPrice: pool.sqrtPrice.toString(),
-      };
+      // Map the first result to OrcaPoolInfo format
+      return this.mapApiPoolToPoolInfo(pools[0]);
     } catch (error) {
       logger.error(`Error getting pool info for ${poolAddress}:`, error);
       return null;
@@ -142,8 +204,8 @@ export class Orca {
    */
   async getWhirlpool(poolAddress: string): Promise<any> {
     try {
-      const rpc = this.solana.solanaKitRpc;
-      const poolAddr = poolAddress as Address;
+      const rpc = this.solanaKitRpc;
+      const poolAddr = address(poolAddress);
       const whirlpool = await fetchWhirlpool(rpc, poolAddr);
 
       if (!whirlpool.data) {
@@ -165,8 +227,8 @@ export class Orca {
    */
   async getRawPosition(positionAddress: string, _walletAddress: PublicKey) {
     try {
-      const rpc = this.solana.solanaKitRpc;
-      const positionMint = positionAddress as Address;
+      const rpc = this.solanaKitRpc;
+      const positionMint = address(positionAddress);
 
       // Fetch position account
       const position = await fetchPosition(rpc, positionMint);
@@ -199,47 +261,42 @@ export class Orca {
    * @param walletAddress The wallet public key
    * @returns Array of PositionInfo
    */
-  async getPositionsInPool(poolAddress: string, walletAddress: PublicKey): Promise<PositionInfo[]> {
+  async getPositionsInPool(poolAddress: string, walletAddress: string): Promise<PositionInfo[]> {
     try {
-      logger.info(`Getting positions for pool ${poolAddress} and wallet ${walletAddress.toBase58()}`);
-
-      // Get all token accounts owned by the wallet
-      const tokenAccounts = await this.solana.connection.getParsedTokenAccountsByOwner(walletAddress, {
-        programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'), // SPL Token program
-      });
+      logger.info(`Getting positions for pool ${poolAddress} and wallet ${walletAddress}`);
 
       const positions: PositionInfo[] = [];
 
-      // For each token account, check if it's a position NFT (amount = 1, decimals = 0)
-      for (const { account } of tokenAccounts.value) {
-        const parsedInfo = account.data.parsed?.info;
-        if (!parsedInfo) continue;
+      const positionsForOwner: OrcaPosition[] = (await fetchPositionsForOwner(
+        this.solanaKitRpc,
+        address(walletAddress),
+      )) as any;
 
-        const tokenAmount = parsedInfo.tokenAmount;
+      for (const position of positionsForOwner) {
+        console.log('Debug: Position:', position);
+        console.log('Debug: Reward Infos:', position.data.rewardInfos);
 
-        // Position NFTs have exactly 1 token with 0 decimals
-        if (tokenAmount.decimals === 0 && tokenAmount.uiAmount === 1) {
-          const mintAddress = parsedInfo.mint;
-
-          try {
-            // Try to fetch position data
-            const positionInfo = await this.getPositionInfo(mintAddress, walletAddress);
-
-            // Check if this position belongs to the specified pool
-            if (positionInfo && positionInfo.poolAddress.toLowerCase() === poolAddress.toLowerCase()) {
-              positions.push(positionInfo);
-            }
-          } catch (error) {
-            // Not a valid position NFT, skip
-            logger.debug(`Skipping non-position NFT: ${mintAddress}`);
-          }
+        if (position.data.whirlpool === poolAddress) {
+          positions.push(await getPositionDetails(this.solanaKitRpc, address(position.data.positionMint)));
         }
       }
 
+      // const positionsInWhirlpool: OrcaPosition[] = (await fetchPositionsInWhirlpool(
+      //   this.solana.solanaKitRpc,
+      //   address(poolAddress),
+      // )) as any;
+
+      // for (const position of positionsInWhirlpool) {
+      //   console.log('Debug: Position:', position);
+      //   console.log('Debug: Reward Infos:', position.data.rewardInfos);
+      // }
+
+      console.log('Debug: Total positions found:', positions.length);
       logger.info(`Found ${positions.length} positions in pool ${poolAddress}`);
       return positions;
     } catch (error) {
       logger.error('Error getting positions in pool:', error);
+      console.log('Debug: getPositionsInPool encountered error:', error);
       return [];
     }
   }
@@ -250,68 +307,14 @@ export class Orca {
    * @param walletAddress The wallet that owns the position
    * @returns PositionInfo or null if not found
    */
-  async getPositionInfo(positionAddress: string, _walletAddress: PublicKey): Promise<PositionInfo | null> {
+  async getPositionInfo(positionAddress: string): Promise<PositionInfo | null> {
     try {
-      const rpc = this.solana.solanaKitRpc;
-      const positionMint = positionAddress as Address;
-
-      // Fetch position account
-      const position = await fetchPosition(rpc, positionMint);
-
-      if (!position.data) {
-        logger.error(`Position not found: ${positionAddress}`);
-        return null;
-      }
-
-      const pos = position.data;
-      const poolAddress = pos.whirlpool.toString();
-
-      // Get pool info to calculate prices
-      const poolInfo = await this.getPoolInfo(poolAddress);
-      if (!poolInfo) {
-        throw new Error(`Pool not found for position: ${poolAddress}`);
-      }
-
-      // Calculate prices from tick indices
-      // Price = 1.0001^tick
-      const lowerPrice = Math.pow(1.0001, pos.tickLowerIndex);
-      const upperPrice = Math.pow(1.0001, pos.tickUpperIndex);
-
-      // TODO: Calculate actual token amounts from liquidity
-      // For now, use placeholder values
-      const baseTokenAmount = 0;
-      const quoteTokenAmount = 0;
-
-      // Fees owed
-      const baseFeeAmount = Number(pos.feeOwedA) / 1e9; // Assuming 9 decimals
-      const quoteFeeAmount = Number(pos.feeOwedB) / 1e9;
-
-      return {
-        address: positionAddress,
-        poolAddress,
-        baseTokenAddress: poolInfo.baseTokenAddress,
-        quoteTokenAddress: poolInfo.quoteTokenAddress,
-        baseTokenAmount,
-        quoteTokenAmount,
-        baseFeeAmount,
-        quoteFeeAmount,
-        lowerBinId: pos.tickLowerIndex,
-        upperBinId: pos.tickUpperIndex,
-        lowerPrice,
-        upperPrice,
-        price: poolInfo.price,
-      };
+      const rpc = this.solanaKitRpc;
+      const positionInfo = await getPositionDetails(rpc, positionAddress);
+      return positionInfo;
     } catch (error) {
       logger.error('Error getting position info:', error);
       return null;
     }
-  }
-
-  /**
-   * Helper to find default pool for a token pair
-   * Not used in Orca as pools are discovered via API
-   */
-  async findDefaultPool(_baseToken: string, _quoteToken: string): Promise<string | null> {
-    return null;
   }
 }

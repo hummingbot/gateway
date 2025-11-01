@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 
 // Read-only routes (implemented)
+import { collectFeesRoute } from './collectFees';
 import { fetchPoolsRoute } from './fetchPools';
 import { poolInfoRoute } from './poolInfo';
 import { positionInfoRoute } from './positionInfo';
@@ -11,13 +12,13 @@ import { quoteSwapRoute } from './quoteSwap';
 // Transaction routes (deferred for later implementation)
 // import { addLiquidityRoute } from './addLiquidity';
 // import { closePositionRoute } from './closePosition';
-// import { collectFeesRoute } from './collectFees';
 // import { executeSwapRoute } from './executeSwap';
 // import { openPositionRoute } from './openPosition';
 // import { removeLiquidityRoute } from './removeLiquidity';
 
 export const orcaClmmRoutes: FastifyPluginAsync = async (fastify) => {
   // Register read-only routes
+  await fastify.register(collectFeesRoute);
   await fastify.register(fetchPoolsRoute);
   await fastify.register(poolInfoRoute);
   await fastify.register(positionsOwnedRoute);
@@ -30,7 +31,6 @@ export const orcaClmmRoutes: FastifyPluginAsync = async (fastify) => {
   // await fastify.register(openPositionRoute);
   // await fastify.register(addLiquidityRoute);
   // await fastify.register(removeLiquidityRoute);
-  // await fastify.register(collectFeesRoute);
   // await fastify.register(closePositionRoute);
 };
 

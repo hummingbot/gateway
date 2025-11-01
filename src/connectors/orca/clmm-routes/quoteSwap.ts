@@ -4,36 +4,8 @@ import { Solana } from '../../../chains/solana/solana';
 import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
+import { getOrcaSwapQuote } from '../orca.utils';
 import { OrcaClmmQuoteSwapRequest, OrcaClmmQuoteSwapRequestType } from '../schemas';
-
-/**
- * Calculate swap output amount using constant product formula with fees
- * This is a simplified calculation - for production use, you'd want to use
- * the full Orca SDK swap math which accounts for concentrated liquidity ranges
- */
-function calculateSwapOutput(amountIn: number, reserveIn: number, reserveOut: number, feePct: number): number {
-  // Apply fee to input amount
-  const amountInWithFee = amountIn * (1 - feePct / 100);
-
-  // Constant product formula: (x + Δx)(y - Δy) = xy
-  // Solving for Δy: Δy = y * Δx / (x + Δx)
-  const amountOut = (reserveOut * amountInWithFee) / (reserveIn + amountInWithFee);
-
-  return amountOut;
-}
-
-/**
- * Calculate swap input amount needed for a desired output (for BUY orders)
- */
-function calculateSwapInput(amountOut: number, reserveIn: number, reserveOut: number, feePct: number): number {
-  // Reverse constant product formula
-  // x * y = k, where we want to get Δy output
-  // Δx = (x * Δy) / (y - Δy) / (1 - fee)
-  const amountInBeforeFee = (reserveIn * amountOut) / (reserveOut - amountOut);
-  const amountIn = amountInBeforeFee / (1 - feePct / 100);
-
-  return amountIn;
-}
 
 export async function getRawSwapQuote(
   fastify: FastifyInstance,
@@ -48,13 +20,7 @@ export async function getRawSwapQuote(
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
 
-  // Get pool info
-  const poolInfo = await orca.getPoolInfo(poolAddress);
-  if (!poolInfo) {
-    throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
-  }
-
-  // Get token info to determine decimals
+  // Get token info
   const baseTokenInfo = await solana.getToken(baseTokenSymbol);
   const quoteTokenInfo = await solana.getToken(quoteTokenSymbol);
 
@@ -62,56 +28,20 @@ export async function getRawSwapQuote(
     throw fastify.httpErrors.badRequest(`Token not found: ${!baseTokenInfo ? baseTokenSymbol : quoteTokenSymbol}`);
   }
 
-  // Determine which token is A and which is B in the pool
-  const isBaseTokenA = poolInfo.baseTokenAddress.toLowerCase() === baseTokenInfo.address.toLowerCase();
+  // Determine input/output tokens based on side
+  const [inputToken, outputToken] = side === 'BUY' ? [quoteTokenInfo, baseTokenInfo] : [baseTokenInfo, quoteTokenInfo];
 
-  let inputAmount: number;
-  let outputAmount: number;
-  let inputMint: string;
-  let outputMint: string;
+  // Get swap quote using helper
+  const quote = await getOrcaSwapQuote(
+    orca.solanaKitRpc,
+    poolAddress,
+    inputToken.address,
+    outputToken.address,
+    amount,
+    slippagePct,
+  );
 
-  if (side === 'SELL') {
-    // SELL: selling base token for quote token
-    inputMint = baseTokenInfo.address;
-    outputMint = quoteTokenInfo.address;
-    inputAmount = amount;
-
-    if (isBaseTokenA) {
-      // Base is token A, quote is token B
-      outputAmount = calculateSwapOutput(amount, poolInfo.baseTokenAmount, poolInfo.quoteTokenAmount, poolInfo.feePct);
-    } else {
-      // Base is token B, quote is token A
-      outputAmount = calculateSwapOutput(amount, poolInfo.quoteTokenAmount, poolInfo.baseTokenAmount, poolInfo.feePct);
-    }
-  } else {
-    // BUY: buying base token with quote token
-    inputMint = quoteTokenInfo.address;
-    outputMint = baseTokenInfo.address;
-    outputAmount = amount;
-
-    if (isBaseTokenA) {
-      // Base is token A, quote is token B - we're buying A with B
-      inputAmount = calculateSwapInput(amount, poolInfo.quoteTokenAmount, poolInfo.baseTokenAmount, poolInfo.feePct);
-    } else {
-      // Base is token B, quote is token A - we're buying B with A
-      inputAmount = calculateSwapInput(amount, poolInfo.baseTokenAmount, poolInfo.quoteTokenAmount, poolInfo.feePct);
-    }
-  }
-
-  // Apply slippage
-  const minOutputAmount = outputAmount * (1 - slippagePct / 100);
-  const maxInputAmount = inputAmount * (1 + slippagePct / 100);
-
-  return {
-    inputMint,
-    outputMint,
-    inputAmount,
-    outputAmount,
-    minOutputAmount,
-    maxInputAmount,
-    priceImpact: 0, // TODO: Calculate actual price impact
-    feePct: poolInfo.feePct,
-  };
+  return quote;
 }
 
 async function formatSwapQuote(
@@ -135,21 +65,17 @@ async function formatSwapQuote(
     slippagePct,
   );
 
-  const solana = await Solana.getInstance(network);
-  const baseTokenInfo = await solana.getToken(baseTokenSymbol);
-  const quoteTokenInfo = await solana.getToken(quoteTokenSymbol);
-
   return {
     poolAddress,
-    tokenIn: quote.inputMint,
-    tokenOut: quote.outputMint,
+    tokenIn: quote.inputToken,
+    tokenOut: quote.outputToken,
     amountIn: quote.inputAmount,
     amountOut: quote.outputAmount,
-    price: quote.outputAmount / quote.inputAmount,
+    price: quote.price,
     slippagePct,
     minAmountOut: quote.minOutputAmount,
     maxAmountIn: quote.maxInputAmount,
-    priceImpactPct: quote.priceImpact,
+    priceImpactPct: quote.priceImpactPct,
   };
 }
 
@@ -180,7 +106,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         const solana = await Solana.getInstance(networkUsed);
-        const orca = await Orca.getInstance(networkUsed);
 
         let poolAddressToUse = poolAddress;
 

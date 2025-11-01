@@ -44,7 +44,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress));
         }
 
-        const positions = await orca.getPositionsInPool(poolAddress, new PublicKey(walletAddressToUse));
+        const positions = await orca.getPositionsInPool(poolAddress, walletAddressToUse);
 
         return positions;
       } catch (e) {

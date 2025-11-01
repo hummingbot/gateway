@@ -73,15 +73,45 @@ export const OrcaPoolInfoSchema = Type.Composite(
   [
     PoolInfoSchema,
     Type.Object({
-      tickSpacing: Type.Number(),
-      protocolFeePct: Type.Number(),
       liquidity: Type.String(),
       sqrtPrice: Type.String(),
+      tvlUsdc: Type.Number(),
+      protocolFeeRate: Type.Number(),
+      yieldOverTvl: Type.Number(),
     }),
   ],
   { $id: 'OrcaPoolInfo' },
 );
 export type OrcaPoolInfo = Static<typeof OrcaPoolInfoSchema>;
+
+// Orca position data structure (from @orca-so/whirlpools)
+export const OrcaPositionDataSchema = Type.Object({
+  discriminator: Type.Any(), // Uint8Array(8)
+  whirlpool: Type.String(),
+  positionMint: Type.String(),
+  liquidity: Type.Any(), // bigint
+  tickLowerIndex: Type.Number(),
+  tickUpperIndex: Type.Number(),
+  feeGrowthCheckpointA: Type.Any(), // bigint
+  feeOwedA: Type.Any(), // bigint
+  feeGrowthCheckpointB: Type.Any(), // bigint
+  feeOwedB: Type.Any(), // bigint
+  rewardInfos: Type.Array(Type.Any()), // Array of reward info objects
+});
+export type OrcaPositionData = Static<typeof OrcaPositionDataSchema>;
+
+export const OrcaPositionSchema = Type.Object({
+  executable: Type.Boolean(),
+  lamports: Type.Any(), // bigint
+  programAddress: Type.String(),
+  space: Type.Any(), // bigint
+  address: Type.String(),
+  data: OrcaPositionDataSchema,
+  exists: Type.Boolean(),
+  tokenProgram: Type.String(),
+  isPositionBundle: Type.Boolean(),
+});
+export type OrcaPosition = Static<typeof OrcaPositionSchema>;
 
 export const GetPoolInfoRequest = Type.Object(
   {

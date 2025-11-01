@@ -29,14 +29,16 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
         const orca = await Orca.getInstance(network);
         const solana = await Solana.getInstance(network);
 
-        let tokenMintA, tokenMintB;
+        // Get token symbols for API search
+        let tokenSymbolA: string | undefined;
+        let tokenSymbolB: string | undefined;
 
         if (tokenA) {
           const tokenInfoA = await solana.getToken(tokenA);
           if (!tokenInfoA) {
             throw fastify.httpErrors.notFound(`Token ${tokenA} not found`);
           }
-          tokenMintA = tokenInfoA.address;
+          tokenSymbolA = tokenInfoA.symbol;
         }
 
         if (tokenB) {
@@ -44,29 +46,18 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
           if (!tokenInfoB) {
             throw fastify.httpErrors.notFound(`Token ${tokenB} not found`);
           }
-          tokenMintB = tokenInfoB.address;
+          tokenSymbolB = tokenInfoB.symbol;
         }
 
-        const pools = await orca.getPools(limit, tokenMintA, tokenMintB);
-        if (!Array.isArray(pools)) {
-          logger.error('No matching Orca pools found');
+        // getPools now returns mapped OrcaPoolInfo objects directly
+        const pools = await orca.getPools(limit, tokenSymbolA, tokenSymbolB);
+
+        if (!Array.isArray(pools) || pools.length === 0) {
+          logger.info('No matching Orca pools found');
           return [];
         }
 
-        const poolInfos = await Promise.all(
-          pools
-            .filter((pool) => pool?.address)
-            .map(async (pool) => {
-              try {
-                return await orca.getPoolInfo(pool.address);
-              } catch (error) {
-                logger.error(`Failed to get pool info for ${pool.address}: ${error.message}`);
-                throw fastify.httpErrors.notFound(`Pool not found: ${pool.address}`);
-              }
-            }),
-        );
-
-        return poolInfos.filter(Boolean);
+        return pools;
       } catch (e) {
         logger.error('Error in fetch-pools:', e);
         if (e.statusCode) throw e;
