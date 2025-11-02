@@ -15,7 +15,6 @@
 
 const axios = require('axios');
 const { Connection, PublicKey, LAMPORTS_PER_SOL } = require('@solana/web3.js');
-const chalk = require('chalk');
 const fs = require('fs');
 const yaml = require('js-yaml');
 
@@ -35,11 +34,11 @@ const concurrent = parseInt(args.find(arg => arg.startsWith('--concurrent='))?.s
 function log(message, type = 'info') {
   const timestamp = new Date().toISOString();
   const prefix = {
-    info: chalk.blue('[INFO]'),
-    success: chalk.green('[✓]'),
-    error: chalk.red('[✗]'),
-    warn: chalk.yellow('[WARN]'),
-    perf: chalk.magenta('[PERF]')
+    info: '[INFO]',
+    success: '[✓]',
+    error: '[✗]',
+    warn: '[WARN]',
+    perf: '[PERF]'
   };
   console.log(`${timestamp} ${prefix[type] || prefix.info} ${message}`);
 }
@@ -292,8 +291,8 @@ async function benchmarkPriorityFees() {
 
 // Main benchmark runner
 async function runBenchmarks() {
-  console.log(chalk.bold.magenta('\n🏁 Helius Performance Benchmark Suite\n'));
-  console.log(chalk.gray(`Running ${iterations} iterations with ${concurrent} concurrent requests...\n`));
+  console.log('\n🏁 Helius Performance Benchmark Suite\n');
+  console.log(`Running ${iterations} iterations with ${concurrent} concurrent requests...\n`);
   
   // Check if server is running
   try {
@@ -322,7 +321,7 @@ async function runBenchmarks() {
   console.log('');
   
   // Summary report
-  console.log(chalk.bold.magenta('📊 Performance Summary\n'));
+  console.log('📊 Performance Summary\n');
   
   const improvements = [];
   if (results.balanceFetching?.improvement) {
@@ -347,7 +346,7 @@ async function runBenchmarks() {
   log(`Total Standard errors: ${totalStandardErrors}`, totalStandardErrors > 0 ? 'warn' : 'success');
   
   // Recommendations
-  console.log(chalk.bold.cyan('\n💡 Recommendations\n'));
+  console.log('\n💡 Recommendations\n');
   if (results.balanceFetching?.improvement > 0) {
     console.log('✓ Helius shows better performance for balance fetching');
   }

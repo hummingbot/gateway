@@ -57,9 +57,9 @@
   },
   {
     "chainId": 101,
-    "name": "tBTC",
-    "symbol": "TBTC",
-    "address": "6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU",
+    "name": "Coinbase Wrapped BTC",
+    "symbol": "CBBTC",
+    "address": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
     "decimals": 8
   },
   {
@@ -75,5 +75,17 @@
     "symbol": "USDT",
     "address": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
     "decimals": 6
+  },
+  {
+    "symbol": "PENGU",
+    "name": "Pudgy Penguins",
+    "address": "2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv",
+    "decimals": 6
+  },
+  {
+    "symbol": "CAKE",
+    "name": "PancakeSwap Token",
+    "address": "4qQeZ5LwSz6HuupUu8jCtgXyW1mYQcNbFAW1sWZp89HL",
+    "decimals": 9
   }
 ]

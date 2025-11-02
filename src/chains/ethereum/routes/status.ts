@@ -3,13 +3,30 @@ import { FastifyPluginAsync } from 'fastify';
 import { StatusRequestType, StatusResponseType, StatusResponseSchema } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
+import { getEthereumChainConfig } from '../ethereum.config';
 import { EthereumStatusRequest } from '../schemas';
 
 export async function getEthereumStatus(network: string): Promise<StatusResponseType> {
   try {
     const ethereum = await Ethereum.getInstance(network);
+    const chainConfig = getEthereumChainConfig();
     const chain = 'ethereum';
-    const rpcUrl = ethereum.rpcUrl;
+    const rpcProvider = chainConfig.rpcProvider || 'url';
+
+    // Get the actual RPC URL based on provider
+    let rpcUrl = ethereum.rpcUrl; // Default to standard rpcUrl
+    if (rpcProvider === 'infura') {
+      const infuraService = ethereum.getInfuraService();
+      if (infuraService) {
+        try {
+          rpcUrl = infuraService.getUrlForNetwork(network);
+        } catch (error) {
+          // If Infura URL generation fails, fall back to standard rpcUrl
+          logger.warn(`Failed to get Infura URL, using standard rpcUrl: ${error.message}`);
+        }
+      }
+    }
+
     const nativeCurrency = ethereum.nativeTokenSymbol;
 
     // Directly try to get the current block number with a timeout
@@ -32,8 +49,10 @@ export async function getEthereumStatus(network: string): Promise<StatusResponse
       chain,
       network,
       rpcUrl,
+      rpcProvider,
       currentBlockNumber,
       nativeCurrency,
+      swapProvider: ethereum.swapProvider,
     };
   } catch (error) {
     logger.error(`Error getting Ethereum status: ${error.message}`);
@@ -71,8 +90,10 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
           chain: 'ethereum',
           network,
           rpcUrl: 'unavailable',
+          rpcProvider: 'unavailable',
           currentBlockNumber: 0,
           nativeCurrency: 'ETH',
+          swapProvider: '',
         };
       }
     },

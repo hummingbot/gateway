@@ -312,6 +312,11 @@ export function getSpender(network: string, connectorName: string): string {
     return getUniswapV2RouterAddress(network);
   }
 
+  // Check for CLMM swap-specific pattern - use SwapRouter02
+  if (connectorName.includes('/clmm/swap')) {
+    return getUniswapV3SwapRouter02Address(network);
+  }
+
   // Check for CLMM (V3) connector pattern
   if (connectorName.includes('/clmm')) {
     return getUniswapV3NftManagerAddress(network);

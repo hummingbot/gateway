@@ -13,7 +13,7 @@ import { RaydiumClmmOpenPositionRequest } from '../schemas';
 
 import { quotePosition } from './quotePosition';
 
-async function openPosition(
+export async function openPosition(
   _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
@@ -22,8 +22,6 @@ async function openPosition(
   poolAddress: string,
   baseTokenAmount?: number,
   quoteTokenAmount?: number,
-  baseTokenSymbol?: string,
-  quoteTokenSymbol?: string,
   slippagePct?: number,
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
@@ -32,25 +30,12 @@ async function openPosition(
   // Prepare wallet and check if it's hardware
   const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
 
-  // If no pool address provided, find default pool using base and quote tokens
-  let poolAddressToUse = poolAddress;
-  if (!poolAddressToUse) {
-    if (!baseTokenSymbol || !quoteTokenSymbol) {
-      throw new Error('Either poolAddress or both baseToken and quoteToken must be provided');
-    }
-
-    poolAddressToUse = await raydium.findDefaultPool(baseTokenSymbol, quoteTokenSymbol, 'clmm');
-    if (!poolAddressToUse) {
-      throw new Error(`No CLMM pool found for pair ${baseTokenSymbol}-${quoteTokenSymbol}`);
-    }
-  }
-
-  const poolResponse = await raydium.getClmmPoolfromAPI(poolAddressToUse);
+  const poolResponse = await raydium.getClmmPoolfromAPI(poolAddress);
   if (!poolResponse) {
-    throw _fastify.httpErrors.notFound(`Pool not found for address: ${poolAddressToUse}`);
+    throw _fastify.httpErrors.notFound(`Pool not found for address: ${poolAddress}`);
   }
   const [poolInfo, poolKeys] = poolResponse;
-  const rpcData = await raydium.getClmmPoolfromRPC(poolAddressToUse);
+  const rpcData = await raydium.getClmmPoolfromRPC(poolAddress);
   poolInfo.price = rpcData.currentPrice;
 
   const baseTokenInfo = await solana.getToken(poolInfo.mintA.address);
@@ -77,7 +62,7 @@ async function openPosition(
     network,
     lowerPrice,
     upperPrice,
-    poolAddressToUse,
+    poolAddress,
     baseTokenAmount,
     quoteTokenAmount,
     slippagePct,
@@ -199,8 +184,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           poolAddress,
           baseTokenAmount,
           quoteTokenAmount,
-          undefined, // baseToken not needed anymore
-          undefined, // quoteToken not needed anymore
           slippagePct,
         );
       } catch (e) {

@@ -21,7 +21,15 @@ export async function estimateGasEthereum(fastify: FastifyInstance, network: str
     // Convert GWEI to ETH (1 ETH = 10^9 GWEI)
     const totalFeeInEth = totalFeeInGwei / 1e9;
 
-    return {
+    // Check if we have EIP-1559 data cached
+    const isEIP1559Network =
+      network === 'mainnet' ||
+      network === 'polygon' ||
+      network === 'arbitrum' ||
+      network === 'optimism' ||
+      network === 'base';
+
+    const response: EstimateGasResponse = {
       feePerComputeUnit: gasPrice,
       denomination: 'gwei',
       computeUnits: DEFAULT_GAS_LIMIT,
@@ -29,36 +37,37 @@ export async function estimateGasEthereum(fastify: FastifyInstance, network: str
       fee: totalFeeInEth,
       timestamp: Date.now(),
     };
+
+    // Add EIP-1559 details if available
+    if (isEIP1559Network && (ethereum as any).constructor.lastGasPriceEstimate?.isEIP1559) {
+      const cached = (ethereum as any).constructor.lastGasPriceEstimate;
+      response.gasType = 'eip1559';
+      response.maxFeePerGas = cached.maxFeePerGas;
+      response.maxPriorityFeePerGas = cached.maxPriorityFeePerGas;
+    } else if (!isEIP1559Network) {
+      response.gasType = 'legacy';
+    }
+
+    return response;
   } catch (error) {
     logger.error(`Error estimating gas for network ${network}: ${error.message}`);
 
-    try {
-      // If estimation fails but we can still get the instance, return the minGasPrice
-      const ethereum = await Ethereum.getInstance(network);
-
-      // Default gas limit for Ethereum is 300000
-      const DEFAULT_GAS_LIMIT = 300000;
-
-      // Calculate total fee in GWEI using minGasPrice
-      const totalFeeInGwei = ethereum.minGasPrice * DEFAULT_GAS_LIMIT;
-
-      // Convert GWEI to ETH (1 ETH = 10^9 GWEI)
-      const totalFeeInEth = totalFeeInGwei / 1e9;
-
-      return {
-        feePerComputeUnit: ethereum.minGasPrice,
-        denomination: 'gwei',
-        computeUnits: DEFAULT_GAS_LIMIT,
-        feeAsset: ethereum.nativeTokenSymbol,
-        fee: totalFeeInEth,
-        timestamp: Date.now(),
-      };
-    } catch (instanceError) {
-      logger.error(`Error getting Ethereum instance for network ${network}: ${instanceError.message}`);
-      throw fastify.httpErrors.internalServerError(
-        `Failed to get Ethereum instance for network ${network}: ${instanceError.message}`,
-      );
+    // Check if it's a network/RPC error
+    if (error.message?.includes('RPC') || error.message?.includes('network') || error.message?.includes('provider')) {
+      throw fastify.httpErrors.serviceUnavailable(`RPC provider unavailable for network ${network}: ${error.message}`);
     }
+
+    // Check if it's an invalid network
+    if (
+      error.message?.includes('Invalid') ||
+      error.message?.includes('not found') ||
+      error.message?.includes('Unsupported')
+    ) {
+      throw fastify.httpErrors.badRequest(`Invalid network ${network}: ${error.message}`);
+    }
+
+    // Generic error
+    throw fastify.httpErrors.internalServerError(`Failed to estimate gas for network ${network}: ${error.message}`);
   }
 }
 

@@ -1,34 +1,34 @@
-import { getSolanaNetworkConfig } from '../../../src/chains/solana/solana.config';
+import { getSolanaNetworkConfig, getSolanaChainConfig } from '../../../src/chains/solana/solana.config';
 
 // Simple configuration tests without mocking complex dependencies
 describe('Solana RPC Provider Configuration Tests', () => {
   describe('Config Loading', () => {
-    it('should load network configuration with rpcProvider field', () => {
-      // This test verifies that our config loading includes the new rpcProvider field
+    it('should load chain configuration with rpcProvider field', () => {
+      // This test verifies that our chain config loading includes the new rpcProvider field
+      const chainConfig = getSolanaChainConfig();
       const devnetConfig = getSolanaNetworkConfig('devnet');
       const mainnetConfig = getSolanaNetworkConfig('mainnet-beta');
 
-      // Both configs should have rpcProvider field
-      expect(devnetConfig).toHaveProperty('rpcProvider');
-      expect(mainnetConfig).toHaveProperty('rpcProvider');
+      // Chain config should have rpcProvider field
+      expect(chainConfig).toHaveProperty('rpcProvider');
 
-      // Values should be either 'url' or 'helius'
-      expect(['url', 'helius']).toContain(devnetConfig.rpcProvider);
-      expect(['url', 'helius']).toContain(mainnetConfig.rpcProvider);
+      // Value should be either 'url' or 'helius'
+      expect(['url', 'helius']).toContain(chainConfig.rpcProvider);
 
-      // Both should still have nodeURL for backwards compatibility
+      // Network configs should still have nodeURL but not rpcProvider
+      expect(devnetConfig).not.toHaveProperty('rpcProvider');
+      expect(mainnetConfig).not.toHaveProperty('rpcProvider');
       expect(devnetConfig).toHaveProperty('nodeURL');
       expect(mainnetConfig).toHaveProperty('nodeURL');
     });
 
-    it('should default to url provider when not specified', () => {
-      // Test that the default is 'url' provider when rpcProvider is undefined
-      const config = getSolanaNetworkConfig('devnet');
+    it('should have rpcProvider configured', () => {
+      // Test that rpcProvider is defined (can be either 'url' or 'helius')
+      const chainConfig = getSolanaChainConfig();
 
-      // If rpcProvider is not set, it should default to 'url'
-      if (!config.rpcProvider) {
-        expect(config.rpcProvider || 'url').toBe('url');
-      }
+      // rpcProvider should be defined and be one of the valid values
+      expect(chainConfig.rpcProvider).toBeDefined();
+      expect(['url', 'helius']).toContain(chainConfig.rpcProvider);
     });
 
     it('should have proper network URLs configured', () => {
@@ -45,18 +45,18 @@ describe('Solana RPC Provider Configuration Tests', () => {
 
   describe('Provider Type Validation', () => {
     it('should only accept valid provider types', () => {
-      const config = getSolanaNetworkConfig('devnet');
+      const chainConfig = getSolanaChainConfig();
 
       // Should be one of the allowed provider types
       const validProviders = ['url', 'helius'];
-      expect(validProviders).toContain(config.rpcProvider || 'url');
+      expect(validProviders).toContain(chainConfig.rpcProvider);
     });
 
     it('should maintain required configuration fields', () => {
       const devnetConfig = getSolanaNetworkConfig('devnet');
       const mainnetConfig = getSolanaNetworkConfig('mainnet-beta');
 
-      // Essential fields should be present
+      // Essential fields should be present (rpcProvider is now in chain config)
       const requiredFields = [
         'nodeURL',
         'nativeCurrencySymbol',

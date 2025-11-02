@@ -1,8 +1,17 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { PositionInfo, PositionInfoSchema, GetPositionInfoRequestType } from '../../../schemas/clmm-schema';
 import { Raydium } from '../raydium';
 import { RaydiumClmmGetPositionInfoRequest } from '../schemas';
+
+export async function getPositionInfo(
+  _fastify: FastifyInstance,
+  network: string,
+  positionAddress: string,
+): Promise<PositionInfo> {
+  const raydium = await Raydium.getInstance(network);
+  return raydium.getPositionInfo(positionAddress);
+}
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -22,8 +31,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { network = 'mainnet-beta', positionAddress } = request.query;
-      const raydium = await Raydium.getInstance(network);
-      return raydium.getPositionInfo(positionAddress);
+      return await getPositionInfo(fastify, network, positionAddress);
     },
   );
 };

@@ -1,9 +1,21 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { MeteoraPoolInfo, MeteoraPoolInfoSchema, GetPoolInfoRequestType } from '../../../schemas/clmm-schema';
+import { MeteoraPoolInfo, MeteoraPoolInfoSchema, GetPoolInfoRequestType, PoolInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 import { MeteoraClmmGetPoolInfoRequest } from '../schemas';
+
+export async function getPoolInfo(
+  fastify: FastifyInstance,
+  network: string,
+  poolAddress: string,
+): Promise<PoolInfo | MeteoraPoolInfo> {
+  const meteora = await Meteora.getInstance(network);
+  if (!meteora) {
+    throw fastify.httpErrors.serviceUnavailable('Meteora service unavailable');
+  }
+  return (await meteora.getPoolInfo(poolAddress)) as MeteoraPoolInfo;
+}
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -25,13 +37,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { poolAddress } = request.query;
         const network = request.query.network;
-
-        const meteora = await Meteora.getInstance(network);
-        if (!meteora) {
-          throw fastify.httpErrors.serviceUnavailable('Meteora service unavailable');
-        }
-
-        return (await meteora.getPoolInfo(poolAddress)) as MeteoraPoolInfo;
+        return (await getPoolInfo(fastify, network, poolAddress)) as MeteoraPoolInfo;
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

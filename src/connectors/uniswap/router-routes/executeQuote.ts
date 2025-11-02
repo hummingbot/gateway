@@ -77,13 +77,29 @@ async function executeQuote(
     const currentTime = Math.floor(Date.now() / 1000);
     const isExpired = expiration > 0 && expiration < currentTime;
 
+    // Log expiration details for debugging
+    logger.info(
+      `Permit2 allowance details: amount=${permit2Amount.toString()}, expiration=${expiration}, nonce=${nonce}`,
+    );
+    if (expiration > 0) {
+      const expirationDate = new Date(expiration * 1000);
+      const timeUntilExpiration = expiration - currentTime;
+      logger.info(
+        `Expiration: ${expirationDate.toISOString()} (${timeUntilExpiration > 0 ? `${Math.floor(timeUntilExpiration / 60)} minutes remaining` : 'EXPIRED'})`,
+      );
+    } else {
+      logger.info('Expiration: Never (expiration = 0)');
+    }
+
     if (isExpired || BigNumber.from(permit2Amount).lt(requiredAllowance)) {
       const inputAmount = utils.formatUnits(requiredAllowance, inputToken.decimals);
       const currentPermit2Allowance = utils.formatUnits(permit2Amount, inputToken.decimals);
 
       if (isExpired) {
+        const expirationDate = new Date(expiration * 1000);
         throw fastify.httpErrors.badRequest(
           `Permit2 allowance for ${inputToken.symbol} to Universal Router has expired. ` +
+            `Expired at: ${expirationDate.toISOString()}. ` +
             `Please approve ${inputToken.symbol} again using spender: "uniswap/router"`,
         );
       } else {
@@ -95,7 +111,7 @@ async function executeQuote(
       }
     }
 
-    logger.info(`Both allowances confirmed: Token->Permit2 and Permit2->UniversalRouter`);
+    logger.info(`✅ Both allowances confirmed: Token->Permit2 and Permit2->UniversalRouter`);
   }
 
   // Execute the swap transaction
@@ -173,9 +189,15 @@ async function executeQuote(
     }
   } catch (error) {
     logger.error(`Swap execution error: ${error.message}`);
-    // Log more details about the error for debugging Universal Router issues
+
+    // Decode Universal Router error data for better diagnostics
+    let errorData = '';
+    let errorSelector = '';
     if (error.error && error.error.data) {
-      logger.error(`Error data: ${error.error.data}`);
+      errorData = error.error.data;
+      errorSelector = errorData.substring(0, 10); // First 10 chars (0x + 8 hex chars)
+      logger.error(`Error data: ${errorData}`);
+      logger.error(`Error selector: ${errorSelector}`);
     }
     if (error.reason) {
       logger.error(`Error reason: ${error.reason}`);
@@ -187,14 +209,42 @@ async function executeQuote(
       logger.debug(`Transaction receipt: ${JSON.stringify(error.receipt)}`);
     }
 
-    // Handle specific error cases
+    // Handle specific Universal Router error codes
+    if (errorSelector === '0xd81b2f2e') {
+      // AllowanceExpired error from Permit2
+      throw fastify.httpErrors.badRequest(
+        `Universal Router error: Permit2 allowance has expired for ${inputToken.symbol}. ` +
+          `Please re-approve the token using spender: "uniswap/router" to set a new expiration.`,
+      );
+    } else if (errorSelector === '0x39d35496' || errorData.includes('TooLittleReceived')) {
+      // V2TooLittleReceived / InsufficientAmountOut error
+      throw fastify.httpErrors.badRequest(
+        `Swap failed: Slippage tolerance exceeded. The output amount would be less than your minimum acceptable amount. ` +
+          `Try increasing slippage tolerance or request a new quote.`,
+      );
+    } else if (errorSelector === '0x963b34a5' || errorData.includes('TooMuchInputPaid')) {
+      // V2TooMuchInputPaid error
+      throw fastify.httpErrors.badRequest(
+        `Swap failed: Slippage tolerance exceeded. The input amount would be more than your maximum acceptable amount. ` +
+          `Try increasing slippage tolerance or request a new quote.`,
+      );
+    }
+
+    // Handle general error patterns
     if (error.message && error.message.includes('insufficient funds')) {
       throw fastify.httpErrors.badRequest(
         'Insufficient funds for transaction. Please ensure you have enough ETH to cover gas costs.',
       );
     } else if (error.message && error.message.includes('cannot estimate gas')) {
+      // Provide more context if we have error data
+      let extraContext = '';
+      if (errorData) {
+        extraContext = ` The transaction would revert with error: ${errorSelector}. Check logs for details.`;
+      }
       throw fastify.httpErrors.badRequest(
-        'Transaction would fail. This could be due to an expired quote, insufficient token balance, or market conditions have changed. Please request a new quote.',
+        'Transaction simulation failed. This usually means the transaction would revert on-chain. ' +
+          `Common causes: expired Permit2 allowance, insufficient balance, slippage tolerance too tight, or quote expired.${extraContext} ` +
+          'Please check token approvals and request a new quote.',
       );
     } else if (error.message.includes('rejected on Ledger')) {
       throw fastify.httpErrors.badRequest('Transaction rejected on Ledger device');

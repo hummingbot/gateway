@@ -6,8 +6,9 @@ import { PublicKey } from '@solana/web3.js';
 import { ethers } from 'ethers';
 import * as fse from 'fs-extra';
 
+import { connectorsConfig } from '../config/routes/getConnectors';
 import { rootPath } from '../paths';
-import { Pool, PoolFileFormat, SupportedConnector, isSupportedConnector } from '../pools/types';
+import { Pool, PoolFileFormat, getSupportedConnectors, isSupportedConnector } from '../pools/types';
 import { SupportedChain } from '../tokens/types';
 
 import { logger } from './logger';
@@ -73,24 +74,32 @@ export class PoolService {
   private async validateConnector(connector: string): Promise<void> {
     if (!isSupportedConnector(connector)) {
       throw new Error(
-        `Unsupported connector: ${connector}. Supported connectors: ${Object.values(SupportedConnector).join(', ')}`,
+        `Unsupported connector: ${connector}. Supported connectors: ${getSupportedConnectors().join(', ')}`,
       );
     }
   }
 
   /**
-   * Get chain for a connector
+   * Get chain for a connector by looking it up in the connectors configuration
    */
   private getChainForConnector(connector: string): SupportedChain {
-    const solanaConnectors = ['raydium', 'meteora'];
-    const ethereumConnectors = ['uniswap'];
+    // Find the connector configuration
+    const connectorInfo = connectorsConfig.find((c) => c.name === connector);
 
-    if (solanaConnectors.includes(connector)) {
-      return SupportedChain.SOLANA;
-    } else if (ethereumConnectors.includes(connector)) {
-      return SupportedChain.ETHEREUM;
-    } else {
-      throw new Error(`Unknown connector: ${connector}`);
+    if (!connectorInfo) {
+      throw new Error(
+        `Unknown connector: ${connector}. Available connectors: ${connectorsConfig.map((c) => c.name).join(', ')}`,
+      );
+    }
+
+    // Map chain string to SupportedChain enum
+    switch (connectorInfo.chain.toLowerCase()) {
+      case 'ethereum':
+        return SupportedChain.ETHEREUM;
+      case 'solana':
+        return SupportedChain.SOLANA;
+      default:
+        throw new Error(`Unsupported chain '${connectorInfo.chain}' for connector: ${connector}`);
     }
   }
 
@@ -257,21 +266,52 @@ export class PoolService {
       throw new Error('Network is required');
     }
 
+    // Validate token addresses
+    if (!pool.baseTokenAddress || pool.baseTokenAddress.trim() === '') {
+      throw new Error('Base token address is required');
+    }
+
+    if (!pool.quoteTokenAddress || pool.quoteTokenAddress.trim() === '') {
+      throw new Error('Quote token address is required');
+    }
+
+    // Validate fee percentage
+    if (pool.feePct === undefined || pool.feePct === null) {
+      throw new Error('Fee percentage is required');
+    }
+
+    if (pool.feePct < 0 || pool.feePct > 100) {
+      throw new Error('Fee percentage must be between 0 and 100');
+    }
+
     // Validate address format based on chain
     const chain = this.getChainForConnector(connector);
 
     if (chain === SupportedChain.SOLANA) {
-      // Validate Solana address
+      // Validate Solana addresses
       try {
         new PublicKey(pool.address);
+        new PublicKey(pool.baseTokenAddress);
+        new PublicKey(pool.quoteTokenAddress);
       } catch {
-        throw new Error('Invalid Solana pool address');
+        throw new Error('Invalid Solana address');
       }
     } else if (chain === SupportedChain.ETHEREUM) {
-      // Validate Ethereum address
+      // Validate Ethereum addresses
       if (!ethers.utils.isAddress(pool.address)) {
         throw new Error('Invalid Ethereum pool address');
       }
+      if (!ethers.utils.isAddress(pool.baseTokenAddress)) {
+        throw new Error('Invalid Ethereum base token address');
+      }
+      if (!ethers.utils.isAddress(pool.quoteTokenAddress)) {
+        throw new Error('Invalid Ethereum quote token address');
+      }
+    }
+
+    // Validate that base and quote tokens are different
+    if (pool.baseTokenAddress.toLowerCase() === pool.quoteTokenAddress.toLowerCase()) {
+      throw new Error('Base and quote tokens must be different');
     }
   }
 
@@ -283,22 +323,9 @@ export class PoolService {
 
     const pools = await this.loadPoolList(connector);
 
-    // Check for duplicate address
+    // Check for duplicate address only
     if (pools.some((p) => p.address.toLowerCase() === pool.address.toLowerCase())) {
       throw new Error(`Pool with address ${pool.address} already exists`);
-    }
-
-    // Check for duplicate token pair on same network and type
-    if (
-      pools.some(
-        (p) =>
-          p.network === pool.network &&
-          p.type === pool.type &&
-          ((p.baseSymbol === pool.baseSymbol && p.quoteSymbol === pool.quoteSymbol) ||
-            (p.baseSymbol === pool.quoteSymbol && p.quoteSymbol === pool.baseSymbol)),
-      )
-    ) {
-      throw new Error(`Pool for ${pool.baseSymbol}-${pool.quoteSymbol} already exists on ${pool.network} ${pool.type}`);
     }
 
     pools.push(pool);
@@ -329,6 +356,29 @@ export class PoolService {
   public async getPoolByAddress(connector: string, address: string): Promise<Pool | null> {
     const pools = await this.loadPoolList(connector);
     return pools.find((p) => p.address.toLowerCase() === address.toLowerCase()) || null;
+  }
+
+  /**
+   * Get a pool by metadata (type, network, token addresses)
+   * This finds pools with identical token pair but potentially different fee tiers or addresses
+   */
+  public async getPoolByMetadata(
+    connector: string,
+    type: 'amm' | 'clmm',
+    network: string,
+    baseTokenAddress: string,
+    quoteTokenAddress: string,
+  ): Promise<Pool | null> {
+    const pools = await this.loadPoolList(connector);
+    return (
+      pools.find(
+        (p) =>
+          p.type === type &&
+          p.network === network &&
+          p.baseTokenAddress.toLowerCase() === baseTokenAddress.toLowerCase() &&
+          p.quoteTokenAddress.toLowerCase() === quoteTokenAddress.toLowerCase(),
+      ) || null
+    );
   }
 
   /**

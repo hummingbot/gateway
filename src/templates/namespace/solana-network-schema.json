@@ -4,10 +4,10 @@
   "properties": {
     "nodeURL": { "type": "string" },
     "nativeCurrencySymbol": { "type": "string" },
-    "rpcProvider": {
+    "swapProvider": {
       "type": "string",
-      "enum": ["url", "helius"],
-      "description": "RPC provider to use: 'url' for standard nodeURL, 'helius' for Helius service"
+      "description": "Default swap router provider for this network (format: connector/type, e.g., jupiter/router)",
+      "default": "jupiter/router"
     },
     "defaultComputeUnits": { "type": "number" },
     "confirmRetryInterval": { "type": "number" },

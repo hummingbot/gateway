@@ -5,7 +5,7 @@ import { getAvailableSolanaNetworks } from './solana.utils';
 export interface SolanaNetworkConfig {
   nodeURL: string;
   nativeCurrencySymbol: string;
-  rpcProvider: string;
+  swapProvider?: string;
   defaultComputeUnits: number;
   confirmRetryInterval: number;
   confirmRetryCount: number;
@@ -21,6 +21,7 @@ export interface SolanaNetworkConfig {
 export interface SolanaChainConfig {
   defaultNetwork: string;
   defaultWallet: string;
+  rpcProvider: string;
 }
 
 // Export available networks
@@ -31,7 +32,7 @@ export function getSolanaNetworkConfig(network: string): SolanaNetworkConfig {
   return {
     nodeURL: ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL'),
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
-    rpcProvider: ConfigManagerV2.getInstance().get(namespaceId + '.rpcProvider') || 'url',
+    swapProvider: ConfigManagerV2.getInstance().get(namespaceId + '.swapProvider'),
     defaultComputeUnits: ConfigManagerV2.getInstance().get(namespaceId + '.defaultComputeUnits'),
     confirmRetryInterval: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryInterval'),
     confirmRetryCount: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryCount'),
@@ -49,5 +50,6 @@ export function getSolanaChainConfig(): SolanaChainConfig {
   return {
     defaultNetwork: ConfigManagerV2.getInstance().get('solana.defaultNetwork'),
     defaultWallet: ConfigManagerV2.getInstance().get('solana.defaultWallet'),
+    rpcProvider: ConfigManagerV2.getInstance().get('solana.rpcProvider') || 'url',
   };
 }

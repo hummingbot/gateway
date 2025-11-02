@@ -1,0 +1,12 @@
+{
+  "signature": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+  "data": {
+    "tokenIn": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    "tokenOut": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "amountIn": 1.0,
+    "amountOut": 1800.0,
+    "fee": 0.003,
+    "baseTokenBalanceChange": -1.0,
+    "quoteTokenBalanceChange": 1800.0
+  }
+}

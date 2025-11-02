@@ -17,12 +17,15 @@ export type EstimateGasRequestType = Static<typeof EstimateGasRequestSchema>;
 
 export const EstimateGasResponseSchema = Type.Object(
   {
-    feePerComputeUnit: Type.Number(), // Fee per compute unit
+    feePerComputeUnit: Type.Number(), // Fee per compute unit (legacy gas price or maxFeePerGas for EIP-1559)
     denomination: Type.String(), // Denomination: "lamports" or "gwei"
     computeUnits: Type.Number(), // Default compute units/gas limit used for fee calculation
     feeAsset: Type.String(), // Native currency symbol from network config (ETH, SOL, etc.)
     fee: Type.Number(), // Total fee calculated using default gas/compute limits
     timestamp: Type.Number(), // Unix timestamp when estimate was made
+    gasType: Type.Optional(Type.String()), // Gas type: "legacy" or "eip1559"
+    maxFeePerGas: Type.Optional(Type.Number()), // EIP-1559: Maximum fee per gas in gwei
+    maxPriorityFeePerGas: Type.Optional(Type.Number()), // EIP-1559: Maximum priority fee per gas in gwei
   },
   { $id: 'EstimateGasResponse' },
 );
@@ -130,9 +133,99 @@ export const StatusResponseSchema = Type.Object(
     chain: Type.String(),
     network: Type.String(),
     rpcUrl: Type.String(),
+    rpcProvider: Type.String(),
     currentBlockNumber: Type.Number(),
     nativeCurrency: Type.String(),
+    swapProvider: Type.String(),
   },
   { $id: 'StatusResponse' },
 );
 export type StatusResponseType = Static<typeof StatusResponseSchema>;
+
+// Chain-level quote-swap response (no quoteId since quotes aren't cached)
+export const ChainQuoteSwapResponseSchema = Type.Object(
+  {
+    tokenIn: Type.String({
+      description: 'Address of the token being swapped from',
+    }),
+    tokenOut: Type.String({
+      description: 'Address of the token being swapped to',
+    }),
+    amountIn: Type.Number({
+      description: 'Amount of tokenIn to be swapped',
+    }),
+    amountOut: Type.Number({
+      description: 'Expected amount of tokenOut to receive',
+    }),
+    price: Type.Number({
+      description: 'Exchange rate between tokenIn and tokenOut',
+    }),
+    priceImpactPct: Type.Number({
+      description: 'Estimated price impact percentage (0-100)',
+    }),
+    minAmountOut: Type.Number({
+      description: 'Minimum amount of tokenOut that will be accepted',
+    }),
+    maxAmountIn: Type.Number({
+      description: 'Maximum amount of tokenIn that will be spent',
+    }),
+    // Optional fields that may be included by specific connectors
+    poolAddress: Type.Optional(
+      Type.String({
+        description: 'Pool address for AMM/CLMM swaps',
+      }),
+    ),
+    routePath: Type.Optional(
+      Type.String({
+        description: 'Route path for router-based swaps',
+      }),
+    ),
+    slippagePct: Type.Optional(
+      Type.Number({
+        description: 'Slippage tolerance percentage',
+      }),
+    ),
+  },
+  { $id: 'ChainQuoteSwapResponse' },
+);
+export type ChainQuoteSwapResponseType = Static<typeof ChainQuoteSwapResponseSchema>;
+
+// Chain-level execute-swap response
+export const ChainExecuteSwapResponseSchema = Type.Object(
+  {
+    signature: Type.String({
+      description: 'Transaction signature/hash',
+    }),
+    status: Type.Number({
+      description: 'Transaction status: 0 = PENDING, 1 = CONFIRMED, -1 = FAILED',
+    }),
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object({
+        tokenIn: Type.String({
+          description: 'Address of the token swapped from',
+        }),
+        tokenOut: Type.String({
+          description: 'Address of the token swapped to',
+        }),
+        amountIn: Type.Number({
+          description: 'Actual amount of tokenIn swapped',
+        }),
+        amountOut: Type.Number({
+          description: 'Actual amount of tokenOut received',
+        }),
+        fee: Type.Number({
+          description: 'Transaction fee paid',
+        }),
+        baseTokenBalanceChange: Type.Number({
+          description: 'Change in base token balance (negative for decrease)',
+        }),
+        quoteTokenBalanceChange: Type.Number({
+          description: 'Change in quote token balance (negative for decrease)',
+        }),
+      }),
+    ),
+  },
+  { $id: 'ChainExecuteSwapResponse' },
+);
+export type ChainExecuteSwapResponseType = Static<typeof ChainExecuteSwapResponseSchema>;

@@ -2,25 +2,34 @@
  * Pool types and interfaces
  */
 
+import { connectorsConfig } from '../config/routes/getConnectors';
+
 export interface Pool {
   type: 'amm' | 'clmm';
   network: string;
   baseSymbol: string;
   quoteSymbol: string;
+  baseTokenAddress: string;
+  quoteTokenAddress: string;
+  feePct: number;
   address: string;
 }
 
 export type PoolFileFormat = Pool[];
 
-export enum SupportedConnector {
-  RAYDIUM = 'raydium',
-  METEORA = 'meteora',
-  UNISWAP = 'uniswap',
-  ORCA = 'orca',
+/**
+ * Get list of supported connectors dynamically from connectorsConfig
+ * This ensures the list is always up-to-date with available connectors
+ */
+export function getSupportedConnectors(): string[] {
+  return connectorsConfig.map((c) => c.name);
 }
 
-export function isSupportedConnector(connector: string): connector is SupportedConnector {
-  return Object.values(SupportedConnector).includes(connector as SupportedConnector);
+/**
+ * Check if a connector is supported by checking against the dynamic connectors config
+ */
+export function isSupportedConnector(connector: string): boolean {
+  return connectorsConfig.some((c) => c.name === connector);
 }
 
 export interface PoolListRequest {
@@ -34,7 +43,10 @@ export interface PoolAddRequest {
   connector: string;
   type: 'amm' | 'clmm';
   network: string;
-  baseSymbol: string;
-  quoteSymbol: string;
   address: string;
+  baseSymbol?: string;
+  quoteSymbol?: string;
+  baseTokenAddress: string;
+  quoteTokenAddress: string;
+  feePct?: number;
 }
