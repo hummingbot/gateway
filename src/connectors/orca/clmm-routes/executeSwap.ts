@@ -1,6 +1,17 @@
-// TODO: This route needs complete rewrite for Orca SDK
-// Meteora SDK types (SwapQuoteExactOut, SwapQuote) and methods don't exist in Orca
-// Will need to use Orca's getSwapV2Instruction() to build swap transactions
+import { Percentage, TransactionBuilder } from '@orca-so/common-sdk';
+import {
+  ORCA_WHIRLPOOL_PROGRAM_ID,
+  PDAUtil,
+  WhirlpoolIx,
+  swapQuoteByInputToken,
+  swapQuoteByOutputToken,
+  buildWhirlpoolClient,
+} from '@orca-so/whirlpools-sdk';
+import { IGNORE_CACHE } from '@orca-so/whirlpools-sdk/dist/network/public/fetcher';
+import { getAssociatedTokenAddressSync } from '@solana/spl-token';
+import { PublicKey } from '@solana/web3.js';
+import BN from 'bn.js';
+import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
@@ -8,27 +19,201 @@ import { getSolanaChainConfig } from '../../../chains/solana/solana.config';
 import { ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
+import { handleWsolAta } from '../orca.utils';
 import { OrcaClmmExecuteSwapRequest, OrcaClmmExecuteSwapRequestType } from '../schemas';
 
 async function executeSwap(
   fastify: FastifyInstance,
-  _network: string,
-  _address: string,
-  _baseTokenIdentifier: string,
-  _quoteTokenIdentifier: string,
-  _amount: number,
-  _side: 'BUY' | 'SELL',
-  _poolAddress: string,
-  _slippagePct?: number,
+  network: string,
+  address: string,
+  baseTokenIdentifier: string,
+  quoteTokenIdentifier: string,
+  amount: number,
+  side: 'BUY' | 'SELL',
+  poolAddress: string,
+  slippagePct: number = 1,
 ): Promise<ExecuteSwapResponseType> {
-  // TODO: Implement using Orca SDK
-  // Need to:
-  // 1. Get whirlpool data
-  // 2. Build swap instruction using getSwapV2Instruction()
-  // 3. Create and send transaction
-  throw fastify.httpErrors.notImplemented(
-    'executeSwap not yet implemented for Orca. This route requires Orca getSwapV2Instruction().',
+  const solana = await Solana.getInstance(network);
+  const orca = await Orca.getInstance(network);
+  const wallet = await solana.getWallet(address);
+  const ctx = await orca.getWhirlpoolContextForWallet(address);
+  const whirlpoolPubkey = new PublicKey(poolAddress);
+
+  // Build whirlpool client and fetch pool
+  const client = buildWhirlpoolClient(ctx);
+  const whirlpool = await client.getPool(whirlpoolPubkey, IGNORE_CACHE);
+  const whirlpoolData = whirlpool.getData();
+
+  // Get token info
+  const baseTokenInfo = await solana.getToken(baseTokenIdentifier);
+  const quoteTokenInfo = await solana.getToken(quoteTokenIdentifier);
+
+  if (!baseTokenInfo || !quoteTokenInfo) {
+    throw fastify.httpErrors.badRequest(
+      `Token not found: ${!baseTokenInfo ? baseTokenIdentifier : quoteTokenIdentifier}`,
+    );
+  }
+
+  // Fetch token mint info
+  const mintA = await ctx.fetcher.getMintInfo(whirlpoolData.tokenMintA);
+  const mintB = await ctx.fetcher.getMintInfo(whirlpoolData.tokenMintB);
+  if (!mintA || !mintB) {
+    throw fastify.httpErrors.notFound('Token mint not found');
+  }
+
+  // Determine swap direction
+  // side = BUY means buying `amount` of base token (quote -> base)
+  // side = SELL means selling `amount` of base token (base -> quote)
+  const isBuyingSide = side === 'BUY';
+
+  // For BUY: amount = desired base token (output), need to calculate quote input
+  // For SELL: amount = base token to sell (input), calculate quote output
+  const { inputTokenInfo, outputTokenInfo, inputTokenMint, outputTokenMint } = isBuyingSide
+    ? {
+        // BUY: amount is output (base), input is quote
+        outputTokenInfo: baseTokenInfo,
+        inputTokenInfo: quoteTokenInfo,
+        outputTokenMint: new PublicKey(baseTokenInfo.address),
+        inputTokenMint: new PublicKey(quoteTokenInfo.address),
+      }
+    : {
+        // SELL: amount is input (base), output is quote
+        inputTokenInfo: baseTokenInfo,
+        outputTokenInfo: quoteTokenInfo,
+        inputTokenMint: new PublicKey(baseTokenInfo.address),
+        outputTokenMint: new PublicKey(quoteTokenInfo.address),
+      };
+
+  // Determine if we're swapping A->B or B->A based on input token
+  const isInputTokenA = inputTokenMint.equals(whirlpoolData.tokenMintA);
+  const aToB = isInputTokenA;
+
+  // Convert amount to BN with proper decimals
+  const inputDecimals = isInputTokenA ? mintA.decimals : mintB.decimals;
+  const outputDecimals = isInputTokenA ? mintB.decimals : mintA.decimals;
+
+  // Get swap quote based on side
+  let quote;
+  if (isBuyingSide) {
+    // BUY: quote by output token (how much base we want to receive)
+    const outputAmountBN = new BN(Math.floor(amount * Math.pow(10, outputDecimals)));
+    quote = await swapQuoteByOutputToken(
+      whirlpool,
+      outputTokenMint,
+      outputAmountBN,
+      Percentage.fromDecimal(new Decimal(slippagePct)),
+      ORCA_WHIRLPOOL_PROGRAM_ID,
+      ctx.fetcher,
+      IGNORE_CACHE,
+    );
+  } else {
+    // SELL: quote by input token (how much base we're selling)
+    const inputAmountBN = new BN(Math.floor(amount * Math.pow(10, inputDecimals)));
+    quote = await swapQuoteByInputToken(
+      whirlpool,
+      inputTokenMint,
+      inputAmountBN,
+      Percentage.fromDecimal(new Decimal(slippagePct)),
+      ORCA_WHIRLPOOL_PROGRAM_ID,
+      ctx.fetcher,
+      IGNORE_CACHE,
+    );
+  }
+
+  logger.info(
+    `Swap quote: ${Number(quote.estimatedAmountIn) / Math.pow(10, inputDecimals)} ${inputTokenInfo.symbol} -> ${Number(quote.estimatedAmountOut) / Math.pow(10, outputDecimals)} ${outputTokenInfo.symbol}`,
   );
+
+  // Build transaction
+  const builder = new TransactionBuilder(ctx.connection, ctx.wallet);
+
+  // Get token accounts
+  const tokenOwnerAccountA = getAssociatedTokenAddressSync(
+    whirlpoolData.tokenMintA,
+    ctx.wallet.publicKey,
+    undefined,
+    mintA.tokenProgram,
+  );
+  const tokenOwnerAccountB = getAssociatedTokenAddressSync(
+    whirlpoolData.tokenMintB,
+    ctx.wallet.publicKey,
+    undefined,
+    mintB.tokenProgram,
+  );
+
+  // Handle WSOL for input token (wrap if needed)
+  if (aToB) {
+    await handleWsolAta(
+      builder,
+      ctx,
+      whirlpoolData.tokenMintA,
+      tokenOwnerAccountA,
+      mintA.tokenProgram,
+      'wrap',
+      quote.estimatedAmountIn,
+    );
+    // Create ATA for output token if needed
+    await handleWsolAta(builder, ctx, whirlpoolData.tokenMintB, tokenOwnerAccountB, mintB.tokenProgram, 'receive');
+  } else {
+    // Create ATA for output token if needed
+    await handleWsolAta(builder, ctx, whirlpoolData.tokenMintA, tokenOwnerAccountA, mintA.tokenProgram, 'receive');
+    await handleWsolAta(
+      builder,
+      ctx,
+      whirlpoolData.tokenMintB,
+      tokenOwnerAccountB,
+      mintB.tokenProgram,
+      'wrap',
+      quote.estimatedAmountIn,
+    );
+  }
+
+  // Get oracle PDA
+  const oraclePda = PDAUtil.getOracle(ORCA_WHIRLPOOL_PROGRAM_ID, whirlpoolPubkey);
+
+  // Add swap instruction
+  builder.addInstruction(
+    WhirlpoolIx.swapIx(ctx.program, {
+      ...quote,
+      whirlpool: whirlpoolPubkey,
+      tokenAuthority: ctx.wallet.publicKey,
+      tokenOwnerAccountA,
+      tokenVaultA: whirlpoolData.tokenVaultA,
+      tokenOwnerAccountB,
+      tokenVaultB: whirlpoolData.tokenVaultB,
+      oracle: oraclePda.publicKey,
+    }),
+  );
+
+  // Build, simulate, and send transaction
+  const txPayload = await builder.build();
+  await solana.simulateWithErrorHandling(txPayload.transaction, fastify);
+  const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [wallet]);
+
+  // Calculate balance changes based on side
+  const amountIn = Number(quote.estimatedAmountIn) / Math.pow(10, inputDecimals);
+  const amountOut = Number(quote.estimatedAmountOut) / Math.pow(10, outputDecimals);
+
+  const baseTokenBalanceChange = isBuyingSide ? amountOut : -amountIn;
+  const quoteTokenBalanceChange = isBuyingSide ? -amountIn : amountOut;
+
+  logger.info(
+    `Swap executed: ${amountIn} ${inputTokenInfo.symbol} -> ${amountOut} ${outputTokenInfo.symbol}, fee: ${fee}`,
+  );
+
+  return {
+    signature,
+    status: 1, // CONFIRMED
+    data: {
+      tokenIn: inputTokenInfo.address,
+      tokenOut: outputTokenInfo.address,
+      amountIn,
+      amountOut,
+      fee,
+      baseTokenBalanceChange,
+      quoteTokenBalanceChange,
+    },
+  };
 }
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
