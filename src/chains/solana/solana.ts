@@ -1943,6 +1943,107 @@ export class Solana {
   }
 
   /**
+   * Subscribe to real-time wallet balance updates via WebSocket
+   * Monitors SOL balance and all SPL token accounts for the wallet
+   * @param walletAddress Wallet public key
+   * @param callback Function called when balances change
+   * @returns Subscription ID for cleanup
+   */
+  public async subscribeToWalletBalance(
+    walletAddress: string,
+    callback: (balances: {
+      sol: number;
+      tokens: Array<{
+        symbol: string;
+        address: string;
+        balance: number;
+        decimals: number;
+      }>;
+      slot: number;
+    }) => void,
+  ): Promise<number> {
+    if (!this.heliusService?.isWebSocketConnected()) {
+      throw new Error(
+        'WebSocket not available. Enable useHeliusWebSocketRPC in conf/rpc/helius.yml and ensure Helius API key is configured.',
+      );
+    }
+
+    // Subscribe to main wallet account (SOL balance)
+    const subscriptionId = await this.heliusService.subscribeToAccount(
+      walletAddress,
+      async (accountInfo, context) => {
+        const balances = await this.parseWalletBalances(walletAddress, accountInfo, context);
+        callback(balances);
+      },
+      { encoding: 'jsonParsed', commitment: 'confirmed' },
+    );
+
+    logger.info(`Subscribed to wallet balance updates for ${walletAddress} (subscription ID: ${subscriptionId})`);
+    return subscriptionId;
+  }
+
+  /**
+   * Parse wallet account info and fetch token balances
+   */
+  private async parseWalletBalances(
+    walletAddress: string,
+    accountInfo: any,
+    context: { slot: number },
+  ): Promise<{
+    sol: number;
+    tokens: Array<{ symbol: string; address: string; balance: number; decimals: number }>;
+    slot: number;
+  }> {
+    // SOL balance from account lamports
+    const solBalance = accountInfo.lamports / 1e9;
+
+    // Get token accounts for this wallet
+    const tokenAccounts = await this.connection.getParsedTokenAccountsByOwner(new PublicKey(walletAddress), {
+      programId: TOKEN_PROGRAM_ID,
+    });
+
+    // Parse tokens from token list
+    const tokenList = await this.getTokenList();
+    const tokens = [];
+
+    for (const { account } of tokenAccounts.value) {
+      const tokenAddress = account.data.parsed.info.mint;
+      const balance = account.data.parsed.info.tokenAmount.uiAmount;
+      const decimals = account.data.parsed.info.tokenAmount.decimals;
+
+      // Look up token info from token list
+      const tokenInfo = tokenList.find((t) => t.address === tokenAddress);
+
+      if (tokenInfo && balance > 0) {
+        tokens.push({
+          symbol: tokenInfo.symbol,
+          address: tokenAddress,
+          balance,
+          decimals,
+        });
+      }
+    }
+
+    logger.debug(
+      `Wallet ${walletAddress} balance update: ${solBalance.toFixed(4)} SOL, ${tokens.length} token(s) at slot ${context.slot}`,
+    );
+
+    return { sol: solBalance, tokens, slot: context.slot };
+  }
+
+  /**
+   * Unsubscribe from wallet balance updates
+   * @param subscriptionId Subscription ID to unsubscribe
+   */
+  public async unsubscribeFromWalletBalance(subscriptionId: number): Promise<void> {
+    if (!this.heliusService) {
+      throw new Error('HeliusService not initialized');
+    }
+    await this.heliusService.unsubscribeFromAccount(subscriptionId);
+    logger.info(`Unsubscribed from wallet balance updates (subscription ID: ${subscriptionId})`);
+  }
+
+  /**
    * Clean up resources including WebSocket connections and connection warming
    */
   public disconnect(): void {

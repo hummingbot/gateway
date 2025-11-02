@@ -1,3 +1,4 @@
+import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { BalanceRequestType, BalanceResponseType, BalanceResponseSchema } from '../../../schemas/chain-schema';
@@ -30,6 +31,15 @@ export async function getSolanaBalances(
     throw fastify.httpErrors.internalServerError(`Failed to get balances: ${error.message}`);
   }
 }
+
+// Store active subscriptions per instance (in-memory)
+const activeSubscriptions = new Map<
+  number,
+  {
+    network: string;
+    address: string;
+  }
+>();
 
 export const balancesRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
@@ -70,6 +80,148 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const { network, address, tokens, fetchAll } = request.body;
       return await getSolanaBalances(fastify, network, address, tokens, fetchAll);
+    },
+  );
+
+  // WebSocket subscription endpoint
+  fastify.post<{
+    Body: {
+      network: string;
+      address: string;
+    };
+    Reply: {
+      subscriptionId: number;
+      message: string;
+      initialBalances: {
+        sol: number;
+        tokens: Array<{
+          symbol: string;
+          address: string;
+          balance: number;
+          decimals: number;
+        }>;
+      };
+    };
+  }>(
+    '/subscribe-balances',
+    {
+      schema: {
+        description: 'Subscribe to real-time wallet balance updates via WebSocket',
+        tags: ['/chain/solana'],
+        body: Type.Object({
+          network: Type.String({ description: 'Solana network name (e.g., mainnet-beta, devnet)' }),
+          address: Type.String({ description: 'Wallet address to monitor' }),
+        }),
+        response: {
+          200: Type.Object({
+            subscriptionId: Type.Number({ description: 'Subscription ID for unsubscribing' }),
+            message: Type.String({ description: 'Success message' }),
+            initialBalances: Type.Object({
+              sol: Type.Number({ description: 'Initial SOL balance' }),
+              tokens: Type.Array(
+                Type.Object({
+                  symbol: Type.String(),
+                  address: Type.String(),
+                  balance: Type.Number(),
+                  decimals: Type.Number(),
+                }),
+                { description: 'Initial token balances' },
+              ),
+            }),
+          }),
+        },
+      },
+    },
+    async (request) => {
+      const { network, address } = request.body;
+      const solana = await Solana.getInstance(network);
+
+      // Get initial balances
+      const initialBalancesRaw = await solana.getBalances(address);
+      const balancesData = initialBalancesRaw.balances;
+      const solBalance = (balancesData['SOL'] as number) || 0;
+
+      // Get token list once
+      const tokenList = await solana.getTokenList();
+
+      const tokenBalances = Object.entries(balancesData)
+        .filter(([symbol]) => symbol !== 'SOL')
+        .map(([symbol, balance]) => {
+          // Find token info from token list
+          const tokenInfo = tokenList.find((t) => t.symbol === symbol);
+          return {
+            symbol,
+            address: tokenInfo?.address || '',
+            balance: balance as number,
+            decimals: tokenInfo?.decimals || 9,
+          };
+        });
+
+      // Subscribe to updates
+      const subscriptionId = await solana.subscribeToWalletBalance(address, (balances) => {
+        logger.info(`Wallet ${address} balance updated at slot ${balances.slot}:`, {
+          sol: balances.sol,
+          tokenCount: balances.tokens.length,
+        });
+        // In a real-world scenario, you'd emit this via Server-Sent Events (SSE) or WebSocket to the client
+        // For now, we just log it
+      });
+
+      // Store subscription metadata
+      activeSubscriptions.set(subscriptionId, { network, address });
+
+      return {
+        subscriptionId,
+        message: 'Subscribed to wallet balance updates. Balance changes will be logged.',
+        initialBalances: {
+          sol: solBalance,
+          tokens: tokenBalances,
+        },
+      };
+    },
+  );
+
+  // Unsubscribe endpoint
+  fastify.delete<{
+    Body: {
+      network: string;
+      subscriptionId: number;
+    };
+    Reply: {
+      message: string;
+    };
+  }>(
+    '/unsubscribe-balances',
+    {
+      schema: {
+        description: 'Unsubscribe from wallet balance updates',
+        tags: ['/chain/solana'],
+        body: Type.Object({
+          network: Type.String({ description: 'Solana network name' }),
+          subscriptionId: Type.Number({ description: 'Subscription ID from subscribe-balances' }),
+        }),
+        response: {
+          200: Type.Object({
+            message: Type.String(),
+          }),
+        },
+      },
+    },
+    async (request) => {
+      const { network, subscriptionId } = request.body;
+      const solana = await Solana.getInstance(network);
+
+      // Check if subscription exists
+      const subscription = activeSubscriptions.get(subscriptionId);
+      if (!subscription) {
+        throw fastify.httpErrors.notFound(`Subscription ID ${subscriptionId} not found`);
+      }
+
+      // Unsubscribe
+      await solana.unsubscribeFromWalletBalance(subscriptionId);
+      activeSubscriptions.delete(subscriptionId);
+
+      return { message: 'Unsubscribed successfully' };
     },
   );
 };
