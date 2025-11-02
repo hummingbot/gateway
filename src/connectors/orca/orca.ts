@@ -273,44 +273,29 @@ export class Orca {
       )) as any;
 
       for (const position of positionsForOwner) {
-        console.log('Debug: Position:', position);
-        console.log('Debug: Reward Infos:', position.data.rewardInfos);
-
         if (position.data.whirlpool === poolAddress) {
-          positions.push(await getPositionDetails(this.solanaKitRpc, address(position.data.positionMint)));
+          const ctx = await this.getWhirlpoolContextForWallet(walletAddress);
+          positions.push(await getPositionDetails(ctx, address(position.address)));
         }
       }
 
-      // const positionsInWhirlpool: OrcaPosition[] = (await fetchPositionsInWhirlpool(
-      //   this.solana.solanaKitRpc,
-      //   address(poolAddress),
-      // )) as any;
-
-      // for (const position of positionsInWhirlpool) {
-      //   console.log('Debug: Position:', position);
-      //   console.log('Debug: Reward Infos:', position.data.rewardInfos);
-      // }
-
-      console.log('Debug: Total positions found:', positions.length);
-      logger.info(`Found ${positions.length} positions in pool ${poolAddress}`);
       return positions;
     } catch (error) {
       logger.error('Error getting positions in pool:', error);
-      console.log('Debug: getPositionsInPool encountered error:', error);
       return [];
     }
   }
 
   /**
    * Gets position information for a specific position NFT
-   * @param positionAddress The position NFT mint address
+   * @param positionAddress The position address
    * @param walletAddress The wallet that owns the position
    * @returns PositionInfo or null if not found
    */
-  async getPositionInfo(positionAddress: string): Promise<PositionInfo | null> {
+  async getPositionInfo(positionAddress: string, walletAddress: string): Promise<PositionInfo | null> {
     try {
-      const rpc = this.solanaKitRpc;
-      const positionInfo = await getPositionDetails(rpc, positionAddress);
+      const ctx = await this.getWhirlpoolContextForWallet(walletAddress);
+      const positionInfo = await getPositionDetails(ctx, positionAddress);
       return positionInfo;
     } catch (error) {
       logger.error('Error getting position info:', error);

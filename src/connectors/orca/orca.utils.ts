@@ -1,29 +1,26 @@
 import { TransactionBuilder } from '@orca-so/common-sdk';
+import { fetchAllTickArray, fetchOracle, fetchWhirlpool, getTickArrayAddress } from '@orca-so/whirlpools-client';
 import {
-  fetchPosition,
-  fetchWhirlpool,
-  fetchAllTickArray,
-  getPositionAddress,
-  getTickArrayAddress,
-  fetchOracle,
-} from '@orca-so/whirlpools-client';
-import {
-  collectFeesQuote,
-  getTickArrayStartTickIndex,
-  getTickIndexInArray,
-  sqrtPriceToPrice,
-  tickIndexToPrice,
+  IncreaseLiquidityQuote,
   TransferFee,
-  tickIndexToSqrtPrice,
-  positionStatus,
-  swapQuoteByInputToken,
-  isInitializedWithAdaptiveFee,
-  priceToTickIndex,
+  getTickArrayStartTickIndex,
   increaseLiquidityQuoteA,
   increaseLiquidityQuoteB,
-  IncreaseLiquidityQuote,
+  isInitializedWithAdaptiveFee,
+  positionStatus,
+  priceToTickIndex,
+  sqrtPriceToPrice,
+  swapQuoteByInputToken,
+  tickIndexToSqrtPrice,
 } from '@orca-so/whirlpools-core';
-import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil } from '@orca-so/whirlpools-sdk';
+import {
+  ORCA_WHIRLPOOL_PROGRAM_ID,
+  PDAUtil,
+  PriceMath,
+  PoolUtil,
+  TickUtil,
+  collectFeesQuote as collectFeesQuoteLegacy,
+} from '@orca-so/whirlpools-sdk';
 import type { WhirlpoolContext } from '@orca-so/whirlpools-sdk';
 import type {
   GetAccountInfoApi,
@@ -38,7 +35,6 @@ import {
   NATIVE_MINT,
   createAssociatedTokenAccountIdempotentInstruction,
   createSyncNativeInstruction,
-  TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { fetchAllMint, Mint } from '@solana-program/token-2022';
@@ -51,77 +47,105 @@ import { logger } from '../../services/logger';
  * Extracts detailed position information including fees, token amounts, and pricing.
  * This function fetches all necessary on-chain data and calculates derived values.
  *
- * @param {SolanaRpc} rpc - The Solana RPC client used to fetch account data.
- * @param {string} positionMintAddress - The position mint address.
+ * @param {WhirlpoolContext} ctx - The Whirlpool context with fetcher
+ * @param {string} positionAddress - The position PDA address
  * @returns {Promise<PositionInfo>} - A promise that resolves to detailed position information.
  */
-export async function getPositionDetails(
-  rpc: Rpc<GetAccountInfoApi & GetMultipleAccountsApi & GetEpochInfoApi>,
-  positionMintAddress: string,
-): Promise<PositionInfo> {
-  const currentEpoch = await rpc.getEpochInfo().send();
-  const positionAddress = await getPositionAddress(address(positionMintAddress));
-  const position = await fetchPosition(rpc, positionAddress[0]);
-  const whirlpool = await fetchWhirlpool(rpc, position.data.whirlpool);
+export async function getPositionDetails(ctx: WhirlpoolContext, positionAddress: string): Promise<PositionInfo> {
+  const positionPubkey = new PublicKey(positionAddress);
 
-  const [mintA, mintB] = await fetchAllMint(rpc, [whirlpool.data.tokenMintA, whirlpool.data.tokenMintB]);
+  // Use legacy SDK's fetcher which handles position PDA addresses directly
+  const position = await ctx.fetcher.getPosition(positionPubkey);
+  if (!position) {
+    throw new Error(`Position not found: ${positionAddress}`);
+  }
 
-  const lowerTickArrayStartIndex = getTickArrayStartTickIndex(position.data.tickLowerIndex, whirlpool.data.tickSpacing);
-  const upperTickArrayStartIndex = getTickArrayStartTickIndex(position.data.tickUpperIndex, whirlpool.data.tickSpacing);
+  const whirlpool = await ctx.fetcher.getPool(position.whirlpool);
+  if (!whirlpool) {
+    throw new Error(`Whirlpool not found for position: ${positionAddress}`);
+  }
 
-  const [lowerTickArrayAddress, upperTickArrayAddress] = await Promise.all([
-    getTickArrayAddress(whirlpool.address, lowerTickArrayStartIndex).then((x) => x[0]),
-    getTickArrayAddress(whirlpool.address, upperTickArrayStartIndex).then((x) => x[0]),
+  // const currentEpoch = await ctx.connection.getEpochInfo();
+
+  const mintA = await ctx.fetcher.getMintInfo(whirlpool.tokenMintA);
+  const mintB = await ctx.fetcher.getMintInfo(whirlpool.tokenMintB);
+
+  if (!mintA || !mintB) {
+    throw new Error('Failed to fetch mint info');
+  }
+
+  const lowerTickArrayStartIndex = TickUtil.getStartTickIndex(position.tickLowerIndex, whirlpool.tickSpacing);
+  const upperTickArrayStartIndex = TickUtil.getStartTickIndex(position.tickUpperIndex, whirlpool.tickSpacing);
+
+  const lowerTickArrayPda = PDAUtil.getTickArray(
+    ORCA_WHIRLPOOL_PROGRAM_ID,
+    position.whirlpool,
+    lowerTickArrayStartIndex,
+  );
+  const upperTickArrayPda = PDAUtil.getTickArray(
+    ORCA_WHIRLPOOL_PROGRAM_ID,
+    position.whirlpool,
+    upperTickArrayStartIndex,
+  );
+
+  const [lowerTickArray, upperTickArray] = await Promise.all([
+    ctx.fetcher.getTickArray(lowerTickArrayPda.publicKey),
+    ctx.fetcher.getTickArray(upperTickArrayPda.publicKey),
   ]);
 
-  const [lowerTickArray, upperTickArray] = await fetchAllTickArray(rpc, [lowerTickArrayAddress, upperTickArrayAddress]);
+  if (!lowerTickArray || !upperTickArray) {
+    throw new Error('Failed to fetch tick arrays');
+  }
 
-  const lowerTick =
-    lowerTickArray.data.ticks[
-      getTickIndexInArray(position.data.tickLowerIndex, lowerTickArrayStartIndex, whirlpool.data.tickSpacing)
-    ];
-  const upperTick =
-    upperTickArray.data.ticks[
-      getTickIndexInArray(position.data.tickUpperIndex, upperTickArrayStartIndex, whirlpool.data.tickSpacing)
-    ];
+  const lowerTickOffset = (position.tickLowerIndex - lowerTickArrayStartIndex) / whirlpool.tickSpacing;
+  const upperTickOffset = (position.tickUpperIndex - upperTickArrayStartIndex) / whirlpool.tickSpacing;
 
-  const feesQuote = collectFeesQuote(
-    whirlpool.data,
-    position.data,
-    lowerTick,
-    upperTick,
-    getCurrentTransferFee(mintA, currentEpoch.epoch),
-    getCurrentTransferFee(mintB, currentEpoch.epoch),
+  const lowerTick = lowerTickArray.ticks[lowerTickOffset];
+  const upperTick = upperTickArray.ticks[upperTickOffset];
+
+  // Get current epoch for transfer fee calculations
+  const currentEpoch = await ctx.connection.getEpochInfo();
+
+  // Calculate fees owed using legacy SDK
+  const feesQuote = collectFeesQuoteLegacy({
+    whirlpool,
+    position,
+    tickLower: lowerTick,
+    tickUpper: upperTick,
+    tokenExtensionCtx: {
+      tokenMintWithProgramA: mintA,
+      tokenMintWithProgramB: mintB,
+      currentEpoch: currentEpoch.epoch,
+    },
+  });
+
+  // Use legacy SDK utilities for calculations
+  const tokenAmounts = PoolUtil.getTokenAmountsFromLiquidity(
+    position.liquidity,
+    whirlpool.sqrtPrice,
+    PriceMath.tickIndexToSqrtPriceX64(position.tickLowerIndex),
+    PriceMath.tickIndexToSqrtPriceX64(position.tickUpperIndex),
+    true, // round up
   );
 
-  const [baseTokenAmount, quoteTokenAmount] = getTokenEstimatesFromLiquidity(
-    position.data.liquidity,
-    whirlpool.data.sqrtPrice,
-    position.data.tickLowerIndex,
-    position.data.tickUpperIndex,
-    false,
-  );
-
-  const price = sqrtPriceToPrice(whirlpool.data.sqrtPrice, mintA.data.decimals, mintB.data.decimals);
-
-  const lowerPrice = tickIndexToPrice(position.data.tickLowerIndex, mintA.data.decimals, mintB.data.decimals);
-
-  const upperPrice = tickIndexToPrice(position.data.tickUpperIndex, mintA.data.decimals, mintB.data.decimals);
+  const price = PriceMath.sqrtPriceX64ToPrice(whirlpool.sqrtPrice, mintA.decimals, mintB.decimals);
+  const lowerPrice = PriceMath.tickIndexToPrice(position.tickLowerIndex, mintA.decimals, mintB.decimals);
+  const upperPrice = PriceMath.tickIndexToPrice(position.tickUpperIndex, mintA.decimals, mintB.decimals);
 
   return {
-    address: positionMintAddress,
-    baseTokenAddress: whirlpool.data.tokenMintA,
-    quoteTokenAddress: whirlpool.data.tokenMintB,
-    poolAddress: position.data.whirlpool,
-    baseFeeAmount: Number(feesQuote.feeOwedA) / Math.pow(10, mintA.data.decimals),
-    quoteFeeAmount: Number(feesQuote.feeOwedB) / Math.pow(10, mintB.data.decimals),
-    lowerPrice,
-    upperPrice,
-    lowerBinId: position.data.tickLowerIndex,
-    upperBinId: position.data.tickUpperIndex,
-    baseTokenAmount: Number(baseTokenAmount) / Math.pow(10, mintA.data.decimals),
-    quoteTokenAmount: Number(quoteTokenAmount) / Math.pow(10, mintB.data.decimals),
-    price,
+    address: positionAddress,
+    baseTokenAddress: whirlpool.tokenMintA.toString(),
+    quoteTokenAddress: whirlpool.tokenMintB.toString(),
+    poolAddress: position.whirlpool.toString(),
+    baseFeeAmount: Number(feesQuote.feeOwedA.toString()) / Math.pow(10, mintA.decimals),
+    quoteFeeAmount: Number(feesQuote.feeOwedB.toString()) / Math.pow(10, mintB.decimals),
+    lowerPrice: lowerPrice.toNumber(),
+    upperPrice: upperPrice.toNumber(),
+    lowerBinId: position.tickLowerIndex,
+    upperBinId: position.tickUpperIndex,
+    baseTokenAmount: Number(tokenAmounts.tokenA.toString()) / Math.pow(10, mintA.decimals),
+    quoteTokenAmount: Number(tokenAmounts.tokenB.toString()) / Math.pow(10, mintB.decimals),
+    price: price.toNumber(),
   };
 }
 

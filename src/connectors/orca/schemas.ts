@@ -405,7 +405,7 @@ export const OrcaClmmGetPositionInfoRequest = Type.Object({
     }),
   ),
   positionAddress: Type.String({
-    description: 'Position NFT address',
+    description: 'Position address',
     examples: ['<sample-position-address>'],
   }),
   walletAddress: Type.Optional(

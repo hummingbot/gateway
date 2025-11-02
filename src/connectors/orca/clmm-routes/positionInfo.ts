@@ -34,7 +34,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
         }
 
-        const position = await orca.getPositionInfo(positionAddress);
+        const position = await orca.getPositionInfo(positionAddress, walletAddress);
 
         return position;
       } catch (e) {
