@@ -11,11 +11,12 @@ import { address, createSolanaRpc, mainnet, devnet } from '@solana/kit';
 import { PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../chains/solana/solana';
-import { OrcaPoolInfo, PositionInfo, OrcaPosition } from '../../schemas/clmm-schema';
+import { OrcaPoolInfo, PositionInfo } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
 
 import { OrcaConfig } from './orca.config';
 import { getPositionDetails } from './orca.utils';
+import { OrcaPosition } from './schemas';
 
 export class Orca {
   private static _instances: { [name: string]: Orca };

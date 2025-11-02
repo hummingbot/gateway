@@ -482,3 +482,32 @@ export const OrcaClmmQuotePositionRequest = Type.Object({
     }),
   ),
 });
+
+// Orca position data structure (from @orca-so/whirlpools)
+const OrcaPositionDataSchema = Type.Object({
+  discriminator: Type.Any(), // Uint8Array(8)
+  whirlpool: Type.String(),
+  positionMint: Type.String(),
+  liquidity: Type.Any(), // bigint
+  tickLowerIndex: Type.Number(),
+  tickUpperIndex: Type.Number(),
+  feeGrowthCheckpointA: Type.Any(), // bigint
+  feeOwedA: Type.Any(), // bigint
+  feeGrowthCheckpointB: Type.Any(), // bigint
+  feeOwedB: Type.Any(), // bigint
+  rewardInfos: Type.Array(Type.Any()), // Array of reward info objects
+});
+
+const OrcaPositionSchema = Type.Object({
+  executable: Type.Boolean(),
+  lamports: Type.Any(), // bigint
+  programAddress: Type.String(),
+  space: Type.Any(), // bigint
+  address: Type.String(),
+  data: OrcaPositionDataSchema,
+  exists: Type.Boolean(),
+  tokenProgram: Type.String(),
+  isPositionBundle: Type.Boolean(),
+});
+
+export type OrcaPosition = Static<typeof OrcaPositionSchema>;
