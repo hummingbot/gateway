@@ -1,14 +1,8 @@
 import { TransactionBuilder } from '@orca-so/common-sdk';
-import {
-  ORCA_WHIRLPOOL_PROGRAM_ID,
-  PDAUtil,
-  WhirlpoolIx,
-  collectFeesQuote,
-  TickArrayUtil,
-} from '@orca-so/whirlpools-sdk';
+import { WhirlpoolIx, collectFeesQuote, TickArrayUtil } from '@orca-so/whirlpools-sdk';
 import { TokenExtensionUtil } from '@orca-so/whirlpools-sdk/dist/utils/public/token-extension-util';
 import { Static } from '@sinclair/typebox';
-import { getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
+import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
@@ -16,6 +10,7 @@ import { Solana } from '../../../chains/solana/solana';
 import { CollectFeesResponse, CollectFeesResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
+import { getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
 import { OrcaClmmCollectFeesRequest } from '../schemas';
 
 async function collectFees(
@@ -59,19 +54,11 @@ async function collectFees(
   }
 
   // Fetch tick arrays
-  const tickSpacing = whirlpool.tickSpacing;
-  const lowerTickArrayPubkey = PDAUtil.getTickArrayFromTickIndex(
-    position.tickLowerIndex,
-    tickSpacing,
+  const { lower: lowerTickArrayPubkey, upper: upperTickArrayPubkey } = getTickArrayPubkeys(
+    position,
+    whirlpool,
     whirlpoolPubkey,
-    ORCA_WHIRLPOOL_PROGRAM_ID,
-  ).publicKey;
-  const upperTickArrayPubkey = PDAUtil.getTickArrayFromTickIndex(
-    position.tickUpperIndex,
-    tickSpacing,
-    whirlpoolPubkey,
-    ORCA_WHIRLPOOL_PROGRAM_ID,
-  ).publicKey;
+  );
 
   const lowerTickArray = await ctx.fetcher.getTickArray(lowerTickArrayPubkey);
   const upperTickArray = await ctx.fetcher.getTickArray(upperTickArrayPubkey);
@@ -82,15 +69,11 @@ async function collectFees(
   // Calculate fees quote
   const quote = collectFeesQuote({
     position,
-    tickLower: TickArrayUtil.getTickFromArray(lowerTickArray, position.tickLowerIndex, tickSpacing),
-    tickUpper: TickArrayUtil.getTickFromArray(upperTickArray, position.tickUpperIndex, tickSpacing),
+    tickLower: TickArrayUtil.getTickFromArray(lowerTickArray, position.tickLowerIndex, whirlpool.tickSpacing),
+    tickUpper: TickArrayUtil.getTickFromArray(upperTickArray, position.tickUpperIndex, whirlpool.tickSpacing),
     whirlpool,
     tokenExtensionCtx: await TokenExtensionUtil.buildTokenExtensionContext(ctx.fetcher, whirlpool),
   });
-
-  logger.info(
-    `Collectable fees: ${(Number(quote.feeOwedA) / Math.pow(10, mintA.decimals)).toFixed(6)} tokenA, ${(Number(quote.feeOwedB) / Math.pow(10, mintB.decimals)).toFixed(6)} tokenB`,
-  );
 
   // Build transaction
   const builder = new TransactionBuilder(ctx.connection, ctx.wallet);
@@ -109,43 +92,9 @@ async function collectFees(
     mintB.tokenProgram,
   );
 
-  // Check if ATAs exist and create them if needed
-  const [ataAInfo, ataBInfo] = await Promise.all([
-    ctx.connection.getAccountInfo(tokenOwnerAccountA),
-    ctx.connection.getAccountInfo(tokenOwnerAccountB),
-  ]);
-
-  if (!ataAInfo) {
-    builder.addInstruction({
-      instructions: [
-        createAssociatedTokenAccountInstruction(
-          ctx.wallet.publicKey,
-          tokenOwnerAccountA,
-          ctx.wallet.publicKey,
-          whirlpool.tokenMintA,
-          mintA.tokenProgram,
-        ),
-      ],
-      cleanupInstructions: [],
-      signers: [],
-    });
-  }
-
-  if (!ataBInfo) {
-    builder.addInstruction({
-      instructions: [
-        createAssociatedTokenAccountInstruction(
-          ctx.wallet.publicKey,
-          tokenOwnerAccountB,
-          ctx.wallet.publicKey,
-          whirlpool.tokenMintB,
-          mintB.tokenProgram,
-        ),
-      ],
-      cleanupInstructions: [],
-      signers: [],
-    });
-  }
+  // Handle WSOL ATAs for receiving collected fees
+  await handleWsolAta(builder, ctx, whirlpool.tokenMintA, tokenOwnerAccountA, mintA.tokenProgram, 'receive');
+  await handleWsolAta(builder, ctx, whirlpool.tokenMintB, tokenOwnerAccountB, mintB.tokenProgram, 'receive');
 
   // Add updateFeesAndRewardsIx if position has liquidity
   if (position.liquidity.gtn(0)) {

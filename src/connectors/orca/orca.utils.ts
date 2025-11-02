@@ -1,3 +1,4 @@
+import { TransactionBuilder } from '@orca-so/common-sdk';
 import {
   fetchPosition,
   fetchWhirlpool,
@@ -22,6 +23,8 @@ import {
   increaseLiquidityQuoteB,
   IncreaseLiquidityQuote,
 } from '@orca-so/whirlpools-core';
+import { ORCA_WHIRLPOOL_PROGRAM_ID, PDAUtil } from '@orca-so/whirlpools-sdk';
+import type { WhirlpoolContext } from '@orca-so/whirlpools-sdk';
 import type {
   GetAccountInfoApi,
   GetEpochInfoApi,
@@ -31,9 +34,18 @@ import type {
   Account,
 } from '@solana/kit';
 import { address } from '@solana/kit';
+import {
+  NATIVE_MINT,
+  createAssociatedTokenAccountIdempotentInstruction,
+  createSyncNativeInstruction,
+  TOKEN_PROGRAM_ID,
+} from '@solana/spl-token';
+import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { fetchAllMint, Mint } from '@solana-program/token-2022';
+import BN from 'bn.js';
 
 import { PositionInfo, QuotePositionResponseType } from '../../schemas/clmm-schema';
+import { logger } from '../../services/logger';
 
 /**
  * Extracts detailed position information including fees, token amounts, and pricing.
@@ -468,5 +480,137 @@ export async function quotePosition(
     baseTokenAmountMax: Number(res.tokenMaxA) / Math.pow(10, mintA.data.decimals),
     quoteTokenAmountMax: Number(res.tokenMaxB) / Math.pow(10, mintB.data.decimals),
     liquidity: Number(res.liquidityDelta),
+  };
+}
+
+/**
+ * Adds instructions to handle token ATA creation and WSOL wrapping when needed.
+ * For receiving tokens (collectFees, removeLiquidity): Creates ATA if it doesn't exist.
+ * For sending tokens (addLiquidity): Creates ATA and wraps SOL if token is WSOL.
+ *
+ * @param {TransactionBuilder} builder - The transaction builder to add instructions to
+ * @param {WhirlpoolContext} ctx - The whirlpool context containing connection and wallet
+ * @param {PublicKey} tokenMint - The token mint address to check
+ * @param {PublicKey} tokenOwnerAccount - The ATA address for the token
+ * @param {PublicKey} tokenProgram - The token program ID
+ * @param {'wrap' | 'receive'} mode - 'wrap' for adding liquidity, 'receive' for collecting fees/removing liquidity
+ * @param {BN} [amountToWrap] - Required for 'wrap' mode: amount of SOL to wrap in lamports
+ */
+export async function handleWsolAta(
+  builder: TransactionBuilder,
+  ctx: WhirlpoolContext,
+  tokenMint: PublicKey,
+  tokenOwnerAccount: PublicKey,
+  tokenProgram: PublicKey,
+  mode: 'wrap' | 'receive',
+  amountToWrap?: BN,
+): Promise<void> {
+  const isWsol = tokenMint.equals(NATIVE_MINT);
+  const ataInfo = await ctx.connection.getAccountInfo(tokenOwnerAccount);
+
+  if (mode === 'receive') {
+    // For receiving tokens: only create ATA if it doesn't exist
+    if (!ataInfo) {
+      logger.info(`${isWsol ? 'WSOL' : 'Token'} ATA doesn't exist, creating it`);
+      builder.addInstruction({
+        instructions: [
+          createAssociatedTokenAccountIdempotentInstruction(
+            ctx.wallet.publicKey,
+            tokenOwnerAccount,
+            ctx.wallet.publicKey,
+            tokenMint,
+            tokenProgram,
+          ),
+        ],
+        cleanupInstructions: [],
+        signers: [],
+      });
+    }
+  } else if (mode === 'wrap') {
+    // For sending tokens
+    if (isWsol) {
+      // WSOL: check existing balance and only wrap the difference
+      if (!amountToWrap || amountToWrap.lten(0)) {
+        return;
+      }
+
+      let existingBalance = new BN(0);
+      if (ataInfo) {
+        const tokenAccountInfo = await ctx.fetcher.getTokenInfo(tokenOwnerAccount);
+        if (tokenAccountInfo) {
+          existingBalance = new BN(tokenAccountInfo.amount.toString());
+        }
+      }
+
+      const amountNeeded = amountToWrap.sub(existingBalance);
+      if (amountNeeded.gtn(0)) {
+        logger.info(
+          `WSOL: existing balance ${existingBalance.toString()} lamports, wrapping ${amountNeeded.toString()} more`,
+        );
+        builder.addInstruction({
+          instructions: [
+            createAssociatedTokenAccountIdempotentInstruction(
+              ctx.wallet.publicKey,
+              tokenOwnerAccount,
+              ctx.wallet.publicKey,
+              NATIVE_MINT,
+              tokenProgram,
+            ),
+            SystemProgram.transfer({
+              fromPubkey: ctx.wallet.publicKey,
+              toPubkey: tokenOwnerAccount,
+              lamports: amountNeeded.toNumber(),
+            }),
+            createSyncNativeInstruction(tokenOwnerAccount, tokenProgram),
+          ],
+          cleanupInstructions: [],
+          signers: [],
+        });
+      } else {
+        logger.info(`WSOL: existing balance ${existingBalance.toString()} lamports is sufficient`);
+      }
+    } else {
+      // Regular token: just create ATA if it doesn't exist
+      if (!ataInfo) {
+        builder.addInstruction({
+          instructions: [
+            createAssociatedTokenAccountIdempotentInstruction(
+              ctx.wallet.publicKey,
+              tokenOwnerAccount,
+              ctx.wallet.publicKey,
+              tokenMint,
+              tokenProgram,
+            ),
+          ],
+          cleanupInstructions: [],
+          signers: [],
+        });
+      }
+    }
+  }
+}
+
+/**
+ * Gets tick array pubkeys for a position's lower and upper tick indices.
+ * Helper function to reduce code duplication across CLMM routes.
+ */
+export function getTickArrayPubkeys(
+  position: { tickLowerIndex: number; tickUpperIndex: number },
+  whirlpool: { tickSpacing: number },
+  whirlpoolPubkey: PublicKey,
+): { lower: PublicKey; upper: PublicKey } {
+  return {
+    lower: PDAUtil.getTickArrayFromTickIndex(
+      position.tickLowerIndex,
+      whirlpool.tickSpacing,
+      whirlpoolPubkey,
+      ORCA_WHIRLPOOL_PROGRAM_ID,
+    ).publicKey,
+    upper: PDAUtil.getTickArrayFromTickIndex(
+      position.tickUpperIndex,
+      whirlpool.tickSpacing,
+      whirlpoolPubkey,
+      ORCA_WHIRLPOOL_PROGRAM_ID,
+    ).publicKey,
   };
 }

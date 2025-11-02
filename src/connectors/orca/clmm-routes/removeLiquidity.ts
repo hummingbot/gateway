@@ -1,10 +1,5 @@
-import { TransactionBuilder, Percentage } from '@orca-so/common-sdk';
-import {
-  ORCA_WHIRLPOOL_PROGRAM_ID,
-  PDAUtil,
-  WhirlpoolIx,
-  decreaseLiquidityQuoteByLiquidityWithParams,
-} from '@orca-so/whirlpools-sdk';
+import { Percentage, TransactionBuilder } from '@orca-so/common-sdk';
+import { WhirlpoolIx, decreaseLiquidityQuoteByLiquidityWithParams } from '@orca-so/whirlpools-sdk';
 import { TokenExtensionUtil } from '@orca-so/whirlpools-sdk/dist/utils/public/token-extension-util';
 import { Static } from '@sinclair/typebox';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
@@ -17,6 +12,7 @@ import { Solana } from '../../../chains/solana/solana';
 import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
+import { getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
 import { OrcaClmmRemoveLiquidityRequest } from '../schemas';
 
 async function removeLiquidity(
@@ -102,6 +98,11 @@ async function removeLiquidity(
     mintB.tokenProgram,
   );
 
+  // Handle WSOL ATAs for receiving withdrawn liquidity
+  await handleWsolAta(builder, ctx, whirlpool.tokenMintA, tokenOwnerAccountA, mintA.tokenProgram, 'receive');
+  await handleWsolAta(builder, ctx, whirlpool.tokenMintB, tokenOwnerAccountB, mintB.tokenProgram, 'receive');
+
+  const { lower, upper } = getTickArrayPubkeys(position, whirlpool, whirlpoolPubkey);
   builder.addInstruction(
     WhirlpoolIx.decreaseLiquidityV2Ix(ctx.program, {
       liquidityAmount: quote.liquidityAmount,
@@ -117,18 +118,8 @@ async function removeLiquidity(
         undefined,
         positionMint.tokenProgram,
       ),
-      tickArrayLower: PDAUtil.getTickArrayFromTickIndex(
-        position.tickLowerIndex,
-        whirlpool.tickSpacing,
-        whirlpoolPubkey,
-        ORCA_WHIRLPOOL_PROGRAM_ID,
-      ).publicKey,
-      tickArrayUpper: PDAUtil.getTickArrayFromTickIndex(
-        position.tickUpperIndex,
-        whirlpool.tickSpacing,
-        whirlpoolPubkey,
-        ORCA_WHIRLPOOL_PROGRAM_ID,
-      ).publicKey,
+      tickArrayLower: lower,
+      tickArrayUpper: upper,
       tokenOwnerAccountA,
       tokenOwnerAccountB,
       tokenProgramA: mintA.tokenProgram,
