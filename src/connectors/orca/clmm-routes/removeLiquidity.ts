@@ -74,7 +74,7 @@ async function removeLiquidity(
     tickLowerIndex: position.tickLowerIndex,
     tickUpperIndex: position.tickUpperIndex,
     tokenExtensionCtx: await TokenExtensionUtil.buildTokenExtensionContext(ctx.fetcher, whirlpool),
-    slippageTolerance: Percentage.fromDecimal(new Decimal(slippagePct)),
+    slippageTolerance: Percentage.fromDecimal(new Decimal(slippagePct).div(100)),
   });
 
   logger.info(

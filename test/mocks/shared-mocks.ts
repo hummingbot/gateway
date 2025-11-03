@@ -35,6 +35,7 @@ export const mockConfigStorage: Record<string, any> = {
   'jupiter.apiKey': undefined,
   'meteora.slippagePct': 1,
   'raydium.slippagePct': 1,
+  'orca.slippagePct': 1,
   'uniswap.slippagePct': '0.01',
   'uniswap.ttl': 300,
 };
@@ -56,6 +57,7 @@ export const mockConfigManagerV2 = {
       jupiter: {},
       meteora: {},
       raydium: {},
+      orca: {},
     },
     allConfigurations: mockConfigStorage,
   }),
@@ -222,6 +224,7 @@ export function resetAllMocks() {
     'jupiter.apiKey': undefined,
     'meteora.slippagePct': 1,
     'raydium.slippagePct': 1,
+    'orca.slippagePct': 1,
     'uniswap.slippagePct': '0.01',
     'uniswap.ttl': 300,
   });
