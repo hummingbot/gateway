@@ -1,8 +1,7 @@
-import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
 import { PoolService } from '../../services/pool-service';
-import { PoolListResponseSchema } from '../schemas';
+import { GetPoolRequestSchema, PoolListResponseSchema } from '../schemas';
 
 export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -23,26 +22,22 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             tradingPair: {
               type: 'string',
-              description: 'Trading pair (e.g., ETH-USDC, SOL-USDC)',
-              examples: ['ETH-USDC', 'SOL-USDC'],
+              description: 'Trading pair (e.g., SOL-USDC, ETH-USDC)',
+              examples: ['SOL-USDC', 'ETH-USDC'],
             },
           },
           required: ['tradingPair'],
         },
-        querystring: Type.Object({
-          connector: Type.String({
-            description: 'Connector (raydium, meteora, uniswap)',
-            examples: ['raydium', 'meteora', 'uniswap'],
-          }),
-          network: Type.String({
-            description: 'Network name (mainnet, mainnet-beta, etc)',
-            examples: ['mainnet', 'mainnet-beta'],
-          }),
-          type: Type.Union([Type.Literal('amm'), Type.Literal('clmm')], {
-            description: 'Pool type',
-            examples: ['amm', 'clmm'],
-          }),
-        }),
+        querystring: {
+          ...GetPoolRequestSchema,
+          properties: {
+            ...GetPoolRequestSchema.properties,
+            network: {
+              ...GetPoolRequestSchema.properties.network,
+              default: 'mainnet-beta',
+            },
+          },
+        },
         response: {
           200: PoolListResponseSchema.items,
           404: {

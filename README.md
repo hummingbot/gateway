@@ -18,7 +18,7 @@ Gateway can be accessed through:
 - **Hummingbot Client**: For automated trading strategies, use the [Hummingbot repository](https://github.com/hummingbot/hummingbot)
 
 ### Key Features
-- **Standardized REST API**: Consistent endpoints for interacting with blockchains (Ethereum, Solana) and DEXs (Uniswap, Jupiter, Raydium, Meteora, 0x, Pancakeswap)
+- **Standardized REST API**: Consistent endpoints for interacting with blockchains (Ethereum, Solana) and DEXs (Uniswap, Jupiter, Raydium, Meteora, PancakeSwap, 0x)
 - **Three Trading Types**: Router (DEX aggregators), AMM (V2-style pools), and CLMM (V3-style concentrated liquidity)
 - **Modular Architecture**: Clear separation of concerns with distinct modules for chains, connectors, configuration, and wallet management
 - **TypeScript-based**: Leverages the TypeScript ecosystem and popular libraries like Fastify, Ethers.js, and Solana/web3.js
@@ -78,7 +78,9 @@ Both RPC providers maintain full backward compatibility - networks default to st
 |----------|-------|--------|-----|------|-------------|
 | Jupiter | Solana | ✅ | ❌ | ❌ | DEX aggregator finding optimal swap routes |
 | Meteora | Solana | ❌ | ❌ | ✅ | Dynamic Liquidity Market Maker (DLMM) |
+| PancakeSwap (Solana) | Solana | ❌ | ❌ | ✅ | V3 concentrated liquidity pools with single-sided positions |
 | Raydium | Solana | ❌ | ✅ | ✅ | Full-featured DEX with V2 AMM and V3 CLMM |
+| PancakeSwap | Ethereum/EVM | ✅ | ✅ | ✅ | Multi-chain DEX with V2 AMM, V3 CLMM, and Smart Router |
 | Uniswap | Ethereum/EVM | ✅ | ✅ | ✅ | Complete V2 AMM, V3 CLMM, and Smart Order Router |
 | 0x | Ethereum/EVM | ✅ | ❌ | ❌ | DEX aggregator with professional market making features |
 
@@ -141,6 +143,34 @@ Gateway uses [Swagger](https://swagger.io/) for API documentation. When running 
 - `DELETE /wallet/remove` - Remove wallet
 - `POST /wallet/setDefault` - Set default wallet per chain
 
+#### Pool Management Routes (`/pools/*`)
+- `GET /pools` - List all configured pools for a connector
+- `POST /pools` - Add a new pool (automatically fetches token addresses and fees from pool-info)
+- `PUT /pools` - Update an existing pool
+- `DELETE /pools` - Remove a pool
+
+**Pool Storage Format:**
+Pools are stored with complete on-chain information to ensure accurate token ordering and fees:
+```json
+{
+  "type": "amm",
+  "network": "mainnet-beta",
+  "baseSymbol": "SOL",
+  "quoteSymbol": "USDC",
+  "baseTokenAddress": "So11111111111111111111111111111111111111112",
+  "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "feePct": 0.25,
+  "address": "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2"
+}
+```
+
+When adding a pool via `POST /pools`, Gateway automatically:
+1. Fetches pool-info from the DEX connector
+2. Extracts authoritative baseTokenAddress, quoteTokenAddress, and feePct
+3. Resolves token symbols from addresses
+4. Validates and stores the enhanced pool object
+
+This ensures stored pool data always matches the actual on-chain pool state.
 
 ## Installation from Source
 
@@ -296,7 +326,7 @@ docker run -p 15888:15888 \
   hummingbot/gateway:core-2.8
 ```
 
-**Production mode (Encypted HTTPS endpoints, requires Hummingbot certs):**
+**Production mode (Encrypted HTTPS endpoints, requires Hummingbot certs):**
 ```bash
 docker run -p 15888:15888 \
   -e GATEWAY_PASSPHRASE=a \
@@ -355,13 +385,13 @@ docker run -p 15888:15888 \
 - `POST /connectors/{dex}/router/execute-quote` - Execute pre-fetched quote
 - `GET /connectors/0x/router/get-price` - Get price estimate (0x only)
 
-#### AMM Operations (Uniswap V2, Raydium, Pancakeswap V2)
+#### AMM Operations (Uniswap V2, PancakeSwap V2, Raydium)
 - `GET /connectors/{dex}/amm/pool-info` - Pool information
 - `GET /connectors/{dex}/amm/position-info` - LP position details
 - `POST /connectors/{dex}/amm/add-liquidity` - Add liquidity
 - `POST /connectors/{dex}/amm/remove-liquidity` - Remove liquidity
 
-#### CLMM Operations (Uniswap V3, Raydium, Meteora, Pancakeswap V3)
+#### CLMM Operations (Uniswap V3, PancakeSwap V3, Raydium, Meteora)
 - `GET /connectors/{dex}/clmm/pool-info` - Pool information
 - `GET /connectors/{dex}/clmm/positions-owned` - List positions
 - `POST /connectors/{dex}/clmm/open-position` - Open position
@@ -389,6 +419,38 @@ Here are some ways that you can contribute to Gateway:
 - The format of configuration files are dictated by [src/services/config-manager-v2.ts](./src/services/config-manager-v2.ts) and the corresponding schema files in [src/templates/namespace](./src/templates/namespace).
 
 - For each supported chain, token lists that translate address to symbols for each chain are stored in `/conf/tokens`. Use the `/tokens` API endpoints to manage tokens - changes require a Gateway restart to take effect.
+
+### Pool Configuration and Migration
+
+Gateway stores pool configurations for AMM and CLMM connectors in `src/templates/pools/{connector}.json`. These pool templates include complete on-chain information (token addresses and fees) to ensure accurate trading operations.
+
+**Pool Template Files:**
+- `src/templates/pools/raydium.json` - Raydium AMM and CLMM pools
+- `src/templates/pools/meteora.json` - Meteora DLMM pools
+- `src/templates/pools/pancakeswap.json` - PancakeSwap (EVM) V2 AMM and V3 CLMM pools
+- `src/templates/pools/pancakeswap-sol.json` - PancakeSwap Solana CLMM pools
+- `src/templates/pools/uniswap.json` - Uniswap V2 and V3 pools
+
+**Migrating Pool Templates:**
+
+If you need to migrate pool templates from an older format (without token addresses and fees) to the new format, use the migration script:
+
+```bash
+# Ensure RPC endpoints are configured in conf/rpc/*.yml
+# Raydium/Meteora/PancakeSwap-Sol require Helius or standard Solana RPC
+# Uniswap/PancakeSwap require Infura or standard Ethereum RPC
+
+npx ts-node scripts/migrate-pool-templates.ts
+```
+
+The migration script will:
+1. Read existing pool templates from `src/templates/pools/`
+2. Fetch pool-info for each pool address from the respective connector
+3. Extract authoritative baseTokenAddress, quoteTokenAddress, and feePct
+4. Write updated template files with enhanced pool data
+5. Report success/failure counts for each connector
+
+After migration, review the updated template files to ensure all pools were successfully migrated before committing changes.
 
 ### RPC Provider Configuration
 
@@ -533,7 +595,8 @@ The test directory is organized as follows:
     /uniswap/                 # Uniswap connector tests
     /raydium/                 # Raydium connector tests
     /meteora/                 # Meteora connector tests
-    /pancakeswap/             # Pancakeswap connector tests
+    /pancakeswap/             # PancakeSwap (EVM) connector tests
+    /pancakeswap-sol/         # PancakeSwap Solana connector tests
   /mocks/                     # Mock response data
     /chains/                  # Chain mock responses
       chains.json            # Chain routes mock response

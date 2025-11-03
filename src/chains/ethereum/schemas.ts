@@ -174,6 +174,68 @@ export const UnwrapResponseSchema = Type.Object({
   ),
 });
 
+// Quote swap request schema
+export const EthereumQuoteSwapRequest = Type.Object({
+  network: EthereumNetworkParameter,
+  walletAddress: EthereumAddressParameter,
+  baseToken: Type.String({
+    description: 'Token to determine swap direction',
+    examples: ['ETH'],
+  }),
+  quoteToken: Type.String({
+    description: 'The other token in the pair',
+    examples: ['USDC'],
+  }),
+  amount: Type.Number({
+    description: 'Amount of base token to trade',
+    examples: [1],
+  }),
+  side: Type.String({
+    description:
+      'Trade direction - BUY means buying base token with quote token, SELL means selling base token for quote token',
+    enum: ['BUY', 'SELL'],
+  }),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: 1,
+    }),
+  ),
+});
+
+// Execute swap request schema
+export const EthereumExecuteSwapRequest = Type.Object({
+  network: EthereumNetworkParameter,
+  walletAddress: EthereumAddressParameter,
+  baseToken: Type.String({
+    description: 'Token to determine swap direction',
+    examples: ['ETH'],
+  }),
+  quoteToken: Type.String({
+    description: 'The other token in the pair',
+    examples: ['USDC'],
+  }),
+  amount: Type.Number({
+    description: 'Amount of base token to trade',
+    examples: [1],
+  }),
+  side: Type.String({
+    description:
+      'Trade direction - BUY means buying base token with quote token, SELL means selling base token for quote token',
+    enum: ['BUY', 'SELL'],
+  }),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: 1,
+    }),
+  ),
+});
+
 // Type exports
 export type AllowancesRequestType = Static<typeof AllowancesRequestSchema>;
 export type AllowancesResponseType = Static<typeof AllowancesResponseSchema>;
@@ -183,3 +245,5 @@ export type WrapRequestType = Static<typeof WrapRequestSchema>;
 export type WrapResponseType = Static<typeof WrapResponseSchema>;
 export type UnwrapRequestType = Static<typeof UnwrapRequestSchema>;
 export type UnwrapResponseType = Static<typeof UnwrapResponseSchema>;
+export type EthereumQuoteSwapRequestType = Static<typeof EthereumQuoteSwapRequest>;
+export type EthereumExecuteSwapRequestType = Static<typeof EthereumExecuteSwapRequest>;

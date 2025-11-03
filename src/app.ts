@@ -20,6 +20,7 @@ import { register0xRoutes } from './connectors/0x/0x.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { pancakeswapRoutes } from './connectors/pancakeswap/pancakeswap.routes';
+import { pancakeswapSolRoutes } from './connectors/pancakeswap-sol/pancakeswap-sol.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { getHttpsOptions } from './https';
@@ -28,6 +29,7 @@ import { ConfigManagerV2 } from './services/config-manager-v2';
 import { logger } from './services/logger';
 import { quoteCache } from './services/quote-cache';
 import { tokensRoutes } from './tokens/tokens.routes';
+import { tradingRoutes, tradingClmmRoutes } from './trading/trading.routes';
 import { GATEWAY_VERSION } from './version';
 import { walletRoutes } from './wallet/wallet.routes';
 
@@ -61,6 +63,8 @@ const swaggerOptions = {
       { name: '/wallet', description: 'Wallet management endpoints' },
       { name: '/tokens', description: 'Token management endpoints' },
       { name: '/pools', description: 'Pool management endpoints' },
+      { name: '/trading/swap', description: 'Unified cross-chain swap endpoints' },
+      { name: '/trading/clmm', description: 'Unified cross-chain CLMM (Concentrated Liquidity) endpoints' },
 
       // Chains
       {
@@ -90,6 +94,14 @@ const swaggerOptions = {
         description: 'Uniswap connector endpoints',
       },
       { name: '/connector/0x', description: '0x connector endpoints' },
+      {
+        name: '/connector/pancakeswap-sol',
+        description: 'PancakeSwap Solana connector endpoints',
+      },
+      {
+        name: '/connector/pancakeswap',
+        description: 'PancakeSwap EVM connector endpoints',
+      },
     ],
     components: {
       parameters: {
@@ -213,6 +225,12 @@ const configureGatewayServer = () => {
     // Register pool routes
     app.register(poolRoutes, { prefix: '/pools' });
 
+    // Register trading routes (unified cross-chain swap)
+    app.register(tradingRoutes, { prefix: '/trading/swap' });
+
+    // Register trading CLMM routes (unified cross-chain concentrated liquidity)
+    app.register(tradingClmmRoutes, { prefix: '/trading/clmm' });
+
     // Register chain routes
     app.register(solanaRoutes, { prefix: '/chains/solana' });
     app.register(ethereumRoutes, { prefix: '/chains/ethereum' });
@@ -247,6 +265,9 @@ const configureGatewayServer = () => {
     });
     app.register(pancakeswapRoutes.amm, { prefix: '/connectors/pancakeswap/amm' });
     app.register(pancakeswapRoutes.clmm, { prefix: '/connectors/pancakeswap/clmm' });
+
+    // PancakeSwap Solana routes
+    app.register(pancakeswapSolRoutes, { prefix: '/connectors/pancakeswap-sol' });
   };
 
   // Register routes on main server
@@ -275,7 +296,7 @@ const configureGatewayServer = () => {
       });
     }
 
-    // Handle Fastify's native errors
+    // Handle Fastify's native errors (includes rate limit errors with statusCode 429)
     if (error.statusCode && error.statusCode >= 400) {
       return reply.status(error.statusCode).send({
         statusCode: error.statusCode,

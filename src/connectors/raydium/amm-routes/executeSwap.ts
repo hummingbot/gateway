@@ -12,7 +12,7 @@ import { RaydiumAmmExecuteSwapRequest } from '../schemas';
 
 import { getRawSwapQuote } from './quoteSwap';
 
-async function executeSwap(
+export async function executeSwap(
   fastify: FastifyInstance,
   network: string,
   walletAddress: string,

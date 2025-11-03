@@ -5,6 +5,7 @@ import { getAvailableSolanaNetworks } from './solana.utils';
 export interface SolanaNetworkConfig {
   nodeURL: string;
   nativeCurrencySymbol: string;
+  swapProvider?: string;
   defaultComputeUnits: number;
   confirmRetryInterval: number;
   confirmRetryCount: number;
@@ -31,6 +32,7 @@ export function getSolanaNetworkConfig(network: string): SolanaNetworkConfig {
   return {
     nodeURL: ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL'),
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
+    swapProvider: ConfigManagerV2.getInstance().get(namespaceId + '.swapProvider'),
     defaultComputeUnits: ConfigManagerV2.getInstance().get(namespaceId + '.defaultComputeUnits'),
     confirmRetryInterval: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryInterval'),
     confirmRetryCount: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryCount'),

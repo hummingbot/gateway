@@ -30,8 +30,10 @@ describe('Ethereum Estimate Gas Route', () => {
   describe('GET /chains/ethereum/estimate-gas', () => {
     const mockInstance = {
       estimateGasPrice: jest.fn(),
-      minGasPrice: 1.5,
       nativeTokenSymbol: 'ETH',
+      baseFee: null,
+      baseFeeMultiplier: 1.2,
+      priorityFee: 0.001,
     };
 
     beforeEach(() => {
@@ -62,34 +64,38 @@ describe('Ethereum Estimate Gas Route', () => {
       expect(mockInstance.estimateGasPrice).toHaveBeenCalled();
     });
 
-    it('should return minGasPrice when gas estimation fails but instance is available', async () => {
-      // First call for gas estimation fails
+    it('should return 503 error when RPC provider is unavailable', async () => {
+      // Gas estimation fails due to RPC error
       mockInstance.estimateGasPrice.mockRejectedValueOnce(new Error('RPC node unavailable'));
-
-      // Second getInstance call for fallback succeeds
-      mockEthereum.getInstance
-        .mockResolvedValueOnce(mockInstance as any) // First call in try block fails during estimateGasPrice
-        .mockResolvedValueOnce(mockInstance as any); // Second call in catch block succeeds
 
       const response = await fastify.inject({
         method: 'GET',
         url: '/chains/ethereum/estimate-gas?network=sepolia',
       });
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(503);
       const data = JSON.parse(response.body);
 
-      expect(data).toMatchObject({
-        feePerComputeUnit: 1.5, // minGasPrice from mock instance
-        denomination: 'gwei',
-        computeUnits: 300000,
-        feeAsset: 'ETH',
-        fee: expect.any(Number),
-        timestamp: expect.any(Number),
+      expect(data.error).toBe('ServiceUnavailableError');
+      expect(data.message).toContain('RPC provider unavailable');
+
+      expect(mockEthereum.getInstance).toHaveBeenCalledWith('sepolia');
+    });
+
+    it('should return 500 error for generic failures', async () => {
+      // Generic error that doesn't match specific error patterns
+      mockInstance.estimateGasPrice.mockRejectedValueOnce(new Error('Database connection timeout'));
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/chains/ethereum/estimate-gas?network=mainnet',
       });
 
-      expect(mockEthereum.getInstance).toHaveBeenCalledTimes(2);
-      expect(mockEthereum.getInstance).toHaveBeenCalledWith('sepolia');
+      expect(response.statusCode).toBe(500);
+      const data = JSON.parse(response.body);
+
+      expect(data.error).toBe('InternalServerError');
+      expect(data.message).toContain('Failed to estimate gas');
     });
 
     it('should work with different networks', async () => {

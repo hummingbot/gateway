@@ -128,6 +128,63 @@ This file provides guidance to AI coding assistants when working with code in th
 - RPC provider configs: `src/templates/rpc/{provider}.yml`
 - All configs validated against JSON schemas in `src/templates/namespace/`
 
+### Pool Storage Format
+Gateway stores pool configurations for each connector in `src/templates/pools/{connector}.json`. The pool storage format includes complete pool information fetched from on-chain data to ensure token ordering and fees match the actual pool state.
+
+#### Pool Object Structure
+Each pool entry contains:
+```typescript
+{
+  type: 'amm' | 'clmm',           // Pool type: AMM (V2) or CLMM (V3)
+  network: string,                 // Network name (e.g., 'mainnet-beta', 'mainnet')
+  baseSymbol: string,              // Base token symbol (e.g., 'SOL')
+  quoteSymbol: string,             // Quote token symbol (e.g., 'USDC')
+  baseTokenAddress: string,        // Base token contract address (authoritative)
+  quoteTokenAddress: string,       // Quote token contract address (authoritative)
+  feePct: number,                  // Pool fee percentage (e.g., 0.25 for 0.25%)
+  address: string                  // Pool contract address
+}
+```
+
+#### Adding Pools via API
+Use `POST /pools` to add a new pool. The route automatically:
+1. Fetches pool-info from the connector (authoritative source)
+2. Extracts baseTokenAddress, quoteTokenAddress, and feePct
+3. Resolves token symbols from addresses (if not provided)
+4. Validates all required fields
+5. Stores the enhanced pool object
+
+Example request:
+```bash
+curl -X POST http://localhost:15888/pools \
+  -H "Content-Type: application/json" \
+  -d '{
+    "connector": "raydium",
+    "type": "amm",
+    "network": "mainnet-beta",
+    "address": "58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2"
+  }'
+```
+
+The API will fetch pool-info and store complete pool data including token addresses and fees.
+
+#### Pool Template Migration
+To migrate existing pool templates from the old format (symbol-only) to the new format (with token addresses and fees):
+
+```bash
+# Ensure RPC endpoints are configured in conf/rpc/*.yml
+npx ts-node scripts/migrate-pool-templates.ts
+```
+
+The migration script:
+- Processes raydium.json, meteora.json, and uniswap.json
+- Fetches pool-info for each pool address
+- Extracts baseTokenAddress, quoteTokenAddress, and feePct from on-chain data
+- Writes updated template files with the new format
+- Reports success/failure counts for each connector
+
+After migration, review the updated template files before committing to ensure all pools were migrated successfully.
+
 ### RPC Provider Configuration
 Gateway supports optimized RPC providers for enhanced performance:
 - **Infura** (Ethereum): `conf/rpc/infura.yml` - Set `rpcProvider: infura` in network configs

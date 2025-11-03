@@ -1,0 +1,15 @@
+{
+  "address": "F1xRqqbWdg3vdMEsn9YjRU7RnFVn67MZhDVXrWoobii5",
+  "poolAddress": "DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ",
+  "baseTokenAddress": "So11111111111111111111111111111111111111112",
+  "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "baseTokenAmount": 129.722059258,
+  "quoteTokenAmount": 129722.059258,
+  "baseFeeAmount": 50109,
+  "quoteFeeAmount": 4168,
+  "lowerBinId": -20410,
+  "upperBinId": -12740,
+  "lowerPrice": 0.12991200312006435,
+  "upperPrice": 0.27972835589274414,
+  "price": 190.56511437059862
+}

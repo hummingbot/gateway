@@ -1,6 +1,15 @@
 import crypto from 'crypto';
 
-import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getMint } from '@solana/spl-token';
+import {
+  TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
+  getMint,
+  NATIVE_MINT,
+  getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountInstruction,
+  createSyncNativeInstruction,
+  createCloseAccountInstruction,
+} from '@solana/spl-token';
 import { TokenInfo } from '@solana/spl-token-registry';
 import {
   Connection,
@@ -15,6 +24,7 @@ import {
   VersionedTransactionResponse,
   SystemProgram,
   LAMPORTS_PER_SOL,
+  TransactionInstruction,
 } from '@solana/web3.js';
 import bs58 from 'bs58';
 import fse from 'fs-extra';
@@ -29,6 +39,7 @@ import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
 import { HeliusService } from './helius-service';
+import { createRateLimitAwareConnection } from './solana-connection-interceptor';
 import { SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
 
@@ -92,9 +103,12 @@ export class Solana {
       // Default: use nodeURL
       logger.info(`Using standard RPC provider: ${rpcProvider}`);
       logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${this.config.nodeURL}`);
-      this.connection = new Connection(this.config.nodeURL, {
-        commitment: 'confirmed',
-      });
+      this.connection = createRateLimitAwareConnection(
+        new Connection(this.config.nodeURL, {
+          commitment: 'confirmed',
+        }),
+        this.config.nodeURL,
+      );
     }
   }
 
@@ -140,26 +154,39 @@ export class Solana {
           `Helius features enabled - WebSocket: ${useWebSocketRPC}, Sender: ${useSender}, Region: ${regionCode || 'default'}`,
         );
 
-        this.connection = new Connection(rpcUrl, {
-          commitment: 'confirmed',
-        });
+        this.connection = createRateLimitAwareConnection(
+          new Connection(rpcUrl, {
+            commitment: 'confirmed',
+          }),
+          rpcUrl,
+        );
+
+        // Update this.config with Helius-specific fields so they're available throughout the class
+        this.config = mergedConfig;
+
+        // Initialize HeliusService with merged config (always use mergedConfig, not this.config)
+        // This ensures HeliusService gets all Helius fields even if this.config wasn't updated
+        this.heliusService = new HeliusService(mergedConfig);
       } else {
         // Fallback to standard nodeURL if no API key
-        logger.warn(`⚠️ Helius provider selected but no API key configured, falling back to standard RPC`);
-        logger.info(`Using fallback RPC URL: ${this.config.nodeURL}`);
-        this.connection = new Connection(this.config.nodeURL, {
-          commitment: 'confirmed',
-        });
+        logger.warn(`⚠️ Helius provider selected but no API key configured`);
+        logger.info(`Using standard RPC from nodeURL: ${this.config.nodeURL}`);
+        this.connection = createRateLimitAwareConnection(
+          new Connection(this.config.nodeURL, {
+            commitment: 'confirmed',
+          }),
+          this.config.nodeURL,
+        );
       }
-
-      // Initialize HeliusService with merged config
-      this.heliusService = new HeliusService(mergedConfig);
     } catch (error) {
       // If Helius config not found (e.g., in tests), fallback to standard RPC
       logger.warn(`Failed to initialize Helius provider: ${error.message}, falling back to standard RPC`);
-      this.connection = new Connection(this.config.nodeURL, {
-        commitment: 'confirmed',
-      });
+      this.connection = createRateLimitAwareConnection(
+        new Connection(this.config.nodeURL, {
+          commitment: 'confirmed',
+        }),
+        this.config.nodeURL,
+      );
     }
   }
 
@@ -673,6 +700,12 @@ export class Solana {
       return solBalance * LAMPORT_TO_SOL;
     } catch (error) {
       logger.error(`Error fetching SOL balance: ${error.message}`);
+
+      // Re-throw rate limit errors (statusCode 429) so they propagate to the API response
+      if (error.statusCode === 429) {
+        throw error;
+      }
+      // For other errors, return 0 to avoid failing the entire request
       return 0;
     }
   }
@@ -738,6 +771,12 @@ export class Solana {
       }
     } catch (error) {
       logger.error(`Error fetching token accounts: ${error.message}`);
+
+      // Re-throw rate limit errors (statusCode 429) so they propagate to the API response
+      if (error.statusCode === 429) {
+        throw error;
+      }
+      // For other errors, log but don't fail the request (return empty map)
     }
 
     return tokenAccountsMap;
@@ -984,7 +1023,7 @@ export class Solana {
   }
 
   async estimateGasPrice(): Promise<number> {
-    return await SolanaPriorityFees.estimatePriorityFee(this.config);
+    return await SolanaPriorityFees.estimatePriorityFee(this.config, this.network);
   }
 
   public async confirmTransaction(
@@ -1000,10 +1039,7 @@ export class Solana {
 
       // Fallback to polling-based confirmation
       logger.info(`Using polling-based confirmation for transaction ${signature}`);
-      const confirmationPromise = new Promise<{
-        confirmed: boolean;
-        txData?: any;
-      }>(async (resolve, reject) => {
+      const confirmationPromise = (async () => {
         // Use getTransaction instead of getSignatureStatuses for more reliability
         const txData = await this.connection.getTransaction(signature, {
           commitment: 'confirmed',
@@ -1011,12 +1047,12 @@ export class Solana {
         });
 
         if (!txData) {
-          return resolve({ confirmed: false });
+          return { confirmed: false };
         }
 
         // Check if transaction is already confirmed but had an error
         if (txData.meta?.err) {
-          return reject(new Error(`Transaction failed with error: ${JSON.stringify(txData.meta.err)}`));
+          throw new Error(`Transaction failed with error: ${JSON.stringify(txData.meta.err)}`);
         }
 
         // More definitive check using slot confirmation
@@ -1024,8 +1060,8 @@ export class Solana {
         const isConfirmed =
           status.value?.confirmationStatus === 'confirmed' || status.value?.confirmationStatus === 'finalized';
 
-        resolve({ confirmed: !!isConfirmed, txData });
-      });
+        return { confirmed: !!isConfirmed, txData };
+      })();
 
       const timeoutPromise = new Promise<{ confirmed: boolean }>((_, reject) =>
         setTimeout(() => reject(new Error('Confirmation timed out')), timeout),
@@ -1033,6 +1069,11 @@ export class Solana {
 
       return await Promise.race([confirmationPromise, timeoutPromise]);
     } catch (error: any) {
+      // Re-throw rate limit errors without wrapping
+      if (error.statusCode === 429) {
+        throw error;
+      }
+
       throw new Error(`Failed to confirm transaction: ${error.message}`);
     }
   }
@@ -1413,7 +1454,7 @@ export class Solana {
     serializedTx: Buffer | Uint8Array,
   ): Promise<{ confirmed: boolean; signature: string; txData: any }> {
     // Get latest blockhash for expiration checking
-    const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
+    const { lastValidBlockHeight } = await this.connection.getLatestBlockhash('confirmed');
 
     let signature: string | null = null;
 
@@ -1422,9 +1463,16 @@ export class Solana {
       if (this.heliusService) {
         try {
           signature = await this.heliusService.sendWithSender(serializedTx);
+          logger.info('Using Helius Sender for optimized transaction delivery');
         } catch (error) {
-          // Fallback to standard RPC if Sender fails or is not configured
-          logger.info('Falling back to standard RPC transaction sending');
+          // Helius Sender not enabled/configured - use standard sendRawTransaction via Helius RPC
+          const chainConfig = getSolanaChainConfig();
+          const rpcProvider = chainConfig.rpcProvider || 'url';
+          if (rpcProvider === 'helius') {
+            logger.info('Using standard sendRawTransaction via Helius RPC (Sender disabled)');
+          } else {
+            logger.info('Using standard sendRawTransaction');
+          }
           signature = await this.connection.sendRawTransaction(serializedTx, {
             skipPreflight: true,
             maxRetries: 0, // Don't rely on RPC provider's retry logic
@@ -1432,6 +1480,7 @@ export class Solana {
         }
       } else {
         // No Helius service, use standard RPC
+        logger.info('Using standard sendRawTransaction');
         signature = await this.connection.sendRawTransaction(serializedTx, {
           skipPreflight: true,
           maxRetries: 0,
@@ -1499,6 +1548,12 @@ export class Solana {
               });
               logger.info(`Re-broadcasted transaction ${signature}`);
             } catch (rebroadcastError: any) {
+              // Re-throw rate limit errors immediately
+              if (rebroadcastError.statusCode === 429) {
+                logger.error(`Rate limit error while re-broadcasting transaction ${signature}`);
+                throw rebroadcastError;
+              }
+
               logger.warn(`Failed to re-broadcast: ${rebroadcastError.message}`);
             }
 
@@ -1508,6 +1563,12 @@ export class Solana {
           // Wait before next poll
           await new Promise((resolve) => setTimeout(resolve, this.config.confirmRetryInterval * 1000));
         } catch (pollingError: any) {
+          // Re-throw rate limit errors immediately
+          if (pollingError.statusCode === 429) {
+            logger.error(`Rate limit error while polling transaction ${signature}`);
+            throw pollingError;
+          }
+
           logger.warn(`Polling attempt ${attempts} failed: ${pollingError.message}`);
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
@@ -1517,6 +1578,11 @@ export class Solana {
       logger.warn(`❌ Transaction ${signature} not confirmed after ${attempts} attempts`);
       return { confirmed: false, signature, txData: null };
     } catch (sendError: any) {
+      // Re-throw rate limit errors
+      if (sendError.statusCode === 429) {
+        throw sendError;
+      }
+
       logger.error(`Failed to send transaction: ${sendError.message}`);
       return { confirmed: false, signature: signature || '', txData: null };
     }
@@ -1762,40 +1828,70 @@ export class Solana {
    * @param fastify Fastify instance for error responses
    * @returns Promise that resolves if simulation succeeds, throws descriptive error otherwise
    */
-  public async simulateWithErrorHandling(transaction: VersionedTransaction | Transaction, fastify: any): Promise<void> {
+  public async simulateWithErrorHandling(
+    transaction: VersionedTransaction | Transaction,
+    fastify?: any,
+  ): Promise<void> {
     try {
       await this.simulateTransaction(transaction);
     } catch (simulationError: any) {
-      // Parse the error to provide more descriptive messages
-      const errorMessage = simulationError.message || '';
+      const errorMessage = simulationError?.message || '';
 
-      // Check for specific Raydium/Meteora error codes
+      // Helpers to safely create HTTP-style errors even if fastify is undefined
+      const httpErrors = fastify?.httpErrors;
+      const asBadRequest = (msg: string) => {
+        if (httpErrors?.badRequest) return httpErrors.badRequest(msg);
+        const e = new Error(msg) as Error & { statusCode?: number };
+        e.statusCode = 400;
+        return e;
+      };
+
+      // Known program-specific messages
+      if (
+        errorMessage.includes('Error Code: PriceSlippageCheck') ||
+        errorMessage.includes('custom program error: 0x1785')
+      ) {
+        throw asBadRequest(
+          'Position/Swap failed: Price slippage check failed. The calculated price from ticks does not match expected values. ' +
+            "This can happen if: (1) price moved significantly since quote was calculated, (2) token amounts don't match the price range, " +
+            'or (3) tick spacing constraints are not met. Try: increasing slippage tolerance, adjusting token amounts to better match current price, ' +
+            'or using a wider price range.',
+        );
+      }
       if (
         errorMessage.includes('Error Code: TooLittleOutputReceived') ||
         errorMessage.includes('custom program error: 0x1786')
       ) {
-        throw fastify.httpErrors.badRequest(
-          `Swap failed: Slippage tolerance exceeded. The output amount would be less than your minimum. Try increasing slippage tolerance.`,
+        throw asBadRequest(
+          'Swap failed: Slippage tolerance exceeded. Output would be less than your minimum. Consider increasing slippage.',
         );
-      } else if (
+      }
+      if (
         errorMessage.includes('Error Code: TooMuchInputPaid') ||
         errorMessage.includes('custom program error: 0x1787')
       ) {
-        throw fastify.httpErrors.badRequest(
-          `Swap failed: Slippage tolerance exceeded. The input amount would be more than your maximum. Try increasing slippage tolerance.`,
+        throw asBadRequest(
+          'Swap failed: Slippage tolerance exceeded. Input would be more than your maximum. Consider increasing slippage.',
         );
-      } else if (errorMessage.includes('InsufficientFunds') || errorMessage.includes('insufficient')) {
-        throw fastify.httpErrors.badRequest(`Swap failed: Insufficient funds. Please check your token balance.`);
-      } else if (errorMessage.includes('AccountNotFound')) {
-        throw fastify.httpErrors.badRequest(
-          `Swap failed: One or more required accounts not found. The pool or token accounts may not be initialized.`,
+      }
+      if (errorMessage.includes('SqrtPriceLimitOverflow') || errorMessage.includes('custom program error: 0x177d')) {
+        throw asBadRequest(
+          'Swap failed: Square root price limit overflow. Adjust price limit/direction or retry with default limits.',
+        );
+      }
+      if (errorMessage.includes('InsufficientFunds') || errorMessage.toLowerCase().includes('insufficient')) {
+        throw asBadRequest('Transaction failed: Insufficient funds. Please check your token balance.');
+      }
+      if (errorMessage.includes('AccountNotFound')) {
+        throw asBadRequest(
+          'Transaction failed: One or more required accounts not found. The pool or token accounts may not be initialized.',
         );
       }
 
-      // For other simulation errors, provide a cleaner message
+      // Generic fallback
       logger.error('Transaction simulation failed:', simulationError);
-      throw fastify.httpErrors.badRequest(
-        `Transaction simulation failed. This usually means the swap parameters are invalid or market conditions have changed. Please try again.`,
+      throw asBadRequest(
+        'Transaction simulation failed. This usually means the swap parameters are invalid or market conditions changed. Try again.',
       );
     }
   }
@@ -1903,6 +1999,54 @@ export class Solana {
         data: undefined,
       };
     }
+  }
+
+  /**
+   * Create instructions to wrap native SOL to WSOL
+   * @param walletPubkey Wallet public key
+   * @param amount Amount of SOL to wrap in lamports
+   * @param tokenProgram Token program (default TOKEN_PROGRAM_ID)
+   * @returns Array of instructions to wrap SOL
+   */
+  public async wrapSOL(
+    walletPubkey: PublicKey,
+    amount: number,
+    tokenProgram: PublicKey = TOKEN_PROGRAM_ID,
+  ): Promise<TransactionInstruction[]> {
+    const instructions: TransactionInstruction[] = [];
+    const wsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, walletPubkey, false, tokenProgram);
+
+    // Check if WSOL account exists
+    const accountInfo = await this.connection.getAccountInfo(wsolAccount);
+
+    if (!accountInfo) {
+      instructions.push(
+        createAssociatedTokenAccountInstruction(walletPubkey, wsolAccount, walletPubkey, NATIVE_MINT, tokenProgram),
+      );
+    }
+
+    // Transfer SOL and sync
+    instructions.push(
+      SystemProgram.transfer({
+        fromPubkey: walletPubkey,
+        toPubkey: wsolAccount,
+        lamports: amount,
+      }),
+    );
+    instructions.push(createSyncNativeInstruction(wsolAccount, tokenProgram));
+
+    return instructions;
+  }
+
+  /**
+   * Create instruction to unwrap WSOL back to native SOL
+   * @param walletPubkey Wallet public key
+   * @param tokenProgram Token program (default TOKEN_PROGRAM_ID)
+   * @returns Instruction to close WSOL account and return SOL
+   */
+  public unwrapSOL(walletPubkey: PublicKey, tokenProgram: PublicKey = TOKEN_PROGRAM_ID): TransactionInstruction {
+    const wsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, walletPubkey, false, tokenProgram);
+    return createCloseAccountInstruction(wsolAccount, walletPubkey, walletPubkey, [], tokenProgram);
   }
 
   /**
