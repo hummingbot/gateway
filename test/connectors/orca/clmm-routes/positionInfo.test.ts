@@ -2,8 +2,24 @@ import { Solana } from '../../../../src/chains/solana/solana';
 import { Orca } from '../../../../src/connectors/orca/orca';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 
-jest.mock('../../../../src/chains/solana/solana');
-jest.mock('../../../../src/connectors/orca/orca');
+jest.mock('../../../../src/chains/solana/solana', () => ({
+  Solana: {
+    getInstance: jest.fn(),
+  },
+}));
+
+jest.mock('../../../../src/connectors/orca/orca', () => ({
+  Orca: {
+    getInstance: jest.fn(),
+  },
+}));
+
+jest.mock('../../../../src/chains/solana/solana.config', () => ({
+  getSolanaChainConfig: jest.fn().mockReturnValue({
+    defaultNetwork: 'mainnet-beta',
+    defaultWallet: 'BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF',
+  }),
+}));
 
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
@@ -22,28 +38,26 @@ describe('GET /position-info', () => {
     await app.ready();
   });
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   afterAll(async () => {
     await app.close();
   });
 
   describe('successful position info retrieval', () => {
     it('should get position info successfully', async () => {
+      const mockWalletAddress = 'BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF';
       const mockPositionInfo = {
         address: mockPositionAddress,
         poolAddress: 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE',
         baseTokenAddress: 'So11111111111111111111111111111111111111112',
         quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-        lowerPrice: 150,
-        upperPrice: 250,
-        liquidity: '1000000',
         baseTokenAmount: 1.0,
         quoteTokenAmount: 200,
         baseFeeAmount: 0.01,
         quoteFeeAmount: 0.2,
+        lowerBinId: 1000,
+        upperBinId: 2000,
+        lowerPrice: 150,
+        upperPrice: 250,
         price: 200.5,
       };
 
@@ -58,6 +72,7 @@ describe('GET /position-info', () => {
         query: {
           network: 'mainnet-beta',
           positionAddress: mockPositionAddress,
+          walletAddress: mockWalletAddress,
         },
       });
 
