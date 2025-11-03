@@ -6,8 +6,8 @@ import {
   swapQuoteByInputToken,
   swapQuoteByOutputToken,
   buildWhirlpoolClient,
+  IGNORE_CACHE,
 } from '@orca-so/whirlpools-sdk';
-import { IGNORE_CACHE } from '@orca-so/whirlpools-sdk/dist/network/public/fetcher';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
@@ -141,8 +141,11 @@ async function executeSwap(
     mintB.tokenProgram,
   );
 
-  // Handle WSOL for input token (wrap if needed)
+  // Handle WSOL wrapping for input token
+  // If selling WSOL: check existing balance and only wrap the deficit
+  // If buying with WSOL: wrap the needed amount with buffer
   if (aToB) {
+    // Swapping A -> B (input is tokenA)
     await handleWsolAta(
       builder,
       ctx,
@@ -150,11 +153,12 @@ async function executeSwap(
       tokenOwnerAccountA,
       mintA.tokenProgram,
       'wrap',
-      quote.estimatedAmountIn,
+      quote.estimatedAmountIn, // handleWsolAta will check existing balance and only wrap deficit
     );
     // Create ATA for output token if needed
     await handleWsolAta(builder, ctx, whirlpoolData.tokenMintB, tokenOwnerAccountB, mintB.tokenProgram, 'receive');
   } else {
+    // Swapping B -> A (input is tokenB)
     // Create ATA for output token if needed
     await handleWsolAta(builder, ctx, whirlpoolData.tokenMintA, tokenOwnerAccountA, mintA.tokenProgram, 'receive');
     await handleWsolAta(
@@ -164,7 +168,7 @@ async function executeSwap(
       tokenOwnerAccountB,
       mintB.tokenProgram,
       'wrap',
-      quote.estimatedAmountIn,
+      quote.estimatedAmountIn, // handleWsolAta will check existing balance and only wrap deficit
     );
   }
 

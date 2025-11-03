@@ -1,6 +1,5 @@
 import { Percentage, TransactionBuilder } from '@orca-so/common-sdk';
-import { WhirlpoolIx, decreaseLiquidityQuoteByLiquidityWithParams } from '@orca-so/whirlpools-sdk';
-import { TokenExtensionUtil } from '@orca-so/whirlpools-sdk/dist/utils/public/token-extension-util';
+import { WhirlpoolIx, decreaseLiquidityQuoteByLiquidityWithParams, TokenExtensionUtil } from '@orca-so/whirlpools-sdk';
 import { Static } from '@sinclair/typebox';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
@@ -156,10 +155,12 @@ async function removeLiquidity(
     throw fastify.httpErrors.notFound('Tokens not found for balance extraction');
   }
 
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, ctx.wallet.publicKey.toString(), [
-    tokenA.address,
-    tokenB.address,
-  ]);
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
+    signature,
+    ctx.wallet.publicKey.toString(),
+    [tokenA.address, tokenB.address],
+    true,
+  );
 
   logger.info(
     `Liquidity removed: ${Math.abs(balanceChanges[0]).toFixed(6)} ${tokenA.symbol}, ${Math.abs(balanceChanges[1]).toFixed(6)} ${tokenB.symbol}`,

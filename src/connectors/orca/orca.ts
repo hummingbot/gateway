@@ -257,14 +257,14 @@ export class Orca {
   }
 
   /**
-   * Gets all positions owned by a wallet in a specific pool
+   * Gets all positions owned by a wallet
    * @param poolAddress The whirlpool address
    * @param walletAddress The wallet public key
    * @returns Array of PositionInfo
    */
-  async getPositionsInPool(poolAddress: string, walletAddress: string): Promise<PositionInfo[]> {
+  async getPositionsForWalletAddress(walletAddress: string): Promise<PositionInfo[]> {
     try {
-      logger.info(`Getting positions for pool ${poolAddress} and wallet ${walletAddress}`);
+      logger.info(`Getting positions for wallet ${walletAddress}`);
 
       const positions: PositionInfo[] = [];
 
@@ -273,11 +273,10 @@ export class Orca {
         address(walletAddress),
       )) as any;
 
+      const ctx = await this.getWhirlpoolContextForWallet(walletAddress);
+
       for (const position of positionsForOwner) {
-        if (position.data.whirlpool === poolAddress) {
-          const ctx = await this.getWhirlpoolContextForWallet(walletAddress);
-          positions.push(await getPositionDetails(ctx, address(position.address)));
-        }
+        positions.push(await getPositionDetails(ctx, address(position.address)));
       }
 
       return positions;

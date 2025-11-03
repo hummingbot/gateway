@@ -20,8 +20,8 @@ import {
   PoolUtil,
   TickUtil,
   collectFeesQuote as collectFeesQuoteLegacy,
+  WhirlpoolContext,
 } from '@orca-so/whirlpools-sdk';
-import type { WhirlpoolContext } from '@orca-so/whirlpools-sdk';
 import type {
   GetAccountInfoApi,
   GetEpochInfoApi,

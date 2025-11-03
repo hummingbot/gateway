@@ -1,6 +1,5 @@
 import { TransactionBuilder } from '@orca-so/common-sdk';
-import { WhirlpoolIx, collectFeesQuote, TickArrayUtil } from '@orca-so/whirlpools-sdk';
-import { TokenExtensionUtil } from '@orca-so/whirlpools-sdk/dist/utils/public/token-extension-util';
+import { WhirlpoolIx, collectFeesQuote, TickArrayUtil, TokenExtensionUtil } from '@orca-so/whirlpools-sdk';
 import { Static } from '@sinclair/typebox';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
@@ -160,10 +159,12 @@ async function collectFees(
     throw fastify.httpErrors.notFound('Tokens not found for balance extraction');
   }
 
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, whirlpoolPubkey.toString(), [
-    tokenA.address,
-    tokenB.address,
-  ]);
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
+    signature,
+    whirlpoolPubkey.toString(),
+    [tokenA.address, tokenB.address],
+    true,
+  );
 
   logger.info(
     `Fees collected: ${Math.abs(balanceChanges[0]).toFixed(6)} ${tokenA.symbol}, ${Math.abs(balanceChanges[1]).toFixed(6)} ${tokenB.symbol}`,

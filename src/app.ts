@@ -250,7 +250,7 @@ const configureGatewayServer = () => {
     // Meteora routes
     app.register(meteoraRoutes.clmm, { prefix: '/connectors/meteora/clmm' });
 
-    // Orca routes
+    // // Orca routes
     app.register(orcaRoutes.clmm, { prefix: '/connectors/orca/clmm' });
 
     // Raydium routes

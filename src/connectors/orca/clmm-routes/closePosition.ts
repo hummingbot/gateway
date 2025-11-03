@@ -4,8 +4,8 @@ import {
   WhirlpoolIx,
   collectFeesQuote,
   decreaseLiquidityQuoteByLiquidityWithParams,
+  TokenExtensionUtil,
 } from '@orca-so/whirlpools-sdk';
-import { TokenExtensionUtil } from '@orca-so/whirlpools-sdk/dist/utils/public/token-extension-util';
 import { Static } from '@sinclair/typebox';
 import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';

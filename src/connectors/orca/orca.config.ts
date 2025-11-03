@@ -14,7 +14,6 @@ export namespace OrcaConfig {
   export interface RootConfig {
     // Global configuration
     slippagePct: number;
-    strategyType: number;
 
     // Available networks
     availableNetworks: Array<AvailableNetworks>;
@@ -22,7 +21,6 @@ export namespace OrcaConfig {
 
   export const config: RootConfig = {
     slippagePct: ConfigManagerV2.getInstance().get('orca.slippagePct'),
-    strategyType: ConfigManagerV2.getInstance().get('orca.strategyType') ?? 0,
 
     availableNetworks: [
       {

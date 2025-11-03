@@ -6,9 +6,9 @@ import {
   TickUtil,
   WhirlpoolIx,
   increaseLiquidityQuoteByInputTokenWithParams,
+  WhirlpoolContext,
+  TokenExtensionUtil,
 } from '@orca-so/whirlpools-sdk';
-import type { WhirlpoolContext } from '@orca-so/whirlpools-sdk';
-import { TokenExtensionUtil } from '@orca-so/whirlpools-sdk/dist/utils/public/token-extension-util';
 import { Static } from '@sinclair/typebox';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { Keypair, PublicKey } from '@solana/web3.js';
@@ -135,25 +135,8 @@ async function addLiquidityInstructions(
     mintB.tokenProgram,
   );
 
-  // Handle WSOL wrapping if needed
-  await handleWsolAta(
-    builder,
-    ctx,
-    whirlpool.tokenMintA,
-    tokenOwnerAccountA,
-    mintA.tokenProgram,
-    'wrap',
-    quote.tokenMaxA,
-  );
-  await handleWsolAta(
-    builder,
-    ctx,
-    whirlpool.tokenMintB,
-    tokenOwnerAccountB,
-    mintB.tokenProgram,
-    'wrap',
-    quote.tokenMaxB,
-  );
+  // Note: WSOL wrapping is now handled BEFORE openPosition instruction
+  // This section is kept for reference but instructions are not added here
 
   // Get tick array pubkeys for the position
   const { lower: lowerTickArrayPubkey, upper: upperTickArrayPubkey } = getTickArrayPubkeys(
@@ -252,6 +235,96 @@ async function openPosition(
   // Initialize tick arrays if needed
   await initializeTickArrays(builder, ctx, whirlpool, whirlpoolPubkey, lowerTickIndex, upperTickIndex);
 
+  // If we're adding liquidity, prepare WSOL wrapping FIRST (before opening position)
+  let baseTokenAmountAdded = 0;
+  let quoteTokenAmountAdded = 0;
+
+  if (shouldAddLiquidity) {
+    // Calculate liquidity quote to know how much WSOL we need
+    const useBaseToken = baseTokenAmount > 0;
+    const inputTokenAmount = useBaseToken ? baseTokenAmount : quoteTokenAmount;
+    const inputTokenMint = useBaseToken ? whirlpool.tokenMintA : whirlpool.tokenMintB;
+    const inputTokenDecimals = useBaseToken ? mintA.decimals : mintB.decimals;
+    const amount = new BN(Math.floor(inputTokenAmount * Math.pow(10, inputTokenDecimals)));
+
+    const quote = increaseLiquidityQuoteByInputTokenWithParams({
+      inputTokenAmount: amount,
+      inputTokenMint,
+      sqrtPrice: whirlpool.sqrtPrice,
+      tickCurrentIndex: whirlpool.tickCurrentIndex,
+      tickLowerIndex: lowerTickIndex,
+      tickUpperIndex: upperTickIndex,
+      tokenExtensionCtx: await TokenExtensionUtil.buildTokenExtensionContext(ctx.fetcher, whirlpool),
+      tokenMintA: whirlpool.tokenMintA,
+      tokenMintB: whirlpool.tokenMintB,
+      slippageTolerance: Percentage.fromDecimal(new Decimal(slippage)),
+    });
+
+    baseTokenAmountAdded = Number(quote.tokenEstA) / Math.pow(10, mintA.decimals);
+    quoteTokenAmountAdded = Number(quote.tokenEstB) / Math.pow(10, mintB.decimals);
+
+    logger.info(
+      `Will add liquidity: ${baseTokenAmountAdded.toFixed(6)} tokenA, ${quoteTokenAmountAdded.toFixed(6)} tokenB`,
+    );
+
+    // Get token accounts
+    const tokenOwnerAccountA = getAssociatedTokenAddressSync(
+      whirlpool.tokenMintA,
+      ctx.wallet.publicKey,
+      undefined,
+      mintA.tokenProgram,
+    );
+    const tokenOwnerAccountB = getAssociatedTokenAddressSync(
+      whirlpool.tokenMintB,
+      ctx.wallet.publicKey,
+      undefined,
+      mintB.tokenProgram,
+    );
+
+    // Wrap WSOL FIRST, before opening position
+    // Add buffer for rent costs (position rent + metadata rent + ATA rent)
+    const RENT_BUFFER_LAMPORTS = 5000000; // ~0.005 SOL buffer for various rent costs
+
+    logger.info(
+      `Pre-wrapping WSOL - TokenA max: ${quote.tokenMaxA.toString()}, TokenB max: ${quote.tokenMaxB.toString()}`,
+    );
+
+    // Add rent buffer to WSOL wrapping amounts if WSOL is one of the tokens
+    const tokenMaxAWithBuffer =
+      whirlpool.tokenMintA.toString() === 'So11111111111111111111111111111111111111112'
+        ? quote.tokenMaxA.add(new BN(RENT_BUFFER_LAMPORTS))
+        : quote.tokenMaxA;
+    const tokenMaxBWithBuffer =
+      whirlpool.tokenMintB.toString() === 'So11111111111111111111111111111111111111112'
+        ? quote.tokenMaxB.add(new BN(RENT_BUFFER_LAMPORTS))
+        : quote.tokenMaxB;
+
+    logger.info(
+      `With rent buffer - TokenA: ${tokenMaxAWithBuffer.toString()}, TokenB: ${tokenMaxBWithBuffer.toString()}`,
+    );
+
+    await handleWsolAta(
+      builder,
+      ctx,
+      whirlpool.tokenMintA,
+      tokenOwnerAccountA,
+      mintA.tokenProgram,
+      'wrap',
+      tokenMaxAWithBuffer,
+    );
+    await handleWsolAta(
+      builder,
+      ctx,
+      whirlpool.tokenMintB,
+      tokenOwnerAccountB,
+      mintB.tokenProgram,
+      'wrap',
+      tokenMaxBWithBuffer,
+    );
+
+    logger.info('WSOL pre-wrapping completed');
+  }
+
   // Generate position mint keypair
   const positionMintKeypair = Keypair.generate();
   const positionPda = PDAUtil.getPosition(ORCA_WHIRLPOOL_PROGRAM_ID, positionMintKeypair.publicKey);
@@ -275,10 +348,7 @@ async function openPosition(
 
   builder.addSigner(positionMintKeypair);
 
-  // Add liquidity if amounts are provided
-  let baseTokenAmountAdded = 0;
-  let quoteTokenAmountAdded = 0;
-
+  // Add liquidity instructions (WSOL already wrapped above)
   if (shouldAddLiquidity) {
     const result = await addLiquidityInstructions(
       builder,
