@@ -100,6 +100,15 @@ describe('GET /quote-swap', () => {
         };
         return tokens[symbol];
       }),
+      getOrFetchToken: jest.fn().mockImplementation(async (symbolOrAddress: string) => {
+        const tokens: any = {
+          WBNB: mockWBNB,
+          USDC: mockUSDC,
+          [mockWBNB.address]: mockWBNB,
+          [mockUSDC.address]: mockUSDC,
+        };
+        return tokens[symbolOrAddress];
+      }),
       getWalletAddressExample: jest.fn().mockResolvedValue('0x1234567890123456789012345678901234567890'),
     };
 

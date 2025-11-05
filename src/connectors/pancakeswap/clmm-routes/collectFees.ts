@@ -131,7 +131,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
           ...CollectFeesRequest,
           properties: {
             ...CollectFeesRequest.properties,
-            network: { type: 'string', default: 'base' },
+            network: { type: 'string', default: 'bsc', examples: ['bsc'] },
             walletAddress: { type: 'string', examples: [walletAddressExample] },
             positionAddress: {
               type: 'string',

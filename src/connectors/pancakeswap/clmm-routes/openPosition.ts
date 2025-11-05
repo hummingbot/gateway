@@ -1,7 +1,7 @@
 import { Contract } from '@ethersproject/contracts';
 import { CurrencyAmount, Percent } from '@pancakeswap/sdk';
 import { Position, NonfungiblePositionManager, MintOptions, nearestUsableTick } from '@pancakeswap/v3-sdk';
-import { BigNumber } from 'ethers';
+import { BigNumber, utils } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Address } from 'viem';
 
@@ -103,7 +103,10 @@ export async function openPosition(
   let token1Amount = CurrencyAmount.fromRawAmount(token1, 0);
 
   if (baseTokenAmount !== undefined) {
-    const baseAmountRaw = Math.floor(baseTokenAmount * Math.pow(10, baseTokenObj.decimals));
+    // Use parseUnits to avoid scientific notation issues with large numbers
+    const baseAmountRaw = BigNumber.from(
+      utils.parseUnits(baseTokenAmount.toString(), baseTokenObj.decimals).toString(),
+    );
     if (isBaseToken0) {
       token0Amount = CurrencyAmount.fromRawAmount(token0, baseAmountRaw.toString());
     } else {
@@ -112,7 +115,10 @@ export async function openPosition(
   }
 
   if (quoteTokenAmount !== undefined) {
-    const quoteAmountRaw = Math.floor(quoteTokenAmount * Math.pow(10, quoteTokenObj.decimals));
+    // Use parseUnits to avoid scientific notation issues with large numbers
+    const quoteAmountRaw = BigNumber.from(
+      utils.parseUnits(quoteTokenAmount.toString(), quoteTokenObj.decimals).toString(),
+    );
     if (isBaseToken0) {
       token1Amount = CurrencyAmount.fromRawAmount(token1, quoteAmountRaw.toString());
     } else {
@@ -292,15 +298,17 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           ...OpenPositionRequest,
           properties: {
             ...OpenPositionRequest.properties,
-            network: { type: 'string', default: 'base' },
+            network: { type: 'string', default: 'bsc', examples: ['bsc'] },
             walletAddress: { type: 'string', examples: [walletAddressExample] },
-            lowerPrice: { type: 'number', examples: [1000] },
-            upperPrice: { type: 'number', examples: [4000] },
-            poolAddress: { type: 'string', examples: [''] },
-            baseToken: { type: 'string', examples: ['WETH'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            baseTokenAmount: { type: 'number', examples: [0.001] },
-            quoteTokenAmount: { type: 'number', examples: [3] },
+            lowerPrice: { type: 'number', examples: [0.0008] },
+            upperPrice: { type: 'number', examples: [0.001] },
+            poolAddress: {
+              type: 'string',
+              default: '0x172fcd41e0913e95784454622d1c3724f546f849',
+              examples: ['0x172fcd41e0913e95784454622d1c3724f546f849'],
+            },
+            baseTokenAmount: { type: 'number', examples: [10] },
+            quoteTokenAmount: { type: 'number', examples: [0.01] },
             slippagePct: { type: 'number', examples: [1] },
           },
         },

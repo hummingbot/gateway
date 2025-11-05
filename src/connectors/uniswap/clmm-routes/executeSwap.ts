@@ -81,8 +81,14 @@ export async function executeClmmSwap(
   // Check if allowance is sufficient
   if (currentAllowance.lt(amountNeeded)) {
     logger.error(`Insufficient allowance for ${quote.inputToken.symbol}`);
+    const requiredFormatted = formatTokenAmount(amountNeeded, quote.inputToken.decimals);
+    const currentFormatted = formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals);
     throw fastify.httpErrors.badRequest(
-      `Insufficient allowance for ${quote.inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded, quote.inputToken.decimals)} ${quote.inputToken.symbol} (${quote.inputToken.address}) for the Uniswap SwapRouter02 (${routerAddress})`,
+      `Insufficient allowance for ${quote.inputToken.symbol}. ` +
+        `Current: ${currentFormatted} ${quote.inputToken.symbol}, Required: ${requiredFormatted} ${quote.inputToken.symbol}. ` +
+        `To swap with Uniswap CLMM, you need to approve the spender "uniswap/clmm/swap" instead of "uniswap/clmm". ` +
+        `This will approve the SwapRouter02 address (${routerAddress}), which is used for routing swaps to CLMM pools. ` +
+        `The "uniswap/clmm" spender is only for adding liquidity to pools.`,
     );
   }
 

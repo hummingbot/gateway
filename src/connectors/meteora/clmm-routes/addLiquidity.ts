@@ -94,8 +94,8 @@ export async function addLiquidity(
   const maxBinId = position.positionData.upperBinId;
   const minBinId = position.positionData.lowerBinId;
 
-  const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount), dlmmPool.tokenX.decimal));
-  const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(quoteTokenAmount), dlmmPool.tokenY.decimal));
+  const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount), dlmmPool.tokenX.mint.decimals));
+  const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(quoteTokenAmount), dlmmPool.tokenY.mint.decimals));
 
   const addLiquidityTx = await dlmmPool.addLiquidityByStrategy({
     positionPubKey: new PublicKey(position.publicKey),

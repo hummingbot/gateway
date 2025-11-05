@@ -9,8 +9,6 @@ import { getPositionInfo as uniswapGetPositionInfo } from '../../connectors/unis
 import { PositionInfo, PositionInfoSchema } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
 
-// Import position info functions from connectors
-
 /**
  * Unified position info request schema
  */
@@ -18,20 +16,18 @@ const UnifiedPositionInfoRequestSchema = Type.Object({
   connector: Type.String({
     description: 'CLMM connector (raydium, meteora, pancakeswap-sol, uniswap, pancakeswap)',
     enum: ['raydium', 'meteora', 'pancakeswap-sol', 'uniswap', 'pancakeswap'],
-    default: 'raydium',
+    default: 'meteora',
+    examples: ['meteora'],
   }),
   chainNetwork: Type.String({
     description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
     default: 'solana-mainnet-beta',
+    examples: ['solana-mainnet-beta'],
   }),
   positionAddress: Type.String({
     description: 'Position address or NFT token ID',
+    examples: ['<sample-position-address>'],
   }),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address (required for Meteora, optional for others)',
-    }),
-  ),
 });
 
 type UnifiedPositionInfoRequest = Static<typeof UnifiedPositionInfoRequestSchema>;
@@ -62,7 +58,6 @@ async function getSolanaPositionInfo(
   connector: string,
   network: string,
   positionAddress: string,
-  walletAddress?: string,
 ): Promise<PositionInfo> {
   logger.info(`[CLMM] Getting position info from ${connector} on solana/${network}`);
 
@@ -70,11 +65,7 @@ async function getSolanaPositionInfo(
     case 'raydium':
       return await raydiumGetPositionInfo(fastify, network, positionAddress);
     case 'meteora':
-      // Meteora requires walletAddress
-      if (!walletAddress) {
-        throw fastify.httpErrors.badRequest('walletAddress is required for Meteora connector');
-      }
-      return await meteoraGetPositionInfo(fastify, network, positionAddress, walletAddress);
+      return await meteoraGetPositionInfo(fastify, network, positionAddress);
     case 'pancakeswap-sol':
       return await pancakeswapSolGetPositionInfo(fastify, network, positionAddress);
     default:
@@ -90,15 +81,14 @@ async function getEthereumPositionInfo(
   connector: string,
   network: string,
   positionAddress: string,
-  walletAddress?: string,
 ): Promise<PositionInfo> {
   logger.info(`[CLMM] Getting position info from ${connector} on ethereum/${network}`);
 
   switch (connector) {
     case 'uniswap':
-      return await uniswapGetPositionInfo(fastify, network, positionAddress, walletAddress);
+      return await uniswapGetPositionInfo(fastify, network, positionAddress);
     case 'pancakeswap':
-      return await pancakeswapGetPositionInfo(fastify, network, positionAddress, walletAddress);
+      return await pancakeswapGetPositionInfo(fastify, network, positionAddress);
     default:
       throw fastify.httpErrors.badRequest(`Unsupported Ethereum CLMM connector: ${connector}`);
   }
@@ -112,7 +102,6 @@ export async function getUnifiedPositionInfo(
   connector: string,
   chainNetwork: string,
   positionAddress: string,
-  walletAddress?: string,
 ): Promise<PositionInfo> {
   const { chain, network } = parseChainNetwork(chainNetwork);
 
@@ -120,10 +109,10 @@ export async function getUnifiedPositionInfo(
 
   switch (chain.toLowerCase()) {
     case 'ethereum':
-      return getEthereumPositionInfo(fastify, connector, network, positionAddress, walletAddress);
+      return getEthereumPositionInfo(fastify, connector, network, positionAddress);
 
     case 'solana':
-      return getSolanaPositionInfo(fastify, connector, network, positionAddress, walletAddress);
+      return getSolanaPositionInfo(fastify, connector, network, positionAddress);
 
     default:
       throw fastify.httpErrors.badRequest(`Unsupported chain: ${chain}`);
@@ -151,10 +140,10 @@ export const positionsRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request, reply) => {
-      const { connector, chainNetwork, positionAddress, walletAddress } = request.query;
+      const { connector, chainNetwork, positionAddress } = request.query;
 
       try {
-        const result = await getUnifiedPositionInfo(fastify, connector, chainNetwork, positionAddress, walletAddress);
+        const result = await getUnifiedPositionInfo(fastify, connector, chainNetwork, positionAddress);
         return reply.code(200).send(result);
       } catch (error: any) {
         logger.error(`[UnifiedCLMM] Position info error: ${error.message}`);

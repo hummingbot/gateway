@@ -39,9 +39,6 @@ rpcProvider: helius
 
       const heliusConfig = `apiKey: 'test-api-key-for-regression-test'
 useWebSocketRPC: false
-useSender: false
-regionCode: 'slc'
-jitoTipSOL: 0.001
 `;
 
       // Ensure directories exist
@@ -114,18 +111,12 @@ jitoTipSOL: 0.001
         useHeliusRestRPC: true,
         heliusAPIKey: 'test',
         useHeliusWebSocketRPC: false,
-        useHeliusSender: false,
-        heliusRegionCode: 'slc',
-        jitoTipSOL: 0.001,
       };
 
       // These fields should all be defined
       expect(config.useHeliusRestRPC).toBeDefined();
       expect(config.heliusAPIKey).toBeDefined();
       expect(config.useHeliusWebSocketRPC).toBeDefined();
-      expect(config.useHeliusSender).toBeDefined();
-      expect(config.heliusRegionCode).toBeDefined();
-      expect(config.jitoTipSOL).toBeDefined();
     });
   });
 });

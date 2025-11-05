@@ -1,6 +1,6 @@
 chainID: 10
 nodeURL: https://mainnet.optimism.io
-nativeCurrencySymbol: OETH
+nativeCurrencySymbol: ETH
 swapProvider: uniswap/router
 
 # EIP-1559 gas parameters (in GWEI)

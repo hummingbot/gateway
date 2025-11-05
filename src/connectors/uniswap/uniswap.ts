@@ -175,6 +175,26 @@ export class Uniswap {
   }
 
   /**
+   * Get token by address with blockchain fallback for unlisted tokens (async version).
+   * Use this in routes that support trading unlisted tokens.
+   */
+  public async getOrFetchTokenByAddress(address: string): Promise<Token | null> {
+    const tokenInfo = await this.ethereum.getOrFetchToken(address);
+    if (!tokenInfo) return null;
+
+    // Create Uniswap SDK Token instance
+    return new Token(tokenInfo.chainId, tokenInfo.address, tokenInfo.decimals, tokenInfo.symbol, tokenInfo.name);
+  }
+
+  /**
+   * Get token by symbol with blockchain fallback for unlisted tokens (async version).
+   * Use this in routes that support trading unlisted tokens.
+   */
+  public async getOrFetchTokenBySymbol(symbol: string): Promise<Token | null> {
+    return this.getOrFetchTokenByAddress(symbol);
+  }
+
+  /**
    * Create a Uniswap SDK Token object from token info
    * @param tokenInfo Token information from Ethereum
    * @returns Uniswap SDK Token object

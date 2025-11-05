@@ -11,6 +11,9 @@ export const mockLogger = {
   debug: jest.fn(),
 };
 
+// redactUrl mock - returns URL as-is in tests
+export const mockRedactUrl = jest.fn((url: string) => url);
+
 // ConfigManagerV2 mock with dynamic config storage
 export const mockConfigStorage: Record<string, any> = {
   'server.port': 15888,
@@ -143,6 +146,7 @@ export function setupCommonMocks(options: { skipLogger?: boolean } = {}) {
   if (!options.skipLogger) {
     jest.mock('../../src/services/logger', () => ({
       logger: mockLogger,
+      redactUrl: mockRedactUrl,
       updateLoggerToStdout: jest.fn(),
     }));
   }

@@ -11,7 +11,8 @@ import { getPoolInfo as uniswapGetPoolInfo } from '../../connectors/uniswap/clmm
 import { PoolInfo, PoolInfoSchema } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
 
-// Import pool info functions from connectors
+// Constants for examples (using Meteora CLMM values)
+const CLMM_POOL_ADDRESS_EXAMPLE = '2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3';
 
 /**
  * Unified pool info request schema
@@ -20,14 +21,17 @@ const UnifiedPoolInfoRequestSchema = Type.Object({
   connector: Type.String({
     description: 'CLMM connector (raydium, meteora, pancakeswap-sol, uniswap, pancakeswap)',
     enum: ['raydium', 'meteora', 'pancakeswap-sol', 'uniswap', 'pancakeswap'],
-    default: 'raydium',
+    default: 'meteora',
+    examples: ['meteora'],
   }),
   chainNetwork: Type.String({
     description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
     default: 'solana-mainnet-beta',
+    examples: ['solana-mainnet-beta'],
   }),
   poolAddress: Type.String({
     description: 'Pool contract address',
+    examples: [CLMM_POOL_ADDRESS_EXAMPLE],
   }),
 });
 
