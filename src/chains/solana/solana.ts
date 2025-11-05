@@ -2074,9 +2074,9 @@ export class Solana {
       for (const address of walletAddresses) {
         try {
           // Fetch initial balances
-          const initialBalances = await this.getBalances(address);
-          const solBalance = (initialBalances.balances['SOL'] as number) || 0;
-          const tokenCount = Object.keys(initialBalances.balances).filter((symbol) => symbol !== 'SOL').length;
+          const balances = await this.getBalances(address);
+          const solBalance = (balances['SOL'] as number) || 0;
+          const tokenCount = Object.keys(balances).filter((symbol) => symbol !== 'SOL').length;
 
           logger.info(
             `[${address.slice(0, 8)}...] Initial balance: ${solBalance.toFixed(4)} SOL, ${tokenCount} token(s)`,
