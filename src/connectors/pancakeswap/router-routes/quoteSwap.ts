@@ -30,9 +30,10 @@ async function quoteSwap(
   const ethereum = await Ethereum.getInstance(network);
   const pancakeswap = await Pancakeswap.getInstance(network);
 
-  // Resolve token symbols to token objects
-  const baseTokenInfo = ethereum.getToken(baseToken);
-  const quoteTokenInfo = ethereum.getToken(quoteToken);
+  // Resolve token symbols/addresses to token objects
+  // Use getOrFetchToken to support tokens not in the token list
+  const baseTokenInfo = await ethereum.getOrFetchToken(baseToken);
+  const quoteTokenInfo = await ethereum.getOrFetchToken(quoteToken);
 
   if (!baseTokenInfo || !quoteTokenInfo) {
     logger.error(`[quoteSwap] Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);

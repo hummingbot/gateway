@@ -1,6 +1,6 @@
 import { Token, CurrencyAmount, Percent, TradeType } from '@pancakeswap/sdk';
 import { Route as V3Route, Trade as V3Trade } from '@pancakeswap/v3-sdk';
-import { BigNumber } from 'ethers';
+import { BigNumber, utils } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
@@ -48,16 +48,18 @@ async function quoteClmmSwap(
     let trade;
     if (exactIn) {
       // For SELL (exactIn), we use the input amount and EXACT_INPUT trade type
+      // Use parseUnits to avoid scientific notation issues with large numbers
       const inputAmount = CurrencyAmount.fromRawAmount(
         inputToken,
-        Math.floor(amount * Math.pow(10, inputToken.decimals)).toString(),
+        utils.parseUnits(amount.toString(), inputToken.decimals).toString(),
       );
       trade = await V3Trade.fromRoute(route, inputAmount, TradeType.EXACT_INPUT);
     } else {
       // For BUY (exactOut), we use the output amount and EXACT_OUTPUT trade type
+      // Use parseUnits to avoid scientific notation issues with large numbers
       const outputAmount = CurrencyAmount.fromRawAmount(
         outputToken,
-        Math.floor(amount * Math.pow(10, outputToken.decimals)).toString(),
+        utils.parseUnits(amount.toString(), outputToken.decimals).toString(),
       );
       trade = await V3Trade.fromRoute(route, outputAmount, TradeType.EXACT_OUTPUT);
     }
@@ -289,10 +291,10 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           ...QuoteSwapRequest,
           properties: {
             ...QuoteSwapRequest.properties,
-            network: { type: 'string', default: 'base' },
-            baseToken: { type: 'string', examples: ['WETH'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            amount: { type: 'number', examples: [0.001] },
+            network: { type: 'string', default: 'bsc', examples: ['bsc'] },
+            baseToken: { type: 'string', examples: ['USDT'] },
+            quoteToken: { type: 'string', examples: ['WBNB'] },
+            amount: { type: 'number', examples: [10] },
             side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
             slippagePct: { type: 'number', examples: [1] },
           },

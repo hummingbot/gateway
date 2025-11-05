@@ -6,7 +6,7 @@ import fse from 'fs-extra';
 import { TokenValue, tokenValueToString } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { logger } from '../../services/logger';
+import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
 
@@ -98,7 +98,7 @@ export class Ethereum {
       this.initializeInfuraProvider(config);
     } else {
       logger.info(`Using standard RPC provider: ${rpcProvider}`);
-      logger.info(`Initializing Ethereum connector for network: ${network}, RPC URL: ${this.rpcUrl}`);
+      logger.info(`Initializing Ethereum connector for network: ${network}, RPC URL: ${redactUrl(this.rpcUrl)}`);
       this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
     }
   }
@@ -409,7 +409,7 @@ export class Ethereum {
 
       if (!infuraApiKey || infuraApiKey.trim() === '') {
         logger.warn(`⚠️ Infura provider selected but no API key configured`);
-        logger.info(`Using standard RPC from nodeURL: ${this.rpcUrl}`);
+        logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
         this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
         return;
       }
@@ -428,7 +428,7 @@ export class Ethereum {
       this.provider = this.infuraService.getProvider() as providers.StaticJsonRpcProvider;
     } catch (error: any) {
       logger.warn(`Failed to initialize Infura provider: ${error.message}`);
-      logger.info(`Using standard RPC from nodeURL: ${this.rpcUrl}`);
+      logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
       this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
     }
   }
@@ -503,6 +503,45 @@ export class Ethereum {
       );
     } catch {
       // If not a valid address format, return undefined
+      return undefined;
+    }
+  }
+
+  /**
+   * Get token info by symbol or address. If token is not in the token list but is a valid
+   * address, fetches token info from the blockchain.
+   * @param tokenSymbolOrAddress Token symbol or contract address
+   * @returns TokenInfo object or undefined if token not found
+   */
+  public async getOrFetchToken(tokenSymbolOrAddress: string): Promise<TokenInfo | undefined> {
+    // First try to get from token list
+    const tokenFromList = this.getToken(tokenSymbolOrAddress);
+    if (tokenFromList) {
+      return tokenFromList;
+    }
+
+    // If not in list, check if it's a valid address and fetch from blockchain
+    try {
+      const address = utils.getAddress(tokenSymbolOrAddress);
+      logger.info(`Token ${address} not in token list, fetching from blockchain...`);
+
+      const contract = this.getContract(address, this.provider);
+
+      // Fetch token details from contract
+      const [name, symbol, decimals] = await Promise.all([contract.name(), contract.symbol(), contract.decimals()]);
+
+      const tokenInfo: TokenInfo = {
+        chainId: this.chainId,
+        address,
+        name,
+        symbol,
+        decimals,
+      };
+
+      logger.info(`Fetched token info from blockchain: ${symbol} (${name}) with ${decimals} decimals`);
+      return tokenInfo;
+    } catch (error) {
+      logger.warn(`Failed to fetch token info for ${tokenSymbolOrAddress}: ${error.message}`);
       return undefined;
     }
   }

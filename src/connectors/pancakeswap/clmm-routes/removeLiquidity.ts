@@ -171,7 +171,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           ...RemoveLiquidityRequest,
           properties: {
             ...RemoveLiquidityRequest.properties,
-            network: { type: 'string', default: 'base' },
+            network: { type: 'string', default: 'bsc', examples: ['bsc'] },
             walletAddress: { type: 'string', examples: [walletAddressExample] },
             positionAddress: {
               type: 'string',

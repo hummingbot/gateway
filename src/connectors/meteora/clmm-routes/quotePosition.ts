@@ -35,11 +35,11 @@ export async function quotePosition(
     const lowerBinId = dlmmPool.getBinIdFromPrice(lowerPrice, false);
     const upperBinId = dlmmPool.getBinIdFromPrice(upperPrice, true);
 
-    // Use provided strategy type or default to SpotBalanced
+    // Use provided strategy type or default to Spot
     const strategy = {
       minBinId: Math.min(lowerBinId, upperBinId),
       maxBinId: Math.max(lowerBinId, upperBinId),
-      strategyType: strategyType ?? StrategyType.SpotBalanced,
+      strategyType: strategyType ?? StrategyType.Spot,
     };
 
     // Get token amounts needed for the position
@@ -56,7 +56,7 @@ export async function quotePosition(
     if (baseTokenAmount || quoteTokenAmount) {
       // Get current price adjusted for decimals
       const rawPrice = getPriceOfBinByBinId(activeBinId, binStep).toNumber();
-      const decimalDiff = dlmmPool.tokenX.decimal - dlmmPool.tokenY.decimal;
+      const decimalDiff = dlmmPool.tokenX.mint.decimals - dlmmPool.tokenY.mint.decimals;
       const adjustmentFactor = Math.pow(10, decimalDiff);
       const currentPrice = rawPrice * adjustmentFactor;
 
@@ -99,8 +99,8 @@ export async function quotePosition(
       // For DLMM pools, liquidity is distributed across bins based on the strategy
       // We'll estimate it based on the token amounts in lamports
       try {
-        const tokenXAmountLamports = baseAmount * Math.pow(10, dlmmPool.tokenX.decimal);
-        const tokenYAmountLamports = quoteAmount * Math.pow(10, dlmmPool.tokenY.decimal);
+        const tokenXAmountLamports = baseAmount * Math.pow(10, dlmmPool.tokenX.mint.decimals);
+        const tokenYAmountLamports = quoteAmount * Math.pow(10, dlmmPool.tokenY.mint.decimals);
 
         // For a balanced position, liquidity can be approximated as the geometric mean
         // This is a simplified estimate; actual distribution depends on bin strategy

@@ -7,20 +7,12 @@ import { Meteora } from '../meteora';
 import { MeteoraClmmGetPositionInfoRequest } from '../schemas';
 
 export async function getPositionInfo(
-  fastify: FastifyInstance,
+  _fastify: FastifyInstance,
   network: string,
   positionAddress: string,
-  walletAddress: string,
 ): Promise<PositionInfo> {
   const meteora = await Meteora.getInstance(network);
-
-  try {
-    new PublicKey(walletAddress);
-  } catch (error) {
-    throw fastify.httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
-  }
-
-  const position = await meteora.getPositionInfo(positionAddress, new PublicKey(walletAddress));
+  const position = await meteora.getPositionInfoByAddress(positionAddress);
   return position;
 }
 
@@ -42,9 +34,9 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { positionAddress, walletAddress } = request.query;
+        const { positionAddress } = request.query;
         const network = request.query.network;
-        return await getPositionInfo(fastify, network, positionAddress, walletAddress);
+        return await getPositionInfo(fastify, network, positionAddress);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

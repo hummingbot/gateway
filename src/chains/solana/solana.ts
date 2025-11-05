@@ -34,7 +34,7 @@ const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
 
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { logger } from '../../services/logger';
+import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
@@ -46,20 +46,6 @@ import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } fro
 // Constants used for fee calculations
 export const BASE_FEE = 5000;
 const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
-
-// Jito tip accounts for bundles
-const JITO_TIP_ACCOUNTS = [
-  '4ACfpUFoaSD9bfPdeu6DBt89gB6ENTeHBXCAi87NhDEE',
-  'D2L6yPZ2FmmmTKPgzaMKdhu6EWZcTpLy1Vhx8uvZe7NZ',
-  '9bnz4RShgq1hAnLnZbP8kbgBg1kEmcJBYQq3gQbmnSta',
-  '5VY91ws6B2hMmBFRsXkoAAdsPHBJwRfBht4DXox3xkwn',
-  '2nyhqdwKcJZR2vcqCyrYsaPVdAnFoJjiksCXJ7hfEYgD',
-  '2q5pghRs6arqVjRvT5gfgWfWcHWmw1ZuCzphgd5KfWkcJ',
-  'wyvPkWjVZz1M8fHQnMMCDTQDbkManefNNhweYk5WkcF',
-  '3KCKozbAaF75qEU33jtzozcJ29yJuaLJTy2jFdzUY8bT',
-  '4vieeGHPYPG2MmyPRcYjdiDmmhN3ww7hsFNap8pVN3Ey',
-  '4TQLFNWK8AovT1gFvda5jfw2oJeRMKEmw7aH6MGBJ3or',
-];
 
 // Interface for token account data
 interface TokenAccount {
@@ -82,7 +68,6 @@ export class Solana {
   public config: SolanaNetworkConfig;
   private _tokenMap: Record<string, TokenInfo> = {};
   private heliusService: HeliusService;
-  private heliusConfig: { useHeliusSender?: boolean; jitoTipSOL?: number } = {};
 
   private static _instances: { [name: string]: Solana };
 
@@ -102,7 +87,9 @@ export class Solana {
     } else {
       // Default: use nodeURL
       logger.info(`Using standard RPC provider: ${rpcProvider}`);
-      logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${this.config.nodeURL}`);
+      logger.info(
+        `Initializing Solana connector for network: ${this.network}, RPC URL: ${redactUrl(this.config.nodeURL)}`,
+      );
       this.connection = createRateLimitAwareConnection(
         new Connection(this.config.nodeURL, {
           commitment: 'confirmed',
@@ -121,15 +108,6 @@ export class Solana {
       const configManager = ConfigManagerV2.getInstance();
       const heliusApiKey = configManager.get('helius.apiKey') || '';
       const useWebSocketRPC = configManager.get('helius.useWebSocketRPC') || false;
-      const useSender = configManager.get('helius.useSender') || false;
-      const regionCode = configManager.get('helius.regionCode') || '';
-      const jitoTipSOL = configManager.get('helius.jitoTipSOL') || 0;
-
-      // Store Helius-specific config
-      this.heliusConfig = {
-        useHeliusSender: useSender,
-        jitoTipSOL: jitoTipSOL,
-      };
 
       // Merge configs for HeliusService
       const mergedConfig = {
@@ -137,9 +115,6 @@ export class Solana {
         heliusAPIKey: heliusApiKey,
         useHeliusRestRPC: true, // Always true when using Helius provider
         useHeliusWebSocketRPC: useWebSocketRPC,
-        useHeliusSender: useSender,
-        heliusRegionCode: regionCode,
-        jitoTipSOL: jitoTipSOL,
       };
 
       // Always use Helius RPC URL when Helius provider is selected
@@ -148,11 +123,9 @@ export class Solana {
           ? `https://devnet.helius-rpc.com/?api-key=${heliusApiKey}`
           : `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`;
 
-        logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${rpcUrl}`);
+        logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${redactUrl(rpcUrl)}`);
         logger.info(`✅ Helius API key configured (length: ${heliusApiKey.length} chars)`);
-        logger.info(
-          `Helius features enabled - WebSocket: ${useWebSocketRPC}, Sender: ${useSender}, Region: ${regionCode || 'default'}`,
-        );
+        logger.info(`Helius features enabled - WebSocket: ${useWebSocketRPC}`);
 
         this.connection = createRateLimitAwareConnection(
           new Connection(rpcUrl, {
@@ -170,7 +143,7 @@ export class Solana {
       } else {
         // Fallback to standard nodeURL if no API key
         logger.warn(`⚠️ Helius provider selected but no API key configured`);
-        logger.info(`Using standard RPC from nodeURL: ${this.config.nodeURL}`);
+        logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.config.nodeURL)}`);
         this.connection = createRateLimitAwareConnection(
           new Connection(this.config.nodeURL, {
             commitment: 'confirmed',
@@ -205,7 +178,7 @@ export class Solana {
   private async init(): Promise<void> {
     try {
       logger.info(
-        `Initializing Solana connector for network: ${this.network}, RPC URL: ${this.connection.rpcEndpoint}`,
+        `Initializing Solana connector for network: ${this.network}, RPC URL: ${redactUrl(this.connection.rpcEndpoint)}`,
       );
       await this.loadTokens();
 
@@ -502,8 +475,9 @@ export class Solana {
           // Check if we have this token in the wallet
           if (mintToAccount.has(tokenBySymbol.address)) {
             const { parsedAccount } = mintToAccount.get(tokenBySymbol.address);
-            const amount = parsedAccount.amount;
-            const uiAmount = Number(amount) / Math.pow(10, tokenBySymbol.decimals);
+            // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
+            const uiAmount =
+              parsedAccount.uiAmount ?? Number(parsedAccount.amount) / Math.pow(10, tokenBySymbol.decimals);
             balances[tokenBySymbol.symbol] = uiAmount;
             logger.debug(`Found balance for ${tokenBySymbol.symbol}: ${uiAmount}`);
           } else {
@@ -529,8 +503,8 @@ export class Solana {
               if (token) {
                 // Token is in our list
                 foundTokens.add(token.symbol);
-                const amount = parsedAccount.amount;
-                const uiAmount = Number(amount) / Math.pow(10, token.decimals);
+                // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
+                const uiAmount = parsedAccount.uiAmount ?? Number(parsedAccount.amount) / Math.pow(10, token.decimals);
                 balances[token.symbol] = uiAmount;
                 logger.debug(`Found balance for ${token.symbol} (${mintAddress}): ${uiAmount}`);
               } else {
@@ -563,8 +537,8 @@ export class Solana {
         // Check if we have this token in the wallet
         if (mintToAccount.has(token.address)) {
           const { parsedAccount } = mintToAccount.get(token.address);
-          const amount = parsedAccount.amount;
-          const uiAmount = Number(amount) / Math.pow(10, token.decimals);
+          // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
+          const uiAmount = parsedAccount.uiAmount ?? Number(parsedAccount.amount) / Math.pow(10, token.decimals);
           balances[token.symbol] = uiAmount;
           logger.debug(`Found balance for ${token.symbol} (${token.address}): ${uiAmount}`);
         } else {
@@ -588,9 +562,8 @@ export class Solana {
           const mintInfo = await getMint(this.connection, parsedAccount.mint);
           decimals = mintInfo.decimals;
 
-          // Calculate balance
-          const amount = parsedAccount.amount;
-          balance = Number(amount) / Math.pow(10, decimals);
+          // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
+          balance = parsedAccount.uiAmount ?? Number(parsedAccount.amount) / Math.pow(10, decimals);
         } else {
           // Try to get decimals anyway for the display
           try {
@@ -748,12 +721,14 @@ export class Solana {
           const mintAddress = parsedInfo.mint;
 
           // Store in format compatible with existing code
+          // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
           tokenAccountsMap.set(mintAddress, {
             parsedAccount: {
               mint: new PublicKey(mintAddress),
               owner: new PublicKey(parsedInfo.owner),
               amount: BigInt(parsedInfo.tokenAmount.amount),
               decimals: parsedInfo.tokenAmount.decimals,
+              uiAmount: parsedInfo.tokenAmount.uiAmount, // Pre-calculated by RPC node
               isNative: parsedInfo.isNative || false,
               delegatedAmount: parsedInfo.delegatedAmount ? BigInt(parsedInfo.delegatedAmount.amount) : BigInt(0),
               delegate: parsedInfo.delegate ? new PublicKey(parsedInfo.delegate) : null,
@@ -894,8 +869,8 @@ export class Solana {
   private getTokenBalance(tokenAccount: TokenAccount | undefined, decimals: number): number {
     if (!tokenAccount) return 0;
 
-    const amount = tokenAccount.parsedAccount.amount;
-    return Number(amount) / Math.pow(10, decimals);
+    // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
+    return tokenAccount.parsedAccount.uiAmount ?? Number(tokenAccount.parsedAccount.amount) / Math.pow(10, decimals);
   }
 
   /**
@@ -909,13 +884,16 @@ export class Solana {
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Mint info timeout')), 1000)),
       ]);
 
-      const amount = tokenAccount.parsedAccount.amount;
-      return Number(amount) / Math.pow(10, mintInfo.decimals);
+      // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
+      return (
+        tokenAccount.parsedAccount.uiAmount ??
+        Number(tokenAccount.parsedAccount.amount) / Math.pow(10, mintInfo.decimals)
+      );
     } catch (error) {
       // Use default 9 decimals if mint info fails
       logger.debug(`Failed to get mint info for ${mintAddress}, using default decimals`);
-      const amount = tokenAccount.parsedAccount.amount;
-      return Number(amount) / Math.pow(10, 9);
+      // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
+      return tokenAccount.parsedAccount.uiAmount ?? Number(tokenAccount.parsedAccount.amount) / Math.pow(10, 9);
     }
   }
 
@@ -1082,8 +1060,59 @@ export class Solana {
     if (!txData?.meta) {
       return 0;
     }
-    // Convert fee from lamports to SOL
-    return (txData.meta.fee || 0) * LAMPORT_TO_SOL;
+
+    // Base fee from meta (in lamports)
+    const baseFee = txData.meta.fee || 0;
+
+    // Extract priority fee from compute budget instructions
+    let priorityFee = 0;
+    try {
+      const computeBudgetProgramId = 'ComputeBudget111111111111111111111111111111';
+      const instructions = txData.transaction?.message?.instructions || [];
+      const accountKeys = txData.transaction?.message?.accountKeys || [];
+
+      // Find SetComputeUnitPrice instruction
+      for (const ix of instructions) {
+        const programId = accountKeys[ix.programIdIndex]?.toString() || accountKeys[ix.programIdIndex];
+
+        if (programId === computeBudgetProgramId && ix.data) {
+          // Decode base58 instruction data
+          const data = typeof ix.data === 'string' ? bs58.decode(ix.data) : ix.data;
+
+          // SetComputeUnitPrice instruction has discriminator [3] and u64 microLamports
+          if (data.length >= 9 && data[0] === 3) {
+            // Read u64 little-endian (microlamports per CU)
+            const microLamportsPerCU =
+              data[1] |
+              (data[2] << 8) |
+              (data[3] << 16) |
+              (data[4] << 24) |
+              (data[5] << 32) |
+              (data[6] << 40) |
+              (data[7] << 48) |
+              (data[8] << 56);
+
+            // Priority fee = (microlamports per CU) * (CUs consumed) / 1,000,000
+            const computeUnitsConsumed = txData.meta.computeUnitsConsumed || 0;
+            priorityFee = Math.floor((microLamportsPerCU * computeUnitsConsumed) / 1_000_000);
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      logger.warn(`Failed to extract priority fee: ${error.message}`);
+    }
+
+    // Total fee = base fee + priority fee (convert to SOL)
+    const totalFee = (baseFee + priorityFee) * LAMPORT_TO_SOL;
+
+    if (priorityFee > 0) {
+      logger.info(
+        `Transaction fees: base=${baseFee} lamports, priority=${priorityFee} lamports, total=${baseFee + priorityFee} lamports (${totalFee.toFixed(9)} SOL)`,
+      );
+    }
+
+    return totalFee;
   }
 
   public async sendAndConfirmTransaction(
@@ -1314,113 +1343,6 @@ export class Solana {
     return modifiedTx;
   }
 
-  /**
-   * Add Jito tip instruction to a VersionedTransaction for Helius Sender
-   */
-  private async addJitoTipToTransaction(
-    transaction: VersionedTransaction,
-    payerPublicKey: PublicKey,
-  ): Promise<VersionedTransaction> {
-    if (!this.heliusConfig.useHeliusSender || !this.heliusConfig.jitoTipSOL) {
-      return transaction;
-    }
-
-    const tipAmount = Math.floor(this.heliusConfig.jitoTipSOL * LAMPORTS_PER_SOL);
-    const randomTipAccount = JITO_TIP_ACCOUNTS[Math.floor(Math.random() * JITO_TIP_ACCOUNTS.length)];
-
-    // Validate tip account
-    if (!randomTipAccount || typeof randomTipAccount !== 'string') {
-      throw new Error(`Invalid tip account selected: ${randomTipAccount}`);
-    }
-
-    // Create tip instruction
-    let tipAccountKey: PublicKey;
-    try {
-      tipAccountKey = new PublicKey(randomTipAccount);
-    } catch (error: any) {
-      throw new Error(`Failed to create PublicKey for tip account ${randomTipAccount}: ${error.message}`);
-    }
-
-    const tipInstruction = SystemProgram.transfer({
-      fromPubkey: payerPublicKey,
-      toPubkey: tipAccountKey,
-      lamports: tipAmount,
-    });
-
-    const originalMessage = transaction.message;
-    const originalStaticCount = originalMessage.staticAccountKeys.length;
-
-    // Add SystemProgram to static keys if not already present
-    const newStaticKeys = [...originalMessage.staticAccountKeys];
-    const systemProgramIndex = newStaticKeys.findIndex((key) => key.equals(SystemProgram.programId));
-
-    if (systemProgramIndex === -1) {
-      newStaticKeys.push(SystemProgram.programId);
-    }
-
-    // Add payer to static keys if not already present
-    const payerIndex = newStaticKeys.findIndex((key) => key.equals(payerPublicKey));
-    if (payerIndex === -1) {
-      newStaticKeys.push(payerPublicKey);
-    }
-
-    // Add tip account to static keys if not already present
-    const tipAccountIndex = newStaticKeys.findIndex((key) => key.equals(tipAccountKey));
-
-    if (tipAccountIndex === -1) {
-      newStaticKeys.push(tipAccountKey);
-    }
-
-    // Process original instructions with index adjustment
-    const indexOffset = newStaticKeys.length - originalStaticCount;
-    const originalInstructions = originalMessage.compiledInstructions.map((ix) => ({
-      ...ix,
-      accountKeyIndexes: ix.accountKeyIndexes.map((index) =>
-        index >= originalStaticCount ? index + indexOffset : index,
-      ),
-    }));
-
-    // Create tip instruction - find final indexes after all accounts are added
-    const finalPayerIndex = newStaticKeys.findIndex((key) => key.equals(payerPublicKey));
-    const finalTipAccountIdx = newStaticKeys.findIndex((key) => key.equals(tipAccountKey));
-    const finalSystemProgramIdx = newStaticKeys.findIndex((key) => key.equals(SystemProgram.programId));
-
-    const tipInstructionCompiled = {
-      programIdIndex: finalSystemProgramIdx,
-      accountKeyIndexes: [
-        finalPayerIndex, // from
-        finalTipAccountIdx, // to
-      ],
-      data: tipInstruction.data instanceof Buffer ? new Uint8Array(tipInstruction.data) : tipInstruction.data,
-    };
-
-    // Combine all instructions (tip instruction first)
-    const allInstructions = [tipInstructionCompiled, ...originalInstructions];
-
-    // Create new transaction with tip instruction
-    const modifiedTx = new VersionedTransaction(
-      new MessageV0({
-        header: originalMessage.header,
-        staticAccountKeys: newStaticKeys,
-        recentBlockhash: originalMessage.recentBlockhash,
-        compiledInstructions: allInstructions.map((ix) => ({
-          programIdIndex: ix.programIdIndex,
-          accountKeyIndexes: ix.accountKeyIndexes,
-          data: ix.data instanceof Buffer ? new Uint8Array(ix.data) : ix.data,
-        })),
-        addressTableLookups: originalMessage.addressTableLookups,
-      }),
-    );
-
-    // Copy original signatures - transaction will need to be re-signed by caller
-    modifiedTx.signatures = [...transaction.signatures];
-
-    logger.info(
-      `Jito tip transaction created successfully with ${modifiedTx.message.staticAccountKeys.length} accounts`,
-    );
-    return modifiedTx;
-  }
-
   async sendAndConfirmRawTransaction(
     transaction: VersionedTransaction | Transaction,
   ): Promise<{ confirmed: boolean; signature: string; txData: any }> {
@@ -1436,16 +1358,8 @@ export class Solana {
       return this._sendAndConfirmRawTransaction(serializedTx);
     }
 
-    // For VersionedTransaction, add Jito tip if using Helius Sender
-    let finalTransaction = transaction;
-    if (this.heliusConfig.useHeliusSender && this.heliusConfig.jitoTipSOL && this.heliusConfig.jitoTipSOL > 0) {
-      // Extract payer from the transaction
-      const payer = transaction.message.staticAccountKeys[0]; // First account is always the payer
-      finalTransaction = await this.addJitoTipToTransaction(transaction, payer);
-    }
-
-    // Serialize the final transaction
-    const serializedTx = finalTransaction.serialize();
+    // For VersionedTransaction, serialize directly
+    const serializedTx = transaction.serialize();
     return this._sendAndConfirmRawTransaction(serializedTx);
   }
 
@@ -1459,33 +1373,12 @@ export class Solana {
     let signature: string | null = null;
 
     try {
-      // Use Helius Sender if available, otherwise use standard RPC
-      if (this.heliusService) {
-        try {
-          signature = await this.heliusService.sendWithSender(serializedTx);
-          logger.info('Using Helius Sender for optimized transaction delivery');
-        } catch (error) {
-          // Helius Sender not enabled/configured - use standard sendRawTransaction via Helius RPC
-          const chainConfig = getSolanaChainConfig();
-          const rpcProvider = chainConfig.rpcProvider || 'url';
-          if (rpcProvider === 'helius') {
-            logger.info('Using standard sendRawTransaction via Helius RPC (Sender disabled)');
-          } else {
-            logger.info('Using standard sendRawTransaction');
-          }
-          signature = await this.connection.sendRawTransaction(serializedTx, {
-            skipPreflight: true,
-            maxRetries: 0, // Don't rely on RPC provider's retry logic
-          });
-        }
-      } else {
-        // No Helius service, use standard RPC
-        logger.info('Using standard sendRawTransaction');
-        signature = await this.connection.sendRawTransaction(serializedTx, {
-          skipPreflight: true,
-          maxRetries: 0,
-        });
-      }
+      // Use standard sendRawTransaction
+      logger.info('Sending transaction via sendRawTransaction');
+      signature = await this.connection.sendRawTransaction(serializedTx, {
+        skipPreflight: true,
+        maxRetries: 0,
+      });
 
       // Use WebSocket monitoring if available, otherwise fall back to robust polling
       if (this.heliusService && this.heliusService.isWebSocketConnected()) {
@@ -1634,8 +1527,8 @@ export class Solana {
       throw new Error(`Transaction ${signature} not found`);
     }
 
-    // Calculate fee (always in SOL)
-    const fee = (txDetails.meta?.fee || 0) * LAMPORT_TO_SOL;
+    // Calculate fee including priority fee using the same method as getFee
+    const fee = this.getFee(txDetails);
 
     const preBalances = txDetails.meta?.preBalances || [];
     const postBalances = txDetails.meta?.postBalances || [];

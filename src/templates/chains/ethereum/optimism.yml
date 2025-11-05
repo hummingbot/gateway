@@ -1,7 +1,7 @@
 chainID: 10
 nodeURL: https://mainnet.optimism.io
-nativeCurrencySymbol: OETH
 transactionExecutionTimeoutMs: 10000 # Timeout for waiting for transaction execution (in milliseconds)
+nativeCurrencySymbol: ETH
 swapProvider: uniswap/router
 
 

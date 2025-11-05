@@ -25,9 +25,10 @@ async function quoteSwap(
   const ethereum = await Ethereum.getInstance(network);
   const zeroX = await ZeroX.getInstance(network);
 
-  // Resolve token symbols to addresses
-  const baseTokenInfo = ethereum.getToken(baseToken);
-  const quoteTokenInfo = ethereum.getToken(quoteToken);
+  // Resolve token symbols/addresses to token objects
+  // Use getOrFetchToken to support tokens not in the token list
+  const baseTokenInfo = await ethereum.getOrFetchToken(baseToken);
+  const quoteTokenInfo = await ethereum.getOrFetchToken(quoteToken);
 
   if (!baseTokenInfo || !quoteTokenInfo) {
     throw fastify.httpErrors.badRequest(

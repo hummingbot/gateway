@@ -8,11 +8,11 @@ import { PancakeswapConfig } from './pancakeswap.config';
 const ethereumChainConfig = getEthereumChainConfig();
 
 // Constants for examples
-const BASE_TOKEN = 'WETH';
-const QUOTE_TOKEN = 'USDC';
-const SWAP_AMOUNT = 0.001;
+const BASE_TOKEN = 'USDT';
+const QUOTE_TOKEN = 'WBNB';
+const SWAP_AMOUNT = 10;
 const AMM_POOL_ADDRESS_EXAMPLE = '0x88A43bbDF9D098eEC7bCEda4e2494615dfD9bB9C'; // Pancakeswap V2 WETH-USDC pool on Base
-const CLMM_POOL_ADDRESS_EXAMPLE = '0xd0b53d9277642d899df5c87a3966a349a798f224'; // Pancakeswap V3 WETH-USDC pool on Base
+const CLMM_POOL_ADDRESS_EXAMPLE = '0x172fcd41e0913e95784454622d1c3724f546f849'; // Pancakeswap V3 USDT-WBNB pool on BSC
 
 // ========================================
 // AMM Request Schemas
@@ -40,7 +40,8 @@ export const PancakeswapClmmGetPoolInfoRequest = Type.Object({
   network: Type.Optional(
     Type.String({
       description: 'The EVM network to use',
-      default: ethereumChainConfig.defaultNetwork,
+      default: 'bsc',
+      examples: ['bsc'],
       enum: [...PancakeswapConfig.networks],
     }),
   ),
@@ -333,7 +334,8 @@ export const PancakeswapClmmOpenPositionRequest = Type.Object({
   network: Type.Optional(
     Type.String({
       description: 'The EVM network to use',
-      default: ethereumChainConfig.defaultNetwork,
+      default: 'bsc',
+      examples: ['bsc'],
       enum: [...PancakeswapConfig.networks],
     }),
   ),
@@ -388,7 +390,8 @@ export const PancakeswapClmmAddLiquidityRequest = Type.Object({
   network: Type.Optional(
     Type.String({
       description: 'The EVM network to use',
-      default: ethereumChainConfig.defaultNetwork,
+      default: 'bsc',
+      examples: ['bsc'],
       enum: [...PancakeswapConfig.networks],
     }),
   ),
@@ -433,7 +436,8 @@ export const PancakeswapClmmRemoveLiquidityRequest = Type.Object({
   network: Type.Optional(
     Type.String({
       description: 'The EVM network to use',
-      default: ethereumChainConfig.defaultNetwork,
+      default: 'bsc',
+      examples: ['bsc'],
       enum: [...PancakeswapConfig.networks],
     }),
   ),
@@ -469,7 +473,8 @@ export const PancakeswapClmmClosePositionRequest = Type.Object({
   network: Type.Optional(
     Type.String({
       description: 'The EVM network to use',
-      default: ethereumChainConfig.defaultNetwork,
+      default: 'bsc',
+      examples: ['bsc'],
       enum: [...PancakeswapConfig.networks],
     }),
   ),
@@ -500,7 +505,8 @@ export const PancakeswapClmmCollectFeesRequest = Type.Object({
   network: Type.Optional(
     Type.String({
       description: 'The EVM network to use',
-      default: ethereumChainConfig.defaultNetwork,
+      default: 'bsc',
+      examples: ['bsc'],
       enum: [...PancakeswapConfig.networks],
     }),
   ),
@@ -537,7 +543,8 @@ export const PancakeswapClmmExecuteSwapRequest = Type.Object({
   network: Type.Optional(
     Type.String({
       description: 'The EVM network to use',
-      default: ethereumChainConfig.defaultNetwork,
+      default: 'bsc',
+      examples: ['bsc'],
       enum: [...PancakeswapConfig.networks],
     }),
   ),
