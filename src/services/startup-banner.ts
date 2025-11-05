@@ -1,9 +1,11 @@
 import { Connection } from '@solana/web3.js';
 import { ethers } from 'ethers';
 
+import { Ethereum } from '../chains/ethereum/ethereum';
 import { getEthereumNetworkConfig } from '../chains/ethereum/ethereum.config';
 import { InfuraService } from '../chains/ethereum/infura-service';
 import { HeliusService } from '../chains/solana/helius-service';
+import { Solana } from '../chains/solana/solana';
 import { getSolanaNetworkConfig } from '../chains/solana/solana.config';
 
 import { ConfigManagerV2 } from './config-manager-v2';
@@ -67,10 +69,10 @@ async function displaySolanaConfig(): Promise<void> {
       return;
     }
 
-    // Fetch current block number
+    // Initialize Solana instance (this triggers auto-subscription to wallets if WebSocket enabled)
     try {
-      const connection = new Connection(nodeURL, 'confirmed');
-      const slot = await connection.getSlot();
+      const solana = await Solana.getInstance(defaultNetwork);
+      const slot = await solana.connection.getSlot();
 
       logger.info(
         `   📡 Solana (defaultNetwork: ${defaultNetwork}): Block #${slot.toLocaleString()} - ${redactUrl(nodeURL)}`,
