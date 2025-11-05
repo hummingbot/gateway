@@ -188,6 +188,9 @@ export class Solana {
       if (rpcProvider === 'helius' && this.heliusService) {
         logger.info(`Initializing Helius services for provider: ${rpcProvider}`);
         await this.heliusService.initialize();
+
+        // Auto-subscribe to all Solana wallets for balance monitoring
+        await this.autoSubscribeToWallets();
       } else {
         logger.info(`Using standard RPC provider: ${rpcProvider}`);
       }
@@ -2041,6 +2044,96 @@ export class Solana {
     }
     await this.heliusService.unsubscribeFromAccount(subscriptionId);
     logger.info(`Unsubscribed from wallet balance updates (subscription ID: ${subscriptionId})`);
+  }
+
+  /**
+   * Auto-subscribe to all Solana wallets in conf/wallets/solana
+   * Called during initialization when Helius WebSocket is enabled
+   */
+  private async autoSubscribeToWallets(): Promise<void> {
+    try {
+      const heliusService = this.getHeliusService();
+      if (!heliusService?.isWebSocketConnected()) {
+        logger.info('WebSocket not connected, skipping auto-subscription to wallets');
+        return;
+      }
+
+      // Load wallet addresses from conf/wallets/solana
+      const walletDir = './conf/wallets/solana';
+      const walletAddresses = await this.getWalletAddresses(walletDir);
+
+      if (walletAddresses.length === 0) {
+        logger.info('No Solana wallets found in conf/wallets/solana, skipping auto-subscription');
+        return;
+      }
+
+      logger.info(`Auto-subscribing to ${walletAddresses.length} Solana wallet(s)...`);
+
+      // Subscribe to each wallet with initial balance fetch
+      let successCount = 0;
+      for (const address of walletAddresses) {
+        try {
+          // Fetch initial balances
+          const initialBalances = await this.getBalances(address);
+          const solBalance = (initialBalances.balances['SOL'] as number) || 0;
+          const tokenCount = Object.keys(initialBalances.balances).filter((symbol) => symbol !== 'SOL').length;
+
+          logger.info(
+            `[${address.slice(0, 8)}...] Initial balance: ${solBalance.toFixed(4)} SOL, ${tokenCount} token(s)`,
+          );
+
+          // Subscribe to real-time updates
+          await this.subscribeToWalletBalance(address, (balances) => {
+            logger.info(`[${address.slice(0, 8)}...] Balance update at slot ${balances.slot}:`);
+            logger.info(`  SOL: ${balances.sol.toFixed(4)}, Tokens: ${balances.tokens.length}`);
+            if (balances.tokens.length > 0) {
+              balances.tokens.slice(0, 3).forEach((token) => {
+                logger.info(`    - ${token.symbol}: ${token.balance.toFixed(4)}`);
+              });
+              if (balances.tokens.length > 3) {
+                logger.info(`    ... and ${balances.tokens.length - 3} more`);
+              }
+            }
+          });
+
+          successCount++;
+        } catch (error: any) {
+          logger.error(`Failed to subscribe to wallet ${address}: ${error.message}`);
+        }
+      }
+
+      logger.info(`✅ Auto-subscribed to ${successCount}/${walletAddresses.length} Solana wallet(s)`);
+    } catch (error: any) {
+      logger.error(`Error during wallet auto-subscription: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get all wallet addresses from a directory
+   * @param walletDir Directory containing wallet files
+   * @returns Array of wallet addresses
+   */
+  private async getWalletAddresses(walletDir: string): Promise<string[]> {
+    try {
+      // Check if directory exists
+      const exists = await fse.pathExists(walletDir);
+      if (!exists) {
+        return [];
+      }
+
+      // Get all .json files in the directory
+      const files = await fse.readdir(walletDir);
+      const walletFiles = files.filter((file) => file.endsWith('.json') && file !== 'hardware-wallets.json');
+
+      // Extract addresses from filenames (remove .json extension)
+      const addresses = walletFiles.map((file) => file.replace('.json', ''));
+
+      // Validate Solana addresses (basic length check)
+      return addresses.filter((address) => address.length >= 32 && address.length <= 44);
+    } catch (error: any) {
+      logger.error(`Error reading wallet directory ${walletDir}: ${error.message}`);
+      return [];
+    }
   }
 
   /**
