@@ -1,7 +1,13 @@
 import { Type } from '@sinclair/typebox';
 
+import { CHAIN_NETWORK_EXAMPLES } from '../services/chain-utils';
+
 // Individual token structure
 export const TokenSchema = Type.Object({
+  chainId: Type.Number({
+    description: 'The chain ID',
+    examples: [1, 101, 137],
+  }),
   name: Type.String({
     description: 'The full name of the token',
     examples: ['USD Coin', 'Wrapped Ether'],
@@ -22,7 +28,13 @@ export const TokenSchema = Type.Object({
   }),
 });
 
-export type Token = typeof TokenSchema.static;
+export type Token = {
+  chainId: number;
+  name: string;
+  symbol: string;
+  address: string;
+  decimals: number;
+};
 
 // Query parameters for listing tokens
 export const TokenListQuerySchema = Type.Object({
@@ -120,95 +132,6 @@ export const TokenOperationResponseSchema = Type.Object({
 
 export type TokenOperationResponse = typeof TokenOperationResponseSchema.static;
 
-// Top pool info from CoinGecko/GeckoTerminal
-export const TopPoolInfoSchema = Type.Object({
-  poolAddress: Type.String({
-    description: 'Pool contract address',
-  }),
-  dex: Type.String({
-    description: 'DEX identifier (e.g., orca, raydium-clmm, uniswap-v3)',
-  }),
-  connector: Type.Union([Type.String(), Type.Null()], {
-    description: 'Gateway connector name (e.g., raydium, meteora, uniswap)',
-  }),
-  type: Type.Union([Type.Literal('amm'), Type.Literal('clmm'), Type.Null()], {
-    description: 'Pool type: AMM (v2-style) or CLMM (v3-style concentrated liquidity)',
-  }),
-  baseTokenAddress: Type.String({
-    description: 'Base token contract address',
-  }),
-  quoteTokenAddress: Type.String({
-    description: 'Quote token contract address',
-  }),
-  baseTokenSymbol: Type.String({
-    description: 'Base token symbol',
-  }),
-  quoteTokenSymbol: Type.String({
-    description: 'Quote token symbol',
-  }),
-  priceUsd: Type.String({
-    description: 'Token price in USD',
-  }),
-  priceNative: Type.String({
-    description: 'Token price in quote token',
-  }),
-  volumeUsd24h: Type.String({
-    description: '24-hour trading volume in USD',
-  }),
-  priceChange24h: Type.String({
-    description: '24-hour price change percentage',
-  }),
-  liquidityUsd: Type.String({
-    description: 'Total liquidity in USD',
-  }),
-  txns24h: Type.Object({
-    buys: Type.Number({ description: 'Number of buy transactions in 24h' }),
-    sells: Type.Number({ description: 'Number of sell transactions in 24h' }),
-  }),
-});
-
-export type TopPoolInfo = typeof TopPoolInfoSchema.static;
-
-// Query parameters for top pools
-export const TopPoolsQuerySchema = Type.Object({
-  chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    examples: ['solana-mainnet-beta', 'ethereum-mainnet', 'bsc-mainnet'],
-  }),
-  limit: Type.Optional(
-    Type.Number({
-      description: 'Maximum number of pools to return',
-      minimum: 1,
-      maximum: 30,
-      default: 10,
-    }),
-  ),
-  connector: Type.Optional(
-    Type.String({
-      description: 'Filter by connector name (e.g., raydium, meteora, uniswap, pancakeswap-sol)',
-      examples: ['raydium', 'meteora', 'uniswap', 'pancakeswap-sol'],
-    }),
-  ),
-  type: Type.Optional(
-    Type.Union([Type.Literal('amm'), Type.Literal('clmm')], {
-      description: 'Filter by pool type: amm (v2-style) or clmm (v3-style concentrated liquidity)',
-      default: 'clmm',
-      examples: ['clmm', 'amm'],
-    }),
-  ),
-});
-
-export type TopPoolsQuery = typeof TopPoolsQuerySchema.static;
-
-// Response format for top pools
-export const TopPoolsResponseSchema = Type.Object({
-  pools: Type.Array(TopPoolInfoSchema),
-  chainNetwork: Type.String(),
-  tokenAddress: Type.String(),
-});
-
-export type TopPoolsResponse = typeof TopPoolsResponseSchema.static;
-
 // Token info from GeckoTerminal
 export const TokenInfoSchema = Type.Object({
   address: Type.String({
@@ -258,16 +181,13 @@ export type TokenInfo = typeof TokenInfoSchema.static;
 export const FindTokenQuerySchema = Type.Object({
   chainNetwork: Type.String({
     description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    examples: ['solana-mainnet-beta', 'ethereum-mainnet', 'bsc-mainnet'],
+    examples: [...CHAIN_NETWORK_EXAMPLES],
   }),
 });
 
 export type FindTokenQuery = typeof FindTokenQuerySchema.static;
 
-// Response format for finding token
-export const FindTokenResponseSchema = Type.Object({
-  tokenInfo: TokenInfoSchema,
-  chainNetwork: Type.String(),
-});
+// Response format for finding token (returns TokenSchema format ready to save)
+export const FindTokenResponseSchema = TokenSchema;
 
 export type FindTokenResponse = typeof FindTokenResponseSchema.static;

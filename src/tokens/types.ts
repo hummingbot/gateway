@@ -1,10 +1,10 @@
 // Common token interface
 export interface Token {
+  chainId: number;
   name: string;
   symbol: string;
   address: string;
   decimals: number;
-  chainId?: number; // Optional chainId for Ethereum compatibility
 }
 
 // Chain-specific token interfaces

@@ -7,6 +7,7 @@ import { FastifyInstance } from 'fastify';
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
 import { Meteora } from '../connectors/meteora/meteora';
+import { Pancakeswap } from '../connectors/pancakeswap/pancakeswap';
 import { Raydium } from '../connectors/raydium/raydium';
 import { Uniswap } from '../connectors/uniswap/uniswap';
 import { PoolInfo as AmmPoolInfo } from '../schemas/amm-schema';
@@ -101,6 +102,53 @@ export async function fetchPoolInfo(
           feePct: 0.3,
         };
       }
+    } else if (connector === 'pancakeswap') {
+      const ethereum = await Ethereum.getInstance(network);
+      const { getV2PoolInfo, getV3PoolInfo } = await import('../connectors/pancakeswap/pancakeswap.utils');
+
+      if (type === 'clmm') {
+        // For CLMM (V3)
+        const poolInfo = await getV3PoolInfo(poolAddress, network);
+        if (!poolInfo) {
+          return null;
+        }
+
+        // Get fee from pool contract
+        const { Contract } = await import('@ethersproject/contracts');
+        const v3PoolABI = [
+          {
+            inputs: [],
+            name: 'fee',
+            outputs: [{ internalType: 'uint24', name: '', type: 'uint24' }],
+            stateMutability: 'view',
+            type: 'function',
+          },
+        ];
+
+        const poolContract = new Contract(poolAddress, v3PoolABI, ethereum.provider);
+        const fee = await poolContract.fee();
+        const feePct = fee / 10000; // Convert from basis points to percentage
+
+        return {
+          baseTokenAddress: poolInfo.baseTokenAddress,
+          quoteTokenAddress: poolInfo.quoteTokenAddress,
+          feePct: feePct,
+        };
+      } else {
+        // For AMM (V2)
+        const poolInfo = await getV2PoolInfo(poolAddress, network);
+        if (!poolInfo) {
+          return null;
+        }
+
+        // PancakeSwap V2 has fixed 0.25% fee on BSC, 0.3% on others
+        const feePct = network === 'mainnet' ? 0.25 : 0.3;
+        return {
+          baseTokenAddress: poolInfo.baseTokenAddress,
+          quoteTokenAddress: poolInfo.quoteTokenAddress,
+          feePct: feePct,
+        };
+      }
     }
 
     logger.error(`Unsupported connector: ${connector}`);
@@ -113,6 +161,7 @@ export async function fetchPoolInfo(
 
 /**
  * Resolve token addresses to symbols using chain's token registry
+ * Falls back to fetching token info from blockchain if not in token list
  */
 export async function resolveTokenSymbols(
   connector: string,
@@ -126,15 +175,27 @@ export async function resolveTokenSymbols(
 
     if (connector === 'raydium' || connector === 'meteora') {
       chain = await Solana.getInstance(network);
-    } else if (connector === 'uniswap') {
+    } else if (connector === 'uniswap' || connector === 'pancakeswap') {
       chain = await Ethereum.getInstance(network);
     } else {
       throw new Error(`Unsupported connector: ${connector}`);
     }
 
-    // Get token info
-    const baseToken = await chain.getToken(baseTokenAddress);
-    const quoteToken = await chain.getToken(quoteTokenAddress);
+    // Get token info - use getOrFetchToken for Ethereum to fetch from blockchain if not in list
+    let baseToken;
+    let quoteToken;
+
+    if (chain instanceof Ethereum) {
+      baseToken = await chain.getOrFetchToken(baseTokenAddress);
+      quoteToken = await chain.getOrFetchToken(quoteTokenAddress);
+    } else {
+      baseToken = chain.getToken(baseTokenAddress);
+      quoteToken = chain.getToken(quoteTokenAddress);
+    }
+
+    if (!baseToken || !quoteToken) {
+      throw new Error(`Token not found: ${!baseToken ? baseTokenAddress : ''} ${!quoteToken ? quoteTokenAddress : ''}`);
+    }
 
     return {
       baseSymbol: baseToken.symbol,

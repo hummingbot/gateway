@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import { getChainId } from '../../services/chain-utils';
 import { CoinGeckoService } from '../../services/coingecko-service';
 import { logger } from '../../services/logger';
 import { FindTokenQuery, FindTokenQuerySchema, FindTokenResponse, FindTokenResponseSchema } from '../schemas';
@@ -37,15 +38,20 @@ export const findTokenRoute: FastifyPluginAsync = async (fastify) => {
       const { chainNetwork } = request.query;
 
       try {
-        logger.info(`Finding token info for ${address} on ${chainNetwork}`);
-
         // Fetch token info from GeckoTerminal
         const coinGeckoService = CoinGeckoService.getInstance();
         const tokenInfo = await coinGeckoService.getTokenInfo(chainNetwork, address);
 
+        // Get chainId from chainNetwork
+        const chainId = getChainId(chainNetwork);
+
+        // Return in TokenSchema format (ready to save to token list)
         return {
-          tokenInfo,
-          chainNetwork,
+          chainId,
+          name: tokenInfo.name,
+          symbol: tokenInfo.symbol,
+          address: tokenInfo.address,
+          decimals: tokenInfo.decimals,
         };
       } catch (error: any) {
         logger.error(`Failed to find token: ${error.message}`);

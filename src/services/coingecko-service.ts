@@ -4,39 +4,52 @@ import { ConfigManagerV2 } from './config-manager-v2';
 import { logger } from './logger';
 
 /**
- * Network mapping from Gateway chain-network format to GeckoTerminal network IDs
+ * Maps Gateway chainNetwork format to GeckoTerminal network IDs
+ * Gateway format: chain-network (e.g., ethereum-bsc, solana-mainnet-beta)
+ * GeckoTerminal network IDs: bsc, eth, solana, polygon_pos, etc.
  */
 const NETWORK_MAPPING: Record<string, string> = {
-  // Ethereum networks
-  'ethereum-mainnet': 'eth',
-  'ethereum-sepolia': 'sepolia-testnet',
-
   // Solana networks
   'solana-mainnet-beta': 'solana',
   'solana-devnet': 'solana', // GeckoTerminal doesn't have devnet
 
-  // BSC networks
-  'bsc-mainnet': 'bsc',
+  // Ethereum networks
+  'ethereum-mainnet': 'eth',
+  'ethereum-sepolia': 'sepolia-testnet',
+  'ethereum-bsc': 'bsc',
+  'ethereum-polygon': 'polygon_pos',
+  'ethereum-arbitrum': 'arbitrum',
+  'ethereum-optimism': 'optimism',
+  'ethereum-base': 'base',
+  'ethereum-avalanche': 'avax',
+  'ethereum-celo': 'celo',
+};
 
-  // Polygon networks
-  'polygon-mainnet': 'polygon_pos',
-  'polygon-zkevm': 'polygon-zkevm',
+/**
+ * Chain network parsing info - maps Gateway chainNetwork format to internal chain/network structure
+ * Gateway format: chain-network (e.g., ethereum-bsc, solana-mainnet-beta)
+ * Output: { chain: 'ethereum', network: 'bsc' } - used for Ethereum.getInstance(network)
+ */
+export interface ChainNetworkInfo {
+  chain: string;
+  network: string;
+}
 
-  // Arbitrum networks
-  'arbitrum-mainnet': 'arbitrum',
-  'arbitrum-nova': 'arbitrum_nova',
+const CHAINNETWORK_PARSING: Record<string, ChainNetworkInfo> = {
+  // Solana networks
+  'solana-mainnet-beta': { chain: 'solana', network: 'mainnet-beta' },
+  'solana-devnet': { chain: 'solana', network: 'devnet' },
 
-  // Optimism networks
-  'optimism-mainnet': 'optimism',
-
-  // Base networks
-  'base-mainnet': 'base',
-
-  // Avalanche networks
-  'avalanche-mainnet': 'avax',
-
-  // Celo networks
-  'celo-mainnet': 'celo',
+  // Ethereum networks
+  'ethereum-mainnet': { chain: 'ethereum', network: 'mainnet' },
+  'ethereum-sepolia': { chain: 'ethereum', network: 'sepolia' },
+  'ethereum-bsc': { chain: 'ethereum', network: 'bsc' },
+  'ethereum-polygon': { chain: 'ethereum', network: 'polygon' },
+  'ethereum-arbitrum': { chain: 'ethereum', network: 'arbitrum' },
+  'ethereum-optimism': { chain: 'ethereum', network: 'optimism' },
+  'ethereum-base': { chain: 'ethereum', network: 'base' },
+  'ethereum-avalanche': { chain: 'ethereum', network: 'avalanche' },
+  'ethereum-celo': { chain: 'ethereum', network: 'celo' },
 };
 
 /**
@@ -61,12 +74,15 @@ const DEX_CONNECTOR_MAPPING: Record<string, DexConnectorInfo> = {
   'pancakeswap-v3-solana': { connector: 'pancakeswap-sol', type: 'clmm' },
 
   // Ethereum DEXes
-  'uniswap-v2': { connector: 'uniswap', type: 'amm' },
-  'uniswap-v3': { connector: 'uniswap', type: 'clmm' },
-  'pancakeswap-v2': { connector: 'pancakeswap', type: 'amm' },
-  'pancakeswap-v3': { connector: 'pancakeswap', type: 'clmm' },
+  uniswap_v2: { connector: 'uniswap', type: 'amm' },
+  uniswap_v3: { connector: 'uniswap', type: 'clmm' },
   sushiswap: { connector: 'sushiswap', type: 'amm' },
-  'sushiswap-v3': { connector: 'sushiswap', type: 'clmm' },
+  sushiswap_v3: { connector: 'sushiswap', type: 'clmm' },
+
+  // BSC DEXes
+  pancakeswap_v2: { connector: 'pancakeswap', type: 'amm' },
+  'pancakeswap-v3-bsc': { connector: 'pancakeswap', type: 'clmm' },
+  sushiswap_bsc: { connector: 'sushiswap', type: 'amm' },
 };
 
 /**
@@ -232,6 +248,18 @@ export class CoinGeckoService {
   }
 
   /**
+   * Parse Gateway chainNetwork format to get internal chain and network names
+   * This handles special cases like 'bsc-mainnet' which should map to chain='ethereum', network='bsc'
+   */
+  public parseChainNetwork(chainNetwork: string): ChainNetworkInfo {
+    const parsed = CHAINNETWORK_PARSING[chainNetwork];
+    if (!parsed) {
+      throw new Error(`Unsupported chainNetwork format: ${chainNetwork}`);
+    }
+    return parsed;
+  }
+
+  /**
    * Extract token address from GeckoTerminal token ID
    * Format: "solana_So11111111111111111111111111111111111111112"
    */
@@ -266,12 +294,12 @@ export class CoinGeckoService {
 
   /**
    * Get top pools for a token with optional connector and type filtering
-   * Fetches up to 10 pages from GeckoTerminal to increase pool availability
+   * Fetches multiple pages from GeckoTerminal (up to maxPages)
    */
   public async getTopPoolsForToken(
     chainNetwork: string,
     tokenAddress: string,
-    limit: number = 10,
+    maxPages: number = 10,
     connector?: string,
     type?: 'amm' | 'clmm',
   ): Promise<TopPoolInfo[]> {
@@ -280,13 +308,12 @@ export class CoinGeckoService {
       const endpoint = `/networks/${geckoNetwork}/tokens/${tokenAddress}/pools`;
 
       logger.info(
-        `Fetching top ${limit} pools for token ${tokenAddress} on ${geckoNetwork}${connector ? ` (connector: ${connector})` : ''}${type ? ` (type: ${type})` : ''}`,
+        `Fetching pools for token ${tokenAddress} on ${chainNetwork} (max pages: ${maxPages})${connector ? ` (connector: ${connector})` : ''}${type ? ` (type: ${type})` : ''}`,
       );
 
-      // Fetch up to 10 pages to get more pools (especially for filtered queries)
       const allPools: GeckoTerminalPool[] = [];
-      const maxPages = 10;
 
+      // Fetch multiple pages from GeckoTerminal
       for (let page = 1; page <= maxPages; page++) {
         try {
           const response = await this.client.get<{ data: GeckoTerminalPool[] }>(endpoint, {
@@ -296,26 +323,19 @@ export class CoinGeckoService {
           });
 
           if (!response.data || !response.data.data || response.data.data.length === 0) {
-            // No more pools available
+            logger.debug(`No more pools found at page ${page}`);
             break;
           }
 
           allPools.push(...response.data.data);
-
-          // If we have enough pools after filtering, we can stop early
-          if (allPools.length >= limit * 5) {
-            // Fetch 5x more than limit to ensure we have enough after filtering
-            break;
-          }
         } catch (pageError: any) {
-          // If a page fails, continue with what we have
           logger.debug(`Failed to fetch page ${page}: ${pageError.message}`);
           break;
         }
       }
 
       if (allPools.length === 0) {
-        logger.warn(`No pools found for token ${tokenAddress} on ${geckoNetwork}`);
+        logger.warn(`No pools found for token ${tokenAddress} on ${chainNetwork}`);
         return [];
       }
 
@@ -334,15 +354,89 @@ export class CoinGeckoService {
         logger.debug(`Filtered to ${pools.length} pools with type: ${type}`);
       }
 
-      // Apply limit after filtering
-      pools = pools.slice(0, limit);
-
-      logger.info(`Found ${pools.length} pools for token ${tokenAddress} (from ${allPools.length} total pools)`);
+      logger.info(
+        `Found ${pools.length} pools for token ${tokenAddress} (from ${allPools.length} total across ${Math.min(maxPages, allPools.length > 0 ? Math.ceil(allPools.length / 20) : 0)} pages)`,
+      );
 
       return pools;
     } catch (error: any) {
       if (error.response?.status === 404) {
         logger.warn(`Token ${tokenAddress} not found on ${chainNetwork}`);
+        return [];
+      }
+
+      logger.error(`Error fetching pools from GeckoTerminal: ${error.message}`);
+      throw new Error(`Failed to fetch pools from GeckoTerminal: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get top pools for a network with optional connector and type filtering
+   * Fetches multiple pages from GeckoTerminal (up to maxPages)
+   */
+  public async getTopPoolsByNetwork(
+    chainNetwork: string,
+    maxPages: number = 3,
+    connector?: string,
+    type?: 'amm' | 'clmm',
+  ): Promise<TopPoolInfo[]> {
+    try {
+      const geckoNetwork = this.mapNetworkId(chainNetwork);
+      const endpoint = `/networks/${geckoNetwork}/pools`;
+
+      logger.info(
+        `Fetching top pools for network ${chainNetwork} (max pages: ${maxPages})${connector ? ` (connector: ${connector})` : ''}${type ? ` (type: ${type})` : ''}`,
+      );
+
+      const allPools: GeckoTerminalPool[] = [];
+
+      // Fetch multiple pages from GeckoTerminal
+      for (let page = 1; page <= maxPages; page++) {
+        try {
+          const response = await this.client.get<{ data: GeckoTerminalPool[] }>(endpoint, {
+            params: {
+              page,
+            },
+          });
+
+          if (!response.data || !response.data.data || response.data.data.length === 0) {
+            logger.debug(`No more pools found at page ${page}`);
+            break;
+          }
+
+          allPools.push(...response.data.data);
+        } catch (pageError: any) {
+          logger.debug(`Failed to fetch page ${page}: ${pageError.message}`);
+          break;
+        }
+      }
+
+      if (allPools.length === 0) {
+        logger.warn(`No pools found for network ${chainNetwork}`);
+        return [];
+      }
+
+      // Transform pools
+      let pools = allPools.map((pool) => this.transformPool(pool));
+
+      // Filter by connector if specified
+      if (connector) {
+        pools = pools.filter((pool) => pool.connector === connector);
+        logger.debug(`Filtered to ${pools.length} pools with connector: ${connector}`);
+      }
+
+      // Filter by type if specified
+      if (type) {
+        pools = pools.filter((pool) => pool.type === type);
+        logger.debug(`Filtered to ${pools.length} pools with type: ${type}`);
+      }
+
+      logger.info(`Found ${pools.length} pools for network ${chainNetwork} (from ${allPools.length} total)`);
+
+      return pools;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        logger.warn(`Network ${chainNetwork} not found`);
         return [];
       }
 
@@ -389,7 +483,7 @@ export class CoinGeckoService {
       const geckoNetwork = this.mapNetworkId(chainNetwork);
       const endpoint = `/networks/${geckoNetwork}/tokens/${tokenAddress}/info`;
 
-      logger.info(`Fetching token info for ${tokenAddress} on ${geckoNetwork}`);
+      logger.info(`Fetching token info for ${tokenAddress} on ${chainNetwork}`);
 
       const response = await this.client.get<{ data: GeckoTerminalTokenData }>(endpoint);
 
