@@ -104,6 +104,9 @@ export class Solana {
   private positionCache?: CacheManager<PositionData>;
   private poolCache?: CacheManager<PoolData>;
 
+  // Flag to prevent recursive pool tracking during initialization
+  private isTrackingPools: boolean = false;
+
   private static _instances: { [name: string]: Solana };
 
   private constructor(network: string) {
@@ -2309,10 +2312,18 @@ export class Solana {
 
   /**
    * Track pools from conf/pools/*.json
-   * NOTE: Pool fetching disabled - causes recursive initialization loop
-   * TODO: Implement pool pre-loading after fixing circular dependency
+   * Fetches full PoolInfo from WebSocket RPC at startup and populates cache
+   * Uses flag to prevent recursive initialization loop
    */
   private async trackPools(): Promise<void> {
+    // Prevent recursive calls during connector initialization
+    if (this.isTrackingPools) {
+      logger.debug('Pool tracking already in progress, skipping');
+      return;
+    }
+
+    this.isTrackingPools = true;
+
     try {
       const poolsDir = './conf/pools';
       const exists = await fse.pathExists(poolsDir);
@@ -2329,22 +2340,94 @@ export class Solana {
         return;
       }
 
-      // Count pools available for tracking (but don't fetch yet to avoid recursive loop)
-      let totalPools = 0;
+      logger.info(`Loading pools from ${poolFiles.length} connector(s)...`);
+      let successCount = 0;
+      let failedCount = 0;
+
+      // Collect all pools to fetch
+      const poolsToFetch: Array<{ connector: string; pool: any }> = [];
+
       for (const file of poolFiles) {
         try {
+          const connector = file.replace('.json', '');
           const poolsData = await fse.readJson(`${poolsDir}/${file}`);
-          if (Array.isArray(poolsData)) {
-            totalPools += poolsData.filter((pool) => pool.network === this.network).length;
+
+          if (!Array.isArray(poolsData)) {
+            continue;
           }
+
+          // Filter pools for this network
+          const networkPools = poolsData.filter((pool) => pool.network === this.network);
+          poolsToFetch.push(...networkPools.map((pool) => ({ connector, pool })));
         } catch (error: any) {
           logger.warn(`Failed to read pools from ${file}: ${error.message}`);
         }
       }
 
-      logger.info(`🏊 Pool cache ready (${totalPools} pool(s) available for on-demand fetching)`);
+      if (poolsToFetch.length === 0) {
+        logger.info('🏊 No pools to track for this network');
+        return;
+      }
+
+      // Use rate limiter to fetch pools (2 concurrent, 500ms delay between requests)
+      const { RateLimiter } = await import('../../services/rate-limiter');
+      const limiter = new RateLimiter({
+        maxConcurrent: 2,
+        minDelay: 500,
+        name: 'pool-loader',
+      });
+
+      logger.info(`Fetching ${poolsToFetch.length} pool(s) with rate limiting...`);
+
+      for (const { connector, pool } of poolsToFetch) {
+        await limiter.execute(async () => {
+          try {
+            // Dynamically get connector instance and fetch full PoolInfo from RPC
+            // The isTrackingPools flag prevents these getInstance calls from re-triggering trackPools
+            let poolInfo;
+            const cacheKey = `${connector}:${pool.address}`;
+
+            if (connector === 'meteora') {
+              const { Meteora } = await import('../../connectors/meteora/meteora');
+              const meteora = await Meteora.getInstance(this.network);
+              poolInfo = await meteora.getPoolInfo(pool.address);
+            } else if (connector === 'raydium') {
+              const { Raydium } = await import('../../connectors/raydium/raydium');
+              const raydium = await Raydium.getInstance(this.network);
+              if (pool.type === 'clmm') {
+                poolInfo = await raydium.getClmmPoolInfo(pool.address);
+              } else if (pool.type === 'amm') {
+                poolInfo = await raydium.getAmmPoolInfo(pool.address);
+              }
+            } else if (connector === 'pancakeswap-sol') {
+              const { PancakeswapSol } = await import('../../connectors/pancakeswap-sol/pancakeswap-sol');
+              const pancakeswap = await PancakeswapSol.getInstance(this.network);
+              poolInfo = await pancakeswap.getClmmPoolInfo(pool.address);
+            } else {
+              logger.warn(`Unsupported connector for pool tracking: ${connector}`);
+              return;
+            }
+
+            if (poolInfo) {
+              this.poolCache!.set(cacheKey, { poolInfo });
+              successCount++;
+              logger.debug(`[pool-cache] Loaded ${cacheKey}`);
+            } else {
+              logger.warn(`Failed to fetch pool info for ${cacheKey}`);
+              failedCount++;
+            }
+          } catch (error: any) {
+            logger.warn(`Failed to fetch pool ${pool.address} from ${connector}: ${error.message}`);
+            failedCount++;
+          }
+        });
+      }
+
+      logger.info(`🏊 Loaded ${successCount} pool(s) into cache${failedCount > 0 ? ` (${failedCount} failed)` : ''}`);
     } catch (error: any) {
       logger.error(`Error tracking pools: ${error.message}`);
+    } finally {
+      this.isTrackingPools = false;
     }
   }
 
