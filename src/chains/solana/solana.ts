@@ -2309,6 +2309,8 @@ export class Solana {
 
   /**
    * Track pools from conf/pools/*.json
+   * Note: We don't pre-load pools into cache because Pool metadata is incomplete.
+   * Pool cache is only populated when pool-info endpoint fetches full PoolInfo from RPC.
    */
   private async trackPools(): Promise<void> {
     try {
@@ -2327,30 +2329,20 @@ export class Solana {
         return;
       }
 
-      logger.info(`Loading pools from ${poolFiles.length} connector(s)...`);
+      // Count pools available for tracking (but don't pre-load incomplete data)
       let totalPools = 0;
-
       for (const file of poolFiles) {
         try {
-          const connector = file.replace('.json', '');
           const poolsData = await fse.readJson(`${poolsDir}/${file}`);
-
           if (Array.isArray(poolsData)) {
-            for (const pool of poolsData) {
-              if (pool.network === this.network && pool.address) {
-                const poolData: PoolData = { poolInfo: pool };
-                const cacheKey = `${connector}:${pool.address}`;
-                this.poolCache!.set(cacheKey, poolData);
-                totalPools++;
-              }
-            }
+            totalPools += poolsData.filter((pool) => pool.network === this.network).length;
           }
         } catch (error: any) {
-          logger.warn(`Failed to load pools from ${file}: ${error.message}`);
+          logger.warn(`Failed to read pools from ${file}: ${error.message}`);
         }
       }
 
-      logger.info(`🏊 Loaded ${totalPools} pool(s) into cache`);
+      logger.info(`🏊 Pool cache ready (${totalPools} pool(s) available for tracking on first request)`);
     } catch (error: any) {
       logger.error(`Error tracking pools: ${error.message}`);
     }
