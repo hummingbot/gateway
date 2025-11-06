@@ -57,8 +57,6 @@ const DEX_CONNECTOR_MAPPING: Record<string, DexConnectorInfo> = {
   'raydium-clmm': { connector: 'raydium', type: 'clmm' },
   meteora: { connector: 'meteora', type: 'clmm' },
   'meteora-dlmm': { connector: 'meteora', type: 'clmm' },
-  orca: { connector: 'orca', type: 'clmm' },
-  'orca-whirlpools': { connector: 'orca', type: 'clmm' },
   'pancakeswap-v3-solana': { connector: 'pancakeswap-sol', type: 'clmm' },
 
   // Ethereum DEXes
