@@ -266,6 +266,7 @@ export class CoinGeckoService {
 
   /**
    * Get top pools for a token with optional connector and type filtering
+   * Fetches up to 10 pages from GeckoTerminal to increase pool availability
    */
   public async getTopPoolsForToken(
     chainNetwork: string,
@@ -282,19 +283,44 @@ export class CoinGeckoService {
         `Fetching top ${limit} pools for token ${tokenAddress} on ${geckoNetwork}${connector ? ` (connector: ${connector})` : ''}${type ? ` (type: ${type})` : ''}`,
       );
 
-      const response = await this.client.get<{ data: GeckoTerminalPool[] }>(endpoint, {
-        params: {
-          page: 1,
-        },
-      });
+      // Fetch up to 10 pages to get more pools (especially for filtered queries)
+      const allPools: GeckoTerminalPool[] = [];
+      const maxPages = 10;
 
-      if (!response.data || !response.data.data) {
+      for (let page = 1; page <= maxPages; page++) {
+        try {
+          const response = await this.client.get<{ data: GeckoTerminalPool[] }>(endpoint, {
+            params: {
+              page,
+            },
+          });
+
+          if (!response.data || !response.data.data || response.data.data.length === 0) {
+            // No more pools available
+            break;
+          }
+
+          allPools.push(...response.data.data);
+
+          // If we have enough pools after filtering, we can stop early
+          if (allPools.length >= limit * 5) {
+            // Fetch 5x more than limit to ensure we have enough after filtering
+            break;
+          }
+        } catch (pageError: any) {
+          // If a page fails, continue with what we have
+          logger.debug(`Failed to fetch page ${page}: ${pageError.message}`);
+          break;
+        }
+      }
+
+      if (allPools.length === 0) {
         logger.warn(`No pools found for token ${tokenAddress} on ${geckoNetwork}`);
         return [];
       }
 
       // Transform pools
-      let pools = response.data.data.map((pool) => this.transformPool(pool));
+      let pools = allPools.map((pool) => this.transformPool(pool));
 
       // Filter by connector if specified
       if (connector) {
@@ -311,7 +337,7 @@ export class CoinGeckoService {
       // Apply limit after filtering
       pools = pools.slice(0, limit);
 
-      logger.info(`Found ${pools.length} pools for token ${tokenAddress}`);
+      logger.info(`Found ${pools.length} pools for token ${tokenAddress} (from ${allPools.length} total pools)`);
 
       return pools;
     } catch (error: any) {
