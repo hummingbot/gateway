@@ -179,7 +179,7 @@ export class PancakeswapSol {
 
       return poolInfo;
     } catch (error) {
-      logger.error(`Error getting CLMM pool info for ${poolAddress}:`, error);
+      logger.debug(`Could not decode ${poolAddress} as PancakeSwap CLMM pool: ${error}`);
       throw error;
     }
   }
