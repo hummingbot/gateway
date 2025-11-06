@@ -39,10 +39,11 @@ export class PositionsService {
       try {
         const positions = await getPositions(walletAddress);
         if (positions && positions.length > 0) {
-          // Cache each position individually by position address
+          // Cache each position individually as "connector:clmm:address"
           for (const position of positions) {
-            if (position.address) {
-              positionCache.set(position.address, {
+            if (position.address && position.connector) {
+              const cacheKey = `${position.connector}:clmm:${position.address}`;
+              positionCache.set(cacheKey, {
                 positions: [position],
               });
             }

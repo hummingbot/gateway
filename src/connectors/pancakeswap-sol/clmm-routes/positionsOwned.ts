@@ -31,11 +31,12 @@ export async function getPositionsOwned(
   // Fetch from RPC (positions are cached individually by position address, not by wallet)
   const positions = await fetchPositionsFromRPC(solana, walletAddress);
 
-  // Populate cache for each position individually
+  // Populate cache for each position individually using "connector:clmm:address" format
   const positionCache = solana.getPositionCache();
   if (positionCache && positions.length > 0) {
     for (const positionInfo of positions) {
-      positionCache.set(positionInfo.address, {
+      const cacheKey = `pancakeswap-sol:clmm:${positionInfo.address}`;
+      positionCache.set(cacheKey, {
         positions: [
           {
             // Metadata fields for cache management (required by PositionData interface)
