@@ -18,26 +18,35 @@ export class PositionsService {
 
   /**
    * Refresh positions for a wallet in the background
-   * This is currently a placeholder for future implementation
    *
    * @param walletAddress Wallet address to refresh positions for
-   * @param _positionCache Cache manager to store position data
-   * @param _getPositions Callback to fetch positions for a wallet
+   * @param positionCache Cache manager to store position data
+   * @param getPositions Callback to fetch positions for a wallet
    */
   public async refreshPositions(
     walletAddress: string,
-    _positionCache: any, // CacheManager<PositionData>
-    _getPositions: (walletAddress: string) => Promise<any[]>,
+    positionCache: any, // CacheManager<PositionData>
+    getPositions: (walletAddress: string) => Promise<any[]>,
   ): Promise<void> {
     try {
-      // TODO: Implement position fetching from connectors
-      // For now, positions are only refreshed when endpoints are called
-      logger.debug(`Position refresh not yet implemented for ${walletAddress}`);
+      // Fetch fresh positions from connectors
+      const positions = await getPositions(walletAddress);
 
-      // Future implementation would:
-      // 1. Call getPositions callback to fetch fresh position data
-      // 2. Update position cache with new data
-      // 3. Log success/failure
+      if (positions && positions.length > 0) {
+        // Cache each position individually by position address
+        for (const position of positions) {
+          if (position.address) {
+            positionCache.set(position.address, {
+              positions: [position],
+            });
+          }
+        }
+        logger.debug(
+          `Background refresh completed for ${positions.length} position(s) in wallet ${walletAddress.slice(0, 8)}...`,
+        );
+      } else {
+        logger.debug(`No positions found for wallet ${walletAddress.slice(0, 8)}... during background refresh`);
+      }
     } catch (error: any) {
       logger.warn(`Background position refresh failed for ${walletAddress}: ${error.message}`);
     }
