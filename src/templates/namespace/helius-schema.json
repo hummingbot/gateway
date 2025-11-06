@@ -18,6 +18,18 @@
           "type": "boolean",
           "description": "Enable caching"
         },
+        "trackBalances": {
+          "type": "boolean",
+          "description": "Track and cache wallet balances"
+        },
+        "trackPositions": {
+          "type": "boolean",
+          "description": "Track and cache CLMM positions owned by wallets"
+        },
+        "trackPools": {
+          "type": "boolean",
+          "description": "Track and cache pools listed in conf/pools/{connector}"
+        },
         "refreshInterval": {
           "type": "number",
           "description": "Refresh all cached entries every N seconds"
@@ -31,7 +43,7 @@
           "description": "Remove unused entries after N seconds of inactivity"
         }
       },
-      "required": ["enabled", "refreshInterval", "maxAge", "ttl"],
+      "required": ["enabled", "trackBalances", "trackPositions", "trackPools", "refreshInterval", "maxAge", "ttl"],
       "additionalProperties": false
     }
   },

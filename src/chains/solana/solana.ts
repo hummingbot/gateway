@@ -54,8 +54,8 @@ interface TokenAccount {
   value: any;
 }
 
-// Interface for cached balance data
-interface BalanceData {
+// Export cache data interfaces for use by connectors
+export interface BalanceData {
   sol: number;
   tokens: Array<{
     symbol: string;
@@ -63,6 +63,24 @@ interface BalanceData {
     balance: number;
     decimals: number;
   }>;
+}
+
+export interface PositionData {
+  positions: Array<{
+    connector: string; // e.g., 'meteora', 'raydium', 'pancakeswap-sol'
+    positionId: string;
+    poolAddress: string;
+    baseToken: string;
+    quoteToken: string;
+    liquidity: number;
+    [key: string]: any; // Additional position-specific data
+  }>;
+}
+
+export interface PoolData {
+  poolInfo: {
+    [key: string]: any; // Pool-specific data from pool-info endpoint
+  };
 }
 
 enum TransactionResponseStatusCode {
@@ -81,8 +99,10 @@ export class Solana {
   private _tokenMap: Record<string, TokenInfo> = {};
   private heliusService: HeliusService;
 
-  // Balance cache manager (provider-agnostic)
+  // Cache managers (provider-agnostic)
   private balanceCache?: CacheManager<BalanceData>;
+  private positionCache?: CacheManager<PositionData>;
+  private poolCache?: CacheManager<PoolData>;
 
   private static _instances: { [name: string]: Solana };
 
@@ -2282,7 +2302,7 @@ export class Solana {
   }
 
   /**
-   * Initialize balance cache based on RPC provider configuration
+   * Initialize balance and position caches based on RPC provider configuration
    * Provider-agnostic: works with Helius, Infura, or any future provider
    */
   private initializeCache(): void {
@@ -2302,14 +2322,56 @@ export class Solana {
       // Future providers can be added here
 
       if (cacheConfig && cacheConfig.enabled) {
-        this.balanceCache = new CacheManager<BalanceData>(cacheConfig, `${this.network}-balance`);
-        logger.info(`Balance cache initialized for ${this.network}`);
+        // Initialize balance cache if tracking is enabled
+        if (cacheConfig.trackBalances) {
+          this.balanceCache = new CacheManager<BalanceData>(cacheConfig, `solana-${this.network}-balance-cache`);
+          logger.info(`Balance cache initialized for solana-${this.network}`);
+        } else {
+          logger.info(`Balance tracking disabled for solana-${this.network}`);
+        }
+
+        // Initialize position cache if tracking is enabled
+        if (cacheConfig.trackPositions) {
+          this.positionCache = new CacheManager<PositionData>(cacheConfig, `solana-${this.network}-position-cache`);
+          logger.info(`Position cache initialized for solana-${this.network}`);
+        } else {
+          logger.info(`Position tracking disabled for solana-${this.network}`);
+        }
+
+        // Initialize pool cache if tracking is enabled
+        if (cacheConfig.trackPools) {
+          this.poolCache = new CacheManager<PoolData>(cacheConfig, `solana-${this.network}-pool-cache`);
+          logger.info(`Pool cache initialized for solana-${this.network}`);
+        } else {
+          logger.info(`Pool tracking disabled for solana-${this.network}`);
+        }
       } else {
-        logger.info(`Balance cache disabled for ${this.network}`);
+        logger.info(`Cache disabled for solana-${this.network}`);
       }
     } catch (error: any) {
       logger.warn(`Failed to initialize cache: ${error.message}, caching disabled`);
     }
+  }
+
+  /**
+   * Get the balance cache (if enabled)
+   */
+  public getBalanceCache(): CacheManager<BalanceData> | undefined {
+    return this.balanceCache;
+  }
+
+  /**
+   * Get the position cache (if enabled)
+   */
+  public getPositionCache(): CacheManager<PositionData> | undefined {
+    return this.positionCache;
+  }
+
+  /**
+   * Get the pool cache (if enabled)
+   */
+  public getPoolCache(): CacheManager<PoolData> | undefined {
+    return this.poolCache;
   }
 
   /**
@@ -2321,10 +2383,18 @@ export class Solana {
       logger.info('Helius services disconnected and cleaned up');
     }
 
-    // Clean up cache
+    // Clean up caches
     if (this.balanceCache) {
       this.balanceCache.destroy();
       this.balanceCache = undefined;
+    }
+    if (this.positionCache) {
+      this.positionCache.destroy();
+      this.positionCache = undefined;
+    }
+    if (this.poolCache) {
+      this.poolCache.destroy();
+      this.poolCache = undefined;
     }
   }
 

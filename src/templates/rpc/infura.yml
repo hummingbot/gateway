@@ -11,6 +11,9 @@ useWebSocket: false
 # Unified settings for simplicity - applies to all cache types
 cache:
   enabled: true
-  refreshInterval: 5    # Refresh all cached entries every 5 seconds
-  maxAge: 10           # Consider data stale after 10 seconds
-  ttl: 60             # Remove unused entries after 60 seconds of inactivity
+  trackBalances: true       # Track and cache wallet balances
+  trackPositions: true      # Track and cache CLMM positions owned by wallets
+  trackPools: true          # Track and cache pools listed in conf/pools/{connector}
+  refreshInterval: 10       # Refresh all cached entries every 10 seconds
+  maxAge: 20                # Consider data stale after 20 seconds
+  ttl: 60                   # Remove unused entries after 60 seconds of inactivity

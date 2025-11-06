@@ -7,6 +7,9 @@ import { logger } from './logger';
 
 export interface CacheConfig {
   enabled: boolean;
+  trackBalances: boolean; // whether to track and cache balances
+  trackPositions: boolean; // whether to track and cache CLMM positions
+  trackPools: boolean; // whether to track and cache pools from conf/pools/{connector}
   refreshInterval: number; // seconds - how often to refresh all cached entries
   maxAge: number; // seconds - when to consider data stale
   ttl: number; // seconds - when to remove unused entries
