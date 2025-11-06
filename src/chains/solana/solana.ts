@@ -2253,7 +2253,9 @@ export class Solana {
         }
       }
 
-      logger.info(`✅ Auto-subscribed to ${successCount}/${walletAddresses.length} Solana wallet(s)`);
+      logger.info(
+        `💰 Auto-subscribed to ${successCount}/${walletAddresses.length} Solana wallet(s) for balance tracking`,
+      );
 
       // Start periodic cache refresh for all subscribed wallets
       if (this.balanceCache && walletAddresses.length > 0) {
@@ -2302,7 +2304,7 @@ export class Solana {
       }
     }
 
-    logger.info(`✅ Tracking ${totalPositions} position(s) across ${walletAddresses.length} wallet(s)`);
+    logger.info(`📍 Tracking ${totalPositions} position(s) across ${walletAddresses.length} wallet(s)`);
   }
 
   /**
@@ -2348,7 +2350,7 @@ export class Solana {
         }
       }
 
-      logger.info(`✅ Loaded ${totalPools} pool(s) into cache`);
+      logger.info(`🏊 Loaded ${totalPools} pool(s) into cache`);
     } catch (error: any) {
       logger.error(`Error tracking pools: ${error.message}`);
     }
