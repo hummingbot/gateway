@@ -189,3 +189,66 @@ export const TopPoolsResponseSchema = Type.Object({
 });
 
 export type TopPoolsResponse = typeof TopPoolsResponseSchema.static;
+
+// Token info from GeckoTerminal
+export const TokenInfoSchema = Type.Object({
+  address: Type.String({
+    description: 'Token contract address',
+  }),
+  name: Type.String({
+    description: 'Token name',
+  }),
+  symbol: Type.String({
+    description: 'Token symbol',
+  }),
+  decimals: Type.Number({
+    description: 'Token decimals',
+  }),
+  imageUrl: Type.String({
+    description: 'Token image URL',
+  }),
+  coingeckoCoinId: Type.Union([Type.String(), Type.Null()], {
+    description: 'CoinGecko coin ID if available',
+  }),
+  websites: Type.Array(Type.String(), {
+    description: 'Token website URLs',
+  }),
+  description: Type.String({
+    description: 'Token description',
+  }),
+  gtScore: Type.Number({
+    description: 'GeckoTerminal score (0-100)',
+  }),
+  holders: Type.Optional(
+    Type.Object({
+      count: Type.Number({
+        description: 'Number of token holders',
+      }),
+      topTenPercent: Type.Optional(
+        Type.String({
+          description: 'Percentage held by top 10 holders',
+        }),
+      ),
+    }),
+  ),
+});
+
+export type TokenInfo = typeof TokenInfoSchema.static;
+
+// Query parameters for finding token
+export const FindTokenQuerySchema = Type.Object({
+  chainNetwork: Type.String({
+    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
+    examples: ['solana-mainnet-beta', 'ethereum-mainnet', 'bsc-mainnet'],
+  }),
+});
+
+export type FindTokenQuery = typeof FindTokenQuerySchema.static;
+
+// Response format for finding token
+export const FindTokenResponseSchema = Type.Object({
+  tokenInfo: TokenInfoSchema,
+  chainNetwork: Type.String(),
+});
+
+export type FindTokenResponse = typeof FindTokenResponseSchema.static;

@@ -111,6 +111,52 @@ export interface TopPoolInfo {
 }
 
 /**
+ * GeckoTerminal API token data structure
+ */
+export interface GeckoTerminalTokenData {
+  id: string;
+  type: 'token';
+  attributes: {
+    address: string;
+    name: string;
+    symbol: string;
+    decimals: number;
+    image_url: string;
+    coingecko_coin_id: string | null;
+    websites: string[];
+    description: string;
+    gt_score: number;
+    holders?: {
+      count: number;
+      distribution_percentage?: {
+        top_10: string;
+        [key: string]: string;
+      };
+      last_updated: string;
+    };
+  };
+}
+
+/**
+ * Simplified token info response
+ */
+export interface GeckoTerminalTokenInfo {
+  address: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+  imageUrl: string;
+  coingeckoCoinId: string | null;
+  websites: string[];
+  description: string;
+  gtScore: number;
+  holders?: {
+    count: number;
+    topTenPercent?: string;
+  };
+}
+
+/**
  * CoinGecko service for GeckoTerminal API integration
  */
 export class CoinGeckoService {
@@ -240,6 +286,52 @@ export class CoinGeckoService {
         sells: pool.attributes.transactions.h24.sells,
       },
     };
+  }
+
+  /**
+   * Get token info from GeckoTerminal
+   */
+  public async getTokenInfo(chainNetwork: string, tokenAddress: string): Promise<GeckoTerminalTokenInfo> {
+    try {
+      const geckoNetwork = this.mapNetworkId(chainNetwork);
+      const endpoint = `/networks/${geckoNetwork}/tokens/${tokenAddress}/info`;
+
+      logger.info(`Fetching token info for ${tokenAddress} on ${geckoNetwork}`);
+
+      const response = await this.client.get<{ data: GeckoTerminalTokenData }>(endpoint);
+
+      if (!response.data || !response.data.data) {
+        throw new Error(`No token info found for ${tokenAddress} on ${geckoNetwork}`);
+      }
+
+      const tokenData = response.data.data;
+      const attrs = tokenData.attributes;
+
+      return {
+        address: attrs.address,
+        name: attrs.name,
+        symbol: attrs.symbol,
+        decimals: attrs.decimals,
+        imageUrl: attrs.image_url,
+        coingeckoCoinId: attrs.coingecko_coin_id,
+        websites: attrs.websites,
+        description: attrs.description,
+        gtScore: attrs.gt_score,
+        holders: attrs.holders
+          ? {
+              count: attrs.holders.count,
+              topTenPercent: attrs.holders.distribution_percentage?.top_10,
+            }
+          : undefined,
+      };
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error(`Token ${tokenAddress} not found on ${chainNetwork}`);
+      }
+
+      logger.error(`Error fetching token info from GeckoTerminal: ${error.message}`);
+      throw new Error(`Failed to fetch token info from GeckoTerminal: ${error.message}`);
+    }
   }
 
   /**
