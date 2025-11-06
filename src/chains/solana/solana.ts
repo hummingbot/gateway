@@ -816,23 +816,41 @@ export class Solana {
     // Define callback to fetch pool info (connector determined from poolType in cache)
     const getPoolInfo = async (address: string, poolType?: 'amm' | 'clmm'): Promise<any> => {
       // Try each connector until one returns pool info
+      let result: any = null;
+
       // Meteora
       try {
         const { Meteora } = await import('../../connectors/meteora/meteora');
         const meteora = await Meteora.getInstance(this.network);
-        return await meteora.getPoolInfo(address);
+        result = await meteora.getPoolInfo(address);
+        if (result) return result;
       } catch {
         // Continue to next connector
       }
 
-      // Raydium
+      // Raydium - try the known type first, then the other type
       try {
         const { Raydium } = await import('../../connectors/raydium/raydium');
         const raydium = await Raydium.getInstance(this.network);
+
         if (poolType === 'amm') {
-          return await raydium.getAmmPoolInfo(address);
+          result = await raydium.getAmmPoolInfo(address);
+          if (result) return result;
+          // Try CLMM as fallback
+          result = await raydium.getClmmPoolInfo(address);
+          if (result) return result;
         } else if (poolType === 'clmm') {
-          return await raydium.getClmmPoolInfo(address);
+          result = await raydium.getClmmPoolInfo(address);
+          if (result) return result;
+          // Try AMM as fallback
+          result = await raydium.getAmmPoolInfo(address);
+          if (result) return result;
+        } else {
+          // No type hint, try both
+          result = await raydium.getClmmPoolInfo(address);
+          if (result) return result;
+          result = await raydium.getAmmPoolInfo(address);
+          if (result) return result;
         }
       } catch {
         // Continue to next connector
@@ -842,7 +860,8 @@ export class Solana {
       try {
         const { PancakeswapSol } = await import('../../connectors/pancakeswap-sol/pancakeswap-sol');
         const pancakeswap = await PancakeswapSol.getInstance(this.network);
-        return await pancakeswap.getClmmPoolInfo(address);
+        result = await pancakeswap.getClmmPoolInfo(address);
+        if (result) return result;
       } catch {
         // Continue to next connector
       }
