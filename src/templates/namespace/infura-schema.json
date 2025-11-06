@@ -9,6 +9,30 @@
       "type": "boolean",
       "default": true,
       "description": "Enable WebSocket connections for real-time events"
+    },
+    "cache": {
+      "type": "object",
+      "description": "Cache configuration for balances, positions, and pools",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable caching"
+        },
+        "refreshInterval": {
+          "type": "number",
+          "description": "Refresh all cached entries every N seconds"
+        },
+        "maxAge": {
+          "type": "number",
+          "description": "Consider data stale after N seconds"
+        },
+        "ttl": {
+          "type": "number",
+          "description": "Remove unused entries after N seconds of inactivity"
+        }
+      },
+      "required": ["enabled", "refreshInterval", "maxAge", "ttl"],
+      "additionalProperties": false
     }
   },
   "required": ["apiKey"],

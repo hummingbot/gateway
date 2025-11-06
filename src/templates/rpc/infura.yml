@@ -6,3 +6,11 @@ apiKey: 'YOUR_INFURA_API_KEY_HERE'
 
 # Enable WebSocket connections for real-time events
 useWebSocket: false
+
+# Cache configuration for balances, positions, and pools
+# Unified settings for simplicity - applies to all cache types
+cache:
+  enabled: true
+  refreshInterval: 5    # Refresh all cached entries every 5 seconds
+  maxAge: 10           # Consider data stale after 10 seconds
+  ttl: 60             # Remove unused entries after 60 seconds of inactivity

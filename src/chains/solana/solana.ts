@@ -32,6 +32,7 @@ import fse from 'fs-extra';
 // TODO: Replace with Fastify httpErrors
 const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
 
+import { CacheManager, CacheConfig } from '../../services/cache-manager';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { logger, redactUrl } from '../../services/logger';
@@ -53,6 +54,17 @@ interface TokenAccount {
   value: any;
 }
 
+// Interface for cached balance data
+interface BalanceData {
+  sol: number;
+  tokens: Array<{
+    symbol: string;
+    address: string;
+    balance: number;
+    decimals: number;
+  }>;
+}
+
 enum TransactionResponseStatusCode {
   FAILED = -1,
   UNCONFIRMED = 0,
@@ -68,6 +80,9 @@ export class Solana {
   public config: SolanaNetworkConfig;
   private _tokenMap: Record<string, TokenInfo> = {};
   private heliusService: HeliusService;
+
+  // Balance cache manager (provider-agnostic)
+  private balanceCache?: CacheManager<BalanceData>;
 
   private static _instances: { [name: string]: Solana };
 
@@ -181,6 +196,9 @@ export class Solana {
         `Initializing Solana connector for network: ${this.network}, RPC URL: ${redactUrl(this.connection.rpcEndpoint)}`,
       );
       await this.loadTokens();
+
+      // Initialize cache based on RPC provider configuration
+      this.initializeCache();
 
       // Initialize Helius services only if using Helius provider
       const chainConfig = getSolanaChainConfig();
@@ -609,13 +627,116 @@ export class Solana {
   }
 
   /**
-   * Get balances for a given address
+   * Get balances for a given address (cache-first strategy)
+   * Uses cached data if available, falls back to RPC if cache miss
    * @param address Wallet address
    * @param tokens Optional array of token symbols/addresses to fetch. If not provided, fetches tokens from token list
    * @param fetchAll If true, fetches all tokens in wallet including unknown ones
    * @returns Map of token symbol to balance
    */
   public async getBalances(
+    address: string,
+    tokens?: string[],
+    fetchAll: boolean = false,
+  ): Promise<Record<string, number>> {
+    // If cache disabled or specific tokens requested, fetch from RPC
+    // (specific token filtering not supported in cache yet)
+    if (!this.balanceCache || tokens) {
+      return this.getBalancesFromRPC(address, tokens, fetchAll);
+    }
+
+    // Try to get from cache
+    const cached = this.balanceCache.get(address);
+
+    if (cached) {
+      // Cache hit! Check if stale and trigger background refresh
+      if (this.balanceCache.isStale(address)) {
+        logger.debug(`Balance cache stale for ${address}, triggering background refresh`);
+        // Non-blocking background refresh
+        this.refreshBalanceInBackground(address).catch((err) =>
+          logger.warn(`Background balance refresh failed for ${address}: ${err.message}`),
+        );
+      }
+
+      // Convert cached format to Record<string, number>
+      return this.convertCachedToBalances(cached);
+    }
+
+    // Cache miss - fetch from RPC and populate cache
+    logger.debug(`Balance cache MISS for ${address}`);
+    const balances = await this.getBalancesFromRPC(address, tokens, fetchAll);
+
+    // Populate cache for future requests
+    await this.populateCacheFromBalances(address, balances);
+
+    return balances;
+  }
+
+  /**
+   * Convert cached BalanceData to Record<string, number> format
+   */
+  private convertCachedToBalances(cached: BalanceData): Record<string, number> {
+    const balances: Record<string, number> = { SOL: cached.sol };
+
+    for (const token of cached.tokens) {
+      balances[token.symbol] = token.balance;
+    }
+
+    return balances;
+  }
+
+  /**
+   * Populate cache from RPC balance response
+   * Converts Record<string, number> format back to BalanceData
+   */
+  private async populateCacheFromBalances(address: string, balances: Record<string, number>): Promise<void> {
+    if (!this.balanceCache) return;
+
+    const balanceData: BalanceData = {
+      sol: balances['SOL'] || 0,
+      tokens: [],
+    };
+
+    // Convert token balances to BalanceData format
+    for (const [symbol, balance] of Object.entries(balances)) {
+      if (symbol === 'SOL') continue;
+
+      // Look up token info to get address and decimals
+      const tokenInfo = await this.getTokenBySymbol(symbol);
+      if (tokenInfo) {
+        balanceData.tokens.push({
+          symbol,
+          address: tokenInfo.address,
+          balance,
+          decimals: tokenInfo.decimals,
+        });
+      }
+    }
+
+    this.balanceCache.set(address, balanceData);
+  }
+
+  /**
+   * Refresh balance in background without blocking
+   */
+  private async refreshBalanceInBackground(address: string): Promise<void> {
+    try {
+      const balances = await this.getBalancesFromRPC(address);
+      await this.populateCacheFromBalances(address, balances);
+      logger.debug(`Background refresh completed for ${address}`);
+    } catch (error: any) {
+      logger.warn(`Background refresh failed for ${address}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get balances for a given address directly from RPC (bypasses cache)
+   * @param address Wallet address
+   * @param tokens Optional array of token symbols/addresses to fetch. If not provided, fetches tokens from token list
+   * @param fetchAll If true, fetches all tokens in wallet including unknown ones
+   * @returns Map of token symbol to balance
+   */
+  private async getBalancesFromRPC(
     address: string,
     tokens?: string[],
     fetchAll: boolean = false,
@@ -2094,6 +2215,16 @@ export class Solana {
                 logger.info(`    ... and ${balances.tokens.length - 3} more`);
               }
             }
+
+            // Update cache with WebSocket data
+            if (this.balanceCache) {
+              const balanceData: BalanceData = {
+                sol: balances.sol,
+                tokens: balances.tokens,
+              };
+              this.balanceCache.set(address, balanceData, balances.slot);
+              logger.debug(`Cache updated for ${address.slice(0, 8)}... from WebSocket (slot ${balances.slot})`);
+            }
           });
 
           successCount++;
@@ -2103,6 +2234,20 @@ export class Solana {
       }
 
       logger.info(`✅ Auto-subscribed to ${successCount}/${walletAddresses.length} Solana wallet(s)`);
+
+      // Start periodic cache refresh for all subscribed wallets
+      if (this.balanceCache && walletAddresses.length > 0) {
+        this.balanceCache.startPeriodicRefresh(async (keys) => {
+          logger.debug(`Refreshing ${keys.length} wallet balances from periodic timer`);
+          for (const address of keys) {
+            try {
+              await this.refreshBalanceInBackground(address);
+            } catch (error: any) {
+              logger.warn(`Periodic refresh failed for ${address}: ${error.message}`);
+            }
+          }
+        });
+      }
     } catch (error: any) {
       logger.error(`Error during wallet auto-subscription: ${error.message}`);
     }
@@ -2137,12 +2282,49 @@ export class Solana {
   }
 
   /**
+   * Initialize balance cache based on RPC provider configuration
+   * Provider-agnostic: works with Helius, Infura, or any future provider
+   */
+  private initializeCache(): void {
+    try {
+      const chainConfig = getSolanaChainConfig();
+      const rpcProvider = chainConfig.rpcProvider || 'url';
+      const configManager = ConfigManagerV2.getInstance();
+
+      // Try to get cache config from the RPC provider
+      let cacheConfig: CacheConfig | null = null;
+
+      if (rpcProvider === 'helius') {
+        cacheConfig = configManager.get('helius.cache');
+      } else if (rpcProvider === 'infura') {
+        cacheConfig = configManager.get('infura.cache');
+      }
+      // Future providers can be added here
+
+      if (cacheConfig && cacheConfig.enabled) {
+        this.balanceCache = new CacheManager<BalanceData>(cacheConfig, `${this.network}-balance`);
+        logger.info(`Balance cache initialized for ${this.network}`);
+      } else {
+        logger.info(`Balance cache disabled for ${this.network}`);
+      }
+    } catch (error: any) {
+      logger.warn(`Failed to initialize cache: ${error.message}, caching disabled`);
+    }
+  }
+
+  /**
    * Clean up resources including WebSocket connections and connection warming
    */
   public disconnect(): void {
     if (this.heliusService) {
       this.heliusService.disconnect();
       logger.info('Helius services disconnected and cleaned up');
+    }
+
+    // Clean up cache
+    if (this.balanceCache) {
+      this.balanceCache.destroy();
+      this.balanceCache = undefined;
     }
   }
 

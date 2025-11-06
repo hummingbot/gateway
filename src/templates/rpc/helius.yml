@@ -8,3 +8,11 @@ apiKey: 'YOUR_HELIUS_API_KEY_HERE'
 # Use Helius WebSocket for real-time transaction monitoring
 # Provides faster confirmation notifications than polling
 useWebSocketRPC: false
+
+# Cache configuration for balances, positions, and pools
+# Unified settings for simplicity - applies to all cache types
+cache:
+  enabled: true
+  refreshInterval: 5    # Refresh all cached entries every 5 seconds
+  maxAge: 10           # Consider data stale after 10 seconds
+  ttl: 60             # Remove unused entries after 60 seconds of inactivity
