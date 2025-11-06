@@ -79,7 +79,7 @@ describe('Position Cache Tests', () => {
         const result = await pancakeswapSolGetPositionInfo(mockFastify, mockNetwork, mockPositionAddress);
 
         expect(result).toMatchObject(mockPositionInfo);
-        expect(mockPositionCache.get).toHaveBeenCalledWith(mockPositionAddress);
+        expect(mockPositionCache.get).toHaveBeenCalledWith(`pancakeswap-sol:clmm:${mockPositionAddress}`);
         expect(mockPancakeswap.getPositionInfo).not.toHaveBeenCalled();
       });
 
@@ -104,7 +104,7 @@ describe('Position Cache Tests', () => {
         expect(result).toEqual(mockPositionInfo);
         expect(mockPancakeswap.getPositionInfo).toHaveBeenCalledWith(mockPositionAddress);
         expect(mockPositionCache.set).toHaveBeenCalledWith(
-          mockPositionAddress,
+          `pancakeswap-sol:clmm:${mockPositionAddress}`,
           expect.objectContaining({
             positions: expect.arrayContaining([
               expect.objectContaining({
@@ -117,7 +117,7 @@ describe('Position Cache Tests', () => {
         );
       });
 
-      it('should use positionAddress as cache key without connector prefix', async () => {
+      it('should use connector:clmm:positionAddress as cache key', async () => {
         const cachedPosition = {
           connector: 'pancakeswap-sol',
           positionId: mockPositionAddress,
@@ -143,9 +143,8 @@ describe('Position Cache Tests', () => {
 
         await pancakeswapSolGetPositionInfo(mockFastify, mockNetwork, mockPositionAddress);
 
-        // Verify key is just positionAddress, not "pancakeswap-sol:positionAddress"
-        expect(mockPositionCache.get).toHaveBeenCalledWith(mockPositionAddress);
-        expect(mockPositionCache.get).not.toHaveBeenCalledWith(`pancakeswap-sol:${mockPositionAddress}`);
+        // Verify key uses connector:clmm:address format
+        expect(mockPositionCache.get).toHaveBeenCalledWith(`pancakeswap-sol:clmm:${mockPositionAddress}`);
       });
 
       it('should trigger background refresh when cache is STALE', async () => {
@@ -252,9 +251,15 @@ describe('Position Cache Tests', () => {
         const result = await pancakeswapSolGetPositionsOwned(mockFastify, mockNetwork, validWallet);
 
         expect(result).toHaveLength(2);
-        // Each position should be cached by its address
-        expect(mockPositionCache.set).toHaveBeenCalledWith(validPosition1, expect.any(Object));
-        expect(mockPositionCache.set).toHaveBeenCalledWith(validPosition2, expect.any(Object));
+        // Each position should be cached with connector:clmm:address format
+        expect(mockPositionCache.set).toHaveBeenCalledWith(
+          `pancakeswap-sol:clmm:${validPosition1}`,
+          expect.any(Object),
+        );
+        expect(mockPositionCache.set).toHaveBeenCalledWith(
+          `pancakeswap-sol:clmm:${validPosition2}`,
+          expect.any(Object),
+        );
         expect(mockPositionCache.set).toHaveBeenCalledTimes(2);
       });
     });
@@ -291,7 +296,7 @@ describe('Position Cache Tests', () => {
       const result = await raydiumGetPositionInfo(mockFastify, mockNetwork, mockPositionAddress);
 
       expect(result).toMatchObject(mockPositionInfo);
-      expect(mockPositionCache.get).toHaveBeenCalledWith(mockPositionAddress);
+      expect(mockPositionCache.get).toHaveBeenCalledWith(`raydium:clmm:${mockPositionAddress}`);
       expect(mockRaydium.getPositionInfo).not.toHaveBeenCalled();
     });
 
@@ -350,7 +355,7 @@ describe('Position Cache Tests', () => {
       const result = await meteoraGetPositionInfo(mockFastify, mockNetwork, mockPositionAddress);
 
       expect(result).toMatchObject(mockPositionInfo);
-      expect(mockPositionCache.get).toHaveBeenCalledWith(mockPositionAddress);
+      expect(mockPositionCache.get).toHaveBeenCalledWith(`meteora:clmm:${mockPositionAddress}`);
       expect(mockMeteora.getPositionInfoByAddress).not.toHaveBeenCalled();
     });
 

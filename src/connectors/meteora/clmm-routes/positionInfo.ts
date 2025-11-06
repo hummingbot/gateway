@@ -22,19 +22,20 @@ export async function getPositionInfo(
   const positionCache = solana.getPositionCache();
 
   if (positionCache) {
-    const cached = positionCache.get(positionAddress);
+    const cacheKey = `meteora:clmm:${positionAddress}`;
+    const cached = positionCache.get(cacheKey);
     if (cached && cached.positions.length > 0) {
       const position = cached.positions[0]; // Single position stored under this key
       logger.debug(`[position-cache] HIT for ${positionAddress}`);
       // Check if stale and trigger background refresh
-      if (positionCache.isStale(positionAddress)) {
+      if (positionCache.isStale(cacheKey)) {
         logger.debug(`[position-cache] STALE for ${positionAddress}, triggering background refresh`);
         // Non-blocking refresh
         meteora
           .getPositionInfoByAddress(positionAddress)
           .then((freshPositionInfo) => {
             if (freshPositionInfo) {
-              positionCache.set(positionAddress, {
+              positionCache.set(cacheKey, {
                 positions: [
                   {
                     // Metadata fields for cache management (required by PositionData interface)
@@ -71,7 +72,8 @@ export async function getPositionInfo(
 
   // Populate cache for future requests
   if (positionCache) {
-    positionCache.set(positionAddress, {
+    const cacheKey = `meteora:clmm:${positionAddress}`;
+    positionCache.set(cacheKey, {
       positions: [
         {
           // Metadata fields for cache management (required by PositionData interface)
