@@ -755,6 +755,71 @@ export class Solana {
   }
 
   /**
+   * Refresh positions for a wallet in the background
+   */
+  private async refreshPositionsInBackground(address: string): Promise<void> {
+    try {
+      // TODO: Implement position fetching from connectors
+      // For now, positions are only refreshed when endpoints are called
+      logger.debug(`Position refresh not yet implemented for ${address}`);
+    } catch (error: any) {
+      logger.warn(`Background position refresh failed for ${address}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Refresh a pool in the background
+   * @param cacheKey Format: "connector:poolAddress"
+   */
+  private async refreshPoolInBackground(cacheKey: string): Promise<void> {
+    try {
+      const [connector, poolAddress] = cacheKey.split(':');
+      if (!connector || !poolAddress) {
+        logger.warn(`Invalid pool cache key format: ${cacheKey}`);
+        return;
+      }
+
+      let poolInfo;
+
+      if (connector === 'meteora') {
+        const { Meteora } = await import('../../connectors/meteora/meteora');
+        const meteora = await Meteora.getInstance(this.network);
+        poolInfo = await meteora.getPoolInfo(poolAddress);
+      } else if (connector === 'raydium') {
+        const { Raydium } = await import('../../connectors/raydium/raydium');
+        const raydium = await Raydium.getInstance(this.network);
+        const poolCache = this.poolCache;
+        if (poolCache) {
+          const cached = poolCache.get(cacheKey);
+          if (cached && cached.poolInfo) {
+            // Determine pool type from cached data
+            const cachedPoolInfo = cached.poolInfo as any;
+            if (cachedPoolInfo.poolType === 'cpmm' || cachedPoolInfo.poolType === 'amm') {
+              poolInfo = await raydium.getAmmPoolInfo(poolAddress);
+            } else {
+              poolInfo = await raydium.getClmmPoolInfo(poolAddress);
+            }
+          }
+        }
+      } else if (connector === 'pancakeswap-sol') {
+        const { PancakeswapSol } = await import('../../connectors/pancakeswap-sol/pancakeswap-sol');
+        const pancakeswap = await PancakeswapSol.getInstance(this.network);
+        poolInfo = await pancakeswap.getClmmPoolInfo(poolAddress);
+      } else {
+        logger.warn(`Unsupported connector for pool refresh: ${connector}`);
+        return;
+      }
+
+      if (poolInfo && this.poolCache) {
+        this.poolCache.set(cacheKey, { poolInfo });
+        logger.debug(`Background pool refresh completed for ${cacheKey}`);
+      }
+    } catch (error: any) {
+      logger.warn(`Background pool refresh failed for ${cacheKey}: ${error.message}`);
+    }
+  }
+
+  /**
    * Get balances for a given address directly from RPC (bypasses cache)
    * @param address Wallet address
    * @param tokens Optional array of token symbols/addresses to fetch. If not provided, fetches tokens from token list
@@ -2279,11 +2344,35 @@ export class Solana {
       // Track positions for all wallets if position tracking is enabled
       if (this.positionCache && walletAddresses.length > 0) {
         await this.trackWalletPositions(walletAddresses);
+
+        // Start periodic position cache refresh
+        this.positionCache.startPeriodicRefresh(async (keys) => {
+          logger.debug(`Refreshing ${keys.length} wallet positions from periodic timer`);
+          for (const address of keys) {
+            try {
+              await this.refreshPositionsInBackground(address);
+            } catch (error: any) {
+              logger.warn(`Periodic position refresh failed for ${address}: ${error.message}`);
+            }
+          }
+        });
       }
 
       // Track pools if pool tracking is enabled
       if (this.poolCache) {
         await this.trackPools();
+
+        // Start periodic pool cache refresh
+        this.poolCache.startPeriodicRefresh(async (keys) => {
+          logger.debug(`Refreshing ${keys.length} pool(s) from periodic timer`);
+          for (const cacheKey of keys) {
+            try {
+              await this.refreshPoolInBackground(cacheKey);
+            } catch (error: any) {
+              logger.warn(`Periodic pool refresh failed for ${cacheKey}: ${error.message}`);
+            }
+          }
+        });
       }
     } catch (error: any) {
       logger.error(`Error during wallet auto-subscription: ${error.message}`);
