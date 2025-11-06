@@ -207,8 +207,10 @@ export class Solana {
     }
     if (!Solana._instances[network]) {
       const instance = new Solana(network);
-      await instance.init();
+      // Add to instances BEFORE init() to prevent creating duplicate instances
+      // during initialization (e.g., when trackPools calls connector getInstance)
       Solana._instances[network] = instance;
+      await instance.init();
     }
     return Solana._instances[network];
   }
