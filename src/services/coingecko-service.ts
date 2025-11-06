@@ -304,22 +304,14 @@ export class CoinGeckoService {
     // Determine chain type from chainNetwork
     const chain = chainNetwork.split('-')[0];
 
-    switch (chain) {
-      case 'ethereum':
-      case 'polygon':
-      case 'arbitrum':
-      case 'optimism':
-      case 'base':
-      case 'avalanche':
-      case 'celo':
-      case 'bsc':
-        return EVM_REGEX.test(tokenAddress);
-      case 'solana':
-        return SOLANA_REGEX.test(tokenAddress);
-      default:
-        // Conservative fallback: alphanumeric only, reasonable length
-        return /^[a-zA-Z0-9]{32,44}$/.test(tokenAddress);
+    if (chain === 'ethereum') {
+      return EVM_REGEX.test(tokenAddress);
+    } else if (chain === 'solana') {
+      return SOLANA_REGEX.test(tokenAddress);
     }
+
+    // Reject unknown chains
+    return false;
   }
 
   /**
