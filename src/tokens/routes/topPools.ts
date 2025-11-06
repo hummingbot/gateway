@@ -35,7 +35,7 @@ export const topPoolsRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { symbolOrAddress } = request.params;
-      const { chainNetwork, limit = 10 } = request.query;
+      const { chainNetwork, limit = 10, connector, type } = request.query;
 
       try {
         // Parse chain-network parameter
@@ -72,12 +72,14 @@ export const topPoolsRoute: FastifyPluginAsync = async (fastify) => {
           }
         }
 
-        // Fetch top pools from GeckoTerminal
+        // Fetch top pools from GeckoTerminal with optional filtering
         const coinGeckoService = CoinGeckoService.getInstance();
-        const pools = await coinGeckoService.getTopPoolsForToken(chainNetwork, tokenAddress, limit);
+        const pools = await coinGeckoService.getTopPoolsForToken(chainNetwork, tokenAddress, limit, connector, type);
 
         if (pools.length === 0) {
-          logger.warn(`No pools found for token ${tokenAddress} on ${chainNetwork}`);
+          logger.warn(
+            `No pools found for token ${tokenAddress} on ${chainNetwork}${connector ? ` (connector: ${connector})` : ''}${type ? ` (type: ${type})` : ''}`,
+          );
         }
 
         return {

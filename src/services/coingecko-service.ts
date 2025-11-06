@@ -40,6 +40,38 @@ const NETWORK_MAPPING: Record<string, string> = {
 };
 
 /**
+ * DEX connector type definition
+ */
+export interface DexConnectorInfo {
+  connector: string;
+  type: 'amm' | 'clmm';
+}
+
+/**
+ * Mapping from GeckoTerminal DEX IDs to Gateway connector names and types
+ * This allows filtering pools by connector (raydium, meteora, etc) and type (amm, clmm)
+ */
+const DEX_CONNECTOR_MAPPING: Record<string, DexConnectorInfo> = {
+  // Solana DEXes
+  raydium: { connector: 'raydium', type: 'amm' },
+  'raydium-clmm': { connector: 'raydium', type: 'clmm' },
+  meteora: { connector: 'meteora', type: 'clmm' },
+  'meteora-dlmm': { connector: 'meteora', type: 'clmm' },
+  orca: { connector: 'orca', type: 'clmm' },
+  'orca-whirlpools': { connector: 'orca', type: 'clmm' },
+  'pancakeswap-sol': { connector: 'pancakeswap-sol', type: 'clmm' },
+  'pancakeswap-solana': { connector: 'pancakeswap-sol', type: 'clmm' },
+
+  // Ethereum DEXes
+  'uniswap-v2': { connector: 'uniswap', type: 'amm' },
+  'uniswap-v3': { connector: 'uniswap', type: 'clmm' },
+  'pancakeswap-v2': { connector: 'pancakeswap', type: 'amm' },
+  'pancakeswap-v3': { connector: 'pancakeswap', type: 'clmm' },
+  sushiswap: { connector: 'sushiswap', type: 'amm' },
+  'sushiswap-v3': { connector: 'sushiswap', type: 'clmm' },
+};
+
+/**
  * GeckoTerminal API pool data structure
  */
 export interface GeckoTerminalPool {
@@ -95,6 +127,8 @@ export interface GeckoTerminalPool {
 export interface TopPoolInfo {
   poolAddress: string;
   dex: string;
+  connector: string | null;
+  type: 'amm' | 'clmm' | null;
   baseTokenAddress: string;
   quoteTokenAddress: string;
   baseTokenSymbol: string;
@@ -221,18 +255,34 @@ export class CoinGeckoService {
   }
 
   /**
-   * Get top pools for a token
+   * Get DEX connector info from GeckoTerminal DEX ID
+   */
+  private getDexConnectorInfo(dexId: string): DexConnectorInfo {
+    const connectorInfo = DEX_CONNECTOR_MAPPING[dexId];
+    if (connectorInfo) {
+      return connectorInfo;
+    }
+    // Return null values for unknown DEXes
+    return { connector: null as any, type: null as any };
+  }
+
+  /**
+   * Get top pools for a token with optional connector and type filtering
    */
   public async getTopPoolsForToken(
     chainNetwork: string,
     tokenAddress: string,
     limit: number = 10,
+    connector?: string,
+    type?: 'amm' | 'clmm',
   ): Promise<TopPoolInfo[]> {
     try {
       const geckoNetwork = this.mapNetworkId(chainNetwork);
       const endpoint = `/networks/${geckoNetwork}/tokens/${tokenAddress}/pools`;
 
-      logger.info(`Fetching top ${limit} pools for token ${tokenAddress} on ${geckoNetwork}`);
+      logger.info(
+        `Fetching top ${limit} pools for token ${tokenAddress} on ${geckoNetwork}${connector ? ` (connector: ${connector})` : ''}${type ? ` (type: ${type})` : ''}`,
+      );
 
       const response = await this.client.get<{ data: GeckoTerminalPool[] }>(endpoint, {
         params: {
@@ -245,8 +295,23 @@ export class CoinGeckoService {
         return [];
       }
 
-      // Transform and limit results
-      const pools = response.data.data.slice(0, limit).map((pool) => this.transformPool(pool));
+      // Transform pools
+      let pools = response.data.data.map((pool) => this.transformPool(pool));
+
+      // Filter by connector if specified
+      if (connector) {
+        pools = pools.filter((pool) => pool.connector === connector);
+        logger.debug(`Filtered to ${pools.length} pools with connector: ${connector}`);
+      }
+
+      // Filter by type if specified
+      if (type) {
+        pools = pools.filter((pool) => pool.type === type);
+        logger.debug(`Filtered to ${pools.length} pools with type: ${type}`);
+      }
+
+      // Apply limit after filtering
+      pools = pools.slice(0, limit);
 
       logger.info(`Found ${pools.length} pools for token ${tokenAddress}`);
 
@@ -268,10 +333,14 @@ export class CoinGeckoService {
   private transformPool(pool: GeckoTerminalPool): TopPoolInfo {
     const baseTokenAddress = this.extractTokenAddress(pool.relationships.base_token.data.id);
     const quoteTokenAddress = this.extractTokenAddress(pool.relationships.quote_token.data.id);
+    const dexId = pool.relationships.dex.data.id;
+    const connectorInfo = this.getDexConnectorInfo(dexId);
 
     return {
       poolAddress: pool.attributes.address,
-      dex: pool.relationships.dex.data.id,
+      dex: dexId,
+      connector: connectorInfo.connector,
+      type: connectorInfo.type,
       baseTokenAddress,
       quoteTokenAddress,
       baseTokenSymbol: this.extractSymbol(pool.attributes.name, true),

@@ -128,6 +128,12 @@ export const TopPoolInfoSchema = Type.Object({
   dex: Type.String({
     description: 'DEX identifier (e.g., orca, raydium-clmm, uniswap-v3)',
   }),
+  connector: Type.Union([Type.String(), Type.Null()], {
+    description: 'Gateway connector name (e.g., raydium, meteora, uniswap)',
+  }),
+  type: Type.Union([Type.Literal('amm'), Type.Literal('clmm'), Type.Null()], {
+    description: 'Pool type: AMM (v2-style) or CLMM (v3-style concentrated liquidity)',
+  }),
   baseTokenAddress: Type.String({
     description: 'Base token contract address',
   }),
@@ -175,6 +181,18 @@ export const TopPoolsQuerySchema = Type.Object({
       minimum: 1,
       maximum: 30,
       default: 10,
+    }),
+  ),
+  connector: Type.Optional(
+    Type.String({
+      description: 'Filter by connector name (e.g., raydium, meteora, uniswap, pancakeswap-sol)',
+      examples: ['raydium', 'meteora', 'uniswap', 'pancakeswap-sol'],
+    }),
+  ),
+  type: Type.Optional(
+    Type.Union([Type.Literal('amm'), Type.Literal('clmm')], {
+      description: 'Filter by pool type: amm (v2-style) or clmm (v3-style concentrated liquidity)',
+      examples: ['amm', 'clmm'],
     }),
   ),
 });
