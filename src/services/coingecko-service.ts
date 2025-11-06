@@ -293,6 +293,36 @@ export class CoinGeckoService {
   }
 
   /**
+   * Validate token address format based on chain type to prevent SSRF
+   */
+  private isValidTokenAddress(chainNetwork: string, tokenAddress: string): boolean {
+    // EVM chains: 0x followed by 40 hex characters
+    const EVM_REGEX = /^0x[a-fA-F0-9]{40}$/;
+    // Solana addresses: base58, typically 32-44 chars, only base58 alphabet
+    const SOLANA_REGEX = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+    // Determine chain type from chainNetwork
+    const chain = chainNetwork.split('-')[0];
+
+    switch (chain) {
+      case 'ethereum':
+      case 'polygon':
+      case 'arbitrum':
+      case 'optimism':
+      case 'base':
+      case 'avalanche':
+      case 'celo':
+      case 'bsc':
+        return EVM_REGEX.test(tokenAddress);
+      case 'solana':
+        return SOLANA_REGEX.test(tokenAddress);
+      default:
+        // Conservative fallback: alphanumeric only, reasonable length
+        return /^[a-zA-Z0-9]{32,44}$/.test(tokenAddress);
+    }
+  }
+
+  /**
    * Get top pools for a token with optional connector and type filtering
    * Fetches multiple pages from GeckoTerminal (up to maxPages)
    */
@@ -304,6 +334,12 @@ export class CoinGeckoService {
     type?: 'amm' | 'clmm',
   ): Promise<TopPoolInfo[]> {
     try {
+      // Validate token address before constructing endpoint to prevent SSRF
+      if (!this.isValidTokenAddress(chainNetwork, tokenAddress)) {
+        logger.warn(`Invalid token address supplied: ${tokenAddress} for chainNetwork: ${chainNetwork}`);
+        throw new Error(`Invalid token address format for chainNetwork "${chainNetwork}"`);
+      }
+
       const geckoNetwork = this.mapNetworkId(chainNetwork);
       const endpoint = `/networks/${geckoNetwork}/tokens/${tokenAddress}/pools`;
 
@@ -480,6 +516,12 @@ export class CoinGeckoService {
    */
   public async getTokenInfo(chainNetwork: string, tokenAddress: string): Promise<GeckoTerminalTokenInfo> {
     try {
+      // Validate token address before constructing endpoint to prevent SSRF
+      if (!this.isValidTokenAddress(chainNetwork, tokenAddress)) {
+        logger.warn(`Invalid token address supplied: ${tokenAddress} for chainNetwork: ${chainNetwork}`);
+        throw new Error(`Invalid token address format for chainNetwork "${chainNetwork}"`);
+      }
+
       const geckoNetwork = this.mapNetworkId(chainNetwork);
       const endpoint = `/networks/${geckoNetwork}/tokens/${tokenAddress}/info`;
 
