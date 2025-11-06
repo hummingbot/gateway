@@ -119,3 +119,73 @@ export const TokenOperationResponseSchema = Type.Object({
 });
 
 export type TokenOperationResponse = typeof TokenOperationResponseSchema.static;
+
+// Top pool info from CoinGecko/GeckoTerminal
+export const TopPoolInfoSchema = Type.Object({
+  poolAddress: Type.String({
+    description: 'Pool contract address',
+  }),
+  dex: Type.String({
+    description: 'DEX identifier (e.g., orca, raydium-clmm, uniswap-v3)',
+  }),
+  baseTokenAddress: Type.String({
+    description: 'Base token contract address',
+  }),
+  quoteTokenAddress: Type.String({
+    description: 'Quote token contract address',
+  }),
+  baseTokenSymbol: Type.String({
+    description: 'Base token symbol',
+  }),
+  quoteTokenSymbol: Type.String({
+    description: 'Quote token symbol',
+  }),
+  priceUsd: Type.String({
+    description: 'Token price in USD',
+  }),
+  priceNative: Type.String({
+    description: 'Token price in quote token',
+  }),
+  volumeUsd24h: Type.String({
+    description: '24-hour trading volume in USD',
+  }),
+  priceChange24h: Type.String({
+    description: '24-hour price change percentage',
+  }),
+  liquidityUsd: Type.String({
+    description: 'Total liquidity in USD',
+  }),
+  txns24h: Type.Object({
+    buys: Type.Number({ description: 'Number of buy transactions in 24h' }),
+    sells: Type.Number({ description: 'Number of sell transactions in 24h' }),
+  }),
+});
+
+export type TopPoolInfo = typeof TopPoolInfoSchema.static;
+
+// Query parameters for top pools
+export const TopPoolsQuerySchema = Type.Object({
+  chainNetwork: Type.String({
+    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
+    examples: ['solana-mainnet-beta', 'ethereum-mainnet', 'bsc-mainnet'],
+  }),
+  limit: Type.Optional(
+    Type.Number({
+      description: 'Maximum number of pools to return',
+      minimum: 1,
+      maximum: 30,
+      default: 10,
+    }),
+  ),
+});
+
+export type TopPoolsQuery = typeof TopPoolsQuerySchema.static;
+
+// Response format for top pools
+export const TopPoolsResponseSchema = Type.Object({
+  pools: Type.Array(TopPoolInfoSchema),
+  chainNetwork: Type.String(),
+  tokenAddress: Type.String(),
+});
+
+export type TopPoolsResponse = typeof TopPoolsResponseSchema.static;
