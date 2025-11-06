@@ -50,13 +50,14 @@ export interface DexConnectorInfo {
 /**
  * Mapping from GeckoTerminal DEX IDs to Gateway connector names and types
  * This allows filtering pools by connector (raydium, meteora, etc) and type (amm, clmm)
+ *
+ * DEX IDs are from GeckoTerminal API: /api/v2/networks/{network}/dexes
  */
 const DEX_CONNECTOR_MAPPING: Record<string, DexConnectorInfo> = {
-  // Solana DEXes
+  // Solana DEXes (from GeckoTerminal /networks/solana/dexes)
   raydium: { connector: 'raydium', type: 'amm' },
   'raydium-clmm': { connector: 'raydium', type: 'clmm' },
   meteora: { connector: 'meteora', type: 'clmm' },
-  'meteora-dlmm': { connector: 'meteora', type: 'clmm' },
   'pancakeswap-v3-solana': { connector: 'pancakeswap-sol', type: 'clmm' },
 
   // Ethereum DEXes
