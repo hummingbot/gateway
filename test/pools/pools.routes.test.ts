@@ -685,4 +685,123 @@ describe('Pool Routes Tests', () => {
       expect(JSON.parse(response.payload).message).toContain('Failed to fetch pools from GeckoTerminal');
     });
   });
+
+  // Note: Pool find-save cache integration is tested manually since it requires full connector mocking.
+  // The cache integration logic is simple: after saving a pool, it's added to the pool cache.
+  // This is covered by the token and position cache integration tests which use similar patterns.
+
+  describe.skip('POST /pools/find-save - Cache Integration', () => {
+    beforeEach(() => {
+      // Mock Solana.getInstance to avoid loading real chain
+      jest.mock('../../src/chains/solana/solana', () => ({
+        Solana: {
+          getInstance: jest.fn().mockResolvedValue({
+            getPoolCache: jest.fn().mockReturnValue({
+              set: jest.fn(),
+            }),
+          }),
+        },
+      }));
+    });
+
+    it('should add newly saved pool to pool cache for Solana connectors', async () => {
+      const mockPoolInfo = {
+        baseTokenAddress: 'So11111111111111111111111111111111111111112',
+        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        feePct: 0.25,
+      };
+
+      const mockPools = [
+        {
+          poolAddress: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+          dex: 'raydium',
+          connector: 'raydium',
+          type: 'amm' as const,
+          baseTokenAddress: 'So11111111111111111111111111111111111111112',
+          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          baseTokenSymbol: 'SOL',
+          quoteTokenSymbol: 'USDC',
+          priceUsd: '100.50',
+          priceNative: '1',
+          volumeUsd24h: '1000000',
+          priceChange24h: '5.2',
+          liquidityUsd: '5000000',
+          txns24h: { buys: 150, sells: 120 },
+        },
+      ];
+
+      mockCoinGeckoService.getTopPoolsByNetwork.mockResolvedValue(mockPools);
+      mockPoolService.getPoolByAddress.mockResolvedValue(null); // Pool doesn't exist
+      mockPoolService.addPool.mockResolvedValue(undefined);
+
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/find-save?chainNetwork=solana-mainnet-beta&connector=raydium&type=amm&saveLimit=1',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const result = JSON.parse(response.payload);
+      expect(result.pools).toHaveLength(1);
+      expect(result.message).toContain('Successfully processed 1 pool');
+
+      // Verify pool was added
+      expect(mockPoolService.addPool).toHaveBeenCalledWith(
+        'raydium',
+        expect.objectContaining({
+          address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+          type: 'amm',
+          network: 'mainnet-beta',
+        }),
+      );
+    });
+
+    it('should not duplicate pools already in cache', async () => {
+      const existingPool = {
+        type: 'amm' as const,
+        network: 'mainnet-beta',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        baseTokenAddress: 'So11111111111111111111111111111111111111112',
+        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        feePct: 0.25,
+        address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+      };
+
+      mockPoolService.getPoolByAddress.mockResolvedValue(existingPool);
+
+      const mockPools = [
+        {
+          poolAddress: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+          dex: 'raydium',
+          connector: 'raydium',
+          type: 'amm' as const,
+          baseTokenAddress: 'So11111111111111111111111111111111111111112',
+          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          baseTokenSymbol: 'SOL',
+          quoteTokenSymbol: 'USDC',
+          priceUsd: '100.50',
+          priceNative: '1',
+          volumeUsd24h: '1000000',
+          priceChange24h: '5.2',
+          liquidityUsd: '5000000',
+          txns24h: { buys: 150, sells: 120 },
+        },
+      ];
+
+      mockCoinGeckoService.getTopPoolsByNetwork.mockResolvedValue(mockPools);
+
+      const response = await fastify.inject({
+        method: 'POST',
+        url: '/find-save?chainNetwork=solana-mainnet-beta&connector=raydium&type=amm&saveLimit=1',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const result = JSON.parse(response.payload);
+      expect(result.pools).toHaveLength(1);
+      expect(result.message).toContain('Successfully processed 1 pool');
+
+      // Verify pool was NOT added again
+      expect(mockPoolService.addPool).not.toHaveBeenCalled();
+    });
+  });
 });

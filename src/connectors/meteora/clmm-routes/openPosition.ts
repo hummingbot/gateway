@@ -203,12 +203,33 @@ export async function openPosition(
       `Position opened at ${newImbalancePosition.publicKey.toBase58()}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${tokenXSymbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${tokenYSymbol}`,
     );
 
+    // Refresh positions cache for this wallet (non-blocking)
+    const positionAddress = newImbalancePosition.publicKey.toBase58();
+    const walletAddr = wallet.publicKey.toBase58();
+    const positionCache = solana.getPositionCache();
+    if (positionCache) {
+      // Trigger background position refresh for this wallet to include new position
+      import('../../../services/positions-service')
+        .then(({ PositionsService }) => {
+          const positionsService = PositionsService.getInstance();
+          return positionsService.trackPositions([walletAddr], positionCache, async (addr: string) => {
+            return await (solana as any).fetchPositionsForWallet(addr);
+          });
+        })
+        .then(() => {
+          logger.info(
+            `Refreshed position cache for wallet ${walletAddr.slice(0, 8)}... (includes new position ${positionAddress})`,
+          );
+        })
+        .catch((err) => logger.warn(`Failed to refresh position cache: ${err.message}`));
+    }
+
     return {
       signature,
       status: 1, // CONFIRMED
       data: {
         fee: txFee,
-        positionAddress: newImbalancePosition.publicKey.toBase58(),
+        positionAddress,
         positionRent: sentSOL,
         baseTokenAmountAdded: baseTokenBalanceChange,
         quoteTokenAmountAdded: quoteTokenBalanceChange,

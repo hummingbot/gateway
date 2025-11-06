@@ -164,6 +164,26 @@ export async function openPosition(
       `Added ${Math.abs(baseTokenChange).toFixed(4)} ${baseToken.symbol}, ${Math.abs(quoteTokenChange).toFixed(4)} ${quoteToken.symbol}`,
     );
 
+    // Refresh positions cache for this wallet (non-blocking)
+    const positionAddress = positionNftMint.publicKey.toString();
+    const positionCache = solana.getPositionCache();
+    if (positionCache) {
+      // Trigger background position refresh for this wallet to include new position
+      import('../../../services/positions-service')
+        .then(({ PositionsService }) => {
+          const positionsService = PositionsService.getInstance();
+          return positionsService.trackPositions([walletAddress], positionCache, async (addr: string) => {
+            return await (solana as any).fetchPositionsForWallet(addr);
+          });
+        })
+        .then(() => {
+          logger.info(
+            `Refreshed position cache for wallet ${walletAddress.slice(0, 8)}... (includes new position ${positionAddress})`,
+          );
+        })
+        .catch((err) => logger.warn(`Failed to refresh position cache: ${err.message}`));
+    }
+
     return {
       signature,
       status: 1, // CONFIRMED

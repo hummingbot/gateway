@@ -79,6 +79,34 @@ export const findSaveTokenRoute: FastifyPluginAsync = async (fastify) => {
 
         logger.info(`Successfully saved token ${token.symbol} (${token.address}) to ${chain}/${network}`);
 
+        // Refresh token list and trigger balance cache refresh for Solana chains (non-blocking)
+        if (chain === 'solana') {
+          const { Solana } = await import('../../chains/solana/solana');
+          Solana.getInstance(network)
+            .then(async (solana) => {
+              // Reload token list to include new token
+              await solana.loadTokens();
+              logger.info(`Reloaded token list for solana/${network} with new token ${token.symbol}`);
+
+              // Refresh balance cache for all tracked wallets
+              const balanceCache = solana.getBalanceCache();
+              if (balanceCache) {
+                const cachedKeys = balanceCache.keys();
+                logger.info(`Refreshing balances for ${cachedKeys.length} wallet(s) to include new token`);
+                for (const walletAddress of cachedKeys) {
+                  try {
+                    // Background refresh - will fetch balances including the new token
+                    await solana.getBalances(walletAddress);
+                    logger.debug(`Refreshed balance for ${walletAddress.slice(0, 8)}...`);
+                  } catch (error: any) {
+                    logger.warn(`Failed to refresh balance for ${walletAddress}: ${error.message}`);
+                  }
+                }
+              }
+            })
+            .catch((err) => logger.warn(`Failed to refresh balances after adding token: ${err.message}`));
+        }
+
         return {
           message: `Token ${token.symbol} has been added to the token list for ${chain}/${network}`,
           token,

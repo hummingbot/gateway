@@ -115,6 +115,9 @@ export async function closePosition(
       `Removed ${Math.abs(baseTokenChange).toFixed(4)} ${baseToken.symbol}, ${Math.abs(quoteTokenChange).toFixed(4)} ${quoteToken.symbol}`,
     );
 
+    // Note: Position cache will be updated automatically on next periodic refresh
+    // No need to manually refresh since closed positions won't be returned by fetchPositionsForWallet
+
     return {
       signature,
       status: 1, // CONFIRMED
