@@ -2268,8 +2268,89 @@ export class Solana {
           }
         });
       }
+
+      // Track positions for all wallets if position tracking is enabled
+      if (this.positionCache && walletAddresses.length > 0) {
+        await this.trackWalletPositions(walletAddresses);
+      }
+
+      // Track pools if pool tracking is enabled
+      if (this.poolCache) {
+        await this.trackPools();
+      }
     } catch (error: any) {
       logger.error(`Error during wallet auto-subscription: ${error.message}`);
+    }
+  }
+
+  /**
+   * Track CLMM positions for all wallets
+   */
+  private async trackWalletPositions(walletAddresses: string[]): Promise<void> {
+    logger.info(`Tracking positions for ${walletAddresses.length} wallet(s)...`);
+    const totalPositions = 0;
+
+    for (const address of walletAddresses) {
+      try {
+        const positionData: PositionData = { positions: [] };
+        // TODO: Fetch positions from CLMM connectors for this wallet
+        // For now, just initialize empty
+        this.positionCache!.set(address, positionData);
+        logger.debug(`[${address.slice(0, 8)}...] Initialized position tracking`);
+      } catch (error: any) {
+        logger.warn(`Failed to track positions for ${address}: ${error.message}`);
+      }
+    }
+
+    logger.info(`✅ Tracking ${totalPositions} position(s) across ${walletAddresses.length} wallet(s)`);
+  }
+
+  /**
+   * Track pools from conf/pools/*.json
+   */
+  private async trackPools(): Promise<void> {
+    try {
+      const poolsDir = './conf/pools';
+      const exists = await fse.pathExists(poolsDir);
+      if (!exists) {
+        logger.info('No pools directory found, skipping pool tracking');
+        return;
+      }
+
+      const files = await fse.readdir(poolsDir);
+      const poolFiles = files.filter((file) => file.endsWith('.json'));
+
+      if (poolFiles.length === 0) {
+        logger.info('No pool files found, skipping pool tracking');
+        return;
+      }
+
+      logger.info(`Loading pools from ${poolFiles.length} connector(s)...`);
+      let totalPools = 0;
+
+      for (const file of poolFiles) {
+        try {
+          const connector = file.replace('.json', '');
+          const poolsData = await fse.readJson(`${poolsDir}/${file}`);
+
+          if (Array.isArray(poolsData)) {
+            for (const pool of poolsData) {
+              if (pool.network === this.network && pool.address) {
+                const poolData: PoolData = { poolInfo: pool };
+                const cacheKey = `${connector}:${pool.address}`;
+                this.poolCache!.set(cacheKey, poolData);
+                totalPools++;
+              }
+            }
+          }
+        } catch (error: any) {
+          logger.warn(`Failed to load pools from ${file}: ${error.message}`);
+        }
+      }
+
+      logger.info(`✅ Loaded ${totalPools} pool(s) into cache`);
+    } catch (error: any) {
+      logger.error(`Error tracking pools: ${error.message}`);
     }
   }
 
