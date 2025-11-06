@@ -2309,7 +2309,8 @@ export class Solana {
 
   /**
    * Track pools from conf/pools/*.json
-   * Fetches full PoolInfo from WebSocket RPC at startup and populates cache
+   * NOTE: Pool fetching disabled - causes recursive initialization loop
+   * TODO: Implement pool pre-loading after fixing circular dependency
    */
   private async trackPools(): Promise<void> {
     try {
@@ -2328,89 +2329,20 @@ export class Solana {
         return;
       }
 
-      logger.info(`Loading pools from ${poolFiles.length} connector(s)...`);
-      let successCount = 0;
-      let failedCount = 0;
-
-      // Collect all pools to fetch
-      const poolsToFetch: Array<{ connector: string; pool: any }> = [];
-
+      // Count pools available for tracking (but don't fetch yet to avoid recursive loop)
+      let totalPools = 0;
       for (const file of poolFiles) {
         try {
-          const connector = file.replace('.json', '');
           const poolsData = await fse.readJson(`${poolsDir}/${file}`);
-
-          if (!Array.isArray(poolsData)) {
-            continue;
+          if (Array.isArray(poolsData)) {
+            totalPools += poolsData.filter((pool) => pool.network === this.network).length;
           }
-
-          // Filter pools for this network
-          const networkPools = poolsData.filter((pool) => pool.network === this.network);
-          poolsToFetch.push(...networkPools.map((pool) => ({ connector, pool })));
         } catch (error: any) {
           logger.warn(`Failed to read pools from ${file}: ${error.message}`);
         }
       }
 
-      if (poolsToFetch.length === 0) {
-        logger.info('🏊 No pools to track for this network');
-        return;
-      }
-
-      // Use rate limiter to fetch pools (2 concurrent, 500ms delay between requests)
-      const { RateLimiter } = await import('../../services/rate-limiter');
-      const limiter = new RateLimiter({
-        maxConcurrent: 2,
-        minDelay: 500,
-        name: 'pool-loader',
-      });
-
-      logger.info(`Fetching ${poolsToFetch.length} pool(s) with rate limiting...`);
-
-      for (const { connector, pool } of poolsToFetch) {
-        await limiter.execute(async () => {
-          try {
-            // Dynamically get connector instance and fetch full PoolInfo from RPC
-            let poolInfo;
-            const cacheKey = `${connector}:${pool.address}`;
-
-            if (connector === 'meteora') {
-              const { Meteora } = await import('../../connectors/meteora/meteora');
-              const meteora = await Meteora.getInstance(this.network);
-              poolInfo = await meteora.getPoolInfo(pool.address);
-            } else if (connector === 'raydium') {
-              const { Raydium } = await import('../../connectors/raydium/raydium');
-              const raydium = await Raydium.getInstance(this.network);
-              if (pool.type === 'clmm') {
-                poolInfo = await raydium.getClmmPoolInfo(pool.address);
-              } else if (pool.type === 'amm') {
-                poolInfo = await raydium.getAmmPoolInfo(pool.address);
-              }
-            } else if (connector === 'pancakeswap-sol') {
-              const { PancakeswapSol } = await import('../../connectors/pancakeswap-sol/pancakeswap-sol');
-              const pancakeswap = await PancakeswapSol.getInstance(this.network);
-              poolInfo = await pancakeswap.getClmmPoolInfo(pool.address);
-            } else {
-              logger.warn(`Unsupported connector for pool tracking: ${connector}`);
-              return;
-            }
-
-            if (poolInfo) {
-              this.poolCache!.set(cacheKey, { poolInfo });
-              successCount++;
-              logger.debug(`[pool-cache] Loaded ${cacheKey}`);
-            } else {
-              logger.warn(`Failed to fetch pool info for ${cacheKey}`);
-              failedCount++;
-            }
-          } catch (error: any) {
-            logger.warn(`Failed to fetch pool ${pool.address} from ${connector}: ${error.message}`);
-            failedCount++;
-          }
-        });
-      }
-
-      logger.info(`🏊 Loaded ${successCount} pool(s) into cache${failedCount > 0 ? ` (${failedCount} failed)` : ''}`);
+      logger.info(`🏊 Pool cache ready (${totalPools} pool(s) available for on-demand fetching)`);
     } catch (error: any) {
       logger.error(`Error tracking pools: ${error.message}`);
     }
