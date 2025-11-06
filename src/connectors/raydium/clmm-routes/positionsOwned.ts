@@ -21,13 +21,6 @@ export async function getPositionsOwned(
   walletAddress: string,
 ): Promise<PositionInfo[]> {
   const solana = await Solana.getInstance(network);
-  const raydium = await Raydium.getInstance(network);
-
-  // Prepare wallet and check if it's hardware
-  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
-
-  // Set the owner for SDK operations
-  await raydium.setOwner(wallet);
 
   // Validate wallet address
   try {
@@ -36,10 +29,51 @@ export async function getPositionsOwned(
     throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
   }
 
+  // Fetch from RPC (positions are cached individually by position address, not by wallet)
+  const positions = await fetchPositionsFromRPC(solana, network, walletAddress);
+
+  // Populate cache for each position individually
+  const positionCache = solana.getPositionCache();
+  if (positionCache && positions.length > 0) {
+    for (const positionInfo of positions) {
+      positionCache.set(positionInfo.address, {
+        positions: [
+          {
+            // Metadata fields for cache management (required by PositionData interface)
+            connector: 'raydium',
+            positionId: positionInfo.address,
+            poolAddress: positionInfo.poolAddress,
+            baseToken: positionInfo.baseTokenAddress,
+            quoteToken: positionInfo.quoteTokenAddress,
+            liquidity: positionInfo.baseTokenAmount + positionInfo.quoteTokenAmount,
+            // Spread all PositionInfo fields
+            ...positionInfo,
+          },
+        ],
+      });
+    }
+    logger.debug(`[position-cache] SET ${positions.length} position(s) for wallet ${walletAddress.slice(0, 8)}...`);
+  }
+
+  return positions;
+}
+
+/**
+ * Fetch positions from RPC
+ */
+async function fetchPositionsFromRPC(_solana: Solana, network: string, walletAddress: string): Promise<PositionInfo[]> {
+  const raydium = await Raydium.getInstance(network);
+
+  // Prepare wallet and check if it's hardware
+  const { wallet } = await raydium.prepareWallet(walletAddress);
+
+  // Set the owner for SDK operations
+  await raydium.setOwner(wallet);
+
   logger.info(`Fetching all positions for wallet ${walletAddress}`);
 
   // Get all positions owned by the wallet
-  const allPositions = [];
+  const allPositions: PositionInfo[] = [];
 
   // Try both CLMM program IDs (standard and new)
   const programIds = [
@@ -52,7 +86,7 @@ export async function getPositionsOwned(
       const positions = await raydium.raydiumSDK.clmm.getOwnerPositionInfo({
         programId,
       });
-      logger.info(`Found ${positions.length} positions for program ${programId}`);
+      logger.debug(`Found ${positions.length} positions for program ${programId}`);
 
       // Convert SDK positions to our format
       for (const pos of positions) {
@@ -70,7 +104,7 @@ export async function getPositionsOwned(
     }
   }
 
-  logger.info(`Found ${allPositions.length} total positions`);
+  logger.info(`Found ${allPositions.length} Raydium position(s) for wallet ${walletAddress.slice(0, 8)}...`);
   return allPositions;
 }
 

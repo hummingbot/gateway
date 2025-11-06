@@ -16,29 +16,28 @@ export async function getPoolInfo(fastify: FastifyInstance, network: string, poo
   // Check cache first
   const solana = await Solana.getInstance(network);
   const poolCache = solana.getPoolCache();
-  const cacheKey = `pancakeswap-sol:${poolAddress}`;
 
   if (poolCache) {
-    const cached = poolCache.get(cacheKey);
+    const cached = poolCache.get(poolAddress);
     if (cached) {
-      logger.debug(`[pool-cache] HIT for ${cacheKey}`);
+      logger.debug(`[pool-cache] HIT for ${poolAddress}`);
       // Check if stale and trigger background refresh
-      if (poolCache.isStale(cacheKey)) {
-        logger.debug(`[pool-cache] STALE for ${cacheKey}, triggering background refresh`);
+      if (poolCache.isStale(poolAddress)) {
+        logger.debug(`[pool-cache] STALE for ${poolAddress}, triggering background refresh`);
         // Non-blocking refresh
         pancakeswap
           .getClmmPoolInfo(poolAddress)
           .then((freshPoolInfo) => {
             if (freshPoolInfo) {
-              poolCache.set(cacheKey, { poolInfo: freshPoolInfo });
-              logger.debug(`[pool-cache] Background refresh completed for ${cacheKey}`);
+              poolCache.set(poolAddress, { poolInfo: freshPoolInfo });
+              logger.debug(`[pool-cache] Background refresh completed for ${poolAddress}`);
             }
           })
-          .catch((err) => logger.warn(`Background pool refresh failed for ${cacheKey}: ${err.message}`));
+          .catch((err) => logger.warn(`Background pool refresh failed for ${poolAddress}: ${err.message}`));
       }
       return cached.poolInfo as PoolInfo;
     }
-    logger.debug(`[pool-cache] MISS for ${cacheKey}`);
+    logger.debug(`[pool-cache] MISS for ${poolAddress}`);
   }
 
   // Cache miss or disabled - fetch from RPC
@@ -49,8 +48,8 @@ export async function getPoolInfo(fastify: FastifyInstance, network: string, poo
 
   // Populate cache for future requests
   if (poolCache) {
-    poolCache.set(cacheKey, { poolInfo });
-    logger.debug(`[pool-cache] SET for ${cacheKey}`);
+    poolCache.set(poolAddress, { poolInfo });
+    logger.debug(`[pool-cache] SET for ${poolAddress}`);
   }
 
   return poolInfo;

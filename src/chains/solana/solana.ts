@@ -23,7 +23,6 @@ import {
   VersionedTransaction,
   VersionedTransactionResponse,
   SystemProgram,
-  LAMPORTS_PER_SOL,
   TransactionInstruction,
 } from '@solana/web3.js';
 import bs58 from 'bs58';
@@ -665,9 +664,8 @@ export class Solana {
     tokens?: string[],
     fetchAll: boolean = false,
   ): Promise<Record<string, number>> {
-    // If cache disabled or specific tokens requested, fetch from RPC
-    // (specific token filtering not supported in cache yet)
-    if (!this.balanceCache || tokens) {
+    // If cache disabled, fetch from RPC
+    if (!this.balanceCache) {
       return this.getBalancesFromRPC(address, tokens, fetchAll);
     }
 
@@ -675,9 +673,11 @@ export class Solana {
     const cached = this.balanceCache.get(address);
 
     if (cached) {
-      // Cache hit! Check if stale and trigger background refresh
+      logger.debug(`[balance-cache] HIT for ${address}`);
+
+      // Check if stale and trigger background refresh
       if (this.balanceCache.isStale(address)) {
-        logger.debug(`Balance cache stale for ${address}, triggering background refresh`);
+        logger.debug(`[balance-cache] STALE for ${address}, triggering background refresh`);
         // Non-blocking background refresh
         this.refreshBalanceInBackground(address).catch((err) =>
           logger.warn(`Background balance refresh failed for ${address}: ${err.message}`),
@@ -685,14 +685,46 @@ export class Solana {
       }
 
       // Convert cached format to Record<string, number>
-      return this.convertCachedToBalances(cached);
+      const allBalances = this.convertCachedToBalances(cached);
+
+      // If specific tokens requested, filter the cached balances
+      if (tokens && tokens.length > 0) {
+        const filteredBalances: Record<string, number> = {};
+        const tokensToFetchFromRPC: string[] = [];
+
+        for (const token of tokens) {
+          // Check both exact match and case-insensitive match
+          const tokenUpper = token.toUpperCase();
+          if (allBalances[token] !== undefined) {
+            filteredBalances[token] = allBalances[token];
+          } else if (allBalances[tokenUpper] !== undefined) {
+            filteredBalances[token] = allBalances[tokenUpper];
+          } else {
+            // Token not in cache - might be a token address instead of symbol
+            // Defer fetching until we process all cached tokens
+            tokensToFetchFromRPC.push(token);
+          }
+        }
+
+        // Fetch balances for tokens not in cache (likely token addresses)
+        if (tokensToFetchFromRPC.length > 0) {
+          logger.debug(`Fetching ${tokensToFetchFromRPC.length} token(s) from RPC: ${tokensToFetchFromRPC.join(', ')}`);
+          const rpcBalances = await this.getBalancesFromRPC(address, tokensToFetchFromRPC, false);
+          Object.assign(filteredBalances, rpcBalances);
+        }
+
+        return filteredBalances;
+      }
+
+      // No specific tokens requested - return all cached balances
+      return allBalances;
     }
 
     // Cache miss - fetch from RPC and populate cache
-    logger.debug(`Balance cache MISS for ${address}`);
+    logger.debug(`[balance-cache] MISS for ${address}`);
     const balances = await this.getBalancesFromRPC(address, tokens, fetchAll);
 
-    // Populate cache for future requests
+    // Populate cache for future requests (always cache the full balance set)
     await this.populateCacheFromBalances(address, balances);
 
     return balances;
@@ -759,67 +791,67 @@ export class Solana {
    * Refresh positions for a wallet in the background
    */
   private async refreshPositionsInBackground(address: string): Promise<void> {
-    try {
-      // TODO: Implement position fetching from connectors
-      // For now, positions are only refreshed when endpoints are called
-      logger.debug(`Position refresh not yet implemented for ${address}`);
-    } catch (error: any) {
-      logger.warn(`Background position refresh failed for ${address}: ${error.message}`);
-    }
+    const { PositionsService } = await import('../../services/positions-service');
+    const positionsService = PositionsService.getInstance();
+
+    // Define callback to fetch positions for a wallet
+    const getPositions = async (_walletAddress: string): Promise<any[]> => {
+      // TODO: Implement fetching positions from connectors
+      // This would aggregate positions from all connectors (meteora, raydium, pancakeswap-sol)
+      return [];
+    };
+
+    // Use PositionsService to refresh positions
+    await positionsService.refreshPositions(address, this.positionCache, getPositions);
   }
 
   /**
    * Refresh a pool in the background
    * @param cacheKey Format: "connector:poolAddress"
    */
-  private async refreshPoolInBackground(cacheKey: string): Promise<void> {
-    try {
-      const [connector, poolAddress] = cacheKey.split(':');
-      if (!connector || !poolAddress) {
-        logger.warn(`Invalid pool cache key format: ${cacheKey}`);
-        return;
-      }
+  private async refreshPoolInBackground(poolAddress: string): Promise<void> {
+    const { PoolService } = await import('../../services/pool-service');
+    const poolService = PoolService.getInstance();
 
-      let poolInfo;
-
-      if (connector === 'meteora') {
+    // Define callback to fetch pool info (connector determined from poolType in cache)
+    const getPoolInfo = async (address: string, poolType?: 'amm' | 'clmm'): Promise<any> => {
+      // Try each connector until one returns pool info
+      // Meteora
+      try {
         const { Meteora } = await import('../../connectors/meteora/meteora');
         const meteora = await Meteora.getInstance(this.network);
-        poolInfo = await meteora.getPoolInfo(poolAddress);
-      } else if (connector === 'raydium') {
-        const { Raydium } = await import('../../connectors/raydium/raydium');
-        const raydium = await Raydium.getInstance(this.network);
-        const poolCache = this.poolCache;
-        if (poolCache) {
-          const cached = poolCache.get(cacheKey);
-          if (cached && cached.poolType) {
-            // Use stored pool type to determine which method to call
-            if (cached.poolType === 'amm') {
-              poolInfo = await raydium.getAmmPoolInfo(poolAddress);
-            } else {
-              poolInfo = await raydium.getClmmPoolInfo(poolAddress);
-            }
-          }
-        }
-      } else if (connector === 'pancakeswap-sol') {
-        const { PancakeswapSol } = await import('../../connectors/pancakeswap-sol/pancakeswap-sol');
-        const pancakeswap = await PancakeswapSol.getInstance(this.network);
-        poolInfo = await pancakeswap.getClmmPoolInfo(poolAddress);
-      } else {
-        logger.warn(`Unsupported connector for pool refresh: ${connector}`);
-        return;
+        return await meteora.getPoolInfo(address);
+      } catch {
+        // Continue to next connector
       }
 
-      if (poolInfo && this.poolCache) {
-        // Preserve poolType from original cache entry
-        const cached = this.poolCache.get(cacheKey);
-        const poolType = cached?.poolType;
-        this.poolCache.set(cacheKey, { poolInfo, poolType });
-        logger.debug(`Background pool refresh completed for ${cacheKey}`);
+      // Raydium
+      try {
+        const { Raydium } = await import('../../connectors/raydium/raydium');
+        const raydium = await Raydium.getInstance(this.network);
+        if (poolType === 'amm') {
+          return await raydium.getAmmPoolInfo(address);
+        } else if (poolType === 'clmm') {
+          return await raydium.getClmmPoolInfo(address);
+        }
+      } catch {
+        // Continue to next connector
       }
-    } catch (error: any) {
-      logger.warn(`Background pool refresh failed for ${cacheKey}: ${error.message}`);
-    }
+
+      // PancakeSwap
+      try {
+        const { PancakeswapSol } = await import('../../connectors/pancakeswap-sol/pancakeswap-sol');
+        const pancakeswap = await PancakeswapSol.getInstance(this.network);
+        return await pancakeswap.getClmmPoolInfo(address);
+      } catch {
+        // Continue to next connector
+      }
+
+      return null;
+    };
+
+    // Use PoolService to refresh pool
+    await poolService.refreshPool(poolAddress, this.poolCache, getPoolInfo);
   }
 
   /**
@@ -1604,10 +1636,17 @@ export class Solana {
 
         if (confirmationResult.confirmed) {
           logger.info(`✅ Transaction ${signature} confirmed via WebSocket`);
-          return { confirmed: true, signature, txData: confirmationResult.txData };
+
+          // Fetch full transaction data after confirmation
+          const txData = await this.connection.getTransaction(signature, {
+            commitment: 'confirmed',
+            maxSupportedTransactionVersion: 0,
+          });
+
+          return { confirmed: true, signature, txData };
         } else {
           logger.warn(`❌ Transaction ${signature} not confirmed via WebSocket within timeout`);
-          return { confirmed: false, signature, txData: confirmationResult.txData };
+          return { confirmed: false, signature, txData: null };
         }
       }
 
@@ -2387,15 +2426,60 @@ export class Solana {
    */
   private async trackWalletPositions(walletAddresses: string[]): Promise<void> {
     logger.info(`Tracking positions for ${walletAddresses.length} wallet(s)...`);
-    const totalPositions = 0;
+    let totalPositions = 0;
+    const positionsByConnector: Record<string, number> = {};
 
     for (const address of walletAddresses) {
       try {
-        const positionData: PositionData = { positions: [] };
-        // TODO: Fetch positions from CLMM connectors for this wallet
-        // For now, just initialize empty
-        this.positionCache!.set(address, positionData);
-        logger.debug(`[${address.slice(0, 8)}...] Initialized position tracking`);
+        const allPositions: PositionData['positions'] = [];
+
+        // Fetch positions from each connector by calling route functions
+        // Use a minimal fastify mock since we don't need httpErrors for successful calls
+        const fastifyMock = {
+          httpErrors: {
+            badRequest: (msg: string) => new Error(msg),
+            notFound: (msg: string) => new Error(msg),
+          },
+        } as any;
+
+        // PancakeSwap Solana
+        try {
+          const { getPositionsOwned } = await import('../../connectors/pancakeswap-sol/clmm-routes/positionsOwned');
+          const pancakeswapPositions = await getPositionsOwned(fastifyMock, this.network, address);
+
+          for (const pos of pancakeswapPositions) {
+            allPositions.push({
+              connector: 'pancakeswap-sol',
+              positionId: pos.address,
+              poolAddress: pos.poolAddress,
+              baseToken: pos.baseTokenAddress,
+              quoteToken: pos.quoteTokenAddress,
+              liquidity: pos.baseTokenAmount + pos.quoteTokenAmount,
+              ...pos,
+            });
+          }
+
+          positionsByConnector['pancakeswap-sol'] =
+            (positionsByConnector['pancakeswap-sol'] || 0) + pancakeswapPositions.length;
+        } catch (error: any) {
+          logger.debug(`No PancakeSwap positions for ${address.slice(0, 8)}...`);
+        }
+
+        // TODO: Add Meteora and Raydium when their positions-owned routes are implemented
+
+        // Store each position individually in cache by positionId (address)
+        for (const position of allPositions) {
+          this.positionCache!.set(position.positionId, { positions: [position] });
+        }
+        totalPositions += allPositions.length;
+
+        // Log positions by connector for this wallet
+        const connectorSummary = Object.entries(positionsByConnector)
+          .map(([connector, count]) => `${count} ${connector}`)
+          .join(', ');
+        logger.info(
+          `[${address.slice(0, 8)}...] Found ${allPositions.length} position(s): ${connectorSummary || 'none'}`,
+        );
       } catch (error: any) {
         logger.warn(`Failed to track positions for ${address}: ${error.message}`);
       }
@@ -2419,105 +2503,36 @@ export class Solana {
     this.isTrackingPools = true;
 
     try {
-      const poolsDir = './conf/pools';
-      const exists = await fse.pathExists(poolsDir);
-      if (!exists) {
-        logger.info('No pools directory found, skipping pool tracking');
-        return;
-      }
+      const { PoolService } = await import('../../services/pool-service');
+      const poolService = PoolService.getInstance();
 
-      const files = await fse.readdir(poolsDir);
-      const poolFiles = files.filter((file) => file.endsWith('.json'));
-
-      if (poolFiles.length === 0) {
-        logger.info('No pool files found, skipping pool tracking');
-        return;
-      }
-
-      logger.info(`Loading pools from ${poolFiles.length} connector(s)...`);
-      let successCount = 0;
-      let failedCount = 0;
-
-      // Collect all pools to fetch
-      const poolsToFetch: Array<{ connector: string; pool: any }> = [];
-
-      for (const file of poolFiles) {
-        try {
-          const connector = file.replace('.json', '');
-          const poolsData = await fse.readJson(`${poolsDir}/${file}`);
-
-          if (!Array.isArray(poolsData)) {
-            continue;
+      // Define callback to fetch pool info for any connector
+      const getPoolInfo = async (connector: string, poolAddress: string, poolType: 'amm' | 'clmm'): Promise<any> => {
+        if (connector === 'meteora') {
+          const { Meteora } = await import('../../connectors/meteora/meteora');
+          const meteora = await Meteora.getInstance(this.network);
+          return await meteora.getPoolInfo(poolAddress);
+        } else if (connector === 'raydium') {
+          const { Raydium } = await import('../../connectors/raydium/raydium');
+          const raydium = await Raydium.getInstance(this.network);
+          if (poolType === 'clmm') {
+            return await raydium.getClmmPoolInfo(poolAddress);
+          } else if (poolType === 'amm') {
+            return await raydium.getAmmPoolInfo(poolAddress);
           }
-
-          // Filter pools for this network
-          const networkPools = poolsData.filter((pool) => pool.network === this.network);
-          poolsToFetch.push(...networkPools.map((pool) => ({ connector, pool })));
-        } catch (error: any) {
-          logger.warn(`Failed to read pools from ${file}: ${error.message}`);
+        } else if (connector === 'pancakeswap-sol') {
+          const { PancakeswapSol } = await import('../../connectors/pancakeswap-sol/pancakeswap-sol');
+          const pancakeswap = await PancakeswapSol.getInstance(this.network);
+          return await pancakeswap.getClmmPoolInfo(poolAddress);
+        } else {
+          logger.warn(`Unsupported connector for pool tracking: ${connector}`);
+          return null;
         }
-      }
+      };
 
-      if (poolsToFetch.length === 0) {
-        logger.info('🏊 No pools to track for this network');
-        return;
-      }
-
-      // Use rate limiter to fetch pools (2 concurrent, 500ms delay between requests)
-      const { RateLimiter } = await import('../../services/rate-limiter');
-      const limiter = new RateLimiter({
-        maxConcurrent: 2,
-        minDelay: 500,
-        name: 'pool-loader',
-      });
-
-      logger.info(`Fetching ${poolsToFetch.length} pool(s) with rate limiting...`);
-
-      for (const { connector, pool } of poolsToFetch) {
-        await limiter.execute(async () => {
-          try {
-            // Dynamically get connector instance and fetch full PoolInfo from RPC
-            // The isTrackingPools flag prevents these getInstance calls from re-triggering trackPools
-            let poolInfo;
-            const cacheKey = `${connector}:${pool.address}`;
-
-            if (connector === 'meteora') {
-              const { Meteora } = await import('../../connectors/meteora/meteora');
-              const meteora = await Meteora.getInstance(this.network);
-              poolInfo = await meteora.getPoolInfo(pool.address);
-            } else if (connector === 'raydium') {
-              const { Raydium } = await import('../../connectors/raydium/raydium');
-              const raydium = await Raydium.getInstance(this.network);
-              if (pool.type === 'clmm') {
-                poolInfo = await raydium.getClmmPoolInfo(pool.address);
-              } else if (pool.type === 'amm') {
-                poolInfo = await raydium.getAmmPoolInfo(pool.address);
-              }
-            } else if (connector === 'pancakeswap-sol') {
-              const { PancakeswapSol } = await import('../../connectors/pancakeswap-sol/pancakeswap-sol');
-              const pancakeswap = await PancakeswapSol.getInstance(this.network);
-              poolInfo = await pancakeswap.getClmmPoolInfo(pool.address);
-            } else {
-              logger.warn(`Unsupported connector for pool tracking: ${connector}`);
-              return;
-            }
-
-            if (poolInfo) {
-              this.poolCache!.set(cacheKey, { poolInfo, poolType: pool.type });
-              successCount++;
-              logger.debug(`[pool-cache] Loaded ${cacheKey}`);
-            } else {
-              logger.warn(`Failed to fetch pool info for ${cacheKey}`);
-              failedCount++;
-            }
-          } catch (error: any) {
-            logger.warn(`Failed to fetch pool ${pool.address} from ${connector}: ${error.message}`);
-            failedCount++;
-          }
-        });
-      }
-
-      logger.info(`🏊 Loaded ${successCount} pool(s) into cache${failedCount > 0 ? ` (${failedCount} failed)` : ''}`);
+      // Use PoolService to track pools
+      // Note: No need to pass isTrackingCallback since we already checked it above
+      await poolService.trackPools(this.network, this.poolCache, getPoolInfo);
     } catch (error: any) {
       logger.error(`Error tracking pools: ${error.message}`);
     } finally {

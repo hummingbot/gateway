@@ -5,7 +5,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Solana } from '../../../chains/solana/solana';
 import { PositionInfo, PositionInfoSchema, GetPositionsOwnedRequestType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
-import { PancakeswapSol, PANCAKESWAP_CLMM_PROGRAM_ID } from '../pancakeswap-sol';
+import { PancakeswapSol } from '../pancakeswap-sol';
 import { PancakeswapSolClmmGetPositionsOwnedRequest } from '../schemas';
 
 const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
@@ -28,55 +28,30 @@ export async function getPositionsOwned(
     throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
   }
 
-  // Check cache first
-  const positionCache = solana.getPositionCache();
-  if (positionCache) {
-    const cached = positionCache.get(walletAddress);
-    if (cached) {
-      // Filter for pancakeswap-sol positions only
-      const pancakeswapPositions = cached.positions.filter((pos) => pos.connector === 'pancakeswap-sol');
-
-      logger.debug(
-        `[position-cache] HIT for ${walletAddress} (${pancakeswapPositions.length} pancakeswap-sol positions)`,
-      );
-
-      // Check if stale and trigger background refresh
-      if (positionCache.isStale(walletAddress)) {
-        logger.debug(`[position-cache] STALE for ${walletAddress}, triggering background refresh`);
-        // Non-blocking refresh
-        refreshPositionsInBackground(solana, walletAddress).catch((err) =>
-          logger.warn(`Background position refresh failed for ${walletAddress}: ${err.message}`),
-        );
-      }
-
-      // Extract PositionInfo from cached position data
-      const positions: PositionInfo[] = pancakeswapPositions.map((pos) => {
-        const { connector, positionId, poolAddress, baseToken, quoteToken, liquidity, ...positionInfo } = pos;
-        return positionInfo as PositionInfo;
-      });
-
-      return positions;
-    }
-    logger.debug(`[position-cache] MISS for ${walletAddress}`);
-  }
-
-  // Cache miss or disabled - fetch from RPC
+  // Fetch from RPC (positions are cached individually by position address, not by wallet)
   const positions = await fetchPositionsFromRPC(solana, walletAddress);
 
-  // Populate cache for future requests
+  // Populate cache for each position individually
+  const positionCache = solana.getPositionCache();
   if (positionCache && positions.length > 0) {
-    const positionData = positions.map((positionInfo) => ({
-      connector: 'pancakeswap-sol',
-      positionId: positionInfo.address,
-      poolAddress: positionInfo.poolAddress,
-      baseToken: positionInfo.baseTokenAddress,
-      quoteToken: positionInfo.quoteTokenAddress,
-      liquidity: positionInfo.baseTokenAmount + positionInfo.quoteTokenAmount,
-      ...positionInfo,
-    }));
-
-    positionCache.set(walletAddress, { positions: positionData });
-    logger.debug(`[position-cache] SET for ${walletAddress} (${positions.length} positions)`);
+    for (const positionInfo of positions) {
+      positionCache.set(positionInfo.address, {
+        positions: [
+          {
+            // Metadata fields for cache management (required by PositionData interface)
+            connector: 'pancakeswap-sol',
+            positionId: positionInfo.address,
+            poolAddress: positionInfo.poolAddress,
+            baseToken: positionInfo.baseTokenAddress,
+            quoteToken: positionInfo.quoteTokenAddress,
+            liquidity: positionInfo.baseTokenAmount + positionInfo.quoteTokenAmount,
+            // Spread all PositionInfo fields
+            ...positionInfo,
+          },
+        ],
+      });
+    }
+    logger.debug(`[position-cache] SET ${positions.length} position(s) for wallet ${walletAddress.slice(0, 8)}...`);
   }
 
   return positions;
@@ -110,7 +85,7 @@ async function fetchPositionsFromRPC(solana: Solana, walletAddress: string): Pro
     return amount === 1 && decimals === 0;
   });
 
-  logger.info(`Found ${nftAccounts.length} NFT token accounts`);
+  logger.debug(`Found ${nftAccounts.length} NFT token accounts, checking for positions...`);
 
   // Fetch position info for each NFT
   const positions: PositionInfo[] = [];
@@ -122,35 +97,13 @@ async function fetchPositionsFromRPC(solana: Solana, walletAddress: string): Pro
         positions.push(positionInfo);
       }
     } catch (error) {
+      // Skip NFTs that aren't positions - this is expected
       logger.debug(`Skipping non-position NFT: ${nftAccount.account.data.parsed.info.mint}`);
     }
   }
 
-  logger.info(`Found ${positions.length} total positions`);
+  logger.info(`Found ${positions.length} PancakeSwap position(s) for wallet ${walletAddress.slice(0, 8)}...`);
   return positions;
-}
-
-/**
- * Background refresh of positions
- */
-async function refreshPositionsInBackground(solana: Solana, walletAddress: string): Promise<void> {
-  const positions = await fetchPositionsFromRPC(solana, walletAddress);
-  const positionCache = solana.getPositionCache();
-
-  if (positionCache && positions.length > 0) {
-    const positionData = positions.map((positionInfo) => ({
-      connector: 'pancakeswap-sol',
-      positionId: positionInfo.address,
-      poolAddress: positionInfo.poolAddress,
-      baseToken: positionInfo.baseTokenAddress,
-      quoteToken: positionInfo.quoteTokenAddress,
-      liquidity: positionInfo.baseTokenAmount + positionInfo.quoteTokenAmount,
-      ...positionInfo,
-    }));
-
-    positionCache.set(walletAddress, { positions: positionData });
-    logger.debug(`[position-cache] Background refresh completed for ${walletAddress} (${positions.length} positions)`);
-  }
 }
 
 export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {

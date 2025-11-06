@@ -14,7 +14,8 @@ export async function getPositionsOwned(
   network: string,
   walletAddress: string,
 ): Promise<PositionInfo[]> {
-  const meteora = await Meteora.getInstance(network);
+  const { Solana } = await import('../../../chains/solana/solana');
+  const solana = await Solana.getInstance(network);
 
   // Validate wallet address
   try {
@@ -23,7 +24,46 @@ export async function getPositionsOwned(
     throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
   }
 
+  // Fetch from RPC (positions are cached individually by position address, not by wallet)
+  const positions = await fetchPositionsFromRPC(network, walletAddress);
+
+  // Populate cache for each position individually
+  const positionCache = solana.getPositionCache();
+  if (positionCache && positions.length > 0) {
+    for (const positionInfo of positions) {
+      positionCache.set(positionInfo.address, {
+        positions: [
+          {
+            // Metadata fields for cache management (required by PositionData interface)
+            connector: 'meteora',
+            positionId: positionInfo.address,
+            poolAddress: positionInfo.poolAddress,
+            baseToken: positionInfo.baseTokenAddress,
+            quoteToken: positionInfo.quoteTokenAddress,
+            liquidity: positionInfo.baseTokenAmount + positionInfo.quoteTokenAmount,
+            // Spread all PositionInfo fields
+            ...positionInfo,
+          },
+        ],
+      });
+    }
+    logger.debug(`[position-cache] SET ${positions.length} position(s) for wallet ${walletAddress.slice(0, 8)}...`);
+  }
+
+  return positions;
+}
+
+/**
+ * Fetch positions from RPC
+ */
+async function fetchPositionsFromRPC(network: string, walletAddress: string): Promise<PositionInfo[]> {
+  const meteora = await Meteora.getInstance(network);
+
+  logger.info(`Fetching all positions for wallet ${walletAddress}`);
+
   const positions = await meteora.getAllPositionsForWallet(new PublicKey(walletAddress));
+
+  logger.info(`Found ${positions.length} Meteora position(s) for wallet ${walletAddress.slice(0, 8)}...`);
   return positions;
 }
 

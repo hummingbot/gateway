@@ -12,16 +12,6 @@
   {
     "type": "clmm",
     "network": "mainnet-beta",
-    "baseSymbol": "TRUMP",
-    "quoteSymbol": "USDC",
-    "address": "9d9mb8kooFfaD3SctgZtkxQypkshx6ezhbKio89ixyy2",
-    "baseTokenAddress": "6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN",
-    "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-    "feePct": 0.1
-  },
-  {
-    "type": "clmm",
-    "network": "mainnet-beta",
     "baseSymbol": "JUP",
     "quoteSymbol": "USDC",
     "address": "7HR1ouGwPsCyPScUCx4WJCPyktXMoLitrGkLczd7Vabx",

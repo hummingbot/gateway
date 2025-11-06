@@ -439,4 +439,133 @@ export class PoolService {
       return {};
     }
   }
+
+  /**
+   * Track pools for a specific network by loading from conf/pools and fetching pool info
+   * This is a chain-agnostic method that can be used by any chain connector
+   *
+   * @param network Network to track pools for
+   * @param poolCache Cache manager to store pool data
+   * @param getPoolInfo Callback to fetch pool info for a specific connector/pool
+   * @param isTrackingCallback Optional callback to check if tracking is already in progress
+   * @returns Object with successCount and failedCount
+   */
+  public async trackPools(
+    network: string,
+    poolCache: any, // CacheManager<PoolData>
+    getPoolInfo: (connector: string, poolAddress: string, poolType: 'amm' | 'clmm') => Promise<any>,
+    isTrackingCallback?: () => boolean,
+  ): Promise<{ successCount: number; failedCount: number }> {
+    // Check if tracking is already in progress
+    if (isTrackingCallback && isTrackingCallback()) {
+      logger.debug('Pool tracking already in progress, skipping');
+      return { successCount: 0, failedCount: 0 };
+    }
+
+    const poolsDir = path.join(rootPath(), 'conf', 'pools');
+    const exists = await fse.pathExists(poolsDir);
+    if (!exists) {
+      logger.info('No pools directory found, skipping pool tracking');
+      return { successCount: 0, failedCount: 0 };
+    }
+
+    const files = await fse.readdir(poolsDir);
+    const poolFiles = files.filter((file) => file.endsWith('.json'));
+
+    if (poolFiles.length === 0) {
+      logger.info('No pool files found, skipping pool tracking');
+      return { successCount: 0, failedCount: 0 };
+    }
+
+    logger.info(`Loading pools from ${poolFiles.length} connector(s)...`);
+    let successCount = 0;
+    let failedCount = 0;
+
+    // Collect all pools to fetch
+    const poolsToFetch: Array<{ connector: string; pool: Pool }> = [];
+
+    for (const file of poolFiles) {
+      try {
+        const connector = file.replace('.json', '');
+        const poolsData = await this.loadPoolList(connector);
+
+        // Filter pools for this network
+        const networkPools = poolsData.filter((pool) => pool.network === network);
+        poolsToFetch.push(...networkPools.map((pool) => ({ connector, pool })));
+      } catch (error: any) {
+        logger.warn(`Failed to read pools from ${file}: ${error.message}`);
+      }
+    }
+
+    if (poolsToFetch.length === 0) {
+      logger.info('🏊 No pools to track for this network');
+      return { successCount: 0, failedCount: 0 };
+    }
+
+    // Use rate limiter to fetch pools (2 concurrent, 500ms delay between requests)
+    const { RateLimiter } = await import('./rate-limiter');
+    const limiter = new RateLimiter({
+      maxConcurrent: 2,
+      minDelay: 500,
+      name: 'pool-loader',
+    });
+
+    logger.info(`Fetching ${poolsToFetch.length} pool(s) with rate limiting...`);
+
+    for (const { connector, pool } of poolsToFetch) {
+      await limiter.execute(async () => {
+        try {
+          // Fetch pool info via callback
+          const poolInfo = await getPoolInfo(connector, pool.address, pool.type);
+
+          if (poolInfo) {
+            // Store using only pool address as key (no connector prefix needed)
+            poolCache.set(pool.address, { poolInfo, poolType: pool.type });
+            successCount++;
+            logger.debug(`[pool-cache] Loaded ${pool.address}`);
+          } else {
+            logger.warn(`Failed to fetch pool info for ${pool.address}`);
+            failedCount++;
+          }
+        } catch (error: any) {
+          logger.warn(`Failed to fetch pool ${pool.address} from ${connector}: ${error.message}`);
+          failedCount++;
+        }
+      });
+    }
+
+    logger.info(`🏊 Loaded ${successCount} pool(s) into cache${failedCount > 0 ? ` (${failedCount} failed)` : ''}`);
+    return { successCount, failedCount };
+  }
+
+  /**
+   * Refresh a single pool's data in the background
+   * This is a chain-agnostic method that can be used by any chain connector
+   *
+   * @param poolAddress Pool address (cache key)
+   * @param poolCache Cache manager to store pool data
+   * @param getPoolInfo Callback to fetch pool info for a specific pool
+   */
+  public async refreshPool(
+    poolAddress: string,
+    poolCache: any, // CacheManager<PoolData>
+    getPoolInfo: (poolAddress: string, poolType?: 'amm' | 'clmm') => Promise<any>,
+  ): Promise<void> {
+    try {
+      // Get existing pool type from cache if available
+      const cached = poolCache.get(poolAddress);
+      const poolType = cached?.poolType;
+
+      // Fetch fresh pool info
+      const poolInfo = await getPoolInfo(poolAddress, poolType);
+
+      if (poolInfo) {
+        // Preserve poolType from original cache entry
+        poolCache.set(poolAddress, { poolInfo, poolType });
+        logger.debug(`Background pool refresh completed for ${poolAddress}`);
+      }
+    } catch (error: any) {
+      logger.warn(`Background pool refresh failed for ${poolAddress}: ${error.message}`);
+    }
+  }
 }
