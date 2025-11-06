@@ -192,7 +192,8 @@ export const TopPoolsQuerySchema = Type.Object({
   type: Type.Optional(
     Type.Union([Type.Literal('amm'), Type.Literal('clmm')], {
       description: 'Filter by pool type: amm (v2-style) or clmm (v3-style concentrated liquidity)',
-      examples: ['amm', 'clmm'],
+      default: 'clmm',
+      examples: ['clmm', 'amm'],
     }),
   ),
 });

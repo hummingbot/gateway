@@ -35,7 +35,7 @@ export const topPoolsRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { symbolOrAddress } = request.params;
-      const { chainNetwork, limit = 10, connector, type } = request.query;
+      const { chainNetwork, limit = 10, connector, type = 'clmm' } = request.query;
 
       try {
         // Parse chain-network parameter
