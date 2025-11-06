@@ -923,8 +923,8 @@ export class Solana {
       return allPositions;
     };
 
-    // Use PositionsService to refresh positions
-    await positionsService.refreshPositions(address, this.positionCache, getPositions);
+    // Use PositionsService to track positions (works for both initial and refresh)
+    await positionsService.trackPositions([address], this.positionCache, getPositions);
   }
 
   /**
