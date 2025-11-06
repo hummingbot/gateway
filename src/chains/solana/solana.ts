@@ -104,6 +104,9 @@ export class Solana {
   private positionCache?: CacheManager<PositionData>;
   private poolCache?: CacheManager<PoolData>;
 
+  // Wallet addresses to track for position refresh (separate from position cache keys)
+  private trackedWallets: Set<string> = new Set();
+
   // Flag to prevent recursive pool tracking during initialization
   private isTrackingPools: boolean = false;
 
@@ -788,143 +791,134 @@ export class Solana {
   }
 
   /**
-   * Refresh positions for a wallet in the background
+   * Fetch positions for a wallet from all connectors
    */
-  private async refreshPositionsInBackground(address: string): Promise<void> {
-    const { PositionsService } = await import('../../services/positions-service');
-    const positionsService = PositionsService.getInstance();
+  private async fetchPositionsForWallet(walletAddress: string): Promise<any[]> {
+    const allPositions: any[] = [];
+    const { PublicKey } = await import('@solana/web3.js');
 
-    // Define callback to fetch positions for a wallet from all connectors
-    const getPositions = async (walletAddress: string): Promise<any[]> => {
-      const allPositions: any[] = [];
-      const { PublicKey } = await import('@solana/web3.js');
+    // Try Meteora
+    try {
+      const { Meteora } = await import('../../connectors/meteora/meteora');
+      const meteora = await Meteora.getInstance(this.network);
+      const meteoraPositions = await meteora.getAllPositionsForWallet(new PublicKey(walletAddress));
 
-      // Try Meteora
-      try {
-        const { Meteora } = await import('../../connectors/meteora/meteora');
-        const meteora = await Meteora.getInstance(this.network);
-        const meteoraPositions = await meteora.getAllPositionsForWallet(new PublicKey(walletAddress));
-
-        // Add connector metadata to each position
-        for (const position of meteoraPositions) {
-          allPositions.push({
-            connector: 'meteora',
-            positionId: position.address,
-            poolAddress: position.poolAddress,
-            baseToken: position.baseTokenAddress,
-            quoteToken: position.quoteTokenAddress,
-            liquidity: position.baseTokenAmount + position.quoteTokenAmount,
-            ...position,
-          });
-        }
-        logger.debug(`Fetched ${meteoraPositions.length} Meteora position(s) for ${walletAddress.slice(0, 8)}...`);
-      } catch (error: any) {
-        logger.debug(`Could not fetch Meteora positions for ${walletAddress.slice(0, 8)}...: ${error.message}`);
-      }
-
-      // Try Raydium CLMM
-      try {
-        const { Raydium } = await import('../../connectors/raydium/raydium');
-        const raydium = await Raydium.getInstance(this.network);
-
-        const { wallet } = await raydium.prepareWallet(walletAddress);
-        await raydium.setOwner(wallet);
-
-        const programIds = [
-          'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK', // CLMM program
-          'devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH', // Devnet CLMM
-        ];
-
-        let raydiumCount = 0;
-        for (const programId of programIds) {
-          try {
-            const positions = await raydium.raydiumSDK.clmm.getOwnerPositionInfo({ programId });
-
-            // Transform Raydium positions to PositionInfo format
-            for (const position of positions) {
-              try {
-                const positionInfo = await raydium.getPositionInfo(position.nftMint.toString());
-                if (positionInfo) {
-                  allPositions.push({
-                    connector: 'raydium',
-                    positionId: positionInfo.address,
-                    poolAddress: positionInfo.poolAddress,
-                    baseToken: positionInfo.baseTokenAddress,
-                    quoteToken: positionInfo.quoteTokenAddress,
-                    liquidity: positionInfo.baseTokenAmount + positionInfo.quoteTokenAmount,
-                    ...positionInfo,
-                  });
-                  raydiumCount++;
-                }
-              } catch {
-                // Skip position if can't fetch info
-              }
-            }
-          } catch {
-            // No positions for this program ID
-          }
-        }
-        logger.debug(`Fetched ${raydiumCount} Raydium position(s) for ${walletAddress.slice(0, 8)}...`);
-      } catch (error: any) {
-        logger.debug(`Could not fetch Raydium positions for ${walletAddress.slice(0, 8)}...: ${error.message}`);
-      }
-
-      // Try PancakeSwap - scan NFT token accounts
-      try {
-        const { PancakeswapSol } = await import('../../connectors/pancakeswap-sol/pancakeswap-sol');
-        const pancakeswapSol = await PancakeswapSol.getInstance(this.network);
-
-        // Get all token accounts owned by the wallet
-        const walletPubkey = new PublicKey(walletAddress);
-        const [splTokenAccounts, token2022Accounts] = await Promise.all([
-          this.connection.getParsedTokenAccountsByOwner(walletPubkey, {
-            programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
-          }),
-          this.connection.getParsedTokenAccountsByOwner(walletPubkey, {
-            programId: new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'),
-          }),
-        ]);
-
-        const allTokenAccounts = [...splTokenAccounts.value, ...token2022Accounts.value];
-
-        // Filter for NFT token accounts (amount = 1, decimals = 0)
-        const nftAccounts = allTokenAccounts.filter((account) => {
-          const amount = account.account.data.parsed.info.tokenAmount.uiAmount;
-          const decimals = account.account.data.parsed.info.tokenAmount.decimals;
-          return amount === 1 && decimals === 0;
+      // Add connector metadata to each position
+      for (const position of meteoraPositions) {
+        allPositions.push({
+          connector: 'meteora',
+          positionId: position.address,
+          poolAddress: position.poolAddress,
+          baseToken: position.baseTokenAddress,
+          quoteToken: position.quoteTokenAddress,
+          liquidity: position.baseTokenAmount + position.quoteTokenAmount,
+          ...position,
         });
-
-        // Check each NFT to see if it's a PancakeSwap position
-        for (const nftAccount of nftAccounts) {
-          const mint = nftAccount.account.data.parsed.info.mint;
-          try {
-            const positionInfo = await pancakeswapSol.getPositionInfo(mint);
-            if (positionInfo) {
-              allPositions.push({
-                connector: 'pancakeswap-sol',
-                positionId: positionInfo.address,
-                poolAddress: positionInfo.poolAddress,
-                baseToken: positionInfo.baseTokenAddress,
-                quoteToken: positionInfo.quoteTokenAddress,
-                liquidity: positionInfo.baseTokenAmount + positionInfo.quoteTokenAmount,
-                ...positionInfo,
-              });
-            }
-          } catch {
-            // Not a PancakeSwap position, skip
-          }
-        }
-        const pancakeCount = allPositions.filter((p) => p.connector === 'pancakeswap-sol').length;
-        logger.debug(`Fetched ${pancakeCount} PancakeSwap position(s) for ${walletAddress.slice(0, 8)}...`);
-      } catch (error: any) {
-        logger.debug(`Could not fetch PancakeSwap positions for ${walletAddress.slice(0, 8)}...: ${error.message}`);
       }
+      logger.debug(`Fetched ${meteoraPositions.length} Meteora position(s) for ${walletAddress.slice(0, 8)}...`);
+    } catch (error: any) {
+      logger.debug(`Could not fetch Meteora positions for ${walletAddress.slice(0, 8)}...: ${error.message}`);
+    }
 
-      return allPositions;
-    };
+    // Try Raydium CLMM
+    try {
+      const { Raydium } = await import('../../connectors/raydium/raydium');
+      const raydium = await Raydium.getInstance(this.network);
 
-    // Use PositionsService to track positions (works for both initial and refresh)
-    await positionsService.trackPositions([address], this.positionCache, getPositions);
+      const { wallet } = await raydium.prepareWallet(walletAddress);
+      await raydium.setOwner(wallet);
+
+      const programIds = [
+        'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK', // CLMM program
+        'devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH', // Devnet CLMM
+      ];
+
+      let raydiumCount = 0;
+      for (const programId of programIds) {
+        try {
+          const positions = await raydium.raydiumSDK.clmm.getOwnerPositionInfo({ programId });
+
+          // Transform Raydium positions to PositionInfo format
+          for (const position of positions) {
+            try {
+              const positionInfo = await raydium.getPositionInfo(position.nftMint.toString());
+              if (positionInfo) {
+                allPositions.push({
+                  connector: 'raydium',
+                  positionId: positionInfo.address,
+                  poolAddress: positionInfo.poolAddress,
+                  baseToken: positionInfo.baseTokenAddress,
+                  quoteToken: positionInfo.quoteTokenAddress,
+                  liquidity: positionInfo.baseTokenAmount + positionInfo.quoteTokenAmount,
+                  ...positionInfo,
+                });
+                raydiumCount++;
+              }
+            } catch {
+              // Skip position if can't fetch info
+            }
+          }
+        } catch {
+          // No positions for this program ID
+        }
+      }
+      logger.debug(`Fetched ${raydiumCount} Raydium position(s) for ${walletAddress.slice(0, 8)}...`);
+    } catch (error: any) {
+      logger.debug(`Could not fetch Raydium positions for ${walletAddress.slice(0, 8)}...: ${error.message}`);
+    }
+
+    // Try PancakeSwap - scan NFT token accounts
+    try {
+      const { PancakeswapSol } = await import('../../connectors/pancakeswap-sol/pancakeswap-sol');
+      const pancakeswapSol = await PancakeswapSol.getInstance(this.network);
+
+      // Get all token accounts owned by the wallet
+      const walletPubkey = new PublicKey(walletAddress);
+      const [splTokenAccounts, token2022Accounts] = await Promise.all([
+        this.connection.getParsedTokenAccountsByOwner(walletPubkey, {
+          programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
+        }),
+        this.connection.getParsedTokenAccountsByOwner(walletPubkey, {
+          programId: new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'),
+        }),
+      ]);
+
+      const allTokenAccounts = [...splTokenAccounts.value, ...token2022Accounts.value];
+
+      // Filter for NFT token accounts (amount = 1, decimals = 0)
+      const nftAccounts = allTokenAccounts.filter((account) => {
+        const amount = account.account.data.parsed.info.tokenAmount.uiAmount;
+        const decimals = account.account.data.parsed.info.tokenAmount.decimals;
+        return amount === 1 && decimals === 0;
+      });
+
+      // Check each NFT to see if it's a PancakeSwap position
+      for (const nftAccount of nftAccounts) {
+        const mint = nftAccount.account.data.parsed.info.mint;
+        try {
+          const positionInfo = await pancakeswapSol.getPositionInfo(mint);
+          if (positionInfo) {
+            allPositions.push({
+              connector: 'pancakeswap-sol',
+              positionId: positionInfo.address,
+              poolAddress: positionInfo.poolAddress,
+              baseToken: positionInfo.baseTokenAddress,
+              quoteToken: positionInfo.quoteTokenAddress,
+              liquidity: positionInfo.baseTokenAmount + positionInfo.quoteTokenAmount,
+              ...positionInfo,
+            });
+          }
+        } catch {
+          // Not a PancakeSwap position, skip
+        }
+      }
+      const pancakeCount = allPositions.filter((p) => p.connector === 'pancakeswap-sol').length;
+      logger.debug(`Fetched ${pancakeCount} PancakeSwap position(s) for ${walletAddress.slice(0, 8)}...`);
+    } catch (error: any) {
+      logger.debug(`Could not fetch PancakeSwap positions for ${walletAddress.slice(0, 8)}...: ${error.message}`);
+    }
+
+    return allPositions;
   }
 
   /**
@@ -2526,14 +2520,27 @@ export class Solana {
 
       // Track positions for all wallets if position tracking is enabled
       if (this.positionCache && walletAddresses.length > 0) {
-        await this.trackWalletPositions(walletAddresses);
+        // Add wallets to tracked set
+        walletAddresses.forEach((addr) => this.trackedWallets.add(addr));
 
-        // Start periodic position cache refresh
-        this.positionCache.startPeriodicRefresh(async (keys) => {
-          logger.debug(`Refreshing ${keys.length} wallet positions from periodic timer`);
-          for (const address of keys) {
+        // Use PositionsService to track positions for all wallets
+        const { PositionsService } = await import('../../services/positions-service');
+        const positionsService = PositionsService.getInstance();
+
+        // Define callback to fetch positions (same as refreshPositionsInBackground)
+        const getPositions = async (walletAddress: string): Promise<any[]> => {
+          return await this.fetchPositionsForWallet(walletAddress);
+        };
+
+        await positionsService.trackPositions(walletAddresses, this.positionCache, getPositions);
+
+        // Start periodic position cache refresh using tracked wallets
+        this.positionCache.startPeriodicRefresh(async (_keys) => {
+          const walletsToRefresh = Array.from(this.trackedWallets);
+          logger.debug(`Refreshing ${walletsToRefresh.length} wallet positions from periodic timer`);
+          for (const address of walletsToRefresh) {
             try {
-              await this.refreshPositionsInBackground(address);
+              await positionsService.trackPositions([address], this.positionCache!, getPositions);
             } catch (error: any) {
               logger.warn(`Periodic position refresh failed for ${address}: ${error.message}`);
             }
@@ -2560,73 +2567,6 @@ export class Solana {
     } catch (error: any) {
       logger.error(`Error during wallet auto-subscription: ${error.message}`);
     }
-  }
-
-  /**
-   * Track CLMM positions for all wallets
-   */
-  private async trackWalletPositions(walletAddresses: string[]): Promise<void> {
-    logger.info(`Tracking positions for ${walletAddresses.length} wallet(s)...`);
-    let totalPositions = 0;
-    const positionsByConnector: Record<string, number> = {};
-
-    for (const address of walletAddresses) {
-      try {
-        const allPositions: PositionData['positions'] = [];
-
-        // Fetch positions from each connector by calling route functions
-        // Use a minimal fastify mock since we don't need httpErrors for successful calls
-        const fastifyMock = {
-          httpErrors: {
-            badRequest: (msg: string) => new Error(msg),
-            notFound: (msg: string) => new Error(msg),
-          },
-        } as any;
-
-        // PancakeSwap Solana
-        try {
-          const { getPositionsOwned } = await import('../../connectors/pancakeswap-sol/clmm-routes/positionsOwned');
-          const pancakeswapPositions = await getPositionsOwned(fastifyMock, this.network, address);
-
-          for (const pos of pancakeswapPositions) {
-            allPositions.push({
-              connector: 'pancakeswap-sol',
-              positionId: pos.address,
-              poolAddress: pos.poolAddress,
-              baseToken: pos.baseTokenAddress,
-              quoteToken: pos.quoteTokenAddress,
-              liquidity: pos.baseTokenAmount + pos.quoteTokenAmount,
-              ...pos,
-            });
-          }
-
-          positionsByConnector['pancakeswap-sol'] =
-            (positionsByConnector['pancakeswap-sol'] || 0) + pancakeswapPositions.length;
-        } catch (error: any) {
-          logger.debug(`No PancakeSwap positions for ${address.slice(0, 8)}...`);
-        }
-
-        // TODO: Add Meteora and Raydium when their positions-owned routes are implemented
-
-        // Store each position individually in cache by positionId (address)
-        for (const position of allPositions) {
-          this.positionCache!.set(position.positionId, { positions: [position] });
-        }
-        totalPositions += allPositions.length;
-
-        // Log positions by connector for this wallet
-        const connectorSummary = Object.entries(positionsByConnector)
-          .map(([connector, count]) => `${count} ${connector}`)
-          .join(', ');
-        logger.info(
-          `[${address.slice(0, 8)}...] Found ${allPositions.length} position(s): ${connectorSummary || 'none'}`,
-        );
-      } catch (error: any) {
-        logger.warn(`Failed to track positions for ${address}: ${error.message}`);
-      }
-    }
-
-    logger.info(`📍 Tracking ${totalPositions} position(s) across ${walletAddresses.length} wallet(s)`);
   }
 
   /**
