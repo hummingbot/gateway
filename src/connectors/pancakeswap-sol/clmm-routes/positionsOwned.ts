@@ -20,7 +20,6 @@ export async function getPositionsOwned(
   walletAddress: string,
 ): Promise<PositionInfo[]> {
   const solana = await Solana.getInstance(network);
-  const pancakeswapSol = await PancakeswapSol.getInstance(network);
 
   // Validate wallet address
   try {
@@ -28,6 +27,66 @@ export async function getPositionsOwned(
   } catch (error) {
     throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
   }
+
+  // Check cache first
+  const positionCache = solana.getPositionCache();
+  if (positionCache) {
+    const cached = positionCache.get(walletAddress);
+    if (cached) {
+      // Filter for pancakeswap-sol positions only
+      const pancakeswapPositions = cached.positions.filter((pos) => pos.connector === 'pancakeswap-sol');
+
+      logger.debug(
+        `[position-cache] HIT for ${walletAddress} (${pancakeswapPositions.length} pancakeswap-sol positions)`,
+      );
+
+      // Check if stale and trigger background refresh
+      if (positionCache.isStale(walletAddress)) {
+        logger.debug(`[position-cache] STALE for ${walletAddress}, triggering background refresh`);
+        // Non-blocking refresh
+        refreshPositionsInBackground(solana, walletAddress).catch((err) =>
+          logger.warn(`Background position refresh failed for ${walletAddress}: ${err.message}`),
+        );
+      }
+
+      // Extract PositionInfo from cached position data
+      const positions: PositionInfo[] = pancakeswapPositions.map((pos) => {
+        const { connector, positionId, poolAddress, baseToken, quoteToken, liquidity, ...positionInfo } = pos;
+        return positionInfo as PositionInfo;
+      });
+
+      return positions;
+    }
+    logger.debug(`[position-cache] MISS for ${walletAddress}`);
+  }
+
+  // Cache miss or disabled - fetch from RPC
+  const positions = await fetchPositionsFromRPC(solana, walletAddress);
+
+  // Populate cache for future requests
+  if (positionCache && positions.length > 0) {
+    const positionData = positions.map((positionInfo) => ({
+      connector: 'pancakeswap-sol',
+      positionId: positionInfo.address,
+      poolAddress: positionInfo.poolAddress,
+      baseToken: positionInfo.baseTokenAddress,
+      quoteToken: positionInfo.quoteTokenAddress,
+      liquidity: positionInfo.baseTokenAmount + positionInfo.quoteTokenAmount,
+      ...positionInfo,
+    }));
+
+    positionCache.set(walletAddress, { positions: positionData });
+    logger.debug(`[position-cache] SET for ${walletAddress} (${positions.length} positions)`);
+  }
+
+  return positions;
+}
+
+/**
+ * Fetch positions from RPC
+ */
+async function fetchPositionsFromRPC(solana: Solana, walletAddress: string): Promise<PositionInfo[]> {
+  const pancakeswapSol = await PancakeswapSol.getInstance(solana.network);
 
   logger.info(`Fetching all positions for wallet ${walletAddress}`);
 
@@ -69,6 +128,29 @@ export async function getPositionsOwned(
 
   logger.info(`Found ${positions.length} total positions`);
   return positions;
+}
+
+/**
+ * Background refresh of positions
+ */
+async function refreshPositionsInBackground(solana: Solana, walletAddress: string): Promise<void> {
+  const positions = await fetchPositionsFromRPC(solana, walletAddress);
+  const positionCache = solana.getPositionCache();
+
+  if (positionCache && positions.length > 0) {
+    const positionData = positions.map((positionInfo) => ({
+      connector: 'pancakeswap-sol',
+      positionId: positionInfo.address,
+      poolAddress: positionInfo.poolAddress,
+      baseToken: positionInfo.baseTokenAddress,
+      quoteToken: positionInfo.quoteTokenAddress,
+      liquidity: positionInfo.baseTokenAmount + positionInfo.quoteTokenAmount,
+      ...positionInfo,
+    }));
+
+    positionCache.set(walletAddress, { positions: positionData });
+    logger.debug(`[position-cache] Background refresh completed for ${walletAddress} (${positions.length} positions)`);
+  }
 }
 
 export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
