@@ -81,6 +81,7 @@ export interface PoolData {
   poolInfo: {
     [key: string]: any; // Pool-specific data from pool-info endpoint
   };
+  poolType?: 'amm' | 'clmm'; // Pool type from conf/pools/*.json
 }
 
 enum TransactionResponseStatusCode {
@@ -791,10 +792,9 @@ export class Solana {
         const poolCache = this.poolCache;
         if (poolCache) {
           const cached = poolCache.get(cacheKey);
-          if (cached && cached.poolInfo) {
-            // Determine pool type from cached data
-            const cachedPoolInfo = cached.poolInfo as any;
-            if (cachedPoolInfo.poolType === 'cpmm' || cachedPoolInfo.poolType === 'amm') {
+          if (cached && cached.poolType) {
+            // Use stored pool type to determine which method to call
+            if (cached.poolType === 'amm') {
               poolInfo = await raydium.getAmmPoolInfo(poolAddress);
             } else {
               poolInfo = await raydium.getClmmPoolInfo(poolAddress);
@@ -811,7 +811,10 @@ export class Solana {
       }
 
       if (poolInfo && this.poolCache) {
-        this.poolCache.set(cacheKey, { poolInfo });
+        // Preserve poolType from original cache entry
+        const cached = this.poolCache.get(cacheKey);
+        const poolType = cached?.poolType;
+        this.poolCache.set(cacheKey, { poolInfo, poolType });
         logger.debug(`Background pool refresh completed for ${cacheKey}`);
       }
     } catch (error: any) {
@@ -2500,7 +2503,7 @@ export class Solana {
             }
 
             if (poolInfo) {
-              this.poolCache!.set(cacheKey, { poolInfo });
+              this.poolCache!.set(cacheKey, { poolInfo, poolType: pool.type });
               successCount++;
               logger.debug(`[pool-cache] Loaded ${cacheKey}`);
             } else {
