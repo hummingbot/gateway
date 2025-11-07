@@ -137,7 +137,14 @@ export class PancakeswapSol {
       offset += 16;
 
       // Read sqrt_price_x64 (16 bytes, u128)
-      const sqrtPriceX64 = data.readBigUInt64LE(offset);
+      // Need to read as 16 bytes, not 8! Use slice and create BigInt from buffer
+      const sqrtPriceX64Bytes = data.slice(offset, offset + 16);
+      // Convert little-endian bytes to BigInt
+      let sqrtPriceX64Value = BigInt(0);
+      for (let i = 0; i < 16; i++) {
+        sqrtPriceX64Value += BigInt(sqrtPriceX64Bytes[i]) << BigInt(i * 8);
+      }
+      const sqrtPriceX64 = sqrtPriceX64Value;
       offset += 16;
 
       // Read tick_current (4 bytes, i32)
@@ -162,6 +169,10 @@ export class PancakeswapSol {
       const price = Math.pow(sqrtPrice, 2);
 
       // Adjust price for decimal difference
+      // sqrtPriceX64 represents sqrt(token1/token0) in raw units (standard CLMM)
+      // After squaring: token1/token0 in raw units
+      // To convert to human-readable units: price * 10^(decimals0 - decimals1)
+      // This gives us token1/token0 in human units (quote/base)
       const decimalDiff = mintDecimals0 - mintDecimals1;
       const adjustedPrice = price * Math.pow(10, decimalDiff);
 
