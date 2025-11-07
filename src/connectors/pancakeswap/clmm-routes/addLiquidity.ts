@@ -2,7 +2,7 @@ import { Contract } from '@ethersproject/contracts';
 import { CurrencyAmount, Percent } from '@pancakeswap/sdk';
 import { Position, NonfungiblePositionManager } from '@pancakeswap/v3-sdk';
 import { Static } from '@sinclair/typebox';
-import { BigNumber } from 'ethers';
+import { BigNumber, utils } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
