@@ -105,12 +105,14 @@ export async function openPosition(
   logger.info(`Quote Max: base=${quote.baseTokenAmountMax}, quote=${quote.quoteTokenAmountMax}`);
 
   // Convert amounts to BN with slippage
+  // Note: quote already includes a buffer, so we use the exact amounts from quote
+  // and apply the user's slippage tolerance
   const effectiveSlippage = slippagePct || 1.0;
   const amount0Max = new BN(
-    (quote.baseTokenAmountMax * (1 + effectiveSlippage / 100) * 10 ** baseToken.decimals).toFixed(0),
+    (quote.baseTokenAmount * (1 + effectiveSlippage / 100) * 10 ** baseToken.decimals).toFixed(0),
   );
   const amount1Max = new BN(
-    (quote.quoteTokenAmountMax * (1 + effectiveSlippage / 100) * 10 ** quoteToken.decimals).toFixed(0),
+    (quote.quoteTokenAmount * (1 + effectiveSlippage / 100) * 10 ** quoteToken.decimals).toFixed(0),
   );
 
   logger.info(`Amounts with slippage (${effectiveSlippage}%):`);
