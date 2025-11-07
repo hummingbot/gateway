@@ -359,9 +359,20 @@ export class HeliusService {
       throw new Error('WebSocket not connected');
     }
 
-    const subscriptionId = this.nextSubscriptionId++;
     const encoding = options?.encoding || 'jsonParsed';
     const commitment = options?.commitment || 'confirmed';
+
+    // Check if there's already an active subscription for this address with same options
+    for (const [existingId, sub] of this.accountSubscriptions.entries()) {
+      if (sub.address === address && sub.encoding === encoding && sub.commitment === commitment) {
+        logger.debug(
+          `Reusing existing subscription ${existingId} for account ${address} (encoding: ${encoding}, commitment: ${commitment})`,
+        );
+        return existingId;
+      }
+    }
+
+    const subscriptionId = this.nextSubscriptionId++;
 
     // Store subscription details
     this.accountSubscriptions.set(subscriptionId, {
