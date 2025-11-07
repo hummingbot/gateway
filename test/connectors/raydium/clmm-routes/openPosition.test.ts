@@ -130,6 +130,10 @@ describe('POST /open-position', () => {
         quoteTokenChange: -150,
         rent: 0.002,
       }),
+      getPositionCache: jest.fn().mockReturnValue({
+        get: jest.fn(),
+        set: jest.fn(),
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -228,6 +232,10 @@ describe('POST /open-position', () => {
         baseTokenChange: -1,
         quoteTokenChange: -150,
         rent: 0.002,
+      }),
+      getPositionCache: jest.fn().mockReturnValue({
+        get: jest.fn(),
+        set: jest.fn(),
       }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
@@ -420,6 +428,10 @@ describe('POST /open-position', () => {
         quoteTokenChange: -150,
         rent: 0.002,
       }),
+      getPositionCache: jest.fn().mockReturnValue({
+        get: jest.fn(),
+        set: jest.fn(),
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
@@ -496,6 +508,10 @@ describe('POST /open-position', () => {
         baseTokenChange: -1,
         quoteTokenChange: -150,
         rent: 0.002,
+      }),
+      getPositionCache: jest.fn().mockReturnValue({
+        get: jest.fn(),
+        set: jest.fn(),
       }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);

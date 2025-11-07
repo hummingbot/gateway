@@ -98,7 +98,9 @@ describe('Unified Trading CLMM Routes', () => {
         query: {},
       });
 
-      expect([400, 500]).toContain(response.statusCode);
+      // Route should exist and return 200 with empty array when no params provided
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual([]);
     });
   });
 

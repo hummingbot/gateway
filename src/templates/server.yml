@@ -31,5 +31,5 @@ logLevel: info
 # CoinGecko API key for GeckoTerminal integration (optional)
 # Sign up at https://www.coingecko.com/en/api/pricing to get an API key
 # If not provided, requests will be made without authentication (free tier, 30 calls/minute)
-coingeckoAPIKey:
+coingeckoAPIKey: ''
 

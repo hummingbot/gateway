@@ -16,7 +16,7 @@
       "default": "info"
     },
     "coingeckoAPIKey": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "CoinGecko API key for GeckoTerminal integration (optional)"
     }
   },
