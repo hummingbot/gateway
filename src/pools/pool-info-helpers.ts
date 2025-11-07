@@ -6,10 +6,7 @@ import { FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
-import { Meteora } from '../connectors/meteora/meteora';
-import { Pancakeswap } from '../connectors/pancakeswap/pancakeswap';
-import { Raydium } from '../connectors/raydium/raydium';
-import { Uniswap } from '../connectors/uniswap/uniswap';
+import { fetchEthereumPoolInfo, fetchSolanaPoolInfo, getConnectorChain } from '../connectors/connector-registry';
 import { PoolInfo as AmmPoolInfo } from '../schemas/amm-schema';
 import { PoolInfo as ClmmPoolInfo } from '../schemas/clmm-schema';
 import { logger } from '../services/logger';
@@ -21,7 +18,7 @@ interface PoolInfoResult {
 }
 
 /**
- * Fetch pool info from the appropriate connector
+ * Fetch pool info from the appropriate connector using the central registry
  */
 export async function fetchPoolInfo(
   connector: string,
@@ -30,129 +27,70 @@ export async function fetchPoolInfo(
   poolAddress: string,
 ): Promise<PoolInfoResult | null> {
   try {
-    if (connector === 'raydium') {
-      const raydium = await Raydium.getInstance(network);
+    const chain = getConnectorChain(connector);
 
-      if (type === 'clmm') {
-        const poolInfo = await raydium.getClmmPoolInfo(poolAddress);
-        return {
-          baseTokenAddress: poolInfo.baseTokenAddress,
-          quoteTokenAddress: poolInfo.quoteTokenAddress,
-          feePct: poolInfo.feePct,
-        };
-      } else {
-        const poolInfo = await raydium.getAmmPoolInfo(poolAddress);
-        return {
-          baseTokenAddress: poolInfo.baseTokenAddress,
-          quoteTokenAddress: poolInfo.quoteTokenAddress,
-          feePct: poolInfo.feePct,
-        };
-      }
-    } else if (connector === 'meteora') {
-      const meteora = await Meteora.getInstance(network);
-      const poolInfo = await meteora.getPoolInfo(poolAddress);
-      return {
-        baseTokenAddress: poolInfo.baseTokenAddress,
-        quoteTokenAddress: poolInfo.quoteTokenAddress,
-        feePct: poolInfo.feePct,
-      };
-    } else if (connector === 'uniswap') {
-      const ethereum = await Ethereum.getInstance(network);
-      const { getV2PoolInfo, getV3PoolInfo } = await import('../connectors/uniswap/uniswap.utils');
-
-      if (type === 'clmm') {
-        // For CLMM (V3)
-        const poolInfo = await getV3PoolInfo(poolAddress, network);
-        if (!poolInfo) {
-          return null;
-        }
-
-        // Get fee from pool contract
-        const { Contract } = await import('@ethersproject/contracts');
-        const v3PoolABI = [
-          {
-            inputs: [],
-            name: 'fee',
-            outputs: [{ internalType: 'uint24', name: '', type: 'uint24' }],
-            stateMutability: 'view',
-            type: 'function',
-          },
-        ];
-
-        const poolContract = new Contract(poolAddress, v3PoolABI, ethereum.provider);
-        const fee = await poolContract.fee();
-        const feePct = fee / 10000; // Convert from basis points to percentage
-
-        return {
-          baseTokenAddress: poolInfo.baseTokenAddress,
-          quoteTokenAddress: poolInfo.quoteTokenAddress,
-          feePct: feePct,
-        };
-      } else {
-        // For AMM (V2)
-        const poolInfo = await getV2PoolInfo(poolAddress, network);
-        if (!poolInfo) {
-          return null;
-        }
-
-        // Uniswap V2 has fixed 0.3% fee
-        return {
-          baseTokenAddress: poolInfo.baseTokenAddress,
-          quoteTokenAddress: poolInfo.quoteTokenAddress,
-          feePct: 0.3,
-        };
-      }
-    } else if (connector === 'pancakeswap') {
-      const ethereum = await Ethereum.getInstance(network);
-      const { getV2PoolInfo, getV3PoolInfo } = await import('../connectors/pancakeswap/pancakeswap.utils');
-
-      if (type === 'clmm') {
-        // For CLMM (V3)
-        const poolInfo = await getV3PoolInfo(poolAddress, network);
-        if (!poolInfo) {
-          return null;
-        }
-
-        // Get fee from pool contract
-        const { Contract } = await import('@ethersproject/contracts');
-        const v3PoolABI = [
-          {
-            inputs: [],
-            name: 'fee',
-            outputs: [{ internalType: 'uint24', name: '', type: 'uint24' }],
-            stateMutability: 'view',
-            type: 'function',
-          },
-        ];
-
-        const poolContract = new Contract(poolAddress, v3PoolABI, ethereum.provider);
-        const fee = await poolContract.fee();
-        const feePct = fee / 10000; // Convert from basis points to percentage
-
-        return {
-          baseTokenAddress: poolInfo.baseTokenAddress,
-          quoteTokenAddress: poolInfo.quoteTokenAddress,
-          feePct: feePct,
-        };
-      } else {
-        // For AMM (V2)
-        const poolInfo = await getV2PoolInfo(poolAddress, network);
-        if (!poolInfo) {
-          return null;
-        }
-
-        // PancakeSwap V2 has fixed 0.25% fee on BSC, 0.3% on others
-        const feePct = network === 'mainnet' ? 0.25 : 0.3;
-        return {
-          baseTokenAddress: poolInfo.baseTokenAddress,
-          quoteTokenAddress: poolInfo.quoteTokenAddress,
-          feePct: feePct,
-        };
-      }
+    if (!chain) {
+      logger.error(`Unsupported connector: ${connector}`);
+      return null;
     }
 
-    logger.error(`Unsupported connector: ${connector}`);
-    return null;
+    let poolInfo;
+
+    if (chain === 'solana') {
+      poolInfo = await fetchSolanaPoolInfo(connector, network, poolAddress, type);
+    } else if (chain === 'ethereum') {
+      poolInfo = await fetchEthereumPoolInfo(connector, network, poolAddress, type);
+
+      // For Ethereum, need to fetch fee separately for CLMM pools
+      if (type === 'clmm' && poolInfo) {
+        const ethereum = await Ethereum.getInstance(network);
+        const { Contract } = await import('@ethersproject/contracts');
+        const v3PoolABI = [
+          {
+            inputs: [],
+            name: 'fee',
+            outputs: [{ internalType: 'uint24', name: '', type: 'uint24' }],
+            stateMutability: 'view',
+            type: 'function',
+          },
+        ];
+
+        const poolContract = new Contract(poolAddress, v3PoolABI, ethereum.provider);
+        const fee = await poolContract.fee();
+        const feePct = fee / 10000; // Convert from basis points to percentage
+
+        return {
+          baseTokenAddress: poolInfo.baseTokenAddress,
+          quoteTokenAddress: poolInfo.quoteTokenAddress,
+          feePct: feePct,
+        };
+      } else if (type === 'amm' && poolInfo) {
+        // Default V2 fee - can be overridden per connector if needed
+        let feePct = 0.3; // Uniswap V2 default
+        if (connector === 'pancakeswap' && network === 'mainnet') {
+          feePct = 0.25; // PancakeSwap V2 on BSC
+        }
+
+        return {
+          baseTokenAddress: poolInfo.baseTokenAddress,
+          quoteTokenAddress: poolInfo.quoteTokenAddress,
+          feePct: feePct,
+        };
+      }
+    } else {
+      logger.error(`Unsupported chain: ${chain} for connector: ${connector}`);
+      return null;
+    }
+
+    if (!poolInfo) {
+      return null;
+    }
+
+    return {
+      baseTokenAddress: poolInfo.baseTokenAddress,
+      quoteTokenAddress: poolInfo.quoteTokenAddress,
+      feePct: poolInfo.feePct,
+    };
   } catch (error) {
     logger.error(`Error fetching pool info for ${poolAddress}: ${error.message}`);
     return null;
@@ -170,15 +108,21 @@ export async function resolveTokenSymbols(
   quoteTokenAddress: string,
 ): Promise<{ baseSymbol: string; quoteSymbol: string }> {
   try {
-    // Determine chain based on connector
-    let chain: Solana | Ethereum;
+    // Get chain type from connector registry
+    const chainType = getConnectorChain(connector);
 
-    if (connector === 'raydium' || connector === 'meteora') {
+    if (!chainType) {
+      throw new Error(`Unsupported connector: ${connector}`);
+    }
+
+    // Get chain instance based on type
+    let chain: Solana | Ethereum;
+    if (chainType === 'solana') {
       chain = await Solana.getInstance(network);
-    } else if (connector === 'uniswap' || connector === 'pancakeswap') {
+    } else if (chainType === 'ethereum') {
       chain = await Ethereum.getInstance(network);
     } else {
-      throw new Error(`Unsupported connector: ${connector}`);
+      throw new Error(`Unsupported chain type: ${chainType}`);
     }
 
     // Get token info - use getOrFetchToken for Ethereum to fetch from blockchain if not in list

@@ -37,6 +37,14 @@ export const findSavePoolsRoute: FastifyPluginAsync = async (fastify) => {
                 quoteTokenAddress: Type.String(),
                 feePct: Type.Number(),
                 address: Type.String(),
+                volumeUsd24h: Type.Optional(Type.String()),
+                liquidityUsd: Type.Optional(Type.String()),
+                priceNative: Type.Optional(Type.String()),
+                priceUsd: Type.Optional(Type.String()),
+                buys24h: Type.Optional(Type.Number()),
+                sells24h: Type.Optional(Type.Number()),
+                apr: Type.Optional(Type.Number()),
+                timestamp: Type.Optional(Type.Number()),
               }),
             ),
           }),
@@ -132,7 +140,18 @@ export const findSavePoolsRoute: FastifyPluginAsync = async (fastify) => {
               continue;
             }
 
-            // Create pool object
+            // Calculate APR if we have volume and liquidity data
+            let apr: number | undefined;
+            if (poolData.volumeUsd24h && poolData.liquidityUsd) {
+              const volume = parseFloat(poolData.volumeUsd24h);
+              const liquidity = parseFloat(poolData.liquidityUsd);
+              if (!isNaN(volume) && !isNaN(liquidity) && liquidity > 0) {
+                // APR = (daily volume * fee% / liquidity) * 365 * 100
+                apr = ((volume * (poolInfo.feePct / 100)) / liquidity) * 365 * 100;
+              }
+            }
+
+            // Create pool object with optional market data from GeckoTerminal
             const pool: Pool = {
               type: poolData.type as 'amm' | 'clmm',
               network,
@@ -142,6 +161,15 @@ export const findSavePoolsRoute: FastifyPluginAsync = async (fastify) => {
               quoteTokenAddress: poolInfo.quoteTokenAddress,
               feePct: poolInfo.feePct,
               address: poolData.poolAddress,
+              // Market data from GeckoTerminal (TopPoolInfo)
+              volumeUsd24h: poolData.volumeUsd24h,
+              liquidityUsd: poolData.liquidityUsd,
+              priceNative: poolData.priceNative,
+              priceUsd: poolData.priceUsd,
+              buys24h: poolData.txns24h?.buys,
+              sells24h: poolData.txns24h?.sells,
+              apr,
+              timestamp: Date.now(),
             };
 
             // Check if pool already exists

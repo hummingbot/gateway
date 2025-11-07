@@ -2587,28 +2587,12 @@ export class Solana {
       const { PoolService } = await import('../../services/pool-service');
       const poolService = PoolService.getInstance();
 
-      // Define callback to fetch pool info for any connector
+      // Import connector registry for pool fetching
+      const { fetchSolanaPoolInfo } = await import('../../connectors/connector-registry');
+
+      // Define callback to fetch pool info for any connector using the central registry
       const getPoolInfo = async (connector: string, poolAddress: string, poolType: 'amm' | 'clmm'): Promise<any> => {
-        if (connector === 'meteora') {
-          const { Meteora } = await import('../../connectors/meteora/meteora');
-          const meteora = await Meteora.getInstance(this.network);
-          return await meteora.getPoolInfo(poolAddress);
-        } else if (connector === 'raydium') {
-          const { Raydium } = await import('../../connectors/raydium/raydium');
-          const raydium = await Raydium.getInstance(this.network);
-          if (poolType === 'clmm') {
-            return await raydium.getClmmPoolInfo(poolAddress);
-          } else if (poolType === 'amm') {
-            return await raydium.getAmmPoolInfo(poolAddress);
-          }
-        } else if (connector === 'pancakeswap-sol') {
-          const { PancakeswapSol } = await import('../../connectors/pancakeswap-sol/pancakeswap-sol');
-          const pancakeswap = await PancakeswapSol.getInstance(this.network);
-          return await pancakeswap.getClmmPoolInfo(poolAddress);
-        } else {
-          logger.warn(`Unsupported connector for pool tracking: ${connector}`);
-          return null;
-        }
+        return await fetchSolanaPoolInfo(connector, this.network, poolAddress, poolType);
       };
 
       // Use PoolService to track pools

@@ -13,6 +13,15 @@ export interface Pool {
   quoteTokenAddress: string;
   feePct: number;
   address: string;
+  // Optional market data fields populated from CoinGecko API
+  volumeUsd24h?: string;
+  liquidityUsd?: string;
+  priceNative?: string;
+  priceUsd?: string;
+  buys24h?: number;
+  sells24h?: number;
+  apr?: number; // Annualized percentage rate: (volume * feePct / liquidity) * 365
+  timestamp?: number;
 }
 
 export type PoolFileFormat = Pool[];
