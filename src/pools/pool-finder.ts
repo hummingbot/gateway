@@ -16,7 +16,7 @@ export async function findPools(
     page?: number;
   },
 ): Promise<TopPoolInfo[]> {
-  const { tokenA, tokenB, connector, type = 'clmm', page = 3 } = options;
+  const { tokenA, tokenB, connector, type = 'clmm', page = 10 } = options;
 
   // Parse chain-network parameter using CoinGeckoService
   const coinGeckoService = CoinGeckoService.getInstance();

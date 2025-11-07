@@ -31,8 +31,8 @@ export const findSavePoolsRoute: FastifyPluginAsync = async (fastify) => {
                   enum: ['clmm', 'amm'],
                 }),
                 network: Type.String(),
-                baseSymbol: Type.String(),
-                quoteSymbol: Type.String(),
+                baseSymbol: Type.Optional(Type.String()),
+                quoteSymbol: Type.Optional(Type.String()),
                 baseTokenAddress: Type.String(),
                 quoteTokenAddress: Type.String(),
                 feePct: Type.Number(),
@@ -52,7 +52,7 @@ export const findSavePoolsRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { tokenA, tokenB, chainNetwork, page = 3, connector, type = 'clmm', saveLimit = 1 } = request.query;
+      const { tokenA, tokenB, chainNetwork, page = 10, connector, type = 'clmm', saveLimit = 1 } = request.query;
 
       try {
         // Parse chain-network parameter using CoinGeckoService
@@ -121,23 +121,20 @@ export const findSavePoolsRoute: FastifyPluginAsync = async (fastify) => {
             }
 
             // Resolve token symbols - handle missing tokens gracefully
-            let baseSymbol: string;
-            let quoteSymbol: string;
+            const symbols = await resolveTokenSymbols(
+              poolData.connector,
+              network,
+              poolInfo.baseTokenAddress,
+              poolInfo.quoteTokenAddress,
+            );
 
-            try {
-              const symbols = await resolveTokenSymbols(
-                poolData.connector,
-                network,
-                poolInfo.baseTokenAddress,
-                poolInfo.quoteTokenAddress,
+            const baseSymbol = symbols.baseSymbol;
+            const quoteSymbol = symbols.quoteSymbol;
+
+            if (!baseSymbol || !quoteSymbol) {
+              logger.warn(
+                `Could not resolve symbols for pool ${poolData.poolAddress} (base: ${baseSymbol || 'unknown'}, quote: ${quoteSymbol || 'unknown'}), saving anyway`,
               );
-              baseSymbol = symbols.baseSymbol;
-              quoteSymbol = symbols.quoteSymbol;
-            } catch (tokenError: any) {
-              const reason = `Failed to resolve token symbols: ${tokenError.message}`;
-              logger.warn(`${reason} for pool ${poolData.poolAddress}, skipping`);
-              failedPools.push({ address: poolData.poolAddress, connector: poolData.connector, reason });
-              continue;
             }
 
             // Calculate APR if we have volume and liquidity data
@@ -176,9 +173,11 @@ export const findSavePoolsRoute: FastifyPluginAsync = async (fastify) => {
             const existingPool = await poolService.getPoolByAddress(poolData.connector, poolData.poolAddress);
 
             if (existingPool) {
+              // Update existing pool with latest market data
               logger.info(
-                `Pool ${baseSymbol}-${quoteSymbol} (${poolData.poolAddress}) already exists, adding to response`,
+                `Pool ${baseSymbol || 'unknown'}-${quoteSymbol || 'unknown'} (${poolData.poolAddress}) already exists, updating with latest data`,
               );
+              await poolService.updatePoolByAddress(poolData.connector, pool);
               savedPools.push(pool);
               continue;
             }
@@ -186,7 +185,7 @@ export const findSavePoolsRoute: FastifyPluginAsync = async (fastify) => {
             // Add pool to the list
             await poolService.addPool(poolData.connector, pool);
             logger.info(
-              `Saved pool ${baseSymbol}-${quoteSymbol} (${poolData.poolAddress}) to ${poolData.connector} ${poolData.type}`,
+              `Saved pool ${baseSymbol || 'unknown'}-${quoteSymbol || 'unknown'} (${poolData.poolAddress}) to ${poolData.connector} ${poolData.type}`,
             );
             savedPools.push(pool);
 

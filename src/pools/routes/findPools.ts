@@ -21,7 +21,7 @@ export const findPoolsRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { tokenA, tokenB, chainNetwork, page = 3, connector, type = 'clmm' } = request.query;
+      const { tokenA, tokenB, chainNetwork, page = 10, connector, type = 'clmm' } = request.query;
 
       try {
         const pools = await findPools(chainNetwork, {

@@ -245,13 +245,13 @@ export class PoolService {
    * Validate pool data
    */
   public async validatePool(connector: string, pool: Pool): Promise<void> {
-    // Validate required fields
-    if (!pool.baseSymbol || pool.baseSymbol.trim() === '') {
-      throw new Error('Base token symbol is required');
+    // Validate optional symbol fields (warn if empty but don't fail)
+    if (pool.baseSymbol && pool.baseSymbol.trim() === '') {
+      logger.warn('Base token symbol is empty string');
     }
 
-    if (!pool.quoteSymbol || pool.quoteSymbol.trim() === '') {
-      throw new Error('Quote token symbol is required');
+    if (pool.quoteSymbol && pool.quoteSymbol.trim() === '') {
+      logger.warn('Quote token symbol is empty string');
     }
 
     if (!pool.address || pool.address.trim() === '') {
@@ -379,6 +379,26 @@ export class PoolService {
           p.quoteTokenAddress.toLowerCase() === quoteTokenAddress.toLowerCase(),
       ) || null
     );
+  }
+
+  /**
+   * Update an existing pool by address
+   */
+  public async updatePoolByAddress(connector: string, pool: Pool): Promise<void> {
+    await this.validatePool(connector, pool);
+
+    const pools = await this.loadPoolList(connector);
+
+    // Find the pool to update by address
+    const existingIndex = pools.findIndex((p) => p.address.toLowerCase() === pool.address.toLowerCase());
+
+    if (existingIndex === -1) {
+      throw new Error(`Pool with address ${pool.address} not found`);
+    }
+
+    // Update the pool
+    pools[existingIndex] = pool;
+    await this.savePoolList(connector, pools);
   }
 
   /**

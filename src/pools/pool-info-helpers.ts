@@ -106,7 +106,7 @@ export async function resolveTokenSymbols(
   network: string,
   baseTokenAddress: string,
   quoteTokenAddress: string,
-): Promise<{ baseSymbol: string; quoteSymbol: string }> {
+): Promise<{ baseSymbol?: string; quoteSymbol?: string }> {
   try {
     // Get chain type from connector registry
     const chainType = getConnectorChain(connector);
@@ -125,7 +125,7 @@ export async function resolveTokenSymbols(
       throw new Error(`Unsupported chain type: ${chainType}`);
     }
 
-    // Get token info - use getOrFetchToken for Ethereum to fetch from blockchain if not in list
+    // Try to get tokens from local token list first
     let baseToken;
     let quoteToken;
 
@@ -137,16 +137,46 @@ export async function resolveTokenSymbols(
       quoteToken = chain.getToken(quoteTokenAddress);
     }
 
-    if (!baseToken || !quoteToken) {
-      throw new Error(`Token not found: ${!baseToken ? baseTokenAddress : ''} ${!quoteToken ? quoteTokenAddress : ''}`);
+    // If tokens not found in local list, try TokenService.getToken as fallback
+    if (!baseToken) {
+      logger.debug(`Token ${baseTokenAddress} not in local list, trying TokenService.getToken`);
+      try {
+        const { TokenService } = await import('../services/token-service');
+        const tokenService = TokenService.getInstance();
+        const foundToken = await tokenService.getToken(chainType, network, baseTokenAddress);
+        if (foundToken) {
+          baseToken = foundToken;
+        }
+      } catch (findError) {
+        logger.debug(`Failed to find base token: ${findError.message}`);
+      }
     }
 
+    if (!quoteToken) {
+      logger.debug(`Token ${quoteTokenAddress} not in local list, trying TokenService.getToken`);
+      try {
+        const { TokenService } = await import('../services/token-service');
+        const tokenService = TokenService.getInstance();
+        const foundToken = await tokenService.getToken(chainType, network, quoteTokenAddress);
+        if (foundToken) {
+          quoteToken = foundToken;
+        }
+      } catch (findError) {
+        logger.debug(`Failed to find quote token: ${findError.message}`);
+      }
+    }
+
+    // Return what we found (may be undefined if not found)
     return {
-      baseSymbol: baseToken.symbol,
-      quoteSymbol: quoteToken.symbol,
+      baseSymbol: baseToken?.symbol,
+      quoteSymbol: quoteToken?.symbol,
     };
   } catch (error) {
     logger.error(`Error resolving token symbols: ${error.message}`);
-    throw error;
+    // Return empty symbols instead of throwing
+    return {
+      baseSymbol: undefined,
+      quoteSymbol: undefined,
+    };
   }
 }
