@@ -1038,7 +1038,7 @@ export class Ethereum {
       logger.error(`Transaction ${signature} failed on-chain`);
       return {
         signature,
-        status: 0, // FAILED
+        status: -1, // FAILED
         data: {
           tokenIn: inputToken,
           tokenOut: outputToken,
