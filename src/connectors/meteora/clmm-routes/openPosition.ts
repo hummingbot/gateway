@@ -123,13 +123,18 @@ export async function openPosition(
   const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true);
   const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false);
 
-  // Don't add SOL rent to the liquidity amounts - rent is separate
-  const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount || 0), dlmmPool.tokenX.mint.decimals));
-  const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(quoteTokenAmount || 0), dlmmPool.tokenY.mint.decimals));
-
-  // Create position transaction following SDK example
-  // Slippage needs to be in BPS (basis points): percentage * 100
+  // The user-provided amounts are the MAXIMUM we should deposit
+  // The SDK's slippage parameter adds MORE on top, so we need to reduce the input amounts
+  // to ensure the final max = user input
   const slippageBps = slippagePct ? slippagePct * 100 : undefined;
+  const slippageMultiplier = slippagePct ? 1 / (1 + slippagePct / 100) : 1;
+
+  // Reduce the amounts by slippage so that when SDK applies slippage, we get back to user's max
+  const adjustedBaseAmount = (baseTokenAmount || 0) * slippageMultiplier;
+  const adjustedQuoteAmount = (quoteTokenAmount || 0) * slippageMultiplier;
+
+  const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(adjustedBaseAmount), dlmmPool.tokenX.mint.decimals));
+  const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(adjustedQuoteAmount), dlmmPool.tokenY.mint.decimals));
 
   const createPositionTx = await dlmmPool.initializePositionAndAddLiquidityByStrategy({
     positionPubKey: newImbalancePosition.publicKey,
