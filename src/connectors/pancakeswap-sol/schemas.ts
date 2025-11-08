@@ -366,6 +366,13 @@ export const PancakeswapSolClmmQuotePositionRequest = Type.Object({
       examples: [QUOTE_TOKEN_AMOUNT],
     }),
   ),
+  slippagePct: Type.Optional(
+    Type.Number({
+      description: 'Slippage tolerance percentage (e.g., 1 for 1%)',
+      default: 1,
+      examples: [1],
+    }),
+  ),
 });
 
 export type PancakeswapSolClmmQuotePositionRequestType = Static<typeof PancakeswapSolClmmQuotePositionRequest>;
