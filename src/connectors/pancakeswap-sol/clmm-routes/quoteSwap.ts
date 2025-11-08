@@ -82,7 +82,7 @@ export async function quoteSwap(
   let priceImpactPct: number;
 
   if (side === 'SELL') {
-    // Selling base token for quote token
+    // Selling base token for quote token (exact input)
     amountIn = amount;
 
     // Estimate price impact based on swap size vs pool liquidity
@@ -100,11 +100,13 @@ export async function quoteSwap(
     // Deduct protocol fee from output
     amountOut = outputBeforeFee * (1 - feePct / 100);
 
+    // Apply slippage to get minimum acceptable output
     minAmountOut = amountOut * (1 - effectiveSlippage / 100);
+    // For exact input, user specifies exact amountIn (no max needed)
     maxAmountIn = amountIn;
     price = amountOut / amountIn; // Effective price after fees and impact
   } else {
-    // Buying base token with quote token
+    // Buying base token with quote token (exact output)
     amountOut = amount;
 
     // Estimate price impact for buy (impact on quote side)
@@ -118,7 +120,9 @@ export async function quoteSwap(
     // Account for fee: need more input to cover fee
     amountIn = (amount * executionPrice) / (1 - feePct / 100);
 
+    // For exact output, user wants exact amountOut (no min needed)
     minAmountOut = amountOut;
+    // Apply slippage to get maximum acceptable input cost
     maxAmountIn = amountIn * (1 + effectiveSlippage / 100);
     price = amountIn / amountOut; // Effective price after fees and impact
   }
