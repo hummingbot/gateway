@@ -64,7 +64,7 @@ export async function openPosition(
   const walletPubkey = new PublicKey(walletAddress);
   const poolPubkey = new PublicKey(poolAddress);
 
-  // Get quote for position amounts
+  // Get quote for position amounts with slippage
   const quote = await quotePosition(
     _fastify,
     network,
@@ -73,6 +73,7 @@ export async function openPosition(
     poolAddress,
     baseTokenAmount,
     quoteTokenAmount,
+    slippagePct,
   );
 
   // Get pool data to extract tick spacing
@@ -104,18 +105,11 @@ export async function openPosition(
   );
   logger.info(`Quote Max: base=${quote.baseTokenAmountMax}, quote=${quote.quoteTokenAmountMax}`);
 
-  // Convert amounts to BN with slippage
-  // Note: quote already includes a buffer, so we use the exact amounts from quote
-  // and apply the user's slippage tolerance
-  const effectiveSlippage = slippagePct || 1.0;
-  const amount0Max = new BN(
-    (quote.baseTokenAmount * (1 + effectiveSlippage / 100) * 10 ** baseToken.decimals).toFixed(0),
-  );
-  const amount1Max = new BN(
-    (quote.quoteTokenAmount * (1 + effectiveSlippage / 100) * 10 ** quoteToken.decimals).toFixed(0),
-  );
+  // Use max amounts from quote - slippage already applied in quotePosition
+  const amount0Max = new BN((quote.baseTokenAmountMax * 10 ** baseToken.decimals).toFixed(0));
+  const amount1Max = new BN((quote.quoteTokenAmountMax * 10 ** quoteToken.decimals).toFixed(0));
 
-  logger.info(`Amounts with slippage (${effectiveSlippage}%):`);
+  logger.info(`Amounts with slippage (${slippagePct || 1}%):`);
   logger.info(`  amount0Max: ${amount0Max.toString()} (${baseToken.symbol})`);
   logger.info(`  amount1Max: ${amount1Max.toString()} (${quoteToken.symbol})`);
 
