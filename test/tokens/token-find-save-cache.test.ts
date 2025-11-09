@@ -116,7 +116,7 @@ describe('Token Find-Save Cache Integration Tests', () => {
     await fastify.close();
   });
 
-  describe('POST /tokens/find-save/:address - Balance Cache Integration', () => {
+  describe('POST /tokens/save/:address - Balance Cache Integration', () => {
     it('should reload token list and refresh balances for all tracked wallets when new token is added (Solana)', async () => {
       const tokenAddress = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
       const mockTokenInfo = {
@@ -138,7 +138,7 @@ describe('Token Find-Save Cache Integration Tests', () => {
 
       const response = await fastify.inject({
         method: 'POST',
-        url: `/tokens/find-save/${tokenAddress}?chainNetwork=solana-mainnet-beta`,
+        url: `/tokens/save/${tokenAddress}?chainNetwork=solana-mainnet-beta`,
       });
 
       expect(response.statusCode).toBe(200);
@@ -205,7 +205,7 @@ describe('Token Find-Save Cache Integration Tests', () => {
 
       const response = await fastify.inject({
         method: 'POST',
-        url: `/tokens/find-save/${tokenAddress}?chainNetwork=solana-mainnet-beta`,
+        url: `/tokens/save/${tokenAddress}?chainNetwork=solana-mainnet-beta`,
       });
 
       expect(response.statusCode).toBe(200);
@@ -243,7 +243,7 @@ describe('Token Find-Save Cache Integration Tests', () => {
 
       const response = await fastify.inject({
         method: 'POST',
-        url: `/tokens/find-save/${tokenAddress}?chainNetwork=solana-mainnet-beta`,
+        url: `/tokens/save/${tokenAddress}?chainNetwork=solana-mainnet-beta`,
       });
 
       // Should still succeed - balance refresh is non-blocking
@@ -296,7 +296,7 @@ describe('Token Find-Save Cache Integration Tests', () => {
 
       const response = await fastify.inject({
         method: 'POST',
-        url: `/tokens/find-save/${tokenAddress}?chainNetwork=ethereum-mainnet`,
+        url: `/tokens/save/${tokenAddress}?chainNetwork=ethereum-mainnet`,
       });
 
       expect(response.statusCode).toBe(200);
