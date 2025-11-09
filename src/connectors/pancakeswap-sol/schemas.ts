@@ -374,9 +374,11 @@ export const PancakeswapSolClmmQuotePositionRequest = Type.Object({
   ),
   slippagePct: Type.Optional(
     Type.Number({
-      description: 'Slippage tolerance percentage (e.g., 1 for 1%)',
-      default: 1,
-      examples: [1],
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: PancakeswapSolConfig.config.slippagePct,
+      examples: [PancakeswapSolConfig.config.slippagePct],
     }),
   ),
 });

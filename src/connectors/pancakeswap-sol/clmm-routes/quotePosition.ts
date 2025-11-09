@@ -5,6 +5,7 @@ import { Solana } from '../../../chains/solana/solana';
 import { QuotePositionResponse, QuotePositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
+import { PancakeswapSolConfig } from '../pancakeswap-sol.config';
 import {
   getLiquidityFromAmounts,
   getLiquidityFromSingleAmount,
@@ -270,7 +271,7 @@ async function quotePosition(
 
   // Apply slippage to calculate max amounts
   // User amounts are the quoted amounts, max allows for slippage tolerance
-  const effectiveSlippage = slippagePct ?? 1.0; // Default 1%
+  const effectiveSlippage = slippagePct ?? PancakeswapSolConfig.config.slippagePct;
   const slippageMultiplier = 1 + effectiveSlippage / 100;
 
   // Return quote with calculated amounts
