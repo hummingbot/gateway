@@ -62,26 +62,31 @@ Desktop:   Tauri v2
 ### Project Structure
 
 ```
-gateway-app/
-├── src/
-│   ├── components/
-│   │   ├── ui/              # shadcn/ui components
-│   │   ├── PortfolioView.tsx
-│   │   ├── PoolsView.tsx
-│   │   ├── SwapView.tsx
-│   │   └── LiquidityView.tsx
-│   ├── lib/
-│   │   ├── api.ts           # 30-line fetch wrapper
-│   │   ├── AppContext.tsx   # Global state
-│   │   └── utils.ts
-│   ├── App.tsx
-│   └── main.tsx
-├── src-tauri/
-│   ├── src/
-│   │   ├── main.rs          # Window setup only
-│   │   └── lib.rs           # Empty!
-│   └── tauri.conf.json
-└── tsconfig.json            # Extends ../tsconfig.json
+gateway/                     # Gateway repository root
+├── src/                     # Gateway server source
+├── test/                    # Gateway tests
+├── conf/                    # Gateway configuration
+├── app-docs/                # This documentation folder
+└── gateway-app/             # Desktop app (to be created)
+    ├── src/
+    │   ├── components/
+    │   │   ├── ui/              # shadcn/ui components
+    │   │   ├── PortfolioView.tsx
+    │   │   ├── PoolsView.tsx
+    │   │   ├── SwapView.tsx
+    │   │   └── LiquidityView.tsx
+    │   ├── lib/
+    │   │   ├── api.ts           # 30-line fetch wrapper
+    │   │   ├── AppContext.tsx   # Global state
+    │   │   └── utils.ts
+    │   ├── App.tsx
+    │   └── main.tsx
+    ├── src-tauri/
+    │   ├── src/
+    │   │   ├── main.rs          # Window setup only
+    │   │   └── lib.rs           # Empty!
+    │   └── tauri.conf.json
+    └── tsconfig.json            # Extends ../tsconfig.json
 ```
 
 ### API Integration
@@ -110,18 +115,16 @@ import { PositionInfo } from '@gateway/schemas/clmm-schema';
 import { BalanceResponse } from '@gateway/schemas/chain-schema';
 ```
 
-### Gateway API Routes
+### Configuration Sharing
 
-The app mirrors Gateway's route structure:
+The desktop app reuses the same `/conf` folder as the Gateway server:
+- `conf/wallets/` - Encrypted wallet keys (shared between server & app)
+- `conf/chains/` - Network configurations (RPC endpoints, chain IDs)
+- `conf/connectors/` - DEX connector settings (fees, slippage defaults)
+- `conf/tokens/` - Token lists per network
+- `conf/rpc/` - RPC provider API keys (Helius, Infura, etc.)
 
-```
-/wallet/*                      → Wallet management
-/chains/{chain}/*              → Chain operations (balances, tokens, etc.)
-/connectors/{connector}/router/* → DEX router/aggregator swaps
-/connectors/{connector}/amm/*    → AMM pool operations
-/connectors/{connector}/clmm/*   → CLMM position operations
-/pools/*                       → Pool management (find, list, add)
-```
+Both the Gateway server and desktop app read from the same configuration files, ensuring consistency.
 
 ## Development Workflow
 
@@ -170,7 +173,7 @@ pnpm tauri dev
 │  Gateway                  [Network ▾] [Wallet Address ▾] │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
-│  ┌─Portfolio─┐  Pools    Swap    Liquidity             │
+│  ┌─Portfolio─┐  Swap    Pools    Liquidity             │
 │                                                         │
 │  [View content here]                                    │
 │                                                         │

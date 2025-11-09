@@ -46,8 +46,8 @@ Gateway Desktop App = Tauri + React + TailwindCSS + shadcn/ui
 │  ┌───────────────────────────────┐  │
 │  │  React Components             │  │
 │  │  - Portfolio View             │  │
-│  │  - Pools View                 │  │
 │  │  - Swap View                  │  │
+│  │  - Pools View                 │  │
 │  │  - Liquidity View             │  │
 │  └───────────────────────────────┘  │
 │              │                      │
@@ -76,8 +76,8 @@ gateway-app/
 │   ├── components/
 │   │   ├── ui/              # shadcn/ui components (copy-paste)
 │   │   ├── PortfolioView.tsx
-│   │   ├── PoolsView.tsx
 │   │   ├── SwapView.tsx
+│   │   ├── PoolsView.tsx
 │   │   └── LiquidityView.tsx
 │   │
 │   ├── lib/
@@ -667,7 +667,7 @@ This ultra-simplified plan gives you:
 
 **The entire app is basically:**
 1. 30-line API client
-2. 4 view components (Portfolio, Pools, Swap, Liquidity)
+2. 4 view components (Portfolio, Swap, Pools, Liquidity)
 3. Simple React Context for global state
 4. shadcn/ui components for styling
 
