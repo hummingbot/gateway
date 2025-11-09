@@ -7,8 +7,8 @@ import { connectorsConfig } from '../config/routes/getConnectors';
 export interface Pool {
   type: 'amm' | 'clmm';
   network: string;
-  baseSymbol?: string; // Optional - resolved from token service if available
-  quoteSymbol?: string; // Optional - resolved from token service if available
+  baseSymbol: string; // Required - resolved from token service or CoinGecko
+  quoteSymbol: string; // Required - resolved from token service or CoinGecko
   baseTokenAddress: string;
   quoteTokenAddress: string;
   feePct: number;
@@ -53,8 +53,8 @@ export interface PoolAddRequest {
   type: 'amm' | 'clmm';
   network: string;
   address: string;
-  baseSymbol?: string;
-  quoteSymbol?: string;
+  baseSymbol: string; // Required
+  quoteSymbol: string; // Required
   baseTokenAddress: string;
   quoteTokenAddress: string;
   feePct?: number;

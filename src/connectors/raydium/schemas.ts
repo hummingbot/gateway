@@ -530,7 +530,14 @@ export const RaydiumClmmGetPositionsOwnedRequest = Type.Object({
     description: 'Solana wallet address to check for positions',
     examples: [solanaChainConfig.defaultWallet],
   }),
+  poolAddress: Type.Optional(
+    Type.String({
+      description: 'Optional pool address to filter positions by specific pool',
+    }),
+  ),
 });
+
+export type RaydiumClmmGetPositionsOwnedRequestType = Static<typeof RaydiumClmmGetPositionsOwnedRequest>;
 
 export const RaydiumClmmQuotePositionRequest = Type.Object({
   network: Type.Optional(

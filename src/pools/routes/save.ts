@@ -1,0 +1,152 @@
+import { Type } from '@sinclair/typebox';
+import { FastifyPluginAsync } from 'fastify';
+
+import { logger } from '../../services/logger';
+import { PoolService } from '../../services/pool-service';
+import { fetchPoolInfo } from '../pool-info-helpers';
+import { fetchDetailedPoolInfo } from '../pool-lookup-helper';
+import { FindPoolsQuerySchema } from '../schemas';
+import { Pool } from '../types';
+
+export const savePoolRoute: FastifyPluginAsync = async (fastify) => {
+  fastify.post<{
+    Params: { address: string };
+    Querystring: { chainNetwork: string };
+    Reply: { message: string; pool: Pool };
+  }>(
+    '/save/:address',
+    {
+      schema: {
+        description: 'Find pool from GeckoTerminal and save it to the pool list',
+        tags: ['/pools'],
+        params: {
+          type: 'object',
+          properties: {
+            address: {
+              type: 'string',
+              description: 'Pool contract address',
+              examples: ['58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2', '0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640'],
+            },
+          },
+          required: ['address'],
+        },
+        querystring: Type.Object({
+          chainNetwork: FindPoolsQuerySchema.properties.chainNetwork,
+        }),
+        response: {
+          200: Type.Object({
+            message: Type.String(),
+            pool: Type.Object({
+              type: Type.String({
+                description: 'Pool type',
+                examples: ['clmm', 'amm'],
+                enum: ['clmm', 'amm'],
+              }),
+              network: Type.String(),
+              baseSymbol: Type.String(),
+              quoteSymbol: Type.String(),
+              baseTokenAddress: Type.String(),
+              quoteTokenAddress: Type.String(),
+              feePct: Type.Number(),
+              address: Type.String(),
+              volumeUsd24h: Type.Optional(Type.String()),
+              liquidityUsd: Type.Optional(Type.String()),
+              priceNative: Type.Optional(Type.String()),
+              priceUsd: Type.Optional(Type.String()),
+              buys24h: Type.Optional(Type.Number()),
+              sells24h: Type.Optional(Type.Number()),
+              apr: Type.Optional(Type.Number()),
+              timestamp: Type.Optional(Type.Number()),
+            }),
+          }),
+        },
+      },
+    },
+    async (request) => {
+      const { address } = request.params;
+      const { chainNetwork } = request.query;
+
+      try {
+        // Fetch detailed pool information using shared helper
+        const { poolData, pool } = await fetchDetailedPoolInfo(chainNetwork, address);
+
+        // Check if pool already exists
+        const poolService = PoolService.getInstance();
+        const existingPool = await poolService.getPoolByAddress(poolData.connector, address);
+
+        if (existingPool) {
+          // Update existing pool with latest market data
+          logger.info(
+            `Pool ${pool.baseSymbol}-${pool.quoteSymbol} (${address}) already exists, updating with latest data`,
+          );
+          await poolService.updatePoolByAddress(poolData.connector, pool);
+          return {
+            message: `Pool ${pool.baseSymbol}-${pool.quoteSymbol} already exists in the pool list for ${poolData.connector}, updated with latest data`,
+            pool,
+          };
+        }
+
+        // Add pool to the list
+        await poolService.addPool(poolData.connector, pool);
+        logger.info(
+          `Saved pool ${pool.baseSymbol}-${pool.quoteSymbol} (${address}) to ${poolData.connector} ${poolData.type}`,
+        );
+
+        // Refresh pool cache for Solana chains (non-blocking)
+        if (
+          poolData.connector === 'raydium' ||
+          poolData.connector === 'meteora' ||
+          poolData.connector === 'pancakeswap-sol'
+        ) {
+          const { Solana } = await import('../../chains/solana/solana');
+          Solana.getInstance(pool.network)
+            .then(async (solana) => {
+              const poolCache = solana.getPoolCache();
+              if (poolCache) {
+                try {
+                  // Fetch pool info to add to cache
+                  const poolInfo = await fetchPoolInfo(
+                    poolData.connector,
+                    poolData.type as 'amm' | 'clmm',
+                    pool.network,
+                    address,
+                  );
+                  if (poolInfo) {
+                    poolCache.set(address, { poolInfo, poolType: poolData.type as 'amm' | 'clmm' });
+                    logger.info(`Added pool ${address} to cache`);
+                  }
+                } catch (error: any) {
+                  logger.warn(`Failed to add pool ${address} to cache: ${error.message}`);
+                }
+              }
+            })
+            .catch((err) => logger.warn(`Failed to refresh pool cache: ${err.message}`));
+        }
+
+        return {
+          message: `Pool ${pool.baseSymbol}-${pool.quoteSymbol} has been added to the pool list for ${poolData.connector}`,
+          pool,
+        };
+      } catch (error: any) {
+        logger.error(`Failed to find and save pool: ${error.message}`);
+
+        // Re-throw if it's already an HTTP error
+        if (error.statusCode) {
+          throw error;
+        }
+
+        if (error.message.includes('not found')) {
+          throw fastify.httpErrors.notFound(error.message);
+        }
+
+        if (error.message.includes('Unsupported network') || error.message.includes('Unsupported chainNetwork')) {
+          throw fastify.httpErrors.badRequest(error.message);
+        }
+
+        throw fastify.httpErrors.internalServerError('Failed to find and save pool from GeckoTerminal');
+      }
+    },
+  );
+};
+
+export default savePoolRoute;

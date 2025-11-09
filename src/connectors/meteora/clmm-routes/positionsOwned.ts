@@ -2,10 +2,10 @@ import { Type } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { GetPositionsOwnedRequestType, PositionInfo, PositionInfoSchema } from '../../../schemas/clmm-schema';
+import { PositionInfo, PositionInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
-import { MeteoraClmmGetPositionsOwnedRequest } from '../schemas';
+import { MeteoraClmmGetPositionsOwnedRequest, MeteoraClmmGetPositionsOwnedRequestType } from '../schemas';
 // Using Fastify's native error handling
 const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
 
@@ -13,6 +13,7 @@ export async function getPositionsOwned(
   fastify: FastifyInstance,
   network: string,
   walletAddress: string,
+  poolAddress?: string,
 ): Promise<PositionInfo[]> {
   const { Solana } = await import('../../../chains/solana/solana');
   const solana = await Solana.getInstance(network);
@@ -24,8 +25,22 @@ export async function getPositionsOwned(
     throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
   }
 
+  // Validate pool address if provided
+  if (poolAddress) {
+    try {
+      new PublicKey(poolAddress);
+    } catch (error) {
+      throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('pool'));
+    }
+  }
+
   // Fetch from RPC (positions are cached individually by position address, not by wallet)
-  const positions = await fetchPositionsFromRPC(network, walletAddress);
+  let positions = await fetchPositionsFromRPC(network, walletAddress);
+
+  // Filter by poolAddress if provided
+  if (poolAddress) {
+    positions = positions.filter((pos) => pos.poolAddress === poolAddress);
+  }
 
   // Populate cache for each position individually using "connector:clmm:address" format
   const positionCache = solana.getPositionCache();
@@ -70,7 +85,7 @@ async function fetchPositionsFromRPC(network: string, walletAddress: string): Pr
 
 export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetPositionsOwnedRequestType;
+    Querystring: MeteoraClmmGetPositionsOwnedRequestType;
     Reply: PositionInfo[];
   }>(
     '/positions-owned',
@@ -86,9 +101,8 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const network = request.query.network;
-        const walletAddress = request.query.walletAddress;
-        return await getPositionsOwned(fastify, network, walletAddress);
+        const { network, walletAddress, poolAddress } = request.query;
+        return await getPositionsOwned(fastify, network, walletAddress, poolAddress);
       } catch (e: any) {
         logger.error(e);
         if (e.statusCode) {

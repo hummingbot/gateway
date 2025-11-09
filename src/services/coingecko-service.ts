@@ -556,6 +556,40 @@ export class CoinGeckoService {
   }
 
   /**
+   * Get pool info from GeckoTerminal by pool address
+   */
+  public async getPoolInfo(chainNetwork: string, poolAddress: string): Promise<TopPoolInfo> {
+    try {
+      // Validate pool address before constructing endpoint to prevent SSRF
+      if (!this.isValidTokenAddress(chainNetwork, poolAddress)) {
+        logger.warn(`Invalid pool address supplied: ${poolAddress} for chainNetwork: ${chainNetwork}`);
+        throw new Error(`Invalid pool address format for chainNetwork "${chainNetwork}"`);
+      }
+
+      const geckoNetwork = this.mapNetworkId(chainNetwork);
+      const endpoint = `/networks/${geckoNetwork}/pools/${poolAddress}`;
+
+      logger.info(`Fetching pool info for ${poolAddress} on ${chainNetwork}`);
+
+      const response = await this.client.get<{ data: GeckoTerminalPool }>(endpoint);
+
+      if (!response.data || !response.data.data) {
+        throw new Error(`No pool info found for ${poolAddress} on ${geckoNetwork}`);
+      }
+
+      const pool = response.data.data;
+      return this.transformPool(pool);
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error(`Pool ${poolAddress} not found on ${chainNetwork}`);
+      }
+
+      logger.error(`Error fetching pool info from GeckoTerminal: ${error.message}`);
+      throw new Error(`Failed to fetch pool info from GeckoTerminal: ${error.message}`);
+    }
+  }
+
+  /**
    * Get list of supported networks
    */
   public getSupportedNetworks(): string[] {

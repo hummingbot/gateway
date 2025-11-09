@@ -4,10 +4,12 @@ import { CHAIN_NETWORK_EXAMPLES } from '../services/chain-utils';
 
 // Individual token structure
 export const TokenSchema = Type.Object({
-  chainId: Type.Number({
-    description: 'The chain ID',
-    examples: [1, 101, 137],
-  }),
+  chainId: Type.Optional(
+    Type.Number({
+      description: 'The chain ID',
+      examples: [1, 101, 137],
+    }),
+  ),
   name: Type.String({
     description: 'The full name of the token',
     examples: ['USD Coin', 'Wrapped Ether'],
@@ -29,7 +31,7 @@ export const TokenSchema = Type.Object({
 });
 
 export type Token = {
-  chainId: number;
+  chainId?: number;
   name: string;
   symbol: string;
   address: string;

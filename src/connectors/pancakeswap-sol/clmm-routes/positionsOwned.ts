@@ -3,10 +3,10 @@ import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { PositionInfo, PositionInfoSchema, GetPositionsOwnedRequestType } from '../../../schemas/clmm-schema';
+import { PositionInfo, PositionInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
-import { PancakeswapSolClmmGetPositionsOwnedRequest } from '../schemas';
+import { PancakeswapSolClmmGetPositionsOwnedRequest, PancakeswapSolClmmGetPositionsOwnedRequestType } from '../schemas';
 
 const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
 
@@ -18,6 +18,7 @@ export async function getPositionsOwned(
   fastify: FastifyInstance,
   network: string,
   walletAddress: string,
+  poolAddress?: string,
 ): Promise<PositionInfo[]> {
   const solana = await Solana.getInstance(network);
 
@@ -28,8 +29,22 @@ export async function getPositionsOwned(
     throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
   }
 
+  // Validate pool address if provided
+  if (poolAddress) {
+    try {
+      new PublicKey(poolAddress);
+    } catch (error) {
+      throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('pool'));
+    }
+  }
+
   // Fetch from RPC (positions are cached individually by position address, not by wallet)
-  const positions = await fetchPositionsFromRPC(solana, walletAddress);
+  let positions = await fetchPositionsFromRPC(solana, walletAddress);
+
+  // Filter by poolAddress if provided
+  if (poolAddress) {
+    positions = positions.filter((pos) => pos.poolAddress === poolAddress);
+  }
 
   // Populate cache for each position individually using "connector:clmm:address" format
   const positionCache = solana.getPositionCache();
@@ -109,7 +124,7 @@ async function fetchPositionsFromRPC(solana: Solana, walletAddress: string): Pro
 
 export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetPositionsOwnedRequestType;
+    Querystring: PancakeswapSolClmmGetPositionsOwnedRequestType;
     Reply: GetPositionsOwnedResponseType;
   }>(
     '/positions-owned',
@@ -125,8 +140,8 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network = 'mainnet-beta', walletAddress } = request.query;
-        return await getPositionsOwned(fastify, network, walletAddress);
+        const { network = 'mainnet-beta', walletAddress, poolAddress } = request.query;
+        return await getPositionsOwned(fastify, network, walletAddress, poolAddress);
       } catch (e: any) {
         logger.error('Positions owned error:', e);
         // Re-throw httpErrors as-is

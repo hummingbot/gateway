@@ -48,15 +48,23 @@ jest.mock('../../../src/connectors/pancakeswap-sol/pancakeswap-sol.parser', () =
   parsePoolTickSpacing: jest.fn().mockReturnValue(10),
 }));
 
-// Mock position cache
-const mockPositionCache = {
-  set: jest.fn(),
-  get: jest.fn(),
-  keys: jest.fn().mockReturnValue([]),
+// Mock position cache - namespace to avoid collisions
+const PancakeSwapSolMocks = {
+  mockPositionCache: {
+    set: jest.fn(),
+    get: jest.fn(),
+    keys: jest.fn().mockReturnValue([]),
+  },
+  mockSolana: {} as any,
+  mockPancakeswapSol: {} as any,
+  mockPositionsService: {
+    trackPositions: jest.fn().mockResolvedValue(undefined),
+  },
 };
 
-const mockSolana = {
-  getPositionCache: jest.fn().mockReturnValue(mockPositionCache),
+// Initialize mockSolana
+PancakeSwapSolMocks.mockSolana = {
+  getPositionCache: jest.fn().mockReturnValue(PancakeSwapSolMocks.mockPositionCache),
   getToken: jest.fn().mockImplementation((address: string) => {
     if (address === 'So11111111111111111111111111111111111111112') {
       return Promise.resolve({ address, symbol: 'SOL', decimals: 9 });
@@ -94,7 +102,8 @@ const mockSolana = {
   },
 };
 
-const mockPancakeswapSol = {
+// Initialize mockPancakeswapSol
+PancakeSwapSolMocks.mockPancakeswapSol = {
   getClmmPoolInfo: jest.fn().mockResolvedValue({
     price: 100,
     baseTokenAddress: 'So11111111111111111111111111111111111111112',
@@ -104,27 +113,22 @@ const mockPancakeswapSol = {
   }),
 };
 
-// Mock PositionsService
-const mockPositionsService = {
-  trackPositions: jest.fn().mockResolvedValue(undefined),
-};
-
 jest.mock('../../../src/services/positions-service', () => ({
   PositionsService: {
-    getInstance: jest.fn().mockReturnValue(mockPositionsService),
+    getInstance: jest.fn(() => PancakeSwapSolMocks.mockPositionsService),
   },
 }));
 
 jest.mock('../../../src/chains/solana/solana', () => ({
   Solana: {
-    getInstance: jest.fn().mockResolvedValue(mockSolana),
+    getInstance: jest.fn(() => Promise.resolve(PancakeSwapSolMocks.mockSolana)),
     getWalletAddressExample: jest.fn().mockResolvedValue('5xot9PVkphiX2adznghwrAuxGs2zeWisNSxMW6hU6Hkj'),
   },
 }));
 
 jest.mock('../../../src/connectors/pancakeswap-sol/pancakeswap-sol', () => ({
   PancakeswapSol: {
-    getInstance: jest.fn().mockResolvedValue(mockPancakeswapSol),
+    getInstance: jest.fn(() => Promise.resolve(PancakeSwapSolMocks.mockPancakeswapSol)),
   },
 }));
 
@@ -133,7 +137,7 @@ describe('Position Cache Integration - PancakeSwap-Sol CLMM', () => {
     jest.clearAllMocks();
 
     // Setup successful transaction confirmation
-    mockSolana.sendAndConfirmRawTransaction.mockResolvedValue({
+    PancakeSwapSolMocks.mockSolana.sendAndConfirmRawTransaction.mockResolvedValue({
       confirmed: true,
       signature: 'sig123',
       txData: {
@@ -172,19 +176,19 @@ describe('Position Cache Integration - PancakeSwap-Sol CLMM', () => {
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     // Verify position cache was accessed
-    expect(mockSolana.getPositionCache).toHaveBeenCalled();
+    expect(PancakeSwapSolMocks.mockSolana.getPositionCache).toHaveBeenCalled();
 
     // Verify PositionsService.trackPositions was called to refresh the wallet's positions
-    expect(mockPositionsService.trackPositions).toHaveBeenCalledWith(
+    expect(PancakeSwapSolMocks.mockPositionsService.trackPositions).toHaveBeenCalledWith(
       [walletAddress],
-      mockPositionCache,
+      PancakeSwapSolMocks.mockPositionCache,
       expect.any(Function),
     );
   });
 
   it('should not refresh cache if position cache is not enabled', async () => {
     // Disable position cache
-    mockSolana.getPositionCache.mockReturnValueOnce(undefined);
+    PancakeSwapSolMocks.mockSolana.getPositionCache.mockReturnValueOnce(undefined);
 
     const walletAddress = '5xot9PVkphiX2adznghwrAuxGs2zeWisNSxMW6hU6Hkj';
     const poolAddress = '4QU2NpRaqmKMvPSwVKQDeW4V6JFEKJdkzbzdauumD9qN'; // Real SOL/USDC pool
@@ -209,12 +213,12 @@ describe('Position Cache Integration - PancakeSwap-Sol CLMM', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Verify no position tracking occurred
-    expect(mockPositionsService.trackPositions).not.toHaveBeenCalled();
+    expect(PancakeSwapSolMocks.mockPositionsService.trackPositions).not.toHaveBeenCalled();
   });
 
   it('should not refresh cache if transaction is pending', async () => {
     // Mock pending transaction
-    mockSolana.sendAndConfirmRawTransaction.mockResolvedValueOnce({
+    PancakeSwapSolMocks.mockSolana.sendAndConfirmRawTransaction.mockResolvedValueOnce({
       confirmed: false,
       signature: 'sig123',
       txData: null,
@@ -244,12 +248,12 @@ describe('Position Cache Integration - PancakeSwap-Sol CLMM', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Verify no position tracking occurred for pending transaction
-    expect(mockPositionsService.trackPositions).not.toHaveBeenCalled();
+    expect(PancakeSwapSolMocks.mockPositionsService.trackPositions).not.toHaveBeenCalled();
   });
 
   it('should handle cache refresh errors gracefully', async () => {
     // Mock PositionsService error
-    mockPositionsService.trackPositions.mockRejectedValueOnce(new Error('RPC error'));
+    PancakeSwapSolMocks.mockPositionsService.trackPositions.mockRejectedValueOnce(new Error('RPC error'));
 
     const walletAddress = '5xot9PVkphiX2adznghwrAuxGs2zeWisNSxMW6hU6Hkj';
     const poolAddress = '4QU2NpRaqmKMvPSwVKQDeW4V6JFEKJdkzbzdauumD9qN'; // Real SOL/USDC pool
@@ -276,7 +280,7 @@ describe('Position Cache Integration - PancakeSwap-Sol CLMM', () => {
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     // Verify refresh was attempted even though it failed
-    expect(mockPositionsService.trackPositions).toHaveBeenCalled();
+    expect(PancakeSwapSolMocks.mockPositionsService.trackPositions).toHaveBeenCalled();
   });
 
   it('should include newly opened position in cache after refresh', async () => {
@@ -285,12 +289,14 @@ describe('Position Cache Integration - PancakeSwap-Sol CLMM', () => {
     const positionAddress = 'position123';
 
     // Mock the callback that will be passed to trackPositions - do this BEFORE importing
-    mockPositionsService.trackPositions.mockImplementationOnce(async (wallets, cache, getPositions) => {
-      const positions = await getPositions(wallets[0]);
-      // Simulate what PositionsService does - stores positions in cache
-      cache.set(wallets[0], { positions });
-      return undefined;
-    });
+    PancakeSwapSolMocks.mockPositionsService.trackPositions.mockImplementationOnce(
+      async (wallets, cache, getPositions) => {
+        const positions = await getPositions(wallets[0]);
+        // Simulate what PositionsService does - stores positions in cache
+        cache.set(wallets[0], { positions });
+        return undefined;
+      },
+    );
 
     const { openPosition } = await import('../../../src/connectors/pancakeswap-sol/clmm-routes/openPosition');
 
@@ -312,9 +318,9 @@ describe('Position Cache Integration - PancakeSwap-Sol CLMM', () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     // Verify trackPositions was called
-    expect(mockPositionsService.trackPositions).toHaveBeenCalled();
+    expect(PancakeSwapSolMocks.mockPositionsService.trackPositions).toHaveBeenCalled();
 
     // Verify position cache received the wallet's positions
-    expect(mockPositionCache.set).toHaveBeenCalled();
+    expect(PancakeSwapSolMocks.mockPositionCache.set).toHaveBeenCalled();
   });
 });

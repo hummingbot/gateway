@@ -117,6 +117,12 @@ export const PancakeswapSolClmmGetPositionsOwnedRequest = Type.Object({
     description: 'Solana wallet address to check for positions',
     examples: [solanaChainConfig.defaultWallet],
   }),
+  poolAddress: Type.Optional(
+    Type.String({
+      description: 'Optional pool address to filter positions by specific pool',
+      examples: [CLMM_POOL_ADDRESS_EXAMPLE],
+    }),
+  ),
 });
 
 export type PancakeswapSolClmmGetPositionsOwnedRequestType = Static<typeof PancakeswapSolClmmGetPositionsOwnedRequest>;

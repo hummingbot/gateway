@@ -91,6 +91,8 @@ export const PositionInfoSchema = Type.Object(
     lowerPrice: Type.Number(),
     upperPrice: Type.Number(),
     price: Type.Number(),
+    rewardTokenAddress: Type.Optional(Type.String()),
+    rewardAmount: Type.Optional(Type.Number()),
   },
   { $id: 'PositionInfo' },
 );

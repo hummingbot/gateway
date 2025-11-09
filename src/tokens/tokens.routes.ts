@@ -12,11 +12,11 @@ export const tokensRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
 
   // Register individual route handlers
-  await fastify.register(listTokensRoute);
   await fastify.register(getTokenRoute);
   await fastify.register(findTokenRoute);
-  await fastify.register(findSaveTokenRoute);
+  await fastify.register(listTokensRoute);
   await fastify.register(addTokenRoute);
+  await fastify.register(findSaveTokenRoute);
   await fastify.register(removeTokenRoute);
 };
 

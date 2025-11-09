@@ -13,7 +13,7 @@ export const findSaveTokenRoute: FastifyPluginAsync = async (fastify) => {
     Querystring: FindTokenQuery;
     Reply: { message: string; token: Token };
   }>(
-    '/find-save/:address',
+    '/save/:address',
     {
       schema: {
         description: 'Find token from GeckoTerminal and save it to the token list',

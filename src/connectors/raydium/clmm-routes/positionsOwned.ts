@@ -3,10 +3,10 @@ import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { PositionInfoSchema, GetPositionsOwnedRequestType, PositionInfo } from '../../../schemas/clmm-schema';
+import { PositionInfoSchema, PositionInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
-import { RaydiumClmmGetPositionsOwnedRequest } from '../schemas';
+import { RaydiumClmmGetPositionsOwnedRequest, RaydiumClmmGetPositionsOwnedRequestType } from '../schemas';
 
 // Using Fastify's native error handling
 const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
@@ -19,6 +19,7 @@ export async function getPositionsOwned(
   fastify: FastifyInstance,
   network: string,
   walletAddress: string,
+  poolAddress?: string,
 ): Promise<PositionInfo[]> {
   const solana = await Solana.getInstance(network);
 
@@ -29,8 +30,22 @@ export async function getPositionsOwned(
     throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
   }
 
+  // Validate pool address if provided
+  if (poolAddress) {
+    try {
+      new PublicKey(poolAddress);
+    } catch (error) {
+      throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('pool'));
+    }
+  }
+
   // Fetch from RPC (positions are cached individually by position address, not by wallet)
-  const positions = await fetchPositionsFromRPC(solana, network, walletAddress);
+  let positions = await fetchPositionsFromRPC(solana, network, walletAddress);
+
+  // Filter by poolAddress if provided
+  if (poolAddress) {
+    positions = positions.filter((pos) => pos.poolAddress === poolAddress);
+  }
 
   // Populate cache for each position individually using "connector:clmm:address" format
   const positionCache = solana.getPositionCache();
@@ -113,7 +128,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
   // Remove wallet address example population code
 
   fastify.get<{
-    Querystring: GetPositionsOwnedRequestType;
+    Querystring: RaydiumClmmGetPositionsOwnedRequestType;
     Reply: GetPositionsOwnedResponseType;
   }>(
     '/positions-owned',
@@ -129,9 +144,8 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { walletAddress } = request.query;
-        const network = request.query.network;
-        return await getPositionsOwned(fastify, network, walletAddress);
+        const { network, walletAddress, poolAddress } = request.query;
+        return await getPositionsOwned(fastify, network, walletAddress, poolAddress);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

@@ -1,6 +1,6 @@
 // Common token interface
 export interface Token {
-  chainId: number;
+  chainId?: number;
   name: string;
   symbol: string;
   address: string;

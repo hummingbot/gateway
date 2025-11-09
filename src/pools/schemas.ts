@@ -65,18 +65,14 @@ export const PoolAddRequestSchema = Type.Object({
   address: Type.String({
     description: 'Pool contract address',
   }),
-  baseSymbol: Type.Optional(
-    Type.String({
-      description: 'Base token symbol (optional - fetched from pool-info if not provided)',
-      examples: ['SOL', 'ETH'],
-    }),
-  ),
-  quoteSymbol: Type.Optional(
-    Type.String({
-      description: 'Quote token symbol (optional - fetched from pool-info if not provided)',
-      examples: ['USDC', 'USDT'],
-    }),
-  ),
+  baseSymbol: Type.String({
+    description: 'Base token symbol',
+    examples: ['SOL', 'ETH'],
+  }),
+  quoteSymbol: Type.String({
+    description: 'Quote token symbol',
+    examples: ['USDC', 'USDT'],
+  }),
   baseTokenAddress: Type.String({
     description: 'Base token contract address',
     examples: ['So11111111111111111111111111111111111111112'],
@@ -200,12 +196,12 @@ export const FindPoolsQuerySchema = Type.Object({
       examples: ['USDC', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'SOL'],
     }),
   ),
-  page: Type.Optional(
+  pages: Type.Optional(
     Type.Number({
-      description: 'Number of pages to fetch from GeckoTerminal (1-10, default: 3)',
+      description: 'Number of pages to fetch from GeckoTerminal (1-10, default: 10)',
       minimum: 1,
       maximum: 10,
-      default: 3,
+      default: 10,
     }),
   ),
 });
@@ -216,54 +212,3 @@ export type FindPoolsQuery = typeof FindPoolsQuerySchema.static;
 export const FindPoolsResponseSchema = Type.Array(PoolInfoSchema);
 
 export type FindPoolsResponse = typeof FindPoolsResponseSchema.static;
-
-// Find and save pools query parameters (extends FindPoolsQuery with saveLimit)
-export const FindSavePoolsQuerySchema = Type.Object({
-  chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    examples: [...CHAIN_NETWORK_EXAMPLES],
-  }),
-  connector: Type.Optional(
-    Type.String({
-      description: 'Filter by connector name (e.g., raydium, meteora, uniswap, pancakeswap, pancakeswap-sol)',
-      examples: ['raydium', 'meteora', 'uniswap', 'pancakeswap', 'pancakeswap-sol'],
-    }),
-  ),
-  type: Type.Optional(
-    Type.String({
-      description: 'Filter by pool type: clmm (v3-style concentrated liquidity) or amm (v2-style)',
-      examples: ['clmm', 'amm'],
-      enum: ['clmm', 'amm'],
-      default: 'clmm',
-    }),
-  ),
-  tokenA: Type.Optional(
-    Type.String({
-      description: 'First token symbol or contract address (optional - for filtering by token pair)',
-      examples: ['SOL', 'So11111111111111111111111111111111111111112', 'USDC'],
-    }),
-  ),
-  tokenB: Type.Optional(
-    Type.String({
-      description: 'Second token symbol or contract address (optional - for filtering by token pair)',
-      examples: ['USDC', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'SOL'],
-    }),
-  ),
-  page: Type.Optional(
-    Type.Number({
-      description: 'Number of pages to fetch from GeckoTerminal (1-10, default: 3)',
-      minimum: 1,
-      maximum: 10,
-      default: 3,
-    }),
-  ),
-  saveLimit: Type.Optional(
-    Type.Number({
-      description: 'Maximum number of pools to save (default: 1)',
-      minimum: 1,
-      default: 1,
-    }),
-  ),
-});
-
-export type FindSavePoolsQuery = typeof FindSavePoolsQuerySchema.static;
