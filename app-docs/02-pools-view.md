@@ -7,7 +7,7 @@
 │  Gateway                                             [Solana ▾] [0x7a3F...b2E4 ▾] │
 ├────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                │
-│  Portfolio   Swap      ┌─ Pools ──┐   Liquidity                               │
+│  Wallet      Swap      ┌─ Pools ──┐   Liquidity     Configs                   │
 │                                                                                │
 │  ┌─ Find Pools ─────────────────────────────────────────────────────────────┐ │
 │  │  Connector: [Raydium ▾]   Token A: [SOL     ]   Token B: [USDC    ]      │ │

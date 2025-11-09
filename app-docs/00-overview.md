@@ -46,6 +46,18 @@ Each view has detailed ASCII mockups, component breakdowns, API integrations, an
    - Price range visualization (CLMM)
    - Position analytics
 
+5. **[05-wallet-network-selector.md](./05-wallet-network-selector.md)** - Header controls
+   - Wallet selector with chain grouping
+   - Add wallet modal
+   - Network selector
+   - Dark/light theme toggle
+
+6. **[06-config-view.md](./06-config-view.md)** - Configuration admin panel
+   - Namespace selection by chain + network
+   - View and edit config settings
+   - Save/reset functionality
+   - Validation and error handling
+
 ## Quick Reference
 
 ### Technology Stack
@@ -169,18 +181,28 @@ pnpm tauri dev
 ## View Navigation
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Gateway                  [Network ▾] [Wallet Address ▾] │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ┌─Portfolio─┐  Swap    Pools    Liquidity             │
-│                                                         │
-│  [View content here]                                    │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Gateway                    [Wallet ▼] [Network ▼] [🌙/☀️]              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌─Wallet──┐  Swap    Pools    Liquidity    Configs                     │
+│                                                                          │
+│  [View content here]                                                     │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 Simple tab navigation - click tab to switch view.
+
+**Current Implementation Status:**
+- ✅ Wallet View (Portfolio) - Basic structure created with Tokens and LP Positions tabs
+- ✅ Swap View - Basic structure created
+- ✅ Pools View - Basic structure created
+- ✅ Liquidity View - Basic structure created
+- ✅ Configs View - Fully implemented with namespace sidebar
+- ✅ Wallet Selector - Fully implemented with chain grouping
+- ✅ Network Selector - Fully implemented with dynamic loading
+- ✅ Theme Toggle - Light/dark mode with persistence
 
 ## Common Components
 
