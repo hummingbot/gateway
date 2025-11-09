@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { gatewayGet } from '@/lib/api';
+import { gatewayPost } from '@/lib/api';
 import { useApp } from '@/lib/AppContext';
 
 interface Balance {
@@ -34,10 +34,23 @@ export function PortfolioView() {
         setError(null);
 
         // Fetch wallet balances
-        const balanceData = await gatewayGet<any>(
-          `/chains/${selectedChain}/balances?network=${selectedNetwork}&address=${selectedWallet}`
+        const balanceData = await gatewayPost<any>(
+          `/chains/${selectedChain}/balances`,
+          {
+            network: selectedNetwork,
+            address: selectedWallet,
+          }
         );
-        setBalances(balanceData.balances || []);
+
+        // Convert balances object to array format
+        if (balanceData.balances) {
+          const balanceArray = Object.entries(balanceData.balances).map(([symbol, balance]) => ({
+            symbol,
+            balance: String(balance),
+            value: 0, // TODO: fetch prices
+          }));
+          setBalances(balanceArray);
+        }
 
         // TODO: Fetch LP positions from various connectors
         setPositions([]);
@@ -105,17 +118,17 @@ export function PortfolioView() {
         </CardHeader>
       </Card>
 
-      {/* Wallet & LP Positions Tabs */}
+      {/* Tokens & LP Positions Tabs */}
       <Tabs value="wallet" onValueChange={() => {}}>
         <TabsList>
-          <TabsTrigger value="wallet">Wallet</TabsTrigger>
+          <TabsTrigger value="wallet">Tokens</TabsTrigger>
           <TabsTrigger value="lp">LP Positions</TabsTrigger>
         </TabsList>
 
         <TabsContent value="wallet">
           <Card>
             <CardHeader>
-              <CardTitle>Wallet Balances</CardTitle>
+              <CardTitle>Token Balances</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">

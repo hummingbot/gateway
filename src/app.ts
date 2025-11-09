@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
+import fastifyCors from '@fastify/cors';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
@@ -160,6 +161,12 @@ const configureGatewayServer = () => {
   if (docsServer) {
     docsServer.withTypeProvider<TypeBoxTypeProvider>();
   }
+
+  // Register CORS
+  server.register(fastifyCors, {
+    origin: devMode ? ['http://localhost:1420', 'http://localhost:3000'] : false,
+    credentials: true,
+  });
 
   // Register rate limiting globally
   server.register(fastifyRateLimit, {
