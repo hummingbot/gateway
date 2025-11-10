@@ -310,11 +310,15 @@ export async function approveEthereumToken(
           `Calling Permit2.approve(${fullToken.address}, ${universalRouterAddress}, ${permit2Amount.toString()}, ${expiration})`,
         );
 
+        // Prepare gas options for Permit2 approval transaction
+        const gasOptions = await ethereum.prepareGasOptions(undefined, APPROVE_GAS_LIMIT);
+
         const permit2Tx = await permit2Contract.approve(
           fullToken.address,
           universalRouterAddress,
           permit2Amount,
           expiration,
+          gasOptions,
         );
 
         // Wait for confirmation with extended timeout
