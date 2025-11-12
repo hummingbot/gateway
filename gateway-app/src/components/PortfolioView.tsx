@@ -95,14 +95,16 @@ export function PortfolioView() {
         }
       ];
 
-      // Add tokens from token list
+      // Add tokens from token list (excluding native token to avoid duplicates)
       (allTokens.tokens || []).forEach((token) => {
-        mergedBalances.push({
-          symbol: token.symbol,
-          address: token.address,
-          balance: balanceMap.get(token.symbol) || '0',
-          value: 0,
-        });
+        if (token.symbol !== nativeCurrency) {
+          mergedBalances.push({
+            symbol: token.symbol,
+            address: token.address,
+            balance: balanceMap.get(token.symbol) || '0',
+            value: 0,
+          });
+        }
       });
 
       setBalances(mergedBalances);
