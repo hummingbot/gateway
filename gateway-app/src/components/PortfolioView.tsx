@@ -85,37 +85,24 @@ export function PortfolioView() {
         });
       }
 
-      // Start with tokens from token list
-      const tokenSymbols = new Set<string>();
-      let mergedBalances: Balance[] = (allTokens.tokens || []).map((token) => {
-        tokenSymbols.add(token.symbol);
-        return {
+      // Start with native token
+      const mergedBalances: Balance[] = [
+        {
+          symbol: nativeCurrency,
+          address: '',
+          balance: balanceMap.get(nativeCurrency) || '0',
+          value: 0,
+        }
+      ];
+
+      // Add tokens from token list
+      (allTokens.tokens || []).forEach((token) => {
+        mergedBalances.push({
           symbol: token.symbol,
           address: token.address,
           balance: balanceMap.get(token.symbol) || '0',
           value: 0,
-        };
-      });
-
-      // Add any tokens from balances that aren't in the token list (e.g., native token)
-      if (balanceData.balances) {
-        Object.entries(balanceData.balances).forEach(([symbol, balance]) => {
-          if (!tokenSymbols.has(symbol)) {
-            mergedBalances.push({
-              symbol,
-              address: '', // Native tokens don't have contract addresses
-              balance: String(balance),
-              value: 0,
-            });
-          }
         });
-      }
-
-      // Sort so native token comes first
-      mergedBalances = mergedBalances.sort((a, b) => {
-        if (a.symbol === nativeCurrency) return -1;
-        if (b.symbol === nativeCurrency) return 1;
-        return 0;
       });
 
       setBalances(mergedBalances);
