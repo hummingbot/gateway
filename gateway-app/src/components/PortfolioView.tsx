@@ -192,16 +192,33 @@ export function PortfolioView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {balances.map((balance, i) => (
-                    <tr key={i} className="border-b">
-                      <td className={`py-2 ${balance.symbol === nativeSymbol ? 'font-bold' : ''}`}>
-                        {balance.symbol}
-                      </td>
-                      <td className={`text-right ${balance.symbol === nativeSymbol ? 'font-bold' : ''}`}>
-                        {balance.balance}
-                      </td>
-                    </tr>
-                  ))}
+                  {balances.map((balance, i) => {
+                    const explorerUrl = balance.address
+                      ? `https://solscan.io/token/${balance.address}`
+                      : null;
+
+                    return (
+                      <tr key={i} className="border-b">
+                        <td className={`py-2 ${balance.symbol === nativeSymbol ? 'font-bold' : ''}`}>
+                          {explorerUrl ? (
+                            <a
+                              href={explorerUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:underline text-blue-600 dark:text-blue-400"
+                            >
+                              {balance.symbol}
+                            </a>
+                          ) : (
+                            balance.symbol
+                          )}
+                        </td>
+                        <td className={`text-right ${balance.symbol === nativeSymbol ? 'font-bold' : ''}`}>
+                          {balance.balance}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
