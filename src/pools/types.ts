@@ -27,7 +27,7 @@ export interface PoolTemplate {
 }
 
 export interface Pool extends PoolTemplate {
-  // Optional CoinGecko market data (fetched dynamically, not stored in templates)
+  // Optional CoinGecko market data (stored when saving pools)
   geckoData?: PoolGeckoData;
 }
 

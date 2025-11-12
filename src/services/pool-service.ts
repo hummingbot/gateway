@@ -8,18 +8,10 @@ import * as fse from 'fs-extra';
 
 import { connectorsConfig } from '../config/routes/getConnectors';
 import { rootPath } from '../paths';
-import { Pool, PoolTemplate, PoolFileFormat, getSupportedConnectors, isSupportedConnector } from '../pools/types';
+import { Pool, PoolFileFormat, getSupportedConnectors, isSupportedConnector } from '../pools/types';
 import { SupportedChain } from '../tokens/types';
 
 import { logger } from './logger';
-
-/**
- * Strip geckoData from pool to get template format for storage
- */
-function stripGeckoData(pool: Pool): PoolTemplate {
-  const { geckoData, ...template } = pool;
-  return template;
-}
 
 const writeFile = promisify(fs.writeFile);
 const readFile = promisify(fs.readFile);
@@ -181,14 +173,12 @@ export class PoolService {
       await fse.ensureDir(dirPath);
     }
 
-    // Strip geckoData from all pools before saving (only save template data)
-    const poolTemplates = pools.map(stripGeckoData);
-
+    // Save pools with geckoData included (similar to token storage)
     // Use atomic write (write to temp file then rename)
     const tempPath = `${poolListPath}.tmp`;
 
     try {
-      await writeFile(tempPath, JSON.stringify(poolTemplates, null, 2));
+      await writeFile(tempPath, JSON.stringify(pools, null, 2));
       fs.renameSync(tempPath, poolListPath);
     } catch (error) {
       // Clean up temp file on error
