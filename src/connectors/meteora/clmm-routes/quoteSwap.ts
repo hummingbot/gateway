@@ -21,7 +21,7 @@ export async function getRawSwapQuote(
   amount: number,
   side: 'BUY' | 'SELL',
   poolAddress: string,
-  slippagePct?: number,
+  slippagePct: number = MeteoraConfig.config.slippagePct,
 ) {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
@@ -47,7 +47,7 @@ export async function getRawSwapQuote(
       : DecimalUtil.toBN(new Decimal(amount), inputToken.decimals);
   const swapForY = inputToken.address === dlmmPool.tokenX.publicKey.toBase58();
   const binArrays = await dlmmPool.getBinArrayForSwap(swapForY);
-  const effectiveSlippage = new BN((slippagePct ?? MeteoraConfig.config.slippagePct) * 100);
+  const effectiveSlippage = new BN(slippagePct * 100);
 
   const quote =
     side === 'BUY'
@@ -72,7 +72,7 @@ async function formatSwapQuote(
   amount: number,
   side: 'BUY' | 'SELL',
   poolAddress: string,
-  slippagePct?: number,
+  slippagePct: number = MeteoraConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
   const { inputToken, outputToken, quote, dlmmPool } = await getRawSwapQuote(
     fastify,
@@ -110,7 +110,7 @@ async function formatSwapQuote(
       amountIn: estimatedAmountIn,
       amountOut: amountOut,
       price,
-      slippagePct: slippagePct || 1, // Default 1% if not provided
+      slippagePct,
       minAmountOut: amountOut,
       maxAmountIn,
       // CLMM-specific fields
@@ -138,7 +138,7 @@ async function formatSwapQuote(
       amountIn: estimatedAmountIn,
       amountOut: estimatedAmountOut,
       price,
-      slippagePct: slippagePct || 1, // Default 1% if not provided
+      slippagePct,
       minAmountOut,
       maxAmountIn: estimatedAmountIn,
       // CLMM-specific fields

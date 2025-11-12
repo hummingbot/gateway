@@ -5,7 +5,6 @@ import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
 import { EthereumLedger } from '../ethereum-ledger';
-import { waitForTransactionWithTimeout } from '../ethereum.utils';
 import { WrapRequestSchema, WrapResponseSchema, WrapRequestType, WrapResponseType } from '../schemas';
 
 // Default gas limit for wrap operations
@@ -107,8 +106,8 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
       // Send the signed transaction
       const txResponse = await ethereum.provider.sendTransaction(signedTx);
 
-      // Wait for confirmation with timeout (30 seconds for hardware wallets)
-      receipt = await waitForTransactionWithTimeout(txResponse, 30000);
+      // Wait for confirmation with timeout
+      receipt = await ethereum.handleTransactionExecution(txResponse);
 
       transaction = {
         hash: receipt.transactionHash,
@@ -141,7 +140,7 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
       nonce = transaction.nonce;
 
       // Wait for transaction confirmation with timeout
-      receipt = await waitForTransactionWithTimeout(transaction);
+      receipt = await ethereum.handleTransactionExecution(transaction);
     }
 
     // Calculate actual fee from receipt
@@ -153,7 +152,7 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
 
     return {
       signature: transaction.hash,
-      status: 1, // CONFIRMED
+      status: receipt.status,
       data: {
         nonce: nonce,
         fee: feeInEth,

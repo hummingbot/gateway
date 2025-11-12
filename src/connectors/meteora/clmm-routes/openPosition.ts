@@ -34,7 +34,7 @@ export async function openPosition(
   poolAddress: string,
   baseTokenAmount: number | undefined,
   quoteTokenAmount: number | undefined,
-  slippagePct?: number,
+  slippagePct: number = MeteoraConfig.config.slippagePct,
   strategyType?: number,
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
@@ -123,18 +123,13 @@ export async function openPosition(
   const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true);
   const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false);
 
-  // The user-provided amounts are the MAXIMUM we should deposit
-  // The SDK's slippage parameter adds MORE on top, so we need to reduce the input amounts
-  // to ensure the final max = user input
-  const slippageBps = slippagePct ? slippagePct * 100 : undefined;
-  const slippageMultiplier = slippagePct ? 1 / (1 + slippagePct / 100) : 1;
+  // Don't add SOL rent to the liquidity amounts - rent is separate
+  const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount || 0), dlmmPool.tokenX.mint.decimals));
+  const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(quoteTokenAmount || 0), dlmmPool.tokenY.mint.decimals));
 
-  // Reduce the amounts by slippage so that when SDK applies slippage, we get back to user's max
-  const adjustedBaseAmount = (baseTokenAmount || 0) * slippageMultiplier;
-  const adjustedQuoteAmount = (quoteTokenAmount || 0) * slippageMultiplier;
-
-  const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(adjustedBaseAmount), dlmmPool.tokenX.mint.decimals));
-  const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(adjustedQuoteAmount), dlmmPool.tokenY.mint.decimals));
+  // Create position transaction following SDK example
+  // Slippage needs to be in BPS (basis points): percentage * 100
+  const slippageBps = slippagePct * 100;
 
   const createPositionTx = await dlmmPool.initializePositionAndAddLiquidityByStrategy({
     positionPubKey: newImbalancePosition.publicKey,
@@ -208,33 +203,12 @@ export async function openPosition(
       `Position opened at ${newImbalancePosition.publicKey.toBase58()}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${tokenXSymbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${tokenYSymbol}`,
     );
 
-    // Refresh positions cache for this wallet (non-blocking)
-    const positionAddress = newImbalancePosition.publicKey.toBase58();
-    const walletAddr = wallet.publicKey.toBase58();
-    const positionCache = solana.getPositionCache();
-    if (positionCache) {
-      // Trigger background position refresh for this wallet to include new position
-      import('../../../services/positions-service')
-        .then(({ PositionsService }) => {
-          const positionsService = PositionsService.getInstance();
-          return positionsService.trackPositions([walletAddr], positionCache, async (addr: string) => {
-            return await (solana as any).fetchPositionsForWallet(addr);
-          });
-        })
-        .then(() => {
-          logger.info(
-            `Refreshed position cache for wallet ${walletAddr.slice(0, 8)}... (includes new position ${positionAddress})`,
-          );
-        })
-        .catch((err) => logger.warn(`Failed to refresh position cache: ${err.message}`));
-    }
-
     return {
       signature,
       status: 1, // CONFIRMED
       data: {
         fee: txFee,
-        positionAddress,
+        positionAddress: newImbalancePosition.publicKey.toBase58(),
         positionRent: sentSOL,
         baseTokenAmountAdded: baseTokenBalanceChange,
         quoteTokenAmountAdded: quoteTokenBalanceChange,

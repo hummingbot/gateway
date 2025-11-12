@@ -34,7 +34,7 @@ export async function quoteSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct: number,
+  slippagePct: number = JupiterConfig.config.slippagePct,
   onlyDirectRoutes?: boolean,
   restrictIntermediateTokens?: boolean,
 ): Promise<Static<typeof JupiterQuoteSwapResponse>> {
@@ -168,7 +168,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           quoteToken,
           amount,
           side as 'BUY' | 'SELL',
-          slippagePct ?? JupiterConfig.config.slippagePct,
+          slippagePct,
           onlyDirectRoutes,
           restrictIntermediateTokens,
         );

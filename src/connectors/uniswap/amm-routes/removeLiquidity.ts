@@ -189,7 +189,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Wait for transaction confirmation
-        const receipt = await tx.wait();
+        const receipt = await ethereum.handleTransactionExecution(tx);
 
         // Format amounts for response
         const baseTokenAmountRemoved = formatTokenAmount(expectedBaseTokenAmount.toString(), baseTokenObj.decimals);
@@ -204,7 +204,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         return {
           signature: receipt.transactionHash,
-          status: 1, // CONFIRMED
+          status: receipt.status,
           data: {
             fee: gasFee,
             baseTokenAmountRemoved,

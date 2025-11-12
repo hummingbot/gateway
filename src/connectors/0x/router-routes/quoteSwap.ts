@@ -7,7 +7,7 @@ import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
-import { ZeroX, ZeroXQuoteResponse } from '../0x';
+import { ZeroX } from '../0x';
 import { ZeroXConfig } from '../0x.config';
 import { ZeroXQuoteSwapRequest, ZeroXQuoteSwapResponse } from '../schemas';
 
@@ -18,7 +18,7 @@ async function quoteSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct: number,
+  slippagePct: number = ZeroXConfig.config.slippagePct,
   indicativePrice: boolean = true,
   takerAddress?: string,
 ): Promise<Static<typeof ZeroXQuoteSwapResponse>> {
