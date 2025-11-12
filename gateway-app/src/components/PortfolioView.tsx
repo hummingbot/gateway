@@ -1,10 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { gatewayPost } from '@/lib/api';
+import { Button } from './ui/button';
+import { gatewayPost, gatewayGet } from '@/lib/api';
 import { useApp } from '@/lib/AppContext';
+import { AddTokenModal } from './AddTokenModal';
+
+interface Token {
+  address: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+}
 
 interface Balance {
   symbol: string;
+  address: string;
   balance: string;
   value?: number;
 }
@@ -14,42 +24,84 @@ export function PortfolioView() {
   const [balances, setBalances] = useState<Balance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAddToken, setShowAddToken] = useState(false);
+  const [availableNetworks, setAvailableNetworks] = useState<string[]>([]);
+
+  useEffect(() => {
+    loadNetworks();
+  }, [selectedChain]);
 
   useEffect(() => {
     if (!selectedWallet) return;
-
-    async function fetchData() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Fetch wallet balances
-        const balanceData = await gatewayPost<any>(
-          `/chains/${selectedChain}/balances`,
-          {
-            network: selectedNetwork,
-            address: selectedWallet,
-          }
-        );
-
-        // Convert balances object to array format
-        if (balanceData.balances) {
-          const balanceArray = Object.entries(balanceData.balances).map(([symbol, balance]) => ({
-            symbol,
-            balance: String(balance),
-            value: 0, // TODO: fetch prices
-          }));
-          setBalances(balanceArray);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch data');
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchData();
   }, [selectedChain, selectedNetwork, selectedWallet]);
+
+  async function loadNetworks() {
+    try {
+      const configData = await gatewayGet<any>('/config/chains');
+      const chainData = configData.chains?.find((c: any) => c.chain === selectedChain);
+      if (chainData?.networks) {
+        setAvailableNetworks(chainData.networks);
+      }
+    } catch (err) {
+      console.error('Failed to load networks:', err);
+    }
+  }
+
+  async function fetchData() {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch all tokens for this network
+      const allTokens = await gatewayGet<{ tokens: Token[] }>(
+        `/tokens?chain=${selectedChain}&network=${selectedNetwork}`
+      );
+
+      // Fetch wallet balances
+      const balanceData = await gatewayPost<any>(
+        `/chains/${selectedChain}/balances`,
+        {
+          network: selectedNetwork,
+          address: selectedWallet,
+        }
+      );
+
+      // Create a map of balances by symbol
+      const balanceMap = new Map<string, string>();
+      if (balanceData.balances) {
+        Object.entries(balanceData.balances).forEach(([symbol, balance]) => {
+          balanceMap.set(symbol, String(balance));
+        });
+      }
+
+      // Merge all tokens with their balances (0 if not in balance response)
+      const mergedBalances: Balance[] = (allTokens.tokens || []).map((token) => ({
+        symbol: token.symbol,
+        address: token.address,
+        balance: balanceMap.get(token.symbol) || '0',
+        value: 0, // TODO: fetch prices
+      }));
+
+      setBalances(mergedBalances);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch data');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleAddToken(chain: string, network: string, address: string) {
+    await gatewayPost('/tokens/save', {
+      chain,
+      network,
+      address,
+    });
+
+    // Reload data
+    await fetchData();
+    alert('Token added successfully!');
+  }
 
   if (!selectedWallet) {
     return (
@@ -108,7 +160,12 @@ export function PortfolioView() {
       {/* Token Balances */}
       <Card>
         <CardHeader>
-          <CardTitle>Token Balances</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>Token Balances</CardTitle>
+            <Button onClick={() => setShowAddToken(true)} size="sm">
+              Add Token
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -139,6 +196,17 @@ export function PortfolioView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Token Modal */}
+      {showAddToken && (
+        <AddTokenModal
+          onClose={() => setShowAddToken(false)}
+          onAddToken={handleAddToken}
+          defaultChain={selectedChain}
+          defaultNetwork={selectedNetwork}
+          availableNetworks={availableNetworks}
+        />
+      )}
     </div>
   );
 }
