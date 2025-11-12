@@ -143,25 +143,13 @@ export function PortfolioView() {
     );
   }
 
-  const totalValue = balances.reduce((sum, b) => sum + (b.value || 0), 0);
-
   return (
     <div className="p-6 space-y-6">
-      {/* Holdings Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex justify-between items-center">
-            <span>Total Holdings</span>
-            <span className="text-2xl">${totalValue.toFixed(2)}</span>
-          </CardTitle>
-        </CardHeader>
-      </Card>
-
-      {/* Token Balances */}
+      {/* Balances */}
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>Token Balances</CardTitle>
+            <CardTitle>Balances</CardTitle>
             <Button onClick={() => setShowAddToken(true)} size="sm">
               Add Token
             </Button>
@@ -177,7 +165,6 @@ export function PortfolioView() {
                   <tr className="border-b">
                     <th className="text-left py-2">Asset</th>
                     <th className="text-right py-2">Balance</th>
-                    <th className="text-right py-2">Value</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -185,9 +172,6 @@ export function PortfolioView() {
                     <tr key={i} className="border-b">
                       <td className="py-2">{balance.symbol}</td>
                       <td className="text-right">{balance.balance}</td>
-                      <td className="text-right">
-                        ${(balance.value || 0).toFixed(2)}
-                      </td>
                     </tr>
                   ))}
                 </tbody>
