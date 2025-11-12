@@ -4,7 +4,18 @@
 
 import { connectorsConfig } from '../config/routes/getConnectors';
 
-export interface Pool {
+export interface PoolGeckoData {
+  volumeUsd24h: string;
+  liquidityUsd: string;
+  priceNative: string;
+  priceUsd: string;
+  buys24h: number;
+  sells24h: number;
+  apr?: number; // Annualized percentage rate: (volume * feePct / liquidity) * 365
+  timestamp: number;
+}
+
+export interface PoolTemplate {
   type: 'amm' | 'clmm';
   network: string;
   baseSymbol: string; // Required - resolved from token service or CoinGecko
@@ -13,15 +24,11 @@ export interface Pool {
   quoteTokenAddress: string;
   feePct: number;
   address: string;
-  // Optional market data fields populated from CoinGecko API
-  volumeUsd24h?: string;
-  liquidityUsd?: string;
-  priceNative?: string;
-  priceUsd?: string;
-  buys24h?: number;
-  sells24h?: number;
-  apr?: number; // Annualized percentage rate: (volume * feePct / liquidity) * 365
-  timestamp?: number;
+}
+
+export interface Pool extends PoolTemplate {
+  // Optional CoinGecko market data (fetched dynamically, not stored in templates)
+  geckoData?: PoolGeckoData;
 }
 
 export type PoolFileFormat = Pool[];

@@ -1,56 +1,16 @@
 import axios, { AxiosInstance } from 'axios';
 
+import { getGeckoTerminalId, parseChainNetwork, getSupportedChainNetworks } from './chain-config';
 import { ConfigManagerV2 } from './config-manager-v2';
 import { logger } from './logger';
 
 /**
- * Maps Gateway chainNetwork format to GeckoTerminal network IDs
- * Gateway format: chain-network (e.g., ethereum-bsc, solana-mainnet-beta)
- * GeckoTerminal network IDs: bsc, eth, solana, polygon_pos, etc.
- */
-const NETWORK_MAPPING: Record<string, string> = {
-  // Solana networks
-  'solana-mainnet-beta': 'solana',
-  'solana-devnet': 'solana', // GeckoTerminal doesn't have devnet
-
-  // Ethereum networks
-  'ethereum-mainnet': 'eth',
-  'ethereum-sepolia': 'sepolia-testnet',
-  'ethereum-bsc': 'bsc',
-  'ethereum-polygon': 'polygon_pos',
-  'ethereum-arbitrum': 'arbitrum',
-  'ethereum-optimism': 'optimism',
-  'ethereum-base': 'base',
-  'ethereum-avalanche': 'avax',
-  'ethereum-celo': 'celo',
-};
-
-/**
- * Chain network parsing info - maps Gateway chainNetwork format to internal chain/network structure
- * Gateway format: chain-network (e.g., ethereum-bsc, solana-mainnet-beta)
- * Output: { chain: 'ethereum', network: 'bsc' } - used for Ethereum.getInstance(network)
+ * Chain network parsing info
  */
 export interface ChainNetworkInfo {
   chain: string;
   network: string;
 }
-
-const CHAINNETWORK_PARSING: Record<string, ChainNetworkInfo> = {
-  // Solana networks
-  'solana-mainnet-beta': { chain: 'solana', network: 'mainnet-beta' },
-  'solana-devnet': { chain: 'solana', network: 'devnet' },
-
-  // Ethereum networks
-  'ethereum-mainnet': { chain: 'ethereum', network: 'mainnet' },
-  'ethereum-sepolia': { chain: 'ethereum', network: 'sepolia' },
-  'ethereum-bsc': { chain: 'ethereum', network: 'bsc' },
-  'ethereum-polygon': { chain: 'ethereum', network: 'polygon' },
-  'ethereum-arbitrum': { chain: 'ethereum', network: 'arbitrum' },
-  'ethereum-optimism': { chain: 'ethereum', network: 'optimism' },
-  'ethereum-base': { chain: 'ethereum', network: 'base' },
-  'ethereum-avalanche': { chain: 'ethereum', network: 'avalanche' },
-  'ethereum-celo': { chain: 'ethereum', network: 'celo' },
-};
 
 /**
  * DEX connector type definition
@@ -137,6 +97,8 @@ export interface GeckoTerminalPool {
 
 /**
  * Simplified pool info for top pools response
+ * This contains raw data from GeckoTerminal API that can be transformed
+ * to PoolGeckoData using extractRawPoolData() and toPoolGeckoData()
  */
 export interface TopPoolInfo {
   poolAddress: string;
@@ -147,6 +109,7 @@ export interface TopPoolInfo {
   quoteTokenAddress: string;
   baseTokenSymbol: string;
   quoteTokenSymbol: string;
+  // Fields below can be extracted and transformed to PoolGeckoData
   priceUsd: string;
   priceNative: string;
   volumeUsd24h: string;
@@ -240,23 +203,15 @@ export class CoinGeckoService {
    * Map Gateway chain-network format to GeckoTerminal network ID
    */
   public mapNetworkId(chainNetwork: string): string {
-    const geckoNetwork = NETWORK_MAPPING[chainNetwork];
-    if (!geckoNetwork) {
-      throw new Error(`Unsupported network for GeckoTerminal: ${chainNetwork}`);
-    }
-    return geckoNetwork;
+    return getGeckoTerminalId(chainNetwork);
   }
 
   /**
    * Parse Gateway chainNetwork format to get internal chain and network names
-   * This handles special cases like 'bsc-mainnet' which should map to chain='ethereum', network='bsc'
+   * This handles special cases like 'ethereum-base' which should map to chain='ethereum', network='base'
    */
   public parseChainNetwork(chainNetwork: string): ChainNetworkInfo {
-    const parsed = CHAINNETWORK_PARSING[chainNetwork];
-    if (!parsed) {
-      throw new Error(`Unsupported chainNetwork format: ${chainNetwork}`);
-    }
-    return parsed;
+    return parseChainNetwork(chainNetwork);
   }
 
   /**
@@ -556,6 +511,112 @@ export class CoinGeckoService {
   }
 
   /**
+   * Get token info with market data including price, volume, market cap, and top pools
+   * This uses the extended endpoint that includes top_pools relationship
+   *
+   * The market data fields in the return value can be transformed to TokenGeckoData
+   * using toTokenGeckoData() helper from gecko-types.ts
+   */
+  public async getTokenInfoWithMarketData(
+    chainNetwork: string,
+    tokenAddress: string,
+  ): Promise<{
+    address: string;
+    name: string;
+    symbol: string;
+    decimals: number;
+    // Fields below can be transformed to TokenGeckoData using toTokenGeckoData()
+    coingeckoCoinId: string | null;
+    imageUrl: string;
+    priceUsd: string;
+    volumeUsd24h: string;
+    marketCapUsd: string;
+    fdvUsd: string;
+    totalSupply: string;
+    topPools: string[];
+  }> {
+    try {
+      // Validate token address before constructing endpoint to prevent SSRF
+      if (!this.isValidTokenAddress(chainNetwork, tokenAddress)) {
+        logger.warn(`Invalid token address supplied: ${tokenAddress} for chainNetwork: ${chainNetwork}`);
+        throw new Error(`Invalid token address format for chainNetwork "${chainNetwork}"`);
+      }
+
+      const geckoNetwork = this.mapNetworkId(chainNetwork);
+      const endpoint = `/networks/${geckoNetwork}/tokens/${tokenAddress}`;
+
+      logger.info(`Fetching token info with market data for ${tokenAddress} on ${chainNetwork}`);
+
+      const response = await this.client.get<{
+        data: {
+          id: string;
+          type: 'token';
+          attributes: {
+            address: string;
+            name: string;
+            symbol: string;
+            decimals: number;
+            image_url: string;
+            coingecko_coin_id: string | null;
+            price_usd: string;
+            volume_usd: { h24: string };
+            market_cap_usd: string;
+            fdv_usd: string;
+            total_supply: string;
+            normalized_total_supply: string;
+          };
+          relationships: {
+            top_pools: {
+              data: Array<{ id: string; type: 'pool' }>;
+            };
+          };
+        };
+      }>(endpoint, {
+        params: {
+          include: 'top_pools',
+        },
+      });
+
+      if (!response.data || !response.data.data) {
+        throw new Error(`No token info found for ${tokenAddress} on ${geckoNetwork}`);
+      }
+
+      const tokenData = response.data.data;
+      const attrs = tokenData.attributes;
+      const topPoolsData = tokenData.relationships?.top_pools?.data || [];
+
+      // Extract pool addresses from top_pools relationship
+      const topPools = topPoolsData.map((pool) => {
+        // Format: "solana_58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2"
+        const parts = pool.id.split('_');
+        return parts.length > 1 ? parts[1] : pool.id;
+      });
+
+      return {
+        address: attrs.address,
+        name: attrs.name,
+        symbol: attrs.symbol,
+        decimals: attrs.decimals,
+        coingeckoCoinId: attrs.coingecko_coin_id,
+        imageUrl: attrs.image_url,
+        priceUsd: attrs.price_usd,
+        volumeUsd24h: attrs.volume_usd.h24,
+        marketCapUsd: attrs.market_cap_usd,
+        fdvUsd: attrs.fdv_usd,
+        totalSupply: attrs.normalized_total_supply,
+        topPools,
+      };
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error(`Token ${tokenAddress} not found on ${chainNetwork}`);
+      }
+
+      logger.error(`Error fetching token info from GeckoTerminal: ${error.message}`);
+      throw new Error(`Failed to fetch token info from GeckoTerminal: ${error.message}`);
+    }
+  }
+
+  /**
    * Get pool info from GeckoTerminal by pool address
    */
   public async getPoolInfo(chainNetwork: string, poolAddress: string): Promise<TopPoolInfo> {
@@ -593,6 +654,6 @@ export class CoinGeckoService {
    * Get list of supported networks
    */
   public getSupportedNetworks(): string[] {
-    return Object.keys(NETWORK_MAPPING);
+    return getSupportedChainNetworks();
   }
 }

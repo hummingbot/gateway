@@ -1,6 +1,8 @@
 import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
+import { TopPoolInfo } from '../../services/coingecko-service';
+import { extractRawPoolData, toPoolGeckoData } from '../../services/gecko-types';
 import { logger } from '../../services/logger';
 import { findPools } from '../pool-finder';
 import { fetchDetailedPoolInfo } from '../pool-lookup-helper';
@@ -11,6 +13,29 @@ import {
   FindPoolsResponseSchema,
   PoolInfoSchema,
 } from '../schemas';
+import { Pool } from '../types';
+
+/**
+ * Transform TopPoolInfo from CoinGecko to PoolInfo format
+ * Uses typed transformation helper to ensure consistent geckoData format
+ */
+function transformToPoolInfo(topPoolInfo: TopPoolInfo): Pool {
+  // Extract and transform geckoData using typed helpers
+  const rawPoolData = extractRawPoolData(topPoolInfo);
+  const geckoData = toPoolGeckoData(rawPoolData);
+
+  return {
+    type: topPoolInfo.type as 'amm' | 'clmm',
+    network: '', // Will be filled from chainNetwork
+    baseSymbol: topPoolInfo.baseTokenSymbol,
+    quoteSymbol: topPoolInfo.quoteTokenSymbol,
+    baseTokenAddress: topPoolInfo.baseTokenAddress,
+    quoteTokenAddress: topPoolInfo.quoteTokenAddress,
+    feePct: 0, // Not available from TopPoolInfo, would need to fetch from connector
+    address: topPoolInfo.poolAddress,
+    geckoData,
+  };
+}
 
 export const findPoolsRoute: FastifyPluginAsync = async (fastify) => {
   // GET /pools/find/:address - Get detailed pool info by address
@@ -49,10 +74,10 @@ export const findPoolsRoute: FastifyPluginAsync = async (fastify) => {
 
       try {
         // Fetch detailed pool information using shared helper
-        const { poolData } = await fetchDetailedPoolInfo(chainNetwork, address);
+        const { pool } = await fetchDetailedPoolInfo(chainNetwork, address);
 
-        // Return pool data in PoolInfo format (same as what's returned from find pools)
-        return poolData;
+        // Return pool data in PoolInfo format with geckoData
+        return pool;
       } catch (error: any) {
         logger.error(`Failed to get pool info for ${address}: ${error.message}`);
 
@@ -106,12 +131,22 @@ export const findPoolsRoute: FastifyPluginAsync = async (fastify) => {
       const { tokenA, tokenB, chainNetwork, pages = 10, connector, type = 'clmm' } = request.query;
 
       try {
-        const pools = await findPools(chainNetwork, {
+        const topPools = await findPools(chainNetwork, {
           tokenA,
           tokenB,
           connector,
           type: type as 'amm' | 'clmm',
           page: pages,
+        });
+
+        // Transform TopPoolInfo to PoolInfo format
+        // Extract network from chainNetwork (format: chain-network)
+        const network = chainNetwork.split('-').slice(1).join('-');
+
+        const pools = topPools.map((topPool) => {
+          const pool = transformToPoolInfo(topPool);
+          pool.network = network;
+          return pool;
         });
 
         return pools;
