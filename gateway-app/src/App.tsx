@@ -4,8 +4,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Select } from './components/ui/select';
 import { PortfolioView } from './components/PortfolioView';
 import { SwapView } from './components/SwapView';
-import { PoolsView } from './components/PoolsView';
-import { LiquidityView } from './components/LiquidityView';
 import { ConfigView } from './components/ConfigView';
 import { WalletSelector } from './components/WalletSelector';
 import { AddWalletModal } from './components/AddWalletModal';
@@ -184,8 +182,6 @@ function AppContent() {
             <TabsList>
               <TabsTrigger value="portfolio">Wallet</TabsTrigger>
               <TabsTrigger value="swap">Swap</TabsTrigger>
-              <TabsTrigger value="pools">Pools</TabsTrigger>
-              <TabsTrigger value="liquidity">Liquidity</TabsTrigger>
               <TabsTrigger value="config">Configs</TabsTrigger>
             </TabsList>
           </div>
@@ -197,14 +193,6 @@ function AppContent() {
 
             <TabsContent value="swap" className="h-full m-0">
               <SwapView />
-            </TabsContent>
-
-            <TabsContent value="pools" className="h-full m-0">
-              <PoolsView />
-            </TabsContent>
-
-            <TabsContent value="liquidity" className="h-full m-0">
-              <LiquidityView />
             </TabsContent>
 
             <TabsContent value="config" className="h-full m-0">

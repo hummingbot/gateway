@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { gatewayPost } from '@/lib/api';
 import { useApp } from '@/lib/AppContext';
 
@@ -10,18 +9,9 @@ interface Balance {
   value?: number;
 }
 
-interface Position {
-  poolAddress: string;
-  baseToken: string;
-  quoteToken: string;
-  liquidity: number;
-  connector: string;
-}
-
 export function PortfolioView() {
   const { selectedChain, selectedNetwork, selectedWallet } = useApp();
   const [balances, setBalances] = useState<Balance[]>([]);
-  const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,9 +41,6 @@ export function PortfolioView() {
           }));
           setBalances(balanceArray);
         }
-
-        // TODO: Fetch LP positions from various connectors
-        setPositions([]);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch data');
       } finally {
@@ -118,88 +105,40 @@ export function PortfolioView() {
         </CardHeader>
       </Card>
 
-      {/* Tokens & LP Positions Tabs */}
-      <Tabs value="wallet" onValueChange={() => {}}>
-        <TabsList>
-          <TabsTrigger value="wallet">Tokens</TabsTrigger>
-          <TabsTrigger value="lp">LP Positions</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="wallet">
-          <Card>
-            <CardHeader>
-              <CardTitle>Token Balances</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {balances.length === 0 ? (
-                  <p className="text-muted-foreground">No tokens found</p>
-                ) : (
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2">Asset</th>
-                        <th className="text-right py-2">Balance</th>
-                        <th className="text-right py-2">Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {balances.map((balance, i) => (
-                        <tr key={i} className="border-b">
-                          <td className="py-2">{balance.symbol}</td>
-                          <td className="text-right">{balance.balance}</td>
-                          <td className="text-right">
-                            ${(balance.value || 0).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="lp">
-          <Card>
-            <CardHeader>
-              <CardTitle>LP Positions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {positions.length === 0 ? (
-                <p className="text-muted-foreground">
-                  No liquidity positions found
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {positions.map((position, i) => (
-                    <Card key={i}>
-                      <CardContent className="pt-6">
-                        <div className="flex justify-between">
-                          <div>
-                            <p className="font-semibold">
-                              {position.baseToken} / {position.quoteToken}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {position.connector}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold">
-                              ${position.liquidity.toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+      {/* Token Balances */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Token Balances</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {balances.length === 0 ? (
+              <p className="text-muted-foreground">No tokens found</p>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2">Asset</th>
+                    <th className="text-right py-2">Balance</th>
+                    <th className="text-right py-2">Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {balances.map((balance, i) => (
+                    <tr key={i} className="border-b">
+                      <td className="py-2">{balance.symbol}</td>
+                      <td className="text-right">{balance.balance}</td>
+                      <td className="text-right">
+                        ${(balance.value || 0).toFixed(2)}
+                      </td>
+                    </tr>
                   ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                </tbody>
+              </table>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
