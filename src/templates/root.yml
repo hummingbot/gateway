@@ -76,6 +76,10 @@ configurations:
     configurationPath: connectors/raydium.yml
     schemaPath: raydium-schema.json
 
+  $namespace orca:
+    configurationPath: connectors/orca.yml
+    schemaPath: orca-schema.json
+
   $namespace 0x:
     configurationPath: connectors/0x.yml
     schemaPath: 0x-schema.json

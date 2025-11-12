@@ -1508,12 +1508,14 @@ export class Solana {
    * @param signature Transaction signature
    * @param owner Owner address (required for SPL tokens and SOL balance extraction)
    * @param tokens Array of token mint addresses or 'SOL' for native SOL
+   * @param treatWsolAsSplToken If true, treats WSOL as a regular SPL token instead of native SOL (default: false for backward compatibility)
    * @returns Array of balance changes in the same order as tokens, and transaction fee
    */
   async extractBalanceChangesAndFee(
     signature: string,
     owner: string,
     tokens: string[],
+    treatWsolAsSplToken: boolean = false,
   ): Promise<{
     balanceChanges: number[];
     fee: number;
@@ -1536,11 +1538,16 @@ export class Solana {
     const postTokenBalances = txDetails.meta?.postTokenBalances || [];
     const ownerPubkey = new PublicKey(owner);
 
+    const NATIVE_MINT = 'So11111111111111111111111111111111111111112';
+
     // Process each token and return array of balance changes
     const balanceChanges = tokens.map((token) => {
-      // Check if this is native SOL
-      if (token === 'So11111111111111111111111111111111111111112') {
-        // For native SOL, we need to calculate from lamport balance changes
+      // Check if this is native SOL (WSOL)
+      const isNativeSOL = token === NATIVE_MINT;
+
+      // If it's WSOL and we DON'T want to treat it as SPL token, use native SOL balance logic
+      if (isNativeSOL && !treatWsolAsSplToken) {
+        // For native SOL, calculate from lamport balance changes (original behavior for backward compatibility)
         const accountIndex = txDetails.transaction.message.accountKeys.findIndex((key) =>
           key.pubkey.equals(ownerPubkey),
         );
@@ -1554,16 +1561,15 @@ export class Solana {
         const lamportChange = postBalances[accountIndex] - preBalances[accountIndex];
         return lamportChange * LAMPORT_TO_SOL;
       } else {
-        // Token mint address provided - get SPL token balance change
-        const preBalance =
-          preTokenBalances.find((balance) => balance.mint === token && balance.owner === owner)?.uiTokenAmount
-            .uiAmount || 0;
+        // Token mint address provided - get SPL token balance change (including WSOL if treatWsolAsSplToken=true)
+        const preBalanceEntry = preTokenBalances.find((balance) => balance.mint === token && balance.owner === owner);
+        const preBalance = preBalanceEntry?.uiTokenAmount.uiAmount || 0;
 
-        const postBalance =
-          postTokenBalances.find((balance) => balance.mint === token && balance.owner === owner)?.uiTokenAmount
-            .uiAmount || 0;
+        const postBalanceEntry = postTokenBalances.find((balance) => balance.mint === token && balance.owner === owner);
+        const postBalance = postBalanceEntry?.uiTokenAmount.uiAmount || 0;
 
-        return postBalance - preBalance;
+        const diff = postBalance - preBalance;
+        return diff;
       }
     });
 

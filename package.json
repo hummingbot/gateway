@@ -37,7 +37,7 @@
     "prepare": "pnpm husky"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "^0.30.1",
+    "@coral-xyz/anchor": "~0.29.0",
     "@ethersproject/abstract-provider": "5.7.0",
     "@ethersproject/address": "5.7.0",
     "@ethersproject/contracts": "5.7.0",
@@ -55,6 +55,10 @@
     "@ledgerhq/hw-transport-node-hid-singleton": "^6.31.8",
     "@meteora-ag/dlmm": "1.7.5",
     "@orca-so/common-sdk": "^0.6.11",
+    "@orca-so/whirlpools": "^4.0.0",
+    "@orca-so/whirlpools-client": "^4.0.1",
+    "@orca-so/whirlpools-core": "^2.0.0",
+    "@orca-so/whirlpools-sdk": "^0.16.0",
     "@pancakeswap/permit2-sdk": "^1.1.5",
     "@pancakeswap/sdk": "^5.8.16",
     "@pancakeswap/smart-router": "^7.5.2",
@@ -67,6 +71,8 @@
     "@pancakeswap/v4-sdk": "^0.1.8",
     "@raydium-io/raydium-sdk-v2": "0.1.141-alpha",
     "@sinclair/typebox": "^0.33.22",
+    "@solana-program/token-2022": "^0.6.0",
+    "@solana/kit": "3.0.3",
     "@solana/spl-token": "0.4.8",
     "@solana/spl-token-registry": "^0.2.4574",
     "@solana/web3.js": "^1.98.0",

@@ -1,0 +1,3 @@
+# Global settings for Orca
+# Default slippage percentage for swaps (e.g., 1 = 1%)
+slippagePct: 1

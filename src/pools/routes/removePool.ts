@@ -10,7 +10,7 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
     Querystring: {
       connector: string;
       network: string;
-      type: 'amm' | 'clmm';
+      type: string;
     };
   }>(
     '/:address',
@@ -30,15 +30,16 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
         },
         querystring: Type.Object({
           connector: Type.String({
-            description: 'Connector (raydium, meteora, uniswap)',
-            examples: ['raydium', 'meteora', 'uniswap'],
+            description: 'Connector (raydium, meteora, uniswap, orca)',
+            examples: ['raydium', 'meteora', 'uniswap', 'orca'],
           }),
           network: Type.String({
             description: 'Network name (mainnet, mainnet-beta, etc)',
             examples: ['mainnet', 'mainnet-beta'],
           }),
-          type: Type.Union([Type.Literal('amm'), Type.Literal('clmm')], {
+          type: Type.String({
             description: 'Pool type',
+            examples: ['amm', 'clmm'],
           }),
         }),
         response: {
@@ -58,7 +59,7 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
       const poolService = PoolService.getInstance();
 
       try {
-        await poolService.removePool(connector, network, type, address);
+        await poolService.removePool(connector, network, type as 'amm' | 'clmm', address);
 
         return {
           message: `Pool with address ${address} removed successfully from ${connector} ${type} on ${network}`,

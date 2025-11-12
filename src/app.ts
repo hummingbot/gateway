@@ -19,6 +19,7 @@ import { configRoutes } from './config/config.routes';
 import { register0xRoutes } from './connectors/0x/0x.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
+import { orcaRoutes } from './connectors/orca/orca.routes';
 import { pancakeswapRoutes } from './connectors/pancakeswap/pancakeswap.routes';
 import { pancakeswapSolRoutes } from './connectors/pancakeswap-sol/pancakeswap-sol.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
@@ -85,6 +86,10 @@ const swaggerOptions = {
       {
         name: '/connector/meteora',
         description: 'Meteora connector endpoints',
+      },
+      {
+        name: '/connector/orca',
+        description: 'Orca connector endpoints',
       },
       {
         name: '/connector/raydium',
@@ -245,6 +250,9 @@ const configureGatewayServer = () => {
 
     // Meteora routes
     app.register(meteoraRoutes.clmm, { prefix: '/connectors/meteora/clmm' });
+
+    // // Orca routes
+    app.register(orcaRoutes.clmm, { prefix: '/connectors/orca/clmm' });
 
     // Raydium routes
     app.register(raydiumRoutes.amm, { prefix: '/connectors/raydium/amm' });
