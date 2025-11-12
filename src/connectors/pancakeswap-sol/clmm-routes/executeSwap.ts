@@ -1,5 +1,4 @@
-import { Static } from '@sinclair/typebox';
-import { PublicKey, VersionedTransaction } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
@@ -7,7 +6,7 @@ import { Solana } from '../../../chains/solana/solana';
 import { ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
-import { MIN_SQRT_PRICE_X64, MAX_SQRT_PRICE_X64 } from '../pancakeswap-sol.parser';
+import { PancakeswapSolConfig } from '../pancakeswap-sol.config';
 import { buildSwapTransaction } from '../pancakeswap-sol.transactions';
 import { PancakeswapSolClmmExecuteSwapRequest, PancakeswapSolClmmExecuteSwapRequestType } from '../schemas';
 
@@ -25,7 +24,7 @@ export async function executeSwap(
   amount: number,
   side: 'BUY' | 'SELL',
   poolAddress?: string,
-  slippagePct?: number,
+  slippagePct: number = PancakeswapSolConfig.config.slippagePct,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const pancakeswapSol = await PancakeswapSol.getInstance(network);
@@ -79,7 +78,7 @@ export async function executeSwap(
     `Token addresses - base: ${baseToken.address}, quote: ${quoteToken.address}, pool base: ${poolInfo.baseTokenAddress}, pool quote: ${poolInfo.quoteTokenAddress}`,
   );
 
-  const effectiveSlippage = slippagePct ?? 1.0;
+  const effectiveSlippage = slippagePct;
 
   // Calculate amounts
   let amountIn: number;

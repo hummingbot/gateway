@@ -10,6 +10,10 @@
       "description": "Default swap router provider for this network (format: connector/type, e.g., uniswap/router)",
       "default": "uniswap/router"
     },
+    "transactionExecutionTimeoutMs": {
+      "type": "number",
+      "description": " Timeout for waiting for transaction execution (in milliseconds)"
+    },
     "gasPrice": {
       "type": ["number", "null"],
       "description": "Gas price in GWEI for legacy (non-EIP-1559) networks (optional, will fetch from network RPC if not set)"

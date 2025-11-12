@@ -34,7 +34,7 @@ export async function openPosition(
   poolAddress: string,
   baseTokenAmount: number | undefined,
   quoteTokenAmount: number | undefined,
-  slippagePct?: number,
+  slippagePct: number = MeteoraConfig.config.slippagePct,
   strategyType?: number,
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
@@ -129,7 +129,7 @@ export async function openPosition(
 
   // Create position transaction following SDK example
   // Slippage needs to be in BPS (basis points): percentage * 100
-  const slippageBps = slippagePct ? slippagePct * 100 : undefined;
+  const slippageBps = slippagePct * 100;
 
   const createPositionTx = await dlmmPool.initializePositionAndAddLiquidityByStrategy({
     positionPubKey: newImbalancePosition.publicKey,

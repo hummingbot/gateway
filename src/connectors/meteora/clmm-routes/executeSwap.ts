@@ -22,10 +22,9 @@ export async function executeSwap(
   amount: number,
   side: 'BUY' | 'SELL',
   poolAddress: string,
-  slippagePct?: number,
+  slippagePct: number = MeteoraConfig.config.slippagePct,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
-  const meteora = await Meteora.getInstance(network);
   const wallet = await solana.getWallet(address);
 
   const {
@@ -42,7 +41,7 @@ export async function executeSwap(
     amount,
     side,
     poolAddress,
-    slippagePct || MeteoraConfig.config.slippagePct,
+    slippagePct,
   );
 
   logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);

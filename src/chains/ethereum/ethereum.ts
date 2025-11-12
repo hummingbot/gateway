@@ -1,4 +1,4 @@
-import { Provider } from '@ethersproject/abstract-provider';
+import { Provider, TransactionResponse } from '@ethersproject/abstract-provider';
 import { BigNumber, Contract, ContractTransaction, providers, utils, Wallet, ethers } from 'ethers';
 import { getAddress } from 'ethers/lib/utils';
 import fse from 'fs-extra';
@@ -54,6 +54,7 @@ export class Ethereum {
     };
   } = {};
   private static GAS_PRICE_CACHE_MS = 10000; // 10 second cache
+  private _transactionExecutionTimeoutMs: number;
 
   // For backward compatibility
   public get chain(): string {
@@ -71,6 +72,7 @@ export class Ethereum {
     this.baseFee = config.baseFee;
     this.priorityFee = config.priorityFee;
     this.baseFeeMultiplier = config.baseFeeMultiplier || 1.2; // Default to 1.2
+    this._transactionExecutionTimeoutMs = config.transactionExecutionTimeoutMs ?? 30000; // Default to 30 seconds
 
     // Get chain config for etherscanAPIKey
     const chainConfig = getEthereumChainConfig();
@@ -955,6 +957,39 @@ export class Ethereum {
     return ethers.utils.isAddress(address);
   }
 
+  public async handleTransactionExecution(tx: TransactionResponse): Promise<providers.TransactionReceipt> {
+    return await Promise.race([
+      tx.wait(1).then((receipt) => {
+        // Transaction confirmed
+        logger.info(
+          `Transaction ${tx.hash} ${receipt.status === 1 ? 'confirmed' : 'failed'} in block ${receipt.blockNumber}`,
+        );
+        return receipt;
+      }),
+      new Promise<providers.TransactionReceipt>((resolve) =>
+        setTimeout(() => {
+          // Timeout reached, treat as pending
+          logger.warn(`Transaction ${tx.hash} is still pending after timeout`);
+          resolve({
+            transactionHash: tx.hash,
+            blockHash: '',
+            blockNumber: null,
+            transactionIndex: null,
+            from: tx.from,
+            to: tx.to || null,
+            cumulativeGasUsed: BigNumber.from(0),
+            gasUsed: BigNumber.from(0),
+            contractAddress: null,
+            logs: [],
+            logsBloom: '',
+            status: 0, // PENDING
+            effectiveGasPrice: BigNumber.from(0),
+          } as providers.TransactionReceipt);
+        }, this._transactionExecutionTimeoutMs),
+      ),
+    ]);
+  }
+
   /**
    * Handle transaction confirmation status and return appropriate response
    * Similar to Solana's handleConfirmation helper
@@ -966,7 +1001,7 @@ export class Ethereum {
    * @param side Trade side (optional)
    * @returns Response object with status and data
    */
-  public handleTransactionConfirmation(
+  public handleExecuteQuoteTransactionConfirmation(
     txReceipt: providers.TransactionReceipt | null,
     inputToken: string,
     outputToken: string,

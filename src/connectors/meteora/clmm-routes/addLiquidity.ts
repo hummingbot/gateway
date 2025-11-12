@@ -30,7 +30,7 @@ export async function addLiquidity(
   positionAddress: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
-  slippagePct?: number,
+  slippagePct: number = MeteoraConfig.config.slippagePct,
   strategyType?: StrategyType,
 ): Promise<AddLiquidityResponseType> {
   // Validate addresses first
@@ -107,7 +107,7 @@ export async function addLiquidity(
       minBinId,
       strategyType: strategyType ?? MeteoraConfig.config.strategyType,
     },
-    slippage: slippagePct ?? MeteoraConfig.config.slippagePct,
+    slippage: slippagePct,
   });
 
   // Set the fee payer for simulation
