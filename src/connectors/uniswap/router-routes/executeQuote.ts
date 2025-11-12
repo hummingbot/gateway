@@ -4,7 +4,6 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
 import { getEthereumChainConfig } from '../../../chains/ethereum/ethereum.config';
-import { waitForTransactionWithTimeout } from '../../../chains/ethereum/ethereum.utils';
 import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
@@ -145,8 +144,8 @@ async function executeQuote(
       // Send the signed transaction
       const txResponse = await ethereum.provider.sendTransaction(signedTx);
 
-      // Wait for confirmation with timeout (30 seconds for hardware wallets)
-      txReceipt = await waitForTransactionWithTimeout(txResponse, 30000);
+      // Wait for confirmation with timeout
+      txReceipt = await ethereum.handleTransactionExecution(txResponse);
     } else {
       // Regular wallet flow
       let wallet;
@@ -179,7 +178,7 @@ async function executeQuote(
       logger.info(`Transaction sent: ${txResponse.hash}`);
 
       // Wait for transaction confirmation with timeout
-      txReceipt = await waitForTransactionWithTimeout(txResponse);
+      txReceipt = await ethereum.handleTransactionExecution(txResponse);
     }
 
     // Log transaction info if available
@@ -266,8 +265,8 @@ async function executeQuote(
   const expectedAmountIn = parseFloat(quote.trade.inputAmount.toExact());
   const expectedAmountOut = parseFloat(quote.trade.outputAmount.toExact());
 
-  // Use the new handleTransactionConfirmation helper
-  const result = ethereum.handleTransactionConfirmation(
+  // Use the new handleExecuteQuoteTransactionConfirmation helper
+  const result = ethereum.handleExecuteQuoteTransactionConfirmation(
     txReceipt,
     inputToken.address,
     outputToken.address,
@@ -277,7 +276,7 @@ async function executeQuote(
   );
 
   // Handle different transaction states
-  if (result.status === -1) {
+  if (result.status === 0) {
     // Transaction failed
     logger.error(`Transaction failed on-chain. Receipt: ${JSON.stringify(txReceipt)}`);
     throw fastify.httpErrors.internalServerError(
@@ -285,7 +284,7 @@ async function executeQuote(
     );
   }
 
-  if (result.status === 0) {
+  if (result.status === -1) {
     // Transaction is still pending
     logger.info(`Transaction ${result.signature || 'pending'} is still pending`);
     return result;

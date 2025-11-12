@@ -16,7 +16,7 @@ import { formatTokenAmount } from '../pancakeswap.utils';
 
 // Define the request and response types
 const PositionsOwnedRequest = Type.Object({
-  network: Type.Optional(Type.String({ examples: ['base'], default: 'base' })),
+  network: Type.Optional(Type.String({ examples: ['bsc'], default: 'bsc' })),
   walletAddress: Type.String({ examples: ['<ethereum-wallet-address>'] }),
 });
 

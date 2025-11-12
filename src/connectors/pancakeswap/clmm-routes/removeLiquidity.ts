@@ -133,7 +133,7 @@ export async function removeLiquidity(
   const txParams = await ethereum.prepareGasOptions(undefined, CLMM_REMOVE_LIQUIDITY_GAS_LIMIT);
   txParams.value = BigNumber.from(value.toString());
   const tx = await positionManagerWithSigner.multicall([calldata], txParams);
-  const receipt = await tx.wait();
+  const receipt = await ethereum.handleTransactionExecution(tx);
 
   const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
   const token0AmountRemoved = formatTokenAmount(totalAmount0.quotient.toString(), token0.decimals);
@@ -144,7 +144,7 @@ export async function removeLiquidity(
 
   return {
     signature: receipt.transactionHash,
-    status: 1,
+    status: receipt.status,
     data: {
       fee: gasFee,
       baseTokenAmountRemoved,
@@ -171,7 +171,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           ...RemoveLiquidityRequest,
           properties: {
             ...RemoveLiquidityRequest.properties,
-            network: { type: 'string', default: 'base' },
+            network: { type: 'string', default: 'bsc', examples: ['bsc'] },
             walletAddress: { type: 'string', examples: [walletAddressExample] },
             positionAddress: {
               type: 'string',

@@ -29,6 +29,7 @@ import { poolRoutes } from './pools/pools.routes';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { logger } from './services/logger';
 import { quoteCache } from './services/quote-cache';
+import { displayChainConfigurations } from './services/startup-banner';
 import { tokensRoutes } from './tokens/tokens.routes';
 import { tradingRoutes, tradingClmmRoutes } from './trading/trading.routes';
 import { GATEWAY_VERSION } from './version';
@@ -418,6 +419,9 @@ export const startGateway = async () => {
     const docsUrl = docsPort ? `http://localhost:${docsPort}` : `${protocol}://localhost:${port}/docs`;
 
     logger.info(`📓 Documentation available at ${docsUrl}`);
+
+    // Display chain configurations now that server has started
+    displayChainConfigurations();
 
     // Set up graceful shutdown
     const shutdown = async () => {

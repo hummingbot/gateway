@@ -34,7 +34,7 @@ export async function openPosition(
   poolAddress: string,
   baseTokenAmount: number | undefined,
   quoteTokenAmount: number | undefined,
-  slippagePct?: number,
+  slippagePct: number = MeteoraConfig.config.slippagePct,
   strategyType?: number,
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
@@ -124,12 +124,12 @@ export async function openPosition(
   const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false);
 
   // Don't add SOL rent to the liquidity amounts - rent is separate
-  const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount || 0), dlmmPool.tokenX.decimal));
-  const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(quoteTokenAmount || 0), dlmmPool.tokenY.decimal));
+  const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount || 0), dlmmPool.tokenX.mint.decimals));
+  const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(quoteTokenAmount || 0), dlmmPool.tokenY.mint.decimals));
 
   // Create position transaction following SDK example
   // Slippage needs to be in BPS (basis points): percentage * 100
-  const slippageBps = slippagePct ? slippagePct * 100 : undefined;
+  const slippageBps = slippagePct * 100;
 
   const createPositionTx = await dlmmPool.initializePositionAndAddLiquidityByStrategy({
     positionPubKey: newImbalancePosition.publicKey,

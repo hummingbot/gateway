@@ -15,10 +15,7 @@ describe('HeliusService', () => {
       heliusAPIKey: 'test-api-key-123',
       useHeliusRestRPC: true,
       useHeliusWebSocketRPC: false,
-      useHeliusSender: false,
-      heliusRegionCode: 'slc',
       minPriorityFeePerCU: 0.01,
-      jitoTipSOL: 0,
     };
 
     heliusService = new HeliusService(mockConfig);

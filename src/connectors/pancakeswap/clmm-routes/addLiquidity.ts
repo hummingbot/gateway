@@ -9,6 +9,7 @@ import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { AddLiquidityResponseType, AddLiquidityResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
+import { PancakeswapConfig } from '../pancakeswap.config';
 import { getPancakeswapV3NftManagerAddress, POSITION_MANAGER_ABI } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
 import { PancakeswapClmmAddLiquidityRequest } from '../schemas';
@@ -23,7 +24,7 @@ export async function addLiquidity(
   positionAddress: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
-  slippagePct?: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<AddLiquidityResponseType> {
   if (!positionAddress || (baseTokenAmount === undefined && quoteTokenAmount === undefined)) {
     throw fastify.httpErrors.badRequest('Missing required parameters');
@@ -51,7 +52,7 @@ export async function addLiquidity(
     throw fastify.httpErrors.notFound('Pool not found for position');
   }
 
-  const slippageTolerance = new Percent(Math.floor((slippagePct ?? pancakeswap.config.slippagePct) * 100), 10000);
+  const slippageTolerance = new Percent(Math.floor(slippagePct * 100), 10000);
 
   const baseTokenSymbol = token0.symbol === 'WETH' ? token0.symbol : token1.symbol;
   const isBaseToken0 = token0.symbol === baseTokenSymbol;
@@ -60,7 +61,11 @@ export async function addLiquidity(
   let token1Amount = CurrencyAmount.fromRawAmount(token1, 0);
 
   if (baseTokenAmount !== undefined) {
-    const baseAmountRaw = Math.floor(baseTokenAmount * Math.pow(10, isBaseToken0 ? token0.decimals : token1.decimals));
+    // Use parseUnits to avoid scientific notation issues with large numbers
+    const baseAmountRaw = utils.parseUnits(
+      baseTokenAmount.toString(),
+      isBaseToken0 ? token0.decimals : token1.decimals,
+    );
     if (isBaseToken0) {
       token0Amount = CurrencyAmount.fromRawAmount(token0, baseAmountRaw.toString());
     } else {
@@ -69,8 +74,10 @@ export async function addLiquidity(
   }
 
   if (quoteTokenAmount !== undefined) {
-    const quoteAmountRaw = Math.floor(
-      quoteTokenAmount * Math.pow(10, isBaseToken0 ? token1.decimals : token0.decimals),
+    // Use parseUnits to avoid scientific notation issues with large numbers
+    const quoteAmountRaw = utils.parseUnits(
+      quoteTokenAmount.toString(),
+      isBaseToken0 ? token1.decimals : token0.decimals,
     );
     if (isBaseToken0) {
       token1Amount = CurrencyAmount.fromRawAmount(token1, quoteAmountRaw.toString());
@@ -150,7 +157,7 @@ export async function addLiquidity(
   const txParams = await ethereum.prepareGasOptions(undefined, CLMM_ADD_LIQUIDITY_GAS_LIMIT);
   txParams.value = BigNumber.from(value.toString());
   const tx = await positionManagerWithSigner.multicall([calldata], txParams);
-  const receipt = await tx.wait();
+  const receipt = await ethereum.handleTransactionExecution(tx);
 
   const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
   const actualToken0Amount = formatTokenAmount(newPosition.mintAmounts.amount0.toString(), token0.decimals);
@@ -161,7 +168,7 @@ export async function addLiquidity(
 
   return {
     signature: receipt.transactionHash,
-    status: 1,
+    status: receipt.status,
     data: {
       fee: gasFee,
       baseTokenAmountAdded: actualBaseAmount,

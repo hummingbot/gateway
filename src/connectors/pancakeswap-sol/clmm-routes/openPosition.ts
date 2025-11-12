@@ -7,6 +7,7 @@ import { Solana } from '../../../chains/solana/solana';
 import { OpenPositionResponse, OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
+import { PancakeswapSolConfig } from '../pancakeswap-sol.config';
 import { priceToTick, roundTickToSpacing, parsePoolTickSpacing } from '../pancakeswap-sol.parser';
 import { buildOpenPositionTransaction } from '../pancakeswap-sol.transactions';
 import { PancakeswapSolClmmOpenPositionRequest } from '../schemas';
@@ -22,7 +23,7 @@ export async function openPosition(
   upperPrice: number,
   baseTokenAmount?: number,
   quoteTokenAmount?: number,
-  slippagePct?: number,
+  slippagePct: number = PancakeswapSolConfig.config.slippagePct,
 ): Promise<OpenPositionResponseType> {
   logger.info(`=== OpenPosition Request ===`);
   logger.info(`Network: ${network}`);
@@ -105,7 +106,7 @@ export async function openPosition(
   logger.info(`Quote Max: base=${quote.baseTokenAmountMax}, quote=${quote.quoteTokenAmountMax}`);
 
   // Convert amounts to BN with slippage
-  const effectiveSlippage = slippagePct || 1.0;
+  const effectiveSlippage = slippagePct;
   const amount0Max = new BN(
     (quote.baseTokenAmountMax * (1 + effectiveSlippage / 100) * 10 ** baseToken.decimals).toFixed(0),
   );

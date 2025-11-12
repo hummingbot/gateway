@@ -1,4 +1,4 @@
-import { Provider } from '@ethersproject/abstract-provider';
+import { Provider, TransactionResponse } from '@ethersproject/abstract-provider';
 import { BigNumber, Contract, ContractTransaction, providers, utils, Wallet, ethers } from 'ethers';
 import { getAddress } from 'ethers/lib/utils';
 import fse from 'fs-extra';
@@ -6,7 +6,7 @@ import fse from 'fs-extra';
 import { TokenValue, tokenValueToString } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { logger } from '../../services/logger';
+import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
 
@@ -54,6 +54,7 @@ export class Ethereum {
     };
   } = {};
   private static GAS_PRICE_CACHE_MS = 10000; // 10 second cache
+  private _transactionExecutionTimeoutMs: number;
 
   // For backward compatibility
   public get chain(): string {
@@ -71,6 +72,7 @@ export class Ethereum {
     this.baseFee = config.baseFee;
     this.priorityFee = config.priorityFee;
     this.baseFeeMultiplier = config.baseFeeMultiplier || 1.2; // Default to 1.2
+    this._transactionExecutionTimeoutMs = config.transactionExecutionTimeoutMs ?? 30000; // Default to 30 seconds
 
     // Get chain config for etherscanAPIKey
     const chainConfig = getEthereumChainConfig();
@@ -96,7 +98,7 @@ export class Ethereum {
       this.initializeInfuraProvider(config);
     } else {
       logger.info(`Using standard RPC provider: ${rpcProvider}`);
-      logger.info(`Initializing Ethereum connector for network: ${network}, RPC URL: ${this.rpcUrl}`);
+      logger.info(`Initializing Ethereum connector for network: ${network}, RPC URL: ${redactUrl(this.rpcUrl)}`);
       this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
     }
   }
@@ -407,7 +409,7 @@ export class Ethereum {
 
       if (!infuraApiKey || infuraApiKey.trim() === '') {
         logger.warn(`⚠️ Infura provider selected but no API key configured`);
-        logger.info(`Using standard RPC from nodeURL: ${this.rpcUrl}`);
+        logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
         this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
         return;
       }
@@ -426,7 +428,7 @@ export class Ethereum {
       this.provider = this.infuraService.getProvider() as providers.StaticJsonRpcProvider;
     } catch (error: any) {
       logger.warn(`Failed to initialize Infura provider: ${error.message}`);
-      logger.info(`Using standard RPC from nodeURL: ${this.rpcUrl}`);
+      logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
       this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
     }
   }
@@ -501,6 +503,45 @@ export class Ethereum {
       );
     } catch {
       // If not a valid address format, return undefined
+      return undefined;
+    }
+  }
+
+  /**
+   * Get token info by symbol or address. If token is not in the token list but is a valid
+   * address, fetches token info from the blockchain.
+   * @param tokenSymbolOrAddress Token symbol or contract address
+   * @returns TokenInfo object or undefined if token not found
+   */
+  public async getOrFetchToken(tokenSymbolOrAddress: string): Promise<TokenInfo | undefined> {
+    // First try to get from token list
+    const tokenFromList = this.getToken(tokenSymbolOrAddress);
+    if (tokenFromList) {
+      return tokenFromList;
+    }
+
+    // If not in list, check if it's a valid address and fetch from blockchain
+    try {
+      const address = utils.getAddress(tokenSymbolOrAddress);
+      logger.info(`Token ${address} not in token list, fetching from blockchain...`);
+
+      const contract = this.getContract(address, this.provider);
+
+      // Fetch token details from contract
+      const [name, symbol, decimals] = await Promise.all([contract.name(), contract.symbol(), contract.decimals()]);
+
+      const tokenInfo: TokenInfo = {
+        chainId: this.chainId,
+        address,
+        name,
+        symbol,
+        decimals,
+      };
+
+      logger.info(`Fetched token info from blockchain: ${symbol} (${name}) with ${decimals} decimals`);
+      return tokenInfo;
+    } catch (error) {
+      logger.warn(`Failed to fetch token info for ${tokenSymbolOrAddress}: ${error.message}`);
       return undefined;
     }
   }
@@ -916,6 +957,39 @@ export class Ethereum {
     return ethers.utils.isAddress(address);
   }
 
+  public async handleTransactionExecution(tx: TransactionResponse): Promise<providers.TransactionReceipt> {
+    return await Promise.race([
+      tx.wait(1).then((receipt) => {
+        // Transaction confirmed
+        logger.info(
+          `Transaction ${tx.hash} ${receipt.status === 1 ? 'confirmed' : 'failed'} in block ${receipt.blockNumber}`,
+        );
+        return receipt;
+      }),
+      new Promise<providers.TransactionReceipt>((resolve) =>
+        setTimeout(() => {
+          // Timeout reached, treat as pending
+          logger.warn(`Transaction ${tx.hash} is still pending after timeout`);
+          resolve({
+            transactionHash: tx.hash,
+            blockHash: '',
+            blockNumber: null,
+            transactionIndex: null,
+            from: tx.from,
+            to: tx.to || null,
+            cumulativeGasUsed: BigNumber.from(0),
+            gasUsed: BigNumber.from(0),
+            contractAddress: null,
+            logs: [],
+            logsBloom: '',
+            status: 0, // PENDING
+            effectiveGasPrice: BigNumber.from(0),
+          } as providers.TransactionReceipt);
+        }, this._transactionExecutionTimeoutMs),
+      ),
+    ]);
+  }
+
   /**
    * Handle transaction confirmation status and return appropriate response
    * Similar to Solana's handleConfirmation helper
@@ -927,7 +1001,7 @@ export class Ethereum {
    * @param side Trade side (optional)
    * @returns Response object with status and data
    */
-  public handleTransactionConfirmation(
+  public handleExecuteQuoteTransactionConfirmation(
     txReceipt: providers.TransactionReceipt | null,
     inputToken: string,
     outputToken: string,

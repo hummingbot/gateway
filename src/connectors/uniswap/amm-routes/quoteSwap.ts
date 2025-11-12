@@ -12,6 +12,7 @@ import {
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
+import { UniswapConfig } from '../uniswap.config';
 import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
 async function quoteAmmSwap(
@@ -21,7 +22,7 @@ async function quoteAmmSwap(
   quoteToken: Token,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<any> {
   try {
     // Get the V2 pair
@@ -56,7 +57,7 @@ async function quoteAmmSwap(
     }
 
     // Calculate slippage-adjusted amounts
-    const slippageTolerance = new Percent(Math.floor((slippagePct ?? uniswap.config.slippagePct) * 100), 10000);
+    const slippageTolerance = new Percent(Math.floor(slippagePct * 100), 10000);
 
     const minAmountOut = exactIn
       ? trade.minimumAmountOut(slippageTolerance).quotient.toString()
@@ -112,7 +113,7 @@ export async function getUniswapAmmQuote(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<{
   quote: any;
   uniswap: any;
@@ -129,9 +130,9 @@ export async function getUniswapAmmQuote(
     await ethereum.init();
   }
 
-  // Resolve tokens
-  const baseTokenObj = uniswap.getTokenBySymbol(baseToken);
-  const quoteTokenObj = uniswap.getTokenBySymbol(quoteToken);
+  // Resolve tokens (supports unlisted tokens via blockchain fetching)
+  const baseTokenObj = await uniswap.getOrFetchTokenBySymbol(baseToken);
+  const quoteTokenObj = await uniswap.getOrFetchTokenBySymbol(quoteToken);
 
   if (!baseTokenObj) {
     logger.error(`Base token not found: ${baseToken}`);
@@ -180,7 +181,7 @@ async function formatSwapQuote(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
   logger.info(
     `formatSwapQuote: poolAddress=${poolAddress}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}, network=${network}`,
@@ -253,7 +254,7 @@ async function formatSwapQuote(
       amountIn: quote.estimatedAmountIn,
       amountOut: quote.estimatedAmountOut,
       price,
-      slippagePct: slippagePct || 1, // Default 1% if not provided
+      slippagePct,
       minAmountOut: quote.minAmountOut,
       maxAmountIn: quote.maxAmountIn,
       // AMM-specific fields
@@ -416,7 +417,7 @@ export async function quoteSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
   return await formatSwapQuote(fastify, network, poolAddress, baseToken, quoteToken, amount, side, slippagePct);
 }

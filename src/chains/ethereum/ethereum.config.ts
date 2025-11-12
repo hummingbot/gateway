@@ -13,6 +13,7 @@ export interface EthereumNetworkConfig {
   baseFeeMultiplier?: number;
   infuraAPIKey?: string;
   useInfuraWebSocket?: boolean;
+  transactionExecutionTimeoutMs?: number;
 }
 
 export interface EthereumChainConfig {
@@ -36,6 +37,7 @@ export function getEthereumNetworkConfig(network: string): EthereumNetworkConfig
     baseFee: ConfigManagerV2.getInstance().get(namespaceId + '.baseFee'),
     priorityFee: ConfigManagerV2.getInstance().get(namespaceId + '.priorityFee'),
     baseFeeMultiplier: ConfigManagerV2.getInstance().get(namespaceId + '.baseFeeMultiplier'),
+    transactionExecutionTimeoutMs: ConfigManagerV2.getInstance().get(namespaceId + '.transactionExecutionTimeoutMs'),
   };
 }
 

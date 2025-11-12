@@ -22,7 +22,7 @@ export async function executeSwap(
   amount: number,
   side: 'BUY' | 'SELL',
   poolAddress: string,
-  slippagePct?: number,
+  slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
@@ -36,9 +36,6 @@ export async function executeSwap(
     throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
   }
 
-  // Use configured slippage if not provided
-  const effectiveSlippage = slippagePct || RaydiumConfig.config.slippagePct;
-
   const { inputToken, outputToken, response, clmmPoolInfo } = await getSwapQuote(
     fastify,
     network,
@@ -47,7 +44,7 @@ export async function executeSwap(
     amount,
     side,
     poolAddress,
-    effectiveSlippage,
+    slippagePct,
   );
 
   logger.info(`Raydium CLMM getSwapQuote:`, {
@@ -118,7 +115,7 @@ export async function executeSwap(
       outputToken.decimals,
       exactOutResponse.amountIn.amount,
     );
-    const amountInWithSlippage = amountIn * 10 ** inputToken.decimals * (1 + effectiveSlippage / 100);
+    const amountInWithSlippage = amountIn * 10 ** inputToken.decimals * (1 + slippagePct / 100);
     // logger.info(`amountInWithSlippage: ${amountInWithSlippage}`);
     ({ transaction } = (await raydium.raydiumSDK.clmm.swapBaseOut({
       poolInfo,

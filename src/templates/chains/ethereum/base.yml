@@ -1,6 +1,7 @@
 chainID: 8453
 nodeURL: https://mainnet.base.org
 nativeCurrencySymbol: ETH
+transactionExecutionTimeoutMs: 10000 # Timeout for waiting for transaction execution (in milliseconds)
 swapProvider: uniswap/router
 
 # EIP-1559 gas parameters (in GWEI)

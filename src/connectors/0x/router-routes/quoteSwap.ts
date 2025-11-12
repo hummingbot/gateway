@@ -7,7 +7,7 @@ import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
-import { ZeroX, ZeroXQuoteResponse } from '../0x';
+import { ZeroX } from '../0x';
 import { ZeroXConfig } from '../0x.config';
 import { ZeroXQuoteSwapRequest, ZeroXQuoteSwapResponse } from '../schemas';
 
@@ -18,16 +18,17 @@ async function quoteSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct: number,
+  slippagePct: number = ZeroXConfig.config.slippagePct,
   indicativePrice: boolean = true,
   takerAddress?: string,
 ): Promise<Static<typeof ZeroXQuoteSwapResponse>> {
   const ethereum = await Ethereum.getInstance(network);
   const zeroX = await ZeroX.getInstance(network);
 
-  // Resolve token symbols to addresses
-  const baseTokenInfo = ethereum.getToken(baseToken);
-  const quoteTokenInfo = ethereum.getToken(quoteToken);
+  // Resolve token symbols/addresses to token objects
+  // Use getOrFetchToken to support tokens not in the token list
+  const baseTokenInfo = await ethereum.getOrFetchToken(baseToken);
+  const quoteTokenInfo = await ethereum.getOrFetchToken(quoteToken);
 
   if (!baseTokenInfo || !quoteTokenInfo) {
     throw fastify.httpErrors.badRequest(

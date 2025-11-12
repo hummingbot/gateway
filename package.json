@@ -53,7 +53,7 @@
     "@ledgerhq/hw-app-solana": "^7.5.0",
     "@ledgerhq/hw-transport-node-hid": "^6.29.8",
     "@ledgerhq/hw-transport-node-hid-singleton": "^6.31.8",
-    "@meteora-ag/dlmm": "1.3.12",
+    "@meteora-ag/dlmm": "1.7.5",
     "@orca-so/common-sdk": "^0.6.11",
     "@orca-so/whirlpools": "^4.0.0",
     "@orca-so/whirlpools-client": "^4.0.1",
