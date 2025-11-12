@@ -159,7 +159,7 @@ async function executeSolanaSwap(
         quoteToken,
         amount,
         side,
-        slippagePct || 1,
+        slippagePct,
         undefined, // priorityLevel
         undefined, // maxLamports
       );
@@ -173,7 +173,7 @@ async function executeSolanaSwap(
         amount,
         side,
         poolAddress!,
-        slippagePct || 1,
+        slippagePct,
       );
     } else if (providerKey === 'raydium/clmm') {
       return await raydiumClmmExecuteSwap(
@@ -185,7 +185,7 @@ async function executeSolanaSwap(
         amount,
         side,
         poolAddress!,
-        slippagePct || 1,
+        slippagePct,
       );
     } else if (providerKey === 'meteora/clmm') {
       return await meteoraClmmExecuteSwap(
@@ -197,7 +197,7 @@ async function executeSolanaSwap(
         amount,
         side,
         poolAddress!,
-        slippagePct || 1,
+        slippagePct,
       );
     } else if (providerKey === 'pancakeswap-sol/clmm') {
       return await pancakeswapSolClmmExecuteSwap(
@@ -209,7 +209,7 @@ async function executeSolanaSwap(
         amount,
         side,
         poolAddress,
-        slippagePct || 1,
+        slippagePct,
       );
     }
 
@@ -277,7 +277,7 @@ async function executeEthereumSwap(
         quoteToken,
         amount,
         side,
-        slippagePct || 1,
+        slippagePct,
       );
     } else if (providerKey === 'uniswap/amm') {
       return await uniswapAmmExecuteSwap(
@@ -288,7 +288,7 @@ async function executeEthereumSwap(
         quoteToken,
         amount,
         side,
-        slippagePct || 1,
+        slippagePct,
       );
     } else if (providerKey === 'uniswap/clmm') {
       return await uniswapClmmExecuteSwap(
@@ -299,7 +299,7 @@ async function executeEthereumSwap(
         quoteToken,
         amount,
         side,
-        slippagePct || 1,
+        slippagePct,
       );
     } else if (providerKey === 'pancakeswap/router') {
       return await pancakeswapRouterExecuteSwap(
@@ -310,7 +310,7 @@ async function executeEthereumSwap(
         quoteToken,
         amount,
         side,
-        slippagePct || 1,
+        slippagePct,
       );
     } else if (providerKey === 'pancakeswap/amm') {
       return await pancakeswapAmmExecuteSwap(
@@ -321,7 +321,7 @@ async function executeEthereumSwap(
         quoteToken,
         amount,
         side,
-        slippagePct || 1,
+        slippagePct,
       );
     } else if (providerKey === 'pancakeswap/clmm') {
       return await pancakeswapClmmExecuteSwap(
@@ -332,7 +332,7 @@ async function executeEthereumSwap(
         quoteToken,
         amount,
         side,
-        slippagePct || 1,
+        slippagePct,
       );
     } else if (providerKey === '0x/router') {
       return await zeroXRouterExecuteSwap(
@@ -343,7 +343,7 @@ async function executeEthereumSwap(
         quoteToken,
         amount,
         side,
-        slippagePct || 1,
+        slippagePct,
       );
     }
 

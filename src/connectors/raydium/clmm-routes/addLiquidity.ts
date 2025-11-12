@@ -1,14 +1,14 @@
-import { PoolUtils, TxVersion } from '@raydium-io/raydium-sdk-v2';
+import { TxVersion } from '@raydium-io/raydium-sdk-v2';
 import { Static } from '@sinclair/typebox';
 import { VersionedTransaction } from '@solana/web3.js';
 import BN from 'bn.js';
-import Decimal from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { AddLiquidityResponse, AddLiquidityRequestType, AddLiquidityResponseType } from '../../../schemas/clmm-schema';
+import { AddLiquidityResponse, AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
+import { RaydiumConfig } from '../raydium.config';
 import { RaydiumClmmAddLiquidityRequest } from '../schemas';
 
 import { quotePosition } from './quotePosition';
@@ -20,7 +20,7 @@ export async function addLiquidity(
   positionAddress: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
-  slippagePct?: number,
+  slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<AddLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
