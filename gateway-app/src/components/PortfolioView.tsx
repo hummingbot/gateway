@@ -163,7 +163,7 @@ export function PortfolioView() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-2">Asset</th>
+                    <th className="text-left py-2">Token</th>
                     <th className="text-right py-2">Balance</th>
                   </tr>
                 </thead>
