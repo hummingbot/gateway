@@ -4,6 +4,7 @@
   "properties": {
     "certificatePath": { "type": "string" },
     "logPath": { "type": "string" },
+    "logFilenameFormat": { "type": "string" },
     "port": { "type": "integer" },
     "docsPort": { "type": "integer" },
     "ipWhitelist": { "type": "array" },

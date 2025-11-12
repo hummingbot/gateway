@@ -28,3 +28,7 @@ fastifyLogs: false
 # Log level for the application (debug, info, warn, error)
 logLevel: debug
 
+
+# Format of the log filename. %DATE% will be replaced with the current date. 
+# Recommend changing to logs_gateway_app.%DATE%.log to allow editors to identify the file for syntax highlighting.
+logFilenameFormat: logs_gateway_app.log.%DATE%

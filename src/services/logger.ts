@@ -104,7 +104,7 @@ const getLogPath = () => {
 
 const allLogsFileTransport = new DailyRotateFile({
   level: ConfigManagerV2.getInstance().get('server.logLevel') || 'info',
-  filename: `${getLogPath()}/logs_gateway_app.log.%DATE%`,
+  filename: `${getLogPath()}/${ConfigManagerV2.getInstance().get('server.logFilenameFormat') || 'logs_gateway_app.log.%DATE%'}`,
   datePattern: 'YYYY-MM-DD',
   handleExceptions: true,
   handleRejections: true,
