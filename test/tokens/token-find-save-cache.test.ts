@@ -12,7 +12,7 @@ jest.mock('../../src/services/logger', () => ({
 
 jest.mock('../../src/services/coingecko-service');
 jest.mock('../../src/services/token-service');
-jest.mock('../../src/services/chain-utils');
+jest.mock('../../src/services/chain-config');
 
 // Mock @fastify/sensible
 jest.mock('@fastify/sensible', () => {
@@ -65,7 +65,7 @@ jest.mock('../../src/chains/solana/solana', () => ({
 }));
 
 // Import after mocking
-import { getChainId } from '../../src/services/chain-utils';
+import { getChainId } from '../../src/services/chain-config';
 import { CoinGeckoService } from '../../src/services/coingecko-service';
 import { TokenService } from '../../src/services/token-service';
 import { tokensRoutes } from '../../src/tokens/tokens.routes';
@@ -85,6 +85,7 @@ describe('Token Find-Save Cache Integration Tests', () => {
     // Setup CoinGeckoService mock
     mockCoinGeckoService = {
       getTokenInfo: jest.fn(),
+      getTokenInfoWithMarketData: jest.fn(),
       parseChainNetwork: jest.fn((chainNetwork: string) => {
         if (chainNetwork === 'solana-mainnet-beta') {
           return { chain: 'solana', network: 'mainnet-beta' };
@@ -119,21 +120,24 @@ describe('Token Find-Save Cache Integration Tests', () => {
   describe('POST /tokens/save/:address - Balance Cache Integration', () => {
     it('should reload token list and refresh balances for all tracked wallets when new token is added (Solana)', async () => {
       const tokenAddress = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
-      const mockTokenInfo = {
+      const mockTokenData = {
         address: tokenAddress,
         name: 'Test Token',
         symbol: 'TEST',
         decimals: 9,
-        imageUrl: 'https://example.com/image.png',
         coingeckoCoinId: 'test-token',
-        websites: ['https://test.com'],
-        description: 'A test token',
-        gtScore: 85,
+        imageUrl: 'https://example.com/image.png',
+        priceUsd: '1.50',
+        volumeUsd24h: '1000000',
+        marketCapUsd: '50000000',
+        fdvUsd: '75000000',
+        totalSupply: '50000000',
+        topPools: ['pool1', 'pool2', 'pool3'],
       };
 
       // Mock token doesn't exist yet
       mockTokenService.getToken.mockResolvedValue(null);
-      mockCoinGeckoService.getTokenInfo.mockResolvedValue(mockTokenInfo);
+      mockCoinGeckoService.getTokenInfoWithMarketData.mockResolvedValue(mockTokenData);
       mockTokenService.addToken.mockResolvedValue(undefined);
 
       const response = await fastify.inject({
@@ -147,7 +151,7 @@ describe('Token Find-Save Cache Integration Tests', () => {
       expect(result.token.symbol).toBe('TEST');
       expect(result.token.decimals).toBe(9);
 
-      // Verify token was added
+      // Verify token was added with geckoData
       expect(mockTokenService.addToken).toHaveBeenCalledWith(
         'solana',
         'mainnet-beta',
@@ -157,6 +161,17 @@ describe('Token Find-Save Cache Integration Tests', () => {
           symbol: 'TEST',
           address: tokenAddress,
           decimals: 9,
+          geckoData: expect.objectContaining({
+            coingeckoCoinId: 'test-token',
+            imageUrl: 'https://example.com/image.png',
+            priceUsd: '1.50',
+            volumeUsd24h: '1000000',
+            marketCapUsd: '50000000',
+            fdvUsd: '75000000',
+            totalSupply: '50000000',
+            topPools: ['pool1', 'pool2', 'pool3'],
+            timestamp: expect.any(Number),
+          }),
         }),
       );
 
@@ -187,21 +202,24 @@ describe('Token Find-Save Cache Integration Tests', () => {
         decimals: 6,
       };
 
-      const mockTokenInfo = {
+      const mockTokenData = {
         address: tokenAddress,
         name: 'USD Coin',
         symbol: 'USDC',
         decimals: 6,
-        imageUrl: 'https://example.com/usdc.png',
         coingeckoCoinId: 'usd-coin',
-        websites: [],
-        description: '',
-        gtScore: 95,
+        imageUrl: 'https://example.com/usdc.png',
+        priceUsd: '1.00',
+        volumeUsd24h: '10000000',
+        marketCapUsd: '50000000000',
+        fdvUsd: '50000000000',
+        totalSupply: '50000000000',
+        topPools: ['pool1', 'pool2', 'pool3'],
       };
 
       // Mock token already exists
       mockTokenService.getToken.mockResolvedValue(existingToken);
-      mockCoinGeckoService.getTokenInfo.mockResolvedValue(mockTokenInfo);
+      mockCoinGeckoService.getTokenInfoWithMarketData.mockResolvedValue(mockTokenData);
 
       const response = await fastify.inject({
         method: 'POST',
@@ -222,20 +240,23 @@ describe('Token Find-Save Cache Integration Tests', () => {
 
     it('should handle balance refresh errors gracefully', async () => {
       const tokenAddress = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
-      const mockTokenInfo = {
+      const mockTokenData = {
         address: tokenAddress,
         name: 'Test Token',
         symbol: 'TEST',
         decimals: 9,
-        imageUrl: 'https://example.com/image.png',
         coingeckoCoinId: null,
-        websites: [],
-        description: '',
-        gtScore: 50,
+        imageUrl: 'https://example.com/image.png',
+        priceUsd: '0.50',
+        volumeUsd24h: '100000',
+        marketCapUsd: '5000000',
+        fdvUsd: '10000000',
+        totalSupply: '20000000',
+        topPools: ['pool1'],
       };
 
       mockTokenService.getToken.mockResolvedValue(null);
-      mockCoinGeckoService.getTokenInfo.mockResolvedValue(mockTokenInfo);
+      mockCoinGeckoService.getTokenInfoWithMarketData.mockResolvedValue(mockTokenData);
       mockTokenService.addToken.mockResolvedValue(undefined);
 
       // Mock balance refresh failure
@@ -277,21 +298,24 @@ describe('Token Find-Save Cache Integration Tests', () => {
       });
 
       const tokenAddress = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
-      const mockTokenInfo = {
+      const mockTokenData = {
         address: tokenAddress,
         name: 'USD Coin',
         symbol: 'USDC',
         decimals: 6,
-        imageUrl: 'https://example.com/image.png',
         coingeckoCoinId: 'usd-coin',
-        websites: [],
-        description: '',
-        gtScore: 90,
+        imageUrl: 'https://example.com/image.png',
+        priceUsd: '1.00',
+        volumeUsd24h: '10000000',
+        marketCapUsd: '50000000000',
+        fdvUsd: '50000000000',
+        totalSupply: '50000000000',
+        topPools: ['pool1', 'pool2', 'pool3'],
       };
 
       (getChainId as jest.Mock).mockReturnValue(1);
       mockTokenService.getToken.mockResolvedValue(null);
-      mockCoinGeckoService.getTokenInfo.mockResolvedValue(mockTokenInfo);
+      mockCoinGeckoService.getTokenInfoWithMarketData.mockResolvedValue(mockTokenData);
       mockTokenService.addToken.mockResolvedValue(undefined);
 
       const response = await fastify.inject({

@@ -5,6 +5,17 @@ export interface Token {
   symbol: string;
   address: string;
   decimals: number;
+  geckoData?: {
+    coingeckoCoinId: string | null;
+    imageUrl: string;
+    priceUsd: string;
+    volumeUsd24h: string;
+    marketCapUsd: string;
+    fdvUsd: string;
+    totalSupply: string;
+    topPools: string[];
+    timestamp: number;
+  };
 }
 
 // Chain-specific token interfaces

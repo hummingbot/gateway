@@ -1,20 +1,21 @@
 import { FastifyPluginAsync } from 'fastify';
 
-import { getChainId } from '../../services/chain-utils';
+import { getChainId } from '../../services/chain-config';
 import { CoinGeckoService } from '../../services/coingecko-service';
+import { toTokenGeckoData } from '../../services/gecko-types';
 import { logger } from '../../services/logger';
-import { FindTokenQuery, FindTokenQuerySchema, FindTokenResponse, FindTokenResponseSchema } from '../schemas';
+import { FindTokenQuery, FindTokenQuerySchema, TokenInfo, TokenInfoSchema } from '../schemas';
 
 export const findTokenRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Params: { address: string };
     Querystring: FindTokenQuery;
-    Reply: FindTokenResponse;
+    Reply: TokenInfo;
   }>(
     '/find/:address',
     {
       schema: {
-        description: 'Get token information from GeckoTerminal by address',
+        description: 'Get token information with market data from GeckoTerminal by address',
         tags: ['/tokens'],
         params: {
           type: 'object',
@@ -29,7 +30,7 @@ export const findTokenRoute: FastifyPluginAsync = async (fastify) => {
         },
         querystring: FindTokenQuerySchema,
         response: {
-          200: FindTokenResponseSchema,
+          200: TokenInfoSchema,
         },
       },
     },
@@ -38,20 +39,33 @@ export const findTokenRoute: FastifyPluginAsync = async (fastify) => {
       const { chainNetwork } = request.query;
 
       try {
-        // Fetch token info from GeckoTerminal
+        // Fetch token info with market data from GeckoTerminal
         const coinGeckoService = CoinGeckoService.getInstance();
-        const tokenInfo = await coinGeckoService.getTokenInfo(chainNetwork, address);
+        const tokenData = await coinGeckoService.getTokenInfoWithMarketData(chainNetwork, address);
 
         // Get chainId from chainNetwork
         const chainId = getChainId(chainNetwork);
 
-        // Return in TokenSchema format (ready to save to token list)
+        // Transform to typed geckoData using helper
+        const geckoData = toTokenGeckoData({
+          coingeckoCoinId: tokenData.coingeckoCoinId,
+          imageUrl: tokenData.imageUrl,
+          priceUsd: tokenData.priceUsd,
+          volumeUsd24h: tokenData.volumeUsd24h,
+          marketCapUsd: tokenData.marketCapUsd,
+          fdvUsd: tokenData.fdvUsd,
+          totalSupply: tokenData.totalSupply,
+          topPools: tokenData.topPools,
+        });
+
+        // Return TokenInfo with geckoData populated
         return {
           chainId,
-          name: tokenInfo.name,
-          symbol: tokenInfo.symbol,
-          address: tokenInfo.address,
-          decimals: tokenInfo.decimals,
+          name: tokenData.name,
+          symbol: tokenData.symbol,
+          address: tokenData.address,
+          decimals: tokenData.decimals,
+          geckoData,
         };
       } catch (error: any) {
         logger.error(`Failed to find token: ${error.message}`);

@@ -1,8 +1,10 @@
 import { Type } from '@sinclair/typebox';
+import { ethers } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
-import { getChainId } from '../../services/chain-utils';
+import { getChainId } from '../../services/chain-config';
 import { CoinGeckoService } from '../../services/coingecko-service';
+import { toTokenGeckoData } from '../../services/gecko-types';
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { FindTokenQuery, FindTokenQuerySchema, Token, TokenSchema } from '../schemas';
@@ -47,19 +49,43 @@ export const findSaveTokenRoute: FastifyPluginAsync = async (fastify) => {
         const coinGeckoService = CoinGeckoService.getInstance();
         const { chain, network } = coinGeckoService.parseChainNetwork(chainNetwork);
 
-        // Fetch token info from GeckoTerminal
-        const tokenInfo = await coinGeckoService.getTokenInfo(chainNetwork, address);
+        // Fetch token info with market data from GeckoTerminal
+        const tokenData = await coinGeckoService.getTokenInfoWithMarketData(chainNetwork, address);
 
         // Get chainId from chainNetwork
         const chainId = getChainId(chainNetwork);
 
+        // Transform to typed geckoData using helper
+        const geckoData = toTokenGeckoData({
+          coingeckoCoinId: tokenData.coingeckoCoinId,
+          imageUrl: tokenData.imageUrl,
+          priceUsd: tokenData.priceUsd,
+          volumeUsd24h: tokenData.volumeUsd24h,
+          marketCapUsd: tokenData.marketCapUsd,
+          fdvUsd: tokenData.fdvUsd,
+          totalSupply: tokenData.totalSupply,
+          topPools: tokenData.topPools,
+        });
+
         // Create token in save format
+        // For Ethereum chains, normalize address to checksummed format
+        let normalizedAddress = tokenData.address;
+        if (chain === 'ethereum') {
+          try {
+            normalizedAddress = ethers.utils.getAddress(tokenData.address);
+          } catch (error: any) {
+            logger.warn(`Failed to checksum address ${tokenData.address}: ${error.message}`);
+            // If checksumming fails, use the address as-is
+          }
+        }
+
         const token = {
           chainId,
-          name: tokenInfo.name,
-          symbol: tokenInfo.symbol,
-          address: tokenInfo.address,
-          decimals: tokenInfo.decimals,
+          name: tokenData.name,
+          symbol: tokenData.symbol,
+          address: normalizedAddress,
+          decimals: tokenData.decimals,
+          geckoData,
         };
 
         // Check if token already exists

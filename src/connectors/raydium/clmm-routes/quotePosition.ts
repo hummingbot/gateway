@@ -19,7 +19,7 @@ export async function quotePosition(
   poolAddress: string,
   baseTokenAmount?: number,
   quoteTokenAmount?: number,
-  slippagePct?: number,
+  slippagePct: number = RaydiumConfig.config.slippagePct,
   baseTokenSymbol?: string,
   quoteTokenSymbol?: string,
 ): Promise<QuotePositionResponseType> {
@@ -66,7 +66,7 @@ export async function quotePosition(
     }
 
     const epochInfo = await solana.connection.getEpochInfo();
-    const slippage = (slippagePct === 0 ? 0 : slippagePct || RaydiumConfig.config.slippagePct) / 100;
+    const slippage = slippagePct / 100;
 
     let resBase;
     if (baseAmountBN) {

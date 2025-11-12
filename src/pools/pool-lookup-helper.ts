@@ -3,6 +3,7 @@
  */
 
 import { CoinGeckoService, TopPoolInfo } from '../services/coingecko-service';
+import { extractRawPoolData, toPoolGeckoData } from '../services/gecko-types';
 import { logger } from '../services/logger';
 
 import { fetchPoolInfo, resolveTokenSymbols } from './pool-info-helpers';
@@ -70,7 +71,11 @@ export async function fetchDetailedPoolInfo(chainNetwork: string, address: strin
     }
   }
 
-  // Create pool object with market data from GeckoTerminal
+  // Create pool object with CoinGecko data separated
+  // Use typed transformation helper to ensure consistent geckoData format
+  const rawPoolData = extractRawPoolData(poolData);
+  const geckoData = toPoolGeckoData(rawPoolData, apr);
+
   const pool: Pool = {
     type: poolData.type as 'amm' | 'clmm',
     network,
@@ -80,15 +85,7 @@ export async function fetchDetailedPoolInfo(chainNetwork: string, address: strin
     quoteTokenAddress: poolInfo.quoteTokenAddress,
     feePct: poolInfo.feePct,
     address,
-    // Market data from GeckoTerminal
-    volumeUsd24h: poolData.volumeUsd24h,
-    liquidityUsd: poolData.liquidityUsd,
-    priceNative: poolData.priceNative,
-    priceUsd: poolData.priceUsd,
-    buys24h: poolData.txns24h?.buys,
-    sells24h: poolData.txns24h?.sells,
-    apr,
-    timestamp: Date.now(),
+    geckoData,
   };
 
   return {

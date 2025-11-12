@@ -139,6 +139,66 @@ export const SolanaExecuteSwapRequest = Type.Object({
   ),
 });
 
+// Wrap request schema
+export const WrapRequestSchema = Type.Object({
+  network: SolanaNetworkParameter,
+  address: SolanaAddressParameter,
+  amount: Type.String({
+    description: 'The amount of SOL to wrap (in SOL, not lamports)',
+    examples: ['1.0', '0.5'],
+  }),
+});
+
+// Wrap response schema
+export const WrapResponseSchema = Type.Object({
+  signature: Type.String(),
+  status: Type.Number({ description: 'TransactionStatus enum value' }),
+
+  // Only included when status = CONFIRMED
+  data: Type.Optional(
+    Type.Object({
+      fee: Type.String(),
+      amount: Type.String(),
+      wrappedAddress: Type.String(),
+      nativeToken: Type.String(),
+      wrappedToken: Type.String(),
+    }),
+  ),
+});
+
+// Unwrap request schema
+export const UnwrapRequestSchema = Type.Object({
+  network: SolanaNetworkParameter,
+  address: SolanaAddressParameter,
+  amount: Type.Optional(
+    Type.String({
+      description: 'The amount of WSOL to unwrap (in SOL, not lamports). If not provided, unwraps all WSOL.',
+      examples: ['1.0', '0.5'],
+    }),
+  ),
+});
+
+// Unwrap response schema
+export const UnwrapResponseSchema = Type.Object({
+  signature: Type.String(),
+  status: Type.Number({ description: 'TransactionStatus enum value' }),
+
+  // Only included when status = CONFIRMED
+  data: Type.Optional(
+    Type.Object({
+      fee: Type.String(),
+      amount: Type.String(),
+      wrappedAddress: Type.String(),
+      nativeToken: Type.String(),
+      wrappedToken: Type.String(),
+    }),
+  ),
+});
+
 // Type exports
 export type SolanaQuoteSwapRequestType = Static<typeof SolanaQuoteSwapRequest>;
 export type SolanaExecuteSwapRequestType = Static<typeof SolanaExecuteSwapRequest>;
+export type WrapRequestType = Static<typeof WrapRequestSchema>;
+export type WrapResponseType = Static<typeof WrapResponseSchema>;
+export type UnwrapRequestType = Static<typeof UnwrapRequestSchema>;
+export type UnwrapResponseType = Static<typeof UnwrapResponseSchema>;

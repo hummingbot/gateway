@@ -160,6 +160,7 @@ export class PoolService {
 
   /**
    * Save pool list to file with atomic write
+   * Strips geckoData before saving (only saves core pool template data)
    */
   public async savePoolList(connector: string, pools: Pool[]): Promise<void> {
     await this.validateConnector(connector);
@@ -172,6 +173,7 @@ export class PoolService {
       await fse.ensureDir(dirPath);
     }
 
+    // Save pools with geckoData included (similar to token storage)
     // Use atomic write (write to temp file then rename)
     const tempPath = `${poolListPath}.tmp`;
 

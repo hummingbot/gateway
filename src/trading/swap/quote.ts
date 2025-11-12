@@ -143,7 +143,7 @@ async function getSolanaQuoteSwap(
         quoteToken,
         amount,
         side,
-        slippagePct || 1,
+        slippagePct,
         undefined, // onlyDirectRoutes
         undefined, // restrictIntermediateTokens
       );
@@ -156,7 +156,7 @@ async function getSolanaQuoteSwap(
         quoteToken,
         amount,
         side,
-        slippagePct || 1,
+        slippagePct,
       );
     } else if (providerKey === 'raydium/clmm') {
       return await raydiumClmmQuoteSwap(
@@ -167,7 +167,7 @@ async function getSolanaQuoteSwap(
         quoteToken,
         amount,
         side,
-        slippagePct || 1,
+        slippagePct,
       );
     } else if (providerKey === 'meteora/clmm') {
       return await meteoraClmmQuoteSwap(
@@ -178,7 +178,7 @@ async function getSolanaQuoteSwap(
         quoteToken,
         amount,
         side,
-        slippagePct || 1,
+        slippagePct,
       );
     } else if (providerKey === 'pancakeswap-sol/clmm') {
       return await pancakeswapSolClmmQuoteSwap(
@@ -189,7 +189,7 @@ async function getSolanaQuoteSwap(
         amount,
         side,
         poolAddress,
-        slippagePct || 1,
+        slippagePct,
       );
     }
 
@@ -257,7 +257,7 @@ async function getEthereumQuoteSwap(
         quoteToken,
         amount,
         side,
-        slippagePct || 1,
+        slippagePct,
       );
     } else if (providerKey === 'uniswap/clmm') {
       return await uniswapClmmQuoteSwap(
@@ -268,19 +268,10 @@ async function getEthereumQuoteSwap(
         quoteToken,
         amount,
         side,
-        slippagePct || 1,
+        slippagePct,
       );
     } else if (providerKey === 'pancakeswap/router') {
-      return await pancakeswapRouterQuoteSwap(
-        fastify,
-        network,
-        '',
-        baseToken,
-        quoteToken,
-        amount,
-        side,
-        slippagePct || 1,
-      );
+      return await pancakeswapRouterQuoteSwap(fastify, network, '', baseToken, quoteToken, amount, side, slippagePct);
     } else if (providerKey === 'pancakeswap/amm') {
       return await pancakeswapAmmQuoteSwap(
         fastify,
@@ -290,7 +281,7 @@ async function getEthereumQuoteSwap(
         quoteToken,
         amount,
         side,
-        slippagePct || 1,
+        slippagePct,
       );
     } else if (providerKey === 'pancakeswap/clmm') {
       return await pancakeswapClmmQuoteSwap(
@@ -301,7 +292,7 @@ async function getEthereumQuoteSwap(
         quoteToken,
         amount,
         side,
-        slippagePct || 1,
+        slippagePct,
       );
     } else if (providerKey === '0x/router') {
       return await zeroXRouterQuoteSwap(fastify, network, baseToken, quoteToken, amount, side, slippagePct || 1);

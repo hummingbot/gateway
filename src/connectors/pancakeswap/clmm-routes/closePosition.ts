@@ -119,7 +119,7 @@ export async function closePosition(
   const txParams = await ethereum.prepareGasOptions(undefined, CLMM_CLOSE_POSITION_GAS_LIMIT);
   txParams.value = BigNumber.from(value.toString());
   const tx = await positionManagerWithSigner.multicall([calldata], txParams);
-  const receipt = await tx.wait();
+  const receipt = await ethereum.handleTransactionExecution(tx);
 
   const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
   const token0AmountRemoved = formatTokenAmount(totalAmount0.quotient.toString(), token0.decimals);
@@ -138,7 +138,7 @@ export async function closePosition(
 
   return {
     signature: receipt.transactionHash,
-    status: 1,
+    status: receipt.status,
     data: {
       fee: gasFee,
       positionRentRefunded,

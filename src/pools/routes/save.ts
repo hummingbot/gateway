@@ -5,7 +5,7 @@ import { logger } from '../../services/logger';
 import { PoolService } from '../../services/pool-service';
 import { fetchPoolInfo } from '../pool-info-helpers';
 import { fetchDetailedPoolInfo } from '../pool-lookup-helper';
-import { FindPoolsQuerySchema } from '../schemas';
+import { FindPoolsQuerySchema, PoolInfoSchema } from '../schemas';
 import { Pool } from '../types';
 
 export const savePoolRoute: FastifyPluginAsync = async (fastify) => {
@@ -36,28 +36,7 @@ export const savePoolRoute: FastifyPluginAsync = async (fastify) => {
         response: {
           200: Type.Object({
             message: Type.String(),
-            pool: Type.Object({
-              type: Type.String({
-                description: 'Pool type',
-                examples: ['clmm', 'amm'],
-                enum: ['clmm', 'amm'],
-              }),
-              network: Type.String(),
-              baseSymbol: Type.String(),
-              quoteSymbol: Type.String(),
-              baseTokenAddress: Type.String(),
-              quoteTokenAddress: Type.String(),
-              feePct: Type.Number(),
-              address: Type.String(),
-              volumeUsd24h: Type.Optional(Type.String()),
-              liquidityUsd: Type.Optional(Type.String()),
-              priceNative: Type.Optional(Type.String()),
-              priceUsd: Type.Optional(Type.String()),
-              buys24h: Type.Optional(Type.Number()),
-              sells24h: Type.Optional(Type.Number()),
-              apr: Type.Optional(Type.Number()),
-              timestamp: Type.Optional(Type.Number()),
-            }),
+            pool: PoolInfoSchema,
           }),
         },
       },
@@ -140,6 +119,18 @@ export const savePoolRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         if (error.message.includes('Unsupported network') || error.message.includes('Unsupported chainNetwork')) {
+          throw fastify.httpErrors.badRequest(error.message);
+        }
+
+        if (error.message.includes('no connector/type mapping')) {
+          throw fastify.httpErrors.badRequest(error.message);
+        }
+
+        if (error.message.includes('Unable to fetch pool-info')) {
+          throw fastify.httpErrors.badRequest(error.message);
+        }
+
+        if (error.message.includes('Could not resolve symbols')) {
           throw fastify.httpErrors.badRequest(error.message);
         }
 

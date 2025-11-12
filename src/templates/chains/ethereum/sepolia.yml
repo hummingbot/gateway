@@ -1,6 +1,8 @@
 chainID: 11155111
+geckoId: sepolia-testnet
 nodeURL: https://rpc.ankr.com/eth_sepolia
 nativeCurrencySymbol: ETH
+transactionExecutionTimeoutMs: 10000 # Timeout for waiting for transaction execution (in milliseconds)
 swapProvider: uniswap/router
 
 # Legacy gas price (in GWEI)

@@ -506,7 +506,37 @@ describe('Pool Routes Tests', () => {
 
       expect(response.statusCode).toBe(200);
       const result = JSON.parse(response.payload);
-      expect(result).toEqual(mockPools);
+
+      // Verify response is in PoolInfo format with geckoData
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        type: 'amm',
+        network: 'mainnet-beta',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        baseTokenAddress: 'So11111111111111111111111111111111111111112',
+        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+        geckoData: expect.objectContaining({
+          volumeUsd24h: '1000000',
+          liquidityUsd: '5000000',
+          priceUsd: '100.50',
+          priceNative: '1',
+          buys24h: 150,
+          sells24h: 120,
+          timestamp: expect.any(Number),
+        }),
+      });
+      expect(result[1]).toMatchObject({
+        type: 'clmm',
+        network: 'mainnet-beta',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        geckoData: expect.objectContaining({
+          volumeUsd24h: '2000000',
+          liquidityUsd: '8000000',
+        }),
+      });
 
       expect(mockTokenService.getToken).toHaveBeenCalledWith('solana', 'mainnet-beta', 'SOL');
       expect(mockTokenService.getToken).toHaveBeenCalledWith('solana', 'mainnet-beta', 'USDC');
@@ -554,7 +584,22 @@ describe('Pool Routes Tests', () => {
 
       expect(response.statusCode).toBe(200);
       const result = JSON.parse(response.payload);
-      expect(result).toEqual(mockPools);
+
+      // Verify response is in PoolInfo format with geckoData
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        type: 'amm',
+        network: 'mainnet-beta',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        baseTokenAddress: 'So11111111111111111111111111111111111111112',
+        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+        geckoData: expect.objectContaining({
+          volumeUsd24h: '1000000',
+          liquidityUsd: '5000000',
+        }),
+      });
 
       // Should call getToken to check token list, but both return null (addresses not in list)
       expect(mockTokenService.getToken).toHaveBeenCalledWith(
@@ -654,7 +699,27 @@ describe('Pool Routes Tests', () => {
 
       expect(response.statusCode).toBe(200);
       const result = JSON.parse(response.payload);
-      expect(result).toEqual(mockPools);
+
+      // Verify response is in PoolInfo format with geckoData
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        type: 'clmm',
+        network: 'mainnet-beta',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        baseTokenAddress: 'So11111111111111111111111111111111111111112',
+        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        address: '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
+        geckoData: expect.objectContaining({
+          volumeUsd24h: '2000000',
+          liquidityUsd: '8000000',
+          priceUsd: '100.52',
+          priceNative: '1',
+          buys24h: 200,
+          sells24h: 180,
+          timestamp: expect.any(Number),
+        }),
+      });
 
       expect(mockCoinGeckoService.getTopPoolsByNetwork).toHaveBeenCalledWith(
         'solana-mainnet-beta',

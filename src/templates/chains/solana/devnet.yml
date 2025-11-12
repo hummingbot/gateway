@@ -1,5 +1,7 @@
+chainID: 103
 nodeURL: https://api.devnet.solana.com
 nativeCurrencySymbol: SOL
+geckoId: solana
 swapProvider: jupiter/router
 
 # Default compute units for a transaction

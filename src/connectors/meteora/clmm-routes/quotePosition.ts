@@ -17,7 +17,7 @@ export async function quotePosition(
   poolAddress: string,
   baseTokenAmount?: number,
   quoteTokenAmount?: number,
-  slippagePct?: number,
+  slippagePct: number = MeteoraConfig.config.slippagePct,
   strategyType?: StrategyType,
 ): Promise<QuotePositionResponseType> {
   try {
@@ -43,7 +43,7 @@ export async function quotePosition(
     };
 
     // Get token amounts needed for the position
-    const slippage = (slippagePct === 0 ? 0 : slippagePct || MeteoraConfig.config.slippagePct) / 100;
+    const slippage = slippagePct / 100;
 
     // Calculate liquidity distribution if amounts are provided
     let baseAmount = 0;

@@ -9,6 +9,7 @@ import {
   createAssociatedTokenAccountInstruction,
   createSyncNativeInstruction,
   createCloseAccountInstruction,
+  AccountLayout,
 } from '@solana/spl-token';
 import { TokenInfo } from '@solana/spl-token-registry';
 import {
@@ -1129,7 +1130,48 @@ export class Solana {
         }
       }
     } catch (error) {
-      logger.error(`Error fetching token accounts: ${error.message}`);
+      // Check if this is the known base64 parsing error from Helius
+      if (error.message && error.message.includes('Expected an object') && error.message.includes('base64')) {
+        // Extract account index from error message (e.g., "value.4.account.data" -> index 4)
+        const indexMatch = error.message.match(/value\.(\d+)\.account\.data/);
+        const accountIndex = indexMatch ? indexMatch[1] : 'unknown';
+
+        // Try to get account details by fetching with base64 encoding as fallback
+        let accountDetails = '';
+        if (indexMatch) {
+          try {
+            // Fetch accounts with base64 encoding to identify the problematic account
+            const base64Accounts = await this.connection.getTokenAccountsByOwner(publicKey, {
+              programId: TOKEN_PROGRAM_ID,
+            });
+
+            const idx = parseInt(indexMatch[1], 10);
+            if (idx < base64Accounts.value.length) {
+              const account = base64Accounts.value[idx];
+              // Convert Buffer to Uint8Array for AccountLayout.decode
+              const data = new Uint8Array(account.account.data);
+              const accountInfo = AccountLayout.decode(data);
+              const mintAddress = accountInfo.mint.toString();
+
+              // Try to resolve symbol from token list
+              const tokenList = await this.getTokenList();
+              const token = tokenList.find((t) => t.address === mintAddress);
+              const symbol = token ? token.symbol : 'UNKNOWN';
+
+              accountDetails = ` - Token: ${symbol} (${mintAddress})`;
+            }
+          } catch (fallbackError) {
+            logger.debug(`Could not fetch account details for index ${accountIndex}: ${fallbackError.message}`);
+          }
+        }
+
+        logger.warn(
+          `Helius returned base64-encoded token account data at index ${accountIndex} for wallet ${publicKey.toString()}${accountDetails}. ` +
+            `Returning empty token accounts for now.`,
+        );
+      } else {
+        logger.error(`Error fetching token accounts: ${error.message}`);
+      }
 
       // Re-throw rate limit errors (statusCode 429) so they propagate to the API response
       if (error.statusCode === 429) {

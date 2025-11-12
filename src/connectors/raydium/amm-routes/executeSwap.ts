@@ -21,7 +21,7 @@ export async function executeSwap(
   amount: number,
   side: 'BUY' | 'SELL',
   poolAddress: string,
-  slippagePct?: number,
+  slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
@@ -36,7 +36,7 @@ export async function executeSwap(
   }
 
   // Use configured slippage if not provided
-  const effectiveSlippage = slippagePct || RaydiumConfig.config.slippagePct;
+  const effectiveSlippage = slippagePct;
 
   // Get swap quote
   const quote = await getRawSwapQuote(

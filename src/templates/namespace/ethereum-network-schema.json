@@ -5,10 +5,18 @@
     "chainID": { "type": "integer" },
     "nodeURL": { "type": "string" },
     "nativeCurrencySymbol": { "type": "string" },
+    "geckoId": {
+      "type": "string",
+      "description": "GeckoTerminal network ID for this network (e.g., 'eth' for mainnet, 'base' for Base)"
+    },
     "swapProvider": {
       "type": "string",
       "description": "Default swap router provider for this network (format: connector/type, e.g., uniswap/router)",
       "default": "uniswap/router"
+    },
+    "transactionExecutionTimeoutMs": {
+      "type": "number",
+      "description": " Timeout for waiting for transaction execution (in milliseconds)"
     },
     "gasPrice": {
       "type": ["number", "null"],
@@ -28,6 +36,6 @@
       "default": 1.2
     }
   },
-  "required": ["chainID", "nodeURL", "nativeCurrencySymbol"],
+  "required": ["chainID", "nodeURL", "nativeCurrencySymbol", "geckoId"],
   "additionalProperties": false
 }

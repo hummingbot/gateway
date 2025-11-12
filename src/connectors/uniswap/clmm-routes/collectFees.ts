@@ -114,7 +114,7 @@ export async function collectFees(
   const tx = await positionManagerWithSigner.multicall([calldata], txParams);
 
   // Wait for transaction confirmation
-  const receipt = await tx.wait();
+  const receipt = await ethereum.handleTransactionExecution(tx);
 
   // Calculate gas fee
   const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
@@ -129,7 +129,7 @@ export async function collectFees(
 
   return {
     signature: receipt.transactionHash,
-    status: 1,
+    status: receipt.status,
     data: {
       fee: gasFee,
       baseFeeAmountCollected,

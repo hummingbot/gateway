@@ -1,12 +1,13 @@
+import { encodeSqrtRatioX96 } from '@uniswap/v3-sdk';
 import { BigNumber, Contract, utils } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
-import { waitForTransactionWithTimeout } from '../../../chains/ethereum/ethereum.utils';
 import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
+import { PancakeswapConfig } from '../pancakeswap.config';
 import { getPancakeswapV3SwapRouter02Address, ISwapRouter02ABI } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
 import { PancakeswapExecuteSwapRequest } from '../schemas';
@@ -24,7 +25,7 @@ export async function executeClmmSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<SwapExecuteResponseType> {
   const ethereum = await Ethereum.getInstance(network);
   await ethereum.init();
@@ -106,7 +107,10 @@ export async function executeClmmSwap(
     amountOut: 0,
     amountInMaximum: 0,
     amountOutMinimum: 0,
-    sqrtPriceLimitX96: 0,
+    sqrtPriceLimitX96: encodeSqrtRatioX96(
+      quote.trade.executionPrice.numerator,
+      quote.trade.executionPrice.denominator,
+    ).toString(),
   };
 
   let receipt;
@@ -185,8 +189,8 @@ export async function executeClmmSwap(
 
       logger.info(`Transaction sent: ${txResponse.hash}`);
 
-      // Wait for confirmation with timeout (30 seconds for hardware wallets)
-      receipt = await waitForTransactionWithTimeout(txResponse, 30000);
+      // Wait for confirmation with timeout
+      receipt = await ethereum.handleTransactionExecution(txResponse);
     } else {
       // Regular wallet flow
       let wallet;
@@ -249,7 +253,7 @@ export async function executeClmmSwap(
       logger.info(`Transaction sent: ${tx.hash}`);
 
       // Wait for transaction confirmation
-      receipt = await tx.wait();
+      receipt = await ethereum.handleTransactionExecution(tx);
     }
 
     // Check if the transaction was successful
@@ -260,7 +264,7 @@ export async function executeClmmSwap(
       );
     }
 
-    logger.info(`Transaction confirmed: ${receipt.transactionHash}`);
+    logger.info(`Transaction hash: ${receipt.transactionHash}`);
     logger.info(`Gas used: ${receipt.gasUsed.toString()}`);
 
     // Calculate amounts using quote values
@@ -283,7 +287,7 @@ export async function executeClmmSwap(
 
     return {
       signature: receipt.transactionHash,
-      status: 1, // CONFIRMED
+      status: receipt.status,
       data: {
         tokenIn,
         tokenOut,
