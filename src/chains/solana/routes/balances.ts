@@ -83,7 +83,7 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  // WebSocket subscription endpoint
+  // WebSocket subscription endpoint (internal only - not documented in Swagger)
   fastify.post<{
     Body: {
       network: string;
@@ -102,86 +102,55 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
         }>;
       };
     };
-  }>(
-    '/subscribe-balances',
-    {
-      schema: {
-        description: 'Subscribe to real-time wallet balance updates via WebSocket',
-        tags: ['/chain/solana'],
-        body: Type.Object({
-          network: Type.String({ description: 'Solana network name (e.g., mainnet-beta, devnet)' }),
-          address: Type.String({ description: 'Wallet address to monitor' }),
-        }),
-        response: {
-          200: Type.Object({
-            subscriptionId: Type.Number({ description: 'Subscription ID for unsubscribing' }),
-            message: Type.String({ description: 'Success message' }),
-            initialBalances: Type.Object({
-              sol: Type.Number({ description: 'Initial SOL balance' }),
-              tokens: Type.Array(
-                Type.Object({
-                  symbol: Type.String(),
-                  address: Type.String(),
-                  balance: Type.Number(),
-                  decimals: Type.Number(),
-                }),
-                { description: 'Initial token balances' },
-              ),
-            }),
-          }),
-        },
-      },
-    },
-    async (request) => {
-      const { network, address } = request.body;
-      const solana = await Solana.getInstance(network);
+  }>('/subscribe-balances', async (request) => {
+    const { network, address } = request.body;
+    const solana = await Solana.getInstance(network);
 
-      // Get initial balances
-      const initialBalancesRaw = await solana.getBalances(address);
-      const balancesData = initialBalancesRaw.balances;
-      const solBalance = (balancesData['SOL'] as number) || 0;
+    // Get initial balances
+    const initialBalancesRaw = await solana.getBalances(address);
+    const balancesData = initialBalancesRaw.balances;
+    const solBalance = (balancesData['SOL'] as number) || 0;
 
-      // Get token list once
-      const tokenList = await solana.getTokenList();
+    // Get token list once
+    const tokenList = await solana.getTokenList();
 
-      const tokenBalances = Object.entries(balancesData)
-        .filter(([symbol]) => symbol !== 'SOL')
-        .map(([symbol, balance]) => {
-          // Find token info from token list
-          const tokenInfo = tokenList.find((t) => t.symbol === symbol);
-          return {
-            symbol,
-            address: tokenInfo?.address || '',
-            balance: balance as number,
-            decimals: tokenInfo?.decimals || 9,
-          };
-        });
-
-      // Subscribe to updates
-      const subscriptionId = await solana.subscribeToWalletBalance(address, (balances) => {
-        logger.info(`Wallet ${address} balance updated at slot ${balances.slot}:`, {
-          sol: balances.sol,
-          tokenCount: balances.tokens.length,
-        });
-        // In a real-world scenario, you'd emit this via Server-Sent Events (SSE) or WebSocket to the client
-        // For now, we just log it
+    const tokenBalances = Object.entries(balancesData)
+      .filter(([symbol]) => symbol !== 'SOL')
+      .map(([symbol, balance]) => {
+        // Find token info from token list
+        const tokenInfo = tokenList.find((t) => t.symbol === symbol);
+        return {
+          symbol,
+          address: tokenInfo?.address || '',
+          balance: balance as number,
+          decimals: tokenInfo?.decimals || 9,
+        };
       });
 
-      // Store subscription metadata
-      activeSubscriptions.set(subscriptionId, { network, address });
+    // Subscribe to updates
+    const subscriptionId = await solana.subscribeToWalletBalance(address, (balances) => {
+      logger.info(`Wallet ${address} balance updated at slot ${balances.slot}:`, {
+        sol: balances.sol,
+        tokenCount: balances.tokens.length,
+      });
+      // In a real-world scenario, you'd emit this via Server-Sent Events (SSE) or WebSocket to the client
+      // For now, we just log it
+    });
 
-      return {
-        subscriptionId,
-        message: 'Subscribed to wallet balance updates. Balance changes will be logged.',
-        initialBalances: {
-          sol: solBalance,
-          tokens: tokenBalances,
-        },
-      };
-    },
-  );
+    // Store subscription metadata
+    activeSubscriptions.set(subscriptionId, { network, address });
 
-  // Unsubscribe endpoint
+    return {
+      subscriptionId,
+      message: 'Subscribed to wallet balance updates. Balance changes will be logged.',
+      initialBalances: {
+        sol: solBalance,
+        tokens: tokenBalances,
+      },
+    };
+  });
+
+  // Unsubscribe endpoint (internal only - not documented in Swagger)
   fastify.delete<{
     Body: {
       network: string;
@@ -190,40 +159,22 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
     Reply: {
       message: string;
     };
-  }>(
-    '/unsubscribe-balances',
-    {
-      schema: {
-        description: 'Unsubscribe from wallet balance updates',
-        tags: ['/chain/solana'],
-        body: Type.Object({
-          network: Type.String({ description: 'Solana network name' }),
-          subscriptionId: Type.Number({ description: 'Subscription ID from subscribe-balances' }),
-        }),
-        response: {
-          200: Type.Object({
-            message: Type.String(),
-          }),
-        },
-      },
-    },
-    async (request) => {
-      const { network, subscriptionId } = request.body;
-      const solana = await Solana.getInstance(network);
+  }>('/unsubscribe-balances', async (request) => {
+    const { network, subscriptionId } = request.body;
+    const solana = await Solana.getInstance(network);
 
-      // Check if subscription exists
-      const subscription = activeSubscriptions.get(subscriptionId);
-      if (!subscription) {
-        throw fastify.httpErrors.notFound(`Subscription ID ${subscriptionId} not found`);
-      }
+    // Check if subscription exists
+    const subscription = activeSubscriptions.get(subscriptionId);
+    if (!subscription) {
+      throw fastify.httpErrors.notFound(`Subscription ID ${subscriptionId} not found`);
+    }
 
-      // Unsubscribe
-      await solana.unsubscribeFromWalletBalance(subscriptionId);
-      activeSubscriptions.delete(subscriptionId);
+    // Unsubscribe
+    await solana.unsubscribeFromWalletBalance(subscriptionId);
+    activeSubscriptions.delete(subscriptionId);
 
-      return { message: 'Unsubscribed successfully' };
-    },
-  );
+    return { message: 'Unsubscribed successfully' };
+  });
 };
 
 export default balancesRoute;
