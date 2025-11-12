@@ -26,6 +26,7 @@ export function PortfolioView() {
   const [error, setError] = useState<string | null>(null);
   const [showAddToken, setShowAddToken] = useState(false);
   const [availableNetworks, setAvailableNetworks] = useState<string[]>([]);
+  const [nativeSymbol, setNativeSymbol] = useState<string>('');
 
   useEffect(() => {
     loadNetworks();
@@ -53,6 +54,15 @@ export function PortfolioView() {
       setLoading(true);
       setError(null);
 
+      // Fetch all configs to get native currency symbol
+      const allConfigsData = await gatewayGet<any>('/config');
+      const namespace = `${selectedChain}-${selectedNetwork}`;
+      const networkConfig = allConfigsData[namespace];
+
+      // Get nativeCurrencySymbol from network config
+      const nativeCurrency = networkConfig?.nativeCurrencySymbol || 'SOL'; // Default fallback
+      setNativeSymbol(nativeCurrency);
+
       // Fetch all tokens for this network
       const allTokens = await gatewayGet<{ tokens: Token[] }>(
         `/tokens?chain=${selectedChain}&network=${selectedNetwork}`
@@ -76,12 +86,19 @@ export function PortfolioView() {
       }
 
       // Merge all tokens with their balances (0 if not in balance response)
-      const mergedBalances: Balance[] = (allTokens.tokens || []).map((token) => ({
+      let mergedBalances: Balance[] = (allTokens.tokens || []).map((token) => ({
         symbol: token.symbol,
         address: token.address,
         balance: balanceMap.get(token.symbol) || '0',
         value: 0, // TODO: fetch prices
       }));
+
+      // Sort so native token comes first
+      mergedBalances = mergedBalances.sort((a, b) => {
+        if (a.symbol === nativeCurrency) return -1;
+        if (b.symbol === nativeCurrency) return 1;
+        return 0;
+      });
 
       setBalances(mergedBalances);
     } catch (err) {
@@ -170,8 +187,12 @@ export function PortfolioView() {
                 <tbody>
                   {balances.map((balance, i) => (
                     <tr key={i} className="border-b">
-                      <td className="py-2">{balance.symbol}</td>
-                      <td className="text-right">{balance.balance}</td>
+                      <td className={`py-2 ${balance.symbol === nativeSymbol ? 'font-bold' : ''}`}>
+                        {balance.symbol}
+                      </td>
+                      <td className={`text-right ${balance.symbol === nativeSymbol ? 'font-bold' : ''}`}>
+                        {balance.balance}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
