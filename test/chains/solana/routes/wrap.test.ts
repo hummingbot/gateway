@@ -16,6 +16,10 @@ describe('Solana Wrap Route', () => {
   let fastify: FastifyInstance;
 
   beforeAll(async () => {
+    // Mock static methods that are called during route registration
+    mockSolana.getWalletAddressExample = jest.fn().mockResolvedValue('7BgBvyjrZX1YKz4oh9mjb8ZScatkkwb8DzFx7LoiVkM3');
+    mockSolana.validateAddress = jest.fn((address: string) => address);
+
     fastify = gatewayApp;
     await fastify.ready();
   });
@@ -174,9 +178,6 @@ describe('Solana Wrap Route', () => {
     });
 
     it('should reject invalid amounts', async () => {
-      // Mock getInstance to allow validation logic to run
-      mockSolana.getInstance.mockResolvedValue(mockInstance as any);
-
       const response = await fastify.inject({
         method: 'POST',
         url: '/chains/solana/wrap',
@@ -193,9 +194,6 @@ describe('Solana Wrap Route', () => {
     });
 
     it('should reject negative amounts', async () => {
-      // Mock getInstance to allow validation logic to run
-      mockSolana.getInstance.mockResolvedValue(mockInstance as any);
-
       const response = await fastify.inject({
         method: 'POST',
         url: '/chains/solana/wrap',

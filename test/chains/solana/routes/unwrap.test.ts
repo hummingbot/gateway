@@ -17,6 +17,10 @@ describe('Solana Unwrap Route', () => {
   let fastify: FastifyInstance;
 
   beforeAll(async () => {
+    // Mock static methods that are called during route registration
+    mockSolana.getWalletAddressExample = jest.fn().mockResolvedValue('7BgBvyjrZX1YKz4oh9mjb8ZScatkkwb8DzFx7LoiVkM3');
+    mockSolana.validateAddress = jest.fn((address: string) => address);
+
     fastify = gatewayApp;
     await fastify.ready();
   });

@@ -15,6 +15,11 @@ describe('Ethereum Unwrap Route', () => {
   let fastify: FastifyInstance;
 
   beforeAll(async () => {
+    // Mock static methods that are called during route registration
+    mockEthereum.getWalletAddressExample = jest.fn().mockResolvedValue('0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb');
+    mockEthereum.validateAddress = jest.fn((address: string) => address);
+    mockEthereum.isAddress = jest.fn((_address: string) => true) as any;
+
     fastify = gatewayApp;
     await fastify.ready();
   });
