@@ -60,7 +60,7 @@ export function PortfolioView() {
       const networkConfig = allConfigsData[namespace];
 
       // Get nativeCurrencySymbol from network config
-      const nativeCurrency = networkConfig?.nativeCurrencySymbol || 'SOL'; // Default fallback
+      const nativeCurrency = networkConfig.nativeCurrencySymbol;
       setNativeSymbol(nativeCurrency);
 
       // Fetch all tokens for this network
@@ -85,13 +85,31 @@ export function PortfolioView() {
         });
       }
 
-      // Merge all tokens with their balances (0 if not in balance response)
-      let mergedBalances: Balance[] = (allTokens.tokens || []).map((token) => ({
-        symbol: token.symbol,
-        address: token.address,
-        balance: balanceMap.get(token.symbol) || '0',
-        value: 0, // TODO: fetch prices
-      }));
+      // Start with tokens from token list
+      const tokenSymbols = new Set<string>();
+      let mergedBalances: Balance[] = (allTokens.tokens || []).map((token) => {
+        tokenSymbols.add(token.symbol);
+        return {
+          symbol: token.symbol,
+          address: token.address,
+          balance: balanceMap.get(token.symbol) || '0',
+          value: 0,
+        };
+      });
+
+      // Add any tokens from balances that aren't in the token list (e.g., native token)
+      if (balanceData.balances) {
+        Object.entries(balanceData.balances).forEach(([symbol, balance]) => {
+          if (!tokenSymbols.has(symbol)) {
+            mergedBalances.push({
+              symbol,
+              address: '', // Native tokens don't have contract addresses
+              balance: String(balance),
+              value: 0,
+            });
+          }
+        });
+      }
 
       // Sort so native token comes first
       mergedBalances = mergedBalances.sort((a, b) => {

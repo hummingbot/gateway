@@ -89,20 +89,20 @@ function AppContent() {
   }
 
   async function handleWalletChange(wallet: string, chain: string) {
-    setSelectedWallet(wallet);
-
     // If chain is changing, load networks and switch to default network
     if (chain !== selectedChain) {
-      setSelectedChain(chain);
-
-      // Load networks for the new chain and set default
       const configData = await gatewayGet<any>('/config/chains');
       const chainData = configData.chains?.find((c: any) => c.chain === chain);
-      if (chainData) {
-        setNetworks(chainData.networks);
-        setDefaultNetwork(chainData.defaultNetwork || chainData.networks[0]);
-        setSelectedNetwork(chainData.defaultNetwork || chainData.networks[0]);
-      }
+
+      const defaultNet = chainData.defaultNetwork || chainData.networks[0];
+      setNetworks(chainData.networks);
+      setDefaultNetwork(defaultNet);
+      setSelectedNetwork(defaultNet);
+      setSelectedChain(chain);
+      setSelectedWallet(wallet);
+    } else {
+      // Same chain, just update wallet
+      setSelectedWallet(wallet);
     }
   }
 
