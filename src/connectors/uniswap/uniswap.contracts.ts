@@ -202,6 +202,16 @@ export const contractAddresses: NetworkContractAddresses = {
  * Helper functions to get contract addresses
  */
 
+/**
+ * Check if Uniswap V2 is available on the given network
+ * @param network The network name
+ * @returns true if V2 is available, false otherwise
+ */
+export function isUniswapV2Available(network: string): boolean {
+  const address = contractAddresses[network]?.uniswapV2RouterAddress;
+  return address !== null && address !== undefined;
+}
+
 export function getUniswapV2RouterAddress(network: string): string {
   const address = contractAddresses[network]?.uniswapV2RouterAddress;
 

@@ -22,6 +22,7 @@ import {
   getUniswapV3NftManagerAddress,
   getUniswapV3QuoterV2ContractAddress,
   getUniswapV3FactoryAddress,
+  isUniswapV2Available,
 } from './uniswap.contracts';
 import { isValidV2Pool, isValidV3Pool } from './uniswap.utils';
 import { UniversalRouterService } from './universal-router';
@@ -39,9 +40,9 @@ export class Uniswap {
   private chainId: number;
   private _ready: boolean = false;
 
-  // V2 (AMM) properties
-  private v2Factory: Contract;
-  private v2Router: Contract;
+  // V2 (AMM) properties (optional - not all networks have V2)
+  private v2Factory?: Contract;
+  private v2Router?: Contract;
 
   // V3 (CLMM) properties
   private v3Factory: Contract;
@@ -79,18 +80,23 @@ export class Uniswap {
       this.ethereum = await Ethereum.getInstance(this.networkName);
       this.chainId = this.ethereum.chainId;
 
-      // Initialize V2 (AMM) contracts
-      this.v2Factory = new Contract(
-        getUniswapV2FactoryAddress(this.networkName),
-        IUniswapV2FactoryABI.abi,
-        this.ethereum.provider,
-      );
+      // Initialize V2 (AMM) contracts only if available on this network
+      if (isUniswapV2Available(this.networkName)) {
+        this.v2Factory = new Contract(
+          getUniswapV2FactoryAddress(this.networkName),
+          IUniswapV2FactoryABI.abi,
+          this.ethereum.provider,
+        );
 
-      this.v2Router = new Contract(
-        getUniswapV2RouterAddress(this.networkName),
-        IUniswapV2Router02ABI.abi,
-        this.ethereum.provider,
-      );
+        this.v2Router = new Contract(
+          getUniswapV2RouterAddress(this.networkName),
+          IUniswapV2Router02ABI.abi,
+          this.ethereum.provider,
+        );
+        logger.info(`Uniswap V2 contracts initialized for ${this.networkName}`);
+      } else {
+        logger.info(`Uniswap V2 not available on ${this.networkName}, skipping V2 initialization`);
+      }
 
       // Initialize V3 (CLMM) contracts
       this.v3Factory = new Contract(
@@ -256,6 +262,13 @@ export class Uniswap {
    */
   public async getV2Pool(tokenA: Token | string, tokenB: Token | string, poolAddress?: string): Promise<V2Pair | null> {
     try {
+      // Check if V2 is available on this network
+      if (!isUniswapV2Available(this.networkName)) {
+        throw new Error(
+          `Uniswap V2 is not deployed on ${this.networkName} network. Please use Uniswap V3 for this network.`,
+        );
+      }
+
       // Resolve pool address if provided
       let pairAddress = poolAddress;
 
@@ -269,7 +282,7 @@ export class Uniswap {
       }
 
       // Find pool address if not provided
-      if (!pairAddress) {
+      if (!pairAddress && this.v2Factory) {
         // Try to get it from the factory
         pairAddress = await this.v2Factory.getPair(tokenAObj.address, tokenBObj.address);
       }
