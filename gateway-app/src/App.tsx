@@ -149,10 +149,10 @@ function AppContent() {
               title={`${selectedChain}-${selectedNetwork}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M13 7 9 3 5 7l4 4"></path>
-                <path d="m17 11 4 4-4 4-4-4"></path>
-                <path d="m8 12 4 4 6-6-4-4Z"></path>
-                <circle cx="16" cy="16" r="6"></circle>
+                <path d="M4 10a7.31 7.31 0 0 0 10 10Z"></path>
+                <path d="m9 15 3-3"></path>
+                <path d="M17 13a6 6 0 0 0-6-6"></path>
+                <path d="M21 13A10 10 0 0 0 11 3"></path>
               </svg>
             </button>
 
@@ -340,7 +340,7 @@ function AppContent() {
               <rect width="20" height="14" x="2" y="5" rx="2" />
               <line x1="2" x2="22" y1="10" y2="10" />
             </svg>
-            <span className="text-xs font-medium">Wallet</span>
+            <span className="text-xs font-medium">Portfolio</span>
           </button>
 
           <button
