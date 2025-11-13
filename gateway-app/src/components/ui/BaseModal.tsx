@@ -1,8 +1,8 @@
 /**
  * BaseModal Component
  *
- * Reusable modal wrapper with backdrop, centered positioning, and optional Card styling.
- * Replaces duplicate modal overlay patterns across AddTokenModal, AddWalletModal, and ConfirmModal.
+ * Reusable modal wrapper built on shadcn/ui Dialog.
+ * Maintains backward compatibility with previous API while using proper Dialog primitives.
  *
  * @example Basic modal with Card
  * <BaseModal onClose={handleClose}>
@@ -17,6 +17,7 @@
  */
 
 import { ReactNode } from 'react';
+import { Dialog, DialogContent } from './dialog';
 import { Card } from './card';
 
 export interface BaseModalProps {
@@ -42,27 +43,27 @@ export function BaseModal({
   maxWidth = 'max-w-md',
   closeOnBackdropClick = true,
 }: BaseModalProps) {
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Only close if clicking the backdrop itself, not the content
-    if (closeOnBackdropClick && onClose && e.target === e.currentTarget) {
+  const handleOpenChange = (open: boolean) => {
+    if (!open && onClose) {
       onClose();
     }
   };
 
-  const contentClasses = `w-full ${maxWidth} ${className}`;
+  const contentClasses = `${maxWidth} ${className}`;
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={handleBackdropClick}
-    >
-      {useCard ? (
-        <Card className={contentClasses}>{children}</Card>
-      ) : (
-        <div className={`bg-background border rounded-lg shadow-lg p-6 ${contentClasses}`}>
-          {children}
-        </div>
-      )}
-    </div>
+    <Dialog open={true} onOpenChange={closeOnBackdropClick ? handleOpenChange : undefined}>
+      <DialogContent className={contentClasses} onPointerDownOutside={(e) => {
+        if (!closeOnBackdropClick) {
+          e.preventDefault();
+        }
+      }}>
+        {useCard ? (
+          <Card className="border-0 shadow-none">{children}</Card>
+        ) : (
+          <div>{children}</div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

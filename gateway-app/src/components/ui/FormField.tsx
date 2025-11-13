@@ -28,6 +28,7 @@
 
 import { Input } from './input';
 import { Select } from './select';
+import { Label } from './label';
 
 export interface FormFieldOption {
   value: string;
@@ -75,11 +76,9 @@ export function FormField({
     md: 'text-base',
   };
 
-  const labelClass = `${labelSizeClasses[labelSize]} font-medium`;
-
   return (
     <div className={className}>
-      <label className={labelClass}>{label}</label>
+      <Label className={labelSizeClasses[labelSize]}>{label}</Label>
       {type === 'select' ? (
         <Select value={value} onChange={onChange} disabled={disabled}>
           {options.map((option) => (

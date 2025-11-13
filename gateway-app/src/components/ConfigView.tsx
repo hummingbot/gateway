@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Select } from './ui/select';
+import { Switch } from './ui/switch';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import { readAppConfig, updateAppConfigValue } from '@/lib/app-config';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
@@ -475,19 +476,11 @@ export function ConfigView() {
                                 // Boolean values always show as toggle, no edit mode needed
                                 <div className="flex items-center gap-2 justify-end min-w-[140px]">
                                   <span className="text-xs text-muted-foreground">false</span>
-                                  <button
-                                    onClick={() => handleBooleanToggle(item, !item.value)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
-                                      item.value ? 'bg-primary' : 'bg-gray-300'
-                                    }`}
+                                  <Switch
+                                    checked={item.value}
+                                    onCheckedChange={(checked) => handleBooleanToggle(item, checked)}
                                     disabled={saving}
-                                  >
-                                    <span
-                                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                        item.value ? 'translate-x-6' : 'translate-x-1'
-                                      }`}
-                                    />
-                                  </button>
+                                  />
                                   <span className="text-xs text-muted-foreground">true</span>
                                 </div>
                               ) : isEditing ? (
