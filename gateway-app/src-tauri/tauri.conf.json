@@ -31,6 +31,9 @@
   "plugins": {
     "notification": {
       "all": true
+    },
+    "http": {
+      "scope": ["https://localhost:15888/**", "http://localhost:15888/**"]
     }
   }
 }

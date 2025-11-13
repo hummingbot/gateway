@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@tauri-apps/plugin-http':
+        specifier: ^2.5.4
+        version: 2.5.4
       '@tauri-apps/plugin-notification':
         specifier: ^2.3.3
         version: 2.3.3
@@ -498,6 +501,9 @@ packages:
     resolution: {integrity: sha512-BQ7iLUXTQcyG1PpzLWeVSmBCedYDpnA/6Cm/kRFGtqjTf/eVUlyYO5S2ee07tLum3nWwDBWTGFZeruO8yEukfA==}
     engines: {node: '>= 10'}
     hasBin: true
+
+  '@tauri-apps/plugin-http@2.5.4':
+    resolution: {integrity: sha512-/i4U/9za3mrytTgfRn5RHneKubZE/dwRmshYwyMvNRlkWjvu1m4Ma72kcbVJMZFGXpkbl+qLyWMGrihtWB76Zg==}
 
   '@tauri-apps/plugin-notification@2.3.3':
     resolution: {integrity: sha512-Zw+ZH18RJb41G4NrfHgIuofJiymusqN+q8fGUIIV7vyCH+5sSn5coqRv/MWB9qETsUs97vmU045q7OyseCV3Qg==}
@@ -1500,6 +1506,10 @@ snapshots:
       '@tauri-apps/cli-win32-arm64-msvc': 2.9.3
       '@tauri-apps/cli-win32-ia32-msvc': 2.9.3
       '@tauri-apps/cli-win32-x64-msvc': 2.9.3
+
+  '@tauri-apps/plugin-http@2.5.4':
+    dependencies:
+      '@tauri-apps/api': 2.9.0
 
   '@tauri-apps/plugin-notification@2.3.3':
     dependencies:

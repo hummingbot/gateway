@@ -7,6 +7,12 @@
     "port": { "type": "integer" },
     "docsPort": { "type": "integer" },
     "ipWhitelist": { "type": "array" },
+    "allowedOrigins": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "CORS allowed origins for API requests (e.g., from browser-based clients)",
+      "default": []
+    },
     "GMTOffset": { "type": "number" },
     "logToStdOut": { "type": "boolean" },
     "fastifyLogs": { "type": "boolean" },
@@ -18,6 +24,11 @@
     "coingeckoAPIKey": {
       "type": ["string", "null"],
       "description": "CoinGecko API key for GeckoTerminal integration (optional)"
+    },
+    "useCerts": {
+      "type": "boolean",
+      "description": "Use client certificates for authentication (mutual TLS)",
+      "default": false
     },
     "apiKeys": {
       "type": "array",

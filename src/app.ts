@@ -163,8 +163,9 @@ const configureGatewayServer = () => {
   }
 
   // Register CORS
+  const allowedOrigins = ConfigManagerV2.getInstance().get('server.allowedOrigins') || [];
   server.register(fastifyCors, {
-    origin: devMode ? ['http://localhost:1420', 'http://localhost:3000'] : false,
+    origin: allowedOrigins.length > 0 ? allowedOrigins : false,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
@@ -172,9 +173,10 @@ const configureGatewayServer = () => {
   });
 
   // API Key Authentication Middleware
-  // Only enforced when apiKeys are configured and not in dev mode
+  // Only enforced when useCerts is false and apiKeys are configured
+  const useCerts = ConfigManagerV2.getInstance().get('server.useCerts') || false;
   const apiKeys = ConfigManagerV2.getInstance().get('server.apiKeys') || [];
-  const requireApiKey = !devMode && apiKeys.length > 0;
+  const requireApiKey = !devMode && !useCerts && apiKeys.length > 0;
 
   if (requireApiKey) {
     server.addHook('onRequest', async (request, reply) => {
@@ -196,8 +198,10 @@ const configureGatewayServer = () => {
     });
 
     logger.info('API key authentication enabled');
-  } else if (!devMode) {
+  } else if (!devMode && !useCerts) {
     logger.warn('Running in production mode without API key authentication. Configure server.apiKeys for security.');
+  } else if (!devMode && useCerts) {
+    logger.info('Client certificate authentication enabled (mutual TLS)');
   }
 
   // Register rate limiting globally

@@ -1,9 +1,20 @@
 // Gateway URL can be configured via environment variable
-// Default to localhost:15888 for dev mode
-const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:15888';
+// Default to https://localhost:15888 for production mode with self-signed certs
+const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'https://localhost:15888';
 
 // API Key for authentication (optional, only needed in production)
 const API_KEY = import.meta.env.VITE_GATEWAY_API_KEY || '';
+
+// Check if running in Tauri environment
+const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+
+// Dynamically import Tauri's fetch if available
+let tauriFetch: any = null;
+if (isTauri) {
+  import('@tauri-apps/plugin-http').then((module) => {
+    tauriFetch = module.fetch;
+  });
+}
 
 export async function gatewayFetch<T>(
   endpoint: string,
@@ -20,13 +31,25 @@ export async function gatewayFetch<T>(
     headers['X-API-Key'] = API_KEY;
   }
 
-  const response = await fetch(url, {
+  // Use Tauri's fetch with SSL verification disabled for self-signed certs
+  const fetchFn = isTauri && tauriFetch ? tauriFetch : fetch;
+  const fetchOptions: any = {
     ...options,
     headers: {
       ...headers,
       ...options?.headers,
     },
-  });
+  };
+
+  // Disable SSL verification for Tauri (to accept self-signed certs)
+  if (isTauri && tauriFetch) {
+    fetchOptions.danger = {
+      acceptInvalidCerts: true,
+      acceptInvalidHostnames: true,
+    };
+  }
+
+  const response = await fetchFn(url, fetchOptions);
 
   if (!response.ok) {
     const error = await response.text();
