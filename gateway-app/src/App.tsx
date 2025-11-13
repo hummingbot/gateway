@@ -16,6 +16,8 @@ function AppContent() {
   const [allWallets, setAllWallets] = useState<Array<{chain: string, walletAddresses: string[]}>>([]);
   const [networks, setNetworks] = useState<string[]>([]);
   const [showAddWallet, setShowAddWallet] = useState(false);
+  const [showNetworkModal, setShowNetworkModal] = useState(false);
+  const [showWalletModal, setShowWalletModal] = useState(false);
 
   useEffect(() => {
     loadWalletsAndNetworks();
@@ -106,7 +108,7 @@ function AppContent() {
 
   return (
     <>
-      <Toaster position="bottom-center" />
+      <Toaster position="top-center" />
       <div className="flex flex-col h-screen">
         {/* Header */}
         <header className="border-b px-4 md:px-6 py-3 md:py-4">
@@ -114,6 +116,7 @@ function AppContent() {
           <h1 className="text-xl md:text-2xl font-bold">Gateway</h1>
 
           <div className="flex gap-2 md:gap-4 items-center">
+            {/* Desktop: Full Wallet Selector */}
             <div className="hidden sm:block">
               <WalletSelector
                 allWallets={allWallets}
@@ -124,23 +127,53 @@ function AppContent() {
               />
             </div>
 
-            <Select
-              value={selectedNetwork}
-              onChange={(e) => setSelectedNetwork(e.target.value)}
-              className="w-32 sm:w-48 text-sm"
-            >
-              {networks.length > 0 ? (
-                networks.map((network) => (
-                  <option key={network} value={network}>
-                    <span className="hidden sm:inline">{selectedChain}-</span>{network}
+            {/* Desktop: Full Network Selector */}
+            <div className="hidden sm:block">
+              <Select
+                value={selectedNetwork}
+                onChange={(e) => setSelectedNetwork(e.target.value)}
+                className="w-48 text-sm"
+              >
+                {networks.length > 0 ? (
+                  networks.map((network) => (
+                    <option key={network} value={network}>
+                      {selectedChain}-{network}
+                    </option>
+                  ))
+                ) : (
+                  <option value={selectedNetwork}>
+                    {selectedChain}-{selectedNetwork}
                   </option>
-                ))
-              ) : (
-                <option value={selectedNetwork}>
-                  <span className="hidden sm:inline">{selectedChain}-</span>{selectedNetwork}
-                </option>
-              )}
-            </Select>
+                )}
+              </Select>
+            </div>
+
+            {/* Mobile: Network Icon Button */}
+            <button
+              onClick={() => setShowNetworkModal(true)}
+              className="sm:hidden p-2 rounded-lg hover:bg-accent transition-colors"
+              aria-label="Select network"
+              title={`${selectedChain}-${selectedNetwork}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+              </svg>
+            </button>
+
+            {/* Mobile: Wallet Icon Button */}
+            <button
+              onClick={() => setShowWalletModal(true)}
+              className="sm:hidden p-2 rounded-lg hover:bg-accent transition-colors"
+              aria-label="Select wallet"
+              title={selectedWallet || 'No wallet'}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="20" height="14" x="2" y="5" rx="2"></rect>
+                <line x1="2" y1="10" x2="22" y2="10"></line>
+              </svg>
+            </button>
 
             {/* Theme Toggle */}
             <button
@@ -166,17 +199,6 @@ function AppContent() {
                 </svg>
               )}
             </button>
-
-            {/* Mobile Wallet Selector (appears on small screens) */}
-            <div className="sm:hidden">
-              <WalletSelector
-                allWallets={allWallets}
-                selectedWallet={selectedWallet}
-                selectedChain={selectedChain}
-                onWalletChange={handleWalletChange}
-                onAddWallet={() => setShowAddWallet(true)}
-              />
-            </div>
           </div>
         </div>
       </header>
@@ -188,6 +210,100 @@ function AppContent() {
           onAddWallet={handleAddWallet}
           defaultChain={selectedChain}
         />
+      )}
+
+      {/* Network Selection Modal (Mobile) */}
+      {showNetworkModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
+          <div className="bg-background w-full sm:w-96 sm:rounded-lg rounded-t-lg max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-background border-b px-4 py-3 flex justify-between items-center">
+              <h3 className="font-semibold">Select Network</h3>
+              <button
+                onClick={() => setShowNetworkModal(false)}
+                className="p-1 hover:bg-accent rounded"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <div className="p-4 space-y-2">
+              {networks.map((network) => (
+                <button
+                  key={network}
+                  onClick={() => {
+                    setSelectedNetwork(network);
+                    setShowNetworkModal(false);
+                  }}
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                    selectedNetwork === network
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-accent'
+                  }`}
+                >
+                  <div className="font-medium">{selectedChain}-{network}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Wallet Selection Modal (Mobile) */}
+      {showWalletModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
+          <div className="bg-background w-full sm:w-96 sm:rounded-lg rounded-t-lg max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-background border-b px-4 py-3 flex justify-between items-center">
+              <h3 className="font-semibold">Select Wallet</h3>
+              <button
+                onClick={() => setShowWalletModal(false)}
+                className="p-1 hover:bg-accent rounded"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              {allWallets.map((wallet) => (
+                <div key={wallet.chain}>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-2 capitalize">{wallet.chain}</h4>
+                  <div className="space-y-2">
+                    {wallet.walletAddresses.map((address) => (
+                      <button
+                        key={address}
+                        onClick={async () => {
+                          await handleWalletChange(address, wallet.chain);
+                          setShowWalletModal(false);
+                        }}
+                        className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                          selectedWallet === address && selectedChain === wallet.chain
+                            ? 'bg-primary text-primary-foreground'
+                            : 'hover:bg-accent'
+                        }`}
+                      >
+                        <div className="font-mono text-sm">
+                          {address.substring(0, 6)}...{address.substring(address.length - 4)}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={() => {
+                  setShowWalletModal(false);
+                  setShowAddWallet(true);
+                }}
+                className="w-full px-4 py-3 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary hover:bg-accent transition-colors text-center"
+              >
+                + Add Wallet
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Main Content */}
