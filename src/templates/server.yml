@@ -12,17 +12,13 @@ docsPort: 0
 # Use client certificates for authentication (mutual TLS)
 # - true: Traditional Hummingbot authentication using client certificates (more secure, requires cert setup)
 # - false: Use API key authentication via X-API-Key header (easier for browser/app clients)
+# When using API key auth (useCerts: false), set GATEWAY_API_KEYS environment variable
+# Example: GATEWAY_API_KEYS=key1,key2,key3 (comma-separated for multiple keys)
+# Generate secure keys with: openssl rand -hex 32
 useCerts: false
 
 # Path to folder where Hummingbot generates self-signed certificates
 certificatePath: ./certs/
-
-# API keys for authenticating requests to Gateway (only used when useCerts is false)
-# Multiple API keys can be provided as a list. Each key should be a secure random string.
-# If no keys are provided or the list is empty, API key authentication is disabled.
-# Generate secure keys with: openssl rand -hex 32
-apiKeys:
-  - 58a05bb5a1c41a99599047bcf6be9b871c9734d7098ff9fcefea7fefca91f244
 
 # Path to folder where logs will be stored.
 logPath: './logs'

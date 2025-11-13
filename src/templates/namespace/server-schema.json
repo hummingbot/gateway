@@ -29,12 +29,6 @@
       "type": "boolean",
       "description": "Use client certificates for authentication (mutual TLS)",
       "default": false
-    },
-    "apiKeys": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "API keys for authenticating requests to Gateway (optional, for production deployments)",
-      "default": []
     }
   },
   "additionalProperties": false,

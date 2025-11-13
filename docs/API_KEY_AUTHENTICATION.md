@@ -23,32 +23,46 @@ This will output a 64-character hexadecimal string like:
 aaaabbbbccccddddeeeeffffgggghhhh11112222333344445555666677778888
 ```
 
-### 2. Configure Gateway
+### 2. Set API Keys Environment Variable
 
-Edit `conf/server.yml` and add your API keys:
-
-```yaml
-# API keys for authenticating requests to Gateway (optional, for production deployments)
-# Multiple API keys can be provided as a list. Each key should be a secure random string.
-# If no keys are provided or the list is empty, API key authentication is disabled.
-# Generate secure keys with: openssl rand -hex 32
-apiKeys:
-  - aaaabbbbccccddddeeeeffffgggghhhh11112222333344445555666677778888
-  - your-second-api-key-here
-```
-
-### 3. Run Gateway in Production Mode
-
-Start Gateway without the `--dev` flag:
+Set the `GATEWAY_API_KEYS` environment variable with comma-separated keys:
 
 ```bash
-pnpm start --passphrase=<YOUR_PASSPHRASE>
+export GATEWAY_API_KEYS=aaaabbbbccccddddeeeeffffgggghhhh11112222333344445555666677778888,your-second-key-here
+```
+
+Or add to your shell profile (~/.bashrc, ~/.zshrc):
+
+```bash
+echo 'export GATEWAY_API_KEYS=aaaabbbbccccddddeeeeffffgggghhhh11112222333344445555666677778888' >> ~/.zshrc
+```
+
+### 3. Configure Gateway
+
+Ensure `useCerts: false` in `conf/server.yml` (this is the default):
+
+```yaml
+# Use client certificates for authentication (mutual TLS)
+# - true: Traditional Hummingbot authentication using client certificates
+# - false: Use API key authentication via X-API-Key header
+useCerts: false
+```
+
+### 4. Run Gateway in Production Mode
+
+Start Gateway with the API keys environment variable:
+
+```bash
+GATEWAY_API_KEYS=your-key-here pnpm start --passphrase=<YOUR_PASSPHRASE>
 ```
 
 Or with Docker:
 
 ```bash
-docker run -e GATEWAY_PASSPHRASE=<YOUR_PASSPHRASE> -p 15888:15888 gateway
+docker run \
+  -e GATEWAY_PASSPHRASE=<YOUR_PASSPHRASE> \
+  -e GATEWAY_API_KEYS=your-key-here \
+  -p 15888:15888 gateway
 ```
 
 ## Gateway App Configuration
@@ -61,7 +75,7 @@ Create a `.env` file in the `gateway-app/` directory:
 # Gateway API URL (use HTTPS for production)
 VITE_GATEWAY_URL=https://your-gateway-host:15888
 
-# Gateway API Key (must match one of the keys in Gateway's conf/server.yml)
+# Gateway API Key (must match one of the keys in GATEWAY_API_KEYS env var)
 VITE_GATEWAY_API_KEY=aaaabbbbccccddddeeeeffffgggghhhh11112222333344445555666677778888
 ```
 

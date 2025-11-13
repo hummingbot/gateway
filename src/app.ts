@@ -173,9 +173,16 @@ const configureGatewayServer = () => {
   });
 
   // API Key Authentication Middleware
-  // Only enforced when useCerts is false and apiKeys are configured
+  // Only enforced when useCerts is false and apiKeys are configured via env variable
   const useCerts = ConfigManagerV2.getInstance().get('server.useCerts') || false;
-  const apiKeys = ConfigManagerV2.getInstance().get('server.apiKeys') || [];
+  // Read API keys from environment variable (comma-separated)
+  const apiKeysEnv = process.env.GATEWAY_API_KEYS || '';
+  const apiKeys = apiKeysEnv
+    ? apiKeysEnv
+        .split(',')
+        .map((k) => k.trim())
+        .filter((k) => k.length > 0)
+    : [];
   const requireApiKey = !devMode && !useCerts && apiKeys.length > 0;
 
   if (requireApiKey) {
