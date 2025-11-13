@@ -30,7 +30,7 @@ export function RestartButton({ className = '', iconSize = 18 }: RestartButtonPr
     <button
       onClick={handleRestart}
       disabled={isRestarting}
-      className={`p-2 rounded-lg hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      className={`p-1.5 rounded-lg hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
       aria-label="Restart Gateway"
       title="Restart Gateway"
     >

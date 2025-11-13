@@ -118,7 +118,6 @@ function AppContent() {
         <div className="flex justify-between items-center gap-2">
           <div className="flex items-center gap-2">
             <h1 className="text-xl md:text-2xl font-bold">Gateway</h1>
-            <RestartButton />
           </div>
 
           <div className="flex gap-2 md:gap-4 items-center">
@@ -182,11 +181,13 @@ function AppContent() {
                 )}
               </Select>
               <NetworkStatus chain={selectedChain} network={selectedNetwork} />
+              <RestartButton iconSize={16} />
             </div>
 
             {/* Mobile: Network Status (shown on mobile) */}
-            <div className="sm:hidden">
+            <div className="sm:hidden flex items-center gap-1">
               <NetworkStatus chain={selectedChain} network={selectedNetwork} />
+              <RestartButton iconSize={14} />
             </div>
 
           </div>
