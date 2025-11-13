@@ -44,20 +44,36 @@ export function ConfigView() {
     try {
       setLoading(true);
 
-      const [namespacesData, chainsData] = await Promise.all([
-        gatewayGet<{ namespaces: string[] }>('/config/namespaces'),
-        gatewayGet<{ chains: ChainData[] }>('/config/chains'),
-      ]);
+      // Always have app namespace available
+      let allNamespaces = ['app'];
+      let chainData: ChainData[] = [];
 
-      // Add "app" namespace at the beginning
-      const sorted = ['app', ...namespacesData.namespaces.sort()];
-      setNamespaces(sorted);
-      setChains(chainsData.chains);
+      try {
+        // Try to fetch Gateway API data
+        const [namespacesData, chainsData] = await Promise.all([
+          gatewayGet<{ namespaces: string[] }>('/config/namespaces'),
+          gatewayGet<{ chains: ChainData[] }>('/config/chains'),
+        ]);
+
+        // Add Gateway namespaces after app
+        allNamespaces = ['app', ...namespacesData.namespaces.sort()];
+        chainData = chainsData.chains;
+      } catch (err) {
+        console.error('Failed to load Gateway config data:', err);
+        // Continue with just app namespace if Gateway API fails
+      }
+
+      setNamespaces(allNamespaces);
+      setChains(chainData);
 
       // Default to 'app' first
       setSelectedNamespace('app');
     } catch (err) {
-      await showErrorNotification('Failed to load configuration');
+      console.error('Failed to initialize config:', err);
+      // Still set app namespace even if everything fails
+      setNamespaces(['app']);
+      setChains([]);
+      setSelectedNamespace('app');
     } finally {
       setLoading(false);
     }
@@ -71,11 +87,23 @@ export function ConfigView() {
 
       // Handle app config differently (local file)
       if (selectedNamespace === 'app') {
-        namespaceConfig = await readAppConfig();
+        try {
+          namespaceConfig = await readAppConfig();
+        } catch (err) {
+          console.error('Failed to load app config:', err);
+          // Use empty config if app config fails
+          namespaceConfig = {};
+        }
       } else {
         // Gateway API config
-        const allConfigs = await gatewayGet<Record<string, any>>('/config');
-        namespaceConfig = allConfigs[selectedNamespace] || {};
+        try {
+          const allConfigs = await gatewayGet<Record<string, any>>('/config');
+          namespaceConfig = allConfigs[selectedNamespace] || {};
+        } catch (err) {
+          console.error('Failed to load Gateway config:', err);
+          await showErrorNotification('Failed to load Gateway configuration');
+          namespaceConfig = {};
+        }
       }
 
       // Convert config object to flat list of items
@@ -103,7 +131,7 @@ export function ConfigView() {
       flattenConfig(namespaceConfig);
       setConfigItems(items);
     } catch (err) {
-      await showErrorNotification('Failed to load configuration');
+      console.error('Unexpected error loading config:', err);
     } finally {
       setLoading(false);
     }
