@@ -127,6 +127,35 @@ function AppContent() {
               />
             </div>
 
+            {/* Mobile: Wallet Icon Button */}
+            <button
+              onClick={() => setShowWalletModal(true)}
+              className="sm:hidden p-2 rounded-lg hover:bg-accent transition-colors"
+              aria-label="Select wallet"
+              title={selectedWallet || 'No wallet'}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"></path>
+                <path d="m21 2-9.6 9.6"></path>
+                <circle cx="7.5" cy="15.5" r="5.5"></circle>
+              </svg>
+            </button>
+
+            {/* Mobile: Network Icon Button */}
+            <button
+              onClick={() => setShowNetworkModal(true)}
+              className="sm:hidden p-2 rounded-lg hover:bg-accent transition-colors"
+              aria-label="Select network"
+              title={`${selectedChain}-${selectedNetwork}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M13 7 9 3 5 7l4 4"></path>
+                <path d="m17 11 4 4-4 4-4-4"></path>
+                <path d="m8 12 4 4 6-6-4-4Z"></path>
+                <circle cx="16" cy="16" r="6"></circle>
+              </svg>
+            </button>
+
             {/* Desktop: Full Network Selector */}
             <div className="hidden sm:block">
               <Select
@@ -147,33 +176,6 @@ function AppContent() {
                 )}
               </Select>
             </div>
-
-            {/* Mobile: Network Icon Button */}
-            <button
-              onClick={() => setShowNetworkModal(true)}
-              className="sm:hidden p-2 rounded-lg hover:bg-accent transition-colors"
-              aria-label="Select network"
-              title={`${selectedChain}-${selectedNetwork}`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="2" y1="12" x2="22" y2="12"></line>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-              </svg>
-            </button>
-
-            {/* Mobile: Wallet Icon Button */}
-            <button
-              onClick={() => setShowWalletModal(true)}
-              className="sm:hidden p-2 rounded-lg hover:bg-accent transition-colors"
-              aria-label="Select wallet"
-              title={selectedWallet || 'No wallet'}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="20" height="14" x="2" y="5" rx="2"></rect>
-                <line x1="2" y1="10" x2="22" y2="10"></line>
-              </svg>
-            </button>
 
             {/* Theme Toggle */}
             <button
