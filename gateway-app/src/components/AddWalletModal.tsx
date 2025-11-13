@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select } from './ui/select';
+import { showErrorNotification } from '@/lib/notifications';
 
 interface AddWalletModalProps {
   onClose: () => void;
@@ -17,7 +18,7 @@ export function AddWalletModal({ onClose, onAddWallet, defaultChain = 'ethereum'
 
   async function handleSubmit() {
     if (!privateKey.trim()) {
-      alert('Please enter a private key');
+      await showErrorNotification('Please enter a private key');
       return;
     }
 
@@ -26,7 +27,7 @@ export function AddWalletModal({ onClose, onAddWallet, defaultChain = 'ethereum'
       await onAddWallet(selectedChain, privateKey);
       onClose();
     } catch (err) {
-      alert('Failed to add wallet: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      await showErrorNotification('Failed to add wallet: ' + (err instanceof Error ? err.message : 'Unknown error'));
     } finally {
       setLoading(false);
     }

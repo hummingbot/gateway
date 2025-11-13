@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select } from './ui/select';
+import { showErrorNotification } from '@/lib/notifications';
 
 interface AddTokenModalProps {
   onClose: () => void;
@@ -26,7 +27,7 @@ export function AddTokenModal({
 
   async function handleSubmit() {
     if (!address.trim()) {
-      alert('Please enter a token address');
+      await showErrorNotification('Please enter a token address');
       return;
     }
 
@@ -35,7 +36,7 @@ export function AddTokenModal({
       await onAddToken(selectedChain, selectedNetwork, address);
       onClose();
     } catch (err) {
-      alert('Failed to add token: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      await showErrorNotification('Failed to add token: ' + (err instanceof Error ? err.message : 'Unknown error'));
     } finally {
       setLoading(false);
     }

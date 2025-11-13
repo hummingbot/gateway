@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Toaster } from 'react-hot-toast';
 import { AppProvider, useApp } from './lib/AppContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Select } from './components/ui/select';
@@ -8,13 +9,13 @@ import { ConfigView } from './components/ConfigView';
 import { WalletSelector } from './components/WalletSelector';
 import { AddWalletModal } from './components/AddWalletModal';
 import { gatewayGet, gatewayPost } from './lib/api';
+import { showSuccessNotification } from './lib/notifications';
 
 function AppContent() {
   const { selectedNetwork, setSelectedNetwork, selectedWallet, setSelectedWallet, selectedChain, setSelectedChain, theme, toggleTheme } = useApp();
   const [activeTab, setActiveTab] = useState('portfolio');
   const [allWallets, setAllWallets] = useState<Array<{chain: string, walletAddresses: string[]}>>([]);
   const [networks, setNetworks] = useState<string[]>([]);
-  const [defaultNetwork, setDefaultNetwork] = useState<string>('');
   const [showAddWallet, setShowAddWallet] = useState(false);
 
   useEffect(() => {
@@ -54,7 +55,6 @@ function AppContent() {
       const chainData = configData.chains?.find((c: any) => c.chain === selectedChain);
       if (chainData?.networks) {
         setNetworks(chainData.networks);
-        setDefaultNetwork(chainData.defaultNetwork || chainData.networks[0]);
 
         // If current network is not in the list, switch to default network
         if (!chainData.networks.includes(selectedNetwork)) {
@@ -85,7 +85,7 @@ function AppContent() {
       }
     }
 
-    alert('Wallet added successfully!');
+    await showSuccessNotification('Wallet added successfully!');
   }
 
   async function handleWalletChange(wallet: string, chain: string) {
@@ -96,7 +96,6 @@ function AppContent() {
 
       const defaultNet = chainData.defaultNetwork || chainData.networks[0];
       setNetworks(chainData.networks);
-      setDefaultNetwork(defaultNet);
       setSelectedNetwork(defaultNet);
       setSelectedChain(chain);
       setSelectedWallet(wallet);
@@ -107,9 +106,11 @@ function AppContent() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
-      {/* Header */}
-      <header className="border-b px-6 py-4">
+    <>
+      <Toaster position="bottom-center" />
+      <div className="flex flex-col h-screen">
+        {/* Header */}
+        <header className="border-b px-6 py-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Gateway</h1>
 
@@ -202,6 +203,7 @@ function AppContent() {
         </Tabs>
       </div>
     </div>
+    </>
   );
 }
 

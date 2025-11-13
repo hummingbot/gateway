@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { gatewayPost, gatewayGet } from '@/lib/api';
+import { gatewayPost, gatewayGet, gatewayDelete } from '@/lib/api';
 import { useApp } from '@/lib/AppContext';
 import { AddTokenModal } from './AddTokenModal';
+import { ConfirmModal } from './ConfirmModal';
+import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 
 interface Token {
   address: string;
@@ -14,6 +16,7 @@ interface Token {
 
 interface Balance {
   symbol: string;
+  name: string;
   address: string;
   balance: string;
   value?: number;
@@ -27,6 +30,8 @@ export function PortfolioView() {
   const [showAddToken, setShowAddToken] = useState(false);
   const [availableNetworks, setAvailableNetworks] = useState<string[]>([]);
   const [nativeSymbol, setNativeSymbol] = useState<string>('');
+  const [tokenToDelete, setTokenToDelete] = useState<Balance | null>(null);
+  const [hoveredRow, setHoveredRow] = useState<number | null>(null);
 
   useEffect(() => {
     loadNetworks();
@@ -89,6 +94,7 @@ export function PortfolioView() {
       const mergedBalances: Balance[] = [
         {
           symbol: nativeCurrency,
+          name: nativeCurrency,
           address: '',
           balance: balanceMap.get(nativeCurrency) || '0',
           value: 0,
@@ -100,6 +106,7 @@ export function PortfolioView() {
         if (token.symbol !== nativeCurrency) {
           mergedBalances.push({
             symbol: token.symbol,
+            name: token.name,
             address: token.address,
             balance: balanceMap.get(token.symbol) || '0',
             value: 0,
@@ -116,15 +123,41 @@ export function PortfolioView() {
   }
 
   async function handleAddToken(chain: string, network: string, address: string) {
-    await gatewayPost('/tokens/save', {
-      chain,
-      network,
-      address,
-    });
+    try {
+      // Format chainNetwork parameter (e.g., "solana-mainnet-beta" or "ethereum-mainnet")
+      const chainNetwork = `${chain}-${network}`;
 
-    // Reload data
-    await fetchData();
-    alert('Token added successfully!');
+      const response = await gatewayPost<{ message: string; token: Token }>(
+        `/tokens/save/${address}?chainNetwork=${chainNetwork}`,
+        {}
+      );
+
+      // Reload data
+      await fetchData();
+      await showSuccessNotification(`${response.token.symbol} added successfully!`);
+    } catch (err) {
+      await showErrorNotification(err instanceof Error ? err.message : 'Failed to add token');
+    }
+  }
+
+  async function handleDeleteToken() {
+    if (!tokenToDelete || !tokenToDelete.address) return;
+
+    const tokenSymbol = tokenToDelete.symbol;
+
+    try {
+      await gatewayDelete(
+        `/tokens/${tokenToDelete.address}?chain=${selectedChain}&network=${selectedNetwork}`
+      );
+
+      // Reload data
+      await fetchData();
+      await showSuccessNotification(`${tokenSymbol} deleted successfully!`);
+    } catch (err) {
+      await showErrorNotification(err instanceof Error ? err.message : 'Failed to delete token');
+    } finally {
+      setTokenToDelete(null);
+    }
   }
 
   if (!selectedWallet) {
@@ -187,8 +220,10 @@ export function PortfolioView() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-2">Token</th>
+                    <th className="text-left py-2">Symbol</th>
+                    <th className="text-left py-2">Name</th>
                     <th className="text-right py-2">Balance</th>
+                    <th className="w-10"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -196,10 +231,16 @@ export function PortfolioView() {
                     const explorerUrl = balance.address
                       ? `https://solscan.io/token/${balance.address}`
                       : null;
+                    const isNative = balance.symbol === nativeSymbol;
 
                     return (
-                      <tr key={i} className="border-b">
-                        <td className={`py-2 ${balance.symbol === nativeSymbol ? 'font-bold' : ''}`}>
+                      <tr
+                        key={i}
+                        className="border-b"
+                        onMouseEnter={() => setHoveredRow(i)}
+                        onMouseLeave={() => setHoveredRow(null)}
+                      >
+                        <td className={`py-2 ${isNative ? 'font-bold' : ''}`}>
                           {explorerUrl ? (
                             <a
                               href={explorerUrl}
@@ -213,8 +254,36 @@ export function PortfolioView() {
                             balance.symbol
                           )}
                         </td>
-                        <td className={`text-right ${balance.symbol === nativeSymbol ? 'font-bold' : ''}`}>
+                        <td className={`py-2 ${isNative ? 'font-bold' : ''}`}>
+                          {balance.name}
+                        </td>
+                        <td className={`text-right ${isNative ? 'font-bold' : ''}`}>
                           {balance.balance}
+                        </td>
+                        <td className="text-right">
+                          {hoveredRow === i && !isNative && balance.address && (
+                            <button
+                              onClick={() => setTokenToDelete(balance)}
+                              className="text-destructive hover:text-destructive/80 p-1"
+                              title="Delete token"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M3 6h18" />
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                              </svg>
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -234,6 +303,18 @@ export function PortfolioView() {
           defaultChain={selectedChain}
           defaultNetwork={selectedNetwork}
           availableNetworks={availableNetworks}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {tokenToDelete && (
+        <ConfirmModal
+          title="Delete Token"
+          message={`Are you sure you want to delete ${tokenToDelete.symbol} (${tokenToDelete.name}) from your token list?`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          onConfirm={handleDeleteToken}
+          onCancel={() => setTokenToDelete(null)}
         />
       )}
     </div>

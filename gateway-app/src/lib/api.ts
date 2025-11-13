@@ -35,3 +35,7 @@ export async function gatewayPost<T>(
     body: body ? JSON.stringify(body) : undefined,
   });
 }
+
+export async function gatewayDelete<T>(endpoint: string): Promise<T> {
+  return gatewayFetch<T>(endpoint, { method: 'DELETE' });
+}
