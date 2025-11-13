@@ -660,17 +660,12 @@ export class Solana {
    * Uses cached data if available, falls back to RPC if cache miss
    * @param address Wallet address
    * @param tokens Optional array of token symbols/addresses to fetch. If not provided, fetches tokens from token list
-   * @param fetchAll If true, fetches all tokens in wallet including unknown ones
-   * @returns Map of token symbol to balance
+   * @returns Map of token symbol to balance (only includes tokens in network's token list)
    */
-  public async getBalances(
-    address: string,
-    tokens?: string[],
-    fetchAll: boolean = false,
-  ): Promise<Record<string, number>> {
+  public async getBalances(address: string, tokens?: string[]): Promise<Record<string, number>> {
     // If cache disabled, fetch from RPC
     if (!this.balanceCache) {
-      return this.getBalancesFromRPC(address, tokens, fetchAll);
+      return this.getBalancesFromRPC(address, tokens);
     }
 
     // Try to get from cache
@@ -713,7 +708,7 @@ export class Solana {
         // Fetch balances for tokens not in cache (likely token addresses)
         if (tokensToFetchFromRPC.length > 0) {
           logger.debug(`Fetching ${tokensToFetchFromRPC.length} token(s) from RPC: ${tokensToFetchFromRPC.join(', ')}`);
-          const rpcBalances = await this.getBalancesFromRPC(address, tokensToFetchFromRPC, false);
+          const rpcBalances = await this.getBalancesFromRPC(address, tokensToFetchFromRPC);
           Object.assign(filteredBalances, rpcBalances);
         }
 
@@ -726,7 +721,7 @@ export class Solana {
 
     // Cache miss - fetch from RPC and populate cache
     logger.debug(`[balance-cache] MISS for ${address}`);
-    const balances = await this.getBalancesFromRPC(address, tokens, fetchAll);
+    const balances = await this.getBalancesFromRPC(address, tokens);
 
     // Populate cache for future requests (always cache the full balance set)
     await this.populateCacheFromBalances(address, balances);
@@ -994,14 +989,9 @@ export class Solana {
    * Get balances for a given address directly from RPC (bypasses cache)
    * @param address Wallet address
    * @param tokens Optional array of token symbols/addresses to fetch. If not provided, fetches tokens from token list
-   * @param fetchAll If true, fetches all tokens in wallet including unknown ones
-   * @returns Map of token symbol to balance
+   * @returns Map of token symbol to balance (only includes tokens in network's token list)
    */
-  private async getBalancesFromRPC(
-    address: string,
-    tokens?: string[],
-    fetchAll: boolean = false,
-  ): Promise<Record<string, number>> {
+  private async getBalancesFromRPC(address: string, tokens?: string[]): Promise<Record<string, number>> {
     const publicKey = new PublicKey(address);
     const balances: Record<string, number> = {};
 
@@ -1033,9 +1023,6 @@ export class Solana {
     if (effectiveSymbols) {
       // Specific tokens requested
       await this.processSpecificTokens(tokenAccounts, effectiveSymbols, balances);
-    } else if (fetchAll) {
-      // Fetch all tokens in wallet
-      await this.processAllTokens(tokenAccounts, balances);
     } else {
       // Default: only tokens in token list
       await this.processTokenListOnly(tokenAccounts, balances);
@@ -1069,109 +1056,66 @@ export class Solana {
   }
 
   /**
-   * Fetch all token accounts for a public key using jsonParsed encoding for efficiency
+   * Fetch all token accounts for a public key
+   * Always uses base64 encoding for reliability across all RPC providers (Helius, standard RPC)
    */
   private async fetchTokenAccounts(publicKey: PublicKey): Promise<Map<string, TokenAccount>> {
     const tokenAccountsMap = new Map<string, TokenAccount>();
 
     try {
-      // Use getParsedTokenAccountsByOwner - Helius optimization technique
-      // This returns pre-parsed data, avoiding manual unpacking
-      const tokenAccountsPromise = Promise.all([
-        this.connection.getParsedTokenAccountsByOwner(publicKey, {
+      // Fetch all accounts with base64 encoding - works reliably for all providers
+      const [legacyBase64, token2022Base64] = await Promise.all([
+        this.connection.getTokenAccountsByOwner(publicKey, {
           programId: TOKEN_PROGRAM_ID,
         }),
-        this.connection.getParsedTokenAccountsByOwner(publicKey, {
+        this.connection.getTokenAccountsByOwner(publicKey, {
           programId: TOKEN_2022_PROGRAM_ID,
         }),
       ]);
 
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Token accounts request timed out')), 10000);
-      });
+      const allBase64Accounts = [...legacyBase64.value, ...token2022Base64.value];
+      logger.info(`Found ${allBase64Accounts.length} token accounts for ${publicKey.toString()}`);
 
-      const [legacyAccounts, token2022Accounts] = (await Promise.race([tokenAccountsPromise, timeoutPromise])) as any;
-
-      const allAccounts = [...legacyAccounts.value, ...token2022Accounts.value];
-      logger.info(`Found ${allAccounts.length} token accounts for ${publicKey.toString()}`);
-
-      // With getParsedTokenAccountsByOwner, data is already structured - no unpacking needed
-      for (const account of allAccounts) {
+      for (const account of allBase64Accounts) {
         try {
-          const parsedInfo = account.account.data.parsed?.info;
-          if (!parsedInfo) {
-            logger.warn('Account data not parsed or missing info');
+          // Convert Buffer to Uint8Array for AccountLayout.decode
+          const data = new Uint8Array(account.account.data);
+          const accountInfo = AccountLayout.decode(data);
+          const mintAddress = accountInfo.mint.toString();
+
+          // Get decimals from token list (only process tokens in our list)
+          const tokenInList = this.tokenList.find((t) => t.address === mintAddress);
+          if (!tokenInList) {
+            // Skip tokens not in our token list
+            logger.debug(`Skipping token ${mintAddress} - not in token list`);
             continue;
           }
-          const mintAddress = parsedInfo.mint;
 
-          // Store in format compatible with existing code
-          // Use pre-calculated uiAmount from RPC for efficiency (Helius optimization)
+          // Store in the same format as parsed accounts
           tokenAccountsMap.set(mintAddress, {
             parsedAccount: {
-              mint: new PublicKey(mintAddress),
-              owner: new PublicKey(parsedInfo.owner),
-              amount: BigInt(parsedInfo.tokenAmount.amount),
-              decimals: parsedInfo.tokenAmount.decimals,
-              uiAmount: parsedInfo.tokenAmount.uiAmount, // Pre-calculated by RPC node
-              isNative: parsedInfo.isNative || false,
-              delegatedAmount: parsedInfo.delegatedAmount ? BigInt(parsedInfo.delegatedAmount.amount) : BigInt(0),
-              delegate: parsedInfo.delegate ? new PublicKey(parsedInfo.delegate) : null,
-              state: parsedInfo.state,
-              isInitialized: parsedInfo.state !== 'uninitialized',
-              isFrozen: parsedInfo.state === 'frozen',
-              rentExemptReserve: parsedInfo.isNative ? BigInt(parsedInfo.isNative) : null,
-              closeAuthority: parsedInfo.closeAuthority ? new PublicKey(parsedInfo.closeAuthority) : null,
+              mint: accountInfo.mint,
+              owner: accountInfo.owner,
+              amount: accountInfo.amount,
+              decimals: tokenInList.decimals,
+              uiAmount: Number(accountInfo.amount) / Math.pow(10, tokenInList.decimals),
+              isNative: accountInfo.isNative !== null && accountInfo.isNativeOption === 1,
+              delegatedAmount: accountInfo.delegateOption ? accountInfo.delegatedAmount : BigInt(0),
+              delegate: accountInfo.delegateOption ? accountInfo.delegate : null,
+              state: accountInfo.state === 1 ? 'initialized' : accountInfo.state === 2 ? 'frozen' : 'uninitialized',
+              isInitialized: accountInfo.state !== 0,
+              isFrozen: accountInfo.state === 2,
+              rentExemptReserve: accountInfo.isNative,
+              closeAuthority: accountInfo.closeAuthorityOption ? accountInfo.closeAuthority : null,
             },
             value: account,
           });
-        } catch (error) {
-          logger.warn(`Error processing parsed account: ${error.message}`);
+        } catch (decodeError) {
+          logger.warn(`Error decoding base64 account: ${decodeError.message}`);
         }
       }
     } catch (error) {
-      // Check if this is the known base64 parsing error from Helius
-      if (error.message && error.message.includes('Expected an object') && error.message.includes('base64')) {
-        // Extract account index from error message (e.g., "value.4.account.data" -> index 4)
-        const indexMatch = error.message.match(/value\.(\d+)\.account\.data/);
-        const accountIndex = indexMatch ? indexMatch[1] : 'unknown';
-
-        // Try to get account details by fetching with base64 encoding as fallback
-        let accountDetails = '';
-        if (indexMatch) {
-          try {
-            // Fetch accounts with base64 encoding to identify the problematic account
-            const base64Accounts = await this.connection.getTokenAccountsByOwner(publicKey, {
-              programId: TOKEN_PROGRAM_ID,
-            });
-
-            const idx = parseInt(indexMatch[1], 10);
-            if (idx < base64Accounts.value.length) {
-              const account = base64Accounts.value[idx];
-              // Convert Buffer to Uint8Array for AccountLayout.decode
-              const data = new Uint8Array(account.account.data);
-              const accountInfo = AccountLayout.decode(data);
-              const mintAddress = accountInfo.mint.toString();
-
-              // Try to resolve symbol from token list
-              const tokenList = await this.getTokenList();
-              const token = tokenList.find((t) => t.address === mintAddress);
-              const symbol = token ? token.symbol : 'UNKNOWN';
-
-              accountDetails = ` - Token: ${symbol} (${mintAddress})`;
-            }
-          } catch (fallbackError) {
-            logger.debug(`Could not fetch account details for index ${accountIndex}: ${fallbackError.message}`);
-          }
-        }
-
-        logger.warn(
-          `Helius returned base64-encoded token account data at index ${accountIndex} for wallet ${publicKey.toString()}${accountDetails}. ` +
-            `Returning empty token accounts for now.`,
-        );
-      } else {
-        logger.error(`Error fetching token accounts: ${error.message}`);
-      }
+      logger.error(`Error fetching token accounts: ${error.message}`);
 
       // Re-throw rate limit errors (statusCode 429) so they propagate to the API response
       if (error.statusCode === 429) {
