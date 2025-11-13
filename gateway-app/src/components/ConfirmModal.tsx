@@ -1,4 +1,5 @@
-import { Button } from './ui/button';
+import { BaseModal } from './ui/BaseModal';
+import { ActionButtons } from './ui/ActionButtons';
 
 interface ConfirmModalProps {
   title: string;
@@ -18,19 +19,17 @@ export function ConfirmModal({
   onCancel,
 }: ConfirmModalProps) {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background border rounded-lg shadow-lg w-full max-w-md p-6 space-y-4">
+    <BaseModal onClose={onCancel} useCard={false}>
+      <div className="space-y-4">
         <h2 className="text-xl font-semibold">{title}</h2>
         <p className="text-muted-foreground">{message}</p>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onCancel}>
-            {cancelText}
-          </Button>
-          <Button variant="destructive" onClick={onConfirm}>
-            {confirmText}
-          </Button>
+        <div className="flex justify-end">
+          <ActionButtons
+            primary={{ label: confirmText, onClick: onConfirm, variant: 'destructive' }}
+            secondary={{ label: cancelText, onClick: onCancel }}
+          />
         </div>
       </div>
-    </div>
+    </BaseModal>
   );
 }

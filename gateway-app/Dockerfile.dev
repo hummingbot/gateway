@@ -1,0 +1,24 @@
+# Development Dockerfile for Gateway App
+# Runs Vite dev server with hot reload
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Copy package files
+COPY package.json pnpm-lock.yaml* ./
+
+# Install dependencies
+RUN pnpm install
+
+# Copy source code
+COPY . .
+
+# Expose Vite dev server port (configured in vite.config.ts)
+EXPOSE 1420
+
+# Start Vite dev server
+CMD ["pnpm", "dev", "--host", "0.0.0.0"]

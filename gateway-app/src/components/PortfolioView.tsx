@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { gatewayPost, gatewayGet, gatewayDelete } from '@/lib/api';
+import { EmptyState } from './ui/EmptyState';
+import { LoadingState } from './ui/LoadingState';
+import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
 import { AddTokenModal } from './AddTokenModal';
 import { ConfirmModal } from './ConfirmModal';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import { getSelectableTokenList, TokenInfo } from '@/lib/utils';
 import type { PositionWithConnector as Position, ConnectorConfig } from '@/lib/gateway-types';
+import { capitalize, shortenAddress, getChainNetwork } from '@/lib/utils/string';
+import { formatTokenAmount, formatBalance } from '@/lib/utils/format';
 
 interface Balance {
   symbol: string;
@@ -30,10 +34,6 @@ export function PortfolioView() {
   const [tokenToDelete, setTokenToDelete] = useState<Balance | null>(null);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
 
-  const capitalize = (str: string) => {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-  };
-
   useEffect(() => {
     loadNetworks();
   }, [selectedChain]);
@@ -46,8 +46,8 @@ export function PortfolioView() {
 
   async function loadNetworks() {
     try {
-      const configData = await gatewayGet<any>('/config/chains');
-      const chainData = configData.chains?.find((c: any) => c.chain === selectedChain);
+      const configData = await gatewayAPI.config.getChains();
+      const chainData = configData.chains?.find((c) => c.chain === selectedChain);
       if (chainData?.networks) {
         setAvailableNetworks(chainData.networks);
       }
@@ -70,13 +70,10 @@ export function PortfolioView() {
       }
 
       // Fetch wallet balances
-      const balanceData = await gatewayPost<any>(
-        `/chains/${selectedChain}/balances`,
-        {
-          network: selectedNetwork,
-          address: selectedWallet,
-        }
-      );
+      const balanceData = await gatewayAPI.chains.getBalances(selectedChain, {
+        network: selectedNetwork,
+        address: selectedWallet,
+      });
 
       // Create a map of balances by symbol
       const balanceMap = new Map<string, string>();
@@ -108,7 +105,7 @@ export function PortfolioView() {
       setLoadingPositions(true);
 
       // Fetch available CLMM connectors
-      const configData = await gatewayGet<{ connectors: ConnectorConfig[] }>('/config/connectors');
+      const configData = await gatewayAPI.config.getConnectors();
       const clmmConnectors = configData.connectors
         .filter((c) =>
           c.chain === selectedChain &&
@@ -118,11 +115,13 @@ export function PortfolioView() {
         .map((c) => c.name);
 
       // Fetch positions from all CLMM connectors
-      const chainNetwork = `${selectedChain}-${selectedNetwork}`;
+      const chainNetwork = getChainNetwork(selectedChain, selectedNetwork);
       const positionPromises = clmmConnectors.map(async (connector) => {
         try {
-          const data = await gatewayGet<Position[]>(
-            `/trading/clmm/positions-owned?connector=${connector}&chainNetwork=${chainNetwork}&walletAddress=${selectedWallet}`
+          const data = await gatewayAPI.clmm.getPositionsOwned(
+            connector,
+            chainNetwork,
+            selectedWallet
           );
           // Add connector property to each position
           return data.map((position) => ({
@@ -150,12 +149,9 @@ export function PortfolioView() {
   async function handleAddToken(chain: string, network: string, address: string) {
     try {
       // Format chainNetwork parameter (e.g., "solana-mainnet-beta" or "ethereum-mainnet")
-      const chainNetwork = `${chain}-${network}`;
+      const chainNetwork = getChainNetwork(chain, network);
 
-      const response = await gatewayPost<{ message: string; token: TokenInfo }>(
-        `/tokens/save/${address}?chainNetwork=${chainNetwork}`,
-        {}
-      );
+      const response = await gatewayAPI.tokens.save(address, chainNetwork);
 
       // Reload data
       await fetchData();
@@ -171,9 +167,7 @@ export function PortfolioView() {
     const tokenSymbol = tokenToDelete.symbol;
 
     try {
-      await gatewayDelete(
-        `/tokens/${tokenToDelete.address}?chain=${selectedChain}&network=${selectedNetwork}`
-      );
+      await gatewayAPI.tokens.delete(tokenToDelete.address, selectedChain, selectedNetwork);
 
       // Reload data
       await fetchData();
@@ -187,41 +181,23 @@ export function PortfolioView() {
 
   if (!selectedWallet) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle>No Wallet Selected</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Please select a wallet from the dropdown above to view your portfolio.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        title="No Wallet Selected"
+        message="Please select a wallet from the dropdown above to view your portfolio."
+      />
     );
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p>Loading portfolio...</p>
-      </div>
-    );
+    return <LoadingState message="Loading portfolio..." />;
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle className="text-destructive">Error</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">{error}</p>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        title="Error"
+        message={error}
+      />
     );
   }
 
@@ -257,20 +233,7 @@ export function PortfolioView() {
                       ? `https://solscan.io/token/${balance.address}`
                       : null;
                     const isNative = balance.symbol === nativeSymbol;
-
-                    // Format balance to max 6 decimals
-                    const formattedBalance = (() => {
-                      const num = parseFloat(balance.balance);
-                      if (isNaN(num)) return balance.balance;
-
-                      // If number has more than 6 decimal places, truncate to 6
-                      const balanceStr = balance.balance;
-                      const decimalIndex = balanceStr.indexOf('.');
-                      if (decimalIndex !== -1 && balanceStr.length - decimalIndex - 1 > 6) {
-                        return num.toFixed(6);
-                      }
-                      return balance.balance;
-                    })();
+                    const formattedBalance = formatBalance(balance.balance, 6);
 
                     return (
                       <tr
@@ -355,38 +318,38 @@ export function PortfolioView() {
                     </div>
                     <div>
                       <span className="text-muted-foreground">Pool:</span>
-                      <p className="font-mono text-xs truncate">{position.poolAddress.substring(0, 8)}...{position.poolAddress.substring(position.poolAddress.length - 6)}</p>
+                      <p className="font-mono text-xs truncate">{shortenAddress(position.poolAddress, 8, 6)}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Price Range:</span>
                       <p className="font-medium">
-                        {position.lowerPrice.toFixed(6)} - {position.upperPrice.toFixed(6)}
+                        {formatTokenAmount(position.lowerPrice)} - {formatTokenAmount(position.upperPrice)}
                       </p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Current Price:</span>
-                      <p className="font-medium">{position.price.toFixed(6)}</p>
+                      <p className="font-medium">{formatTokenAmount(position.price)}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Base Amount:</span>
-                      <p className="font-medium">{position.baseTokenAmount.toFixed(6)}</p>
+                      <p className="font-medium">{formatTokenAmount(position.baseTokenAmount)}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Quote Amount:</span>
-                      <p className="font-medium">{position.quoteTokenAmount.toFixed(6)}</p>
+                      <p className="font-medium">{formatTokenAmount(position.quoteTokenAmount)}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Base Fees:</span>
-                      <p className="font-medium">{position.baseFeeAmount.toFixed(6)}</p>
+                      <p className="font-medium">{formatTokenAmount(position.baseFeeAmount)}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Quote Fees:</span>
-                      <p className="font-medium">{position.quoteFeeAmount.toFixed(6)}</p>
+                      <p className="font-medium">{formatTokenAmount(position.quoteFeeAmount)}</p>
                     </div>
                     {position.rewardAmount !== undefined && position.rewardAmount > 0 && (
                       <div className="col-span-2">
                         <span className="text-muted-foreground">Rewards:</span>
-                        <p className="font-medium">{position.rewardAmount.toFixed(6)}</p>
+                        <p className="font-medium">{formatTokenAmount(position.rewardAmount)}</p>
                       </div>
                     )}
                   </div>

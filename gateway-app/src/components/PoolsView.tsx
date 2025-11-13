@@ -3,14 +3,23 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select } from './ui/select';
-import { gatewayGet, gatewayPost } from '@/lib/api';
+import { EmptyState } from './ui/EmptyState';
+import { LoadingState } from './ui/LoadingState';
+import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import type {
-  PoolTemplate as Pool,
+  PoolTemplate,
   ExtendedPoolInfo as PoolInfo,
   ConnectorConfig,
 } from '@/lib/gateway-types';
+import { capitalize, getChainNetwork } from '@/lib/utils/string';
+import { formatTokenAmount, formatNumber } from '@/lib/utils/format';
+
+// UI-specific Pool type with connector property added
+interface Pool extends PoolTemplate {
+  connector: string;
+}
 
 // UI-specific Position type for displaying owned positions
 // Note: This represents AMM/CLMM position data from UI perspective
@@ -46,11 +55,6 @@ export function PoolsView() {
   const [upperPrice, setUpperPrice] = useState('');
   const [fee, setFee] = useState('');
   const [submitting, setSubmitting] = useState(false);
-
-  // Helper function to capitalize first letter
-  const capitalize = (str: string) => {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-  };
 
   // Fetch available connectors when chain/network/types change
   useEffect(() => {
@@ -99,7 +103,7 @@ export function PoolsView() {
 
   async function fetchAvailableConnectors() {
     try {
-      const data = await gatewayGet<{ connectors: ConnectorConfig[] }>('/config/connectors');
+      const data = await gatewayAPI.config.getConnectors();
 
       // Filter connectors that support selected types for current chain and network
       const filteredConnectors = data.connectors
@@ -135,9 +139,7 @@ export function PoolsView() {
       // Fetch pools from all selected connectors
       const poolPromises = selectedConnectors.map(async (connector) => {
         try {
-          const data = await gatewayGet<Pool[]>(
-            `/pools?connector=${connector}&network=${selectedNetwork}`
-          );
+          const data = await gatewayAPI.pools.list(connector, selectedNetwork);
           // Add connector property and filter by selected types
           return data
             .filter((pool) => selectedTypes.includes(pool.type))
@@ -175,9 +177,11 @@ export function PoolsView() {
     if (!selectedPool) return;
 
     try {
-      const chainNetwork = `${selectedChain}-${selectedNetwork}`;
-      const data = await gatewayGet<PoolInfo>(
-        `/trading/clmm/pool-info?connector=${selectedPool.connector}&chainNetwork=${chainNetwork}&poolAddress=${selectedPool.address}`
+      const chainNetwork = getChainNetwork(selectedChain, selectedNetwork);
+      const data = await gatewayAPI.pools.getInfo(
+        selectedPool.connector,
+        chainNetwork,
+        selectedPool.address
       );
       setPoolInfo(data);
 
@@ -195,10 +199,13 @@ export function PoolsView() {
 
     try {
       setLoadingPositions(true);
-      const data = await gatewayGet<{ positions: Position[] }>(
-        `/trading/clmm/positions-owned?chain=${selectedChain}&network=${selectedNetwork}&connector=${selectedPool.connector}&address=${selectedWallet}`
+      const chainNetwork = getChainNetwork(selectedChain, selectedNetwork);
+      const data = await gatewayAPI.clmm.getPositionsOwned(
+        selectedPool.connector,
+        chainNetwork,
+        selectedWallet
       );
-      setPositions(data.positions || []);
+      setPositions(data as any || []);
     } catch (err) {
       console.error('Failed to fetch positions:', err);
       setPositions([]);
@@ -235,19 +242,14 @@ export function PoolsView() {
     try {
       setSubmitting(true);
 
-      await gatewayPost('/trading/clmm/open', {
-        chain: selectedChain,
+      await gatewayAPI.clmm.openPosition({
         network: selectedNetwork,
-        connector: selectedPool.connector,
-        address: selectedWallet,
+        walletAddress: selectedWallet,
         poolAddress: selectedPool.address,
-        token0: selectedPool.baseTokenAddress,
-        token1: selectedPool.quoteTokenAddress,
-        amount0: parseFloat(amount0),
-        amount1: parseFloat(amount1),
+        baseTokenAmount: parseFloat(amount0),
+        quoteTokenAmount: parseFloat(amount1),
         lowerPrice: parseFloat(lowerPrice),
         upperPrice: parseFloat(upperPrice),
-        fee: parseInt(fee),
       });
 
       await showSuccessNotification('Liquidity added successfully!');
@@ -269,27 +271,15 @@ export function PoolsView() {
 
   if (!selectedWallet) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle>No Wallet Selected</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Please select a wallet to manage liquidity pools.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        title="No Wallet Selected"
+        message="Please select a wallet to manage liquidity pools."
+      />
     );
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p>Loading pools...</p>
-      </div>
-    );
+    return <LoadingState message="Loading pools..." />;
   }
 
   return (
@@ -450,7 +440,7 @@ export function PoolsView() {
                       <>
                         <div>
                           <span className="text-muted-foreground">Price:</span>
-                          <p className="font-medium">{poolInfo.price.toFixed(6)}</p>
+                          <p className="font-medium">{formatTokenAmount(poolInfo.price)}</p>
                         </div>
                         <div className="col-span-2">
                           <span className="text-muted-foreground mb-2 block">Token Amounts:</span>
@@ -458,43 +448,43 @@ export function PoolsView() {
                             <div>
                               <div className="flex justify-between text-xs mb-1">
                                 <span>{selectedPool.baseSymbol}</span>
-                                <span className="font-medium">{poolInfo.baseTokenAmount.toFixed(6)}</span>
+                                <span className="font-medium">{formatTokenAmount(poolInfo.baseTokenAmount)}</span>
                               </div>
                               <div className="h-2 bg-muted rounded-full overflow-hidden">
                                 <div
                                   className="h-full bg-blue-500"
                                   style={{
-                                    width: `${Math.min(
+                                    width: `${formatNumber(Math.min(
                                       100,
                                       (poolInfo.baseTokenAmount * poolInfo.price /
                                         (poolInfo.baseTokenAmount * poolInfo.price + poolInfo.quoteTokenAmount)) * 100
-                                    ).toFixed(1)}%`
+                                    ), 1)}%`
                                   }}
                                 />
                               </div>
                               <div className="text-xs text-muted-foreground mt-0.5">
-                                Value: ${(poolInfo.baseTokenAmount * poolInfo.price).toFixed(2)}
+                                Value: ${formatNumber(poolInfo.baseTokenAmount * poolInfo.price, 2)}
                               </div>
                             </div>
                             <div>
                               <div className="flex justify-between text-xs mb-1">
                                 <span>{selectedPool.quoteSymbol}</span>
-                                <span className="font-medium">{poolInfo.quoteTokenAmount.toFixed(6)}</span>
+                                <span className="font-medium">{formatTokenAmount(poolInfo.quoteTokenAmount)}</span>
                               </div>
                               <div className="h-2 bg-muted rounded-full overflow-hidden">
                                 <div
                                   className="h-full bg-green-500"
                                   style={{
-                                    width: `${Math.min(
+                                    width: `${formatNumber(Math.min(
                                       100,
                                       (poolInfo.quoteTokenAmount /
                                         (poolInfo.baseTokenAmount * poolInfo.price + poolInfo.quoteTokenAmount)) * 100
-                                    ).toFixed(1)}%`
+                                    ), 1)}%`
                                   }}
                                 />
                               </div>
                               <div className="text-xs text-muted-foreground mt-0.5">
-                                Value: ${poolInfo.quoteTokenAmount.toFixed(2)}
+                                Value: ${formatNumber(poolInfo.quoteTokenAmount, 2)}
                               </div>
                             </div>
                           </div>

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select } from './ui/select';
-import { gatewayPost } from '@/lib/api';
+import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
 
 interface Position {
@@ -65,9 +65,9 @@ export function LiquidityView() {
       setLoading(true);
       setError(null);
 
-      await gatewayPost(`/connectors/${connector}/clmm/open-position`, {
+      await gatewayAPI.clmm.openPosition({
         network: selectedNetwork,
-        address: selectedWallet,
+        walletAddress: selectedWallet,
         poolAddress,
         lowerPrice: parseFloat(lowerPrice),
         upperPrice: parseFloat(upperPrice),
@@ -93,9 +93,9 @@ export function LiquidityView() {
       setLoading(true);
       setError(null);
 
-      await gatewayPost(`/connectors/${connector}/clmm/collect-fees`, {
+      await gatewayAPI.clmm.collectFees(connector, {
         network: selectedNetwork,
-        address: selectedWallet,
+        walletAddress: selectedWallet,
         positionAddress: position.address,
       });
 
@@ -113,9 +113,9 @@ export function LiquidityView() {
       setLoading(true);
       setError(null);
 
-      await gatewayPost(`/connectors/${connector}/clmm/close-position`, {
+      await gatewayAPI.clmm.closePosition(connector, {
         network: selectedNetwork,
-        address: selectedWallet,
+        walletAddress: selectedWallet,
         positionAddress: position.address,
       });
 

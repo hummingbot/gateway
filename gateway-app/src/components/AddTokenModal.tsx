@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Select } from './ui/select';
+import { CardContent, CardHeader, CardTitle } from './ui/card';
+import { BaseModal } from './ui/BaseModal';
+import { FormField } from './ui/FormField';
+import { ActionButtons } from './ui/ActionButtons';
 import { showErrorNotification } from '@/lib/notifications';
 
 interface AddTokenModalProps {
@@ -43,63 +43,49 @@ export function AddTokenModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Add Token</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Chain</label>
-            <Select
-              value={selectedChain}
-              onChange={(e) => setSelectedChain(e.target.value)}
-            >
-              <option value="ethereum">Ethereum</option>
-              <option value="solana">Solana</option>
-            </Select>
-          </div>
+    <BaseModal onClose={onClose}>
+      <CardHeader>
+        <CardTitle>Add Token</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <FormField
+          label="Chain"
+          type="select"
+          value={selectedChain}
+          onChange={(e) => setSelectedChain(e.target.value)}
+          options={[
+            { value: 'ethereum', label: 'Ethereum' },
+            { value: 'solana', label: 'Solana' },
+          ]}
+        />
 
-          <div>
-            <label className="text-sm font-medium">Network</label>
-            <Select
-              value={selectedNetwork}
-              onChange={(e) => setSelectedNetwork(e.target.value)}
-            >
-              {availableNetworks.map((network) => (
-                <option key={network} value={network}>
-                  {network}
-                </option>
-              ))}
-            </Select>
-          </div>
+        <FormField
+          label="Network"
+          type="select"
+          value={selectedNetwork}
+          onChange={(e) => setSelectedNetwork(e.target.value)}
+          options={availableNetworks.map((network) => ({
+            value: network,
+            label: network,
+          }))}
+        />
 
-          <div>
-            <label className="text-sm font-medium">Token Address</label>
-            <Input
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Enter token address"
-              disabled={loading}
-            />
-          </div>
+        <FormField
+          label="Token Address"
+          type="text"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="Enter token address"
+          disabled={loading}
+        />
 
-          <div className="flex gap-2">
-            <Button onClick={handleSubmit} className="flex-1" disabled={loading}>
-              {loading ? 'Adding...' : 'Add Token'}
-            </Button>
-            <Button
-              onClick={onClose}
-              variant="outline"
-              className="flex-1"
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        <ActionButtons
+          primary={{ label: 'Add Token', onClick: handleSubmit }}
+          secondary={{ label: 'Cancel', onClick: onClose }}
+          loading={loading}
+          loadingLabel="Adding"
+        />
+      </CardContent>
+    </BaseModal>
   );
 }

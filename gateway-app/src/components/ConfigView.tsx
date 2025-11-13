@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Select } from './ui/select';
-import { gatewayGet, gatewayPost } from '@/lib/api';
+import { gatewayAPI } from '@/lib/GatewayAPI';
 import { readAppConfig, updateAppConfigValue } from '@/lib/app-config';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import { useApp } from '@/lib/AppContext';
@@ -17,7 +17,6 @@ interface ConfigItem {
 interface ChainData {
   chain: string;
   networks: string[];
-  defaultNetwork: string;
 }
 
 export function ConfigView() {
@@ -53,8 +52,8 @@ export function ConfigView() {
       try {
         // Try to fetch Gateway API data
         const [namespacesData, chainsData] = await Promise.all([
-          gatewayGet<{ namespaces: string[] }>('/config/namespaces'),
-          gatewayGet<{ chains: ChainData[] }>('/config/chains'),
+          gatewayAPI.config.getNamespaces(),
+          gatewayAPI.config.getChains(),
         ]);
 
         // Add Gateway namespaces after app
@@ -99,7 +98,7 @@ export function ConfigView() {
       } else {
         // Gateway API config
         try {
-          const allConfigs = await gatewayGet<Record<string, any>>('/config');
+          const allConfigs = await gatewayAPI.config.getAll();
           namespaceConfig = allConfigs[selectedNamespace] || {};
         } catch (err) {
           console.error('Failed to load Gateway config:', err);
@@ -181,10 +180,8 @@ export function ConfigView() {
         await updateAppConfigValue(item.path, parsedValue);
       } else {
         // Gateway API config
-        await gatewayPost('/config/update', {
-          namespace: item.namespace,
-          path: item.path,
-          value: parsedValue,
+        await gatewayAPI.config.update(item.namespace, {
+          [item.path]: parsedValue,
         });
       }
 
@@ -217,10 +214,8 @@ export function ConfigView() {
         }
       } else {
         // Gateway API config
-        await gatewayPost('/config/update', {
-          namespace: item.namespace,
-          path: item.path,
-          value: newValue,
+        await gatewayAPI.config.update(item.namespace, {
+          [item.path]: newValue,
         });
       }
 

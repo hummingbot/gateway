@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { gatewayGet } from '@/lib/api';
+import { gatewayAPI } from '@/lib/GatewayAPI';
 import type { StatusResponseType as ChainStatus } from '@/lib/gateway-types';
 
 interface NetworkStatusProps {
@@ -19,9 +19,7 @@ export function NetworkStatus({ chain, network }: NetworkStatusProps) {
   async function fetchStatus() {
     try {
       setLoading(true);
-      const data = await gatewayGet<ChainStatus>(
-        `/chains/${chain}/status?network=${network}`
-      );
+      const data = await gatewayAPI.chains.getStatus(chain, network);
       setStatus(data);
     } catch (err) {
       console.error('Failed to fetch chain status:', err);

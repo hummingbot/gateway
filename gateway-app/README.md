@@ -118,10 +118,111 @@ This will:
 
 ## Architecture
 
-- **KISS Principle**: No complex state management libraries
-- **Direct API calls**: Simple fetch-based API client (~30 lines)
-- **React Context**: Global state for wallet/network selection
-- **Type Safety**: TypeScript with path aliases to import Gateway schemas
+### Clean Architecture Principles
+
+- **KISS Principle**: No complex state management libraries - simple React state and context
+- **Typed API Client**: Organized namespace-based API client with full TypeScript support
+- **Reusable Components**: Modular UI components (BaseModal, FormField, LoadingState, etc.)
+- **Type Safety**: TypeScript with path aliases to import Gateway backend schemas
+- **React Context**: Global state for wallet/network selection only
+
+### Project Structure
+
+```
+gateway-app/
+├── src/
+│   ├── components/         # Feature components
+│   │   ├── App.tsx        # Main app with routing
+│   │   ├── PortfolioView.tsx
+│   │   ├── SwapView.tsx
+│   │   ├── PoolsView.tsx
+│   │   ├── LiquidityView.tsx
+│   │   └── ConfigView.tsx
+│   ├── components/ui/      # Reusable UI components
+│   │   ├── BaseModal.tsx
+│   │   ├── EmptyState.tsx
+│   │   ├── LoadingState.tsx
+│   │   ├── FormField.tsx
+│   │   ├── ActionButtons.tsx
+│   │   └── button.tsx
+│   ├── lib/
+│   │   ├── GatewayAPI.ts  # Typed API client (ConfigAPI, ChainAPI, etc.)
+│   │   ├── api.ts         # Base HTTP client
+│   │   └── utils.ts       # Utility functions
+│   └── styles/
+│       └── index.css      # Global styles
+├── DOCKER.md              # Docker deployment guide
+├── API.md                 # API client documentation
+├── COMPONENTS.md          # Component library documentation
+└── README.md             # This file
+```
+
+### API Client
+
+The app uses a typed API client (`GatewayAPI.ts`) that organizes endpoints into logical namespaces:
+
+```typescript
+import { gatewayAPI } from '@/lib/GatewayAPI';
+
+// Get chain balances
+const balances = await gatewayAPI.chains.getBalances('solana', {
+  network: 'mainnet-beta',
+  address: walletAddress
+});
+
+// Get swap quote
+const quote = await gatewayAPI.router.quoteSwap('jupiter', {
+  network: 'mainnet-beta',
+  baseToken: 'SOL',
+  quoteToken: 'USDC',
+  amount: 1.0,
+  side: 'SELL'
+});
+```
+
+See [API.md](./API.md) for complete API documentation.
+
+### Component Library
+
+Reusable UI components for consistent design:
+
+- **BaseModal**: Modal dialogs with consistent styling
+- **FormField**: Form inputs with labels
+- **LoadingState/EmptyState**: Loading and empty data states
+- **ActionButtons**: Button layouts for forms
+
+See [COMPONENTS.md](./COMPONENTS.md) for component documentation.
+
+## Deployment Options
+
+### Option 1: Desktop App (Tauri)
+
+Run as a native desktop application:
+
+```bash
+# Development
+pnpm tauri dev
+
+# Production build
+pnpm tauri build
+```
+
+**Use case**: Local installation, native OS integration
+
+### Option 2: Web Browser (Docker)
+
+Run as a web application accessible in browser:
+
+```bash
+# From gateway root directory
+docker compose up
+```
+
+Access at http://localhost:1420
+
+**Use case**: Remote access, multi-user deployments
+
+See [DOCKER.md](./DOCKER.md) for complete Docker setup guide.
 
 ## Configuration Sharing
 
@@ -131,3 +232,9 @@ The app reuses the same `/conf` folder as the Gateway server:
 - `conf/connectors/` - DEX connector settings
 - `conf/tokens/` - Token lists
 - `conf/rpc/` - RPC provider credentials
+
+## Documentation
+
+- **[API.md](./API.md)** - API client usage and examples
+- **[COMPONENTS.md](./COMPONENTS.md)** - Component library reference
+- **[DOCKER.md](./DOCKER.md)** - Docker deployment guide

@@ -1,4 +1,5 @@
 import { Select } from './ui/select';
+import { shortenAddress } from '@/lib/utils/string';
 
 interface WalletData {
   chain: string;
@@ -63,7 +64,7 @@ export function WalletSelector({
             <optgroup key={walletData.chain} label={walletData.chain.toUpperCase()}>
               {walletData.walletAddresses.map((wallet) => (
                 <option key={wallet} value={`${walletData.chain}:${wallet}`}>
-                  {getChainIcon(walletData.chain)} {wallet.slice(0, 6)}...{wallet.slice(-4)}
+                  {getChainIcon(walletData.chain)} {shortenAddress(wallet)}
                 </option>
               ))}
             </optgroup>

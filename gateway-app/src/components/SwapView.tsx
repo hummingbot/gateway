@@ -3,17 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select } from './ui/select';
-import { gatewayGet, gatewayPost } from '@/lib/api';
+import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
 import { getSelectableTokenList, TokenInfo } from '@/lib/utils';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import type { RouterQuoteResponse } from '@/lib/gateway-types';
+import { shortenAddress } from '@/lib/utils/string';
+import { formatTokenAmount, formatPrice, formatPercent } from '@/lib/utils/format';
 
 // Extended quote result with additional UI-specific fields
 interface QuoteResult extends Partial<RouterQuoteResponse> {
   expectedAmount?: string;
-  slippageBps?: number;
-  routePlan?: any[];
   priceImpactPct?: number;
 }
 
@@ -55,16 +55,18 @@ export function SwapView() {
 
     async function fetchBalances() {
       try {
-        const balanceData = await gatewayPost<any>(
-          `/chains/${selectedChain}/balances`,
-          {
-            network: selectedNetwork,
-            address: selectedWallet,
-          }
-        );
+        const balanceData = await gatewayAPI.chains.getBalances(selectedChain, {
+          network: selectedNetwork,
+          address: selectedWallet,
+        });
 
         if (balanceData.balances) {
-          setBalances(balanceData.balances);
+          // Convert balances from number to string for UI consistency
+          const balancesMap: Record<string, string> = {};
+          Object.entries(balanceData.balances).forEach(([symbol, balance]) => {
+            balancesMap[symbol] = String(balance);
+          });
+          setBalances(balancesMap);
         }
       } catch (err) {
         console.error('Failed to fetch balances:', err);
@@ -98,9 +100,13 @@ export function SwapView() {
       setLoading(true);
       setError(null);
 
-      const quoteData = await gatewayGet<any>(
-        `/connectors/${connector}/router/quote-swap?network=${selectedNetwork}&baseToken=${fromToken}&quoteToken=${toToken}&amount=${amount}&side=SELL`
-      );
+      const quoteData = await gatewayAPI.router.quoteSwap(connector, {
+        network: selectedNetwork,
+        baseToken: fromToken,
+        quoteToken: toToken,
+        amount: parseFloat(amount),
+        side: 'SELL',
+      });
 
       setQuote({
         expectedAmount: String(quoteData.amountOut || '0'),
@@ -112,8 +118,6 @@ export function SwapView() {
         minAmountOut: quoteData.minAmountOut,
         maxAmountIn: quoteData.maxAmountIn,
         price: quoteData.price,
-        slippageBps: quoteData.quoteResponse?.slippageBps,
-        routePlan: quoteData.quoteResponse?.routePlan,
         quoteId: quoteData.quoteId,
       });
     } catch (err) {
@@ -134,19 +138,19 @@ export function SwapView() {
       // Show pending notification
       await showSuccessNotification('⏳ Transaction pending... Swap is being executed');
 
-      const result = await gatewayPost<any>(`/connectors/${connector}/router/execute-swap`, {
+      const result = await gatewayAPI.router.executeSwap(connector, {
         network: selectedNetwork,
-        address: selectedWallet,
+        walletAddress: selectedWallet,
         baseToken: fromToken,
         quoteToken: toToken,
         amount: parseFloat(amount),
         side: 'SELL',
       });
 
-      // Show success notification with txHash
-      const txHash = result.txHash || result.signature || result.hash;
+      // Show success notification with signature
+      const txHash = result.signature;
       const successMessage = txHash
-        ? `Swapped ${amount} ${fromToken} for ${toToken}\nTx: ${txHash.substring(0, 8)}...${txHash.substring(txHash.length - 6)}`
+        ? `Swapped ${amount} ${fromToken} for ${toToken}\nTx: ${shortenAddress(txHash, 8, 6)}`
         : `Swapped ${amount} ${fromToken} for ${toToken}`;
 
       await showSuccessNotification(
@@ -193,7 +197,7 @@ export function SwapView() {
                 <div className="flex justify-between items-center">
                   <label className="text-xs md:text-sm font-medium">From</label>
                   <div className="text-xs md:text-sm text-muted-foreground">
-                    Balance: {parseFloat(fromBalance).toFixed(6)}
+                    Balance: {formatTokenAmount(fromBalance)}
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -261,7 +265,7 @@ export function SwapView() {
                   <Input
                     type="text"
                     placeholder="0.0"
-                    value={quote && quote.expectedAmount ? parseFloat(quote.expectedAmount).toFixed(6) : ''}
+                    value={quote && quote.expectedAmount ? formatTokenAmount(quote.expectedAmount) : ''}
                     readOnly
                     className="flex-1 bg-muted"
                   />
@@ -284,43 +288,31 @@ export function SwapView() {
                   <div className="flex justify-between">
                     <span>Amount In:</span>
                     <span className="font-semibold">
-                      {quote.amountIn?.toFixed(6)} {fromToken}
+                      {formatTokenAmount(quote.amountIn || 0)} {fromToken}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Amount Out:</span>
                     <span className="font-semibold">
-                      {quote.amountOut?.toFixed(6)} {toToken}
+                      {formatTokenAmount(quote.amountOut || 0)} {toToken}
                     </span>
                   </div>
                   {quote.minAmountOut !== undefined && (
                     <div className="flex justify-between">
                       <span>Min Amount Out:</span>
-                      <span>{quote.minAmountOut.toFixed(6)} {toToken}</span>
+                      <span>{formatTokenAmount(quote.minAmountOut)} {toToken}</span>
                     </div>
                   )}
                   {quote.price !== undefined && (
                     <div className="flex justify-between">
                       <span>Price:</span>
-                      <span>{quote.price.toExponential(6)}</span>
-                    </div>
-                  )}
-                  {quote.slippageBps !== undefined && (
-                    <div className="flex justify-between">
-                      <span>Slippage:</span>
-                      <span>{(quote.slippageBps / 100).toFixed(2)}%</span>
+                      <span>{formatPrice(quote.price)}</span>
                     </div>
                   )}
                   {quote.priceImpactPct !== undefined && (
                     <div className="flex justify-between">
                       <span>Price Impact:</span>
-                      <span>{quote.priceImpactPct.toFixed(2)}%</span>
-                    </div>
-                  )}
-                  {quote.routePlan && quote.routePlan.length > 0 && (
-                    <div className="flex justify-between">
-                      <span>Route Hops:</span>
-                      <span>{quote.routePlan.length}</span>
+                      <span>{formatPercent(quote.priceImpactPct)}</span>
                     </div>
                   )}
                 </div>
