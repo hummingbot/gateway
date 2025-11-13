@@ -14,7 +14,7 @@ import { gatewayGet, gatewayPost } from './lib/api';
 import { showSuccessNotification } from './lib/notifications';
 
 function AppContent() {
-  const { selectedNetwork, setSelectedNetwork, selectedWallet, setSelectedWallet, selectedChain, setSelectedChain } = useApp();
+  const { selectedNetwork, setSelectedNetwork, selectedWallet, setSelectedWallet, selectedChain, setSelectedChain, darkMode } = useApp();
   const [activeTab, setActiveTab] = useState('portfolio');
   const [allWallets, setAllWallets] = useState<Array<{chain: string, walletAddresses: string[]}>>([]);
   const [networks, setNetworks] = useState<string[]>([]);
@@ -117,6 +117,11 @@ function AppContent() {
         <header className="border-b px-4 md:px-6 py-3 md:py-4">
         <div className="flex justify-between items-center gap-2">
           <div className="flex items-center gap-2">
+            <img
+              src={darkMode ? '/logo-bw-dark-trans.png' : '/logo-bw-light-trans.png'}
+              alt="Hummingbot"
+              className="h-8 w-auto"
+            />
             <h1 className="text-xl md:text-2xl font-bold">Gateway</h1>
           </div>
 

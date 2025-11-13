@@ -5,22 +5,30 @@ import { logger } from '../../../services/logger';
 import { SolanaPollRequest } from '../schemas';
 import { Solana } from '../solana';
 
-export async function pollSolanaTransaction(
-  _fastify: FastifyInstance,
+// Transaction parse result type (used internally)
+interface TransactionParseResult {
+  signature: string;
+  txBlock: number | null;
+  txStatus: number;
+  fee: number | null;
+  tokenBalanceChanges?: Record<string, number>;
+  txData: any;
+  error?: string;
+}
+
+// Parse a single transaction and extract details (without currentBlock)
+export async function parseSolanaTransaction(
   network: string,
   signature: string,
   tokens?: string[],
   walletAddress?: string,
-): Promise<PollResponseType> {
+): Promise<TransactionParseResult> {
   const solana = await Solana.getInstance(network);
 
   try {
-    const currentBlock = await solana.getCurrentBlockNumber();
-
     // Validate transaction signature format
     if (!signature || typeof signature !== 'string' || !signature.match(/^[A-Za-z0-9]{43,88}$/)) {
       return {
-        currentBlock,
         signature,
         txBlock: null,
         txStatus: 0,
@@ -34,7 +42,6 @@ export async function pollSolanaTransaction(
 
     if (!txData) {
       return {
-        currentBlock,
         signature,
         txBlock: null,
         txStatus: 0,
@@ -80,7 +87,7 @@ export async function pollSolanaTransaction(
             }
           }
 
-          logger.info(
+          logger.debug(
             `Transaction ${signature} - Status: ${txStatus}, Fee: ${fee} SOL, Balance Changes: ${JSON.stringify(tokenBalanceChanges)}`,
           );
         } else {
@@ -100,11 +107,9 @@ export async function pollSolanaTransaction(
         [],
       );
       fee = feeResult.fee;
-      logger.info(`Polling for transaction ${signature}, Status: ${txStatus}, Fee: ${fee} SOL`);
     }
 
     return {
-      currentBlock,
       signature,
       txBlock: txData.slot,
       txStatus,
@@ -113,9 +118,8 @@ export async function pollSolanaTransaction(
       txData,
     };
   } catch (error) {
-    logger.error(`Error polling transaction ${signature}: ${error.message}`);
+    logger.error(`Error parsing transaction ${signature}: ${error.message}`);
     return {
-      currentBlock: await solana.getCurrentBlockNumber(),
       signature,
       txBlock: null,
       txStatus: 0,
@@ -124,6 +128,26 @@ export async function pollSolanaTransaction(
       error: 'Transaction not found or invalid',
     };
   }
+}
+
+export async function pollSolanaTransaction(
+  _fastify: FastifyInstance,
+  network: string,
+  signature: string,
+  tokens?: string[],
+  walletAddress?: string,
+): Promise<PollResponseType> {
+  const solana = await Solana.getInstance(network);
+  const currentBlock = await solana.getCurrentBlockNumber();
+
+  // Parse the transaction
+  const txItem = await parseSolanaTransaction(network, signature, tokens, walletAddress);
+
+  // Add currentBlock to match PollResponse schema
+  return {
+    currentBlock,
+    ...txItem,
+  };
 }
 
 export const pollRoute: FastifyPluginAsync = async (fastify) => {

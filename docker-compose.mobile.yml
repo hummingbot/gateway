@@ -1,0 +1,39 @@
+services:
+  gateway:
+    restart: always
+    container_name: gateway
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "15888:15888"
+    volumes:
+      - ./conf:/home/gateway/conf
+      - ./logs:/home/gateway/logs
+      - ./certs:/home/gateway/certs
+    environment:
+      - GATEWAY_PASSPHRASE=${GATEWAY_PASSPHRASE:-a}
+      - GATEWAY_API_KEYS=${GATEWAY_API_KEYS}
+      - DEV=true  # HTTP mode for ngrok compatibility
+    networks:
+      - gateway-network
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: gateway-ngrok
+    restart: unless-stopped
+    command:
+      - "http"
+      - "gateway:15888"
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    ports:
+      - "4040:4040"  # Ngrok web interface at http://localhost:4040
+    depends_on:
+      - gateway
+    networks:
+      - gateway-network
+
+networks:
+  gateway-network:
+    driver: bridge

@@ -72,6 +72,52 @@ export const SolanaPollRequest = Type.Object({
   ),
 });
 
+// Transactions request schema
+export const SolanaTransactionsRequest = Type.Object({
+  network: SolanaNetworkParameter,
+  walletAddress: Type.String({
+    description: 'Wallet address to fetch transactions for',
+    default: solanaChainConfig.defaultWallet,
+  }),
+  connector: Type.Optional(
+    Type.String({
+      description: 'Filter by connector with type (e.g., jupiter/router, raydium/clmm, meteora/clmm)',
+    }),
+  ),
+  sinceBlock: Type.Optional(
+    Type.Number({
+      description: 'Fetch transactions after this slot number',
+    }),
+  ),
+  limit: Type.Optional(
+    Type.Number({
+      minimum: 1,
+      maximum: 100,
+      default: 10,
+      description: 'Maximum number of transactions to return (default: 10 to respect rate limits)',
+    }),
+  ),
+});
+
+// Parse request schema
+export const SolanaParseRequest = Type.Object({
+  network: SolanaNetworkParameter,
+  signature: Type.String({
+    description: 'Transaction signature to parse',
+    examples: [EXAMPLE_SIGNATURE],
+  }),
+  walletAddress: Type.String({
+    description: 'Wallet address to calculate balance changes for',
+    default: solanaChainConfig.defaultWallet,
+  }),
+  tokens: Type.Optional(
+    Type.Array(Type.String(), {
+      description: 'Tokens to track balance changes for (SOL is always included)',
+      examples: [EXAMPLE_TOKENS],
+    }),
+  ),
+});
+
 // Quote swap request schema
 export const SolanaQuoteSwapRequest = Type.Object({
   network: SolanaNetworkParameter,
