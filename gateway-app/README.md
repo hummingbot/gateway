@@ -151,7 +151,6 @@ gateway-app/
 │   │   └── utils.ts       # Utility functions
 │   └── styles/
 │       └── index.css      # Global styles
-├── DOCKER.md              # Docker deployment guide
 ├── API.md                 # API client documentation
 ├── COMPONENTS.md          # Component library documentation
 └── README.md             # This file
@@ -222,7 +221,7 @@ Access at http://localhost:1420
 
 **Use case**: Remote access, multi-user deployments
 
-See [DOCKER.md](./DOCKER.md) for complete Docker setup guide.
+See [DOCKER.md](../DOCKER.md) for complete Docker setup guide.
 
 ## Configuration Sharing
 
@@ -237,4 +236,4 @@ The app reuses the same `/conf` folder as the Gateway server:
 
 - **[API.md](./API.md)** - API client usage and examples
 - **[COMPONENTS.md](./COMPONENTS.md)** - Component library reference
-- **[DOCKER.md](./DOCKER.md)** - Docker deployment guide
+- **[DOCKER.md](../DOCKER.md)** - Docker deployment guide (root directory)
