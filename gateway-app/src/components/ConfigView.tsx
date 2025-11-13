@@ -179,9 +179,59 @@ export function ConfigView() {
   }
 
   return (
-    <div className="flex h-full">
-      {/* Sidebar */}
-      <div className="w-64 border-r bg-muted/10 p-4 overflow-y-auto">
+    <div className="flex flex-col md:flex-row h-full">
+      {/* Mobile Dropdown Selector */}
+      <div className="md:hidden border-b p-4">
+        <Select
+          value={selectedNamespace}
+          onChange={(e) => setSelectedNamespace(e.target.value)}
+          className="w-full"
+        >
+          {/* Server */}
+          {serverNamespaces.length > 0 && (
+            <optgroup label="Server">
+              {serverNamespaces.map((ns) => (
+                <option key={ns} value={ns}>{ns}</option>
+              ))}
+            </optgroup>
+          )}
+
+          {/* RPC Providers */}
+          {rpcNamespaces.length > 0 && (
+            <optgroup label="RPC Providers">
+              {rpcNamespaces.map((ns) => (
+                <option key={ns} value={ns}>{ns}</option>
+              ))}
+            </optgroup>
+          )}
+
+          {/* Chains */}
+          {chainNetworks.map(({ chain, baseConfig, networks }) => (
+            (baseConfig || networks.length > 0) && (
+              <optgroup key={chain} label={chain.charAt(0).toUpperCase() + chain.slice(1)}>
+                {baseConfig && (
+                  <option value={baseConfig}>{chain}</option>
+                )}
+                {networks.map((ns) => (
+                  <option key={ns} value={ns}>{ns}</option>
+                ))}
+              </optgroup>
+            )
+          ))}
+
+          {/* Connectors */}
+          {connectorNamespaces.length > 0 && (
+            <optgroup label="Connectors">
+              {connectorNamespaces.map((ns) => (
+                <option key={ns} value={ns}>{ns}</option>
+              ))}
+            </optgroup>
+          )}
+        </Select>
+      </div>
+
+      {/* Desktop Sidebar */}
+      <div className="hidden md:block w-64 border-r bg-muted/10 p-4 overflow-y-auto">
         <div className="space-y-4">
           {/* Server */}
           {serverNamespaces.length > 0 && (
@@ -283,10 +333,10 @@ export function ConfigView() {
 
       {/* Main content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <Card>
             <CardHeader>
-              <CardTitle>{selectedNamespace}</CardTitle>
+              <CardTitle className="text-lg md:text-xl">{selectedNamespace}</CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -296,138 +346,140 @@ export function ConfigView() {
                   No configuration items found
                 </p>
               ) : (
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2">Setting</th>
-                      <th className="text-right py-2">Value</th>
-                      <th className="w-10"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {configItems.map((item, i) => {
-                      const key = `${item.namespace}.${item.path}`;
-                      const isEditing = editingKey === key;
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[500px]">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 text-sm md:text-base">Setting</th>
+                        <th className="text-right py-2 text-sm md:text-base">Value</th>
+                        <th className="w-10"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {configItems.map((item, i) => {
+                        const key = `${item.namespace}.${item.path}`;
+                        const isEditing = editingKey === key;
 
-                      return (
-                        <tr
-                          key={key}
-                          className="border-b"
-                          onMouseEnter={() => setHoveredRow(i)}
-                          onMouseLeave={() => setHoveredRow(null)}
-                        >
-                          <td className="py-2">
-                            {item.path}
-                          </td>
-                          <td className="py-2 text-right">
-                            {isEditing ? (
-                              <div className="flex gap-2 justify-end">
-                                {item.type === 'boolean' ? (
-                                  <Select
-                                    value={String(editValue)}
-                                    onChange={(e) => setEditValue(e.target.value === 'true')}
-                                    className="w-32"
-                                  >
-                                    <option value="true">true</option>
-                                    <option value="false">false</option>
-                                  </Select>
-                                ) : (
-                                  <Input
-                                    type={item.type === 'number' ? 'number' : 'text'}
-                                    value={editValue}
-                                    onChange={(e) => {
-                                      const val = item.type === 'number'
-                                        ? Number(e.target.value)
-                                        : e.target.value;
-                                      setEditValue(val);
-                                    }}
-                                    className="w-64 text-right"
+                        return (
+                          <tr
+                            key={key}
+                            className="border-b"
+                            onMouseEnter={() => setHoveredRow(i)}
+                            onMouseLeave={() => setHoveredRow(null)}
+                          >
+                            <td className="py-2 text-sm md:text-base break-words max-w-[200px] md:max-w-none">
+                              {item.path}
+                            </td>
+                            <td className="py-2 text-right">
+                              {isEditing ? (
+                                <div className="flex gap-2 justify-end">
+                                  {item.type === 'boolean' ? (
+                                    <Select
+                                      value={String(editValue)}
+                                      onChange={(e) => setEditValue(e.target.value === 'true')}
+                                      className="w-24 md:w-32 text-sm"
+                                    >
+                                      <option value="true">true</option>
+                                      <option value="false">false</option>
+                                    </Select>
+                                  ) : (
+                                    <Input
+                                      type={item.type === 'number' ? 'number' : 'text'}
+                                      value={editValue}
+                                      onChange={(e) => {
+                                        const val = item.type === 'number'
+                                          ? Number(e.target.value)
+                                          : e.target.value;
+                                        setEditValue(val);
+                                      }}
+                                      className="w-40 md:w-64 text-right text-sm"
+                                      disabled={saving}
+                                    />
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-sm text-muted-foreground break-all">
+                                  {typeof item.value === 'boolean'
+                                    ? (item.value ? 'true' : 'false')
+                                    : String(item.value)}
+                                </span>
+                              )}
+                            </td>
+                            <td className="text-right">
+                              {isEditing ? (
+                                <div className="flex gap-1 justify-end">
+                                  <button
+                                    onClick={() => saveEdit(item)}
                                     disabled={saving}
-                                  />
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">
-                                {typeof item.value === 'boolean'
-                                  ? (item.value ? 'true' : 'false')
-                                  : String(item.value)}
-                              </span>
-                            )}
-                          </td>
-                          <td className="text-right">
-                            {isEditing ? (
-                              <div className="flex gap-1 justify-end">
-                                <button
-                                  onClick={() => saveEdit(item)}
-                                  disabled={saving}
-                                  className="text-green-600 hover:text-green-800 p-1"
-                                  title="Save"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
+                                    className="text-green-600 hover:text-green-800 p-1"
+                                    title="Save"
                                   >
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={cancelEdit}
-                                  disabled={saving}
-                                  className="text-red-600 hover:text-red-800 p-1"
-                                  title="Cancel"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="16"
+                                      height="16"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    >
+                                      <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                  </button>
+                                  <button
+                                    onClick={cancelEdit}
+                                    disabled={saving}
+                                    className="text-red-600 hover:text-red-800 p-1"
+                                    title="Cancel"
                                   >
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                  </svg>
-                                </button>
-                              </div>
-                            ) : (
-                              hoveredRow === i && (
-                                <button
-                                  onClick={() => startEdit(item)}
-                                  className="text-blue-600 hover:text-blue-800 p-1"
-                                  title="Edit"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="16"
+                                      height="16"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    >
+                                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                  </button>
+                                </div>
+                              ) : (
+                                hoveredRow === i && (
+                                  <button
+                                    onClick={() => startEdit(item)}
+                                    className="text-blue-600 hover:text-blue-800 p-1"
+                                    title="Edit"
                                   >
-                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-                                  </svg>
-                                </button>
-                              )
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="16"
+                                      height="16"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    >
+                                      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                                    </svg>
+                                  </button>
+                                )
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </CardContent>
           </Card>
