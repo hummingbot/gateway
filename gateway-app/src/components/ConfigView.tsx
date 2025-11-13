@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Select } from './ui/select';
 import { gatewayGet, gatewayPost } from '@/lib/api';
+import { readAppConfig, updateAppConfigValue } from '@/lib/app-config';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 
 interface ConfigItem {
@@ -48,13 +49,13 @@ export function ConfigView() {
         gatewayGet<{ chains: ChainData[] }>('/config/chains'),
       ]);
 
-      const sorted = namespacesData.namespaces.sort();
+      // Add "app" namespace at the beginning
+      const sorted = ['app', ...namespacesData.namespaces.sort()];
       setNamespaces(sorted);
       setChains(chainsData.chains);
 
-      // Default to 'server' or first namespace
-      const initial = sorted.find(ns => ns === 'server') || sorted[0];
-      if (initial) setSelectedNamespace(initial);
+      // Default to 'app' first
+      setSelectedNamespace('app');
     } catch (err) {
       await showErrorNotification('Failed to load configuration');
     } finally {
@@ -65,8 +66,17 @@ export function ConfigView() {
   async function loadConfig() {
     try {
       setLoading(true);
-      const allConfigs = await gatewayGet<Record<string, any>>('/config');
-      const namespaceConfig = allConfigs[selectedNamespace] || {};
+
+      let namespaceConfig: any = {};
+
+      // Handle app config differently (local file)
+      if (selectedNamespace === 'app') {
+        namespaceConfig = await readAppConfig();
+      } else {
+        // Gateway API config
+        const allConfigs = await gatewayGet<Record<string, any>>('/config');
+        namespaceConfig = allConfigs[selectedNamespace] || {};
+      }
 
       // Convert config object to flat list of items
       const items: ConfigItem[] = [];
@@ -113,11 +123,17 @@ export function ConfigView() {
     try {
       setSaving(true);
 
-      await gatewayPost('/config/update', {
-        namespace: item.namespace,
-        path: item.path,
-        value: editValue,
-      });
+      // Handle app config differently (local file)
+      if (item.namespace === 'app') {
+        await updateAppConfigValue(item.path, editValue);
+      } else {
+        // Gateway API config
+        await gatewayPost('/config/update', {
+          namespace: item.namespace,
+          path: item.path,
+          value: editValue,
+        });
+      }
 
       await showSuccessNotification(`Updated ${item.path}`);
 
@@ -135,7 +151,7 @@ export function ConfigView() {
   }
 
   // Group namespaces dynamically using chains data
-  const serverNamespaces = namespaces.filter(ns => ns === 'server');
+  const gatewayNamespaces = namespaces.filter(ns => ['app', 'server'].includes(ns));
   const rpcNamespaces = namespaces.filter(ns => ['helius', 'infura'].includes(ns));
 
   // Build chain network groups from chains data
@@ -160,8 +176,8 @@ export function ConfigView() {
 
   const connectorNamespaces = namespaces.filter(
     ns => {
-      // Not server or RPC
-      if (ns === 'server' || ['helius', 'infura'].includes(ns)) return false;
+      // Not app, server or RPC
+      if (['app', 'server'].includes(ns) || ['helius', 'infura'].includes(ns)) return false;
 
       // Not a chain or chain-network
       if (allChainNamespaces.has(ns)) return false;
@@ -187,10 +203,10 @@ export function ConfigView() {
           onChange={(e) => setSelectedNamespace(e.target.value)}
           className="w-full"
         >
-          {/* Server */}
-          {serverNamespaces.length > 0 && (
-            <optgroup label="Server">
-              {serverNamespaces.map((ns) => (
+          {/* Gateway */}
+          {gatewayNamespaces.length > 0 && (
+            <optgroup label="Gateway">
+              {gatewayNamespaces.map((ns) => (
                 <option key={ns} value={ns}>{ns}</option>
               ))}
             </optgroup>
@@ -233,11 +249,11 @@ export function ConfigView() {
       {/* Desktop Sidebar */}
       <div className="hidden md:block w-64 border-r bg-muted/10 p-4 overflow-y-auto">
         <div className="space-y-4">
-          {/* Server */}
-          {serverNamespaces.length > 0 && (
+          {/* Gateway */}
+          {gatewayNamespaces.length > 0 && (
             <div>
-              <h3 className="font-semibold text-sm mb-2">Server</h3>
-              {serverNamespaces.map((ns) => (
+              <h3 className="font-semibold text-sm mb-2">Gateway</h3>
+              {gatewayNamespaces.map((ns) => (
                 <button
                   key={ns}
                   onClick={() => setSelectedNamespace(ns)}

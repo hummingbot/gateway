@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { readAppConfig, updateAppConfigValue } from './app-config';
 
 interface AppState {
   selectedNetwork: string;
@@ -17,23 +18,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedNetwork, setSelectedNetwork] = useState('mainnet-beta');
   const [selectedWallet, setSelectedWallet] = useState('');
   const [selectedChain, setSelectedChain] = useState('solana');
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    // Check localStorage or system preference
-    const stored = localStorage.getItem('theme');
-    if (stored === 'light' || stored === 'dark') return stored;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [themeLoaded, setThemeLoaded] = useState(false);
 
+  // Load theme from app config on mount
   useEffect(() => {
-    // Apply theme to document
+    async function loadTheme() {
+      try {
+        const config = await readAppConfig();
+        setTheme(config.theme || 'light');
+      } catch (err) {
+        console.error('Failed to load theme from app config:', err);
+        // Fallback to system preference
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setTheme(prefersDark ? 'dark' : 'light');
+      } finally {
+        setThemeLoaded(true);
+      }
+    }
+    loadTheme();
+  }, []);
+
+  // Apply theme to document and save to config
+  useEffect(() => {
+    if (!themeLoaded) return;
+
     const root = document.documentElement;
     if (theme === 'dark') {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+
+    // Save theme to app config
+    updateAppConfigValue('theme', theme).catch(err => {
+      console.error('Failed to save theme to app config:', err);
+    });
+  }, [theme, themeLoaded]);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
