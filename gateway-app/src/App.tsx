@@ -4,6 +4,7 @@ import { AppProvider, useApp } from './lib/AppContext';
 import { Select } from './components/ui/select';
 import { PortfolioView } from './components/PortfolioView';
 import { SwapView } from './components/SwapView';
+import { PoolsView } from './components/PoolsView';
 import { ConfigView } from './components/ConfigView';
 import { WalletSelector } from './components/WalletSelector';
 import { AddWalletModal } from './components/AddWalletModal';
@@ -297,6 +298,7 @@ function AppContent() {
       <div className="flex-1 overflow-auto">
         {activeTab === 'portfolio' && <PortfolioView />}
         {activeTab === 'swap' && <SwapView />}
+        {activeTab === 'pools' && <PoolsView />}
         {activeTab === 'config' && <ConfigView />}
       </div>
 
@@ -353,6 +355,30 @@ function AppContent() {
               <path d="M4 17h16" />
             </svg>
             <span className="text-xs font-medium">Swap</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('pools')}
+            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors ${
+              activeTab === 'pools'
+                ? 'text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+            </svg>
+            <span className="text-xs font-medium">Liquidity</span>
           </button>
 
           <button

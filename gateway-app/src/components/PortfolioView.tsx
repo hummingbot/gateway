@@ -16,16 +16,49 @@ interface Balance {
   value?: number;
 }
 
+// PositionInfo from Gateway CLMM schema
+interface Position {
+  address: string;
+  poolAddress: string;
+  baseTokenAddress: string;
+  quoteTokenAddress: string;
+  baseTokenAmount: number;
+  quoteTokenAmount: number;
+  baseFeeAmount: number;
+  quoteFeeAmount: number;
+  lowerBinId: number;
+  upperBinId: number;
+  lowerPrice: number;
+  upperPrice: number;
+  price: number;
+  rewardTokenAddress?: string;
+  rewardAmount?: number;
+  connector: string;
+}
+
+interface ConnectorConfig {
+  name: string;
+  trading_types: string[];
+  chain: string;
+  networks: string[];
+}
+
 export function PortfolioView() {
   const { selectedChain, selectedNetwork, selectedWallet } = useApp();
   const [balances, setBalances] = useState<Balance[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingPositions, setLoadingPositions] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddToken, setShowAddToken] = useState(false);
   const [availableNetworks, setAvailableNetworks] = useState<string[]>([]);
   const [nativeSymbol, setNativeSymbol] = useState<string>('');
   const [tokenToDelete, setTokenToDelete] = useState<Balance | null>(null);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+
+  const capitalize = (str: string) => {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
 
   useEffect(() => {
     loadNetworks();
@@ -34,6 +67,7 @@ export function PortfolioView() {
   useEffect(() => {
     if (!selectedWallet) return;
     fetchData();
+    fetchPositions();
   }, [selectedChain, selectedNetwork, selectedWallet]);
 
   async function loadNetworks() {
@@ -92,6 +126,50 @@ export function PortfolioView() {
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchPositions() {
+    try {
+      setLoadingPositions(true);
+
+      // Fetch available CLMM connectors
+      const configData = await gatewayGet<{ connectors: ConnectorConfig[] }>('/config/connectors');
+      const clmmConnectors = configData.connectors
+        .filter((c) =>
+          c.chain === selectedChain &&
+          c.networks.includes(selectedNetwork) &&
+          c.trading_types.includes('clmm')
+        )
+        .map((c) => c.name);
+
+      // Fetch positions from all CLMM connectors
+      const chainNetwork = `${selectedChain}-${selectedNetwork}`;
+      const positionPromises = clmmConnectors.map(async (connector) => {
+        try {
+          const data = await gatewayGet<Position[]>(
+            `/trading/clmm/positions-owned?connector=${connector}&chainNetwork=${chainNetwork}&walletAddress=${selectedWallet}`
+          );
+          // Add connector property to each position
+          return data.map((position) => ({
+            ...position,
+            connector,
+          }));
+        } catch (err) {
+          console.error(`Failed to fetch positions for ${connector}:`, err);
+          return [];
+        }
+      });
+
+      const positionResults = await Promise.all(positionPromises);
+      const allPositions = positionResults.flat();
+
+      setPositions(allPositions);
+    } catch (err) {
+      console.error('Failed to fetch positions:', err);
+      setPositions([]);
+    } finally {
+      setLoadingPositions(false);
     }
   }
 
@@ -179,7 +257,7 @@ export function PortfolioView() {
       <Card>
         <CardHeader className="p-3 md:p-6">
           <div className="flex justify-between items-center">
-            <CardTitle>Balances</CardTitle>
+            <CardTitle>Tokens</CardTitle>
             <Button onClick={() => setShowAddToken(true)} size="sm">
               Add Token
             </Button>
@@ -279,6 +357,69 @@ export function PortfolioView() {
               </table>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Positions */}
+      <Card>
+        <CardHeader className="p-3 md:p-6">
+          <CardTitle>Liquidity Positions</CardTitle>
+        </CardHeader>
+        <CardContent className="p-3 md:p-6">
+          {loadingPositions ? (
+            <p className="text-sm text-muted-foreground">Loading positions...</p>
+          ) : positions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No positions found</p>
+          ) : (
+            <div className="space-y-3">
+              {positions.map((position, i) => (
+                <div key={i} className="border rounded p-3 md:p-4 text-xs md:text-sm">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <span className="text-muted-foreground">Connector:</span>
+                      <p className="font-medium">{capitalize(position.connector)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Pool:</span>
+                      <p className="font-mono text-xs truncate">{position.poolAddress.substring(0, 8)}...{position.poolAddress.substring(position.poolAddress.length - 6)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Price Range:</span>
+                      <p className="font-medium">
+                        {position.lowerPrice.toFixed(6)} - {position.upperPrice.toFixed(6)}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Current Price:</span>
+                      <p className="font-medium">{position.price.toFixed(6)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Base Amount:</span>
+                      <p className="font-medium">{position.baseTokenAmount.toFixed(6)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Quote Amount:</span>
+                      <p className="font-medium">{position.quoteTokenAmount.toFixed(6)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Base Fees:</span>
+                      <p className="font-medium">{position.baseFeeAmount.toFixed(6)}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Quote Fees:</span>
+                      <p className="font-medium">{position.quoteFeeAmount.toFixed(6)}</p>
+                    </div>
+                    {position.rewardAmount !== undefined && position.rewardAmount > 0 && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">Rewards:</span>
+                        <p className="font-medium">{position.rewardAmount.toFixed(6)}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
