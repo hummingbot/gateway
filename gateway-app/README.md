@@ -20,19 +20,40 @@ A lightweight desktop application for interacting with the Gateway API server, b
 
 ## Prerequisites
 
-- Gateway server must be running on `http://localhost:15888`
+- Gateway server must be running
 - Node.js 18+ and pnpm installed
 
 ## Development
 
-### Start Gateway Server (Terminal 1)
+### Setup
+
+1. **Configure Environment Variables**
+
+Create a `.env` file in `gateway-app/`:
 
 ```bash
+# Gateway API URL (HTTPS for production, HTTP for dev mode)
+VITE_GATEWAY_URL=https://localhost:15888
+
+# Gateway API Key (must match GATEWAY_API_KEYS on server)
+# Generate with: openssl rand -hex 32
+VITE_GATEWAY_API_KEY=your-api-key-here
+```
+
+2. **Start Gateway Server (Terminal 1)**
+
+With API key authentication:
+```bash
 cd /Users/feng/gateway
+GATEWAY_API_KEYS=your-api-key-here pnpm start --passphrase=<PASSPHRASE>
+```
+
+Or in dev mode (HTTP, no SSL):
+```bash
 pnpm start --passphrase=<PASSPHRASE> --dev
 ```
 
-### Start App Dev Server (Terminal 2)
+3. **Start App Dev Server (Terminal 2)**
 
 ```bash
 cd /Users/feng/gateway/gateway-app
@@ -40,6 +61,16 @@ pnpm dev
 ```
 
 The app will be available at http://localhost:1420
+
+### Authentication
+
+The app connects to Gateway using API key authentication by default (`useCerts: false`). The app uses Tauri's HTTP plugin to handle self-signed certificates automatically.
+
+**Environment Variables:**
+- `VITE_GATEWAY_URL`: Gateway server URL (default: `https://localhost:15888`)
+- `VITE_GATEWAY_API_KEY`: API key for authentication (must match server's `GATEWAY_API_KEYS`)
+
+**For production deployments**, set Gateway to use client certificates by changing `useCerts: true` in Gateway's `conf/server.yml`.
 
 ## Build
 
