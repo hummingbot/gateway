@@ -1,26 +1,100 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select } from './ui/select';
 import { gatewayGet, gatewayPost } from '@/lib/api';
 import { useApp } from '@/lib/AppContext';
+import { getSelectableTokenList, TokenInfo } from '@/lib/utils';
+import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 
 interface QuoteResult {
   expectedAmount: string;
   priceImpact?: number;
   route?: string[];
+  amountIn?: number;
+  amountOut?: number;
+  minAmountOut?: number;
+  maxAmountIn?: number;
+  price?: number;
+  slippageBps?: number;
+  routePlan?: any[];
+  quoteId?: string;
 }
 
 export function SwapView() {
-  const { selectedNetwork, selectedWallet } = useApp();
+  const { selectedChain, selectedNetwork, selectedWallet } = useApp();
   const [connector, setConnector] = useState('jupiter');
-  const [fromToken, setFromToken] = useState('SOL');
-  const [toToken, setToToken] = useState('USDC');
+  const [fromToken, setFromToken] = useState('');
+  const [toToken, setToToken] = useState('');
   const [amount, setAmount] = useState('');
   const [quote, setQuote] = useState<QuoteResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [balances, setBalances] = useState<Record<string, string>>({});
+  const [availableTokens, setAvailableTokens] = useState<TokenInfo[]>([]);
+
+  useEffect(() => {
+    async function fetchTokens() {
+      try {
+        const tokens = await getSelectableTokenList(selectedChain, selectedNetwork);
+        setAvailableTokens(tokens);
+
+        // Set default tokens on first load or when switching networks
+        if (tokens.length > 0) {
+          setFromToken(tokens[0].symbol);
+        }
+        if (tokens.length > 1) {
+          setToToken(tokens[1].symbol);
+        }
+      } catch (err) {
+        console.error('Failed to fetch tokens:', err);
+      }
+    }
+
+    fetchTokens();
+  }, [selectedChain, selectedNetwork]);
+
+  useEffect(() => {
+    if (!selectedWallet) return;
+
+    async function fetchBalances() {
+      try {
+        const balanceData = await gatewayPost<any>(
+          `/chains/${selectedChain}/balances`,
+          {
+            network: selectedNetwork,
+            address: selectedWallet,
+          }
+        );
+
+        if (balanceData.balances) {
+          setBalances(balanceData.balances);
+        }
+      } catch (err) {
+        console.error('Failed to fetch balances:', err);
+      }
+    }
+
+    fetchBalances();
+  }, [selectedChain, selectedNetwork, selectedWallet]);
+
+  function handleMaxClick() {
+    const balance = balances[fromToken];
+    if (balance) {
+      setAmount(balance);
+    }
+  }
+
+  function handleSwapDirection() {
+    // Swap from and to tokens
+    const tempToken = fromToken;
+    setFromToken(toToken);
+    setToToken(tempToken);
+
+    // Clear quote since direction changed
+    setQuote(null);
+  }
 
   async function handleGetQuote() {
     if (!amount || !fromToken || !toToken) return;
@@ -34,12 +108,21 @@ export function SwapView() {
       );
 
       setQuote({
-        expectedAmount: quoteData.expectedAmount || '0',
-        priceImpact: quoteData.priceImpact,
+        expectedAmount: String(quoteData.amountOut || '0'),
+        priceImpact: quoteData.priceImpactPct,
         route: quoteData.route,
+        amountIn: quoteData.amountIn,
+        amountOut: quoteData.amountOut,
+        minAmountOut: quoteData.minAmountOut,
+        maxAmountIn: quoteData.maxAmountIn,
+        price: quoteData.price,
+        slippageBps: quoteData.quoteResponse?.slippageBps,
+        routePlan: quoteData.quoteResponse?.routePlan,
+        quoteId: quoteData.quoteId,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to get quote');
+      console.error('Quote error:', err);
     } finally {
       setLoading(false);
     }
@@ -52,7 +135,10 @@ export function SwapView() {
       setLoading(true);
       setError(null);
 
-      await gatewayPost(`/connectors/${connector}/router/execute-swap`, {
+      // Show pending notification
+      await showSuccessNotification('⏳ Transaction pending...', 'Swap is being executed');
+
+      const result = await gatewayPost<any>(`/connectors/${connector}/router/execute-swap`, {
         network: selectedNetwork,
         address: selectedWallet,
         baseToken: fromToken,
@@ -61,19 +147,33 @@ export function SwapView() {
         side: 'SELL',
       });
 
-      alert('Swap executed successfully!');
+      // Show success notification with txHash
+      const txHash = result.txHash || result.signature || result.hash;
+      const successMessage = txHash
+        ? `Swapped ${amount} ${fromToken} for ${toToken}\nTx: ${txHash.substring(0, 8)}...${txHash.substring(txHash.length - 6)}`
+        : `Swapped ${amount} ${fromToken} for ${toToken}`;
+
+      await showSuccessNotification(
+        `✅ Swap executed successfully!`,
+        successMessage
+      );
+
       setAmount('');
       setQuote(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to execute swap');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to execute swap';
+      setError(errorMsg);
+      await showErrorNotification(errorMsg);
     } finally {
       setLoading(false);
     }
   }
 
+  const fromBalance = balances[fromToken] || '0';
+
   return (
-    <div className="flex items-center justify-center h-full p-6">
-      <Card className="w-full max-w-md">
+    <div className="p-6 space-y-6">
+      <Card className="w-full max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>Swap</CardTitle>
         </CardHeader>
@@ -95,28 +195,55 @@ export function SwapView() {
           <Card>
             <CardContent className="pt-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium">From</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-medium">From</label>
+                  <div className="text-sm text-muted-foreground">
+                    Balance: {parseFloat(fromBalance).toFixed(6)}
+                  </div>
+                </div>
                 <div className="flex gap-2">
-                  <Input
-                    placeholder="Token symbol"
+                  <Select
                     value={fromToken}
                     onChange={(e) => setFromToken(e.target.value)}
-                    className="flex-1"
-                  />
+                    className="w-32"
+                  >
+                    {availableTokens.map((token) => (
+                      <option key={token.symbol} value={token.symbol}>
+                        {token.symbol}
+                      </option>
+                    ))}
+                  </Select>
+                  <div className="flex-1 flex gap-2">
+                    <Input
+                      type="number"
+                      placeholder="0.0"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={handleMaxClick}
+                      variant="outline"
+                      size="sm"
+                      disabled={!fromBalance || fromBalance === '0'}
+                    >
+                      Max
+                    </Button>
+                  </div>
                 </div>
-                <Input
-                  type="number"
-                  placeholder="0.0"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
               </div>
             </CardContent>
           </Card>
 
           {/* Swap Direction Indicator */}
           <div className="flex justify-center">
-            <span className="text-2xl">⇅</span>
+            <button
+              onClick={handleSwapDirection}
+              className="text-2xl p-2 hover:bg-accent rounded-full transition-colors cursor-pointer"
+              title="Swap direction"
+            >
+              ⇅
+            </button>
           </div>
 
           {/* To Token */}
@@ -125,18 +252,25 @@ export function SwapView() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">To</label>
                 <div className="flex gap-2">
-                  <Input
-                    placeholder="Token symbol"
+                  <Select
                     value={toToken}
                     onChange={(e) => setToToken(e.target.value)}
-                    className="flex-1"
+                    className="w-32"
+                  >
+                    {availableTokens.map((token) => (
+                      <option key={token.symbol} value={token.symbol}>
+                        {token.symbol}
+                      </option>
+                    ))}
+                  </Select>
+                  <Input
+                    type="text"
+                    placeholder="0.0"
+                    value={quote ? parseFloat(quote.expectedAmount).toFixed(6) : ''}
+                    readOnly
+                    className="flex-1 bg-muted"
                   />
                 </div>
-                {quote && (
-                  <div className="text-sm text-muted-foreground">
-                    Expected: {parseFloat(quote.expectedAmount).toFixed(6)}
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
@@ -146,16 +280,52 @@ export function SwapView() {
             <Card>
               <CardContent className="pt-6">
                 <div className="space-y-2 text-sm">
+                  {quote.quoteId && (
+                    <div className="flex justify-between border-b pb-2 mb-2">
+                      <span>Quote ID:</span>
+                      <span className="font-mono text-xs">{quote.quoteId.substring(0, 8)}...</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
-                    <span>Expected Amount:</span>
+                    <span>Amount In:</span>
                     <span className="font-semibold">
-                      {parseFloat(quote.expectedAmount).toFixed(6)} {toToken}
+                      {quote.amountIn?.toFixed(6)} {fromToken}
                     </span>
                   </div>
+                  <div className="flex justify-between">
+                    <span>Amount Out:</span>
+                    <span className="font-semibold">
+                      {quote.amountOut?.toFixed(6)} {toToken}
+                    </span>
+                  </div>
+                  {quote.minAmountOut !== undefined && (
+                    <div className="flex justify-between">
+                      <span>Min Amount Out:</span>
+                      <span>{quote.minAmountOut.toFixed(6)} {toToken}</span>
+                    </div>
+                  )}
+                  {quote.price !== undefined && (
+                    <div className="flex justify-between">
+                      <span>Price:</span>
+                      <span>{quote.price.toExponential(6)}</span>
+                    </div>
+                  )}
+                  {quote.slippageBps !== undefined && (
+                    <div className="flex justify-between">
+                      <span>Slippage:</span>
+                      <span>{(quote.slippageBps / 100).toFixed(2)}%</span>
+                    </div>
+                  )}
                   {quote.priceImpact !== undefined && (
                     <div className="flex justify-between">
                       <span>Price Impact:</span>
                       <span>{quote.priceImpact.toFixed(2)}%</span>
+                    </div>
+                  )}
+                  {quote.routePlan && quote.routePlan.length > 0 && (
+                    <div className="flex justify-between">
+                      <span>Route Hops:</span>
+                      <span>{quote.routePlan.length}</span>
                     </div>
                   )}
                 </div>

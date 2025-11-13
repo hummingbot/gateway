@@ -6,13 +6,7 @@ import { useApp } from '@/lib/AppContext';
 import { AddTokenModal } from './AddTokenModal';
 import { ConfirmModal } from './ConfirmModal';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
-
-interface Token {
-  address: string;
-  symbol: string;
-  name: string;
-  decimals: number;
-}
+import { getSelectableTokenList, TokenInfo } from '@/lib/utils';
 
 interface Balance {
   symbol: string;
@@ -59,19 +53,13 @@ export function PortfolioView() {
       setLoading(true);
       setError(null);
 
-      // Fetch all configs to get native currency symbol
-      const allConfigsData = await gatewayGet<any>('/config');
-      const namespace = `${selectedChain}-${selectedNetwork}`;
-      const networkConfig = allConfigsData[namespace];
+      // Get selectable token list (native token first, no duplicates)
+      const tokenList = await getSelectableTokenList(selectedChain, selectedNetwork);
 
-      // Get nativeCurrencySymbol from network config
-      const nativeCurrency = networkConfig.nativeCurrencySymbol;
-      setNativeSymbol(nativeCurrency);
-
-      // Fetch all tokens for this network
-      const allTokens = await gatewayGet<{ tokens: Token[] }>(
-        `/tokens?chain=${selectedChain}&network=${selectedNetwork}`
-      );
+      // Set native symbol from the first token
+      if (tokenList.length > 0) {
+        setNativeSymbol(tokenList[0].symbol);
+      }
 
       // Fetch wallet balances
       const balanceData = await gatewayPost<any>(
@@ -90,29 +78,14 @@ export function PortfolioView() {
         });
       }
 
-      // Start with native token
-      const mergedBalances: Balance[] = [
-        {
-          symbol: nativeCurrency,
-          name: nativeCurrency,
-          address: '',
-          balance: balanceMap.get(nativeCurrency) || '0',
-          value: 0,
-        }
-      ];
-
-      // Add tokens from token list (excluding native token to avoid duplicates)
-      (allTokens.tokens || []).forEach((token) => {
-        if (token.symbol !== nativeCurrency) {
-          mergedBalances.push({
-            symbol: token.symbol,
-            name: token.name,
-            address: token.address,
-            balance: balanceMap.get(token.symbol) || '0',
-            value: 0,
-          });
-        }
-      });
+      // Build balances list from token list
+      const mergedBalances: Balance[] = tokenList.map((token) => ({
+        symbol: token.symbol,
+        name: token.name,
+        address: token.address,
+        balance: balanceMap.get(token.symbol) || '0',
+        value: 0,
+      }));
 
       setBalances(mergedBalances);
     } catch (err) {
