@@ -7,6 +7,7 @@ import { AddTokenModal } from './AddTokenModal';
 import { ConfirmModal } from './ConfirmModal';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import { getSelectableTokenList, TokenInfo } from '@/lib/utils';
+import type { PositionWithConnector as Position, ConnectorConfig } from '@/lib/gateway-types';
 
 interface Balance {
   symbol: string;
@@ -14,33 +15,6 @@ interface Balance {
   address: string;
   balance: string;
   value?: number;
-}
-
-// PositionInfo from Gateway CLMM schema
-interface Position {
-  address: string;
-  poolAddress: string;
-  baseTokenAddress: string;
-  quoteTokenAddress: string;
-  baseTokenAmount: number;
-  quoteTokenAmount: number;
-  baseFeeAmount: number;
-  quoteFeeAmount: number;
-  lowerBinId: number;
-  upperBinId: number;
-  lowerPrice: number;
-  upperPrice: number;
-  price: number;
-  rewardTokenAddress?: string;
-  rewardAmount?: number;
-  connector: string;
-}
-
-interface ConnectorConfig {
-  name: string;
-  trading_types: string[];
-  chain: string;
-  networks: string[];
 }
 
 export function PortfolioView() {

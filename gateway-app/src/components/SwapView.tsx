@@ -7,19 +7,14 @@ import { gatewayGet, gatewayPost } from '@/lib/api';
 import { useApp } from '@/lib/AppContext';
 import { getSelectableTokenList, TokenInfo } from '@/lib/utils';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
+import type { RouterQuoteResponse } from '@/lib/gateway-types';
 
-interface QuoteResult {
-  expectedAmount: string;
-  priceImpact?: number;
-  route?: string[];
-  amountIn?: number;
-  amountOut?: number;
-  minAmountOut?: number;
-  maxAmountIn?: number;
-  price?: number;
+// Extended quote result with additional UI-specific fields
+interface QuoteResult extends Partial<RouterQuoteResponse> {
+  expectedAmount?: string;
   slippageBps?: number;
   routePlan?: any[];
-  quoteId?: string;
+  priceImpactPct?: number;
 }
 
 export function SwapView() {
@@ -109,8 +104,9 @@ export function SwapView() {
 
       setQuote({
         expectedAmount: String(quoteData.amountOut || '0'),
-        priceImpact: quoteData.priceImpactPct,
-        route: quoteData.route,
+        priceImpactPct: quoteData.priceImpactPct,
+        tokenIn: quoteData.tokenIn,
+        tokenOut: quoteData.tokenOut,
         amountIn: quoteData.amountIn,
         amountOut: quoteData.amountOut,
         minAmountOut: quoteData.minAmountOut,
@@ -265,7 +261,7 @@ export function SwapView() {
                   <Input
                     type="text"
                     placeholder="0.0"
-                    value={quote ? parseFloat(quote.expectedAmount).toFixed(6) : ''}
+                    value={quote && quote.expectedAmount ? parseFloat(quote.expectedAmount).toFixed(6) : ''}
                     readOnly
                     className="flex-1 bg-muted"
                   />
@@ -315,10 +311,10 @@ export function SwapView() {
                       <span>{(quote.slippageBps / 100).toFixed(2)}%</span>
                     </div>
                   )}
-                  {quote.priceImpact !== undefined && (
+                  {quote.priceImpactPct !== undefined && (
                     <div className="flex justify-between">
                       <span>Price Impact:</span>
-                      <span>{quote.priceImpact.toFixed(2)}%</span>
+                      <span>{quote.priceImpactPct.toFixed(2)}%</span>
                     </div>
                   )}
                   {quote.routePlan && quote.routePlan.length > 0 && (

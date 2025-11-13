@@ -109,7 +109,7 @@ export type {
 // ==================== Convenience Types ====================
 
 import type { TokensResponseType } from '@gateway/schemas/chain-schema';
-import type { PositionInfo } from '@gateway/schemas/clmm-schema';
+import type { PositionInfo, PoolInfo as CLMMPoolInfo } from '@gateway/schemas/clmm-schema';
 
 /**
  * Token information extracted from Gateway TokensResponse
@@ -165,4 +165,17 @@ export interface PoolTemplate {
   feePct: number;
   /** Connector name (added by UI) */
   connector?: string;
+}
+
+/**
+ * Extended pool info that includes fields from both Meteora DLMM and Uniswap V3 CLMM pools
+ * This is a UI-friendly union of all possible pool info fields
+ */
+export interface ExtendedPoolInfo extends CLMMPoolInfo {
+  /** Uniswap V3 specific: square root of price */
+  sqrtPriceX64?: string;
+  /** Uniswap V3 specific: current tick */
+  tick?: number;
+  /** Uniswap V3 specific: total liquidity */
+  liquidity?: string;
 }

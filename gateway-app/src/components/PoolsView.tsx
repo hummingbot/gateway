@@ -6,34 +6,14 @@ import { Select } from './ui/select';
 import { gatewayGet, gatewayPost } from '@/lib/api';
 import { useApp } from '@/lib/AppContext';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
+import type {
+  PoolTemplate as Pool,
+  ExtendedPoolInfo as PoolInfo,
+  ConnectorConfig,
+} from '@/lib/gateway-types';
 
-interface Pool {
-  type: string;
-  network: string;
-  baseSymbol: string;
-  quoteSymbol: string;
-  address: string;
-  baseTokenAddress: string;
-  quoteTokenAddress: string;
-  feePct: number;
-  connector?: string;
-}
-
-interface PoolInfo {
-  address: string;
-  baseTokenAddress: string;
-  quoteTokenAddress: string;
-  feePct: number;
-  price: number;
-  baseTokenAmount: number;
-  quoteTokenAmount: number;
-  activeBinId?: number;
-  binStep?: number;
-  sqrtPriceX64?: string;
-  tick?: number;
-  liquidity?: string;
-}
-
+// UI-specific Position type for displaying owned positions
+// Note: This represents AMM/CLMM position data from UI perspective
 interface Position {
   tokenId: string;
   liquidity: string;
@@ -43,13 +23,6 @@ interface Position {
   amount1: string;
   unclaimedToken0?: string;
   unclaimedToken1?: string;
-}
-
-interface ConnectorConfig {
-  name: string;
-  trading_types: string[];
-  chain: string;
-  networks: string[];
 }
 
 export function PoolsView() {

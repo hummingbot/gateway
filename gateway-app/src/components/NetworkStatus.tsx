@@ -1,15 +1,6 @@
 import { useState, useEffect } from 'react';
 import { gatewayGet } from '@/lib/api';
-
-interface ChainStatus {
-  chain: string;
-  network: string;
-  rpcUrl: string;
-  rpcProvider?: string;
-  currentBlockNumber: number;
-  nativeCurrency: string;
-  swapProvider?: string;
-}
+import type { StatusResponseType as ChainStatus } from '@/lib/gateway-types';
 
 interface NetworkStatusProps {
   chain: string;
