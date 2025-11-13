@@ -8,11 +8,20 @@ fn read_app_config(app: tauri::AppHandle) -> Result<String, String> {
     let config_path = get_app_config_path(&app)?;
 
     if !config_path.exists() {
-        // Return default config if file doesn't exist
-        let default_config = json!({
-            "theme": "light"
-        });
-        return Ok(default_config.to_string());
+        // Copy default config from app directory to user config directory
+        let default_config_content = include_str!("../../app-config.json");
+
+        // Create parent directory if it doesn't exist
+        if let Some(parent) = config_path.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create config directory: {}", e))?;
+        }
+
+        // Write default config to user config directory
+        fs::write(&config_path, default_config_content)
+            .map_err(|e| format!("Failed to write default config: {}", e))?;
+
+        return Ok(default_config_content.to_string());
     }
 
     fs::read_to_string(&config_path)

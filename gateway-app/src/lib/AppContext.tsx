@@ -18,7 +18,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedNetwork, setSelectedNetwork] = useState('mainnet-beta');
   const [selectedWallet, setSelectedWallet] = useState('');
   const [selectedChain, setSelectedChain] = useState('solana');
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [themeLoaded, setThemeLoaded] = useState(false);
 
   // Load theme from app config on mount
@@ -26,12 +26,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async function loadTheme() {
       try {
         const config = await readAppConfig();
-        setTheme(config.theme || 'light');
+        setTheme(config.theme || 'dark');
       } catch (err) {
         console.error('Failed to load theme from app config:', err);
-        // Fallback to system preference
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        setTheme(prefersDark ? 'dark' : 'light');
+        // Fallback to dark theme
+        setTheme('dark');
       } finally {
         setThemeLoaded(true);
       }
