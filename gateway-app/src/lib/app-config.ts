@@ -2,6 +2,14 @@ import { invoke } from '@tauri-apps/api/core';
 
 export interface AppConfig {
   darkMode: boolean;
+  theme?: {
+    colors?: {
+      primary?: string;          // HSL format: "222.2 47.4% 11.2%"
+      primaryDark?: string;       // For dark mode
+      accent?: string;
+      accentDark?: string;
+    };
+  };
 }
 
 // Check if we're running in Tauri

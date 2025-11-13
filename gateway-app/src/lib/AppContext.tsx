@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { readAppConfig, updateAppConfigValue } from './app-config';
+import { readAppConfig, updateAppConfigValue, AppConfig } from './app-config';
+import { applyTheme, updateThemeForDarkMode } from './theme-manager';
 
 interface AppState {
   selectedNetwork: string;
@@ -21,15 +22,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedChain, setSelectedChain] = useState('solana');
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [themeLoaded, setThemeLoaded] = useState(false);
+  const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
 
-  // Load darkMode from app config on mount
+  // Load darkMode and theme from app config on mount
   useEffect(() => {
     async function loadTheme() {
       try {
         const config = await readAppConfig();
+        setAppConfig(config);
         setDarkMode(config.darkMode ?? true);
+
+        // Apply theme colors
+        applyTheme(config);
       } catch (err) {
-        console.error('Failed to load darkMode from app config:', err);
+        console.error('Failed to load theme from app config:', err);
         // Fallback to dark mode
         setDarkMode(true);
       } finally {
@@ -50,11 +56,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       root.classList.remove('dark');
     }
 
+    // Update theme colors for the new mode
+    if (appConfig) {
+      updateThemeForDarkMode(appConfig, darkMode);
+    }
+
     // Save darkMode to app config
     updateAppConfigValue('darkMode', darkMode).catch(err => {
       console.error('Failed to save darkMode to app config:', err);
     });
-  }, [darkMode, themeLoaded]);
+  }, [darkMode, themeLoaded, appConfig]);
 
   const toggleTheme = () => {
     setDarkMode(prev => !prev);

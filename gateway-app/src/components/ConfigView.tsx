@@ -7,6 +7,7 @@ import { gatewayAPI } from '@/lib/GatewayAPI';
 import { readAppConfig, updateAppConfigValue } from '@/lib/app-config';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import { useApp } from '@/lib/AppContext';
+import { applyTheme } from '@/lib/theme-manager';
 
 interface ConfigItem {
   namespace: string;
@@ -179,6 +180,12 @@ export function ConfigView() {
       // Handle app config differently (local file)
       if (item.namespace === 'app') {
         await updateAppConfigValue(item.path, parsedValue);
+
+        // If updating theme colors, apply them immediately
+        if (item.path.startsWith('theme.colors.')) {
+          const config = await readAppConfig();
+          applyTheme(config);
+        }
       } else {
         // Gateway API config
         await gatewayAPI.config.update(item.namespace, item.path, parsedValue);
