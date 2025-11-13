@@ -1,17 +1,14 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { gatewayGet } from './api'
+import type { TokenInfo } from './gateway-types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export interface TokenInfo {
-  symbol: string;
-  name: string;
-  address: string;
-  decimals: number;
-}
+// Re-export TokenInfo for convenience
+export type { TokenInfo };
 
 export async function getSelectableTokenList(
   chain: string,
