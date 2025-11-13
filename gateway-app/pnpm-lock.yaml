@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@tauri-apps/api':
+        specifier: ^2.9.0
+        version: 2.9.0
       '@tauri-apps/plugin-http':
         specifier: ^2.5.4
         version: 2.5.4
