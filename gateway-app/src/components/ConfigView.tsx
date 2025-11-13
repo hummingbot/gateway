@@ -181,9 +181,7 @@ export function ConfigView() {
         await updateAppConfigValue(item.path, parsedValue);
       } else {
         // Gateway API config
-        await gatewayAPI.config.update(item.namespace, {
-          [item.path]: parsedValue,
-        });
+        await gatewayAPI.config.update(item.namespace, item.path, parsedValue);
       }
 
       await showSuccessNotification(`Updated ${item.path}`);
@@ -215,9 +213,7 @@ export function ConfigView() {
         }
       } else {
         // Gateway API config
-        await gatewayAPI.config.update(item.namespace, {
-          [item.path]: newValue,
-        });
+        await gatewayAPI.config.update(item.namespace, item.path, newValue);
       }
 
       await showSuccessNotification(`Updated ${item.path}`);

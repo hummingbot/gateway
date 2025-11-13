@@ -60,8 +60,8 @@ export class ConfigAPI {
     return gatewayGet<Record<string, any>>('/config');
   }
 
-  async update(namespace: string, config: Record<string, any>) {
-    return gatewayPost('/config/update', { namespace, ...config });
+  async update(namespace: string, path: string, value: any) {
+    return gatewayPost('/config/update', { namespace, path, value });
   }
 }
 
