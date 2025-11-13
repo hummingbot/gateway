@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "gateway-app",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "io.hummingbot.gateway",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -21,7 +21,8 @@
     ],
     "security": {
       "csp": null
-    }
+    },
+    "withGlobalTauri": true
   },
   "bundle": {
     "active": true,
@@ -31,9 +32,6 @@
   "plugins": {
     "notification": {
       "all": true
-    },
-    "http": {
-      "scope": ["https://localhost:15888/**", "http://localhost:15888/**"]
     }
   }
 }

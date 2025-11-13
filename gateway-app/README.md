@@ -53,14 +53,27 @@ Or in dev mode (HTTP, no SSL):
 pnpm start --passphrase=<PASSPHRASE> --dev
 ```
 
-3. **Start App Dev Server (Terminal 2)**
+### Run in Dev Mode
 
+**Option 1: Web Browser (faster)**
+
+Start the web dev server:
 ```bash
 cd /Users/feng/gateway/gateway-app
 pnpm dev
 ```
 
 The app will be available at http://localhost:1420
+
+**Option 2: Desktop App (Tauri)**
+
+Start the Tauri dev build:
+```bash
+cd /Users/feng/gateway/gateway-app
+pnpm tauri dev
+```
+
+This opens the app in a native window with hot reload enabled.
 
 ### Authentication
 
@@ -72,17 +85,36 @@ The app connects to Gateway using API key authentication by default (`useCerts: 
 
 **For production deployments**, set Gateway to use client certificates by changing `useCerts: true` in Gateway's `conf/server.yml`.
 
-## Build
+## Production Build
 
+### Build Web Assets
+
+Build the frontend only:
 ```bash
+cd /Users/feng/gateway/gateway-app
 pnpm build
 ```
 
-## Build Desktop App
+Output: `dist/` directory with HTML/CSS/JS
 
+### Build Desktop App
+
+Build the native desktop application:
 ```bash
+cd /Users/feng/gateway/gateway-app
 pnpm tauri build
 ```
+
+This will:
+1. Build the web assets (`pnpm build`)
+2. Compile the Rust backend
+3. Bundle the app for your platform
+
+**Build Output:**
+- **macOS App**: `src-tauri/target/release/bundle/macos/gateway-app.app`
+- **DMG Installer**: `src-tauri/target/release/bundle/dmg/gateway-app_0.1.0_aarch64.dmg`
+
+**Note**: The API key and Gateway URL are baked into the build from your `.env` file at build time.
 
 ## Architecture
 

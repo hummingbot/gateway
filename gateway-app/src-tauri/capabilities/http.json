@@ -1,0 +1,19 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "http-capabilities",
+  "description": "HTTP capabilities for Gateway API",
+  "windows": ["main"],
+  "permissions": [
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "https://localhost:15888/*"
+        },
+        {
+          "url": "http://localhost:15888/*"
+        }
+      ]
+    }
+  ]
+}

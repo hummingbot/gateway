@@ -1,19 +1,14 @@
-// Gateway URL can be configured via environment variable
-// Default to https://localhost:15888 for production mode with self-signed certs
+// Gateway URL and API key are baked in at build time from .env file
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'https://localhost:15888';
-
-// API Key for authentication (optional, only needed in production)
 const API_KEY = import.meta.env.VITE_GATEWAY_API_KEY || '';
 
 // Check if running in Tauri environment
 const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
 
 // Dynamically import Tauri's fetch if available
-let tauriFetch: any = null;
+let tauriFetchPromise: Promise<any> | null = null;
 if (isTauri) {
-  import('@tauri-apps/plugin-http').then((module) => {
-    tauriFetch = module.fetch;
-  });
+  tauriFetchPromise = import('@tauri-apps/plugin-http').then((module) => module.fetch);
 }
 
 export async function gatewayFetch<T>(
@@ -31,8 +26,8 @@ export async function gatewayFetch<T>(
     headers['X-API-Key'] = API_KEY;
   }
 
-  // Use Tauri's fetch with SSL verification disabled for self-signed certs
-  const fetchFn = isTauri && tauriFetch ? tauriFetch : fetch;
+  // Wait for Tauri fetch to be loaded if running in Tauri
+  let fetchFn = fetch;
   const fetchOptions: any = {
     ...options,
     headers: {
@@ -41,12 +36,18 @@ export async function gatewayFetch<T>(
     },
   };
 
-  // Disable SSL verification for Tauri (to accept self-signed certs)
-  if (isTauri && tauriFetch) {
-    fetchOptions.danger = {
-      acceptInvalidCerts: true,
-      acceptInvalidHostnames: true,
-    };
+  if (isTauri && tauriFetchPromise) {
+    try {
+      const tauriFetch = await tauriFetchPromise;
+      fetchFn = tauriFetch;
+      // Disable SSL verification for Tauri (to accept self-signed certs)
+      fetchOptions.danger = {
+        acceptInvalidCerts: true,
+        acceptInvalidHostnames: true,
+      };
+    } catch {
+      // Fall back to standard fetch if plugin fails to load
+    }
   }
 
   const response = await fetchFn(url, fetchOptions);
