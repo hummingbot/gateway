@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select } from './ui/select';
+import { EmptyState } from './ui/EmptyState';
+import { LoadingState } from './ui/LoadingState';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
 
@@ -23,7 +25,7 @@ interface Position {
 }
 
 export function LiquidityView() {
-  const { selectedNetwork, selectedWallet } = useApp();
+  const { selectedNetwork, selectedWallet, gatewayAvailable } = useApp();
   const [connector, setConnector] = useState('raydium');
   const [poolAddress, setPoolAddress] = useState('');
   const [positions, setPositions] = useState<Position[]>([]);
@@ -128,20 +130,27 @@ export function LiquidityView() {
     }
   }
 
+  // Check Gateway availability first
+  if (gatewayAvailable === null) {
+    return <LoadingState message="Checking Gateway connection..." />;
+  }
+
+  if (gatewayAvailable === false) {
+    return (
+      <EmptyState
+        title="Gateway API Unavailable"
+        message="Please make sure the Gateway server is running at localhost:15888"
+        icon="⚠️"
+      />
+    );
+  }
+
   if (!selectedWallet) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle>No Wallet Selected</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Please select a wallet to manage liquidity positions.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        title="No Wallet Selected"
+        message="Please select a wallet to manage liquidity positions."
+      />
     );
   }
 

@@ -22,7 +22,7 @@ interface Balance {
 }
 
 export function PortfolioView() {
-  const { selectedChain, selectedNetwork, selectedWallet } = useApp();
+  const { selectedChain, selectedNetwork, selectedWallet, gatewayAvailable } = useApp();
   const [balances, setBalances] = useState<Balance[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
@@ -177,6 +177,21 @@ export function PortfolioView() {
     } finally {
       setTokenToDelete(null);
     }
+  }
+
+  // Check Gateway availability first
+  if (gatewayAvailable === null) {
+    return <LoadingState message="Checking Gateway connection..." />;
+  }
+
+  if (gatewayAvailable === false) {
+    return (
+      <EmptyState
+        title="Gateway API Unavailable"
+        message="Please make sure the Gateway server is running at localhost:15888"
+        icon="⚠️"
+      />
+    );
   }
 
   if (!selectedWallet) {

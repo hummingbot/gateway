@@ -35,7 +35,7 @@ interface Position {
 }
 
 export function PoolsView() {
-  const { selectedChain, selectedNetwork, selectedWallet } = useApp();
+  const { selectedChain, selectedNetwork, selectedWallet, gatewayAvailable } = useApp();
   const [availableConnectors, setAvailableConnectors] = useState<string[]>([]);
   const [selectedConnectors, setSelectedConnectors] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>(['clmm']);
@@ -267,6 +267,21 @@ export function PoolsView() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Check Gateway availability first
+  if (gatewayAvailable === null) {
+    return <LoadingState message="Checking Gateway connection..." />;
+  }
+
+  if (gatewayAvailable === false) {
+    return (
+      <EmptyState
+        title="Gateway API Unavailable"
+        message="Please make sure the Gateway server is running at localhost:15888"
+        icon="⚠️"
+      />
+    );
   }
 
   if (!selectedWallet) {

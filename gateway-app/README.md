@@ -75,6 +75,54 @@ pnpm tauri dev
 
 This opens the app in a native window with hot reload enabled.
 
+### App Configuration
+
+The app stores settings (dark mode, theme colors) in `app-config.json`:
+- **Browser mode** (`pnpm dev`): Settings loaded from `public/app-config.json` on first visit, then stored in localStorage
+- **Tauri mode** (`pnpm tauri dev`): Settings read/written to `app-config.json` directly via Rust commands
+
+**Resetting settings in browser mode:**
+1. Open browser DevTools (F12)
+2. Console tab
+3. Run: `localStorage.clear()`
+4. Refresh page
+
+Settings will reload from `app-config.json`.
+
+**Syncing Tauri app config:**
+
+If the Tauri desktop app shows outdated settings (e.g., only darkMode without theme colors):
+
+1. Copy your project config to the Tauri app directory:
+   ```bash
+   cp app-config.json "$HOME/Library/Application Support/io.hummingbot.gateway/app-config.json"
+   ```
+2. Restart the Tauri app (`pnpm tauri dev`)
+
+This syncs your project's `app-config.json` to the Tauri app's config storage location.
+
+**Editing theme colors:**
+
+Edit `app-config.json` in the project root:
+```json
+{
+  "darkMode": true,
+  "theme": {
+    "colors": {
+      "primary": "#0f172a",
+      "primaryDark": "#f8fafc",
+      "accent": "#f1f5f9",
+      "accentDark": "#1e293b"
+    }
+  }
+}
+```
+
+- Supports hex color codes (e.g., `#0f172a`)
+- See `THEMES.json` for 10+ pre-made color schemes to copy from
+- In browser mode: Clear localStorage and refresh to see changes
+- In Tauri mode: Changes apply immediately when saved via Config UI
+
 ### Authentication
 
 The app connects to Gateway using API key authentication by default (`useCerts: false`). The app uses Tauri's HTTP plugin to handle self-signed certificates automatically.

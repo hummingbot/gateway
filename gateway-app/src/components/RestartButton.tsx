@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { gatewayPost } from '../lib/api';
-import { showSuccessNotification } from '../lib/notifications';
+import { gatewayPost, gatewayGet } from '../lib/api';
+import { showSuccessNotification, showErrorNotification } from '../lib/notifications';
 
 interface RestartButtonProps {
   className?: string;
@@ -10,18 +10,46 @@ interface RestartButtonProps {
 export function RestartButton({ className = '', iconSize = 18 }: RestartButtonProps) {
   const [isRestarting, setIsRestarting] = useState(false);
 
-  async function handleRestart() {
-    try {
-      setIsRestarting(true);
-      await gatewayPost('/restart', {});
-      await showSuccessNotification('Gateway is restarting...');
+  async function waitForGateway() {
+    const maxAttempts = 30; // 30 attempts = 15 seconds max
+    let attempts = 0;
 
-      // Wait a bit for the server to restart, then reload the page
-      setTimeout(() => {
-        window.location.reload();
-      }, 3000);
+    while (attempts < maxAttempts) {
+      try {
+        await gatewayGet('/');
+        // Gateway is back online
+        return true;
+      } catch (err) {
+        // Gateway still down, wait and retry
+        await new Promise(resolve => setTimeout(resolve, 500));
+        attempts++;
+      }
+    }
+    return false; // Timeout
+  }
+
+  async function handleRestart() {
+    setIsRestarting(true);
+
+    try {
+      // Send restart command - Gateway will shut down immediately
+      await gatewayPost('/restart', {});
     } catch (err) {
-      console.error('Failed to restart Gateway:', err);
+      // Expected - Gateway shuts down before responding
+      console.log('Gateway shutting down (expected):', err);
+    }
+
+    // Show restarting notification
+    await showSuccessNotification('Gateway is restarting...');
+
+    // Wait for Gateway to come back online
+    const isOnline = await waitForGateway();
+
+    if (isOnline) {
+      // Refresh immediately (success is implied by the refresh)
+      window.location.reload();
+    } else {
+      await showErrorNotification('Gateway restart timeout. Please refresh manually.');
       setIsRestarting(false);
     }
   }

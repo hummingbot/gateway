@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { readAppConfig, updateAppConfigValue, AppConfig } from './app-config';
 import { applyTheme, updateThemeForDarkMode } from './theme-manager';
+import { gatewayGet } from './api';
 
 interface AppState {
   selectedNetwork: string;
@@ -12,6 +13,8 @@ interface AppState {
   darkMode: boolean;
   setDarkMode: (value: boolean) => void;
   toggleTheme: () => void;
+  gatewayAvailable: boolean | null; // null = checking, true = available, false = unavailable
+  checkGatewayStatus: () => Promise<void>;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -23,6 +26,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [themeLoaded, setThemeLoaded] = useState(false);
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
+  const [gatewayAvailable, setGatewayAvailable] = useState<boolean | null>(null);
 
   // Load darkMode and theme from app config on mount
   useEffect(() => {
@@ -71,6 +75,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDarkMode(prev => !prev);
   };
 
+  // Check Gateway status on mount
+  useEffect(() => {
+    checkGatewayStatus();
+  }, []);
+
+  async function checkGatewayStatus() {
+    try {
+      // Try to fetch config/chains endpoint as a health check
+      await gatewayGet('/config/chains');
+      setGatewayAvailable(true);
+    } catch (err) {
+      console.error('Gateway unavailable:', err);
+      setGatewayAvailable(false);
+    }
+  }
+
   return (
     <AppContext.Provider
       value={{
@@ -83,6 +103,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         darkMode,
         setDarkMode,
         toggleTheme,
+        gatewayAvailable,
+        checkGatewayStatus,
       }}
     >
       {children}

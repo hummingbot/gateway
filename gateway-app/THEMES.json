@@ -1,0 +1,80 @@
+{
+  "_comment": "Sample themes for app-config.json - Copy the colors section to app-config.json",
+
+  "Default (Slate)": {
+    "primary": "#0f172a",
+    "primaryDark": "#f8fafc",
+    "accent": "#f1f5f9",
+    "accentDark": "#1e293b"
+  },
+
+  "Ocean Blue": {
+    "primary": "#1e3a8a",
+    "primaryDark": "#60a5fa",
+    "accent": "#0284c7",
+    "accentDark": "#0ea5e9"
+  },
+
+  "Purple Haze": {
+    "primary": "#6b21a8",
+    "primaryDark": "#a78bfa",
+    "accent": "#7c3aed",
+    "accentDark": "#c084fc"
+  },
+
+  "Emerald Green": {
+    "primary": "#065f46",
+    "primaryDark": "#6ee7b7",
+    "accent": "#059669",
+    "accentDark": "#34d399"
+  },
+
+  "Sunset Orange": {
+    "primary": "#c2410c",
+    "primaryDark": "#fb923c",
+    "accent": "#ea580c",
+    "accentDark": "#fdba74"
+  },
+
+  "Rose Pink": {
+    "primary": "#9f1239",
+    "primaryDark": "#fb7185",
+    "accent": "#e11d48",
+    "accentDark": "#fda4af"
+  },
+
+  "Cyberpunk (Neon)": {
+    "primary": "#701a75",
+    "primaryDark": "#e879f9",
+    "accent": "#0891b2",
+    "accentDark": "#22d3ee"
+  },
+
+  "Forest (Earthy)": {
+    "primary": "#365314",
+    "primaryDark": "#bef264",
+    "accent": "#4d7c0f",
+    "accentDark": "#a3e635"
+  },
+
+  "Midnight Blue": {
+    "primary": "#1e293b",
+    "primaryDark": "#cbd5e1",
+    "accent": "#334155",
+    "accentDark": "#94a3b8"
+  },
+
+  "Amber Gold (Current)": {
+    "primary": "#92400e",
+    "primaryDark": "#fbbf24",
+    "accent": "#b45309",
+    "accentDark": "#fcd34d"
+  },
+
+  "Teal Turquoise": {
+    "primary": "#115e59",
+    "primaryDark": "#5eead4",
+    "accent": "#0d9488",
+    "accentDark": "#2dd4bf"
+  }
+}

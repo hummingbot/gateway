@@ -25,3 +25,6 @@ dist-ssr
 
 # Tauri
 src-tauri/target
+
+# Public app config (copied from root during dev)
+public/app-config.json

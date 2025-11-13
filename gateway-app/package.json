@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "mkdir -p public && cp app-config.json public/app-config.json",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",

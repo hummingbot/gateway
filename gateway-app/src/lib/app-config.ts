@@ -4,7 +4,7 @@ export interface AppConfig {
   darkMode: boolean;
   theme?: {
     colors?: {
-      primary?: string;          // HSL format: "222.2 47.4% 11.2%"
+      primary?: string;          // Hex format: "#0f172a" (also accepts HSL)
       primaryDark?: string;       // For dark mode
       accent?: string;
       accentDark?: string;
@@ -19,12 +19,41 @@ function isTauri(): boolean {
 
 export async function readAppConfig(): Promise<AppConfig> {
   if (!isTauri()) {
-    // Fallback to localStorage in browser mode
+    // In dev mode (browser), prioritize localStorage (allows runtime edits to persist)
+    // Developers can clear localStorage to reset to file defaults
     const stored = localStorage.getItem('app-config');
+
     if (stored) {
+      // Use existing localStorage config (allows UI edits to persist)
       return JSON.parse(stored);
     }
-    return { darkMode: true };
+
+    // No localStorage yet - fetch from file and initialize
+    try {
+      const response = await fetch('/app-config.json');
+      if (response.ok) {
+        const config = await response.json();
+        localStorage.setItem('app-config', JSON.stringify(config));
+        return config;
+      }
+    } catch (err) {
+      console.warn('Failed to fetch app-config.json from server, using defaults:', err);
+    }
+
+    // Final fallback to defaults
+    const defaultConfig = {
+      darkMode: true,
+      theme: {
+        colors: {
+          primary: '#0f172a',
+          primaryDark: '#f8fafc',
+          accent: '#f1f5f9',
+          accentDark: '#1e293b',
+        },
+      },
+    };
+    localStorage.setItem('app-config', JSON.stringify(defaultConfig));
+    return defaultConfig;
   }
 
   const configStr = await invoke<string>('read_app_config');
