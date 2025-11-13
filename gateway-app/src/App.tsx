@@ -7,6 +7,7 @@ import { SwapView } from './components/SwapView';
 import { ConfigView } from './components/ConfigView';
 import { WalletSelector } from './components/WalletSelector';
 import { AddWalletModal } from './components/AddWalletModal';
+import { NetworkStatus } from './components/NetworkStatus';
 import { gatewayGet, gatewayPost } from './lib/api';
 import { showSuccessNotification } from './lib/notifications';
 
@@ -113,7 +114,10 @@ function AppContent() {
         {/* Header */}
         <header className="border-b px-4 md:px-6 py-3 md:py-4">
         <div className="flex justify-between items-center gap-2">
-          <h1 className="text-xl md:text-2xl font-bold">Gateway</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl md:text-2xl font-bold">Gateway</h1>
+            <NetworkStatus chain={selectedChain} network={selectedNetwork} />
+          </div>
 
           <div className="flex gap-2 md:gap-4 items-center">
             {/* Desktop: Full Wallet Selector */}
