@@ -233,6 +233,20 @@ export function PortfolioView() {
                       : null;
                     const isNative = balance.symbol === nativeSymbol;
 
+                    // Format balance to max 6 decimals
+                    const formattedBalance = (() => {
+                      const num = parseFloat(balance.balance);
+                      if (isNaN(num)) return balance.balance;
+
+                      // If number has more than 6 decimal places, truncate to 6
+                      const balanceStr = balance.balance;
+                      const decimalIndex = balanceStr.indexOf('.');
+                      if (decimalIndex !== -1 && balanceStr.length - decimalIndex - 1 > 6) {
+                        return num.toFixed(6);
+                      }
+                      return balance.balance;
+                    })();
+
                     return (
                       <tr
                         key={i}
@@ -240,7 +254,7 @@ export function PortfolioView() {
                         onMouseEnter={() => setHoveredRow(i)}
                         onMouseLeave={() => setHoveredRow(null)}
                       >
-                        <td className={`py-2 ${isNative ? 'font-bold' : ''}`}>
+                        <td className="py-2">
                           {explorerUrl ? (
                             <a
                               href={explorerUrl}
@@ -254,11 +268,11 @@ export function PortfolioView() {
                             balance.symbol
                           )}
                         </td>
-                        <td className={`py-2 ${isNative ? 'font-bold' : ''}`}>
+                        <td className="py-2">
                           {balance.name}
                         </td>
-                        <td className={`text-right ${isNative ? 'font-bold' : ''}`}>
-                          {balance.balance}
+                        <td className="text-right">
+                          {formattedBalance}
                         </td>
                         <td className="text-right">
                           {hoveredRow === i && !isNative && balance.address && (

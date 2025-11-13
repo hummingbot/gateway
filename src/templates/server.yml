@@ -33,3 +33,9 @@ logLevel: info
 # If not provided, requests will be made without authentication (free tier, 30 calls/minute)
 coingeckoAPIKey: ''
 
+# API keys for authenticating requests to Gateway (optional, for production deployments)
+# Multiple API keys can be provided as a list. Each key should be a secure random string.
+# If no keys are provided or the list is empty, API key authentication is disabled.
+# Generate secure keys with: openssl rand -hex 32
+apiKeys: []
+

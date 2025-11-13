@@ -1,4 +1,9 @@
-const GATEWAY_URL = 'http://localhost:15888';
+// Gateway URL can be configured via environment variable
+// Default to localhost:15888 for dev mode
+const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:15888';
+
+// API Key for authentication (optional, only needed in production)
+const API_KEY = import.meta.env.VITE_GATEWAY_API_KEY || '';
 
 export async function gatewayFetch<T>(
   endpoint: string,
@@ -6,10 +11,19 @@ export async function gatewayFetch<T>(
 ): Promise<T> {
   const url = `${GATEWAY_URL}${endpoint}`;
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  // Add API key if configured
+  if (API_KEY) {
+    headers['X-API-Key'] = API_KEY;
+  }
+
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...headers,
       ...options?.headers,
     },
   });

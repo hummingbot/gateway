@@ -167,9 +167,38 @@ const configureGatewayServer = () => {
     origin: devMode ? ['http://localhost:1420', 'http://localhost:3000'] : false,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
     preflightContinue: false,
   });
+
+  // API Key Authentication Middleware
+  // Only enforced when apiKeys are configured and not in dev mode
+  const apiKeys = ConfigManagerV2.getInstance().get('server.apiKeys') || [];
+  const requireApiKey = !devMode && apiKeys.length > 0;
+
+  if (requireApiKey) {
+    server.addHook('onRequest', async (request, reply) => {
+      const apiKey = request.headers['x-api-key'];
+
+      if (!apiKey || typeof apiKey !== 'string') {
+        return reply.code(401).send({
+          error: 'Unauthorized',
+          message: 'API key is required. Please provide X-API-Key header.',
+        });
+      }
+
+      if (!apiKeys.includes(apiKey)) {
+        return reply.code(401).send({
+          error: 'Unauthorized',
+          message: 'Invalid API key.',
+        });
+      }
+    });
+
+    logger.info('API key authentication enabled');
+  } else if (!devMode) {
+    logger.warn('Running in production mode without API key authentication. Configure server.apiKeys for security.');
+  }
 
   // Register rate limiting globally
   server.register(fastifyRateLimit, {
