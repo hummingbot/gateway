@@ -30,7 +30,7 @@ services:
       - ./gateway-app:/app # Enable hot reload in dev mode
       - /app/node_modules # Prevent overwriting node_modules
     environment:
-      - VITE_GATEWAY_URL=http://localhost:15888 # Gateway backend URL (accessible from host browser)
+      - VITE_GATEWAY_URL=http://gateway:15888 # Gateway backend URL
     depends_on:
       - gateway
     networks:

@@ -227,13 +227,46 @@ docker exec -it gateway-app sh
 
 ## Production Deployment
 
-For production deployment:
+For production deployment with API key authentication:
 
-1. Use `docker compose.prod.yml`
-2. Set strong `GATEWAY_PASSPHRASE` via environment variable
+### 1. Generate API Key
+
+```bash
+# Generate a secure API key
+openssl rand -hex 32
+```
+
+### 2. Set Environment Variables
+
+Create a `.env` file in the gateway root directory:
+
+```bash
+# Gateway Backend
+GATEWAY_PASSPHRASE=your-secure-passphrase
+GATEWAY_API_KEYS=your-generated-api-key
+
+# Gateway Frontend
+GATEWAY_API_KEY=your-generated-api-key
+```
+
+**Note**: Use the same API key for both `GATEWAY_API_KEYS` (backend accepts this key) and `GATEWAY_API_KEY` (frontend uses this key).
+
+### 3. Deploy with Docker Compose
+
+```bash
+# Build and start production containers
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Access the app at: http://localhost:1420
+
+### 4. Additional Production Considerations
+
+1. Use strong `GATEWAY_PASSPHRASE` for wallet encryption
+2. Keep API keys secret (add `.env` to `.gitignore`)
 3. Consider using reverse proxy (nginx/traefik) for HTTPS
-4. Set `DEV=false` in gateway service for HTTPS mode
-5. Configure proper domain names and SSL certificates
+4. Configure proper domain names and SSL certificates
+5. Regularly rotate API keys
 
 ### Example with HTTPS
 
