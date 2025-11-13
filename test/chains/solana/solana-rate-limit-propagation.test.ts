@@ -83,9 +83,9 @@ describe('Solana Rate Limit Error Propagation', () => {
       mockConnection.getBalance = jest.fn().mockResolvedValue(1000000000);
 
       // Mock token accounts to fail with 429
-      mockConnection.getParsedTokenAccountsByOwner = jest.fn().mockRejectedValue(error429);
+      mockConnection.getTokenAccountsByOwner = jest.fn().mockRejectedValue(error429);
 
-      await expect(solana.getBalances('11111111111111111111111111111112', [], true)).rejects.toMatchObject({
+      await expect(solana.getBalances('11111111111111111111111111111112', [])).rejects.toMatchObject({
         statusCode: 429,
       });
     });

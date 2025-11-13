@@ -40,14 +40,8 @@ export const SolanaBalanceRequest = Type.Object({
   tokens: Type.Optional(
     Type.Array(Type.String(), {
       description:
-        'A list of token symbols (SOL, USDC, BONK) or token mint addresses. Both formats are accepted and will be automatically detected. An empty array is treated the same as if the parameter was not provided, returning only non-zero balances (with the exception of SOL).',
-      examples: [EXAMPLE_TOKENS, ['SOL', USDC_MINT_ADDRESS, BONK_MINT_ADDRESS]],
-    }),
-  ),
-  fetchAll: Type.Optional(
-    Type.Boolean({
-      description: 'Whether to fetch all tokens in wallet, not just those in token list',
-      default: false,
+        "A list of token symbols (SOL, USDC, BONK) from the network's token list. Only tokens in the token list will be returned. An empty array is treated the same as if the parameter was not provided, returning only non-zero balances (with the exception of SOL).",
+      examples: [EXAMPLE_TOKENS],
     }),
   ),
 });

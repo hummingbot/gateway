@@ -54,7 +54,6 @@ describe('Solana Balances Route - Rate Limit Handling', () => {
           network: 'mainnet-beta',
           address: '82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5',
           tokens: [],
-          fetchAll: true,
         },
       });
 
@@ -199,7 +198,7 @@ describe('Solana Balances Route - Rate Limit Handling', () => {
   });
 
   describe('Different Request Scenarios', () => {
-    it('should handle rate limit with fetchAll=true', async () => {
+    it('should handle rate limit with no tokens specified', async () => {
       const error429 = new Error('Rate limit exceeded');
       (error429 as any).statusCode = 429;
       (error429 as any).name = 'TooManyRequestsError';
@@ -212,8 +211,6 @@ describe('Solana Balances Route - Rate Limit Handling', () => {
         payload: {
           network: 'mainnet-beta',
           address: '82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5',
-          tokens: [],
-          fetchAll: true,
         },
       });
 
