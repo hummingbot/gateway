@@ -9,6 +9,7 @@ import { ConfigView } from './components/ConfigView';
 import { WalletSelector } from './components/WalletSelector';
 import { AddWalletModal } from './components/AddWalletModal';
 import { NetworkStatus } from './components/NetworkStatus';
+import { RestartButton } from './components/RestartButton';
 import { gatewayGet, gatewayPost } from './lib/api';
 import { showSuccessNotification } from './lib/notifications';
 
@@ -117,6 +118,7 @@ function AppContent() {
         <div className="flex justify-between items-center gap-2">
           <div className="flex items-center gap-2">
             <h1 className="text-xl md:text-2xl font-bold">Gateway</h1>
+            <RestartButton />
           </div>
 
           <div className="flex gap-2 md:gap-4 items-center">
