@@ -116,7 +116,6 @@ function AppContent() {
         <div className="flex justify-between items-center gap-2">
           <div className="flex items-center gap-2">
             <h1 className="text-xl md:text-2xl font-bold">Gateway</h1>
-            <NetworkStatus chain={selectedChain} network={selectedNetwork} />
           </div>
 
           <div className="flex gap-2 md:gap-4 items-center">
@@ -161,7 +160,7 @@ function AppContent() {
             </button>
 
             {/* Desktop: Full Network Selector */}
-            <div className="hidden sm:block">
+            <div className="hidden sm:flex sm:items-center sm:gap-2">
               <Select
                 value={selectedNetwork}
                 onChange={(e) => setSelectedNetwork(e.target.value)}
@@ -179,6 +178,12 @@ function AppContent() {
                   </option>
                 )}
               </Select>
+              <NetworkStatus chain={selectedChain} network={selectedNetwork} />
+            </div>
+
+            {/* Mobile: Network Status (shown on mobile) */}
+            <div className="sm:hidden">
+              <NetworkStatus chain={selectedChain} network={selectedNetwork} />
             </div>
 
           </div>

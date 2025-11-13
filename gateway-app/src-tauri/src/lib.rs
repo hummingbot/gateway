@@ -1,4 +1,3 @@
-use serde_json::json;
 use std::fs;
 use std::path::PathBuf;
 use tauri::Manager;
@@ -24,8 +23,27 @@ fn read_app_config(app: tauri::AppHandle) -> Result<String, String> {
         return Ok(default_config_content.to_string());
     }
 
-    fs::read_to_string(&config_path)
-        .map_err(|e| format!("Failed to read app config: {}", e))
+    let content = fs::read_to_string(&config_path)
+        .map_err(|e| format!("Failed to read app config: {}", e))?;
+
+    // Migrate old config: remove deprecated "theme" key if it exists
+    if let Ok(mut config) = serde_json::from_str::<serde_json::Value>(&content) {
+        if let Some(obj) = config.as_object_mut() {
+            if obj.contains_key("theme") {
+                obj.remove("theme");
+
+                // Write migrated config back to file
+                let migrated = serde_json::to_string_pretty(&config)
+                    .map_err(|e| format!("Failed to serialize migrated config: {}", e))?;
+                fs::write(&config_path, &migrated)
+                    .map_err(|e| format!("Failed to write migrated config: {}", e))?;
+
+                return Ok(migrated);
+            }
+        }
+    }
+
+    Ok(content)
 }
 
 #[tauri::command]

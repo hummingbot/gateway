@@ -5,12 +5,13 @@ import { Select } from './ui/select';
 import { gatewayGet, gatewayPost } from '@/lib/api';
 import { readAppConfig, updateAppConfigValue } from '@/lib/app-config';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
+import { useApp } from '@/lib/AppContext';
 
 interface ConfigItem {
   namespace: string;
   path: string;
   value: any;
-  type: 'string' | 'number' | 'boolean';
+  type: 'string' | 'number' | 'boolean' | 'array';
 }
 
 interface ChainData {
@@ -20,6 +21,7 @@ interface ChainData {
 }
 
 export function ConfigView() {
+  const { setDarkMode } = useApp();
   const [namespaces, setNamespaces] = useState<string[]>([]);
   const [selectedNamespace, setSelectedNamespace] = useState<string>('');
   const [configItems, setConfigItems] = useState<ConfigItem[]>([]);
@@ -113,7 +115,15 @@ export function ConfigView() {
         for (const [key, value] of Object.entries(obj)) {
           const currentPath = parentPath ? `${parentPath}.${key}` : key;
 
-          if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+          if (Array.isArray(value)) {
+            // Add array as a config item
+            items.push({
+              namespace: selectedNamespace,
+              path: currentPath,
+              value,
+              type: 'array',
+            });
+          } else if (value !== null && typeof value === 'object') {
             // Recursively flatten nested objects
             flattenConfig(value, currentPath);
           } else {
@@ -139,7 +149,12 @@ export function ConfigView() {
 
   function startEdit(item: ConfigItem) {
     setEditingKey(`${item.namespace}.${item.path}`);
-    setEditValue(item.value);
+    // Convert arrays to comma-separated string for editing
+    if (item.type === 'array') {
+      setEditValue(Array.isArray(item.value) ? item.value.join(', ') : '');
+    } else {
+      setEditValue(item.value);
+    }
   }
 
   function cancelEdit() {
@@ -151,15 +166,61 @@ export function ConfigView() {
     try {
       setSaving(true);
 
+      // Parse the value based on type
+      let parsedValue = editValue;
+      if (item.type === 'array') {
+        // Convert comma-separated string to array, trimming whitespace
+        parsedValue = editValue
+          .split(',')
+          .map((s: string) => s.trim())
+          .filter((s: string) => s.length > 0);
+      }
+
       // Handle app config differently (local file)
       if (item.namespace === 'app') {
-        await updateAppConfigValue(item.path, editValue);
+        await updateAppConfigValue(item.path, parsedValue);
       } else {
         // Gateway API config
         await gatewayPost('/config/update', {
           namespace: item.namespace,
           path: item.path,
-          value: editValue,
+          value: parsedValue,
+        });
+      }
+
+      await showSuccessNotification(`Updated ${item.path}`);
+
+      // Reload config to get updated value
+      await loadConfig();
+      setEditingKey(null);
+      setEditValue('');
+    } catch (err) {
+      await showErrorNotification(
+        err instanceof Error ? err.message : 'Failed to update configuration'
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleBooleanToggle(item: ConfigItem, newValue: boolean) {
+    try {
+      setSaving(true);
+
+      // Handle app config differently (local file)
+      if (item.namespace === 'app') {
+        await updateAppConfigValue(item.path, newValue);
+
+        // If it's darkMode, also update AppContext to trigger immediate UI change
+        if (item.path === 'darkMode') {
+          setDarkMode(newValue);
+        }
+      } else {
+        // Gateway API config
+        await gatewayPost('/config/update', {
+          namespace: item.namespace,
+          path: item.path,
+          value: newValue,
         });
       }
 
@@ -225,7 +286,7 @@ export function ConfigView() {
   return (
     <div className="flex flex-col md:flex-row h-full">
       {/* Mobile Dropdown Selector */}
-      <div className="md:hidden border-b p-4">
+      <div className="md:hidden border-b p-2">
         <Select
           value={selectedNamespace}
           onChange={(e) => setSelectedNamespace(e.target.value)}
@@ -377,12 +438,12 @@ export function ConfigView() {
 
       {/* Main content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="p-4 md:p-6">
+        <div className="p-2 md:p-6">
           <Card>
-            <CardHeader>
+            <CardHeader className="p-3 md:p-6">
               <CardTitle className="text-lg md:text-xl">{selectedNamespace}</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 md:p-6">
               {loading ? (
                 <p className="text-sm text-muted-foreground">Loading...</p>
               ) : configItems.length === 0 ? (
@@ -391,12 +452,12 @@ export function ConfigView() {
                 </p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[500px]">
+                  <table className="w-full">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-2 text-sm md:text-base">Setting</th>
-                        <th className="text-right py-2 text-sm md:text-base">Value</th>
-                        <th className="w-10"></th>
+                        <th className="text-left py-2 text-xs md:text-sm">Setting</th>
+                        <th className="text-right py-2 text-xs md:text-sm pr-2">Value</th>
+                        <th className="w-8 md:w-10"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -411,46 +472,59 @@ export function ConfigView() {
                             onMouseEnter={() => setHoveredRow(i)}
                             onMouseLeave={() => setHoveredRow(null)}
                           >
-                            <td className="py-2 text-sm md:text-base break-words max-w-[200px] md:max-w-none">
+                            <td className="py-2 text-xs md:text-sm break-words max-w-[120px] md:max-w-none pr-2">
                               {item.path}
                             </td>
-                            <td className="py-2 text-right">
-                              {isEditing ? (
-                                <div className="flex gap-2 justify-end">
-                                  {item.type === 'boolean' ? (
-                                    <Select
-                                      value={String(editValue)}
-                                      onChange={(e) => setEditValue(e.target.value === 'true')}
-                                      className="w-24 md:w-32 text-sm"
-                                    >
-                                      <option value="true">true</option>
-                                      <option value="false">false</option>
-                                    </Select>
-                                  ) : (
-                                    <Input
-                                      type={item.type === 'number' ? 'number' : 'text'}
-                                      value={editValue}
-                                      onChange={(e) => {
-                                        const val = item.type === 'number'
-                                          ? Number(e.target.value)
-                                          : e.target.value;
-                                        setEditValue(val);
-                                      }}
-                                      className="w-40 md:w-64 text-right text-sm"
-                                      disabled={saving}
+                            <td className="py-2 text-right pr-2">
+                              {item.type === 'boolean' ? (
+                                // Boolean values always show as toggle, no edit mode needed
+                                <div className="flex items-center gap-2 justify-end min-w-[140px]">
+                                  <span className="text-xs text-muted-foreground">false</span>
+                                  <button
+                                    onClick={() => handleBooleanToggle(item, !item.value)}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
+                                      item.value ? 'bg-primary' : 'bg-gray-300'
+                                    }`}
+                                    disabled={saving}
+                                  >
+                                    <span
+                                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                        item.value ? 'translate-x-6' : 'translate-x-1'
+                                      }`}
                                     />
-                                  )}
+                                  </button>
+                                  <span className="text-xs text-muted-foreground">true</span>
+                                </div>
+                              ) : isEditing ? (
+                                // Non-boolean values: show input in edit mode
+                                <div className="flex gap-2 justify-end">
+                                  <Input
+                                    type={item.type === 'number' ? 'number' : 'text'}
+                                    value={editValue}
+                                    onChange={(e) => {
+                                      const val = item.type === 'number'
+                                        ? Number(e.target.value)
+                                        : e.target.value;
+                                      setEditValue(val);
+                                    }}
+                                    className="w-40 md:w-64 text-right text-sm"
+                                    disabled={saving}
+                                  />
                                 </div>
                               ) : (
+                                // Non-boolean values: show text when not editing
                                 <span className="text-sm text-muted-foreground break-all">
-                                  {typeof item.value === 'boolean'
-                                    ? (item.value ? 'true' : 'false')
+                                  {item.type === 'array' && Array.isArray(item.value)
+                                    ? item.value.join(', ')
                                     : String(item.value)}
                                 </span>
                               )}
                             </td>
                             <td className="text-right">
-                              {isEditing ? (
+                              {item.type === 'boolean' ? (
+                                // Boolean values don't need edit button (they're always toggles)
+                                null
+                              ) : isEditing ? (
                                 <div className="flex gap-1 justify-end">
                                   <button
                                     onClick={() => saveEdit(item)}

@@ -8,7 +8,8 @@ interface AppState {
   setSelectedWallet: (wallet: string) => void;
   selectedChain: string;
   setSelectedChain: (chain: string) => void;
-  theme: 'light' | 'dark';
+  darkMode: boolean;
+  setDarkMode: (value: boolean) => void;
   toggleTheme: () => void;
 }
 
@@ -18,19 +19,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedNetwork, setSelectedNetwork] = useState('mainnet-beta');
   const [selectedWallet, setSelectedWallet] = useState('');
   const [selectedChain, setSelectedChain] = useState('solana');
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [darkMode, setDarkMode] = useState<boolean>(true);
   const [themeLoaded, setThemeLoaded] = useState(false);
 
-  // Load theme from app config on mount
+  // Load darkMode from app config on mount
   useEffect(() => {
     async function loadTheme() {
       try {
         const config = await readAppConfig();
-        setTheme(config.theme || 'dark');
+        setDarkMode(config.darkMode ?? true);
       } catch (err) {
-        console.error('Failed to load theme from app config:', err);
-        // Fallback to dark theme
-        setTheme('dark');
+        console.error('Failed to load darkMode from app config:', err);
+        // Fallback to dark mode
+        setDarkMode(true);
       } finally {
         setThemeLoaded(true);
       }
@@ -38,25 +39,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadTheme();
   }, []);
 
-  // Apply theme to document and save to config
+  // Apply darkMode to document and save to config
   useEffect(() => {
     if (!themeLoaded) return;
 
     const root = document.documentElement;
-    if (theme === 'dark') {
+    if (darkMode) {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
 
-    // Save theme to app config
-    updateAppConfigValue('theme', theme).catch(err => {
-      console.error('Failed to save theme to app config:', err);
+    // Save darkMode to app config
+    updateAppConfigValue('darkMode', darkMode).catch(err => {
+      console.error('Failed to save darkMode to app config:', err);
     });
-  }, [theme, themeLoaded]);
+  }, [darkMode, themeLoaded]);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    setDarkMode(prev => !prev);
   };
 
   return (
@@ -68,7 +69,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSelectedWallet,
         selectedChain,
         setSelectedChain,
-        theme,
+        darkMode,
+        setDarkMode,
         toggleTheme,
       }}
     >

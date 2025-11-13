@@ -136,7 +136,7 @@ export function SwapView() {
       setError(null);
 
       // Show pending notification
-      await showSuccessNotification('⏳ Transaction pending...', 'Swap is being executed');
+      await showSuccessNotification('⏳ Transaction pending... Swap is being executed');
 
       const result = await gatewayPost<any>(`/connectors/${connector}/router/execute-swap`, {
         network: selectedNetwork,
@@ -154,8 +154,7 @@ export function SwapView() {
         : `Swapped ${amount} ${fromToken} for ${toToken}`;
 
       await showSuccessNotification(
-        `✅ Swap executed successfully!`,
-        successMessage
+        `✅ Swap executed successfully! ${successMessage}`
       );
 
       setAmount('');
@@ -172,15 +171,15 @@ export function SwapView() {
   const fromBalance = balances[fromToken] || '0';
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 md:p-6 space-y-3 md:space-y-6">
       <Card className="w-full max-w-2xl mx-auto">
-        <CardHeader>
+        <CardHeader className="p-3 md:p-6">
           <CardTitle>Swap</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 p-3 md:p-6">
           {/* Connector Selection */}
           <div>
-            <label className="text-sm font-medium">Connector</label>
+            <label className="text-xs md:text-sm font-medium">Connector</label>
             <Select
               value={connector}
               onChange={(e) => setConnector(e.target.value)}
@@ -193,11 +192,11 @@ export function SwapView() {
 
           {/* From Token */}
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="p-3 md:pt-6">
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <label className="text-sm font-medium">From</label>
-                  <div className="text-sm text-muted-foreground">
+                  <label className="text-xs md:text-sm font-medium">From</label>
+                  <div className="text-xs md:text-sm text-muted-foreground">
                     Balance: {parseFloat(fromBalance).toFixed(6)}
                   </div>
                 </div>
@@ -248,9 +247,9 @@ export function SwapView() {
 
           {/* To Token */}
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="p-3 md:pt-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium">To</label>
+                <label className="text-xs md:text-sm font-medium">To</label>
                 <div className="flex gap-2">
                   <Select
                     value={toToken}
@@ -278,8 +277,8 @@ export function SwapView() {
           {/* Quote Details */}
           {quote && (
             <Card>
-              <CardContent className="pt-6">
-                <div className="space-y-2 text-sm">
+              <CardContent className="p-3 md:pt-6">
+                <div className="space-y-2 text-xs md:text-sm">
                   {quote.quoteId && (
                     <div className="flex justify-between border-b pb-2 mb-2">
                       <span>Quote ID:</span>

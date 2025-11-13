@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 
 export interface AppConfig {
-  theme: 'light' | 'dark';
+  darkMode: boolean;
 }
 
 // Check if we're running in Tauri
@@ -16,7 +16,7 @@ export async function readAppConfig(): Promise<AppConfig> {
     if (stored) {
       return JSON.parse(stored);
     }
-    return { theme: 'dark' };
+    return { darkMode: true };
   }
 
   const configStr = await invoke<string>('read_app_config');

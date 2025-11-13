@@ -156,11 +156,11 @@ export function NetworkStatus({ chain, network }: NetworkStatusProps) {
                   </div>
                 )}
 
-                <div className="py-2">
+                <div className="flex justify-between py-2 border-b">
                   <span className="text-muted-foreground">RPC URL</span>
-                  <p className="font-mono text-xs mt-1 break-all bg-muted p-2 rounded">
+                  <span className="text-xs break-all max-w-xs text-right">
                     {status.rpcUrl}
-                  </p>
+                  </span>
                 </div>
               </div>
             </div>

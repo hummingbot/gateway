@@ -30,9 +30,7 @@ ipWhitelist: []
 # Add your client app URLs here. Empty array means no CORS origins allowed.
 allowedOrigins:
   - http://localhost:1420
-  - http://localhost:3000
   - https://localhost:1420
-  - https://localhost:3000
 
 # If true, logs will be stored in logPath and printed to stdout. If false, they
 # will only be stored in logPath and not printed to stdout.

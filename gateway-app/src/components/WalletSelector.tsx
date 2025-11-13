@@ -53,7 +53,7 @@ export function WalletSelector({
     <Select
       value={getCurrentValue()}
       onChange={(e) => handleChange(e.target.value)}
-      className="w-64"
+      className="w-48"
     >
       {!hasWallets ? (
         <option value="add-wallet">+ Add Wallet</option>

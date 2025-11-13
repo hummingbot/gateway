@@ -100,7 +100,7 @@ export function PortfolioView() {
       // Format chainNetwork parameter (e.g., "solana-mainnet-beta" or "ethereum-mainnet")
       const chainNetwork = `${chain}-${network}`;
 
-      const response = await gatewayPost<{ message: string; token: Token }>(
+      const response = await gatewayPost<{ message: string; token: TokenInfo }>(
         `/tokens/save/${address}?chainNetwork=${chainNetwork}`,
         {}
       );
@@ -174,10 +174,10 @@ export function PortfolioView() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 md:p-6 space-y-3 md:space-y-6">
       {/* Balances */}
       <Card>
-        <CardHeader>
+        <CardHeader className="p-3 md:p-6">
           <div className="flex justify-between items-center">
             <CardTitle>Balances</CardTitle>
             <Button onClick={() => setShowAddToken(true)} size="sm">
@@ -185,7 +185,7 @@ export function PortfolioView() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 md:p-6">
           <div className="space-y-4">
             {balances.length === 0 ? (
               <p className="text-muted-foreground">No tokens found</p>
@@ -193,10 +193,10 @@ export function PortfolioView() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-2">Symbol</th>
-                    <th className="text-left py-2">Name</th>
-                    <th className="text-right py-2">Balance</th>
-                    <th className="w-10"></th>
+                    <th className="text-left py-2 text-xs md:text-sm">Symbol</th>
+                    <th className="text-left py-2 text-xs md:text-sm">Name</th>
+                    <th className="text-right py-2 text-xs md:text-sm">Balance</th>
+                    <th className="w-8 md:w-10"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -227,7 +227,7 @@ export function PortfolioView() {
                         onMouseEnter={() => setHoveredRow(i)}
                         onMouseLeave={() => setHoveredRow(null)}
                       >
-                        <td className="py-2">
+                        <td className="py-2 text-xs md:text-sm">
                           {explorerUrl ? (
                             <a
                               href={explorerUrl}
@@ -241,10 +241,10 @@ export function PortfolioView() {
                             balance.symbol
                           )}
                         </td>
-                        <td className="py-2">
+                        <td className="py-2 text-xs md:text-sm">
                           {balance.name}
                         </td>
-                        <td className="text-right">
+                        <td className="text-right text-xs md:text-sm">
                           {formattedBalance}
                         </td>
                         <td className="text-right">
