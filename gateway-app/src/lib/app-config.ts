@@ -4,12 +4,32 @@ export interface AppConfig {
   theme: 'light' | 'dark';
 }
 
+// Check if we're running in Tauri
+function isTauri(): boolean {
+  return typeof window !== 'undefined' && '__TAURI__' in window;
+}
+
 export async function readAppConfig(): Promise<AppConfig> {
+  if (!isTauri()) {
+    // Fallback to localStorage in browser mode
+    const stored = localStorage.getItem('app-config');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    return { theme: 'dark' };
+  }
+
   const configStr = await invoke<string>('read_app_config');
   return JSON.parse(configStr);
 }
 
 export async function writeAppConfig(config: AppConfig): Promise<void> {
+  if (!isTauri()) {
+    // Fallback to localStorage in browser mode
+    localStorage.setItem('app-config', JSON.stringify(config, null, 2));
+    return;
+  }
+
   await invoke('write_app_config', { config: JSON.stringify(config, null, 2) });
 }
 
