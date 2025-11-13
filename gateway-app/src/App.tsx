@@ -131,11 +131,11 @@ function AppContent() {
               {networks.length > 0 ? (
                 networks.map((network) => (
                   <option key={network} value={network}>
-                    {network}
+                    {selectedChain}-{network}
                   </option>
                 ))
               ) : (
-                <option value={selectedNetwork}>{selectedNetwork}</option>
+                <option value={selectedNetwork}>{selectedChain}-{selectedNetwork}</option>
               )}
             </Select>
 
