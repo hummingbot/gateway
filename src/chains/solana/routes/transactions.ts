@@ -27,7 +27,7 @@ export const transactionsRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { network, walletAddress, connector, sinceBlock, limit = 10 } = request.query;
+      const { network, walletAddress, connector, sinceBlock, limit = 100 } = request.query;
 
       const solana = await Solana.getInstance(network);
       const currentBlock = await solana.getCurrentBlockNumber();
@@ -46,8 +46,9 @@ export const transactionsRoute: FastifyPluginAsync = async (fastify) => {
           }
         }
 
-        // Fetch more signatures if we need to filter (since some will be excluded)
-        const fetchLimit = filterByProgramId ? Math.min(limit * 3, 100) : limit;
+        // When filtering by connector, limit represents signatures to fetch (not results to return)
+        // This is because we need to fetch and check each transaction
+        const fetchLimit = Math.min(limit, 1000); // Cap at RPC max
 
         const signatures = await solana.connection.getSignaturesForAddress(new PublicKey(walletAddress), {
           limit: fetchLimit,
@@ -55,7 +56,7 @@ export const transactionsRoute: FastifyPluginAsync = async (fastify) => {
         });
 
         logger.info(
-          `Fetched ${signatures.length} signatures for wallet ${walletAddress}${connector ? ` with connector filter: ${connector}` : ''}`,
+          `Fetched ${signatures.length} signatures for wallet ${walletAddress}${connector ? ` (will filter by ${connector})` : ''}`,
         );
 
         // Filter transactions by program ID if specified
@@ -64,8 +65,6 @@ export const transactionsRoute: FastifyPluginAsync = async (fastify) => {
           const filtered = [];
 
           for (const sig of signatures) {
-            if (filtered.length >= limit) break;
-
             try {
               // Fetch the transaction to check program IDs
               const txData = await solana.getTransaction(sig.signature);
@@ -100,7 +99,7 @@ export const transactionsRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Map signatures to transaction items (lightweight - no parsing)
-        const transactions = filteredTransactions.slice(0, limit).map((sig) => ({
+        const transactions = filteredTransactions.map((sig) => ({
           signature: sig.signature,
           slot: sig.slot,
           blockTime: sig.blockTime,

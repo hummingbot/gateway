@@ -161,9 +161,10 @@ export const TransactionsRequestSchema = Type.Object(
     limit: Type.Optional(
       Type.Number({
         minimum: 1,
-        maximum: 100,
-        default: 10,
-        description: 'Maximum number of transactions to return (default: 10 to respect rate limits)',
+        maximum: 1000,
+        default: 100,
+        description:
+          'Number of signatures to fetch from RPC (default: 100). When filtering by connector, this is the number of signatures to scan, not the number of results returned. Without connector filter, this is the number of results returned.',
       }),
     ),
   },
