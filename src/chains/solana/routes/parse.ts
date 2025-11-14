@@ -22,7 +22,7 @@ export const parseRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { network, signature, walletAddress, tokens, connector, type } = request.body;
+      const { network, signature, walletAddress, connector } = request.body;
 
       const solana = await Solana.getInstance(network);
 
@@ -61,7 +61,14 @@ export const parseRoute: FastifyPluginAsync = async (fastify) => {
         let connectorDetected = false;
         let action = '';
 
-        if (connector && connector.toLowerCase() === 'jupiter' && type === 'router') {
+        // Parse connector parameter (e.g., "jupiter/router")
+        let connectorName: string | undefined;
+        let connectorType: string | undefined;
+        if (connector) {
+          [connectorName, connectorType] = connector.split('/');
+        }
+
+        if (connectorName && connectorName.toLowerCase() === 'jupiter' && connectorType === 'router') {
           // Check if any instruction in the transaction called Jupiter program
           const message = txData.transaction.message;
           const instructions = (message as any).compiledInstructions || (message as any).instructions || [];
@@ -85,9 +92,9 @@ export const parseRoute: FastifyPluginAsync = async (fastify) => {
         const tokenMap = new Map<string, string>();
         tokenMap.set('SOL', nativeTokenAddress);
 
-        // If connector/type provided and detected, auto-detect tokens from transaction
-        if (connector && type && connectorDetected && (!tokens || tokens.length === 0)) {
-          logger.info(`Auto-detecting tokens from transaction using connector: ${connector}/${type}`);
+        // If connector provided and detected, auto-detect tokens from transaction
+        if (connector && connectorDetected) {
+          logger.info(`Auto-detecting tokens from transaction using connector: ${connector}`);
 
           // Get all token account changes from the transaction
           const preTokenBalances = txData.meta?.preTokenBalances || [];
@@ -139,18 +146,6 @@ export const parseRoute: FastifyPluginAsync = async (fastify) => {
             }
           }
         }
-        // Add user-specified tokens if provided
-        else if (tokens && tokens.length > 0) {
-          for (const token of tokens) {
-            const tokenInfo = await solana.getToken(token);
-            if (tokenInfo) {
-              tokensToTrack.push(tokenInfo.address);
-              tokenMap.set(token, tokenInfo.address);
-            } else {
-              logger.warn(`Could not find token info for: ${token}`);
-            }
-          }
-        }
 
         // Extract balance changes and fee
         const result = await solana.extractBalanceChangesAndFee(signature, walletAddress, tokensToTrack);
@@ -181,7 +176,7 @@ export const parseRoute: FastifyPluginAsync = async (fastify) => {
           fee,
           nativeBalanceChange,
           tokenBalanceChanges: Object.keys(tokenBalanceChanges).length > 0 ? tokenBalanceChanges : undefined,
-          connector: connectorDetected ? connector : undefined,
+          connector: connectorDetected ? connectorName : undefined,
           action: action || undefined,
         };
       } catch (error) {

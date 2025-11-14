@@ -80,19 +80,12 @@ export const SolanaTransactionsRequest = Type.Object({
     default: solanaChainConfig.defaultWallet,
     examples: ['82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5'],
   }),
-  connector: Type.Optional(
-    Type.String({
-      description: 'Filter by connector with type (e.g., jupiter/router, raydium/clmm, meteora/clmm)',
-      examples: ['jupiter/router'],
-    }),
-  ),
   limit: Type.Optional(
     Type.Number({
       minimum: 1,
       maximum: 1000,
       default: 100,
-      description:
-        'Number of signatures to fetch from RPC (default: 100). When filtering by connector, this is the number of signatures to scan, not the number of results returned. Without connector filter, this is the number of results returned.',
+      description: 'Number of transaction signatures to fetch from RPC (default: 100, max: 1000)',
       examples: [100],
     }),
   ),
@@ -110,24 +103,11 @@ export const SolanaParseRequest = Type.Object({
     default: solanaChainConfig.defaultWallet,
     examples: ['82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5'],
   }),
-  tokens: Type.Optional(
-    Type.Array(Type.String(), {
-      description:
-        'Tokens to track balance changes for (SOL is always included). If not provided with connector/type, will auto-detect from transaction.',
-      examples: [EXAMPLE_TOKENS],
-    }),
-  ),
   connector: Type.Optional(
     Type.String({
-      description: 'Connector name (e.g., jupiter, raydium, meteora) - helps identify program and decode instructions',
-      examples: ['jupiter'],
-    }),
-  ),
-  type: Type.Optional(
-    Type.String({
-      description: 'Connector type (router, amm, clmm) - helps identify which IDL to use for decoding',
-      enum: ['router', 'amm', 'clmm'],
-      examples: ['router'],
+      description:
+        'Connector with type (e.g., jupiter/router) - helps identify program and auto-detect tokens from transaction',
+      examples: ['jupiter/router'],
     }),
   ),
 });

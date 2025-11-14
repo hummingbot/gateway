@@ -148,18 +148,12 @@ export const TransactionsRequestSchema = Type.Object(
     walletAddress: Type.String({
       description: 'Wallet address to fetch transactions for',
     }),
-    connector: Type.Optional(
-      Type.String({
-        description: 'Filter by connector with type (e.g., jupiter/router, raydium/clmm, meteora/clmm)',
-      }),
-    ),
     limit: Type.Optional(
       Type.Number({
         minimum: 1,
         maximum: 1000,
         default: 100,
-        description:
-          'Number of signatures to fetch from RPC (default: 100). When filtering by connector, this is the number of signatures to scan, not the number of results returned. Without connector filter, this is the number of results returned.',
+        description: 'Number of transaction signatures to fetch from RPC (default: 100, max: 1000)',
       }),
     ),
   },
@@ -199,20 +193,10 @@ export const ParseRequestSchema = Type.Object(
     network: Type.Optional(Type.String()),
     signature: Type.String({ description: 'Transaction signature to parse' }),
     walletAddress: Type.String({ description: 'Wallet address for balance change calculation' }),
-    tokens: Type.Optional(
-      Type.Array(Type.String(), {
-        description: 'Array of token symbols or addresses to track balance changes',
-      }),
-    ),
     connector: Type.Optional(
       Type.String({
         description:
-          'Connector name (e.g., jupiter, raydium, meteora) - helps identify program and decode instructions',
-      }),
-    ),
-    type: Type.Optional(
-      Type.String({
-        description: 'Connector type (router, amm, clmm) - helps identify which IDL to use for decoding',
+          'Connector with type (e.g., jupiter/router) - helps identify program and auto-detect tokens from transaction',
       }),
     ),
   },
