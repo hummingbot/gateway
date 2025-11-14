@@ -1,3 +1,4 @@
+import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync } from 'fastify';
 
 import { ParseRequestType, ParseResponseType, ParseResponseSchema } from '../../../schemas/chain-schema';
@@ -86,11 +87,19 @@ export const parseRoute: FastifyPluginAsync = async (fastify) => {
           }
         }
 
-        // Always calculate native currency (SOL) balance change
+        // Calculate native currency (SOL) balance change including fees
         const nativeTokenAddress = 'So11111111111111111111111111111111111111112'; // SOL mint address
-        const tokensToTrack = [nativeTokenAddress];
-        const tokenMap = new Map<string, string>();
-        tokenMap.set('SOL', nativeTokenAddress);
+
+        // Get transaction fee
+        const fee = txData.meta?.fee ? txData.meta.fee / 1e9 : 0; // Convert lamports to SOL
+
+        // Calculate native SOL balance change
+        const preBalance = txData.meta?.preBalances?.[0] || 0;
+        const postBalance = txData.meta?.postBalances?.[0] || 0;
+        const nativeBalanceChange = (postBalance - preBalance) / 1e9; // Convert lamports to SOL
+
+        // Build token balance changes dictionary
+        const tokenBalanceChanges: Record<string, number> = {};
 
         // If connector provided and detected, auto-detect tokens from transaction
         if (connector && connectorDetected) {
@@ -100,33 +109,49 @@ export const parseRoute: FastifyPluginAsync = async (fastify) => {
           const preTokenBalances = txData.meta?.preTokenBalances || [];
           const postTokenBalances = txData.meta?.postTokenBalances || [];
 
-          // Extract unique mint addresses that had balance changes
-          const mintAddresses = new Set<string>();
+          // Build a map of account index to balance info for easier lookup
+          const preBalanceMap = new Map<number, any>();
+          const postBalanceMap = new Map<number, any>();
+
+          for (const balance of preTokenBalances) {
+            preBalanceMap.set(balance.accountIndex, balance);
+          }
+          for (const balance of postTokenBalances) {
+            postBalanceMap.set(balance.accountIndex, balance);
+          }
+
+          // Filter to only include token accounts owned by the specified wallet
+          const walletPubkey = new PublicKey(walletAddress);
+          const accountIndices = new Set<number>();
+
           for (const balance of [...preTokenBalances, ...postTokenBalances]) {
-            if (balance.mint) {
-              mintAddresses.add(balance.mint);
+            // Check if this token account is owned by the wallet
+            if (balance.owner === walletAddress || balance.owner === walletPubkey.toString()) {
+              accountIndices.add(balance.accountIndex);
             }
           }
 
-          // Look up symbols for each mint and build action string
+          // Look up symbols for each mint and calculate balance changes
           const detectedTokens: Array<{ symbol: string; mint: string; change: number }> = [];
-          for (const mint of mintAddresses) {
+          for (const accountIndex of accountIndices) {
+            const preBalance = preBalanceMap.get(accountIndex);
+            const postBalance = postBalanceMap.get(accountIndex);
+
+            // Get the mint address (should be same in both pre and post)
+            const mint = preBalance?.mint || postBalance?.mint;
+            if (!mint) continue;
+
             try {
               const token = await solana.getToken(mint);
               if (token) {
-                tokensToTrack.push(mint);
-                tokenMap.set(token.symbol, mint);
+                // Calculate balance change for this token account
+                const preAmount = preBalance?.uiTokenAmount?.uiAmount || 0;
+                const postAmount = postBalance?.uiTokenAmount?.uiAmount || 0;
+                const change = postAmount - preAmount;
 
-                // Calculate balance change for this token
-                const index = Array.from(postTokenBalances).findIndex((b) => b.mint === mint);
-                if (index >= 0) {
-                  const preBalance = preTokenBalances[index]?.uiTokenAmount?.uiAmount || 0;
-                  const postBalance = postTokenBalances[index]?.uiTokenAmount?.uiAmount || 0;
-                  const change = postBalance - preBalance;
-
-                  if (change !== 0) {
-                    detectedTokens.push({ symbol: token.symbol, mint, change });
-                  }
+                if (change !== 0) {
+                  detectedTokens.push({ symbol: token.symbol, mint, change });
+                  tokenBalanceChanges[token.symbol] = change;
                 }
 
                 logger.info(`Auto-detected token: ${token.symbol} (${mint})`);
@@ -137,30 +162,23 @@ export const parseRoute: FastifyPluginAsync = async (fastify) => {
           }
 
           // Build action string for Jupiter swap (e.g., "Swap 0.001 WSOL for 12602.89 BONK on Jupiter Aggregator v6")
-          if (detectedTokens.length >= 2) {
-            const sold = detectedTokens.find((t) => t.change < 0);
+          // For swaps involving native SOL/WSOL, use the native balance change
+          if (detectedTokens.length >= 1) {
             const bought = detectedTokens.find((t) => t.change > 0);
+            const sold = detectedTokens.find((t) => t.change < 0);
 
-            if (sold && bought) {
+            if (bought && nativeBalanceChange < 0) {
+              // User sold SOL/WSOL to buy token
+              const solSold = Math.abs(nativeBalanceChange + fee); // Add back fee to get actual amount sold
+              action = `Swap ${solSold.toFixed(6)} SOL for ${Math.abs(bought.change).toFixed(6)} ${bought.symbol} on Jupiter Aggregator v6`;
+            } else if (sold && bought) {
+              // Token-to-token swap
               action = `Swap ${Math.abs(sold.change).toFixed(6)} ${sold.symbol} for ${Math.abs(bought.change).toFixed(6)} ${bought.symbol} on Jupiter Aggregator v6`;
+            } else if (sold && nativeBalanceChange > 0) {
+              // User sold token to buy SOL/WSOL
+              const solBought = nativeBalanceChange + fee; // Add back fee to get actual amount received
+              action = `Swap ${Math.abs(sold.change).toFixed(6)} ${sold.symbol} for ${solBought.toFixed(6)} SOL on Jupiter Aggregator v6`;
             }
-          }
-        }
-
-        // Extract balance changes and fee
-        const result = await solana.extractBalanceChangesAndFee(signature, walletAddress, tokensToTrack);
-        const fee = result.fee;
-
-        // Native SOL balance change (first item in array)
-        const nativeBalanceChange = result.balanceChanges[0];
-
-        // Build token balance changes dictionary
-        const tokenBalanceChanges: Record<string, number> = {};
-        let i = 1; // Start from index 1 (after SOL)
-        for (const [symbol, address] of tokenMap.entries()) {
-          if (address !== nativeTokenAddress) {
-            tokenBalanceChanges[symbol] = result.balanceChanges[i];
-            i++;
           }
         }
 
