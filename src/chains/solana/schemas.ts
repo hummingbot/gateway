@@ -112,8 +112,21 @@ export const SolanaParseRequest = Type.Object({
   }),
   tokens: Type.Optional(
     Type.Array(Type.String(), {
-      description: 'Tokens to track balance changes for (SOL is always included)',
+      description:
+        'Tokens to track balance changes for (SOL is always included). If not provided with connector/type, will auto-detect from transaction.',
       examples: [EXAMPLE_TOKENS],
+    }),
+  ),
+  connector: Type.Optional(
+    Type.String({
+      description: 'Connector name (e.g., jupiter, raydium, meteora) - helps identify program and decode instructions',
+      examples: ['jupiter', 'raydium', 'meteora'],
+    }),
+  ),
+  type: Type.Optional(
+    Type.String({
+      description: 'Connector type (router, amm, clmm) - helps identify which IDL to use for decoding',
+      enum: ['router', 'amm', 'clmm'],
     }),
   ),
 });

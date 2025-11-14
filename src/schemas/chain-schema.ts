@@ -208,6 +208,17 @@ export const ParseRequestSchema = Type.Object(
         description: 'Array of token symbols or addresses to track balance changes',
       }),
     ),
+    connector: Type.Optional(
+      Type.String({
+        description:
+          'Connector name (e.g., jupiter, raydium, meteora) - helps identify program and decode instructions',
+      }),
+    ),
+    type: Type.Optional(
+      Type.String({
+        description: 'Connector type (router, amm, clmm) - helps identify which IDL to use for decoding',
+      }),
+    ),
   },
   { $id: 'ParseRequest' },
 );
@@ -231,6 +242,17 @@ export const ParseResponseSchema = Type.Object(
     tokenBalanceChanges: Type.Optional(
       Type.Record(Type.String(), Type.Number(), {
         description: 'Balance changes keyed by token symbol or address',
+      }),
+    ),
+    connector: Type.Optional(
+      Type.String({
+        description: 'Detected connector name if transaction interacted with a known program',
+      }),
+    ),
+    action: Type.Optional(
+      Type.String({
+        description:
+          'Human-readable description of the action (e.g., "Swap 0.001 WSOL for 12602.89 BONK on Jupiter Aggregator v6")',
       }),
     ),
     error: Type.Optional(Type.String()),
