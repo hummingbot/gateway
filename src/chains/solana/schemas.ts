@@ -78,15 +78,18 @@ export const SolanaTransactionsRequest = Type.Object({
   walletAddress: Type.String({
     description: 'Wallet address to fetch transactions for',
     default: solanaChainConfig.defaultWallet,
+    examples: ['82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5'],
   }),
   connector: Type.Optional(
     Type.String({
       description: 'Filter by connector with type (e.g., jupiter/router, raydium/clmm, meteora/clmm)',
+      examples: ['jupiter/router'],
     }),
   ),
   sinceBlock: Type.Optional(
     Type.Number({
       description: 'Fetch transactions after this slot number',
+      examples: [379876583],
     }),
   ),
   limit: Type.Optional(
@@ -95,6 +98,7 @@ export const SolanaTransactionsRequest = Type.Object({
       maximum: 100,
       default: 10,
       description: 'Maximum number of transactions to return (default: 10 to respect rate limits)',
+      examples: [10],
     }),
   ),
 });
@@ -104,11 +108,12 @@ export const SolanaParseRequest = Type.Object({
   network: SolanaNetworkParameter,
   signature: Type.String({
     description: 'Transaction signature to parse',
-    examples: [EXAMPLE_SIGNATURE],
+    examples: ['Tqv6o4BvJmdNxpFbPquv4hKuM9mqyxWvvTmkd19wQZ2VQdC7m71gpFHaXTms53a5a7KfnFZXfnDeztVKTsViqFr'],
   }),
   walletAddress: Type.String({
     description: 'Wallet address to calculate balance changes for',
     default: solanaChainConfig.defaultWallet,
+    examples: ['82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5'],
   }),
   tokens: Type.Optional(
     Type.Array(Type.String(), {
@@ -120,13 +125,14 @@ export const SolanaParseRequest = Type.Object({
   connector: Type.Optional(
     Type.String({
       description: 'Connector name (e.g., jupiter, raydium, meteora) - helps identify program and decode instructions',
-      examples: ['jupiter', 'raydium', 'meteora'],
+      examples: ['jupiter'],
     }),
   ),
   type: Type.Optional(
     Type.String({
       description: 'Connector type (router, amm, clmm) - helps identify which IDL to use for decoding',
       enum: ['router', 'amm', 'clmm'],
+      examples: ['router'],
     }),
   ),
 });

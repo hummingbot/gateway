@@ -33,18 +33,74 @@ export const transactionsRoute: FastifyPluginAsync = async (fastify) => {
       const currentBlock = await solana.getCurrentBlockNumber();
 
       try {
-        // Fetch signatures for the wallet address
+        // Program ID for Jupiter
+        const JUPITER_PROGRAM_ID = 'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4';
+
+        // Parse connector parameter (e.g., "jupiter/router")
+        let filterByProgramId: string | undefined;
+        if (connector) {
+          const [connectorName, connectorType] = connector.split('/');
+          if (connectorName === 'jupiter' && connectorType === 'router') {
+            filterByProgramId = JUPITER_PROGRAM_ID;
+            logger.info(`Filtering transactions for Jupiter Aggregator v6: ${JUPITER_PROGRAM_ID}`);
+          }
+        }
+
+        // Fetch more signatures if we need to filter (since some will be excluded)
+        const fetchLimit = filterByProgramId ? Math.min(limit * 3, 100) : limit;
+
         const signatures = await solana.connection.getSignaturesForAddress(new PublicKey(walletAddress), {
-          limit,
-          ...(sinceBlock && { until: undefined }), // TODO: Convert sinceBlock to signature if needed
+          limit: fetchLimit,
+          ...(sinceBlock && { until: undefined }),
         });
 
         logger.info(
           `Fetched ${signatures.length} signatures for wallet ${walletAddress}${connector ? ` with connector filter: ${connector}` : ''}`,
         );
 
+        // Filter transactions by program ID if specified
+        let filteredTransactions = signatures;
+        if (filterByProgramId) {
+          const filtered = [];
+
+          for (const sig of signatures) {
+            if (filtered.length >= limit) break;
+
+            try {
+              // Fetch the transaction to check program IDs
+              const txData = await solana.getTransaction(sig.signature);
+              if (!txData) continue;
+
+              // Check if transaction interacted with the program
+              const message = txData.transaction.message;
+              const instructions = (message as any).compiledInstructions || (message as any).instructions || [];
+              const accountKeys = (message as any).staticAccountKeys || (message as any).accountKeys || [];
+
+              let programFound = false;
+              for (const ix of instructions) {
+                const programIdIndex = ix.programIdIndex;
+                const programId = accountKeys[programIdIndex]?.toString();
+
+                if (programId === filterByProgramId) {
+                  programFound = true;
+                  break;
+                }
+              }
+
+              if (programFound) {
+                filtered.push(sig);
+              }
+            } catch (error) {
+              logger.warn(`Failed to check transaction ${sig.signature} for program filter: ${error.message}`);
+            }
+          }
+
+          filteredTransactions = filtered;
+          logger.info(`Filtered to ${filteredTransactions.length} transactions matching ${connector}`);
+        }
+
         // Map signatures to transaction items (lightweight - no parsing)
-        const transactions = signatures.map((sig) => ({
+        const transactions = filteredTransactions.slice(0, limit).map((sig) => ({
           signature: sig.signature,
           slot: sig.slot,
           blockTime: sig.blockTime,
@@ -52,9 +108,6 @@ export const transactionsRoute: FastifyPluginAsync = async (fastify) => {
           memo: sig.memo || null,
           confirmationStatus: sig.confirmationStatus || null,
         }));
-
-        // TODO: Add connector filtering by fetching and checking program IDs
-        // For now, return all transactions since filtering requires parsing each tx
 
         return {
           currentBlock,
