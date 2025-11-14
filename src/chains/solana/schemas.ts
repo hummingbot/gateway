@@ -86,12 +86,6 @@ export const SolanaTransactionsRequest = Type.Object({
       examples: ['jupiter/router'],
     }),
   ),
-  sinceBlock: Type.Optional(
-    Type.Number({
-      description: 'Fetch transactions after this slot number',
-      examples: [379876583],
-    }),
-  ),
   limit: Type.Optional(
     Type.Number({
       minimum: 1,

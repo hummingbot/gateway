@@ -27,7 +27,7 @@ export const transactionsRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { network, walletAddress, connector, sinceBlock, limit = 100 } = request.query;
+      const { network, walletAddress, connector, limit = 100 } = request.query;
 
       const solana = await Solana.getInstance(network);
       const currentBlock = await solana.getCurrentBlockNumber();
@@ -52,7 +52,6 @@ export const transactionsRoute: FastifyPluginAsync = async (fastify) => {
 
         const signatures = await solana.connection.getSignaturesForAddress(new PublicKey(walletAddress), {
           limit: fetchLimit,
-          ...(sinceBlock && { until: undefined }),
         });
 
         logger.info(

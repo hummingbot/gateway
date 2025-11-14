@@ -153,11 +153,6 @@ export const TransactionsRequestSchema = Type.Object(
         description: 'Filter by connector with type (e.g., jupiter/router, raydium/clmm, meteora/clmm)',
       }),
     ),
-    sinceBlock: Type.Optional(
-      Type.Number({
-        description: 'Fetch transactions after this slot number',
-      }),
-    ),
     limit: Type.Optional(
       Type.Number({
         minimum: 1,
