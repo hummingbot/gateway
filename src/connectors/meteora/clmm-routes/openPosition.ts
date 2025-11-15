@@ -74,8 +74,24 @@ export async function openPosition(
     throw fastify.httpErrors.badRequest(MISSING_AMOUNTS_MESSAGE);
   }
 
-  // Note: Balance validation removed - insufficient balance will be caught during transaction execution
-  // This avoids issues with the deprecated getBalance() method and aligns with PancakeSwap-Sol behavior
+  // Check balances with SOL buffer
+  const balances = await solana.getBalance(wallet, [tokenXSymbol, tokenYSymbol, 'SOL']);
+  const requiredBaseAmount =
+    (baseTokenAmount || 0) + (tokenXSymbol === 'SOL' ? SOL_POSITION_RENT + SOL_TRANSACTION_BUFFER : 0);
+  const requiredQuoteAmount =
+    (quoteTokenAmount || 0) + (tokenYSymbol === 'SOL' ? SOL_POSITION_RENT + SOL_TRANSACTION_BUFFER : 0);
+
+  if (balances[tokenXSymbol] < requiredBaseAmount) {
+    throw fastify.httpErrors.badRequest(
+      INSUFFICIENT_BALANCE_MESSAGE(tokenXSymbol, requiredBaseAmount.toString(), balances[tokenXSymbol].toString()),
+    );
+  }
+
+  if (tokenYSymbol && balances[tokenYSymbol] < requiredQuoteAmount) {
+    throw fastify.httpErrors.badRequest(
+      `Insufficient ${tokenYSymbol} balance. Required: ${requiredQuoteAmount}, Available: ${balances[tokenYSymbol]}`,
+    );
+  }
 
   // Get current pool price from active bin
   const activeBin = await dlmmPool.getActiveBin();
@@ -252,9 +268,9 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, e.message || 'Request failed');
+          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
         }
-        throw fastify.httpErrors.internalServerError(e.message || 'Internal server error');
+        throw fastify.httpErrors.internalServerError('Internal server error');
       }
     },
   );
