@@ -24,6 +24,7 @@ describe('TokenService', () => {
   describe('validateToken', () => {
     it('should validate Ethereum token with correct address checksum', async () => {
       const token: Token = {
+        chainId: 1,
         name: 'USD Coin',
         symbol: 'USDC',
         address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
@@ -35,6 +36,7 @@ describe('TokenService', () => {
 
     it('should reject Ethereum token with invalid address', async () => {
       const token: Token = {
+        chainId: 1,
         name: 'Test Token',
         symbol: 'TEST',
         address: 'invalid-address',
@@ -46,6 +48,7 @@ describe('TokenService', () => {
 
     it('should validate Solana token with valid base58 address', async () => {
       const token: Token = {
+        chainId: 101,
         name: 'Test Token',
         symbol: 'TEST',
         address: 'So11111111111111111111111111111111111111112',
@@ -57,6 +60,7 @@ describe('TokenService', () => {
 
     it('should reject token with invalid decimals', async () => {
       const token: Token = {
+        chainId: 1,
         name: 'Test Token',
         symbol: 'TEST',
         address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
@@ -70,6 +74,7 @@ describe('TokenService', () => {
 
     it('should reject unsupported chain', async () => {
       const token: Token = {
+        chainId: 1,
         name: 'Test Token',
         symbol: 'TEST',
         address: 'some-address',

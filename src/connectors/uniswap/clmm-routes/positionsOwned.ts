@@ -93,8 +93,8 @@ export async function getPositionsOwned(
       const token1Address = positionDetails.token1;
 
       // Get the tokens from addresses
-      const token0 = uniswap.getTokenByAddress(token0Address);
-      const token1 = uniswap.getTokenByAddress(token1Address);
+      const token0 = await uniswap.getToken(token0Address);
+      const token1 = await uniswap.getToken(token1Address);
 
       // Get position ticks
       const tickLower = positionDetails.tickLower;

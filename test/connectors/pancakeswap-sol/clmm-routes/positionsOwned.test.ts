@@ -105,6 +105,10 @@ describe('GET /positions-owned', () => {
     };
     const mockSolana = {
       connection: mockConnection,
+      getPositionCache: jest.fn().mockReturnValue({
+        get: jest.fn(),
+        set: jest.fn(),
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
 
@@ -141,6 +145,10 @@ describe('GET /positions-owned', () => {
     };
     const mockSolana = {
       connection: mockConnection,
+      getPositionCache: jest.fn().mockReturnValue({
+        get: jest.fn(),
+        set: jest.fn(),
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
 
@@ -193,6 +201,10 @@ describe('GET /positions-owned', () => {
     };
     const mockSolana = {
       connection: mockConnection,
+      getPositionCache: jest.fn().mockReturnValue({
+        get: jest.fn(),
+        set: jest.fn(),
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
 

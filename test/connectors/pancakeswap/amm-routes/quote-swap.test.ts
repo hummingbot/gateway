@@ -176,7 +176,7 @@ describe('GET /quote-swap', () => {
     // Mock Pancakeswap instance
     const mockPancakeswapInstance = {
       router: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D',
-      getTokenBySymbol: jest.fn().mockImplementation((symbol) => {
+      getToken: jest.fn().mockImplementation((symbol) => {
         if (symbol === 'WBNB' || symbol === mockWBNB.address) return wbnbToken;
         if (symbol === 'USDC' || symbol === mockUSDC.address) return usdcToken;
         return null;
@@ -323,7 +323,7 @@ describe('GET /quote-swap', () => {
     // Mock Pancakeswap instance
     const mockPancakeswapInstance = {
       router: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D',
-      getTokenBySymbol: jest.fn().mockImplementation((symbol) => {
+      getToken: jest.fn().mockImplementation((symbol) => {
         if (symbol === 'WBNB' || symbol === mockWBNB.address) return wbnbToken;
         if (symbol === 'USDC' || symbol === mockUSDC.address) return usdcToken;
         return null;

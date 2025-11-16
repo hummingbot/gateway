@@ -4,11 +4,12 @@
   "properties": {
     "apiKey": {
       "type": "string",
-      "description": "Helius API key from https://helius.dev"
+      "description": "RPC provider API key"
     },
-    "useWebSocketRPC": {
+    "useWebSocket": {
       "type": "boolean",
-      "description": "Use Helius WebSocket for transaction monitoring"
+      "default": true,
+      "description": "Enable WebSocket connections for real-time transaction monitoring"
     }
   },
   "required": ["apiKey"],

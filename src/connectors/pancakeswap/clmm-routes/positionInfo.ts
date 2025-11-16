@@ -36,8 +36,8 @@ export async function getPositionInfo(
 
   const token0Address = positionDetails.token0;
   const token1Address = positionDetails.token1;
-  const token0 = pancakeswap.getTokenByAddress(token0Address);
-  const token1 = pancakeswap.getTokenByAddress(token1Address);
+  const token0 = await pancakeswap.getToken(token0Address);
+  const token1 = await pancakeswap.getToken(token1Address);
 
   const tickLower = positionDetails.tickLower;
   const tickUpper = positionDetails.tickUpper;

@@ -193,33 +193,14 @@ describe('GET /quote-swap', () => {
     expect(JSON.parse(response.body)).toHaveProperty('error');
   });
 
-  it('should fall back to ExactIn approximation when ExactOut fails for BUY side', async () => {
+  it('should return 404 with Jupiter error message when ExactOut fails for BUY side', async () => {
     const mockSolanaInstance = {
       getToken: jest.fn().mockResolvedValueOnce(mockSOL).mockResolvedValueOnce(mockUSDC),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
 
     const mockJupiterInstance = {
-      getQuote: jest
-        .fn()
-        // First call fails with ExactOut not supported
-        .mockRejectedValueOnce(new Error('ExactOut not supported for this token pair'))
-        // Second call (approximation attempt 1) returns a quote close to target
-        .mockResolvedValueOnce({
-          inAmount: '15300000', // 15.3 USDC (slightly more than ideal)
-          outAmount: '102000000', // 0.102 SOL (slightly more than target 0.1)
-          priceImpactPct: '0.001',
-          marketInfos: [],
-          slippageBps: 50,
-        })
-        // Third call (approximation attempt 2) returns closer to target
-        .mockResolvedValueOnce({
-          inAmount: '15000000', // 15 USDC
-          outAmount: '100000000', // 0.1 SOL (exactly the target)
-          priceImpactPct: '0.001',
-          marketInfos: [],
-          slippageBps: 50,
-        }),
+      getQuote: jest.fn().mockRejectedValue(new Error('No route found for this token pair')),
     };
     (Jupiter.getInstance as jest.Mock).mockResolvedValue(mockJupiterInstance);
 
@@ -236,25 +217,21 @@ describe('GET /quote-swap', () => {
       },
     });
 
-    expect(response.statusCode).toBe(200);
+    expect(response.statusCode).toBe(404);
     const body = JSON.parse(response.body);
+    expect(body).toHaveProperty('error');
+    expect(body.message).toContain('No route found for');
+    expect(body.message).toContain('SOL');
+    expect(body.message).toContain('USDC');
+    expect(body.message).toContain('ExactOut');
+    // Should include Jupiter's original error message
+    expect(body.message).toContain('No route found for this token pair');
 
-    // Should have the approximation flag
-    expect(body).toHaveProperty('approximation', true);
+    // Verify that getQuote was only called once (ExactOut attempt)
+    expect(mockJupiterInstance.getQuote).toHaveBeenCalledTimes(1);
 
-    // Should have quote details from the successful approximation
-    expect(body).toHaveProperty('quoteId');
-    expect(body).toHaveProperty('amountIn', 15);
-    expect(body).toHaveProperty('amountOut', 0.1);
-    expect(body).toHaveProperty('tokenIn', mockUSDC.address);
-    expect(body).toHaveProperty('tokenOut', mockSOL.address);
-
-    // Verify that getQuote was called 3 times (1 ExactOut fail + 2 ExactIn attempts)
-    expect(mockJupiterInstance.getQuote).toHaveBeenCalledTimes(3);
-
-    // First call should be ExactOut
-    expect(mockJupiterInstance.getQuote).toHaveBeenNthCalledWith(
-      1,
+    // Call should be ExactOut
+    expect(mockJupiterInstance.getQuote).toHaveBeenCalledWith(
       mockUSDC.address,
       mockSOL.address,
       0.1,
@@ -262,18 +239,6 @@ describe('GET /quote-swap', () => {
       false,
       true,
       'ExactOut',
-    );
-
-    // Subsequent calls should be ExactIn approximations
-    expect(mockJupiterInstance.getQuote).toHaveBeenNthCalledWith(
-      2,
-      mockUSDC.address,
-      mockSOL.address,
-      expect.any(Number),
-      0.5,
-      false,
-      true,
-      'ExactIn',
     );
   });
 });

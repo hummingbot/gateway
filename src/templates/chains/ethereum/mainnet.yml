@@ -1,6 +1,7 @@
 chainID: 1
 nodeURL: https://eth.llamarpc.com
 nativeCurrencySymbol: ETH
+geckoId: eth
 transactionExecutionTimeoutMs: 10000 # Timeout for waiting for transaction execution (in milliseconds)
 swapProvider: uniswap/router
 

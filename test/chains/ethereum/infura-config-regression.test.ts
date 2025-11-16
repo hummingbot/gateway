@@ -52,8 +52,8 @@ describe('Infura Configuration Regression Test', () => {
       const provider = ethereum.provider;
       const url = provider.connection.url;
 
-      // URL should match pattern: https://{network}.infura.io/v3/{apiKey}
-      expect(url).toMatch(/https:\/\/[\w-]+\.infura\.io\/v3\/[\w-]+/);
+      // URL should match pattern: https://{network}.infura.io/v3/{apiKey} or wss://{network}.infura.io/ws/v3/{apiKey}
+      expect(url).toMatch(/(https|wss):\/\/[\w-]+\.infura\.io\/(ws\/)?v3\/[\w-]+/);
 
       // API key should not be placeholder
       expect(url).not.toContain('INFURA_API_KEY');

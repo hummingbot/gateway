@@ -65,7 +65,7 @@ export async function approveEthereumToken(
   const isHardware = await ethereum.isHardwareWallet(address);
 
   // Try to find the token by symbol or address
-  const fullToken = ethereum.getToken(token);
+  const fullToken = await ethereum.getToken(token);
   if (!fullToken) {
     throw fastify.httpErrors.badRequest(`Token not found in token list: ${token}`);
   }
