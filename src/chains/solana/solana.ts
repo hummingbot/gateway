@@ -217,29 +217,6 @@ export class Solana {
       token = this.tokenList.find((token: TokenInfo) => token.address.toLowerCase() === addressOrSymbol.toLowerCase());
     }
 
-    // If still not found, try to create a new token assuming addressOrSymbol is an address
-    if (!token) {
-      try {
-        // Validate if it's a valid public key
-        const mintPubkey = new PublicKey(addressOrSymbol);
-
-        // Fetch mint info to get decimals
-        const mintInfo = await getMint(this.connection, mintPubkey);
-
-        // Create a basic token object with fetched decimals
-        token = {
-          address: addressOrSymbol,
-          symbol: `DUMMY_${addressOrSymbol.slice(0, 4)}`,
-          name: `Dummy Token (${addressOrSymbol.slice(0, 8)}...)`,
-          decimals: mintInfo.decimals,
-          chainId: 101,
-        };
-      } catch (e) {
-        // Not a valid public key or couldn't fetch mint info, return null
-        return null;
-      }
-    }
-
     return token;
   }
 

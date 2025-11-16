@@ -58,18 +58,6 @@ export const SolanaPollRequest = Type.Object({
     description: 'Transaction signature to poll',
     examples: [EXAMPLE_SIGNATURE],
   }),
-  tokens: Type.Optional(
-    Type.Array(Type.String(), {
-      description: 'Tokens to track balance changes for',
-      examples: [EXAMPLE_TOKENS],
-    }),
-  ),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address to track balance changes for',
-      default: solanaChainConfig.defaultWallet,
-    }),
-  ),
 });
 
 // Transactions request schema
@@ -103,13 +91,6 @@ export const SolanaParseRequest = Type.Object({
     default: solanaChainConfig.defaultWallet,
     examples: ['82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5'],
   }),
-  connector: Type.Optional(
-    Type.String({
-      description:
-        'Connector with type (e.g., jupiter/router) - helps identify program and auto-detect tokens from transaction',
-      examples: ['jupiter/router'],
-    }),
-  ),
 });
 
 // Quote swap request schema

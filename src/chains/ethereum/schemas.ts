@@ -61,6 +61,16 @@ export const EthereumPollRequest = Type.Object({
   }),
 });
 
+// Parse request schema
+export const EthereumParseRequest = Type.Object({
+  network: EthereumNetworkParameter,
+  signature: Type.String({
+    description: 'Transaction hash to parse',
+    examples: [EXAMPLE_TX_HASH],
+  }),
+  walletAddress: EthereumAddressParameter,
+});
+
 // Allowances request schema (multiple tokens)
 export const AllowancesRequestSchema = Type.Object({
   network: EthereumNetworkParameter,

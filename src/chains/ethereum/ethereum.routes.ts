@@ -5,6 +5,7 @@ import { allowancesRoute } from './routes/allowances';
 import { approveRoute } from './routes/approve';
 import { balancesRoute } from './routes/balances';
 import { estimateGasRoute } from './routes/estimate-gas';
+import { parseRoute } from './routes/parse';
 import { pollRoute } from './routes/poll';
 import { statusRoute } from './routes/status';
 import { unwrapRoute } from './routes/unwrap';
@@ -27,6 +28,7 @@ export const ethereumRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(estimateGasRoute);
   fastify.register(balancesRoute);
   fastify.register(pollRoute);
+  fastify.register(parseRoute);
   fastify.register(allowancesRoute);
   fastify.register(approveRoute);
   fastify.register(wrapRoute);

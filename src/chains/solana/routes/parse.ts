@@ -1,10 +1,31 @@
+import { LBCLMM_PROGRAM_IDS } from '@meteora-ag/dlmm';
+import { CLMM_PROGRAM_ID, AMM_V4, AMM_STABLE } from '@raydium-io/raydium-sdk-v2';
 import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync } from 'fastify';
 
+import { PANCAKESWAP_CLMM_PROGRAM_ID } from '../../../connectors/pancakeswap-sol/pancakeswap-sol';
 import { ParseRequestType, ParseResponseType, ParseResponseSchema } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
 import { SolanaParseRequest } from '../schemas';
 import { Solana } from '../solana';
+
+// Program ID constants
+const JUPITER_PROGRAM_ID = 'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4';
+
+// Map program IDs to connector types
+const PROGRAM_ID_MAP: Record<string, string> = {
+  // Jupiter
+  [JUPITER_PROGRAM_ID]: 'jupiter/router',
+  // Raydium AMM
+  [AMM_V4.toBase58()]: 'raydium/amm',
+  [AMM_STABLE.toBase58()]: 'raydium/amm',
+  // Raydium CLMM
+  [CLMM_PROGRAM_ID.toBase58()]: 'raydium/clmm',
+  // Meteora DLMM
+  [LBCLMM_PROGRAM_IDS['mainnet-beta']]: 'meteora/clmm',
+  // PancakeSwap CLMM
+  [PANCAKESWAP_CLMM_PROGRAM_ID.toBase58()]: 'pancakeswap/clmm',
+};
 
 export const parseRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
@@ -23,7 +44,7 @@ export const parseRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { network, signature, walletAddress, connector } = request.body;
+      const { network, signature, walletAddress } = request.body;
 
       const solana = await Solana.getInstance(network);
 
@@ -55,45 +76,29 @@ export const parseRoute: FastifyPluginAsync = async (fastify) => {
 
         const txStatus = await solana.getTransactionStatusCode(txData as any);
 
-        // Program ID for Jupiter
-        const JUPITER_PROGRAM_ID = 'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4';
+        // Auto-detect connector from transaction program IDs
+        let detectedConnector: string | undefined;
 
-        // Check if transaction interacted with Jupiter
-        let connectorDetected = false;
-        let action = '';
+        // Scan all instructions to detect which connector was used
+        const message = txData.transaction.message;
+        const instructions = (message as any).compiledInstructions || (message as any).instructions || [];
+        const accountKeys = (message as any).staticAccountKeys || (message as any).accountKeys || [];
 
-        // Parse connector parameter (e.g., "jupiter/router")
-        let connectorName: string | undefined;
-        let connectorType: string | undefined;
-        if (connector) {
-          [connectorName, connectorType] = connector.split('/');
-        }
+        for (const ix of instructions) {
+          const programIdIndex = ix.programIdIndex;
+          const programId = accountKeys[programIdIndex]?.toString();
 
-        if (connectorName && connectorName.toLowerCase() === 'jupiter' && connectorType === 'router') {
-          // Check if any instruction in the transaction called Jupiter program
-          const message = txData.transaction.message;
-          const instructions = (message as any).compiledInstructions || (message as any).instructions || [];
-          const accountKeys = (message as any).staticAccountKeys || (message as any).accountKeys || [];
-
-          for (const ix of instructions) {
-            const programIdIndex = ix.programIdIndex;
-            const programId = accountKeys[programIdIndex]?.toString();
-
-            if (programId === JUPITER_PROGRAM_ID) {
-              connectorDetected = true;
-              logger.info(`Transaction ${signature} interacted with Jupiter Aggregator v6: ${JUPITER_PROGRAM_ID}`);
-              break;
-            }
+          if (programId && PROGRAM_ID_MAP[programId]) {
+            detectedConnector = PROGRAM_ID_MAP[programId];
+            logger.info(`Transaction ${signature} interacted with ${detectedConnector} (program: ${programId})`);
+            break;
           }
         }
-
-        // Calculate native currency (SOL) balance change including fees
-        const nativeTokenAddress = 'So11111111111111111111111111111111111111112'; // SOL mint address
 
         // Get transaction fee
         const fee = txData.meta?.fee ? txData.meta.fee / 1e9 : 0; // Convert lamports to SOL
 
-        // Calculate native SOL balance change
+        // Calculate native currency balance change
         const preBalance = txData.meta?.preBalances?.[0] || 0;
         const postBalance = txData.meta?.postBalances?.[0] || 0;
         const nativeBalanceChange = (postBalance - preBalance) / 1e9; // Convert lamports to SOL
@@ -101,91 +106,77 @@ export const parseRoute: FastifyPluginAsync = async (fastify) => {
         // Build token balance changes dictionary
         const tokenBalanceChanges: Record<string, number> = {};
 
-        // If connector provided and detected, auto-detect tokens from transaction
-        if (connector && connectorDetected) {
-          logger.info(`Auto-detecting tokens from transaction using connector: ${connector}`);
+        // Include native currency in token balance changes
+        const nativeCurrencySymbol = solana.config.nativeCurrencySymbol;
+        tokenBalanceChanges[nativeCurrencySymbol] = nativeBalanceChange;
 
-          // Get all token account changes from the transaction
-          const preTokenBalances = txData.meta?.preTokenBalances || [];
-          const postTokenBalances = txData.meta?.postTokenBalances || [];
+        // Auto-detect tokens from transaction
+        logger.info(
+          `Auto-detecting token balance changes from transaction${detectedConnector ? ` (connector: ${detectedConnector})` : ''}`,
+        );
 
-          // Build a map of account index to balance info for easier lookup
-          const preBalanceMap = new Map<number, any>();
-          const postBalanceMap = new Map<number, any>();
+        // Get all token account changes from the transaction
+        const preTokenBalances = txData.meta?.preTokenBalances || [];
+        const postTokenBalances = txData.meta?.postTokenBalances || [];
 
-          for (const balance of preTokenBalances) {
-            preBalanceMap.set(balance.accountIndex, balance);
+        // Build a map of account index to balance info for easier lookup
+        const preBalanceMap = new Map<number, any>();
+        const postBalanceMap = new Map<number, any>();
+
+        for (const balance of preTokenBalances) {
+          preBalanceMap.set(balance.accountIndex, balance);
+        }
+        for (const balance of postTokenBalances) {
+          postBalanceMap.set(balance.accountIndex, balance);
+        }
+
+        // Filter to only include token accounts owned by the specified wallet
+        const walletPubkey = new PublicKey(walletAddress);
+        const accountIndices = new Set<number>();
+
+        for (const balance of [...preTokenBalances, ...postTokenBalances]) {
+          // Check if this token account is owned by the wallet
+          if (balance.owner === walletAddress || balance.owner === walletPubkey.toString()) {
+            accountIndices.add(balance.accountIndex);
           }
-          for (const balance of postTokenBalances) {
-            postBalanceMap.set(balance.accountIndex, balance);
-          }
+        }
 
-          // Filter to only include token accounts owned by the specified wallet
-          const walletPubkey = new PublicKey(walletAddress);
-          const accountIndices = new Set<number>();
+        // Look up symbols for each mint and calculate balance changes
+        for (const accountIndex of accountIndices) {
+          const preBalance = preBalanceMap.get(accountIndex);
+          const postBalance = postBalanceMap.get(accountIndex);
 
-          for (const balance of [...preTokenBalances, ...postTokenBalances]) {
-            // Check if this token account is owned by the wallet
-            if (balance.owner === walletAddress || balance.owner === walletPubkey.toString()) {
-              accountIndices.add(balance.accountIndex);
-            }
-          }
+          // Get the mint address (should be same in both pre and post)
+          const mint = preBalance?.mint || postBalance?.mint;
+          if (!mint) continue;
 
-          // Look up symbols for each mint and calculate balance changes
-          const detectedTokens: Array<{ symbol: string; mint: string; change: number }> = [];
-          for (const accountIndex of accountIndices) {
-            const preBalance = preBalanceMap.get(accountIndex);
-            const postBalance = postBalanceMap.get(accountIndex);
+          // Calculate balance change for this token account
+          const preAmount = preBalance?.uiTokenAmount?.uiAmount || 0;
+          const postAmount = postBalance?.uiTokenAmount?.uiAmount || 0;
+          const change = postAmount - preAmount;
 
-            // Get the mint address (should be same in both pre and post)
-            const mint = preBalance?.mint || postBalance?.mint;
-            if (!mint) continue;
+          if (change !== 0) {
+            const token = await solana.getToken(mint);
 
-            // Calculate balance change for this token account
-            const preAmount = preBalance?.uiTokenAmount?.uiAmount || 0;
-            const postAmount = postBalance?.uiTokenAmount?.uiAmount || 0;
-            const change = postAmount - preAmount;
+            // Use token symbol if found in local list, otherwise use mint address
+            const identifier = token ? token.symbol : mint;
 
-            if (change !== 0) {
-              const token = await solana.getToken(mint);
+            tokenBalanceChanges[identifier] = change;
 
-              // Use token symbol if found in local list, otherwise use mint address
-              const identifier = token ? token.symbol : mint;
-
-              detectedTokens.push({ symbol: identifier, mint, change });
-              tokenBalanceChanges[identifier] = change;
-
-              if (token) {
-                logger.info(`Auto-detected token: ${token.symbol} (${mint})`);
-              } else {
-                logger.info(`Auto-detected token not in list, using mint address: ${mint}`);
-              }
-            }
-          }
-
-          // Build action string for Jupiter swap (e.g., "Swap 0.001 WSOL for 12602.89 BONK on Jupiter Aggregator v6")
-          // For swaps involving native SOL/WSOL, use the native balance change
-          if (detectedTokens.length >= 1) {
-            const bought = detectedTokens.find((t) => t.change > 0);
-            const sold = detectedTokens.find((t) => t.change < 0);
-
-            if (bought && nativeBalanceChange < 0) {
-              // User sold SOL/WSOL to buy token
-              const solSold = Math.abs(nativeBalanceChange + fee); // Add back fee to get actual amount sold
-              action = `Swap ${solSold.toFixed(6)} SOL for ${Math.abs(bought.change).toFixed(6)} ${bought.symbol} on Jupiter Aggregator v6`;
-            } else if (sold && bought) {
-              // Token-to-token swap
-              action = `Swap ${Math.abs(sold.change).toFixed(6)} ${sold.symbol} for ${Math.abs(bought.change).toFixed(6)} ${bought.symbol} on Jupiter Aggregator v6`;
-            } else if (sold && nativeBalanceChange > 0) {
-              // User sold token to buy SOL/WSOL
-              const solBought = nativeBalanceChange + fee; // Add back fee to get actual amount received
-              action = `Swap ${Math.abs(sold.change).toFixed(6)} ${sold.symbol} for ${solBought.toFixed(6)} SOL on Jupiter Aggregator v6`;
+            if (token) {
+              logger.info(`Auto-detected token: ${token.symbol} (${mint})`);
+            } else {
+              logger.info(`Auto-detected token not in list, using mint address: ${mint}`);
             }
           }
         }
 
         logger.info(
-          `Parsed transaction ${signature} - Status: ${txStatus}, Fee: ${fee} SOL, Native change: ${nativeBalanceChange} SOL, Tokens: ${Object.keys(tokenBalanceChanges).join(', ')}${action ? `, Action: ${action}` : ''}`,
+          `Parsed transaction ${signature} - Status: ${txStatus}, Fee: ${fee} SOL, Token changes: ${Object.entries(
+            tokenBalanceChanges,
+          )
+            .map(([token, change]) => `${token}: ${change}`)
+            .join(', ')}${detectedConnector ? `, Connector: ${detectedConnector}` : ''}`,
         );
 
         return {
@@ -194,10 +185,8 @@ export const parseRoute: FastifyPluginAsync = async (fastify) => {
           blockTime: txData.blockTime,
           status: txStatus,
           fee,
-          nativeBalanceChange,
-          tokenBalanceChanges: Object.keys(tokenBalanceChanges).length > 0 ? tokenBalanceChanges : undefined,
-          connector: connectorDetected ? connectorName : undefined,
-          action: action || undefined,
+          tokenBalanceChanges,
+          connector: detectedConnector,
         };
       } catch (error) {
         logger.error(`Error parsing transaction ${signature}: ${error.message}`);
