@@ -11,8 +11,6 @@ async function waitForConnection(service, maxWait = 5000) {
 }
 
 async function testInfuraWebSocket() {
-  console.log('=== Testing Infura WebSocket Service ===\n');
-
   try {
     // Initialize config manager
     const configManager = ConfigManagerV2.getInstance();
@@ -21,16 +19,11 @@ async function testInfuraWebSocket() {
     const apiKey = configManager.get('infura.apiKey');
     const useWebSocket = configManager.get('infura.useWebSocket');
 
-    console.log(`API Key configured: ${apiKey ? 'Yes (length: ' + apiKey.length + ')' : 'No'}`);
-    console.log(`WebSocket enabled: ${useWebSocket}\n`);
-
     if (!apiKey) {
-      console.error('❌ No Infura API key configured in conf/rpc/infura.yml');
-      process.exit(1);
+      throw new Error('No Infura API key configured in conf/rpc/infura.yml');
     }
 
     // Test with Ethereum Mainnet (chainId 1)
-    console.log('--- Testing Ethereum Mainnet ---');
     const mainnetService = new InfuraService(
       { apiKey, useWebSocket },
       { chain: 'ethereum', network: 'mainnet', chainId: 1 }
@@ -39,18 +32,13 @@ async function testInfuraWebSocket() {
     await mainnetService.initialize();
 
     // Wait for connection
-    console.log('Waiting for WebSocket connection...');
     const connected = await waitForConnection(mainnetService, 10000);
-    console.log(`WebSocket connected: ${connected}`);
 
-    if (connected) {
-      console.log('✅ Mainnet WebSocket connection successful\n');
-    } else {
-      console.log('❌ Mainnet WebSocket connection failed\n');
+    if (!connected) {
+      throw new Error('Mainnet WebSocket connection failed');
     }
 
     // Test with Polygon (chainId 137)
-    console.log('--- Testing Polygon ---');
     const polygonService = new InfuraService(
       { apiKey, useWebSocket },
       { chain: 'ethereum', network: 'polygon', chainId: 137 }
@@ -59,16 +47,12 @@ async function testInfuraWebSocket() {
     await polygonService.initialize();
 
     const polygonConnected = await waitForConnection(polygonService, 10000);
-    console.log(`WebSocket connected: ${polygonConnected}`);
 
-    if (polygonConnected) {
-      console.log('✅ Polygon WebSocket connection successful\n');
-    } else {
-      console.log('❌ Polygon WebSocket connection failed\n');
+    if (!polygonConnected) {
+      throw new Error('Polygon WebSocket connection failed');
     }
 
     // Test with Arbitrum (chainId 42161)
-    console.log('--- Testing Arbitrum ---');
     const arbitrumService = new InfuraService(
       { apiKey, useWebSocket },
       { chain: 'ethereum', network: 'arbitrum', chainId: 42161 }
@@ -77,16 +61,12 @@ async function testInfuraWebSocket() {
     await arbitrumService.initialize();
 
     const arbitrumConnected = await waitForConnection(arbitrumService, 10000);
-    console.log(`WebSocket connected: ${arbitrumConnected}`);
 
-    if (arbitrumConnected) {
-      console.log('✅ Arbitrum WebSocket connection successful\n');
-    } else {
-      console.log('❌ Arbitrum WebSocket connection failed\n');
+    if (!arbitrumConnected) {
+      throw new Error('Arbitrum WebSocket connection failed');
     }
 
     // Test with Optimism (chainId 10)
-    console.log('--- Testing Optimism ---');
     const optimismService = new InfuraService(
       { apiKey, useWebSocket },
       { chain: 'ethereum', network: 'optimism', chainId: 10 }
@@ -95,16 +75,12 @@ async function testInfuraWebSocket() {
     await optimismService.initialize();
 
     const optimismConnected = await waitForConnection(optimismService, 10000);
-    console.log(`WebSocket connected: ${optimismConnected}`);
 
-    if (optimismConnected) {
-      console.log('✅ Optimism WebSocket connection successful\n');
-    } else {
-      console.log('❌ Optimism WebSocket connection failed\n');
+    if (!optimismConnected) {
+      throw new Error('Optimism WebSocket connection failed');
     }
 
     // Test with Base (chainId 8453)
-    console.log('--- Testing Base ---');
     const baseService = new InfuraService(
       { apiKey, useWebSocket },
       { chain: 'ethereum', network: 'base', chainId: 8453 }
@@ -113,42 +89,40 @@ async function testInfuraWebSocket() {
     await baseService.initialize();
 
     const baseConnected = await waitForConnection(baseService, 10000);
-    console.log(`WebSocket connected: ${baseConnected}`);
 
-    if (baseConnected) {
-      console.log('✅ Base WebSocket connection successful\n');
-    } else {
-      console.log('❌ Base WebSocket connection failed\n');
+    if (!baseConnected) {
+      throw new Error('Base WebSocket connection failed');
     }
 
     // Test disconnection
-    console.log('--- Testing Disconnection ---');
     mainnetService.disconnect();
-    console.log(`Mainnet WebSocket connected after disconnect: ${mainnetService.isWebSocketConnected()}`);
+    if (mainnetService.isWebSocketConnected()) {
+      throw new Error('Mainnet disconnect failed');
+    }
 
     polygonService.disconnect();
-    console.log(`Polygon WebSocket connected after disconnect: ${polygonService.isWebSocketConnected()}`);
+    if (polygonService.isWebSocketConnected()) {
+      throw new Error('Polygon disconnect failed');
+    }
 
     arbitrumService.disconnect();
-    console.log(`Arbitrum WebSocket connected after disconnect: ${arbitrumService.isWebSocketConnected()}`);
+    if (arbitrumService.isWebSocketConnected()) {
+      throw new Error('Arbitrum disconnect failed');
+    }
 
     optimismService.disconnect();
-    console.log(`Optimism WebSocket connected after disconnect: ${optimismService.isWebSocketConnected()}`);
+    if (optimismService.isWebSocketConnected()) {
+      throw new Error('Optimism disconnect failed');
+    }
 
     baseService.disconnect();
-    console.log(`Base WebSocket connected after disconnect: ${baseService.isWebSocketConnected()}`);
-
-    console.log('\n✅ All Infura WebSocket tests passed!');
-    console.log('\nSummary:');
-    console.log('- WebSocket connections established successfully for all networks');
-    console.log('- Connection state tracking works properly');
-    console.log('- Disconnect functionality works as expected');
+    if (baseService.isWebSocketConnected()) {
+      throw new Error('Base disconnect failed');
+    }
 
     process.exit(0);
 
   } catch (error) {
-    console.error('\n❌ Test failed:', error.message);
-    console.error(error.stack);
     process.exit(1);
   }
 }
