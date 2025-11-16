@@ -32,7 +32,6 @@ import fse from 'fs-extra';
 // TODO: Replace with Fastify httpErrors
 const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
 
-import { CacheManager, CacheConfig } from '../../services/cache-manager';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { logger, redactUrl } from '../../services/logger';
