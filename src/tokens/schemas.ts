@@ -183,7 +183,7 @@ export type TokenInfo = typeof TokenInfoSchema.static;
 export const FindTokenQuerySchema = Type.Object({
   chainNetwork: Type.String({
     description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    examples: ConfigManagerV2.getInstance().getSupportedChainNetworks(),
+    examples: ['solana-mainnet-beta', 'ethereum-mainnet', 'ethereum-base', 'ethereum-polygon'],
   }),
 });
 
