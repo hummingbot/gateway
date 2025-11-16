@@ -6,7 +6,7 @@ import { FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
-import { fetchEthereumPoolInfo, fetchSolanaPoolInfo, getConnectorChain } from '../connectors/connector-registry';
+import { connectorsConfig } from '../config/routes/getConnectors';
 import { PoolInfo as AmmPoolInfo } from '../schemas/amm-schema';
 import { PoolInfo as ClmmPoolInfo } from '../schemas/clmm-schema';
 import { logger } from '../services/logger';
@@ -18,7 +18,18 @@ interface PoolInfoResult {
 }
 
 /**
- * Fetch pool info from the appropriate connector using the central registry
+ * Get chain type for a connector from config
+ */
+function getConnectorChain(connector: string): 'solana' | 'ethereum' | null {
+  const config = connectorsConfig.find((c) => c.name === connector);
+  if (!config) {
+    return null;
+  }
+  return config.chain as 'solana' | 'ethereum';
+}
+
+/**
+ * Fetch pool info from the appropriate connector
  */
 export async function fetchPoolInfo(
   connector: string,
@@ -37,9 +48,43 @@ export async function fetchPoolInfo(
     let poolInfo;
 
     if (chain === 'solana') {
-      poolInfo = await fetchSolanaPoolInfo(connector, network, poolAddress, type);
+      // Import and get Solana connector instance
+      const connectorModule = await import(`../connectors/${connector}/${connector}`);
+      const ConnectorClass = Object.values(connectorModule).find(
+        (exp: any) => exp.getInstance && typeof exp.getInstance === 'function',
+      ) as any;
+
+      if (!ConnectorClass) {
+        throw new Error(`Connector class not found for: ${connector}`);
+      }
+
+      const instance = await ConnectorClass.getInstance(network);
+
+      // Call appropriate method based on pool type
+      if (type === 'clmm') {
+        if (instance.getClmmPoolInfo) {
+          poolInfo = await instance.getClmmPoolInfo(poolAddress);
+        } else if (instance.getPoolInfo) {
+          poolInfo = await instance.getPoolInfo(poolAddress);
+        } else {
+          throw new Error(`Connector ${connector} does not support CLMM pool info`);
+        }
+      } else if (type === 'amm') {
+        if (instance.getAmmPoolInfo) {
+          poolInfo = await instance.getAmmPoolInfo(poolAddress);
+        } else {
+          throw new Error(`Connector ${connector} does not support AMM pool info`);
+        }
+      }
     } else if (chain === 'ethereum') {
-      poolInfo = await fetchEthereumPoolInfo(connector, network, poolAddress, type);
+      // Ethereum connectors use utils pattern
+      const { getV2PoolInfo, getV3PoolInfo } = await import(`../connectors/${connector}/${connector}.utils`);
+
+      if (type === 'clmm') {
+        poolInfo = await getV3PoolInfo(poolAddress, network);
+      } else {
+        poolInfo = await getV2PoolInfo(poolAddress, network);
+      }
 
       // For Ethereum, need to fetch fee separately for CLMM pools
       if (type === 'clmm' && poolInfo) {
