@@ -1,6 +1,6 @@
 import { Type } from '@sinclair/typebox';
 
-import { getSupportedChainNetworks } from '../services/chain-config';
+import { ConfigManagerV2 } from '../services/config-manager-v2';
 
 // Pool list request
 export const PoolListRequestSchema = Type.Object({
@@ -163,7 +163,7 @@ export type PoolInfo = typeof PoolInfoSchema.static;
 export const FindPoolsQuerySchema = Type.Object({
   chainNetwork: Type.String({
     description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    examples: getSupportedChainNetworks(),
+    examples: ConfigManagerV2.getInstance().getSupportedChainNetworks(),
   }),
   connector: Type.Optional(
     Type.String({

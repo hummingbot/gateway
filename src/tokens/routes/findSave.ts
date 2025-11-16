@@ -2,8 +2,8 @@ import { Type } from '@sinclair/typebox';
 import { ethers } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
-import { getChainId } from '../../services/chain-config';
 import { CoinGeckoService } from '../../services/coingecko-service';
+import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { toTokenGeckoData } from '../../services/gecko-types';
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
@@ -53,7 +53,8 @@ export const findSaveTokenRoute: FastifyPluginAsync = async (fastify) => {
         const tokenData = await coinGeckoService.getTokenInfoWithMarketData(chainNetwork, address);
 
         // Get chainId from chainNetwork
-        const chainId = getChainId(chainNetwork);
+        const configManager = ConfigManagerV2.getInstance();
+        const chainId = configManager.getChainId(chainNetwork);
 
         // Transform to typed geckoData using helper
         const geckoData = toTokenGeckoData({

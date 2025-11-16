@@ -1,6 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
 
-import { getGeckoTerminalId, parseChainNetwork, getSupportedChainNetworks } from './chain-config';
 import { ConfigManagerV2 } from './config-manager-v2';
 import { logger } from './logger';
 
@@ -203,7 +202,8 @@ export class CoinGeckoService {
    * Map Gateway chain-network format to GeckoTerminal network ID
    */
   public mapNetworkId(chainNetwork: string): string {
-    return getGeckoTerminalId(chainNetwork);
+    const configManager = ConfigManagerV2.getInstance();
+    return configManager.getGeckoTerminalId(chainNetwork);
   }
 
   /**
@@ -211,7 +211,8 @@ export class CoinGeckoService {
    * This handles special cases like 'ethereum-base' which should map to chain='ethereum', network='base'
    */
   public parseChainNetwork(chainNetwork: string): ChainNetworkInfo {
-    return parseChainNetwork(chainNetwork);
+    const configManager = ConfigManagerV2.getInstance();
+    return configManager.parseChainNetwork(chainNetwork);
   }
 
   /**
@@ -654,6 +655,7 @@ export class CoinGeckoService {
    * Get list of supported networks
    */
   public getSupportedNetworks(): string[] {
-    return getSupportedChainNetworks();
+    const configManager = ConfigManagerV2.getInstance();
+    return configManager.getSupportedChainNetworks();
   }
 }
