@@ -610,16 +610,19 @@ export class Solana {
 
   /**
    * Fetch positions for a wallet from all connectors
+   * Uses connector-specific helpers to avoid duplicating logic
    */
   private async fetchPositionsForWallet(walletAddress: string): Promise<any[]> {
     const allPositions: any[] = [];
-    const { PublicKey } = await import('@solana/web3.js');
 
     // Try Meteora
     try {
-      const { Meteora } = await import('../../connectors/meteora/meteora');
-      const meteora = await Meteora.getInstance(this.network);
-      const meteoraPositions = await meteora.getAllPositionsForWallet(new PublicKey(walletAddress));
+      const { getPositionsOwned: getMeteoraPositions } = await import(
+        '../../connectors/meteora/clmm-routes/positionsOwned'
+      );
+      // Create a minimal fastify-like object for validation
+      const mockFastify = { httpErrors: { badRequest: (msg: string) => new Error(msg) } };
+      const meteoraPositions = await getMeteoraPositions(mockFastify as any, this.network, walletAddress);
 
       // Add connector metadata to each position
       for (const position of meteoraPositions) {
@@ -640,98 +643,52 @@ export class Solana {
 
     // Try Raydium CLMM
     try {
-      const { Raydium } = await import('../../connectors/raydium/raydium');
-      const raydium = await Raydium.getInstance(this.network);
+      const { getPositionsOwned: getRaydiumPositions } = await import(
+        '../../connectors/raydium/clmm-routes/positionsOwned'
+      );
+      const mockFastify = { httpErrors: { badRequest: (msg: string) => new Error(msg) } };
+      const raydiumPositions = await getRaydiumPositions(mockFastify as any, this.network, walletAddress);
 
-      const { wallet } = await raydium.prepareWallet(walletAddress);
-      await raydium.setOwner(wallet);
-
-      const programIds = [
-        'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK', // CLMM program
-        'devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH', // Devnet CLMM
-      ];
-
-      let raydiumCount = 0;
-      for (const programId of programIds) {
-        try {
-          const positions = await raydium.raydiumSDK.clmm.getOwnerPositionInfo({ programId });
-
-          // Transform Raydium positions to PositionInfo format
-          for (const position of positions) {
-            try {
-              const positionInfo = await raydium.getPositionInfo(position.nftMint.toString());
-              if (positionInfo) {
-                allPositions.push({
-                  connector: 'raydium',
-                  positionId: positionInfo.address,
-                  poolAddress: positionInfo.poolAddress,
-                  baseToken: positionInfo.baseTokenAddress,
-                  quoteToken: positionInfo.quoteTokenAddress,
-                  liquidity: positionInfo.baseTokenAmount + positionInfo.quoteTokenAmount,
-                  ...positionInfo,
-                });
-                raydiumCount++;
-              }
-            } catch {
-              // Skip position if can't fetch info
-            }
-          }
-        } catch {
-          // No positions for this program ID
-        }
+      // Add connector metadata to each position
+      for (const position of raydiumPositions) {
+        allPositions.push({
+          connector: 'raydium',
+          positionId: position.address,
+          poolAddress: position.poolAddress,
+          baseToken: position.baseTokenAddress,
+          quoteToken: position.quoteTokenAddress,
+          liquidity: position.baseTokenAmount + position.quoteTokenAmount,
+          ...position,
+        });
       }
-      logger.debug(`Fetched ${raydiumCount} Raydium position(s) for ${walletAddress.slice(0, 8)}...`);
+      logger.debug(`Fetched ${raydiumPositions.length} Raydium position(s) for ${walletAddress.slice(0, 8)}...`);
     } catch (error: any) {
       logger.debug(`Could not fetch Raydium positions for ${walletAddress.slice(0, 8)}...: ${error.message}`);
     }
 
-    // Try PancakeSwap - scan NFT token accounts
+    // Try PancakeSwap
     try {
-      const { PancakeswapSol } = await import('../../connectors/pancakeswap-sol/pancakeswap-sol');
-      const pancakeswapSol = await PancakeswapSol.getInstance(this.network);
+      const { getPositionsOwned: getPancakeswapPositions } = await import(
+        '../../connectors/pancakeswap-sol/clmm-routes/positionsOwned'
+      );
+      const mockFastify = { httpErrors: { badRequest: (msg: string) => new Error(msg) } };
+      const pancakeswapPositions = await getPancakeswapPositions(mockFastify as any, this.network, walletAddress);
 
-      // Get all token accounts owned by the wallet
-      const walletPubkey = new PublicKey(walletAddress);
-      const [splTokenAccounts, token2022Accounts] = await Promise.all([
-        this.connection.getParsedTokenAccountsByOwner(walletPubkey, {
-          programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
-        }),
-        this.connection.getParsedTokenAccountsByOwner(walletPubkey, {
-          programId: new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'),
-        }),
-      ]);
-
-      const allTokenAccounts = [...splTokenAccounts.value, ...token2022Accounts.value];
-
-      // Filter for NFT token accounts (amount = 1, decimals = 0)
-      const nftAccounts = allTokenAccounts.filter((account) => {
-        const amount = account.account.data.parsed.info.tokenAmount.uiAmount;
-        const decimals = account.account.data.parsed.info.tokenAmount.decimals;
-        return amount === 1 && decimals === 0;
-      });
-
-      // Check each NFT to see if it's a PancakeSwap position
-      for (const nftAccount of nftAccounts) {
-        const mint = nftAccount.account.data.parsed.info.mint;
-        try {
-          const positionInfo = await pancakeswapSol.getPositionInfo(mint);
-          if (positionInfo) {
-            allPositions.push({
-              connector: 'pancakeswap-sol',
-              positionId: positionInfo.address,
-              poolAddress: positionInfo.poolAddress,
-              baseToken: positionInfo.baseTokenAddress,
-              quoteToken: positionInfo.quoteTokenAddress,
-              liquidity: positionInfo.baseTokenAmount + positionInfo.quoteTokenAmount,
-              ...positionInfo,
-            });
-          }
-        } catch {
-          // Not a PancakeSwap position, skip
-        }
+      // Add connector metadata to each position
+      for (const position of pancakeswapPositions) {
+        allPositions.push({
+          connector: 'pancakeswap-sol',
+          positionId: position.address,
+          poolAddress: position.poolAddress,
+          baseToken: position.baseTokenAddress,
+          quoteToken: position.quoteTokenAddress,
+          liquidity: position.baseTokenAmount + position.quoteTokenAmount,
+          ...position,
+        });
       }
-      const pancakeCount = allPositions.filter((p) => p.connector === 'pancakeswap-sol').length;
-      logger.debug(`Fetched ${pancakeCount} PancakeSwap position(s) for ${walletAddress.slice(0, 8)}...`);
+      logger.debug(
+        `Fetched ${pancakeswapPositions.length} PancakeSwap position(s) for ${walletAddress.slice(0, 8)}...`,
+      );
     } catch (error: any) {
       logger.debug(`Could not fetch PancakeSwap positions for ${walletAddress.slice(0, 8)}...: ${error.message}`);
     }
