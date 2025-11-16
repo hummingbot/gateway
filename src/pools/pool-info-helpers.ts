@@ -184,58 +184,13 @@ export async function resolveTokenSymbols(
       throw new Error(`Unsupported connector: ${connector}`);
     }
 
-    // Get chain instance based on type
-    let chain: Solana | Ethereum;
-    if (chainType === 'solana') {
-      chain = await Solana.getInstance(network);
-    } else if (chainType === 'ethereum') {
-      chain = await Ethereum.getInstance(network);
-    } else {
-      throw new Error(`Unsupported chain type: ${chainType}`);
-    }
+    // Get chain instance and tokens from local list only
+    const chain = chainType === 'solana' ? await Solana.getInstance(network) : await Ethereum.getInstance(network);
 
-    // Try to get tokens from local token list first
-    let baseToken;
-    let quoteToken;
+    // Use local token list only - don't fetch from blockchain
+    const baseToken = await chain.getToken(baseTokenAddress);
+    const quoteToken = await chain.getToken(quoteTokenAddress);
 
-    if (chain instanceof Ethereum) {
-      baseToken = await chain.getOrFetchToken(baseTokenAddress);
-      quoteToken = await chain.getOrFetchToken(quoteTokenAddress);
-    } else {
-      baseToken = chain.getToken(baseTokenAddress);
-      quoteToken = chain.getToken(quoteTokenAddress);
-    }
-
-    // If tokens not found in local list, try TokenService.getToken as fallback
-    if (!baseToken) {
-      logger.debug(`Token ${baseTokenAddress} not in local list, trying TokenService.getToken`);
-      try {
-        const { TokenService } = await import('../services/token-service');
-        const tokenService = TokenService.getInstance();
-        const foundToken = await tokenService.getToken(chainType, network, baseTokenAddress);
-        if (foundToken) {
-          baseToken = foundToken;
-        }
-      } catch (findError) {
-        logger.debug(`Failed to find base token: ${findError.message}`);
-      }
-    }
-
-    if (!quoteToken) {
-      logger.debug(`Token ${quoteTokenAddress} not in local list, trying TokenService.getToken`);
-      try {
-        const { TokenService } = await import('../services/token-service');
-        const tokenService = TokenService.getInstance();
-        const foundToken = await tokenService.getToken(chainType, network, quoteTokenAddress);
-        if (foundToken) {
-          quoteToken = foundToken;
-        }
-      } catch (findError) {
-        logger.debug(`Failed to find quote token: ${findError.message}`);
-      }
-    }
-
-    // Return what we found (may be undefined if not found)
     return {
       baseSymbol: baseToken?.symbol,
       quoteSymbol: quoteToken?.symbol,
