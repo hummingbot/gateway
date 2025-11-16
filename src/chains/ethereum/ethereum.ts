@@ -7,6 +7,7 @@ import { TokenValue, tokenValueToString } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { logger, redactUrl } from '../../services/logger';
+import { createRateLimitAwareEthereumProvider } from '../../services/rpc-connection-interceptor';
 import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
 
@@ -96,8 +97,11 @@ export class Ethereum {
     if (rpcProvider === 'infura') {
       this.initializeInfuraProvider();
     } else {
-      // Default: use nodeURL
-      this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
+      // Default: use nodeURL with rate limit detection
+      this.provider = createRateLimitAwareEthereumProvider(
+        new providers.StaticJsonRpcProvider(this.rpcUrl),
+        this.rpcUrl,
+      );
     }
   }
 
@@ -411,7 +415,10 @@ export class Ethereum {
       if (!providerConfig.apiKey || providerConfig.apiKey.trim() === '' || providerConfig.apiKey.includes('YOUR_')) {
         logger.warn(`⚠️ Infura provider selected but no valid API key configured`);
         logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
-        this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
+        this.provider = createRateLimitAwareEthereumProvider(
+          new providers.StaticJsonRpcProvider(this.rpcUrl),
+          this.rpcUrl,
+        );
         return;
       }
 
@@ -430,7 +437,10 @@ export class Ethereum {
     } catch (error: any) {
       logger.warn(`Failed to initialize Infura provider: ${error.message}`);
       logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
-      this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
+      this.provider = createRateLimitAwareEthereumProvider(
+        new providers.StaticJsonRpcProvider(this.rpcUrl),
+        this.rpcUrl,
+      );
     }
   }
 

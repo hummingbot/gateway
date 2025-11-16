@@ -35,11 +35,11 @@ const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { logger, redactUrl } from '../../services/logger';
+import { createRateLimitAwareSolanaConnection } from '../../services/rpc-connection-interceptor';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
 import { HeliusService } from './helius-service';
-import { createRateLimitAwareConnection } from './solana-connection-interceptor';
 import { SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
 
@@ -85,7 +85,7 @@ export class Solana {
       this.initializeHeliusProvider();
     } else {
       // Default: use nodeURL
-      this.connection = createRateLimitAwareConnection(
+      this.connection = createRateLimitAwareSolanaConnection(
         new Connection(this.config.nodeURL, {
           commitment: 'confirmed',
         }),
@@ -110,7 +110,7 @@ export class Solana {
       if (!providerConfig.apiKey || providerConfig.apiKey.trim() === '' || providerConfig.apiKey.includes('YOUR_')) {
         logger.warn(`⚠️ Helius provider selected but no valid API key configured`);
         logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.config.nodeURL)}`);
-        this.connection = createRateLimitAwareConnection(
+        this.connection = createRateLimitAwareSolanaConnection(
           new Connection(this.config.nodeURL, {
             commitment: 'confirmed',
           }),
@@ -132,7 +132,7 @@ export class Solana {
       logger.info(`✅ Helius API key configured (length: ${providerConfig.apiKey.length} chars)`);
       logger.info(`Helius features enabled - WebSocket: ${providerConfig.useWebSocket}`);
 
-      this.connection = createRateLimitAwareConnection(
+      this.connection = createRateLimitAwareSolanaConnection(
         new Connection(rpcUrl, {
           commitment: 'confirmed',
         }),
@@ -141,7 +141,7 @@ export class Solana {
     } catch (error: any) {
       // If Helius config not found (e.g., in tests), fallback to standard RPC
       logger.warn(`Failed to initialize Helius provider: ${error.message}, falling back to standard RPC`);
-      this.connection = createRateLimitAwareConnection(
+      this.connection = createRateLimitAwareSolanaConnection(
         new Connection(this.config.nodeURL, {
           commitment: 'confirmed',
         }),

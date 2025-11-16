@@ -1,6 +1,7 @@
 import { providers } from 'ethers';
 
 import { logger } from '../../services/logger';
+import { createRateLimitAwareEthereumProvider } from '../../services/rpc-connection-interceptor';
 import { RPCProvider, RPCProviderConfig, NetworkInfo } from '../../services/rpc-provider-base';
 
 /**
@@ -52,18 +53,21 @@ export class InfuraService extends RPCProvider {
   private initializeProvider(): void {
     const httpUrl = this.getHttpUrl();
 
-    // Initialize HTTP provider
-    this.provider = new providers.JsonRpcProvider(httpUrl, {
-      name: this.getNetworkName(),
-      chainId: this.networkInfo.chainId,
-    });
+    // Initialize HTTP provider with rate limit detection
+    this.provider = createRateLimitAwareEthereumProvider(
+      new providers.JsonRpcProvider(httpUrl, {
+        name: this.getNetworkName(),
+        chainId: this.networkInfo.chainId,
+      }),
+      httpUrl,
+    );
 
     // Initialize WebSocket provider if enabled
     if (this.shouldUseWebSocket()) {
       try {
         const wsUrl = this.getWebSocketUrl();
         if (wsUrl) {
-          this.wsProvider = new providers.WebSocketProvider(wsUrl);
+          this.wsProvider = createRateLimitAwareEthereumProvider(new providers.WebSocketProvider(wsUrl), wsUrl);
           logger.info(`✅ Infura WebSocket provider initialized for ${this.getNetworkName()}`);
         }
       } catch (error: any) {
