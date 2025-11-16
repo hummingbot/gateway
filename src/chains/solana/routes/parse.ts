@@ -141,23 +141,25 @@ export const parseRoute: FastifyPluginAsync = async (fastify) => {
             const mint = preBalance?.mint || postBalance?.mint;
             if (!mint) continue;
 
-            try {
+            // Calculate balance change for this token account
+            const preAmount = preBalance?.uiTokenAmount?.uiAmount || 0;
+            const postAmount = postBalance?.uiTokenAmount?.uiAmount || 0;
+            const change = postAmount - preAmount;
+
+            if (change !== 0) {
               const token = await solana.getToken(mint);
+
+              // Use token symbol if found in local list, otherwise use mint address
+              const identifier = token ? token.symbol : mint;
+
+              detectedTokens.push({ symbol: identifier, mint, change });
+              tokenBalanceChanges[identifier] = change;
+
               if (token) {
-                // Calculate balance change for this token account
-                const preAmount = preBalance?.uiTokenAmount?.uiAmount || 0;
-                const postAmount = postBalance?.uiTokenAmount?.uiAmount || 0;
-                const change = postAmount - preAmount;
-
-                if (change !== 0) {
-                  detectedTokens.push({ symbol: token.symbol, mint, change });
-                  tokenBalanceChanges[token.symbol] = change;
-                }
-
                 logger.info(`Auto-detected token: ${token.symbol} (${mint})`);
+              } else {
+                logger.info(`Auto-detected token not in list, using mint address: ${mint}`);
               }
-            } catch (error) {
-              logger.warn(`Could not resolve token for mint ${mint}: ${error.message}`);
             }
           }
 
