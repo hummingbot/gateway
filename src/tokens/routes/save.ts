@@ -3,13 +3,13 @@ import { ethers } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
 import { CoinGeckoService } from '../../services/coingecko-service';
-import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { toTokenGeckoData } from '../../services/gecko-types';
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { FindTokenQuery, FindTokenQuerySchema, Token, TokenSchema } from '../schemas';
+import { handleTokenError } from '../token-error-handler';
+import { fetchTokenInfo } from '../token-lookup-helper';
 
-export const findSaveTokenRoute: FastifyPluginAsync = async (fastify) => {
+export const saveTokenRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
     Params: { address: string };
     Querystring: FindTokenQuery;
@@ -49,44 +49,23 @@ export const findSaveTokenRoute: FastifyPluginAsync = async (fastify) => {
         const coinGeckoService = CoinGeckoService.getInstance();
         const { chain, network } = coinGeckoService.parseChainNetwork(chainNetwork);
 
-        // Fetch token info with market data from GeckoTerminal
-        const tokenData = await coinGeckoService.getTokenInfoWithMarketData(chainNetwork, address);
+        // Fetch token info using shared helper
+        const tokenInfo = await fetchTokenInfo(chainNetwork, address);
 
-        // Get chainId from chainNetwork
-        const configManager = ConfigManagerV2.getInstance();
-        const chainId = configManager.getChainId(chainNetwork);
-
-        // Transform to typed geckoData using helper
-        const geckoData = toTokenGeckoData({
-          coingeckoCoinId: tokenData.coingeckoCoinId,
-          imageUrl: tokenData.imageUrl,
-          priceUsd: tokenData.priceUsd,
-          volumeUsd24h: tokenData.volumeUsd24h,
-          marketCapUsd: tokenData.marketCapUsd,
-          fdvUsd: tokenData.fdvUsd,
-          totalSupply: tokenData.totalSupply,
-          topPools: tokenData.topPools,
-        });
-
-        // Create token in save format
         // For Ethereum chains, normalize address to checksummed format
-        let normalizedAddress = tokenData.address;
+        let normalizedAddress = tokenInfo.address;
         if (chain === 'ethereum') {
           try {
-            normalizedAddress = ethers.utils.getAddress(tokenData.address);
+            normalizedAddress = ethers.utils.getAddress(tokenInfo.address);
           } catch (error: any) {
-            logger.warn(`Failed to checksum address ${tokenData.address}: ${error.message}`);
+            logger.warn(`Failed to checksum address ${tokenInfo.address}: ${error.message}`);
             // If checksumming fails, use the address as-is
           }
         }
 
         const token = {
-          chainId,
-          name: tokenData.name,
-          symbol: tokenData.symbol,
+          ...tokenInfo,
           address: normalizedAddress,
-          decimals: tokenData.decimals,
-          geckoData,
         };
 
         // Check if token already exists
@@ -123,25 +102,10 @@ export const findSaveTokenRoute: FastifyPluginAsync = async (fastify) => {
           token,
         };
       } catch (error: any) {
-        logger.error(`Failed to find and save token: ${error.message}`);
-
-        // Re-throw if it's already an HTTP error
-        if (error.statusCode) {
-          throw error;
-        }
-
-        if (error.message.includes('not found')) {
-          throw fastify.httpErrors.notFound(error.message);
-        }
-
-        if (error.message.includes('Unsupported network')) {
-          throw fastify.httpErrors.badRequest(error.message);
-        }
-
-        throw fastify.httpErrors.internalServerError('Failed to find and save token from GeckoTerminal');
+        handleTokenError(fastify, error, 'Failed to find and save token');
       }
     },
   );
 };
 
-export default findSaveTokenRoute;
+export default saveTokenRoute;

@@ -3,7 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { logger } from '../../services/logger';
 import { PoolService } from '../../services/pool-service';
-import { fetchPoolInfo } from '../pool-info-helpers';
+import { handlePoolError } from '../pool-error-handler';
 import { fetchDetailedPoolInfo } from '../pool-lookup-helper';
 import { FindPoolsQuerySchema, PoolInfoSchema } from '../schemas';
 import { Pool } from '../types';
@@ -76,34 +76,7 @@ export const savePoolRoute: FastifyPluginAsync = async (fastify) => {
           pool,
         };
       } catch (error: any) {
-        logger.error(`Failed to find and save pool: ${error.message}`);
-
-        // Re-throw if it's already an HTTP error
-        if (error.statusCode) {
-          throw error;
-        }
-
-        if (error.message.includes('not found')) {
-          throw fastify.httpErrors.notFound(error.message);
-        }
-
-        if (error.message.includes('Unsupported network') || error.message.includes('Unsupported chainNetwork')) {
-          throw fastify.httpErrors.badRequest(error.message);
-        }
-
-        if (error.message.includes('no connector/type mapping')) {
-          throw fastify.httpErrors.badRequest(error.message);
-        }
-
-        if (error.message.includes('Unable to fetch pool-info')) {
-          throw fastify.httpErrors.badRequest(error.message);
-        }
-
-        if (error.message.includes('Could not resolve symbols')) {
-          throw fastify.httpErrors.badRequest(error.message);
-        }
-
-        throw fastify.httpErrors.internalServerError('Failed to find and save pool from GeckoTerminal');
+        handlePoolError(fastify, error, 'Failed to find and save pool');
       }
     },
   );

@@ -16,9 +16,6 @@ export async function getPositionInfo(
     throw fastify.httpErrors.badRequest('Position address is required');
   }
 
-  const { Solana } = await import('../../../chains/solana/solana');
-  const solana = await Solana.getInstance(network);
-
   const positionInfo = await meteora.getPositionInfoByAddress(positionAddress);
   if (!positionInfo) {
     throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);

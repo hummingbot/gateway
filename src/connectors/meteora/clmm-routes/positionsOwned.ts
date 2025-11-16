@@ -15,9 +15,6 @@ export async function getPositionsOwned(
   walletAddress: string,
   poolAddress?: string,
 ): Promise<PositionInfo[]> {
-  const { Solana } = await import('../../../chains/solana/solana');
-  const solana = await Solana.getInstance(network);
-
   // Validate wallet address
   try {
     new PublicKey(walletAddress);
