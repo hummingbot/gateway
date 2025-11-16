@@ -86,34 +86,58 @@ export async function fetchPoolInfo(
         poolInfo = await getV2PoolInfo(poolAddress, network);
       }
 
-      // For Ethereum, need to fetch fee separately for CLMM pools
-      if (type === 'clmm' && poolInfo) {
+      // For Ethereum, need to fetch fee separately
+      if (poolInfo) {
         const ethereum = await Ethereum.getInstance(network);
         const { Contract } = await import('@ethersproject/contracts');
-        const v3PoolABI = [
-          {
-            inputs: [],
-            name: 'fee',
-            outputs: [{ internalType: 'uint24', name: '', type: 'uint24' }],
-            stateMutability: 'view',
-            type: 'function',
-          },
-        ];
 
-        const poolContract = new Contract(poolAddress, v3PoolABI, ethereum.provider);
-        const fee = await poolContract.fee();
-        const feePct = fee / 10000; // Convert from basis points to percentage
+        let feePct: number;
 
-        return {
-          baseTokenAddress: poolInfo.baseTokenAddress,
-          quoteTokenAddress: poolInfo.quoteTokenAddress,
-          feePct: feePct,
-        };
-      } else if (type === 'amm' && poolInfo) {
-        // Default V2 fee - can be overridden per connector if needed
-        let feePct = 0.3; // Uniswap V2 default
-        if (connector === 'pancakeswap' && network === 'mainnet') {
-          feePct = 0.25; // PancakeSwap V2 on BSC
+        if (type === 'clmm') {
+          // V3 pools have fee() method
+          const v3PoolABI = [
+            {
+              inputs: [],
+              name: 'fee',
+              outputs: [{ internalType: 'uint24', name: '', type: 'uint24' }],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ];
+
+          const poolContract = new Contract(poolAddress, v3PoolABI, ethereum.provider);
+          const fee = await poolContract.fee();
+          feePct = fee / 10000; // Convert from basis points to percentage
+        } else {
+          // V2 pools - get fee from factory contract
+          const v2PairABI = [
+            {
+              inputs: [],
+              name: 'factory',
+              outputs: [{ internalType: 'address', name: '', type: 'address' }],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ];
+
+          const v2FactoryABI = [
+            {
+              inputs: [],
+              name: 'feeTo',
+              outputs: [{ internalType: 'address', name: '', type: 'address' }],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ];
+
+          const pairContract = new Contract(poolAddress, v2PairABI, ethereum.provider);
+          const factoryAddress = await pairContract.factory();
+          const factoryContract = new Contract(factoryAddress, v2FactoryABI, ethereum.provider);
+
+          // V2 pairs typically have 0.3% fee (30 basis points)
+          // PancakeSwap V2 has 0.25% fee (25 basis points)
+          // Since the fee isn't exposed on-chain for V2, we use the standard for each DEX
+          feePct = connector === 'pancakeswap' ? 0.25 : 0.3;
         }
 
         return {
