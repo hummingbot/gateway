@@ -87,8 +87,8 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
         }
 
-        const baseTokenObj = uniswap.getTokenByAddress(poolInfo.baseTokenAddress);
-        const quoteTokenObj = uniswap.getTokenByAddress(poolInfo.quoteTokenAddress);
+        const baseTokenObj = await uniswap.getTokenByAddress(poolInfo.baseTokenAddress);
+        const quoteTokenObj = await uniswap.getTokenByAddress(poolInfo.quoteTokenAddress);
 
         if (!baseTokenObj || !quoteTokenObj) {
           throw fastify.httpErrors.badRequest('Token information not found for pool');
@@ -418,8 +418,8 @@ export async function quotePosition(
     throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
   }
 
-  const baseTokenObj = uniswap.getTokenByAddress(poolInfo.baseTokenAddress);
-  const quoteTokenObj = uniswap.getTokenByAddress(poolInfo.quoteTokenAddress);
+  const baseTokenObj = await uniswap.getTokenByAddress(poolInfo.baseTokenAddress);
+  const quoteTokenObj = await uniswap.getTokenByAddress(poolInfo.quoteTokenAddress);
 
   if (!baseTokenObj || !quoteTokenObj) {
     throw fastify.httpErrors.badRequest('Token information not found for pool');

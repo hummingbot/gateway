@@ -82,8 +82,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
         }
 
-        const baseTokenObj = pancakeswap.getTokenByAddress(poolInfo.baseTokenAddress);
-        const quoteTokenObj = pancakeswap.getTokenByAddress(poolInfo.quoteTokenAddress);
+        const baseTokenObj = await pancakeswap.getTokenByAddress(poolInfo.baseTokenAddress);
+        const quoteTokenObj = await pancakeswap.getTokenByAddress(poolInfo.quoteTokenAddress);
 
         if (!baseTokenObj || !quoteTokenObj) {
           throw fastify.httpErrors.badRequest('Token information not found for pool');

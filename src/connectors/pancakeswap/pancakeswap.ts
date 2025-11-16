@@ -156,27 +156,17 @@ export class Pancakeswap {
   }
 
   /**
-   * Given a token's address, return the connector's native representation of the token.
+   * Get token by address or symbol from local token list
    */
-  public getTokenByAddress(address: string): Token | null {
-    const tokenInfo = this.ethereum.getToken(address);
-    if (!tokenInfo) return null;
-
-    // Create Pancakeswap SDK Token instance
-    return new Token(
-      tokenInfo.chainId,
-      tokenInfo.address as Address,
-      tokenInfo.decimals,
-      tokenInfo.symbol,
-      tokenInfo.name,
-    );
+  public async getTokenByAddress(address: string): Promise<Token | null> {
+    const tokenInfo = await this.ethereum.getToken(address);
+    return tokenInfo ? this.getPancakeswapToken(tokenInfo) : null;
   }
 
   /**
-   * Given a token's symbol, return the connector's native representation of the token.
+   * Get token by symbol from local token list (alias for getTokenByAddress)
    */
-  public getTokenBySymbol(symbol: string): Token | null {
-    // Just use getTokenByAddress since ethereum.getToken handles both symbols and addresses
+  public async getTokenBySymbol(symbol: string): Promise<Token | null> {
     return this.getTokenByAddress(symbol);
   }
 
@@ -251,10 +241,9 @@ export class Pancakeswap {
       // Resolve pool address if provided
       let pairAddress = poolAddress;
 
-      // If tokenA and tokenB are strings, assume they are symbols
-      const tokenAObj = typeof tokenA === 'string' ? this.getTokenBySymbol(tokenA) : tokenA;
-
-      const tokenBObj = typeof tokenB === 'string' ? this.getTokenBySymbol(tokenB) : tokenB;
+      // If tokenA and tokenB are strings, resolve them to Token objects
+      const tokenAObj = typeof tokenA === 'string' ? await this.getTokenBySymbol(tokenA) : tokenA;
+      const tokenBObj = typeof tokenB === 'string' ? await this.getTokenBySymbol(tokenB) : tokenB;
 
       if (!tokenAObj || !tokenBObj) {
         throw new Error(`Invalid tokens: ${tokenA}, ${tokenB}`);
@@ -309,10 +298,9 @@ export class Pancakeswap {
       // Resolve pool address if provided
       let poolAddr = poolAddress;
 
-      // If tokenA and tokenB are strings, assume they are symbols
-      const tokenAObj = typeof tokenA === 'string' ? this.getTokenBySymbol(tokenA) : tokenA;
-
-      const tokenBObj = typeof tokenB === 'string' ? this.getTokenBySymbol(tokenB) : tokenB;
+      // If tokenA and tokenB are strings, resolve them to Token objects
+      const tokenAObj = typeof tokenA === 'string' ? await this.getTokenBySymbol(tokenA) : tokenA;
+      const tokenBObj = typeof tokenB === 'string' ? await this.getTokenBySymbol(tokenB) : tokenB;
 
       if (!tokenAObj || !tokenBObj) {
         throw new Error(`Invalid tokens: ${tokenA}, ${tokenB}`);
@@ -407,16 +395,19 @@ export class Pancakeswap {
       logger.info(`Finding ${poolType} pool for ${baseToken}-${quoteToken} on ${this.networkName}`);
 
       // Resolve token symbols if addresses are provided
-      const baseTokenInfo = this.getTokenBySymbol(baseToken) || this.getTokenByAddress(baseToken);
-      const quoteTokenInfo = this.getTokenBySymbol(quoteToken) || this.getTokenByAddress(quoteToken);
+      const baseTokenInfo = await this.ethereum.getToken(baseToken);
+      const quoteTokenInfo = await this.ethereum.getToken(quoteToken);
 
       if (!baseTokenInfo || !quoteTokenInfo) {
         logger.warn(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
         return null;
       }
 
+      const baseToken_sdk = this.getPancakeswapToken(baseTokenInfo);
+      const quoteToken_sdk = this.getPancakeswapToken(quoteTokenInfo);
+
       logger.info(
-        `Resolved tokens: ${baseTokenInfo.symbol} (${baseTokenInfo.address}), ${quoteTokenInfo.symbol} (${quoteTokenInfo.address})`,
+        `Resolved tokens: ${baseToken_sdk.symbol} (${baseToken_sdk.address}), ${quoteToken_sdk.symbol} (${quoteToken_sdk.address})`,
       );
 
       // Use PoolService to find pool by token pair

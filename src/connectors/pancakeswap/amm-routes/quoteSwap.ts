@@ -131,8 +131,8 @@ export async function getPancakeswapAmmQuote(
   }
 
   // Resolve tokens
-  const baseTokenObj = pancakeswap.getTokenBySymbol(baseToken);
-  const quoteTokenObj = pancakeswap.getTokenBySymbol(quoteToken);
+  const baseTokenObj = await pancakeswap.getTokenBySymbol(baseToken);
+  const quoteTokenObj = await pancakeswap.getTokenBySymbol(quoteToken);
 
   if (!baseTokenObj) {
     logger.error(`Base token not found: ${baseToken}`);
@@ -329,7 +329,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             quoteTokenToUse = poolInfo.baseTokenAddress;
           } else {
             // Try to resolve baseToken as symbol to address
-            const resolvedToken = pancakeswap.getTokenBySymbol(baseToken);
+            const resolvedToken = await pancakeswap.getTokenBySymbol(baseToken);
 
             if (resolvedToken) {
               if (resolvedToken.address === poolInfo.baseTokenAddress) {
