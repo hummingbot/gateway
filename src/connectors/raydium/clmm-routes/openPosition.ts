@@ -124,13 +124,12 @@ export async function openPosition(
       totalFee,
     );
 
-    const positionAddress = extInfo.nftMint.toBase58();
     return {
       signature,
       status: 1, // CONFIRMED
       data: {
         fee: totalFee / 1e9,
-        positionAddress,
+        positionAddress: extInfo.nftMint.toBase58(),
         positionRent: rent,
         baseTokenAmountAdded: baseTokenChange,
         quoteTokenAmountAdded: quoteTokenChange,
