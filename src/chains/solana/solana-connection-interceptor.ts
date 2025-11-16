@@ -3,6 +3,14 @@ import { Connection } from '@solana/web3.js';
 import { logger } from '../../services/logger';
 
 /**
+ * Redact sensitive parts of RPC URL (API keys, tokens)
+ */
+function redactUrl(url: string): string {
+  if (!url) return url;
+  return url.replace(/([?&]api[-_]key=)[^&]+/gi, '$1[REDACTED]').replace(/(\/\/[^/]+@)/g, '//[REDACTED]@');
+}
+
+/**
  * Detect if an error is a 429 rate limit error
  */
 function is429Error(error: any): boolean {
@@ -47,12 +55,13 @@ export function createRateLimitAwareConnection(connection: Connection, rpcUrl: s
           return await (value as (...args: any[]) => any).apply(target, args);
         } catch (error: any) {
           if (is429Error(error)) {
-            logger.error(`⚠️  Solana RPC rate limit exceeded: ${rpcUrl}, method: ${String(prop)}`);
+            const redactedUrl = redactUrl(rpcUrl);
+            logger.error(`⚠️  Solana RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}`);
             logger.error(`Original error: ${error.message}`);
 
             // Create error with statusCode property that Fastify's error handler recognizes
             const rateLimitError: any = new Error(
-              `Solana RPC rate limit exceeded. Your current RPC endpoint (${rpcUrl}) has reached its rate limit. ` +
+              `Solana RPC rate limit exceeded. Your current RPC endpoint (${redactedUrl}) has reached its rate limit. ` +
                 `Please configure a different RPC endpoint with higher rate limits, or use a managed provider like Helius. ` +
                 `To fix: Update 'nodeURL' in conf/chains/solana/${rpcUrl.includes('devnet') ? 'devnet' : 'mainnet-beta'}.yml ` +
                 `or configure Helius in conf/rpc/helius.yml`,
