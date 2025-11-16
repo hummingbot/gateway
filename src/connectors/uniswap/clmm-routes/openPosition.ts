@@ -48,8 +48,8 @@ export async function openPosition(
     throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
   }
 
-  const baseTokenObj = await uniswap.getTokenByAddress(poolInfo.baseTokenAddress);
-  const quoteTokenObj = await uniswap.getTokenByAddress(poolInfo.quoteTokenAddress);
+  const baseTokenObj = await uniswap.getToken(poolInfo.baseTokenAddress);
+  const quoteTokenObj = await uniswap.getToken(poolInfo.quoteTokenAddress);
 
   if (!baseTokenObj || !quoteTokenObj) {
     throw fastify.httpErrors.badRequest('Token information not found for pool');

@@ -131,8 +131,8 @@ export async function getUniswapAmmQuote(
   }
 
   // Resolve tokens from local token list
-  const baseTokenObj = await uniswap.getTokenBySymbol(baseToken);
-  const quoteTokenObj = await uniswap.getTokenBySymbol(quoteToken);
+  const baseTokenObj = await uniswap.getToken(baseToken);
+  const quoteTokenObj = await uniswap.getToken(quoteToken);
 
   if (!baseTokenObj) {
     logger.error(`Base token not found: ${baseToken}`);
@@ -332,7 +332,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             quoteTokenToUse = poolInfo.baseTokenAddress;
           } else {
             // Try to resolve baseToken as symbol to address
-            const resolvedToken = await uniswap.getTokenBySymbol(baseToken);
+            const resolvedToken = await uniswap.getToken(baseToken);
 
             if (resolvedToken) {
               if (resolvedToken.address === poolInfo.baseTokenAddress) {

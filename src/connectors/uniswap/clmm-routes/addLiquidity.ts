@@ -42,8 +42,8 @@ export async function addLiquidity(
   const positionManager = new Contract(positionManagerAddress, POSITION_MANAGER_ABI, ethereum.provider);
   const position = await positionManager.positions(positionAddress);
 
-  const token0 = await uniswap.getTokenByAddress(position.token0);
-  const token1 = await uniswap.getTokenByAddress(position.token1);
+  const token0 = await uniswap.getToken(position.token0);
+  const token1 = await uniswap.getToken(position.token1);
   const fee = position.fee;
   const tickLower = position.tickLower;
   const tickUpper = position.tickUpper;

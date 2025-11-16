@@ -51,8 +51,8 @@ export async function getUniswapAmmLiquidityQuote(
   const ethereum = await Ethereum.getInstance(networkToUse);
 
   // Resolve tokens from local token list
-  const baseTokenObj = await uniswap.getTokenBySymbol(baseToken);
-  const quoteTokenObj = await uniswap.getTokenBySymbol(quoteToken);
+  const baseTokenObj = await uniswap.getToken(baseToken);
+  const quoteTokenObj = await uniswap.getToken(quoteToken);
 
   if (!baseTokenObj || !quoteTokenObj) {
     throw new Error(`Token not found: ${!baseTokenObj ? baseToken : quoteToken}`);

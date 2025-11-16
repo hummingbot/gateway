@@ -156,18 +156,11 @@ export class Uniswap {
   }
 
   /**
-   * Get token by address or symbol from local token list
+   * Get token by symbol or address from local token list
    */
-  public async getTokenByAddress(address: string): Promise<Token | null> {
-    const tokenInfo = await this.ethereum.getToken(address);
+  public async getToken(symbolOrAddress: string): Promise<Token | null> {
+    const tokenInfo = await this.ethereum.getToken(symbolOrAddress);
     return tokenInfo ? this.getUniswapToken(tokenInfo) : null;
-  }
-
-  /**
-   * Get token by symbol from local token list (alias for getTokenByAddress)
-   */
-  public async getTokenBySymbol(symbol: string): Promise<Token | null> {
-    return this.getTokenByAddress(symbol);
   }
 
   /**
@@ -236,8 +229,8 @@ export class Uniswap {
       let pairAddress = poolAddress;
 
       // If tokenA and tokenB are strings, resolve them to Token objects
-      const tokenAObj = typeof tokenA === 'string' ? await this.getTokenBySymbol(tokenA) : tokenA;
-      const tokenBObj = typeof tokenB === 'string' ? await this.getTokenBySymbol(tokenB) : tokenB;
+      const tokenAObj = typeof tokenA === 'string' ? await this.getToken(tokenA) : tokenA;
+      const tokenBObj = typeof tokenB === 'string' ? await this.getToken(tokenB) : tokenB;
 
       if (!tokenAObj || !tokenBObj) {
         throw new Error(`Invalid tokens: ${tokenA}, ${tokenB}`);
@@ -293,8 +286,8 @@ export class Uniswap {
       let poolAddr = poolAddress;
 
       // If tokenA and tokenB are strings, resolve them to Token objects
-      const tokenAObj = typeof tokenA === 'string' ? await this.getTokenBySymbol(tokenA) : tokenA;
-      const tokenBObj = typeof tokenB === 'string' ? await this.getTokenBySymbol(tokenB) : tokenB;
+      const tokenAObj = typeof tokenA === 'string' ? await this.getToken(tokenA) : tokenA;
+      const tokenBObj = typeof tokenB === 'string' ? await this.getToken(tokenB) : tokenB;
 
       if (!tokenAObj || !tokenBObj) {
         throw new Error(`Invalid tokens: ${tokenA}, ${tokenB}`);
