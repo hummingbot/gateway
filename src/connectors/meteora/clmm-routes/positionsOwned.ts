@@ -13,7 +13,6 @@ export async function getPositionsOwned(
   fastify: FastifyInstance,
   network: string,
   walletAddress: string,
-  poolAddress?: string,
 ): Promise<PositionInfo[]> {
   // Validate wallet address
   try {
@@ -22,22 +21,8 @@ export async function getPositionsOwned(
     throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
   }
 
-  // Validate pool address if provided
-  if (poolAddress) {
-    try {
-      new PublicKey(poolAddress);
-    } catch (error) {
-      throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('pool'));
-    }
-  }
-
   // Fetch from RPC (positions are cached individually by position address, not by wallet)
-  let positions = await fetchPositionsFromRPC(network, walletAddress);
-
-  // Filter by poolAddress if provided
-  if (poolAddress) {
-    positions = positions.filter((pos) => pos.poolAddress === poolAddress);
-  }
+  const positions = await fetchPositionsFromRPC(network, walletAddress);
 
   return positions;
 }
@@ -74,8 +59,8 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, poolAddress } = request.query;
-        return await getPositionsOwned(fastify, network, walletAddress, poolAddress);
+        const { network, walletAddress } = request.query;
+        return await getPositionsOwned(fastify, network, walletAddress);
       } catch (e: any) {
         logger.error(e);
         if (e.statusCode) {
