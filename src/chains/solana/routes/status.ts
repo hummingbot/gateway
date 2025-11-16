@@ -19,7 +19,7 @@ export async function getSolanaStatus(fastify: FastifyInstance, network: string)
       const heliusService = solana.getHeliusService();
       if (heliusService) {
         try {
-          rpcUrl = heliusService.getUrlForNetwork(network);
+          rpcUrl = heliusService.getHttpUrl();
         } catch (error) {
           // If Helius URL generation fails, fall back to nodeURL
           logger.warn(`Failed to get Helius URL, using nodeURL: ${error.message}`);

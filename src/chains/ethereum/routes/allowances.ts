@@ -45,7 +45,7 @@ export async function getEthereumAllowances(
         tokenInfoMap[token.symbol] = token;
       }
     } else {
-      tokenInfoMap = ethereum.getTokensAsMap(tokens);
+      tokenInfoMap = await ethereum.getTokensAsMap(tokens);
 
       // Check if any tokens were found
       const foundSymbols = Object.keys(tokenInfoMap);

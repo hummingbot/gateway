@@ -39,7 +39,7 @@ async function addLiquidity(
   let baseWrapTxHash = null;
   if (baseToken === 'ETH') {
     const pancakeswap = await Pancakeswap.getInstance(networkToUse);
-    const wethToken = pancakeswap.getTokenBySymbol('WETH');
+    const wethToken = await pancakeswap.getToken('WETH');
     if (!wethToken) {
       throw new Error('WETH token not found');
     }
@@ -58,7 +58,7 @@ async function addLiquidity(
   let quoteWrapTxHash = null;
   if (quoteToken === 'ETH') {
     const pancakeswap = await Pancakeswap.getInstance(networkToUse);
-    const wethToken = pancakeswap.getTokenBySymbol('WETH');
+    const wethToken = await pancakeswap.getToken('WETH');
     if (!wethToken) {
       throw new Error('WETH token not found');
     }

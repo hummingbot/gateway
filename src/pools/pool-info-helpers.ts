@@ -6,7 +6,7 @@ import { FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
-import { fetchEthereumPoolInfo, fetchSolanaPoolInfo, getConnectorChain } from '../connectors/connector-registry';
+import { connectorsConfig } from '../config/routes/getConnectors';
 import { PoolInfo as AmmPoolInfo } from '../schemas/amm-schema';
 import { PoolInfo as ClmmPoolInfo } from '../schemas/clmm-schema';
 import { logger } from '../services/logger';
@@ -18,7 +18,18 @@ interface PoolInfoResult {
 }
 
 /**
- * Fetch pool info from the appropriate connector using the central registry
+ * Get chain type for a connector from config
+ */
+function getConnectorChain(connector: string): 'solana' | 'ethereum' | null {
+  const config = connectorsConfig.find((c) => c.name === connector);
+  if (!config) {
+    return null;
+  }
+  return config.chain as 'solana' | 'ethereum';
+}
+
+/**
+ * Fetch pool info from the appropriate connector
  */
 export async function fetchPoolInfo(
   connector: string,
@@ -37,38 +48,96 @@ export async function fetchPoolInfo(
     let poolInfo;
 
     if (chain === 'solana') {
-      poolInfo = await fetchSolanaPoolInfo(connector, network, poolAddress, type);
-    } else if (chain === 'ethereum') {
-      poolInfo = await fetchEthereumPoolInfo(connector, network, poolAddress, type);
+      // Import and get Solana connector instance
+      const connectorModule = await import(`../connectors/${connector}/${connector}`);
+      const ConnectorClass = Object.values(connectorModule).find(
+        (exp: any) => exp.getInstance && typeof exp.getInstance === 'function',
+      ) as any;
 
-      // For Ethereum, need to fetch fee separately for CLMM pools
-      if (type === 'clmm' && poolInfo) {
+      if (!ConnectorClass) {
+        throw new Error(`Connector class not found for: ${connector}`);
+      }
+
+      const instance = await ConnectorClass.getInstance(network);
+
+      // Call appropriate method based on pool type
+      if (type === 'clmm') {
+        if (instance.getClmmPoolInfo) {
+          poolInfo = await instance.getClmmPoolInfo(poolAddress);
+        } else if (instance.getPoolInfo) {
+          poolInfo = await instance.getPoolInfo(poolAddress);
+        } else {
+          throw new Error(`Connector ${connector} does not support CLMM pool info`);
+        }
+      } else if (type === 'amm') {
+        if (instance.getAmmPoolInfo) {
+          poolInfo = await instance.getAmmPoolInfo(poolAddress);
+        } else {
+          throw new Error(`Connector ${connector} does not support AMM pool info`);
+        }
+      }
+    } else if (chain === 'ethereum') {
+      // Ethereum connectors use utils pattern
+      const { getV2PoolInfo, getV3PoolInfo } = await import(`../connectors/${connector}/${connector}.utils`);
+
+      if (type === 'clmm') {
+        poolInfo = await getV3PoolInfo(poolAddress, network);
+      } else {
+        poolInfo = await getV2PoolInfo(poolAddress, network);
+      }
+
+      // For Ethereum, need to fetch fee separately
+      if (poolInfo) {
         const ethereum = await Ethereum.getInstance(network);
         const { Contract } = await import('@ethersproject/contracts');
-        const v3PoolABI = [
-          {
-            inputs: [],
-            name: 'fee',
-            outputs: [{ internalType: 'uint24', name: '', type: 'uint24' }],
-            stateMutability: 'view',
-            type: 'function',
-          },
-        ];
 
-        const poolContract = new Contract(poolAddress, v3PoolABI, ethereum.provider);
-        const fee = await poolContract.fee();
-        const feePct = fee / 10000; // Convert from basis points to percentage
+        let feePct: number;
 
-        return {
-          baseTokenAddress: poolInfo.baseTokenAddress,
-          quoteTokenAddress: poolInfo.quoteTokenAddress,
-          feePct: feePct,
-        };
-      } else if (type === 'amm' && poolInfo) {
-        // Default V2 fee - can be overridden per connector if needed
-        let feePct = 0.3; // Uniswap V2 default
-        if (connector === 'pancakeswap' && network === 'mainnet') {
-          feePct = 0.25; // PancakeSwap V2 on BSC
+        if (type === 'clmm') {
+          // V3 pools have fee() method
+          const v3PoolABI = [
+            {
+              inputs: [],
+              name: 'fee',
+              outputs: [{ internalType: 'uint24', name: '', type: 'uint24' }],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ];
+
+          const poolContract = new Contract(poolAddress, v3PoolABI, ethereum.provider);
+          const fee = await poolContract.fee();
+          feePct = fee / 10000; // Convert from basis points to percentage
+        } else {
+          // V2 pools - get fee from factory contract
+          const v2PairABI = [
+            {
+              inputs: [],
+              name: 'factory',
+              outputs: [{ internalType: 'address', name: '', type: 'address' }],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ];
+
+          const v2FactoryABI = [
+            {
+              inputs: [],
+              name: 'feeTo',
+              outputs: [{ internalType: 'address', name: '', type: 'address' }],
+              stateMutability: 'view',
+              type: 'function',
+            },
+          ];
+
+          const pairContract = new Contract(poolAddress, v2PairABI, ethereum.provider);
+          const factoryAddress = await pairContract.factory();
+          const factoryContract = new Contract(factoryAddress, v2FactoryABI, ethereum.provider);
+
+          // V2 pairs typically have 0.3% fee (30 basis points)
+          // PancakeSwap V2 has 0.25% fee (25 basis points)
+          // Since the fee isn't exposed on-chain for V2, we use the standard for each DEX
+          feePct = connector === 'pancakeswap' ? 0.25 : 0.3;
         }
 
         return {
@@ -115,58 +184,13 @@ export async function resolveTokenSymbols(
       throw new Error(`Unsupported connector: ${connector}`);
     }
 
-    // Get chain instance based on type
-    let chain: Solana | Ethereum;
-    if (chainType === 'solana') {
-      chain = await Solana.getInstance(network);
-    } else if (chainType === 'ethereum') {
-      chain = await Ethereum.getInstance(network);
-    } else {
-      throw new Error(`Unsupported chain type: ${chainType}`);
-    }
+    // Get chain instance and tokens from local list only
+    const chain = chainType === 'solana' ? await Solana.getInstance(network) : await Ethereum.getInstance(network);
 
-    // Try to get tokens from local token list first
-    let baseToken;
-    let quoteToken;
+    // Use local token list only - don't fetch from blockchain
+    const baseToken = await chain.getToken(baseTokenAddress);
+    const quoteToken = await chain.getToken(quoteTokenAddress);
 
-    if (chain instanceof Ethereum) {
-      baseToken = await chain.getOrFetchToken(baseTokenAddress);
-      quoteToken = await chain.getOrFetchToken(quoteTokenAddress);
-    } else {
-      baseToken = chain.getToken(baseTokenAddress);
-      quoteToken = chain.getToken(quoteTokenAddress);
-    }
-
-    // If tokens not found in local list, try TokenService.getToken as fallback
-    if (!baseToken) {
-      logger.debug(`Token ${baseTokenAddress} not in local list, trying TokenService.getToken`);
-      try {
-        const { TokenService } = await import('../services/token-service');
-        const tokenService = TokenService.getInstance();
-        const foundToken = await tokenService.getToken(chainType, network, baseTokenAddress);
-        if (foundToken) {
-          baseToken = foundToken;
-        }
-      } catch (findError) {
-        logger.debug(`Failed to find base token: ${findError.message}`);
-      }
-    }
-
-    if (!quoteToken) {
-      logger.debug(`Token ${quoteTokenAddress} not in local list, trying TokenService.getToken`);
-      try {
-        const { TokenService } = await import('../services/token-service');
-        const tokenService = TokenService.getInstance();
-        const foundToken = await tokenService.getToken(chainType, network, quoteTokenAddress);
-        if (foundToken) {
-          quoteToken = foundToken;
-        }
-      } catch (findError) {
-        logger.debug(`Failed to find quote token: ${findError.message}`);
-      }
-    }
-
-    // Return what we found (may be undefined if not found)
     return {
       baseSymbol: baseToken?.symbol,
       quoteSymbol: quoteToken?.symbol,

@@ -430,11 +430,6 @@ export const MeteoraClmmGetPositionsOwnedRequest = Type.Object({
     description: 'Solana wallet address to check for positions',
     examples: [solanaChainConfig.defaultWallet],
   }),
-  poolAddress: Type.Optional(
-    Type.String({
-      description: 'Optional pool address to filter positions by specific pool',
-    }),
-  ),
 });
 
 export type MeteoraClmmGetPositionsOwnedRequestType = Static<typeof MeteoraClmmGetPositionsOwnedRequest>;

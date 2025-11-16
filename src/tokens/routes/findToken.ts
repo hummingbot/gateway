@@ -1,10 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
 
-import { getChainId } from '../../services/chain-config';
-import { CoinGeckoService } from '../../services/coingecko-service';
-import { toTokenGeckoData } from '../../services/gecko-types';
-import { logger } from '../../services/logger';
 import { FindTokenQuery, FindTokenQuerySchema, TokenInfo, TokenInfoSchema } from '../schemas';
+import { handleTokenError } from '../token-error-handler';
+import { fetchTokenInfo } from '../token-lookup-helper';
 
 export const findTokenRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -39,46 +37,10 @@ export const findTokenRoute: FastifyPluginAsync = async (fastify) => {
       const { chainNetwork } = request.query;
 
       try {
-        // Fetch token info with market data from GeckoTerminal
-        const coinGeckoService = CoinGeckoService.getInstance();
-        const tokenData = await coinGeckoService.getTokenInfoWithMarketData(chainNetwork, address);
-
-        // Get chainId from chainNetwork
-        const chainId = getChainId(chainNetwork);
-
-        // Transform to typed geckoData using helper
-        const geckoData = toTokenGeckoData({
-          coingeckoCoinId: tokenData.coingeckoCoinId,
-          imageUrl: tokenData.imageUrl,
-          priceUsd: tokenData.priceUsd,
-          volumeUsd24h: tokenData.volumeUsd24h,
-          marketCapUsd: tokenData.marketCapUsd,
-          fdvUsd: tokenData.fdvUsd,
-          totalSupply: tokenData.totalSupply,
-          topPools: tokenData.topPools,
-        });
-
-        // Return TokenInfo with geckoData populated
-        return {
-          chainId,
-          name: tokenData.name,
-          symbol: tokenData.symbol,
-          address: tokenData.address,
-          decimals: tokenData.decimals,
-          geckoData,
-        };
+        // Fetch token info using shared helper
+        return await fetchTokenInfo(chainNetwork, address);
       } catch (error: any) {
-        logger.error(`Failed to find token: ${error.message}`);
-
-        if (error.message.includes('not found')) {
-          throw fastify.httpErrors.notFound(error.message);
-        }
-
-        if (error.message.includes('Unsupported network')) {
-          throw fastify.httpErrors.badRequest(error.message);
-        }
-
-        throw fastify.httpErrors.internalServerError('Failed to fetch token info from GeckoTerminal');
+        handleTokenError(fastify, error, 'Failed to find token');
       }
     },
   );

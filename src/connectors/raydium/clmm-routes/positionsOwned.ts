@@ -19,7 +19,6 @@ export async function getPositionsOwned(
   fastify: FastifyInstance,
   network: string,
   walletAddress: string,
-  poolAddress?: string,
 ): Promise<PositionInfo[]> {
   const solana = await Solana.getInstance(network);
 
@@ -30,46 +29,8 @@ export async function getPositionsOwned(
     throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
   }
 
-  // Validate pool address if provided
-  if (poolAddress) {
-    try {
-      new PublicKey(poolAddress);
-    } catch (error) {
-      throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('pool'));
-    }
-  }
-
   // Fetch from RPC (positions are cached individually by position address, not by wallet)
-  let positions = await fetchPositionsFromRPC(solana, network, walletAddress);
-
-  // Filter by poolAddress if provided
-  if (poolAddress) {
-    positions = positions.filter((pos) => pos.poolAddress === poolAddress);
-  }
-
-  // Populate cache for each position individually using "connector:clmm:address" format
-  const positionCache = solana.getPositionCache();
-  if (positionCache && positions.length > 0) {
-    for (const positionInfo of positions) {
-      const cacheKey = `raydium:clmm:${positionInfo.address}`;
-      positionCache.set(cacheKey, {
-        positions: [
-          {
-            // Metadata fields for cache management (required by PositionData interface)
-            connector: 'raydium',
-            positionId: positionInfo.address,
-            poolAddress: positionInfo.poolAddress,
-            baseToken: positionInfo.baseTokenAddress,
-            quoteToken: positionInfo.quoteTokenAddress,
-            liquidity: positionInfo.baseTokenAmount + positionInfo.quoteTokenAmount,
-            // Spread all PositionInfo fields
-            ...positionInfo,
-          },
-        ],
-      });
-    }
-    logger.debug(`[position-cache] SET ${positions.length} position(s) for wallet ${walletAddress.slice(0, 8)}...`);
-  }
+  const positions = await fetchPositionsFromRPC(solana, network, walletAddress);
 
   return positions;
 }
@@ -144,8 +105,8 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, poolAddress } = request.query;
-        return await getPositionsOwned(fastify, network, walletAddress, poolAddress);
+        const { network, walletAddress } = request.query;
+        return await getPositionsOwned(fastify, network, walletAddress);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

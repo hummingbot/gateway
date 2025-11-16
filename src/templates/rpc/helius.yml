@@ -7,15 +7,4 @@ apiKey: 'YOUR_HELIUS_API_KEY_HERE'
 
 # Use Helius WebSocket for real-time transaction monitoring
 # Provides faster confirmation notifications than polling
-useWebSocketRPC: true
-
-# Cache configuration for balances, positions, and pools
-# Unified settings for simplicity - applies to all cache types
-cache:
-  enabled: true
-  trackBalances: true       # Track and cache wallet balances
-  trackPositions: true      # Track and cache CLMM positions owned by wallets
-  trackPools: true          # Track and cache pools listed in conf/pools/{connector}
-  refreshInterval: 60       # Refresh all cached entries every 60 seconds
-  maxAge: 120               # Consider data stale after 120 seconds
-  ttl: 300                  # Remove unused entries after 300 seconds of inactivity
+useWebSocket: true

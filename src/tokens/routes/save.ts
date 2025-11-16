@@ -2,14 +2,14 @@ import { Type } from '@sinclair/typebox';
 import { ethers } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
-import { getChainId } from '../../services/chain-config';
 import { CoinGeckoService } from '../../services/coingecko-service';
-import { toTokenGeckoData } from '../../services/gecko-types';
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { FindTokenQuery, FindTokenQuerySchema, Token, TokenSchema } from '../schemas';
+import { handleTokenError } from '../token-error-handler';
+import { fetchTokenInfo } from '../token-lookup-helper';
 
-export const findSaveTokenRoute: FastifyPluginAsync = async (fastify) => {
+export const saveTokenRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
     Params: { address: string };
     Querystring: FindTokenQuery;
@@ -49,43 +49,23 @@ export const findSaveTokenRoute: FastifyPluginAsync = async (fastify) => {
         const coinGeckoService = CoinGeckoService.getInstance();
         const { chain, network } = coinGeckoService.parseChainNetwork(chainNetwork);
 
-        // Fetch token info with market data from GeckoTerminal
-        const tokenData = await coinGeckoService.getTokenInfoWithMarketData(chainNetwork, address);
+        // Fetch token info using shared helper
+        const tokenInfo = await fetchTokenInfo(chainNetwork, address);
 
-        // Get chainId from chainNetwork
-        const chainId = getChainId(chainNetwork);
-
-        // Transform to typed geckoData using helper
-        const geckoData = toTokenGeckoData({
-          coingeckoCoinId: tokenData.coingeckoCoinId,
-          imageUrl: tokenData.imageUrl,
-          priceUsd: tokenData.priceUsd,
-          volumeUsd24h: tokenData.volumeUsd24h,
-          marketCapUsd: tokenData.marketCapUsd,
-          fdvUsd: tokenData.fdvUsd,
-          totalSupply: tokenData.totalSupply,
-          topPools: tokenData.topPools,
-        });
-
-        // Create token in save format
         // For Ethereum chains, normalize address to checksummed format
-        let normalizedAddress = tokenData.address;
+        let normalizedAddress = tokenInfo.address;
         if (chain === 'ethereum') {
           try {
-            normalizedAddress = ethers.utils.getAddress(tokenData.address);
+            normalizedAddress = ethers.utils.getAddress(tokenInfo.address);
           } catch (error: any) {
-            logger.warn(`Failed to checksum address ${tokenData.address}: ${error.message}`);
+            logger.warn(`Failed to checksum address ${tokenInfo.address}: ${error.message}`);
             // If checksumming fails, use the address as-is
           }
         }
 
         const token = {
-          chainId,
-          name: tokenData.name,
-          symbol: tokenData.symbol,
+          ...tokenInfo,
           address: normalizedAddress,
-          decimals: tokenData.decimals,
-          geckoData,
         };
 
         // Check if token already exists
@@ -113,22 +93,6 @@ export const findSaveTokenRoute: FastifyPluginAsync = async (fastify) => {
               // Reload token list to include new token
               await solana.loadTokens();
               logger.info(`Reloaded token list for solana/${network} with new token ${token.symbol}`);
-
-              // Refresh balance cache for all tracked wallets
-              const balanceCache = solana.getBalanceCache();
-              if (balanceCache) {
-                const cachedKeys = balanceCache.keys();
-                logger.info(`Refreshing balances for ${cachedKeys.length} wallet(s) to include new token`);
-                for (const walletAddress of cachedKeys) {
-                  try {
-                    // Background refresh - will fetch balances including the new token
-                    await solana.getBalances(walletAddress);
-                    logger.debug(`Refreshed balance for ${walletAddress.slice(0, 8)}...`);
-                  } catch (error: any) {
-                    logger.warn(`Failed to refresh balance for ${walletAddress}: ${error.message}`);
-                  }
-                }
-              }
             })
             .catch((err) => logger.warn(`Failed to refresh balances after adding token: ${err.message}`));
         }
@@ -138,25 +102,10 @@ export const findSaveTokenRoute: FastifyPluginAsync = async (fastify) => {
           token,
         };
       } catch (error: any) {
-        logger.error(`Failed to find and save token: ${error.message}`);
-
-        // Re-throw if it's already an HTTP error
-        if (error.statusCode) {
-          throw error;
-        }
-
-        if (error.message.includes('not found')) {
-          throw fastify.httpErrors.notFound(error.message);
-        }
-
-        if (error.message.includes('Unsupported network')) {
-          throw fastify.httpErrors.badRequest(error.message);
-        }
-
-        throw fastify.httpErrors.internalServerError('Failed to find and save token from GeckoTerminal');
+        handleTokenError(fastify, error, 'Failed to find and save token');
       }
     },
   );
 };
 
-export default findSaveTokenRoute;
+export default saveTokenRoute;

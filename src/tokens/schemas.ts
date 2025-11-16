@@ -1,6 +1,6 @@
 import { Type } from '@sinclair/typebox';
 
-import { getSupportedChainNetworks } from '../services/chain-config';
+import { ConfigManagerV2 } from '../services/config-manager-v2';
 
 // Optional CoinGecko data for tokens
 export const TokenGeckoDataSchema = Type.Object({
@@ -183,7 +183,7 @@ export type TokenInfo = typeof TokenInfoSchema.static;
 export const FindTokenQuerySchema = Type.Object({
   chainNetwork: Type.String({
     description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    examples: getSupportedChainNetworks(),
+    examples: ['solana-mainnet-beta', 'ethereum-mainnet', 'ethereum-base', 'ethereum-polygon'],
   }),
 });
 

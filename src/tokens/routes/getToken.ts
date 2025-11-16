@@ -1,8 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
 
-import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { TokenViewQuery, TokenViewQuerySchema, TokenResponse, TokenResponseSchema } from '../schemas';
+import { handleTokenError } from '../token-error-handler';
 
 export const getTokenRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -54,14 +54,7 @@ export const getTokenRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.notFound(`Token ${symbolOrAddress} not found in ${chain}/${network}`);
         }
 
-        // Log actual errors
-        logger.error(`Failed to get token: ${error.message}`);
-
-        if (error.message.includes('Unsupported chain')) {
-          throw fastify.httpErrors.badRequest(error.message);
-        }
-
-        throw fastify.httpErrors.internalServerError('Failed to get token');
+        handleTokenError(fastify, error, 'Failed to get token');
       }
     },
   );

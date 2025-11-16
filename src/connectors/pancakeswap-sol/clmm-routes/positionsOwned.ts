@@ -47,28 +47,6 @@ export async function getPositionsOwned(
   }
 
   // Populate cache for each position individually using "connector:clmm:address" format
-  const positionCache = solana.getPositionCache();
-  if (positionCache && positions.length > 0) {
-    for (const positionInfo of positions) {
-      const cacheKey = `pancakeswap-sol:clmm:${positionInfo.address}`;
-      positionCache.set(cacheKey, {
-        positions: [
-          {
-            // Metadata fields for cache management (required by PositionData interface)
-            connector: 'pancakeswap-sol',
-            positionId: positionInfo.address,
-            poolAddress: positionInfo.poolAddress,
-            baseToken: positionInfo.baseTokenAddress,
-            quoteToken: positionInfo.quoteTokenAddress,
-            liquidity: positionInfo.baseTokenAmount + positionInfo.quoteTokenAmount,
-            // Spread all PositionInfo fields
-            ...positionInfo,
-          },
-        ],
-      });
-    }
-    logger.debug(`[position-cache] SET ${positions.length} position(s) for wallet ${walletAddress.slice(0, 8)}...`);
-  }
 
   return positions;
 }

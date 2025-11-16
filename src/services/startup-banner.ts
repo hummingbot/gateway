@@ -47,18 +47,14 @@ async function displaySolanaConfig(): Promise<void> {
     if (rpcProvider === 'helius') {
       try {
         const heliusApiKey = config.get('helius.apiKey') || '';
-        const useWebSocketRPC = config.get('helius.useWebSocketRPC') || false;
+        const useWebSocket = config.get('helius.useWebSocket') || false;
 
         const networkConfig = getSolanaNetworkConfig(defaultNetwork);
-        const mergedConfig = {
-          ...networkConfig,
-          heliusAPIKey: heliusApiKey,
-          useHeliusRestRPC: true,
-          useHeliusWebSocketRPC: useWebSocketRPC,
-        };
-
-        const heliusService = new HeliusService(mergedConfig);
-        nodeURL = heliusService.getUrlForNetwork(defaultNetwork);
+        const heliusService = new HeliusService(
+          { apiKey: heliusApiKey, useWebSocket },
+          { chain: 'solana', network: defaultNetwork, chainId: networkConfig.chainID },
+        );
+        nodeURL = heliusService.getHttpUrl();
       } catch (error: any) {
         logger.debug(`Unable to get Helius URL: ${error.message}`);
       }
@@ -110,14 +106,11 @@ async function displayEthereumConfig(): Promise<void> {
         const useWebSocket = config.get('infura.useWebSocket') || false;
 
         const networkConfig = getEthereumNetworkConfig(defaultNetwork);
-        const mergedConfig = {
-          ...networkConfig,
-          infuraAPIKey: infuraApiKey,
-          useInfuraWebSocket: useWebSocket,
-        };
-
-        const infuraService = new InfuraService(mergedConfig);
-        nodeURL = infuraService.getUrlForNetwork(defaultNetwork);
+        const infuraService = new InfuraService(
+          { apiKey: infuraApiKey, useWebSocket },
+          { chain: 'ethereum', network: defaultNetwork, chainId: networkConfig.chainID },
+        );
+        nodeURL = infuraService.getHttpUrl();
       } catch (error: any) {
         logger.debug(`Unable to get Infura URL: ${error.message}`);
       }

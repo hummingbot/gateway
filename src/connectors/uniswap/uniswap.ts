@@ -156,42 +156,11 @@ export class Uniswap {
   }
 
   /**
-   * Given a token's address, return the connector's native representation of the token.
+   * Get token by symbol or address from local token list
    */
-  public getTokenByAddress(address: string): Token | null {
-    const tokenInfo = this.ethereum.getToken(address);
-    if (!tokenInfo) return null;
-
-    // Create Uniswap SDK Token instance
-    return new Token(tokenInfo.chainId, tokenInfo.address, tokenInfo.decimals, tokenInfo.symbol, tokenInfo.name);
-  }
-
-  /**
-   * Given a token's symbol, return the connector's native representation of the token.
-   */
-  public getTokenBySymbol(symbol: string): Token | null {
-    // Just use getTokenByAddress since ethereum.getToken handles both symbols and addresses
-    return this.getTokenByAddress(symbol);
-  }
-
-  /**
-   * Get token by address with blockchain fallback for unlisted tokens (async version).
-   * Use this in routes that support trading unlisted tokens.
-   */
-  public async getOrFetchTokenByAddress(address: string): Promise<Token | null> {
-    const tokenInfo = await this.ethereum.getOrFetchToken(address);
-    if (!tokenInfo) return null;
-
-    // Create Uniswap SDK Token instance
-    return new Token(tokenInfo.chainId, tokenInfo.address, tokenInfo.decimals, tokenInfo.symbol, tokenInfo.name);
-  }
-
-  /**
-   * Get token by symbol with blockchain fallback for unlisted tokens (async version).
-   * Use this in routes that support trading unlisted tokens.
-   */
-  public async getOrFetchTokenBySymbol(symbol: string): Promise<Token | null> {
-    return this.getOrFetchTokenByAddress(symbol);
+  public async getToken(symbolOrAddress: string): Promise<Token | null> {
+    const tokenInfo = await this.ethereum.getToken(symbolOrAddress);
+    return tokenInfo ? this.getUniswapToken(tokenInfo) : null;
   }
 
   /**
@@ -259,10 +228,9 @@ export class Uniswap {
       // Resolve pool address if provided
       let pairAddress = poolAddress;
 
-      // If tokenA and tokenB are strings, assume they are symbols
-      const tokenAObj = typeof tokenA === 'string' ? this.getTokenBySymbol(tokenA) : tokenA;
-
-      const tokenBObj = typeof tokenB === 'string' ? this.getTokenBySymbol(tokenB) : tokenB;
+      // If tokenA and tokenB are strings, resolve them to Token objects
+      const tokenAObj = typeof tokenA === 'string' ? await this.getToken(tokenA) : tokenA;
+      const tokenBObj = typeof tokenB === 'string' ? await this.getToken(tokenB) : tokenB;
 
       if (!tokenAObj || !tokenBObj) {
         throw new Error(`Invalid tokens: ${tokenA}, ${tokenB}`);
@@ -317,10 +285,9 @@ export class Uniswap {
       // Resolve pool address if provided
       let poolAddr = poolAddress;
 
-      // If tokenA and tokenB are strings, assume they are symbols
-      const tokenAObj = typeof tokenA === 'string' ? this.getTokenBySymbol(tokenA) : tokenA;
-
-      const tokenBObj = typeof tokenB === 'string' ? this.getTokenBySymbol(tokenB) : tokenB;
+      // If tokenA and tokenB are strings, resolve them to Token objects
+      const tokenAObj = typeof tokenA === 'string' ? await this.getToken(tokenA) : tokenA;
+      const tokenBObj = typeof tokenB === 'string' ? await this.getToken(tokenB) : tokenB;
 
       if (!tokenAObj || !tokenBObj) {
         throw new Error(`Invalid tokens: ${tokenA}, ${tokenB}`);
@@ -415,16 +382,19 @@ export class Uniswap {
       logger.info(`Finding ${poolType} pool for ${baseToken}-${quoteToken} on ${this.networkName}`);
 
       // Resolve token symbols if addresses are provided
-      const baseTokenInfo = this.getTokenBySymbol(baseToken) || this.getTokenByAddress(baseToken);
-      const quoteTokenInfo = this.getTokenBySymbol(quoteToken) || this.getTokenByAddress(quoteToken);
+      const baseTokenInfo = await this.ethereum.getToken(baseToken);
+      const quoteTokenInfo = await this.ethereum.getToken(quoteToken);
 
       if (!baseTokenInfo || !quoteTokenInfo) {
         logger.warn(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
         return null;
       }
 
+      const baseToken_sdk = this.getUniswapToken(baseTokenInfo);
+      const quoteToken_sdk = this.getUniswapToken(quoteTokenInfo);
+
       logger.info(
-        `Resolved tokens: ${baseTokenInfo.symbol} (${baseTokenInfo.address}), ${quoteTokenInfo.symbol} (${quoteTokenInfo.address})`,
+        `Resolved tokens: ${baseToken_sdk.symbol} (${baseToken_sdk.address}), ${quoteToken_sdk.symbol} (${quoteToken_sdk.address})`,
       );
 
       // Use PoolService to find pool by token pair

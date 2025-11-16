@@ -3,7 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { TopPoolInfo } from '../../services/coingecko-service';
 import { extractRawPoolData, toPoolGeckoData } from '../../services/gecko-types';
-import { logger } from '../../services/logger';
+import { handlePoolError } from '../pool-error-handler';
 import { findPools } from '../pool-finder';
 import { fetchDetailedPoolInfo } from '../pool-lookup-helper';
 import {
@@ -79,34 +79,7 @@ export const findPoolsRoute: FastifyPluginAsync = async (fastify) => {
         // Return pool data in PoolInfo format with geckoData
         return pool;
       } catch (error: any) {
-        logger.error(`Failed to get pool info for ${address}: ${error.message}`);
-
-        // Re-throw if it's already an HTTP error
-        if (error.statusCode) {
-          throw error;
-        }
-
-        if (error.message.includes('not found')) {
-          throw fastify.httpErrors.notFound(error.message);
-        }
-
-        if (error.message.includes('Unsupported network') || error.message.includes('Unsupported chainNetwork')) {
-          throw fastify.httpErrors.badRequest(error.message);
-        }
-
-        if (error.message.includes('no connector/type mapping')) {
-          throw fastify.httpErrors.badRequest(error.message);
-        }
-
-        if (error.message.includes('Unable to fetch pool-info')) {
-          throw fastify.httpErrors.badRequest(error.message);
-        }
-
-        if (error.message.includes('Could not resolve symbols')) {
-          throw fastify.httpErrors.badRequest(error.message);
-        }
-
-        throw fastify.httpErrors.internalServerError('Failed to fetch pool info from GeckoTerminal');
+        handlePoolError(fastify, error, `Failed to get pool info for ${address}`);
       }
     },
   );
@@ -151,22 +124,7 @@ export const findPoolsRoute: FastifyPluginAsync = async (fastify) => {
 
         return pools;
       } catch (error: any) {
-        logger.error(`Failed to find pools: ${error.message}`);
-
-        // Re-throw if it's already an HTTP error
-        if (error.statusCode) {
-          throw error;
-        }
-
-        if (error.message.includes('Unsupported network')) {
-          throw fastify.httpErrors.badRequest(error.message);
-        }
-
-        if (error.message.includes('Invalid chainNetwork') || error.message.includes('Unsupported chainNetwork')) {
-          throw fastify.httpErrors.badRequest(error.message);
-        }
-
-        throw fastify.httpErrors.internalServerError('Failed to fetch pools from GeckoTerminal');
+        handlePoolError(fastify, error, 'Failed to find pools');
       }
     },
   );
