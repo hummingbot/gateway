@@ -94,11 +94,9 @@ export class Ethereum {
 
     // Initialize RPC connection based on provider
     if (rpcProvider === 'infura') {
-      logger.info(`Initializing Infura services for provider: ${rpcProvider}`);
-      this.initializeInfuraProvider(config);
+      this.initializeInfuraProvider();
     } else {
-      logger.info(`Using standard RPC provider: ${rpcProvider}`);
-      logger.info(`Initializing Ethereum connector for network: ${network}, RPC URL: ${redactUrl(this.rpcUrl)}`);
+      // Default: use nodeURL
       this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
     }
   }
@@ -401,30 +399,33 @@ export class Ethereum {
   /**
    * Initialize Infura provider with configuration
    */
-  private initializeInfuraProvider(config: any): void {
+  private initializeInfuraProvider(): void {
     try {
       const configManager = ConfigManagerV2.getInstance();
-      const infuraApiKey = configManager.get('infura.apiKey') || '';
-      const useWebSocket = configManager.get('infura.useWebSocket') || false;
+      const providerConfig = {
+        apiKey: configManager.get('infura.apiKey') || '',
+        useWebSocket: configManager.get('infura.useWebSocket') || false,
+      };
 
-      if (!infuraApiKey || infuraApiKey.trim() === '') {
-        logger.warn(`⚠️ Infura provider selected but no API key configured`);
+      // Validate API key
+      if (!providerConfig.apiKey || providerConfig.apiKey.trim() === '' || providerConfig.apiKey.includes('YOUR_')) {
+        logger.warn(`⚠️ Infura provider selected but no valid API key configured`);
         logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
         this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
         return;
       }
 
-      // Merge configs for InfuraService
-      const mergedConfig = {
-        ...config,
-        infuraAPIKey: infuraApiKey,
-        useInfuraWebSocket: useWebSocket,
-      };
+      // Create InfuraService instance
+      this.infuraService = new InfuraService(providerConfig, {
+        chain: 'ethereum',
+        network: this.network,
+        chainId: this.chainId,
+      });
 
-      logger.info(`✅ Infura API key configured (length: ${infuraApiKey.length} chars)`);
-      logger.info(`Infura features enabled - WebSocket: ${useWebSocket}`);
+      logger.info(`✅ Infura API key configured (length: ${providerConfig.apiKey.length} chars)`);
+      logger.info(`Infura features enabled - WebSocket: ${providerConfig.useWebSocket}`);
 
-      this.infuraService = new InfuraService(mergedConfig);
+      // Use Infura provider
       this.provider = this.infuraService.getProvider() as providers.StaticJsonRpcProvider;
     } catch (error: any) {
       logger.warn(`Failed to initialize Infura provider: ${error.message}`);
@@ -463,7 +464,6 @@ export class Ethereum {
       }));
 
       if (this.tokenList) {
-        logger.info(`Loaded ${this.tokenList.length} tokens for ethereum/${this.network}`);
         // Build token map for faster lookups
         this.tokenList.forEach((token: TokenInfo) => (this.tokenMap[token.symbol] = token));
       }

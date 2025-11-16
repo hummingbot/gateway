@@ -98,18 +98,7 @@ export class Solana {
   public tokenList: TokenInfo[] = [];
   public config: SolanaNetworkConfig;
   private _tokenMap: Record<string, TokenInfo> = {};
-  private heliusService: HeliusService;
-
-  // Cache managers (provider-agnostic)
-  private balanceCache?: CacheManager<BalanceData>;
-  private positionCache?: CacheManager<PositionData>;
-  private poolCache?: CacheManager<PoolData>;
-
-  // Wallet addresses to track for position refresh (separate from position cache keys)
-  private trackedWallets: Set<string> = new Set();
-
-  // Flag to prevent recursive pool tracking during initialization
-  private isTrackingPools: boolean = false;
+  private heliusService?: HeliusService;
 
   private static _instances: { [name: string]: Solana };
 
@@ -124,14 +113,9 @@ export class Solana {
 
     // Initialize RPC connection based on provider
     if (rpcProvider === 'helius') {
-      logger.info(`Initializing Helius services for provider: ${rpcProvider}`);
       this.initializeHeliusProvider();
     } else {
       // Default: use nodeURL
-      logger.info(`Using standard RPC provider: ${rpcProvider}`);
-      logger.info(
-        `Initializing Solana connector for network: ${this.network}, RPC URL: ${redactUrl(this.config.nodeURL)}`,
-      );
       this.connection = createRateLimitAwareConnection(
         new Connection(this.config.nodeURL, {
           commitment: 'confirmed',
@@ -148,43 +132,14 @@ export class Solana {
     try {
       // Load Helius config from rpc/helius.yml
       const configManager = ConfigManagerV2.getInstance();
-      const heliusApiKey = configManager.get('helius.apiKey') || '';
-      const useWebSocketRPC = configManager.get('helius.useWebSocketRPC') || false;
-
-      // Merge configs for HeliusService
-      const mergedConfig = {
-        ...this.config,
-        heliusAPIKey: heliusApiKey,
-        useHeliusRestRPC: true, // Always true when using Helius provider
-        useHeliusWebSocketRPC: useWebSocketRPC,
+      const providerConfig = {
+        apiKey: configManager.get('helius.apiKey') || '',
+        useWebSocket: configManager.get('helius.useWebSocket') || false,
       };
 
-      // Always use Helius RPC URL when Helius provider is selected
-      if (heliusApiKey && heliusApiKey.trim() !== '') {
-        const rpcUrl = this.network.includes('devnet')
-          ? `https://devnet.helius-rpc.com/?api-key=${heliusApiKey}`
-          : `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`;
-
-        logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${redactUrl(rpcUrl)}`);
-        logger.info(`✅ Helius API key configured (length: ${heliusApiKey.length} chars)`);
-        logger.info(`Helius features enabled - WebSocket: ${useWebSocketRPC}`);
-
-        this.connection = createRateLimitAwareConnection(
-          new Connection(rpcUrl, {
-            commitment: 'confirmed',
-          }),
-          rpcUrl,
-        );
-
-        // Update this.config with Helius-specific fields so they're available throughout the class
-        this.config = mergedConfig;
-
-        // Initialize HeliusService with merged config (always use mergedConfig, not this.config)
-        // This ensures HeliusService gets all Helius fields even if this.config wasn't updated
-        this.heliusService = new HeliusService(mergedConfig);
-      } else {
-        // Fallback to standard nodeURL if no API key
-        logger.warn(`⚠️ Helius provider selected but no API key configured`);
+      // Validate API key
+      if (!providerConfig.apiKey || providerConfig.apiKey.trim() === '' || providerConfig.apiKey.includes('YOUR_')) {
+        logger.warn(`⚠️ Helius provider selected but no valid API key configured`);
         logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.config.nodeURL)}`);
         this.connection = createRateLimitAwareConnection(
           new Connection(this.config.nodeURL, {
@@ -192,8 +147,29 @@ export class Solana {
           }),
           this.config.nodeURL,
         );
+        return;
       }
-    } catch (error) {
+
+      // Create HeliusService instance
+      this.heliusService = new HeliusService(providerConfig, {
+        chain: 'solana',
+        network: this.network,
+        chainId: this.config.chainID,
+      });
+
+      // Use Helius HTTP URL for connection
+      const rpcUrl = this.heliusService.getHttpUrl();
+      logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${redactUrl(rpcUrl)}`);
+      logger.info(`✅ Helius API key configured (length: ${providerConfig.apiKey.length} chars)`);
+      logger.info(`Helius features enabled - WebSocket: ${providerConfig.useWebSocket}`);
+
+      this.connection = createRateLimitAwareConnection(
+        new Connection(rpcUrl, {
+          commitment: 'confirmed',
+        }),
+        rpcUrl,
+      );
+    } catch (error: any) {
       // If Helius config not found (e.g., in tests), fallback to standard RPC
       logger.warn(`Failed to initialize Helius provider: ${error.message}, falling back to standard RPC`);
       this.connection = createRateLimitAwareConnection(
@@ -221,25 +197,11 @@ export class Solana {
 
   private async init(): Promise<void> {
     try {
-      logger.info(
-        `Initializing Solana connector for network: ${this.network}, RPC URL: ${redactUrl(this.connection.rpcEndpoint)}`,
-      );
       await this.loadTokens();
 
-      // Initialize cache based on RPC provider configuration
-      this.initializeCache();
-
-      // Initialize Helius services only if using Helius provider
-      const chainConfig = getSolanaChainConfig();
-      const rpcProvider = chainConfig.rpcProvider || 'url';
-      if (rpcProvider === 'helius' && this.heliusService) {
-        logger.info(`Initializing Helius services for provider: ${rpcProvider}`);
+      // Initialize Helius WebSocket if using Helius provider
+      if (this.heliusService) {
         await this.heliusService.initialize();
-
-        // Auto-subscribe to all Solana wallets for balance monitoring
-        await this.autoSubscribeToWallets();
-      } else {
-        logger.info(`Using standard RPC provider: ${rpcProvider}`);
       }
     } catch (e) {
       logger.error(`Failed to initialize ${this.network}: ${e}`);
@@ -270,8 +232,6 @@ export class Solana {
       this.tokenList.forEach((token: TokenInfo) => {
         this._tokenMap[token.symbol] = token;
       });
-
-      logger.info(`Loaded ${this.tokenList.length} tokens for solana/${this.network}`);
     } catch (error) {
       logger.error(`Failed to load token list for ${this.network}: ${error.message}`);
       throw error;
@@ -670,134 +630,13 @@ export class Solana {
   }
 
   /**
-   * Get balances for a given address (cache-first strategy)
-   * Uses cached data if available, falls back to RPC if cache miss
+   * Get balances for a given address
    * @param address Wallet address
    * @param tokens Optional array of token symbols/addresses to fetch. If not provided, fetches tokens from token list
    * @returns Map of token symbol to balance (only includes tokens in network's token list)
    */
   public async getBalances(address: string, tokens?: string[]): Promise<Record<string, number>> {
-    // If cache disabled, fetch from RPC
-    if (!this.balanceCache) {
-      return this.getBalancesFromRPC(address, tokens);
-    }
-
-    // Try to get from cache
-    const cached = this.balanceCache.get(address);
-
-    if (cached) {
-      logger.debug(`[balance-cache] HIT for ${address}`);
-
-      // Check if stale and trigger background refresh
-      if (this.balanceCache.isStale(address)) {
-        logger.debug(`[balance-cache] STALE for ${address}, triggering background refresh`);
-        // Non-blocking background refresh
-        this.refreshBalanceInBackground(address).catch((err) =>
-          logger.warn(`Background balance refresh failed for ${address}: ${err.message}`),
-        );
-      }
-
-      // Convert cached format to Record<string, number>
-      const allBalances = this.convertCachedToBalances(cached);
-
-      // If specific tokens requested, filter the cached balances
-      if (tokens && tokens.length > 0) {
-        const filteredBalances: Record<string, number> = {};
-        const tokensToFetchFromRPC: string[] = [];
-
-        for (const token of tokens) {
-          // Check both exact match and case-insensitive match
-          const tokenUpper = token.toUpperCase();
-          if (allBalances[token] !== undefined) {
-            filteredBalances[token] = allBalances[token];
-          } else if (allBalances[tokenUpper] !== undefined) {
-            filteredBalances[token] = allBalances[tokenUpper];
-          } else {
-            // Token not in cache - might be a token address instead of symbol
-            // Defer fetching until we process all cached tokens
-            tokensToFetchFromRPC.push(token);
-          }
-        }
-
-        // Fetch balances for tokens not in cache (likely token addresses)
-        if (tokensToFetchFromRPC.length > 0) {
-          logger.debug(`Fetching ${tokensToFetchFromRPC.length} token(s) from RPC: ${tokensToFetchFromRPC.join(', ')}`);
-          const rpcBalances = await this.getBalancesFromRPC(address, tokensToFetchFromRPC);
-          Object.assign(filteredBalances, rpcBalances);
-        }
-
-        return filteredBalances;
-      }
-
-      // No specific tokens requested - return all cached balances
-      return allBalances;
-    }
-
-    // Cache miss - fetch from RPC and populate cache
-    logger.debug(`[balance-cache] MISS for ${address}`);
-    const balances = await this.getBalancesFromRPC(address, tokens);
-
-    // Populate cache for future requests (always cache the full balance set)
-    await this.populateCacheFromBalances(address, balances);
-
-    return balances;
-  }
-
-  /**
-   * Convert cached BalanceData to Record<string, number> format
-   */
-  private convertCachedToBalances(cached: BalanceData): Record<string, number> {
-    const balances: Record<string, number> = { SOL: cached.sol };
-
-    for (const token of cached.tokens) {
-      balances[token.symbol] = token.balance;
-    }
-
-    return balances;
-  }
-
-  /**
-   * Populate cache from RPC balance response
-   * Converts Record<string, number> format back to BalanceData
-   */
-  private async populateCacheFromBalances(address: string, balances: Record<string, number>): Promise<void> {
-    if (!this.balanceCache) return;
-
-    const balanceData: BalanceData = {
-      sol: balances['SOL'] || 0,
-      tokens: [],
-    };
-
-    // Convert token balances to BalanceData format
-    for (const [symbol, balance] of Object.entries(balances)) {
-      if (symbol === 'SOL') continue;
-
-      // Look up token info to get address and decimals
-      const tokenInfo = await this.getTokenBySymbol(symbol);
-      if (tokenInfo) {
-        balanceData.tokens.push({
-          symbol,
-          address: tokenInfo.address,
-          balance,
-          decimals: tokenInfo.decimals,
-        });
-      }
-    }
-
-    this.balanceCache.set(address, balanceData);
-  }
-
-  /**
-   * Refresh balance in background without blocking
-   */
-  private async refreshBalanceInBackground(address: string): Promise<void> {
-    try {
-      const balances = await this.getBalancesFromRPC(address);
-      await this.populateCacheFromBalances(address, balances);
-      logger.debug(`Background refresh completed for ${address}`);
-    } catch (error: any) {
-      logger.warn(`Background refresh failed for ${address}: ${error.message}`);
-    }
+    return this.getBalancesFromRPC(address, tokens);
   }
 
   /**
@@ -929,74 +768,6 @@ export class Solana {
     }
 
     return allPositions;
-  }
-
-  /**
-   * Refresh a pool in the background
-   * @param cacheKey Format: "connector:poolAddress"
-   */
-  private async refreshPoolInBackground(poolAddress: string): Promise<void> {
-    const { PoolService } = await import('../../services/pool-service');
-    const poolService = PoolService.getInstance();
-
-    // Define callback to fetch pool info (connector determined from poolType in cache)
-    const getPoolInfo = async (address: string, poolType?: 'amm' | 'clmm'): Promise<any> => {
-      // Try each connector until one returns pool info
-      let result: any = null;
-
-      // Meteora
-      try {
-        const { Meteora } = await import('../../connectors/meteora/meteora');
-        const meteora = await Meteora.getInstance(this.network);
-        result = await meteora.getPoolInfo(address);
-        if (result) return result;
-      } catch {
-        // Continue to next connector
-      }
-
-      // Raydium - try the known type first, then the other type
-      try {
-        const { Raydium } = await import('../../connectors/raydium/raydium');
-        const raydium = await Raydium.getInstance(this.network);
-
-        if (poolType === 'amm') {
-          result = await raydium.getAmmPoolInfo(address);
-          if (result) return result;
-          // Try CLMM as fallback
-          result = await raydium.getClmmPoolInfo(address);
-          if (result) return result;
-        } else if (poolType === 'clmm') {
-          result = await raydium.getClmmPoolInfo(address);
-          if (result) return result;
-          // Try AMM as fallback
-          result = await raydium.getAmmPoolInfo(address);
-          if (result) return result;
-        } else {
-          // No type hint, try both
-          result = await raydium.getClmmPoolInfo(address);
-          if (result) return result;
-          result = await raydium.getAmmPoolInfo(address);
-          if (result) return result;
-        }
-      } catch {
-        // Continue to next connector
-      }
-
-      // PancakeSwap
-      try {
-        const { PancakeswapSol } = await import('../../connectors/pancakeswap-sol/pancakeswap-sol');
-        const pancakeswap = await PancakeswapSol.getInstance(this.network);
-        result = await pancakeswap.getClmmPoolInfo(address);
-        if (result) return result;
-      } catch {
-        // Continue to next connector
-      }
-
-      return null;
-    };
-
-    // Use PoolService to refresh pool
-    await poolService.refreshPool(poolAddress, this.poolCache, getPoolInfo);
   }
 
   /**
@@ -2513,298 +2284,12 @@ export class Solana {
   }
 
   /**
-   * Auto-subscribe to all Solana wallets in conf/wallets/solana
-   * Called during initialization when Helius WebSocket is enabled
-   */
-  private async autoSubscribeToWallets(): Promise<void> {
-    try {
-      const heliusService = this.getHeliusService();
-      if (!heliusService?.isWebSocketConnected()) {
-        logger.info('WebSocket not connected, skipping auto-subscription to wallets');
-        return;
-      }
-
-      // Load wallet addresses from conf/wallets/solana
-      const walletDir = './conf/wallets/solana';
-      const walletAddresses = await this.getWalletAddresses(walletDir);
-
-      if (walletAddresses.length === 0) {
-        logger.info('No Solana wallets found in conf/wallets/solana, skipping auto-subscription');
-        return;
-      }
-
-      logger.info(`Auto-subscribing to ${walletAddresses.length} Solana wallet(s)...`);
-
-      // Subscribe to each wallet with initial balance fetch
-      let successCount = 0;
-      for (const address of walletAddresses) {
-        try {
-          // Fetch initial balances
-          const balances = await this.getBalances(address);
-          const solBalance = (balances['SOL'] as number) || 0;
-          const tokenCount = Object.keys(balances).filter((symbol) => symbol !== 'SOL').length;
-
-          logger.info(
-            `[${address.slice(0, 8)}...] Initial balance: ${solBalance.toFixed(4)} SOL, ${tokenCount} token(s)`,
-          );
-
-          // Subscribe to real-time updates
-          await this.subscribeToWalletBalance(address, (balances) => {
-            logger.info(`[${address.slice(0, 8)}...] Balance update at slot ${balances.slot}:`);
-            logger.info(`  SOL: ${balances.sol.toFixed(4)}, Tokens: ${balances.tokens.length}`);
-            if (balances.tokens.length > 0) {
-              balances.tokens.slice(0, 3).forEach((token) => {
-                logger.info(`    - ${token.symbol}: ${token.balance.toFixed(4)}`);
-              });
-              if (balances.tokens.length > 3) {
-                logger.info(`    ... and ${balances.tokens.length - 3} more`);
-              }
-            }
-
-            // Update cache with WebSocket data
-            if (this.balanceCache) {
-              const balanceData: BalanceData = {
-                sol: balances.sol,
-                tokens: balances.tokens,
-              };
-              this.balanceCache.set(address, balanceData, balances.slot);
-              logger.debug(`Cache updated for ${address.slice(0, 8)}... from WebSocket (slot ${balances.slot})`);
-            }
-          });
-
-          successCount++;
-        } catch (error: any) {
-          logger.error(`Failed to subscribe to wallet ${address}: ${error.message}`);
-        }
-      }
-
-      logger.info(
-        `💰 Auto-subscribed to ${successCount}/${walletAddresses.length} Solana wallet(s) for balance tracking`,
-      );
-
-      // Start periodic cache refresh for all subscribed wallets
-      if (this.balanceCache && walletAddresses.length > 0) {
-        this.balanceCache.startPeriodicRefresh(async (keys) => {
-          logger.debug(`Refreshing ${keys.length} wallet balances from periodic timer`);
-          for (const address of keys) {
-            try {
-              await this.refreshBalanceInBackground(address);
-            } catch (error: any) {
-              logger.warn(`Periodic refresh failed for ${address}: ${error.message}`);
-            }
-          }
-        });
-      }
-
-      // Track positions for all wallets if position tracking is enabled
-      if (this.positionCache && walletAddresses.length > 0) {
-        // Add wallets to tracked set
-        walletAddresses.forEach((addr) => this.trackedWallets.add(addr));
-
-        // Use PositionsService to track positions for all wallets
-        const { PositionsService } = await import('../../services/positions-service');
-        const positionsService = PositionsService.getInstance();
-
-        // Define callback to fetch positions (same as refreshPositionsInBackground)
-        const getPositions = async (walletAddress: string): Promise<any[]> => {
-          return await this.fetchPositionsForWallet(walletAddress);
-        };
-
-        await positionsService.trackPositions(walletAddresses, this.positionCache, getPositions);
-
-        // Start periodic position cache refresh using tracked wallets
-        this.positionCache.startPeriodicRefresh(async (_keys) => {
-          const walletsToRefresh = Array.from(this.trackedWallets);
-          logger.debug(`Refreshing ${walletsToRefresh.length} wallet positions from periodic timer`);
-          for (const address of walletsToRefresh) {
-            try {
-              await positionsService.trackPositions([address], this.positionCache!, getPositions);
-            } catch (error: any) {
-              logger.warn(`Periodic position refresh failed for ${address}: ${error.message}`);
-            }
-          }
-        });
-      }
-
-      // Track pools if pool tracking is enabled
-      if (this.poolCache) {
-        await this.trackPools();
-
-        // Start periodic pool cache refresh
-        this.poolCache.startPeriodicRefresh(async (keys) => {
-          logger.debug(`Refreshing ${keys.length} pool(s) from periodic timer`);
-          for (const cacheKey of keys) {
-            try {
-              await this.refreshPoolInBackground(cacheKey);
-            } catch (error: any) {
-              logger.warn(`Periodic pool refresh failed for ${cacheKey}: ${error.message}`);
-            }
-          }
-        });
-      }
-    } catch (error: any) {
-      logger.error(`Error during wallet auto-subscription: ${error.message}`);
-    }
-  }
-
-  /**
-   * Track pools from conf/pools/*.json
-   * Fetches full PoolInfo from WebSocket RPC at startup and populates cache
-   * Uses flag to prevent recursive initialization loop
-   */
-  private async trackPools(): Promise<void> {
-    // Prevent recursive calls during connector initialization
-    if (this.isTrackingPools) {
-      logger.debug('Pool tracking already in progress, skipping');
-      return;
-    }
-
-    this.isTrackingPools = true;
-
-    try {
-      const { PoolService } = await import('../../services/pool-service');
-      const poolService = PoolService.getInstance();
-
-      // Import connector registry for pool fetching
-      const { fetchSolanaPoolInfo } = await import('../../connectors/connector-registry');
-
-      // Define callback to fetch pool info for any connector using the central registry
-      const getPoolInfo = async (connector: string, poolAddress: string, poolType: 'amm' | 'clmm'): Promise<any> => {
-        return await fetchSolanaPoolInfo(connector, this.network, poolAddress, poolType);
-      };
-
-      // Use PoolService to track pools
-      // Note: No need to pass isTrackingCallback since we already checked it above
-      await poolService.trackPools(this.network, this.poolCache, getPoolInfo);
-    } catch (error: any) {
-      logger.error(`Error tracking pools: ${error.message}`);
-    } finally {
-      this.isTrackingPools = false;
-    }
-  }
-
-  /**
-   * Get all wallet addresses from a directory
-   * @param walletDir Directory containing wallet files
-   * @returns Array of wallet addresses
-   */
-  private async getWalletAddresses(walletDir: string): Promise<string[]> {
-    try {
-      // Check if directory exists
-      const exists = await fse.pathExists(walletDir);
-      if (!exists) {
-        return [];
-      }
-
-      // Get all .json files in the directory
-      const files = await fse.readdir(walletDir);
-      const walletFiles = files.filter((file) => file.endsWith('.json') && file !== 'hardware-wallets.json');
-
-      // Extract addresses from filenames (remove .json extension)
-      const addresses = walletFiles.map((file) => file.replace('.json', ''));
-
-      // Validate Solana addresses (basic length check)
-      return addresses.filter((address) => address.length >= 32 && address.length <= 44);
-    } catch (error: any) {
-      logger.error(`Error reading wallet directory ${walletDir}: ${error.message}`);
-      return [];
-    }
-  }
-
-  /**
-   * Initialize balance and position caches based on RPC provider configuration
-   * Provider-agnostic: works with Helius, Infura, or any future provider
-   */
-  private initializeCache(): void {
-    try {
-      const chainConfig = getSolanaChainConfig();
-      const rpcProvider = chainConfig.rpcProvider || 'url';
-      const configManager = ConfigManagerV2.getInstance();
-
-      // Try to get cache config from the RPC provider
-      let cacheConfig: CacheConfig | null = null;
-
-      if (rpcProvider === 'helius') {
-        cacheConfig = configManager.get('helius.cache');
-      } else if (rpcProvider === 'infura') {
-        cacheConfig = configManager.get('infura.cache');
-      }
-      // Future providers can be added here
-
-      if (cacheConfig && cacheConfig.enabled) {
-        // Initialize balance cache if tracking is enabled
-        if (cacheConfig.trackBalances) {
-          this.balanceCache = new CacheManager<BalanceData>(cacheConfig, `solana-${this.network}-balance-cache`);
-          logger.info(`Balance cache initialized for solana-${this.network}`);
-        } else {
-          logger.info(`Balance tracking disabled for solana-${this.network}`);
-        }
-
-        // Initialize position cache if tracking is enabled
-        if (cacheConfig.trackPositions) {
-          this.positionCache = new CacheManager<PositionData>(cacheConfig, `solana-${this.network}-position-cache`);
-          logger.info(`Position cache initialized for solana-${this.network}`);
-        } else {
-          logger.info(`Position tracking disabled for solana-${this.network}`);
-        }
-
-        // Initialize pool cache if tracking is enabled
-        if (cacheConfig.trackPools) {
-          this.poolCache = new CacheManager<PoolData>(cacheConfig, `solana-${this.network}-pool-cache`);
-          logger.info(`Pool cache initialized for solana-${this.network}`);
-        } else {
-          logger.info(`Pool tracking disabled for solana-${this.network}`);
-        }
-      } else {
-        logger.info(`Cache disabled for solana-${this.network}`);
-      }
-    } catch (error: any) {
-      logger.warn(`Failed to initialize cache: ${error.message}, caching disabled`);
-    }
-  }
-
-  /**
-   * Get the balance cache (if enabled)
-   */
-  public getBalanceCache(): CacheManager<BalanceData> | undefined {
-    return this.balanceCache;
-  }
-
-  /**
-   * Get the position cache (if enabled)
-   */
-  public getPositionCache(): CacheManager<PositionData> | undefined {
-    return this.positionCache;
-  }
-
-  /**
-   * Get the pool cache (if enabled)
-   */
-  public getPoolCache(): CacheManager<PoolData> | undefined {
-    return this.poolCache;
-  }
-
-  /**
-   * Clean up resources including WebSocket connections and connection warming
+   * Clean up resources including WebSocket connections
    */
   public disconnect(): void {
     if (this.heliusService) {
       this.heliusService.disconnect();
       logger.info('Helius services disconnected and cleaned up');
-    }
-
-    // Clean up caches
-    if (this.balanceCache) {
-      this.balanceCache.destroy();
-      this.balanceCache = undefined;
-    }
-    if (this.positionCache) {
-      this.positionCache.destroy();
-      this.positionCache = undefined;
-    }
-    if (this.poolCache) {
-      this.poolCache.destroy();
-      this.poolCache = undefined;
     }
   }
 

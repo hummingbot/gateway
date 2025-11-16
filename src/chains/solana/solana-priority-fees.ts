@@ -26,15 +26,12 @@ export class SolanaPriorityFees {
     }
 
     try {
-      // Check if Helius REST RPC is enabled and API key is available
-      if (!config.useHeliusRestRPC) {
-        const minimumFee = config.minPriorityFeePerCU || 0.1;
-        logger.info(`Helius REST RPC disabled, using minimum fee: ${minimumFee.toFixed(4)} lamports/CU`);
-        return minimumFee;
-      }
+      // Try to get Helius API key from RPC config
+      const { ConfigManagerV2 } = await import('../../services/config-manager-v2');
+      const configManager = ConfigManagerV2.getInstance();
+      const apiKey = configManager.get('helius.apiKey') || '';
 
-      const apiKey = config.heliusAPIKey;
-      if (!apiKey || apiKey.trim() === '' || apiKey === 'HELIUS_API_KEY') {
+      if (!apiKey || apiKey.trim() === '' || apiKey.includes('YOUR_')) {
         const minimumFee = config.minPriorityFeePerCU || 0.1;
         logger.info(`No valid Helius API key, using minimum fee: ${minimumFee.toFixed(4)} lamports/CU`);
         return minimumFee;

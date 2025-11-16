@@ -71,37 +71,6 @@ export const savePoolRoute: FastifyPluginAsync = async (fastify) => {
           `Saved pool ${pool.baseSymbol}-${pool.quoteSymbol} (${address}) to ${poolData.connector} ${poolData.type}`,
         );
 
-        // Refresh pool cache for Solana chains (non-blocking)
-        if (
-          poolData.connector === 'raydium' ||
-          poolData.connector === 'meteora' ||
-          poolData.connector === 'pancakeswap-sol'
-        ) {
-          const { Solana } = await import('../../chains/solana/solana');
-          Solana.getInstance(pool.network)
-            .then(async (solana) => {
-              const poolCache = solana.getPoolCache();
-              if (poolCache) {
-                try {
-                  // Fetch pool info to add to cache
-                  const poolInfo = await fetchPoolInfo(
-                    poolData.connector,
-                    poolData.type as 'amm' | 'clmm',
-                    pool.network,
-                    address,
-                  );
-                  if (poolInfo) {
-                    poolCache.set(address, { poolInfo, poolType: poolData.type as 'amm' | 'clmm' });
-                    logger.info(`Added pool ${address} to cache`);
-                  }
-                } catch (error: any) {
-                  logger.warn(`Failed to add pool ${address} to cache: ${error.message}`);
-                }
-              }
-            })
-            .catch((err) => logger.warn(`Failed to refresh pool cache: ${err.message}`));
-        }
-
         return {
           message: `Pool ${pool.baseSymbol}-${pool.quoteSymbol} has been added to the pool list for ${poolData.connector}`,
           pool,
