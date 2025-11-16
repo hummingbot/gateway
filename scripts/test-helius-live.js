@@ -103,13 +103,12 @@ async function testHeliusWebSocket() {
     
     const config = yaml.load(fs.readFileSync(configPath, 'utf8'));
     const apiKey = config.apiKey;
-
+    
     if (!apiKey || apiKey === '') {
       reject(new Error('Helius API key not configured'));
       return;
     }
-
-    // Note: wsUrl contains sensitive API key, do not log it
+    
     const wsUrl = `wss://mainnet.helius-rpc.com/?api-key=${apiKey}`;
     const ws = new WebSocket(wsUrl);
     
@@ -206,8 +205,7 @@ async function testHeliusRPCMethods() {
   
   const config = yaml.load(fs.readFileSync(configPath, 'utf8'));
   const apiKey = config.apiKey;
-
-  // Note: rpcUrl contains sensitive API key, do not log it
+  
   const rpcUrl = `https://mainnet.helius-rpc.com/?api-key=${apiKey}`;
   const connection = new Connection(rpcUrl, 'confirmed');
   
