@@ -37,8 +37,6 @@ async function testInfuraWebSocket() {
     );
 
     await mainnetService.initialize();
-    console.log(`HTTP URL: ${mainnetService.getHttpUrl()}`);
-    console.log(`WebSocket URL: ${mainnetService.getWebSocketUrl()}`);
 
     // Wait for connection
     console.log('Waiting for WebSocket connection...');
@@ -59,8 +57,6 @@ async function testInfuraWebSocket() {
     );
 
     await polygonService.initialize();
-    console.log(`HTTP URL: ${polygonService.getHttpUrl()}`);
-    console.log(`WebSocket URL: ${polygonService.getWebSocketUrl()}`);
 
     const polygonConnected = await waitForConnection(polygonService, 10000);
     console.log(`WebSocket connected: ${polygonConnected}`);
@@ -79,8 +75,6 @@ async function testInfuraWebSocket() {
     );
 
     await arbitrumService.initialize();
-    console.log(`HTTP URL: ${arbitrumService.getHttpUrl()}`);
-    console.log(`WebSocket URL: ${arbitrumService.getWebSocketUrl()}`);
 
     const arbitrumConnected = await waitForConnection(arbitrumService, 10000);
     console.log(`WebSocket connected: ${arbitrumConnected}`);
@@ -99,8 +93,6 @@ async function testInfuraWebSocket() {
     );
 
     await optimismService.initialize();
-    console.log(`HTTP URL: ${optimismService.getHttpUrl()}`);
-    console.log(`WebSocket URL: ${optimismService.getWebSocketUrl()}`);
 
     const optimismConnected = await waitForConnection(optimismService, 10000);
     console.log(`WebSocket connected: ${optimismConnected}`);
@@ -119,8 +111,6 @@ async function testInfuraWebSocket() {
     );
 
     await baseService.initialize();
-    console.log(`HTTP URL: ${baseService.getHttpUrl()}`);
-    console.log(`WebSocket URL: ${baseService.getWebSocketUrl()}`);
 
     const baseConnected = await waitForConnection(baseService, 10000);
     console.log(`WebSocket connected: ${baseConnected}`);
@@ -151,7 +141,6 @@ async function testInfuraWebSocket() {
     console.log('\n✅ All Infura WebSocket tests passed!');
     console.log('\nSummary:');
     console.log('- WebSocket connections established successfully for all networks');
-    console.log('- HTTP and WebSocket URLs generated correctly');
     console.log('- Connection state tracking works properly');
     console.log('- Disconnect functionality works as expected');
 
