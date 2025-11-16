@@ -86,16 +86,6 @@ export const PollRequestSchema = Type.Object(
   {
     network: Type.Optional(Type.String()),
     signature: Type.String({ description: 'Transaction signature/hash' }),
-    tokens: Type.Optional(
-      Type.Array(Type.String(), {
-        description: 'Array of token symbols or addresses for balance change calculation',
-      }),
-    ),
-    walletAddress: Type.Optional(
-      Type.String({
-        description: 'Wallet address for balance change calculation (required if tokens provided)',
-      }),
-    ),
   },
   { $id: 'PollRequest' },
 );
@@ -108,11 +98,6 @@ export const PollResponseSchema = Type.Object(
     txBlock: Type.Union([Type.Number(), Type.Null()]),
     txStatus: Type.Number(),
     fee: Type.Union([Type.Number(), Type.Null()]),
-    tokenBalanceChanges: Type.Optional(
-      Type.Record(Type.String(), Type.Number(), {
-        description: 'Dictionary of token balance changes keyed by token input value (symbol or address)',
-      }),
-    ),
     txData: Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()]),
     error: Type.Optional(Type.String()),
   },
@@ -191,14 +176,8 @@ export type TransactionsResponseType = Static<typeof TransactionsResponseSchema>
 export const ParseRequestSchema = Type.Object(
   {
     network: Type.Optional(Type.String()),
-    signature: Type.String({ description: 'Transaction signature to parse' }),
+    signature: Type.String({ description: 'Transaction signature/hash to parse' }),
     walletAddress: Type.String({ description: 'Wallet address for balance change calculation' }),
-    connector: Type.Optional(
-      Type.String({
-        description:
-          'Connector with type (e.g., jupiter/router) - helps identify program and auto-detect tokens from transaction',
-      }),
-    ),
   },
   { $id: 'ParseRequest' },
 );
@@ -212,27 +191,16 @@ export const ParseResponseSchema = Type.Object(
     blockTime: Type.Union([Type.Number(), Type.Null()]),
     status: Type.Number({ description: '0 = PENDING, 1 = CONFIRMED, -1 = FAILED' }),
     fee: Type.Union([Type.Number(), Type.Null()], {
-      description: 'Transaction fee in native currency (SOL)',
+      description: 'Transaction fee in native currency',
     }),
-    nativeBalanceChange: Type.Optional(
-      Type.Number({
-        description: 'Balance change for native currency (SOL) including fees',
-      }),
-    ),
     tokenBalanceChanges: Type.Optional(
       Type.Record(Type.String(), Type.Number(), {
-        description: 'Balance changes keyed by token symbol or address',
+        description: 'Balance changes keyed by token symbol or address (includes native currency)',
       }),
     ),
     connector: Type.Optional(
       Type.String({
-        description: 'Detected connector name if transaction interacted with a known program',
-      }),
-    ),
-    action: Type.Optional(
-      Type.String({
-        description:
-          'Human-readable description of the action (e.g., "Swap 0.001 WSOL for 12602.89 BONK on Jupiter Aggregator v6")',
+        description: 'Detected connector name if transaction interacted with a known DEX',
       }),
     ),
     error: Type.Optional(Type.String()),

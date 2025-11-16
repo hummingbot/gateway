@@ -1,5 +1,7 @@
 import { Type, Static } from '@sinclair/typebox';
 
+import { PollRequestSchema, ParseRequestSchema, TransactionsRequestSchema } from '../../schemas/chain-schema';
+
 import { getSolanaChainConfig, networks as SolanaNetworks } from './solana.config';
 
 // Get chain config for defaults
@@ -52,46 +54,28 @@ export const SolanaEstimateGasRequest = Type.Object({
 });
 
 // Poll request schema
-export const SolanaPollRequest = Type.Object({
-  network: SolanaNetworkParameter,
-  signature: Type.String({
-    description: 'Transaction signature to poll',
-    examples: [EXAMPLE_SIGNATURE],
+export const SolanaPollRequest = Type.Composite([
+  PollRequestSchema,
+  Type.Object({
+    network: SolanaNetworkParameter,
   }),
-});
-
-// Transactions request schema
-export const SolanaTransactionsRequest = Type.Object({
-  network: SolanaNetworkParameter,
-  walletAddress: Type.String({
-    description: 'Wallet address to fetch transactions for',
-    default: solanaChainConfig.defaultWallet,
-    examples: ['82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5'],
-  }),
-  limit: Type.Optional(
-    Type.Number({
-      minimum: 1,
-      maximum: 1000,
-      default: 100,
-      description: 'Number of transaction signatures to fetch from RPC (default: 100, max: 1000)',
-      examples: [100],
-    }),
-  ),
-});
+]);
 
 // Parse request schema
-export const SolanaParseRequest = Type.Object({
-  network: SolanaNetworkParameter,
-  signature: Type.String({
-    description: 'Transaction signature to parse',
-    examples: ['Tqv6o4BvJmdNxpFbPquv4hKuM9mqyxWvvTmkd19wQZ2VQdC7m71gpFHaXTms53a5a7KfnFZXfnDeztVKTsViqFr'],
+export const SolanaParseRequest = Type.Composite([
+  ParseRequestSchema,
+  Type.Object({
+    network: SolanaNetworkParameter,
   }),
-  walletAddress: Type.String({
-    description: 'Wallet address to calculate balance changes for',
-    default: solanaChainConfig.defaultWallet,
-    examples: ['82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5'],
+]);
+
+// Transactions request schema
+export const SolanaTransactionsRequest = Type.Composite([
+  TransactionsRequestSchema,
+  Type.Object({
+    network: SolanaNetworkParameter,
   }),
-});
+]);
 
 // Quote swap request schema
 export const SolanaQuoteSwapRequest = Type.Object({

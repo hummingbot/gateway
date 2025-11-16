@@ -1,10 +1,64 @@
 import { ethers } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
+import { contractAddresses as pancakeswapContracts } from '../../../connectors/pancakeswap/pancakeswap.contracts';
+import { contractAddresses as uniswapContracts } from '../../../connectors/uniswap/uniswap.contracts';
 import { ParseRequestType, ParseResponseType, ParseResponseSchema } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
 import { EthereumParseRequest } from '../schemas';
+
+/**
+ * Build a map of contract addresses to connector names for a given network
+ * @param network The network name
+ * @returns Map of lowercase contract addresses to connector names
+ */
+function buildContractMap(network: string): Record<string, string> {
+  const map: Record<string, string> = {};
+
+  const uniswap = uniswapContracts[network];
+  const pancakeswap = pancakeswapContracts[network];
+
+  if (uniswap) {
+    // Uniswap V2 Router
+    if (uniswap.uniswapV2RouterAddress) {
+      map[uniswap.uniswapV2RouterAddress.toLowerCase()] = 'uniswap/amm';
+    }
+    // Uniswap V3 SwapRouter02
+    if (uniswap.uniswapV3SwapRouter02Address) {
+      map[uniswap.uniswapV3SwapRouter02Address.toLowerCase()] = 'uniswap/clmm';
+    }
+    // Uniswap V3 NFT Manager
+    if (uniswap.uniswapV3NftManagerAddress) {
+      map[uniswap.uniswapV3NftManagerAddress.toLowerCase()] = 'uniswap/clmm';
+    }
+    // Universal Router V2
+    if (uniswap.universalRouterV2Address) {
+      map[uniswap.universalRouterV2Address.toLowerCase()] = 'uniswap/router';
+    }
+  }
+
+  if (pancakeswap) {
+    // Pancakeswap V2 Router
+    if (pancakeswap.pancakeswapV2RouterAddress) {
+      map[pancakeswap.pancakeswapV2RouterAddress.toLowerCase()] = 'pancakeswap/amm';
+    }
+    // Pancakeswap V3 SwapRouter02
+    if (pancakeswap.pancakeswapV3SwapRouter02Address) {
+      map[pancakeswap.pancakeswapV3SwapRouter02Address.toLowerCase()] = 'pancakeswap/clmm';
+    }
+    // Pancakeswap V3 NFT Manager
+    if (pancakeswap.pancakeswapV3NftManagerAddress) {
+      map[pancakeswap.pancakeswapV3NftManagerAddress.toLowerCase()] = 'pancakeswap/clmm';
+    }
+    // Universal Router V2
+    if (pancakeswap.universalRouterV2Address) {
+      map[pancakeswap.universalRouterV2Address.toLowerCase()] = 'pancakeswap/router';
+    }
+  }
+
+  return map;
+}
 
 export const parseRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
@@ -28,6 +82,9 @@ export const parseRoute: FastifyPluginAsync = async (fastify) => {
       const ethereum = await Ethereum.getInstance(network);
 
       try {
+        // Build contract address map for connector detection
+        const contractMap = buildContractMap(network || ethereum.network);
+
         // Validate transaction hash format
         if (!signature || typeof signature !== 'string' || !signature.match(/^0x[a-fA-F0-9]{64}$/)) {
           return {
@@ -145,12 +202,22 @@ export const parseRoute: FastifyPluginAsync = async (fastify) => {
           }
         }
 
+        // Auto-detect connector from transaction recipient address
+        let detectedConnector: string | undefined;
+        if (txData.to) {
+          const toAddress = txData.to.toLowerCase();
+          if (contractMap[toAddress]) {
+            detectedConnector = contractMap[toAddress];
+            logger.info(`Transaction ${signature} interacted with ${detectedConnector} (contract: ${txData.to})`);
+          }
+        }
+
         logger.info(
           `Parsed transaction ${signature} - Status: ${status}, Fee: ${fee} ${nativeCurrencySymbol}, Token changes: ${Object.entries(
             tokenBalanceChanges,
           )
             .map(([token, change]) => `${token}: ${change}`)
-            .join(', ')}`,
+            .join(', ')}${detectedConnector ? `, Connector: ${detectedConnector}` : ''}`,
         );
 
         return {
@@ -160,6 +227,7 @@ export const parseRoute: FastifyPluginAsync = async (fastify) => {
           status,
           fee,
           tokenBalanceChanges,
+          connector: detectedConnector,
         };
       } catch (error) {
         logger.error(`Error parsing transaction ${signature}: ${error.message}`);

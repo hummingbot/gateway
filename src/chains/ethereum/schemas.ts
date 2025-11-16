@@ -1,5 +1,7 @@
 import { Type, Static } from '@sinclair/typebox';
 
+import { PollRequestSchema, ParseRequestSchema, TransactionsRequestSchema } from '../../schemas/chain-schema';
+
 import { getEthereumChainConfig, networks as EthereumNetworks } from './ethereum.config';
 
 // Get chain config for defaults
@@ -52,24 +54,21 @@ export const EthereumEstimateGasRequest = Type.Object({
   network: EthereumNetworkParameter,
 });
 
-// Poll request schema - map signature to txHash for Ethereum
-export const EthereumPollRequest = Type.Object({
-  network: EthereumNetworkParameter,
-  signature: Type.String({
-    description: 'Transaction hash to poll',
-    examples: [EXAMPLE_TX_HASH],
+// Poll request schema
+export const EthereumPollRequest = Type.Composite([
+  PollRequestSchema,
+  Type.Object({
+    network: EthereumNetworkParameter,
   }),
-});
+]);
 
 // Parse request schema
-export const EthereumParseRequest = Type.Object({
-  network: EthereumNetworkParameter,
-  signature: Type.String({
-    description: 'Transaction hash to parse',
-    examples: [EXAMPLE_TX_HASH],
+export const EthereumParseRequest = Type.Composite([
+  ParseRequestSchema,
+  Type.Object({
+    network: EthereumNetworkParameter,
   }),
-  walletAddress: EthereumAddressParameter,
-});
+]);
 
 // Allowances request schema (multiple tokens)
 export const AllowancesRequestSchema = Type.Object({
