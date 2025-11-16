@@ -7,6 +7,42 @@ import { Solana } from '../solana';
 import { SolanaLedger } from '../solana-ledger';
 
 /**
+ * Handle common Solana transaction errors
+ */
+function handleSolanaTransactionError(fastify: FastifyInstance, error: any, operation: string): never {
+  // Re-throw errors that already have statusCode (our custom errors)
+  if (error.statusCode) {
+    throw error;
+  }
+
+  const message = error.message || '';
+
+  // Map common error patterns to appropriate HTTP errors
+  if (message.includes('insufficient funds')) {
+    throw fastify.httpErrors.badRequest(
+      `Insufficient funds for transaction. Please ensure you have enough SOL to ${operation} and pay for transaction fees.`,
+    );
+  }
+
+  if (message.includes('timeout')) {
+    throw fastify.httpErrors.requestTimeout(
+      `Transaction timeout. The transaction may still be pending. Signature: ${error.signature || 'unknown'}`,
+    );
+  }
+
+  if (message.includes('rejected on Ledger')) {
+    throw fastify.httpErrors.badRequest('Transaction rejected on Ledger device');
+  }
+
+  if (message.includes('Ledger device is locked') || message.includes('Wrong app is open')) {
+    throw fastify.httpErrors.badRequest(message);
+  }
+
+  // Default to internal server error for unknown errors
+  throw fastify.httpErrors.internalServerError(`Failed to ${operation}: ${message}`);
+}
+
+/**
  * Wrap SOL to WSOL
  * Creates WSOL token account if needed, transfers SOL, and syncs native balance
  */
@@ -94,25 +130,7 @@ export async function wrapSolana(
     }
   } catch (error: any) {
     logger.error(`Error wrapping SOL to WSOL: ${error.message}`);
-
-    // Handle specific error cases
-    if (error.message && error.message.includes('insufficient funds')) {
-      throw fastify.httpErrors.badRequest(
-        `Insufficient funds for transaction. Please ensure you have enough SOL to wrap and pay for transaction fees.`,
-      );
-    } else if (error.message && error.message.includes('timeout')) {
-      throw fastify.httpErrors.requestTimeout(
-        `Transaction timeout. The transaction may still be pending. Signature: ${error.signature || 'unknown'}`,
-      );
-    } else if (error.message && error.message.includes('rejected on Ledger')) {
-      throw fastify.httpErrors.badRequest('Transaction rejected on Ledger device');
-    } else if (error.message && error.message.includes('Ledger device is locked')) {
-      throw fastify.httpErrors.badRequest(error.message);
-    } else if (error.message && error.message.includes('Wrong app is open')) {
-      throw fastify.httpErrors.badRequest(error.message);
-    }
-
-    throw fastify.httpErrors.internalServerError(`Failed to wrap SOL to WSOL: ${error.message}`);
+    handleSolanaTransactionError(fastify, error, 'wrap SOL to WSOL');
   }
 }
 
@@ -134,7 +152,6 @@ export const wrapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { network, address, amount } = request.body;
-
       return await wrapSolana(fastify, network, address, amount);
     },
   );
