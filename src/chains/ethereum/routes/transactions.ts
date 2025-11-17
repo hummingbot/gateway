@@ -59,24 +59,10 @@ export const transactionsRoute: FastifyPluginAsync = async (fastify) => {
         };
       }
 
-      // Check if Etherscan is supported for this chain
-      if (!EtherscanService.isSupported(ethereum.chainId)) {
-        logger.warn(
-          `Transaction history requested for ${walletAddress} on ${ethereum.network} (chainId: ${ethereum.chainId}) ` +
-            `but Etherscan API is not supported for this chain.`,
-        );
-        return {
-          currentBlock,
-          transactions: [],
-          count: 0,
-        };
-      }
-
       try {
-        // Create Etherscan service instance
+        // Create Etherscan service instance and fetch transactions
+        // The Etherscan V2 API will return an error if the chain is not supported
         const etherscan = new EtherscanService(ethereum.chainId, ethereum.network, config.etherscanAPIKey);
-
-        // Fetch transactions from Etherscan
         const transactions = await etherscan.getTransactions(walletAddress, limit);
 
         logger.info(
@@ -89,7 +75,7 @@ export const transactionsRoute: FastifyPluginAsync = async (fastify) => {
           count: transactions.length,
         };
       } catch (error: any) {
-        logger.error(`Failed to fetch transactions from Etherscan: ${error.message}`);
+        logger.error(`Failed to fetch transactions from Etherscan for ${ethereum.network}: ${error.message}`);
 
         // Return empty list on error but include error in logs
         return {
