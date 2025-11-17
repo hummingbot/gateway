@@ -70,6 +70,14 @@ export const EthereumParseRequest = Type.Composite([
   }),
 ]);
 
+// Transactions request schema
+export const EthereumTransactionsRequest = Type.Composite([
+  TransactionsRequestSchema,
+  Type.Object({
+    network: EthereumNetworkParameter,
+  }),
+]);
+
 // Allowances request schema (multiple tokens)
 export const AllowancesRequestSchema = Type.Object({
   network: EthereumNetworkParameter,
