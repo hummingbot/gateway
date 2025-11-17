@@ -1,73 +1,114 @@
 import { HeliusService } from '../../../src/chains/solana/helius-service';
-import { SolanaNetworkConfig } from '../../../src/chains/solana/solana.config';
 
 describe('HeliusService', () => {
   let heliusService: HeliusService;
-  let mockConfig: SolanaNetworkConfig;
+  const testApiKey = 'test-helius-key-123';
 
   beforeEach(() => {
-    mockConfig = {
-      nodeURL: 'https://api.mainnet-beta.solana.com',
-      nativeCurrencySymbol: 'SOL',
-      defaultComputeUnits: 200000,
-      confirmRetryInterval: 1,
-      confirmRetryCount: 10,
-      heliusAPIKey: 'test-api-key-123',
-      useHeliusRestRPC: true,
-      useHeliusWebSocketRPC: false,
-      minPriorityFeePerCU: 0.01,
-    };
-
-    heliusService = new HeliusService(mockConfig);
+    heliusService = new HeliusService(
+      { apiKey: testApiKey, useWebSocket: false },
+      { chain: 'solana', network: 'mainnet-beta', chainId: 101 },
+    );
   });
 
-  describe('getUrlForNetwork', () => {
+  describe('getHttpUrl', () => {
     it('should return mainnet Helius URL for mainnet-beta network', () => {
-      const url = heliusService.getUrlForNetwork('mainnet-beta');
+      const url = heliusService.getHttpUrl();
 
-      expect(url).toBe('https://mainnet.helius-rpc.com/?api-key=test-api-key-123');
+      expect(url).toBe('https://mainnet.helius-rpc.com/?api-key=test-helius-key-123');
     });
 
     it('should return mainnet Helius URL for mainnet network', () => {
-      const url = heliusService.getUrlForNetwork('mainnet');
+      const mainnetService = new HeliusService(
+        { apiKey: testApiKey, useWebSocket: false },
+        { chain: 'solana', network: 'mainnet', chainId: 101 },
+      );
+      const url = mainnetService.getHttpUrl();
 
-      expect(url).toBe('https://mainnet.helius-rpc.com/?api-key=test-api-key-123');
+      expect(url).toBe(`https://mainnet.helius-rpc.com/?api-key=${testApiKey}`);
     });
 
     it('should return devnet Helius URL for devnet network', () => {
-      const url = heliusService.getUrlForNetwork('devnet');
+      const devnetService = new HeliusService(
+        { apiKey: testApiKey, useWebSocket: false },
+        { chain: 'solana', network: 'devnet', chainId: 103 },
+      );
+      const url = devnetService.getHttpUrl();
 
-      expect(url).toBe('https://devnet.helius-rpc.com/?api-key=test-api-key-123');
+      expect(url).toBe(`https://devnet.helius-rpc.com/?api-key=${testApiKey}`);
     });
 
     it('should return devnet Helius URL for networks containing "devnet"', () => {
-      const url = heliusService.getUrlForNetwork('solana-devnet');
+      const devnetService = new HeliusService(
+        { apiKey: testApiKey, useWebSocket: false },
+        { chain: 'solana', network: 'solana-devnet', chainId: 103 },
+      );
+      const url = devnetService.getHttpUrl();
 
-      expect(url).toBe('https://devnet.helius-rpc.com/?api-key=test-api-key-123');
+      expect(url).toBe(`https://devnet.helius-rpc.com/?api-key=${testApiKey}`);
     });
 
     it('should include the correct API key in the URL', () => {
-      const customConfig = {
-        ...mockConfig,
-        heliusAPIKey: 'custom-api-key-456',
-      };
-      const customService = new HeliusService(customConfig);
+      const customService = new HeliusService(
+        { apiKey: 'custom-api-key-456', useWebSocket: false },
+        { chain: 'solana', network: 'mainnet-beta', chainId: 101 },
+      );
 
-      const url = customService.getUrlForNetwork('mainnet-beta');
+      const url = customService.getHttpUrl();
 
       expect(url).toBe('https://mainnet.helius-rpc.com/?api-key=custom-api-key-456');
     });
 
     it('should handle empty API key', () => {
-      const configWithEmptyKey = {
-        ...mockConfig,
-        heliusAPIKey: '',
-      };
-      const serviceWithEmptyKey = new HeliusService(configWithEmptyKey);
+      const serviceWithEmptyKey = new HeliusService(
+        { apiKey: '', useWebSocket: false },
+        { chain: 'solana', network: 'mainnet-beta', chainId: 101 },
+      );
 
-      const url = serviceWithEmptyKey.getUrlForNetwork('mainnet-beta');
+      const url = serviceWithEmptyKey.getHttpUrl();
 
       expect(url).toBe('https://mainnet.helius-rpc.com/?api-key=');
+    });
+  });
+
+  describe('getWebSocketUrl', () => {
+    it('should return WebSocket URL when enabled', () => {
+      const wsService = new HeliusService(
+        { apiKey: testApiKey, useWebSocket: true },
+        { chain: 'solana', network: 'mainnet-beta', chainId: 101 },
+      );
+
+      const wsUrl = wsService.getWebSocketUrl();
+
+      expect(wsUrl).toBe(`wss://mainnet.helius-rpc.com/?api-key=${testApiKey}`);
+    });
+
+    it('should return null when WebSocket is disabled', () => {
+      const service = new HeliusService(
+        { apiKey: testApiKey, useWebSocket: false },
+        { chain: 'solana', network: 'mainnet-beta', chainId: 101 },
+      );
+
+      const wsUrl = service.getWebSocketUrl();
+
+      expect(wsUrl).toBeNull();
+    });
+
+    it('should return devnet WebSocket URL for devnet network', () => {
+      const devnetWsService = new HeliusService(
+        { apiKey: testApiKey, useWebSocket: true },
+        { chain: 'solana', network: 'devnet', chainId: 103 },
+      );
+
+      const wsUrl = devnetWsService.getWebSocketUrl();
+
+      expect(wsUrl).toBe(`wss://devnet.helius-rpc.com/?api-key=${testApiKey}`);
+    });
+  });
+
+  describe('isWebSocketConnected', () => {
+    it('should return false when WebSocket is not initialized', () => {
+      expect(heliusService.isWebSocketConnected()).toBe(false);
     });
   });
 });

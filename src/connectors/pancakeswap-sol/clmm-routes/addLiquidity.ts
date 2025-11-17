@@ -65,7 +65,7 @@ export async function addLiquidity(
   logger.info(`Quote Liquidity: ${quote.liquidity}`);
 
   // Apply slippage buffer (same as openPosition and Raydium)
-  const effectiveSlippage = slippagePct || 1.0;
+  const effectiveSlippage = slippagePct ?? PancakeswapSolConfig.config.slippagePct;
   const amount0Max = new BN(
     (quote.baseTokenAmountMax * (1 + effectiveSlippage / 100) * 10 ** baseToken.decimals).toFixed(0),
   );

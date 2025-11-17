@@ -183,7 +183,7 @@ export class Raydium {
       };
       return poolInfo;
     } catch (error) {
-      logger.error(`Error getting CLMM pool info for ${poolAddress}:`, error);
+      logger.debug(`Could not decode ${poolAddress} as Raydium CLMM pool: ${error}`);
       return null;
     }
   }
@@ -280,7 +280,7 @@ export class Raydium {
 
       return [poolInfo, poolKeys];
     } catch (error) {
-      logger.error(`Error getting AMM pool info from API for ${poolAddress}:`, error);
+      logger.debug(`Could not fetch Raydium AMM pool info from API for ${poolAddress}: ${error}`);
       return null;
     }
   }
@@ -332,7 +332,7 @@ export class Raydium {
         return poolInfo;
       }
     } catch (error) {
-      logger.error(`Error getting AMM pool info for ${poolAddress}:`, error);
+      logger.debug(`Could not decode ${poolAddress} as Raydium AMM pool: ${error}`);
       return null;
     }
   }

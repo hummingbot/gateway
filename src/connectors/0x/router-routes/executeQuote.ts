@@ -30,7 +30,7 @@ async function executeQuote(
 
   // Check allowance for the sell token
   if (quote.sellTokenAddress !== ethereum.nativeTokenSymbol) {
-    const sellTokenInfo = ethereum.getToken(quote.sellTokenAddress);
+    const sellTokenInfo = await ethereum.getToken(quote.sellTokenAddress);
     if (!sellTokenInfo) {
       throw fastify.httpErrors.badRequest(`Token ${quote.sellTokenAddress} not found`);
     }
@@ -64,8 +64,8 @@ async function executeQuote(
   const txReceipt = await ethereum.handleTransactionExecution(txResponse);
 
   // Get token info for formatting amounts
-  const sellTokenInfo = ethereum.getToken(quote.sellTokenAddress);
-  const buyTokenInfo = ethereum.getToken(quote.buyTokenAddress);
+  const sellTokenInfo = await ethereum.getToken(quote.sellTokenAddress);
+  const buyTokenInfo = await ethereum.getToken(quote.buyTokenAddress);
 
   if (!sellTokenInfo || !buyTokenInfo) {
     throw fastify.httpErrors.badRequest('Token info not found');

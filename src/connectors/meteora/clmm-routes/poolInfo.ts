@@ -14,7 +14,18 @@ export async function getPoolInfo(
   if (!meteora) {
     throw fastify.httpErrors.serviceUnavailable('Meteora service unavailable');
   }
-  return (await meteora.getPoolInfo(poolAddress)) as MeteoraPoolInfo;
+
+  if (!poolAddress) {
+    throw fastify.httpErrors.badRequest('Pool address is required');
+  }
+
+  // Fetch pool info directly from RPC
+  const poolInfo = (await meteora.getPoolInfo(poolAddress)) as MeteoraPoolInfo;
+  if (!poolInfo) {
+    throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+  }
+
+  return poolInfo;
 }
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {

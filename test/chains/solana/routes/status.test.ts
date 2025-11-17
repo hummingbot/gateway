@@ -48,7 +48,7 @@ describe('Solana Status Route', () => {
     };
 
     const mockHeliusService = {
-      getUrlForNetwork: jest.fn(),
+      getHttpUrl: jest.fn(),
     };
 
     beforeEach(() => {
@@ -84,7 +84,7 @@ describe('Solana Status Route', () => {
       });
 
       mockSolanaInstance.getHeliusService.mockReturnValue(mockHeliusService);
-      mockHeliusService.getUrlForNetwork.mockReturnValue('https://mainnet.helius-rpc.com/?api-key=test-key');
+      mockHeliusService.getHttpUrl.mockReturnValue('https://mainnet.helius-rpc.com/?api-key=test-key');
 
       const result = await getSolanaStatus(fastify, 'mainnet-beta');
 
@@ -98,7 +98,7 @@ describe('Solana Status Route', () => {
         swapProvider: 'jupiter/router',
       });
 
-      expect(mockHeliusService.getUrlForNetwork).toHaveBeenCalledWith('mainnet-beta');
+      expect(mockHeliusService.getHttpUrl).toHaveBeenCalled();
     });
 
     it('should fallback to nodeURL when rpcProvider is "helius" but service is not available', async () => {
@@ -131,7 +131,7 @@ describe('Solana Status Route', () => {
       });
 
       mockSolanaInstance.getHeliusService.mockReturnValue(mockHeliusService);
-      mockHeliusService.getUrlForNetwork.mockImplementation(() => {
+      mockHeliusService.getHttpUrl.mockImplementation(() => {
         throw new Error('Helius service error');
       });
 
@@ -184,7 +184,7 @@ describe('Solana Status Route', () => {
 
       mockSolanaInstance.config.nodeURL = 'https://api.devnet.solana.com';
       mockSolanaInstance.getHeliusService.mockReturnValue(mockHeliusService);
-      mockHeliusService.getUrlForNetwork.mockReturnValue('https://devnet.helius-rpc.com/?api-key=test-key');
+      mockHeliusService.getHttpUrl.mockReturnValue('https://devnet.helius-rpc.com/?api-key=test-key');
 
       const result = await getSolanaStatus(fastify, 'devnet');
 
@@ -198,7 +198,7 @@ describe('Solana Status Route', () => {
         swapProvider: 'jupiter/router',
       });
 
-      expect(mockHeliusService.getUrlForNetwork).toHaveBeenCalledWith('devnet');
+      expect(mockHeliusService.getHttpUrl).toHaveBeenCalled();
     });
   });
 

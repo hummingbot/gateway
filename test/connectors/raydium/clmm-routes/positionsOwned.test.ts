@@ -71,6 +71,10 @@ describe('GET /positions-owned', () => {
     // Mock Solana.getInstance
     const mockSolana = {
       connection: {},
+      getPositionCache: jest.fn().mockReturnValue({
+        get: jest.fn(),
+        set: jest.fn(),
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
 

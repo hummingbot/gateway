@@ -62,6 +62,15 @@ describe('GET /positions-owned', () => {
   beforeAll(async () => {
     app = await buildApp();
 
+    // Mock Solana.getInstance
+    const mockSolana = {
+      getPositionCache: jest.fn().mockReturnValue({
+        get: jest.fn(),
+        set: jest.fn(),
+      }),
+    };
+    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
+
     // Mock Meteora.getInstance
     const mockMeteora = {
       getAllPositionsForWallet: jest.fn().mockResolvedValue(mockPositions),

@@ -3,10 +3,10 @@ import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { PositionInfoSchema, GetPositionsOwnedRequestType, PositionInfo } from '../../../schemas/clmm-schema';
+import { PositionInfoSchema, PositionInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
-import { RaydiumClmmGetPositionsOwnedRequest } from '../schemas';
+import { RaydiumClmmGetPositionsOwnedRequest, RaydiumClmmGetPositionsOwnedRequestType } from '../schemas';
 
 // Using Fastify's native error handling
 const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
@@ -21,13 +21,6 @@ export async function getPositionsOwned(
   walletAddress: string,
 ): Promise<PositionInfo[]> {
   const solana = await Solana.getInstance(network);
-  const raydium = await Raydium.getInstance(network);
-
-  // Prepare wallet and check if it's hardware
-  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
-
-  // Set the owner for SDK operations
-  await raydium.setOwner(wallet);
 
   // Validate wallet address
   try {
@@ -36,10 +29,28 @@ export async function getPositionsOwned(
     throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
   }
 
+  // Fetch from RPC (positions are cached individually by position address, not by wallet)
+  const positions = await fetchPositionsFromRPC(solana, network, walletAddress);
+
+  return positions;
+}
+
+/**
+ * Fetch positions from RPC
+ */
+async function fetchPositionsFromRPC(_solana: Solana, network: string, walletAddress: string): Promise<PositionInfo[]> {
+  const raydium = await Raydium.getInstance(network);
+
+  // Prepare wallet and check if it's hardware
+  const { wallet } = await raydium.prepareWallet(walletAddress);
+
+  // Set the owner for SDK operations
+  await raydium.setOwner(wallet);
+
   logger.info(`Fetching all positions for wallet ${walletAddress}`);
 
   // Get all positions owned by the wallet
-  const allPositions = [];
+  const allPositions: PositionInfo[] = [];
 
   // Try both CLMM program IDs (standard and new)
   const programIds = [
@@ -52,7 +63,7 @@ export async function getPositionsOwned(
       const positions = await raydium.raydiumSDK.clmm.getOwnerPositionInfo({
         programId,
       });
-      logger.info(`Found ${positions.length} positions for program ${programId}`);
+      logger.debug(`Found ${positions.length} positions for program ${programId}`);
 
       // Convert SDK positions to our format
       for (const pos of positions) {
@@ -70,7 +81,7 @@ export async function getPositionsOwned(
     }
   }
 
-  logger.info(`Found ${allPositions.length} total positions`);
+  logger.info(`Found ${allPositions.length} Raydium position(s) for wallet ${walletAddress.slice(0, 8)}...`);
   return allPositions;
 }
 
@@ -78,7 +89,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
   // Remove wallet address example population code
 
   fastify.get<{
-    Querystring: GetPositionsOwnedRequestType;
+    Querystring: RaydiumClmmGetPositionsOwnedRequestType;
     Reply: GetPositionsOwnedResponseType;
   }>(
     '/positions-owned',
@@ -94,8 +105,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { walletAddress } = request.query;
-        const network = request.query.network;
+        const { network, walletAddress } = request.query;
         return await getPositionsOwned(fastify, network, walletAddress);
       } catch (e) {
         logger.error(e);

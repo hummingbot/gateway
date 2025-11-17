@@ -19,7 +19,7 @@ export async function getEthereumStatus(network: string): Promise<StatusResponse
       const infuraService = ethereum.getInfuraService();
       if (infuraService) {
         try {
-          rpcUrl = infuraService.getUrlForNetwork(network);
+          rpcUrl = infuraService.getHttpUrl();
         } catch (error) {
           // If Infura URL generation fails, fall back to standard rpcUrl
           logger.warn(`Failed to get Infura URL, using standard rpcUrl: ${error.message}`);

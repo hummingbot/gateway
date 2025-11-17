@@ -1,8 +1,7 @@
 import WebSocket from 'ws';
 
 import { logger } from '../../services/logger';
-
-import { SolanaNetworkConfig } from './solana.config';
+import { RPCProvider, RPCProviderConfig, NetworkInfo } from '../../services/rpc-provider-base';
 
 interface TransactionMonitorResult {
   confirmed: boolean;
@@ -28,7 +27,8 @@ interface WebSocketMessage {
         | {
             err: any;
           }
-        | string;
+        | string
+        | any; // For account notifications
     };
     subscription: number;
   };
@@ -38,27 +38,44 @@ interface WebSocketMessage {
 }
 
 /**
- * Helius Service - Consolidates WebSocket monitoring and connection warming
- * Provides optimized transaction confirmation and connection management
+ * Helius Service - Optimized RPC provider for Solana networks
+ * Extends RPCProvider base class with Solana-specific features
+ *
+ * Features:
+ * - WebSocket transaction monitoring for faster confirmations
+ * - Auto-reconnection with exponential backoff
+ * - Support for both mainnet-beta and devnet
  */
-export class HeliusService {
-  private ws: WebSocket | null = null;
+export class HeliusService extends RPCProvider {
   private subscriptions = new Map<number, WebSocketSubscription>();
   private nextSubscriptionId = 1;
   private reconnectAttempts = 0;
   private readonly maxReconnectAttempts = 5;
   private reconnectTimeout: NodeJS.Timeout | null = null;
 
-  constructor(private config: SolanaNetworkConfig) {}
+  constructor(config: RPCProviderConfig, networkInfo: NetworkInfo) {
+    super(config, networkInfo);
+  }
 
   /**
-   * Get the Helius RPC URL for a specific network
+   * Get the Helius HTTP RPC URL for the current network
    */
-  public getUrlForNetwork(network: string): string {
-    const isDevnet = network.includes('devnet');
-    return isDevnet
-      ? `https://devnet.helius-rpc.com/?api-key=${this.config.heliusAPIKey}`
-      : `https://mainnet.helius-rpc.com/?api-key=${this.config.heliusAPIKey}`;
+  public getHttpUrl(): string {
+    const isDevnet = this.networkInfo.network.includes('devnet');
+    const subdomain = isDevnet ? 'devnet' : 'mainnet';
+    return `https://${subdomain}.helius-rpc.com/?api-key=${this.config.apiKey}`;
+  }
+
+  /**
+   * Get the Helius WebSocket RPC URL for the current network
+   * Returns null if WebSocket is not configured or API key is invalid
+   */
+  public getWebSocketUrl(): string | null {
+    if (!this.shouldUseWebSocket()) return null;
+
+    const isDevnet = this.networkInfo.network.includes('devnet');
+    const subdomain = isDevnet ? 'devnet' : 'mainnet';
+    return `wss://${subdomain}.helius-rpc.com/?api-key=${this.config.apiKey}`;
   }
 
   /**
@@ -88,12 +105,12 @@ export class HeliusService {
    * Connect to Helius WebSocket endpoint
    */
   private async connectWebSocket(): Promise<void> {
-    // Support both mainnet and devnet WebSocket endpoints
-    const isDevnet = this.config.nodeURL.includes('devnet');
-    const wsUrl = isDevnet
-      ? `wss://devnet.helius-rpc.com/?api-key=${this.config.heliusAPIKey}`
-      : `wss://mainnet.helius-rpc.com/?api-key=${this.config.heliusAPIKey}`;
+    const wsUrl = this.getWebSocketUrl();
+    if (!wsUrl) {
+      throw new Error('WebSocket URL not available');
+    }
 
+    const isDevnet = this.networkInfo.network.includes('devnet');
     logger.info(`Connecting to Helius WebSocket (${isDevnet ? 'devnet' : 'mainnet'}) endpoint`);
 
     return new Promise((resolve, reject) => {
@@ -216,7 +233,7 @@ export class HeliusService {
         ],
       };
 
-      this.ws!.send(JSON.stringify(subscribeMessage));
+      (this.ws as WebSocket).send(JSON.stringify(subscribeMessage));
       logger.info(`Monitoring transaction ${signature} via WebSocket subscription ${subscriptionId}`);
     });
   }
@@ -225,14 +242,14 @@ export class HeliusService {
    * Unsubscribe from a signature subscription
    */
   private unsubscribeFromSignature(subscriptionId: number): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    if (this.ws && (this.ws as WebSocket).readyState === WebSocket.OPEN) {
       const unsubscribeMessage = {
         jsonrpc: '2.0',
         id: Date.now(),
         method: 'signatureUnsubscribe',
         params: [subscriptionId],
       };
-      this.ws.send(JSON.stringify(unsubscribeMessage));
+      (this.ws as WebSocket).send(JSON.stringify(unsubscribeMessage));
     }
   }
 
@@ -256,10 +273,12 @@ export class HeliusService {
         `Attempting WebSocket reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${backoffMs}ms`,
       );
 
-      this.reconnectTimeout = setTimeout(() => {
-        this.connectWebSocket().catch((error) => {
+      this.reconnectTimeout = setTimeout(async () => {
+        try {
+          await this.connectWebSocket();
+        } catch (error: any) {
           logger.error(`WebSocket reconnection failed: ${error.message}`);
-        });
+        }
       }, backoffMs);
     }
   }
@@ -267,20 +286,8 @@ export class HeliusService {
   /**
    * Check if WebSocket monitoring is available
    */
-  public isWebSocketConnected(): boolean {
-    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
-  }
-
-  /**
-   * Check if should use WebSocket
-   */
-  private shouldUseWebSocket(): boolean {
-    return (
-      this.config.useHeliusWebSocketRPC &&
-      this.config.heliusAPIKey &&
-      this.config.heliusAPIKey.trim() !== '' &&
-      this.config.heliusAPIKey !== 'HELIUS_API_KEY'
-    );
+  public override isWebSocketConnected(): boolean {
+    return this.ws !== null && (this.ws as WebSocket).readyState === WebSocket.OPEN;
   }
 
   /**
@@ -301,7 +308,7 @@ export class HeliusService {
     this.subscriptions.clear();
 
     if (this.ws) {
-      this.ws.close();
+      (this.ws as WebSocket).close();
       this.ws = null;
       logger.info('Helius WebSocket disconnected');
     }

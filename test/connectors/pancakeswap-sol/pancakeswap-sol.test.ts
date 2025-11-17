@@ -45,10 +45,11 @@ describe('PancakeSwap Solana Connector', () => {
       }
     }, 30000);
 
-    it('should throw error for invalid pool address', async () => {
+    it('should return null for invalid pool address', async () => {
       const invalidPool = '11111111111111111111111111111111';
 
-      await expect(pancakeswapSol.getClmmPoolInfo(invalidPool)).rejects.toThrow();
+      const result = await pancakeswapSol.getClmmPoolInfo(invalidPool);
+      expect(result).toBeNull();
     }, 30000);
   });
 

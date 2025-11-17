@@ -41,7 +41,7 @@ export const PoolInfoSchema = Type.Object(
     address: Type.String(),
     baseTokenAddress: Type.String(),
     quoteTokenAddress: Type.String(),
-    binStep: Type.Number(),
+    binStep: Type.Optional(Type.Number()), // Optional - Meteora-specific
     feePct: Type.Number(),
     price: Type.Number(),
     baseTokenAmount: Type.Number(),
@@ -91,6 +91,8 @@ export const PositionInfoSchema = Type.Object(
     lowerPrice: Type.Number(),
     upperPrice: Type.Number(),
     price: Type.Number(),
+    rewardTokenAddress: Type.Optional(Type.String()),
+    rewardAmount: Type.Optional(Type.Number()),
   },
   { $id: 'PositionInfo' },
 );

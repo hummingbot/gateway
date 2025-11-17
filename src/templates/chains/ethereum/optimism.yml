@@ -1,4 +1,5 @@
 chainID: 10
+geckoId: optimism
 nodeURL: https://mainnet.optimism.io
 transactionExecutionTimeoutMs: 10000 # Timeout for waiting for transaction execution (in milliseconds)
 nativeCurrencySymbol: ETH
