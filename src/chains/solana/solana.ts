@@ -418,16 +418,30 @@ export class Solana {
     }
 
     // Get all token accounts for the provided address using jsonParsed encoding
-    const [legacyAccounts, token2022Accounts] = await Promise.all([
-      this.connection.getParsedTokenAccountsByOwner(publicKey, {
-        programId: TOKEN_PROGRAM_ID,
-      }),
-      this.connection.getParsedTokenAccountsByOwner(publicKey, {
-        programId: TOKEN_2022_PROGRAM_ID,
-      }),
-    ]);
-
-    const allAccounts = [...legacyAccounts.value, ...token2022Accounts.value];
+    let allAccounts = [];
+    try {
+      const [legacyAccounts, token2022Accounts] = await Promise.all([
+        this.connection.getParsedTokenAccountsByOwner(publicKey, {
+          programId: TOKEN_PROGRAM_ID,
+        }),
+        this.connection.getParsedTokenAccountsByOwner(publicKey, {
+          programId: TOKEN_2022_PROGRAM_ID,
+        }),
+      ]);
+      allAccounts = [...legacyAccounts.value, ...token2022Accounts.value];
+    } catch (error) {
+      // If we get a StructError (validation failure from mixed parsed/base64 responses),
+      // fall back to using base64 encoding
+      if (error.name === 'StructError' || error.message?.includes('Expected an object')) {
+        logger.warn('StructError in getBalance, falling back to base64 encoding');
+        // Use the base64 fallback method to get token accounts
+        const tokenAccountsMap = await this.fetchTokenAccountsBase64(publicKey);
+        // Convert the map to the array format expected by the rest of this method
+        allAccounts = Array.from(tokenAccountsMap.values()).map((ta) => ta.value);
+      } else {
+        throw error;
+      }
+    }
 
     // Track tokens that were found and those that still need to be fetched
     const foundTokens = new Set<string>();
@@ -745,13 +759,82 @@ export class Solana {
         }
       }
     } catch (error) {
-      logger.error(`Error fetching token accounts: ${error.message}`);
+      logger.error(`Error fetching token accounts with parsed encoding: ${error.message}`);
 
       // Re-throw rate limit errors (statusCode 429) so they propagate to the API response
       if (error.statusCode === 429) {
         throw error;
       }
+
+      // If we get a StructError (validation failure from mixed parsed/base64 responses),
+      // fall back to using base64 encoding exclusively
+      if (error.name === 'StructError' || error.message?.includes('Expected an object')) {
+        logger.warn('Falling back to base64 encoding due to mixed response format');
+        return await this.fetchTokenAccountsBase64(publicKey);
+      }
       // For other errors, log but don't fail the request (return empty map)
+    }
+
+    return tokenAccountsMap;
+  }
+
+  /**
+   * Fallback method to fetch token accounts using base64 encoding
+   * Used when getParsedTokenAccountsByOwner returns mixed parsed/base64 data
+   */
+  private async fetchTokenAccountsBase64(publicKey: PublicKey): Promise<Map<string, TokenAccount>> {
+    const tokenAccountsMap = new Map<string, TokenAccount>();
+    const { AccountLayout } = await import('@solana/spl-token');
+
+    try {
+      const [legacyAccounts, token2022Accounts] = await Promise.all([
+        this.connection.getTokenAccountsByOwner(publicKey, {
+          programId: TOKEN_PROGRAM_ID,
+        }),
+        this.connection.getTokenAccountsByOwner(publicKey, {
+          programId: TOKEN_2022_PROGRAM_ID,
+        }),
+      ]);
+
+      const allAccounts = [...legacyAccounts.value, ...token2022Accounts.value];
+      logger.info(`Found ${allAccounts.length} token accounts (base64) for ${publicKey.toString()}`);
+
+      for (const account of allAccounts) {
+        try {
+          // Decode base64 account data using AccountLayout
+          // Convert Buffer to Uint8Array for AccountLayout.decode
+          const data =
+            account.account.data instanceof Buffer ? Uint8Array.from(account.account.data) : account.account.data;
+          const accountData = AccountLayout.decode(data);
+          const mintAddress = accountData.mint.toString();
+
+          tokenAccountsMap.set(mintAddress, {
+            parsedAccount: {
+              mint: accountData.mint,
+              owner: accountData.owner,
+              amount: accountData.amount,
+              decimals: 0, // Will be fetched from mint if needed
+              isNative: accountData.isNativeOption === 1,
+              delegatedAmount: accountData.delegatedAmount,
+              delegate: accountData.delegateOption === 1 ? accountData.delegate : null,
+              state: accountData.state === 1 ? 'initialized' : 'uninitialized',
+              isInitialized: accountData.state === 1,
+              isFrozen: accountData.state === 2,
+              rentExemptReserve: accountData.isNativeOption === 1 ? accountData.isNative : null,
+              closeAuthority: accountData.closeAuthorityOption === 1 ? accountData.closeAuthority : null,
+            },
+            value: account,
+          });
+        } catch (error) {
+          logger.warn(`Error decoding base64 account: ${error.message}`);
+        }
+      }
+    } catch (error) {
+      logger.error(`Error fetching token accounts with base64 encoding: ${error.message}`);
+
+      if (error.statusCode === 429) {
+        throw error;
+      }
     }
 
     return tokenAccountsMap;
@@ -1740,6 +1823,15 @@ export class Solana {
       };
 
       // Known program-specific messages
+      if (
+        errorMessage.includes('Error Code: InvalidPositionWidth') ||
+        errorMessage.includes('custom program error: 0x1798')
+      ) {
+        throw asBadRequest(
+          'Error Code: InvalidPositionWidth. Error Number: 6040. Error Message: Invalid position width. ' +
+            'Please use a position width of 69 bins or lower.',
+        );
+      }
       if (
         errorMessage.includes('Error Code: PriceSlippageCheck') ||
         errorMessage.includes('custom program error: 0x1785')
