@@ -95,7 +95,21 @@ export class EtherscanService {
       });
 
       if (response.data.status !== '1') {
-        throw new Error(`Etherscan API error: ${response.data.message}`);
+        const errorMsg = response.data.message;
+        const isRateLimit = errorMsg.includes('rate limit') || errorMsg.includes('Max rate limit');
+
+        logger.error(
+          `Etherscan API returned error for ${this.network} (chainId: ${this.chainId}): status=${response.data.status}, message=${errorMsg}, result=${JSON.stringify(response.data.result)}`,
+        );
+
+        if (isRateLimit) {
+          throw new Error(
+            `Etherscan API rate limit exceeded: ${errorMsg}. ` +
+              `Free tier: 5 requests/second. See https://docs.etherscan.io/resources/rate-limits for upgrade options.`,
+          );
+        }
+
+        throw new Error(`Etherscan API error: ${errorMsg}`);
       }
 
       const transactions: EtherscanTransaction[] = response.data.result.map((tx) => ({

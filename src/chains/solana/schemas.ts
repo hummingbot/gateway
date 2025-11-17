@@ -70,12 +70,18 @@ export const SolanaParseRequest = Type.Composite([
 ]);
 
 // Transactions request schema
-export const SolanaTransactionsRequest = Type.Composite([
-  TransactionsRequestSchema,
-  Type.Object({
-    network: SolanaNetworkParameter,
-  }),
-]);
+export const SolanaTransactionsRequest = Type.Object({
+  network: SolanaNetworkParameter,
+  walletAddress: SolanaAddressParameter,
+  limit: Type.Optional(
+    Type.Number({
+      minimum: 1,
+      maximum: 1000,
+      default: 100,
+      description: 'Number of transaction signatures to fetch from RPC (default: 100, max: 1000)',
+    }),
+  ),
+});
 
 // Quote swap request schema
 export const SolanaQuoteSwapRequest = Type.Object({

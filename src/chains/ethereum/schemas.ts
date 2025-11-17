@@ -71,12 +71,18 @@ export const EthereumParseRequest = Type.Composite([
 ]);
 
 // Transactions request schema
-export const EthereumTransactionsRequest = Type.Composite([
-  TransactionsRequestSchema,
-  Type.Object({
-    network: EthereumNetworkParameter,
-  }),
-]);
+export const EthereumTransactionsRequest = Type.Object({
+  network: EthereumNetworkParameter,
+  walletAddress: EthereumAddressParameter,
+  limit: Type.Optional(
+    Type.Number({
+      minimum: 1,
+      maximum: 1000,
+      default: 100,
+      description: 'Number of transaction signatures to fetch from RPC (default: 100, max: 1000)',
+    }),
+  ),
+});
 
 // Allowances request schema (multiple tokens)
 export const AllowancesRequestSchema = Type.Object({
