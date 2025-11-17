@@ -33,3 +33,7 @@ logLevel: info
 # If not provided, requests will be made without authentication (free tier, 30 calls/minute)
 coingeckoAPIKey: ''
 
+
+# Format of the log filename. %DATE% will be replaced with the current date. 
+# Recommend changing to logs_gateway_app.%DATE%.log to allow editors to identify the file for syntax highlighting.
+logFilenameFormat: logs_gateway_app.log.%DATE%
