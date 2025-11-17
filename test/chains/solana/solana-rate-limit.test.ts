@@ -1,6 +1,6 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 
-import { createRateLimitAwareConnection } from '../../../src/chains/solana/solana-connection-interceptor';
+import { createRateLimitAwareSolanaConnection } from '../../../src/services/rpc-connection-interceptor';
 
 describe('Solana Rate Limit Interceptor', () => {
   let mockConnection: jest.Mocked<Connection>;
@@ -19,7 +19,7 @@ describe('Solana Rate Limit Interceptor', () => {
       getSignatureStatus: jest.fn(),
     } as any;
 
-    wrappedConnection = createRateLimitAwareConnection(mockConnection, testRpcUrl);
+    wrappedConnection = createRateLimitAwareSolanaConnection(mockConnection, testRpcUrl);
   });
 
   describe('429 Error Detection', () => {
@@ -153,7 +153,7 @@ describe('Solana Rate Limit Interceptor', () => {
 
       mockConnection.getBalance.mockRejectedValue(error429);
 
-      const devnetConnection = createRateLimitAwareConnection(mockConnection, 'https://api.devnet.solana.com');
+      const devnetConnection = createRateLimitAwareSolanaConnection(mockConnection, 'https://api.devnet.solana.com');
 
       await expect(
         devnetConnection.getBalance(new PublicKey('11111111111111111111111111111112')),

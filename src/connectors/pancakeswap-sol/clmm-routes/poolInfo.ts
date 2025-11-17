@@ -1,5 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
+import { Solana } from '../../../chains/solana/solana';
 import { GetPoolInfoRequestType, PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
@@ -12,6 +13,7 @@ export async function getPoolInfo(fastify: FastifyInstance, network: string, poo
     throw fastify.httpErrors.badRequest('Pool address is required');
   }
 
+  // Fetch pool info directly from RPC
   const poolInfo = await pancakeswap.getClmmPoolInfo(poolAddress);
   if (!poolInfo) {
     throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);

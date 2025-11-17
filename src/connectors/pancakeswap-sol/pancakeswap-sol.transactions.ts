@@ -100,18 +100,10 @@ export async function buildSwapTransaction(
     );
   }
 
-  // If input is native SOL, wrap it (regardless of whether account exists)
+  // If input is native SOL, wrap it using Solana's wrapSOL method
   if (isInputSOL) {
-    // Transfer SOL to WSOL account to wrap it
-    instructions.push(
-      SystemProgram.transfer({
-        fromPubkey: walletPubkey,
-        toPubkey: inputTokenAccount,
-        lamports: amount.toNumber(),
-      }),
-    );
-    // Sync native (wraps SOL to WSOL)
-    instructions.push(createSyncNativeInstruction(inputTokenAccount, inputTokenProgram));
+    const wrapInstructions = await solana.wrapSOL(walletPubkey, amount.toNumber(), inputTokenProgram);
+    instructions.push(...wrapInstructions);
   }
 
   // Create output token account if needed
@@ -141,7 +133,7 @@ export async function buildSwapTransaction(
   );
   instructions.push(swapIx);
 
-  // If output is native SOL, unwrap WSOL back to SOL
+  // If output is native SOL, unwrap WSOL back to SOL using Solana's unwrapSOL method
   const isOutputSOL = outputMint.equals(NATIVE_MINT);
   if (isOutputSOL) {
     const unwrapIx = solana.unwrapSOL(walletPubkey, outputTokenProgram);

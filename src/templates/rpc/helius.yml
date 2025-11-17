@@ -7,4 +7,4 @@ apiKey: 'YOUR_HELIUS_API_KEY_HERE'
 
 # Use Helius WebSocket for real-time transaction monitoring
 # Provides faster confirmation notifications than polling
-useWebSocketRPC: false
+useWebSocket: true

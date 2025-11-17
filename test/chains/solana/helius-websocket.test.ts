@@ -1,27 +1,20 @@
 import WebSocket from 'ws';
 
 import { HeliusService } from '../../../src/chains/solana/helius-service';
-import { SolanaNetworkConfig } from '../../../src/chains/solana/solana.config';
+import { RPCProviderConfig } from '../../../src/services/rpc-provider-base';
 
 // Mock WebSocket
 jest.mock('ws');
 
 describe('HeliusService WebSocket Functionality', () => {
   let heliusService: HeliusService;
-  let mockConfig: SolanaNetworkConfig;
+  let mockConfig: RPCProviderConfig;
   let mockWs: jest.Mocked<WebSocket>;
 
   beforeEach(() => {
     mockConfig = {
-      nodeURL: 'https://api.mainnet-beta.solana.com',
-      nativeCurrencySymbol: 'SOL',
-      defaultComputeUnits: 200000,
-      confirmRetryInterval: 1,
-      confirmRetryCount: 10,
-      heliusAPIKey: 'test-api-key-123',
-      useHeliusRestRPC: true,
-      useHeliusWebSocketRPC: true,
-      minPriorityFeePerCU: 0.01,
+      apiKey: 'test-api-key-123',
+      useWebSocket: true,
     };
 
     // Create mock WebSocket instance with automatic 'open' event triggering
@@ -41,7 +34,11 @@ describe('HeliusService WebSocket Functionality', () => {
     // Mock WebSocket constructor
     (WebSocket as jest.MockedClass<typeof WebSocket>).mockImplementation(() => mockWs);
 
-    heliusService = new HeliusService(mockConfig);
+    heliusService = new HeliusService(mockConfig, {
+      chain: 'solana',
+      network: 'mainnet-beta',
+      chainId: 101,
+    });
   });
 
   afterEach(() => {
@@ -57,11 +54,11 @@ describe('HeliusService WebSocket Functionality', () => {
     });
 
     it('should connect to devnet WebSocket endpoint for devnet network', async () => {
-      const devnetConfig = {
-        ...mockConfig,
-        nodeURL: 'https://api.devnet.solana.com',
-      };
-      heliusService = new HeliusService(devnetConfig);
+      heliusService = new HeliusService(mockConfig, {
+        chain: 'solana',
+        network: 'devnet',
+        chainId: 103,
+      });
 
       await heliusService.initialize();
 
@@ -69,12 +66,16 @@ describe('HeliusService WebSocket Functionality', () => {
       expect(heliusService.isWebSocketConnected()).toBe(true);
     });
 
-    it('should not initialize WebSocket if useHeliusWebSocketRPC is false', async () => {
+    it('should not initialize WebSocket if useWebSocket is false', async () => {
       const configWithoutWs = {
-        ...mockConfig,
-        useHeliusWebSocketRPC: false,
+        apiKey: 'test-api-key-123',
+        useWebSocket: false,
       };
-      heliusService = new HeliusService(configWithoutWs);
+      heliusService = new HeliusService(configWithoutWs, {
+        chain: 'solana',
+        network: 'mainnet-beta',
+        chainId: 101,
+      });
 
       await heliusService.initialize();
 
@@ -84,10 +85,14 @@ describe('HeliusService WebSocket Functionality', () => {
 
     it('should not initialize WebSocket if API key is missing', async () => {
       const configWithoutKey = {
-        ...mockConfig,
-        heliusAPIKey: '',
+        apiKey: '',
+        useWebSocket: true,
       };
-      heliusService = new HeliusService(configWithoutKey);
+      heliusService = new HeliusService(configWithoutKey, {
+        chain: 'solana',
+        network: 'mainnet-beta',
+        chainId: 101,
+      });
 
       await heliusService.initialize();
 

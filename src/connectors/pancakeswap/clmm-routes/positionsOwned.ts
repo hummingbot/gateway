@@ -83,8 +83,8 @@ export async function getPositionsOwned(
         continue;
       }
 
-      const token0 = pancakeswap.getTokenByAddress(positionDetails.token0);
-      const token1 = pancakeswap.getTokenByAddress(positionDetails.token1);
+      const token0 = await pancakeswap.getToken(positionDetails.token0);
+      const token1 = await pancakeswap.getToken(positionDetails.token1);
 
       const pool = await pancakeswap.getV3Pool(token0, token1, positionDetails.fee);
       if (!pool) {

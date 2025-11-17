@@ -432,6 +432,8 @@ export const MeteoraClmmGetPositionsOwnedRequest = Type.Object({
   }),
 });
 
+export type MeteoraClmmGetPositionsOwnedRequestType = Static<typeof MeteoraClmmGetPositionsOwnedRequest>;
+
 // Meteora CLMM Quote Position Request
 export const MeteoraClmmQuotePositionRequest = Type.Object({
   network: Type.Optional(

@@ -2,3 +2,4 @@ certificatePath: gateway.crt
 port: 15888
 logPath: ./logs
 logToStdOut: true
+coingeckoAPIKey: ''

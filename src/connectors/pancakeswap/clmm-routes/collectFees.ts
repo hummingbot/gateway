@@ -51,8 +51,8 @@ export async function collectFees(
   const positionManager = new Contract(positionManagerAddress, POSITION_MANAGER_ABI, ethereum.provider);
   const position = await positionManager.positions(positionAddress);
 
-  const token0 = pancakeswap.getTokenByAddress(position.token0);
-  const token1 = pancakeswap.getTokenByAddress(position.token1);
+  const token0 = await pancakeswap.getToken(position.token0);
+  const token1 = await pancakeswap.getToken(position.token1);
 
   const isBaseToken0 =
     token0.symbol === 'WETH' ||

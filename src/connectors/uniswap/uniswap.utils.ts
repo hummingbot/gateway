@@ -121,32 +121,22 @@ export const formatTokenAmount = (amount: string | number, decimals: number): nu
 export async function getFullTokenFromSymbol(
   fastify: FastifyInstance,
   ethereum: Ethereum,
+  uniswap: Uniswap,
   tokenSymbol: string,
 ): Promise<Token> {
   if (!ethereum.ready()) {
     await ethereum.init();
   }
 
-  // Try to find token using ethereum's getToken method
-  const tokenInfo = ethereum.getToken(tokenSymbol);
+  // Get token from local token list
+  const tokenInfo = await ethereum.getToken(tokenSymbol);
 
   if (!tokenInfo) {
     throw fastify.httpErrors.badRequest(`Token ${tokenSymbol} is not supported`);
   }
 
-  const uniswapToken = new Token(
-    tokenInfo.chainId,
-    tokenInfo.address,
-    tokenInfo.decimals,
-    tokenInfo.symbol,
-    tokenInfo.name,
-  );
-
-  if (!uniswapToken) {
-    throw fastify.httpErrors.internalServerError(`Failed to create token for ${tokenSymbol}`);
-  }
-
-  return uniswapToken;
+  // Convert to Uniswap SDK Token
+  return uniswap.getUniswapToken(tokenInfo);
 }
 
 /**

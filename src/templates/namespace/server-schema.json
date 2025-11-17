@@ -14,6 +14,10 @@
       "type": "string",
       "enum": ["debug", "info", "warn", "error"],
       "default": "info"
+    },
+    "coingeckoAPIKey": {
+      "type": ["string", "null"],
+      "description": "CoinGecko API key for GeckoTerminal integration (optional)"
     }
   },
   "additionalProperties": false,

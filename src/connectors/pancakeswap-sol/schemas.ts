@@ -117,6 +117,12 @@ export const PancakeswapSolClmmGetPositionsOwnedRequest = Type.Object({
     description: 'Solana wallet address to check for positions',
     examples: [solanaChainConfig.defaultWallet],
   }),
+  poolAddress: Type.Optional(
+    Type.String({
+      description: 'Optional pool address to filter positions by specific pool',
+      examples: [CLMM_POOL_ADDRESS_EXAMPLE],
+    }),
+  ),
 });
 
 export type PancakeswapSolClmmGetPositionsOwnedRequestType = Static<typeof PancakeswapSolClmmGetPositionsOwnedRequest>;
@@ -364,6 +370,15 @@ export const PancakeswapSolClmmQuotePositionRequest = Type.Object({
     Type.Number({
       description: 'Amount of quote token to deposit',
       examples: [QUOTE_TOKEN_AMOUNT],
+    }),
+  ),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: PancakeswapSolConfig.config.slippagePct,
+      examples: [PancakeswapSolConfig.config.slippagePct],
     }),
   ),
 });

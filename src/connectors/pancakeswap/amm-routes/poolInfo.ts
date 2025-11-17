@@ -42,8 +42,8 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         const token1Address = await pairContract.token1();
 
         // Get token objects by address
-        const token0 = pancakeswap.getTokenByAddress(token0Address);
-        const token1 = pancakeswap.getTokenByAddress(token1Address);
+        const token0 = await pancakeswap.getToken(token0Address);
+        const token1 = await pancakeswap.getToken(token1Address);
 
         if (!token0 || !token1) {
           throw new Error('Could not find tokens for pool');

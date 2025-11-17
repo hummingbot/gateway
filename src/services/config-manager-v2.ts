@@ -487,6 +487,69 @@ export class ConfigManagerV2 {
       );
     }
   }
+
+  /**
+   * Helper methods for chain configuration
+   */
+
+  /**
+   * Get chainId from chain-network format (e.g., "ethereum-mainnet" -> 1)
+   */
+  getChainId(chainNetwork: string): number {
+    const [chain, ...networkParts] = chainNetwork.split('-');
+    const network = networkParts.join('-');
+    const namespace = `${chain}-${network}`;
+
+    const chainID = this.get(`${namespace}.chainID`);
+    if (!chainID) {
+      throw new Error(`chainID not found for ${chainNetwork}`);
+    }
+    return chainID;
+  }
+
+  /**
+   * Get GeckoTerminal ID from chain-network format
+   */
+  getGeckoTerminalId(chainNetwork: string): string {
+    const [chain, ...networkParts] = chainNetwork.split('-');
+    const network = networkParts.join('-');
+    const namespace = `${chain}-${network}`;
+
+    const geckoId = this.get(`${namespace}.geckoId`);
+    if (!geckoId) {
+      throw new Error(`geckoId not found for ${chainNetwork}`);
+    }
+    return geckoId;
+  }
+
+  /**
+   * Parse chain-network format into components
+   */
+  parseChainNetwork(chainNetwork: string): { chain: string; network: string } {
+    const [chain, ...networkParts] = chainNetwork.split('-');
+    const network = networkParts.join('-');
+    return { chain, network };
+  }
+
+  /**
+   * Get all supported chain-network formats
+   */
+  getSupportedChainNetworks(): string[] {
+    const chainNetworks: string[] = [];
+
+    for (const namespace of Object.keys(this.namespaces)) {
+      // Skip non-network namespaces
+      if (!namespace.includes('-')) continue;
+
+      const [chain] = namespace.split('-');
+      // Only process known chains
+      if (['ethereum', 'solana'].includes(chain)) {
+        chainNetworks.push(namespace);
+      }
+    }
+
+    return chainNetworks.sort();
+  }
 }
 
 export function resolveDBPath(oldPath: string): string {

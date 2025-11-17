@@ -87,5 +87,11 @@
     "name": "PancakeSwap Token",
     "address": "4qQeZ5LwSz6HuupUu8jCtgXyW1mYQcNbFAW1sWZp89HL",
     "decimals": 9
+  },
+  {
+    "symbol": "MET",
+    "name": "Meteora",
+    "address": "METvsvVRapdj9cFLzq4Tr43xK4tAjQfwX76z3n6mWQL",
+    "decimals": 6
   }
 ]
