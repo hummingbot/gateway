@@ -29,13 +29,18 @@ export function ActivityView() {
 
   useEffect(() => {
     loadTransactions();
+    // Clear selected transaction and parsed data when chain/network/wallet changes
+    setSelectedTx(null);
+    setParsedTx(null);
   }, [selectedChain, selectedNetwork, selectedWallet]);
 
   useEffect(() => {
     if (selectedTx && selectedWallet) {
       parseTransaction();
+    } else {
+      setParsedTx(null);
     }
-  }, [selectedTx, selectedWallet]);
+  }, [selectedTx, selectedWallet, selectedChain, selectedNetwork]);
 
   async function loadTransactions() {
     if (!selectedWallet) {
@@ -54,16 +59,18 @@ export function ActivityView() {
         limit: 20,
       });
 
-      setTransactions(txHistory.transactions.map(tx => ({
+      const txList = txHistory.transactions.map(tx => ({
         signature: tx.signature,
         blockTime: tx.blockTime,
-      })));
+      }));
+
+      setTransactions(txList);
 
       // Auto-select first transaction
-      if (txHistory.transactions.length > 0 && !selectedTx) {
+      if (txList.length > 0) {
         setSelectedTx({
-          signature: txHistory.transactions[0].signature,
-          blockTime: txHistory.transactions[0].blockTime,
+          signature: txList[0].signature,
+          blockTime: txList[0].blockTime,
         });
       }
     } catch (err) {
@@ -124,6 +131,15 @@ export function ActivityView() {
     } catch {
       return 'Unknown';
     }
+  }
+
+  function formatSignature(signature: string): string {
+    // Ethereum hashes start with 0x and are 66 characters
+    if (signature.startsWith('0x') && signature.length === 66) {
+      return `${signature.slice(0, 6)}...${signature.slice(-4)}`;
+    }
+    // Solana signatures are base58 encoded, typically 87-88 characters
+    return `${signature.slice(0, 8)}...${signature.slice(-8)}`;
   }
 
   function getStatusBadge(status: number) {
@@ -203,43 +219,69 @@ export function ActivityView() {
         >
           {transactions.map((tx) => (
             <option key={tx.signature} value={tx.signature}>
-              {tx.signature.slice(0, 8)}...{tx.signature.slice(-8)} • {formatTimeAgo(tx.blockTime)}
+              {formatSignature(tx.signature)} • {formatTimeAgo(tx.blockTime)}
             </option>
           ))}
         </select>
       </div>
 
       {/* Desktop Sidebar - Transaction List */}
-      <div className="hidden md:block w-80 border-r overflow-y-auto">
-        <div className="p-3 border-b">
-          <h3 className="font-semibold text-sm">Recent Transactions</h3>
-          <p className="text-xs text-muted-foreground">{transactions.length} transactions</p>
-        </div>
-        <div className="divide-y">
-          {transactions.map((tx) => (
-            <button
-              key={tx.signature}
-              onClick={() => setSelectedTx(tx)}
-              className={`w-full p-3 text-left hover:bg-accent transition-colors ${
-                selectedTx?.signature === tx.signature ? 'bg-accent' : ''
-              }`}
-            >
-              <div className="space-y-1">
-                <p className="font-mono text-xs truncate">
-                  {tx.signature.slice(0, 8)}...{tx.signature.slice(-8)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatTimeAgo(tx.blockTime)}
-                </p>
-              </div>
-            </button>
-          ))}
+      <div className="hidden md:block w-64 border-r bg-muted/10 p-4 overflow-y-auto">
+        <div className="space-y-4">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-sm">Recent Transactions</h3>
+              <button
+                onClick={loadTransactions}
+                disabled={loading}
+                className="p-1 hover:bg-accent rounded transition-colors disabled:opacity-50"
+                title="Refresh transactions"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className={loading ? 'animate-spin' : ''}
+                >
+                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                </svg>
+              </button>
+            </div>
+            <div>
+              {transactions.map((tx) => (
+                <button
+                  key={tx.signature}
+                  onClick={() => setSelectedTx(tx)}
+                  className={`w-full text-left px-3 py-2 rounded text-sm mb-1 ${
+                    selectedTx?.signature === tx.signature
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-accent'
+                  }`}
+                >
+                  <div className="font-mono text-xs truncate">
+                    {formatSignature(tx.signature)}
+                  </div>
+                  <div className="text-xs opacity-75">
+                    {formatTimeAgo(tx.blockTime)}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Main Content - Transaction Details */}
       <div className="flex-1 overflow-y-auto p-4">
-        {!selectedTx ? (
+        {loading ? (
+          <LoadingState message="Loading transactions..." />
+        ) : !selectedTx ? (
           <EmptyState
             title="No Transaction Selected"
             message="Select a transaction from the sidebar to view details."
