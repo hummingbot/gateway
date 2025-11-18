@@ -191,7 +191,7 @@ importers:
         specifier: ^2.5.1
         version: 2.5.1
       dotenv:
-        specifier: ^16.4.7
+        specifier: ^16.5.0
         version: 16.5.0
       ethers:
         specifier: ^5.8.0
