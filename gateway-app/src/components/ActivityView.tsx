@@ -278,27 +278,28 @@ export function ActivityView() {
       </div>
 
       {/* Main Content - Transaction Details */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {loading ? (
-          <LoadingState message="Loading transactions..." />
-        ) : !selectedTx ? (
-          <EmptyState
-            title="No Transaction Selected"
-            message="Select a transaction from the sidebar to view details."
-          />
-        ) : loadingParse ? (
-          <LoadingState message="Parsing transaction..." />
-        ) : !parsedTx ? (
-          <EmptyState
-            title="Failed to Parse Transaction"
-            message="Unable to parse transaction details."
-            icon="⚠️"
-          />
-        ) : (
-          <div className="space-y-4 max-w-3xl">
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-2 md:p-6 space-y-3 md:space-y-6">
+          {loading ? (
+            <LoadingState message="Loading transactions..." />
+          ) : !selectedTx ? (
+            <EmptyState
+              title="No Transaction Selected"
+              message="Select a transaction from the sidebar to view details."
+            />
+          ) : loadingParse ? (
+            <LoadingState message="Parsing transaction..." />
+          ) : !parsedTx ? (
+            <EmptyState
+              title="Failed to Parse Transaction"
+              message="Unable to parse transaction details."
+              icon="⚠️"
+            />
+          ) : (
+            <>
             {/* Transaction Details Card */}
             <Card>
-              <CardHeader>
+              <CardHeader className="p-3 md:p-6">
                 <CardTitle className="flex items-center justify-between">
                   <span>Transaction Details</span>
                   <a
@@ -311,7 +312,7 @@ export function ActivityView() {
                   </a>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm">
+              <CardContent className="p-3 md:p-6 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Status:</span>
                   <span>{getStatusBadge(parsedTx.status)}</span>
@@ -359,10 +360,10 @@ export function ActivityView() {
             {/* Connector Card */}
             {parseConnectorInfo(parsedTx.connector) && (
               <Card>
-                <CardHeader>
+                <CardHeader className="p-3 md:p-6">
                   <CardTitle>Connector</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3 text-sm">
+                <CardContent className="p-3 md:p-6 space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Name:</span>
                     <span className="font-medium">{parseConnectorInfo(parsedTx.connector)!.name}</span>
@@ -378,10 +379,10 @@ export function ActivityView() {
             {/* Balance Changes Card */}
             {parsedTx.tokenBalanceChanges && Object.keys(parsedTx.tokenBalanceChanges).length > 0 && (
               <Card>
-                <CardHeader>
+                <CardHeader className="p-3 md:p-6">
                   <CardTitle>Balance Changes</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-3 md:p-6">
                   <div className="grid grid-cols-2 gap-4">
                     {/* Tokens Sent (negative changes) */}
                     <div>
@@ -430,8 +431,9 @@ export function ActivityView() {
                 </CardContent>
               </Card>
             )}
-          </div>
-        )}
+          </>
+          )}
+        </div>
       </div>
     </div>
   );
