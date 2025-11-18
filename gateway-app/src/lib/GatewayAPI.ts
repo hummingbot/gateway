@@ -17,6 +17,8 @@ import type {
   BalanceResponseType,
   TokensResponseType,
   StatusResponseType,
+  TransactionsResponseType,
+  ParseResponseType,
 
   // CLMM types
   PositionInfo,
@@ -79,6 +81,19 @@ export class ChainAPI {
 
   async getStatus(chain: string, network: string) {
     return gatewayGet<StatusResponseType>(`/chains/${chain}/status?network=${network}`);
+  }
+
+  async getTransactions(chain: string, params: { network?: string; walletAddress?: string; limit?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params.network) queryParams.append('network', params.network);
+    if (params.walletAddress) queryParams.append('walletAddress', params.walletAddress);
+    if (params.limit) queryParams.append('limit', String(params.limit));
+
+    return gatewayGet<TransactionsResponseType>(`/chains/${chain}/transactions?${queryParams}`);
+  }
+
+  async parseTransaction(chain: string, params: { network?: string; signature: string; walletAddress?: string }) {
+    return gatewayPost<ParseResponseType>(`/chains/${chain}/parse`, params);
   }
 }
 

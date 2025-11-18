@@ -40,6 +40,14 @@ export type {
   // Gas estimation
   EstimateGasRequestType,
   EstimateGasResponse,
+
+  // Transaction history
+  TransactionsRequestType,
+  TransactionsResponseType,
+
+  // Transaction parsing
+  ParseRequestType,
+  ParseResponseType,
 } from '@gateway/schemas/chain-schema';
 
 // ==================== CLMM Schema Types ====================
