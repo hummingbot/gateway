@@ -257,7 +257,7 @@ export function ActivityView() {
             {/* Transaction Details Card */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base flex items-center justify-between">
+                <CardTitle className="flex items-center justify-between">
                   <span>Transaction Details</span>
                   <a
                     href={getExplorerUrl(selectedTx.signature)}
@@ -318,7 +318,7 @@ export function ActivityView() {
             {parseConnectorInfo(parsedTx.connector) && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Connector</CardTitle>
+                  <CardTitle>Connector</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm">
                   <div className="flex justify-between items-center">
@@ -337,7 +337,7 @@ export function ActivityView() {
             {parsedTx.tokenBalanceChanges && Object.keys(parsedTx.tokenBalanceChanges).length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Balance Changes</CardTitle>
+                  <CardTitle>Balance Changes</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4">
