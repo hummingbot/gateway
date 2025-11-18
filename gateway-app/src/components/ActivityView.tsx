@@ -132,6 +132,16 @@ export function ActivityView() {
     return <span className="text-xs px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded">Pending</span>;
   }
 
+  function parseConnectorInfo(connector: string | undefined): { name: string; type: string } | null {
+    if (!connector) return null;
+    const parts = connector.split('/');
+    if (parts.length !== 2) return null;
+    return {
+      name: parts[0].charAt(0).toUpperCase() + parts[0].slice(1), // Capitalize first letter
+      type: parts[1].toUpperCase(), // e.g., "clmm" -> "CLMM"
+    };
+  }
+
   // Check Gateway availability
   if (gatewayAvailable === null) {
     return <LoadingState message="Checking Gateway connection..." />;
@@ -293,15 +303,6 @@ export function ActivityView() {
                   </div>
                 )}
 
-                {parsedTx.connector && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Connector:</span>
-                    <span className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">
-                      {parsedTx.connector}
-                    </span>
-                  </div>
-                )}
-
                 {parsedTx.error && (
                   <div className="flex justify-between items-start">
                     <span className="text-muted-foreground">Error:</span>
@@ -312,6 +313,25 @@ export function ActivityView() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Connector Card */}
+            {parseConnectorInfo(parsedTx.connector) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Connector</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Name:</span>
+                    <span className="font-medium">{parseConnectorInfo(parsedTx.connector)!.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Type:</span>
+                    <span className="font-medium">{parseConnectorInfo(parsedTx.connector)!.type}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Balance Changes Card */}
             {parsedTx.tokenBalanceChanges && Object.keys(parsedTx.tokenBalanceChanges).length > 0 && (
@@ -333,7 +353,7 @@ export function ActivityView() {
                             <div key={token} className="flex justify-between items-center text-sm">
                               <span className="font-medium">{token}</span>
                               <span className="text-red-500">
-                                {Math.abs(change).toLocaleString()}
+                                {Math.abs(change).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
                               </span>
                             </div>
                           ))}
@@ -355,7 +375,7 @@ export function ActivityView() {
                             <div key={token} className="flex justify-between items-center text-sm">
                               <span className="font-medium">{token}</span>
                               <span className="text-green-500">
-                                +{change.toLocaleString()}
+                                +{change.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
                               </span>
                             </div>
                           ))}
