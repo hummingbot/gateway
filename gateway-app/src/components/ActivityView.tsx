@@ -1,35 +1,46 @@
 import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { EmptyState } from './ui/EmptyState';
+import { LoadingState } from './ui/LoadingState';
 import { useApp } from '../lib/AppContext';
 import { ChainAPI } from '../lib/GatewayAPI';
 import type { TransactionsResponseType, ParseResponseType } from '../lib/gateway-types';
-import { format } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 
 const chainAPI = new ChainAPI();
 
-interface ParsedTransaction {
+interface Transaction {
   signature: string;
   blockTime: number | null;
-  status: number;
-  fee: number | null;
-  tokenBalanceChanges?: Record<string, number>;
-  connector?: string;
-  error?: string;
+}
+
+interface ParsedTransaction extends ParseResponseType {
+  signature: string;
 }
 
 export function ActivityView() {
-  const { selectedChain, selectedNetwork, selectedWallet } = useApp();
-  const [transactions, setTransactions] = useState<ParsedTransaction[]>([]);
+  const { selectedChain, selectedNetwork, selectedWallet, gatewayAvailable } = useApp();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+  const [parsedTx, setParsedTx] = useState<ParsedTransaction | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingParse, setLoadingParse] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expandedTx, setExpandedTx] = useState<string | null>(null);
 
   useEffect(() => {
     loadTransactions();
   }, [selectedChain, selectedNetwork, selectedWallet]);
 
+  useEffect(() => {
+    if (selectedTx && selectedWallet) {
+      parseTransaction();
+    }
+  }, [selectedTx, selectedWallet]);
+
   async function loadTransactions() {
     if (!selectedWallet) {
       setTransactions([]);
+      setSelectedTx(null);
       return;
     }
 
@@ -37,40 +48,24 @@ export function ActivityView() {
     setError(null);
 
     try {
-      // Fetch transaction history
       const txHistory: TransactionsResponseType = await chainAPI.getTransactions(selectedChain, {
         network: selectedNetwork,
         walletAddress: selectedWallet,
         limit: 20,
       });
 
-      // Parse each transaction
-      const parsedPromises = txHistory.transactions.map(async (tx) => {
-        try {
-          const parsed = await chainAPI.parseTransaction(selectedChain, {
-            network: selectedNetwork,
-            signature: tx.signature,
-            walletAddress: selectedWallet,
-          });
+      setTransactions(txHistory.transactions.map(tx => ({
+        signature: tx.signature,
+        blockTime: tx.blockTime,
+      })));
 
-          const result: ParsedTransaction = {
-            signature: parsed.signature,
-            blockTime: parsed.blockTime,
-            status: parsed.status,
-            fee: parsed.fee,
-          };
-          if (parsed.tokenBalanceChanges) result.tokenBalanceChanges = parsed.tokenBalanceChanges;
-          if (parsed.connector) result.connector = parsed.connector;
-          if (parsed.error) result.error = parsed.error;
-          return result;
-        } catch (err) {
-          console.error(`Failed to parse transaction ${tx.signature}:`, err);
-          return null;
-        }
-      });
-
-      const parsed = await Promise.all(parsedPromises);
-      setTransactions(parsed.filter((tx): tx is ParsedTransaction => tx !== null));
+      // Auto-select first transaction
+      if (txHistory.transactions.length > 0 && !selectedTx) {
+        setSelectedTx({
+          signature: txHistory.transactions[0].signature,
+          blockTime: txHistory.transactions[0].blockTime,
+        });
+      }
     } catch (err) {
       console.error('Failed to load transactions:', err);
       setError(err instanceof Error ? err.message : 'Failed to load transactions');
@@ -79,11 +74,34 @@ export function ActivityView() {
     }
   }
 
+  async function parseTransaction() {
+    if (!selectedTx || !selectedWallet) return;
+
+    setLoadingParse(true);
+
+    try {
+      const parsed = await chainAPI.parseTransaction(selectedChain, {
+        network: selectedNetwork,
+        signature: selectedTx.signature,
+        walletAddress: selectedWallet,
+      });
+
+      setParsedTx({
+        ...parsed,
+        signature: selectedTx.signature,
+      });
+    } catch (err) {
+      console.error('Failed to parse transaction:', err);
+      setParsedTx(null);
+    } finally {
+      setLoadingParse(false);
+    }
+  }
+
   function getExplorerUrl(signature: string): string {
     if (selectedChain === 'solana') {
       return `https://solscan.io/tx/${signature}${selectedNetwork === 'devnet' ? '?cluster=devnet' : ''}`;
     } else {
-      // Ethereum networks
       const networkMap: Record<string, string> = {
         mainnet: 'etherscan.io',
         sepolia: 'sepolia.etherscan.io',
@@ -99,165 +117,260 @@ export function ActivityView() {
     }
   }
 
-  function formatTimestamp(blockTime: number | null): string {
+  function formatTimeAgo(blockTime: number | null): string {
     if (!blockTime) return 'Pending';
-    return format(new Date(blockTime * 1000), 'MMM d, yyyy HH:mm:ss');
-  }
-
-  function getActionLabel(tx: ParsedTransaction): string {
-    if (tx.error) return 'Failed';
-    if (tx.status === 0) return 'Pending';
-    if (tx.status === -1) return 'Failed';
-    if (tx.connector) return `${tx.connector} Interaction`;
-    if (tx.tokenBalanceChanges) {
-      const changes = Object.keys(tx.tokenBalanceChanges);
-      if (changes.length > 1) return 'Token Transfer';
-      if (changes.length === 1) return 'Transfer';
+    try {
+      return formatDistanceToNow(new Date(blockTime * 1000), { addSuffix: true });
+    } catch {
+      return 'Unknown';
     }
-    return 'Transaction';
   }
 
-  function getActionColor(tx: ParsedTransaction): string {
-    if (tx.error || tx.status === -1) return 'text-destructive';
-    if (tx.status === 0) return 'text-yellow-500';
-    if (tx.connector) return 'text-blue-500';
-    return 'text-green-500';
+  function getStatusBadge(status: number) {
+    if (status === 1) return <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-500 rounded">Confirmed</span>;
+    if (status === -1) return <span className="text-xs px-2 py-0.5 bg-red-500/20 text-red-500 rounded">Failed</span>;
+    return <span className="text-xs px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded">Pending</span>;
+  }
+
+  // Check Gateway availability
+  if (gatewayAvailable === null) {
+    return <LoadingState message="Checking Gateway connection..." />;
+  }
+
+  if (gatewayAvailable === false) {
+    return (
+      <EmptyState
+        title="Gateway API Unavailable"
+        message="Please make sure the Gateway server is running at localhost:15888"
+        icon="⚠️"
+      />
+    );
   }
 
   if (!selectedWallet) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        <p>Please select a wallet to view transaction activity</p>
-      </div>
+      <EmptyState
+        title="No Wallet Selected"
+        message="Please select a wallet to view transaction activity."
+      />
     );
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading transactions...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState message="Loading transactions..." />;
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <p className="text-destructive mb-4">{error}</p>
-          <button
-            onClick={loadTransactions}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
+      <EmptyState
+        title="Error Loading Transactions"
+        message={error}
+        icon="⚠️"
+      />
     );
   }
 
   if (transactions.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        <p>No transactions found</p>
-      </div>
+      <EmptyState
+        title="No Transactions"
+        message="No transaction history found for this wallet."
+      />
     );
   }
 
   return (
-    <div className="p-4 space-y-3 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">Transaction Activity</h2>
-        <button
-          onClick={loadTransactions}
-          className="px-3 py-1 text-sm bg-secondary hover:bg-secondary/80 rounded-md"
+    <div className="flex flex-col md:flex-row h-full">
+      {/* Mobile Transaction Selector */}
+      <div className="md:hidden border-b p-2">
+        <select
+          value={selectedTx?.signature || ''}
+          onChange={(e) => {
+            const tx = transactions.find((t) => t.signature === e.target.value);
+            if (tx) setSelectedTx(tx);
+          }}
+          className="w-full p-2 border rounded bg-background"
         >
-          Refresh
-        </button>
+          {transactions.map((tx) => (
+            <option key={tx.signature} value={tx.signature}>
+              {tx.signature.slice(0, 8)}...{tx.signature.slice(-8)} • {formatTimeAgo(tx.blockTime)}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {transactions.map((tx) => (
-        <div
-          key={tx.signature}
-          className="border rounded-lg p-4 bg-card hover:bg-accent/50 transition-colors"
-        >
-          <div
-            className="flex items-start justify-between cursor-pointer"
-            onClick={() => setExpandedTx(expandedTx === tx.signature ? null : tx.signature)}
-          >
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className={`font-medium ${getActionColor(tx)}`}>
-                  {getActionLabel(tx)}
-                </span>
-                {tx.connector && (
-                  <span className="text-xs px-2 py-0.5 bg-secondary rounded">
-                    {tx.connector}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {formatTimestamp(tx.blockTime)}
-              </p>
-            </div>
-            <a
-              href={getExplorerUrl(tx.signature)}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="text-xs text-primary hover:underline"
-            >
-              View ↗
-            </a>
-          </div>
-
-          {expandedTx === tx.signature && (
-            <div className="mt-4 pt-4 border-t space-y-3 text-sm">
-              {/* Signature */}
-              <div>
-                <span className="text-muted-foreground">Signature:</span>
-                <p className="font-mono text-xs break-all">{tx.signature}</p>
-              </div>
-
-              {/* Token Balance Changes */}
-              {tx.tokenBalanceChanges && Object.keys(tx.tokenBalanceChanges).length > 0 && (
-                <div>
-                  <span className="text-muted-foreground">Balance Changes:</span>
-                  <div className="mt-1 space-y-1">
-                    {Object.entries(tx.tokenBalanceChanges).map(([token, change]) => (
-                      <div key={token} className="flex justify-between text-xs">
-                        <span>{token}:</span>
-                        <span className={change > 0 ? 'text-green-500' : 'text-red-500'}>
-                          {change > 0 ? '+' : ''}{change}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Fee */}
-              {tx.fee !== null && (
-                <div>
-                  <span className="text-muted-foreground">Fee:</span>
-                  <span className="ml-2 text-xs">{tx.fee} {selectedChain === 'solana' ? 'SOL' : 'ETH'}</span>
-                </div>
-              )}
-
-              {/* Error */}
-              {tx.error && (
-                <div>
-                  <span className="text-muted-foreground">Error:</span>
-                  <p className="text-xs text-destructive mt-1">{tx.error}</p>
-                </div>
-              )}
-            </div>
-          )}
+      {/* Desktop Sidebar - Transaction List */}
+      <div className="hidden md:block w-80 border-r overflow-y-auto">
+        <div className="p-3 border-b">
+          <h3 className="font-semibold text-sm">Recent Transactions</h3>
+          <p className="text-xs text-muted-foreground">{transactions.length} transactions</p>
         </div>
-      ))}
+        <div className="divide-y">
+          {transactions.map((tx) => (
+            <button
+              key={tx.signature}
+              onClick={() => setSelectedTx(tx)}
+              className={`w-full p-3 text-left hover:bg-accent transition-colors ${
+                selectedTx?.signature === tx.signature ? 'bg-accent' : ''
+              }`}
+            >
+              <div className="space-y-1">
+                <p className="font-mono text-xs truncate">
+                  {tx.signature.slice(0, 8)}...{tx.signature.slice(-8)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatTimeAgo(tx.blockTime)}
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Content - Transaction Details */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {!selectedTx ? (
+          <EmptyState
+            title="No Transaction Selected"
+            message="Select a transaction from the sidebar to view details."
+          />
+        ) : loadingParse ? (
+          <LoadingState message="Parsing transaction..." />
+        ) : !parsedTx ? (
+          <EmptyState
+            title="Failed to Parse Transaction"
+            message="Unable to parse transaction details."
+            icon="⚠️"
+          />
+        ) : (
+          <div className="space-y-4 max-w-3xl">
+            {/* Transaction Details Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center justify-between">
+                  <span>Transaction Details</span>
+                  <a
+                    href={getExplorerUrl(selectedTx.signature)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline"
+                  >
+                    View in Explorer ↗
+                  </a>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Status:</span>
+                  <span>{getStatusBadge(parsedTx.status)}</span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Signature:</span>
+                  <span className="font-mono text-xs truncate max-w-xs">
+                    {selectedTx.signature}
+                  </span>
+                </div>
+
+                {parsedTx.slot !== null && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Slot:</span>
+                    <span>{parsedTx.slot.toLocaleString()}</span>
+                  </div>
+                )}
+
+                {parsedTx.blockTime !== null && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Time:</span>
+                    <span>{new Date(parsedTx.blockTime * 1000).toLocaleString()}</span>
+                  </div>
+                )}
+
+                {parsedTx.fee !== null && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Fee:</span>
+                    <span>{parsedTx.fee} {selectedChain === 'solana' ? 'SOL' : 'ETH'}</span>
+                  </div>
+                )}
+
+                {parsedTx.connector && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Connector:</span>
+                    <span className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs">
+                      {parsedTx.connector}
+                    </span>
+                  </div>
+                )}
+
+                {parsedTx.error && (
+                  <div className="flex justify-between items-start">
+                    <span className="text-muted-foreground">Error:</span>
+                    <span className="text-destructive text-xs max-w-xs text-right">
+                      {parsedTx.error}
+                    </span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Balance Changes Card */}
+            {parsedTx.tokenBalanceChanges && Object.keys(parsedTx.tokenBalanceChanges).length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Balance Changes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Tokens Sent (negative changes) */}
+                    <div>
+                      <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase">
+                        Sent
+                      </h4>
+                      <div className="space-y-2">
+                        {Object.entries(parsedTx.tokenBalanceChanges)
+                          .filter(([_, change]) => change < 0)
+                          .map(([token, change]) => (
+                            <div key={token} className="flex justify-between items-center text-sm">
+                              <span className="font-medium">{token}</span>
+                              <span className="text-red-500">
+                                {Math.abs(change).toLocaleString()}
+                              </span>
+                            </div>
+                          ))}
+                        {Object.entries(parsedTx.tokenBalanceChanges).filter(([_, change]) => change < 0).length === 0 && (
+                          <p className="text-xs text-muted-foreground">No tokens sent</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Tokens Received (positive changes) */}
+                    <div>
+                      <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase">
+                        Received
+                      </h4>
+                      <div className="space-y-2">
+                        {Object.entries(parsedTx.tokenBalanceChanges)
+                          .filter(([_, change]) => change > 0)
+                          .map(([token, change]) => (
+                            <div key={token} className="flex justify-between items-center text-sm">
+                              <span className="font-medium">{token}</span>
+                              <span className="text-green-500">
+                                +{change.toLocaleString()}
+                              </span>
+                            </div>
+                          ))}
+                        {Object.entries(parsedTx.tokenBalanceChanges).filter(([_, change]) => change > 0).length === 0 && (
+                          <p className="text-xs text-muted-foreground">No tokens received</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
