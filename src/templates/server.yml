@@ -31,6 +31,9 @@ ipWhitelist: []
 allowedOrigins:
   - http://localhost:1420
   - https://localhost:1420
+  - https://localhost:1420
+  - https://127.0.0.1:1420
+  - tauri://localhost
 
 # If true, logs will be stored in logPath and printed to stdout. If false, they
 # will only be stored in logPath and not printed to stdout.
