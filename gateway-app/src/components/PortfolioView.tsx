@@ -42,8 +42,8 @@ export function PortfolioView() {
   const [availableNetworks, setAvailableNetworks] = useState<string[]>([]);
   const [nativeSymbol, setNativeSymbol] = useState<string>('');
   const [tokenToDelete, setTokenToDelete] = useState<Balance | null>(null);
-  const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [selectedToken, setSelectedToken] = useState<TokenInfo | null>(null);
+  const [selectedBalance, setSelectedBalance] = useState<Balance | null>(null);
   const [tokenList, setTokenList] = useState<TokenInfo[]>([]);
 
   useEffect(() => {
@@ -252,28 +252,22 @@ export function PortfolioView() {
                     <TableHead>Symbol</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
-                    <TableHead className="w-8 md:w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {balances.map((balance, i) => {
-                    const explorerUrl = balance.address
-                      ? `https://solscan.io/token/${balance.address}`
-                      : null;
-                    const isNative = balance.symbol === nativeSymbol;
                     const formattedBalance = formatBalance(balance.balance, 6);
 
                     return (
-                      <TableRow
-                        key={i}
-                        onMouseEnter={() => setHoveredRow(i)}
-                        onMouseLeave={() => setHoveredRow(null)}
-                      >
+                      <TableRow key={i}>
                         <TableCell>
                           <button
                             onClick={() => {
                               const token = tokenList.find(t => t.symbol === balance.symbol);
-                              setSelectedToken(token || null);
+                              if (token) {
+                                setSelectedToken(token);
+                                setSelectedBalance(balance);
+                              }
                             }}
                             className="hover:underline text-blue-600 dark:text-blue-400 cursor-pointer"
                           >
@@ -285,33 +279,6 @@ export function PortfolioView() {
                         </TableCell>
                         <TableCell className="text-right">
                           {formattedBalance}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {hoveredRow === i && !isNative && balance.address && (
-                            <Button
-                              onClick={() => setTokenToDelete(balance)}
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:text-destructive/80"
-                              title="Delete token"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M3 6h18" />
-                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                              </svg>
-                            </Button>
-                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -370,7 +337,10 @@ export function PortfolioView() {
       {selectedToken && (
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => setSelectedToken(null)}
+          onClick={() => {
+            setSelectedToken(null);
+            setSelectedBalance(null);
+          }}
         >
           <Card
             className="max-w-lg w-full border shadow-lg"
@@ -380,7 +350,10 @@ export function PortfolioView() {
               <div className="flex justify-between items-start">
                 <CardTitle>Token Details</CardTitle>
                 <Button
-                  onClick={() => setSelectedToken(null)}
+                  onClick={() => {
+                    setSelectedToken(null);
+                    setSelectedBalance(null);
+                  }}
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
@@ -442,8 +415,29 @@ export function PortfolioView() {
                 </div>
               )}
 
-              <div className="flex justify-end pt-2">
-                <Button onClick={() => setSelectedToken(null)} size="sm">
+              <div className="flex justify-between gap-2 pt-2">
+                {selectedBalance && selectedBalance.symbol !== nativeSymbol && selectedBalance.address && (
+                  <Button
+                    onClick={() => {
+                      setTokenToDelete(selectedBalance);
+                      setSelectedToken(null);
+                      setSelectedBalance(null);
+                    }}
+                    variant="destructive"
+                    size="sm"
+                  >
+                    Delete Token
+                  </Button>
+                )}
+                <Button
+                  onClick={() => {
+                    setSelectedToken(null);
+                    setSelectedBalance(null);
+                  }}
+                  size="sm"
+                  variant="outline"
+                  className="ml-auto"
+                >
                   Close
                 </Button>
               </div>

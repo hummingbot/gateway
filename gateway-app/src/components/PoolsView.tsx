@@ -14,12 +14,14 @@ import {
 import { EmptyState } from './ui/EmptyState';
 import { LoadingState } from './ui/LoadingState';
 import { LiquidityPositionCard } from './LiquidityPositionCard';
+import { PoolBinChart } from './PoolBinChart';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import type {
   PoolTemplate,
   ExtendedPoolInfo as PoolInfo,
+  MeteoraPoolInfo,
   ConnectorConfig,
   PositionWithConnector as Position,
 } from '@/lib/gateway-types';
@@ -44,6 +46,7 @@ export function PoolsView() {
   const [loadingPositions, setLoadingPositions] = useState(false);
   const [showConnectorDropdown, setShowConnectorDropdown] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [showAddLiquidity, setShowAddLiquidity] = useState(false);
 
   // Add liquidity form state
   const [amount0, setAmount0] = useState('');
@@ -466,64 +469,8 @@ export function PoolsView() {
                     </div>
                     {poolInfo && (
                       <>
-                        <div>
-                          <span className="text-muted-foreground">Price:</span>
-                          <p className="font-medium">{formatTokenAmount(poolInfo.price)}</p>
-                        </div>
-                        <div className="col-span-2">
-                          <span className="text-muted-foreground mb-2 block">Token Amounts:</span>
-                          <div className="space-y-3">
-                            <div>
-                              <div className="flex justify-between text-xs mb-1">
-                                <span>{selectedPool.baseSymbol}</span>
-                                <span className="font-medium">{formatTokenAmount(poolInfo.baseTokenAmount)}</span>
-                              </div>
-                              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-blue-500"
-                                  style={{
-                                    width: `${formatNumber(Math.min(
-                                      100,
-                                      (poolInfo.baseTokenAmount * poolInfo.price /
-                                        (poolInfo.baseTokenAmount * poolInfo.price + poolInfo.quoteTokenAmount)) * 100
-                                    ), 1)}%`
-                                  }}
-                                />
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-0.5">
-                                Value: ${formatNumber(poolInfo.baseTokenAmount * poolInfo.price, 2)}
-                              </div>
-                            </div>
-                            <div>
-                              <div className="flex justify-between text-xs mb-1">
-                                <span>{selectedPool.quoteSymbol}</span>
-                                <span className="font-medium">{formatTokenAmount(poolInfo.quoteTokenAmount)}</span>
-                              </div>
-                              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-green-500"
-                                  style={{
-                                    width: `${formatNumber(Math.min(
-                                      100,
-                                      (poolInfo.quoteTokenAmount /
-                                        (poolInfo.baseTokenAmount * poolInfo.price + poolInfo.quoteTokenAmount)) * 100
-                                    ), 1)}%`
-                                  }}
-                                />
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-0.5">
-                                Value: ${formatNumber(poolInfo.quoteTokenAmount, 2)}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        {poolInfo.activeBinId !== undefined && (
-                          <div>
-                            <span className="text-muted-foreground">Active Bin ID:</span>
-                            <p className="font-medium">{poolInfo.activeBinId}</p>
-                          </div>
-                        )}
-                        {poolInfo.binStep !== undefined && (
+                        {/* Only show Bin Step and Liquidity for non-bin pools or as supplementary info */}
+                        {poolInfo.binStep !== undefined && !('bins' in poolInfo && Array.isArray((poolInfo as MeteoraPoolInfo).bins) && (poolInfo as MeteoraPoolInfo).bins.length > 0) && (
                           <div>
                             <span className="text-muted-foreground">Bin Step:</span>
                             <p className="font-medium">{poolInfo.binStep}</p>
@@ -535,13 +482,117 @@ export function PoolsView() {
                             <p className="font-medium">{poolInfo.tick}</p>
                           </div>
                         )}
-                        {poolInfo.liquidity && (
+                        {poolInfo.liquidity && !('bins' in poolInfo && Array.isArray((poolInfo as MeteoraPoolInfo).bins) && (poolInfo as MeteoraPoolInfo).bins.length > 0) && (
                           <div className="col-span-2">
                             <span className="text-muted-foreground">Liquidity:</span>
                             <p className="font-medium font-mono text-xs">{poolInfo.liquidity}</p>
                           </div>
                         )}
                       </>
+                    )}
+                  </div>
+
+                  {/* Bin Liquidity Chart - replace Token Amounts, Price, Active Bin ID for pools with bins */}
+                  {poolInfo && 'bins' in poolInfo && Array.isArray((poolInfo as MeteoraPoolInfo).bins) && (poolInfo as MeteoraPoolInfo).bins.length > 0 && (
+                    <div className="mt-6">
+                      <PoolBinChart
+                        bins={(poolInfo as MeteoraPoolInfo).bins}
+                        activeBinId={(poolInfo as MeteoraPoolInfo).activeBinId}
+                        lowerPrice={lowerPrice ? parseFloat(lowerPrice) : undefined}
+                        upperPrice={upperPrice ? parseFloat(upperPrice) : undefined}
+                      />
+                    </div>
+                  )}
+
+                  {/* Add Liquidity Section - collapsible */}
+                  <div className="mt-6">
+                    <Separator className="mb-4" />
+                    <Button
+                      onClick={() => setShowAddLiquidity(!showAddLiquidity)}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      {showAddLiquidity ? 'Hide Add Liquidity' : 'Add Liquidity'}
+                    </Button>
+
+                    {showAddLiquidity && (
+                      <div className="mt-4 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs md:text-sm font-medium">
+                              {selectedPool.baseSymbol} Amount
+                            </label>
+                            <Input
+                              type="number"
+                              placeholder="0.0"
+                              value={amount0}
+                              onChange={(e) => setAmount0(e.target.value)}
+                              className="text-xs md:text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs md:text-sm font-medium">
+                              {selectedPool.quoteSymbol} Amount
+                            </label>
+                            <Input
+                              type="number"
+                              placeholder="0.0"
+                              value={amount1}
+                              onChange={(e) => setAmount1(e.target.value)}
+                              className="text-xs md:text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs md:text-sm font-medium">Lower Price</label>
+                            <Input
+                              type="number"
+                              placeholder="0.0"
+                              value={lowerPrice}
+                              onChange={(e) => setLowerPrice(e.target.value)}
+                              className="text-xs md:text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs md:text-sm font-medium">Upper Price</label>
+                            <Input
+                              type="number"
+                              placeholder="0.0"
+                              value={upperPrice}
+                              onChange={(e) => setUpperPrice(e.target.value)}
+                              className="text-xs md:text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs md:text-sm font-medium">Fee Tier (basis points)</label>
+                          <Input
+                            type="number"
+                            placeholder="e.g. 3000 for 0.3%"
+                            value={fee}
+                            onChange={(e) => setFee(e.target.value)}
+                            className="text-xs md:text-sm"
+                          />
+                        </div>
+
+                        <Button
+                          onClick={handleAddLiquidity}
+                          disabled={
+                            submitting ||
+                            !amount0 ||
+                            !amount1 ||
+                            !lowerPrice ||
+                            !upperPrice ||
+                            !fee
+                          }
+                          className="w-full"
+                        >
+                          {submitting ? 'Adding Liquidity...' : 'Add Liquidity'}
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </CardContent>
@@ -564,92 +615,6 @@ export function PoolsView() {
                       ))}
                     </div>
                   )}
-                </CardContent>
-              </Card>
-
-              {/* Add Liquidity */}
-              <Card>
-                <CardHeader className="p-3 md:p-6">
-                  <CardTitle>Add Liquidity</CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 md:p-6">
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs md:text-sm font-medium">
-                          {selectedPool.baseSymbol} Amount
-                        </label>
-                        <Input
-                          type="number"
-                          placeholder="0.0"
-                          value={amount0}
-                          onChange={(e) => setAmount0(e.target.value)}
-                          className="text-xs md:text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs md:text-sm font-medium">
-                          {selectedPool.quoteSymbol} Amount
-                        </label>
-                        <Input
-                          type="number"
-                          placeholder="0.0"
-                          value={amount1}
-                          onChange={(e) => setAmount1(e.target.value)}
-                          className="text-xs md:text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs md:text-sm font-medium">Lower Price</label>
-                        <Input
-                          type="number"
-                          placeholder="0.0"
-                          value={lowerPrice}
-                          onChange={(e) => setLowerPrice(e.target.value)}
-                          className="text-xs md:text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs md:text-sm font-medium">Upper Price</label>
-                        <Input
-                          type="number"
-                          placeholder="0.0"
-                          value={upperPrice}
-                          onChange={(e) => setUpperPrice(e.target.value)}
-                          className="text-xs md:text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-xs md:text-sm font-medium">Fee Tier (basis points)</label>
-                      <Input
-                        type="number"
-                        placeholder="e.g. 3000 for 0.3%"
-                        value={fee}
-                        onChange={(e) => setFee(e.target.value)}
-                        className="text-xs md:text-sm"
-                      />
-                    </div>
-
-                    <Button
-                      onClick={handleAddLiquidity}
-                      disabled={
-                        submitting ||
-                        !amount0 ||
-                        !amount1 ||
-                        !lowerPrice ||
-                        !upperPrice ||
-                        !fee
-                      }
-                      className="w-full"
-                    >
-                      {submitting ? 'Adding Liquidity...' : 'Add Liquidity'}
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             </>
