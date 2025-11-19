@@ -34,10 +34,10 @@ export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: Pool
         isActive,
         isInRange,
         fill: isActive
-          ? "hsl(var(--chart-2))" // Active bin - green
+          ? "hsl(var(--accent))" // Active bin - accent color
           : isInRange
-          ? "hsl(var(--chart-3))" // In user's position range - blue
-          : "hsl(var(--chart-1))", // Normal bin - default
+          ? "hsl(var(--primary))" // In user's position range - primary color
+          : "hsl(var(--muted-foreground))", // Normal bin - muted
       };
     });
   }, [bins, activeBinId, lowerPrice, upperPrice]);
@@ -45,15 +45,15 @@ export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: Pool
   const chartConfig = {
     liquidity: {
       label: "Liquidity",
-      color: "hsl(var(--chart-1))",
+      color: "hsl(var(--muted-foreground))",
     },
     active: {
       label: "Active Bin",
-      color: "hsl(var(--chart-2))",
+      color: "hsl(var(--accent))",
     },
     range: {
       label: "Your Range",
-      color: "hsl(var(--chart-3))",
+      color: "hsl(var(--primary))",
     },
   } satisfies ChartConfig;
 
