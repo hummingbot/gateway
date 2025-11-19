@@ -176,13 +176,14 @@ export function PoolsView() {
     if (!selectedPool) return;
 
     try {
-      const chainNetwork = getChainNetwork(selectedChain, selectedNetwork);
-      const data = await gatewayAPI.pools.getInfo(
-        selectedPool.connector,
-        chainNetwork,
-        selectedPool.address
-      );
-      setPoolInfo(data);
+      // Use connector-specific endpoint for pool info to get full data including bins
+      const url = `/connectors/${selectedPool.connector}/clmm/pool-info?network=${selectedNetwork}&poolAddress=${selectedPool.address}`;
+      const response = await fetch(`http://localhost:15888${url}`);
+      const data = await response.json();
+
+      console.log('Pool info data:', data);
+      console.log('Has bins?', 'bins' in data, data.bins?.length);
+      setPoolInfo(data as PoolInfo);
 
       // Set fee from pool info (convert to basis points)
       if (data.feePct !== undefined) {
@@ -475,16 +476,24 @@ export function PoolsView() {
                   </div>
 
                   {/* Bin Liquidity Chart - for Meteora pools with bins */}
-                  {poolInfo && poolInfo.bins && poolInfo.bins.length > 0 && (
-                    <div className="mt-6">
-                      <PoolBinChart
-                        bins={poolInfo.bins}
-                        activeBinId={poolInfo.activeBinId}
-                        lowerPrice={lowerPrice ? parseFloat(lowerPrice) : undefined}
-                        upperPrice={upperPrice ? parseFloat(upperPrice) : undefined}
-                      />
-                    </div>
-                  )}
+                  {(() => {
+                    console.log('Rendering chart check:', {
+                      hasPoolInfo: !!poolInfo,
+                      hasBins: poolInfo?.bins,
+                      binsLength: poolInfo?.bins?.length,
+                      activeBinId: poolInfo?.activeBinId
+                    });
+                    return poolInfo && poolInfo.bins && poolInfo.bins.length > 0 ? (
+                      <div className="mt-6">
+                        <PoolBinChart
+                          bins={poolInfo.bins}
+                          activeBinId={poolInfo.activeBinId}
+                          lowerPrice={lowerPrice ? parseFloat(lowerPrice) : undefined}
+                          upperPrice={upperPrice ? parseFloat(upperPrice) : undefined}
+                        />
+                      </div>
+                    ) : null;
+                  })()}
 
                   {/* Add Liquidity Section - collapsible */}
                   <div className="mt-6">
