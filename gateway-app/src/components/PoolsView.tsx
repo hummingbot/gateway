@@ -20,6 +20,7 @@ import { EmptyState } from './ui/EmptyState';
 import { LoadingState } from './ui/LoadingState';
 import { LiquidityPositionCard } from './LiquidityPositionCard';
 import { PoolBinChart } from './PoolBinChart';
+import { UserLiquidityChart } from './UserLiquidityChart';
 import { TokenAmountInput } from './TokenAmountInput';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
@@ -597,6 +598,23 @@ export function PoolsView() {
                               />
                             </div>
                           </div>
+
+                          {/* User Liquidity Distribution Chart */}
+                          {poolInfo && poolInfo.bins && poolInfo.bins.length > 0 &&
+                           lowerPrice && upperPrice && amount0 && amount1 && (
+                            <div className="border rounded-lg p-4">
+                              <h4 className="text-sm font-medium mb-2">Your Liquidity Distribution</h4>
+                              <UserLiquidityChart
+                                poolBins={poolInfo.bins}
+                                lowerPrice={parseFloat(lowerPrice)}
+                                upperPrice={parseFloat(upperPrice)}
+                                userBaseAmount={parseFloat(amount0)}
+                                userQuoteAmount={parseFloat(amount1)}
+                                baseSymbol={selectedPool.baseSymbol}
+                                quoteSymbol={selectedPool.quoteSymbol}
+                              />
+                            </div>
+                          )}
 
                           <Button
                             onClick={handleAddLiquidity}
