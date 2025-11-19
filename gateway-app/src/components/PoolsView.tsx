@@ -11,6 +11,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from './ui/drawer';
 import { EmptyState } from './ui/EmptyState';
 import { LoadingState } from './ui/LoadingState';
 import { LiquidityPositionCard } from './LiquidityPositionCard';
@@ -47,7 +57,7 @@ export function PoolsView() {
   const [loadingPositions, setLoadingPositions] = useState(false);
   const [showConnectorDropdown, setShowConnectorDropdown] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
-  const [showAddLiquidity, setShowAddLiquidity] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Add liquidity form state
   const [amount0, setAmount0] = useState('');
@@ -493,6 +503,10 @@ export function PoolsView() {
                       <span className="text-muted-foreground">Connector:</span>
                       <p className="font-medium capitalize">{selectedPool.connector}</p>
                     </div>
+                    <div>
+                      <span className="text-muted-foreground">Fee Tier:</span>
+                      <p className="font-medium">{fee || Math.round(selectedPool.feePct * 100)} basis points</p>
+                    </div>
                     {poolInfo && poolInfo.binStep !== undefined && (
                       <div>
                         <span className="text-muted-foreground">Bin Step:</span>
@@ -513,96 +527,91 @@ export function PoolsView() {
                     </div>
                   )}
 
-                  {/* Add Liquidity Section - collapsible */}
+                  {/* Add Position Drawer */}
                   <div className="mt-6">
                     <Separator className="mb-4" />
-                    <Button
-                      onClick={() => setShowAddLiquidity(!showAddLiquidity)}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      {showAddLiquidity ? 'Hide Add Liquidity' : 'Add Liquidity'}
-                    </Button>
-
-                    {showAddLiquidity && (
-                      <div className="mt-4 space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-xs md:text-sm font-medium">
-                              {selectedPool.baseSymbol} Amount
-                            </label>
-                            <Input
-                              type="number"
-                              placeholder="0.0"
-                              value={amount0}
-                              onChange={(e) => setAmount0(e.target.value)}
-                              className="text-xs md:text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs md:text-sm font-medium">
-                              {selectedPool.quoteSymbol} Amount
-                            </label>
-                            <Input
-                              type="number"
-                              placeholder="0.0"
-                              value={amount1}
-                              onChange={(e) => setAmount1(e.target.value)}
-                              className="text-xs md:text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-xs md:text-sm font-medium">Lower Price</label>
-                            <Input
-                              type="number"
-                              placeholder="0.0"
-                              value={lowerPrice}
-                              onChange={(e) => setLowerPrice(e.target.value)}
-                              className="text-xs md:text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs md:text-sm font-medium">Upper Price</label>
-                            <Input
-                              type="number"
-                              placeholder="0.0"
-                              value={upperPrice}
-                              onChange={(e) => setUpperPrice(e.target.value)}
-                              className="text-xs md:text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-xs md:text-sm font-medium">Fee Tier (basis points)</label>
-                          <Input
-                            type="number"
-                            placeholder="e.g. 3000 for 0.3%"
-                            value={fee}
-                            onChange={(e) => setFee(e.target.value)}
-                            className="text-xs md:text-sm"
-                          />
-                        </div>
-
-                        <Button
-                          onClick={handleAddLiquidity}
-                          disabled={
-                            submitting ||
-                            !amount0 ||
-                            !amount1 ||
-                            !lowerPrice ||
-                            !upperPrice ||
-                            !fee
-                          }
-                          className="w-full"
-                        >
-                          {submitting ? 'Adding Liquidity...' : 'Add Liquidity'}
+                    <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+                      <DrawerTrigger asChild>
+                        <Button variant="default" className="w-full">
+                          Add Position
                         </Button>
-                      </div>
-                    )}
+                      </DrawerTrigger>
+                      <DrawerContent>
+                        <DrawerHeader>
+                          <DrawerTitle>Add Position</DrawerTitle>
+                          <DrawerDescription>
+                            Add liquidity to {selectedPool.baseSymbol}-{selectedPool.quoteSymbol} pool
+                          </DrawerDescription>
+                        </DrawerHeader>
+                        <div className="p-4 space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-sm font-medium">
+                                {selectedPool.baseSymbol} Amount
+                              </label>
+                              <Input
+                                type="number"
+                                placeholder="0.0"
+                                value={amount0}
+                                onChange={(e) => setAmount0(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium">
+                                {selectedPool.quoteSymbol} Amount
+                              </label>
+                              <Input
+                                type="number"
+                                placeholder="0.0"
+                                value={amount1}
+                                onChange={(e) => setAmount1(e.target.value)}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-sm font-medium">Lower Price</label>
+                              <Input
+                                type="number"
+                                placeholder="0.0"
+                                value={lowerPrice}
+                                onChange={(e) => setLowerPrice(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium">Upper Price</label>
+                              <Input
+                                type="number"
+                                placeholder="0.0"
+                                value={upperPrice}
+                                onChange={(e) => setUpperPrice(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <DrawerFooter>
+                          <Button
+                            onClick={() => {
+                              handleAddLiquidity();
+                              setDrawerOpen(false);
+                            }}
+                            disabled={
+                              submitting ||
+                              !amount0 ||
+                              !amount1 ||
+                              !lowerPrice ||
+                              !upperPrice
+                            }
+                          >
+                            {submitting ? 'Adding Position...' : 'Add Position'}
+                          </Button>
+                          <DrawerClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                          </DrawerClose>
+                        </DrawerFooter>
+                      </DrawerContent>
+                    </Drawer>
                   </div>
                 </CardContent>
               </Card>
