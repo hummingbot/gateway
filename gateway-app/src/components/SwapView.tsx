@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
 import { Alert, AlertDescription } from './ui/alert';
 import {
   Select,
@@ -10,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
+import { TokenAmountInput } from './TokenAmountInput';
 import { toast } from 'sonner';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
@@ -240,52 +240,16 @@ export function SwapView() {
           </div>
 
           {/* From Token */}
-          <Card>
-            <CardContent className="p-3 md:pt-6">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs md:text-sm font-medium">From</label>
-                  <div className="text-xs md:text-sm text-muted-foreground">
-                    Balance: {formatTokenAmount(fromBalance)}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Select
-                    value={fromToken}
-                    onValueChange={setFromToken}
-                  >
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableTokens.map((token) => (
-                        <SelectItem key={token.symbol} value={token.symbol}>
-                          {token.symbol}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="flex-1 flex gap-2">
-                    <Input
-                      type="number"
-                      placeholder="0.0"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Button
-                      onClick={handleMaxClick}
-                      variant="outline"
-                      size="sm"
-                      disabled={!fromBalance || fromBalance === '0'}
-                    >
-                      Max
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <TokenAmountInput
+            label="From"
+            symbol={fromToken}
+            amount={amount}
+            balance={fromBalance}
+            onAmountChange={setAmount}
+            onSymbolChange={setFromToken}
+            availableTokens={availableTokens}
+            showMaxButton={true}
+          />
 
           {/* Swap Direction Indicator */}
           <div className="flex justify-center">
@@ -301,42 +265,17 @@ export function SwapView() {
           </div>
 
           {/* To Token */}
-          <Card>
-            <CardContent className="p-3 md:pt-6">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs md:text-sm font-medium">To</label>
-                  <div className="text-xs md:text-sm text-muted-foreground">
-                    Balance: {formatTokenAmount(balances[toToken] || '0')}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Select
-                    value={toToken}
-                    onValueChange={setToToken}
-                  >
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableTokens.map((token) => (
-                        <SelectItem key={token.symbol} value={token.symbol}>
-                          {token.symbol}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    type="text"
-                    placeholder="0.0"
-                    value={quote && quote.expectedAmount ? formatTokenAmount(quote.expectedAmount) : ''}
-                    readOnly
-                    className="flex-1 bg-muted"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <TokenAmountInput
+            label="To"
+            symbol={toToken}
+            amount={quote && quote.expectedAmount ? formatTokenAmount(quote.expectedAmount) : ''}
+            balance={balances[toToken] || '0'}
+            onAmountChange={() => {}}
+            onSymbolChange={setToToken}
+            availableTokens={availableTokens}
+            showMaxButton={false}
+            disabled={true}
+          />
 
           {/* Quote Details */}
           {quote && (

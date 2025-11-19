@@ -20,6 +20,7 @@ import { EmptyState } from './ui/EmptyState';
 import { LoadingState } from './ui/LoadingState';
 import { LiquidityPositionCard } from './LiquidityPositionCard';
 import { PoolBinChart } from './PoolBinChart';
+import { TokenAmountInput } from './TokenAmountInput';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
@@ -61,6 +62,7 @@ export function PoolsView() {
   const [upperPrice, setUpperPrice] = useState('');
   const [fee, setFee] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [balances, setBalances] = useState<Record<string, string>>({});
 
   // Fetch available connectors when chain/network/types change
   useEffect(() => {
@@ -79,6 +81,7 @@ export function PoolsView() {
     if (selectedPool && selectedWallet) {
       fetchPoolInfo();
       fetchPositions();
+      fetchBalances();
     }
   }, [selectedPool, selectedWallet]);
 
@@ -220,6 +223,27 @@ export function PoolsView() {
       setPositions([]);
     } finally {
       setLoadingPositions(false);
+    }
+  }
+
+  async function fetchBalances() {
+    if (!selectedWallet) return;
+
+    try {
+      const balanceData = await gatewayAPI.chains.getBalances(selectedChain, {
+        network: selectedNetwork,
+        address: selectedWallet,
+      });
+
+      if (balanceData.balances) {
+        const balancesMap: Record<string, string> = {};
+        Object.entries(balanceData.balances).forEach(([symbol, balance]) => {
+          balancesMap[symbol] = String(balance);
+        });
+        setBalances(balancesMap);
+      }
+    } catch (err) {
+      console.error('Failed to fetch balances:', err);
     }
   }
 
@@ -534,29 +558,23 @@ export function PoolsView() {
                       </CollapsibleTrigger>
                       <CollapsibleContent className="mt-4">
                         <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-medium">
-                                {selectedPool.baseSymbol} Amount
-                              </label>
-                              <Input
-                                type="number"
-                                placeholder="0.0"
-                                value={amount0}
-                                onChange={(e) => setAmount0(e.target.value)}
-                              />
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium">
-                                {selectedPool.quoteSymbol} Amount
-                              </label>
-                              <Input
-                                type="number"
-                                placeholder="0.0"
-                                value={amount1}
-                                onChange={(e) => setAmount1(e.target.value)}
-                              />
-                            </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <TokenAmountInput
+                              label={selectedPool.baseSymbol}
+                              symbol={selectedPool.baseSymbol}
+                              amount={amount0}
+                              balance={balances[selectedPool.baseSymbol] || '0'}
+                              onAmountChange={setAmount0}
+                              showMaxButton={true}
+                            />
+                            <TokenAmountInput
+                              label={selectedPool.quoteSymbol}
+                              symbol={selectedPool.quoteSymbol}
+                              amount={amount1}
+                              balance={balances[selectedPool.quoteSymbol] || '0'}
+                              onAmountChange={setAmount1}
+                              showMaxButton={true}
+                            />
                           </div>
 
                           <div className="grid grid-cols-2 gap-4">
