@@ -2,7 +2,15 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Select } from './ui/select';
+import { Alert, AlertDescription } from './ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
+import { toast } from 'sonner';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
 import { getSelectableTokenList, TokenInfo } from '@/lib/utils';
@@ -10,6 +18,8 @@ import { showSuccessNotification, showErrorNotification } from '@/lib/notificati
 import type { RouterQuoteResponse } from '@/lib/gateway-types';
 import { shortenAddress } from '@/lib/utils/string';
 import { formatTokenAmount, formatPrice, formatPercent } from '@/lib/utils/format';
+import { getRouterConnectors } from '@/lib/utils/api-helpers';
+import { getExplorerTxUrl } from '@/lib/utils/explorer';
 
 // Extended quote result with additional UI-specific fields
 interface QuoteResult extends Partial<RouterQuoteResponse> {
@@ -19,7 +29,7 @@ interface QuoteResult extends Partial<RouterQuoteResponse> {
 
 export function SwapView() {
   const { selectedChain, selectedNetwork, selectedWallet } = useApp();
-  const [connector, setConnector] = useState('jupiter');
+  const [connector, setConnector] = useState('');
   const [fromToken, setFromToken] = useState('');
   const [toToken, setToToken] = useState('');
   const [amount, setAmount] = useState('');
@@ -28,6 +38,25 @@ export function SwapView() {
   const [error, setError] = useState<string | null>(null);
   const [balances, setBalances] = useState<Record<string, string>>({});
   const [availableTokens, setAvailableTokens] = useState<TokenInfo[]>([]);
+  const [availableConnectors, setAvailableConnectors] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function fetchConnectors() {
+      try {
+        const connectors = await getRouterConnectors(selectedChain, selectedNetwork);
+        setAvailableConnectors(connectors);
+
+        // Set first available connector as default if current not in list
+        if (connectors.length > 0 && !connectors.includes(connector)) {
+          setConnector(connectors[0]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch router connectors:', err);
+      }
+    }
+
+    fetchConnectors();
+  }, [selectedChain, selectedNetwork]);
 
   useEffect(() => {
     async function fetchTokens() {
@@ -135,9 +164,6 @@ export function SwapView() {
       setLoading(true);
       setError(null);
 
-      // Show pending notification
-      await showSuccessNotification('⏳ Transaction pending... Swap is being executed');
-
       const result = await gatewayAPI.router.executeSwap(connector, {
         network: selectedNetwork,
         walletAddress: selectedWallet,
@@ -147,15 +173,29 @@ export function SwapView() {
         side: 'SELL',
       });
 
-      // Show success notification with signature
+      // Show notification with transaction link
       const txHash = result.signature;
-      const successMessage = txHash
-        ? `Swapped ${amount} ${fromToken} for ${toToken}\nTx: ${shortenAddress(txHash, 8, 6)}`
-        : `Swapped ${amount} ${fromToken} for ${toToken}`;
+      if (txHash) {
+        const explorerUrl = getExplorerTxUrl(selectedChain, selectedNetwork, txHash);
 
-      await showSuccessNotification(
-        `✅ Swap executed successfully! ${successMessage}`
-      );
+        // Show custom toast with link
+        toast.success(
+          <div className="flex flex-col gap-1">
+            <div>Swapped {amount} {fromToken} for {toToken}</div>
+            <a
+              href={explorerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary hover:underline"
+            >
+              {shortenAddress(txHash, 8, 6)} ↗
+            </a>
+          </div>,
+          { duration: 3000 }
+        );
+      } else {
+        await showSuccessNotification(`Swapped ${amount} ${fromToken} for ${toToken}`);
+      }
 
       setAmount('');
       setQuote(null);
@@ -175,18 +215,27 @@ export function SwapView() {
       <Card className="w-full max-w-2xl mx-auto">
         <CardHeader className="p-3 md:p-6">
           <CardTitle>Swap</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">Router connectors only</p>
         </CardHeader>
         <CardContent className="space-y-4 p-3 md:p-6">
           {/* Connector Selection */}
           <div>
-            <label className="text-xs md:text-sm font-medium">Connector</label>
+            <label className="text-xs md:text-sm font-medium block mb-2">Connector</label>
             <Select
               value={connector}
-              onChange={(e) => setConnector(e.target.value)}
+              onValueChange={setConnector}
+              disabled={availableConnectors.length === 0}
             >
-              <option value="jupiter">Jupiter (Router)</option>
-              <option value="0x">0x (Router)</option>
-              <option value="uniswap">Uniswap (Router)</option>
+              <SelectTrigger>
+                <SelectValue placeholder={availableConnectors.length === 0 ? "No router connectors available" : "Select connector"} />
+              </SelectTrigger>
+              <SelectContent>
+                {availableConnectors.map((conn) => (
+                  <SelectItem key={conn} value={conn}>
+                    {conn.charAt(0).toUpperCase() + conn.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
 
@@ -203,14 +252,18 @@ export function SwapView() {
                 <div className="flex gap-2">
                   <Select
                     value={fromToken}
-                    onChange={(e) => setFromToken(e.target.value)}
-                    className="w-32"
+                    onValueChange={setFromToken}
                   >
-                    {availableTokens.map((token) => (
-                      <option key={token.symbol} value={token.symbol}>
-                        {token.symbol}
-                      </option>
-                    ))}
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTokens.map((token) => (
+                        <SelectItem key={token.symbol} value={token.symbol}>
+                          {token.symbol}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                   <div className="flex-1 flex gap-2">
                     <Input
@@ -236,13 +289,15 @@ export function SwapView() {
 
           {/* Swap Direction Indicator */}
           <div className="flex justify-center">
-            <button
+            <Button
               onClick={handleSwapDirection}
-              className="text-2xl p-2 hover:bg-accent rounded-full transition-colors cursor-pointer"
+              variant="ghost"
+              size="icon"
+              className="text-2xl rounded-full"
               title="Swap direction"
             >
               ⇅
-            </button>
+            </Button>
           </div>
 
           {/* To Token */}
@@ -258,14 +313,18 @@ export function SwapView() {
                 <div className="flex gap-2">
                   <Select
                     value={toToken}
-                    onChange={(e) => setToToken(e.target.value)}
-                    className="w-32"
+                    onValueChange={setToToken}
                   >
-                    {availableTokens.map((token) => (
-                      <option key={token.symbol} value={token.symbol}>
-                        {token.symbol}
-                      </option>
-                    ))}
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTokens.map((token) => (
+                        <SelectItem key={token.symbol} value={token.symbol}>
+                          {token.symbol}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                   <Input
                     type="text"
@@ -333,9 +392,9 @@ export function SwapView() {
 
           {/* Error Display */}
           {error && (
-            <div className="p-4 bg-destructive/10 text-destructive rounded-md text-sm">
-              {error}
-            </div>
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
           {/* Action Buttons */}

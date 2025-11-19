@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Toaster } from 'react-hot-toast';
+import { Toaster } from '@/components/ui/sonner';
 import { AppProvider, useApp } from './lib/AppContext';
-import { Select } from './components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './components/ui/select';
+import { Button } from './components/ui/button';
 import { PortfolioView } from './components/PortfolioView';
 import { SwapView } from './components/SwapView';
 import { PoolsView } from './components/PoolsView';
@@ -112,7 +119,11 @@ function AppContent() {
 
   return (
     <>
-      <Toaster position="top-center" />
+      <Toaster
+        position="bottom-center"
+        richColors
+        className="!bottom-20"
+      />
       <div className="flex flex-col h-screen">
         {/* Header */}
         <header className="border-b px-4 md:px-6 py-3 md:py-4">
@@ -139,9 +150,11 @@ function AppContent() {
             </div>
 
             {/* Mobile: Wallet Icon Button */}
-            <button
+            <Button
               onClick={() => setShowWalletModal(true)}
-              className="sm:hidden p-2 rounded-lg hover:bg-accent transition-colors"
+              variant="ghost"
+              size="icon"
+              className="sm:hidden h-10 w-10"
               aria-label="Select wallet"
               title={selectedWallet || 'No wallet'}
             >
@@ -150,12 +163,14 @@ function AppContent() {
                 <path d="m21 2-9.6 9.6"></path>
                 <circle cx="7.5" cy="15.5" r="5.5"></circle>
               </svg>
-            </button>
+            </Button>
 
             {/* Mobile: Network Icon Button */}
-            <button
+            <Button
               onClick={() => setShowNetworkModal(true)}
-              className="sm:hidden p-2 rounded-lg hover:bg-accent transition-colors"
+              variant="ghost"
+              size="icon"
+              className="sm:hidden h-10 w-10"
               aria-label="Select network"
               title={`${selectedChain}-${selectedNetwork}`}
             >
@@ -165,26 +180,30 @@ function AppContent() {
                 <path d="M17 13a6 6 0 0 0-6-6"></path>
                 <path d="M21 13A10 10 0 0 0 11 3"></path>
               </svg>
-            </button>
+            </Button>
 
             {/* Desktop: Full Network Selector */}
             <div className="hidden sm:flex sm:items-center sm:gap-2">
               <Select
                 value={selectedNetwork}
-                onChange={(e) => setSelectedNetwork(e.target.value)}
-                className="w-48 text-sm"
+                onValueChange={setSelectedNetwork}
               >
-                {networks.length > 0 ? (
-                  networks.map((network) => (
-                    <option key={network} value={network}>
-                      {selectedChain}-{network}
-                    </option>
-                  ))
-                ) : (
-                  <option value={selectedNetwork}>
-                    {selectedChain}-{selectedNetwork}
-                  </option>
-                )}
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {networks.length > 0 ? (
+                    networks.map((network) => (
+                      <SelectItem key={network} value={network}>
+                        {selectedChain}-{network}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value={selectedNetwork}>
+                      {selectedChain}-{selectedNetwork}
+                    </SelectItem>
+                  )}
+                </SelectContent>
               </Select>
               <NetworkStatus chain={selectedChain} network={selectedNetwork} />
               <RestartButton iconSize={16} />
@@ -215,32 +234,31 @@ function AppContent() {
           <div className="bg-background w-full sm:w-96 sm:rounded-lg rounded-t-lg max-h-[80vh] overflow-y-auto">
             <div className="sticky top-0 bg-background border-b px-4 py-3 flex justify-between items-center">
               <h3 className="font-semibold">Select Network</h3>
-              <button
+              <Button
                 onClick={() => setShowNetworkModal(false)}
-                className="p-1 hover:bg-accent rounded"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
-              </button>
+              </Button>
             </div>
             <div className="p-4 space-y-2">
               {networks.map((network) => (
-                <button
+                <Button
                   key={network}
                   onClick={() => {
                     setSelectedNetwork(network);
                     setShowNetworkModal(false);
                   }}
-                  className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                    selectedNetwork === network
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-accent'
-                  }`}
+                  variant={selectedNetwork === network ? "default" : "ghost"}
+                  className="w-full justify-start px-4 py-3 h-auto"
                 >
                   <div className="font-medium">{selectedChain}-{network}</div>
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -253,15 +271,17 @@ function AppContent() {
           <div className="bg-background w-full sm:w-96 sm:rounded-lg rounded-t-lg max-h-[80vh] overflow-y-auto">
             <div className="sticky top-0 bg-background border-b px-4 py-3 flex justify-between items-center">
               <h3 className="font-semibold">Select Wallet</h3>
-              <button
+              <Button
                 onClick={() => setShowWalletModal(false)}
-                className="p-1 hover:bg-accent rounded"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
-              </button>
+              </Button>
             </div>
             <div className="p-4 space-y-4">
               {allWallets.map((wallet) => (
@@ -269,35 +289,33 @@ function AppContent() {
                   <h4 className="text-sm font-medium text-muted-foreground mb-2 capitalize">{wallet.chain}</h4>
                   <div className="space-y-2">
                     {wallet.walletAddresses.map((address) => (
-                      <button
+                      <Button
                         key={address}
                         onClick={async () => {
                           await handleWalletChange(address, wallet.chain);
                           setShowWalletModal(false);
                         }}
-                        className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
-                          selectedWallet === address && selectedChain === wallet.chain
-                            ? 'bg-primary text-primary-foreground'
-                            : 'hover:bg-accent'
-                        }`}
+                        variant={selectedWallet === address && selectedChain === wallet.chain ? "default" : "ghost"}
+                        className="w-full justify-start px-4 py-3 h-auto"
                       >
                         <div className="font-mono text-sm">
                           {address.substring(0, 6)}...{address.substring(address.length - 4)}
                         </div>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
               ))}
-              <button
+              <Button
                 onClick={() => {
                   setShowWalletModal(false);
                   setShowAddWallet(true);
                 }}
-                className="w-full px-4 py-3 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary hover:bg-accent transition-colors text-center"
+                variant="outline"
+                className="w-full px-4 py-3 h-auto border-2 border-dashed"
               >
                 + Add Wallet
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -315,9 +333,10 @@ function AppContent() {
       {/* Bottom Navigation */}
       <nav className="border-t bg-background">
         <div className="flex justify-around items-center h-16 max-w-2xl mx-auto">
-          <button
+          <Button
             onClick={() => setActiveTab('portfolio')}
-            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors ${
+            variant="ghost"
+            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 rounded-none ${
               activeTab === 'portfolio'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
@@ -338,11 +357,12 @@ function AppContent() {
               <line x1="2" x2="22" y1="10" y2="10" />
             </svg>
             <span className="text-xs font-medium">Portfolio</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={() => setActiveTab('swap')}
-            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors ${
+            variant="ghost"
+            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 rounded-none ${
               activeTab === 'swap'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
@@ -365,11 +385,12 @@ function AppContent() {
               <path d="M4 17h16" />
             </svg>
             <span className="text-xs font-medium">Swap</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={() => setActiveTab('pools')}
-            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors ${
+            variant="ghost"
+            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 rounded-none ${
               activeTab === 'pools'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
@@ -389,11 +410,12 @@ function AppContent() {
               <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
             </svg>
             <span className="text-xs font-medium">Liquidity</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={() => setActiveTab('activity')}
-            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors ${
+            variant="ghost"
+            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 rounded-none ${
               activeTab === 'activity'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
@@ -413,11 +435,12 @@ function AppContent() {
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
             </svg>
             <span className="text-xs font-medium">Activity</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={() => setActiveTab('config')}
-            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors ${
+            variant="ghost"
+            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 rounded-none ${
               activeTab === 'config'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
@@ -438,7 +461,7 @@ function AppContent() {
               <circle cx="12" cy="12" r="3" />
             </svg>
             <span className="text-xs font-medium">Config</span>
-          </button>
+          </Button>
         </div>
       </nav>
     </div>

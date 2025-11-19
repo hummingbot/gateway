@@ -1,8 +1,23 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
-import { Select } from './ui/select';
+import { Button } from './ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 import { Switch } from './ui/switch';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from './ui/table';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import { readAppConfig, updateAppConfigValue } from '@/lib/app-config';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
@@ -288,49 +303,41 @@ export function ConfigView() {
       <div className="md:hidden border-b p-2">
         <Select
           value={selectedNamespace}
-          onChange={(e) => setSelectedNamespace(e.target.value)}
-          className="w-full"
+          onValueChange={setSelectedNamespace}
         >
-          {/* Gateway */}
-          {gatewayNamespaces.length > 0 && (
-            <optgroup label="Gateway">
-              {gatewayNamespaces.map((ns) => (
-                <option key={ns} value={ns}>{ns}</option>
-              ))}
-            </optgroup>
-          )}
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {/* Gateway */}
+            {gatewayNamespaces.map((ns) => (
+              <SelectItem key={ns} value={ns}>{ns}</SelectItem>
+            ))}
 
-          {/* RPC Providers */}
-          {rpcNamespaces.length > 0 && (
-            <optgroup label="RPC Providers">
-              {rpcNamespaces.map((ns) => (
-                <option key={ns} value={ns}>{ns}</option>
-              ))}
-            </optgroup>
-          )}
+            {/* RPC Providers */}
+            {rpcNamespaces.map((ns) => (
+              <SelectItem key={ns} value={ns}>{ns}</SelectItem>
+            ))}
 
-          {/* Chains */}
-          {chainNetworks.map(({ chain, baseConfig, networks }) => (
-            (baseConfig || networks.length > 0) && (
-              <optgroup key={chain} label={chain.charAt(0).toUpperCase() + chain.slice(1)}>
-                {baseConfig && (
-                  <option value={baseConfig}>{chain}</option>
-                )}
-                {networks.map((ns) => (
-                  <option key={ns} value={ns}>{ns}</option>
-                ))}
-              </optgroup>
-            )
-          ))}
+            {/* Chains */}
+            {chainNetworks.map(({ chain, baseConfig, networks }) => (
+              (baseConfig || networks.length > 0) && (
+                <>
+                  {baseConfig && (
+                    <SelectItem key={baseConfig} value={baseConfig}>{chain}</SelectItem>
+                  )}
+                  {networks.map((ns) => (
+                    <SelectItem key={ns} value={ns}>{ns}</SelectItem>
+                  ))}
+                </>
+              )
+            ))}
 
-          {/* Connectors */}
-          {connectorNamespaces.length > 0 && (
-            <optgroup label="Connectors">
-              {connectorNamespaces.map((ns) => (
-                <option key={ns} value={ns}>{ns}</option>
-              ))}
-            </optgroup>
-          )}
+            {/* Connectors */}
+            {connectorNamespaces.map((ns) => (
+              <SelectItem key={ns} value={ns}>{ns}</SelectItem>
+            ))}
+          </SelectContent>
         </Select>
       </div>
 
@@ -342,17 +349,14 @@ export function ConfigView() {
             <div>
               <h3 className="font-semibold text-sm mb-2">Gateway</h3>
               {gatewayNamespaces.map((ns) => (
-                <button
+                <Button
                   key={ns}
                   onClick={() => setSelectedNamespace(ns)}
-                  className={`w-full text-left px-3 py-2 rounded text-sm ${
-                    selectedNamespace === ns
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-accent'
-                  }`}
+                  variant={selectedNamespace === ns ? "default" : "ghost"}
+                  className="w-full justify-start px-3 py-2"
                 >
                   {ns}
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -362,17 +366,14 @@ export function ConfigView() {
             <div>
               <h3 className="font-semibold text-sm mb-2">RPC Providers</h3>
               {rpcNamespaces.map((ns) => (
-                <button
+                <Button
                   key={ns}
                   onClick={() => setSelectedNamespace(ns)}
-                  className={`w-full text-left px-3 py-2 rounded text-sm ${
-                    selectedNamespace === ns
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-accent'
-                  }`}
+                  variant={selectedNamespace === ns ? "default" : "ghost"}
+                  className="w-full justify-start px-3 py-2"
                 >
                   {ns}
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -385,29 +386,23 @@ export function ConfigView() {
                   {chain}
                 </h3>
                 {baseConfig && (
-                  <button
+                  <Button
                     onClick={() => setSelectedNamespace(baseConfig)}
-                    className={`w-full text-left px-3 py-2 rounded text-sm ${
-                      selectedNamespace === baseConfig
-                        ? 'bg-primary text-primary-foreground'
-                        : 'hover:bg-accent'
-                    }`}
+                    variant={selectedNamespace === baseConfig ? "default" : "ghost"}
+                    className="w-full justify-start px-3 py-2"
                   >
                     {chain}
-                  </button>
+                  </Button>
                 )}
                 {networks.map((ns) => (
-                  <button
+                  <Button
                     key={ns}
                     onClick={() => setSelectedNamespace(ns)}
-                    className={`w-full text-left px-3 py-2 rounded text-sm ${
-                      selectedNamespace === ns
-                        ? 'bg-primary text-primary-foreground'
-                        : 'hover:bg-accent'
-                    }`}
+                    variant={selectedNamespace === ns ? "default" : "ghost"}
+                    className="w-full justify-start px-3 py-2"
                   >
                     {ns}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )
@@ -418,17 +413,14 @@ export function ConfigView() {
             <div>
               <h3 className="font-semibold text-sm mb-2">Connectors</h3>
               {connectorNamespaces.map((ns) => (
-                <button
+                <Button
                   key={ns}
                   onClick={() => setSelectedNamespace(ns)}
-                  className={`w-full text-left px-3 py-2 rounded text-sm ${
-                    selectedNamespace === ns
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-accent'
-                  }`}
+                  variant={selectedNamespace === ns ? "default" : "ghost"}
+                  className="w-full justify-start px-3 py-2"
                 >
                   {ns}
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -451,30 +443,29 @@ export function ConfigView() {
                 </p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2 text-xs md:text-sm">Setting</th>
-                        <th className="text-right py-2 text-xs md:text-sm pr-2">Value</th>
-                        <th className="w-8 md:w-10"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Setting</TableHead>
+                        <TableHead className="text-right pr-2">Value</TableHead>
+                        <TableHead className="w-8 md:w-10"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {configItems.map((item, i) => {
                         const key = `${item.namespace}.${item.path}`;
                         const isEditing = editingKey === key;
 
                         return (
-                          <tr
+                          <TableRow
                             key={key}
-                            className="border-b"
                             onMouseEnter={() => setHoveredRow(i)}
                             onMouseLeave={() => setHoveredRow(null)}
                           >
-                            <td className="py-2 text-xs md:text-sm break-words max-w-[120px] md:max-w-none pr-2">
+                            <TableCell className="break-words max-w-[120px] md:max-w-none pr-2">
                               {item.path}
-                            </td>
-                            <td className="py-2 text-right pr-2">
+                            </TableCell>
+                            <TableCell className="text-right pr-2">
                               {item.type === 'boolean' ? (
                                 // Boolean values always show as toggle, no edit mode needed
                                 <div className="flex items-center gap-2 justify-end min-w-[140px]">
@@ -510,17 +501,19 @@ export function ConfigView() {
                                     : String(item.value)}
                                 </span>
                               )}
-                            </td>
-                            <td className="text-right">
+                            </TableCell>
+                            <TableCell className="text-right">
                               {item.type === 'boolean' ? (
                                 // Boolean values don't need edit button (they're always toggles)
                                 null
                               ) : isEditing ? (
                                 <div className="flex gap-1 justify-end">
-                                  <button
+                                  <Button
                                     onClick={() => saveEdit(item)}
                                     disabled={saving}
-                                    className="text-green-600 hover:text-green-800 p-1"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-green-600 hover:text-green-800"
                                     title="Save"
                                   >
                                     <svg
@@ -536,11 +529,13 @@ export function ConfigView() {
                                     >
                                       <polyline points="20 6 9 17 4 12"></polyline>
                                     </svg>
-                                  </button>
-                                  <button
+                                  </Button>
+                                  <Button
                                     onClick={cancelEdit}
                                     disabled={saving}
-                                    className="text-red-600 hover:text-red-800 p-1"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-red-600 hover:text-red-800"
                                     title="Cancel"
                                   >
                                     <svg
@@ -557,13 +552,15 @@ export function ConfigView() {
                                       <line x1="18" y1="6" x2="6" y2="18"></line>
                                       <line x1="6" y1="6" x2="18" y2="18"></line>
                                     </svg>
-                                  </button>
+                                  </Button>
                                 </div>
                               ) : (
                                 hoveredRow === i && (
-                                  <button
+                                  <Button
                                     onClick={() => startEdit(item)}
-                                    className="text-blue-600 hover:text-blue-800 p-1"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-blue-600 hover:text-blue-800"
                                     title="Edit"
                                   >
                                     <svg
@@ -579,15 +576,15 @@ export function ConfigView() {
                                     >
                                       <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
                                     </svg>
-                                  </button>
+                                  </Button>
                                 )
                               )}
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         );
                       })}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </CardContent>

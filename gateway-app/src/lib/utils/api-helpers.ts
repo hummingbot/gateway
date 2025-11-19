@@ -4,6 +4,7 @@
  * Wrapper functions for common API operation patterns with error handling and notifications.
  */
 
+import { gatewayAPI } from '../GatewayAPI';
 import { showSuccessNotification, showErrorNotification } from '../notifications';
 
 /**
@@ -105,4 +106,41 @@ export async function withRetry<T>(
   }
 
   throw lastError!;
+}
+
+/**
+ * Fetch available router connectors for a given chain and network
+ * Filters connectors to only include those that support 'router' type
+ *
+ * @param chain - Chain name (e.g., 'solana', 'ethereum')
+ * @param network - Network name (e.g., 'mainnet-beta', 'mainnet')
+ * @returns Array of connector names that support router swaps
+ *
+ * @example
+ * const routers = await getRouterConnectors('solana', 'mainnet-beta');
+ * // Returns: ['jupiter', '0x', 'uniswap']
+ */
+export async function getRouterConnectors(chain: string, network: string): Promise<string[]> {
+  try {
+    const data = await gatewayAPI.config.getConnectors();
+
+    // Filter connectors that support the router type for this chain and network
+    const routerConnectors = data.connectors
+      .filter((conn) => {
+        // Check if connector is for this chain
+        if (conn.chain !== chain) return false;
+
+        // Check if this network is available
+        if (!conn.networks.includes(network)) return false;
+
+        // Check if router type is supported
+        return conn.trading_types.includes('router');
+      })
+      .map((conn) => conn.name);
+
+    return routerConnectors;
+  } catch (error) {
+    console.error('Failed to fetch router connectors:', error);
+    return [];
+  }
 }

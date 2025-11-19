@@ -1,11 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { Separator } from './ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 import { EmptyState } from './ui/EmptyState';
 import { LoadingState } from './ui/LoadingState';
 import { useApp } from '../lib/AppContext';
 import { ChainAPI } from '../lib/GatewayAPI';
 import type { TransactionsResponseType, ParseResponseType } from '../lib/gateway-types';
 import { formatDistanceToNow } from 'date-fns';
+import { getExplorerTxUrl } from '../lib/utils/explorer';
 
 const chainAPI = new ChainAPI();
 
@@ -105,24 +116,6 @@ export function ActivityView() {
     }
   }
 
-  function getExplorerUrl(signature: string): string {
-    if (selectedChain === 'solana') {
-      return `https://solscan.io/tx/${signature}${selectedNetwork === 'devnet' ? '?cluster=devnet' : ''}`;
-    } else {
-      const networkMap: Record<string, string> = {
-        mainnet: 'etherscan.io',
-        sepolia: 'sepolia.etherscan.io',
-        polygon: 'polygonscan.com',
-        arbitrum: 'arbiscan.io',
-        optimism: 'optimistic.etherscan.io',
-        base: 'basescan.org',
-        avalanche: 'snowtrace.io',
-        bsc: 'bscscan.com',
-      };
-      const explorer = networkMap[selectedNetwork] || 'etherscan.io';
-      return `https://${explorer}/tx/${signature}`;
-    }
-  }
 
   function formatTimeAgo(blockTime: number | null): string {
     if (!blockTime) return 'Pending';
@@ -143,9 +136,9 @@ export function ActivityView() {
   }
 
   function getStatusBadge(status: number) {
-    if (status === 1) return <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-500 rounded">Confirmed</span>;
-    if (status === -1) return <span className="text-xs px-2 py-0.5 bg-red-500/20 text-red-500 rounded">Failed</span>;
-    return <span className="text-xs px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded">Pending</span>;
+    if (status === 1) return <Badge variant="outline" className="bg-green-500/20 text-green-500 border-green-500/30">Confirmed</Badge>;
+    if (status === -1) return <Badge variant="destructive">Failed</Badge>;
+    return <Badge variant="outline" className="bg-yellow-500/20 text-yellow-500 border-yellow-500/30">Pending</Badge>;
   }
 
   function parseConnectorInfo(connector: string | undefined): { name: string; type: string } | null {
@@ -209,20 +202,24 @@ export function ActivityView() {
     <div className="flex flex-col md:flex-row h-full">
       {/* Mobile Transaction Selector */}
       <div className="md:hidden border-b p-2">
-        <select
+        <Select
           value={selectedTx?.signature || ''}
-          onChange={(e) => {
-            const tx = transactions.find((t) => t.signature === e.target.value);
+          onValueChange={(value) => {
+            const tx = transactions.find((t) => t.signature === value);
             if (tx) setSelectedTx(tx);
           }}
-          className="w-full p-2 border rounded bg-background"
         >
-          {transactions.map((tx) => (
-            <option key={tx.signature} value={tx.signature}>
-              {formatSignature(tx.signature)} • {formatTimeAgo(tx.blockTime)}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {transactions.map((tx) => (
+              <SelectItem key={tx.signature} value={tx.signature}>
+                {formatSignature(tx.signature)} • {formatTimeAgo(tx.blockTime)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Desktop Sidebar - Transaction List */}
@@ -231,10 +228,12 @@ export function ActivityView() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-sm">Recent Transactions</h3>
-              <button
+              <Button
                 onClick={loadTransactions}
                 disabled={loading}
-                className="p-1 hover:bg-accent rounded transition-colors disabled:opacity-50"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
                 title="Refresh transactions"
               >
                 <svg
@@ -251,26 +250,25 @@ export function ActivityView() {
                 >
                   <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                 </svg>
-              </button>
+              </Button>
             </div>
             <div>
               {transactions.map((tx) => (
-                <button
+                <Button
                   key={tx.signature}
                   onClick={() => setSelectedTx(tx)}
-                  className={`w-full text-left px-3 py-2 rounded text-sm mb-1 ${
-                    selectedTx?.signature === tx.signature
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-accent'
-                  }`}
+                  variant={selectedTx?.signature === tx.signature ? "default" : "ghost"}
+                  className="w-full justify-start px-3 py-2 h-auto mb-1 text-left"
                 >
-                  <div className="font-mono text-xs truncate">
-                    {formatSignature(tx.signature)}
+                  <div className="flex flex-col items-start w-full gap-0.5">
+                    <div className="font-mono text-xs truncate w-full text-left">
+                      {formatSignature(tx.signature)}
+                    </div>
+                    <div className="text-xs opacity-75 text-left">
+                      {formatTimeAgo(tx.blockTime)}
+                    </div>
                   </div>
-                  <div className="text-xs opacity-75">
-                    {formatTimeAgo(tx.blockTime)}
-                  </div>
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -303,7 +301,7 @@ export function ActivityView() {
                 <CardTitle className="flex items-center justify-between">
                   <span>Transaction Details</span>
                   <a
-                    href={getExplorerUrl(selectedTx.signature)}
+                    href={getExplorerTxUrl(selectedChain, selectedNetwork, selectedTx.signature)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-primary hover:underline"
@@ -370,7 +368,7 @@ export function ActivityView() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Type:</span>
-                    <span className="font-medium">{parseConnectorInfo(parsedTx.connector)!.type}</span>
+                    <Badge variant="secondary">{parseConnectorInfo(parsedTx.connector)!.type}</Badge>
                   </div>
                 </CardContent>
               </Card>

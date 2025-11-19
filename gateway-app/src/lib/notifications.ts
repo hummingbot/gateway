@@ -1,4 +1,4 @@
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 // Check if we're running in Tauri
 const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;

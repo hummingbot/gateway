@@ -27,7 +27,13 @@
  */
 
 import { Input } from './input';
-import { Select } from './select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './select';
 import { Label } from './label';
 
 export interface FormFieldOption {
@@ -42,8 +48,8 @@ export interface FormFieldProps {
   type?: 'text' | 'number' | 'password' | 'select';
   /** Current value */
   value: string;
-  /** Change handler */
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  /** Change handler - for inputs, regular event handler; for selects, value handler */
+  onChange: (e: React.ChangeEvent<HTMLInputElement> | string) => void;
   /** Placeholder text */
   placeholder?: string;
   /** Whether field is disabled */
@@ -78,20 +84,29 @@ export function FormField({
 
   return (
     <div className={className}>
-      <Label className={labelSizeClasses[labelSize]}>{label}</Label>
+      <Label className={`${labelSizeClasses[labelSize]} block mb-2`}>{label}</Label>
       {type === 'select' ? (
-        <Select value={value} onChange={onChange} disabled={disabled}>
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
+        <Select
+          value={value}
+          onValueChange={(val) => onChange(val)}
+          disabled={disabled}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder={placeholder} />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
       ) : (
         <Input
           type={type}
           value={value}
-          onChange={onChange}
+          onChange={onChange as (e: React.ChangeEvent<HTMLInputElement>) => void}
           placeholder={placeholder}
           disabled={disabled}
         />

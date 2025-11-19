@@ -1,8 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from './ui/table';
 import { EmptyState } from './ui/EmptyState';
 import { LoadingState } from './ui/LoadingState';
+import { LiquidityPositionCard } from './LiquidityPositionCard';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
 import { AddTokenModal } from './AddTokenModal';
@@ -12,6 +21,7 @@ import { getSelectableTokenList, TokenInfo } from '@/lib/utils';
 import type { PositionWithConnector as Position, ConnectorConfig } from '@/lib/gateway-types';
 import { capitalize, shortenAddress, getChainNetwork } from '@/lib/utils/string';
 import { formatTokenAmount, formatBalance } from '@/lib/utils/format';
+import { getExplorerTokenUrl } from '@/lib/utils/explorer';
 
 interface Balance {
   symbol: string;
@@ -33,6 +43,8 @@ export function PortfolioView() {
   const [nativeSymbol, setNativeSymbol] = useState<string>('');
   const [tokenToDelete, setTokenToDelete] = useState<Balance | null>(null);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+  const [selectedToken, setSelectedToken] = useState<TokenInfo | null>(null);
+  const [tokenList, setTokenList] = useState<TokenInfo[]>([]);
 
   useEffect(() => {
     loadNetworks();
@@ -93,6 +105,7 @@ export function PortfolioView() {
       }));
 
       setBalances(mergedBalances);
+      setTokenList(tokenList);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
@@ -233,16 +246,16 @@ export function PortfolioView() {
             {balances.length === 0 ? (
               <p className="text-muted-foreground">No tokens found</p>
             ) : (
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 text-xs md:text-sm">Symbol</th>
-                    <th className="text-left py-2 text-xs md:text-sm">Name</th>
-                    <th className="text-right py-2 text-xs md:text-sm">Balance</th>
-                    <th className="w-8 md:w-10"></th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Symbol</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="text-right">Balance</TableHead>
+                    <TableHead className="w-8 md:w-10"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {balances.map((balance, i) => {
                     const explorerUrl = balance.address
                       ? `https://solscan.io/token/${balance.address}`
@@ -251,37 +264,35 @@ export function PortfolioView() {
                     const formattedBalance = formatBalance(balance.balance, 6);
 
                     return (
-                      <tr
+                      <TableRow
                         key={i}
-                        className="border-b"
                         onMouseEnter={() => setHoveredRow(i)}
                         onMouseLeave={() => setHoveredRow(null)}
                       >
-                        <td className="py-2 text-xs md:text-sm">
-                          {explorerUrl ? (
-                            <a
-                              href={explorerUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="hover:underline text-blue-600 dark:text-blue-400"
-                            >
-                              {balance.symbol}
-                            </a>
-                          ) : (
-                            balance.symbol
-                          )}
-                        </td>
-                        <td className="py-2 text-xs md:text-sm">
+                        <TableCell>
+                          <button
+                            onClick={() => {
+                              const token = tokenList.find(t => t.symbol === balance.symbol);
+                              setSelectedToken(token || null);
+                            }}
+                            className="hover:underline text-blue-600 dark:text-blue-400 cursor-pointer"
+                          >
+                            {balance.symbol}
+                          </button>
+                        </TableCell>
+                        <TableCell>
                           {balance.name}
-                        </td>
-                        <td className="text-right text-xs md:text-sm">
+                        </TableCell>
+                        <TableCell className="text-right">
                           {formattedBalance}
-                        </td>
-                        <td className="text-right">
+                        </TableCell>
+                        <TableCell className="text-right">
                           {hoveredRow === i && !isNative && balance.address && (
-                            <button
+                            <Button
                               onClick={() => setTokenToDelete(balance)}
-                              className="text-destructive hover:text-destructive/80 p-1"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive/80"
                               title="Delete token"
                             >
                               <svg
@@ -299,14 +310,14 @@ export function PortfolioView() {
                                 <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
                                 <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
                               </svg>
-                            </button>
+                            </Button>
                           )}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             )}
           </div>
         </CardContent>
@@ -325,50 +336,7 @@ export function PortfolioView() {
           ) : (
             <div className="space-y-3">
               {positions.map((position, i) => (
-                <div key={i} className="border rounded p-3 md:p-4 text-xs md:text-sm">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <span className="text-muted-foreground">Connector:</span>
-                      <p className="font-medium">{capitalize(position.connector)}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Pool:</span>
-                      <p className="font-mono text-xs truncate">{shortenAddress(position.poolAddress, 8, 6)}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Price Range:</span>
-                      <p className="font-medium">
-                        {formatTokenAmount(position.lowerPrice)} - {formatTokenAmount(position.upperPrice)}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Current Price:</span>
-                      <p className="font-medium">{formatTokenAmount(position.price)}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Base Amount:</span>
-                      <p className="font-medium">{formatTokenAmount(position.baseTokenAmount)}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Quote Amount:</span>
-                      <p className="font-medium">{formatTokenAmount(position.quoteTokenAmount)}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Base Fees:</span>
-                      <p className="font-medium">{formatTokenAmount(position.baseFeeAmount)}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Quote Fees:</span>
-                      <p className="font-medium">{formatTokenAmount(position.quoteFeeAmount)}</p>
-                    </div>
-                    {position.rewardAmount !== undefined && position.rewardAmount > 0 && (
-                      <div className="col-span-2">
-                        <span className="text-muted-foreground">Rewards:</span>
-                        <p className="font-medium">{formatTokenAmount(position.rewardAmount)}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <LiquidityPositionCard key={i} position={position} />
               ))}
             </div>
           )}
@@ -396,6 +364,92 @@ export function PortfolioView() {
           onConfirm={handleDeleteToken}
           onCancel={() => setTokenToDelete(null)}
         />
+      )}
+
+      {/* Token Details Modal */}
+      {selectedToken && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedToken(null)}
+        >
+          <Card
+            className="max-w-lg w-full border shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="p-3 md:p-6">
+              <div className="flex justify-between items-start">
+                <CardTitle>Token Details</CardTitle>
+                <Button
+                  onClick={() => setSelectedToken(null)}
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-3 md:p-6 space-y-3">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">Symbol:</span>
+                  <span className="font-medium">{selectedToken.symbol}</span>
+                </div>
+
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-muted-foreground">Name:</span>
+                  <span className="font-medium">{selectedToken.name}</span>
+                </div>
+
+                {selectedToken.address && (
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">Address:</span>
+                    <span className="font-mono text-xs">{shortenAddress(selectedToken.address, 6, 4)}</span>
+                  </div>
+                )}
+
+                {selectedToken.decimals !== undefined && (
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="text-muted-foreground">Decimals:</span>
+                    <span className="font-medium">{selectedToken.decimals}</span>
+                  </div>
+                )}
+              </div>
+
+              {selectedToken.address && (
+                <div className="pt-2">
+                  <a
+                    href={getExplorerTokenUrl(selectedChain, selectedNetwork, selectedToken.address)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    View on Explorer ↗
+                  </a>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2">
+                <Button onClick={() => setSelectedToken(null)} size="sm">
+                  Close
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

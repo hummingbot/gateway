@@ -143,9 +143,9 @@ export interface ConnectorConfig {
   name: string;
   /** Supported trading types ('router', 'amm', 'clmm') */
   trading_types: string[];
-  /** Chain this connector operates on */
+  /** Chain this connector operates on (e.g., 'solana', 'ethereum') */
   chain: string;
-  /** Networks supported by this connector */
+  /** Networks supported by this connector (e.g., ['mainnet-beta', 'devnet']) */
   networks: string[];
 }
 

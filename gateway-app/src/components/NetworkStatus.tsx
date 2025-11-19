@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import type { StatusResponseType as ChainStatus } from '@/lib/gateway-types';
 
@@ -33,9 +35,10 @@ export function NetworkStatus({ chain, network }: NetworkStatusProps) {
 
   return (
     <>
-      <button
+      <Button
         onClick={() => setShowModal(true)}
-        className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent transition-colors"
+        variant="ghost"
+        className="flex items-center gap-2 px-2 py-1 h-auto"
         title="View network status"
       >
         <div className="flex items-center gap-1.5">
@@ -54,7 +57,7 @@ export function NetworkStatus({ chain, network }: NetworkStatusProps) {
             </span>
           )}
         </div>
-      </button>
+      </Button>
 
       {/* Status Modal */}
       {showModal && status && (
@@ -63,7 +66,7 @@ export function NetworkStatus({ chain, network }: NetworkStatusProps) {
           onClick={() => setShowModal(false)}
         >
           <div
-            className="bg-background rounded-lg max-w-lg w-full p-6 space-y-4"
+            className="bg-background border rounded-lg max-w-lg w-full p-6 space-y-4 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-start">
@@ -73,9 +76,11 @@ export function NetworkStatus({ chain, network }: NetworkStatusProps) {
                   {status.chain} - {status.network}
                 </p>
               </div>
-              <button
+              <Button
                 onClick={() => setShowModal(false)}
-                className="p-1 hover:bg-accent rounded"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -91,19 +96,17 @@ export function NetworkStatus({ chain, network }: NetworkStatusProps) {
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
-              </button>
+              </Button>
             </div>
 
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <div
-                  className={`w-3 h-3 rounded-full ${
-                    isOnline ? 'bg-green-500' : 'bg-red-500'
-                  }`}
-                />
-                <span className="font-medium">
+                <Badge
+                  variant={isOnline ? "outline" : "destructive"}
+                  className={isOnline ? "bg-green-500/20 text-green-500 border-green-500/30" : ""}
+                >
                   {isOnline ? 'Connected' : 'Disconnected'}
-                </span>
+                </Badge>
               </div>
 
               <div className="space-y-2 text-sm">
@@ -155,18 +158,19 @@ export function NetworkStatus({ chain, network }: NetworkStatusProps) {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <button
+              <Button
                 onClick={fetchStatus}
-                className="px-4 py-2 rounded-lg hover:bg-accent transition-colors text-sm"
+                variant="outline"
+                size="sm"
               >
                 Refresh
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
+                size="sm"
               >
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>

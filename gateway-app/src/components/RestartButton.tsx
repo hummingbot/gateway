@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button } from './ui/button';
 import { gatewayPost, gatewayGet } from '../lib/api';
 import { showSuccessNotification, showErrorNotification } from '../lib/notifications';
 
@@ -55,10 +56,12 @@ export function RestartButton({ className = '', iconSize = 18 }: RestartButtonPr
   }
 
   return (
-    <button
+    <Button
       onClick={handleRestart}
       disabled={isRestarting}
-      className={`p-1.5 rounded-lg hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      variant="ghost"
+      size="icon"
+      className={`h-9 w-9 ${className}`}
       aria-label="Restart Gateway"
       title="Restart Gateway"
     >
@@ -77,6 +80,6 @@ export function RestartButton({ className = '', iconSize = 18 }: RestartButtonPr
         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
         <path d="M21 3v5h-5"></path>
       </svg>
-    </button>
+    </Button>
   );
 }

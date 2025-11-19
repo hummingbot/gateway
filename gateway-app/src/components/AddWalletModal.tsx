@@ -43,7 +43,7 @@ export function AddWalletModal({ onClose, onAddWallet, defaultChain = 'ethereum'
           label="Chain"
           type="select"
           value={selectedChain}
-          onChange={(e) => setSelectedChain(e.target.value)}
+          onChange={(val) => setSelectedChain(typeof val === 'string' ? val : val.target.value)}
           options={[
             { value: 'ethereum', label: 'Ethereum' },
             { value: 'solana', label: 'Solana' },
@@ -54,7 +54,13 @@ export function AddWalletModal({ onClose, onAddWallet, defaultChain = 'ethereum'
           label="Private Key"
           type="password"
           value={privateKey}
-          onChange={(e) => setPrivateKey(e.target.value)}
+          onChange={(e) => {
+            if (typeof e === 'string') {
+              setPrivateKey(e);
+            } else {
+              setPrivateKey(e.target.value);
+            }
+          }}
           placeholder="Enter private key"
           disabled={loading}
         />

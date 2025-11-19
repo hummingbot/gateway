@@ -476,6 +476,10 @@ export const startGateway = async () => {
       process.exit(0);
     };
 
+    // Remove any existing shutdown handlers to prevent duplicates
+    process.removeAllListeners('SIGTERM');
+    process.removeAllListeners('SIGINT');
+
     // Handle shutdown signals
     process.on('SIGTERM', shutdown);
     process.on('SIGINT', shutdown);

@@ -1,4 +1,13 @@
-import { Select } from './ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 import { shortenAddress } from '@/lib/utils/string';
 
 interface WalletData {
@@ -53,25 +62,32 @@ export function WalletSelector({
   return (
     <Select
       value={getCurrentValue()}
-      onChange={(e) => handleChange(e.target.value)}
-      className="w-48"
+      onValueChange={handleChange}
     >
-      {!hasWallets ? (
-        <option value="add-wallet">+ Add Wallet</option>
-      ) : (
-        <>
-          {allWallets.map((walletData) => (
-            <optgroup key={walletData.chain} label={walletData.chain.toUpperCase()}>
-              {walletData.walletAddresses.map((wallet) => (
-                <option key={wallet} value={`${walletData.chain}:${wallet}`}>
-                  {getChainIcon(walletData.chain)} {shortenAddress(wallet)}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-          <option value="add-wallet">+ Add Wallet</option>
-        </>
-      )}
+      <SelectTrigger className="w-48">
+        <SelectValue placeholder="Select wallet" />
+      </SelectTrigger>
+      <SelectContent>
+        {!hasWallets ? (
+          <SelectItem value="add-wallet">+ Add Wallet</SelectItem>
+        ) : (
+          <>
+            {allWallets.map((walletData, idx) => (
+              <SelectGroup key={walletData.chain}>
+                <SelectLabel>{walletData.chain.toUpperCase()}</SelectLabel>
+                {walletData.walletAddresses.map((wallet) => (
+                  <SelectItem key={wallet} value={`${walletData.chain}:${wallet}`}>
+                    {getChainIcon(walletData.chain)} {shortenAddress(wallet)}
+                  </SelectItem>
+                ))}
+                {idx < allWallets.length - 1 && <SelectSeparator />}
+              </SelectGroup>
+            ))}
+            <SelectSeparator />
+            <SelectItem value="add-wallet">+ Add Wallet</SelectItem>
+          </>
+        )}
+      </SelectContent>
     </Select>
   );
 }

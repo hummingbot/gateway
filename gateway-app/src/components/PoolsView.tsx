@@ -1,10 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { Separator } from './ui/separator';
 import { Input } from './ui/input';
-import { Select } from './ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 import { EmptyState } from './ui/EmptyState';
 import { LoadingState } from './ui/LoadingState';
+import { LiquidityPositionCard } from './LiquidityPositionCard';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
@@ -12,6 +21,7 @@ import type {
   PoolTemplate,
   ExtendedPoolInfo as PoolInfo,
   ConnectorConfig,
+  PositionWithConnector as Position,
 } from '@/lib/gateway-types';
 import { capitalize, getChainNetwork } from '@/lib/utils/string';
 import { formatTokenAmount, formatNumber } from '@/lib/utils/format';
@@ -19,19 +29,6 @@ import { formatTokenAmount, formatNumber } from '@/lib/utils/format';
 // UI-specific Pool type with connector property added
 interface Pool extends PoolTemplate {
   connector: string;
-}
-
-// UI-specific Position type for displaying owned positions
-// Note: This represents AMM/CLMM position data from UI perspective
-interface Position {
-  tokenId: string;
-  liquidity: string;
-  lowerPrice: number;
-  upperPrice: number;
-  amount0: string;
-  amount1: string;
-  unclaimedToken0?: string;
-  unclaimedToken1?: string;
 }
 
 export function PoolsView() {
@@ -205,7 +202,12 @@ export function PoolsView() {
         chainNetwork,
         selectedWallet
       );
-      setPositions(data as any || []);
+      // Add connector property to each position
+      const positionsWithConnector = data.map((position) => ({
+        ...position,
+        connector: selectedPool.connector,
+      }));
+      setPositions(positionsWithConnector);
     } catch (err) {
       console.error('Failed to fetch positions:', err);
       setPositions([]);
@@ -309,17 +311,21 @@ export function PoolsView() {
 
         <Select
           value={selectedPool?.address || ''}
-          onChange={(e) => {
-            const pool = pools.find((p) => p.address === e.target.value);
+          onValueChange={(value) => {
+            const pool = pools.find((p) => p.address === value);
             if (pool) setSelectedPool(pool);
           }}
-          className="w-full"
         >
-          {pools.map((pool) => (
-            <option key={pool.address} value={pool.address}>
-              {pool.baseSymbol}-{pool.quoteSymbol} • {capitalize(pool.connector || '')} • {pool.type.toUpperCase()} ({pool.feePct}%)
-            </option>
-          ))}
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {pools.map((pool) => (
+              <SelectItem key={pool.address} value={pool.address}>
+                {pool.baseSymbol}-{pool.quoteSymbol} • {capitalize(pool.connector || '')} • {pool.type.toUpperCase()} ({pool.feePct}%)
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
       </div>
 
@@ -331,30 +337,32 @@ export function PoolsView() {
             <label className="text-xs font-medium text-muted-foreground mb-1 block">
               Type
             </label>
-            <button
+            <Button
               onClick={() => setShowTypeDropdown(!showTypeDropdown)}
-              className="w-full px-3 py-2 text-left text-sm border rounded bg-background hover:bg-accent"
+              variant="outline"
+              className="w-full justify-start"
             >
               {selectedTypes.length === 0
                 ? 'Select types...'
                 : selectedTypes.map((t) => t.toUpperCase()).join(', ')}
-            </button>
+            </Button>
             {showTypeDropdown && (
               <div className="absolute z-10 w-full mt-1 bg-background border rounded shadow-lg">
                 {['clmm', 'amm'].map((type) => (
-                  <button
+                  <Button
                     key={type}
                     onClick={() => toggleType(type)}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2"
+                    variant="ghost"
+                    className="w-full justify-start px-3 py-2 h-auto"
                   >
                     <input
                       type="checkbox"
                       checked={selectedTypes.includes(type)}
                       readOnly
-                      className="pointer-events-none"
+                      className="pointer-events-none mr-2"
                     />
                     <span>{type.toUpperCase()}</span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -365,34 +373,38 @@ export function PoolsView() {
             <label className="text-xs font-medium text-muted-foreground mb-1 block">
               Connector
             </label>
-            <button
+            <Button
               onClick={() => setShowConnectorDropdown(!showConnectorDropdown)}
-              className="w-full px-3 py-2 text-left text-sm border rounded bg-background hover:bg-accent"
+              variant="outline"
+              className="w-full justify-start"
             >
               {selectedConnectors.length === 0
                 ? 'Select connectors...'
                 : selectedConnectors.map((c) => capitalize(c)).join(', ')}
-            </button>
+            </Button>
             {showConnectorDropdown && (
               <div className="absolute z-10 w-full mt-1 bg-background border rounded shadow-lg max-h-48 overflow-y-auto">
                 {availableConnectors.map((conn) => (
-                  <button
+                  <Button
                     key={conn}
                     onClick={() => toggleConnector(conn)}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center gap-2"
+                    variant="ghost"
+                    className="w-full justify-start px-3 py-2 h-auto"
                   >
                     <input
                       type="checkbox"
                       checked={selectedConnectors.includes(conn)}
                       readOnly
-                      className="pointer-events-none"
+                      className="pointer-events-none mr-2"
                     />
                     <span>{capitalize(conn)}</span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
           </div>
+
+          <Separator className="my-4" />
 
           {/* Pool List */}
           <div>
@@ -401,20 +413,21 @@ export function PoolsView() {
             </h3>
             <div className="max-h-96 overflow-y-auto">
               {pools.map((pool) => (
-                <button
+                <Button
                   key={pool.address}
                   onClick={() => setSelectedPool(pool)}
-                  className={`w-full text-left px-3 py-2 rounded text-sm mb-1 ${
-                    selectedPool?.address === pool.address
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-accent'
-                  }`}
+                  variant={selectedPool?.address === pool.address ? "default" : "ghost"}
+                  className="w-full justify-start px-3 py-2 h-auto mb-1"
                 >
-                  <div>{pool.baseSymbol}-{pool.quoteSymbol}</div>
-                  <div className="text-xs opacity-75">
-                    {capitalize(pool.connector || '')} • {pool.type.toUpperCase()} • {pool.feePct}%
+                  <div className="flex flex-col items-start w-full gap-1">
+                    <div className="font-medium">{pool.baseSymbol}-{pool.quoteSymbol}</div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs">{capitalize(pool.connector || '')}</span>
+                      <span className="text-xs">{pool.type.toUpperCase()}</span>
+                      <Badge variant="outline" className="text-xs">{pool.feePct}%</Badge>
+                    </div>
                   </div>
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -546,31 +559,8 @@ export function PoolsView() {
                     <p className="text-sm text-muted-foreground">No positions found</p>
                   ) : (
                     <div className="space-y-3">
-                      {positions.map((position) => (
-                        <div key={position.tokenId} className="border rounded p-3 text-xs md:text-sm">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <span className="text-muted-foreground">Token ID:</span>
-                              <p className="font-mono text-xs">{position.tokenId}</p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Liquidity:</span>
-                              <p className="font-medium">{position.liquidity}</p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Price Range:</span>
-                              <p className="font-medium">
-                                {position.lowerPrice} - {position.upperPrice}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Amounts:</span>
-                              <p className="font-medium">
-                                {position.amount0} / {position.amount1}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
+                      {positions.map((position, i) => (
+                        <LiquidityPositionCard key={i} position={position} />
                       ))}
                     </div>
                   )}

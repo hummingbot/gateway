@@ -2,7 +2,13 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Select } from './ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 import { EmptyState } from './ui/EmptyState';
 import { LoadingState } from './ui/LoadingState';
 import { gatewayAPI } from '@/lib/GatewayAPI';
@@ -164,15 +170,20 @@ export function LiquidityView() {
         <CardContent>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Connector</label>
+              <label className="text-sm font-medium block mb-2">Connector</label>
               <Select
                 value={connector}
-                onChange={(e) => setConnector(e.target.value)}
+                onValueChange={setConnector}
               >
-                <option value="raydium">Raydium CLMM</option>
-                <option value="meteora">Meteora DLMM</option>
-                <option value="pancakeswap-sol">PancakeSwap CLMM</option>
-                <option value="uniswap">Uniswap V3</option>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="raydium">Raydium CLMM</SelectItem>
+                  <SelectItem value="meteora">Meteora DLMM</SelectItem>
+                  <SelectItem value="pancakeswap-sol">PancakeSwap CLMM</SelectItem>
+                  <SelectItem value="uniswap">Uniswap V3</SelectItem>
+                </SelectContent>
               </Select>
             </div>
           </div>

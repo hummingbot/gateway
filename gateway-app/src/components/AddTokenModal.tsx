@@ -52,7 +52,7 @@ export function AddTokenModal({
           label="Chain"
           type="select"
           value={selectedChain}
-          onChange={(e) => setSelectedChain(e.target.value)}
+          onChange={(val) => setSelectedChain(typeof val === 'string' ? val : val.target.value)}
           options={[
             { value: 'ethereum', label: 'Ethereum' },
             { value: 'solana', label: 'Solana' },
@@ -63,7 +63,7 @@ export function AddTokenModal({
           label="Network"
           type="select"
           value={selectedNetwork}
-          onChange={(e) => setSelectedNetwork(e.target.value)}
+          onChange={(val) => setSelectedNetwork(typeof val === 'string' ? val : val.target.value)}
           options={availableNetworks.map((network) => ({
             value: network,
             label: network,
@@ -74,7 +74,7 @@ export function AddTokenModal({
           label="Token Address"
           type="text"
           value={address}
-          onChange={(e) => setAddress(e.target.value)}
+          onChange={(e) => setAddress(typeof e === 'string' ? e : e.target.value)}
           placeholder="Enter token address"
           disabled={loading}
         />
