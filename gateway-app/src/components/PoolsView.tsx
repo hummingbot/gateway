@@ -606,6 +606,7 @@ export function PoolsView() {
                               <h4 className="text-sm font-medium mb-2">Your Liquidity Distribution</h4>
                               <UserLiquidityChart
                                 poolBins={poolInfo.bins}
+                                activeBinId={poolInfo.activeBinId}
                                 lowerPrice={parseFloat(lowerPrice)}
                                 upperPrice={parseFloat(upperPrice)}
                                 userBaseAmount={parseFloat(amount0)}

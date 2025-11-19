@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ReferenceLine } from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
@@ -14,6 +14,7 @@ interface UserLiquidityChartProps {
     baseTokenAmount: number;
     quoteTokenAmount: number;
   }>;
+  activeBinId: number;
   lowerPrice: number;
   upperPrice: number;
   userBaseAmount: number;
@@ -24,6 +25,7 @@ interface UserLiquidityChartProps {
 
 export function UserLiquidityChart({
   poolBins,
+  activeBinId,
   lowerPrice,
   upperPrice,
   userBaseAmount,
@@ -31,6 +33,11 @@ export function UserLiquidityChart({
   baseSymbol,
   quoteSymbol,
 }: UserLiquidityChartProps) {
+  // Find the active bin (current price)
+  const activeBin = useMemo(() => {
+    return poolBins.find(b => b.binId === activeBinId);
+  }, [poolBins, activeBinId]);
+
   // Filter bins within user's price range and calculate user's liquidity distribution
   const chartData = useMemo(() => {
     // Filter bins within the user's price range
@@ -38,34 +45,58 @@ export function UserLiquidityChart({
       (bin) => bin.price >= lowerPrice && bin.price <= upperPrice
     );
 
-    if (binsInRange.length === 0) return [];
+    if (binsInRange.length === 0 || !activeBin) return [];
 
-    // Calculate total liquidity the user will provide across all bins
-    // This is a simplified distribution - in reality, CLMM protocols have specific
-    // formulas for distributing liquidity across bins based on current price
-    const binsCount = binsInRange.length;
-    const basePerBin = userBaseAmount / binsCount;
-    const quotePerBin = userQuoteAmount / binsCount;
+    const currentPrice = activeBin.price;
+
+    // Separate bins into left (< current) and right (>= current) of current price
+    const binsLeft = binsInRange.filter(bin => bin.price < currentPrice);
+    const binsRight = binsInRange.filter(bin => bin.price >= currentPrice);
+
+    // Distribute base amount across left bins, quote amount across right bins
+    const basePerBin = binsLeft.length > 0 ? userBaseAmount / binsLeft.length : 0;
+    const quotePerBin = binsRight.length > 0 ? userQuoteAmount / binsRight.length : 0;
 
     return binsInRange.map((bin) => {
+      const isLeft = bin.price < currentPrice;
+      const isActive = bin.binId === activeBinId;
+
+      // Left of current price: only base tokens
+      // Right of current price: only quote tokens
+      const baseAmount = isLeft ? basePerBin : 0;
+      const quoteAmount = !isLeft ? quotePerBin : 0;
+
       // User's liquidity in this bin: price * base + quote
-      const userLiquidity = bin.price * basePerBin + quotePerBin;
+      const userLiquidity = bin.price * baseAmount + quoteAmount;
 
       return {
         binId: bin.binId,
         price: bin.price,
         liquidity: userLiquidity,
-        baseAmount: basePerBin,
-        quoteAmount: quotePerBin,
-        fill: "hsl(var(--primary))", // User's liquidity color
+        baseAmount,
+        quoteAmount,
+        isActive,
+        isLeft,
+        // Use primary for base (left), accent for quote (right), but active bin shown via reference line
+        fill: isLeft
+          ? "hsl(var(--primary))"
+          : "hsl(var(--accent))",
       };
     });
-  }, [poolBins, lowerPrice, upperPrice, userBaseAmount, userQuoteAmount]);
+  }, [poolBins, activeBinId, lowerPrice, upperPrice, userBaseAmount, userQuoteAmount, activeBin]);
 
   const chartConfig = {
     liquidity: {
       label: "Your Liquidity",
       color: "hsl(var(--primary))",
+    },
+    base: {
+      label: baseSymbol,
+      color: "hsl(var(--primary))",
+    },
+    quote: {
+      label: quoteSymbol,
+      color: "hsl(var(--accent))",
     },
   } satisfies ChartConfig;
 
@@ -115,14 +146,23 @@ export function UserLiquidityChart({
                         <span className="text-muted-foreground">Your Liquidity:</span>
                         <span className="font-mono">{Number(value).toFixed(4)}</span>
                       </div>
-                      <div className="flex justify-between gap-4">
-                        <span className="text-muted-foreground">{baseSymbol}:</span>
-                        <span className="font-mono">{item.payload.baseAmount.toFixed(4)}</span>
-                      </div>
-                      <div className="flex justify-between gap-4">
-                        <span className="text-muted-foreground">{quoteSymbol}:</span>
-                        <span className="font-mono">{item.payload.quoteAmount.toFixed(4)}</span>
-                      </div>
+                      {item.payload.baseAmount > 0 && (
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">{baseSymbol}:</span>
+                          <span className="font-mono">{item.payload.baseAmount.toFixed(4)}</span>
+                        </div>
+                      )}
+                      {item.payload.quoteAmount > 0 && (
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">{quoteSymbol}:</span>
+                          <span className="font-mono">{item.payload.quoteAmount.toFixed(4)}</span>
+                        </div>
+                      )}
+                      {item.payload.isActive && (
+                        <div className="text-muted-foreground font-medium mt-1">
+                          ● Current Price
+                        </div>
+                      )}
                     </div>
                   );
                 }
@@ -132,6 +172,20 @@ export function UserLiquidityChart({
           }
         />
         <Bar dataKey="liquidity" radius={[4, 4, 0, 0]} />
+        {activeBin && (
+          <ReferenceLine
+            x={activeBin.price}
+            stroke="hsl(var(--foreground))"
+            strokeDasharray="3 3"
+            strokeWidth={2}
+            label={{
+              value: 'Current',
+              position: 'top',
+              fill: 'hsl(var(--foreground))',
+              fontSize: 12,
+            }}
+          />
+        )}
       </BarChart>
     </ChartContainer>
   );
