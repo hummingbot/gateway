@@ -249,7 +249,12 @@ export function SwapView() {
           <Card>
             <CardContent className="p-3 md:pt-6">
               <div className="space-y-2">
-                <label className="text-xs md:text-sm font-medium">To</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-xs md:text-sm font-medium">To</label>
+                  <div className="text-xs md:text-sm text-muted-foreground">
+                    Balance: {formatTokenAmount(balances[toToken] || '0')}
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <Select
                     value={toToken}
@@ -304,10 +309,16 @@ export function SwapView() {
                     </div>
                   )}
                   {quote.price !== undefined && (
-                    <div className="flex justify-between">
-                      <span>Price:</span>
-                      <span>{formatPrice(quote.price)}</span>
-                    </div>
+                    <>
+                      <div className="flex justify-between">
+                        <span>Price - {fromToken}/{toToken}:</span>
+                        <span>{quote.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Price - {toToken}/{fromToken}:</span>
+                        <span>{(1 / quote.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</span>
+                      </div>
+                    </>
                   )}
                   {quote.priceImpactPct !== undefined && (
                     <div className="flex justify-between">
