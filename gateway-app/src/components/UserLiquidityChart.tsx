@@ -49,22 +49,22 @@ export function UserLiquidityChart({
 
     const currentPrice = activeBin.price;
 
-    // Separate bins into left (< current) and right (>= current) of current price
-    const binsLeft = binsInRange.filter(bin => bin.price < currentPrice);
-    const binsRight = binsInRange.filter(bin => bin.price >= currentPrice);
+    // Separate bins into below (< current) and above (>= current) of current price
+    const binsBelow = binsInRange.filter(bin => bin.price < currentPrice);
+    const binsAbove = binsInRange.filter(bin => bin.price >= currentPrice);
 
-    // Distribute base amount across left bins, quote amount across right bins
-    const basePerBin = binsLeft.length > 0 ? userBaseAmount / binsLeft.length : 0;
-    const quotePerBin = binsRight.length > 0 ? userQuoteAmount / binsRight.length : 0;
+    // Distribute quote amount across bins below current, base amount across bins above current
+    const quotePerBin = binsBelow.length > 0 ? userQuoteAmount / binsBelow.length : 0;
+    const basePerBin = binsAbove.length > 0 ? userBaseAmount / binsAbove.length : 0;
 
     return binsInRange.map((bin) => {
-      const isLeft = bin.price < currentPrice;
+      const isBelow = bin.price < currentPrice;
       const isActive = bin.binId === activeBinId;
 
-      // Left of current price: only base tokens
-      // Right of current price: only quote tokens
-      const baseAmount = isLeft ? basePerBin : 0;
-      const quoteAmount = !isLeft ? quotePerBin : 0;
+      // Below current price: only quote tokens
+      // Above current price: only base tokens
+      const baseAmount = !isBelow ? basePerBin : 0;
+      const quoteAmount = isBelow ? quotePerBin : 0;
 
       // User's liquidity in this bin: price * base + quote
       const userLiquidity = bin.price * baseAmount + quoteAmount;
@@ -76,11 +76,11 @@ export function UserLiquidityChart({
         baseAmount,
         quoteAmount,
         isActive,
-        isLeft,
-        // Use primary for base (left), accent for quote (right), but active bin shown via reference line
-        fill: isLeft
-          ? "hsl(var(--primary))"
-          : "hsl(var(--accent))",
+        isBelow,
+        // Use accent for quote (below current), primary for base (above current)
+        fill: isBelow
+          ? "hsl(var(--accent))"
+          : "hsl(var(--primary))",
       };
     });
   }, [poolBins, activeBinId, lowerPrice, upperPrice, userBaseAmount, userQuoteAmount, activeBin]);
