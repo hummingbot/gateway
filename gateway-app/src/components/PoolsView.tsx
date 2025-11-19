@@ -180,9 +180,6 @@ export function PoolsView() {
       const url = `/connectors/${selectedPool.connector}/clmm/pool-info?network=${selectedNetwork}&poolAddress=${selectedPool.address}`;
       const response = await fetch(`http://localhost:15888${url}`);
       const data = await response.json();
-
-      console.log('Pool info data:', data);
-      console.log('Has bins?', 'bins' in data, data.bins?.length);
       setPoolInfo(data as PoolInfo);
 
       // Set fee from pool info (convert to basis points)

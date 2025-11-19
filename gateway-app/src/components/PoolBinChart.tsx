@@ -19,7 +19,7 @@ export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: Pool
   // Prepare chart data
   const chartData = useMemo(() => {
     return bins.map((bin) => {
-      const totalLiquidity = bin.baseTokenAmount + bin.quoteTokenAmount;
+      const totalLiquidity = bin.price * bin.baseTokenAmount + bin.quoteTokenAmount;
       const isActive = bin.binId === activeBinId;
       const isInRange = lowerPrice !== undefined && upperPrice !== undefined
         ? bin.price >= lowerPrice && bin.price <= upperPrice
@@ -65,11 +65,12 @@ export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: Pool
       <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
         <XAxis
-          dataKey="binId"
+          dataKey="price"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          label={{ value: 'Bin ID', position: 'insideBottom', offset: -5 }}
+          label={{ value: 'Price', position: 'insideBottom', offset: -5 }}
+          tickFormatter={(value: any) => value.toFixed(2)}
         />
         <YAxis
           tickLine={false}
@@ -126,7 +127,7 @@ export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: Pool
         <Bar dataKey="liquidity" radius={[4, 4, 0, 0]} />
         {activeBin && (
           <ReferenceLine
-            x={activeBin.binId}
+            x={activeBin.price}
             stroke="hsl(var(--chart-2))"
             strokeDasharray="3 3"
             strokeWidth={2}
