@@ -62,7 +62,7 @@ export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: Pool
 
   return (
     <ChartContainer config={chartConfig} className="h-[300px] w-full">
-      <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+      <BarChart data={chartData} margin={{ top: 20, right: 10, left: 10, bottom: 10 }}>
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
         <XAxis
           dataKey="price"
@@ -128,13 +128,13 @@ export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: Pool
         {activeBin && (
           <ReferenceLine
             x={activeBin.price}
-            stroke="hsl(var(--chart-2))"
+            stroke="hsl(var(--foreground))"
             strokeDasharray="3 3"
             strokeWidth={2}
             label={{
-              value: 'Active',
+              value: 'Current',
               position: 'top',
-              fill: 'hsl(var(--chart-2))',
+              fill: 'hsl(var(--foreground))',
               fontSize: 12,
             }}
           />

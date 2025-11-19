@@ -110,7 +110,7 @@ export function UserLiquidityChart({
 
   return (
     <ChartContainer config={chartConfig} className="h-[200px] w-full">
-      <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+      <BarChart data={chartData} margin={{ top: 20, right: 10, left: 10, bottom: 10 }}>
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
         <XAxis
           dataKey="price"
