@@ -26,6 +26,8 @@ import type {
 } from '@/lib/gateway-types';
 import { capitalize, getChainNetwork } from '@/lib/utils/string';
 import { formatTokenAmount, formatNumber } from '@/lib/utils/format';
+import { getPoolUrl, getDexName } from '@/lib/pool-urls';
+import { ExternalLink } from 'lucide-react';
 
 // UI-specific Pool type with connector property added
 interface Pool extends PoolTemplate {
@@ -442,9 +444,36 @@ export function PoolsView() {
               {/* Pool Info */}
               <Card>
                 <CardHeader className="p-3 md:p-6">
-                  <CardTitle>
-                    {selectedPool.baseSymbol}-{selectedPool.quoteSymbol} Pool
-                  </CardTitle>
+                  <div className="flex items-start justify-between">
+                    <CardTitle>
+                      {selectedPool.baseSymbol}-{selectedPool.quoteSymbol} Pool
+                    </CardTitle>
+                    {(() => {
+                      const poolUrl = getPoolUrl({
+                        connector: selectedPool.connector,
+                        type: selectedPool.type,
+                        network: selectedPool.network,
+                        poolAddress: selectedPool.address,
+                      });
+                      return poolUrl ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          asChild
+                        >
+                          <a
+                            href={poolUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2"
+                          >
+                            <span>View on {getDexName(selectedPool.connector)}</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </Button>
+                      ) : null;
+                    })()}
+                  </div>
                 </CardHeader>
                 <CardContent className="p-3 md:p-6">
                   <div className="grid grid-cols-2 gap-4 text-xs md:text-sm">
@@ -473,24 +502,16 @@ export function PoolsView() {
                   </div>
 
                   {/* Bin Liquidity Chart - for Meteora pools with bins */}
-                  {(() => {
-                    console.log('Rendering chart check:', {
-                      hasPoolInfo: !!poolInfo,
-                      hasBins: poolInfo?.bins,
-                      binsLength: poolInfo?.bins?.length,
-                      activeBinId: poolInfo?.activeBinId
-                    });
-                    return poolInfo && poolInfo.bins && poolInfo.bins.length > 0 ? (
-                      <div className="mt-6">
-                        <PoolBinChart
-                          bins={poolInfo.bins}
-                          activeBinId={poolInfo.activeBinId}
-                          lowerPrice={lowerPrice ? parseFloat(lowerPrice) : undefined}
-                          upperPrice={upperPrice ? parseFloat(upperPrice) : undefined}
-                        />
-                      </div>
-                    ) : null;
-                  })()}
+                  {poolInfo && poolInfo.bins && poolInfo.bins.length > 0 && (
+                    <div className="mt-6">
+                      <PoolBinChart
+                        bins={poolInfo.bins}
+                        activeBinId={poolInfo.activeBinId}
+                        lowerPrice={lowerPrice ? parseFloat(lowerPrice) : undefined}
+                        upperPrice={upperPrice ? parseFloat(upperPrice) : undefined}
+                      />
+                    </div>
+                  )}
 
                   {/* Add Liquidity Section - collapsible */}
                   <div className="mt-6">
