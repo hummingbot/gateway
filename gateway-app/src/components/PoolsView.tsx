@@ -527,7 +527,7 @@ export function PoolsView() {
                     <Separator className="mb-4" />
                     <Collapsible open={isAddPositionOpen} onOpenChange={setIsAddPositionOpen}>
                       <CollapsibleTrigger asChild>
-                        <Button variant="outline" className="w-full flex items-center justify-between">
+                        <Button variant="outline" className="flex items-center gap-2">
                           <span>Add Position</span>
                           <ChevronDown className={`h-4 w-4 transition-transform ${isAddPositionOpen ? 'rotate-180' : ''}`} />
                         </Button>
