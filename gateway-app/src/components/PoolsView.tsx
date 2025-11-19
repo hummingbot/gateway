@@ -21,7 +21,6 @@ import { showSuccessNotification, showErrorNotification } from '@/lib/notificati
 import type {
   PoolTemplate,
   ExtendedPoolInfo as PoolInfo,
-  MeteoraPoolInfo,
   ConnectorConfig,
   PositionWithConnector as Position,
 } from '@/lib/gateway-types';
@@ -467,37 +466,20 @@ export function PoolsView() {
                       <span className="text-muted-foreground">Connector:</span>
                       <p className="font-medium capitalize">{selectedPool.connector}</p>
                     </div>
-                    {poolInfo && (
-                      <>
-                        {/* Only show Bin Step and Liquidity for non-bin pools or as supplementary info */}
-                        {poolInfo.binStep !== undefined && !('bins' in poolInfo && Array.isArray((poolInfo as MeteoraPoolInfo).bins) && (poolInfo as MeteoraPoolInfo).bins.length > 0) && (
-                          <div>
-                            <span className="text-muted-foreground">Bin Step:</span>
-                            <p className="font-medium">{poolInfo.binStep}</p>
-                          </div>
-                        )}
-                        {poolInfo.tick !== undefined && (
-                          <div>
-                            <span className="text-muted-foreground">Tick:</span>
-                            <p className="font-medium">{poolInfo.tick}</p>
-                          </div>
-                        )}
-                        {poolInfo.liquidity && !('bins' in poolInfo && Array.isArray((poolInfo as MeteoraPoolInfo).bins) && (poolInfo as MeteoraPoolInfo).bins.length > 0) && (
-                          <div className="col-span-2">
-                            <span className="text-muted-foreground">Liquidity:</span>
-                            <p className="font-medium font-mono text-xs">{poolInfo.liquidity}</p>
-                          </div>
-                        )}
-                      </>
+                    {poolInfo && poolInfo.binStep !== undefined && (
+                      <div>
+                        <span className="text-muted-foreground">Bin Step:</span>
+                        <p className="font-medium">{poolInfo.binStep}</p>
+                      </div>
                     )}
                   </div>
 
-                  {/* Bin Liquidity Chart - replace Token Amounts, Price, Active Bin ID for pools with bins */}
-                  {poolInfo && 'bins' in poolInfo && Array.isArray((poolInfo as MeteoraPoolInfo).bins) && (poolInfo as MeteoraPoolInfo).bins.length > 0 && (
+                  {/* Bin Liquidity Chart - for Meteora pools with bins */}
+                  {poolInfo && poolInfo.bins && poolInfo.bins.length > 0 && (
                     <div className="mt-6">
                       <PoolBinChart
-                        bins={(poolInfo as MeteoraPoolInfo).bins}
-                        activeBinId={(poolInfo as MeteoraPoolInfo).activeBinId}
+                        bins={poolInfo.bins}
+                        activeBinId={poolInfo.activeBinId}
                         lowerPrice={lowerPrice ? parseFloat(lowerPrice) : undefined}
                         upperPrice={upperPrice ? parseFloat(upperPrice) : undefined}
                       />

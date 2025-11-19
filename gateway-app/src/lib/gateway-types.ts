@@ -186,4 +186,17 @@ export interface ExtendedPoolInfo extends CLMMPoolInfo {
   tick?: number;
   /** Uniswap V3 specific: total liquidity */
   liquidity?: string;
+  /** Meteora specific: dynamic fee percentage */
+  dynamicFeePct?: number;
+  /** Meteora specific: minimum bin ID */
+  minBinId?: number;
+  /** Meteora specific: maximum bin ID */
+  maxBinId?: number;
+  /** Meteora specific: bin liquidity data */
+  bins?: Array<{
+    binId: number;
+    price: number;
+    baseTokenAmount: number;
+    quoteTokenAmount: number;
+  }>;
 }
