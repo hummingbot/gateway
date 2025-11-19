@@ -184,6 +184,19 @@ export class RouterAPI {
 }
 
 /**
+ * Trading API endpoints (unified CLMM routes)
+ */
+export class TradingAPI {
+  async collectFees(params: { connector: string; chainNetwork: string; walletAddress: string; positionAddress: string }) {
+    return gatewayPost<CollectFeesResponseType>('/trading/clmm/collect-fees', params);
+  }
+
+  async closePosition(params: { connector: string; chainNetwork: string; walletAddress: string; positionAddress: string }) {
+    return gatewayPost<ClosePositionResponseType>('/trading/clmm/close', params);
+  }
+}
+
+/**
  * Main Gateway API Client
  *
  * Organizes all API endpoints into logical namespaces.
@@ -206,6 +219,9 @@ export class GatewayAPI {
 
   /** Router (DEX aggregator) endpoints */
   router = new RouterAPI();
+
+  /** Trading endpoints (unified CLMM operations) */
+  trading = new TradingAPI();
 }
 
 /**

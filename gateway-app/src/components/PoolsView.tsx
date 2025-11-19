@@ -18,6 +18,7 @@ import {
 } from './ui/collapsible';
 import { EmptyState } from './ui/EmptyState';
 import { LoadingState } from './ui/LoadingState';
+import { ConfirmModal } from './ConfirmModal';
 import { LiquidityPositionCard } from './LiquidityPositionCard';
 import { PoolBinChart } from './PoolBinChart';
 import { UserLiquidityChart } from './UserLiquidityChart';
@@ -64,6 +65,11 @@ export function PoolsView() {
   const [fee, setFee] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [balances, setBalances] = useState<Record<string, string>>({});
+
+  // Confirmation modal state
+  const [showAddPositionConfirm, setShowAddPositionConfirm] = useState(false);
+  const [positionToCollectFees, setPositionToCollectFees] = useState<Position | null>(null);
+  const [positionToClose, setPositionToClose] = useState<Position | null>(null);
 
   // Fetch available connectors when chain/network/types change
   useEffect(() => {
@@ -286,18 +292,71 @@ export function PoolsView() {
         upperPrice: parseFloat(upperPrice),
       });
 
-      await showSuccessNotification('Liquidity added successfully!');
+      await showSuccessNotification('Position opened successfully!');
 
       // Reset form
       setAmount0('');
       setAmount1('');
       setLowerPrice('');
       setUpperPrice('');
+      setShowAddPositionConfirm(false);
 
       // Refresh positions
       await fetchPositions();
     } catch (err) {
-      await showErrorNotification(err instanceof Error ? err.message : 'Failed to add liquidity');
+      await showErrorNotification(err instanceof Error ? err.message : 'Failed to open position');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleCollectFees() {
+    if (!positionToCollectFees || !selectedWallet) return;
+
+    try {
+      setSubmitting(true);
+
+      const chainNetwork = getChainNetwork(selectedChain, selectedNetwork);
+      await gatewayAPI.trading.collectFees({
+        connector: positionToCollectFees.connector,
+        chainNetwork,
+        walletAddress: selectedWallet,
+        positionAddress: positionToCollectFees.address,
+      });
+
+      await showSuccessNotification('Fees collected successfully!');
+      setPositionToCollectFees(null);
+
+      // Refresh positions
+      await fetchPositions();
+    } catch (err) {
+      await showErrorNotification(err instanceof Error ? err.message : 'Failed to collect fees');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleClosePosition() {
+    if (!positionToClose || !selectedWallet) return;
+
+    try {
+      setSubmitting(true);
+
+      const chainNetwork = getChainNetwork(selectedChain, selectedNetwork);
+      await gatewayAPI.trading.closePosition({
+        connector: positionToClose.connector,
+        chainNetwork,
+        walletAddress: selectedWallet,
+        positionAddress: positionToClose.address,
+      });
+
+      await showSuccessNotification('Position closed successfully!');
+      setPositionToClose(null);
+
+      // Refresh positions
+      await fetchPositions();
+    } catch (err) {
+      await showErrorNotification(err instanceof Error ? err.message : 'Failed to close position');
     } finally {
       setSubmitting(false);
     }
@@ -618,7 +677,7 @@ export function PoolsView() {
                           )}
 
                           <Button
-                            onClick={handleAddLiquidity}
+                            onClick={() => setShowAddPositionConfirm(true)}
                             disabled={
                               submitting ||
                               !amount0 ||
@@ -628,7 +687,7 @@ export function PoolsView() {
                             }
                             className="w-full"
                           >
-                            {submitting ? 'Adding Position...' : 'Add Position'}
+                            Add Position
                           </Button>
                         </div>
                       </CollapsibleContent>
@@ -650,7 +709,12 @@ export function PoolsView() {
                   ) : (
                     <div className="space-y-3">
                       {positions.map((position, i) => (
-                        <LiquidityPositionCard key={i} position={position} />
+                        <LiquidityPositionCard
+                          key={i}
+                          position={position}
+                          onCollectFees={setPositionToCollectFees}
+                          onClosePosition={setPositionToClose}
+                        />
                       ))}
                     </div>
                   )}
@@ -668,6 +732,42 @@ export function PoolsView() {
           )}
         </div>
       </div>
+
+      {/* Add Position Confirmation Modal */}
+      {showAddPositionConfirm && selectedPool && (
+        <ConfirmModal
+          title="Add Position"
+          message={`Are you sure you want to open a new position in ${selectedPool.baseSymbol}/${selectedPool.quoteSymbol} pool with ${amount0} ${selectedPool.baseSymbol} and ${amount1} ${selectedPool.quoteSymbol}?`}
+          confirmText={submitting ? 'Opening Position...' : 'Confirm'}
+          cancelText="Cancel"
+          onConfirm={handleAddLiquidity}
+          onCancel={() => setShowAddPositionConfirm(false)}
+        />
+      )}
+
+      {/* Collect Fees Confirmation Modal */}
+      {positionToCollectFees && (
+        <ConfirmModal
+          title="Collect Fees"
+          message={`Are you sure you want to collect fees from this position? This will claim all uncollected fees.`}
+          confirmText={submitting ? 'Collecting Fees...' : 'Confirm'}
+          cancelText="Cancel"
+          onConfirm={handleCollectFees}
+          onCancel={() => setPositionToCollectFees(null)}
+        />
+      )}
+
+      {/* Close Position Confirmation Modal */}
+      {positionToClose && (
+        <ConfirmModal
+          title="Close Position"
+          message={`Are you sure you want to close this position? This will remove all liquidity and collect any unclaimed fees. This action cannot be undone.`}
+          confirmText={submitting ? 'Closing Position...' : 'Confirm'}
+          cancelText="Cancel"
+          onConfirm={handleClosePosition}
+          onCancel={() => setPositionToClose(null)}
+        />
+      )}
     </div>
   );
 }
