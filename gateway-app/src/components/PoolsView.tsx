@@ -12,15 +12,10 @@ import {
   SelectValue,
 } from './ui/select';
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from './ui/drawer';
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from './ui/collapsible';
 import { EmptyState } from './ui/EmptyState';
 import { LoadingState } from './ui/LoadingState';
 import { LiquidityPositionCard } from './LiquidityPositionCard';
@@ -37,7 +32,7 @@ import type {
 import { capitalize, getChainNetwork } from '@/lib/utils/string';
 import { formatTokenAmount, formatNumber } from '@/lib/utils/format';
 import { getPoolUrl, getDexName } from '@/lib/pool-urls';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, ChevronDown } from 'lucide-react';
 
 // UI-specific Pool type with connector property added
 interface Pool extends PoolTemplate {
@@ -57,7 +52,7 @@ export function PoolsView() {
   const [loadingPositions, setLoadingPositions] = useState(false);
   const [showConnectorDropdown, setShowConnectorDropdown] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [isAddPositionOpen, setIsAddPositionOpen] = useState(false);
 
   // Add liquidity form state
   const [amount0, setAmount0] = useState('');
@@ -527,23 +522,18 @@ export function PoolsView() {
                     </div>
                   )}
 
-                  {/* Add Position Drawer */}
+                  {/* Add Position Collapsible */}
                   <div className="mt-6">
                     <Separator className="mb-4" />
-                    <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-                      <DrawerTrigger asChild>
-                        <Button variant="default" className="w-full">
-                          Add Position
+                    <Collapsible open={isAddPositionOpen} onOpenChange={setIsAddPositionOpen}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" className="w-full flex items-center justify-between">
+                          <span>Add Position</span>
+                          <ChevronDown className={`h-4 w-4 transition-transform ${isAddPositionOpen ? 'rotate-180' : ''}`} />
                         </Button>
-                      </DrawerTrigger>
-                      <DrawerContent>
-                        <DrawerHeader>
-                          <DrawerTitle>Add Position</DrawerTitle>
-                          <DrawerDescription>
-                            Add liquidity to {selectedPool.baseSymbol}-{selectedPool.quoteSymbol} pool
-                          </DrawerDescription>
-                        </DrawerHeader>
-                        <div className="p-4 space-y-4">
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-4">
+                        <div className="space-y-4">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <label className="text-sm font-medium">
@@ -589,13 +579,9 @@ export function PoolsView() {
                               />
                             </div>
                           </div>
-                        </div>
-                        <DrawerFooter>
+
                           <Button
-                            onClick={() => {
-                              handleAddLiquidity();
-                              setDrawerOpen(false);
-                            }}
+                            onClick={handleAddLiquidity}
                             disabled={
                               submitting ||
                               !amount0 ||
@@ -603,15 +589,13 @@ export function PoolsView() {
                               !lowerPrice ||
                               !upperPrice
                             }
+                            className="w-full"
                           >
                             {submitting ? 'Adding Position...' : 'Add Position'}
                           </Button>
-                          <DrawerClose asChild>
-                            <Button variant="outline">Cancel</Button>
-                          </DrawerClose>
-                        </DrawerFooter>
-                      </DrawerContent>
-                    </Drawer>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   </div>
                 </CardContent>
               </Card>
