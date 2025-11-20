@@ -12,19 +12,19 @@
     "solana-purple": {
       "name": "Solana Purple",
       "colors": {
-        "primary": "270 91% 65%",
-        "primaryDark": "270 91% 55%",
-        "accent": "160 84% 59%",
-        "accentDark": "160 84% 49%"
+        "primary": "266 100% 69%",
+        "primaryDark": "266 100% 59%",
+        "accent": "169 100% 65%",
+        "accentDark": "169 100% 55%"
       }
     },
     "ethereum-blue": {
       "name": "Ethereum Blue",
       "colors": {
-        "primary": "221 83% 53%",
-        "primaryDark": "221 83% 43%",
-        "accent": "199 89% 48%",
-        "accentDark": "199 89% 38%"
+        "primary": "193 87% 62%",
+        "primaryDark": "193 87% 52%",
+        "accent": "271 100% 69%",
+        "accentDark": "271 100% 59%"
       }
     },
     "ocean-breeze": {
