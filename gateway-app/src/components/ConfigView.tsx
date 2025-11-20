@@ -12,13 +12,11 @@ import {
 } from './ui/select';
 import { Switch } from './ui/switch';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from './ui/table';
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldContent,
+} from './ui/field';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import { readAppConfig, updateAppConfigValue } from '@/lib/app-config';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
@@ -58,7 +56,8 @@ export function ConfigView() {
   const [editValue, setEditValue] = useState<any>('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
   const [chains, setChains] = useState<ChainData[]>([]);
   const [themes, setThemes] = useState<Record<string, Theme>>({});
 
@@ -210,6 +209,31 @@ export function ConfigView() {
   function cancelEdit() {
     setEditingKey(null);
     setEditValue('');
+  }
+
+  function handleMouseEnter(key: string) {
+    // Clear any existing timeout
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+    }
+
+    // Set new timeout for 0.5 seconds
+    const timeout = setTimeout(() => {
+      setHoveredKey(key);
+    }, 500);
+
+    setHoverTimeout(timeout);
+  }
+
+  function handleMouseLeave() {
+    // Clear timeout if mouse leaves before debounce completes
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout);
+      setHoverTimeout(null);
+    }
+
+    // Clear hovered key immediately
+    setHoveredKey(null);
   }
 
   async function saveEdit(item: ConfigItem) {
@@ -536,145 +560,128 @@ export function ConfigView() {
                   No configuration items found
                 </p>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Setting</TableHead>
-                        <TableHead className="text-right pr-2">Value</TableHead>
-                        <TableHead className="w-8 md:w-10"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {configItems.map((item, i) => {
-                        const key = `${item.namespace}.${item.path}`;
-                        const isEditing = editingKey === key;
+                <FieldGroup>
+                  {configItems.map((item) => {
+                    const key = `${item.namespace}.${item.path}`;
+                    const isEditing = editingKey === key;
+                    const isHovered = hoveredKey === key;
 
-                        return (
-                          <TableRow
-                            key={key}
-                            onMouseEnter={() => setHoveredRow(i)}
-                            onMouseLeave={() => setHoveredRow(null)}
-                          >
-                            <TableCell className="break-words max-w-[120px] md:max-w-none pr-2">
-                              {item.path}
-                            </TableCell>
-                            <TableCell className="text-right pr-2">
-                              {item.type === 'boolean' ? (
-                                // Boolean values always show as toggle, no edit mode needed
-                                <div className="flex items-center gap-2 justify-end min-w-[140px]">
-                                  <span className="text-xs text-muted-foreground">false</span>
-                                  <Switch
-                                    checked={item.value}
-                                    onCheckedChange={(checked) => handleBooleanToggle(item, checked)}
-                                    disabled={saving}
-                                  />
-                                  <span className="text-xs text-muted-foreground">true</span>
-                                </div>
-                              ) : item.path.startsWith('theme.chains.') ? (
-                                // Theme chain selection: always show Select dropdown
-                                <div className="flex justify-end">
-                                  <Select
-                                    value={item.value}
-                                    onValueChange={(value) => handleThemeChange(item, value)}
-                                    disabled={saving}
+                    return (
+                      <Field
+                        key={key}
+                        orientation="horizontal"
+                        onMouseEnter={() => handleMouseEnter(key)}
+                        onMouseLeave={handleMouseLeave}
+                      >
+                        <FieldLabel className="min-w-[140px] md:min-w-[200px] text-sm">
+                          {item.path}
+                        </FieldLabel>
+                        <FieldContent>
+                          <div className="flex items-center justify-end gap-2 w-full">
+                            {item.type === 'boolean' ? (
+                              // Boolean toggle
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">false</span>
+                                <Switch
+                                  checked={item.value}
+                                  onCheckedChange={(checked) => handleBooleanToggle(item, checked)}
+                                  disabled={saving}
+                                />
+                                <span className="text-xs text-muted-foreground">true</span>
+                              </div>
+                            ) : item.path.startsWith('theme.chains.') ? (
+                              // Theme selector
+                              <Select
+                                value={item.value}
+                                onValueChange={(value) => handleThemeChange(item, value)}
+                                disabled={saving}
+                              >
+                                <SelectTrigger className="w-full max-w-xs text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(themes).map(([key, theme]) => (
+                                    <SelectItem key={key} value={key}>
+                                      {theme.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : isEditing ? (
+                              // Editing mode: Input + Save/Cancel
+                              <>
+                                <Input
+                                  type={item.type === 'number' ? 'number' : 'text'}
+                                  value={editValue}
+                                  onChange={(e) => {
+                                    const val = item.type === 'number'
+                                      ? Number(e.target.value)
+                                      : e.target.value;
+                                    setEditValue(val);
+                                  }}
+                                  className="flex-1 max-w-xs text-sm text-right"
+                                  disabled={saving}
+                                />
+                                <Button
+                                  onClick={() => saveEdit(item)}
+                                  disabled={saving}
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-green-600 hover:text-green-800 shrink-0"
+                                  title="Save"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
                                   >
-                                    <SelectTrigger className="w-48 text-sm">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {Object.entries(themes).map(([key, theme]) => (
-                                        <SelectItem key={key} value={key}>
-                                          {theme.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              ) : isEditing ? (
-                                // Non-boolean values: show input in edit mode
-                                <div className="flex gap-2 justify-end">
-                                  <Input
-                                    type={item.type === 'number' ? 'number' : 'text'}
-                                    value={editValue}
-                                    onChange={(e) => {
-                                      const val = item.type === 'number'
-                                        ? Number(e.target.value)
-                                        : e.target.value;
-                                      setEditValue(val);
-                                    }}
-                                    className="w-40 md:w-64 text-right text-sm"
-                                    disabled={saving}
-                                  />
-                                </div>
-                              ) : (
-                                // Non-boolean values: show text when not editing
-                                <span className="text-sm text-muted-foreground break-all">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                  </svg>
+                                </Button>
+                                <Button
+                                  onClick={cancelEdit}
+                                  disabled={saving}
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-600 hover:text-red-800 shrink-0"
+                                  title="Cancel"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                  </svg>
+                                </Button>
+                              </>
+                            ) : (
+                              // View mode: Value with Edit button on hover
+                              <div className="flex items-center gap-2 justify-end flex-1">
+                                <span className="text-sm text-muted-foreground text-right">
                                   {item.type === 'array' && Array.isArray(item.value)
                                     ? item.value.join(', ')
                                     : String(item.value)}
                                 </span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {item.type === 'boolean' || item.path.startsWith('theme.chains.') ? (
-                                // Boolean and theme chain values don't need edit button
-                                null
-                              ) : isEditing ? (
-                                <div className="flex gap-1 justify-end">
-                                  <Button
-                                    onClick={() => saveEdit(item)}
-                                    disabled={saving}
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-green-600 hover:text-green-800"
-                                    title="Save"
-                                  >
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      width="16"
-                                      height="16"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    >
-                                      <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                  </Button>
-                                  <Button
-                                    onClick={cancelEdit}
-                                    disabled={saving}
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-red-600 hover:text-red-800"
-                                    title="Cancel"
-                                  >
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      width="16"
-                                      height="16"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    >
-                                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                  </Button>
-                                </div>
-                              ) : (
-                                hoveredRow === i && (
+                                {isHovered && (
                                   <Button
                                     onClick={() => startEdit(item)}
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 text-blue-600 hover:text-blue-800"
+                                    className="h-8 w-8 text-blue-600 hover:text-blue-800 shrink-0"
                                     title="Edit"
                                   >
                                     <svg
@@ -691,15 +698,15 @@ export function ConfigView() {
                                       <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
                                     </svg>
                                   </Button>
-                                )
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </FieldContent>
+                      </Field>
+                    );
+                  })}
+                </FieldGroup>
               )}
             </CardContent>
           </Card>
