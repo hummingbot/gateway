@@ -344,7 +344,11 @@ export function SwapView() {
           <TokenAmountInput
             label="To"
             symbol={toToken}
-            amount=""
+            amount={
+              selectedQuote?.quote?.amountOut
+                ? selectedQuote.quote.amountOut.toFixed(4)
+                : ''
+            }
             balance={balances[toToken] || '0'}
             onAmountChange={() => {}}
             onSymbolChange={setToToken}
