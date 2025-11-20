@@ -49,7 +49,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadTheme();
   }, []);
 
-  // Apply chain-specific theme when selectedChain changes
+  // Apply chain-specific theme when selectedChain or darkMode changes
   useEffect(() => {
     if (!themeLoaded || !appConfig) return;
 
@@ -92,7 +92,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     applyChainTheme();
-  }, [selectedChain, themeLoaded, appConfig?.theme?.chains]);
+  }, [selectedChain, themeLoaded, appConfig?.theme?.chains, darkMode]);
 
   // Apply darkMode to document and save to config
   useEffect(() => {
