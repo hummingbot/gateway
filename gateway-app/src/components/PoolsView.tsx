@@ -610,11 +610,11 @@ export function PoolsView() {
                 >
                   <div className="flex flex-col items-start w-full gap-1">
                     <div className="font-medium">{pool.baseSymbol}-{pool.quoteSymbol}</div>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <Badge variant="outline" className="text-xs">
+                    <div className="flex items-center gap-1.5 flex-wrap text-xs text-muted-foreground">
+                      <span>
                         {capitalize(pool.connector || '')} {pool.type.toUpperCase()}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">{pool.feePct}%</Badge>
+                      </span>
+                      <span>{pool.feePct}%</span>
                     </div>
                   </div>
                 </Button>
@@ -646,17 +646,17 @@ export function PoolsView() {
                       <CardTitle>
                         {selectedPool.baseSymbol}-{selectedPool.quoteSymbol}
                       </CardTitle>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline">
+                      <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                        <span>
                           {capitalize(selectedPool.connector)} {selectedPool.type.toUpperCase()}
-                        </Badge>
-                        <Badge>
+                        </span>
+                        <span>
                           {selectedPool.feePct}%
-                        </Badge>
+                        </span>
                         {poolInfo && poolInfo.binStep !== undefined && (
-                          <Badge variant="secondary">
+                          <span>
                             Bin Step: {poolInfo.binStep}
-                          </Badge>
+                          </span>
                         )}
                         <Button
                           variant="outline"
