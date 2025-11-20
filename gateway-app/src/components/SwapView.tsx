@@ -174,11 +174,34 @@ export function SwapView() {
       updatedQuotes.set(connector, result);
     });
     setQuotes(updatedQuotes);
+
+    // Auto-select best quote
+    let bestConnector: string | null = null;
+    let bestAmountOut = 0;
+    results.forEach(({ connector, result }) => {
+      if (result.quote && !result.error && result.quote.amountOut) {
+        if (result.quote.amountOut > bestAmountOut) {
+          bestAmountOut = result.quote.amountOut;
+          bestConnector = connector;
+        }
+      }
+    });
+    if (bestConnector) {
+      const bestResult = updatedQuotes.get(bestConnector);
+      if (bestResult?.quote) {
+        setSelectedQuote({ connector: bestConnector, quote: bestResult.quote });
+      }
+    }
   }
 
   function handleQuoteSelect(connector: string, quote: RouterQuoteResponse) {
     setSelectedQuote({ connector, quote });
-    setShowConfirmDialog(true);
+  }
+
+  function handleExecuteClick() {
+    if (selectedQuote) {
+      setShowConfirmDialog(true);
+    }
   }
 
   async function handleExecuteSwap() {
@@ -346,30 +369,51 @@ export function SwapView() {
         </CardContent>
       </Card>
 
-      {/* Quote Cards Grid */}
+      {/* Quote Cards - Full Width, Sorted by Best */}
       {quotes.size > 0 && (
-        <div className="w-full max-w-4xl mx-auto">
-          <h3 className="text-lg font-semibold mb-3 px-1">
+        <div className="w-full max-w-4xl mx-auto space-y-4">
+          <h3 className="text-lg font-semibold px-1">
             {hasQuotes ? 'Compare Quotes' : 'Loading...'}
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from(quotes.entries()).map(([connector, result]) => (
-              <QuoteCard
-                key={connector}
-                connector={connector}
-                quote={result.quote}
-                error={result.error}
-                loading={result.loading}
-                selected={selectedQuote?.connector === connector}
-                isBest={!result.loading && !result.error && connector === bestConnector}
-                fromToken={fromToken}
-                toToken={toToken}
-                onSelect={
-                  result.quote ? () => handleQuoteSelect(connector, result.quote!) : undefined
-                }
-              />
-            ))}
+
+          {/* Sorted Quote Cards */}
+          <div className="space-y-2">
+            {Array.from(quotes.entries())
+              .sort(([, a], [, b]) => {
+                // Sort by amountOut descending (best first)
+                const amountA = a.quote?.amountOut || 0;
+                const amountB = b.quote?.amountOut || 0;
+                return amountB - amountA;
+              })
+              .map(([connector, result]) => (
+                <QuoteCard
+                  key={connector}
+                  connector={connector}
+                  quote={result.quote}
+                  error={result.error}
+                  loading={result.loading}
+                  selected={selectedQuote?.connector === connector}
+                  isBest={!result.loading && !result.error && connector === bestConnector}
+                  fromToken={fromToken}
+                  toToken={toToken}
+                  onSelect={
+                    result.quote ? () => handleQuoteSelect(connector, result.quote!) : undefined
+                  }
+                />
+              ))}
           </div>
+
+          {/* Execute Quote Button */}
+          {hasQuotes && selectedQuote && (
+            <Button
+              onClick={handleExecuteClick}
+              disabled={!selectedWallet}
+              className="w-full h-12 text-base"
+              size="lg"
+            >
+              Execute Quote on {selectedQuote.connector.charAt(0).toUpperCase() + selectedQuote.connector.slice(1)}
+            </Button>
+          )}
         </div>
       )}
 

@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
 import { formatTokenAmount, formatPercent } from '@/lib/utils/format';
@@ -33,59 +33,67 @@ export function QuoteCard({
   return (
     <Card
       className={cn(
-        'cursor-pointer transition-all hover:shadow-md',
-        selected && 'ring-2 ring-primary',
+        'cursor-pointer transition-all hover:bg-accent/50',
+        selected && 'ring-2 ring-primary bg-accent/30',
         loading && 'opacity-60',
         error && 'border-destructive'
       )}
       onClick={onSelect}
     >
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">{displayName}</CardTitle>
-          {isBest && !error && !loading && (
-            <Badge variant="default" className="text-xs">
-              Best
-            </Badge>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="p-4">
         {loading && (
-          <div className="text-sm text-muted-foreground">Loading quote...</div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="font-semibold">{displayName}</div>
+            </div>
+            <div className="text-sm text-muted-foreground">Loading quote...</div>
+          </div>
         )}
 
         {error && (
-          <Alert variant="destructive" className="py-2">
-            <AlertDescription className="text-xs">{error}</AlertDescription>
-          </Alert>
+          <div className="flex items-center justify-between">
+            <div className="font-semibold">{displayName}</div>
+            <Alert variant="destructive" className="py-1 px-3 max-w-md">
+              <AlertDescription className="text-xs">{error}</AlertDescription>
+            </Alert>
+          </div>
         )}
 
         {quote && !loading && !error && (
-          <>
+          <div className="flex items-center justify-between gap-4">
+            {/* Router Name & Badge */}
+            <div className="flex items-center gap-2 min-w-[120px]">
+              <div className="font-semibold">{displayName}</div>
+              {isBest && (
+                <Badge variant="default" className="text-xs">
+                  Best
+                </Badge>
+              )}
+            </div>
+
             {/* Amount Out - Primary metric */}
-            <div className="space-y-1">
-              <div className="text-xs text-muted-foreground">You receive</div>
-              <div className="text-2xl font-bold">
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm text-muted-foreground">You receive:</span>
+              <span className="text-2xl font-bold">
                 {formatTokenAmount(quote.amountOut || 0)}
-              </div>
-              <div className="text-sm text-muted-foreground">{toToken}</div>
+              </span>
+              <span className="text-sm text-muted-foreground">{toToken}</span>
             </div>
 
             {/* Key Metrics */}
-            <div className="space-y-2 pt-2 border-t">
+            <div className="flex items-center gap-6 text-sm">
               {quote.price !== undefined && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Rate:</span>
+                <div className="flex flex-col items-end">
+                  <span className="text-xs text-muted-foreground">Rate</span>
                   <span className="font-medium">
-                    1 {fromToken} = {quote.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })} {toToken}
+                    {quote.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
                   </span>
                 </div>
               )}
 
               {quote.priceImpactPct !== undefined && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Price Impact:</span>
+                <div className="flex flex-col items-end">
+                  <span className="text-xs text-muted-foreground">Impact</span>
                   <span
                     className={cn(
                       'font-medium',
@@ -100,20 +108,13 @@ export function QuoteCard({
               )}
 
               {quote.minAmountOut !== undefined && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Min Received:</span>
-                  <span>{formatTokenAmount(quote.minAmountOut)} {toToken}</span>
-                </div>
-              )}
-
-              {quote.quoteId && (
-                <div className="flex justify-between text-xs text-muted-foreground pt-2 border-t">
-                  <span>Quote ID:</span>
-                  <span className="font-mono">{quote.quoteId.substring(0, 8)}...</span>
+                <div className="flex flex-col items-end">
+                  <span className="text-xs text-muted-foreground">Min Out</span>
+                  <span className="font-medium">{formatTokenAmount(quote.minAmountOut)}</span>
                 </div>
               )}
             </div>
-          </>
+          </div>
         )}
       </CardContent>
     </Card>
