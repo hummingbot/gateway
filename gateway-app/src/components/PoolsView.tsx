@@ -591,9 +591,10 @@ export function PoolsView() {
                   <div className="flex flex-col items-start w-full gap-1">
                     <div className="font-medium">{pool.baseSymbol}-{pool.quoteSymbol}</div>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs">{capitalize(pool.connector || '')}</span>
-                      <span className="text-xs">{pool.type.toUpperCase()}</span>
-                      <Badge variant="outline" className="text-xs">{pool.feePct}%</Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {capitalize(pool.connector || '')} {pool.type.toUpperCase()}
+                      </Badge>
+                      <Badge className="text-xs">{pool.feePct}%</Badge>
                     </div>
                   </div>
                 </Button>
@@ -634,7 +635,7 @@ export function PoolsView() {
                         <Badge variant="outline">
                           {capitalize(selectedPool.connector)} {selectedPool.type.toUpperCase()}
                         </Badge>
-                        <Badge className="bg-green-600 text-white dark:bg-green-700">
+                        <Badge>
                           {selectedPool.feePct}%
                         </Badge>
                         {poolInfo && poolInfo.binStep !== undefined && (
