@@ -137,9 +137,9 @@ export function LogsSheet({ gatewayPath, iconSize = 16 }: LogsSheetProps) {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  // Trigger log clear - LogViewer will handle it internally
-                  const logViewerClearEvent = new CustomEvent('clearLogs');
-                  window.dispatchEvent(logViewerClearEvent);
+                  // Trigger log refresh - LogViewer will handle it internally
+                  const logViewerRefreshEvent = new CustomEvent('refreshLogs');
+                  window.dispatchEvent(logViewerRefreshEvent);
                 }}
               >
                 <svg
@@ -154,13 +154,9 @@ export function LogsSheet({ gatewayPath, iconSize = 16 }: LogsSheetProps) {
                   strokeLinejoin="round"
                   className="mr-2"
                 >
-                  <path d="M3 6h18" />
-                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                  <line x1="10" x2="10" y1="11" y2="17" />
-                  <line x1="14" x2="14" y1="11" y2="17" />
+                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
                 </svg>
-                Clear Logs
+                Refresh Logs
               </Button>
             </div>
 

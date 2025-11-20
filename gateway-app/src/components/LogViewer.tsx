@@ -65,14 +65,14 @@ export function LogViewer({ gatewayPath, className, onClear }: LogViewerProps) {
     }
   }, [logs]);
 
-  // Listen for clear logs event
+  // Listen for refresh logs event
   useEffect(() => {
-    const handleClearEvent = () => {
+    const handleRefreshEvent = () => {
       handleClear();
     };
 
-    window.addEventListener('clearLogs', handleClearEvent);
-    return () => window.removeEventListener('clearLogs', handleClearEvent);
+    window.addEventListener('refreshLogs', handleRefreshEvent);
+    return () => window.removeEventListener('refreshLogs', handleRefreshEvent);
   }, []);
 
   const handleClear = () => {
