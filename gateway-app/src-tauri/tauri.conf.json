@@ -35,13 +35,6 @@
   "plugins": {
     "notification": {
       "all": true
-    },
-    "opener": {
-      "scope": [
-        {
-          "url": "^https?://.*"
-        }
-      ]
     }
   }
 }

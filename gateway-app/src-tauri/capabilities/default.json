@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "enables the default permissions",
   "windows": ["main"],
-  "permissions": ["core:default", "http:default", "http:allow-fetch"]
+  "permissions": ["core:default", "http:default", "http:allow-fetch", "opener:default", "opener:allow-open-url"]
 }
