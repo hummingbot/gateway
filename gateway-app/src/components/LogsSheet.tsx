@@ -101,8 +101,8 @@ export function LogsSheet({ gatewayPath, iconSize = 16 }: LogsSheetProps) {
       <SheetContent
         ref={containerRef}
         side="right"
-        className="overflow-y-auto p-0 !w-auto sm:!max-w-none"
-        style={{ width: `${width}px` }}
+        className="w-full overflow-y-auto p-0 sm:!max-w-none"
+        style={{ width: `${width}px`, maxWidth: 'none' }}
       >
         {/* Resize Handle */}
         <div
