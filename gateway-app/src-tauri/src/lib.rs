@@ -1,4 +1,5 @@
 use std::fs;
+use std::io::{BufRead, BufReader, Seek, SeekFrom};
 use std::path::PathBuf;
 use tauri::Manager;
 
@@ -52,11 +53,48 @@ fn get_app_config_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(app_data_dir.join("app-config.json"))
 }
 
+#[tauri::command]
+fn read_gateway_logs(gateway_path: String, lines: usize) -> Result<String, String> {
+    use chrono::Local;
+
+    // Get today's log file name
+    let today = Local::now().format("%Y-%m-%d").to_string();
+    let log_filename = format!("logs_gateway_app.log.{}", today);
+
+    // Construct full path
+    let log_path = PathBuf::from(gateway_path)
+        .join("logs")
+        .join(log_filename);
+
+    if !log_path.exists() {
+        return Ok(String::from("No logs found for today."));
+    }
+
+    // Read last N lines
+    let file = fs::File::open(&log_path)
+        .map_err(|e| format!("Failed to open log file: {}", e))?;
+
+    let reader = BufReader::new(file);
+    let all_lines: Vec<String> = reader
+        .lines()
+        .filter_map(|line| line.ok())
+        .collect();
+
+    // Take last N lines
+    let start = if all_lines.len() > lines {
+        all_lines.len() - lines
+    } else {
+        0
+    };
+
+    Ok(all_lines[start..].join("\n"))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_http::init())
-    .invoke_handler(tauri::generate_handler![read_app_config, write_app_config])
+    .invoke_handler(tauri::generate_handler![read_app_config, write_app_config, read_gateway_logs])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
