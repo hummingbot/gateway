@@ -62,21 +62,21 @@ export function QuoteCard({
         )}
 
         {quote && !loading && !error && (
-          <div className="flex items-center justify-between gap-6">
+          <div className="flex items-center justify-between gap-2 md:gap-6">
             {/* Router Name & Badge */}
-            <div className="flex items-center gap-2 min-w-[120px]">
-              <div className="font-semibold">{displayName}</div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="font-semibold text-sm md:text-base">{displayName}</div>
               {isBest && (
-                <Badge variant="default" className="text-xs">
+                <Badge variant="default" className="text-xs flex-shrink-0">
                   Best
                 </Badge>
               )}
             </div>
 
             {/* Price - Primary metric */}
-            <div className="flex items-baseline gap-2">
-              <span className="text-sm text-muted-foreground">Price:</span>
-              <span className="text-2xl font-bold">
+            <div className="flex items-baseline gap-1 md:gap-2 overflow-hidden">
+              <span className="text-xs md:text-sm text-muted-foreground flex-shrink-0">Price:</span>
+              <span className="text-lg md:text-2xl font-bold truncate">
                 {quote.price !== undefined
                   ? parseFloat(quote.price.toFixed(4)).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
@@ -87,7 +87,7 @@ export function QuoteCard({
             </div>
 
             {/* Key Metrics - Hidden on mobile */}
-            <div className="hidden md:flex items-center gap-8 text-sm">
+            <div className="hidden md:flex items-center gap-8 text-sm flex-shrink-0">
               <div className="flex flex-col items-end">
                 <span className="text-xs text-muted-foreground">You Pay</span>
                 <span className="font-medium">
