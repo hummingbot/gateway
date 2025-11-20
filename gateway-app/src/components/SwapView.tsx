@@ -119,7 +119,21 @@ export function SwapView() {
     const balance = balances[fromToken];
     if (balance) {
       setAmount(balance);
+      setQuotes(new Map());
+      setSelectedQuote(null);
     }
+  }
+
+  function handleAmountChange(newAmount: string) {
+    setAmount(newAmount);
+    setQuotes(new Map());
+    setSelectedQuote(null);
+  }
+
+  function handleFromTokenChange(newToken: string) {
+    setFromToken(newToken);
+    setQuotes(new Map());
+    setSelectedQuote(null);
   }
 
   function handleSwapDirection() {
@@ -328,8 +342,8 @@ export function SwapView() {
             symbol={fromToken}
             amount={amount}
             balance={fromBalance}
-            onAmountChange={setAmount}
-            onSymbolChange={setFromToken}
+            onAmountChange={handleAmountChange}
+            onSymbolChange={handleFromTokenChange}
             availableTokens={availableTokens}
           />
 
@@ -421,7 +435,7 @@ export function SwapView() {
               className="w-full h-12 text-base"
               size="lg"
             >
-              Execute Quote on {selectedQuote.connector.charAt(0).toUpperCase() + selectedQuote.connector.slice(1)}
+              Execute Swap on {selectedQuote.connector.charAt(0).toUpperCase() + selectedQuote.connector.slice(1)}
             </Button>
           )}
         </div>
