@@ -25,3 +25,4 @@ chrono = "0.4"
 tauri = { version = "2.9.2", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-http = { version = "2", features = ["dangerous-settings"] }
+tauri-plugin-opener = "2"
