@@ -11,6 +11,7 @@
  */
 
 import { gatewayGet, gatewayPost, gatewayDelete } from './api';
+import { getCachedTransaction, setCachedTransaction } from './transaction-cache';
 import type {
   // Chain types
   BalanceRequestType,
@@ -93,7 +94,23 @@ export class ChainAPI {
   }
 
   async parseTransaction(chain: string, params: { network?: string; signature: string; walletAddress?: string }) {
-    return gatewayPost<ParseResponseType>(`/chains/${chain}/parse`, params);
+    // Check cache first (transactions are immutable)
+    if (params.network) {
+      const cached = getCachedTransaction(chain, params.network, params.signature);
+      if (cached) {
+        return cached;
+      }
+    }
+
+    // Cache miss - fetch from API
+    const result = await gatewayPost<ParseResponseType>(`/chains/${chain}/parse`, params);
+
+    // Store in cache for future requests
+    if (params.network) {
+      setCachedTransaction(chain, params.network, params.signature, result);
+    }
+
+    return result;
   }
 }
 
