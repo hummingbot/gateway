@@ -1,0 +1,9 @@
+{
+  "darkMode": true,
+  "theme": {
+    "chains": {
+      "solana": "solana-purple",
+      "ethereum": "ethereum-blue"
+    }
+  }
+}

@@ -49,6 +49,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadTheme();
   }, []);
 
+  // Apply chain-specific theme when selectedChain changes
+  useEffect(() => {
+    if (!themeLoaded || !appConfig) return;
+
+    async function applyChainTheme() {
+      try {
+        // Load THEMES.json
+        const themesResponse = await fetch('/THEMES.json');
+        const themesData = await themesResponse.json();
+
+        // Get the theme name for the selected chain
+        const themeName = appConfig?.theme?.chains?.[selectedChain];
+        if (!themeName) {
+          console.log(`No theme configured for chain: ${selectedChain}`);
+          return;
+        }
+
+        // Get the theme colors
+        const themeColors = themesData.themes?.[themeName];
+        if (!themeColors) {
+          console.error(`Theme not found: ${themeName}`);
+          return;
+        }
+
+        // Update appConfig with the new theme colors
+        const updatedConfig: AppConfig = {
+          darkMode: appConfig.darkMode,
+          theme: {
+            ...appConfig.theme,
+            colors: themeColors.colors,
+          },
+        };
+
+        setAppConfig(updatedConfig);
+        applyTheme(updatedConfig);
+
+        console.log(`Applied ${themeColors.name} theme for ${selectedChain}`);
+      } catch (err) {
+        console.error('Failed to apply chain-specific theme:', err);
+      }
+    }
+
+    applyChainTheme();
+  }, [selectedChain, themeLoaded, appConfig?.theme?.chains]);
+
   // Apply darkMode to document and save to config
   useEffect(() => {
     if (!themeLoaded) return;

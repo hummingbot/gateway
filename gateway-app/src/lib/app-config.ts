@@ -4,10 +4,13 @@ export interface AppConfig {
   darkMode: boolean;
   theme?: {
     colors?: {
-      primary?: string;          // Hex format: "#0f172a" (also accepts HSL)
+      primary?: string;          // Hex format: "#0f172a" or HSL: "222.2 47.4% 11.2%"
       primaryDark?: string;       // For dark mode
       accent?: string;
       accentDark?: string;
+    };
+    chains?: {
+      [chainName: string]: string; // Chain name to theme name mapping (e.g., "solana": "solana-purple")
     };
   };
 }
@@ -30,14 +33,14 @@ export async function readAppConfig(): Promise<AppConfig> {
 
     // No localStorage yet - fetch from file and initialize
     try {
-      const response = await fetch('/app-config.json');
+      const response = await fetch('/config/app.json');
       if (response.ok) {
         const config = await response.json();
         localStorage.setItem('app-config', JSON.stringify(config));
         return config;
       }
     } catch (err) {
-      console.warn('Failed to fetch app-config.json from server, using defaults:', err);
+      console.warn('Failed to fetch config/app.json from server, using defaults:', err);
     }
 
     // Final fallback to defaults
@@ -49,6 +52,10 @@ export async function readAppConfig(): Promise<AppConfig> {
           primaryDark: '#f8fafc',
           accent: '#f1f5f9',
           accentDark: '#1e293b',
+        },
+        chains: {
+          solana: 'solana-purple',
+          ethereum: 'ethereum-blue',
         },
       },
     };
