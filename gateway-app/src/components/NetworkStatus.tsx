@@ -172,25 +172,19 @@ export function NetworkStatus({ chain, network }: NetworkStatusProps) {
       <DrawerTrigger asChild>
         <Button
           variant="ghost"
-          className="flex items-center gap-2 px-2 py-1 h-auto"
+          size="icon"
+          className="h-8 w-8"
           title="View network status"
         >
-          <div className="flex items-center gap-1.5">
-            <div
-              className={`w-2 h-2 rounded-full ${
-                loading
-                  ? 'bg-yellow-500 animate-pulse'
-                  : isOnline
-                  ? 'bg-green-500'
-                  : 'bg-red-500'
-              }`}
-            />
-            {status && (
-              <span className="text-xs font-mono text-muted-foreground">
-                {status.currentBlockNumber.toLocaleString()}
-              </span>
-            )}
-          </div>
+          <div
+            className={`w-2 h-2 rounded-full ${
+              loading
+                ? 'bg-yellow-500 animate-pulse'
+                : isOnline
+                ? 'bg-green-500'
+                : 'bg-red-500'
+            }`}
+          />
         </Button>
       </DrawerTrigger>
       <DrawerContent>

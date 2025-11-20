@@ -220,7 +220,7 @@ function AppContent() {
             {/* Mobile: Network Status (shown on mobile) */}
             <div className="sm:hidden flex items-center gap-1">
               <NetworkStatus chain={selectedChain} network={selectedNetwork} />
-              <LogsSheet gatewayPath="/Users/feng/gateway" iconSize={14} />
+              <LogsSheet gatewayPath="/Users/feng/gateway" iconSize={16} />
             </div>
 
           </div>
