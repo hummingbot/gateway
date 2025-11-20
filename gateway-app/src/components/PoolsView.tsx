@@ -98,8 +98,10 @@ export function PoolsView() {
   const adjustBothPrices = (percentage: number) => {
     const currentPrice = getCurrentPrice();
     if (currentPrice) {
-      const minPrice = currentPrice * (1 - percentage / 100);
-      const maxPrice = currentPrice * (1 + percentage / 100);
+      // Divide by 2 since position width is on both sides of current price
+      const halfPercentage = percentage / 2;
+      const minPrice = currentPrice * (1 - halfPercentage / 100);
+      const maxPrice = currentPrice * (1 + halfPercentage / 100);
       setLowerPrice(minPrice.toFixed(6));
       setUpperPrice(maxPrice.toFixed(6));
     }
@@ -734,7 +736,7 @@ export function PoolsView() {
                           </div>
 
                           <div className="flex justify-center items-center gap-2">
-                            <span className="text-sm font-medium text-muted-foreground">+/-</span>
+                            <span className="text-sm font-medium text-muted-foreground">Position Width</span>
                             <Button
                               type="button"
                               variant="outline"

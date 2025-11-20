@@ -22,12 +22,17 @@ export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: Pool
 
   // Prepare chart data with zoom
   const chartData = useMemo(() => {
+    // Find the active bin to determine current price
+    const activeBin = bins.find(b => b.binId === activeBinId);
+    const currentPrice = activeBin?.price;
+
     const allBins = bins.map((bin) => {
       const totalLiquidity = bin.price * bin.baseTokenAmount + bin.quoteTokenAmount;
       const isActive = bin.binId === activeBinId;
       const isInRange = lowerPrice !== undefined && upperPrice !== undefined
         ? bin.price >= lowerPrice && bin.price <= upperPrice
         : false;
+      const isBelow = currentPrice !== undefined && bin.price < currentPrice;
 
       return {
         binId: bin.binId,
@@ -37,10 +42,13 @@ export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: Pool
         quoteAmount: bin.quoteTokenAmount,
         isActive,
         isInRange,
+        isBelow,
         fill: isActive
           ? "hsl(var(--accent))" // Active bin - accent color
+          : isInRange && isBelow
+          ? "hsl(var(--accent))" // In user's range below current price - accent color (cyan)
           : isInRange
-          ? "hsl(var(--primary))" // In user's position range - primary color
+          ? "hsl(var(--primary))" // In user's range above current price - primary color (purple)
           : "hsl(var(--muted-foreground))", // Normal bin - muted
       };
     });
@@ -116,7 +124,7 @@ export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: Pool
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          label={{ value: 'Price', position: 'insideBottom', offset: -5 }}
+          label={{ value: 'Price', position: 'insideBottom', offset: -10 }}
           tickFormatter={(value: any) => value.toFixed(2)}
         />
         <YAxis

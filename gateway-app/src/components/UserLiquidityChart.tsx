@@ -100,6 +100,14 @@ export function UserLiquidityChart({
     },
   } satisfies ChartConfig;
 
+  // Calculate position width percentage
+  const positionWidthPct = useMemo(() => {
+    if (!activeBin) return 0;
+    const currentPrice = activeBin.price;
+    if (currentPrice === 0) return 0;
+    return ((upperPrice - lowerPrice) / currentPrice) * 100;
+  }, [activeBin, lowerPrice, upperPrice]);
+
   if (chartData.length === 0) {
     return (
       <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground">
@@ -109,7 +117,8 @@ export function UserLiquidityChart({
   }
 
   return (
-    <ChartContainer config={chartConfig} className="h-[200px] w-full">
+    <div className="space-y-3">
+      <ChartContainer config={chartConfig} className="h-[200px] w-full">
       <BarChart data={chartData} margin={{ top: 20, right: 10, left: 10, bottom: 10 }}>
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
         <XAxis
@@ -117,7 +126,7 @@ export function UserLiquidityChart({
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          label={{ value: 'Price', position: 'insideBottom', offset: -5 }}
+          label={{ value: 'Price', position: 'insideBottom', offset: -10 }}
           tickFormatter={(value: any) => value.toFixed(2)}
         />
         <YAxis
@@ -184,5 +193,9 @@ export function UserLiquidityChart({
         )}
       </BarChart>
     </ChartContainer>
+    <div className="text-center text-sm text-muted-foreground py-2">
+      Position Width: {positionWidthPct.toFixed(2)}%
+    </div>
+    </div>
   );
 }
