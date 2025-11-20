@@ -58,8 +58,8 @@ export function LogsSheet({ gatewayPath, iconSize = 16 }: LogsSheetProps) {
 
         <div className="mt-6 space-y-4">
           {/* Action Buttons */}
-          <div className="flex gap-2">
-            <RestartButton iconSize={16} />
+          <div className="flex gap-2 items-center">
+            <RestartButton iconSize={16} showLabel={true} />
             <Button
               variant="outline"
               size="sm"

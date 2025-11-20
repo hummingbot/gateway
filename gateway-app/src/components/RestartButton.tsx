@@ -6,9 +6,10 @@ import { showSuccessNotification, showErrorNotification } from '../lib/notificat
 interface RestartButtonProps {
   className?: string;
   iconSize?: number;
+  showLabel?: boolean;
 }
 
-export function RestartButton({ className = '', iconSize = 18 }: RestartButtonProps) {
+export function RestartButton({ className = '', iconSize = 18, showLabel = false }: RestartButtonProps) {
   const [isRestarting, setIsRestarting] = useState(false);
 
   async function waitForGateway() {
@@ -58,9 +59,9 @@ export function RestartButton({ className = '', iconSize = 18 }: RestartButtonPr
     <Button
       onClick={handleRestart}
       disabled={isRestarting}
-      variant="ghost"
-      size="icon"
-      className={`h-9 w-9 ${className}`}
+      variant="outline"
+      size={showLabel ? "sm" : "icon"}
+      className={showLabel ? className : `h-9 w-9 ${className}`}
       aria-label="Restart Gateway"
       title="Restart Gateway"
     >
@@ -79,6 +80,7 @@ export function RestartButton({ className = '', iconSize = 18 }: RestartButtonPr
         <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path>
         <path d="M21 3v5h-5"></path>
       </svg>
+      {showLabel && <span className="ml-2">Restart Server</span>}
     </Button>
   );
 }

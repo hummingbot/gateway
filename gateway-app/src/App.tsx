@@ -19,7 +19,6 @@ import { LogsSheet } from './components/LogsSheet';
 import { WalletSelector } from './components/WalletSelector';
 import { AddWalletModal } from './components/AddWalletModal';
 import { NetworkStatus } from './components/NetworkStatus';
-import { RestartButton } from './components/RestartButton';
 import { gatewayGet, gatewayPost } from './lib/api';
 import { showSuccessNotification } from './lib/notifications';
 
@@ -216,14 +215,12 @@ function AppContent() {
               </Select>
               <NetworkStatus chain={selectedChain} network={selectedNetwork} />
               <LogsSheet gatewayPath="/Users/feng/gateway" iconSize={16} />
-              <RestartButton iconSize={16} />
             </div>
 
             {/* Mobile: Network Status (shown on mobile) */}
             <div className="sm:hidden flex items-center gap-1">
               <NetworkStatus chain={selectedChain} network={selectedNetwork} />
               <LogsSheet gatewayPath="/Users/feng/gateway" iconSize={14} />
-              <RestartButton iconSize={14} />
             </div>
 
           </div>
