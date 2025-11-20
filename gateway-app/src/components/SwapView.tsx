@@ -175,13 +175,13 @@ export function SwapView() {
     });
     setQuotes(updatedQuotes);
 
-    // Auto-select best quote
+    // Auto-select best quote (lowest price)
     let bestConnector: string | null = null;
-    let bestAmountOut = 0;
+    let bestPrice = Infinity;
     results.forEach(({ connector, result }) => {
-      if (result.quote && !result.error && result.quote.amountOut) {
-        if (result.quote.amountOut > bestAmountOut) {
-          bestAmountOut = result.quote.amountOut;
+      if (result.quote && !result.error && result.quote.price !== undefined) {
+        if (result.quote.price < bestPrice) {
+          bestPrice = result.quote.price;
           bestConnector = connector;
         }
       }
@@ -259,15 +259,15 @@ export function SwapView() {
     }
   }
 
-  // Determine best quote based on amountOut
+  // Determine best quote based on lowest price
   function getBestConnector(): string | null {
     let bestConnector: string | null = null;
-    let bestAmountOut = 0;
+    let bestPrice = Infinity;
 
     quotes.forEach((result, connector) => {
-      if (result.quote && !result.error && result.quote.amountOut) {
-        if (result.quote.amountOut > bestAmountOut) {
-          bestAmountOut = result.quote.amountOut;
+      if (result.quote && !result.error && result.quote.price !== undefined) {
+        if (result.quote.price < bestPrice) {
+          bestPrice = result.quote.price;
           bestConnector = connector;
         }
       }
@@ -380,10 +380,10 @@ export function SwapView() {
           <div className="space-y-2">
             {Array.from(quotes.entries())
               .sort(([, a], [, b]) => {
-                // Sort by amountOut descending (best first)
-                const amountA = a.quote?.amountOut || 0;
-                const amountB = b.quote?.amountOut || 0;
-                return amountB - amountA;
+                // Sort by price ascending (lowest price first = best)
+                const priceA = a.quote?.price ?? Infinity;
+                const priceB = b.quote?.price ?? Infinity;
+                return priceA - priceB;
               })
               .map(([connector, result]) => (
                 <QuoteCard
@@ -396,6 +396,7 @@ export function SwapView() {
                   isBest={!result.loading && !result.error && connector === bestConnector}
                   fromToken={fromToken}
                   toToken={toToken}
+                  amount={amount}
                   onSelect={
                     result.quote ? () => handleQuoteSelect(connector, result.quote!) : undefined
                   }

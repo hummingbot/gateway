@@ -14,6 +14,7 @@ interface QuoteCardProps {
   isBest?: boolean;
   fromToken: string;
   toToken: string;
+  amount: string;
   onSelect?: () => void;
 }
 
@@ -26,6 +27,7 @@ export function QuoteCard({
   isBest,
   fromToken,
   toToken,
+  amount,
   onSelect,
 }: QuoteCardProps) {
   const displayName = connector.charAt(0).toUpperCase() + connector.slice(1);
@@ -33,8 +35,8 @@ export function QuoteCard({
   return (
     <Card
       className={cn(
-        'cursor-pointer transition-all hover:bg-accent/50',
-        selected && 'ring-2 ring-primary bg-accent/30',
+        'cursor-pointer transition-all',
+        selected && 'ring-2 ring-primary',
         loading && 'opacity-60',
         error && 'border-destructive'
       )}
@@ -60,7 +62,7 @@ export function QuoteCard({
         )}
 
         {quote && !loading && !error && (
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-6">
             {/* Router Name & Badge */}
             <div className="flex items-center gap-2 min-w-[120px]">
               <div className="font-semibold">{displayName}</div>
@@ -71,29 +73,38 @@ export function QuoteCard({
               )}
             </div>
 
-            {/* Amount Out - Primary metric */}
+            {/* Price - Primary metric */}
             <div className="flex items-baseline gap-2">
-              <span className="text-sm text-muted-foreground">You receive:</span>
+              <span className="text-sm text-muted-foreground">Price:</span>
               <span className="text-2xl font-bold">
-                {formatTokenAmount(quote.amountOut || 0)}
+                {quote.price !== undefined
+                  ? quote.price.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 6,
+                    })
+                  : 'N/A'}
               </span>
-              <span className="text-sm text-muted-foreground">{toToken}</span>
             </div>
 
             {/* Key Metrics */}
-            <div className="flex items-center gap-6 text-sm">
-              {quote.price !== undefined && (
-                <div className="flex flex-col items-end">
-                  <span className="text-xs text-muted-foreground">Rate</span>
-                  <span className="font-medium">
-                    {quote.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
-                  </span>
-                </div>
-              )}
+            <div className="flex items-center gap-8 text-sm">
+              <div className="flex flex-col items-end">
+                <span className="text-xs text-muted-foreground">You Pay</span>
+                <span className="font-medium">
+                  {amount} {fromToken}
+                </span>
+              </div>
+
+              <div className="flex flex-col items-end">
+                <span className="text-xs text-muted-foreground">You Receive</span>
+                <span className="font-medium">
+                  {formatTokenAmount(quote.amountOut || 0)} {toToken}
+                </span>
+              </div>
 
               {quote.priceImpactPct !== undefined && (
                 <div className="flex flex-col items-end">
-                  <span className="text-xs text-muted-foreground">Impact</span>
+                  <span className="text-xs text-muted-foreground">Price Impact</span>
                   <span
                     className={cn(
                       'font-medium',
@@ -104,13 +115,6 @@ export function QuoteCard({
                   >
                     {formatPercent(quote.priceImpactPct)}
                   </span>
-                </div>
-              )}
-
-              {quote.minAmountOut !== undefined && (
-                <div className="flex flex-col items-end">
-                  <span className="text-xs text-muted-foreground">Min Out</span>
-                  <span className="font-medium">{formatTokenAmount(quote.minAmountOut)}</span>
                 </div>
               )}
             </div>
