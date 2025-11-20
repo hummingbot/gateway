@@ -20,8 +20,7 @@ function getLogLevelColor(line: string): string {
 export function LogViewer({ gatewayPath, className }: LogViewerProps) {
   const [logs, setLogs] = useState<string>('Loading logs...');
   const [autoScroll, setAutoScroll] = useState(true);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const viewportRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [isTauri, setIsTauri] = useState(false);
 
   // Check if running in Tauri
@@ -57,8 +56,12 @@ export function LogViewer({ gatewayPath, className }: LogViewerProps) {
 
   // Auto-scroll to bottom when logs update
   useEffect(() => {
-    if (autoScroll && viewportRef.current) {
-      viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
+    if (autoScroll && scrollAreaRef.current) {
+      // Find the viewport element inside ScrollArea
+      const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
     }
   }, [logs, autoScroll]);
 
@@ -92,8 +95,8 @@ export function LogViewer({ gatewayPath, className }: LogViewerProps) {
       </div>
 
       {/* Log Display */}
-      <ScrollArea className="h-[calc(100vh-16rem)] w-full rounded-md border bg-background">
-        <div ref={scrollRef} className="p-4">
+      <ScrollArea ref={scrollAreaRef} className="h-[calc(100vh-16rem)] w-full rounded-md border bg-background">
+        <div className="p-4">
           <pre className="text-xs font-mono">
             {logLines.map((line, i) => (
               <div key={i} className={getLogLevelColor(line)}>
