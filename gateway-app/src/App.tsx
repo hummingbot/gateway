@@ -2,23 +2,14 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { AppProvider, useApp } from './lib/AppContext';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from './components/ui/select';
 import { Button } from './components/ui/button';
 import { PortfolioView } from './components/PortfolioView';
 import { SwapView } from './components/SwapView';
 import { PoolsView } from './components/PoolsView';
 import { ActivityView } from './components/ActivityView';
 import { ConfigView } from './components/ConfigView';
-import { LogsSheet } from './components/LogsSheet';
-import { WalletSelector } from './components/WalletSelector';
 import { AddWalletModal } from './components/AddWalletModal';
-import { NetworkStatus } from './components/NetworkStatus';
+import { NavigationBar } from './components/NavigationBar';
 import { gatewayGet, gatewayPost } from './lib/api';
 import { showSuccessNotification } from './lib/notifications';
 
@@ -134,98 +125,20 @@ function AppContent() {
       />
       <div className={`flex flex-col h-screen ${isAndroid ? 'pt-safe pb-safe-bottom' : ''}`}>
         {/* Header */}
-        <header className="border-b px-4 md:px-6 py-3 md:py-4">
-        <div className="flex justify-between items-center gap-2">
-          <div className="flex items-center gap-2">
-            <img
-              src={darkMode ? '/logo-bw-dark-trans.png' : '/logo-bw-light-trans.png'}
-              alt="Hummingbot"
-              className="h-8 w-auto"
-            />
-            <h1 className="text-xl md:text-2xl font-bold">Gateway</h1>
-          </div>
-
-          <div className="flex gap-2 md:gap-4 items-center">
-            {/* Desktop: Full Wallet Selector */}
-            <div className="hidden sm:block">
-              <WalletSelector
-                allWallets={allWallets}
-                selectedWallet={selectedWallet}
-                selectedChain={selectedChain}
-                onWalletChange={handleWalletChange}
-                onAddWallet={() => setShowAddWallet(true)}
-              />
-            </div>
-
-            {/* Mobile: Wallet Icon Button */}
-            <Button
-              onClick={() => setShowWalletModal(true)}
-              variant="ghost"
-              size="icon"
-              className="sm:hidden h-10 w-10"
-              aria-label="Select wallet"
-              title={selectedWallet || 'No wallet'}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"></path>
-                <path d="m21 2-9.6 9.6"></path>
-                <circle cx="7.5" cy="15.5" r="5.5"></circle>
-              </svg>
-            </Button>
-
-            {/* Mobile: Network Icon Button */}
-            <Button
-              onClick={() => setShowNetworkModal(true)}
-              variant="ghost"
-              size="icon"
-              className="sm:hidden h-10 w-10"
-              aria-label="Select network"
-              title={`${selectedChain}-${selectedNetwork}`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 10a7.31 7.31 0 0 0 10 10Z"></path>
-                <path d="m9 15 3-3"></path>
-                <path d="M17 13a6 6 0 0 0-6-6"></path>
-                <path d="M21 13A10 10 0 0 0 11 3"></path>
-              </svg>
-            </Button>
-
-            {/* Desktop: Full Network Selector */}
-            <div className="hidden sm:flex sm:items-center sm:gap-4">
-              <Select
-                value={selectedNetwork}
-                onValueChange={setSelectedNetwork}
-              >
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {networks.length > 0 ? (
-                    networks.map((network) => (
-                      <SelectItem key={network} value={network}>
-                        {selectedChain}-{network}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value={selectedNetwork}>
-                      {selectedChain}-{selectedNetwork}
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              <NetworkStatus chain={selectedChain} network={selectedNetwork} />
-              <LogsSheet gatewayPath="/Users/feng/gateway" iconSize={16} />
-            </div>
-
-            {/* Mobile: Network Status (shown on mobile) */}
-            <div className="sm:hidden flex items-center gap-1">
-              <NetworkStatus chain={selectedChain} network={selectedNetwork} />
-              <LogsSheet gatewayPath="/Users/feng/gateway" iconSize={16} />
-            </div>
-
-          </div>
-        </div>
-      </header>
+        <NavigationBar
+          darkMode={darkMode}
+          allWallets={allWallets}
+          selectedWallet={selectedWallet}
+          selectedChain={selectedChain}
+          networks={networks}
+          selectedNetwork={selectedNetwork}
+          onWalletChange={handleWalletChange}
+          onAddWallet={() => setShowAddWallet(true)}
+          onNetworkChange={setSelectedNetwork}
+          onOpenWalletModal={() => setShowWalletModal(true)}
+          onOpenNetworkModal={() => setShowNetworkModal(true)}
+          gatewayPath="/Users/feng/gateway"
+        />
 
       {/* Add Wallet Modal */}
       <AddWalletModal
