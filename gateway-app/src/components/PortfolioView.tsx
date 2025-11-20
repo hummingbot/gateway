@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
@@ -35,6 +36,7 @@ interface Balance {
 
 export function PortfolioView() {
   const { selectedChain, selectedNetwork, selectedWallet, gatewayAvailable } = useApp();
+  const navigate = useNavigate();
   const [balances, setBalances] = useState<Balance[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
@@ -328,7 +330,7 @@ export function PortfolioView() {
                     <TableRow
                       key={i}
                       onClick={() => {
-                        window.location.href = `/pools/${position.poolAddress}`;
+                        navigate(`/pools/${position.poolAddress}`);
                       }}
                       className="cursor-pointer hover:bg-accent/50"
                     >
