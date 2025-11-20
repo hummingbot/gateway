@@ -10,6 +10,7 @@ import { ActivityView } from './components/ActivityView';
 import { ConfigView } from './components/ConfigView';
 import { AddWalletModal } from './components/AddWalletModal';
 import { NavigationBar } from './components/NavigationBar';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { gatewayGet, gatewayPost } from './lib/api';
 import { showSuccessNotification } from './lib/notifications';
 
@@ -402,11 +403,13 @@ function AppContent() {
 
 function App() {
   return (
-    <AppProvider>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </AppProvider>
+    </ErrorBoundary>
   );
 }
 
