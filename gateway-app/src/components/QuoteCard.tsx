@@ -78,9 +78,9 @@ export function QuoteCard({
               <span className="text-sm text-muted-foreground">Price:</span>
               <span className="text-2xl font-bold">
                 {quote.price !== undefined
-                  ? quote.price.toLocaleString(undefined, {
+                  ? parseFloat(quote.price.toFixed(4)).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
-                      maximumFractionDigits: 6,
+                      maximumFractionDigits: 4,
                     })
                   : 'N/A'}
               </span>
@@ -91,14 +91,22 @@ export function QuoteCard({
               <div className="flex flex-col items-end">
                 <span className="text-xs text-muted-foreground">You Pay</span>
                 <span className="font-medium">
-                  {amount} {fromToken}
+                  {parseFloat(parseFloat(amount).toFixed(4)).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 4,
+                  })}{' '}
+                  {fromToken}
                 </span>
               </div>
 
               <div className="flex flex-col items-end">
                 <span className="text-xs text-muted-foreground">You Receive</span>
                 <span className="font-medium">
-                  {formatTokenAmount(quote.amountOut || 0)} {toToken}
+                  {parseFloat((quote.amountOut || 0).toFixed(4)).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 4,
+                  })}{' '}
+                  {toToken}
                 </span>
               </div>
 
