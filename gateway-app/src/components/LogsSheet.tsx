@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import {
   Sheet,
@@ -8,6 +8,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from './ui/sheet';
+import { Kbd } from './ui/kbd';
 import { LogViewer } from './LogViewer';
 import { RestartButton } from './RestartButton';
 
@@ -18,6 +19,19 @@ interface LogsSheetProps {
 
 export function LogsSheet({ gatewayPath, iconSize = 16 }: LogsSheetProps) {
   const [open, setOpen] = useState(false);
+
+  // Keyboard shortcut: Cmd+L (Mac) or Ctrl+L (Windows/Linux)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'l') {
+        e.preventDefault();
+        setOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -51,8 +65,11 @@ export function LogsSheet({ gatewayPath, iconSize = 16 }: LogsSheetProps) {
       <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Gateway Logs</SheetTitle>
-          <SheetDescription>
-            Real-time logs from Gateway server
+          <SheetDescription className="flex items-center gap-2">
+            <span>Press</span>
+            <Kbd>⌘</Kbd>
+            <Kbd>L</Kbd>
+            <span>to toggle</span>
           </SheetDescription>
         </SheetHeader>
 
