@@ -42,10 +42,11 @@ export function LogsSheet({ gatewayPath, iconSize = 16 }: LogsSheetProps) {
       if (!isResizing) return;
 
       const newWidth = window.innerWidth - e.clientX;
-      // Min width: 320px (20rem), Max width: 90% of screen
+      // Min width: 320px (20rem), Max width: 95% of screen
       const minWidth = 320;
-      const maxWidth = window.innerWidth * 0.9;
+      const maxWidth = window.innerWidth * 0.95;
       const clampedWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
+      console.log('Resize:', { clientX: e.clientX, newWidth, clampedWidth, windowWidth: window.innerWidth });
       setWidth(clampedWidth);
     };
 
@@ -100,7 +101,7 @@ export function LogsSheet({ gatewayPath, iconSize = 16 }: LogsSheetProps) {
       <SheetContent
         ref={containerRef}
         side="right"
-        className="w-full overflow-y-auto p-0"
+        className="overflow-y-auto p-0 !w-auto sm:!max-w-none"
         style={{ width: `${width}px` }}
       >
         {/* Resize Handle */}
