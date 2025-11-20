@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 interface LogViewerProps {
   gatewayPath: string;
   className?: string;
+  onClear?: () => void;
 }
 
 function getLogLevelColor(line: string): string {
@@ -17,9 +18,8 @@ function getLogLevelColor(line: string): string {
   return 'text-foreground';
 }
 
-export function LogViewer({ gatewayPath, className }: LogViewerProps) {
+export function LogViewer({ gatewayPath, className, onClear }: LogViewerProps) {
   const [logs, setLogs] = useState<string>('Loading logs...');
-  const [autoScroll, setAutoScroll] = useState(true);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [isTauri, setIsTauri] = useState(false);
 
@@ -54,44 +54,41 @@ export function LogViewer({ gatewayPath, className }: LogViewerProps) {
     return () => clearInterval(interval);
   }, [gatewayPath, isTauri]);
 
-  // Auto-scroll to bottom when logs update
+  // Auto-scroll to bottom when logs update (always enabled)
   useEffect(() => {
-    if (autoScroll && scrollAreaRef.current) {
+    if (scrollAreaRef.current) {
       // Find the viewport element inside ScrollArea
       const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (viewport) {
         viewport.scrollTop = viewport.scrollHeight;
       }
     }
-  }, [logs, autoScroll]);
+  }, [logs]);
+
+  // Listen for clear logs event
+  useEffect(() => {
+    const handleClearEvent = () => {
+      handleClear();
+    };
+
+    window.addEventListener('clearLogs', handleClearEvent);
+    return () => window.removeEventListener('clearLogs', handleClearEvent);
+  }, []);
 
   const handleClear = () => {
     setLogs('');
+    if (onClear) onClear();
   };
 
   const logLines = logs.split('\n');
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
-      {/* Controls */}
+      {/* Line count */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
-            {logLines.length} lines
-          </span>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setAutoScroll(!autoScroll)}
-          >
-            Auto-scroll: {autoScroll ? 'ON' : 'OFF'}
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleClear}>
-            Clear Logs
-          </Button>
-        </div>
+        <span className="text-xs text-muted-foreground">
+          {logLines.length} lines
+        </span>
       </div>
 
       {/* Log Display */}
@@ -109,3 +106,6 @@ export function LogViewer({ gatewayPath, className }: LogViewerProps) {
     </div>
   );
 }
+
+// Export handle clear for external use
+export { LogViewer as default };
