@@ -820,25 +820,28 @@ export function PoolsView() {
               </Card>
 
               {/* Existing Positions - Only show if there are positions for this pool */}
-              {!loadingPositions && positions.length > 0 && (
-                <Card>
-                  <CardHeader className="p-3 md:p-6">
-                    <CardTitle>Your Positions</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-3 md:p-6">
-                    <div className="space-y-3">
-                      {positions.map((position, i) => (
-                        <LiquidityPositionCard
-                          key={i}
-                          position={position}
-                          onCollectFees={setPositionToCollectFees}
-                          onClosePosition={setPositionToClose}
-                        />
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              {(() => {
+                const poolPositions = positions.filter(p => p.poolAddress === selectedPool.address);
+                return !loadingPositions && poolPositions.length > 0 && (
+                  <Card>
+                    <CardHeader className="p-3 md:p-6">
+                      <CardTitle>Your Positions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 md:p-6">
+                      <div className="space-y-3">
+                        {poolPositions.map((position, i) => (
+                          <LiquidityPositionCard
+                            key={i}
+                            position={position}
+                            onCollectFees={setPositionToCollectFees}
+                            onClosePosition={setPositionToClose}
+                          />
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
             </>
           ) : (
             <Card>
