@@ -69,7 +69,31 @@ export function TokenAmountInput({
 
   return (
     <div className="space-y-2">
-      <div className="flex justify-between items-center">
+      {/* Label and Balance */}
+      <div className="flex justify-between items-center px-1">
+        <span className="text-sm font-medium text-muted-foreground">{label}</span>
+        {balance !== undefined && (
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <span className="text-xs">
+              Balance: {formatTokenAmount(balance)}
+            </span>
+            {hasBalance && !disabled && (
+              <Button
+                onClick={handleMaxClick}
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-xs"
+              >
+                MAX
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Token Selector and Amount Input on Same Line */}
+      <div className="flex items-center gap-3 p-4 bg-secondary/50 rounded-lg border">
+        {/* Token Selector */}
         {availableTokens && onSymbolChange ? (
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
@@ -77,10 +101,11 @@ export function TokenAmountInput({
                 variant="ghost"
                 role="combobox"
                 aria-expanded={open}
-                className="h-7 px-2 text-sm font-semibold hover:bg-accent -ml-2"
+                className="h-12 px-3 text-lg font-semibold hover:bg-accent"
+                disabled={disabled}
               >
                 <span className="truncate">{symbol || 'Select...'}</span>
-                <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[280px] p-0">
@@ -138,32 +163,19 @@ export function TokenAmountInput({
             </PopoverContent>
           </Popover>
         ) : (
-          <span className="text-sm font-semibold">{symbol}</span>
+          <span className="text-lg font-semibold px-3">{symbol}</span>
         )}
-        {balance !== undefined && (
-          <div className="text-sm text-muted-foreground">
-            Balance:{' '}
-            <button
-              onClick={handleMaxClick}
-              disabled={!hasBalance || disabled}
-              className={cn(
-                "font-medium",
-                hasBalance && !disabled ? "text-primary hover:underline cursor-pointer" : "cursor-default"
-              )}
-            >
-              {formatTokenAmount(balance)}
-            </button>
-          </div>
-        )}
+
+        {/* Amount Input */}
+        <Input
+          type="number"
+          placeholder={placeholder}
+          value={amount}
+          onChange={(e) => onAmountChange(e.target.value)}
+          disabled={disabled}
+          className="flex-1 text-2xl font-semibold border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-right h-12 px-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
       </div>
-      <Input
-        type="number"
-        placeholder={placeholder}
-        value={amount}
-        onChange={(e) => onAmountChange(e.target.value)}
-        disabled={disabled}
-        className="h-11"
-      />
     </div>
   );
 }

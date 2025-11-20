@@ -722,6 +722,7 @@ export function PoolsView() {
                                 placeholder="0.0"
                                 value={lowerPrice}
                                 onChange={(e) => handleMinPriceChange(e.target.value)}
+                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
                             </div>
                             <div className="space-y-2">
@@ -731,6 +732,7 @@ export function PoolsView() {
                                 placeholder="0.0"
                                 value={upperPrice}
                                 onChange={(e) => handleMaxPriceChange(e.target.value)}
+                                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
                             </div>
                           </div>

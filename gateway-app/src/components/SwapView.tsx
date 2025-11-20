@@ -208,21 +208,21 @@ export function SwapView() {
 
   return (
     <div className="p-3 md:p-6 space-y-3 md:space-y-6">
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardHeader className="p-3 md:p-6">
-          <CardTitle>Swap</CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">Router connectors only</p>
+      <Card className="w-full max-w-3xl mx-auto">
+        <CardHeader className="p-4 md:p-6">
+          <CardTitle className="text-xl md:text-2xl">Swap</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">Router connectors only</p>
         </CardHeader>
-        <CardContent className="space-y-4 p-3 md:p-6">
+        <CardContent className="space-y-5 p-4 md:p-6">
           {/* Connector Selection */}
           <div>
-            <label className="text-xs md:text-sm font-medium block mb-2">Connector</label>
+            <label className="text-sm font-medium block mb-2">Connector</label>
             <Select
               value={connector}
               onValueChange={setConnector}
               disabled={availableConnectors.length === 0}
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-12 text-base">
                 <SelectValue placeholder={availableConnectors.length === 0 ? "No router connectors available" : "Select connector"} />
               </SelectTrigger>
               <SelectContent>
@@ -247,12 +247,12 @@ export function SwapView() {
           />
 
           {/* Swap Direction Indicator */}
-          <div className="flex justify-center">
+          <div className="flex justify-center -my-2">
             <Button
               onClick={handleSwapDirection}
               variant="ghost"
               size="icon"
-              className="text-2xl rounded-full"
+              className="text-3xl rounded-full h-12 w-12"
               title="Swap direction"
             >
               ⇅
@@ -274,8 +274,8 @@ export function SwapView() {
           {/* Quote Details */}
           {quote && (
             <Card>
-              <CardContent className="p-3 md:pt-6">
-                <div className="space-y-2 text-xs md:text-sm">
+              <CardContent className="p-4 md:pt-6">
+                <div className="space-y-2 text-sm">
                   {quote.quoteId && (
                     <div className="flex justify-between border-b pb-2 mb-2">
                       <span>Quote ID:</span>
@@ -331,11 +331,11 @@ export function SwapView() {
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <Button
               onClick={handleGetQuote}
               disabled={loading || !amount}
-              className="flex-1"
+              className="flex-1 h-12 text-base"
               variant="outline"
             >
               {loading ? 'Loading...' : 'Get Quote'}
@@ -343,7 +343,7 @@ export function SwapView() {
             <Button
               onClick={handleExecuteSwap}
               disabled={loading || !quote || !selectedWallet}
-              className="flex-1"
+              className="flex-1 h-12 text-base"
             >
               {loading ? 'Executing...' : 'Swap'}
             </Button>
