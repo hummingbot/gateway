@@ -26,7 +26,6 @@ interface TokenAmountInputProps {
   onAmountChange: (amount: string) => void;
   onSymbolChange?: (symbol: string) => void;
   availableTokens?: { symbol: string; name?: string }[];
-  showMaxButton?: boolean;
   disabled?: boolean;
   placeholder?: string;
 }
@@ -39,7 +38,6 @@ export function TokenAmountInput({
   onAmountChange,
   onSymbolChange,
   availableTokens,
-  showMaxButton = true,
   disabled = false,
   placeholder = '0.0',
 }: TokenAmountInputProps) {
@@ -144,30 +142,28 @@ export function TokenAmountInput({
         )}
         {balance !== undefined && (
           <div className="text-sm text-muted-foreground">
-            Balance: {formatTokenAmount(balance)}
+            Balance:{' '}
+            <button
+              onClick={handleMaxClick}
+              disabled={!hasBalance || disabled}
+              className={cn(
+                "font-medium",
+                hasBalance && !disabled ? "text-primary hover:underline cursor-pointer" : "cursor-default"
+              )}
+            >
+              {formatTokenAmount(balance)}
+            </button>
           </div>
         )}
       </div>
-      <div className="flex gap-2">
-        <Input
-          type="number"
-          placeholder={placeholder}
-          value={amount}
-          onChange={(e) => onAmountChange(e.target.value)}
-          disabled={disabled}
-          className="flex-1 h-11"
-        />
-        {showMaxButton && (
-          <Button
-            onClick={handleMaxClick}
-            variant="outline"
-            size="default"
-            disabled={!hasBalance || disabled}
-          >
-            Max
-          </Button>
-        )}
-      </div>
+      <Input
+        type="number"
+        placeholder={placeholder}
+        value={amount}
+        onChange={(e) => onAmountChange(e.target.value)}
+        disabled={disabled}
+        className="h-11"
+      />
     </div>
   );
 }

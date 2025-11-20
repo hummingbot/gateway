@@ -415,7 +415,7 @@ function AppContent() {
             >
               <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
             </svg>
-            <span className="text-xs font-medium">Liquidity</span>
+            <span className="text-xs font-medium">Pools</span>
           </Button>
 
           <Button
@@ -440,7 +440,7 @@ function AppContent() {
             >
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
             </svg>
-            <span className="text-xs font-medium">Activity</span>
+            <span className="text-xs font-medium">Transactions</span>
           </Button>
 
           <Button

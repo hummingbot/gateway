@@ -244,7 +244,6 @@ export function SwapView() {
             onAmountChange={setAmount}
             onSymbolChange={setFromToken}
             availableTokens={availableTokens}
-            showMaxButton={true}
           />
 
           {/* Swap Direction Indicator */}
@@ -269,7 +268,6 @@ export function SwapView() {
             onAmountChange={() => {}}
             onSymbolChange={setToToken}
             availableTokens={availableTokens}
-            showMaxButton={false}
             disabled={true}
           />
 

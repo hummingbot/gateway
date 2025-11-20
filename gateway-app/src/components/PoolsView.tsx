@@ -681,7 +681,6 @@ export function PoolsView() {
                               amount={amount0}
                               balance={balances[selectedPool.baseSymbol] || '0'}
                               onAmountChange={setAmount0}
-                              showMaxButton={true}
                             />
                             <TokenAmountInput
                               label={selectedPool.quoteSymbol}
@@ -689,7 +688,6 @@ export function PoolsView() {
                               amount={amount1}
                               balance={balances[selectedPool.quoteSymbol] || '0'}
                               onAmountChange={setAmount1}
-                              showMaxButton={true}
                             />
                           </div>
 
