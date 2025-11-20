@@ -48,7 +48,7 @@ interface ChainData {
 }
 
 export function ConfigView() {
-  const { setDarkMode } = useApp();
+  const { setDarkMode, selectedChain } = useApp();
   const { namespace } = useParams<{ namespace: string }>();
   const navigate = useNavigate();
   const [namespaces, setNamespaces] = useState<string[]>([]);
@@ -261,21 +261,27 @@ export function ConfigView() {
 
       await updateAppConfigValue(item.path, themeName);
 
-      // Get the theme colors and apply them immediately
-      const selectedTheme = themes[themeName];
-      if (selectedTheme) {
-        // Update the app config with the new theme colors
-        const config = await readAppConfig();
-        const updatedConfig = {
-          ...config,
-          theme: {
-            ...config.theme,
-            colors: selectedTheme.colors,
-          },
-        };
+      // Extract chain name from path (e.g., "theme.chains.solana" -> "solana")
+      const chainName = item.path.split('.').pop();
 
-        // Apply the theme colors to the DOM
-        applyTheme(updatedConfig);
+      // Only apply theme if the chain being configured matches the currently selected chain
+      if (chainName === selectedChain) {
+        // Get the theme colors and apply them immediately
+        const selectedTheme = themes[themeName];
+        if (selectedTheme) {
+          // Update the app config with the new theme colors
+          const config = await readAppConfig();
+          const updatedConfig = {
+            ...config,
+            theme: {
+              ...config.theme,
+              colors: selectedTheme.colors,
+            },
+          };
+
+          // Apply the theme colors to the DOM
+          applyTheme(updatedConfig);
+        }
       }
 
       await showSuccessNotification(`Updated ${item.path} to ${themeName}`);
@@ -567,22 +573,24 @@ export function ConfigView() {
                                 </div>
                               ) : item.path.startsWith('theme.chains.') ? (
                                 // Theme chain selection: always show Select dropdown
-                                <Select
-                                  value={item.value}
-                                  onValueChange={(value) => handleThemeChange(item, value)}
-                                  disabled={saving}
-                                >
-                                  <SelectTrigger className="w-48 text-sm">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {Object.entries(themes).map(([key, theme]) => (
-                                      <SelectItem key={key} value={key}>
-                                        {theme.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                <div className="flex justify-end">
+                                  <Select
+                                    value={item.value}
+                                    onValueChange={(value) => handleThemeChange(item, value)}
+                                    disabled={saving}
+                                  >
+                                    <SelectTrigger className="w-48 text-sm">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {Object.entries(themes).map(([key, theme]) => (
+                                        <SelectItem key={key} value={key}>
+                                          {theme.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
                               ) : isEditing ? (
                                 // Non-boolean values: show input in edit mode
                                 <div className="flex gap-2 justify-end">

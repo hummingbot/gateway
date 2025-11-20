@@ -6,7 +6,7 @@
         "primary": "222.2 47.4% 11.2%",
         "primaryDark": "210 40% 98%",
         "accent": "210 40% 96.1%",
-        "accentDark": "217.2 32.6% 17.5%"
+        "accentDark": "217.2 91% 60%"
       }
     },
     "solana-purple": {
@@ -24,52 +24,52 @@
         "primary": "193 87% 62%",
         "primaryDark": "193 87% 52%",
         "accent": "162 63% 41%",
-        "accentDark": "162 63% 31%"
+        "accentDark": "162 63% 55%"
       }
     },
     "ocean-breeze": {
       "name": "Ocean Breeze",
       "colors": {
         "primary": "195 100% 39%",
-        "primaryDark": "195 100% 29%",
+        "primaryDark": "195 100% 50%",
         "accent": "174 72% 56%",
-        "accentDark": "174 72% 46%"
+        "accentDark": "174 72% 56%"
       }
     },
     "sunset-orange": {
       "name": "Sunset Orange",
       "colors": {
         "primary": "24 95% 53%",
-        "primaryDark": "24 95% 43%",
+        "primaryDark": "24 95% 53%",
         "accent": "45 93% 47%",
-        "accentDark": "45 93% 37%"
+        "accentDark": "45 93% 57%"
       }
     },
     "forest-green": {
       "name": "Forest Green",
       "colors": {
         "primary": "142 71% 45%",
-        "primaryDark": "142 71% 35%",
+        "primaryDark": "142 71% 55%",
         "accent": "173 58% 39%",
-        "accentDark": "173 58% 29%"
+        "accentDark": "173 58% 55%"
       }
     },
     "royal-purple": {
       "name": "Royal Purple",
       "colors": {
         "primary": "259 94% 51%",
-        "primaryDark": "259 94% 41%",
+        "primaryDark": "259 94% 51%",
         "accent": "291 64% 42%",
-        "accentDark": "291 64% 32%"
+        "accentDark": "291 64% 58%"
       }
     },
     "crimson-red": {
       "name": "Crimson Red",
       "colors": {
         "primary": "348 83% 47%",
-        "primaryDark": "348 83% 37%",
+        "primaryDark": "348 83% 57%",
         "accent": "0 79% 63%",
-        "accentDark": "0 79% 53%"
+        "accentDark": "0 79% 63%"
       }
     },
     "midnight-blue": {
@@ -94,9 +94,9 @@
       "name": "Cyber Teal",
       "colors": {
         "primary": "180 100% 40%",
-        "primaryDark": "180 100% 30%",
+        "primaryDark": "180 100% 50%",
         "accent": "160 100% 50%",
-        "accentDark": "160 100% 40%"
+        "accentDark": "160 100% 50%"
       }
     }
   }
