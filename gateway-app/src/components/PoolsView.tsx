@@ -835,6 +835,8 @@ export function PoolsView() {
                           <LiquidityPositionCard
                             key={i}
                             position={position}
+                            baseSymbol={selectedPool?.baseSymbol}
+                            quoteSymbol={selectedPool?.quoteSymbol}
                             onCollectFees={setPositionToCollectFees}
                             onClosePosition={setPositionToClose}
                           />

@@ -1,18 +1,24 @@
 import { useMemo } from 'react';
 import { Button } from './ui/button';
-import { capitalize, shortenAddress } from '@/lib/utils/string';
+import { shortenAddress } from '@/lib/utils/string';
 import { formatTokenAmount } from '@/lib/utils/format';
 import type { PositionWithConnector as Position } from '@/lib/gateway-types';
 import { Area, AreaChart, ReferenceLine, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from './ui/chart';
+import { useApp } from '@/lib/AppContext';
+import { ExternalLink } from 'lucide-react';
 
 interface LiquidityPositionCardProps {
   position: Position;
+  baseSymbol?: string;
+  quoteSymbol?: string;
   onCollectFees?: (position: Position) => void;
   onClosePosition?: (position: Position) => void;
 }
 
-export function LiquidityPositionCard({ position, onCollectFees, onClosePosition }: LiquidityPositionCardProps) {
+export function LiquidityPositionCard({ position, baseSymbol, quoteSymbol, onCollectFees, onClosePosition }: LiquidityPositionCardProps) {
+  const { selectedNetwork } = useApp();
+
   // Generate chart data for step area chart
   const chartData = useMemo(() => {
     const currentPrice = position.price;
@@ -43,17 +49,31 @@ export function LiquidityPositionCard({ position, onCollectFees, onClosePosition
     ];
   }, [position]);
 
+  // Generate Solscan URL for position address
+  const explorerUrl = useMemo(() => {
+    const baseUrl = selectedNetwork === 'devnet'
+      ? 'https://solscan.io/account'
+      : 'https://solscan.io/account';
+    const cluster = selectedNetwork === 'devnet' ? '?cluster=devnet' : '';
+    return `${baseUrl}/${position.address}${cluster}`;
+  }, [position.address, selectedNetwork]);
+
   return (
     <div className="border rounded p-3 md:p-4 text-xs md:text-sm space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <span className="text-muted-foreground">Connector:</span>
-          <p className="font-medium">{capitalize(position.connector)}</p>
+      {/* Price Range Header with Position Link */}
+      <div className="flex items-center justify-between">
+        <div className="text-base md:text-lg font-semibold">
+          {position.lowerPrice.toFixed(4)} - {position.upperPrice.toFixed(4)}
         </div>
-        <div>
-          <span className="text-muted-foreground">Pool:</span>
-          <p className="font-mono text-xs truncate">{shortenAddress(position.poolAddress, 8, 6)}</p>
-        </div>
+        <a
+          href={explorerUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 font-mono text-xs hover:text-primary transition-colors"
+        >
+          {shortenAddress(position.address, 8, 6)}
+          <ExternalLink className="w-3 h-3" />
+        </a>
       </div>
 
       {/* Position Liquidity Visualization */}
@@ -72,7 +92,7 @@ export function LiquidityPositionCard({ position, onCollectFees, onClosePosition
           }}
           className="h-[120px] w-full"
         >
-          <AreaChart data={chartData} margin={{ top: 20, right: 10, left: 10, bottom: 10 }}>
+          <AreaChart data={chartData} margin={{ top: 20, right: 40, left: 40, bottom: 10 }}>
             <defs>
               <linearGradient id="fillQuote" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.8} />
@@ -85,9 +105,13 @@ export function LiquidityPositionCard({ position, onCollectFees, onClosePosition
             </defs>
             <XAxis
               dataKey="price"
-              tickFormatter={(value: any) => value.toFixed(2)}
+              type="number"
+              domain={[(dataMin: number) => dataMin * 0.95, (dataMax: number) => dataMax * 1.05]}
+              ticks={[position.lowerPrice, position.upperPrice]}
+              tickFormatter={(value: any) => value.toFixed(4)}
               tick={{ fontSize: 10 }}
               stroke="hsl(var(--muted-foreground))"
+              interval={0}
             />
             <YAxis hide />
             <ChartTooltip
@@ -95,13 +119,32 @@ export function LiquidityPositionCard({ position, onCollectFees, onClosePosition
                 <ChartTooltipContent
                   labelFormatter={(_: any, payload: any) => {
                     if (payload && payload[0]) {
-                      return `Price: ${payload[0].payload.price.toFixed(4)}`;
+                      const price = payload[0].payload.price.toFixed(4);
+                      // Check if we're hovering over quote (left) or base (right) area
+                      const hasQuote = payload.some((p: any) => p.dataKey === 'quote' && p.value > 0);
+                      const hasBase = payload.some((p: any) => p.dataKey === 'base' && p.value > 0);
+
+                      if (hasQuote) {
+                        return `Min Price: ${price}`;
+                      } else if (hasBase) {
+                        return `Max Price: ${price}`;
+                      }
+                      return `Price: ${price}`;
                     }
                     return '';
                   }}
                   formatter={(value: any, name: any) => {
                     if (value === 0) return null;
-                    return [`${Number(value).toFixed(4)}`, name === 'quote' ? 'Quote' : 'Base'];
+                    // For base token, show actual token amount (not price-adjusted)
+                    const actualValue = name === 'base' ? position.baseTokenAmount : value;
+                    const formattedValue = Number(actualValue).toFixed(2);
+                    if (name === 'quote' && quoteSymbol) {
+                      return [`Quote Amount: ${formattedValue} ${quoteSymbol}`, ''];
+                    } else if (name === 'base' && baseSymbol) {
+                      return [`Base Amount: ${formattedValue} ${baseSymbol}`, ''];
+                    }
+                    const label = name === 'quote' ? 'Quote Amount' : 'Base Amount';
+                    return [`${label}: ${formattedValue}`, ''];
                   }}
                 />
               }
@@ -110,7 +153,12 @@ export function LiquidityPositionCard({ position, onCollectFees, onClosePosition
               x={position.price}
               stroke="hsl(var(--foreground))"
               strokeDasharray="3 3"
-              label={{ value: 'Current', position: 'top', fontSize: 10 }}
+              label={{
+                value: `${position.price.toFixed(4)}`,
+                position: 'top',
+                fontSize: 10,
+                fill: 'hsl(var(--foreground))'
+              }}
             />
             <Area
               type="step"
@@ -128,13 +176,18 @@ export function LiquidityPositionCard({ position, onCollectFees, onClosePosition
             />
           </AreaChart>
         </ChartContainer>
+      </div>
+
+      {/* Token Amounts */}
+      <div className="space-y-1">
+        <div className="text-xs text-muted-foreground">Token Amounts</div>
         <div className="flex justify-between text-xs">
-          <span className="text-muted-foreground">
-            {formatTokenAmount(position.lowerPrice)} - {formatTokenAmount(position.upperPrice)}
-          </span>
-          <span className="text-muted-foreground">
-            Current: {formatTokenAmount(position.price)}
-          </span>
+          <span>Base:</span>
+          <span className="font-medium">{formatTokenAmount(position.baseTokenAmount)}</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span>Quote:</span>
+          <span className="font-medium">{formatTokenAmount(position.quoteTokenAmount)}</span>
         </div>
       </div>
 

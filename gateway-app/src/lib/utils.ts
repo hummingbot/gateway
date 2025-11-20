@@ -44,3 +44,32 @@ export async function getSelectableTokenList(
 
   return tokenList;
 }
+
+/**
+ * Get token symbol by address from token list
+ * Handles special cases like native tokens and wrapped native tokens
+ */
+export function getTokenSymbol(
+  address: string,
+  tokenList: TokenInfo[],
+  nativeSymbol?: string
+): string {
+  // Try exact match first
+  const token = tokenList.find(t => t.address === address);
+  if (token) {
+    return token.symbol;
+  }
+
+  // Check if this might be a wrapped native token (e.g., WSOL)
+  // Common wrapped native addresses on Solana
+  const wrappedNativeAddresses = [
+    'So11111111111111111111111111111111111111112', // WSOL
+  ];
+
+  if (wrappedNativeAddresses.includes(address)) {
+    return nativeSymbol || 'SOL';
+  }
+
+  // If no match found, return Unknown
+  return 'Unknown';
+}

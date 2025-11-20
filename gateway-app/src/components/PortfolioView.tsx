@@ -14,14 +14,13 @@ import {
 } from './ui/table';
 import { EmptyState } from './ui/EmptyState';
 import { LoadingState } from './ui/LoadingState';
-import { LiquidityPositionCard } from './LiquidityPositionCard';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
 import { AddTokenModal } from './AddTokenModal';
 import { TokenDetailsModal } from './TokenDetailsModal';
 import { ConfirmModal } from './ConfirmModal';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
-import { getSelectableTokenList, TokenInfo } from '@/lib/utils';
+import { getSelectableTokenList, getTokenSymbol, TokenInfo } from '@/lib/utils';
 import type { PositionWithConnector as Position, ConnectorConfig } from '@/lib/gateway-types';
 import { capitalize, shortenAddress, getChainNetwork } from '@/lib/utils/string';
 import { formatTokenAmount, formatBalance } from '@/lib/utils/format';
@@ -309,11 +308,43 @@ export function PortfolioView() {
           ) : positions.length === 0 ? (
             <p className="text-sm text-muted-foreground">No positions found</p>
           ) : (
-            <div className="space-y-3">
-              {positions.map((position, i) => (
-                <LiquidityPositionCard key={i} position={position} />
-              ))}
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Connector</TableHead>
+                  <TableHead>Trading Pair</TableHead>
+                  <TableHead className="text-right">Base Amount</TableHead>
+                  <TableHead className="text-right">Quote Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {positions.map((position, i) => {
+                  // Get token symbols from token list by address
+                  const baseSymbol = getTokenSymbol(position.baseTokenAddress, tokenList, nativeSymbol);
+                  const quoteSymbol = getTokenSymbol(position.quoteTokenAddress, tokenList, nativeSymbol);
+                  const tradingPair = `${baseSymbol}/${quoteSymbol}`;
+
+                  return (
+                    <TableRow
+                      key={i}
+                      onClick={() => {
+                        window.location.href = `/pools/${position.poolAddress}`;
+                      }}
+                      className="cursor-pointer hover:bg-accent/50"
+                    >
+                      <TableCell>{capitalize(position.connector)}</TableCell>
+                      <TableCell>{tradingPair}</TableCell>
+                      <TableCell className="text-right">
+                        {formatTokenAmount(position.baseTokenAmount)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatTokenAmount(position.quoteTokenAmount)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
