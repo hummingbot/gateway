@@ -36,8 +36,12 @@
     "notification": {
       "all": true
     },
-    "shell": {
-      "open": true
+    "opener": {
+      "scope": [
+        {
+          "url": "^https?://.*"
+        }
+      ]
     }
   }
 }

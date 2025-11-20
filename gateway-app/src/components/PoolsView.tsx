@@ -329,7 +329,7 @@ export function PoolsView() {
     await showSuccessNotification(`Pool added successfully!`);
   }
 
-  async function handleDeletePool(pool: Pool) {
+  async function handleDeletePool(pool: PoolTemplate) {
     try {
       await gatewayAPI.pools.delete(pool.address);
       await showSuccessNotification(`Pool ${pool.baseSymbol}-${pool.quoteSymbol} deleted successfully!`);
