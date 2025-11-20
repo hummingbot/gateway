@@ -46,7 +46,7 @@ interface ChainData {
 }
 
 export function ConfigView() {
-  const { setDarkMode, selectedChain } = useApp();
+  const { setDarkMode, selectedChain, reloadAppConfig } = useApp();
   const { namespace } = useParams<{ namespace: string }>();
   const navigate = useNavigate();
   const [namespaces, setNamespaces] = useState<string[]>([]);
@@ -284,6 +284,9 @@ export function ConfigView() {
       setSaving(true);
 
       await updateAppConfigValue(item.path, themeName);
+
+      // Reload app config in AppContext so theme state stays in sync
+      await reloadAppConfig();
 
       // Extract chain name from path (e.g., "theme.chains.solana" -> "solana")
       const chainName = item.path.split('.').pop();

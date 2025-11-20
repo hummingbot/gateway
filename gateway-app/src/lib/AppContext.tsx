@@ -15,6 +15,7 @@ interface AppState {
   toggleTheme: () => void;
   gatewayAvailable: boolean | null; // null = checking, true = available, false = unavailable
   checkGatewayStatus: () => Promise<void>;
+  reloadAppConfig: () => Promise<void>;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -136,6 +137,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function reloadAppConfig() {
+    try {
+      const config = await readAppConfig();
+      setAppConfig(config);
+      setDarkMode(config.darkMode ?? true);
+      console.log('Reloaded app config from disk');
+    } catch (err) {
+      console.error('Failed to reload app config:', err);
+    }
+  }
+
   return (
     <AppContext.Provider
       value={{
@@ -150,6 +162,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         toggleTheme,
         gatewayAvailable,
         checkGatewayStatus,
+        reloadAppConfig,
       }}
     >
       {children}
