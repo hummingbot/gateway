@@ -20,6 +20,7 @@ import { Badge } from './ui/badge';
 import { shortenAddress } from '@/lib/utils/string';
 import { capitalize } from '@/lib/utils/string';
 import { getPoolUrl } from '@/lib/pool-urls';
+import { openExternalUrl } from '@/lib/utils/external-link';
 import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PoolTemplate } from '@/lib/gateway-types';
@@ -71,15 +72,13 @@ export function PoolDetailsModal({
         <div className="flex justify-between py-2 border-b">
           <span className="text-muted-foreground">Address</span>
           {poolUrl ? (
-            <a
-              href={poolUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-mono text-xs hover:text-primary transition-colors inline-flex items-center gap-1"
+            <button
+              onClick={() => openExternalUrl(poolUrl)}
+              className="font-mono text-xs hover:text-primary transition-colors inline-flex items-center gap-1 cursor-pointer"
             >
               {shortenAddress(pool.address, 8, 8)}
               <ExternalLink className="h-3 w-3" />
-            </a>
+            </button>
           ) : (
             <span className="font-mono text-xs">{shortenAddress(pool.address, 8, 8)}</span>
           )}

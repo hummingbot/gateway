@@ -38,6 +38,7 @@ import type {
 import { capitalize, getChainNetwork, shortenAddress } from '@/lib/utils/string';
 import { formatTokenAmount, formatNumber } from '@/lib/utils/format';
 import { getPoolUrl, getDexName } from '@/lib/pool-urls';
+import { openExternalUrl } from '@/lib/utils/external-link';
 import { ExternalLink, ChevronDown, Plus } from 'lucide-react';
 
 // UI-specific Pool type with connector property added
@@ -677,17 +678,11 @@ export function PoolsView() {
                         <Button
                           variant="outline"
                           size="sm"
-                          asChild
+                          onClick={() => openExternalUrl(poolUrl)}
+                          className="flex items-center gap-2"
                         >
-                          <a
-                            href={poolUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2"
-                          >
-                            <span>View on {getDexName(selectedPool.connector)}</span>
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
+                          <span>View on {getDexName(selectedPool.connector)}</span>
+                          <ExternalLink className="h-3 w-3" />
                         </Button>
                       ) : null;
                     })()}
