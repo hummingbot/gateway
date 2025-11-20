@@ -260,6 +260,24 @@ export function ConfigView() {
       setSaving(true);
 
       await updateAppConfigValue(item.path, themeName);
+
+      // Get the theme colors and apply them immediately
+      const selectedTheme = themes[themeName];
+      if (selectedTheme) {
+        // Update the app config with the new theme colors
+        const config = await readAppConfig();
+        const updatedConfig = {
+          ...config,
+          theme: {
+            ...config.theme,
+            colors: selectedTheme.colors,
+          },
+        };
+
+        // Apply the theme colors to the DOM
+        applyTheme(updatedConfig);
+      }
+
       await showSuccessNotification(`Updated ${item.path} to ${themeName}`);
 
       // Reload config to get updated value
