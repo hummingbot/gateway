@@ -133,7 +133,7 @@ export function NetworkStatus({ chain, network }: NetworkStatusProps) {
         <DialogTrigger asChild>
           <Button
             variant="ghost"
-            className="flex items-center gap-2 px-2 py-1 h-auto"
+            className="flex items-center gap-2 px-3 h-10"
             title="View network status"
           >
             <div className="flex items-center gap-1.5">

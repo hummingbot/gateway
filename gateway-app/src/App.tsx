@@ -191,7 +191,7 @@ function AppContent() {
             </Button>
 
             {/* Desktop: Full Network Selector */}
-            <div className="hidden sm:flex sm:items-center sm:gap-2">
+            <div className="hidden sm:flex sm:items-center sm:gap-4">
               <Select
                 value={selectedNetwork}
                 onValueChange={setSelectedNetwork}
