@@ -66,28 +66,15 @@ export function LogViewer({ gatewayPath, className }: LogViewerProps) {
     setLogs('');
   };
 
-  const handleDownload = () => {
-    const blob = new Blob([logs], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `gateway-logs-${new Date().toISOString()}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
   const logLines = logs.split('\n');
 
   return (
-    <div className={cn('flex flex-col gap-4', className)}>
+    <div className={cn('flex flex-col gap-2', className)}>
       {/* Controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold">Gateway Logs</h2>
           <span className="text-xs text-muted-foreground">
-            ({logLines.length} lines)
+            {logLines.length} lines
           </span>
         </div>
         <div className="flex gap-2">
@@ -98,20 +85,14 @@ export function LogViewer({ gatewayPath, className }: LogViewerProps) {
           >
             Auto-scroll: {autoScroll ? 'ON' : 'OFF'}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleDownload}>
-            Download
-          </Button>
           <Button variant="outline" size="sm" onClick={handleClear}>
-            Clear
-          </Button>
-          <Button variant="outline" size="sm" onClick={fetchLogs}>
-            Refresh
+            Clear Logs
           </Button>
         </div>
       </div>
 
       {/* Log Display */}
-      <ScrollArea className="h-[600px] w-full rounded-md border bg-background">
+      <ScrollArea className="h-[calc(100vh-16rem)] w-full rounded-md border bg-background">
         <div ref={scrollRef} className="p-4">
           <pre className="text-xs font-mono">
             {logLines.map((line, i) => (

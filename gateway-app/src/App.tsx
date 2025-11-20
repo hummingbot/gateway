@@ -15,7 +15,7 @@ import { SwapView } from './components/SwapView';
 import { PoolsView } from './components/PoolsView';
 import { ActivityView } from './components/ActivityView';
 import { ConfigView } from './components/ConfigView';
-import { LogViewer } from './components/LogViewer';
+import { LogsSheet } from './components/LogsSheet';
 import { WalletSelector } from './components/WalletSelector';
 import { AddWalletModal } from './components/AddWalletModal';
 import { NetworkStatus } from './components/NetworkStatus';
@@ -215,12 +215,14 @@ function AppContent() {
                 </SelectContent>
               </Select>
               <NetworkStatus chain={selectedChain} network={selectedNetwork} />
+              <LogsSheet gatewayPath="/Users/feng/gateway" iconSize={16} />
               <RestartButton iconSize={16} />
             </div>
 
             {/* Mobile: Network Status (shown on mobile) */}
             <div className="sm:hidden flex items-center gap-1">
               <NetworkStatus chain={selectedChain} network={selectedNetwork} />
+              <LogsSheet gatewayPath="/Users/feng/gateway" iconSize={14} />
               <RestartButton iconSize={14} />
             </div>
 
@@ -339,7 +341,6 @@ function AppContent() {
           <Route path="/pools/:address" element={<PoolsView />} />
           <Route path="/transactions" element={<ActivityView />} />
           <Route path="/transactions/:signature" element={<ActivityView />} />
-          <Route path="/logs" element={<LogViewer gatewayPath="/Users/feng/gateway" />} />
           <Route path="/config" element={<Navigate to="/config/app" replace />} />
           <Route path="/config/:namespace" element={<ConfigView />} />
         </Routes>
@@ -454,36 +455,6 @@ function AppContent() {
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
             </svg>
             <span className="text-xs font-medium">Transactions</span>
-          </NavLink>
-
-          <NavLink
-            to="/logs"
-            className={({ isActive }) =>
-              `flex flex-col items-center justify-center flex-1 h-full gap-1 ${
-                isActive
-                  ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`
-            }
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" x2="8" y1="13" y2="13" />
-              <line x1="16" x2="8" y1="17" y2="17" />
-              <polyline points="10 9 9 9 8 9" />
-            </svg>
-            <span className="text-xs font-medium">Logs</span>
           </NavLink>
 
           <NavLink
