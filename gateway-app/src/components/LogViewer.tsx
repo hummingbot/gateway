@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-// @ts-ignore - react-window types are not properly exported
-import { FixedSizeList as List } from 'react-window';
+// @ts-ignore - react-window import
+import * as ReactWindow from 'react-window';
 import { cn } from '@/lib/utils';
+
+const FixedSizeList = ReactWindow.FixedSizeList;
 
 interface LogViewerProps {
   gatewayPath: string;
@@ -20,7 +22,7 @@ function getLogLevelColor(line: string): string {
 
 export function LogViewer({ gatewayPath, className, onClear }: LogViewerProps) {
   const [logs, setLogs] = useState<string>('Loading logs...');
-  const listRef = useRef<List>(null);
+  const listRef = useRef<any>(null);
   const [isTauri, setIsTauri] = useState(false);
 
   // Check if running in Tauri
@@ -94,7 +96,7 @@ export function LogViewer({ gatewayPath, className, onClear }: LogViewerProps) {
 
       {/* Virtualized Log Display - Only renders visible lines */}
       <div className="rounded-md border bg-background">
-        <List
+        <FixedSizeList
           ref={listRef}
           height={window.innerHeight - 256} // Equivalent to h-[calc(100vh-16rem)]
           itemCount={logLines.length}
@@ -103,7 +105,7 @@ export function LogViewer({ gatewayPath, className, onClear }: LogViewerProps) {
           className="font-mono"
         >
           {Row}
-        </List>
+        </FixedSizeList>
       </div>
     </div>
   );
