@@ -95,8 +95,8 @@ export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: Pool
   };
 
   return (
-    <div className="relative">
-      <div className="absolute top-2 right-2 z-10 flex gap-1">
+    <div className="space-y-2">
+      <div className="flex justify-end gap-1">
         <Button
           variant="outline"
           size="icon"

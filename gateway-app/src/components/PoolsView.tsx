@@ -658,34 +658,36 @@ export function PoolsView() {
                             Bin Step: {poolInfo.binStep}
                           </Badge>
                         )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowPoolDetails(true)}
-                        >
-                          Pool Details
-                        </Button>
                       </div>
                     </div>
-                    {(() => {
-                      const poolUrl = getPoolUrl({
-                        connector: selectedPool.connector,
-                        type: selectedPool.type,
-                        network: selectedPool.network,
-                        poolAddress: selectedPool.address,
-                      });
-                      return poolUrl ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openExternalUrl(poolUrl)}
-                          className="flex items-center gap-2"
-                        >
-                          <span>View on {getDexName(selectedPool.connector)}</span>
-                          <ExternalLink className="h-3 w-3" />
-                        </Button>
-                      ) : null;
-                    })()}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowPoolDetails(true)}
+                      >
+                        Pool Details
+                      </Button>
+                      {(() => {
+                        const poolUrl = getPoolUrl({
+                          connector: selectedPool.connector,
+                          type: selectedPool.type,
+                          network: selectedPool.network,
+                          poolAddress: selectedPool.address,
+                        });
+                        return poolUrl ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openExternalUrl(poolUrl)}
+                            className="flex items-center gap-2"
+                          >
+                            <span>View on {getDexName(selectedPool.connector)}</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </Button>
+                        ) : null;
+                      })()}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="p-3 md:p-6">
