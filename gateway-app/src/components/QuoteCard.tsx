@@ -86,8 +86,8 @@ export function QuoteCard({
               </span>
             </div>
 
-            {/* Key Metrics */}
-            <div className="flex items-center gap-8 text-sm">
+            {/* Key Metrics - Hidden on mobile */}
+            <div className="hidden md:flex items-center gap-8 text-sm">
               <div className="flex flex-col items-end">
                 <span className="text-xs text-muted-foreground">You Pay</span>
                 <span className="font-medium">
