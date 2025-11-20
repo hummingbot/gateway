@@ -641,8 +641,8 @@ export function PoolsView() {
               {/* Pool Info */}
               <Card>
                 <CardHeader className="p-3 md:p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                    <div className="space-y-2 flex-1">
                       <CardTitle>
                         {selectedPool.baseSymbol}-{selectedPool.quoteSymbol}
                       </CardTitle>
@@ -659,6 +659,25 @@ export function PoolsView() {
                           </Badge>
                         )}
                       </div>
+                      {poolInfo && (
+                        <div className="flex flex-col md:flex-row md:flex-wrap gap-2 md:gap-4 text-sm text-muted-foreground">
+                          <div>
+                            <span className="font-medium">Total {selectedPool.baseSymbol}:</span>{' '}
+                            {poolInfo.baseTokenAmount.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 4,
+                            })}
+                          </div>
+                          <Separator orientation="vertical" className="hidden md:block h-4 self-center" />
+                          <div>
+                            <span className="font-medium">Total {selectedPool.quoteSymbol}:</span>{' '}
+                            {poolInfo.quoteTokenAmount.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 4,
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Button

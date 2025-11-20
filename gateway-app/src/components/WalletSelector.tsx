@@ -154,6 +154,11 @@ export function WalletSelector({
           <DrawerDescription>Choose a wallet or add a new one</DrawerDescription>
         </DrawerHeader>
         <WalletList className="px-4 pb-4 max-h-[60vh] overflow-y-auto" />
+        <DrawerFooter className="pt-2">
+          <DrawerClose asChild>
+            <Button variant="outline">Close</Button>
+          </DrawerClose>
+        </DrawerFooter>
       </DrawerContent>
     </Drawer>
   );

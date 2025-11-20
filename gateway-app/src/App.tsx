@@ -20,8 +20,6 @@ function AppContent() {
   const [allWallets, setAllWallets] = useState<Array<{chain: string, walletAddresses: string[]}>>([]);
   const [networks, setNetworks] = useState<string[]>([]);
   const [showAddWallet, setShowAddWallet] = useState(false);
-  const [showNetworkModal, setShowNetworkModal] = useState(false);
-  const [showWalletModal, setShowWalletModal] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
 
   useEffect(() => {
@@ -136,8 +134,6 @@ function AppContent() {
           onWalletChange={handleWalletChange}
           onAddWallet={() => setShowAddWallet(true)}
           onNetworkChange={setSelectedNetwork}
-          onOpenWalletModal={() => setShowWalletModal(true)}
-          onOpenNetworkModal={() => setShowNetworkModal(true)}
           gatewayPath="/Users/feng/gateway"
         />
 
@@ -148,99 +144,6 @@ function AppContent() {
         onAddWallet={handleAddWallet}
         defaultChain={selectedChain}
       />
-
-      {/* Network Selection Modal (Mobile) */}
-      {showNetworkModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
-          <div className="bg-background w-full sm:w-96 sm:rounded-lg rounded-t-lg max-h-[80vh] overflow-y-auto">
-            <div className="sticky top-0 bg-background border-b px-4 py-3 flex justify-between items-center">
-              <h3 className="font-semibold">Select Network</h3>
-              <Button
-                onClick={() => setShowNetworkModal(false)}
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </Button>
-            </div>
-            <div className="p-4 space-y-2">
-              {networks.map((network) => (
-                <Button
-                  key={network}
-                  onClick={() => {
-                    setSelectedNetwork(network);
-                    setShowNetworkModal(false);
-                  }}
-                  variant={selectedNetwork === network ? "default" : "ghost"}
-                  className="w-full justify-start px-4 py-3 h-auto"
-                >
-                  <div className="font-medium">{selectedChain}-{network}</div>
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Wallet Selection Modal (Mobile) */}
-      {showWalletModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
-          <div className="bg-background w-full sm:w-96 sm:rounded-lg rounded-t-lg max-h-[80vh] overflow-y-auto">
-            <div className="sticky top-0 bg-background border-b px-4 py-3 flex justify-between items-center">
-              <h3 className="font-semibold">Select Wallet</h3>
-              <Button
-                onClick={() => setShowWalletModal(false)}
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </Button>
-            </div>
-            <div className="p-4 space-y-4">
-              {allWallets.map((wallet) => (
-                <div key={wallet.chain}>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-2 capitalize">{wallet.chain}</h4>
-                  <div className="space-y-2">
-                    {wallet.walletAddresses.map((address) => (
-                      <Button
-                        key={address}
-                        onClick={async () => {
-                          await handleWalletChange(address, wallet.chain);
-                          setShowWalletModal(false);
-                        }}
-                        variant={selectedWallet === address && selectedChain === wallet.chain ? "default" : "ghost"}
-                        className="w-full justify-start px-4 py-3 h-auto"
-                      >
-                        <div className="font-mono text-sm">
-                          {address.substring(0, 6)}...{address.substring(address.length - 4)}
-                        </div>
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              <Button
-                onClick={() => {
-                  setShowWalletModal(false);
-                  setShowAddWallet(true);
-                }}
-                variant="outline"
-                className="w-full px-4 py-3 h-auto border-2 border-dashed"
-              >
-                + Add Wallet
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto">

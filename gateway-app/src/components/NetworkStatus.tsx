@@ -20,6 +20,7 @@ import {
 } from './ui/drawer';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { RestartButton } from './RestartButton';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import type { StatusResponseType as ChainStatus } from '@/lib/gateway-types';
 import { cn } from '@/lib/utils';
@@ -115,13 +116,7 @@ export function NetworkStatus({ chain, network }: NetworkStatusProps) {
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button
-            onClick={fetchStatus}
-            variant="outline"
-            size="sm"
-          >
-            Refresh
-          </Button>
+          <RestartButton iconSize={16} showLabel={true} />
         </div>
       </div>
     );
@@ -138,7 +133,7 @@ export function NetworkStatus({ chain, network }: NetworkStatusProps) {
           >
             <div className="flex items-center gap-1.5">
               <div
-                className={`w-2 h-2 rounded-full ${
+                className={`w-2.5 h-2.5 rounded-full ${
                   loading
                     ? 'bg-yellow-500 animate-pulse'
                     : isOnline
@@ -177,7 +172,7 @@ export function NetworkStatus({ chain, network }: NetworkStatusProps) {
           title="View network status"
         >
           <div
-            className={`w-2 h-2 rounded-full ${
+            className={`w-2.5 h-2.5 rounded-full ${
               loading
                 ? 'bg-yellow-500 animate-pulse'
                 : isOnline

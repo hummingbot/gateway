@@ -73,22 +73,23 @@ export function QuoteCard({
               )}
             </div>
 
-            {/* Price - Primary metric */}
-            <div className="flex items-baseline gap-1 md:gap-2 overflow-hidden">
-              <span className="text-xs md:text-sm text-muted-foreground flex-shrink-0">Price:</span>
-              <span className="text-lg md:text-2xl font-bold truncate">
-                {quote.price !== undefined
-                  ? parseFloat(quote.price.toFixed(4)).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 4,
-                    })
-                  : 'N/A'}
-              </span>
-            </div>
-
-            {/* Key Metrics - Hidden on mobile */}
-            <div className="hidden md:flex items-center gap-8 text-sm flex-shrink-0">
+            {/* Key Metrics */}
+            <div className="flex items-center gap-8 text-sm flex-shrink-0">
+              {/* Price */}
               <div className="flex flex-col items-end">
+                <span className="text-xs text-muted-foreground">Price</span>
+                <span className="font-medium text-lg md:text-xl">
+                  {quote.price !== undefined
+                    ? parseFloat(quote.price.toFixed(4)).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 4,
+                      })
+                    : 'N/A'}
+                </span>
+              </div>
+
+              {/* You Pay - Hidden on mobile */}
+              <div className="hidden md:flex flex-col items-end">
                 <span className="text-xs text-muted-foreground">You Pay</span>
                 <span className="font-medium">
                   {parseFloat(parseFloat(amount).toFixed(4)).toLocaleString(undefined, {
@@ -99,7 +100,8 @@ export function QuoteCard({
                 </span>
               </div>
 
-              <div className="flex flex-col items-end">
+              {/* You Receive - Hidden on mobile */}
+              <div className="hidden md:flex flex-col items-end">
                 <span className="text-xs text-muted-foreground">You Receive</span>
                 <span className="font-medium">
                   {parseFloat((quote.amountOut || 0).toFixed(4)).toLocaleString(undefined, {
@@ -110,8 +112,9 @@ export function QuoteCard({
                 </span>
               </div>
 
+              {/* Price Impact - Hidden on mobile */}
               {quote.priceImpactPct !== undefined && (
-                <div className="flex flex-col items-end">
+                <div className="hidden md:flex flex-col items-end">
                   <span className="text-xs text-muted-foreground">Price Impact</span>
                   <span
                     className={cn(

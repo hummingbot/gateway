@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Toggle } from './ui/toggle';
+import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
+import { Route, ArrowDownUp, ExternalLink } from 'lucide-react';
 import { TokenAmountInput } from './TokenAmountInput';
 import { QuoteCard } from './QuoteCard';
 import { SwapConfirmDialog } from './SwapConfirmDialog';
@@ -46,8 +47,17 @@ export function SwapView() {
         const connectors = await getRouterConnectors(selectedChain, selectedNetwork);
         setAvailableConnectors(connectors);
 
-        // Select all routers by default
-        setSelectedRouters(new Set(connectors));
+        // Fetch network status to get swapProvider
+        const status = await gatewayAPI.chains.getStatus(selectedChain, selectedNetwork);
+
+        // Select only the swapProvider by default, or all if not specified
+        if (status.swapProvider) {
+          // Extract connector name from swapProvider (e.g., "jupiter/router" -> "jupiter")
+          const connectorName = status.swapProvider.split('/')[0];
+          setSelectedRouters(new Set([connectorName]));
+        } else {
+          setSelectedRouters(new Set(connectors));
+        }
       } catch (err) {
         console.error('Failed to fetch connectors:', err);
       }
@@ -103,16 +113,8 @@ export function SwapView() {
     fetchBalances();
   }, [selectedChain, selectedNetwork, selectedWallet]);
 
-  function handleRouterToggle(connector: string, pressed: boolean) {
-    setSelectedRouters((prev) => {
-      const next = new Set(prev);
-      if (pressed) {
-        next.add(connector);
-      } else {
-        next.delete(connector);
-      }
-      return next;
-    });
+  function handleRouterToggle(values: string[]) {
+    setSelectedRouters(new Set(values));
   }
 
   function handleMaxClick() {
@@ -195,13 +197,13 @@ export function SwapView() {
     });
     setQuotes(updatedQuotes);
 
-    // Auto-select best quote (lowest price)
+    // Auto-select best quote (highest amountOut)
     let bestConnector: string | null = null;
-    let bestPrice = Infinity;
+    let bestAmountOut = 0;
     results.forEach(({ connector, result }) => {
-      if (result.quote && !result.error && result.quote.price !== undefined) {
-        if (result.quote.price < bestPrice) {
-          bestPrice = result.quote.price;
+      if (result.quote && !result.error && result.quote.amountOut !== undefined) {
+        if (result.quote.amountOut > bestAmountOut) {
+          bestAmountOut = result.quote.amountOut;
           bestConnector = connector;
         }
       }
@@ -256,9 +258,9 @@ export function SwapView() {
             </div>
             <button
               onClick={() => openExternalUrl(explorerUrl)}
-              className="text-xs text-primary hover:underline text-left"
+              className="text-xs text-primary hover:underline text-left flex items-center gap-1"
             >
-              {shortenAddress(txHash, 8, 6)} ↗
+              {shortenAddress(txHash, 8, 6)} <ExternalLink className="h-3 w-3" />
             </button>
           </div>,
           { duration: 3000 }
@@ -279,15 +281,15 @@ export function SwapView() {
     }
   }
 
-  // Determine best quote based on lowest price
+  // Determine best quote based on highest amountOut
   function getBestConnector(): string | null {
     let bestConnector: string | null = null;
-    let bestPrice = Infinity;
+    let bestAmountOut = 0;
 
     quotes.forEach((result, connector) => {
-      if (result.quote && !result.error && result.quote.price !== undefined) {
-        if (result.quote.price < bestPrice) {
-          bestPrice = result.quote.price;
+      if (result.quote && !result.error && result.quote.amountOut !== undefined) {
+        if (result.quote.amountOut > bestAmountOut) {
+          bestAmountOut = result.quote.amountOut;
           bestConnector = connector;
         }
       }
@@ -316,24 +318,31 @@ export function SwapView() {
             <label className="text-sm font-medium block mb-2">
               Routers ({selectedRouters.size} selected)
             </label>
-            <div className="flex flex-wrap gap-2">
-              {availableConnectors.length > 0 ? (
-                availableConnectors.map((connector) => (
-                  <Toggle
+            {availableConnectors.length > 0 ? (
+              <ToggleGroup
+                type="multiple"
+                variant="outline"
+                value={Array.from(selectedRouters)}
+                onValueChange={handleRouterToggle}
+                className="justify-start"
+              >
+                {availableConnectors.map((connector) => (
+                  <ToggleGroupItem
                     key={connector}
-                    pressed={selectedRouters.has(connector)}
-                    onPressedChange={(pressed) => handleRouterToggle(connector, pressed)}
-                    className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                    value={connector}
+                    aria-label={`Toggle ${connector}`}
+                    className="data-[state=on]:bg-transparent data-[state=on]:border-accent [&[data-state=on]_svg]:stroke-accent"
                   >
+                    <Route className="h-4 w-4" />
                     {connector.charAt(0).toUpperCase() + connector.slice(1)}
-                  </Toggle>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No router connectors available for this network
-                </p>
-              )}
-            </div>
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No router connectors available for this network
+              </p>
+            )}
           </div>
 
           {/* From Token */}
@@ -353,10 +362,10 @@ export function SwapView() {
               onClick={handleSwapDirection}
               variant="ghost"
               size="icon"
-              className="text-3xl rounded-full h-12 w-12"
+              className="rounded-full h-12 w-12"
               title="Swap direction"
             >
-              ⇅
+              <ArrowDownUp className="h-6 w-6" />
             </Button>
           </div>
 
@@ -403,10 +412,10 @@ export function SwapView() {
           <div className="space-y-2">
             {Array.from(quotes.entries())
               .sort(([, a], [, b]) => {
-                // Sort by price ascending (lowest price first = best)
-                const priceA = a.quote?.price ?? Infinity;
-                const priceB = b.quote?.price ?? Infinity;
-                return priceA - priceB;
+                // Sort by amountOut descending (highest amountOut first = best)
+                const amountOutA = a.quote?.amountOut ?? 0;
+                const amountOutB = b.quote?.amountOut ?? 0;
+                return amountOutB - amountOutA;
               })
               .map(([connector, result]) => (
                 <QuoteCard
