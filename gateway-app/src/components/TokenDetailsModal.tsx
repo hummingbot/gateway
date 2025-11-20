@@ -76,7 +76,7 @@ export function TokenDetailsModal({
               href={getExplorerTokenUrl(chain, network, token.address)}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono text-xs text-primary hover:underline inline-flex items-center gap-1"
+              className="font-mono text-xs hover:text-primary transition-colors inline-flex items-center gap-1"
             >
               {shortenAddress(token.address, 6, 4)}
               <svg
