@@ -105,13 +105,17 @@ export function LogsSheet({ gatewayPath, iconSize = 16 }: LogsSheetProps) {
       >
         {/* Resize Handle */}
         <div
-          className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors group"
+          className="absolute left-0 top-0 bottom-0 w-4 cursor-col-resize z-50 group flex items-center pointer-events-auto"
           onMouseDown={(e) => {
             e.preventDefault();
+            e.stopPropagation();
             setIsResizing(true);
           }}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize logs panel"
         >
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-primary/30" />
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-border group-hover:bg-primary transition-colors pointer-events-none" />
         </div>
 
         <div className="px-6 py-6">
