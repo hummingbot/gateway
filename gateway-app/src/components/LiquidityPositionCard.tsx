@@ -7,6 +7,7 @@ import { Area, AreaChart, ReferenceLine, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from './ui/chart';
 import { useApp } from '@/lib/AppContext';
 import { openExternalUrl } from '@/lib/utils/external-link';
+import { getExplorerAddressUrl } from '@/lib/utils/explorer';
 import { ExternalLink } from 'lucide-react';
 
 interface LiquidityPositionCardProps {
@@ -18,7 +19,7 @@ interface LiquidityPositionCardProps {
 }
 
 export function LiquidityPositionCard({ position, baseSymbol, quoteSymbol, onCollectFees, onClosePosition }: LiquidityPositionCardProps) {
-  const { selectedNetwork } = useApp();
+  const { selectedNetwork, selectedChain } = useApp();
 
   // Generate chart data for step area chart
   const chartData = useMemo(() => {
@@ -50,14 +51,10 @@ export function LiquidityPositionCard({ position, baseSymbol, quoteSymbol, onCol
     ];
   }, [position]);
 
-  // Generate Solscan URL for position address
+  // Generate explorer URL for position address using utility function
   const explorerUrl = useMemo(() => {
-    const baseUrl = selectedNetwork === 'devnet'
-      ? 'https://solscan.io/account'
-      : 'https://solscan.io/account';
-    const cluster = selectedNetwork === 'devnet' ? '?cluster=devnet' : '';
-    return `${baseUrl}/${position.address}${cluster}`;
-  }, [position.address, selectedNetwork]);
+    return getExplorerAddressUrl(selectedChain, selectedNetwork, position.address);
+  }, [selectedChain, selectedNetwork, position.address]);
 
   return (
     <div className="border rounded p-3 md:p-4 text-xs md:text-sm space-y-3">
