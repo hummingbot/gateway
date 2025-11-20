@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-// @ts-ignore - react-window import
-import * as ReactWindow from 'react-window';
+import ReactWindow from 'react-window';
 import { cn } from '@/lib/utils';
 
-const FixedSizeList = ReactWindow.FixedSizeList;
+const { FixedSizeList } = ReactWindow;
 
 interface LogViewerProps {
   gatewayPath: string;
