@@ -130,6 +130,12 @@ export function SwapView() {
     setSelectedQuote(null);
   }
 
+  function handleToTokenChange(newToken: string) {
+    setToToken(newToken);
+    setQuotes(new Map());
+    setSelectedQuote(null);
+  }
+
   async function handleGetQuotes() {
     if (!amount || !fromToken || !toToken || selectedRouters.size === 0) return;
 
@@ -351,9 +357,8 @@ export function SwapView() {
             }
             balance={balances[toToken] || '0'}
             onAmountChange={() => {}}
-            onSymbolChange={setToToken}
+            onSymbolChange={handleToTokenChange}
             availableTokens={availableTokens}
-            disabled={true}
           />
 
           {/* Get Quotes Button */}
