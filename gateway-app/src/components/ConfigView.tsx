@@ -25,6 +25,16 @@ import { showSuccessNotification, showErrorNotification } from '@/lib/notificati
 import { useApp } from '@/lib/AppContext';
 import { applyTheme } from '@/lib/theme-manager';
 
+interface Theme {
+  name: string;
+  colors: {
+    primary: string;
+    primaryDark: string;
+    accent: string;
+    accentDark: string;
+  };
+}
+
 interface ConfigItem {
   namespace: string;
   path: string;
@@ -50,10 +60,22 @@ export function ConfigView() {
   const [saving, setSaving] = useState(false);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [chains, setChains] = useState<ChainData[]>([]);
+  const [themes, setThemes] = useState<Record<string, Theme>>({});
 
   useEffect(() => {
     loadData();
+    loadThemes();
   }, []);
+
+  async function loadThemes() {
+    try {
+      const response = await fetch('/THEMES.json');
+      const data = await response.json();
+      setThemes(data.themes || {});
+    } catch (err) {
+      console.error('Failed to load themes:', err);
+    }
+  }
 
   useEffect(() => {
     if (selectedNamespace) {
@@ -139,6 +161,11 @@ export function ConfigView() {
         for (const [key, value] of Object.entries(obj)) {
           const currentPath = parentPath ? `${parentPath}.${key}` : key;
 
+          // Skip theme.colors.* fields - these are managed by theme selection
+          if (currentPath.startsWith('theme.colors.')) {
+            continue;
+          }
+
           if (Array.isArray(value)) {
             // Add array as a config item
             items.push({
@@ -222,6 +249,24 @@ export function ConfigView() {
     } catch (err) {
       await showErrorNotification(
         err instanceof Error ? err.message : 'Failed to update configuration'
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleThemeChange(item: ConfigItem, themeName: string) {
+    try {
+      setSaving(true);
+
+      await updateAppConfigValue(item.path, themeName);
+      await showSuccessNotification(`Updated ${item.path} to ${themeName}`);
+
+      // Reload config to get updated value
+      await loadConfig();
+    } catch (err) {
+      await showErrorNotification(
+        err instanceof Error ? err.message : 'Failed to update theme'
       );
     } finally {
       setSaving(false);
@@ -502,6 +547,24 @@ export function ConfigView() {
                                   />
                                   <span className="text-xs text-muted-foreground">true</span>
                                 </div>
+                              ) : item.path.startsWith('theme.chains.') ? (
+                                // Theme chain selection: always show Select dropdown
+                                <Select
+                                  value={item.value}
+                                  onValueChange={(value) => handleThemeChange(item, value)}
+                                  disabled={saving}
+                                >
+                                  <SelectTrigger className="w-48 text-sm">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {Object.entries(themes).map(([key, theme]) => (
+                                      <SelectItem key={key} value={key}>
+                                        {theme.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               ) : isEditing ? (
                                 // Non-boolean values: show input in edit mode
                                 <div className="flex gap-2 justify-end">
@@ -528,8 +591,8 @@ export function ConfigView() {
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              {item.type === 'boolean' ? (
-                                // Boolean values don't need edit button (they're always toggles)
+                              {item.type === 'boolean' || item.path.startsWith('theme.chains.') ? (
+                                // Boolean and theme chain values don't need edit button
                                 null
                               ) : isEditing ? (
                                 <div className="flex gap-1 justify-end">
