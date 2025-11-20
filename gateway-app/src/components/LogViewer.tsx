@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+// @ts-ignore - react-window types are not properly exported
 import { FixedSizeList as List } from 'react-window';
 import { cn } from '@/lib/utils';
 

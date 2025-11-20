@@ -83,7 +83,7 @@ export const NavigationBar = memo(function NavigationBar({
           <div className="hidden sm:block">
             <WalletSelector
               allWallets={allWallets}
-              selectedWallet={selectedWallet}
+              selectedWallet={selectedWallet || ''}
               selectedChain={selectedChain}
               onWalletChange={handleWalletChange}
               onAddWallet={handleAddWallet}
