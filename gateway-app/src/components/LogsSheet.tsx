@@ -39,7 +39,7 @@ export function LogsSheet({ gatewayPath, iconSize = 16 }: LogsSheetProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-10 w-10"
           aria-label="View Gateway logs"
           title="View Gateway logs"
         >
