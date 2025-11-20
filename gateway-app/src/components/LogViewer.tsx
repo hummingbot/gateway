@@ -22,9 +22,20 @@ export function LogViewer({ gatewayPath, className }: LogViewerProps) {
   const [autoScroll, setAutoScroll] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const [isTauri, setIsTauri] = useState(false);
+
+  // Check if running in Tauri
+  useEffect(() => {
+    setIsTauri(typeof window !== 'undefined' && '__TAURI__' in window);
+  }, []);
 
   // Fetch logs from Tauri
   const fetchLogs = async () => {
+    if (!isTauri) {
+      setLogs('Log viewer is only available in Tauri desktop/mobile mode.\n\nPlease run: pnpm tauri dev');
+      return;
+    }
+
     try {
       const result = await invoke<string>('read_gateway_logs', {
         gatewayPath,
@@ -42,7 +53,7 @@ export function LogViewer({ gatewayPath, className }: LogViewerProps) {
     fetchLogs();
     const interval = setInterval(fetchLogs, 2000);
     return () => clearInterval(interval);
-  }, [gatewayPath]);
+  }, [gatewayPath, isTauri]);
 
   // Auto-scroll to bottom when logs update
   useEffect(() => {
