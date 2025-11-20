@@ -173,7 +173,7 @@ export function NetworkStatus({ chain, network }: NetworkStatusProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-10 w-10"
           title="View network status"
         >
           <div
