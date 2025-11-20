@@ -138,6 +138,10 @@ export class PoolAPI {
     return gatewayGet<PoolTemplate[]>(`/pools?connector=${connector}&network=${network}`);
   }
 
+  async search(connector: string, network: string, address: string) {
+    return gatewayGet<PoolTemplate[]>(`/pools?connector=${connector}&network=${network}&search=${address}`);
+  }
+
   async getInfo(connector: string, chainNetwork: string, poolAddress: string) {
     return gatewayGet<CLMMPoolInfo>(
       `/trading/clmm/pool-info?connector=${connector}&chainNetwork=${chainNetwork}&poolAddress=${poolAddress}`
@@ -149,6 +153,10 @@ export class PoolAPI {
       `/pools/save/${address}?chainNetwork=${chainNetwork}`,
       {}
     );
+  }
+
+  async delete(address: string) {
+    return gatewayDelete(`/pools/${address}`);
   }
 }
 

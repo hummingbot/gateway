@@ -25,6 +25,7 @@ import { LiquidityPositionCard } from './LiquidityPositionCard';
 import { PoolBinChart } from './PoolBinChart';
 import { UserLiquidityChart } from './UserLiquidityChart';
 import { TokenAmountInput } from './TokenAmountInput';
+import { PoolDetailsModal } from './PoolDetailsModal';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
@@ -76,6 +77,7 @@ export function PoolsView() {
   const [showAddPositionConfirm, setShowAddPositionConfirm] = useState(false);
   const [positionToCollectFees, setPositionToCollectFees] = useState<Position | null>(null);
   const [positionToClose, setPositionToClose] = useState<Position | null>(null);
+  const [showPoolDetails, setShowPoolDetails] = useState(false);
 
   // Helper to get current price from poolInfo
   const getCurrentPrice = (): number | null => {
@@ -324,6 +326,23 @@ export function PoolsView() {
     const response = await gatewayAPI.pools.save(address, chainNetwork);
     await fetchPools();
     await showSuccessNotification(`Pool added successfully!`);
+  }
+
+  async function handleDeletePool(pool: Pool) {
+    try {
+      await gatewayAPI.pools.delete(pool.address);
+      await showSuccessNotification(`Pool ${pool.baseSymbol}-${pool.quoteSymbol} deleted successfully!`);
+
+      // Refresh pools list
+      await fetchPools();
+
+      // If we deleted the selected pool, clear selection
+      if (selectedPool?.address === pool.address) {
+        setSelectedPool(null);
+      }
+    } catch (err) {
+      await showErrorNotification(err instanceof Error ? err.message : 'Failed to delete pool');
+    }
   }
 
   function toggleConnector(connector: string) {
@@ -623,14 +642,9 @@ export function PoolsView() {
                 <CardHeader className="p-3 md:p-6">
                   <div className="flex items-start justify-between">
                     <div className="space-y-2">
-                      <div>
-                        <CardTitle>
-                          {selectedPool.baseSymbol}-{selectedPool.quoteSymbol}
-                        </CardTitle>
-                        <p className="text-sm text-muted-foreground font-mono">
-                          {shortenAddress(selectedPool.address, 8, 8)}
-                        </p>
-                      </div>
+                      <CardTitle>
+                        {selectedPool.baseSymbol}-{selectedPool.quoteSymbol}
+                      </CardTitle>
                       <div className="flex flex-wrap gap-2">
                         <Badge variant="outline">
                           {capitalize(selectedPool.connector)} {selectedPool.type.toUpperCase()}
@@ -643,6 +657,13 @@ export function PoolsView() {
                             Bin Step: {poolInfo.binStep}
                           </Badge>
                         )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowPoolDetails(true)}
+                        >
+                          Pool Details
+                        </Button>
                       </div>
                     </div>
                     {(() => {
@@ -916,6 +937,14 @@ export function PoolsView() {
         defaultChain={selectedChain}
         defaultNetwork={selectedNetwork}
         availableNetworks={availableNetworks}
+      />
+
+      {/* Pool Details Modal */}
+      <PoolDetailsModal
+        open={showPoolDetails}
+        onOpenChange={setShowPoolDetails}
+        pool={selectedPool}
+        onDeletePool={handleDeletePool}
       />
     </div>
   );
