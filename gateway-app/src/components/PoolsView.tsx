@@ -594,7 +594,7 @@ export function PoolsView() {
                       <Badge variant="outline" className="text-xs">
                         {capitalize(pool.connector || '')} {pool.type.toUpperCase()}
                       </Badge>
-                      <Badge className="text-xs">{pool.feePct}%</Badge>
+                      <Badge variant="outline" className="text-xs">{pool.feePct}%</Badge>
                     </div>
                   </div>
                 </Button>
@@ -628,7 +628,7 @@ export function PoolsView() {
                           {selectedPool.baseSymbol}-{selectedPool.quoteSymbol}
                         </CardTitle>
                         <p className="text-sm text-muted-foreground font-mono">
-                          {selectedPool.address}
+                          {shortenAddress(selectedPool.address, 8, 8)}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
