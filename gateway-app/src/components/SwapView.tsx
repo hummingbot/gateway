@@ -1,15 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Alert, AlertDescription } from './ui/alert';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from './ui/select';
+import { Toggle } from './ui/toggle';
 import { TokenAmountInput } from './TokenAmountInput';
+import { QuoteCard } from './QuoteCard';
+import { SwapConfirmDialog } from './SwapConfirmDialog';
 import { toast } from 'sonner';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
@@ -17,54 +12,57 @@ import { getSelectableTokenList, TokenInfo } from '@/lib/utils';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import type { RouterQuoteResponse } from '@/lib/gateway-types';
 import { shortenAddress } from '@/lib/utils/string';
-import { formatTokenAmount, formatPrice, formatPercent } from '@/lib/utils/format';
 import { getRouterConnectors } from '@/lib/utils/api-helpers';
 import { getExplorerTxUrl } from '@/lib/utils/explorer';
 import { openExternalUrl } from '@/lib/utils/external-link';
 
-// Extended quote result with additional UI-specific fields
-interface QuoteResult extends Partial<RouterQuoteResponse> {
-  expectedAmount?: string;
-  priceImpactPct?: number;
+interface QuoteResult {
+  quote: RouterQuoteResponse | null;
+  error: string | null;
+  loading: boolean;
 }
 
 export function SwapView() {
   const { selectedChain, selectedNetwork, selectedWallet } = useApp();
-  const [connector, setConnector] = useState('');
+  const [selectedRouters, setSelectedRouters] = useState<Set<string>>(new Set());
   const [fromToken, setFromToken] = useState('');
   const [toToken, setToToken] = useState('');
   const [amount, setAmount] = useState('');
-  const [quote, setQuote] = useState<QuoteResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [quotes, setQuotes] = useState<Map<string, QuoteResult>>(new Map());
+  const [selectedQuote, setSelectedQuote] = useState<{
+    connector: string;
+    quote: RouterQuoteResponse;
+  } | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [executing, setExecuting] = useState(false);
   const [balances, setBalances] = useState<Record<string, string>>({});
   const [availableTokens, setAvailableTokens] = useState<TokenInfo[]>([]);
   const [availableConnectors, setAvailableConnectors] = useState<string[]>([]);
 
+  // Fetch available routers for the network
   useEffect(() => {
     async function fetchConnectors() {
       try {
         const connectors = await getRouterConnectors(selectedChain, selectedNetwork);
         setAvailableConnectors(connectors);
 
-        // Set first available connector as default if current not in list
-        if (connectors.length > 0 && !connectors.includes(connector)) {
-          setConnector(connectors[0]);
-        }
+        // Select all routers by default
+        setSelectedRouters(new Set(connectors));
       } catch (err) {
+        console.error('Failed to fetch connectors:', err);
       }
     }
 
     fetchConnectors();
   }, [selectedChain, selectedNetwork]);
 
+  // Fetch available tokens
   useEffect(() => {
     async function fetchTokens() {
       try {
         const tokens = await getSelectableTokenList(selectedChain, selectedNetwork);
         setAvailableTokens(tokens);
 
-        // Set default tokens on first load or when switching networks
         if (tokens.length > 0) {
           setFromToken(tokens[0].symbol);
         }
@@ -72,12 +70,14 @@ export function SwapView() {
           setToToken(tokens[1].symbol);
         }
       } catch (err) {
+        console.error('Failed to fetch tokens:', err);
       }
     }
 
     fetchTokens();
   }, [selectedChain, selectedNetwork]);
 
+  // Fetch wallet balances
   useEffect(() => {
     if (!selectedWallet) return;
 
@@ -89,7 +89,6 @@ export function SwapView() {
         });
 
         if (balanceData.balances) {
-          // Convert balances from number to string for UI consistency
           const balancesMap: Record<string, string> = {};
           Object.entries(balanceData.balances).forEach(([symbol, balance]) => {
             balancesMap[symbol] = String(balance);
@@ -97,11 +96,24 @@ export function SwapView() {
           setBalances(balancesMap);
         }
       } catch (err) {
+        console.error('Failed to fetch balances:', err);
       }
     }
 
     fetchBalances();
   }, [selectedChain, selectedNetwork, selectedWallet]);
+
+  function handleRouterToggle(connector: string, pressed: boolean) {
+    setSelectedRouters((prev) => {
+      const next = new Set(prev);
+      if (pressed) {
+        next.add(connector);
+      } else {
+        next.delete(connector);
+      }
+      return next;
+    });
+  }
 
   function handleMaxClick() {
     const balance = balances[fromToken];
@@ -111,55 +123,71 @@ export function SwapView() {
   }
 
   function handleSwapDirection() {
-    // Swap from and to tokens
     const tempToken = fromToken;
     setFromToken(toToken);
     setToToken(tempToken);
-
-    // Clear quote since direction changed
-    setQuote(null);
+    setQuotes(new Map());
+    setSelectedQuote(null);
   }
 
-  async function handleGetQuote() {
-    if (!amount || !fromToken || !toToken) return;
+  async function handleGetQuotes() {
+    if (!amount || !fromToken || !toToken || selectedRouters.size === 0) return;
 
-    try {
-      setLoading(true);
-      setError(null);
+    const routerArray = Array.from(selectedRouters);
 
-      const quoteData = await gatewayAPI.router.quoteSwap(connector, {
-        network: selectedNetwork,
-        baseToken: fromToken,
-        quoteToken: toToken,
-        amount: parseFloat(amount),
-        side: 'SELL',
-      });
+    // Initialize loading states
+    const initialQuotes = new Map<string, QuoteResult>();
+    routerArray.forEach((connector) => {
+      initialQuotes.set(connector, { quote: null, error: null, loading: true });
+    });
+    setQuotes(initialQuotes);
+    setSelectedQuote(null);
 
-      setQuote({
-        expectedAmount: String(quoteData.amountOut || '0'),
-        priceImpactPct: quoteData.priceImpactPct,
-        tokenIn: quoteData.tokenIn,
-        tokenOut: quoteData.tokenOut,
-        amountIn: quoteData.amountIn,
-        amountOut: quoteData.amountOut,
-        minAmountOut: quoteData.minAmountOut,
-        maxAmountIn: quoteData.maxAmountIn,
-        price: quoteData.price,
-        quoteId: quoteData.quoteId,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get quote');
-    } finally {
-      setLoading(false);
-    }
+    // Fetch quotes in parallel
+    const quotePromises = routerArray.map(async (connector) => {
+      try {
+        const quoteData = await gatewayAPI.router.quoteSwap(connector, {
+          network: selectedNetwork,
+          baseToken: fromToken,
+          quoteToken: toToken,
+          amount: parseFloat(amount),
+          side: 'SELL',
+        });
+
+        return {
+          connector,
+          result: { quote: quoteData, error: null, loading: false },
+        };
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to get quote';
+        return {
+          connector,
+          result: { quote: null, error: errorMsg, loading: false },
+        };
+      }
+    });
+
+    // Wait for all quotes and update state
+    const results = await Promise.all(quotePromises);
+    const updatedQuotes = new Map<string, QuoteResult>();
+    results.forEach(({ connector, result }) => {
+      updatedQuotes.set(connector, result);
+    });
+    setQuotes(updatedQuotes);
+  }
+
+  function handleQuoteSelect(connector: string, quote: RouterQuoteResponse) {
+    setSelectedQuote({ connector, quote });
+    setShowConfirmDialog(true);
   }
 
   async function handleExecuteSwap() {
-    if (!quote || !selectedWallet) return;
+    if (!selectedQuote || !selectedWallet) return;
+
+    const { connector, quote } = selectedQuote;
 
     try {
-      setLoading(true);
-      setError(null);
+      setExecuting(true);
 
       const result = await gatewayAPI.router.executeSwap(connector, {
         network: selectedNetwork,
@@ -170,15 +198,19 @@ export function SwapView() {
         side: 'SELL',
       });
 
+      // Close dialog
+      setShowConfirmDialog(false);
+
       // Show notification with transaction link
       const txHash = result.signature;
       if (txHash) {
         const explorerUrl = getExplorerTxUrl(selectedChain, selectedNetwork, txHash);
 
-        // Show custom toast with link
         toast.success(
           <div className="flex flex-col gap-1">
-            <div>Swapped {amount} {fromToken} for {toToken}</div>
+            <div>
+              Swapped {amount} {fromToken} for {toToken}
+            </div>
             <button
               onClick={() => openExternalUrl(explorerUrl)}
               className="text-xs text-primary hover:underline text-left"
@@ -192,46 +224,73 @@ export function SwapView() {
         await showSuccessNotification(`Swapped ${amount} ${fromToken} for ${toToken}`);
       }
 
+      // Clear form
       setAmount('');
-      setQuote(null);
+      setQuotes(new Map());
+      setSelectedQuote(null);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to execute swap';
-      setError(errorMsg);
       await showErrorNotification(errorMsg);
     } finally {
-      setLoading(false);
+      setExecuting(false);
     }
   }
 
+  // Determine best quote based on amountOut
+  function getBestConnector(): string | null {
+    let bestConnector: string | null = null;
+    let bestAmountOut = 0;
+
+    quotes.forEach((result, connector) => {
+      if (result.quote && !result.error && result.quote.amountOut) {
+        if (result.quote.amountOut > bestAmountOut) {
+          bestAmountOut = result.quote.amountOut;
+          bestConnector = connector;
+        }
+      }
+    });
+
+    return bestConnector;
+  }
+
   const fromBalance = balances[fromToken] || '0';
+  const bestConnector = getBestConnector();
+  const hasQuotes = Array.from(quotes.values()).some((r) => r.quote !== null);
+  const isLoadingAny = Array.from(quotes.values()).some((r) => r.loading);
 
   return (
     <div className="p-3 md:p-6 space-y-3 md:space-y-6">
-      <Card className="w-full max-w-3xl mx-auto">
+      <Card className="w-full max-w-4xl mx-auto">
         <CardHeader className="p-4 md:p-6">
           <CardTitle className="text-xl md:text-2xl">Swap</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">Router connectors only</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Compare quotes from multiple routers
+          </p>
         </CardHeader>
         <CardContent className="space-y-5 p-4 md:p-6">
-          {/* Connector Selection */}
+          {/* Router Selection */}
           <div>
-            <label className="text-sm font-medium block mb-2">Connector</label>
-            <Select
-              value={connector}
-              onValueChange={setConnector}
-              disabled={availableConnectors.length === 0}
-            >
-              <SelectTrigger className="h-12 text-base">
-                <SelectValue placeholder={availableConnectors.length === 0 ? "No router connectors available" : "Select connector"} />
-              </SelectTrigger>
-              <SelectContent>
-                {availableConnectors.map((conn) => (
-                  <SelectItem key={conn} value={conn}>
-                    {conn.charAt(0).toUpperCase() + conn.slice(1)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <label className="text-sm font-medium block mb-2">
+              Routers ({selectedRouters.size} selected)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {availableConnectors.length > 0 ? (
+                availableConnectors.map((connector) => (
+                  <Toggle
+                    key={connector}
+                    pressed={selectedRouters.has(connector)}
+                    onPressedChange={(pressed) => handleRouterToggle(connector, pressed)}
+                    className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                  >
+                    {connector.charAt(0).toUpperCase() + connector.slice(1)}
+                  </Toggle>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No router connectors available for this network
+                </p>
+              )}
+            </div>
           </div>
 
           {/* From Token */}
@@ -262,7 +321,7 @@ export function SwapView() {
           <TokenAmountInput
             label="To"
             symbol={toToken}
-            amount={quote && quote.expectedAmount ? formatTokenAmount(quote.expectedAmount) : ''}
+            amount=""
             balance={balances[toToken] || '0'}
             onAmountChange={() => {}}
             onSymbolChange={setToToken}
@@ -270,83 +329,14 @@ export function SwapView() {
             disabled={true}
           />
 
-          {/* Quote Details */}
-          {quote && (
-            <Card>
-              <CardContent className="p-4 md:pt-6">
-                <div className="space-y-2 text-sm">
-                  {quote.quoteId && (
-                    <div className="flex justify-between border-b pb-2 mb-2">
-                      <span>Quote ID:</span>
-                      <span className="font-mono text-xs">{quote.quoteId.substring(0, 8)}...</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span>Amount In:</span>
-                    <span className="font-semibold">
-                      {formatTokenAmount(quote.amountIn || 0)} {fromToken}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Amount Out:</span>
-                    <span className="font-semibold">
-                      {formatTokenAmount(quote.amountOut || 0)} {toToken}
-                    </span>
-                  </div>
-                  {quote.minAmountOut !== undefined && (
-                    <div className="flex justify-between">
-                      <span>Min Amount Out:</span>
-                      <span>{formatTokenAmount(quote.minAmountOut)} {toToken}</span>
-                    </div>
-                  )}
-                  {quote.price !== undefined && (
-                    <>
-                      <div className="flex justify-between">
-                        <span>Price - {fromToken}/{toToken}:</span>
-                        <span>{quote.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Price - {toToken}/{fromToken}:</span>
-                        <span>{(1 / quote.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</span>
-                      </div>
-                    </>
-                  )}
-                  {quote.priceImpactPct !== undefined && (
-                    <div className="flex justify-between">
-                      <span>Price Impact:</span>
-                      <span>{formatPercent(quote.priceImpactPct)}</span>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Error Display */}
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            <Button
-              onClick={handleGetQuote}
-              disabled={loading || !amount}
-              className="flex-1 h-12 text-base"
-              variant="outline"
-            >
-              {loading ? 'Loading...' : 'Get Quote'}
-            </Button>
-            <Button
-              onClick={handleExecuteSwap}
-              disabled={loading || !quote || !selectedWallet}
-              className="flex-1 h-12 text-base"
-            >
-              {loading ? 'Executing...' : 'Swap'}
-            </Button>
-          </div>
+          {/* Get Quotes Button */}
+          <Button
+            onClick={handleGetQuotes}
+            disabled={isLoadingAny || !amount || selectedRouters.size === 0}
+            className="w-full h-12 text-base"
+          >
+            {isLoadingAny ? 'Fetching Quotes...' : 'Get Quotes'}
+          </Button>
 
           {!selectedWallet && (
             <p className="text-sm text-muted-foreground text-center">
@@ -355,6 +345,48 @@ export function SwapView() {
           )}
         </CardContent>
       </Card>
+
+      {/* Quote Cards Grid */}
+      {quotes.size > 0 && (
+        <div className="w-full max-w-4xl mx-auto">
+          <h3 className="text-lg font-semibold mb-3 px-1">
+            {hasQuotes ? 'Compare Quotes' : 'Loading...'}
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from(quotes.entries()).map(([connector, result]) => (
+              <QuoteCard
+                key={connector}
+                connector={connector}
+                quote={result.quote}
+                error={result.error}
+                loading={result.loading}
+                selected={selectedQuote?.connector === connector}
+                isBest={!result.loading && !result.error && connector === bestConnector}
+                fromToken={fromToken}
+                toToken={toToken}
+                onSelect={
+                  result.quote ? () => handleQuoteSelect(connector, result.quote!) : undefined
+                }
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Dialog */}
+      {selectedQuote && (
+        <SwapConfirmDialog
+          open={showConfirmDialog}
+          onOpenChange={setShowConfirmDialog}
+          connector={selectedQuote.connector}
+          quote={selectedQuote.quote}
+          fromToken={fromToken}
+          toToken={toToken}
+          amount={amount}
+          onConfirm={handleExecuteSwap}
+          loading={executing}
+        />
+      )}
     </div>
   );
 }
