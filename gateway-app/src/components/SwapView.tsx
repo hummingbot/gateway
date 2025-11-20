@@ -20,6 +20,7 @@ import { shortenAddress } from '@/lib/utils/string';
 import { formatTokenAmount, formatPrice, formatPercent } from '@/lib/utils/format';
 import { getRouterConnectors } from '@/lib/utils/api-helpers';
 import { getExplorerTxUrl } from '@/lib/utils/explorer';
+import { openExternalUrl } from '@/lib/utils/external-link';
 
 // Extended quote result with additional UI-specific fields
 interface QuoteResult extends Partial<RouterQuoteResponse> {
@@ -178,14 +179,12 @@ export function SwapView() {
         toast.success(
           <div className="flex flex-col gap-1">
             <div>Swapped {amount} {fromToken} for {toToken}</div>
-            <a
-              href={explorerUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-primary hover:underline"
+            <button
+              onClick={() => openExternalUrl(explorerUrl)}
+              className="text-xs text-primary hover:underline text-left"
             >
               {shortenAddress(txHash, 8, 6)} ↗
-            </a>
+            </button>
           </div>,
           { duration: 3000 }
         );

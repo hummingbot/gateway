@@ -6,6 +6,7 @@ import type { PositionWithConnector as Position } from '@/lib/gateway-types';
 import { Area, AreaChart, ReferenceLine, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from './ui/chart';
 import { useApp } from '@/lib/AppContext';
+import { openExternalUrl } from '@/lib/utils/external-link';
 import { ExternalLink } from 'lucide-react';
 
 interface LiquidityPositionCardProps {
@@ -65,15 +66,13 @@ export function LiquidityPositionCard({ position, baseSymbol, quoteSymbol, onCol
         <div className="text-base md:text-lg font-semibold">
           {position.lowerPrice.toFixed(4)} - {position.upperPrice.toFixed(4)}
         </div>
-        <a
-          href={explorerUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          onClick={() => openExternalUrl(explorerUrl)}
           className="flex items-center gap-1 font-mono text-xs hover:text-primary transition-colors"
         >
           {shortenAddress(position.address, 8, 6)}
           <ExternalLink className="w-3 h-3" />
-        </a>
+        </button>
       </div>
 
       {/* Position Liquidity Visualization */}

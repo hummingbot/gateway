@@ -18,6 +18,7 @@ import { ChainAPI } from '../lib/GatewayAPI';
 import type { TransactionsResponseType, ParseResponseType } from '../lib/gateway-types';
 import { formatDistanceToNow } from 'date-fns';
 import { getExplorerTxUrl } from '../lib/utils/explorer';
+import { openExternalUrl } from '@/lib/utils/external-link';
 import { ExternalLink } from 'lucide-react';
 
 const chainAPI = new ChainAPI();
@@ -318,16 +319,14 @@ export function ActivityView() {
               <CardHeader className="p-3 md:p-6">
                 <CardTitle className="flex items-center justify-between">
                   <span>{formatSignature(selectedTx.signature)}</span>
-                  <Button variant="outline" size="sm" asChild>
-                    <a
-                      href={getExplorerTxUrl(selectedChain, selectedNetwork, selectedTx.signature)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2"
-                    >
-                      <span>View in Explorer</span>
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openExternalUrl(getExplorerTxUrl(selectedChain, selectedNetwork, selectedTx.signature))}
+                    className="flex items-center gap-2"
+                  >
+                    <span>View in Explorer</span>
+                    <ExternalLink className="h-3 w-3" />
                   </Button>
                 </CardTitle>
               </CardHeader>

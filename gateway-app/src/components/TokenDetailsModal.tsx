@@ -18,6 +18,7 @@ import {
 import { Button } from './ui/button';
 import { shortenAddress } from '@/lib/utils/string';
 import { getExplorerTokenUrl } from '@/lib/utils/explorer';
+import { openExternalUrl } from '@/lib/utils/external-link';
 import { cn } from '@/lib/utils';
 import type { TokenInfo } from '@/lib/utils';
 
@@ -72,10 +73,8 @@ export function TokenDetailsModal({
         {token.address && (
           <div className="flex justify-between py-2 border-b">
             <span className="text-muted-foreground">Address</span>
-            <a
-              href={getExplorerTokenUrl(chain, network, token.address)}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={() => openExternalUrl(getExplorerTokenUrl(chain, network, token.address))}
               className="font-mono text-xs hover:text-primary transition-colors inline-flex items-center gap-1"
             >
               {shortenAddress(token.address, 6, 4)}
@@ -94,7 +93,7 @@ export function TokenDetailsModal({
                 <polyline points="15 3 21 3 21 9"></polyline>
                 <line x1="10" y1="14" x2="21" y2="3"></line>
               </svg>
-            </a>
+            </button>
           </div>
         )}
 
