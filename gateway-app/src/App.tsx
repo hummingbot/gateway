@@ -13,6 +13,7 @@ import { NavigationBar } from './components/NavigationBar';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { gatewayGet, gatewayPost } from './lib/api';
 import { showSuccessNotification } from './lib/notifications';
+import { Route as RouteIcon, Wallet, Droplet, Activity, Settings } from 'lucide-react';
 
 function AppContent() {
   const { selectedNetwork, setSelectedNetwork, selectedWallet, setSelectedWallet, selectedChain, setSelectedChain, darkMode } = useApp();
@@ -173,20 +174,7 @@ function AppContent() {
               }`
             }
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect width="20" height="14" x="2" y="5" rx="2" />
-              <line x1="2" x2="22" y1="10" y2="10" />
-            </svg>
+            <Wallet className="h-6 w-6" />
             <span className="text-xs font-medium">Portfolio</span>
           </NavLink>
 
@@ -200,22 +188,7 @@ function AppContent() {
               }`
             }
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="m16 3 4 4-4 4" />
-              <path d="M20 7H4" />
-              <path d="m8 21-4-4 4-4" />
-              <path d="M4 17h16" />
-            </svg>
+            <RouteIcon className="h-6 w-6" />
             <span className="text-xs font-medium">Swap</span>
           </NavLink>
 
@@ -229,19 +202,7 @@ function AppContent() {
               }`
             }
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
-            </svg>
+            <Droplet className="h-6 w-6" />
             <span className="text-xs font-medium">Pools</span>
           </NavLink>
 
@@ -255,19 +216,7 @@ function AppContent() {
               }`
             }
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-            </svg>
+            <Activity className="h-6 w-6" />
             <span className="text-xs font-medium">Transactions</span>
           </NavLink>
 
@@ -281,20 +230,7 @@ function AppContent() {
               }`
             }
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
+            <Settings className="h-6 w-6" />
             <span className="text-xs font-medium">Config</span>
           </NavLink>
         </div>

@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from './ui/select';
 import { Button } from './ui/button';
-import { Check } from 'lucide-react';
+import { Check, Network } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NetworkSelectorProps {
@@ -123,8 +123,13 @@ export function NetworkSelector({
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <Button variant="outline" className="w-48">
-          {selectedChain}-{selectedNetwork}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10"
+          title={`${selectedChain}-${selectedNetwork}`}
+        >
+          <Network className="h-5 w-5" />
         </Button>
       </DrawerTrigger>
       <DrawerContent>

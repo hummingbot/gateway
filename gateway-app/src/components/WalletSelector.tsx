@@ -20,7 +20,7 @@ import {
 } from './ui/drawer';
 import { Button } from './ui/button';
 import { shortenAddress } from '@/lib/utils/string';
-import { Check } from 'lucide-react';
+import { Check, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface WalletData {
@@ -144,8 +144,13 @@ export function WalletSelector({
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <Button variant="outline" className="w-48">
-          {getDisplayValue()}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10"
+          title={selectedWallet ? shortenAddress(selectedWallet) : 'Select wallet'}
+        >
+          <Wallet className="h-5 w-5" />
         </Button>
       </DrawerTrigger>
       <DrawerContent>
