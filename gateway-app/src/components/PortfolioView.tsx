@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
+import { Checkbox } from './ui/checkbox';
+import { Label } from './ui/label';
+import { Plus } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -15,13 +18,13 @@ import { LiquidityPositionCard } from './LiquidityPositionCard';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
 import { AddTokenModal } from './AddTokenModal';
+import { TokenDetailsModal } from './TokenDetailsModal';
 import { ConfirmModal } from './ConfirmModal';
 import { showSuccessNotification, showErrorNotification } from '@/lib/notifications';
 import { getSelectableTokenList, TokenInfo } from '@/lib/utils';
 import type { PositionWithConnector as Position, ConnectorConfig } from '@/lib/gateway-types';
 import { capitalize, shortenAddress, getChainNetwork } from '@/lib/utils/string';
 import { formatTokenAmount, formatBalance } from '@/lib/utils/format';
-import { getExplorerTokenUrl } from '@/lib/utils/explorer';
 
 interface Balance {
   symbol: string;
@@ -45,6 +48,7 @@ export function PortfolioView() {
   const [selectedToken, setSelectedToken] = useState<TokenInfo | null>(null);
   const [selectedBalance, setSelectedBalance] = useState<Balance | null>(null);
   const [tokenList, setTokenList] = useState<TokenInfo[]>([]);
+  const [hideZeroBalances, setHideZeroBalances] = useState(true);
 
   useEffect(() => {
     loadNetworks();
@@ -57,14 +61,10 @@ export function PortfolioView() {
   }, [selectedChain, selectedNetwork, selectedWallet]);
 
   async function loadNetworks() {
-    try {
-      const configData = await gatewayAPI.config.getChains();
-      const chainData = configData.chains?.find((c) => c.chain === selectedChain);
-      if (chainData?.networks) {
-        setAvailableNetworks(chainData.networks);
-      }
-    } catch (err) {
-      console.error('Failed to load networks:', err);
+    const configData = await gatewayAPI.config.getChains();
+    const chainData = configData.chains?.find((c) => c.chain === selectedChain);
+    if (chainData?.networks) {
+      setAvailableNetworks(chainData.networks);
     }
   }
 
@@ -130,21 +130,15 @@ export function PortfolioView() {
       // Fetch positions from all CLMM connectors
       const chainNetwork = getChainNetwork(selectedChain, selectedNetwork);
       const positionPromises = clmmConnectors.map(async (connector) => {
-        try {
-          const data = await gatewayAPI.clmm.getPositionsOwned(
-            connector,
-            chainNetwork,
-            selectedWallet
-          );
-          // Add connector property to each position
-          return data.map((position) => ({
-            ...position,
-            connector,
-          }));
-        } catch (err) {
-          console.error(`Failed to fetch positions for ${connector}:`, err);
-          return [];
-        }
+        const data = await gatewayAPI.clmm.getPositionsOwned(
+          connector,
+          chainNetwork,
+          selectedWallet
+        );
+        return data.map((position) => ({
+          ...position,
+          connector,
+        }));
       });
 
       const positionResults = await Promise.all(positionPromises);
@@ -152,8 +146,8 @@ export function PortfolioView() {
 
       setPositions(allPositions);
     } catch (err) {
-      console.error('Failed to fetch positions:', err);
       setPositions([]);
+      throw err;
     } finally {
       setLoadingPositions(false);
     }
@@ -236,9 +230,14 @@ export function PortfolioView() {
         <CardHeader className="p-3 md:p-6">
           <div className="flex justify-between items-center">
             <CardTitle>Tokens</CardTitle>
-            <Button onClick={() => setShowAddToken(true)} size="sm">
-              Add Token
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="hideZero"
+                checked={hideZeroBalances}
+                onCheckedChange={(checked) => setHideZeroBalances(checked === true)}
+              />
+              <Label htmlFor="hideZero" className="cursor-pointer text-sm">Hide Zero Balances</Label>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-3 md:p-6">
@@ -246,45 +245,55 @@ export function PortfolioView() {
             {balances.length === 0 ? (
               <p className="text-muted-foreground">No tokens found</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Symbol</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {balances.map((balance, i) => {
-                    const formattedBalance = formatBalance(balance.balance, 6);
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Symbol</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead className="text-right">Balance</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {balances
+                      .filter(balance => !hideZeroBalances || balance.balance !== '0')
+                      .map((balance, i) => {
+                        const formattedBalance = formatBalance(balance.balance, 6);
 
-                    return (
-                      <TableRow key={i}>
-                        <TableCell>
-                          <button
-                            onClick={() => {
-                              const token = tokenList.find(t => t.symbol === balance.symbol);
-                              if (token) {
-                                setSelectedToken(token);
-                                setSelectedBalance(balance);
-                              }
-                            }}
-                            className="hover:underline text-blue-600 dark:text-blue-400 cursor-pointer"
-                          >
-                            {balance.symbol}
-                          </button>
-                        </TableCell>
-                        <TableCell>
-                          {balance.name}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formattedBalance}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                        return (
+                          <TableRow key={i}>
+                            <TableCell>
+                              <button
+                                onClick={() => {
+                                  const token = tokenList.find(t => t.symbol === balance.symbol);
+                                  if (token) {
+                                    setSelectedToken(token);
+                                    setSelectedBalance(balance);
+                                  }
+                                }}
+                                className="hover:underline text-blue-600 dark:text-blue-400 cursor-pointer"
+                              >
+                                {balance.symbol}
+                              </button>
+                            </TableCell>
+                            <TableCell>
+                              {balance.name}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formattedBalance}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+                <div className="flex justify-end pt-2">
+                  <Button onClick={() => setShowAddToken(true)} variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Token
+                  </Button>
+                </div>
+              </>
             )}
           </div>
         </CardContent>
@@ -311,140 +320,47 @@ export function PortfolioView() {
       </Card>
 
       {/* Add Token Modal */}
-      {showAddToken && (
-        <AddTokenModal
-          onClose={() => setShowAddToken(false)}
-          onAddToken={handleAddToken}
-          defaultChain={selectedChain}
-          defaultNetwork={selectedNetwork}
-          availableNetworks={availableNetworks}
-        />
-      )}
+      <AddTokenModal
+        open={showAddToken}
+        onOpenChange={setShowAddToken}
+        onAddToken={handleAddToken}
+        defaultChain={selectedChain}
+        defaultNetwork={selectedNetwork}
+        availableNetworks={availableNetworks}
+      />
 
       {/* Delete Confirmation Modal */}
-      {tokenToDelete && (
-        <ConfirmModal
-          title="Delete Token"
-          message={`Are you sure you want to delete ${tokenToDelete.symbol} (${tokenToDelete.name}) from your token list?`}
-          confirmText="Delete"
-          cancelText="Cancel"
-          onConfirm={handleDeleteToken}
-          onCancel={() => setTokenToDelete(null)}
-        />
-      )}
+      <ConfirmModal
+        open={!!tokenToDelete}
+        onOpenChange={(open) => {
+          if (!open) setTokenToDelete(null);
+        }}
+        title="Delete Token"
+        description={tokenToDelete ? `Are you sure you want to delete ${tokenToDelete.symbol} (${tokenToDelete.name}) from your token list?` : ''}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteToken}
+        destructive={true}
+      />
 
       {/* Token Details Modal */}
-      {selectedToken && (
-        <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => {
+      <TokenDetailsModal
+        open={!!selectedToken}
+        onOpenChange={(open) => {
+          if (!open) {
             setSelectedToken(null);
             setSelectedBalance(null);
-          }}
-        >
-          <Card
-            className="max-w-lg w-full border shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <CardHeader className="p-3 md:p-6">
-              <div className="flex justify-between items-start">
-                <CardTitle>Token Details</CardTitle>
-                <Button
-                  onClick={() => {
-                    setSelectedToken(null);
-                    setSelectedBalance(null);
-                  }}
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-3 md:p-6 space-y-3">
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Symbol:</span>
-                  <span className="font-medium">{selectedToken.symbol}</span>
-                </div>
-
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Name:</span>
-                  <span className="font-medium">{selectedToken.name}</span>
-                </div>
-
-                {selectedToken.address && (
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-muted-foreground">Address:</span>
-                    <span className="font-mono text-xs">{shortenAddress(selectedToken.address, 6, 4)}</span>
-                  </div>
-                )}
-
-                {selectedToken.decimals !== undefined && (
-                  <div className="flex justify-between py-2 border-b">
-                    <span className="text-muted-foreground">Decimals:</span>
-                    <span className="font-medium">{selectedToken.decimals}</span>
-                  </div>
-                )}
-              </div>
-
-              {selectedToken.address && (
-                <div className="pt-2">
-                  <a
-                    href={getExplorerTokenUrl(selectedChain, selectedNetwork, selectedToken.address)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-                  >
-                    View on Explorer ↗
-                  </a>
-                </div>
-              )}
-
-              <div className="flex justify-between gap-2 pt-2">
-                {selectedBalance && selectedBalance.symbol !== nativeSymbol && selectedBalance.address && (
-                  <Button
-                    onClick={() => {
-                      setTokenToDelete(selectedBalance);
-                      setSelectedToken(null);
-                      setSelectedBalance(null);
-                    }}
-                    variant="destructive"
-                    size="sm"
-                  >
-                    Delete Token
-                  </Button>
-                )}
-                <Button
-                  onClick={() => {
-                    setSelectedToken(null);
-                    setSelectedBalance(null);
-                  }}
-                  size="sm"
-                  variant="outline"
-                  className="ml-auto"
-                >
-                  Close
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+          }
+        }}
+        token={selectedToken}
+        balance={selectedBalance}
+        chain={selectedChain}
+        network={selectedNetwork}
+        nativeSymbol={nativeSymbol}
+        onDeleteToken={(balance) => {
+          setTokenToDelete(balance);
+        }}
+      />
     </div>
   );
 }

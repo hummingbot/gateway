@@ -51,7 +51,6 @@ export function SwapView() {
           setConnector(connectors[0]);
         }
       } catch (err) {
-        console.error('Failed to fetch router connectors:', err);
       }
     }
 
@@ -72,7 +71,6 @@ export function SwapView() {
           setToToken(tokens[1].symbol);
         }
       } catch (err) {
-        console.error('Failed to fetch tokens:', err);
       }
     }
 
@@ -98,7 +96,6 @@ export function SwapView() {
           setBalances(balancesMap);
         }
       } catch (err) {
-        console.error('Failed to fetch balances:', err);
       }
     }
 
@@ -151,7 +148,6 @@ export function SwapView() {
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to get quote');
-      console.error('Quote error:', err);
     } finally {
       setLoading(false);
     }

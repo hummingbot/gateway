@@ -9,10 +9,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 import { EmptyState } from './ui/EmptyState';
 import { LoadingState } from './ui/LoadingState';
 import { gatewayAPI } from '@/lib/GatewayAPI';
 import { useApp } from '@/lib/AppContext';
+import { showSuccessNotification } from '@/lib/notifications';
 
 interface Position {
   address: string;
@@ -44,16 +55,18 @@ export function LiquidityView() {
   const [lowerPrice, setLowerPrice] = useState('');
   const [upperPrice, setUpperPrice] = useState('');
 
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    type: 'open' | 'collect' | 'close' | null;
+    position?: Position;
+  }>({ type: null });
+
   async function loadPositions() {
     if (!selectedWallet) return;
 
     try {
       setLoading(true);
       setError(null);
-
-      // TODO: Fetch actual positions from connector
-      // This is a placeholder - would need to iterate through saved pools
-      // and fetch position info for each
       setPositions([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load positions');
@@ -66,12 +79,16 @@ export function LiquidityView() {
     loadPositions();
   }, [selectedWallet, connector]);
 
-  async function handleOpenPosition() {
+  function handleOpenPosition() {
     if (!poolAddress || !baseAmount || !quoteAmount) return;
+    setConfirmDialog({ type: 'open' });
+  }
 
+  async function confirmOpenPosition() {
     try {
       setLoading(true);
       setError(null);
+      setConfirmDialog({ type: null });
 
       await gatewayAPI.clmm.openPosition({
         network: selectedNetwork,
@@ -83,7 +100,7 @@ export function LiquidityView() {
         quoteTokenAmount: parseFloat(quoteAmount),
       });
 
-      alert('Position opened successfully!');
+      await showSuccessNotification('Position opened successfully!');
       loadPositions();
       setBaseAmount('');
       setQuoteAmount('');
@@ -96,18 +113,25 @@ export function LiquidityView() {
     }
   }
 
-  async function handleCollectFees(position: Position) {
+  function handleCollectFees(position: Position) {
+    setConfirmDialog({ type: 'collect', position });
+  }
+
+  async function confirmCollectFees() {
+    if (!confirmDialog.position) return;
+
     try {
       setLoading(true);
       setError(null);
+      setConfirmDialog({ type: null });
 
       await gatewayAPI.clmm.collectFees(connector, {
         network: selectedNetwork,
         walletAddress: selectedWallet,
-        positionAddress: position.address,
+        positionAddress: confirmDialog.position.address,
       });
 
-      alert('Fees collected successfully!');
+      await showSuccessNotification('Fees collected successfully!');
       loadPositions();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to collect fees');
@@ -116,18 +140,25 @@ export function LiquidityView() {
     }
   }
 
-  async function handleClosePosition(position: Position) {
+  function handleClosePosition(position: Position) {
+    setConfirmDialog({ type: 'close', position });
+  }
+
+  async function confirmClosePosition() {
+    if (!confirmDialog.position) return;
+
     try {
       setLoading(true);
       setError(null);
+      setConfirmDialog({ type: null });
 
       await gatewayAPI.clmm.closePosition(connector, {
         network: selectedNetwork,
         walletAddress: selectedWallet,
-        positionAddress: position.address,
+        positionAddress: confirmDialog.position.address,
       });
 
-      alert('Position closed successfully!');
+      await showSuccessNotification('Position closed successfully!');
       loadPositions();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to close position');
@@ -339,6 +370,90 @@ export function LiquidityView() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialogs */}
+      <AlertDialog
+        open={confirmDialog.type === 'open'}
+        onOpenChange={(open) => !open && setConfirmDialog({ type: null })}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Open Position</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to open a new liquidity position with {baseAmount} base tokens and {quoteAmount} quote tokens?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmOpenPosition} disabled={loading}>
+              {loading ? 'Opening...' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={confirmDialog.type === 'collect'}
+        onOpenChange={(open) => !open && setConfirmDialog({ type: null })}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Collect Fees</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDialog.position && (
+                <>
+                  Are you sure you want to collect fees from your {confirmDialog.position.baseToken}/{confirmDialog.position.quoteToken} position?
+                  {confirmDialog.position.fees && (
+                    <div className="mt-2 text-sm">
+                      <strong>Uncollected Fees:</strong>
+                      <br />
+                      {confirmDialog.position.fees.base} {confirmDialog.position.baseToken}
+                      <br />
+                      {confirmDialog.position.fees.quote} {confirmDialog.position.quoteToken}
+                    </div>
+                  )}
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCollectFees} disabled={loading}>
+              {loading ? 'Collecting...' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={confirmDialog.type === 'close'}
+        onOpenChange={(open) => !open && setConfirmDialog({ type: null })}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Close Position</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDialog.position && (
+                <>
+                  Are you sure you want to close your {confirmDialog.position.baseToken}/{confirmDialog.position.quoteToken} position?
+                  <div className="mt-2 text-sm">
+                    <strong>Position Value:</strong> ${confirmDialog.position.liquidity.toFixed(2)}
+                  </div>
+                  <div className="mt-2 text-sm text-destructive">
+                    <strong>Warning:</strong> This action cannot be undone. All liquidity will be withdrawn.
+                  </div>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmClosePosition} disabled={loading} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {loading ? 'Closing...' : 'Confirm Close'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -61,7 +61,7 @@ fi
 
 # Build APK
 echo -e "${YELLOW}Building APK (this may take 10-20 minutes on first build)...${NC}"
-pnpm tauri android build --apk
+pnpm tauri android build --apk true
 
 echo ""
 echo -e "${GREEN}✅ APK built successfully!${NC}"

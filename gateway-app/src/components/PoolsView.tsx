@@ -19,6 +19,7 @@ import {
 import { EmptyState } from './ui/EmptyState';
 import { LoadingState } from './ui/LoadingState';
 import { ConfirmModal } from './ConfirmModal';
+import { AddPoolModal } from './AddPoolModal';
 import { LiquidityPositionCard } from './LiquidityPositionCard';
 import { PoolBinChart } from './PoolBinChart';
 import { UserLiquidityChart } from './UserLiquidityChart';
@@ -35,7 +36,7 @@ import type {
 import { capitalize, getChainNetwork } from '@/lib/utils/string';
 import { formatTokenAmount, formatNumber } from '@/lib/utils/format';
 import { getPoolUrl, getDexName } from '@/lib/pool-urls';
-import { ExternalLink, ChevronDown } from 'lucide-react';
+import { ExternalLink, ChevronDown, Plus } from 'lucide-react';
 
 // UI-specific Pool type with connector property added
 interface Pool extends PoolTemplate {
@@ -56,6 +57,8 @@ export function PoolsView() {
   const [showConnectorDropdown, setShowConnectorDropdown] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [isAddPositionOpen, setIsAddPositionOpen] = useState(false);
+  const [showAddPool, setShowAddPool] = useState(false);
+  const [availableNetworks, setAvailableNetworks] = useState<string[]>([]);
 
   // Add liquidity form state
   const [amount0, setAmount0] = useState('');
@@ -71,9 +74,44 @@ export function PoolsView() {
   const [positionToCollectFees, setPositionToCollectFees] = useState<Position | null>(null);
   const [positionToClose, setPositionToClose] = useState<Position | null>(null);
 
+  // Helper to get current price from poolInfo
+  const getCurrentPrice = (): number | null => {
+    if (!poolInfo || !poolInfo.bins || !poolInfo.activeBinId) return null;
+    const activeBin = poolInfo.bins.find(b => b.binId === poolInfo.activeBinId);
+    return activeBin ? activeBin.price : null;
+  };
+
+  // Handle lower/min price change
+  const handleMinPriceChange = (value: string) => {
+    setLowerPrice(value);
+  };
+
+  // Handle upper/max price change
+  const handleMaxPriceChange = (value: string) => {
+    setUpperPrice(value);
+  };
+
+  // Adjust both prices by percentage (negative for min, positive for max)
+  const adjustBothPrices = (percentage: number) => {
+    const currentPrice = getCurrentPrice();
+    if (currentPrice) {
+      const minPrice = currentPrice * (1 - percentage / 100);
+      const maxPrice = currentPrice * (1 + percentage / 100);
+      setLowerPrice(minPrice.toFixed(6));
+      setUpperPrice(maxPrice.toFixed(6));
+    }
+  };
+
+  // Reset prices
+  const resetPrices = () => {
+    setLowerPrice('');
+    setUpperPrice('');
+  };
+
   // Fetch available connectors when chain/network/types change
   useEffect(() => {
     fetchAvailableConnectors();
+    loadNetworks();
   }, [selectedChain, selectedNetwork, selectedTypes]);
 
   // Fetch pools when connectors/types or network changes
@@ -143,7 +181,6 @@ export function PoolsView() {
         }
       }
     } catch (err) {
-      console.error('Failed to fetch connectors:', err);
       await showErrorNotification(err instanceof Error ? err.message : 'Failed to fetch connectors');
     }
   }
@@ -164,7 +201,6 @@ export function PoolsView() {
               connector,
             }));
         } catch (err) {
-          console.error(`Failed to fetch pools for ${connector}:`, err);
           return [];
         }
       });
@@ -181,7 +217,6 @@ export function PoolsView() {
         setSelectedPool(null);
       }
     } catch (err) {
-      console.error('Failed to fetch pools:', err);
       await showErrorNotification(err instanceof Error ? err.message : 'Failed to fetch pools');
       setPools([]);
     } finally {
@@ -204,7 +239,6 @@ export function PoolsView() {
         setFee(String(Math.round(data.feePct * 100)));
       }
     } catch (err) {
-      console.error('Failed to fetch pool info:', err);
     }
   }
 
@@ -226,7 +260,6 @@ export function PoolsView() {
       }));
       setPositions(positionsWithConnector);
     } catch (err) {
-      console.error('Failed to fetch positions:', err);
       setPositions([]);
     } finally {
       setLoadingPositions(false);
@@ -250,8 +283,22 @@ export function PoolsView() {
         setBalances(balancesMap);
       }
     } catch (err) {
-      console.error('Failed to fetch balances:', err);
     }
+  }
+
+  async function loadNetworks() {
+    const configData = await gatewayAPI.config.getChains();
+    const chainData = configData.chains?.find((c) => c.chain === selectedChain);
+    if (chainData?.networks) {
+      setAvailableNetworks(chainData.networks);
+    }
+  }
+
+  async function handleAddPool(chain: string, network: string, address: string) {
+    const chainNetwork = `${chain}-${network}`;
+    const response = await gatewayAPI.pools.save(address, chainNetwork);
+    await fetchPools();
+    await showSuccessNotification(`Pool added successfully!`);
   }
 
   function toggleConnector(connector: string) {
@@ -521,6 +568,15 @@ export function PoolsView() {
                 </Button>
               ))}
             </div>
+            <Button
+              onClick={() => setShowAddPool(true)}
+              variant="outline"
+              size="sm"
+              className="w-full mt-2"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add Pool
+            </Button>
           </div>
         </div>
       </div>
@@ -638,24 +694,73 @@ export function PoolsView() {
                           </div>
 
                           <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-medium">Lower Price</label>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Min Price</label>
                               <Input
                                 type="number"
                                 placeholder="0.0"
                                 value={lowerPrice}
-                                onChange={(e) => setLowerPrice(e.target.value)}
+                                onChange={(e) => handleMinPriceChange(e.target.value)}
                               />
                             </div>
-                            <div>
-                              <label className="text-sm font-medium">Upper Price</label>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Max Price</label>
                               <Input
                                 type="number"
                                 placeholder="0.0"
                                 value={upperPrice}
-                                onChange={(e) => setUpperPrice(e.target.value)}
+                                onChange={(e) => handleMaxPriceChange(e.target.value)}
                               />
                             </div>
+                          </div>
+
+                          <div className="flex justify-center items-center gap-2">
+                            <span className="text-sm font-medium text-muted-foreground">+/-</span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => adjustBothPrices(1)}
+                              className="text-xs h-7 px-2"
+                            >
+                              1%
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => adjustBothPrices(10)}
+                              className="text-xs h-7 px-2"
+                            >
+                              10%
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => adjustBothPrices(20)}
+                              className="text-xs h-7 px-2"
+                            >
+                              20%
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => adjustBothPrices(50)}
+                              className="text-xs h-7 px-2"
+                            >
+                              50%
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={resetPrices}
+                              className="text-xs h-7 px-2"
+                            >
+                              Reset
+                            </Button>
                           </div>
 
                           {/* User Liquidity Distribution Chart */}
@@ -734,40 +839,57 @@ export function PoolsView() {
       </div>
 
       {/* Add Position Confirmation Modal */}
-      {showAddPositionConfirm && selectedPool && (
-        <ConfirmModal
-          title="Add Position"
-          message={`Are you sure you want to open a new position in ${selectedPool.baseSymbol}/${selectedPool.quoteSymbol} pool with ${amount0} ${selectedPool.baseSymbol} and ${amount1} ${selectedPool.quoteSymbol}?`}
-          confirmText={submitting ? 'Opening Position...' : 'Confirm'}
-          cancelText="Cancel"
-          onConfirm={handleAddLiquidity}
-          onCancel={() => setShowAddPositionConfirm(false)}
-        />
-      )}
+      <ConfirmModal
+        open={showAddPositionConfirm && !!selectedPool}
+        onOpenChange={(open) => {
+          if (!open) setShowAddPositionConfirm(false);
+        }}
+        title="Add Position"
+        description={selectedPool ? `Are you sure you want to open a new position in ${selectedPool.baseSymbol}/${selectedPool.quoteSymbol} pool with ${amount0} ${selectedPool.baseSymbol} and ${amount1} ${selectedPool.quoteSymbol}?` : ''}
+        confirmText="Confirm"
+        cancelText="Cancel"
+        onConfirm={handleAddLiquidity}
+        loading={submitting}
+      />
 
       {/* Collect Fees Confirmation Modal */}
-      {positionToCollectFees && (
-        <ConfirmModal
-          title="Collect Fees"
-          message={`Are you sure you want to collect fees from this position? This will claim all uncollected fees.`}
-          confirmText={submitting ? 'Collecting Fees...' : 'Confirm'}
-          cancelText="Cancel"
-          onConfirm={handleCollectFees}
-          onCancel={() => setPositionToCollectFees(null)}
-        />
-      )}
+      <ConfirmModal
+        open={!!positionToCollectFees}
+        onOpenChange={(open) => {
+          if (!open) setPositionToCollectFees(null);
+        }}
+        title="Collect Fees"
+        description="Are you sure you want to collect fees from this position? This will claim all uncollected fees."
+        confirmText="Confirm"
+        cancelText="Cancel"
+        onConfirm={handleCollectFees}
+        loading={submitting}
+      />
 
       {/* Close Position Confirmation Modal */}
-      {positionToClose && (
-        <ConfirmModal
-          title="Close Position"
-          message={`Are you sure you want to close this position? This will remove all liquidity and collect any unclaimed fees. This action cannot be undone.`}
-          confirmText={submitting ? 'Closing Position...' : 'Confirm'}
-          cancelText="Cancel"
-          onConfirm={handleClosePosition}
-          onCancel={() => setPositionToClose(null)}
-        />
-      )}
+      <ConfirmModal
+        open={!!positionToClose}
+        onOpenChange={(open) => {
+          if (!open) setPositionToClose(null);
+        }}
+        title="Close Position"
+        description="Are you sure you want to close this position? This will remove all liquidity and collect any unclaimed fees. This action cannot be undone."
+        confirmText="Confirm"
+        cancelText="Cancel"
+        onConfirm={handleClosePosition}
+        destructive={true}
+        loading={submitting}
+      />
+
+      {/* Add Pool Modal */}
+      <AddPoolModal
+        open={showAddPool}
+        onOpenChange={setShowAddPool}
+        onAddPool={handleAddPool}
+        defaultChain={selectedChain}
+        defaultNetwork={selectedNetwork}
+        availableNetworks={availableNetworks}
+      />
     </div>
   );
 }

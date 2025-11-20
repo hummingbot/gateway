@@ -1,14 +1,27 @@
+import { useState } from 'react';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from './ui/select';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from './ui/drawer';
+import { Button } from './ui/button';
 import { shortenAddress } from '@/lib/utils/string';
+import { Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface WalletData {
   chain: string;
@@ -30,64 +43,118 @@ export function WalletSelector({
   onWalletChange,
   onAddWallet,
 }: WalletSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const isDesktop = useMediaQuery("(min-width: 768px)");
   const hasWallets = allWallets.some((w) => w.walletAddresses.length > 0);
 
-  const handleChange = (value: string) => {
-    if (value === 'add-wallet') {
-      onAddWallet();
-    } else {
-      // Format: "chain:address"
-      const [chain, address] = value.split(':');
-      onWalletChange(address, chain);
-    }
+  const handleSelect = (wallet: string, chain: string) => {
+    onWalletChange(wallet, chain);
+    setOpen(false);
   };
 
-  const getCurrentValue = () => {
-    if (!selectedWallet) return 'add-wallet';
-    return `${selectedChain}:${selectedWallet}`;
+  const handleAddWallet = () => {
+    onAddWallet();
+    setOpen(false);
   };
 
   const getChainIcon = (chain: string) => {
-    // Using placeholder icons for now
     switch (chain) {
       case 'solana':
-        return '◎'; // Solana placeholder
+        return '◎';
       case 'ethereum':
-        return '⟠'; // Ethereum placeholder
+        return '⟠';
       default:
         return '●';
     }
   };
 
+  const getDisplayValue = () => {
+    if (!selectedWallet) return 'Select wallet';
+    return `${getChainIcon(selectedChain)} ${shortenAddress(selectedWallet)}`;
+  };
+
+  const WalletList = ({ className }: { className?: string }) => (
+    <div className={cn("space-y-4", className)}>
+      {!hasWallets ? (
+        <Button
+          onClick={handleAddWallet}
+          variant="outline"
+          className="w-full justify-start"
+        >
+          + Add Wallet
+        </Button>
+      ) : (
+        <>
+          {allWallets.map((walletData) => (
+            <div key={walletData.chain} className="space-y-1">
+              <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+                {walletData.chain.toUpperCase()}
+              </div>
+              {walletData.walletAddresses.map((wallet) => {
+                const isSelected = selectedWallet === wallet && selectedChain === walletData.chain;
+                return (
+                  <Button
+                    key={wallet}
+                    onClick={() => handleSelect(wallet, walletData.chain)}
+                    variant={isSelected ? "secondary" : "ghost"}
+                    className="w-full justify-start"
+                  >
+                    <span className="flex items-center gap-2 flex-1">
+                      {getChainIcon(walletData.chain)} {shortenAddress(wallet)}
+                    </span>
+                    {isSelected && <Check className="h-4 w-4" />}
+                  </Button>
+                );
+              })}
+            </div>
+          ))}
+          <div className="pt-2 border-t">
+            <Button
+              onClick={handleAddWallet}
+              variant="outline"
+              className="w-full justify-start"
+            >
+              + Add Wallet
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  if (isDesktop) {
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" className="w-48">
+            {getDisplayValue()}
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Select Wallet</DialogTitle>
+            <DialogDescription>Choose a wallet or add a new one</DialogDescription>
+          </DialogHeader>
+          <WalletList className="max-h-[60vh] overflow-y-auto px-1" />
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
-    <Select
-      value={getCurrentValue()}
-      onValueChange={handleChange}
-    >
-      <SelectTrigger className="w-48">
-        <SelectValue placeholder="Select wallet" />
-      </SelectTrigger>
-      <SelectContent>
-        {!hasWallets ? (
-          <SelectItem value="add-wallet">+ Add Wallet</SelectItem>
-        ) : (
-          <>
-            {allWallets.map((walletData, idx) => (
-              <SelectGroup key={walletData.chain}>
-                <SelectLabel>{walletData.chain.toUpperCase()}</SelectLabel>
-                {walletData.walletAddresses.map((wallet) => (
-                  <SelectItem key={wallet} value={`${walletData.chain}:${wallet}`}>
-                    {getChainIcon(walletData.chain)} {shortenAddress(wallet)}
-                  </SelectItem>
-                ))}
-                {idx < allWallets.length - 1 && <SelectSeparator />}
-              </SelectGroup>
-            ))}
-            <SelectSeparator />
-            <SelectItem value="add-wallet">+ Add Wallet</SelectItem>
-          </>
-        )}
-      </SelectContent>
-    </Select>
+    <Drawer open={open} onOpenChange={setOpen}>
+      <DrawerTrigger asChild>
+        <Button variant="outline" className="w-48">
+          {getDisplayValue()}
+        </Button>
+      </DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader className="text-left">
+          <DrawerTitle>Select Wallet</DrawerTitle>
+          <DrawerDescription>Choose a wallet or add a new one</DrawerDescription>
+        </DrawerHeader>
+        <WalletList className="px-4 pb-4 max-h-[60vh] overflow-y-auto" />
+      </DrawerContent>
+    </Drawer>
   );
 }

@@ -29,6 +29,13 @@ function AppContent() {
   const [showAddWallet, setShowAddWallet] = useState(false);
   const [showNetworkModal, setShowNetworkModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
+
+  useEffect(() => {
+    // Detect if running on Android using user agent
+    const isAndroidDevice = /Android/i.test(navigator.userAgent);
+    setIsAndroid(isAndroidDevice);
+  }, []);
 
   useEffect(() => {
     loadWalletsAndNetworks();
@@ -122,9 +129,9 @@ function AppContent() {
       <Toaster
         position="bottom-center"
         richColors
-        className="!bottom-20"
+        className={isAndroid ? '!bottom-[calc(5rem+env(safe-area-inset-bottom))]' : '!bottom-20'}
       />
-      <div className="flex flex-col h-screen">
+      <div className={`flex flex-col h-screen ${isAndroid ? 'pt-safe pb-safe-bottom' : ''}`}>
         {/* Header */}
         <header className="border-b px-4 md:px-6 py-3 md:py-4">
         <div className="flex justify-between items-center gap-2">
@@ -220,13 +227,12 @@ function AppContent() {
       </header>
 
       {/* Add Wallet Modal */}
-      {showAddWallet && (
-        <AddWalletModal
-          onClose={() => setShowAddWallet(false)}
-          onAddWallet={handleAddWallet}
-          defaultChain={selectedChain}
-        />
-      )}
+      <AddWalletModal
+        open={showAddWallet}
+        onOpenChange={setShowAddWallet}
+        onAddWallet={handleAddWallet}
+        defaultChain={selectedChain}
+      />
 
       {/* Network Selection Modal (Mobile) */}
       {showNetworkModal && (

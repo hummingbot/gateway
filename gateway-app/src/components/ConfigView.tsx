@@ -77,7 +77,6 @@ export function ConfigView() {
         allNamespaces = ['app', ...namespacesData.namespaces.sort()];
         chainData = chainsData.chains;
       } catch (err) {
-        console.error('Failed to load Gateway config data:', err);
         // Continue with just app namespace if Gateway API fails
       }
 
@@ -87,7 +86,6 @@ export function ConfigView() {
       // Default to 'app' first
       setSelectedNamespace('app');
     } catch (err) {
-      console.error('Failed to initialize config:', err);
       // Still set app namespace even if everything fails
       setNamespaces(['app']);
       setChains([]);
@@ -108,7 +106,6 @@ export function ConfigView() {
         try {
           namespaceConfig = await readAppConfig();
         } catch (err) {
-          console.error('Failed to load app config:', err);
           // Use empty config if app config fails
           namespaceConfig = {};
         }
@@ -118,7 +115,6 @@ export function ConfigView() {
           const allConfigs = await gatewayAPI.config.getAll();
           namespaceConfig = allConfigs[selectedNamespace] || {};
         } catch (err) {
-          console.error('Failed to load Gateway config:', err);
           await showErrorNotification('Failed to load Gateway configuration');
           namespaceConfig = {};
         }
@@ -157,7 +153,6 @@ export function ConfigView() {
       flattenConfig(namespaceConfig);
       setConfigItems(items);
     } catch (err) {
-      console.error('Unexpected error loading config:', err);
     } finally {
       setLoading(false);
     }

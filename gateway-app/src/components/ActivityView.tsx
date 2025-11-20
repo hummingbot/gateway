@@ -85,7 +85,6 @@ export function ActivityView() {
         });
       }
     } catch (err) {
-      console.error('Failed to load transactions:', err);
       setError(err instanceof Error ? err.message : 'Failed to load transactions');
     } finally {
       setLoading(false);
@@ -109,7 +108,6 @@ export function ActivityView() {
         signature: selectedTx.signature,
       });
     } catch (err) {
-      console.error('Failed to parse transaction:', err);
       setParsedTx(null);
     } finally {
       setLoadingParse(false);

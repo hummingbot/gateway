@@ -126,6 +126,13 @@ export class PoolAPI {
       `/trading/clmm/pool-info?connector=${connector}&chainNetwork=${chainNetwork}&poolAddress=${poolAddress}`
     );
   }
+
+  async save(address: string, chainNetwork: string) {
+    return gatewayPost<{ message: string; pool: PoolTemplate }>(
+      `/pools/save/${address}?chainNetwork=${chainNetwork}`,
+      {}
+    );
+  }
 }
 
 /**

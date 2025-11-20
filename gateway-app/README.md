@@ -2,6 +2,9 @@
 
 A lightweight desktop application for interacting with the Gateway API server, built with Tauri v2, React, TypeScript, and TailwindCSS.
 
+**Primary Platform**: macOS Desktop
+**Mobile Support**: Android builds available via `build-android-dev.sh` (experimental, being optimized)
+
 ## Features
 
 - **Portfolio View**: View wallet balances and LP positions
@@ -11,12 +14,12 @@ A lightweight desktop application for interacting with the Gateway API server, b
 
 ## Tech Stack
 
-- **Tauri v2**: Desktop framework
+- **Tauri v2**: Desktop and mobile framework
 - **React 18**: UI framework
 - **TypeScript**: Type safety
 - **Vite**: Build tool
 - **TailwindCSS v4**: Styling
-- **shadcn/ui**: UI components
+- **shadcn/ui**: Responsive UI components (Dialog/Drawer pattern for mobile)
 
 ## Prerequisites
 
@@ -135,19 +138,9 @@ The app connects to Gateway using API key authentication by default (`useCerts: 
 
 ## Production Build
 
-### Build Web Assets
+### Build Desktop App (Default)
 
-Build the frontend only:
-```bash
-cd /Users/feng/gateway/gateway-app
-pnpm build
-```
-
-Output: `dist/` directory with HTML/CSS/JS
-
-### Build Desktop App
-
-Build the native desktop application:
+Build the native macOS desktop application:
 ```bash
 cd /Users/feng/gateway/gateway-app
 pnpm tauri build
@@ -156,13 +149,51 @@ pnpm tauri build
 This will:
 1. Build the web assets (`pnpm build`)
 2. Compile the Rust backend
-3. Bundle the app for your platform
+3. Bundle the app for macOS
 
 **Build Output:**
 - **macOS App**: `src-tauri/target/release/bundle/macos/gateway-app.app`
 - **DMG Installer**: `src-tauri/target/release/bundle/dmg/gateway-app_0.1.0_aarch64.dmg`
 
 **Note**: The API key and Gateway URL are baked into the build from your `.env` file at build time.
+
+### Build Android App (Experimental)
+
+**Note**: Android builds are experimental and being optimized. Use only when specifically needed.
+
+**Prerequisites:**
+- Android SDK and NDK installed
+- Gateway server running with ngrok tunnel
+- `ANDROID_HOME`, `JAVA_HOME`, and `ANDROID_NDK_HOME` environment variables set
+
+Build and install Android APK:
+```bash
+cd /Users/feng/gateway/gateway-app
+./build-android-dev.sh
+```
+
+This script will:
+1. Detect ngrok URL for Gateway connection
+2. Build debug APK with responsive UI (Dialog→Drawer on mobile)
+3. Show APK location for installation
+
+**Build Output:**
+- **APK**: `src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk`
+
+Install on device:
+```bash
+adb install src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
+```
+
+### Build Web Assets Only
+
+Build the frontend without Tauri:
+```bash
+cd /Users/feng/gateway/gateway-app
+pnpm build
+```
+
+Output: `dist/` directory with HTML/CSS/JS
 
 ## Architecture
 
@@ -242,9 +273,9 @@ See [COMPONENTS.md](./COMPONENTS.md) for component documentation.
 
 ## Deployment Options
 
-### Option 1: Desktop App (Tauri)
+### Option 1: macOS Desktop App (Primary)
 
-Run as a native desktop application:
+Run as a native macOS desktop application:
 
 ```bash
 # Development
@@ -254,11 +285,24 @@ pnpm tauri dev
 pnpm tauri build
 ```
 
-**Use case**: Local installation, native OS integration
+**Use case**: Local installation, native macOS integration
 
-### Option 2: Web Browser (Docker)
+### Option 2: Web Browser
 
 Run as a web application accessible in browser:
+
+```bash
+# Development server
+pnpm dev
+```
+
+Access at http://localhost:1420
+
+**Use case**: Web testing, cross-platform development
+
+### Option 3: Docker (Web)
+
+Deploy as containerized web application:
 
 ```bash
 # From gateway root directory
@@ -270,6 +314,18 @@ Access at http://localhost:1420
 **Use case**: Remote access, multi-user deployments
 
 See [DOCKER.md](../DOCKER.md) for complete Docker setup guide.
+
+### Option 4: Android App (Experimental)
+
+Build and install Android APK for mobile testing:
+
+```bash
+./build-android-dev.sh
+```
+
+**Use case**: Mobile testing, being optimized
+
+**Note**: Requires Android SDK/NDK and Gateway with ngrok tunnel.
 
 ## Configuration Sharing
 

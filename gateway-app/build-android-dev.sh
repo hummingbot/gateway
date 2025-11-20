@@ -61,7 +61,7 @@ fi
 
 # Build debug APK (faster, includes debug symbols)
 echo -e "${YELLOW}Building debug APK (faster than release build)...${NC}"
-pnpm tauri android build --apk --debug
+pnpm tauri android build --debug
 
 echo ""
 echo -e "${GREEN}✅ Debug APK built successfully!${NC}"

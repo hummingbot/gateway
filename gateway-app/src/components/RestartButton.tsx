@@ -37,7 +37,6 @@ export function RestartButton({ className = '', iconSize = 18 }: RestartButtonPr
       await gatewayPost('/restart', {});
     } catch (err) {
       // Expected - Gateway shuts down before responding
-      console.log('Gateway shutting down (expected):', err);
     }
 
     // Show restarting notification

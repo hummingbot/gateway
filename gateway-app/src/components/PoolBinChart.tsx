@@ -132,7 +132,7 @@ export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: Pool
             strokeDasharray="3 3"
             strokeWidth={2}
             label={{
-              value: 'Current',
+              value: activeBin.price.toFixed(2),
               position: 'top',
               fill: 'hsl(var(--foreground))',
               fontSize: 12,
