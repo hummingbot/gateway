@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -38,6 +39,8 @@ interface ChainData {
 
 export function ConfigView() {
   const { setDarkMode } = useApp();
+  const { namespace } = useParams<{ namespace: string }>();
+  const navigate = useNavigate();
   const [namespaces, setNamespaces] = useState<string[]>([]);
   const [selectedNamespace, setSelectedNamespace] = useState<string>('');
   const [configItems, setConfigItems] = useState<ConfigItem[]>([]);
@@ -57,6 +60,15 @@ export function ConfigView() {
       loadConfig();
     }
   }, [selectedNamespace]);
+
+  // Handle namespace from URL parameter
+  useEffect(() => {
+    if (namespace && namespaces.length > 0) {
+      if (namespaces.includes(namespace) && namespace !== selectedNamespace) {
+        setSelectedNamespace(namespace);
+      }
+    }
+  }, [namespace, namespaces]);
 
   async function loadData() {
     try {
@@ -298,7 +310,10 @@ export function ConfigView() {
       <div className="md:hidden border-b p-2">
         <Select
           value={selectedNamespace}
-          onValueChange={setSelectedNamespace}
+          onValueChange={(value) => {
+            setSelectedNamespace(value);
+            navigate(`/config/${value}`);
+          }}
         >
           <SelectTrigger>
             <SelectValue />
@@ -346,7 +361,10 @@ export function ConfigView() {
               {gatewayNamespaces.map((ns) => (
                 <Button
                   key={ns}
-                  onClick={() => setSelectedNamespace(ns)}
+                  onClick={() => {
+                    setSelectedNamespace(ns);
+                    navigate(`/config/${ns}`);
+                  }}
                   variant={selectedNamespace === ns ? "default" : "ghost"}
                   className="w-full justify-start px-3 py-2"
                 >
@@ -363,7 +381,10 @@ export function ConfigView() {
               {rpcNamespaces.map((ns) => (
                 <Button
                   key={ns}
-                  onClick={() => setSelectedNamespace(ns)}
+                  onClick={() => {
+                    setSelectedNamespace(ns);
+                    navigate(`/config/${ns}`);
+                  }}
                   variant={selectedNamespace === ns ? "default" : "ghost"}
                   className="w-full justify-start px-3 py-2"
                 >
@@ -382,7 +403,10 @@ export function ConfigView() {
                 </h3>
                 {baseConfig && (
                   <Button
-                    onClick={() => setSelectedNamespace(baseConfig)}
+                    onClick={() => {
+                      setSelectedNamespace(baseConfig);
+                      navigate(`/config/${baseConfig}`);
+                    }}
                     variant={selectedNamespace === baseConfig ? "default" : "ghost"}
                     className="w-full justify-start px-3 py-2"
                   >
@@ -392,7 +416,10 @@ export function ConfigView() {
                 {networks.map((ns) => (
                   <Button
                     key={ns}
-                    onClick={() => setSelectedNamespace(ns)}
+                    onClick={() => {
+                    setSelectedNamespace(ns);
+                    navigate(`/config/${ns}`);
+                  }}
                     variant={selectedNamespace === ns ? "default" : "ghost"}
                     className="w-full justify-start px-3 py-2"
                   >
@@ -410,7 +437,10 @@ export function ConfigView() {
               {connectorNamespaces.map((ns) => (
                 <Button
                   key={ns}
-                  onClick={() => setSelectedNamespace(ns)}
+                  onClick={() => {
+                    setSelectedNamespace(ns);
+                    navigate(`/config/${ns}`);
+                  }}
                   variant={selectedNamespace === ns ? "default" : "ghost"}
                   className="w-full justify-start px-3 py-2"
                 >

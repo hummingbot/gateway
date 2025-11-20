@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -31,6 +32,8 @@ interface ParsedTransaction extends ParseResponseType {
 
 export function ActivityView() {
   const { selectedChain, selectedNetwork, selectedWallet, gatewayAvailable } = useApp();
+  const { signature } = useParams<{ signature: string }>();
+  const navigate = useNavigate();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [parsedTx, setParsedTx] = useState<ParsedTransaction | null>(null);
@@ -52,6 +55,16 @@ export function ActivityView() {
       setParsedTx(null);
     }
   }, [selectedTx, selectedWallet, selectedChain, selectedNetwork]);
+
+  // Handle signature from URL parameter
+  useEffect(() => {
+    if (signature && transactions.length > 0) {
+      const tx = transactions.find((t) => t.signature === signature);
+      if (tx && tx.signature !== selectedTx?.signature) {
+        setSelectedTx(tx);
+      }
+    }
+  }, [signature, transactions]);
 
   async function loadTransactions() {
     if (!selectedWallet) {
@@ -204,7 +217,10 @@ export function ActivityView() {
           value={selectedTx?.signature || ''}
           onValueChange={(value) => {
             const tx = transactions.find((t) => t.signature === value);
-            if (tx) setSelectedTx(tx);
+            if (tx) {
+              setSelectedTx(tx);
+              navigate(`/transactions/${tx.signature}`);
+            }
           }}
         >
           <SelectTrigger>
@@ -254,7 +270,10 @@ export function ActivityView() {
               {transactions.map((tx) => (
                 <Button
                   key={tx.signature}
-                  onClick={() => setSelectedTx(tx)}
+                  onClick={() => {
+                    setSelectedTx(tx);
+                    navigate(`/transactions/${tx.signature}`);
+                  }}
                   variant={selectedTx?.signature === tx.signature ? "default" : "ghost"}
                   className="w-full justify-start px-3 py-2 h-auto mb-1 text-left"
                 >

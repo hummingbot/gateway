@@ -261,20 +261,19 @@ export function PortfolioView() {
                         const formattedBalance = formatBalance(balance.balance, 6);
 
                         return (
-                          <TableRow key={i}>
+                          <TableRow
+                            key={i}
+                            onClick={() => {
+                              const token = tokenList.find(t => t.symbol === balance.symbol);
+                              if (token) {
+                                setSelectedToken(token);
+                                setSelectedBalance(balance);
+                              }
+                            }}
+                            className="cursor-pointer hover:bg-accent/50"
+                          >
                             <TableCell>
-                              <button
-                                onClick={() => {
-                                  const token = tokenList.find(t => t.symbol === balance.symbol);
-                                  if (token) {
-                                    setSelectedToken(token);
-                                    setSelectedBalance(balance);
-                                  }
-                                }}
-                                className="hover:underline text-blue-600 dark:text-blue-400 cursor-pointer"
-                              >
-                                {balance.symbol}
-                              </button>
+                              {balance.symbol}
                             </TableCell>
                             <TableCell>
                               {balance.name}

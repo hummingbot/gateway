@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ReferenceLine } from "recharts";
 import {
   ChartContainer,
@@ -6,6 +6,8 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { Button } from "@/components/ui/button";
+import { ZoomIn, ZoomOut } from "lucide-react";
 import type { BinLiquidity } from '@/lib/gateway-types';
 
 interface PoolBinChartProps {
@@ -16,9 +18,11 @@ interface PoolBinChartProps {
 }
 
 export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: PoolBinChartProps) {
-  // Prepare chart data
+  const [zoomLevel, setZoomLevel] = useState(1); // 1 = no zoom, higher = zoomed in
+
+  // Prepare chart data with zoom
   const chartData = useMemo(() => {
-    return bins.map((bin) => {
+    const allBins = bins.map((bin) => {
       const totalLiquidity = bin.price * bin.baseTokenAmount + bin.quoteTokenAmount;
       const isActive = bin.binId === activeBinId;
       const isInRange = lowerPrice !== undefined && upperPrice !== undefined
@@ -40,7 +44,21 @@ export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: Pool
           : "hsl(var(--muted-foreground))", // Normal bin - muted
       };
     });
-  }, [bins, activeBinId, lowerPrice, upperPrice]);
+
+    // Apply zoom by filtering bins around active bin
+    if (zoomLevel > 1) {
+      const activeBinIndex = allBins.findIndex(b => b.binId === activeBinId);
+      if (activeBinIndex !== -1) {
+        const binsToShow = Math.floor(allBins.length / zoomLevel);
+        const halfRange = Math.floor(binsToShow / 2);
+        const start = Math.max(0, activeBinIndex - halfRange);
+        const end = Math.min(allBins.length, start + binsToShow);
+        return allBins.slice(start, end);
+      }
+    }
+
+    return allBins;
+  }, [bins, activeBinId, lowerPrice, upperPrice, zoomLevel]);
 
   const chartConfig = {
     liquidity: {
@@ -60,8 +78,37 @@ export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: Pool
   // Find active bin for reference line
   const activeBin = bins.find(b => b.binId === activeBinId);
 
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev * 1.5, 10)); // Max 10x zoom
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev / 1.5, 1)); // Min 1x (no zoom)
+  };
+
   return (
-    <ChartContainer config={chartConfig} className="h-[300px] w-full">
+    <div className="relative">
+      <div className="absolute top-2 right-2 z-10 flex gap-1">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleZoomIn}
+          disabled={zoomLevel >= 10}
+        >
+          <ZoomIn className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleZoomOut}
+          disabled={zoomLevel <= 1}
+        >
+          <ZoomOut className="h-4 w-4" />
+        </Button>
+      </div>
+      <ChartContainer config={chartConfig} className="h-[300px] w-full">
       <BarChart data={chartData} margin={{ top: 20, right: 10, left: 10, bottom: 10 }}>
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
         <XAxis
@@ -73,11 +120,7 @@ export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: Pool
           tickFormatter={(value: any) => value.toFixed(2)}
         />
         <YAxis
-          tickLine={false}
-          axisLine={false}
-          tickMargin={8}
-          label={{ value: 'Liquidity', angle: -90, position: 'insideLeft' }}
-          tickFormatter={(value: any) => value.toFixed(2)}
+          hide
         />
         <ChartTooltip
           content={
@@ -141,5 +184,6 @@ export function PoolBinChart({ bins, activeBinId, lowerPrice, upperPrice }: Pool
         )}
       </BarChart>
     </ChartContainer>
+    </div>
   );
 }

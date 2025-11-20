@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -33,7 +34,7 @@ import type {
   ConnectorConfig,
   PositionWithConnector as Position,
 } from '@/lib/gateway-types';
-import { capitalize, getChainNetwork } from '@/lib/utils/string';
+import { capitalize, getChainNetwork, shortenAddress } from '@/lib/utils/string';
 import { formatTokenAmount, formatNumber } from '@/lib/utils/format';
 import { getPoolUrl, getDexName } from '@/lib/pool-urls';
 import { ExternalLink, ChevronDown, Plus } from 'lucide-react';
@@ -45,6 +46,8 @@ interface Pool extends PoolTemplate {
 
 export function PoolsView() {
   const { selectedChain, selectedNetwork, selectedWallet, gatewayAvailable } = useApp();
+  const { address } = useParams<{ address: string }>();
+  const navigate = useNavigate();
   const [availableConnectors, setAvailableConnectors] = useState<string[]>([]);
   const [selectedConnectors, setSelectedConnectors] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>(['clmm']);
@@ -129,6 +132,26 @@ export function PoolsView() {
       fetchBalances();
     }
   }, [selectedPool, selectedWallet]);
+
+  // Handle address from URL parameter
+  useEffect(() => {
+    if (address && pools.length > 0) {
+      const pool = pools.find((p) => p.address === address);
+      if (pool && pool.address !== selectedPool?.address) {
+        setSelectedPool(pool);
+      }
+    }
+  }, [address, pools]);
+
+  // Clear Add Position form when pool changes
+  useEffect(() => {
+    if (selectedPool) {
+      setAmount0('');
+      setAmount1('');
+      setLowerPrice('');
+      setUpperPrice('');
+    }
+  }, [selectedPool?.address]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -451,7 +474,10 @@ export function PoolsView() {
           value={selectedPool?.address || ''}
           onValueChange={(value) => {
             const pool = pools.find((p) => p.address === value);
-            if (pool) setSelectedPool(pool);
+            if (pool) {
+              setSelectedPool(pool);
+              navigate(`/pools/${pool.address}`);
+            }
           }}
         >
           <SelectTrigger>
@@ -553,7 +579,10 @@ export function PoolsView() {
               {pools.map((pool) => (
                 <Button
                   key={pool.address}
-                  onClick={() => setSelectedPool(pool)}
+                  onClick={() => {
+                    setSelectedPool(pool);
+                    navigate(`/pools/${pool.address}`);
+                  }}
                   variant={selectedPool?.address === pool.address ? "default" : "ghost"}
                   className="w-full justify-start px-3 py-2 h-auto mb-1"
                 >
@@ -590,9 +619,26 @@ export function PoolsView() {
               <Card>
                 <CardHeader className="p-3 md:p-6">
                   <div className="flex items-start justify-between">
-                    <CardTitle>
-                      {selectedPool.baseSymbol}-{selectedPool.quoteSymbol} Pool
-                    </CardTitle>
+                    <div className="space-y-2">
+                      <div>
+                        <CardTitle>
+                          {selectedPool.baseSymbol}-{selectedPool.quoteSymbol}
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          {capitalize(selectedPool.connector)} {selectedPool.type.toUpperCase()}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge className="bg-green-600 text-white dark:bg-green-700">
+                          {selectedPool.feePct}%
+                        </Badge>
+                        {poolInfo && poolInfo.binStep !== undefined && (
+                          <Badge variant="secondary">
+                            Bin Step: {poolInfo.binStep}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
                     {(() => {
                       const poolUrl = getPoolUrl({
                         connector: selectedPool.connector,
@@ -621,38 +667,9 @@ export function PoolsView() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-3 md:p-6">
-                  <div className="grid grid-cols-2 gap-4 text-xs md:text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Type:</span>
-                      <p className="font-medium">{selectedPool.type.toUpperCase()}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Fee:</span>
-                      <p className="font-medium">{selectedPool.feePct}%</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Network:</span>
-                      <p className="font-medium">{selectedPool.network}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Connector:</span>
-                      <p className="font-medium capitalize">{selectedPool.connector}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Fee Tier:</span>
-                      <p className="font-medium">{fee || Math.round(selectedPool.feePct * 100)} basis points</p>
-                    </div>
-                    {poolInfo && poolInfo.binStep !== undefined && (
-                      <div>
-                        <span className="text-muted-foreground">Bin Step:</span>
-                        <p className="font-medium">{poolInfo.binStep}</p>
-                      </div>
-                    )}
-                  </div>
-
                   {/* Bin Liquidity Chart - for Meteora pools with bins */}
                   {poolInfo && poolInfo.bins && poolInfo.bins.length > 0 && (
-                    <div className="mt-6">
+                    <div>
                       <PoolBinChart
                         bins={poolInfo.bins}
                         activeBinId={poolInfo.activeBinId}
@@ -661,19 +678,23 @@ export function PoolsView() {
                       />
                     </div>
                   )}
+                </CardContent>
+              </Card>
 
-                  {/* Add Position Collapsible */}
-                  <div className="mt-6">
-                    <Separator className="mb-4" />
-                    <Collapsible open={isAddPositionOpen} onOpenChange={setIsAddPositionOpen}>
-                      <CollapsibleTrigger asChild>
-                        <Button variant="outline" className="flex items-center gap-2">
-                          <span>Add Position</span>
-                          <ChevronDown className={`h-4 w-4 transition-transform ${isAddPositionOpen ? 'rotate-180' : ''}`} />
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-4">
-                        <div className="space-y-4">
+              {/* Add Position Card */}
+              <Card>
+                <Collapsible open={isAddPositionOpen} onOpenChange={setIsAddPositionOpen}>
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="p-3 md:p-6 cursor-pointer hover:bg-accent/50 rounded-t-lg">
+                      <div className="flex items-center justify-between">
+                        <CardTitle>Add Position</CardTitle>
+                        <ChevronDown className={`h-5 w-5 transition-transform ${isAddPositionOpen ? 'rotate-180' : ''}`} />
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="p-3 md:p-6 pt-0">
+                      <div className="space-y-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <TokenAmountInput
                               label={selectedPool.baseSymbol}
@@ -792,24 +813,19 @@ export function PoolsView() {
                           >
                             Add Position
                           </Button>
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-                </CardContent>
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Collapsible>
               </Card>
 
-              {/* Existing Positions */}
-              <Card>
-                <CardHeader className="p-3 md:p-6">
-                  <CardTitle>Your Positions</CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 md:p-6">
-                  {loadingPositions ? (
-                    <p className="text-sm text-muted-foreground">Loading positions...</p>
-                  ) : positions.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No positions found</p>
-                  ) : (
+              {/* Existing Positions - Only show if there are positions for this pool */}
+              {!loadingPositions && positions.length > 0 && (
+                <Card>
+                  <CardHeader className="p-3 md:p-6">
+                    <CardTitle>Your Positions</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3 md:p-6">
                     <div className="space-y-3">
                       {positions.map((position, i) => (
                         <LiquidityPositionCard
@@ -820,9 +836,9 @@ export function PoolsView() {
                         />
                       ))}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
             </>
           ) : (
             <Card>

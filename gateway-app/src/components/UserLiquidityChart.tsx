@@ -121,11 +121,7 @@ export function UserLiquidityChart({
           tickFormatter={(value: any) => value.toFixed(2)}
         />
         <YAxis
-          tickLine={false}
-          axisLine={false}
-          tickMargin={8}
-          label={{ value: 'Your Liquidity', angle: -90, position: 'insideLeft' }}
-          tickFormatter={(value: any) => value.toFixed(2)}
+          hide
         />
         <ChartTooltip
           content={
@@ -179,7 +175,7 @@ export function UserLiquidityChart({
             strokeDasharray="3 3"
             strokeWidth={2}
             label={{
-              value: 'Current',
+              value: activeBin.price.toFixed(2),
               position: 'top',
               fill: 'hsl(var(--foreground))',
               fontSize: 12,

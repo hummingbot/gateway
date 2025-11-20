@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { AppProvider, useApp } from './lib/AppContext';
 import {
@@ -23,7 +24,7 @@ import { showSuccessNotification } from './lib/notifications';
 
 function AppContent() {
   const { selectedNetwork, setSelectedNetwork, selectedWallet, setSelectedWallet, selectedChain, setSelectedChain, darkMode } = useApp();
-  const [activeTab, setActiveTab] = useState('portfolio');
+  const location = useLocation();
   const [allWallets, setAllWallets] = useState<Array<{chain: string, walletAddresses: string[]}>>([]);
   const [networks, setNetworks] = useState<string[]>([]);
   const [showAddWallet, setShowAddWallet] = useState(false);
@@ -329,24 +330,31 @@ function AppContent() {
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
-        {activeTab === 'portfolio' && <PortfolioView />}
-        {activeTab === 'swap' && <SwapView />}
-        {activeTab === 'pools' && <PoolsView />}
-        {activeTab === 'activity' && <ActivityView />}
-        {activeTab === 'config' && <ConfigView />}
+        <Routes>
+          <Route path="/" element={<Navigate to="/portfolio" replace />} />
+          <Route path="/portfolio" element={<PortfolioView />} />
+          <Route path="/swap" element={<SwapView />} />
+          <Route path="/pools" element={<PoolsView />} />
+          <Route path="/pools/:address" element={<PoolsView />} />
+          <Route path="/transactions" element={<ActivityView />} />
+          <Route path="/transactions/:signature" element={<ActivityView />} />
+          <Route path="/config" element={<Navigate to="/config/app" replace />} />
+          <Route path="/config/:namespace" element={<ConfigView />} />
+        </Routes>
       </div>
 
       {/* Bottom Navigation */}
       <nav className="border-t bg-background">
         <div className="flex justify-around items-center h-16 max-w-2xl mx-auto">
-          <Button
-            onClick={() => setActiveTab('portfolio')}
-            variant="ghost"
-            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 rounded-none ${
-              activeTab === 'portfolio'
-                ? 'text-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+          <NavLink
+            to="/portfolio"
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center flex-1 h-full gap-1 ${
+                isActive
+                  ? 'text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`
+            }
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -363,16 +371,17 @@ function AppContent() {
               <line x1="2" x2="22" y1="10" y2="10" />
             </svg>
             <span className="text-xs font-medium">Portfolio</span>
-          </Button>
+          </NavLink>
 
-          <Button
-            onClick={() => setActiveTab('swap')}
-            variant="ghost"
-            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 rounded-none ${
-              activeTab === 'swap'
-                ? 'text-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+          <NavLink
+            to="/swap"
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center flex-1 h-full gap-1 ${
+                isActive
+                  ? 'text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`
+            }
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -391,16 +400,17 @@ function AppContent() {
               <path d="M4 17h16" />
             </svg>
             <span className="text-xs font-medium">Swap</span>
-          </Button>
+          </NavLink>
 
-          <Button
-            onClick={() => setActiveTab('pools')}
-            variant="ghost"
-            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 rounded-none ${
-              activeTab === 'pools'
-                ? 'text-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+          <NavLink
+            to="/pools"
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center flex-1 h-full gap-1 ${
+                isActive || location.pathname.startsWith('/pools')
+                  ? 'text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`
+            }
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -416,16 +426,17 @@ function AppContent() {
               <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
             </svg>
             <span className="text-xs font-medium">Pools</span>
-          </Button>
+          </NavLink>
 
-          <Button
-            onClick={() => setActiveTab('activity')}
-            variant="ghost"
-            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 rounded-none ${
-              activeTab === 'activity'
-                ? 'text-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+          <NavLink
+            to="/transactions"
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center flex-1 h-full gap-1 ${
+                isActive || location.pathname.startsWith('/transactions')
+                  ? 'text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`
+            }
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -441,16 +452,17 @@ function AppContent() {
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
             </svg>
             <span className="text-xs font-medium">Transactions</span>
-          </Button>
+          </NavLink>
 
-          <Button
-            onClick={() => setActiveTab('config')}
-            variant="ghost"
-            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 rounded-none ${
-              activeTab === 'config'
-                ? 'text-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+          <NavLink
+            to="/config"
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center flex-1 h-full gap-1 ${
+                isActive || location.pathname.startsWith('/config')
+                  ? 'text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`
+            }
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -467,7 +479,7 @@ function AppContent() {
               <circle cx="12" cy="12" r="3" />
             </svg>
             <span className="text-xs font-medium">Config</span>
-          </Button>
+          </NavLink>
         </div>
       </nav>
     </div>
@@ -478,7 +490,9 @@ function AppContent() {
 function App() {
   return (
     <AppProvider>
-      <AppContent />
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
     </AppProvider>
   );
 }
