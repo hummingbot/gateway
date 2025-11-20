@@ -1,9 +1,7 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import ReactWindow from 'react-window';
+import { ScrollArea } from './ui/scroll-area';
 import { cn } from '@/lib/utils';
-
-const { FixedSizeList } = ReactWindow;
 
 interface LogViewerProps {
   gatewayPath: string;
@@ -21,7 +19,7 @@ function getLogLevelColor(line: string): string {
 
 export function LogViewer({ gatewayPath, className, onClear }: LogViewerProps) {
   const [logs, setLogs] = useState<string>('Loading logs...');
-  const listRef = useRef<any>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [isTauri, setIsTauri] = useState(false);
 
   // Check if running in Tauri
@@ -57,8 +55,11 @@ export function LogViewer({ gatewayPath, className, onClear }: LogViewerProps) {
 
   // Auto-scroll to bottom when logs update
   useEffect(() => {
-    if (listRef.current && logLines.length > 0) {
-      listRef.current.scrollToItem(logLines.length - 1, 'end');
+    if (scrollAreaRef.current) {
+      const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
     }
   }, [logs]);
 
@@ -77,14 +78,7 @@ export function LogViewer({ gatewayPath, className, onClear }: LogViewerProps) {
     if (onClear) onClear();
   };
 
-  const logLines = useMemo(() => logs.split('\n'), [logs]);
-
-  // Virtualized row renderer
-  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => (
-    <div style={style} className={cn('text-xs font-mono px-4', getLogLevelColor(logLines[index]))}>
-      {logLines[index]}
-    </div>
-  );
+  const logLines = logs.split('\n');
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
@@ -93,19 +87,18 @@ export function LogViewer({ gatewayPath, className, onClear }: LogViewerProps) {
         <span className="text-xs text-muted-foreground">{logLines.length} lines</span>
       </div>
 
-      {/* Virtualized Log Display - Only renders visible lines */}
-      <div className="rounded-md border bg-background">
-        <FixedSizeList
-          ref={listRef}
-          height={window.innerHeight - 256} // Equivalent to h-[calc(100vh-16rem)]
-          itemCount={logLines.length}
-          itemSize={20} // Line height in pixels
-          width="100%"
-          className="font-mono"
-        >
-          {Row}
-        </FixedSizeList>
-      </div>
+      {/* Log Display with ScrollArea */}
+      <ScrollArea ref={scrollAreaRef} className="h-[calc(100vh-16rem)] w-full rounded-md border bg-background">
+        <div className="p-4">
+          <pre className="text-xs font-mono">
+            {logLines.map((line, i) => (
+              <div key={i} className={getLogLevelColor(line)}>
+                {line}
+              </div>
+            ))}
+          </pre>
+        </div>
+      </ScrollArea>
     </div>
   );
 }
