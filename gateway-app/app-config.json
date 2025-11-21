@@ -1,0 +1,15 @@
+{
+  "darkMode": true,
+  "theme": {
+    "colors": {
+      "primary": "#701a75",
+      "primaryDark": "#e879f9",
+      "accent": "#0891b2",
+      "accentDark": "#22d3ee"
+    },
+    "chains": {
+      "solana": "solana-purple",
+      "ethereum": "sunset-orange"
+    }
+  }
+}

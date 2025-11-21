@@ -86,16 +86,6 @@ export const PollRequestSchema = Type.Object(
   {
     network: Type.Optional(Type.String()),
     signature: Type.String({ description: 'Transaction signature/hash' }),
-    tokens: Type.Optional(
-      Type.Array(Type.String(), {
-        description: 'Array of token symbols or addresses for balance change calculation',
-      }),
-    ),
-    walletAddress: Type.Optional(
-      Type.String({
-        description: 'Wallet address for balance change calculation (required if tokens provided)',
-      }),
-    ),
   },
   { $id: 'PollRequest' },
 );
@@ -108,11 +98,6 @@ export const PollResponseSchema = Type.Object(
     txBlock: Type.Union([Type.Number(), Type.Null()]),
     txStatus: Type.Number(),
     fee: Type.Union([Type.Number(), Type.Null()]),
-    tokenBalanceChanges: Type.Optional(
-      Type.Record(Type.String(), Type.Number(), {
-        description: 'Dictionary of token balance changes keyed by token input value (symbol or address)',
-      }),
-    ),
     txData: Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()]),
     error: Type.Optional(Type.String()),
   },
@@ -141,6 +126,88 @@ export const StatusResponseSchema = Type.Object(
   { $id: 'StatusResponse' },
 );
 export type StatusResponseType = Static<typeof StatusResponseSchema>;
+
+export const TransactionsRequestSchema = Type.Object(
+  {
+    network: Type.Optional(Type.String()),
+    walletAddress: Type.String({
+      description: 'Wallet address to fetch transactions for',
+    }),
+    limit: Type.Optional(
+      Type.Number({
+        minimum: 1,
+        maximum: 1000,
+        default: 100,
+        description: 'Number of transaction signatures to fetch from RPC (default: 100, max: 1000)',
+      }),
+    ),
+  },
+  { $id: 'TransactionsRequest' },
+);
+export type TransactionsRequestType = Static<typeof TransactionsRequestSchema>;
+
+// Transaction signature item schema - lightweight (no parsing)
+export const TransactionSignatureSchema = Type.Object(
+  {
+    signature: Type.String(),
+    slot: Type.Number(),
+    blockTime: Type.Union([Type.Number(), Type.Null()]),
+    err: Type.Union([Type.Any(), Type.Null()]),
+    memo: Type.Union([Type.String(), Type.Null()]),
+    confirmationStatus: Type.Union([Type.String(), Type.Null()]),
+  },
+  { $id: 'TransactionSignature' },
+);
+export type TransactionSignatureType = Static<typeof TransactionSignatureSchema>;
+
+export const TransactionsResponseSchema = Type.Object(
+  {
+    currentBlock: Type.Number(),
+    transactions: Type.Array(TransactionSignatureSchema),
+    count: Type.Number({
+      description: 'Number of transactions returned',
+    }),
+  },
+  { $id: 'TransactionsResponse' },
+);
+export type TransactionsResponseType = Static<typeof TransactionsResponseSchema>;
+
+// Parse transaction request
+export const ParseRequestSchema = Type.Object(
+  {
+    network: Type.Optional(Type.String()),
+    signature: Type.String({ description: 'Transaction signature/hash to parse' }),
+    walletAddress: Type.String({ description: 'Wallet address for balance change calculation' }),
+  },
+  { $id: 'ParseRequest' },
+);
+export type ParseRequestType = Static<typeof ParseRequestSchema>;
+
+// Parse transaction response - focused on balance changes and fees
+export const ParseResponseSchema = Type.Object(
+  {
+    signature: Type.String(),
+    slot: Type.Union([Type.Number(), Type.Null()]),
+    blockTime: Type.Union([Type.Number(), Type.Null()]),
+    status: Type.Number({ description: '0 = PENDING, 1 = CONFIRMED, -1 = FAILED' }),
+    fee: Type.Union([Type.Number(), Type.Null()], {
+      description: 'Transaction fee in native currency',
+    }),
+    tokenBalanceChanges: Type.Optional(
+      Type.Record(Type.String(), Type.Number(), {
+        description: 'Balance changes keyed by token symbol or address (includes native currency)',
+      }),
+    ),
+    connector: Type.Optional(
+      Type.String({
+        description: 'Detected connector name if transaction interacted with a known DEX',
+      }),
+    ),
+    error: Type.Optional(Type.String()),
+  },
+  { $id: 'ParseResponse' },
+);
+export type ParseResponseType = Static<typeof ParseResponseSchema>;
 
 // Chain-level quote-swap response (no quoteId since quotes aren't cached)
 export const ChainQuoteSwapResponseSchema = Type.Object(

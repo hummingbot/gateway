@@ -2,10 +2,10 @@ services:
   gateway:
     restart: always
     container_name: gateway
-    image: hummingbot/gateway:PR543
-    # build: # Uncomment this build section and comment image to build Hummingbot locally
-    #   context: .
-    #   dockerfile: Dockerfile
+    # image: hummingbot/gateway:latest
+    build: # Uncomment this build section and comment image to build Hummingbot locally
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "15888:15888"
     volumes:
@@ -15,3 +15,27 @@ services:
     environment:
       - GATEWAY_PASSPHRASE=a # replace with a strong passphrase
       - DEV=true # set to false to require certificates for HTTPS
+    networks:
+      - gateway-network
+
+  gateway-app:
+    restart: always
+    container_name: gateway-app
+    build:
+      context: ./gateway-app
+      dockerfile: Dockerfile.dev # Use Dockerfile for production
+    ports:
+      - "1420:1420" # Vite dev server (configured in vite.config.ts)
+    volumes:
+      - ./gateway-app:/app # Enable hot reload in dev mode
+      - /app/node_modules # Prevent overwriting node_modules
+    environment:
+      - VITE_GATEWAY_URL=http://gateway:15888 # Gateway backend URL
+    depends_on:
+      - gateway
+    networks:
+      - gateway-network
+
+networks:
+  gateway-network:
+    driver: bridge

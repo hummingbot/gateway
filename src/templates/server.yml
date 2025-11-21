@@ -4,10 +4,18 @@ GMTOffset: -8
 # Port on which to run the Gateway server
 port: 15888
 
-# Port on which to run the Swagger documentation UI. 
+# Port on which to run the Swagger documentation UI.
 # Set to 0 to serve docs at http://0.0.0.0:{port}/docs (same port as Gateway server)
 # Set to a specific port (e.g. 8080) to serve docs separately at http://0.0.0.0:{docPort}
 docsPort: 0
+
+# Use client certificates for authentication (mutual TLS)
+# - true: Traditional Hummingbot authentication using client certificates (more secure, requires cert setup)
+# - false: Use API key authentication via X-API-Key header (easier for browser/app clients)
+# When using API key auth (useCerts: false), set GATEWAY_API_KEYS environment variable
+# Example: GATEWAY_API_KEYS=key1,key2,key3 (comma-separated for multiple keys)
+# Generate secure keys with: openssl rand -hex 32
+useCerts: false
 
 # Path to folder where Hummingbot generates self-signed certificates
 certificatePath: ./certs/
@@ -17,6 +25,15 @@ logPath: './logs'
 
 # IPs allowed to access gateway. localhost is allowed by default.
 ipWhitelist: []
+
+# CORS allowed origins for API requests (e.g., from browser-based clients)
+# Add your client app URLs here. Empty array means no CORS origins allowed.
+allowedOrigins:
+  - http://localhost:1420
+  - https://localhost:1420
+  - https://localhost:1420
+  - https://127.0.0.1:1420
+  - tauri://localhost
 
 # If true, logs will be stored in logPath and printed to stdout. If false, they
 # will only be stored in logPath and not printed to stdout.

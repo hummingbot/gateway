@@ -8,6 +8,7 @@ import { logger } from '../../services/logger';
 const NetworkSchema = Type.Object({
   chain: Type.String(),
   networks: Type.Array(Type.String()),
+  defaultNetwork: Type.String(),
 });
 
 const ChainsResponseSchema = Type.Object({
@@ -65,10 +66,21 @@ export const getChainsRoute: FastifyPluginAsync = async (fastify) => {
         chainNetworks['solana'] = [];
       }
 
-      const chains = Object.entries(chainNetworks).map(([chain, networks]) => ({
-        chain,
-        networks: networks.sort(),
-      }));
+      // Define chain order: solana first, then ethereum
+      const chainOrder = ['solana', 'ethereum'];
+      const chains = chainOrder
+        .filter((chain) => chainNetworks[chain] !== undefined)
+        .map((chain) => {
+          const networks = chainNetworks[chain];
+          // Get the defaultNetwork from the chain config
+          const defaultNetwork = configManager.get(`${chain}.defaultNetwork`) || networks[0] || '';
+
+          return {
+            chain,
+            networks: networks.sort(),
+            defaultNetwork,
+          };
+        });
 
       logger.info('Available chains: ' + chains.map((c) => `${c.chain} (${c.networks.length} networks)`).join(', '));
 

@@ -1,0 +1,103 @@
+{
+  "themes": {
+    "default-slate": {
+      "name": "Default Slate",
+      "colors": {
+        "primary": "222.2 47.4% 11.2%",
+        "primaryDark": "210 40% 98%",
+        "accent": "210 40% 96.1%",
+        "accentDark": "217.2 91% 60%"
+      }
+    },
+    "solana-purple": {
+      "name": "Solana Purple",
+      "colors": {
+        "primary": "266 100% 69%",
+        "primaryDark": "266 100% 59%",
+        "accent": "169 100% 45%",
+        "accentDark": "169 100% 40%"
+      }
+    },
+    "ethereum-blue": {
+      "name": "Ethereum Blue",
+      "colors": {
+        "primary": "193 87% 62%",
+        "primaryDark": "193 87% 52%",
+        "accent": "162 63% 41%",
+        "accentDark": "162 63% 55%"
+      }
+    },
+    "ocean-breeze": {
+      "name": "Ocean Breeze",
+      "colors": {
+        "primary": "195 100% 39%",
+        "primaryDark": "195 100% 50%",
+        "accent": "174 72% 56%",
+        "accentDark": "174 72% 56%"
+      }
+    },
+    "meteora-orange": {
+      "name": "Meteora Orange",
+      "colors": {
+        "primary": "24 95% 53%",
+        "primaryDark": "24 95% 53%",
+        "accent": "45 93% 47%",
+        "accentDark": "45 93% 57%"
+      }
+    },
+    "jupiter-green": {
+      "name": "Jupiter Green",
+      "colors": {
+        "primary": "142 71% 45%",
+        "primaryDark": "142 71% 55%",
+        "accent": "173 58% 39%",
+        "accentDark": "173 58% 55%"
+      }
+    },
+    "royal-purple": {
+      "name": "Royal Purple",
+      "colors": {
+        "primary": "259 94% 51%",
+        "primaryDark": "259 94% 51%",
+        "accent": "291 64% 42%",
+        "accentDark": "291 64% 58%"
+      }
+    },
+    "crimson-red": {
+      "name": "Crimson Red",
+      "colors": {
+        "primary": "348 83% 47%",
+        "primaryDark": "348 83% 57%",
+        "accent": "0 79% 63%",
+        "accentDark": "0 79% 63%"
+      }
+    },
+    "midnight-blue": {
+      "name": "Midnight Blue",
+      "colors": {
+        "primary": "217 91% 60%",
+        "primaryDark": "217 91% 50%",
+        "accent": "240 100% 73%",
+        "accentDark": "240 100% 63%"
+      }
+    },
+    "uniswap-pink": {
+      "name": "Uniswap Pink",
+      "colors": {
+        "primary": "326 100% 74%",
+        "primaryDark": "326 100% 64%",
+        "accent": "280 100% 70%",
+        "accentDark": "280 100% 60%"
+      }
+    },
+    "cyber-teal": {
+      "name": "Cyber Teal",
+      "colors": {
+        "primary": "180 100% 40%",
+        "primaryDark": "180 100% 50%",
+        "accent": "160 100% 50%",
+        "accentDark": "160 100% 50%"
+      }
+    }
+  }
+}

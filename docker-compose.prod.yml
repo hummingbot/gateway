@@ -1,0 +1,40 @@
+services:
+  gateway:
+    restart: always
+    container_name: gateway
+    # image: hummingbot/gateway:latest
+    build: # Uncomment this build section and comment image to build Hummingbot locally
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "15888:15888"
+    volumes:
+      - ./conf:/home/gateway/conf
+      - ./logs:/home/gateway/logs
+      - ./certs:/home/gateway/certs
+    environment:
+      - GATEWAY_PASSPHRASE=${GATEWAY_PASSPHRASE:-a} # Use env var or default
+      - GATEWAY_API_KEYS=${GATEWAY_API_KEYS} # API keys for authentication
+      - DEV=false # Production mode with HTTPS
+    networks:
+      - gateway-network
+
+  gateway-app:
+    restart: always
+    container_name: gateway-app
+    build:
+      context: ./gateway-app
+      dockerfile: Dockerfile # Production Dockerfile with nginx
+    ports:
+      - "1420:80" # Production port
+    environment:
+      - VITE_GATEWAY_URL=http://localhost:15888 # Gateway backend URL (accessible from host browser)
+      - VITE_GATEWAY_API_KEY=${GATEWAY_API_KEY} # API key for frontend authentication
+    depends_on:
+      - gateway
+    networks:
+      - gateway-network
+
+networks:
+  gateway-network:
+    driver: bridge
