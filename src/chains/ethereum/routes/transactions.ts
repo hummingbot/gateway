@@ -76,13 +76,7 @@ export const transactionsRoute: FastifyPluginAsync = async (fastify) => {
         };
       } catch (error: any) {
         logger.error(`Failed to fetch transactions from Etherscan for ${ethereum.network}: ${error.message}`);
-
-        // Return empty list on error but include error in logs
-        return {
-          currentBlock,
-          transactions: [],
-          count: 0,
-        };
+        throw fastify.httpErrors.serviceUnavailable(`Failed to fetch transactions from Etherscan: ${error.message}`);
       }
     },
   );

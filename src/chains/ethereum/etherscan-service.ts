@@ -96,20 +96,24 @@ export class EtherscanService {
 
       if (response.data.status !== '1') {
         const errorMsg = response.data.message;
-        const isRateLimit = errorMsg.includes('rate limit') || errorMsg.includes('Max rate limit');
+        const errorResult =
+          typeof response.data.result === 'string' ? response.data.result : JSON.stringify(response.data.result);
+        const fullError = errorResult || errorMsg;
+        const isRateLimit = fullError.includes('rate limit') || fullError.includes('Max rate limit');
 
         logger.error(
-          `Etherscan API returned error for ${this.network} (chainId: ${this.chainId}): status=${response.data.status}, message=${errorMsg}, result=${JSON.stringify(response.data.result)}`,
+          `Etherscan API returned error for ${this.network} (chainId: ${this.chainId}): status=${response.data.status}, message=${errorMsg}, result=${errorResult}`,
         );
 
         if (isRateLimit) {
           throw new Error(
-            `Etherscan API rate limit exceeded: ${errorMsg}. ` +
+            `Etherscan API rate limit exceeded: ${fullError}. ` +
               `Free tier: 5 requests/second. See https://docs.etherscan.io/resources/rate-limits for upgrade options.`,
           );
         }
 
-        throw new Error(`Etherscan API error: ${errorMsg}`);
+        // Use result field as it contains the detailed error message
+        throw new Error(fullError);
       }
 
       const transactions: EtherscanTransaction[] = response.data.result.map((tx) => ({

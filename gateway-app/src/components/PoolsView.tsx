@@ -61,6 +61,7 @@ export function PoolsView() {
   const [loadingPositions, setLoadingPositions] = useState(false);
   const [showConnectorDropdown, setShowConnectorDropdown] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [isAddPositionOpen, setIsAddPositionOpen] = useState(false);
   const [showAddPool, setShowAddPool] = useState(false);
   const [availableNetworks, setAvailableNetworks] = useState<string[]>([]);
@@ -484,35 +485,130 @@ export function PoolsView() {
 
   return (
     <div className="flex flex-col md:flex-row h-full">
-      {/* Mobile Dropdown Selectors */}
-      <div className="md:hidden border-b p-2 space-y-2">
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">
-            Filters: {selectedTypes.map((t) => t.toUpperCase()).join(', ')} • {selectedConnectors.map((c) => capitalize(c)).join(', ')}
-          </label>
+      {/* Mobile Filters and Pool Selector */}
+      <div className="md:hidden border-b">
+        {/* Filter Toggle */}
+        <div className="p-2 border-b">
+          <Button
+            variant="ghost"
+            onClick={() => setShowMobileFilters(!showMobileFilters)}
+            className="w-full justify-between h-auto py-2"
+          >
+            <span className="text-sm font-medium">
+              Filters
+              {(selectedTypes.length > 0 || selectedConnectors.length > 0) && (
+                <span className="ml-2 text-muted-foreground font-normal">
+                  ({selectedTypes.map((t) => t.toUpperCase()).join(', ')}
+                  {selectedTypes.length > 0 && selectedConnectors.length > 0 ? ', ' : ''}
+                  {selectedConnectors.map((c) => capitalize(c)).join(', ')})
+                </span>
+              )}
+            </span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${showMobileFilters ? 'rotate-180' : ''}`} />
+          </Button>
         </div>
 
-        <Select
-          value={selectedPool?.address || ''}
-          onValueChange={(value) => {
-            const pool = pools.find((p) => p.address === value);
-            if (pool) {
-              setSelectedPool(pool);
-              navigate(`/pools/${pool.address}`);
-            }
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {pools.map((pool) => (
-              <SelectItem key={pool.address} value={pool.address}>
-                {pool.baseSymbol}-{pool.quoteSymbol} • {capitalize(pool.connector || '')} • {pool.type.toUpperCase()} ({pool.feePct}%)
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Collapsible Filter Section */}
+        {showMobileFilters && (
+          <div className="p-3 space-y-3 border-b bg-muted/10">
+            {/* Type Filter */}
+            <div className="relative">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                Type
+              </label>
+              <Button
+                onClick={() => setShowTypeDropdown(!showTypeDropdown)}
+                variant="outline"
+                className="w-full justify-start h-9 text-xs"
+              >
+                {selectedTypes.length === 0
+                  ? 'Select types...'
+                  : selectedTypes.map((t) => t.toUpperCase()).join(', ')}
+              </Button>
+              {showTypeDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-background border rounded shadow-lg">
+                  {['clmm', 'amm'].map((type) => (
+                    <Button
+                      key={type}
+                      onClick={() => toggleType(type)}
+                      variant="ghost"
+                      className="w-full justify-start px-3 py-2 h-auto text-xs"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedTypes.includes(type)}
+                        readOnly
+                        className="pointer-events-none mr-2"
+                      />
+                      <span>{type.toUpperCase()}</span>
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Connector Filter */}
+            <div className="relative">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                Connector
+              </label>
+              <Button
+                onClick={() => setShowConnectorDropdown(!showConnectorDropdown)}
+                variant="outline"
+                className="w-full justify-start h-9 text-xs"
+              >
+                {selectedConnectors.length === 0
+                  ? 'Select connectors...'
+                  : selectedConnectors.map((c) => capitalize(c)).join(', ')}
+              </Button>
+              {showConnectorDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-background border rounded shadow-lg max-h-48 overflow-y-auto">
+                  {availableConnectors.map((conn) => (
+                    <Button
+                      key={conn}
+                      onClick={() => toggleConnector(conn)}
+                      variant="ghost"
+                      className="w-full justify-start px-3 py-2 h-auto text-xs"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedConnectors.includes(conn)}
+                        readOnly
+                        className="pointer-events-none mr-2"
+                      />
+                      <span>{capitalize(conn)}</span>
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Pool Selector */}
+        <div className="p-2">
+          <Select
+            value={selectedPool?.address || ''}
+            onValueChange={(value) => {
+              const pool = pools.find((p) => p.address === value);
+              if (pool) {
+                setSelectedPool(pool);
+                navigate(`/pools/${pool.address}`);
+              }
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {pools.map((pool) => (
+                <SelectItem key={pool.address} value={pool.address}>
+                  {pool.baseSymbol}-{pool.quoteSymbol} • {capitalize(pool.connector || '')} • {pool.type.toUpperCase()} ({pool.feePct}%)
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Desktop Sidebar */}

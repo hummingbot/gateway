@@ -56,9 +56,9 @@ export const transactionsRoute: FastifyPluginAsync = async (fastify) => {
           transactions,
           count: transactions.length,
         };
-      } catch (error) {
+      } catch (error: any) {
         logger.error(`Error fetching transactions for wallet ${walletAddress}: ${error.message}`);
-        throw fastify.httpErrors.internalServerError(`Failed to fetch transactions: ${error.message}`);
+        throw fastify.httpErrors.serviceUnavailable(`Failed to fetch transactions: ${error.message}`);
       }
     },
   );
