@@ -172,7 +172,7 @@ function AppContent() {
               `flex flex-col items-center justify-center flex-1 h-full gap-1 ${
                 isActive
                   ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-accent'
               }`
             }
           >
@@ -192,7 +192,7 @@ function AppContent() {
               `flex flex-col items-center justify-center flex-1 h-full gap-1 ${
                 isActive
                   ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-accent'
               }`
             }
           >
@@ -206,7 +206,7 @@ function AppContent() {
               `flex flex-col items-center justify-center flex-1 h-full gap-1 ${
                 isActive || location.pathname.startsWith('/pools')
                   ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-accent'
               }`
             }
           >
@@ -220,7 +220,7 @@ function AppContent() {
               `flex flex-col items-center justify-center flex-1 h-full gap-1 ${
                 isActive || location.pathname.startsWith('/transactions')
                   ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-accent'
               }`
             }
           >
@@ -234,7 +234,7 @@ function AppContent() {
               `flex flex-col items-center justify-center flex-1 h-full gap-1 ${
                 isActive || location.pathname.startsWith('/config')
                   ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-accent'
               }`
             }
           >
