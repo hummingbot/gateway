@@ -34,8 +34,17 @@ A lightweight desktop application for interacting with the Gateway API server, b
 
 Create a `.env` file in `gateway-app/`:
 
+**For Development Mode (HTTP, no SSL):**
 ```bash
-# Gateway API URL (HTTPS for production, HTTP for dev mode)
+# Gateway API URL - use HTTP for development
+VITE_GATEWAY_URL=http://localhost:15888
+
+# No API key needed in development mode
+```
+
+**For Production Mode (HTTPS with SSL):**
+```bash
+# Gateway API URL - use HTTPS for production
 VITE_GATEWAY_URL=https://localhost:15888
 
 # Gateway API Key (must match GATEWAY_API_KEYS on server)
@@ -43,17 +52,22 @@ VITE_GATEWAY_URL=https://localhost:15888
 VITE_GATEWAY_API_KEY=your-api-key-here
 ```
 
+**Important**: The `VITE_GATEWAY_URL` protocol (HTTP/HTTPS) must match your Gateway server configuration in `conf/server.yml`:
+- Development: `--dev` flag → HTTP → `http://localhost:15888`
+- Production: Default mode → HTTPS → `https://localhost:15888`
+
 2. **Start Gateway Server (Terminal 1)**
 
-With API key authentication:
+**Development mode** (HTTP, no SSL, no API key):
+```bash
+cd /Users/feng/gateway
+pnpm start --passphrase=<PASSPHRASE> --dev
+```
+
+**Production mode** (HTTPS, requires API key):
 ```bash
 cd /Users/feng/gateway
 GATEWAY_API_KEYS=your-api-key-here pnpm start --passphrase=<PASSPHRASE>
-```
-
-Or in dev mode (HTTP, no SSL):
-```bash
-pnpm start --passphrase=<PASSPHRASE> --dev
 ```
 
 ### Run in Dev Mode
@@ -128,13 +142,24 @@ Edit `app-config.json` in the project root:
 
 ### Authentication
 
-The app connects to Gateway using API key authentication by default (`useCerts: false`). The app uses Tauri's HTTP plugin to handle self-signed certificates automatically.
+The app supports two authentication modes depending on how Gateway is running:
+
+**Development Mode** (HTTP):
+- No authentication required
+- Set `VITE_GATEWAY_URL=http://localhost:15888` in `.env`
+- Start Gateway with `--dev` flag
+- No `VITE_GATEWAY_API_KEY` needed
+
+**Production Mode** (HTTPS):
+- API key authentication required (default: `useCerts: false` in `conf/server.yml`)
+- Set `VITE_GATEWAY_URL=https://localhost:15888` in `.env`
+- Set `VITE_GATEWAY_API_KEY` in `.env` (must match Gateway server's `GATEWAY_API_KEYS`)
+- Tauri's HTTP plugin handles self-signed certificates automatically
+- Alternatively, set `useCerts: true` in Gateway's `conf/server.yml` to use client certificates
 
 **Environment Variables:**
-- `VITE_GATEWAY_URL`: Gateway server URL (default: `https://localhost:15888`)
-- `VITE_GATEWAY_API_KEY`: API key for authentication (must match server's `GATEWAY_API_KEYS`)
-
-**For production deployments**, set Gateway to use client certificates by changing `useCerts: true` in Gateway's `conf/server.yml`.
+- `VITE_GATEWAY_URL`: Gateway server URL (HTTP for dev, HTTPS for production)
+- `VITE_GATEWAY_API_KEY`: API key for production mode authentication (not needed in dev mode)
 
 ## Production Build
 
