@@ -511,7 +511,7 @@ export function PortfolioView() {
                                 setSelectedBalance(balance);
                               }
                             }}
-                            className="cursor-pointer hover:bg-accent/50"
+                            className="cursor-pointer hover:bg-accent"
                           >
                             <TableCell>
                               {balance.symbol}

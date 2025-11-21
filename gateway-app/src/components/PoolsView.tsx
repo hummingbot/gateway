@@ -851,7 +851,7 @@ export function PoolsView() {
               <Card>
                 <Collapsible open={isAddPositionOpen} onOpenChange={setIsAddPositionOpen}>
                   <CollapsibleTrigger asChild>
-                    <CardHeader className="p-3 md:p-6 cursor-pointer hover:bg-accent/50 rounded-t-lg">
+                    <CardHeader className="p-3 md:p-6 cursor-pointer hover:bg-accent rounded-t-lg">
                       <div className="flex items-center justify-between">
                         <CardTitle>Add Position</CardTitle>
                         <ChevronDown className={`h-5 w-5 transition-transform ${isAddPositionOpen ? 'rotate-180' : ''}`} />
