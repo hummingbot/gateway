@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
+import fastifyCors from '@fastify/cors';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
@@ -159,6 +160,55 @@ const configureGatewayServer = () => {
   server.withTypeProvider<TypeBoxTypeProvider>();
   if (docsServer) {
     docsServer.withTypeProvider<TypeBoxTypeProvider>();
+  }
+
+  // Register CORS
+  const allowedOrigins = ConfigManagerV2.getInstance().get('server.allowedOrigins') || [];
+  server.register(fastifyCors, {
+    origin: allowedOrigins.length > 0 ? allowedOrigins : false,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+    preflightContinue: false,
+  });
+
+  // API Key Authentication Middleware
+  // Only enforced when useCerts is false and apiKeys are configured via env variable
+  const useCerts = ConfigManagerV2.getInstance().get('server.useCerts') || false;
+  // Read API keys from environment variable (comma-separated)
+  const apiKeysEnv = process.env.GATEWAY_API_KEYS || '';
+  const apiKeys = apiKeysEnv
+    ? apiKeysEnv
+        .split(',')
+        .map((k) => k.trim())
+        .filter((k) => k.length > 0)
+    : [];
+  const requireApiKey = !devMode && !useCerts && apiKeys.length > 0;
+
+  if (requireApiKey) {
+    server.addHook('onRequest', async (request, reply) => {
+      const apiKey = request.headers['x-api-key'];
+
+      if (!apiKey || typeof apiKey !== 'string') {
+        return reply.code(401).send({
+          error: 'Unauthorized',
+          message: 'API key is required. Please provide X-API-Key header.',
+        });
+      }
+
+      if (!apiKeys.includes(apiKey)) {
+        return reply.code(401).send({
+          error: 'Unauthorized',
+          message: 'Invalid API key.',
+        });
+      }
+    });
+
+    logger.info('API key authentication enabled');
+  } else if (!devMode && !useCerts) {
+    logger.warn('Running in production mode without API key authentication. Configure server.apiKeys for security.');
+  } else if (!devMode && useCerts) {
+    logger.info('Client certificate authentication enabled (mutual TLS)');
   }
 
   // Register rate limiting globally
@@ -425,6 +475,10 @@ export const startGateway = async () => {
       logger.info('Gateway stopped');
       process.exit(0);
     };
+
+    // Remove any existing shutdown handlers to prevent duplicates
+    process.removeAllListeners('SIGTERM');
+    process.removeAllListeners('SIGINT');
 
     // Handle shutdown signals
     process.on('SIGTERM', shutdown);

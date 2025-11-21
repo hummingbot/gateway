@@ -75,22 +75,8 @@ export class Ethereum {
     this.baseFeeMultiplier = config.baseFeeMultiplier || 1.2; // Default to 1.2
     this._transactionExecutionTimeoutMs = config.transactionExecutionTimeoutMs ?? 30000; // Default to 30 seconds
 
-    // Get chain config for etherscanAPIKey
+    // Get chain config for rpcProvider
     const chainConfig = getEthereumChainConfig();
-
-    // Initialize Etherscan service if API key is provided and chain is supported
-    if (chainConfig.etherscanAPIKey && EtherscanService.isSupported(this.chainId)) {
-      try {
-        this.etherscanService = new EtherscanService(this.chainId, network, chainConfig.etherscanAPIKey);
-        logger.info(
-          `✅ Etherscan V2 API configured for ${network} (chainId: ${this.chainId}, key length: ${chainConfig.etherscanAPIKey.length} chars)`,
-        );
-      } catch (error: any) {
-        logger.warn(`Failed to initialize Etherscan service: ${error.message}`);
-      }
-    }
-
-    // Get rpcProvider from chain config
     const rpcProvider = chainConfig.rpcProvider || 'url';
 
     // Initialize RPC connection based on provider
@@ -163,44 +149,24 @@ export class Ethereum {
         let networkBaseFeeGwei: number | undefined;
         let networkPriorityFeeGwei: number | undefined;
 
-        // Try to fetch from Etherscan API first if available
-        if (this.etherscanService) {
-          try {
-            const gasPrices = await this.etherscanService.getRecommendedGasPrices('propose');
+        // Fetch from RPC provider
+        try {
+          const feeData = await this.provider.getFeeData();
+          if (feeData.maxPriorityFeePerGas) {
+            const block = await this.provider.getBlock('latest');
+            const baseFee = block.baseFeePerGas || BigNumber.from('0');
+
             // Round to 4 decimal places to avoid floating-point precision issues
-            const networkMaxFeeGwei = Math.round(gasPrices.maxFeePerGas * 10000) / 10000;
-            networkPriorityFeeGwei = Math.round(gasPrices.maxPriorityFeePerGas * 10000) / 10000;
-            // Estimate baseFee from the formula: baseFee ≈ (maxFee - priority) / 2
-            networkBaseFeeGwei = Math.round(((networkMaxFeeGwei - networkPriorityFeeGwei) / 2) * 10000) / 10000;
+            networkBaseFeeGwei = Math.round(parseFloat(utils.formatUnits(baseFee, 'gwei')) * 10000) / 10000;
+            networkPriorityFeeGwei =
+              Math.round(parseFloat(utils.formatUnits(feeData.maxPriorityFeePerGas, 'gwei')) * 10000) / 10000;
+
             logger.info(
-              `Etherscan API EIP-1559 fees: baseFee≈${networkBaseFeeGwei.toFixed(4)} GWEI, priority=${networkPriorityFeeGwei.toFixed(4)} GWEI`,
+              `Network RPC EIP-1559 fees: baseFee=${networkBaseFeeGwei.toFixed(4)} GWEI, priority=${networkPriorityFeeGwei.toFixed(4)} GWEI`,
             );
-          } catch (scanError: any) {
-            logger.warn(`Failed to fetch from Etherscan API: ${scanError.message}`);
-            logger.info('Using RPC provider for gas price estimation');
           }
-        }
-
-        // Fallback to RPC provider if Etherscan not available or failed
-        if (networkBaseFeeGwei === undefined || networkPriorityFeeGwei === undefined) {
-          try {
-            const feeData = await this.provider.getFeeData();
-            if (feeData.maxPriorityFeePerGas) {
-              const block = await this.provider.getBlock('latest');
-              const baseFee = block.baseFeePerGas || BigNumber.from('0');
-
-              // Round to 4 decimal places to avoid floating-point precision issues
-              networkBaseFeeGwei = Math.round(parseFloat(utils.formatUnits(baseFee, 'gwei')) * 10000) / 10000;
-              networkPriorityFeeGwei =
-                Math.round(parseFloat(utils.formatUnits(feeData.maxPriorityFeePerGas, 'gwei')) * 10000) / 10000;
-
-              logger.info(
-                `Network RPC EIP-1559 fees: baseFee=${networkBaseFeeGwei.toFixed(4)} GWEI, priority=${networkPriorityFeeGwei.toFixed(4)} GWEI`,
-              );
-            }
-          } catch (networkError: any) {
-            logger.warn(`Failed to fetch network EIP-1559 data: ${networkError.message}`);
-          }
+        } catch (networkError: any) {
+          logger.warn(`Failed to fetch network EIP-1559 data: ${networkError.message}`);
         }
 
         // Support partial configuration: use configured values if available, otherwise use network values

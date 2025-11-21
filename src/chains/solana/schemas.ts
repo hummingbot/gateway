@@ -1,5 +1,7 @@
 import { Type, Static } from '@sinclair/typebox';
 
+import { PollRequestSchema, ParseRequestSchema, TransactionsRequestSchema } from '../../schemas/chain-schema';
+
 import { getSolanaChainConfig, networks as SolanaNetworks } from './solana.config';
 
 // Get chain config for defaults
@@ -52,22 +54,31 @@ export const SolanaEstimateGasRequest = Type.Object({
 });
 
 // Poll request schema
-export const SolanaPollRequest = Type.Object({
-  network: SolanaNetworkParameter,
-  signature: Type.String({
-    description: 'Transaction signature to poll',
-    examples: [EXAMPLE_SIGNATURE],
+export const SolanaPollRequest = Type.Composite([
+  PollRequestSchema,
+  Type.Object({
+    network: SolanaNetworkParameter,
   }),
-  tokens: Type.Optional(
-    Type.Array(Type.String(), {
-      description: 'Tokens to track balance changes for',
-      examples: [EXAMPLE_TOKENS],
-    }),
-  ),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address to track balance changes for',
-      default: solanaChainConfig.defaultWallet,
+]);
+
+// Parse request schema
+export const SolanaParseRequest = Type.Composite([
+  ParseRequestSchema,
+  Type.Object({
+    network: SolanaNetworkParameter,
+  }),
+]);
+
+// Transactions request schema
+export const SolanaTransactionsRequest = Type.Object({
+  network: SolanaNetworkParameter,
+  walletAddress: SolanaAddressParameter,
+  limit: Type.Optional(
+    Type.Number({
+      minimum: 1,
+      maximum: 1000,
+      default: 100,
+      description: 'Number of transaction signatures to fetch from RPC (default: 100, max: 1000)',
     }),
   ),
 });

@@ -13,8 +13,9 @@ services:
       - ./logs:/home/gateway/logs
       - ./certs:/home/gateway/certs
     environment:
-      - GATEWAY_PASSPHRASE=a # replace with a strong passphrase
-      - DEV=true # set to false to require certificates for HTTPS
+      - GATEWAY_PASSPHRASE=${GATEWAY_PASSPHRASE:-a} # Use env var or default
+      - GATEWAY_API_KEYS=${GATEWAY_API_KEYS} # API keys for authentication
+      - DEV=false # Production mode with HTTPS
     networks:
       - gateway-network
 
@@ -23,14 +24,12 @@ services:
     container_name: gateway-app
     build:
       context: ./gateway-app
-      dockerfile: Dockerfile.dev # Use Dockerfile for production
+      dockerfile: Dockerfile # Production Dockerfile with nginx
     ports:
-      - "1420:1420" # Vite dev server (configured in vite.config.ts)
-    volumes:
-      - ./gateway-app:/app # Enable hot reload in dev mode
-      - /app/node_modules # Prevent overwriting node_modules
+      - "1420:80" # Production port
     environment:
-      - VITE_GATEWAY_URL=http://gateway:15888 # Gateway backend URL
+      - VITE_GATEWAY_URL=http://localhost:15888 # Gateway backend URL (accessible from host browser)
+      - VITE_GATEWAY_API_KEY=${GATEWAY_API_KEY} # API key for frontend authentication
     depends_on:
       - gateway
     networks:

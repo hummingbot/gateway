@@ -291,6 +291,45 @@ To start the Gateway server in HTTPS mode, run the command without the `--dev` f
 pnpm start --passphrase=<PASSPHRASE>
 ```
 
+### Authentication
+
+Gateway supports two authentication methods configured via `useCerts` in `conf/server.yml`:
+
+#### API Key Authentication (Default: `useCerts: false`)
+For browser-based clients and modern applications. API keys are managed via environment variable:
+
+1. Generate API key: `openssl rand -hex 32`
+2. Set environment variable:
+   ```bash
+   export GATEWAY_API_KEYS=your-key-here,optional-second-key
+   ```
+3. Start Gateway:
+   ```bash
+   GATEWAY_API_KEYS=your-key-here pnpm start --passphrase=<PASSPHRASE>
+   ```
+4. Include `X-API-Key` header in requests:
+   ```bash
+   curl -H "X-API-Key: your-key-here" https://localhost:15888/config/chains
+   ```
+
+**Benefits**:
+- No client certificates needed
+- Works with browser/Tauri apps
+- Supports multiple keys (comma-separated)
+- Keys stored securely in environment, not config files
+
+#### Client Certificate Authentication (`useCerts: true`)
+Traditional Hummingbot authentication using mutual TLS (mTLS):
+
+1. Set `useCerts: true` in `conf/server.yml`
+2. Ensure client certificates are in `certs/` directory
+3. Start Gateway normally (no API keys needed)
+
+**Benefits**:
+- More secure (certificate-based)
+- Compatible with existing Hummingbot clients
+- No API key management needed
+
 ## Installation with Docker Compose
 
 ### Prerequisites

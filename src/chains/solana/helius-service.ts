@@ -93,6 +93,14 @@ export class HeliusService extends RPCProvider {
    */
   private async initializeWebSocket(): Promise<void> {
     try {
+      // Close existing connection if any to prevent duplicates
+      if (this.ws) {
+        logger.debug('Closing existing WebSocket connection before initializing new one');
+        this.ws.removeAllListeners();
+        this.ws.close();
+        this.ws = null;
+      }
+
       await this.connectWebSocket();
       logger.info('✅ Helius WebSocket monitor successfully initialized');
     } catch (error: any) {

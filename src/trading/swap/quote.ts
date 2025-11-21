@@ -227,6 +227,11 @@ async function getEthereumQuoteSwap(
       `Using swap provider: ${swapProvider} for network: ${network}${connector ? ' (explicit)' : ' (from config)'}`,
     );
 
+    // Get default wallet address from chain config
+    const { getEthereumChainConfig } = await import('../../chains/ethereum/ethereum.config');
+    const chainConfig = getEthereumChainConfig();
+    const defaultWallet = chainConfig.defaultWallet;
+
     // For AMM and CLMM, look up the pool address using PoolService
     let poolAddress: string | undefined;
     if (connectorType === 'amm' || connectorType === 'clmm') {
@@ -247,7 +252,16 @@ async function getEthereumQuoteSwap(
     const providerKey = swapProvider;
 
     if (providerKey === 'uniswap/router') {
-      return await uniswapRouterQuoteSwap(fastify, network, '', baseToken, quoteToken, amount, side, slippagePct || 1);
+      return await uniswapRouterQuoteSwap(
+        fastify,
+        network,
+        defaultWallet,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct || 1,
+      );
     } else if (providerKey === 'uniswap/amm') {
       return await uniswapAmmQuoteSwap(
         fastify,
@@ -271,7 +285,16 @@ async function getEthereumQuoteSwap(
         slippagePct,
       );
     } else if (providerKey === 'pancakeswap/router') {
-      return await pancakeswapRouterQuoteSwap(fastify, network, '', baseToken, quoteToken, amount, side, slippagePct);
+      return await pancakeswapRouterQuoteSwap(
+        fastify,
+        network,
+        defaultWallet,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct,
+      );
     } else if (providerKey === 'pancakeswap/amm') {
       return await pancakeswapAmmQuoteSwap(
         fastify,

@@ -74,9 +74,15 @@ async function fetchPositionsFromRPC(solana: Solana, walletAddress: string): Pro
 
   // Filter for NFT token accounts (amount = 1, decimals = 0)
   const nftAccounts = allTokenAccounts.filter((account) => {
-    const amount = account.account.data.parsed.info.tokenAmount.uiAmount;
-    const decimals = account.account.data.parsed.info.tokenAmount.decimals;
-    return amount === 1 && decimals === 0;
+    try {
+      const parsed = account.account.data.parsed;
+      const tokenAmount = parsed?.info?.tokenAmount;
+      // NFT positions have amount = 1 and decimals = 0
+      return tokenAmount && tokenAmount.uiAmount === 1 && tokenAmount.decimals === 0;
+    } catch (error) {
+      logger.debug(`Failed to parse token account:`, error);
+      return false;
+    }
   });
 
   logger.debug(`Found ${nftAccounts.length} NFT token accounts, checking for positions...`);
@@ -85,14 +91,20 @@ async function fetchPositionsFromRPC(solana: Solana, walletAddress: string): Pro
   const positions: PositionInfo[] = [];
   for (const nftAccount of nftAccounts) {
     try {
-      const mint = nftAccount.account.data.parsed.info.mint;
+      // Get the mint address from parsed data
+      const mint = nftAccount.account.data.parsed?.info?.mint;
+      if (!mint) {
+        logger.debug(`Skipping token account without mint`);
+        continue;
+      }
+
       const positionInfo = await pancakeswapSol.getPositionInfo(mint);
       if (positionInfo) {
         positions.push(positionInfo);
       }
     } catch (error) {
       // Skip NFTs that aren't positions - this is expected
-      logger.debug(`Skipping non-position NFT: ${nftAccount.account.data.parsed.info.mint}`);
+      logger.debug(`Skipping non-position NFT`);
     }
   }
 

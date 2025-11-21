@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+// Load environment variables from .env file
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { startGateway } from './app';
 
 export const asciiLogo = `
