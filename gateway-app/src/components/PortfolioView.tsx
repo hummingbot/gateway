@@ -25,17 +25,19 @@ import { getSelectableTokenList, getTokenSymbol, TokenInfo } from '@/lib/utils';
 import type { PositionWithConnector as Position, ConnectorConfig } from '@/lib/gateway-types';
 import { capitalize, shortenAddress, getChainNetwork } from '@/lib/utils/string';
 import { formatTokenAmount, formatBalance } from '@/lib/utils/format';
+import { getCachedPrice, setCachedPrice } from '@/lib/price-cache';
 
 interface Balance {
   symbol: string;
   name: string;
   address: string;
   balance: string;
-  value?: number;
+  nativeValue?: number;
+  usdcValue?: number;
 }
 
 export function PortfolioView() {
-  const { selectedChain, selectedNetwork, selectedWallet, gatewayAvailable } = useApp();
+  const { selectedChain, selectedNetwork, selectedWallet, gatewayAvailable, gatewayConfig } = useApp();
   const navigate = useNavigate();
   const [balances, setBalances] = useState<Balance[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -50,16 +52,28 @@ export function PortfolioView() {
   const [selectedBalance, setSelectedBalance] = useState<Balance | null>(null);
   const [tokenList, setTokenList] = useState<TokenInfo[]>([]);
   const [hideZeroBalances, setHideZeroBalances] = useState(true);
+  const [swapProvider, setSwapProvider] = useState<string>('');
 
   useEffect(() => {
     loadNetworks();
   }, [selectedChain]);
 
   useEffect(() => {
-    if (!selectedWallet) return;
+    if (!selectedWallet || !gatewayConfig) return;
+
+    console.log('[PortfolioView] Chain/network/wallet changed, clearing state and fetching...');
+
+    // Clear all state when chain/network changes to prevent stale data
+    setBalances([]);
+    setPositions([]);
+    setSwapProvider('');
+    setNativeSymbol('');
+    setTokenList([]);
+
     fetchData();
     fetchPositions();
   }, [selectedChain, selectedNetwork, selectedWallet]);
+
 
   async function loadNetworks() {
     const configData = await gatewayAPI.config.getChains();
@@ -69,18 +83,136 @@ export function PortfolioView() {
     }
   }
 
+  // Fetch prices in background and update cache
+  async function fetchPricesInBackground(tokens: string[], connector: string, nativeCurrency: string) {
+    try {
+      const chainNetwork = getChainNetwork(selectedChain, selectedNetwork);
+
+      // Helper to get tradeable symbol (ETH → WETH)
+      const getTradableSymbol = (symbol: string) => symbol === 'ETH' ? 'WETH' : symbol;
+
+      // Fetch native→USDC rate
+      let nativeToUsdcRate = 1;
+      if (nativeCurrency !== 'USDC') {
+        try {
+          const quote = await gatewayAPI.trading.quoteSwap({
+            chainNetwork,
+            connector,
+            baseToken: getTradableSymbol(nativeCurrency),
+            quoteToken: 'USDC',
+            amount: 1,
+            side: 'SELL',
+            slippagePct: 1,
+          });
+          nativeToUsdcRate = quote.amountOut;
+        } catch (err) {
+          console.warn(`Failed to fetch ${nativeCurrency}→USDC rate:`, err);
+        }
+      }
+
+      // Fetch all token→native prices in parallel
+      const pricePromises = tokens
+        .filter((token) => token !== nativeCurrency && getTradableSymbol(token) !== getTradableSymbol(nativeCurrency))
+        .map(async (token) => {
+          try {
+            const quote = await gatewayAPI.trading.quoteSwap({
+              chainNetwork,
+              connector,
+              baseToken: getTradableSymbol(token),
+              quoteToken: getTradableSymbol(nativeCurrency),
+              amount: 1,
+              side: 'SELL',
+              slippagePct: 1,
+            });
+
+            const nativePrice = quote.amountOut;
+            const usdcPrice = nativePrice * nativeToUsdcRate;
+
+            // Update cache
+            setCachedPrice(selectedChain, selectedNetwork, token, {
+              nativePrice,
+              usdcPrice,
+              timestamp: Date.now(),
+            });
+
+            return { token, success: true };
+          } catch (err) {
+            console.warn(`Failed to fetch price for ${token}:`, err);
+            return { token, success: false };
+          }
+        });
+
+      await Promise.all(pricePromises);
+
+      // Update native currency price
+      setCachedPrice(selectedChain, selectedNetwork, nativeCurrency, {
+        nativePrice: 1,
+        usdcPrice: nativeToUsdcRate,
+        timestamp: Date.now(),
+      });
+
+      // Add WETH if native is ETH
+      const tradableNative = getTradableSymbol(nativeCurrency);
+      if (tradableNative !== nativeCurrency) {
+        setCachedPrice(selectedChain, selectedNetwork, tradableNative, {
+          nativePrice: 1,
+          usdcPrice: nativeToUsdcRate,
+          timestamp: Date.now(),
+        });
+      }
+
+      // Add USDC price
+      if (nativeCurrency !== 'USDC') {
+        setCachedPrice(selectedChain, selectedNetwork, 'USDC', {
+          nativePrice: 1 / nativeToUsdcRate,
+          usdcPrice: 1,
+          timestamp: Date.now(),
+        });
+      }
+
+      // Update balances with new prices from cache
+      setBalances(prev => prev.map(balance => {
+        const cachedPrice = getCachedPrice(selectedChain, selectedNetwork, balance.symbol);
+        if (!cachedPrice) return balance;
+
+        const balanceNum = parseFloat(balance.balance);
+        return {
+          ...balance,
+          nativeValue: balanceNum * cachedPrice.nativePrice,
+          usdcValue: balanceNum * cachedPrice.usdcPrice,
+        };
+      }));
+    } catch (err) {
+      console.error('Failed to fetch prices:', err);
+    }
+  }
+
   async function fetchData() {
     try {
       setLoading(true);
       setError(null);
 
+      if (!gatewayConfig) {
+        throw new Error('Gateway config not loaded');
+      }
+
+      // Get network config from gatewayConfig
+      const networkKey = getChainNetwork(selectedChain, selectedNetwork);
+      const networkConfig = gatewayConfig[networkKey];
+
+      if (!networkConfig) {
+        throw new Error(`Network config not found for ${networkKey}`);
+      }
+
+      // Get swapProvider and nativeCurrency from config
+      const swapProvider = networkConfig.swapProvider;
+      const nativeCurrency = networkConfig.nativeCurrencySymbol;
+
+      setSwapProvider(swapProvider);
+      setNativeSymbol(nativeCurrency);
+
       // Get selectable token list (native token first, no duplicates)
       const tokenList = await getSelectableTokenList(selectedChain, selectedNetwork);
-
-      // Set native symbol from the first token
-      if (tokenList.length > 0) {
-        setNativeSymbol(tokenList[0].symbol);
-      }
 
       // Fetch wallet balances
       const balanceData = await gatewayAPI.chains.getBalances(selectedChain, {
@@ -97,16 +229,34 @@ export function PortfolioView() {
       }
 
       // Build balances list from token list
-      const mergedBalances: Balance[] = tokenList.map((token) => ({
-        symbol: token.symbol,
-        name: token.name,
-        address: token.address,
-        balance: balanceMap.get(token.symbol) || '0',
-        value: 0,
-      }));
+      const mergedBalances: Balance[] = tokenList.map((token) => {
+        const balanceStr = balanceMap.get(token.symbol) || '0';
+        const balanceNum = parseFloat(balanceStr);
+
+        // Get price from cache (will be undefined if not cached yet)
+        const cachedPrice = getCachedPrice(selectedChain, selectedNetwork, token.symbol);
+
+        return {
+          symbol: token.symbol,
+          name: token.name,
+          address: token.address,
+          balance: balanceStr,
+          nativeValue: cachedPrice ? balanceNum * cachedPrice.nativePrice : undefined,
+          usdcValue: cachedPrice ? balanceNum * cachedPrice.usdcPrice : undefined,
+        };
+      });
 
       setBalances(mergedBalances);
       setTokenList(tokenList);
+
+      // Fetch prices for tokens with non-zero balances (in background, updates cache)
+      const tokensToFetch = mergedBalances
+        .filter((b) => parseFloat(b.balance) > 0)
+        .map((b) => b.symbol);
+
+      if (tokensToFetch.length > 0) {
+        fetchPricesInBackground(tokensToFetch, swapProvider, nativeCurrency);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
@@ -224,6 +374,43 @@ export function PortfolioView() {
     );
   }
 
+  // Calculate total portfolio values
+  const totalNativeValue = balances.reduce((sum, b) => sum + (b.nativeValue || 0), 0);
+  const totalUsdcValue = balances.reduce((sum, b) => sum + (b.usdcValue || 0), 0);
+
+  // Calculate total positions values
+  const totalPositionsNativeValue = positions.reduce((sum, position) => {
+    const baseSymbol = getTokenSymbol(position.baseTokenAddress, tokenList, nativeSymbol);
+    const quoteSymbol = getTokenSymbol(position.quoteTokenAddress, tokenList, nativeSymbol);
+
+    const basePrice = getCachedPrice(selectedChain, selectedNetwork, baseSymbol);
+    const quotePrice = getCachedPrice(selectedChain, selectedNetwork, quoteSymbol);
+
+    const baseAmount = parseFloat(position.baseTokenAmount);
+    const quoteAmount = parseFloat(position.quoteTokenAmount);
+
+    const baseValue = basePrice ? baseAmount * basePrice.nativePrice : 0;
+    const quoteValue = quotePrice ? quoteAmount * quotePrice.nativePrice : 0;
+
+    return sum + baseValue + quoteValue;
+  }, 0);
+
+  const totalPositionsUsdcValue = positions.reduce((sum, position) => {
+    const baseSymbol = getTokenSymbol(position.baseTokenAddress, tokenList, nativeSymbol);
+    const quoteSymbol = getTokenSymbol(position.quoteTokenAddress, tokenList, nativeSymbol);
+
+    const basePrice = getCachedPrice(selectedChain, selectedNetwork, baseSymbol);
+    const quotePrice = getCachedPrice(selectedChain, selectedNetwork, quoteSymbol);
+
+    const baseAmount = parseFloat(position.baseTokenAmount);
+    const quoteAmount = parseFloat(position.quoteTokenAmount);
+
+    const baseValue = basePrice ? baseAmount * basePrice.usdcPrice : 0;
+    const quoteValue = quotePrice ? quoteAmount * quotePrice.usdcPrice : 0;
+
+    return sum + baseValue + quoteValue;
+  }, 0);
+
   return (
     <div className="p-3 md:p-6 space-y-3 md:space-y-6">
       {/* Balances */}
@@ -231,14 +418,20 @@ export function PortfolioView() {
         <CardHeader className="p-3 md:p-6">
           <div className="flex justify-between items-center">
             <CardTitle>Tokens</CardTitle>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="hideZero"
-                checked={hideZeroBalances}
-                onCheckedChange={(checked) => setHideZeroBalances(checked === true)}
-              />
-              <Label htmlFor="hideZero" className="cursor-pointer text-sm">Hide Zero Balances</Label>
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col items-end">
+                <span className="text-2xl font-bold">${formatBalance(totalUsdcValue.toString(), 2)}</span>
+                <span className="text-sm text-muted-foreground">{formatBalance(totalNativeValue.toString(), 2)} {nativeSymbol}</span>
+              </div>
             </div>
+          </div>
+          <div className="flex items-center space-x-2 mt-3">
+            <Checkbox
+              id="hideZero"
+              checked={hideZeroBalances}
+              onCheckedChange={(checked) => setHideZeroBalances(checked === true)}
+            />
+            <Label htmlFor="hideZero" className="cursor-pointer text-sm">Hide Zero Balances</Label>
           </div>
         </CardHeader>
         <CardContent className="p-3 md:p-6">
@@ -253,6 +446,8 @@ export function PortfolioView() {
                       <TableHead>Symbol</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead className="text-right">Balance</TableHead>
+                      <TableHead className="text-right">Value ({nativeSymbol})</TableHead>
+                      <TableHead className="text-right">Value (USDC)</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -260,6 +455,12 @@ export function PortfolioView() {
                       .filter(balance => !hideZeroBalances || balance.balance !== '0')
                       .map((balance, i) => {
                         const formattedBalance = formatBalance(balance.balance, 6);
+                        const formattedNativeValue = balance.nativeValue
+                          ? formatBalance(balance.nativeValue.toString(), 4)
+                          : '-';
+                        const formattedUsdcValue = balance.usdcValue
+                          ? '$' + formatBalance(balance.usdcValue.toString(), 2)
+                          : '-';
 
                         return (
                           <TableRow
@@ -282,12 +483,18 @@ export function PortfolioView() {
                             <TableCell className="text-right">
                               {formattedBalance}
                             </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {formattedNativeValue}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {formattedUsdcValue}
+                            </TableCell>
                           </TableRow>
                         );
                       })}
                   </TableBody>
                 </Table>
-                <div className="flex justify-end pt-2">
+                <div className="flex justify-start pt-2">
                   <Button onClick={() => setShowAddToken(true)} variant="outline" size="sm">
                     <Plus className="h-4 w-4 mr-1" />
                     Add Token
@@ -302,7 +509,17 @@ export function PortfolioView() {
       {/* Positions */}
       <Card>
         <CardHeader className="p-3 md:p-6">
-          <CardTitle>Liquidity Positions</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>Positions</CardTitle>
+            {positions.length > 0 && (
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col items-end">
+                  <span className="text-2xl font-bold">${formatBalance(totalPositionsUsdcValue.toString(), 2)}</span>
+                  <span className="text-sm text-muted-foreground">{formatBalance(totalPositionsNativeValue.toString(), 2)} {nativeSymbol}</span>
+                </div>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-3 md:p-6">
           {loadingPositions ? (
@@ -317,6 +534,8 @@ export function PortfolioView() {
                   <TableHead>Trading Pair</TableHead>
                   <TableHead className="text-right">Base Amount</TableHead>
                   <TableHead className="text-right">Quote Amount</TableHead>
+                  <TableHead className="text-right">Value ({nativeSymbol})</TableHead>
+                  <TableHead className="text-right">Value (USDC)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -325,6 +544,28 @@ export function PortfolioView() {
                   const baseSymbol = getTokenSymbol(position.baseTokenAddress, tokenList, nativeSymbol);
                   const quoteSymbol = getTokenSymbol(position.quoteTokenAddress, tokenList, nativeSymbol);
                   const tradingPair = `${baseSymbol}/${quoteSymbol}`;
+
+                  // Calculate position value
+                  const basePrice = getCachedPrice(selectedChain, selectedNetwork, baseSymbol);
+                  const quotePrice = getCachedPrice(selectedChain, selectedNetwork, quoteSymbol);
+
+                  const baseAmount = parseFloat(position.baseTokenAmount);
+                  const quoteAmount = parseFloat(position.quoteTokenAmount);
+
+                  const baseNativeValue = basePrice ? baseAmount * basePrice.nativePrice : 0;
+                  const quoteNativeValue = quotePrice ? quoteAmount * quotePrice.nativePrice : 0;
+                  const positionNativeValue = baseNativeValue + quoteNativeValue;
+
+                  const baseUsdcValue = basePrice ? baseAmount * basePrice.usdcPrice : 0;
+                  const quoteUsdcValue = quotePrice ? quoteAmount * quotePrice.usdcPrice : 0;
+                  const positionUsdcValue = baseUsdcValue + quoteUsdcValue;
+
+                  const formattedNativeValue = positionNativeValue > 0
+                    ? formatBalance(positionNativeValue.toString(), 4)
+                    : '-';
+                  const formattedUsdcValue = positionUsdcValue > 0
+                    ? '$' + formatBalance(positionUsdcValue.toString(), 2)
+                    : '-';
 
                   return (
                     <TableRow
@@ -341,6 +582,12 @@ export function PortfolioView() {
                       </TableCell>
                       <TableCell className="text-right">
                         {formatTokenAmount(position.quoteTokenAmount)}
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {formattedNativeValue}
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {formattedUsdcValue}
                       </TableCell>
                     </TableRow>
                   );
