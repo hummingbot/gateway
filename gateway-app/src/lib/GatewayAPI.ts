@@ -216,9 +216,30 @@ export class RouterAPI {
 }
 
 /**
- * Trading API endpoints (unified CLMM routes)
+ * Trading API endpoints (unified trading routes)
  */
 export class TradingAPI {
+  async quoteSwap(params: {
+    chainNetwork: string;
+    connector: string;
+    baseToken: string;
+    quoteToken: string;
+    amount: number;
+    side: 'BUY' | 'SELL';
+    slippagePct?: number;
+  }) {
+    const queryParams = new URLSearchParams();
+    queryParams.append('chainNetwork', params.chainNetwork);
+    queryParams.append('connector', params.connector);
+    queryParams.append('baseToken', params.baseToken);
+    queryParams.append('quoteToken', params.quoteToken);
+    queryParams.append('amount', String(params.amount));
+    queryParams.append('side', params.side);
+    if (params.slippagePct !== undefined) queryParams.append('slippagePct', String(params.slippagePct));
+
+    return gatewayGet<RouterQuoteResponse>(`/trading/swap/quote?${queryParams}`);
+  }
+
   async collectFees(params: { connector: string; chainNetwork: string; walletAddress: string; positionAddress: string }) {
     return gatewayPost<CollectFeesResponseType>('/trading/clmm/collect-fees', params);
   }

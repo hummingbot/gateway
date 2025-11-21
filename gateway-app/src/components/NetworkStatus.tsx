@@ -37,6 +37,11 @@ export function NetworkStatus({ chain, network }: NetworkStatusProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
   useEffect(() => {
+    // Don't fetch until we have valid chain and network
+    if (!chain || !network) {
+      setLoading(false);
+      return;
+    }
     fetchStatus();
   }, [chain, network]);
 

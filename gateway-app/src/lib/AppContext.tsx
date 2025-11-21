@@ -3,6 +3,21 @@ import { readAppConfig, updateAppConfigValue, AppConfig } from './app-config';
 import { applyTheme, updateThemeForDarkMode } from './theme-manager';
 import { gatewayGet } from './api';
 
+interface GatewayConfig {
+  server: any;
+  ethereum: {
+    defaultNetwork: string;
+    defaultWallet: string;
+    rpcProvider: string;
+  };
+  solana: {
+    defaultNetwork: string;
+    defaultWallet: string;
+    rpcProvider: string;
+  };
+  [key: string]: any; // Network configs like "ethereum-base", "solana-mainnet-beta"
+}
+
 interface AppState {
   selectedNetwork: string;
   setSelectedNetwork: (network: string) => void;
@@ -14,6 +29,7 @@ interface AppState {
   setDarkMode: (value: boolean) => void;
   toggleTheme: () => void;
   gatewayAvailable: boolean | null; // null = checking, true = available, false = unavailable
+  gatewayConfig: GatewayConfig | null;
   checkGatewayStatus: () => Promise<void>;
   reloadAppConfig: () => Promise<void>;
 }
@@ -21,13 +37,15 @@ interface AppState {
 const AppContext = createContext<AppState | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [selectedNetwork, setSelectedNetwork] = useState('mainnet-beta');
-  const [selectedWallet, setSelectedWallet] = useState('');
-  const [selectedChain, setSelectedChain] = useState('solana');
+  const [selectedNetwork, setSelectedNetwork] = useState<string>('');
+  const [selectedWallet, setSelectedWallet] = useState<string>('');
+  const [selectedChain, setSelectedChain] = useState<string>('');
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [themeLoaded, setThemeLoaded] = useState(false);
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
   const [gatewayAvailable, setGatewayAvailable] = useState<boolean | null>(null);
+  const [gatewayConfig, setGatewayConfig] = useState<GatewayConfig | null>(null);
+  const [configLoaded, setConfigLoaded] = useState(false);
 
   // Load darkMode and theme from app config on mount
   useEffect(() => {
@@ -121,19 +139,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDarkMode(prev => !prev);
   };
 
-  // Check Gateway status on mount
+  // Check Gateway status and load config on mount
   useEffect(() => {
     checkGatewayStatus();
   }, []);
 
   async function checkGatewayStatus() {
     try {
-      // Try to fetch config/chains endpoint as a health check
-      await gatewayGet('/config/chains');
+      // Fetch full Gateway config
+      const config = await gatewayGet<GatewayConfig>('/config');
+      setGatewayConfig(config);
       setGatewayAvailable(true);
+
+      // Set defaults from config - prefer solana, fallback to ethereum
+      if (config.solana) {
+        setSelectedChain('solana');
+        setSelectedNetwork(config.solana.defaultNetwork);
+        setSelectedWallet(config.solana.defaultWallet);
+      } else if (config.ethereum) {
+        setSelectedChain('ethereum');
+        setSelectedNetwork(config.ethereum.defaultNetwork);
+        setSelectedWallet(config.ethereum.defaultWallet);
+      }
+
+      setConfigLoaded(true);
     } catch (err) {
       console.error('Gateway unavailable:', err);
       setGatewayAvailable(false);
+      setConfigLoaded(true);
     }
   }
 
@@ -161,6 +194,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setDarkMode,
         toggleTheme,
         gatewayAvailable,
+        gatewayConfig,
         checkGatewayStatus,
         reloadAppConfig,
       }}

@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
-import { Plus } from 'lucide-react';
+import { Plus, ExternalLink } from 'lucide-react';
+import { SolanaIcon } from './icons/SolanaIcon';
+import { EthereumIcon } from './icons/EthereumIcon';
 import {
   Table,
   TableBody,
@@ -26,6 +28,8 @@ import type { PositionWithConnector as Position, ConnectorConfig } from '@/lib/g
 import { capitalize, shortenAddress, getChainNetwork } from '@/lib/utils/string';
 import { formatTokenAmount, formatBalance } from '@/lib/utils/format';
 import { getCachedPrice, setCachedPrice } from '@/lib/price-cache';
+import { getExplorerAddressUrl } from '@/lib/utils/explorer';
+import { openExternalUrl } from '@/lib/utils/external-link';
 
 interface Balance {
   symbol: string;
@@ -378,6 +382,18 @@ export function PortfolioView() {
   const totalNativeValue = balances.reduce((sum, b) => sum + (b.nativeValue || 0), 0);
   const totalUsdcValue = balances.reduce((sum, b) => sum + (b.usdcValue || 0), 0);
 
+  // Get chain icon helper
+  const getChainIcon = (chain: string) => {
+    switch (chain) {
+      case 'solana':
+        return <SolanaIcon className="inline-block w-6 h-6" />;
+      case 'ethereum':
+        return <EthereumIcon className="inline-block w-6 h-6" />;
+      default:
+        return <span className="inline-block w-6 h-6 text-center">●</span>;
+    }
+  };
+
   // Calculate total positions values
   const totalPositionsNativeValue = positions.reduce((sum, position) => {
     const baseSymbol = getTokenSymbol(position.baseTokenAddress, tokenList, nativeSymbol);
@@ -413,6 +429,29 @@ export function PortfolioView() {
 
   return (
     <div className="p-3 md:p-6 space-y-3 md:space-y-6">
+      {/* Wallet Address Card */}
+      {selectedWallet && (
+        <Card>
+          <CardContent className="p-3 md:p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-lg font-semibold">
+                {getChainIcon(selectedChain)}
+                <span>{shortenAddress(selectedWallet)}</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openExternalUrl(getExplorerAddressUrl(selectedChain, selectedNetwork, selectedWallet))}
+                className="flex items-center gap-2"
+              >
+                <span>View on Explorer</span>
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Balances */}
       <Card>
         <CardHeader className="p-3 md:p-6">

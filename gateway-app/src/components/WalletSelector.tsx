@@ -22,6 +22,8 @@ import { Button } from './ui/button';
 import { shortenAddress } from '@/lib/utils/string';
 import { Check, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SolanaIcon } from './icons/SolanaIcon';
+import { EthereumIcon } from './icons/EthereumIcon';
 
 interface WalletData {
   chain: string;
@@ -60,17 +62,22 @@ export function WalletSelector({
   const getChainIcon = (chain: string) => {
     switch (chain) {
       case 'solana':
-        return '◎';
+        return <SolanaIcon className="inline-block w-5 h-5" />;
       case 'ethereum':
-        return '⟠';
+        return <EthereumIcon className="inline-block w-5 h-5" />;
       default:
-        return '●';
+        return <span className="inline-block w-5 h-5 text-center">●</span>;
     }
   };
 
   const getDisplayValue = () => {
     if (!selectedWallet) return 'Select wallet';
-    return `${getChainIcon(selectedChain)} ${shortenAddress(selectedWallet)}`;
+    return (
+      <span className="flex items-center gap-2">
+        {getChainIcon(selectedChain)}
+        <span>{shortenAddress(selectedWallet)}</span>
+      </span>
+    );
   };
 
   const WalletList = ({ className }: { className?: string }) => (
@@ -100,7 +107,8 @@ export function WalletSelector({
                     className="w-full justify-start"
                   >
                     <span className="flex items-center gap-2 flex-1">
-                      {getChainIcon(walletData.chain)} {shortenAddress(wallet)}
+                      {getChainIcon(walletData.chain)}
+                      <span>{shortenAddress(wallet)}</span>
                     </span>
                     {isSelected && <Check className="h-4 w-4" />}
                   </Button>

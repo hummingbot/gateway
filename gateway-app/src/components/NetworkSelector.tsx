@@ -58,6 +58,9 @@ export function NetworkSelector({
 
   // Desktop: Use Select component (no modal)
   if (isDesktop && !iconOnly) {
+    // Don't render until we have a valid network
+    if (!selectedNetwork) return null;
+
     return (
       <Select value={selectedNetwork} onValueChange={onNetworkChange}>
         <SelectTrigger className="w-48">
