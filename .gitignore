@@ -12,6 +12,10 @@ package-lock.json
 **/.DS_Store
 **/gateway_files
 
+# Environment files with secrets
+.env
+gateway-app/.env
+
 # VSCode
 .vscode/
 .history

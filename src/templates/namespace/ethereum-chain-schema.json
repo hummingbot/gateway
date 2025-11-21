@@ -18,7 +18,7 @@
     },
     "etherscanAPIKey": {
       "type": "string",
-      "description": "Etherscan API key for gas price estimates (works across all Etherscan V2 supported chains)"
+      "description": "Etherscan API key for gas price estimates and transaction history (works across all Etherscan V2 supported chains)"
     }
   },
   "required": ["defaultNetwork", "defaultWallet"],

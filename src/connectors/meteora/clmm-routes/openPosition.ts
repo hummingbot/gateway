@@ -62,6 +62,10 @@ export async function openPosition(
     if (error instanceof Error && error.message.includes('Invalid account discriminator')) {
       throw fastify.httpErrors.notFound(POOL_NOT_FOUND_MESSAGE(poolAddress));
     }
+    // Handle InvalidPositionWidth error from Meteora SDK
+    if (error instanceof Error && error.message.includes('InvalidPositionWidth')) {
+      throw fastify.httpErrors.badRequest('Invalid position width. Please use a position width of 69 bins or lower.');
+    }
     throw error; // Re-throw unexpected errors
   }
 
@@ -74,8 +78,8 @@ export async function openPosition(
     throw fastify.httpErrors.badRequest(MISSING_AMOUNTS_MESSAGE);
   }
 
-  // Note: Balance validation removed - insufficient balance will be caught during transaction execution
-  // This avoids issues with the deprecated getBalance() method and aligns with PancakeSwap-Sol behavior
+  // Don't check balances here - let the transaction fail with proper error
+  // This avoids issues with getBalance() and aligns with pancakeswap-sol behavior
 
   // Get current pool price from active bin
   const activeBin = await dlmmPool.getActiveBin();
