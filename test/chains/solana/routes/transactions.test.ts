@@ -85,7 +85,7 @@ describe('Solana Transactions Route', () => {
       );
     });
 
-    it('should use default limit of 10 when not specified', async () => {
+    it('should use default limit of 100 when not specified', async () => {
       const response = await fastify.inject({
         method: 'GET',
         url: `/chains/solana/transactions?walletAddress=${mockWalletAddress}`,
@@ -95,7 +95,7 @@ describe('Solana Transactions Route', () => {
 
       expect(mockConnection.getSignaturesForAddress).toHaveBeenCalledWith(
         expect.any(PublicKey),
-        expect.objectContaining({ limit: 10 }),
+        expect.objectContaining({ limit: 100 }),
       );
     });
 

@@ -1,5 +1,4 @@
 import { Type, Static } from '@sinclair/typebox';
-import { AccountLayout } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
@@ -61,28 +60,25 @@ async function fetchPositionsFromRPC(solana: Solana, walletAddress: string): Pro
   logger.info(`Fetching all positions for wallet ${walletAddress}`);
 
   // Get all token accounts owned by the wallet from both SPL Token and Token2022 programs
-  // Use base64 encoding to avoid Helius RPC parsing issues
   const walletPubkey = new PublicKey(walletAddress);
   const [splTokenAccounts, token2022Accounts] = await Promise.all([
-    solana.connection.getTokenAccountsByOwner(walletPubkey, {
+    solana.connection.getParsedTokenAccountsByOwner(walletPubkey, {
       programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
     }),
-    solana.connection.getTokenAccountsByOwner(walletPubkey, {
+    solana.connection.getParsedTokenAccountsByOwner(walletPubkey, {
       programId: new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'),
     }),
   ]);
 
   const allTokenAccounts = [...splTokenAccounts.value, ...token2022Accounts.value];
 
-  // Parse and filter for NFT token accounts (amount = 1, decimals = 0)
+  // Filter for NFT token accounts (amount = 1, decimals = 0)
   const nftAccounts = allTokenAccounts.filter((account) => {
     try {
-      const accountData = account.account.data;
-      const data = Buffer.from(accountData as any);
-      const accountInfo = AccountLayout.decode(Uint8Array.from(data));
-      const amount = Number(accountInfo.amount);
-      // NFT positions have amount = 1
-      return amount === 1;
+      const parsed = account.account.data.parsed;
+      const tokenAmount = parsed?.info?.tokenAmount;
+      // NFT positions have amount = 1 and decimals = 0
+      return tokenAmount && tokenAmount.uiAmount === 1 && tokenAmount.decimals === 0;
     } catch (error) {
       logger.debug(`Failed to parse token account:`, error);
       return false;
@@ -95,11 +91,12 @@ async function fetchPositionsFromRPC(solana: Solana, walletAddress: string): Pro
   const positions: PositionInfo[] = [];
   for (const nftAccount of nftAccounts) {
     try {
-      // Parse the mint address from the account data
-      const accountData = nftAccount.account.data;
-      const data = Buffer.from(accountData as any);
-      const accountInfo = AccountLayout.decode(Uint8Array.from(data));
-      const mint = new PublicKey(accountInfo.mint).toString();
+      // Get the mint address from parsed data
+      const mint = nftAccount.account.data.parsed?.info?.mint;
+      if (!mint) {
+        logger.debug(`Skipping token account without mint`);
+        continue;
+      }
 
       const positionInfo = await pancakeswapSol.getPositionInfo(mint);
       if (positionInfo) {
