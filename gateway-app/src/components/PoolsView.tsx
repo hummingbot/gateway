@@ -39,6 +39,7 @@ import { capitalize, getChainNetwork, shortenAddress } from '@/lib/utils/string'
 import { formatTokenAmount, formatNumber } from '@/lib/utils/format';
 import { getPoolUrl, getDexName } from '@/lib/pool-urls';
 import { openExternalUrl } from '@/lib/utils/external-link';
+import { getCachedPoolInfo, setCachedPoolInfo } from '@/lib/pool-cache';
 import { ExternalLink, ChevronDown, Plus } from 'lucide-react';
 
 // UI-specific Pool type with connector property added
@@ -257,11 +258,37 @@ export function PoolsView() {
     if (!selectedPool) return;
 
     try {
+      // Check cache first
+      const cached = getCachedPoolInfo(
+        selectedChain,
+        selectedNetwork,
+        selectedPool.connector,
+        selectedPool.address
+      );
+
+      if (cached) {
+        setPoolInfo(cached);
+        // Set fee from cached pool info (convert to basis points)
+        if (cached.feePct !== undefined) {
+          setFee(String(Math.round(cached.feePct * 100)));
+        }
+        return;
+      }
+
       // Use connector-specific endpoint for pool info to get full data including bins
       const url = `/connectors/${selectedPool.connector}/clmm/pool-info?network=${selectedNetwork}&poolAddress=${selectedPool.address}`;
       const response = await fetch(`http://localhost:15888${url}`);
       const data = await response.json();
       setPoolInfo(data as PoolInfo);
+
+      // Cache the fetched pool info
+      setCachedPoolInfo(
+        selectedChain,
+        selectedNetwork,
+        selectedPool.connector,
+        selectedPool.address,
+        data as PoolInfo
+      );
 
       // Set fee from pool info (convert to basis points)
       if (data.feePct !== undefined) {

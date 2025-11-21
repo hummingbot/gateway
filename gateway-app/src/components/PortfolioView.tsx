@@ -402,8 +402,8 @@ export function PortfolioView() {
     const basePrice = getCachedPrice(selectedChain, selectedNetwork, baseSymbol);
     const quotePrice = getCachedPrice(selectedChain, selectedNetwork, quoteSymbol);
 
-    const baseAmount = parseFloat(position.baseTokenAmount);
-    const quoteAmount = parseFloat(position.quoteTokenAmount);
+    const baseAmount = position.baseTokenAmount;
+    const quoteAmount = position.quoteTokenAmount;
 
     const baseValue = basePrice ? baseAmount * basePrice.nativePrice : 0;
     const quoteValue = quotePrice ? quoteAmount * quotePrice.nativePrice : 0;
@@ -418,8 +418,8 @@ export function PortfolioView() {
     const basePrice = getCachedPrice(selectedChain, selectedNetwork, baseSymbol);
     const quotePrice = getCachedPrice(selectedChain, selectedNetwork, quoteSymbol);
 
-    const baseAmount = parseFloat(position.baseTokenAmount);
-    const quoteAmount = parseFloat(position.quoteTokenAmount);
+    const baseAmount = position.baseTokenAmount;
+    const quoteAmount = position.quoteTokenAmount;
 
     const baseValue = basePrice ? baseAmount * basePrice.usdcPrice : 0;
     const quoteValue = quotePrice ? quoteAmount * quotePrice.usdcPrice : 0;
@@ -588,8 +588,8 @@ export function PortfolioView() {
                   const basePrice = getCachedPrice(selectedChain, selectedNetwork, baseSymbol);
                   const quotePrice = getCachedPrice(selectedChain, selectedNetwork, quoteSymbol);
 
-                  const baseAmount = parseFloat(position.baseTokenAmount);
-                  const quoteAmount = parseFloat(position.quoteTokenAmount);
+                  const baseAmount = position.baseTokenAmount;
+                  const quoteAmount = position.quoteTokenAmount;
 
                   const baseNativeValue = basePrice ? baseAmount * basePrice.nativePrice : 0;
                   const quoteNativeValue = quotePrice ? quoteAmount * quotePrice.nativePrice : 0;
