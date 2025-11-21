@@ -14,6 +14,8 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { gatewayGet, gatewayPost } from './lib/api';
 import { showSuccessNotification } from './lib/notifications';
 import { Route as RouteIcon, Wallet, Droplet, Activity, Settings } from 'lucide-react';
+import { SolanaIcon } from './components/icons/SolanaIcon';
+import { EthereumIcon } from './components/icons/EthereumIcon';
 
 function AppContent() {
   const { selectedNetwork, setSelectedNetwork, selectedWallet, setSelectedWallet, selectedChain, setSelectedChain, darkMode } = useApp();
@@ -174,7 +176,13 @@ function AppContent() {
               }`
             }
           >
-            <Wallet className="h-6 w-6" />
+            {selectedChain === 'solana' ? (
+              <SolanaIcon className="h-6 w-6" />
+            ) : selectedChain === 'ethereum' ? (
+              <EthereumIcon className="h-6 w-6" />
+            ) : (
+              <Wallet className="h-6 w-6" />
+            )}
             <span className="text-xs font-medium">Portfolio</span>
           </NavLink>
 

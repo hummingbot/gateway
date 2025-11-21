@@ -158,7 +158,13 @@ export function WalletSelector({
           className="h-10 w-10"
           title={selectedWallet ? shortenAddress(selectedWallet) : 'Select wallet'}
         >
-          <Wallet className="h-5 w-5" />
+          {selectedChain === 'solana' ? (
+            <SolanaIcon className="h-6 w-6" />
+          ) : selectedChain === 'ethereum' ? (
+            <EthereumIcon className="h-6 w-6" />
+          ) : (
+            <Wallet className="h-6 w-6" />
+          )}
         </Button>
       </DrawerTrigger>
       <DrawerContent>
