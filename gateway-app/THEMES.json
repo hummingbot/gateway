@@ -36,8 +36,8 @@
         "accentDark": "174 72% 56%"
       }
     },
-    "sunset-orange": {
-      "name": "Sunset Orange",
+    "meteora-orange": {
+      "name": "Meteora Orange",
       "colors": {
         "primary": "24 95% 53%",
         "primaryDark": "24 95% 53%",
@@ -45,8 +45,8 @@
         "accentDark": "45 93% 57%"
       }
     },
-    "forest-green": {
-      "name": "Forest Green",
+    "jupiter-green": {
+      "name": "Jupiter Green",
       "colors": {
         "primary": "142 71% 45%",
         "primaryDark": "142 71% 55%",
@@ -81,8 +81,8 @@
         "accentDark": "240 100% 63%"
       }
     },
-    "neon-pink": {
-      "name": "Neon Pink",
+    "uniswap-pink": {
+      "name": "Uniswap Pink",
       "colors": {
         "primary": "326 100% 74%",
         "primaryDark": "326 100% 64%",
