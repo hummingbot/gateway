@@ -144,6 +144,29 @@ async function collectFees(
     }),
   );
 
+  // Auto-unwrap WSOL fees to native SOL
+  logger.info('Auto-unwrapping WSOL fees (if any) back to native SOL');
+  await handleWsolAta(
+    builder,
+    ctx,
+    whirlpool.tokenMintA,
+    tokenOwnerAccountA,
+    mintA.tokenProgram,
+    'unwrap',
+    undefined,
+    solana,
+  );
+  await handleWsolAta(
+    builder,
+    ctx,
+    whirlpool.tokenMintB,
+    tokenOwnerAccountB,
+    mintB.tokenProgram,
+    'unwrap',
+    undefined,
+    solana,
+  );
+
   // Build and simulate transaction
   const txPayload = await builder.build();
   const transaction = txPayload.transaction;
@@ -159,12 +182,10 @@ async function collectFees(
     throw fastify.httpErrors.notFound('Tokens not found for balance extraction');
   }
 
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-    signature,
-    whirlpoolPubkey.toString(),
-    [tokenA.address, tokenB.address],
-    true,
-  );
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, whirlpoolPubkey.toString(), [
+    tokenA.address,
+    tokenB.address,
+  ]);
 
   logger.info(
     `Fees collected: ${Math.abs(balanceChanges[0]).toFixed(6)} ${tokenA.symbol}, ${Math.abs(balanceChanges[1]).toFixed(6)} ${tokenB.symbol}`,

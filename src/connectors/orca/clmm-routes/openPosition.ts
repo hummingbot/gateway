@@ -367,6 +367,42 @@ async function openPosition(
     );
     baseTokenAmountAdded = result.baseTokenAmountAdded;
     quoteTokenAmountAdded = result.quoteTokenAmountAdded;
+
+    // Auto-unwrap any leftover WSOL (from rent buffer + slippage savings)
+    logger.info('Auto-unwrapping leftover WSOL (if any) back to native SOL');
+    const tokenOwnerAccountA = getAssociatedTokenAddressSync(
+      whirlpool.tokenMintA,
+      ctx.wallet.publicKey,
+      undefined,
+      mintA.tokenProgram,
+    );
+    const tokenOwnerAccountB = getAssociatedTokenAddressSync(
+      whirlpool.tokenMintB,
+      ctx.wallet.publicKey,
+      undefined,
+      mintB.tokenProgram,
+    );
+
+    await handleWsolAta(
+      builder,
+      ctx,
+      whirlpool.tokenMintA,
+      tokenOwnerAccountA,
+      mintA.tokenProgram,
+      'unwrap',
+      undefined,
+      solana,
+    );
+    await handleWsolAta(
+      builder,
+      ctx,
+      whirlpool.tokenMintB,
+      tokenOwnerAccountB,
+      mintB.tokenProgram,
+      'unwrap',
+      undefined,
+      solana,
+    );
   }
 
   // Build, simulate, and send transaction

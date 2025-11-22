@@ -164,6 +164,29 @@ async function addLiquidity(
     }),
   );
 
+  // Auto-unwrap any leftover WSOL (from slippage savings)
+  logger.info('Auto-unwrapping leftover WSOL (if any) back to native SOL');
+  await handleWsolAta(
+    builder,
+    ctx,
+    whirlpool.tokenMintA,
+    tokenOwnerAccountA,
+    mintA.tokenProgram,
+    'unwrap',
+    undefined,
+    solana,
+  );
+  await handleWsolAta(
+    builder,
+    ctx,
+    whirlpool.tokenMintB,
+    tokenOwnerAccountB,
+    mintB.tokenProgram,
+    'unwrap',
+    undefined,
+    solana,
+  );
+
   // Build, simulate, and send transaction
   const txPayload = await builder.build();
   await solana.simulateWithErrorHandling(txPayload.transaction, fastify);
@@ -176,12 +199,10 @@ async function addLiquidity(
     throw fastify.httpErrors.notFound('Tokens not found for balance extraction');
   }
 
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-    signature,
-    ctx.wallet.publicKey.toString(),
-    [tokenA.address, tokenB.address],
-    true,
-  );
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, ctx.wallet.publicKey.toString(), [
+    tokenA.address,
+    tokenB.address,
+  ]);
 
   logger.info(
     `Liquidity added: ${Math.abs(balanceChanges[0]).toFixed(6)} ${tokenA.symbol}, ${Math.abs(balanceChanges[1]).toFixed(6)} ${tokenB.symbol}`,

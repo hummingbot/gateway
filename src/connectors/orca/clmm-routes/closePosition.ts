@@ -209,11 +209,33 @@ async function closePosition(
       }),
     );
 
-    baseFeeAmountCollected = Number(collectQuote.feeOwedA) / Math.pow(10, mintA.decimals);
-    quoteFeeAmountCollected = Number(collectQuote.feeOwedB) / Math.pow(10, mintB.decimals);
+    // Note: We'll extract actual fee amounts from balance changes after transaction
   }
 
-  // Step 4: Close position - choose instruction based on token program
+  // Step 4: Auto-unwrap WSOL to native SOL after receiving all tokens
+  logger.info('Auto-unwrapping WSOL (if any) back to native SOL');
+  await handleWsolAta(
+    builder,
+    ctx,
+    whirlpool.tokenMintA,
+    tokenOwnerAccountA,
+    mintA.tokenProgram,
+    'unwrap',
+    undefined,
+    solana,
+  );
+  await handleWsolAta(
+    builder,
+    ctx,
+    whirlpool.tokenMintB,
+    tokenOwnerAccountB,
+    mintB.tokenProgram,
+    'unwrap',
+    undefined,
+    solana,
+  );
+
+  // Step 5: Close position - choose instruction based on token program
   const isToken2022 = positionMint.tokenProgram.equals(TOKEN_2022_PROGRAM_ID);
   const closePositionIxFn = isToken2022 ? WhirlpoolIx.closePositionWithTokenExtensionsIx : WhirlpoolIx.closePositionIx;
 
@@ -236,6 +258,46 @@ async function closePosition(
   const txPayload = await builder.build();
   await solana.simulateWithErrorHandling(txPayload.transaction, fastify);
   const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [wallet]);
+
+  // Extract actual amounts from balance changes (more accurate than quotes)
+  const tokenA = await solana.getToken(whirlpool.tokenMintA.toString());
+  const tokenB = await solana.getToken(whirlpool.tokenMintB.toString());
+  if (!tokenA || !tokenB) {
+    throw fastify.httpErrors.notFound('Tokens not found for balance extraction');
+  }
+
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, ctx.wallet.publicKey.toString(), [
+    tokenA.address,
+    tokenB.address,
+  ]);
+
+  // Total balance changes (positive values = received)
+  const totalBaseChange = Math.abs(balanceChanges[0]);
+  const totalQuoteChange = Math.abs(balanceChanges[1]);
+
+  // If we removed liquidity, use the quote estimates as basis
+  // Otherwise, all balance change is from fees
+  if (hasLiquidity) {
+    // We have estimates from decreaseQuote, but actual amounts might differ slightly
+    // Use the estimates as reference, but ensure fees aren't negative
+    baseFeeAmountCollected = Math.max(0, totalBaseChange - baseTokenAmountRemoved);
+    quoteFeeAmountCollected = Math.max(0, totalQuoteChange - quoteTokenAmountRemoved);
+
+    // If fees would be negative, it means the estimate was slightly high
+    // Adjust the liquidity removed to match actual total
+    if (totalBaseChange < baseTokenAmountRemoved) {
+      baseTokenAmountRemoved = totalBaseChange;
+      baseFeeAmountCollected = 0;
+    }
+    if (totalQuoteChange < quoteTokenAmountRemoved) {
+      quoteTokenAmountRemoved = totalQuoteChange;
+      quoteFeeAmountCollected = 0;
+    }
+  } else {
+    // No liquidity removed, all balance change is fees
+    baseFeeAmountCollected = totalBaseChange;
+    quoteFeeAmountCollected = totalQuoteChange;
+  }
 
   const positionRentRefunded = 0.00203928;
 

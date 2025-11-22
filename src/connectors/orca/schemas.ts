@@ -1,6 +1,7 @@
 import { Type, Static } from '@sinclair/typebox';
 
 import { getSolanaChainConfig } from '../../chains/solana/solana.config';
+import { PoolInfoSchema } from '../../schemas/clmm-schema';
 
 import { OrcaConfig } from './orca.config';
 
@@ -16,6 +17,22 @@ const QUOTE_TOKEN_AMOUNT = 2;
 const LOWER_PRICE_BOUND = 200;
 const UPPER_PRICE_BOUND = 300;
 const CLMM_POOL_ADDRESS_EXAMPLE = 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE';
+
+// Orca-specific extension
+export const OrcaPoolInfoSchema = Type.Composite(
+  [
+    PoolInfoSchema,
+    Type.Object({
+      liquidity: Type.String(),
+      sqrtPrice: Type.String(),
+      tvlUsdc: Type.Number(),
+      protocolFeeRate: Type.Number(),
+      yieldOverTvl: Type.Number(),
+    }),
+  ],
+  { $id: 'OrcaPoolInfo' },
+);
+export type OrcaPoolInfo = Static<typeof OrcaPoolInfoSchema>;
 
 // Orca-specific extensions for quote-swap
 export const OrcaQuoteSwapRequest = Type.Object({

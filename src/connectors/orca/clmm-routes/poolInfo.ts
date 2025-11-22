@@ -1,9 +1,9 @@
 import { FastifyPluginAsync } from 'fastify';
 
-import { OrcaPoolInfo, OrcaPoolInfoSchema, GetPoolInfoRequestType } from '../../../schemas/clmm-schema';
+import { GetPoolInfoRequestType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
-import { OrcaClmmGetPoolInfoRequest } from '../schemas';
+import { OrcaClmmGetPoolInfoRequest, OrcaPoolInfo, OrcaPoolInfoSchema } from '../schemas';
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{

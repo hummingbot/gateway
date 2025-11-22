@@ -189,6 +189,15 @@ async function executeSwap(
     }),
   );
 
+  // Auto-unwrap WSOL output token to native SOL
+  // Only unwrap the OUTPUT token (not the input which may have just been wrapped)
+  logger.info('Auto-unwrapping WSOL output (if any) back to native SOL');
+  const swapOutputMint = aToB ? whirlpoolData.tokenMintB : whirlpoolData.tokenMintA;
+  const swapOutputAccount = aToB ? tokenOwnerAccountB : tokenOwnerAccountA;
+  const swapOutputProgram = aToB ? mintB.tokenProgram : mintA.tokenProgram;
+
+  await handleWsolAta(builder, ctx, swapOutputMint, swapOutputAccount, swapOutputProgram, 'unwrap', undefined, solana);
+
   // Build, simulate, and send transaction
   const txPayload = await builder.build();
   await solana.simulateWithErrorHandling(txPayload.transaction, fastify);

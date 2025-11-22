@@ -40,6 +40,7 @@ import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { fetchAllMint, Mint } from '@solana-program/token-2022';
 import BN from 'bn.js';
 
+import { Solana } from '../../chains/solana/solana';
 import { PositionInfo, QuotePositionResponseType } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
 
@@ -508,17 +509,19 @@ export async function quotePosition(
 }
 
 /**
- * Adds instructions to handle token ATA creation and WSOL wrapping when needed.
+ * Adds instructions to handle token ATA creation, WSOL wrapping, and WSOL unwrapping when needed.
  * For receiving tokens (collectFees, removeLiquidity): Creates ATA if it doesn't exist.
  * For sending tokens (addLiquidity): Creates ATA and wraps SOL if token is WSOL.
+ * For unwrapping WSOL: Closes WSOL ATA and returns all SOL to wallet.
  *
  * @param {TransactionBuilder} builder - The transaction builder to add instructions to
  * @param {WhirlpoolContext} ctx - The whirlpool context containing connection and wallet
  * @param {PublicKey} tokenMint - The token mint address to check
  * @param {PublicKey} tokenOwnerAccount - The ATA address for the token
  * @param {PublicKey} tokenProgram - The token program ID
- * @param {'wrap' | 'receive'} mode - 'wrap' for adding liquidity, 'receive' for collecting fees/removing liquidity
+ * @param {'wrap' | 'receive' | 'unwrap'} mode - 'wrap' for adding liquidity, 'receive' for collecting fees/removing liquidity, 'unwrap' for closing WSOL ATA
  * @param {BN} [amountToWrap] - Required for 'wrap' mode: amount of SOL to wrap in lamports
+ * @param {Solana} [solana] - Required for 'unwrap' mode: Solana instance to use unwrapSOL method
  */
 export async function handleWsolAta(
   builder: TransactionBuilder,
@@ -526,13 +529,32 @@ export async function handleWsolAta(
   tokenMint: PublicKey,
   tokenOwnerAccount: PublicKey,
   tokenProgram: PublicKey,
-  mode: 'wrap' | 'receive',
+  mode: 'wrap' | 'receive' | 'unwrap',
   amountToWrap?: BN,
+  solana?: Solana,
 ): Promise<void> {
   const isWsol = tokenMint.equals(NATIVE_MINT);
   const ataInfo = await ctx.connection.getAccountInfo(tokenOwnerAccount);
 
-  if (mode === 'receive') {
+  if (mode === 'unwrap') {
+    // For unwrapping WSOL: close WSOL ATA and return all SOL to wallet
+    if (!isWsol) {
+      logger.info('Token is not WSOL, skipping unwrap');
+      return;
+    }
+
+    if (!solana) {
+      throw new Error('Solana instance required for unwrap mode');
+    }
+
+    logger.info('Unwrapping WSOL: closing WSOL ATA to return SOL to wallet');
+    const unwrapInstruction = solana.unwrapSOL(ctx.wallet.publicKey, tokenProgram);
+    builder.addInstruction({
+      instructions: [unwrapInstruction],
+      cleanupInstructions: [],
+      signers: [],
+    });
+  } else if (mode === 'receive') {
     // For receiving tokens: only create ATA if it doesn't exist
     if (!ataInfo) {
       logger.info(`${isWsol ? 'WSOL' : 'Token'} ATA doesn't exist, creating it`);
