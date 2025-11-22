@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "networks": {
+      "type": "object",
+      "patternProperties": {
+        "^\\w+$": {
+          "type": "object",
+          "properties": {
+            "nodeURL": { "type": "string" },
+            "chainName": { "type": "string" }
+          },
+          "required": ["nodeURL", "chainName"],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "network": { "type": "string" },
+    "defaultNetwork": { "type": "string" },
+    "defaultWallet": { "type": "string" },
+    "nativeCurrencySymbol": { "type": "string" },
+    "feeTier": {
+      "enum": ["low", "medium", "high"]
+    },
+    "gasAdjustment": { "type": "number" },
+    "gasLimitTransaction": { "type": "integer" },
+    "manualGasPrice": { "type": "number" },
+    "manualGasPriceToken": { "type": "string" },
+    "allowedSlippage": { "type": "string" },
+    "useEIP1559DynamicBaseFeeInsteadOfManualGasPrice": { "type": "boolean" },
+    "rpcAddressDynamicBaseFee": { "type": "string" }
+  },
+  "additionalProperties": false
+}

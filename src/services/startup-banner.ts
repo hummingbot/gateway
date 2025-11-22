@@ -1,6 +1,8 @@
 import { Connection } from '@solana/web3.js';
 import { ethers } from 'ethers';
 
+import { Osmosis } from '#src/connectors/osmosis/osmosis.js';
+
 import { getEthereumNetworkConfig } from '../chains/ethereum/ethereum.config';
 import { InfuraService } from '../chains/ethereum/infura-service';
 import { HeliusService } from '../chains/solana/helius-service';
@@ -21,6 +23,9 @@ export async function displayChainConfigurations(): Promise<void> {
 
     // Display Ethereum configuration
     await displayEthereumConfig();
+
+    // Display Cosmos configuration
+    await displayCosmosConfig();
   } catch (error: any) {
     logger.warn(`Failed to display chain configurations: ${error.message}`);
   }
@@ -142,5 +147,40 @@ async function displayEthereumConfig(): Promise<void> {
     }
   } catch (error: any) {
     logger.debug(`Ethereum configuration not available: ${error.message}`);
+  }
+}
+
+/**
+ * Display Cosmos chain configuration, using only Osmosis
+ *  We can do this via Cosmos.getInstance(defaultNetwork) but there is no reason to currently as only Osmo RPC stuff being used
+ */
+async function displayCosmosConfig(): Promise<void> {
+  try {
+    const config = ConfigManagerV2.getInstance();
+    const defaultNetwork = config.get('osmosis.defaultNetwork') || 'mainnet';
+    const namespaceId = `osmosis`;
+    const nodeURL = config.get(`${namespaceId}.networks.${defaultNetwork}.nodeURL`);
+
+    const osmosis: Osmosis = Osmosis.getInstance(defaultNetwork);
+    await osmosis.init();
+
+    if (!nodeURL) {
+      logger.debug('Cosmos-Osmosis configuration not available');
+      return;
+    }
+    try {
+      const blockNumber = await osmosis.getCurrentBlockNumber();
+
+      logger.info(
+        `   📡 Cosmos-Osmosis (defaultNetwork: ${defaultNetwork}): Block #${blockNumber.toLocaleString()} - ${redactUrl(nodeURL)}`,
+      );
+    } catch (error: any) {
+      logger.info(
+        `   📡 Cosmos-Osmosis (defaultNetwork: ${defaultNetwork}): Unable to fetch block number - ${redactUrl(nodeURL)}`,
+      );
+      logger.debug(`Cosmos block fetch error: ${error.message}`);
+    }
+  } catch (error: any) {
+    logger.debug(`Cosmos-Osmosis configuration not available: ${error.message}`);
   }
 }

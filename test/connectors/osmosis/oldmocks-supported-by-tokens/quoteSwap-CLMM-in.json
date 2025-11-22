@@ -1,0 +1,9 @@
+{
+  "quoteToken": "ION",
+  "baseToken": "OSMO",
+  "amount": "0.001",
+  "side": "BUY",
+  "slippagePct": "99",
+  "chain": "osmosis",
+  "network": "testnet"
+}

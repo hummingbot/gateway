@@ -98,6 +98,8 @@ export class PoolService {
         return SupportedChain.ETHEREUM;
       case 'solana':
         return SupportedChain.SOLANA;
+      case 'cosmos':
+        return SupportedChain.COSMOS;
       default:
         throw new Error(`Unsupported chain '${connectorInfo.chain}' for connector: ${connector}`);
     }

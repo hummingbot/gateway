@@ -1,0 +1,398 @@
+{
+  "tokenBalanceChanges": {
+    "OSMO": 0.022404,
+    "ION": -0.0001
+  },
+  "currentBlock": 41404640,
+  "signature": "CDA1F1D32E3371BD9F191D287AD70BA5FDCEED7DF1AFB0AF8AE3F0DE99D43774",
+  "txStatus": 0,
+  "txBlock": 40961556,
+  "fee": 8536,
+  "txData": [
+    {
+      "type": "coin_spent",
+      "attributes": [
+        {
+          "key": "spender",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "8536uosmo",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "coin_received",
+      "attributes": [
+        {
+          "key": "receiver",
+          "value": "osmo17xpfvakm2amg962yls6f84z3kell8c5lczssa0",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "8536uosmo",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "transfer",
+      "attributes": [
+        {
+          "key": "recipient",
+          "value": "osmo17xpfvakm2amg962yls6f84z3kell8c5lczssa0",
+          "index": true
+        },
+        {
+          "key": "sender",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "8536uosmo",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "attributes": [
+        {
+          "key": "sender",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "tx",
+      "attributes": [
+        {
+          "key": "fee",
+          "value": "8536uosmo",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "tx",
+      "attributes": [
+        {
+          "key": "acc_seq",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs/1414",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "tx",
+      "attributes": [
+        {
+          "key": "signature",
+          "value": "+R4J85iVMeoDs0fXjpbUflJN/cp9l2IpJcMBxjguaTp8T9b+KBinv2MoonuY7DOdC9kHT395EH+i5nxZlQHlJQ==",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "attributes": [
+        {
+          "key": "action",
+          "value": "/osmosis.gamm.v1beta1.MsgSwapExactAmountIn",
+          "index": true
+        },
+        {
+          "key": "sender",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "coin_spent",
+      "attributes": [
+        {
+          "key": "spender",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "1uion",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "coin_received",
+      "attributes": [
+        {
+          "key": "receiver",
+          "value": "osmo1r9jc2234fljy93z80cevqjt3nmjycec8aj4cc6",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "1uion",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "transfer",
+      "attributes": [
+        {
+          "key": "recipient",
+          "value": "osmo1r9jc2234fljy93z80cevqjt3nmjycec8aj4cc6",
+          "index": true
+        },
+        {
+          "key": "sender",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "1uion",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "attributes": [
+        {
+          "key": "sender",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "coin_spent",
+      "attributes": [
+        {
+          "key": "spender",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "99uion",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "coin_received",
+      "attributes": [
+        {
+          "key": "receiver",
+          "value": "osmo1mw0ac6rwlp5r8wapwk3zs6g29h8fcscxqakdzw9emkne6c8wjp9q0t3v8t",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "99uion",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "transfer",
+      "attributes": [
+        {
+          "key": "recipient",
+          "value": "osmo1mw0ac6rwlp5r8wapwk3zs6g29h8fcscxqakdzw9emkne6c8wjp9q0t3v8t",
+          "index": true
+        },
+        {
+          "key": "sender",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "99uion",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "attributes": [
+        {
+          "key": "sender",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "coin_spent",
+      "attributes": [
+        {
+          "key": "spender",
+          "value": "osmo1mw0ac6rwlp5r8wapwk3zs6g29h8fcscxqakdzw9emkne6c8wjp9q0t3v8t",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "30940uosmo",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "coin_received",
+      "attributes": [
+        {
+          "key": "receiver",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "30940uosmo",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "transfer",
+      "attributes": [
+        {
+          "key": "recipient",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "sender",
+          "value": "osmo1mw0ac6rwlp5r8wapwk3zs6g29h8fcscxqakdzw9emkne6c8wjp9q0t3v8t",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "30940uosmo",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "attributes": [
+        {
+          "key": "sender",
+          "value": "osmo1mw0ac6rwlp5r8wapwk3zs6g29h8fcscxqakdzw9emkne6c8wjp9q0t3v8t",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "token_swapped",
+      "attributes": [
+        {
+          "key": "module",
+          "value": "gamm",
+          "index": true
+        },
+        {
+          "key": "sender",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "pool_id",
+          "value": "1",
+          "index": true
+        },
+        {
+          "key": "tokens_in",
+          "value": "99uion",
+          "index": true
+        },
+        {
+          "key": "tokens_out",
+          "value": "30940uosmo",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1027 @@
+[
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1mw0ac6rwlp5r8wapwk3zs6g29h8fcscxqakdzw9emkne6c8wjp9q0t3v8t",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "1",
+    "futurePoolGovernor": "",
+    "totalShares": {
+      "denom": "gamm/pool/1",
+      "amount": "15358661852992592583562"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "2507975771"
+        },
+        "weight": "1073741824"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "3151015841025"
+        },
+        "weight": "4294967296"
+      }
+    ],
+    "totalWeight": "5368709120",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/1",
+    "swapFee": "0.005",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo17svzplxq3dmkz0atv6vtepftvtfl5daxuajtzxjwchnyjumupg5q649708",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "62",
+    "futurePoolGovernor": "24h",
+    "totalShares": {
+      "denom": "gamm/pool/62",
+      "amount": "53632064162512560180"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "521279"
+        },
+        "weight": "536870912000000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "161814250"
+        },
+        "weight": "536870912000000"
+      }
+    ],
+    "totalWeight": "1073741824000000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/62",
+    "swapFee": "0",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo17yhgagvkwhzkd2yt5dmh5n0qfyzlp53dpuldtk2eg3egum8njmqqpaj3am",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "934",
+    "futurePoolGovernor": "24h",
+    "totalShares": {
+      "denom": "gamm/pool/934",
+      "amount": "50000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "7520"
+        },
+        "weight": "536870912000000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "3324469"
+        },
+        "weight": "536870912000000"
+      }
+    ],
+    "totalWeight": "1073741824000000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/934",
+    "swapFee": "0",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo18ue58qakuanxkhj2dxx3mcw7244rvlgkuc79p738nra7skpj67vqt67qwq",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "935",
+    "futurePoolGovernor": "osmo1wrkp789lzu53w8g20avhzjnm7d8xmmuqmx53ytcqgwng0mh00a7sffsjhd",
+    "totalShares": {
+      "denom": "gamm/pool/935",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "1000"
+        },
+        "weight": "53687091200000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "10000000"
+        },
+        "weight": "536870912000000"
+      }
+    ],
+    "totalWeight": "590558003200000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/935",
+    "swapFee": "0.000000000000000001",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1yn9pgwqlt32y8d99vk3vxq7tcjaml3jlwvjjwk66tx30tyt2pcusurnrcm",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "936",
+    "futurePoolGovernor": "osmo1wrkp789lzu53w8g20avhzjnm7d8xmmuqmx53ytcqgwng0mh00a7sffsjhd",
+    "totalShares": {
+      "denom": "gamm/pool/936",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "1000"
+        },
+        "weight": "53687091200000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "10000000"
+        },
+        "weight": "536870912000000"
+      }
+    ],
+    "totalWeight": "590558003200000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/936",
+    "swapFee": "0.000000000000000001",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo13au2kel92hpc5yucp9vdan2qpc3ngcrc8njp77eaq2t9hjxelmusd3nzyk",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "937",
+    "futurePoolGovernor": "osmo1r0r9xkus9e9c804yhpc5a3zunlupvsmmx47wmxrndnuj8htr0tlqzg7qns",
+    "totalShares": {
+      "denom": "gamm/pool/937",
+      "amount": "150000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "1500"
+        },
+        "weight": "53687091200000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "15000000"
+        },
+        "weight": "536870912000000"
+      }
+    ],
+    "totalWeight": "590558003200000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/937",
+    "swapFee": "0.000000000000000001",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1k945cjqpl5a2gnks88f5c4vup8zzte0lyaxxgcr79v09hn5vw62se77f4l",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "938",
+    "futurePoolGovernor": "osmo1r0r9xkus9e9c804yhpc5a3zunlupvsmmx47wmxrndnuj8htr0tlqzg7qns",
+    "totalShares": {
+      "denom": "gamm/pool/938",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "1000"
+        },
+        "weight": "53687091200000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "10000000"
+        },
+        "weight": "53687091200000"
+      }
+    ],
+    "totalWeight": "107374182400000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/938",
+    "swapFee": "0.000000000000000001",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1yjzkt8p665wagcvvrdl9yqc5xg9kpa8z6c5xj5uydwr9ncjnz2tsx793kw",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "939",
+    "futurePoolGovernor": "osmo12l60kgf8rqxwhaqarnrwczsvtm48fale3kj8l85xt7w6dazxaaaqm8jx89",
+    "totalShares": {
+      "denom": "gamm/pool/939",
+      "amount": "457069800000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "25221"
+        },
+        "weight": "53687091200000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "8284074"
+        },
+        "weight": "53687091200000"
+      }
+    ],
+    "totalWeight": "107374182400000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/939",
+    "swapFee": "0.000000000000000001",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1w433z7r0l5pgzmjtlnqvhkmdd2saz6edhxm2sw9xwpxd5c9y4cpq9nq9ct",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "940",
+    "futurePoolGovernor": "osmo1c2pgg87er3lg5wwrg8n475rdgvgjpqrz2mv3t7dzvl8egjpq95xsjquzc6",
+    "totalShares": {
+      "denom": "gamm/pool/940",
+      "amount": "50000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "500"
+        },
+        "weight": "53687091200000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "5000000"
+        },
+        "weight": "53687091200000"
+      }
+    ],
+    "totalWeight": "107374182400000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/940",
+    "swapFee": "0.000000000000000001",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1gxx4lx3qfghak8hx9eknn5fqq3uz5g9hccv44ktaczj2ka53sjpqg6hpel",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "943",
+    "futurePoolGovernor": "24h",
+    "totalShares": {
+      "denom": "gamm/pool/943",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "3199"
+        },
+        "weight": "536870912000000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "500000"
+        },
+        "weight": "536870912000000"
+      }
+    ],
+    "totalWeight": "1073741824000000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/943",
+    "swapFee": "0",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1x6m3jf33gl2gc92w9v5x7rhh4jnjauq3897nk406rwxw4nv7zw7qmpwrqu",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "952",
+    "futurePoolGovernor": "24h",
+    "totalShares": {
+      "denom": "gamm/pool/952",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "3199"
+        },
+        "weight": "536870912000000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "500000"
+        },
+        "weight": "536870912000000"
+      }
+    ],
+    "totalWeight": "1073741824000000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/952",
+    "swapFee": "0",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1d2xfry4akm8fkyf6mvl7c272udvpxp7lqqtpe5a27ckyrwvq8mssryay6g",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "963",
+    "futurePoolGovernor": "24h",
+    "totalShares": {
+      "denom": "gamm/pool/963",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "2712"
+        },
+        "weight": "536870912000000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "590000"
+        },
+        "weight": "536870912000000"
+      }
+    ],
+    "totalWeight": "1073741824000000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/963",
+    "swapFee": "0",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo15yg0dqg5awfxrm32t36a2eeywx5kfnkw5g25juz0tfdhl2932q6qyq4l2z",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "984",
+    "futurePoolGovernor": "24h",
+    "totalShares": {
+      "denom": "gamm/pool/984",
+      "amount": "1100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "22441"
+        },
+        "weight": "536870912000000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "6900000"
+        },
+        "weight": "536870912000000"
+      }
+    ],
+    "totalWeight": "1073741824000000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/984",
+    "swapFee": "0",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo19f2yx94azpq7d0e5fc3hpr743c60r02paqc7l9w4yzurz7sufy7q3rssec",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "987",
+    "futurePoolGovernor": "24h",
+    "totalShares": {
+      "denom": "gamm/pool/987",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "2580"
+        },
+        "weight": "536870912000000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "620000"
+        },
+        "weight": "536870912000000"
+      }
+    ],
+    "totalWeight": "1073741824000000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/987",
+    "swapFee": "0",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1jmzcjzx5n3kjputv3n03p2ta2k7fdaqqxn8hqc8y4lfqtspg3hzq5uff8n",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "1016",
+    "futurePoolGovernor": "24h",
+    "totalShares": {
+      "denom": "gamm/pool/1016",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "3200"
+        },
+        "weight": "536870912000000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "500000"
+        },
+        "weight": "536870912000000"
+      }
+    ],
+    "totalWeight": "1073741824000000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/1016",
+    "swapFee": "0",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1rh4jr7ljfvdu2tptk6vvp0qja99p750y9fj0xfdcdhtua8jnjk5sultrnt",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "1029",
+    "futurePoolGovernor": "osmo1c2pgg87er3lg5wwrg8n475rdgvgjpqrz2mv3t7dzvl8egjpq95xsjquzc6",
+    "totalShares": {
+      "denom": "gamm/pool/1029",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "1000"
+        },
+        "weight": "53687091200000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "10000000"
+        },
+        "weight": "53687091200000"
+      }
+    ],
+    "totalWeight": "107374182400000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/1029",
+    "swapFee": "0.000000000000000001",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1hf3ugena0jv5sfsehj0vd8nts57qu7kwhdytvraqepenr350japsvwp95q",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "1155",
+    "futurePoolGovernor": "osmo1r2vw2g92f5mt78mj029qlllfsfhrgyh6pzc4zgacllwg7p6x40rqnxgndc",
+    "totalShares": {
+      "denom": "gamm/pool/1155",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "1015"
+        },
+        "weight": "53687091200000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "49261084"
+        },
+        "weight": "53687091200000"
+      }
+    ],
+    "totalWeight": "107374182400000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/1155",
+    "swapFee": "0.000000000000000001",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1nprvwcn7npspcvpx3y890wyc6lkg3pa5zmfmaszh5zk5x4faxhtsp349ls",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "1156",
+    "futurePoolGovernor": "osmo128tuz2xrm69r530z37h052ve926zt0ky8w43s92wxn7kwv7p9p3smp3lmt",
+    "totalShares": {
+      "denom": "gamm/pool/1156",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "1015"
+        },
+        "weight": "53687091200000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "49261084"
+        },
+        "weight": "53687091200000"
+      }
+    ],
+    "totalWeight": "107374182400000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/1156",
+    "swapFee": "0.000000000000000001",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1daj4ztx6s9rr3s32y4sqm67wq7p4c8653u0zrmfkzfqhl5d5m30qufad2z",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "1157",
+    "futurePoolGovernor": "osmo13p3jpl7qcrv5uexytv6387pvp56xjwj7z7k2jyypqqwa28ullm0s9rlt7w",
+    "totalShares": {
+      "denom": "gamm/pool/1157",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "1000"
+        },
+        "weight": "53687091200000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "10000000"
+        },
+        "weight": "53687091200000"
+      }
+    ],
+    "totalWeight": "107374182400000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/1157",
+    "swapFee": "0.000000000000000001",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1dsnwhxenw422tk9t20x4mjv5vyrmmd90kky403vt9d8qym7jc8ds4lkx0x",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "1158",
+    "futurePoolGovernor": "osmo17fc0u7jv4kcaygyn5uam838usedf9vyr06p70kah84qz4defuq9ql8dtn8",
+    "totalShares": {
+      "denom": "gamm/pool/1158",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "1000"
+        },
+        "weight": "53687091200000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "10000"
+        },
+        "weight": "53687091200000"
+      }
+    ],
+    "totalWeight": "107374182400000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/1158",
+    "swapFee": "0.000000000000000001",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1gj26haupvyh6qun4fmc5xnr0tsrg9fwfvycs567u6d5qmezue22sza64gx",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "1251",
+    "futurePoolGovernor": "osmo185w6cr5pdwt34l6d6njc2946maw62r9hlyaj0cy45rm0m0aq73wq6k78fm",
+    "totalShares": {
+      "denom": "gamm/pool/1251",
+      "amount": "49853055290583468696783"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "190810"
+        },
+        "weight": "53687091200000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "13025315"
+        },
+        "weight": "53687091200000"
+      }
+    ],
+    "totalWeight": "107374182400000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/1251",
+    "swapFee": "0.000000000000000001",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1p83q2g9t20lfk07w53vvy5flrvr6c6gh65xufy47546z555af88qwlwqvg",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "1252",
+    "futurePoolGovernor": "osmo15u706f9f2mh54w986rvxcmeq86e7sy5nuvfwnjzhrjx6t9j3felsnq08ug",
+    "totalShares": {
+      "denom": "gamm/pool/1252",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "1000"
+        },
+        "weight": "53687091200000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "10000"
+        },
+        "weight": "53687091200000"
+      }
+    ],
+    "totalWeight": "107374182400000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/1252",
+    "swapFee": "0.000000000000000001",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1g854f98z6c7eqwnpm7nn82d6mmunefzvy84hlgwnv58pa6wshhlsra06qu",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "1253",
+    "futurePoolGovernor": "osmo1x2z28sqg5g7s3yyay8meht8k9xu9k4mrh8gkcj86546xszgxh9xs0urjaa",
+    "totalShares": {
+      "denom": "gamm/pool/1253",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "1000"
+        },
+        "weight": "53687091200000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "10000"
+        },
+        "weight": "53687091200000"
+      }
+    ],
+    "totalWeight": "107374182400000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/1253",
+    "swapFee": "0.000000000000000001",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1xk3ms4pa63dl8tldtfpr5yes2g5a05j07s5cpgn7ucgkg2m43jsq3wmpaj",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "1260",
+    "futurePoolGovernor": "24h",
+    "totalShares": {
+      "denom": "gamm/pool/1260",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "32136"
+        },
+        "weight": "536870912000000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "10000000"
+        },
+        "weight": "536870912000000"
+      }
+    ],
+    "totalWeight": "1073741824000000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/1260",
+    "swapFee": "0",
+    "exitFee": "0"
+  },
+  {
+    "$typeUrl": "/osmosis.gamm.v1beta1.Pool",
+    "address": "osmo1c4rjlrvm2u3epazr80c9reepvv9xzdh05cx5greyv899rjzgvqpsryzq4g",
+    "incentivesAddress": "",
+    "spreadRewardsAddress": "",
+    "id": "1270",
+    "futurePoolGovernor": "24h",
+    "totalShares": {
+      "denom": "gamm/pool/1270",
+      "amount": "100000000000000000000"
+    },
+    "poolAssets": [
+      {
+        "token": {
+          "denom": "uion",
+          "amount": "30000"
+        },
+        "weight": "536870912000000"
+      },
+      {
+        "token": {
+          "denom": "uosmo",
+          "amount": "10000000"
+        },
+        "weight": "536870912000000"
+      }
+    ],
+    "totalWeight": "1073741824000000",
+    "currentTick": "0",
+    "tickSpacing": "0",
+    "exponentAtPriceOne": "0",
+    "fees_volume24H": 0,
+    "fees_spent_7d": 0,
+    "fees_volume7d": 0,
+    "myLiquidityShares": 0,
+    "myLiquidityDollarValue": "0",
+    "my_bonded_shares": "0",
+    "denom": "gamm/pool/1270",
+    "swapFee": "0.005",
+    "exitFee": "0"
+  }
+]

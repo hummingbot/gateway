@@ -1,0 +1,53 @@
+{
+  "decimals": 6,
+  "sourceDenom": "uosmo",
+  "coinMinimalDenom": "uosmo",
+  "denom_units": [
+    {
+      "denom": "uosmo",
+      "exponent": 0,
+      "aliases": []
+    },
+    {
+      "denom": "osmo",
+      "exponent": 6,
+      "aliases": []
+    }
+  ],
+  "type_asset": "",
+  "typeAsset": "",
+  "logo_URIs": {
+    "png": "https://raw.githubusercontent.com/cosmos/chain-registry/master/osmosis/images/osmo.png",
+    "svg": "https://raw.githubusercontent.com/cosmos/chain-registry/master/osmosis/images/osmo.svg"
+  },
+  "coingecko_id": "osmosis",
+  "description": "The native token of Osmosis",
+  "address": "",
+  "denomUnits": [
+    {
+      "denom": "uosmo",
+      "exponent": 0,
+      "aliases": []
+    },
+    {
+      "denom": "osmo",
+      "exponent": 6,
+      "aliases": []
+    }
+  ],
+  "base": "uosmo",
+  "name": "Osmosis",
+  "display": "osmo",
+  "symbol": "OSMO",
+  "logoURIs": {
+    "png": "https://raw.githubusercontent.com/cosmos/chain-registry/master/osmosis/images/osmo.png",
+    "svg": "https://raw.githubusercontent.com/cosmos/chain-registry/master/osmosis/images/osmo.svg"
+  },
+  "coingeckoId": "osmosis",
+  "keywords": [
+    "dex",
+    "staking",
+    "osmosis-info",
+    "osmosis-price:ibc/6F34E1BD664C36CE49ACC28E60D62559A5F96C4F9A6CCE4FC5A67B2852E24CFE:5"
+  ]
+}

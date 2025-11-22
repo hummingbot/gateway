@@ -1,0 +1,19 @@
+{
+  "network": "osmosis",
+  "timestamp": 1763187229401,
+  "latency": 0.577,
+  "balances": {
+    "OSMO": 152.046201,
+    "ION": 0.093777,
+    "ATOM": 0.040924,
+    "aUSDC": 0,
+    "JUNOX": 0,
+    "MARS": 0,
+    "USDC": 0,
+    "AKT": 0,
+    "KYVE": 0,
+    "QCK": 0,
+    "C4E": 0,
+    "PICA": 0
+  }
+}

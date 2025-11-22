@@ -224,7 +224,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           }
 
           // Use PoolService to find pool by token pair
-          const { PoolService } = await import('../../../services/pool-service');
+          const { PoolService } = await import('../../../services/pool-service.js');
           const poolService = PoolService.getInstance();
 
           const pool = await poolService.getPool(

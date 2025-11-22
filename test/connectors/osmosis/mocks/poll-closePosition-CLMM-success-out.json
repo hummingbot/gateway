@@ -1,0 +1,262 @@
+{
+  "tokenBalanceChanges": {
+    "OSMO": 0.023782
+  },
+  "currentBlock": 41404633,
+  "signature": "F39C951A894D511B94721923560D644B9C5038231224402C0A7341EA71E04CD6",
+  "txStatus": 0,
+  "txBlock": 41299810,
+  "fee": 26317,
+  "txData": [
+    {
+      "type": "coin_spent",
+      "attributes": [
+        {
+          "key": "spender",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "26317uosmo",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "coin_received",
+      "attributes": [
+        {
+          "key": "receiver",
+          "value": "osmo17xpfvakm2amg962yls6f84z3kell8c5lczssa0",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "26317uosmo",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "transfer",
+      "attributes": [
+        {
+          "key": "recipient",
+          "value": "osmo17xpfvakm2amg962yls6f84z3kell8c5lczssa0",
+          "index": true
+        },
+        {
+          "key": "sender",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "26317uosmo",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "attributes": [
+        {
+          "key": "sender",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "tx",
+      "attributes": [
+        {
+          "key": "fee",
+          "value": "26317uosmo",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "tx",
+      "attributes": [
+        {
+          "key": "acc_seq",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs/1431",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "tx",
+      "attributes": [
+        {
+          "key": "signature",
+          "value": "qOfehAlyOE3Np1fig8FkCZcrjeG/RPAEjhcAHY/uAnlihzb4e24JSfDM2CgMgEVee92z5IgaVoH8RmVdbhDGeQ==",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "attributes": [
+        {
+          "key": "action",
+          "value": "/osmosis.concentratedliquidity.v1beta1.MsgWithdrawPosition",
+          "index": true
+        },
+        {
+          "key": "sender",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "coin_spent",
+      "attributes": [
+        {
+          "key": "spender",
+          "value": "osmo1rdm79d008fel4ppkgdcf8pgjwazf72sjfhpyx5kpzlck86slpjusek2en6",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "50099uosmo",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "coin_received",
+      "attributes": [
+        {
+          "key": "receiver",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "50099uosmo",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "transfer",
+      "attributes": [
+        {
+          "key": "recipient",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "sender",
+          "value": "osmo1rdm79d008fel4ppkgdcf8pgjwazf72sjfhpyx5kpzlck86slpjusek2en6",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "50099uosmo",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "attributes": [
+        {
+          "key": "sender",
+          "value": "osmo1rdm79d008fel4ppkgdcf8pgjwazf72sjfhpyx5kpzlck86slpjusek2en6",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "withdraw_position",
+      "attributes": [
+        {
+          "key": "module",
+          "value": "concentratedliquidity",
+          "index": true
+        },
+        {
+          "key": "position_id",
+          "value": "3484",
+          "index": true
+        },
+        {
+          "key": "sender",
+          "value": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+          "index": true
+        },
+        {
+          "key": "pool_id",
+          "value": "1269",
+          "index": true
+        },
+        {
+          "key": "lower_tick",
+          "value": "19000000",
+          "index": true
+        },
+        {
+          "key": "upper_tick",
+          "value": "27000000",
+          "index": true
+        },
+        {
+          "key": "join_time",
+          "value": "2025-11-18 22:10:24.392981526 +0000 UTC",
+          "index": true
+        },
+        {
+          "key": "liquidity",
+          "value": "-1281713.728690400243487520",
+          "index": true
+        },
+        {
+          "key": "amount0",
+          "value": "-50099",
+          "index": true
+        },
+        {
+          "key": "amount1",
+          "value": "0",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    }
+  ]
+}

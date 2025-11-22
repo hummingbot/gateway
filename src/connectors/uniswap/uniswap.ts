@@ -224,7 +224,7 @@ export class Uniswap {
     const tokenForAmount = exactIn ? inputToken : outputToken;
 
     // Convert amount to token units using ethers parseUnits for proper decimal handling
-    const { parseUnits } = await import('ethers/lib/utils');
+    const { parseUnits } = await import('ethers/lib/utils.js');
     const rawAmount = parseUnits(amount.toString(), tokenForAmount.decimals);
     const tradeAmount = CurrencyAmount.fromRawAmount(tokenForAmount, rawAmount.toString());
 
@@ -428,7 +428,7 @@ export class Uniswap {
       );
 
       // Use PoolService to find pool by token pair
-      const { PoolService } = await import('../../services/pool-service');
+      const { PoolService } = await import('../../services/pool-service.js');
       const poolService = PoolService.getInstance();
 
       const pool = await poolService.getPool(

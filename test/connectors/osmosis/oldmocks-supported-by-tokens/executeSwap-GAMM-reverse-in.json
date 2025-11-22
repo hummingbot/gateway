@@ -1,0 +1,10 @@
+{
+  "quoteToken": "ION",
+  "baseToken": "OSMO",
+  "amount": "0.01",
+  "side": "BUY",
+  "slippagePct": "99",
+  "chain": "osmosis",
+  "network": "testnet",
+  "walletAddress": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs"
+}

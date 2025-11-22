@@ -1,0 +1,11 @@
+{
+  "signature": "44FF3B078F5DCCC4665042A9D58903C3DDB6F7CC479D80B196FEDA4A9D40E4FD",
+  "status": 0,
+  "data": {
+    "fee": 0,
+    "baseTokenAmountAdded": 0.014771,
+    "quoteTokenAmountAdded": null,
+    "positionAddress": "3487",
+    "positionRent": 0
+  }
+}

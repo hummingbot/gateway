@@ -1084,3 +1084,34 @@ If you see errors like `Cannot find module '@ledgerhq/hw-transport-node-hid'` or
 - Open the appropriate app (Ethereum or Solana) on the device
 - Try different USB ports or cables
 - Close Ledger Live if it's running (it may lock the device)
+
+## Running in Debug (vscode launch.json configurations - tested on Ubuntu)
+- Run single test file outside project (eg. import Chain or Connector and .init())
+        {
+            "name": "Run Single",
+            "type": "node",
+            "request": "launch",
+            "preLaunchTask": "npm: build",
+            "args": ["${workspaceFolder}/src/TESTFILE.ts"],
+            "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
+            "cwd": "${workspaceRoot}",
+            "internalConsoleOptions": "openOnSessionStart",
+            "console": "internalConsole", 
+            "trace": true,
+            "sourceMaps": true,
+        },
+- Run whole project in debug mode (breakpoints work on TS files)
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Run and debug entire project",
+            "program": "${workspaceFolder}/dist/index.js",
+            "preLaunchTask": "npm: build",
+            "console": "externalTerminal",
+            "args": ["--passphrase=PASSPHRASE", "--dev"],
+            "env":{"START_SERVER":"true"},
+            "internalConsoleOptions": "openOnSessionStart",
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ]
+        },

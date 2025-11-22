@@ -1,11 +1,10 @@
 // External dependencies
-import { spawn } from 'child_process';
-import { exec } from 'child_process';
+import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
 
-import fastifyRateLimit from '@fastify/rate-limit';
-import fastifySwagger from '@fastify/swagger';
-import fastifySwaggerUi from '@fastify/swagger-ui';
+import { fastifyRateLimit } from '@fastify/rate-limit';
+import { fastifySwagger } from '@fastify/swagger';
+import { fastifySwaggerUi } from '@fastify/swagger-ui';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
 import Fastify, { FastifyInstance } from 'fastify';
@@ -19,6 +18,8 @@ import { configRoutes } from './config/config.routes';
 import { register0xRoutes } from './connectors/0x/0x.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
+import { osmosisChainRoutes } from './connectors/osmosis/chain-routes';
+import { osmosisRoutes } from './connectors/osmosis/osmosis.routes';
 import { pancakeswapRoutes } from './connectors/pancakeswap/pancakeswap.routes';
 import { pancakeswapSolRoutes } from './connectors/pancakeswap-sol/pancakeswap-sol.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
@@ -27,7 +28,6 @@ import { getHttpsOptions } from './https';
 import { poolRoutes } from './pools/pools.routes';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { logger } from './services/logger';
-import { quoteCache } from './services/quote-cache';
 import { displayChainConfigurations } from './services/startup-banner';
 import { tokensRoutes } from './tokens/tokens.routes';
 import { tradingRoutes, tradingClmmRoutes } from './trading/trading.routes';
@@ -76,6 +76,10 @@ const swaggerOptions = {
         name: '/chain/ethereum',
         description: 'Ethereum and EVM-based chain endpoints',
       },
+      {
+        name: '/chain/cosmos',
+        description: 'Cosmos (via Osmosis RPC) chain endpoints',
+      },
 
       // Connectors
       {
@@ -102,6 +106,10 @@ const swaggerOptions = {
       {
         name: '/connector/pancakeswap',
         description: 'PancakeSwap EVM connector endpoints',
+      },
+      {
+        name: '/connector/osmosis',
+        description: 'Osmosis connector endpoints',
       },
     ],
     components: {
@@ -235,6 +243,7 @@ const configureGatewayServer = () => {
     // Register chain routes
     app.register(solanaRoutes, { prefix: '/chains/solana' });
     app.register(ethereumRoutes, { prefix: '/chains/ethereum' });
+    app.register(osmosisChainRoutes, { prefix: '/chains/cosmos' });
 
     // Register DEX connector routes - organized by connector
 
@@ -269,6 +278,9 @@ const configureGatewayServer = () => {
 
     // PancakeSwap Solana routes
     app.register(pancakeswapSolRoutes, { prefix: '/connectors/pancakeswap-sol' });
+
+    app.register(osmosisRoutes.amm, { prefix: '/connectors/osmosis/amm' });
+    app.register(osmosisRoutes.clmm, { prefix: '/connectors/osmosis/clmm' });
   };
 
   // Register routes on main server

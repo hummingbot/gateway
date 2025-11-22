@@ -1,0 +1,22 @@
+networks:
+  mainnet:
+    nodeURL: https://cosmos-rpc.publicnode.com:443
+    chainName: cosmoshub-4
+  testnet:
+    nodeURL: https://cosmos-testnet-rpc.polkachu.com
+    chainName: theta-testnet-001
+
+nativeCurrencySymbol: ATOM
+manualGasPrice: 110
+gasLimitTransaction: 2000000
+
+feeTier: medium
+gasAdjustment: 1.7
+allowedSlippage: "20/100"
+manualGasPriceToken: uatom
+
+useEIP1559DynamicBaseFeeInsteadOfManualGasPrice: false
+rpcAddressDynamicBaseFee: "<URL for Cosmos-connector dynamic fee endpoint>"
+
+defaultNetwork: testnet
+defaultWallet: '<cosmos-wallet-address>'

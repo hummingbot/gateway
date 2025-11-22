@@ -1,0 +1,8 @@
+{
+  "baseLimited": false,
+  "baseTokenAmount": 0.0002,
+  "quoteTokenAmount": 0.1,
+  "baseTokenAmountMax": 0.0002,
+  "quoteTokenAmountMax": 0.1,
+  "liquidity": 0
+}

@@ -1,0 +1,14 @@
+{
+  "address": "osmo1mw0ac6rwlp5r8wapwk3zs6g29h8fcscxqakdzw9emkne6c8wjp9q0t3v8t",
+  "baseTokenAddress": "uion",
+  "quoteTokenAddress": "uosmo",
+  "feePct": 0.005,
+  "price": 0.0008074060285202047,
+  "baseTokenAmount": 2536775530,
+  "quoteTokenAmount": 3141883315696,
+  "poolType": "amm",
+  "lpMint": {
+    "address": "",
+    "decimals": 0
+  }
+}

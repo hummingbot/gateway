@@ -1,0 +1,18 @@
+{
+  "network": "osmosis",
+  "timestamp": 1763605511997,
+  "latency": 2.24,
+  "address": "3488",
+  "poolAddress": "osmo1rdm79d008fel4ppkgdcf8pgjwazf72sjfhpyx5kpzlck86slpjusek2en6",
+  "baseTokenAddress": "",
+  "quoteTokenAddress": "",
+  "baseTokenAmount": 50100,
+  "quoteTokenAmount": 0,
+  "baseFeeAmount": 0,
+  "quoteFeeAmount": 0,
+  "lowerBinId": 19000000,
+  "upperBinId": 27000000,
+  "lowerPrice": 200,
+  "upperPrice": 1000,
+  "price": 0.0016666
+}

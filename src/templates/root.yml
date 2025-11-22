@@ -12,6 +12,10 @@ configurations:
   $namespace solana:
     configurationPath: chains/solana.yml
     schemaPath: solana-chain-schema.json
+  
+  $namespace cosmos:
+    configurationPath: chains/cosmos.yml
+    schemaPath: cosmos-chain-schema.json
 
   # Ethereum networks
   $namespace ethereum-mainnet:
@@ -87,6 +91,10 @@ configurations:
   $namespace pancakeswap-sol:
     configurationPath: connectors/pancakeswap-sol.yml
     schemaPath: pancakeswap-sol-schema.json
+
+  $namespace osmosis:
+    configurationPath: connectors/osmosis.yml
+    schemaPath: osmosis-schema.json
 
   # RPC providers
   $namespace helius:

@@ -2,15 +2,13 @@
  * Helper functions for fetching pool info from connectors
  */
 
-import { FastifyInstance } from 'fastify';
+import { Osmosis } from '#src/connectors/osmosis/osmosis.js';
 
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
 import { Meteora } from '../connectors/meteora/meteora';
 import { Raydium } from '../connectors/raydium/raydium';
 import { Uniswap } from '../connectors/uniswap/uniswap';
-import { PoolInfo as AmmPoolInfo } from '../schemas/amm-schema';
-import { PoolInfo as ClmmPoolInfo } from '../schemas/clmm-schema';
 import { logger } from '../services/logger';
 
 interface PoolInfoResult {
@@ -55,9 +53,17 @@ export async function fetchPoolInfo(
         quoteTokenAddress: poolInfo.quoteTokenAddress,
         feePct: poolInfo.feePct,
       };
+    } else if (connector === 'osmosis') {
+      const osmosis = await Osmosis.getInstance(network);
+      const poolInfo = await osmosis.controller.poolInfoRequest(osmosis, undefined, { network, poolAddress }, type);
+      return {
+        baseTokenAddress: poolInfo.baseTokenAddress,
+        quoteTokenAddress: poolInfo.quoteTokenAddress,
+        feePct: poolInfo.feePct,
+      };
     } else if (connector === 'uniswap') {
       const ethereum = await Ethereum.getInstance(network);
-      const { getV2PoolInfo, getV3PoolInfo } = await import('../connectors/uniswap/uniswap.utils');
+      const { getV2PoolInfo, getV3PoolInfo } = await import('../connectors/uniswap/uniswap.utils.js');
 
       if (type === 'clmm') {
         // For CLMM (V3)
@@ -122,12 +128,15 @@ export async function resolveTokenSymbols(
 ): Promise<{ baseSymbol: string; quoteSymbol: string }> {
   try {
     // Determine chain based on connector
-    let chain: Solana | Ethereum;
+    let chain: Solana | Ethereum | Osmosis;
 
     if (connector === 'raydium' || connector === 'meteora') {
       chain = await Solana.getInstance(network);
     } else if (connector === 'uniswap') {
       chain = await Ethereum.getInstance(network);
+    } else if (connector === 'osmosis') {
+      // tokens by connector for Osmosis (asset list from Cosmos missing most Osmo tokens)
+      chain = await Osmosis.getInstance(network);
     } else {
       throw new Error(`Unsupported connector: ${connector}`);
     }

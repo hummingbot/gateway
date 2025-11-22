@@ -106,7 +106,7 @@ export async function buildSwapV2Instruction(
   const outputVault = outputMint.equals(tokenMint0) ? tokenVault0 : tokenVault1;
 
   // Debug logging
-  const { logger } = await import('../../services/logger');
+  const { logger } = await import('../../services/logger.js');
   logger.info(`Pool tokens: mint0=${tokenMint0.toString()}, mint1=${tokenMint1.toString()}`);
   logger.info(`Swap tokens: input=${inputMint.toString()}, output=${outputMint.toString()}`);
   logger.info(`Vaults: input=${inputVault.toString()}, output=${outputVault.toString()}`);
@@ -586,7 +586,7 @@ export async function buildOpenPositionWithToken22NftInstruction(
   const tokenAccount1 = getAssociatedTokenAddressSync(tokenMint1, walletPubkey, false, tokenProgram1);
 
   // Log all instruction parameters
-  const { logger } = await import('../../services/logger');
+  const { logger } = await import('../../services/logger.js');
   logger.info(`=== OpenPosition Instruction Parameters ===`);
   logger.info(`Pool: ${poolAddress.toString()}`);
   logger.info(`Pool tokens: mint0=${tokenMint0.toString()}, mint1=${tokenMint1.toString()}`);

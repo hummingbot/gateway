@@ -29,8 +29,9 @@ module.exports = {
   testMatch: ['<rootDir>/test/**/*.test.ts', '<rootDir>/test/**/*.test.js'],
   transform: {
     '^.+\\.tsx?$': 'ts-jest',
+    "node_modules/@scure/.*.(j|t)sx?$": "ts-jest"
   },
-  transformIgnorePatterns: ['/node_modules/(?!.*superjson)'],
+  transformIgnorePatterns: [], //'/node_modules/(?!.*superjson)'],
   moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, {
     prefix: '<rootDir>/',
   }),

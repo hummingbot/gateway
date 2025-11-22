@@ -1,0 +1,22 @@
+networks:
+  mainnet:
+    nodeURL: https://rpc.osmosis.zone/
+    chainName: osmosis-1
+  testnet:
+    nodeURL: https://rpc.testnet.osmosis.zone/
+    chainName: osmo-test-5
+
+nativeCurrencySymbol: OSMO
+manualGasPrice: 0.025
+gasLimitTransaction: 2000000
+
+feeTier: medium
+gasAdjustment: 1.7
+allowedSlippage: "20/100"
+manualGasPriceToken: uosmo
+
+useEIP1559DynamicBaseFeeInsteadOfManualGasPrice: true
+rpcAddressDynamicBaseFee: https://lcd.osmosis.zone/osmosis/txfees/v1beta1/cur_eip_base_fee
+
+defaultNetwork: testnet
+defaultWallet: '<osmosis-wallet-address>'

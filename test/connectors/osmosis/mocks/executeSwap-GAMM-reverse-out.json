@@ -1,0 +1,13 @@
+{
+  "data": {
+    "tokenIn": "OSMO",
+    "tokenOut": "ION",
+    "amountIn": 0.000031,
+    "amountOut": 10000,
+    "fee": 8318,
+    "baseTokenBalanceChange": -18318,
+    "quoteTokenBalanceChange": 31
+  },
+  "signature": "FE9931889768D008B15FC0A8E7C3A0066A329A13B27C8205A425B94DC9897837",
+  "status": 0
+}

@@ -40,7 +40,7 @@ export async function executeSwap(
   // If no pool address provided, try to find it from pool service
   let poolAddressToUse = poolAddress;
   if (!poolAddressToUse) {
-    const { PoolService } = await import('../../../services/pool-service');
+    const { PoolService } = await import('../../../services/pool-service.js');
     const poolService = PoolService.getInstance();
 
     const pool = await poolService.getPool('pancakeswap-sol', network, 'clmm', baseToken.symbol, quoteToken.symbol);

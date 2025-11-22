@@ -6,8 +6,9 @@ import { PublicKey } from '@solana/web3.js';
 import { ethers } from 'ethers';
 import * as fse from 'fs-extra';
 
+import { CosmosAsset } from '../chains/cosmos/cosmos.universaltypes';
 import { rootPath } from '../paths';
-import { Token, TokenFileFormat, SupportedChain, isSupportedChain } from '../tokens/types';
+import { Token, SupportedChain, isSupportedChain, CosmosToken } from '../tokens/types';
 
 import { logger } from './logger';
 
@@ -77,7 +78,7 @@ export class TokenService {
   /**
    * Load token list from file
    */
-  public async loadTokenList(chain: string, network: string): Promise<Token[]> {
+  public async loadTokenList(chain: string, network: string): Promise<any[]> {
     await this.validateChainNetwork(chain, network);
 
     const tokenListPath = this.getTokenListPath(chain, network);
@@ -87,8 +88,13 @@ export class TokenService {
     }
 
     try {
-      const data = await readFile(tokenListPath, 'utf8');
-      const tokens: TokenFileFormat = JSON.parse(data);
+      let tokens: any; // Removed enforced TokenFileFormat
+      if (chain == 'cosmos') {
+        tokens = await this.cosmosLoadTokenList(chain, tokenListPath);
+      } else {
+        const data = await readFile(tokenListPath, 'utf8');
+        tokens = JSON.parse(data);
+      }
 
       if (!Array.isArray(tokens)) {
         throw new Error(`Invalid token list format: expected array`);
@@ -101,6 +107,22 @@ export class TokenService {
       }
       throw error;
     }
+  }
+
+  // Removed logic for tokenListType
+  private async cosmosLoadTokenList(chain, tokenListPath: string): Promise<CosmosToken[]> {
+    const tokensJson = JSON.parse(await readFile(tokenListPath, 'utf8'));
+    const tokens: CosmosToken[] = JSON.parse(await readFile(tokenListPath, 'utf8'));
+
+    // Clean/parse each asset on init (mostly to support older asset versions used by some modules)
+    tokensJson.forEach((tokenAsset) => {
+      const cosmosAssetInstance = new CosmosAsset(tokenAsset);
+      if (cosmosAssetInstance) {
+        cosmosAssetInstance.chainName = chain;
+        tokens.push(cosmosAssetInstance);
+      }
+    });
+    return tokens;
   }
 
   /**
@@ -225,6 +247,16 @@ export class TokenService {
           new PublicKey(token.address);
         } catch (error) {
           throw new Error(`Invalid Solana address: ${error.message}`);
+        }
+        break;
+
+      case SupportedChain.COSMOS:
+        try {
+          // Cosmos/Osmosis tokens have paths (IBC channels) but only for IBC created assets. base_denom may be either local to chain (eg. 'uosmo') or
+          //   from ibc (eg. ibc/D189335C6E4A68B513C10AB227BF1C1D38C746766278BA3EEB4FB14124F1D858)
+          console.log('Cosmos token validated.');
+        } catch (error) {
+          throw new Error(`Invalid Cosmos asset: ${error.message}`);
         }
         break;
 

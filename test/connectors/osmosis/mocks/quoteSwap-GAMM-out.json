@@ -1,0 +1,12 @@
+{
+  "priceImpactPct": 0.061234729662017366,
+  "slippagePct": "99",
+  "amountIn": 1000,
+  "amountOut": 2.0663582842725,
+  "tokenIn": "OSMO",
+  "tokenOut": "ION",
+  "price": 0.000020663582842725,
+  "poolAddress": "1",
+  "minAmountOut": 0.020663582842725,
+  "maxAmountIn": 1000
+}

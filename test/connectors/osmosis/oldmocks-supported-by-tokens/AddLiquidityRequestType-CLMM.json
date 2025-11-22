@@ -1,0 +1,8 @@
+{
+  "positionAddress": "2865",
+  "baseTokenAmount": 0.0002,
+  "quoteTokenAmount": 0.1,
+  "network": "testnet",
+  "walletAddress": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+  "slippagePct": 80
+}

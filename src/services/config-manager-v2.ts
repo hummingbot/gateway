@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import Ajv, { ValidateFunction, DefinedError } from 'ajv';
+import { Ajv, ValidateFunction, DefinedError } from 'ajv';
 import fse from 'fs-extra';
 import yaml from 'js-yaml';
 
@@ -405,7 +405,8 @@ export class ConfigManagerV2 {
   unpackFullConfigPath(fullConfigPath: string): UnpackedConfigNamespace {
     const pathComponents: Array<string> = fullConfigPath.split('.');
     if (pathComponents.length < 2) {
-      throw new Error('Configuration paths must have at least two components.');
+      console.log(fullConfigPath);
+      throw new Error(`Configuration paths must have at least two components (received ${fullConfigPath}).`);
     }
 
     const namespaceComponent: string = pathComponents[0];

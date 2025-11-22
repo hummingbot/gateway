@@ -29,13 +29,13 @@ export const TokenListQuerySchema = Type.Object({
   chain: Type.Optional(
     Type.String({
       description: 'Blockchain network (e.g., ethereum, solana)',
-      examples: ['ethereum', 'solana'],
+      examples: ['ethereum', 'solana', 'cosmos'],
     }),
   ),
   network: Type.Optional(
     Type.String({
       description: 'Network name (e.g., mainnet, mainnet-beta)',
-      examples: ['mainnet', 'mainnet-beta', 'devnet'],
+      examples: ['mainnet', 'mainnet-beta', 'devnet', 'testnet'],
     }),
   ),
   search: Type.Optional(
@@ -52,11 +52,11 @@ export type TokenListQuery = typeof TokenListQuerySchema.static;
 export const TokenViewQuerySchema = Type.Object({
   chain: Type.String({
     description: 'Blockchain network (e.g., ethereum, solana)',
-    examples: ['ethereum', 'solana'],
+    examples: ['ethereum', 'solana', 'cosmos'],
   }),
   network: Type.String({
     description: 'Network name (e.g., mainnet, mainnet-beta)',
-    examples: ['mainnet', 'mainnet-beta', 'devnet'],
+    examples: ['mainnet', 'mainnet-beta', 'devnet', 'testnet'],
   }),
 });
 
@@ -66,11 +66,11 @@ export type TokenViewQuery = typeof TokenViewQuerySchema.static;
 export const TokenAddRequestSchema = Type.Object({
   chain: Type.String({
     description: 'Blockchain network (e.g., ethereum, solana)',
-    examples: ['ethereum', 'solana'],
+    examples: ['ethereum', 'solana', 'cosmos'],
   }),
   network: Type.String({
     description: 'Network name (e.g., mainnet, mainnet-beta)',
-    examples: ['mainnet', 'mainnet-beta', 'devnet'],
+    examples: ['mainnet', 'mainnet-beta', 'devnet', 'testnet'],
   }),
   token: TokenSchema,
 });
@@ -81,11 +81,11 @@ export type TokenAddRequest = typeof TokenAddRequestSchema.static;
 export const TokenRemoveQuerySchema = Type.Object({
   chain: Type.String({
     description: 'Blockchain network (e.g., ethereum, solana)',
-    examples: ['ethereum', 'solana'],
+    examples: ['ethereum', 'solana', 'cosmos'],
   }),
   network: Type.String({
     description: 'Network name (e.g., mainnet, mainnet-beta)',
-    examples: ['mainnet', 'mainnet-beta', 'devnet'],
+    examples: ['mainnet', 'mainnet-beta', 'devnet', 'testnet'],
   }),
 });
 
