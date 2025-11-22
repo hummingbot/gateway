@@ -5,8 +5,8 @@ import { ConfigManagerV2 } from '../services/config-manager-v2';
 // Pool list request
 export const PoolListRequestSchema = Type.Object({
   connector: Type.String({
-    description: 'Connector (raydium, meteora, uniswap)',
-    examples: ['raydium', 'meteora', 'uniswap'],
+    description: 'Connector (raydium, meteora, uniswap, orca)',
+    examples: ['raydium', 'meteora', 'uniswap', 'orca'],
   }),
   network: Type.Optional(
     Type.String({
@@ -52,8 +52,8 @@ export const PoolListResponseSchema = Type.Array(PoolTemplateSchema);
 // Add pool request
 export const PoolAddRequestSchema = Type.Object({
   connector: Type.String({
-    description: 'Connector (raydium, meteora, uniswap)',
-    examples: ['raydium', 'meteora', 'uniswap'],
+    description: 'Connector (raydium, meteora, uniswap, orca)',
+    examples: ['raydium', 'meteora', 'uniswap', 'orca'],
   }),
   type: Type.String({
     description: 'Pool type',

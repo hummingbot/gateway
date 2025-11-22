@@ -65,7 +65,7 @@ export class PancakeswapSol {
       new Wallet(Keypair.generate()), // Dummy wallet for read-only operations
       { commitment: 'confirmed' },
     );
-    return new Program(clmmIdl as any, provider);
+    return new Program(clmmIdl as any, PANCAKESWAP_CLMM_PROGRAM_ID, provider);
   }
 
   /** Get CLMM pool info from RPC using manual decoding */

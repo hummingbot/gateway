@@ -1,0 +1,22 @@
+[
+  {
+    "type": "clmm",
+    "network": "mainnet-beta",
+    "baseSymbol": "SOL",
+    "quoteSymbol": "USDC",
+    "address": "Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE",
+    "baseTokenAddress": "So11111111111111111111111111111111111111112",
+    "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "feePct": 0.04
+  },
+  {
+    "type": "clmm",
+    "network": "mainnet-beta",
+    "baseSymbol": "JUP",
+    "quoteSymbol": "USDC",
+    "address": "HrLmpzp8Nu5wkn9SGZYSS9Ms6deTvMgGc6BETp4161ZX",
+    "baseTokenAddress": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+    "quoteTokenAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "feePct": 0.3
+  }
+]
