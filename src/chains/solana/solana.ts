@@ -1664,7 +1664,7 @@ export class Solana {
    * Extract balance changes and fee from a transaction for multiple tokens
    * @param signature Transaction signature
    * @param owner Owner address (required for SPL tokens and SOL balance extraction)
-   * @param tokens Array of token mint addresses or 'So11111111111111111111111111111111111111112' for native SOL
+   * @param tokens Array of token mint addresses or 'SOL' for native SOL
    * @returns Array of balance changes in the same order as tokens, and transaction fee
    */
   async extractBalanceChangesAndFee(
@@ -1720,8 +1720,7 @@ export class Solana {
           postTokenBalances.find((balance) => balance.mint === token && balance.owner === owner)?.uiTokenAmount
             .uiAmount || 0;
 
-        const diff = postBalance - preBalance;
-        return diff;
+        return postBalance - preBalance;
       }
     });
 
