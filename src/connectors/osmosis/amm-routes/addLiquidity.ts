@@ -9,7 +9,7 @@ import {
 import { logger } from '../../../services/logger';
 import { Osmosis } from '../osmosis';
 
-export async function addLiquidityAMM(
+export async function addLiquidity(
   fastify: any,
   req: AMMAddLiquidityRequestType,
 ): Promise<AMMAddLiquidityResponseType> {
@@ -90,7 +90,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
-        return await addLiquidityAMM(fastify, request.body);
+        return await addLiquidity(fastify, request.body);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

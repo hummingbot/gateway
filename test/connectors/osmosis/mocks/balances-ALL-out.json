@@ -1,19 +1,10 @@
 {
-  "network": "osmosis",
-  "timestamp": 1763187229401,
-  "latency": 0.577,
+  "network": "testnet",
   "balances": {
-    "OSMO": 152.046201,
-    "ION": 0.093777,
-    "ATOM": 0.040924,
-    "aUSDC": 0,
-    "JUNOX": 0,
-    "MARS": 0,
-    "USDC": 0,
-    "AKT": 0,
-    "KYVE": 0,
-    "QCK": 0,
-    "C4E": 0,
-    "PICA": 0
-  }
+    "gamm/pool/62": 36022031254.00335,
+    "ION": 0.093516,
+    "OSMO": 151.244891,
+    "ibc/A8C2D23A1E6F95DA4E48BA349667E322BD7A6C996D8A4AAE8BA72E190F3D1477": 0.040924
+  },
+  "wallet": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs"
 }

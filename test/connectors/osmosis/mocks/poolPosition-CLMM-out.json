@@ -1,8 +1,6 @@
 {
-  "network": "osmosis",
-  "timestamp": 1763605511997,
-  "latency": 2.24,
-  "address": "3488",
+  "network": "testnet",
+  "address": "3493",
   "poolAddress": "osmo1rdm79d008fel4ppkgdcf8pgjwazf72sjfhpyx5kpzlck86slpjusek2en6",
   "baseTokenAddress": "",
   "quoteTokenAddress": "",

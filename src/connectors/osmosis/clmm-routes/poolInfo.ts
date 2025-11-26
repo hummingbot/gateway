@@ -13,19 +13,19 @@ import {
 import { ConfigManagerV2 } from '../../../services/config-manager-v2';
 import { logger } from '../../../services/logger';
 import { Osmosis } from '../osmosis';
-const osmosisNetworks = Object.keys(ConfigManagerV2.getInstance().get('osmosis.networks') || {});
+const osmosisNetworks = ['testnet', 'mainnet'];
 
-export async function osmosisPoolInfo(
+export async function poolInfo(
   fastify: FastifyInstance,
   request: AMMGetPoolInfoRequestType | CLMMGetPoolInfoRequestType,
   poolType: string,
-): Promise<AMMPoolInfo | CLMMPoolInfo> {
+): Promise<CLMMPoolInfo> {
   let networkToUse = request.network ? request.network : 'mainnet';
   const osmosis = await Osmosis.getInstance(networkToUse);
   await osmosis.init();
   networkToUse = osmosis.network;
   logger.info(`Network: ${networkToUse}, Chain ID: ${osmosis.chainName}`);
-  const response = await osmosis.controller.poolInfoRequest(osmosis, fastify, request, poolType);
+  const response = (await osmosis.controller.poolInfoRequest(osmosis, fastify, request, poolType)) as CLMMPoolInfo;
   return response;
 }
 
@@ -65,7 +65,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('Pool address must be provided');
         }
 
-        return (await osmosisPoolInfo(fastify, request.query, 'clmm')) as CLMMPoolInfo;
+        return (await poolInfo(fastify, request.query, 'clmm')) as CLMMPoolInfo;
       } catch (e) {
         logger.error(`Error in pool-info route: ${e.message}`);
         if (e.stack) {

@@ -1,7 +1,9 @@
 {
   "data": {
-    "fee": 0
+    "fee": 0,
+    "baseTokenAmountAdded": 0.01,
+    "quoteTokenAmountAdded": 0.006707
   },
-  "signature": "",
+  "signature": "9AA300C5E03350BB239B605A3A7BEDB41F34D61B6839C6393E4CCB0E591A4D3F",
   "status": 0
 }

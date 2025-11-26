@@ -10,9 +10,9 @@
     "quoteFeeAmount": 0,
     "lowerBinId": 4000000,
     "upperBinId": 4700000,
-    "lowerPrice": 5,
-    "upperPrice": 5.7,
-    "price": 5.051003
+    "lowerPrice": 0.000005,
+    "upperPrice": 0.0000057,
+    "price": 0.000005051003
   },
   "1": {
     "address": "966",
@@ -25,9 +25,9 @@
     "quoteFeeAmount": 0,
     "lowerBinId": 4000000,
     "upperBinId": 4700000,
-    "lowerPrice": 5,
-    "upperPrice": 5.7,
-    "price": 5.051003
+    "lowerPrice": 0.000005,
+    "upperPrice": 0.0000057,
+    "price": 0.000005051003
   },
   "2": {
     "address": "1025",
@@ -40,9 +40,9 @@
     "quoteFeeAmount": 0,
     "lowerBinId": 4000000,
     "upperBinId": 4700000,
-    "lowerPrice": 5,
-    "upperPrice": 5.7,
-    "price": 5.051003
+    "lowerPrice": 0.000005,
+    "upperPrice": 0.0000057,
+    "price": 0.000005051003
   },
   "3": {
     "address": "3480",
@@ -75,7 +75,7 @@
     "price": 0.0016666
   },
   "5": {
-    "address": "3486",
+    "address": "3489",
     "poolAddress": "osmo1rdm79d008fel4ppkgdcf8pgjwazf72sjfhpyx5kpzlck86slpjusek2en6",
     "baseTokenAddress": "",
     "quoteTokenAddress": "",
@@ -90,7 +90,7 @@
     "price": 0.0016666
   },
   "6": {
-    "address": "3487",
+    "address": "3492",
     "poolAddress": "osmo1rdm79d008fel4ppkgdcf8pgjwazf72sjfhpyx5kpzlck86slpjusek2en6",
     "baseTokenAddress": "",
     "quoteTokenAddress": "",
@@ -599,7 +599,5 @@
     "upperPrice": 1000,
     "price": 312.1165
   },
-  "network": "osmosis",
-  "timestamp": 1763605387606,
-  "latency": 76.315
+  "network": "testnet"
 }

@@ -4,7 +4,7 @@ import { QuoteSwapResponseType, QuoteSwapResponse, QuoteSwapRequestType } from '
 import { ConfigManagerV2 } from '../../../services/config-manager-v2';
 import { logger } from '../../../services/logger';
 import { Osmosis } from '../osmosis';
-import { osmosisQuoteSwap } from '../osmosis.swap';
+import { quoteSwap } from '../osmosis.swap';
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
   // Import the httpErrors plugin to ensure it's available
@@ -14,7 +14,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
   const walletAddressExample = await Osmosis.getWalletAddressExample();
 
   // Get available networks from osmosis configuration (same method as chain.routes.ts)
-  const osmosisNetworks = Object.keys(ConfigManagerV2.getInstance().get('osmosis.networks') || {});
+  const osmosisNetworks = ['testnet', 'mainnet'];
 
   fastify.get<{
     Querystring: QuoteSwapRequestType;
@@ -69,7 +69,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
 
         try {
           // Use our shared quote function
-          const quoteResult = await osmosisQuoteSwap(fastify, request.query, 'router');
+          const quoteResult = await quoteSwap(fastify, request.query, 'router');
 
           // Return only the data needed for the API response
           return {

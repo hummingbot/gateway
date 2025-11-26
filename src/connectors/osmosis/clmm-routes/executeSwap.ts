@@ -3,7 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { ExecuteSwapRequestType, ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Osmosis } from '../osmosis';
-import { osmosisExecuteSwap } from '../osmosis.swap';
+import { executeSwap } from '../osmosis.swap';
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
   // Import the httpErrors plugin to ensure it's available
@@ -14,7 +14,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
 
   // Get available networks from Osmosis configuration (same method as chain.routes.ts)
   const { ConfigManagerV2 } = require('../../../services/config-manager-v2');
-  const osmosisNetworks = Object.keys(ConfigManagerV2.getInstance().get('osmosis.networks') || {});
+  const osmosisNetworks = ['testnet', 'mainnet'];
 
   fastify.post<{
     Body: ExecuteSwapRequestType;
@@ -59,15 +59,16 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
           amount,
           side,
           slippagePct,
+          poolAddress,
         } = request.body;
 
         // Validate essential parameters
-        if (!baseTokenSymbol || !quoteTokenSymbol || !amount || !side || !network || !walletAddress || !slippagePct) {
+        if (!(poolAddress || !baseTokenSymbol || !quoteTokenSymbol) || !amount || !side || !network || !walletAddress) {
           logger.error('Missing required parameters in request');
           return reply.badRequest('Missing required parameters');
         }
 
-        const executeSwapResponse = await osmosisExecuteSwap(fastify, request.body, 'clmm');
+        const executeSwapResponse = await executeSwap(fastify, request.body, 'clmm');
         return executeSwapResponse;
       } catch (e) {
         logger.error(`Execute swap error: ${e.message}`);

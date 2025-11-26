@@ -1,6 +1,0 @@
-{
-  "network": "testnet",
-  "baseToken": "OSMO",
-  "quoteToken": "ION",
-  "poolAddress": ""
-}

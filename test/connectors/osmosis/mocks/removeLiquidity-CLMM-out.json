@@ -1,9 +1,9 @@
 {
-  "signature": "B9FB3847663AD732B9F3491963DE4FD5341C5D8F8C75FB3B429573FDFF641986",
+  "signature": "3F06EF51E9AF9317A000D6AC8B8CFDBE5CBA61E6E0E476D058F6E080E06BACAB",
   "status": 0,
   "data": {
     "fee": 0,
-    "baseTokenAmountRemoved": -0.024846,
-    "quoteTokenAmountRemoved": null
+    "baseTokenAmountRemoved": 0.024841,
+    "quoteTokenAmountRemoved": 0
   }
 }

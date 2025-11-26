@@ -6,7 +6,7 @@ import { logger } from '../../../services/logger';
 import { Osmosis } from '../osmosis';
 import { FetchPoolsRequest, SerializableExtendedPool } from '../osmosis.types';
 
-async function osmosisFetchPools(
+export async function fetchPools(
   fastify: FastifyInstance,
   request: FetchPoolsRequestType,
   poolType: string,
@@ -44,7 +44,7 @@ export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('Both baseToken and quoteToken must be provided');
         }
 
-        return await osmosisFetchPools(fastify, request.body, 'amm');
+        return await fetchPools(fastify, request.body, 'amm');
       } catch (e) {
         logger.error(`Error in pool-info route: ${e.message}`);
         if (e.stack) {

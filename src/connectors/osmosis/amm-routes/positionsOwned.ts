@@ -23,17 +23,22 @@ const CLMMAllPositionsOwnedResponse = Type.Array(CLMMPositionInfoSchema);
 type AMMAllPositionsOwnedResponseType = Static<typeof AMMAllPositionsOwnedResponse>;
 type CLMMAllPositionsOwnedResponseType = Static<typeof CLMMAllPositionsOwnedResponse>;
 
-export async function osmosisAllPoolPositions(
+export async function positionsOwned(
   fastify: FastifyInstance,
   request: PositionsOwnedRequestType,
   poolType: string,
-): Promise<AMMAllPositionsOwnedResponseType | CLMMAllPositionsOwnedResponseType> {
+): Promise<AMMAllPositionsOwnedResponseType> {
   let networkToUse = request.network ? request.network : 'mainnet';
   const osmosis = await Osmosis.getInstance(networkToUse);
   await osmosis.init();
   networkToUse = osmosis.network;
   logger.info(`Network: ${networkToUse}, Chain ID: ${osmosis.chainName}`);
-  const response = await osmosis.controller.allPoolPositions(osmosis, fastify, request, poolType);
+  const response = (await osmosis.controller.allPoolPositions(
+    osmosis,
+    fastify,
+    request.walletAddress,
+    poolType,
+  )) as AMMAllPositionsOwnedResponseType;
   return response;
 }
 
@@ -72,7 +77,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
           );
         }
 
-        return (await osmosisAllPoolPositions(fastify, request.query, 'amm')) as unknown as AMMPositionInfo[];
+        return (await positionsOwned(fastify, request.query, 'amm')) as unknown as AMMPositionInfo[];
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

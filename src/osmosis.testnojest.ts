@@ -10,64 +10,39 @@ import axios from 'axios';
 import Decimal from 'decimal.js-light';
 import Fastify, { FastifyInstance } from 'fastify';
 
-// import { addLiquidityAMM } from './connectors/osmosis/amm-routes/addLiquidity';
-// import { osmosisPoolInfo as poolInfoAMM } from './connectors/osmosis/amm-routes/poolInfo';
-// import { osmosisPoolPositionInfo as positionInfoAMM } from './connectors/osmosis/amm-routes/positionInfo';
-// import { osmosisAllPoolPositions as positionsOwnedAMM } from './connectors/osmosis/amm-routes/positionsOwned';
-// import { removeLiquidityAMM } from './connectors/osmosis/amm-routes/removeLiquidity';
+// AMM routes
+import { addLiquidity as addLiquidityAMM } from './connectors/osmosis/amm-routes/addLiquidity';
+import { fetchPools as fetchPoolsAMM } from './connectors/osmosis/amm-routes/fetchPools';
+import { poolInfo as poolInfoAMM } from './connectors/osmosis/amm-routes/poolInfo';
+import { positionInfo as positionInfoAMM } from './connectors/osmosis/amm-routes/positionInfo';
+import { positionsOwned as positionsOwnedAMM } from './connectors/osmosis/amm-routes/positionsOwned';
+import { removeLiquidity as removeLiquidityAMM } from './connectors/osmosis/amm-routes/removeLiquidity';
 
-// import {osmosisExecuteSwap, osmosisQuoteSwap} from './connectors/osmosis/osmosis.swap';
+// AMM/CLMM (and maybe router)
+import { balances } from './connectors/osmosis/chain-routes/balances';
+import { estimateGas } from './connectors/osmosis/chain-routes/estimateGas';
+import { poll } from './connectors/osmosis/chain-routes/poll';
+import { status } from './connectors/osmosis/chain-routes/status';
+import { tokens } from './connectors/osmosis/chain-routes/tokens';
+import { addLiquidity as addLiquidityCLMM } from './connectors/osmosis/clmm-routes/addLiquidity';
+import { closePosition as closePositionCLMM } from './connectors/osmosis/clmm-routes/closePosition';
+import { collectFees } from './connectors/osmosis/clmm-routes/collectFees';
+import { fetchPools as fetchPoolsCLMM } from './connectors/osmosis/clmm-routes/fetchPools';
+import { openPosition } from './connectors/osmosis/clmm-routes/openPosition';
+import { executeSwap, quoteSwap } from './connectors/osmosis/osmosis.swap';
 
-// import { addLiquidityCLMM } from './connectors/osmosis/clmm-routes/addLiquidity';
-// import { osmosisClosePositionCLMM as closePositionCLMM } from './connectors/osmosis/clmm-routes/closePosition';
-// import { osmosisPoolInfo as poolInfoCLMM } from './connectors/osmosis/clmm-routes/poolInfo';
-import { osmosisPoolPositionInfo as positionInfoCLMM } from './connectors/osmosis/clmm-routes/positionInfo';
-// import { osmosisAllPoolPositions as positonsOwnedCLMM } from './connectors/osmosis/clmm-routes/positionsOwned';
-// import { removeLiquidityCLMM } from './connectors/osmosis/clmm-routes/removeLiquidity';
-// addliq closepos collect fetchpools openpos poolinfo posinfo posowned quotepos removeliq
+// CLMM routes
+import { poolInfo as poolInfoCLMM } from './connectors/osmosis/clmm-routes/poolInfo';
+import { positionInfo as positionInfoCLMM } from './connectors/osmosis/clmm-routes/positionInfo';
+import { positionsOwned as positionsOwnedCLMM } from './connectors/osmosis/clmm-routes/positionsOwned';
+import { removeLiquidity as removeLiquidityCLMM } from './connectors/osmosis/clmm-routes/removeLiquidity';
+
+// chain routes
 
 // import { configRoutes } from '../../../src/config/config.routes';
 
 type method = 'GET' | 'POST';
 const certPath = '/home/chase/pecu/hummingbot/certs';
-// const httpsAgent = axios.create({
-//   httpsAgent: new https.Agent({
-//     ca: fs.readFileSync(certPath.concat('/ca_cert.pem'), {
-//       encoding: 'utf-8',
-//     }),
-//     cert: fs.readFileSync(certPath.concat('/client_cert.pem'), {
-//       encoding: 'utf-8',
-//     }),
-//     key: fs.readFileSync(certPath.concat('/client_key.pem'), {
-//       encoding: 'utf-8',
-//     }),
-//     host: '127.0.0.1',
-//     port: 15888,
-//     requestCert: true,
-//     rejectUnauthorized: false,
-//   }),
-// });
-// const request = async (
-//   method: method,
-//   path: string,
-//   params: Record<string, any>
-// ) => {
-//   try { await new Promise(resolve => setTimeout(resolve, 5000));
-//     let response;
-//     const gatewayAddress = 'https://127.0.0.1:15888';
-//     if (method === 'GET') {
-//       response = await httpsAgent.get(gatewayAddress + path);
-//     } else {
-//       response = await httpsAgent.post(gatewayAddress + path, params);
-//     }
-//     return response.data;
-//   } catch (err) {
-//     console.log(`${method} ${path} - ${err}`);
-//   }
-// };
-
-// import { osmosis } from '../../../src/chains/osmosis/osmosis';
-// import { Side } from '../../../src/amm/liquidity/amm.requests';
 
 // import { price, trade, addLiquidity, removeLiquidity, poolPrice, poolPosition, transfer, getTokens, } from '../../../src/chains/osmosis/osmosis.controllers'; //getTradeInfo, price
 import {
@@ -97,10 +72,10 @@ import {
   RemoveLiquidityRequestType as CLMMRemoveLiquidityRequestType,
   RemoveLiquidityResponseType as CLMMRemoveLiquidityResponseType,
   PositionInfoSchema as CLMMPositionInfoSchema,
-  GetPositionInfoRequest as CLMMGetPositionInfoRequest,
   FetchPoolsRequestType,
   QuotePositionRequestType,
   QuotePositionResponseType,
+  CollectFeesResponseType,
 } from './schemas/clmm-schema';
 
 const PositionsOwnedRequest = Type.Object({
@@ -122,11 +97,12 @@ import {
   TokensRequestSchema,
   TokensResponseSchema,
 } from './schemas/chain-schema';
+import { ConfigManagerV2 } from './services/config-manager-v2';
 import { addWallet, getWallets } from './wallet/utils';
-// import { poll } from './connectors/osmosis/chain-routes/poll';
-// import { getStatus } from './connectors/osmosis/chain-routes/status';
+import { CosmosAsset } from './chains/cosmos/cosmos.universaltypes';
+import { getOsmoWallet } from './connectors/osmosis/osmosis.controllers';
 
-const CHAIN = 'osmosis';
+const CHAIN = 'cosmos';
 const CONNECTOR = 'osmosis';
 const NETWORK = 'testnet';
 const BASE_TOKEN = 'OSMO';
@@ -142,7 +118,7 @@ const mockDir = path.join(__dirname, '..', 'test', 'connectors', 'osmosis', 'moc
 // Helper to load mock responses
 async function loadMockResponse(filename) {
   try {
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     // First try to find connector-specific mock
     const filePath = path.join(mockDir, `${filename}.json`);
     return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -155,14 +131,14 @@ async function loadMockResponse(filename) {
 
 async function writeMockResponse(filename: string, instance: object) {
   try {
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    // const filePath = path.join(`/home/chase/osmolarp3/gateway/test/connectors/osmosis/mocks/${filename}.json`);
     const filePath = path.join(__dirname, '..', 'test', 'connectors', 'osmosis', 'mocks', `${filename}.json`);
     console.log(filePath);
     const json = JSON.stringify(instance, null, 2);
     // console.log(json);
 
-    await fs2.mkdir(mockDir, { recursive: true }); // Creates the directory if it doesn't exist
-    await fs2.writeFile(filePath, json, 'utf-8');
+    // fs.mkdirSync(mockDir); // Creates the directory if it doesn't exist
+    fs.writeFileSync(filePath, json, 'utf-8');
   } catch (error) {
     console.log(error);
   }
@@ -173,43 +149,29 @@ async function testnojest() {
   await osmosis.init();
 
   const fastify = Fastify();
-
-  // await fastify.register(configRoutes);
-
-  // // DISABLED ENDPOINTS
-  // try { await new Promise(resolve => setTimeout(resolve, 5000));
-  //   console.debug('allowances');
-  //   var allowances_obj = {'address':TEST_WALLET, 'spender':TEST_OUTBOUND_ADDRESS, 'tokenSymbols':[], 'chain':'osmosis', 'network':NETWORK};
-  //   var allowances = await osmosis.CosmosBase.allowances(osmosis, allowances_obj);
-  //   writeMockResponse('allowances-in', allowances_obj)
-  //   console.debug(allowances);
-  // } catch (err) {
-  //   console.debug(err);
-  // }
-  // try { await new Promise(resolve => setTimeout(resolve, 5000));
-  //   console.debug('cancel');
-  //   var cancel_obj = {'address':TEST_WALLET, 'nonce':0, 'chain':'osmosis', 'network':NETWORK};
-  //   var cancel = await osmosis.controller.cancel(osmosis, cancel_obj);
-  //   writeMockResponse('cancel-in', cancel_obj)
-  //   console.debug(cancel);
-  // } catch (err) {
-  //   console.debug(err);
-  // }
-  // try { await new Promise(resolve => setTimeout(resolve, 5000));
-  //   console.debug('approve');
-  //   var approve_obj = {'nonce':0, 'address':TEST_WALLET, 'spender':TEST_OUTBOUND_ADDRESS, token:'OSMO', 'chain':'osmosis', 'network':NETWORK};
-  //   var approve = await osmosis.controller.approve(osmosis, approve_obj);
-  //   writeMockResponse('approve-in', approve_obj)
-  //   console.debug(approve);
-  // } catch (err) {
-  //   console.debug(err);
-  // }
+  (fastify as any).httpErrors = {
+    badRequest: (msg: string) => {
+      const error: any = new Error(msg);
+      error.statusCode = 400;
+      return error;
+    },
+    notFound: (msg: string) => {
+      const error: any = new Error(msg);
+      error.statusCode = 404;
+      return error;
+    },
+    internalServerError: (msg: string) => {
+      const error: any = new Error(msg);
+      error.statusCode = 500;
+      return error;
+    },
+  };
 
   // TESTED ENDPOINTS
 
-  // console.debug('Osmosis Chain Routes');
+  console.debug('Osmosis Chain Routes');
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   const wal = { privateKey: TEST_WALLET_PRIVATE_KEY, chain: 'cosmos' };
   //   const request = await addWallet(fastify, wal);
   //   const wallets = await getWallets(fastify);
@@ -226,7 +188,7 @@ async function testnojest() {
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('transfer');
   //   const transfer_in = {
   //     from: TEST_WALLET,
@@ -245,181 +207,64 @@ async function testnojest() {
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('getTokens OSMO');
-  //   var tokensRequest: TokensRequestType = { network: 'osmosis', tokenSymbols: ['OSMO'] };
-  //   writeMockResponse('getTokens-OSMO-in', tokensRequest);
-  //   var getTokens: TokensResponseType = await osmosis.controller.getTokens(osmosis, tokensRequest);
-  //   writeMockResponse('getTokens-OSMO-out', getTokens);
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
+  //   console.debug('tokens all');
+  //   var tokensRequest: TokensRequestType = { network: NETWORK, tokenSymbols: [] };
+  //   writeMockResponse('tokens-all-in', tokensRequest);
+  //   var getTokens: TokensResponseType = await tokens(fastify, tokensRequest);
+  //   writeMockResponse('tokens-all-out', getTokens);
   //   console.debug(getTokens);
   // } catch (err) {
   //   console.debug(err);
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('getTokens All');
-  //   var tokensRequest: TokensRequestType = { network: 'osmosis', tokenSymbols: [] };
-  //   writeMockResponse('getTokens-all-in', tokensRequest);
-  //   var getTokens: TokensResponseType = await osmosis.controller.getTokens(osmosis, tokensRequest);
-  //   writeMockResponse('getTokens-all-out', getTokens);
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
+  //   console.debug('tokens OSMO');
+  //   var tokensRequest: TokensRequestType = { network: NETWORK, tokenSymbols: ['OSMO'] };
+  //   writeMockResponse('tokens-OSMO-in', tokensRequest);
+  //   var getTokens: TokensResponseType = await tokens(fastify, tokensRequest);
+  //   writeMockResponse('tokens-OSMO-out', getTokens);
   //   console.debug(getTokens);
   // } catch (err) {
   //   console.debug(err);
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('estimateGas');
-  //   const estimateGas = await osmosis.controller.estimateGas(osmosis);
-  //   console.debug(estimateGas);
-  //   writeMockResponse('estimateGas-out', estimateGas);
+  //   const response = await estimateGas(fastify, NETWORK);
+  //   console.debug(response);
+  //   writeMockResponse('estimateGas-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('status');
-  //   const status = await getStatus(NETWORK);
-  //   console.debug(status);
-  //   writeMockResponse('status-out', status);
+  //   const response = await status(fastify, NETWORK);
+  //   console.debug(response);
+  //   writeMockResponse('status-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('poll');
   //   const poll_signature = "344A0C038C05D1FA938E78828925109879E30C397100BD84D0BA08A463B2FF82";
-  //   const poll_return = await osmosis.controller.poll(osmosis, poll_signature);
+  //   const request = { network: NETWORK, signature:poll_signature, tokens:[], walletAddress:TEST_WALLET }
+  //   const poll_return = await poll(fastify, request);
   //   console.debug(poll_return);
-  //   writeMockResponse('poll-in', poll_signature as unknown as object);
+  //   writeMockResponse('poll-in', request);
   //   writeMockResponse('poll-out', poll_return);
   // } catch (err) {
   //   console.debug(err);
   // }
 
-  // var response_list = [];
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('getTx AddLiqudity CL success');
-  //   const poll_signature = "BE289923881712E3DD4BC36A7A216DACF67E179555EFCB232839F8FE9E468403";
-  //   const response = await osmosis.controller.poll(osmosis, {signature: poll_signature, walletAddress:TEST_WALLET});
-  //   //console.debug(response);
-  //   response_list.push(response);
-  //   writeMockResponse('poll-AddLiquidity-CLMM-success-in', poll_signature as unknown as object);
-  //   writeMockResponse('poll-AddLiquidity-CLMM-success-out', response);
-  // } catch (err) {
-  //   console.debug(err);
-  // }
-
-  // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('getTx AddLiqudity GAMM success');
-  //   const poll_signature = "344A0C038C05D1FA938E78828925109879E30C397100BD84D0BA08A463B2FF82";
-  //   const response = await osmosis.controller.poll(osmosis, {signature: poll_signature, walletAddress:TEST_WALLET});
-  //   //console.debug(response);
-  //   response_list.push(response);
-  //   writeMockResponse('poll-AddLiquidity-GAMM-success-in', poll_signature as unknown as object);
-  //   writeMockResponse('poll-AddLiquidity-GAMM-success-out', response);
-  // } catch (err) {
-  //   console.debug(err);
-  // }
-
-  // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('getTx RemoveLiquidity CLMM success');
-  //   const poll_signature = "F6B158C9C0E61CFB4C96E620EB4F4BC53C1A64D1E1FD5810A8EE8978F27242BE";
-  //   const response = await osmosis.controller.poll(osmosis, {signature: poll_signature, walletAddress:TEST_WALLET});
-  //   //console.debug(response);
-  //   response_list.push(response);
-  //   writeMockResponse('poll-RemoveLiquidity-CLMM-success-in', poll_signature as unknown as object);
-  //   writeMockResponse('poll-RemoveLiquidity-CLMM-success-out', response);
-  // } catch (err) {
-  //   console.debug(err);
-  // }
-
-  // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('getTx RemoveLiquidity GAMM all success');
-  //   const poll_signature = "902CD46D3EB876EEB722D954A5AB77887618C2F396864F6851A126561DF7E1D1";
-  //   const response = await osmosis.controller.poll(osmosis, {signature: poll_signature, walletAddress:TEST_WALLET});
-  //   //console.debug(response);
-  //   response_list.push(response);
-  //   writeMockResponse('poll-RemoveLiquidity-GAMM-all-success-in', poll_signature as unknown as object);
-  //   writeMockResponse('poll-RemoveLiquidity-GAMM-all-success-out', response);
-  // } catch (err) {
-  //   console.debug(err);
-  // }
-
-  // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('getTx RemoveLiquidity GAMM partial success');
-  //   const poll_signature = "C28B2C266522BD0680DEA17CA81383196C3EF87D5B3E5BB7BF2D8B9CE00BD854";
-  //   const response = await osmosis.controller.poll(osmosis, {signature: poll_signature, walletAddress:TEST_WALLET});
-  //   //console.debug(response);
-  //   response_list.push(response);
-  //   writeMockResponse('poll-RemoveLiquidity-GAMM-partial-success-in', poll_signature as unknown as object);
-  //   writeMockResponse('poll-RemoveLiquidity-GAMM-partial-success-out', response);
-  // } catch (err) {
-  //   console.debug(err);
-  // }
-
-  // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('getTx closePosition CLMM success');
-  //   const poll_signature = "F39C951A894D511B94721923560D644B9C5038231224402C0A7341EA71E04CD6";
-  //   const response = await osmosis.controller.poll(osmosis, {signature: poll_signature, walletAddress:TEST_WALLET});
-  //   //console.debug(response);
-  //   response_list.push(response);
-  //   writeMockResponse('poll-closePosition-CLMM-success-in', poll_signature as unknown as object);
-  //   writeMockResponse('poll-closePosition-CLMM-success-out', response);
-  // } catch (err) {
-  //   console.debug(err);
-  // }
-
-  // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('getTx executeSwap GAMM success');
-  //   const poll_signature = "CDA1F1D32E3371BD9F191D287AD70BA5FDCEED7DF1AFB0AF8AE3F0DE99D43774";
-  //   const response = await osmosis.controller.poll(osmosis, {signature: poll_signature, walletAddress:TEST_WALLET});
-  //   //console.debug(response);
-  //   response_list.push(response);
-  //   writeMockResponse('poll-executeSwap-GAMM-success-in', poll_signature as unknown as object);
-  //   writeMockResponse('poll-executeSwap-GAMM-success-out', response);
-  // } catch (err) {
-  //   console.debug(err);
-  // }
-
-  // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('getTx openPosition CLMM success');
-  //   const poll_signature = "CA53D19A19F4B6F7E9A97CDCEE0E45F165DAF4BDE54BA16016663BA4856760B3";
-  //   const response = await osmosis.controller.poll(osmosis, {signature: poll_signature, walletAddress:TEST_WALLET});
-  //   //console.debug(response);
-  //   response_list.push(response);
-  //   writeMockResponse('poll-openPosition-CLMM-success-in', poll_signature as unknown as object);
-  //   writeMockResponse('poll-openPosition-CLMM-success-out', response);
-  // } catch (err) {
-  //   console.debug(err);
-  // }
-
-  // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('getTx transfer success');
-  //   const poll_signature = "426D2164B9494B9EFA4AE6B30F915D9B7BDEB4062C1C89D4C80372498D38D159";
-  //   const response = await osmosis.controller.poll(osmosis, {signature: poll_signature, walletAddress:TEST_WALLET});
-  //   //console.debug(response);
-  //   response_list.push(response);
-  //   writeMockResponse('poll-transfer-success-in', poll_signature as unknown as object);
-  //   writeMockResponse('poll-transfer-success-out', response);
-  // } catch (err) {
-  //   console.debug(err);
-  // }
-
-  // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('block');
   //   const block = await osmosis.getCurrentBlockNumber();
   //   console.debug(block);
@@ -429,212 +274,186 @@ async function testnojest() {
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('balances OSMO');
-  //   const balances = await osmosis.controller.balances(osmosis, { address: TEST_WALLET, tokenSymbols: ['OSMO'] });
-  //   console.debug(balances);
-  //   writeMockResponse('balances-OSMO-out', balances);
+  //   const request = { address: TEST_WALLET, tokens: ['OSMO'], network:NETWORK, };
+  //   const response = await balances(fastify, request);
+  //   console.debug(response);
+  //   writeMockResponse('balances-OSMO-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('balances All');
-  //   const balances = await osmosis.controller.balances(osmosis, { address: TEST_WALLET, tokenSymbols: [] });
-  //   console.debug(balances);
-  //   writeMockResponse('balances-ALL-out', balances);
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
+  //   console.debug('balances ALL');
+  //   const request = { address: TEST_WALLET, tokens: [], network:NETWORK, fetchAll:true };
+  //   const response = await balances(fastify, request);
+  //   console.debug(response);
+  //   writeMockResponse('balances-ALL-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
 
+  //// AMM
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('wallet balances All');
-  //   const walleto = await osmosis.getWalletFromPrivateKey(TEST_WALLET_PRIVATE_KEY, 'osmo');
-  //   writeMockResponse('wallet-balances-ALL-in', walleto);
-  //   const balanceo = await osmosis.getBalances(walleto);
-  //   writeMockResponse('wallet-balances-ALL-out', balanceo);
-  // } catch (err) {
-  //   console.debug(err);
-  // }
-
-  // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('get token');
-  //   const token = osmosis.getTokenBySymbol('ATOM');
-  //   const token2 = osmosis.getTokenForSymbol('OSMO');
-  //   console.debug(token);
-  //   console.debug(token2);
-  //   writeMockResponse('get-token-ATOM-out', token);
-  //   writeMockResponse('get-token-OSMO-out', token2);
-  // } catch (err) {
-  //   console.debug(err);
-  // }
-
-  // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('quoteSwap AMM');
-  //   const priceRequest1 = {
+  //   const request = {
+  //     slippagePct: 99,
+  //     network: NETWORK,
   //     quoteToken: 'ION',
   //     baseToken: 'OSMO',
-  //     amount: '0.001',
+  //     amount: 0.001,
   //     side: 'BUY',
-  //     slippagePct: '99',
-  //     chains: 'cosmos',
-  //     network: NETWORK,
   //   };
-  //   const priceResponse1 = await osmosis.controller.quoteSwap(osmosis, fastify, priceRequest1, 'AMM');
-  //   console.debug(priceResponse1);
-  //   writeMockResponse('quoteSwap-GAMM-in', priceRequest1);
-  //   writeMockResponse('quoteSwap-GAMM-out', priceResponse1);
+  //   const response = await quoteSwap(fastify, request, 'AMM');
+  //   console.debug(response);
+  //   writeMockResponse('quoteSwap-GAMM-in', request);
+  //   writeMockResponse('quoteSwap-GAMM-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('quoteSwap CLMM');
-  //   const priceRequest1 = {
+  //   const request = {
+  //     slippagePct: 99,
+  //     network: NETWORK,
   //     quoteToken: 'ION',
   //     baseToken: 'OSMO',
-  //     amount: '0.001',
+  //     amount: 0.001,
   //     side: 'BUY',
-  //     slippagePct: '99',
-  //     chains: 'cosmos',
-  //     network: NETWORK,
-  //   }
-  //   const priceResponse1 = await osmosis.controller.quoteSwap(osmosis, fastify, priceRequest1, 'clmm');
-  //   console.debug(priceResponse1);
-  //   writeMockResponse('quoteSwap-CLMM-in', priceRequest1);
-  //   writeMockResponse('quoteSwap-CLMM-out', priceResponse1);
+  //   };
+  //   const response = await quoteSwap(fastify, request, 'CLMM');
+  //   console.debug(response);
+  //   writeMockResponse('quoteSwap-CLMM-in', request);
+  //   writeMockResponse('quoteSwap-CLMM-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('executeSwap AMM Reverse');
-  //   const tradeRequest = {
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
+  //   console.debug('executeSwap AMM');
+  //   const request = {
   //     baseToken: 'ION',
   //     quoteToken: 'OSMO',
-  //     amount: '0.0001',
+  //     amount: 0.0001,
   //     side: 'BUY',
-  //     slippagePct: '99',
+  //     slippagePct: 99,
   //     chains: 'cosmos',
   //     network: NETWORK,
   //     walletAddress: TEST_WALLET,
   //   };
-  //   const tradeResponse = await osmosis.controller.executeSwap(osmosis, fastify, tradeRequest, 'AMM');
-  //   console.debug(tradeResponse);
-  //   writeMockResponse('executeSwap-GAMM-in', tradeRequest);
-  //   writeMockResponse('executeSwap-GAMM-out', tradeResponse);
+  //   const response = await executeSwap(fastify, request, 'AMM');
+  //   console.debug(response);
+  //   writeMockResponse('executeSwap-GAMM-in', request);
+  //   writeMockResponse('executeSwap-GAMM-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('executeSwap AMM');
-  //   const tradeRequest = {
-  //     quoteToken: 'ION',
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
+  //   console.debug('executeSwap AMM reverse');
+  //   const request = {
   //     baseToken: 'OSMO',
-  //     amount: '0.01',
+  //     quoteToken: 'ION',
+  //     amount: 0.1,
   //     side: 'BUY',
-  //     slippagePct: '99',
+  //     slippagePct: 99,
   //     chains: 'cosmos',
   //     network: NETWORK,
   //     walletAddress: TEST_WALLET,
   //   };
-  //   const tradeResponse = await osmosis.controller.executeSwap(osmosis, fastify, tradeRequest, 'AMM');
-  //   console.debug(tradeResponse);
-  //   writeMockResponse('executeSwap-GAMM-reverse-in', tradeRequest);
-  //   writeMockResponse('executeSwap-GAMM-reverse-out', tradeResponse);
+  //   const response = await executeSwap(fastify, request, 'AMM');
+  //   console.debug(response);
+  //   writeMockResponse('executeSwap-GAMM-reverse-in', request);
+  //   writeMockResponse('executeSwap-GAMM-reverse-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
 
   // let gammPoolAddress = TEST_POOL_ADDRESS_AMM;
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('fetchPools GAMM');
-  //   const request_AMMAddLiquidityRequestType: FetchPoolsRequestType = {
+  //   const request: FetchPoolsRequestType = {
+  //     network: NETWORK,
   //     tokenA: 'ION',
   //     tokenB: 'OSMO',
   //   };
-  //   const response_AMMAddLiquidityResponseType: SerializableExtendedPool[] = await osmosis.controller.fetchPoolsForTokens(
-  //     osmosis,
+  //   const response: SerializableExtendedPool[] = await fetchPoolsAMM(
   //     fastify,
-  //     request_AMMAddLiquidityRequestType,
+  //     request,
   //     'amm',
   //   );
-  //   gammPoolAddress = response_AMMAddLiquidityResponseType[0].address;
-  //   console.debug(response_AMMAddLiquidityResponseType);
-  //   writeMockResponse('fetchPools-GAMM-in', request_AMMAddLiquidityRequestType);
-  //   writeMockResponse('fetchPools-GAMM-out', response_AMMAddLiquidityResponseType);
+  //   gammPoolAddress = response[0].address;
+  //   console.debug(response);
+  //   writeMockResponse('fetchPools-GAMM-in', request);
+  //   writeMockResponse('fetchPools-GAMM-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('addLiquidity GAMM');
-  //   const request_AMMAddLiquidityRequestType: AMMAddLiquidityRequestType = {
+  //   const request: AMMAddLiquidityRequestType = {
   //     poolAddress: gammPoolAddress,
-  //     baseTokenAmount: 0.0001,
+  //     baseTokenAmount: 0.01,
   //     quoteTokenAmount: 0,
   //     network: NETWORK,
   //     walletAddress: TEST_WALLET,
   //     slippagePct: 100,
   //   };
-  //   const reponse_AMMAddLiquidityResponseType: AMMAddLiquidityResponseType = await osmosis.controller.addLiquidityAMM(
-  //     osmosis,
+  //   const response: AMMAddLiquidityResponseType = await addLiquidityAMM(
   //     fastify,
-  //     request_AMMAddLiquidityRequestType,
+  //     request,
   //   );
-  //   console.debug(reponse_AMMAddLiquidityResponseType);
-  //   writeMockResponse('addLiquidity-GAMM-in', request_AMMAddLiquidityRequestType);
-  //   writeMockResponse('addLiquidity-GAMM-out', reponse_AMMAddLiquidityResponseType);
+  //   console.debug(response);
+  //   writeMockResponse('addLiquidity-GAMM-in', request);
+  //   writeMockResponse('addLiquidity-GAMM-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('AMMGetPositionInfoRequestType by pool address');
-  //   const request_AMMGetPositionInfoRequestType: AMMGetPositionInfoRequestType = {
+  //   const request: AMMGetPositionInfoRequestType = {
   //     network: NETWORK,
   //     walletAddress: TEST_WALLET,
   //     poolAddress: gammPoolAddress,
   //   };
-  //   var response_AMMGetPositionInfoRequestType: AMMPositionInfo = await osmosis.controller.poolPosition(
-  //     osmosis,
+  //   var response: AMMPositionInfo = await positionInfoAMM(
   //     fastify,
-  //     request_AMMGetPositionInfoRequestType,
+  //     request,
   //     'amm',
-  //   );
-  //   console.debug(response_AMMGetPositionInfoRequestType);
-  //   writeMockResponse('positionInfo-GAMM-by-address-in', request_AMMGetPositionInfoRequestType);
-  //   writeMockResponse('positionInfo-GAMM-by-address-out', response_AMMGetPositionInfoRequestType);
+  //   ) as AMMPositionInfo;
+  //   console.debug(response);
+  //   writeMockResponse('positionInfo-GAMM-by-address-in', request);
+  //   writeMockResponse('positionInfo-GAMM-by-address-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('positionsOwned AMM for wallet');
-  //   const request_positionsOwned: PositionsOwnedRequestType  = {
+  //   const request: PositionsOwnedRequestType  = {
   //     network: NETWORK,
   //     walletAddress: TEST_WALLET,
   //     poolType: 'amm',
   //   };
-  //   const response_positionsOwned: AMMAllPositionsOwnedResponseType | CLMMAllPositionsOwnedResponseType = await osmosis.controller.allPoolPositions(
-  //     osmosis,
+  //   const response_positionsOwned: AMMAllPositionsOwnedResponseType | CLMMAllPositionsOwnedResponseType = await positionsOwnedAMM(
   //     fastify,
-  //     TEST_WALLET,
+  //     request,
   //     'amm',
   //   );
-  //   writeMockResponse('positionsOwned-AMM-in', request_positionsOwned);
+  //   writeMockResponse('positionsOwned-AMM-in', request);
   //   writeMockResponse('positionsOwned-AMM-out', response_positionsOwned);
   //   gammPoolAddress = response_positionsOwned[0].poolAddress;
   // } catch (err) {
@@ -642,58 +461,56 @@ async function testnojest() {
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('AMMRemoveLiquidityRequestType GAMM');
-  //   const request_AMMRemoveLiquidityRequestType: AMMRemoveLiquidityRequestType = {
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
+  //   console.debug('removeLiquidityAMM partial');
+  //   const request: AMMRemoveLiquidityRequestType = {
   //     percentageToRemove: 20,
   //     poolAddress: gammPoolAddress,
   //     network: NETWORK,
   //     walletAddress: TEST_WALLET,
   //   };
-  //   const response_AMMRemoveLiquidityResponseType: AMMRemoveLiquidityResponseType =
-  //     await osmosis.controller.removeLiquidityAMM(osmosis, fastify, request_AMMRemoveLiquidityRequestType);
-  //   console.debug(response_AMMRemoveLiquidityResponseType);
-  //   writeMockResponse('removeLiquidity-GAMM-partial-in', request_AMMRemoveLiquidityRequestType);
-  //   writeMockResponse('removeLiquidity-GAMM-partial-out', response_AMMRemoveLiquidityResponseType);
+  //   const response: AMMRemoveLiquidityResponseType =
+  //     await removeLiquidityAMM(fastify, request);
+  //   console.debug(response);
+  //   writeMockResponse('removeLiquidity-GAMM-partial-in', request);
+  //   writeMockResponse('removeLiquidity-GAMM-partial-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
-  //   console.debug('AMMRemoveLiquidityRequestType GAMM');
-  //   const request_AMMRemoveLiquidityRequestType: AMMRemoveLiquidityRequestType = {
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
+  //   console.debug('removeLiquidityAMM all');
+  //   const request: AMMRemoveLiquidityRequestType = {
   //     percentageToRemove: 100,
   //     poolAddress: gammPoolAddress,
   //     network: NETWORK,
   //     walletAddress: TEST_WALLET,
   //   };
-  //   const response_AMMRemoveLiquidityResponseType: AMMRemoveLiquidityResponseType =
-  //     await osmosis.controller.removeLiquidityAMM(osmosis, fastify, request_AMMRemoveLiquidityRequestType);
-  //   console.debug(response_AMMRemoveLiquidityResponseType);
-  //   writeMockResponse('removeLiquidity-GAMM-all-in', request_AMMRemoveLiquidityRequestType);
-  //   writeMockResponse('removeLiquidity-GAMM-all-out', response_AMMRemoveLiquidityResponseType);
+  //   const response: AMMRemoveLiquidityResponseType =
+  //     await removeLiquidityAMM(fastify, request);
+  //   console.debug(response);
+  //   writeMockResponse('removeLiquidity-GAMM-all-in', request);
+  //   writeMockResponse('removeLiquidity-GAMM-all-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('AMMGetPoolInfoRequestType by pool address');
-  //   const request_AMMGetPoolInfoRequestType: AMMGetPoolInfoRequestType = {
+  //   const request: AMMGetPoolInfoRequestType = {
   //     network: NETWORK,
   //     poolAddress: gammPoolAddress,
   //   };
-  //   var response_AMMPoolInfo: AMMPoolInfo = await osmosis.controller.poolInfoRequest(
-  //     osmosis,
+  //   const response: AMMPoolInfo = await poolInfoAMM(
   //     fastify,
-  //     request_AMMGetPoolInfoRequestType,
+  //     request,
   //     'amm',
   //   );
-  //   console.debug(response_AMMPoolInfo);
-  //   writeMockResponse('poolInf-GAMM-by-address-in', request_AMMGetPoolInfoRequestType);
-  //   // writeMockResponse('poolInf-GAMM-address', response_AMMPoolInfo.address as unknown as object);
-  //   writeMockResponse('poolInf-GAMM-by-address-out', response_AMMPoolInfo);
+  //   console.debug(response);
+  //   writeMockResponse('poolInfo-GAMM-by-address-in', request);
+  //   writeMockResponse('poolInfo-GAMM-by-address-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
@@ -701,14 +518,14 @@ async function testnojest() {
   // let clmmPositionAddress = '3486'; //'3479'; //2836 2837 2843
   // let clmmPoolAddress = 'osmo1rdm79d008fel4ppkgdcf8pgjwazf72sjfhpyx5kpzlck86slpjusek2en6';
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('fetchPools CLMM');
   //   const request_CLMMAddLiquidityRequestType: FetchPoolsRequestType = {
+  //     network: NETWORK,
   //     tokenA: 'ION',
   //     tokenB: 'OSMO',
   //   };
-  //   const response_CLMMAddLiquidityResponseType: SerializableExtendedPool[] = await osmosis.controller.fetchPoolsForTokens(
-  //     osmosis,
+  //   const response_CLMMAddLiquidityResponseType: SerializableExtendedPool[] = await fetchPoolsCLMM(
   //     fastify,
   //     request_CLMMAddLiquidityRequestType,
   //     'clmm',
@@ -722,7 +539,7 @@ async function testnojest() {
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('CLMM Quote Position Stub');
   //   const quotePosition_request: QuotePositionRequestType = {
   //     poolAddress: clmmPoolAddress,
@@ -745,9 +562,9 @@ async function testnojest() {
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('CLMM Open Position by clmmPoolAddress: CLMMOpenPositionRequestType CLMMOpenPositionResponseType');
-  //   const addLiquidityRequestFunction: CLMMOpenPositionRequestType = {
+  //   const request: CLMMOpenPositionRequestType = {
   //     lowerPrice: 200,
   //     upperPrice: 1000,
   //     poolAddress: clmmPoolAddress,
@@ -757,43 +574,60 @@ async function testnojest() {
   //     walletAddress: TEST_WALLET,
   //     slippagePct: 100, // very unbalanced, only accepting ION
   //   };
-  //   const addLiquidityResponseCLMM: CLMMOpenPositionResponseType = await osmosis.controller.openPositionCLMM(
-  //     osmosis,
+  //   const response: CLMMOpenPositionResponseType = await openPosition(
   //     fastify,
-  //     addLiquidityRequestFunction,
+  //     request,
   //   );
-  //   clmmPositionAddress = addLiquidityResponseCLMM.data.positionAddress;
-  //   console.debug(addLiquidityResponseCLMM);
+  //   clmmPositionAddress = response.data.positionAddress;
+  //   console.debug(response);
   //   console.debug(clmmPositionAddress);
-  //   writeMockResponse('openPosition-CLMM-in', addLiquidityRequestFunction);
+  //   writeMockResponse('openPosition-CLMM-in', request);
   //   // writeMockResponse('openPosition-CLMM-positionAddress', clmmPositionAddress as unknown as object);
-  //   writeMockResponse('openPosition-CLMM-out', addLiquidityResponseCLMM);
+  //   writeMockResponse('openPosition-CLMM-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
 
+  // let collect_clmmPositionAddress = '';
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('positionsOwned CLMM for wallet');
   //   const request_positionsOwned: PositionsOwnedRequestType  = {
   //     network: NETWORK,
   //     walletAddress: TEST_WALLET,
   //     poolType: 'clmm',
   //   };
-  //   const response_positionsOwned: AMMAllPositionsOwnedResponseType | CLMMAllPositionsOwnedResponseType = await osmosis.controller.allPoolPositions(
-  //     osmosis,
+  //   const response: AMMAllPositionsOwnedResponseType | CLMMAllPositionsOwnedResponseType = await positionsOwnedCLMM(
   //     fastify,
-  //     TEST_WALLET,
+  //     request_positionsOwned,
   //     'clmm',
   //   );
+  //   collect_clmmPositionAddress = response[10].address;
   //   writeMockResponse('positionsOwned-CLMM-in', request_positionsOwned);
-  //   writeMockResponse('positionsOwned-CLMM-out', response_positionsOwned);
+  //   writeMockResponse('positionsOwned-CLMM-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
+  //   console.debug('CLMMCollectFeesRequestType CLMMClosePositionResponseType');
+  //   const request: CLMMCollectFeesRequestType = {
+  //     network: NETWORK,
+  //     walletAddress: TEST_WALLET,
+  //     positionAddress: collect_clmmPositionAddress,
+  //   };
+  //   const response: CollectFeesResponseType =
+  //     await collectFees(fastify, request); // just collectRewards and removeLiq with 100%
+  //   console.debug(response);
+  //   writeMockResponse('collectFees-CLMM-in', request);
+  //   writeMockResponse('collectFees-CLMM-out', response);
+  // } catch (err) {
+  //   console.debug(err);
+  // }
+
+  // try {
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('CLMMAddLiquidityRequestType CLMMAddLiquidityResponseType');
   //   const request_CLMMAddLiquidityRequestType: CLMMAddLiquidityRequestType = {
   //     positionAddress: clmmPositionAddress,
@@ -804,7 +638,7 @@ async function testnojest() {
   //     slippagePct: 100,
   //   };
   //   const response_CLMMAddLiquidityResponseType: CLMMAddLiquidityResponseType =
-  //     await osmosis.controller.addLiquidityCLMM(osmosis, fastify, request_CLMMAddLiquidityRequestType);
+  //     await addLiquidityCLMM(fastify, request_CLMMAddLiquidityRequestType);
   //   clmmPositionAddress = response_CLMMAddLiquidityResponseType.data.newPositionAddress;
   //   console.debug(response_CLMMAddLiquidityResponseType);
   //   console.debug(clmmPositionAddress);
@@ -816,15 +650,16 @@ async function testnojest() {
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('CLMMRemoveLiquidityRequestType CLMMRemoveLiquidityResponseType');
   //   const request_CLMMRemoveLiquidityRequestType: CLMMRemoveLiquidityRequestType = {
+  //     network: NETWORK,
   //     positionAddress: clmmPositionAddress,
   //     percentageToRemove: 50,
   //     walletAddress: TEST_WALLET,
   //   };
   //   const response_CLMMRemoveLiquidityResponseType: CLMMRemoveLiquidityResponseType =
-  //     await osmosis.controller.removeLiquidityCLMM(osmosis, fastify, request_CLMMRemoveLiquidityRequestType);
+  //     await removeLiquidityCLMM(fastify, request_CLMMRemoveLiquidityRequestType);
   //   console.debug(response_CLMMRemoveLiquidityResponseType);
   //   console.debug(clmmPositionAddress);
   //   writeMockResponse('removeLiquidity-CLMM-in', request_CLMMRemoveLiquidityRequestType);
@@ -834,30 +669,28 @@ async function testnojest() {
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('CLMMGetPositionInfoRequestType by CLMMPositionAddress');
   //   const request_CLMMGetPositionInfoRequestType: CLMMGetPositionInfoRequestType = {
   //     network: NETWORK,
   //     walletAddress: TEST_WALLET,
   //     positionAddress: clmmPositionAddress,
   //   };
-  //   const response_CLMMPositionInfo: CLMMPositionInfo = await osmosis.controller.poolPosition(
-  //     osmosis,
+  //   const response_CLMMPositionInfo: CLMMPositionInfo = await positionInfoCLMM(
   //     fastify,
   //     request_CLMMGetPositionInfoRequestType,
   //     'clmm',
-  //   );
+  //   ) as CLMMPositionInfo;
   //   console.debug(response_CLMMPositionInfo);
   //   console.debug(clmmPositionAddress);
   //   writeMockResponse('poolPosition-CLMM-in', request_CLMMGetPositionInfoRequestType);
-  //   // writeMockResponse('poolPosition-CLMM-address', clmmPositionAddress as unknown as object);
   //   writeMockResponse('poolPosition-CLMM-out', response_CLMMPositionInfo);
   // } catch (err) {
   //   console.debug(err);
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('CLMMClosePositionRequestType CLMMClosePositionResponseType');
   //   const request_CLMMClosePositionRequestType: CLMMClosePositionRequestType = {
   //     network: NETWORK,
@@ -865,7 +698,7 @@ async function testnojest() {
   //     positionAddress: clmmPositionAddress,
   //   };
   //   const response_CLMMClosePositionResponseType: CLMMClosePositionResponseType =
-  //     await osmosis.controller.closePositionCLMM(osmosis, fastify, request_CLMMClosePositionRequestType); // just collectRewards and removeLiq with 100%
+  //     await closePositionCLMM(fastify, request_CLMMClosePositionRequestType); // just collectRewards and removeLiq with 100%
   //   console.debug(response_CLMMClosePositionResponseType);
   //   writeMockResponse('closePosition-CLMM-in', request_CLMMClosePositionRequestType);
   //   writeMockResponse('closePosition-CLMM-out', response_CLMMClosePositionResponseType);
@@ -874,18 +707,17 @@ async function testnojest() {
   // }
 
   // try {
-  //   await new Promise((resolve) => setTimeout(resolve, 5000));
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
   //   console.debug('CLMMGetPoolInfoRequestType by poolAddress');
   //   const request_CLMMGetPoolInfoRequestType: CLMMGetPoolInfoRequestType = {
   //     network: NETWORK,
   //     poolAddress: clmmPoolAddress,
   //   };
-  //   var response_CLMMPoolInfo: CLMMPoolInfo = await osmosis.controller.poolInfoRequest(
-  //     osmosis,
+  //   var response_CLMMPoolInfo: CLMMPoolInfo = await poolInfoCLMM(
   //     fastify,
   //     request_CLMMGetPoolInfoRequestType,
   //     'clmm',
-  //   );
+  //   ) as CLMMPoolInfo;
   //   console.debug(response_CLMMPoolInfo);
   //   writeMockResponse('poolInfo-CLMM-in', request_CLMMGetPoolInfoRequestType);
   //   writeMockResponse('poolInfo-CLMM-out', response_CLMMPoolInfo);

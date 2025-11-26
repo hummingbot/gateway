@@ -62,7 +62,6 @@ export async function cWalletMaker(privkey: Uint8Array, prefix: string): Promise
     .getAccounts()
     .then((accounts: readonly AccountData[]) => accounts[0].pubkey)) as Uint8Array;
   wallet.address = await member.getAccounts().then((accounts: readonly AccountData[]) => accounts[0].address);
-  // wallet.address = new TextDecoder().decode(wallet.pubkey);
   return wallet;
 }
 
@@ -215,19 +214,20 @@ export class CosmosBase {
       const tokens = await TokenService.getInstance().loadTokenList('cosmos', this.network);
 
       // Convert to TokenInfo format with chainId and fake addresses
-      this.tokenList = tokens.map((token) => ({
-        ...token,
-        address: token.coinMinimalDenom,
-        chainId: this.chainName.toString(),
-      }));
+      this.tokenList = [];
+      tokens.forEach((token) => {
+        if (['osmosistestnet', 'osmosis'].includes(token.chainName)) {
+          this.tokenList.push(new CosmosAsset(token));
+        }
+      });
       if (this.tokenList) {
         logger.info(`Loaded ${this.tokenList.length} tokens for Cosmos-Osmosis/${this.network}`);
         this.tokenList.forEach((token: CosmosAsset) => (this._tokenMap[token.symbol] = token));
       }
       this.assetList = [
         {
-          chainName: this.chainName,
-          chain_name: this.chainName,
+          chainName: 'osmosis',
+          chain_name: 'osmosis',
           assets: this.tokenList,
         },
       ];
@@ -309,7 +309,7 @@ export class CosmosBase {
       // return await this.getWalletFromPrivateKey(Buffer.from(secretKeyBytes).toString('hex'), prefix);
     } catch (error) {
       if (error.message.includes('Invalid Cosmos address')) {
-        throw error; // Re-throw validation errors
+        throw new Error(`Invalid wallet address: ${address}`);
       }
       if (error.code === 'ENOENT') {
         throw new Error(`Wallet not found for address: ${address}`);

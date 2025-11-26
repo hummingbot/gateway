@@ -1,9 +1,0 @@
-{
-  "address": "osmo1mw0ac6rwlp5r8wapwk3zs6g29h8fcscxqakdzw9emkne6c8wjp9q0t3v8t",
-  "baseTokenAddress": "uion",
-  "quoteTokenAddress": "uosmo",
-  "feePct": 0.005,
-  "price": 0.0007959261392043727,
-  "baseTokenAmount": 2507975853,
-  "quoteTokenAmount": 3151015815999
-}

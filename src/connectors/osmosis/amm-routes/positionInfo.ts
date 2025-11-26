@@ -13,7 +13,7 @@ import {
 import { logger } from '../../../services/logger';
 import { Osmosis } from '../osmosis';
 
-export async function osmosisPoolPositionInfo(
+export async function positionInfo(
   fastify: FastifyInstance,
   request: AMMGetPositionInfoRequestType | CLMMGetPositionInfoRequestType,
   poolType: string,
@@ -64,7 +64,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('Pool address must be provided');
         }
 
-        return (await osmosisPoolPositionInfo(fastify, request.query, 'amm')) as AMMPositionInfo;
+        return (await positionInfo(fastify, request.query, 'amm')) as AMMPositionInfo;
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

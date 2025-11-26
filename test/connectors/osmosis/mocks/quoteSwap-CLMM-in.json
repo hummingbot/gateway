@@ -1,9 +1,8 @@
 {
+  "slippagePct": 99,
+  "network": "testnet",
   "quoteToken": "ION",
   "baseToken": "OSMO",
-  "amount": "0.001",
-  "side": "BUY",
-  "slippagePct": "99",
-  "chains": "cosmos",
-  "network": "testnet"
+  "amount": 0.001,
+  "side": "BUY"
 }

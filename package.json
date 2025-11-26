@@ -15,7 +15,7 @@
     "#test/*": "./test/*"
   },
   "scripts": {
-    "osmo": "GATEWAY_TEST_MODE=dev jest --runInBand --verbose test/connectors/osmosis/osmosis",
+    "osmo": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" GATEWAY_TEST_MODE=dev jest --runInBand --verbose --coverage test/connectors/osmosis/",
     "prebuild": "rimraf dist && mkdir dist",
     "build": "tsc --project tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run copy-files",
     "clean": "rm -rf ./node_modules && rm -rf ./coverage && rm -rf ./logs && rm -rf ./dist",
@@ -30,7 +30,7 @@
     "test:clear-cache": "jest --clearCache",
     "test:debug": "GATEWAY_TEST_MODE=dev jest --watch --runInBand",
     "test:unit": "GATEWAY_TEST_MODE=dev jest --runInBand ./test/",
-    "test:cov": "GATEWAY_TEST_MODE=dev jest --runInBand --coverage ./test/",
+    "test:cov": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" GATEWAY_TEST_MODE=dev jest --runInBand --coverage ./test/",
     "test:scripts": "GATEWAY_TEST_MODE=dev jest --runInBand ./test-scripts/*.test.ts",
     "typecheck": "tsc --noEmit",
     "generate:openapi": "curl http://localhost:15888/docs/json -o openapi.json && echo 'OpenAPI spec saved to openapi.json'",

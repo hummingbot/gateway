@@ -9,7 +9,7 @@ import {
 import { logger } from '../../../services/logger';
 import { Osmosis } from '../osmosis';
 
-export async function removeLiquidityCLMM(
+export async function removeLiquidity(
   fastify: any,
   req: CLMMRemoveLiquidityRequestType,
 ): Promise<CLMMRemoveLiquidityResponseType> {
@@ -71,7 +71,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         if (percentageToRemove < 0 || percentageToRemove > 100) {
           throw fastify.httpErrors.badRequest('Percentage to remove must be between 0 and 100');
         }
-        return await removeLiquidityCLMM(fastify, request.body);
+        return await removeLiquidity(fastify, request.body);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

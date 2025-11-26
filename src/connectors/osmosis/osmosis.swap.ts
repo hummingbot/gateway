@@ -18,7 +18,7 @@ import { logger } from '../../services/logger';
 import { Osmosis } from './osmosis';
 import { ExtendedPool } from './osmosis.types';
 
-export async function osmosisExecuteSwap(
+export async function executeSwap(
   fastify: FastifyInstance,
   request: ExecuteSwapRequestType,
   poolType: string,
@@ -32,7 +32,7 @@ export async function osmosisExecuteSwap(
   return response;
 }
 
-export async function osmosisQuoteSwap(
+export async function quoteSwap(
   fastify: FastifyInstance,
   request: QuoteSwapRequestType,
   poolType: string,

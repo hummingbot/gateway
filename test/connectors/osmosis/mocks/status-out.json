@@ -1,0 +1,9 @@
+{
+  "chain": "cosmos",
+  "network": "testnet",
+  "rpcUrl": "https://rpc.testnet.osmosis.zone/",
+  "currentBlockNumber": 41884325,
+  "nativeCurrency": "OSMO",
+  "rpcProvider": "osmosis",
+  "swapProvider": "osmosis"
+}

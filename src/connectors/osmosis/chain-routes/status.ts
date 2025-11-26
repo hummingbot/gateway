@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import {
   StatusRequestType,
@@ -9,7 +9,7 @@ import {
 import { logger } from '../../../services/logger';
 import { Osmosis } from '../osmosis';
 
-export async function getStatus(network: string): Promise<StatusResponseType> {
+export async function status(fastify: FastifyInstance, network: string): Promise<StatusResponseType> {
   try {
     const osmosis = await Osmosis.getInstance(network);
     await osmosis.init();
@@ -46,7 +46,7 @@ export async function getStatus(network: string): Promise<StatusResponseType> {
     };
   } catch (error) {
     logger.error(`Error getting cosmos status: ${error.message}`);
-    throw new Error(`Failed to get cosmos status: ${error.message}`);
+    fastify.httpErrors.internalServerError(`Failed to get cosmos status: ${error.message}`);
   }
 }
 
@@ -79,7 +79,7 @@ export const statusRoute: FastifyPluginAsync = async (fastify) => {
       const { network } = request.query;
       try {
         // This will handle node timeout internally
-        return await getStatus(network);
+        return await status(fastify, network);
       } catch (error) {
         // This will catch any other unexpected errors
         logger.error(`Error in cosmos status endpoint: ${error.message}`);

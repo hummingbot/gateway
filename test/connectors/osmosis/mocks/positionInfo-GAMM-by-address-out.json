@@ -1,13 +1,11 @@
 {
-  "network": "osmosis",
-  "timestamp": 1763603207997,
-  "latency": 2.412,
+  "network": "testnet",
   "walletAddress": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
   "poolAddress": "osmo1mw0ac6rwlp5r8wapwk3zs6g29h8fcscxqakdzw9emkne6c8wjp9q0t3v8t",
   "baseTokenAmount": 0,
   "quoteTokenAmount": 0,
   "baseTokenAddress": "",
   "quoteTokenAddress": "",
-  "price": 0.000795926138595411,
-  "lpTokenAmount": 121988636279709
+  "price": 0.0007959387905065114,
+  "lpTokenAmount": 12198727513903672
 }

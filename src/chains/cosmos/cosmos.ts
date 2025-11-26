@@ -1,4 +1,3 @@
-// import { Cosmosish } from '../../services/common-interfaces';
 import fse from 'fs-extra';
 
 import { logger } from '../../services/logger';
@@ -6,37 +5,9 @@ import { walletPath } from '../../wallet/utils';
 
 import { CosmosBase } from './cosmos-base';
 import { getCosmosConfig } from './cosmos.config';
-import { CosmosController } from './cosmos.controllers';
 import { isValidCosmosAddress } from './cosmos.validators';
 
 const exampleCosmosPublicKey = 'cosmos000000000000000000000000000000000000000';
-// const exampleCosmosPrivateKey = '0000000000000000000000000000000000000000000000000000000000000000';
-
-//   /**
-//  * Get a wallet address example for schema documentation
-//  */
-// export async function getWalletAddressExample(): Promise<string> {
-//   if (Cosmos._walletAddressExample) {
-//     return Cosmos._walletAddressExample;
-//   }
-
-//   const defaultAddress = exampleCosmosPublicKey;
-//   try {
-//     const foundWallet = await Cosmos.getFirstWalletAddress();
-//     if (foundWallet) {
-//       Cosmos._walletAddressExample = foundWallet;
-//       return foundWallet;
-//     }
-//     logger.debug('No wallets found for examples in schema, using default.');
-//     Cosmos._walletAddressExample = defaultAddress;
-//     return defaultAddress;
-//   } catch (error) {
-//     logger.error(
-//       `Error getting Cosmos/Osmosis wallet address for example: ${error.message}`,
-//     );
-//     return defaultAddress;
-//   }
-// }
 
 export class Cosmos extends CosmosBase {
   private static _instances: { [name: string]: Cosmos };
@@ -44,7 +15,6 @@ export class Cosmos extends CosmosBase {
   private _requestCount: number;
   private _metricsLogInterval: number;
   private _metricTimer;
-  public controller;
   public gasPrice: number;
   public nativeTokenSymbol: string;
   public chain: string;
@@ -74,7 +44,6 @@ export class Cosmos extends CosmosBase {
     this._requestCount = 0;
     this._metricsLogInterval = 300000; // 5 minutes
     this._metricTimer = setInterval(this.metricLogger.bind(this), this.metricsLogInterval);
-    this.controller = CosmosController;
   }
 
   public static getInstance(network: string): Cosmos {

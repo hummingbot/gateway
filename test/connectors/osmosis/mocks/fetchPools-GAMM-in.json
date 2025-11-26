@@ -1,4 +1,5 @@
 {
+  "network": "testnet",
   "tokenA": "ION",
   "tokenB": "OSMO"
 }

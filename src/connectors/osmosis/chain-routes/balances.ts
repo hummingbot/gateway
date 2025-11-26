@@ -9,34 +9,25 @@ import {
 import { logger } from '../../../services/logger';
 import { Osmosis } from '../osmosis';
 
-export async function getOsmosisBalances(
-  fastify: FastifyInstance,
-  network: string,
-  address: string,
-  tokens?: string[],
-  fetchAll?: boolean,
-): Promise<BalanceResponseType> {
+export async function balances(fastify: FastifyInstance, request: BalanceRequestType): Promise<BalanceResponseType> {
   try {
+    const network = request.network;
+    const address = request.address;
+    const fetchAll = request.fetchAll;
+    let tokens = request.tokens;
     if (fetchAll) {
       tokens = [];
     }
     const osmosis = await Osmosis.getInstance(network);
     await osmosis.init();
     const send_tokens = tokens ? tokens : [];
-    const balances = await osmosis.controller.balances(osmosis, {
+    const balances = await osmosis.controller.balances(osmosis, fastify, {
       address: address,
       tokenSymbols: send_tokens,
     });
 
-    if (!Object.keys(balances).length) {
-      throw fastify.httpErrors.badRequest('No token balances found for the given wallet');
-    }
-
     return balances;
   } catch (error) {
-    if (error.statusCode) {
-      throw error; // Re-throw if it's already a Fastify error
-    }
     logger.error(`Error getting balances: ${error.message}`);
     throw fastify.httpErrors.internalServerError(`Failed to get balances: ${error.message}`);
   }
@@ -79,8 +70,7 @@ export const balancesRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { network, address, tokens, fetchAll } = request.body;
-      return await getOsmosisBalances(fastify, network, address, tokens, fetchAll);
+      return await balances(fastify, request.body);
     },
   );
 };

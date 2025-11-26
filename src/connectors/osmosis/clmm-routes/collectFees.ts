@@ -9,7 +9,7 @@ import {
 import { logger } from '../../../services/logger';
 import { Osmosis } from '../osmosis';
 
-export async function osmosisCollectFees(
+export async function collectFees(
   fastify: FastifyInstance,
   request: CLMMCollectFeesRequestType,
 ): Promise<CLMMCollectFeesResponseType> {
@@ -60,7 +60,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('Missing required parameters');
         }
 
-        return (await osmosisCollectFees(fastify, request.body)) as CLMMCollectFeesResponseType;
+        return (await collectFees(fastify, request.body)) as CLMMCollectFeesResponseType;
       } catch (e) {
         logger.error(`Error in pool-info route: ${e.message}`);
         if (e.stack) {

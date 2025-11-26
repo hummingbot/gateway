@@ -4,10 +4,10 @@
     "tokenOut": "OSMO",
     "amountIn": 0.03094,
     "amountOut": 100,
-    "fee": 8536,
+    "fee": 8546,
     "baseTokenBalanceChange": -100,
-    "quoteTokenBalanceChange": 22404
+    "quoteTokenBalanceChange": 22394
   },
-  "signature": "CDA1F1D32E3371BD9F191D287AD70BA5FDCEED7DF1AFB0AF8AE3F0DE99D43774",
+  "signature": "80E911D530A358CCC18D6A7E47EDF296E7FF280D41FF65351B57D5BB89038610",
   "status": 0
 }

@@ -3,7 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { ExecuteSwapRequestType, ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Osmosis } from '../osmosis';
-import { osmosisExecuteSwap } from '../osmosis.swap';
+import { executeSwap } from '../osmosis.swap';
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
   // Import the httpErrors plugin to ensure it's available
@@ -12,7 +12,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
 
   // Get available networks from Osmosis configuration (same method as chain.routes.ts)
   const { ConfigManagerV2 } = require('../../../services/config-manager-v2');
-  const osmosisNetworks = Object.keys(ConfigManagerV2.getInstance().get('osmosis.networks') || {});
+  const osmosisNetworks = ['testnet', 'mainnet'];
 
   fastify.post<{
     Body: ExecuteSwapRequestType;
@@ -65,7 +65,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify, _options) =>
           return reply.badRequest('Missing required parameters');
         }
 
-        const executeSwapResponse = await osmosisExecuteSwap(fastify, request.body, 'router');
+        const executeSwapResponse = await executeSwap(fastify, request.body, 'router');
         return executeSwapResponse;
       } catch (e) {
         logger.error(`Execute swap error: ${e.message}`);

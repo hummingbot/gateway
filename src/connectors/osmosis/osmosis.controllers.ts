@@ -92,78 +92,82 @@ export class OsmosisController {
     req: QuoteSwapRequestType,
     poolType: string,
   ): Promise<[TradeInfo, QuoteSwapResponseType]> {
-    const gasAdjustment = osmosis.gasAdjustment; //
-    const feeTier = osmosis.feeTier; //
-    const baseAssetSymbol = req.baseToken;
-    const quoteAssetSymbol = req.quoteToken;
-    const baseAmount = new Decimal(req.amount);
-    const tradeSide = req.side;
+    try {
+      const gasAdjustment = osmosis.gasAdjustment; //
+      const feeTier = osmosis.feeTier; //
+      const baseAssetSymbol = req.baseToken;
+      const quoteAssetSymbol = req.quoteToken;
+      const baseAmount = new Decimal(req.amount);
+      const tradeSide = req.side;
 
-    const allowedSlippage = req.slippagePct ? req.slippagePct : osmosis.getAllowedSlippage();
+      const allowedSlippage = req.slippagePct ? req.slippagePct : osmosis.getAllowedSlippage();
 
-    const baseToken: CosmosAsset = osmosis.getTokenBySymbol(baseAssetSymbol)!;
-    const quoteToken: CosmosAsset = osmosis.getTokenBySymbol(quoteAssetSymbol)!;
+      const baseToken: CosmosAsset = osmosis.getTokenBySymbol(baseAssetSymbol)!;
+      const quoteToken: CosmosAsset = osmosis.getTokenBySymbol(quoteAssetSymbol)!;
 
-    if (!baseToken || !quoteToken) {
-      throw new Error(`Token not found: ${!baseToken ? req.baseToken : req.quoteToken}`);
+      if (!baseToken || !quoteToken) {
+        throw _fastify.httpErrors.notFound(`Token not found: ${!baseToken ? req.baseToken : req.quoteToken}`);
+      }
+      logger.info(`Base token (${req.baseToken}) info: ${JSON.stringify(baseToken)}`);
+      logger.info(`Quote token (${req.quoteToken}) info: ${JSON.stringify(quoteToken)}`);
+
+      const requestAmount: BigNumber = BigNumber(baseAmount.toFixed(baseToken.decimals));
+
+      const expectedTrade: OsmosisExpectedTrade = await osmosis.estimateTrade(
+        osmosis.network,
+        quoteToken,
+        baseToken,
+        requestAmount,
+        tradeSide,
+        poolType,
+        req.poolAddress,
+        allowedSlippage,
+        feeTier,
+        gasAdjustment,
+      );
+      const tradeInfo: TradeInfo = {
+        baseToken: baseToken,
+        quoteToken: quoteToken,
+        expectedTrade: expectedTrade,
+        requestAmount: requestAmount,
+      };
+
+      let finalPoolAddress = req.poolAddress;
+      if (
+        tradeInfo &&
+        tradeInfo.expectedTrade &&
+        tradeInfo.expectedTrade.routes &&
+        tradeInfo.expectedTrade.routes.length > 1
+      ) {
+        // finalPoolAddress = 'multiple pool hops';
+        finalPoolAddress = tradeInfo.expectedTrade.routes[0].poolId;
+      } else if (
+        tradeInfo &&
+        tradeInfo.expectedTrade &&
+        tradeInfo.expectedTrade.routes &&
+        tradeInfo.expectedTrade.routes.length == 1
+      ) {
+        finalPoolAddress = tradeInfo.expectedTrade.routes[0].poolId;
+      }
+
+      return [
+        tradeInfo,
+        {
+          priceImpactPct: expectedTrade.priceImpact,
+          slippagePct: allowedSlippage,
+          amountIn: Number(expectedTrade.tokenInAmount),
+          amountOut: Number(expectedTrade.tokenOutAmount),
+          tokenIn: req.baseToken,
+          tokenOut: req.quoteToken,
+          price: tradeInfo.expectedTrade.executionPrice.toNumber(),
+          poolAddress: finalPoolAddress,
+          minAmountOut: Number(expectedTrade.tokenOutAmountAfterSlippage),
+          maxAmountIn: Number(expectedTrade.tokenInAmountAfterSlippage),
+        },
+      ];
+    } catch (e) {
+      throw _fastify.httpErrors.internalServerError(e);
     }
-    logger.info(`Base token (${req.baseToken}) info: ${JSON.stringify(baseToken)}`);
-    logger.info(`Quote token (${req.quoteToken}) info: ${JSON.stringify(quoteToken)}`);
-
-    const requestAmount: BigNumber = BigNumber(baseAmount.toFixed(baseToken.decimals));
-
-    const expectedTrade: OsmosisExpectedTrade = await osmosis.estimateTrade(
-      osmosis.network,
-      quoteToken,
-      baseToken,
-      requestAmount,
-      tradeSide,
-      poolType,
-      req.poolAddress,
-      allowedSlippage,
-      feeTier,
-      gasAdjustment,
-    );
-    const tradeInfo: TradeInfo = {
-      baseToken: baseToken,
-      quoteToken: quoteToken,
-      expectedTrade: expectedTrade,
-      requestAmount: requestAmount,
-    };
-
-    let finalPoolAddress = req.poolAddress;
-    if (
-      tradeInfo &&
-      tradeInfo.expectedTrade &&
-      tradeInfo.expectedTrade.routes &&
-      tradeInfo.expectedTrade.routes.length > 1
-    ) {
-      // finalPoolAddress = 'multiple pool hops';
-      finalPoolAddress = tradeInfo.expectedTrade.routes[0].poolId;
-    } else if (
-      tradeInfo &&
-      tradeInfo.expectedTrade &&
-      tradeInfo.expectedTrade.routes &&
-      tradeInfo.expectedTrade.routes.length == 1
-    ) {
-      finalPoolAddress = tradeInfo.expectedTrade.routes[0].poolId;
-    }
-
-    return [
-      tradeInfo,
-      {
-        priceImpactPct: expectedTrade.priceImpact,
-        slippagePct: allowedSlippage,
-        amountIn: Number(expectedTrade.tokenInAmount),
-        amountOut: Number(expectedTrade.tokenOutAmount),
-        tokenIn: req.baseToken,
-        tokenOut: req.quoteToken,
-        price: tradeInfo.expectedTrade.executionPrice.toNumber(),
-        poolAddress: finalPoolAddress,
-        minAmountOut: Number(expectedTrade.tokenOutAmountAfterSlippage),
-        maxAmountIn: Number(expectedTrade.tokenInAmountAfterSlippage),
-      },
-    ];
   }
 
   static async quoteSwap(
@@ -179,10 +183,12 @@ export class OsmosisController {
     } catch (e) {
       if (e instanceof Error) {
         logger.error(`Osmosis:  Could not get trade info. ${e.message}  ${e.stack}  ${e.stack}`);
-        throw new Error(`Osmosis:  Could not get trade info. ${e.message}  ${e.stack}  ${e.stack}`);
+        throw _fastify.httpErrors.internalServerError(
+          `Osmosis:  Could not get trade info. ${e.message}  ${e.stack}  ${e.stack}`,
+        );
       } else {
         logger.error(`Osmosis:  Could not get trade info. Reason Unknown`);
-        throw new Error(`Osmosis:  Could not get trade info.  Reason Unknown`);
+        throw _fastify.httpErrors.internalServerError(`Osmosis:  Could not get trade info.  Reason Unknown`);
       }
     }
     return swapQuoteResponse;
@@ -194,126 +200,141 @@ export class OsmosisController {
     req: ExecuteSwapRequestType,
     poolType: string,
   ): Promise<ExecuteSwapResponseType> {
-    // const limitPrice = req.limitPrice; // MISSING?
-    const { wallet } = await getOsmoWallet(osmosis, req.walletAddress);
-
-    let tradeInfo: TradeInfo;
     try {
-      const tradeInfoAndSwapQuote = await this.getTradeInfo(osmosis, _fastify, req, poolType);
-      tradeInfo = tradeInfoAndSwapQuote[0];
-    } catch (e) {
-      if (e instanceof Error) {
-        logger.error(`Osmosis:  Could not get trade info. ${e.message}  ${e.stack}`);
-        throw new Error(
-          `Osmosis:   Could not get trade info. ${req.baseToken} : ${req.quoteToken} - ${e.message}  ${e.stack}`,
-        );
-      } else {
-        logger.error(`Osmosis:  Could not get trade info. Reason Unknown`);
-        throw new Error(`Osmosis:   Could not get trade info. ${req.baseToken} : ${req.quoteToken} - Reason Unknown`);
+      // const limitPrice = req.limitPrice; // MISSING?
+      const { wallet } = await getOsmoWallet(osmosis, req.walletAddress);
+
+      let tradeInfo: TradeInfo;
+      try {
+        const tradeInfoAndSwapQuote = await this.getTradeInfo(osmosis, _fastify, req, poolType);
+        tradeInfo = tradeInfoAndSwapQuote[0];
+      } catch (e) {
+        if (e instanceof Error) {
+          logger.error(`Osmosis:  Could not get trade info. ${e.message}  ${e.stack}`);
+          throw _fastify.httpErrors.internalServerError(
+            `Osmosis:   Could not get trade info. ${req.baseToken} : ${req.quoteToken} - ${e.message}  ${e.stack}`,
+          );
+        } else {
+          logger.error(`Osmosis:  Could not get trade info. Reason Unknown`);
+          throw _fastify.httpErrors.internalServerError(
+            `Osmosis:   Could not get trade info. ${req.baseToken} : ${req.quoteToken} - Reason Unknown`,
+          );
+        }
       }
-    }
-    const gasAdjustment = osmosis.gasAdjustment;
-    const feeTier = osmosis.feeTier;
+      const gasAdjustment = osmosis.gasAdjustment;
+      const feeTier = osmosis.feeTier;
 
-    // LOGIC FOR LIMIT_PRICE - do not remove unless there's something I'm missing...
-    // const price = tradeInfo.expectedTrade.executionPrice;
-    // if (req.side === 'BUY') {
-    //   if (
-    //     limitPrice &&
-    //     new Decimal(price.toFixed(8)).gt(new Decimal(limitPrice))
-    //   ) {
-    //     logger.error('Osmosis:    Trade failed. Swap price exceeded limit price: ' + price.toFixed(8) + ' > ' + limitPrice);
-    //     throw new Error('Osmosis:    Trade failed. Swap price exceeded limit price: ' + price.toFixed(8) + ' > ' + limitPrice);
-    //   }
-    // }
-    // else {
-    //   logger.info(
-    //     `Osmosis:    Expected execution price is ${price.toFixed(6)}, ` +
-    //       `limit price is ${limitPrice}.`
-    //   );
-    //   if (
-    //     limitPrice &&
-    //     new Decimal(price.toFixed(8)).lt(new Decimal(limitPrice))
-    //   ) {
-    //     logger.error('Osmosis:    Trade failed. Swap price lower than limit price: ' + price.toFixed(8) + ' < ' + limitPrice);
-    //     throw new Error('Osmosis:    Trade failed. Swap price lower than limit price: ' + price.toFixed(8) + ' < ' + limitPrice);
-    //   }
-    // }
+      // LOGIC FOR LIMIT_PRICE - do not remove unless there's something I'm missing...
+      // const price = tradeInfo.expectedTrade.executionPrice;
+      // if (req.side === 'BUY') {
+      //   if (
+      //     limitPrice &&
+      //     new Decimal(price.toFixed(8)).gt(new Decimal(limitPrice))
+      //   ) {
+      //     logger.error('Osmosis:    Trade failed. Swap price exceeded limit price: ' + price.toFixed(8) + ' > ' + limitPrice);
+      //     throw _fastify.httpErrors.badRequest('Osmosis:    Trade failed. Swap price exceeded limit price: ' + price.toFixed(8) + ' > ' + limitPrice);
+      //   }
+      // }
+      // else {
+      //   logger.info(
+      //     `Osmosis:    Expected execution price is ${price.toFixed(6)}, ` +
+      //       `limit price is ${limitPrice}.`
+      //   );
+      //   if (
+      //     limitPrice &&
+      //     new Decimal(price.toFixed(8)).lt(new Decimal(limitPrice))
+      //   ) {
+      //     logger.error('Osmosis:    Trade failed. Swap price lower than limit price: ' + price.toFixed(8) + ' < ' + limitPrice);
+      //     throw _fastify.httpErrors.badRequest('Osmosis:    Trade failed. Swap price lower than limit price: ' + price.toFixed(8) + ' < ' + limitPrice);
+      //   }
+      // }
 
-    let balance_start_baseToken = new BigNumber(0);
-    let balance_start_quoteToken = new BigNumber(0);
-    let balance_end_baseToken = new BigNumber(0);
-    let balance_end_quoteToken = new BigNumber(0);
-    let transactionResponse: TransactionResponse;
+      let balance_start_baseToken = new BigNumber(0);
+      let balance_start_quoteToken = new BigNumber(0);
+      let balance_end_baseToken = new BigNumber(0);
+      let balance_end_quoteToken = new BigNumber(0);
+      let transactionResponse: TransactionResponse;
 
-    try {
-      const start_balances = await osmosis.getBalances(wallet);
-      balance_start_baseToken = start_balances[req.baseToken].value;
-      balance_start_quoteToken = start_balances[req.quoteToken].value;
-      transactionResponse = await osmosis.executeTrade(osmosis.network, wallet, req, tradeInfo, feeTier, gasAdjustment);
-      const end_balances = await osmosis.getBalances(wallet);
-      balance_end_baseToken = end_balances[req.baseToken].value;
-      balance_end_quoteToken = end_balances[req.quoteToken].value;
-    } catch (e) {
-      if (e instanceof Error) {
-        logger.error(`Osmosis:  Could not get trade info. ${e.message}  ${e.stack}`);
-        throw new Error(
-          `Osmosis:   Could not get trade info. ${req.baseToken} : ${req.quoteToken} - ${e.message}  ${e.stack}`,
+      try {
+        const start_balances = await osmosis.getBalances(wallet);
+        balance_start_baseToken = start_balances[req.baseToken].value;
+        balance_start_quoteToken = start_balances[req.quoteToken].value;
+        transactionResponse = await osmosis.executeTrade(
+          osmosis.network,
+          wallet,
+          req,
+          tradeInfo,
+          feeTier,
+          gasAdjustment,
         );
-      } else {
-        logger.error(`Osmosis:  Could not get trade info. Reason Unknown`);
-        throw new Error(`Osmosis:   Could not get trade info. ${req.baseToken} : ${req.quoteToken} - Reason Unknown`);
+        const end_balances = await osmosis.getBalances(wallet);
+        balance_end_baseToken = end_balances[req.baseToken].value;
+        balance_end_quoteToken = end_balances[req.quoteToken].value;
+      } catch (e) {
+        if (e instanceof Error) {
+          logger.error(`Osmosis:  Could not get trade info. ${e.message}  ${e.stack}`);
+          throw _fastify.httpErrors.badRequest(
+            `Osmosis:   Could not get trade info. ${req.baseToken} : ${req.quoteToken} - ${e.message}  ${e.stack}`,
+          );
+        } else {
+          logger.error(`Osmosis:  Could not get trade info. Reason Unknown`);
+          throw _fastify.httpErrors.badRequest(
+            `Osmosis:   Could not get trade info. ${req.baseToken} : ${req.quoteToken} - Reason Unknown`,
+          );
+        }
       }
-    }
 
-    const tx = transactionResponse;
-    const txMessage = 'Trade has been executed. ';
-    this.validateTxErrors(tx, txMessage);
+      const tx = transactionResponse;
+      const txMessage = 'Trade has been executed. ';
+      this.validateTxErrors(tx, txMessage);
 
-    let finalAmountReceived_string = '';
-    for (let txEvent_idx = 0; txEvent_idx < tx.events.length; txEvent_idx++) {
-      const txEvent: TransactionEvent = tx.events[txEvent_idx];
-      if (txEvent.type == 'coin_received') {
-        for (let txEventAttribute_idx = 0; txEventAttribute_idx < txEvent.attributes.length; txEventAttribute_idx++) {
-          const txEventAttribute: TransactionEventAttribute = txEvent.attributes[txEventAttribute_idx];
-          if (txEventAttribute.key == 'receiver') {
-            if (txEventAttribute.value == req.walletAddress) {
-              const next_txEventAttribute: TransactionEventAttribute = txEvent.attributes[txEventAttribute_idx + 1];
-              if (next_txEventAttribute.key == 'amount' && next_txEventAttribute.value) {
-                finalAmountReceived_string = next_txEventAttribute.value;
+      let finalAmountReceived_string = '';
+      for (let txEvent_idx = 0; txEvent_idx < tx.events.length; txEvent_idx++) {
+        const txEvent: TransactionEvent = tx.events[txEvent_idx];
+        if (txEvent.type == 'coin_received') {
+          for (let txEventAttribute_idx = 0; txEventAttribute_idx < txEvent.attributes.length; txEventAttribute_idx++) {
+            const txEventAttribute: TransactionEventAttribute = txEvent.attributes[txEventAttribute_idx];
+            if (txEventAttribute.key == 'receiver') {
+              if (txEventAttribute.value == req.walletAddress) {
+                const next_txEventAttribute: TransactionEventAttribute = txEvent.attributes[txEventAttribute_idx + 1];
+                if (next_txEventAttribute.key == 'amount' && next_txEventAttribute.value) {
+                  finalAmountReceived_string = next_txEventAttribute.value;
+                }
               }
             }
           }
         }
       }
-    }
-    let finalAmountReceived = new BigNumber(0);
-    if (finalAmountReceived_string != '') {
-      finalAmountReceived = new BigNumber(finalAmountReceived_string.replace(tradeInfo.quoteToken.base, ''))
-        .shiftedBy(tradeInfo.quoteToken.decimals * -1)
-        .decimalPlaces(tradeInfo.quoteToken.decimals);
-    }
+      let finalAmountReceived = new BigNumber(0);
+      if (finalAmountReceived_string != '') {
+        finalAmountReceived = new BigNumber(finalAmountReceived_string.replace(tradeInfo.quoteToken.base, ''))
+          .shiftedBy(tradeInfo.quoteToken.decimals * -1)
+          .decimalPlaces(tradeInfo.quoteToken.decimals);
+      }
 
-    const totalOutputSwapped = new BigNumber(req.amount)
-      .shiftedBy(tradeInfo.baseToken.decimals)
-      .decimalPlaces(tradeInfo.baseToken.decimals);
+      const totalOutputSwapped = new BigNumber(req.amount)
+        .shiftedBy(tradeInfo.baseToken.decimals)
+        .decimalPlaces(tradeInfo.baseToken.decimals);
 
-    const balanceChange_baseToken = balance_end_baseToken.minus(balance_start_baseToken).toNumber();
-    const balanceChange_quoteToken = balance_end_quoteToken.minus(balance_start_quoteToken).toNumber();
-    const executeSwapResponse: ExecuteSwapResponseType = {
-      data: {
-        tokenIn: req.baseToken,
-        tokenOut: req.quoteToken,
-        amountIn: finalAmountReceived.toNumber(),
-        amountOut: totalOutputSwapped.toNumber(),
-        fee: Number(tx.feeAmount),
-        baseTokenBalanceChange: balanceChange_baseToken,
-        quoteTokenBalanceChange: balanceChange_quoteToken,
-      },
-      signature: tx.transactionHash,
-      status: 0,
-    };
-    return executeSwapResponse;
+      const balanceChange_baseToken = balance_end_baseToken.minus(balance_start_baseToken).toNumber();
+      const balanceChange_quoteToken = balance_end_quoteToken.minus(balance_start_quoteToken).toNumber();
+      const executeSwapResponse: ExecuteSwapResponseType = {
+        data: {
+          tokenIn: req.baseToken,
+          tokenOut: req.quoteToken,
+          amountIn: finalAmountReceived.toNumber(),
+          amountOut: totalOutputSwapped.toNumber(),
+          fee: Number(tx.feeAmount),
+          baseTokenBalanceChange: balanceChange_baseToken,
+          quoteTokenBalanceChange: balanceChange_quoteToken,
+        },
+        signature: tx.transactionHash,
+        status: 0,
+      };
+      return executeSwapResponse;
+    } catch (e) {
+      throw _fastify.httpErrors.internalServerError(e);
+    }
   }
 
   static async addLiquidityAMM(
@@ -337,6 +358,7 @@ export class OsmosisController {
       return addLiquidityResponse;
     } catch (err) {
       console.error('Osmosis:   ' + err.message);
+      throw _fastify.httpErrors.internalServerError(err);
     }
 
     return addLiquidityResponse;
@@ -348,13 +370,16 @@ export class OsmosisController {
     _fastify: FastifyInstance,
     req: CLMMOpenPositionRequestType,
   ): Promise<CLMMOpenPositionResponseType> {
-    const { wallet } = await getOsmoWallet(osmosis, req.walletAddress);
-    const txAndOpenPositionResponse = await osmosis.OpenPositionCLMM(wallet, req as CLMMOpenPositionRequestType);
-    const openPositionTx = txAndOpenPositionResponse[0];
-    const openPositionResponse: CLMMOpenPositionResponseType = txAndOpenPositionResponse[1];
-    this.validateTxErrors(openPositionTx, 'CLMM Position Opened.');
-
-    return openPositionResponse;
+    try {
+      const { wallet } = await getOsmoWallet(osmosis, req.walletAddress);
+      const txAndOpenPositionResponse = await osmosis.OpenPositionCLMM(wallet, req as CLMMOpenPositionRequestType);
+      const openPositionTx = txAndOpenPositionResponse[0];
+      const openPositionResponse: CLMMOpenPositionResponseType = txAndOpenPositionResponse[1];
+      this.validateTxErrors(openPositionTx, 'CLMM Position Opened.');
+      return openPositionResponse;
+    } catch (err) {
+      throw _fastify.httpErrors.internalServerError(err);
+    }
   }
 
   // Apparently CLMMAddLiquidityRequestType doesn't contain baseToken/quoteToken, meaning it requires an OpenPositionRequest first...
@@ -363,12 +388,16 @@ export class OsmosisController {
     _fastify: FastifyInstance,
     req: CLMMAddLiquidityRequestType,
   ): Promise<CLMMAddLiquidityResponseType> {
-    const { wallet } = await getOsmoWallet(osmosis, req.walletAddress);
-    const txAndAddLiquidityResponse = await osmosis.AddLiquidityCLMM(wallet, req as CLMMAddLiquidityRequestType);
-    const tx = txAndAddLiquidityResponse[0];
-    const addLiquidityResponse = txAndAddLiquidityResponse[1];
-    this.validateTxErrors(tx, 'Liquidity added. ');
-    return addLiquidityResponse;
+    try {
+      const { wallet } = await getOsmoWallet(osmosis, req.walletAddress);
+      const txAndAddLiquidityResponse = await osmosis.AddLiquidityCLMM(wallet, req as CLMMAddLiquidityRequestType);
+      const tx = txAndAddLiquidityResponse[0];
+      const addLiquidityResponse = txAndAddLiquidityResponse[1];
+      this.validateTxErrors(tx, 'Liquidity added. ');
+      return addLiquidityResponse;
+    } catch (err) {
+      throw _fastify.httpErrors.internalServerError(err);
+    }
   }
 
   static async removeLiquidityAMM(
@@ -376,15 +405,19 @@ export class OsmosisController {
     _fastify: FastifyInstance,
     req: AMMRemoveLiquidityRequestType,
   ): Promise<AMMRemoveLiquidityResponseType> {
-    const { wallet } = await getOsmoWallet(osmosis, req.walletAddress);
-    const gasAdjustment = osmosis.gasAdjustment; //
-    const feeTier = osmosis.feeTier; //
-    const txAndReduceResponse = await osmosis.removeLiquidityAMM(wallet, req, feeTier, gasAdjustment);
-    const tx = txAndReduceResponse[0];
-    const reduceLiquidityResponse = txAndReduceResponse[1];
+    try {
+      const { wallet } = await getOsmoWallet(osmosis, req.walletAddress);
+      const gasAdjustment = osmosis.gasAdjustment; //
+      const feeTier = osmosis.feeTier; //
+      const txAndReduceResponse = await osmosis.removeLiquidityAMM(wallet, req, feeTier, gasAdjustment);
+      const tx = txAndReduceResponse[0];
+      const reduceLiquidityResponse = txAndReduceResponse[1];
 
-    logger.info(`Osmosis:    Liquidity removed, txHash is ${tx.transactionHash}, gasUsed is ${tx.gasUsed}.`);
-    return reduceLiquidityResponse;
+      logger.info(`Osmosis:    Liquidity removed, txHash is ${tx.transactionHash}, gasUsed is ${tx.gasUsed}.`);
+      return reduceLiquidityResponse;
+    } catch (err) {
+      throw _fastify.httpErrors.internalServerError(err);
+    }
   }
 
   static async removeLiquidityCLMM(
@@ -392,9 +425,13 @@ export class OsmosisController {
     _fastify: FastifyInstance,
     req: CLMMRemoveLiquidityRequestType,
   ): Promise<CLMMRemoveLiquidityResponseType> {
-    const { wallet } = await getOsmoWallet(osmosis, req.walletAddress);
-    const response = await osmosis.removeLiquidityCLMM(wallet, req);
-    return response;
+    try {
+      const { wallet } = await getOsmoWallet(osmosis, req.walletAddress);
+      const response = await osmosis.removeLiquidityCLMM(wallet, req);
+      return response;
+    } catch (err) {
+      throw _fastify.httpErrors.internalServerError(err);
+    }
   }
 
   // this is the same as removeLiquidityCLMM but with collectFees first
@@ -403,37 +440,41 @@ export class OsmosisController {
     _fastify: FastifyInstance,
     req: CLMMClosePositionRequestType,
   ): Promise<CLMMClosePositionResponseType> {
-    const { wallet } = await getOsmoWallet(osmosis, req.walletAddress);
-    const responseCollect = await osmosis.collectRewardsIncentives(wallet, req);
-    const req_remove: CLMMRemoveLiquidityRequestType = {
-      walletAddress: req.walletAddress,
-      percentageToRemove: 100,
-      positionAddress: req.positionAddress,
-    };
+    try {
+      const { wallet } = await getOsmoWallet(osmosis, req.walletAddress);
+      const responseCollect = await osmosis.collectRewardsIncentives(wallet, req);
+      const req_remove: CLMMRemoveLiquidityRequestType = {
+        walletAddress: req.walletAddress,
+        percentageToRemove: 100,
+        positionAddress: req.positionAddress,
+      };
 
-    const responseRemove: CLMMRemoveLiquidityResponseType = await osmosis.removeLiquidityCLMM(wallet, req_remove);
+      const responseRemove: CLMMRemoveLiquidityResponseType = await osmosis.removeLiquidityCLMM(wallet, req_remove);
 
-    let final_fee = 0;
-    if (responseRemove.data.fee) {
-      final_fee += responseRemove.data.fee;
+      let final_fee = 0;
+      if (responseRemove.data.fee) {
+        final_fee += responseRemove.data.fee;
+      }
+      if (responseCollect.data.fee) {
+        final_fee += responseCollect.data.fee;
+      }
+      const finalResponse: CLMMClosePositionResponseType = {
+        signature: responseRemove.signature,
+        status: responseRemove.status,
+        data: {
+          fee: final_fee,
+          baseTokenAmountRemoved: responseRemove.data.baseTokenAmountRemoved,
+          quoteTokenAmountRemoved: responseRemove.data.quoteTokenAmountRemoved,
+          baseFeeAmountCollected: responseCollect.data.baseFeeAmountCollected,
+          quoteFeeAmountCollected: responseCollect.data.quoteFeeAmountCollected,
+          positionRentRefunded: 0,
+        },
+      };
+
+      return finalResponse;
+    } catch (err) {
+      throw _fastify.httpErrors.internalServerError(err);
     }
-    if (responseCollect.data.fee) {
-      final_fee += responseCollect.data.fee;
-    }
-    const finalResponse: CLMMClosePositionResponseType = {
-      signature: responseRemove.signature,
-      status: responseRemove.status,
-      data: {
-        fee: final_fee,
-        baseTokenAmountRemoved: responseRemove.data.baseTokenAmountRemoved,
-        quoteTokenAmountRemoved: responseRemove.data.quoteTokenAmountRemoved,
-        baseFeeAmountCollected: responseCollect.data.baseFeeAmountCollected,
-        quoteFeeAmountCollected: responseCollect.data.quoteFeeAmountCollected,
-        positionRentRefunded: 0,
-      },
-    };
-
-    return finalResponse;
   }
 
   static async collectFees(
@@ -441,9 +482,13 @@ export class OsmosisController {
     _fastify: FastifyInstance,
     req: CLMMCollectFeesRequestType,
   ): Promise<CLMMCollectFeesResponseType> {
-    const { wallet } = await getOsmoWallet(osmosis, req.walletAddress);
-    const response = await osmosis.collectRewardsIncentives(wallet, req);
-    return response;
+    try {
+      const { wallet } = await getOsmoWallet(osmosis, req.walletAddress);
+      const response = await osmosis.collectRewardsIncentives(wallet, req);
+      return response;
+    } catch (err) {
+      throw _fastify.httpErrors.internalServerError(err);
+    }
   }
 
   // find pool by poolAddress, or both token0, token1 (support for latter option now gone in HBOT main)
@@ -468,7 +513,7 @@ export class OsmosisController {
       logger.error(
         `Osmosis:    Pool info request failed - no pools found for poolAddress, baseToken, quoteToken: ${req.poolAddress}`, //, ${req.baseToken}, ${req.quoteToken}.`,
       );
-      throw new Error(
+      throw _fastify.httpErrors.notFound(
         `Osmosis:    Pool info request failed - no pools found for poolAddress, baseToken, quoteToken: ${req.poolAddress}`, //, ${req.baseToken}, ${req.quoteToken}.`,
       );
     }
@@ -476,7 +521,7 @@ export class OsmosisController {
       logger.error(
         `Osmosis:    Pool info request failed - no pools found for poolAddress, baseToken, quoteToken: ${req.poolAddress}`, //, ${req.baseToken}, ${req.quoteToken}.`,
       );
-      throw new Error(
+      throw _fastify.httpErrors.notFound(
         `Osmosis:    Pool info request failed - no pools found for poolAddress, baseToken, quoteToken: ${req.poolAddress}`, //, ${req.baseToken}, ${req.quoteToken}.`,
       );
     }
@@ -526,11 +571,11 @@ export class OsmosisController {
     const token1: CosmosAsset = osmosis.getTokenBySymbol(req.tokenB)!;
     if (!token0) {
       logger.error('Osmosis:   baseToken not supported: ' + req.tokenA);
-      throw new Error('Osmosis:   baseToken not supported: ' + req.tokenA);
+      throw _fastify.httpErrors.badRequest('Osmosis:   baseToken not supported: ' + req.tokenA);
     }
     if (!token1) {
       logger.error('Osmosis:   quoteToken not supported: ' + req.tokenB);
-      throw new Error('Osmosis:   quoteToken not supported: ' + req.tokenB);
+      throw _fastify.httpErrors.badRequest('Osmosis:   quoteToken not supported: ' + req.tokenB);
     }
 
     const priceAndPools: PriceAndSerializableExtendedPools = await osmosis.findPoolsPrices(
@@ -544,7 +589,7 @@ export class OsmosisController {
       logger.error(
         `Osmosis:    Fetch pools for tokens request failed - no pools found for baseToken, quoteToken: ${req.tokenA}, ${req.tokenB}.`,
       );
-      throw new Error(
+      throw _fastify.httpErrors.notFound(
         `Osmosis:    Fetch pools for tokens request failed - no pools found for baseToken, quoteToken: ${req.tokenA}, ${req.tokenB}.`,
       );
     }
@@ -552,7 +597,7 @@ export class OsmosisController {
       logger.error(
         `Osmosis:    Fetch pools for tokens request failed - no pools found for baseToken, quoteToken: ${req.tokenA}, ${req.tokenB}.`,
       );
-      throw new Error(
+      throw _fastify.httpErrors.notFound(
         `Osmosis:    Fetch pools for tokens request failed - no pools found for baseToken, quoteToken: ${req.tokenA}, ${req.tokenB}.`,
       );
     }
@@ -571,17 +616,21 @@ export class OsmosisController {
     req: AMMGetPositionInfoRequestType | CLMMGetPositionInfoRequestType,
     poolType: string,
   ): Promise<AMMPositionInfo | CLMMPositionInfo> {
-    let response;
-    if (poolType == 'amm') {
-      response = (await osmosis.findPoolsPositionsGAMM(req as AMMGetPositionInfoRequestType)) as AMMPositionInfo[];
-    } else {
-      response = (await osmosis.findPoolsPositionsCLMM(req as CLMMGetPositionInfoRequestType)) as CLMMPositionInfo[];
-    }
+    try {
+      let response;
+      if (poolType == 'amm') {
+        response = (await osmosis.findPoolsPositionsGAMM(req as AMMGetPositionInfoRequestType)) as AMMPositionInfo[];
+      } else {
+        response = (await osmosis.findPoolsPositionsCLMM(req as CLMMGetPositionInfoRequestType)) as CLMMPositionInfo[];
+      }
 
-    return {
-      network: osmosis.chainName,
-      ...response[0],
-    };
+      return {
+        network: osmosis.network,
+        ...response[0],
+      };
+    } catch (err) {
+      throw _fastify.httpErrors.internalServerError(err);
+    }
   }
 
   // find all pool positions for address or singular poolId if supplied
@@ -591,32 +640,36 @@ export class OsmosisController {
     walletAddress: string,
     poolType: string,
   ): Promise<AMMPositionInfo[] | CLMMPositionInfo[]> {
-    let response;
-    if (poolType == 'amm') {
-      response = (await osmosis.findPoolsPositionsGAMM({
-        walletAddress: walletAddress,
-      } as AMMGetPositionInfoRequestType)) as AMMPositionInfo[];
-    } else {
-      response = (await osmosis.findPoolsPositionsCLMM(
-        {
+    try {
+      let response;
+      if (poolType == 'amm') {
+        response = (await osmosis.findPoolsPositionsGAMM({
           walletAddress: walletAddress,
-          positionAddress: 'NONE',
-        } as CLMMGetPositionInfoRequestType,
-        true,
-      )) as CLMMPositionInfo[];
-    }
+        } as AMMGetPositionInfoRequestType)) as AMMPositionInfo[];
+      } else {
+        response = (await osmosis.findPoolsPositionsCLMM(
+          {
+            walletAddress: walletAddress,
+            positionAddress: 'NONE',
+          } as CLMMGetPositionInfoRequestType,
+          true,
+        )) as CLMMPositionInfo[];
+      }
 
-    return {
-      network: osmosis.chainName,
-      ...response,
-    };
+      return {
+        network: osmosis.network,
+        ...response,
+      };
+    } catch (err) {
+      throw _fastify.httpErrors.internalServerError(err);
+    }
   }
 
   static async getTokens(osmosis: Osmosis, req: TokensRequestType): Promise<TokensResponseType> {
     return await osmosis.getTokens(req);
   }
 
-  static async transfer(osmosis: Osmosis, req: TransferRequest): Promise<TransferResponse> {
+  static async transfer(osmosis: Osmosis, _fastify: FastifyInstance, req: TransferRequest): Promise<TransferResponse> {
     const { wallet } = await getOsmoWallet(osmosis, req.from);
 
     const token: CosmosAsset = osmosis.getTokenBySymbol(req.token)!;
@@ -639,45 +692,56 @@ export class OsmosisController {
       );
     } else {
       logger.error('Osmosis:   Transfer failed. ' + tx.rawLog);
-      throw new Error('Osmosis:   Transfer failed. ' + tx.rawLog);
+      throw _fastify.httpErrors.badRequest('Osmosis:   Transfer failed. ' + tx.rawLog);
     }
   }
 
-  static async estimateGas(osmosis: Osmosis): Promise<EstimateGasResponse> {
-    const gasPrice = await osmosis.getLatestBasePrice();
-    const gasLimitUsed = osmosis.gasLimitTransaction;
-    return {
-      timestamp: Date.now(),
-      denomination: osmosis.nativeTokenSymbol,
-      feePerComputeUnit: gasLimitUsed,
-      computeUnits: 0,
-      feeAsset: 'OSMO',
-      fee: gasPrice,
-    };
+  static async estimateGas(osmosis: Osmosis, _fastify: FastifyInstance): Promise<EstimateGasResponse> {
+    try {
+      const gasPrice = await osmosis.getLatestBasePrice();
+      const gasLimitUsed = osmosis.gasLimitTransaction;
+      return {
+        timestamp: Date.now(),
+        denomination: osmosis.nativeTokenSymbol,
+        feePerComputeUnit: gasLimitUsed,
+        computeUnits: 0,
+        feeAsset: 'OSMO',
+        fee: gasPrice,
+      };
+    } catch (err) {
+      throw _fastify.httpErrors.internalServerError(err);
+    }
   }
 
-  static async balances(osmosis: Osmosis, req: CosmosBalanceRequest) {
-    const wallet = await osmosis.getWallet(req.address, 'osmo');
-    let replyWithAllTokens = false;
-    let tokenSymbols: string[] = [];
-    // FILTER IF req.tokenSymbols != []
-    if (req && req.tokenSymbols && req.tokenSymbols.length > 0) {
-      tokenSymbols = req.tokenSymbols;
-      replyWithAllTokens = true;
-    } else {
-      const tokenAssets = osmosis.storedTokenList;
-      tokenAssets.forEach((token: CosmosAsset) => {
-        tokenSymbols.push(token.symbol);
-      });
+  static async balances(osmosis: Osmosis, _fastify: FastifyInstance, req: CosmosBalanceRequest) {
+    try {
+      const wallet = await osmosis.getWallet(req.address, 'osmo');
+      let replyWithAllTokens = false;
+      let tokenSymbols: string[] = [];
+      // FILTER IF req.tokenSymbols != []
+      if (req && req.tokenSymbols && req.tokenSymbols.length > 0) {
+        req.tokenSymbols.forEach((sym) => {
+          const tsym = osmosis.getToken(sym);
+          if (!tsym || tsym == undefined) {
+            throw _fastify.httpErrors.notFound('Invalid token symbol: ' + sym);
+          }
+        });
+        tokenSymbols = req.tokenSymbols;
+      } else {
+        replyWithAllTokens = true;
+      }
+
+      const balances = await osmosis.getBalances(wallet);
+      const filteredBalances = toCosmosBalances(balances, osmosis.storedTokenList, replyWithAllTokens);
+
+      return {
+        network: osmosis.network,
+        balances: filteredBalances,
+        wallet: req.address,
+      };
+    } catch (err) {
+      throw _fastify.httpErrors.internalServerError(err);
     }
-
-    const balances = await osmosis.getBalances(wallet);
-    const filteredBalances = toCosmosBalances(balances, tokenSymbols, replyWithAllTokens);
-
-    return {
-      network: osmosis.chainName,
-      balances: filteredBalances,
-    };
   }
 
   static async poll(osmosis: Osmosis, request: PollRequestType): Promise<PollResponseType> {
@@ -719,32 +783,6 @@ export class OsmosisController {
         throw error; // Re-throw if it's already a Fastify error
       }
       logger.error(`Error polling transaction: ${error.message}`);
-    }
-  }
-
-  static async old_poll(osmosis: Osmosis, signature: string) {
-    try {
-      const transaction = await osmosis.getTransaction(signature);
-      const currentBlock = await osmosis.getCurrentBlockNumber();
-      let txStatus = unconfirmedTransaction;
-      if (transaction.code == successfulTransaction) {
-        txStatus = 1; // clientside this is a successful tx
-      } else if (transaction.code != unconfirmedTransaction) {
-        txStatus = transaction.code; // any other failure
-      }
-
-      const fee = transaction.gasUsed ? Number(transaction.gasUsed.toString()) : null;
-      return {
-        currentBlock: currentBlock,
-        signature: signature,
-        txBlock: Number(transaction.height.toString()),
-        txStatus: txStatus,
-        txData: decodeTxRaw(transaction.tx),
-        fee: fee, // Optional field
-      };
-    } catch (err) {
-      logger.error(`Osmosis:    Error polling transaction ${signature}: ${err}`);
-      throw new Error(`Osmosis:    Error polling transaction ${signature}: ${err}`);
     }
   }
 

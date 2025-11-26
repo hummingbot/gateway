@@ -6,10 +6,8 @@
     "quoteTokenAmount": 0,
     "baseTokenAddress": "",
     "quoteTokenAddress": "",
-    "price": 0.000795926138595411,
-    "lpTokenAmount": 121988636279709
+    "price": 0.0007959260951650942,
+    "lpTokenAmount": 121988641470936
   },
-  "network": "osmosis",
-  "timestamp": 1763603215411,
-  "latency": 2.511
+  "network": "testnet"
 }

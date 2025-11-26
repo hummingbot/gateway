@@ -9,7 +9,7 @@ import {
 import { logger } from '../../../services/logger';
 import { Osmosis } from '../osmosis';
 
-export async function osmosisClosePositionCLMM(
+export async function closePosition(
   fastify: FastifyInstance,
   request: CLMMClosePositionRequestType,
 ): Promise<CLMMClosePositionResponseType> {
@@ -57,7 +57,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.badRequest('Missing required parameters');
         }
 
-        return (await osmosisClosePositionCLMM(fastify, request.body)) as CLMMClosePositionResponseType;
+        return (await closePosition(fastify, request.body)) as CLMMClosePositionResponseType;
       } catch (e) {
         logger.error(`Error in pool-info route: ${e.message}`);
         if (e.stack) {

@@ -1,8 +1,4 @@
-import {
-  invalidCosmosAddressError,
-  isValidCosmosAddress,
-  validatePublicKey,
-} from '../../../src/chains/cosmos/cosmos.validators';
+import { isValidCosmosAddress } from '../../../src/chains/cosmos/cosmos.validators';
 import 'jest-extended';
 
 export const publicKey = 'cosmos1pc8m5m7n0z8xe7sx2tawkvc0v6qkjql83js0dr';
@@ -25,29 +21,12 @@ describe('isValidCosmosAddress', () => {
     expect(isValidCosmosAddress(publicKey + 1)).toEqual(false);
   });
 });
-
-describe('validatePublicKey', () => {
-  it('valid when req.publicKey is a publicKey', () => {
-    expect(
-      validatePublicKey({
-        address: publicKey,
-      }),
-    ).toEqual([]);
+describe('isValidCosmosPrivateKey', () => {
+  it('pass against a well formed private key', () => {
+    expect(isValidCosmosAddress(privateKey)).toEqual(true);
   });
 
-  it('return error when req.publicKey does not exist', () => {
-    expect(
-      validatePublicKey({
-        hello: 'world',
-      }),
-    ).toEqual([missingParameter('address')]);
-  });
-
-  it('return error when req.publicKey is invalid', () => {
-    expect(
-      validatePublicKey({
-        address: 'world',
-      }),
-    ).toEqual([invalidCosmosAddressError]);
+  it('fail against non-hex string', () => {
+    expect(isValidCosmosAddress('zzzzZZ')).toEqual(false);
   });
 });

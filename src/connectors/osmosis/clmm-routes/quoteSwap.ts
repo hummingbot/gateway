@@ -28,7 +28,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify, _options) => {
   const walletAddressExample = await Osmosis.getWalletAddressExample();
 
   // Get available networks from osmosis configuration (same method as chain.routes.ts)
-  const osmosisNetworks = Object.keys(ConfigManagerV2.getInstance().get('osmosis.networks') || {});
+  const osmosisNetworks = ['testnet', 'mainnet'];
 
   fastify.get<{
     Querystring: QuoteSwapRequestType;

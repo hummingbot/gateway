@@ -7,17 +7,17 @@ type CoinGeckoUSD = { usd: number };
 type CoinGeckoUSDResponse = Record<CoinGeckoId, CoinGeckoUSD>;
 
 const getAssetsWithGeckoIds = (assets: CosmosAsset[]) => {
-  return assets.filter((asset) => !!asset?.coingecko_id);
+  return assets.filter((asset) => asset.coingeckoId);
 };
 
 const getGeckoIds = (assets: CosmosAsset[]) => {
-  return assets.map((asset) => asset.coingecko_id) as string[];
+  return assets.map((asset) => asset.coingeckoId) as string[];
 };
 
 const formatPrices = (prices: CoinGeckoUSDResponse, assets: CosmosAsset[]): Record<string, number> => {
   return Object.entries(prices).reduce((priceHash, cur) => {
-    const key = assets.find((asset) => asset.coingecko_id === cur[0])!.base;
-    // const key = assets.find((asset) => asset.coingecko_id === cur[0])!.symbol;  // hash by symbol
+    const key = assets.find((asset) => asset.coingeckoId === cur[0])!.base;
+    // const key = assets.find((asset) => asset.coingeckoId === cur[0])!.symbol;  // hash by symbol
     return { ...priceHash, [key]: cur[1].usd };
   }, {});
 };

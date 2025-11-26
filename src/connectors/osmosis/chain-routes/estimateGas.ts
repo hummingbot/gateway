@@ -9,11 +9,11 @@ import {
 import { logger } from '../../../services/logger';
 import { Osmosis } from '../osmosis';
 
-export async function estimateGasOsmosis(fastify: FastifyInstance, network: string): Promise<EstimateGasResponse> {
+export async function estimateGas(fastify: FastifyInstance, network: string): Promise<EstimateGasResponse> {
   try {
     const osmosis = await Osmosis.getInstance(network);
     await osmosis.init();
-    return await osmosis.controller.estimateGas(osmosis);
+    return await osmosis.controller.estimateGas(osmosis, fastify);
   } catch (error) {
     logger.error(`Error estimating gas: ${error.message}`);
     throw fastify.httpErrors.internalServerError(`Failed to estimate gas: ${error.message}`);
@@ -47,7 +47,7 @@ export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { network } = request.body;
-      return await estimateGasOsmosis(fastify, network);
+      return await estimateGas(fastify, network);
     },
   );
 };

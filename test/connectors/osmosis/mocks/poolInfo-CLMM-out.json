@@ -1,0 +1,11 @@
+{
+  "address": "osmo1rdm79d008fel4ppkgdcf8pgjwazf72sjfhpyx5kpzlck86slpjusek2en6",
+  "baseTokenAddress": "uosmo",
+  "quoteTokenAddress": "uion",
+  "feePct": 0,
+  "price": 0.0016666,
+  "baseTokenAmount": 1603120.6177804945,
+  "quoteTokenAmount": 1603120.6177804945,
+  "binStep": 100,
+  "activeBinId": -26333400
+}

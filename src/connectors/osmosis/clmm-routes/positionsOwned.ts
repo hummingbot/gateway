@@ -25,13 +25,18 @@ export async function positionsOwned(
   fastify: FastifyInstance,
   request: PositionsOwnedRequestType,
   poolType: string,
-): Promise<AMMAllPositionsOwnedResponseType | CLMMAllPositionsOwnedResponseType> {
+): Promise<CLMMAllPositionsOwnedResponseType> {
   let networkToUse = request.network ? request.network : 'mainnet';
   const osmosis = await Osmosis.getInstance(networkToUse);
   await osmosis.init();
   networkToUse = osmosis.network;
   logger.info(`Network: ${networkToUse}, Chain ID: ${osmosis.chainName}`);
-  const response = await osmosis.controller.allPoolPositions(osmosis, fastify, request, poolType);
+  const response = (await osmosis.controller.allPoolPositions(
+    osmosis,
+    fastify,
+    request.walletAddress,
+    poolType,
+  )) as CLMMAllPositionsOwnedResponseType;
   return response;
 }
 

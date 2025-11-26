@@ -9,6 +9,7 @@
 //    these two are compatible (as constructor works in one direction)
 //        happens around assetList
 
+// const { coin, Coin } = await import('@cosmjs/amino');
 import { coin, Coin } from '@cosmjs/amino';
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { GeneratedType, Registry } from '@cosmjs/proto-signing';
@@ -386,7 +387,7 @@ export class Osmosis extends CosmosBase {
 
   // Add new method to get first wallet address
   public static async getFirstWalletAddress(): Promise<string | null> {
-    const path = `${walletPath}/osmo`;
+    const path = `${walletPath}/cosmos`;
     try {
       // Create directory if it doesn't exist
       await fse.ensureDir(path);
@@ -463,6 +464,7 @@ export class Osmosis extends CosmosBase {
             // Get base denom by IBC hash
             if (ibcHash) {
               const { denomTrace } = await setupIbcExtension(this._provider).ibc.transfer.denomTrace(ibcHash);
+              // tried calling with cosmos provider/versions. QueryDenomTraces failing: "base.queryAbci is not a function"
               if (denomTrace) {
                 const { baseDenom } = denomTrace;
                 token = this.getTokenByBase(baseDenom);
@@ -476,7 +478,7 @@ export class Osmosis extends CosmosBase {
         // Not all tokens are added in the registry so we use the denom if the token doesn't exist
         balances[token ? token.symbol : t.denom] = {
           value: new BigNumber(t.amount),
-          decimals: this.getTokenDecimals(token),
+          decimals: token && token.decimals ? token.decimals : token ? this.getTokenDecimals(token) : 6,
         };
       }),
     );
@@ -513,7 +515,7 @@ export class Osmosis extends CosmosBase {
           }
         });
         coin_receiveds.forEach((coin_spent) => {
-          //100199uosmo '12uion,16017uosmo'
+          //eg. 100199uosmo '12uion,16017uosmo'
           let amount = '';
           let denom = '';
           let reading_amount = true;
@@ -632,6 +634,7 @@ export class Osmosis extends CosmosBase {
     }
 
     if (tradeType == 'BUY') {
+      // change to SELL?
       //swap base and quotetokens
       const realBaseToken = quoteToken;
       quoteToken = baseToken;
@@ -932,11 +935,7 @@ export class Osmosis extends CosmosBase {
         (Number(trade.expectedTrade.tokenOutAmount) * (100 - slippage_percent)) / 100,
       );
     }
-    // if (slippage_percent == 100 && network != 'testnet'){
-    //   tokenOutMinAmount = 1;
-    // }else{
-    // tokenOutMinAmount = this.noDecimals((Number(trade.expectedTrade.tokenOutAmount) * (100-slippage_percent))/100);
-    // }
+
     const msg = swapExactAmountIn({
       sender: req.walletAddress,
       // @ts-expect-error: bad osmojs models
@@ -1294,11 +1293,22 @@ export class Osmosis extends CosmosBase {
         }
 
         fee = signingResponse.feeAmount ? Number(signingResponse.feeAmount) : 0;
+        const baseTokenAmountAdded = tokenBalanceChanges[baseToken.symbol]
+          ? tokenBalanceChanges[baseToken.symbol] * -1
+          : tokenBalanceChanges[baseToken.base]
+            ? tokenBalanceChanges[baseToken.base] * -1
+            : 0;
+        const quoteTokenAmountAdded = tokenBalanceChanges[quoteToken.symbol]
+          ? tokenBalanceChanges[quoteToken.symbol] * -1
+          : tokenBalanceChanges[quoteToken.base]
+            ? tokenBalanceChanges[quoteToken.base] * -1
+            : 0;
+        signature = signingResponse.transactionHash;
         const ammResponse: AMMAddLiquidityResponseType = {
           data: {
             fee,
-            baseTokenAmountAdded: tokenBalanceChanges[baseToken.base] * -1,
-            quoteTokenAmountAdded: tokenBalanceChanges[quoteToken.base] * -1,
+            baseTokenAmountAdded: baseTokenAmountAdded,
+            quoteTokenAmountAdded: quoteTokenAmountAdded,
           },
           signature: signature,
           status: signingResponse.code,
@@ -1627,11 +1637,21 @@ export class Osmosis extends CosmosBase {
           new_position_id = dissectRes[2];
         }
 
+        const baseTokenAmountAdded = tokenBalanceChanges[baseToken.symbol]
+          ? tokenBalanceChanges[baseToken.symbol] * -1
+          : tokenBalanceChanges[baseToken.base]
+            ? tokenBalanceChanges[baseToken.base] * -1
+            : 0;
+        const quoteTokenAmountAdded = tokenBalanceChanges[quoteToken.symbol]
+          ? tokenBalanceChanges[quoteToken.symbol] * -1
+          : tokenBalanceChanges[quoteToken.base]
+            ? tokenBalanceChanges[quoteToken.base] * -1
+            : 0;
         addLiquidityResponse = {
           data: {
             fee: Number(signingResponse.feeAmount),
-            baseTokenAmountAdded: tokenBalanceChanges[baseToken.symbol] * -1,
-            quoteTokenAmountAdded: tokenBalanceChanges[quoteToken.symbol] * -1,
+            baseTokenAmountAdded: baseTokenAmountAdded,
+            quoteTokenAmountAdded: quoteTokenAmountAdded,
             newPositionAddress: new_position_id,
           },
           signature: signingResponse.transactionHash,
@@ -2006,13 +2026,23 @@ export class Osmosis extends CosmosBase {
           position_id = dissectRes[2];
         }
 
+        const baseTokenAmountAdded = tokenBalanceChanges[baseToken.symbol]
+          ? tokenBalanceChanges[baseToken.symbol] * -1
+          : tokenBalanceChanges[baseToken.base]
+            ? tokenBalanceChanges[baseToken.base] * -1
+            : 0;
+        const quoteTokenAmountAdded = tokenBalanceChanges[quoteToken.symbol]
+          ? tokenBalanceChanges[quoteToken.symbol] * -1
+          : tokenBalanceChanges[quoteToken.base]
+            ? tokenBalanceChanges[quoteToken.base] * -1
+            : 0;
         openPositionResponse = {
           signature: signingResponse.transactionHash,
           status: signingResponse.code,
           data: {
             fee: signingResponse.feeAmount ? Number(signingResponse.feeAmount) : 0,
-            baseTokenAmountAdded: tokenBalanceChanges[baseToken.symbol] * -1,
-            quoteTokenAmountAdded: tokenBalanceChanges[quoteToken.symbol] * -1,
+            baseTokenAmountAdded: baseTokenAmountAdded,
+            quoteTokenAmountAdded: quoteTokenAmountAdded,
             positionAddress: position_id,
             positionRent: 0,
           },
@@ -2277,6 +2307,16 @@ export class Osmosis extends CosmosBase {
         tokenBalanceChanges = dissectRes[1];
       }
 
+      const baseTokenAmountRemoved = tokenBalanceChanges[baseToken.symbol]
+        ? tokenBalanceChanges[baseToken.symbol]
+        : tokenBalanceChanges[baseToken.base]
+          ? tokenBalanceChanges[baseToken.base]
+          : 0;
+      const quoteTokenAmountRemoved = tokenBalanceChanges[quoteToken.symbol]
+        ? tokenBalanceChanges[quoteToken.symbol]
+        : tokenBalanceChanges[quoteToken.base]
+          ? tokenBalanceChanges[quoteToken.base]
+          : 0;
       response_signature = signingResponse.transactionHash;
       response_fee = signingResponse.feeAmount ? Number(signingResponse.feeAmount) : 0;
       ammResponse = {
@@ -2284,8 +2324,8 @@ export class Osmosis extends CosmosBase {
         status: signingResponse.code,
         data: {
           fee: response_fee,
-          baseTokenAmountRemoved: tokenBalanceChanges[baseToken.symbol] * -1,
-          quoteTokenAmountRemoved: tokenBalanceChanges[quoteToken.symbol] * -1,
+          baseTokenAmountRemoved: baseTokenAmountRemoved,
+          quoteTokenAmountRemoved: quoteTokenAmountRemoved,
         },
       };
 
@@ -2441,8 +2481,8 @@ export class Osmosis extends CosmosBase {
         status: signingResponse.code,
         data: {
           fee: response_fee,
-          baseTokenAmountRemoved: tokenBalanceChanges[baseToken.symbol] * -1,
-          quoteTokenAmountRemoved: tokenBalanceChanges[quoteToken.symbol] * -1,
+          baseTokenAmountRemoved: tokenBalanceChanges[baseToken.symbol] ? tokenBalanceChanges[baseToken.symbol] : 0,
+          quoteTokenAmountRemoved: tokenBalanceChanges[quoteToken.symbol] ? tokenBalanceChanges[quoteToken.symbol] : 0,
         },
       };
       return finalResponse;
@@ -2452,11 +2492,6 @@ export class Osmosis extends CosmosBase {
       this.signingClient.disconnect();
     }
     logger.error('Osmosis:   ReducePosition failed, reason unknown.');
-    // throw new HttpException(
-    //   500,
-    //   TRADE_FAILED_ERROR_MESSAGE,
-    //   TRADE_FAILED_ERROR_CODE
-    // );
   }
 
   /**
@@ -2566,8 +2601,8 @@ export class Osmosis extends CosmosBase {
         status: 0,
         data: {
           fee: signingResponse.feeAmount ? signingResponse.feeAmount : 0,
-          baseFeeAmountCollected: tokenBalanceChanges[baseToken.symbol],
-          quoteFeeAmountCollected: tokenBalanceChanges[quoteToken.symbol],
+          baseFeeAmountCollected: tokenBalanceChanges[baseToken.symbol] ? tokenBalanceChanges[baseToken.symbol] : 0,
+          quoteFeeAmountCollected: tokenBalanceChanges[quoteToken.symbol] ? tokenBalanceChanges[quoteToken.symbol] : 0,
         },
       };
       return response;
@@ -2638,9 +2673,13 @@ export class Osmosis extends CosmosBase {
           filteredPools = filterPoolsCLMM(this.tokenList, pools, prices);
         }
       }
+      if (!filteredPools || filteredPools.length == 0) {
+        logger.error('Osmosis:   Failed to find pool for address.');
+        return { pools: [], prices: [] };
+      }
       if (!token0 || !token1) {
         logger.error('Osmosis:   Failed to find tokens for pool address.');
-        throw new Error('Osmosis:   Failed to find tokens for pool address.');
+        return { pools: [], prices: [] };
       }
       const exponentToken0 = this.getExponentByBase(token0.base);
       const exponentToken1 = this.getExponentByBase(token1.base);
@@ -2914,24 +2953,6 @@ export class Osmosis extends CosmosBase {
           price: Number(currentPrice),
         });
       }
-      // instance or []
-      // export interface FullPositionBreakdown {
-      //     position: Position;
-      //     asset0: Coin;
-      //     asset1: Coin;
-      //     claimableSpreadRewards: Coin[];
-      //     claimableIncentives: Coin[];
-      //     forfeitedIncentives: Coin[];
-      // }
-      // export interface Position {
-      //     positionId: bigint;
-      //     address: string; // wallet address...
-      //     poolId: bigint;
-      //     lowerTick: bigint;
-      //     upperTick: bigint;
-      //     joinTime: Date;
-      //     liquidity: string;
-      // }
       return CLMMPositionInfoResponse;
     } catch (error) {
       console.debug(error);

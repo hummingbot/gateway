@@ -34,5 +34,6 @@ module.exports = {
   transformIgnorePatterns: [], //'/node_modules/(?!.*superjson)'],
   moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, {
     prefix: '<rootDir>/',
+    useESM:true,
   }),
 };

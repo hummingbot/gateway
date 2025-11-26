@@ -27,8 +27,10 @@ export class CosmosAssetPrice {
 
 // Newer universal type due to changes in Cosmos/Osmosis Asset formats and discrepancies between versions
 export class CosmosAsset {
-  // implements CurrentAsset, FormerAsset - everything recreated here
+  // instead of implements CurrentAsset, FormerAsset - everything recreated here (for constructor)
+  exponent: number = 0;
   decimals: number = 0;
+  display: string;
   chainName: string;
   sourceDenom: string;
   coinMinimalDenom: string;
@@ -42,25 +44,30 @@ export class CosmosAsset {
     const _decimals = (asset as any).decimals ?? getExponentForAsset(asset);
     const _price = (asset as any).price ?? undefined;
     const _base = (asset as any).base ?? (asset as any).sourceDenom;
+    const _address = (asset as any).address ?? (asset as any).sourceDenom;
 
-    this.base = this.sourceDenom = _base;
-    this.coinMinimalDenom = (asset as any).coinMinimalDenom ?? _base;
+    this.base = this.sourceDenom = this.denom = this.display = _base;
+    this.coinMinimalDenom = (asset as any).coinMinimalDenom ?? _base; // can be ibc/ADDRESS string or sourceDenom
     this.logoURIs = this.logo_URIs = _logoURIs;
-    this.denomUnits = this.denom_units = _denomUnits;
+    if (_denomUnits && _denomUnits.length > 0) {
+      this.denomUnits = this.denom_units = _denomUnits;
+    } else {
+      this.denomUnits = this.denom_units = [
+        { denom: _base, exponent: _decimals },
+        { denom: asset.symbol, exponent: 0 },
+      ];
+    }
     this.coingeckoId = this.coingecko_id = _coingeckoId;
     this.extendedDescription = this.extended_description = _extendedDescription;
     this.typeAsset = this.type_asset = _typeAsset;
-    this.decimals = _decimals;
+    this.decimals = this.exponent = _decimals;
     this.price = _price;
     this.description = asset.description;
-    if (asset.address != null) {
-      this.address = asset.address;
-    }
-    this.base = asset.base;
+    this.address = _address;
     this.name = asset.name;
-    this.display = asset.display;
     this.symbol = asset.symbol;
     this.keywords = asset.keywords;
+    this.chainName = 'osmosis'; // don't use osmosistestnet here as it messes with some import calcs
 
     if (asset.ibc) {
       const _sourceChannel = (asset as any).sourceChannel ?? (asset as any).source_channel;
@@ -140,8 +147,8 @@ export class CosmosAsset {
   address: string = '';
   denomUnits: DenomUnit[] = [];
   base: string; // this is denom!!!
+  denom: string; // this is denom!!!
   name: string;
-  display: string;
   symbol: string;
   logoURIs?: {
     png?: string;
@@ -239,6 +246,7 @@ export interface NonIbcTransition {
 export interface FormerAsset {
   deprecated?: boolean;
   description?: string;
+  chainName: string;
   extended_description?: string;
   denom_units: DenomUnit[];
   type_asset:
