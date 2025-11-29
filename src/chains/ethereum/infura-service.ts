@@ -1,48 +1,75 @@
 import { providers } from 'ethers';
 
 import { logger } from '../../services/logger';
-
-import { EthereumNetworkConfig } from './ethereum.config';
+import { createRateLimitAwareEthereumProvider } from '../../services/rpc-connection-interceptor';
+import { RPCProvider, RPCProviderConfig, NetworkInfo } from '../../services/rpc-provider-base';
 
 /**
- * Infura Service - Provides optimized RPC connectivity for Ethereum networks
- * Supports both HTTP and WebSocket connections for real-time events
+ * Infura Service - Optimized RPC provider for Ethereum/EVM networks
+ * Extends RPCProvider base class with Ethereum-specific features
+ *
+ * Features:
+ * - Support for 30+ Ethereum networks and testnets
+ * - HTTP and WebSocket providers via ethers.js
+ * - Automatic network endpoint mapping
+ * - Health check capabilities
  */
-export class InfuraService {
-  private config: EthereumNetworkConfig;
+export class InfuraService extends RPCProvider {
   private provider: providers.JsonRpcProvider | providers.WebSocketProvider;
   private wsProvider?: providers.WebSocketProvider;
 
-  constructor(config: EthereumNetworkConfig) {
-    this.config = config;
+  constructor(config: RPCProviderConfig, networkInfo: NetworkInfo) {
+    super(config, networkInfo);
+
+    if (networkInfo.chain !== 'ethereum') {
+      throw new Error('InfuraService only supports Ethereum networks');
+    }
+
     this.initializeProvider();
   }
 
   /**
-   * Get the Infura RPC URL for a specific network
+   * Get the Infura HTTP RPC URL for the current network
    */
-  public getUrlForNetwork(_network: string): string {
-    return this.getInfuraHttpUrl();
+  public getHttpUrl(): string {
+    const network = this.getInfuraNetworkName();
+    return `https://${network}.infura.io/v3/${this.config.apiKey}`;
+  }
+
+  /**
+   * Get the Infura WebSocket RPC URL for the current network
+   * Returns null if WebSocket is not configured or API key is invalid
+   */
+  public getWebSocketUrl(): string | null {
+    if (!this.shouldUseWebSocket()) return null;
+
+    const network = this.getInfuraNetworkName();
+    return `wss://${network}.infura.io/ws/v3/${this.config.apiKey}`;
   }
 
   /**
    * Initialize HTTP and WebSocket providers
    */
   private initializeProvider(): void {
-    const httpUrl = this.getInfuraHttpUrl();
+    const httpUrl = this.getHttpUrl();
 
-    // Initialize HTTP provider
-    this.provider = new providers.JsonRpcProvider(httpUrl, {
-      name: this.getNetworkName(),
-      chainId: this.config.chainID,
-    });
+    // Initialize HTTP provider with rate limit detection
+    this.provider = createRateLimitAwareEthereumProvider(
+      new providers.JsonRpcProvider(httpUrl, {
+        name: this.getNetworkName(),
+        chainId: this.networkInfo.chainId,
+      }),
+      httpUrl,
+    );
 
     // Initialize WebSocket provider if enabled
     if (this.shouldUseWebSocket()) {
       try {
-        const wsUrl = this.getInfuraWebSocketUrl();
-        this.wsProvider = new providers.WebSocketProvider(wsUrl);
-        logger.info(`✅ Infura WebSocket provider initialized for ${this.getNetworkName()}`);
+        const wsUrl = this.getWebSocketUrl();
+        if (wsUrl) {
+          this.wsProvider = createRateLimitAwareEthereumProvider(new providers.WebSocketProvider(wsUrl), wsUrl);
+          logger.info(`✅ Infura WebSocket provider initialized for ${this.getNetworkName()}`);
+        }
       } catch (error: any) {
         logger.warn(`Failed to initialize Infura WebSocket: ${error.message}, using HTTP only`);
       }
@@ -50,19 +77,18 @@ export class InfuraService {
   }
 
   /**
-   * Get Infura HTTP URL for the current network
+   * Initialize the provider (already done in constructor)
    */
-  private getInfuraHttpUrl(): string {
-    const network = this.getInfuraNetworkName();
-    return `https://${network}.infura.io/v3/${this.config.infuraAPIKey}`;
+  public async initialize(): Promise<void> {
+    // Provider initialization is synchronous and done in constructor
+    // This method is here to satisfy the RPCProvider interface
   }
 
   /**
-   * Get Infura WebSocket URL for the current network
+   * Check if WebSocket is currently connected
    */
-  private getInfuraWebSocketUrl(): string {
-    const network = this.getInfuraNetworkName();
-    return `wss://${network}.infura.io/ws/v3/${this.config.infuraAPIKey}`;
+  public override isWebSocketConnected(): boolean {
+    return !!(this.wsProvider && this.wsProvider._websocket && this.wsProvider._websocket.readyState === 1);
   }
 
   /**
@@ -104,9 +130,9 @@ export class InfuraService {
       300: 'zksync-sepolia',
     };
 
-    const network = networkMap[this.config.chainID];
+    const network = networkMap[this.networkInfo.chainId];
     if (!network) {
-      throw new Error(`Infura network not supported for chainID: ${this.config.chainID}`);
+      throw new Error(`Infura network not supported for chainID: ${this.networkInfo.chainId}`);
     }
 
     return network;
@@ -151,7 +177,7 @@ export class InfuraService {
       300: 'ZKsync Sepolia',
     };
 
-    return nameMap[this.config.chainID] || `Chain ${this.config.chainID}`;
+    return nameMap[this.networkInfo.chainId] || `Chain ${this.networkInfo.chainId}`;
   }
 
   /**
@@ -162,21 +188,9 @@ export class InfuraService {
   }
 
   /**
-   * Check if WebSocket should be used
-   */
-  private shouldUseWebSocket(): boolean {
-    return (
-      this.config.useInfuraWebSocket &&
-      this.config.infuraAPIKey &&
-      this.config.infuraAPIKey.trim() !== '' &&
-      this.config.infuraAPIKey !== 'INFURA_API_KEY'
-    );
-  }
-
-  /**
    * Health check - verify RPC connection
    */
-  public async healthCheck(): Promise<boolean> {
+  public override async healthCheck(): Promise<boolean> {
     try {
       await this.provider.getBlockNumber();
       logger.debug(`Infura health check passed for ${this.getNetworkName()}`);

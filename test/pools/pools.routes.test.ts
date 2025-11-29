@@ -11,6 +11,8 @@ jest.mock('../../src/services/logger', () => ({
 }));
 
 jest.mock('../../src/services/pool-service');
+jest.mock('../../src/services/coingecko-service');
+jest.mock('../../src/services/token-service');
 
 // Mock @fastify/sensible
 jest.mock('@fastify/sensible', () => {
@@ -47,11 +49,15 @@ jest.mock('@fastify/sensible', () => {
 // Import after mocking
 import { poolRoutes } from '../../src/pools/pools.routes';
 import { Pool } from '../../src/pools/types';
+import { CoinGeckoService } from '../../src/services/coingecko-service';
 import { PoolService } from '../../src/services/pool-service';
+import { TokenService } from '../../src/services/token-service';
 
 describe('Pool Routes Tests', () => {
   let fastify: FastifyInstance;
   let mockPoolService: jest.Mocked<PoolService>;
+  let mockCoinGeckoService: jest.Mocked<CoinGeckoService>;
+  let mockTokenService: jest.Mocked<TokenService>;
 
   beforeEach(async () => {
     // Create a new Fastify instance for each test
@@ -73,6 +79,39 @@ describe('Pool Routes Tests', () => {
     } as any;
 
     (PoolService.getInstance as jest.Mock).mockReturnValue(mockPoolService);
+
+    // Setup CoinGeckoService mock
+    mockCoinGeckoService = {
+      getTopPoolsForToken: jest.fn(),
+      getTopPoolsByNetwork: jest.fn(),
+      getPoolInfo: jest.fn(),
+      getTokenInfo: jest.fn(),
+      mapNetworkId: jest.fn(),
+      getSupportedNetworks: jest.fn(),
+      parseChainNetwork: jest.fn((chainNetwork: string) => {
+        // Default mock implementation for tests
+        const parts = chainNetwork.split('-');
+        if (parts.length < 2) {
+          throw new Error(`Unsupported chainNetwork format: ${chainNetwork}`);
+        }
+        return {
+          chain: parts[0],
+          network: parts.slice(1).join('-'),
+        };
+      }),
+    } as any;
+
+    (CoinGeckoService.getInstance as jest.Mock).mockReturnValue(mockCoinGeckoService);
+
+    // Setup TokenService mock
+    mockTokenService = {
+      getToken: jest.fn(),
+      listTokens: jest.fn(),
+      addToken: jest.fn(),
+      removeToken: jest.fn(),
+    } as any;
+
+    (TokenService.getInstance as jest.Mock).mockReturnValue(mockTokenService);
 
     // Manually add httpErrors to fastify instance since we're mocking sensible
     (fastify as any).httpErrors = {
@@ -396,6 +435,320 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('GET /pools/find', () => {
+    it('should find pools for token pair by symbols', async () => {
+      const mockPools = [
+        {
+          poolAddress: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+          dex: 'raydium',
+          connector: 'raydium',
+          type: 'amm' as const,
+          baseTokenAddress: 'So11111111111111111111111111111111111111112',
+          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          baseTokenSymbol: 'SOL',
+          quoteTokenSymbol: 'USDC',
+          priceUsd: '100.50',
+          priceNative: '1',
+          volumeUsd24h: '1000000',
+          priceChange24h: '5.2',
+          liquidityUsd: '5000000',
+          txns24h: {
+            buys: 150,
+            sells: 120,
+          },
+        },
+        {
+          poolAddress: '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
+          dex: 'raydium-clmm',
+          connector: 'raydium',
+          type: 'clmm' as const,
+          baseTokenAddress: 'So11111111111111111111111111111111111111112',
+          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          baseTokenSymbol: 'SOL',
+          quoteTokenSymbol: 'USDC',
+          priceUsd: '100.52',
+          priceNative: '1',
+          volumeUsd24h: '2000000',
+          priceChange24h: '5.3',
+          liquidityUsd: '8000000',
+          txns24h: {
+            buys: 200,
+            sells: 180,
+          },
+        },
+      ];
+
+      mockTokenService.getToken
+        .mockResolvedValueOnce({
+          chainId: 101,
+          symbol: 'SOL',
+          address: 'So11111111111111111111111111111111111111112',
+          name: 'Solana',
+          decimals: 9,
+        })
+        .mockResolvedValueOnce({
+          chainId: 101,
+          symbol: 'USDC',
+          address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          name: 'USD Coin',
+          decimals: 6,
+        });
+
+      mockCoinGeckoService.getTopPoolsForToken.mockResolvedValue(mockPools);
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/find?tokenA=SOL&tokenB=USDC&chainNetwork=solana-mainnet-beta&type=clmm',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const result = JSON.parse(response.payload);
+
+      // Verify response is in PoolInfo format with geckoData
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        type: 'amm',
+        network: 'mainnet-beta',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        baseTokenAddress: 'So11111111111111111111111111111111111111112',
+        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+        geckoData: expect.objectContaining({
+          volumeUsd24h: '1000000',
+          liquidityUsd: '5000000',
+          priceUsd: '100.50',
+          priceNative: '1',
+          buys24h: 150,
+          sells24h: 120,
+          timestamp: expect.any(Number),
+        }),
+      });
+      expect(result[1]).toMatchObject({
+        type: 'clmm',
+        network: 'mainnet-beta',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        geckoData: expect.objectContaining({
+          volumeUsd24h: '2000000',
+          liquidityUsd: '8000000',
+        }),
+      });
+
+      expect(mockTokenService.getToken).toHaveBeenCalledWith('solana', 'mainnet-beta', 'SOL');
+      expect(mockTokenService.getToken).toHaveBeenCalledWith('solana', 'mainnet-beta', 'USDC');
+      expect(mockCoinGeckoService.getTopPoolsForToken).toHaveBeenCalledWith(
+        'solana-mainnet-beta',
+        'So11111111111111111111111111111111111111112',
+        10, // maxPages (default)
+        undefined,
+        'clmm',
+      );
+    });
+
+    it('should find pools by addresses', async () => {
+      const mockPools = [
+        {
+          poolAddress: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+          dex: 'raydium',
+          connector: 'raydium',
+          type: 'amm' as const,
+          baseTokenAddress: 'So11111111111111111111111111111111111111112',
+          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          baseTokenSymbol: 'SOL',
+          quoteTokenSymbol: 'USDC',
+          priceUsd: '100.50',
+          priceNative: '1',
+          volumeUsd24h: '1000000',
+          priceChange24h: '5.2',
+          liquidityUsd: '5000000',
+          txns24h: {
+            buys: 150,
+            sells: 120,
+          },
+        },
+      ];
+
+      mockCoinGeckoService.getTopPoolsForToken.mockResolvedValue(mockPools);
+
+      // Mock getToken to return null for addresses (not found in token list)
+      mockTokenService.getToken.mockResolvedValue(null);
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/find?tokenA=So11111111111111111111111111111111111111112&tokenB=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&chainNetwork=solana-mainnet-beta',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const result = JSON.parse(response.payload);
+
+      // Verify response is in PoolInfo format with geckoData
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        type: 'amm',
+        network: 'mainnet-beta',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        baseTokenAddress: 'So11111111111111111111111111111111111111112',
+        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+        geckoData: expect.objectContaining({
+          volumeUsd24h: '1000000',
+          liquidityUsd: '5000000',
+        }),
+      });
+
+      // Should call getToken to check token list, but both return null (addresses not in list)
+      expect(mockTokenService.getToken).toHaveBeenCalledWith(
+        'solana',
+        'mainnet-beta',
+        'So11111111111111111111111111111111111111112',
+      );
+      expect(mockTokenService.getToken).toHaveBeenCalledWith(
+        'solana',
+        'mainnet-beta',
+        'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+      );
+    });
+
+    it('should filter by connector', async () => {
+      const mockPools = [
+        {
+          poolAddress: '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
+          dex: 'raydium-clmm',
+          connector: 'raydium',
+          type: 'clmm' as const,
+          baseTokenAddress: 'So11111111111111111111111111111111111111112',
+          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          baseTokenSymbol: 'SOL',
+          quoteTokenSymbol: 'USDC',
+          priceUsd: '100.52',
+          priceNative: '1',
+          volumeUsd24h: '2000000',
+          priceChange24h: '5.3',
+          liquidityUsd: '8000000',
+          txns24h: {
+            buys: 200,
+            sells: 180,
+          },
+        },
+      ];
+
+      mockCoinGeckoService.getTopPoolsForToken.mockResolvedValue(mockPools);
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/find?tokenA=So11111111111111111111111111111111111111112&tokenB=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&chainNetwork=solana-mainnet-beta&connector=raydium',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(mockCoinGeckoService.getTopPoolsForToken).toHaveBeenCalledWith(
+        'solana-mainnet-beta',
+        'So11111111111111111111111111111111111111112',
+        10, // default maxPages
+        'raydium',
+        'clmm', // default type
+      );
+    });
+
+    it('should return empty array when no pools found', async () => {
+      mockCoinGeckoService.getTopPoolsForToken.mockResolvedValue([]);
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/find?tokenA=So11111111111111111111111111111111111111112&tokenB=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&chainNetwork=solana-mainnet-beta',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const result = JSON.parse(response.payload);
+      expect(result).toEqual([]);
+    });
+
+    it('should return top pools by network when neither tokenA nor tokenB is provided', async () => {
+      const mockPools = [
+        {
+          poolAddress: '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
+          dex: 'raydium-clmm',
+          connector: 'raydium',
+          type: 'clmm' as const,
+          baseTokenAddress: 'So11111111111111111111111111111111111111112',
+          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          baseTokenSymbol: 'SOL',
+          quoteTokenSymbol: 'USDC',
+          priceUsd: '100.52',
+          priceNative: '1',
+          volumeUsd24h: '2000000',
+          priceChange24h: '5.3',
+          liquidityUsd: '8000000',
+          txns24h: {
+            buys: 200,
+            sells: 180,
+          },
+        },
+      ];
+
+      mockCoinGeckoService.getTopPoolsByNetwork.mockResolvedValue(mockPools);
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/find?chainNetwork=solana-mainnet-beta',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const result = JSON.parse(response.payload);
+
+      // Verify response is in PoolInfo format with geckoData
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        type: 'clmm',
+        network: 'mainnet-beta',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        baseTokenAddress: 'So11111111111111111111111111111111111111112',
+        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        address: '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
+        geckoData: expect.objectContaining({
+          volumeUsd24h: '2000000',
+          liquidityUsd: '8000000',
+          priceUsd: '100.52',
+          priceNative: '1',
+          buys24h: 200,
+          sells24h: 180,
+          timestamp: expect.any(Number),
+        }),
+      });
+
+      expect(mockCoinGeckoService.getTopPoolsByNetwork).toHaveBeenCalledWith(
+        'solana-mainnet-beta',
+        10, // default maxPages
+        undefined, // no connector filter
+        'clmm', // default type
+      );
+    });
+
+    it('should return 400 for invalid chainNetwork format', async () => {
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/find?tokenA=SOL&tokenB=USDC&chainNetwork=invalid',
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.payload).message).toContain('Unsupported chainNetwork format');
+    });
+
+    it('should return 500 on service error', async () => {
+      mockCoinGeckoService.getTopPoolsForToken.mockRejectedValue(new Error('API error'));
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/find?tokenA=So11111111111111111111111111111111111111112&tokenB=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&chainNetwork=solana-mainnet-beta',
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(JSON.parse(response.payload).message).toContain('Failed to fetch pools from GeckoTerminal');
     });
   });
 });

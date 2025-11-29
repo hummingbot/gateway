@@ -165,7 +165,7 @@ export class Meteora {
         bins: await this.getPoolLiquidity(poolAddress),
       };
     } catch (error) {
-      logger.error(`Error getting pool info for ${poolAddress}:`, error);
+      logger.debug(`Could not decode ${poolAddress} as Meteora pool: ${error}`);
       return null;
     }
   }

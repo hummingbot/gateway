@@ -1,4 +1,3 @@
-import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { PositionInfo, PositionInfoSchema, GetPositionInfoRequestType } from '../../../schemas/clmm-schema';
@@ -7,13 +6,21 @@ import { Meteora } from '../meteora';
 import { MeteoraClmmGetPositionInfoRequest } from '../schemas';
 
 export async function getPositionInfo(
-  _fastify: FastifyInstance,
+  fastify: FastifyInstance,
   network: string,
   positionAddress: string,
 ): Promise<PositionInfo> {
   const meteora = await Meteora.getInstance(network);
-  const position = await meteora.getPositionInfoByAddress(positionAddress);
-  return position;
+
+  if (!positionAddress) {
+    throw fastify.httpErrors.badRequest('Position address is required');
+  }
+
+  const positionInfo = await meteora.getPositionInfoByAddress(positionAddress);
+  if (!positionInfo) {
+    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+  }
+  return positionInfo;
 }
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {

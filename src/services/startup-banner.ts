@@ -1,12 +1,13 @@
 import { Connection } from '@solana/web3.js';
 import { ethers } from 'ethers';
 
-import { Osmosis } from '#src/connectors/osmosis/osmosis.js';
-
+import { Ethereum } from '../chains/ethereum/ethereum';
 import { getEthereumNetworkConfig } from '../chains/ethereum/ethereum.config';
 import { InfuraService } from '../chains/ethereum/infura-service';
 import { HeliusService } from '../chains/solana/helius-service';
+import { Solana } from '../chains/solana/solana';
 import { getSolanaNetworkConfig } from '../chains/solana/solana.config';
+import { Osmosis } from '../connectors/osmosis/osmosis';
 
 import { ConfigManagerV2 } from './config-manager-v2';
 import { logger, redactUrl } from './logger';
@@ -50,18 +51,14 @@ async function displaySolanaConfig(): Promise<void> {
     if (rpcProvider === 'helius') {
       try {
         const heliusApiKey = config.get('helius.apiKey') || '';
-        const useWebSocketRPC = config.get('helius.useWebSocketRPC') || false;
+        const useWebSocket = config.get('helius.useWebSocket') || false;
 
         const networkConfig = getSolanaNetworkConfig(defaultNetwork);
-        const mergedConfig = {
-          ...networkConfig,
-          heliusAPIKey: heliusApiKey,
-          useHeliusRestRPC: true,
-          useHeliusWebSocketRPC: useWebSocketRPC,
-        };
-
-        const heliusService = new HeliusService(mergedConfig);
-        nodeURL = heliusService.getUrlForNetwork(defaultNetwork);
+        const heliusService = new HeliusService(
+          { apiKey: heliusApiKey, useWebSocket },
+          { chain: 'solana', network: defaultNetwork, chainId: networkConfig.chainID },
+        );
+        nodeURL = heliusService.getHttpUrl();
       } catch (error: any) {
         logger.debug(`Unable to get Helius URL: ${error.message}`);
       }
@@ -72,10 +69,10 @@ async function displaySolanaConfig(): Promise<void> {
       return;
     }
 
-    // Fetch current block number
+    // Initialize Solana instance (this triggers auto-subscription to wallets if WebSocket enabled)
     try {
-      const connection = new Connection(nodeURL, 'confirmed');
-      const slot = await connection.getSlot();
+      const solana = await Solana.getInstance(defaultNetwork);
+      const slot = await solana.connection.getSlot();
 
       logger.info(
         `   📡 Solana (defaultNetwork: ${defaultNetwork}): Block #${slot.toLocaleString()} - ${redactUrl(nodeURL)}`,
@@ -113,14 +110,11 @@ async function displayEthereumConfig(): Promise<void> {
         const useWebSocket = config.get('infura.useWebSocket') || false;
 
         const networkConfig = getEthereumNetworkConfig(defaultNetwork);
-        const mergedConfig = {
-          ...networkConfig,
-          infuraAPIKey: infuraApiKey,
-          useInfuraWebSocket: useWebSocket,
-        };
-
-        const infuraService = new InfuraService(mergedConfig);
-        nodeURL = infuraService.getUrlForNetwork(defaultNetwork);
+        const infuraService = new InfuraService(
+          { apiKey: infuraApiKey, useWebSocket },
+          { chain: 'ethereum', network: defaultNetwork, chainId: networkConfig.chainID },
+        );
+        nodeURL = infuraService.getHttpUrl();
       } catch (error: any) {
         logger.debug(`Unable to get Infura URL: ${error.message}`);
       }

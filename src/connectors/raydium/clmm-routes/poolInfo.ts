@@ -1,5 +1,6 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
+import { Solana } from '../../../chains/solana/solana';
 import { GetPoolInfoRequestType, PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
@@ -7,8 +8,17 @@ import { RaydiumClmmGetPoolInfoRequest } from '../schemas';
 
 export async function getPoolInfo(fastify: FastifyInstance, network: string, poolAddress: string): Promise<PoolInfo> {
   const raydium = await Raydium.getInstance(network);
+
+  if (!poolAddress) {
+    throw fastify.httpErrors.badRequest('Pool address is required');
+  }
+
+  // Fetch pool info directly from RPC
   const poolInfo = await raydium.getClmmPoolInfo(poolAddress);
-  if (!poolInfo) throw fastify.httpErrors.notFound('Pool not found');
+  if (!poolInfo) {
+    throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+  }
+
   return poolInfo;
 }
 

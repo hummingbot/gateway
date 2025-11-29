@@ -5,12 +5,23 @@ import { Raydium } from '../raydium';
 import { RaydiumClmmGetPositionInfoRequest } from '../schemas';
 
 export async function getPositionInfo(
-  _fastify: FastifyInstance,
+  fastify: FastifyInstance,
   network: string,
   positionAddress: string,
 ): Promise<PositionInfo> {
   const raydium = await Raydium.getInstance(network);
-  return raydium.getPositionInfo(positionAddress);
+
+  if (!positionAddress) {
+    throw fastify.httpErrors.badRequest('Position address is required');
+  }
+
+  // Fetch position info directly from RPC
+  const positionInfo = await raydium.getPositionInfo(positionAddress);
+  if (!positionInfo) {
+    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+  }
+
+  return positionInfo;
 }
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {

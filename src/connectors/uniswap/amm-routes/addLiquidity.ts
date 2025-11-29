@@ -40,7 +40,7 @@ async function addLiquidity(
   let baseWrapTxHash = null;
   if (baseToken === 'ETH') {
     const uniswap = await Uniswap.getInstance(networkToUse);
-    const wethToken = uniswap.getTokenBySymbol('WETH');
+    const wethToken = await uniswap.getToken('WETH');
     if (!wethToken) {
       throw new Error('WETH token not found');
     }
@@ -59,7 +59,7 @@ async function addLiquidity(
   let quoteWrapTxHash = null;
   if (quoteToken === 'ETH') {
     const uniswap = await Uniswap.getInstance(networkToUse);
-    const wethToken = uniswap.getTokenBySymbol('WETH');
+    const wethToken = await uniswap.getToken('WETH');
     if (!wethToken) {
       throw new Error('WETH token not found');
     }

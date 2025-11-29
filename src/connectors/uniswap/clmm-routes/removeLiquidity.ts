@@ -66,8 +66,8 @@ export async function removeLiquidity(
   const position = await positionManager.positions(positionAddress);
 
   // Get tokens by address
-  const token0 = uniswap.getTokenByAddress(position.token0);
-  const token1 = uniswap.getTokenByAddress(position.token1);
+  const token0 = await uniswap.getToken(position.token0);
+  const token1 = await uniswap.getToken(position.token1);
 
   // Determine base and quote tokens - WETH or lower address is base
   const isBaseToken0 =

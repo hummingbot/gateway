@@ -51,8 +51,8 @@ export async function getPancakeswapAmmLiquidityQuote(
   const ethereum = await Ethereum.getInstance(networkToUse);
 
   // Resolve tokens
-  const baseTokenObj = pancakeswap.getTokenBySymbol(baseToken);
-  const quoteTokenObj = pancakeswap.getTokenBySymbol(quoteToken);
+  const baseTokenObj = await pancakeswap.getToken(baseToken);
+  const quoteTokenObj = await pancakeswap.getToken(quoteToken);
 
   if (!baseTokenObj || !quoteTokenObj) {
     throw new Error(`Token not found: ${!baseTokenObj ? baseToken : quoteToken}`);

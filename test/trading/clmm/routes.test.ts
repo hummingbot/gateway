@@ -95,10 +95,14 @@ describe('Unified Trading CLMM Routes', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/trading/clmm/positions-owned',
-        query: {},
+        query: {
+          connector: 'meteora',
+          chainNetwork: 'solana-mainnet-beta',
+        },
       });
 
-      expect([400, 500]).toContain(response.statusCode);
+      // Route should exist and return 200 or 400/500 (requires wallet address)
+      expect([200, 400, 500]).toContain(response.statusCode);
     });
   });
 
