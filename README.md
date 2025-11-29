@@ -1088,28 +1088,29 @@ If you see errors like `Cannot find module '@ledgerhq/hw-transport-node-hid'` or
 ## Running in Debug (vscode launch.json configurations - tested on Ubuntu)
 - Run single test file outside project (eg. import Chain or Connector and .init())
         {
-            "name": "Run Single",
             "type": "node",
             "request": "launch",
+            "name": "BUILD/DEBUG SINGLE FILE: src/testnojest.ts +externalTerminal",
+            "program": "${workspaceFolder}/dist/osmosis.testnojest.js",
             "preLaunchTask": "npm: build",
-            "args": ["${workspaceFolder}/src/TESTFILE.ts"],
-            "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
-            "cwd": "${workspaceRoot}",
+            "args": ["--passphrase=PASSPHRASE", "--dev"],
+            "env":{"START_SERVER":"true", "GATEWAY_TEST_MODE":"dev"},
             "internalConsoleOptions": "openOnSessionStart",
-            "console": "internalConsole", 
-            "trace": true,
-            "sourceMaps": true,
+            "console": "externalTerminal",
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ]
         },
 - Run whole project in debug mode (breakpoints work on TS files)
         {
             "type": "node",
             "request": "launch",
-            "name": "Run and debug entire project",
+            "name": "BUILD/DEBUG FULL: index.js +externalTerminal for info()",
+            "console": "externalTerminal",
             "program": "${workspaceFolder}/dist/index.js",
             "preLaunchTask": "npm: build",
-            "console": "externalTerminal",
             "args": ["--passphrase=PASSPHRASE", "--dev"],
-            "env":{"START_SERVER":"true"},
+            "env":{"START_SERVER":"true", "GATEWAY_TEST_MODE":"dev"},
             "internalConsoleOptions": "openOnSessionStart",
             "outFiles": [
                 "${workspaceFolder}/dist/**/*.js"

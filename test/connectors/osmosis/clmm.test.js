@@ -121,7 +121,6 @@ describe('Osmosis CLMM Tests (testnet)', () => {
       });
 
       // Validate the response
-      console.info(response.data);
       expect(response.status).toBe(200);
       expect(response.data[0].baseTokenAmount).toBeGreaterThan(0);
     });
