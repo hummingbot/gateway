@@ -9,7 +9,6 @@
 //    these two are compatible (as constructor works in one direction)
 //        happens around assetList
 
-// const { coin, Coin } = await import('@cosmjs/amino');
 import { coin, Coin } from '@cosmjs/amino';
 import { CosmWasmClient } from '@cosmjs/cosmwasm-stargate';
 import { GeneratedType, Registry } from '@cosmjs/proto-signing';
