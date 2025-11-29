@@ -15,7 +15,6 @@
     "#test/*": "./test/*"
   },
   "scripts": {
-    "osmo": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" GATEWAY_TEST_MODE=dev jest --runInBand --verbose --coverage test/connectors/osmosis/clmm.test.js",
     "prebuild": "rimraf dist && mkdir dist",
     "build": "tsc --project tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run copy-files",
     "clean": "rm -rf ./node_modules && rm -rf ./coverage && rm -rf ./logs && rm -rf ./dist",
