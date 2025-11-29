@@ -29,7 +29,7 @@
     "test:clear-cache": "jest --clearCache",
     "test:debug": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" GATEWAY_TEST_MODE=dev jest --watch --runInBand",
     "test:unit": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" GATEWAY_TEST_MODE=dev jest --runInBand ./test/",
-    "test:cov": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" GATEWAY_TEST_MODE=dev jest --runInBand --coverage ./test/",
+    "test:cov": "NODE_OPTIONS=\"$NODE_OPTIONS --max-old-space-size=32000 --experimental-vm-modules\" GATEWAY_TEST_MODE=dev jest --runInBand --coverage ./test/",
     "test:scripts": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" GATEWAY_TEST_MODE=dev jest --runInBand ./test-scripts/*.test.ts",
     "typecheck": "tsc --noEmit",
     "generate:openapi": "curl http://localhost:15888/docs/json -o openapi.json && echo 'OpenAPI spec saved to openapi.json'",
