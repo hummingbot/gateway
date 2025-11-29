@@ -5,14 +5,14 @@ const { test, describe, expect, beforeEach } = require('@jest/globals');
 const axios = require('axios');
 
 // Constants for this test file
-const PROTOCOL = 'amm';
+const PROTOCOL = 'clmm';
 const CONNECTOR = 'osmosis';
 const NETWORK = 'testnet';
 const BASE_TOKEN = 'OSMO';
 const QUOTE_TOKEN = 'ION';
 const TEST_WALLET = 'osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs';
-const TEST_POOL_ID = '1';
-const TEST_POOL_ADDRESS = 'osmo1mw0ac6rwlp5r8wapwk3zs6g29h8fcscxqakdzw9emkne6c8wjp9q0t3v8t';
+const TEST_POOL_ID = '1269';
+const TEST_POOL_ADDRESS = 'osmo1rdm79d008fel4ppkgdcf8pgjwazf72sjfhpyx5kpzlck86slpjusek2en6';
 
 // Mock API calls (axios.get and axios.post)
 jest.mock('axios');
@@ -29,7 +29,7 @@ function loadMockResponse(filename) {
 }
 
 // Tests
-describe('Osmosis AMM Tests (testnet)', () => {
+describe('Osmosis CLMM Tests (testnet)', () => {
   beforeEach(() => {
     // Reset axios mocks before each test
     axios.get.mockClear();
@@ -39,7 +39,7 @@ describe('Osmosis AMM Tests (testnet)', () => {
   describe('Pool Info Endpoint', () => {
     test('returns and validates pool info', async () => {
       // Load mock response
-      const mockResponse = loadMockResponse('poolInfo-GAMM-out');
+      const mockResponse = loadMockResponse('poolInfo-CLMM-out');
 
       // Setup mock axios
       axios.get.mockResolvedValueOnce({
@@ -104,10 +104,33 @@ describe('Osmosis AMM Tests (testnet)', () => {
     });
   });
 
+  describe('Positions Owned Endpoint', () => {
+    test('returns and validates positions owned', async () => {
+      const mockResponse = loadMockResponse('positionsOwned-CLMM-out');
+
+      // Setup mock axios
+      axios.get.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      const mockRequest = loadMockResponse('positionsOwned-CLMM-in');
+      // Make the request
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/positions-owned`, {
+        params: mockRequest,
+      });
+
+      // Validate the response
+      console.info(response.data);
+      expect(response.status).toBe(200);
+      expect(response.data[0].baseTokenAmount).toBeGreaterThan(0);
+    });
+  });
+
   describe('Quote Swap Endpoint', () => {
     test('returns and validates swap quote for BUY', async () => {
       // Load mock response
-      const mockResponse = loadMockResponse('quoteSwap-GAMM-out');
+      const mockResponse = loadMockResponse('quoteSwap-CLMM-out');
 
       // Setup mock axios
       axios.get.mockResolvedValueOnce({
@@ -153,8 +176,8 @@ describe('Osmosis AMM Tests (testnet)', () => {
   describe('Execute Swap Endpoint', () => {
     test('returns successful swap execution', async () => {
       // Mock a quote-swap response to use as input for execute-swap
-      const executeSwapRequest = loadMockResponse('executeSwap-GAMM-in');
-      const executeSwapResponse = loadMockResponse('executeSwap-GAMM-out');
+      const executeSwapRequest = loadMockResponse('executeSwap-CLMM-in');
+      const executeSwapResponse = loadMockResponse('executeSwap-CLMM-out');
 
       // Setup mock axios for the execute-swap request
       axios.post.mockResolvedValueOnce({
@@ -214,7 +237,7 @@ describe('Osmosis AMM Tests (testnet)', () => {
 
   describe('Position Info Endpoint', () => {
     test('returns and validates position info', async () => {
-      const mockResponse = loadMockResponse('positionInfo-GAMM-out');
+      const mockResponse = loadMockResponse('positionInfo-CLMM-out');
 
       // Setup mock axios
       axios.get.mockResolvedValueOnce({
@@ -222,7 +245,7 @@ describe('Osmosis AMM Tests (testnet)', () => {
         data: mockResponse,
       });
 
-      const mockRequest = loadMockResponse('positionInfo-GAMM-in');
+      const mockRequest = loadMockResponse('positionInfo-CLMM-in');
       // Make the request
       const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/position-info`, {
         params: mockRequest,
@@ -231,35 +254,13 @@ describe('Osmosis AMM Tests (testnet)', () => {
       // Validate the response
       expect(response.status).toBe(200);
       expect(response.data.poolAddress).toBe(TEST_POOL_ADDRESS);
-      expect(response.data.lpTokenAmount).toBeGreaterThan(0);
-    });
-  });
-
-  describe('Positions Owned Endpoint', () => {
-    test('returns and validates positions owned', async () => {
-      const mockResponse = loadMockResponse('positionsOwned-GAMM-out');
-
-      // Setup mock axios
-      axios.get.mockResolvedValueOnce({
-        status: 200,
-        data: mockResponse,
-      });
-
-      const mockRequest = loadMockResponse('positionsOwned-GAMM-in');
-      // Make the request
-      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/positions-owned`, {
-        params: mockRequest,
-      });
-
-      // Validate the response
-      expect(response.status).toBe(200);
-      expect(response.data[0].lpTokenAmount).toBeGreaterThan(0);
+      expect(response.data.baseTokenAmount).toBeGreaterThan(0);
     });
   });
 
   describe('Add Liquidity Endpoint', () => {
     test('returns successful liquidity addition', async () => {
-      const mockResponse = loadMockResponse('addLiquidity-GAMM-out');
+      const mockResponse = loadMockResponse('addLiquidity-CLMM-out');
 
       // Setup mock axios
       axios.get.mockResolvedValueOnce({
@@ -267,9 +268,31 @@ describe('Osmosis AMM Tests (testnet)', () => {
         data: mockResponse,
       });
 
-      const mockRequest = loadMockResponse('addLiquidity-GAMM-in');
+      const mockRequest = loadMockResponse('addLiquidity-CLMM-in');
       // Make the request
       const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/add-liquidity`, {
+        params: mockRequest,
+      });
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(response.data.data.quoteTokenAmountAdded).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Open Position Endpoint', () => {
+    test('returns successful open position', async () => {
+      const mockResponse = loadMockResponse('openPosition-CLMM-out');
+
+      // Setup mock axios
+      axios.get.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      const mockRequest = loadMockResponse('openPosition-CLMM-in');
+      // Make the request
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/open-position`, {
         params: mockRequest,
       });
 
@@ -279,9 +302,9 @@ describe('Osmosis AMM Tests (testnet)', () => {
     });
   });
 
-  describe('Remove Liquidity Endpoint', () => {
-    test('returns successful liquidity remove', async () => {
-      const mockResponse = loadMockResponse('removeLiquidity-GAMM-all-out');
+  describe('Close Position Endpoint', () => {
+    test('returns successful close position', async () => {
+      const mockResponse = loadMockResponse('closePosition-CLMM-out');
 
       // Setup mock axios
       axios.get.mockResolvedValueOnce({
@@ -289,7 +312,51 @@ describe('Osmosis AMM Tests (testnet)', () => {
         data: mockResponse,
       });
 
-      const mockRequest = loadMockResponse('removeLiquidity-GAMM-all-in');
+      const mockRequest = loadMockResponse('closePosition-CLMM-in');
+      // Make the request
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/close-position`, {
+        params: mockRequest,
+      });
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(response.data.data.baseTokenAmountRemoved).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Collect Fees Endpoint', () => {
+    test('returns successful collect fees', async () => {
+      const mockResponse = loadMockResponse('collectFees-CLMM-out');
+
+      // Setup mock axios
+      axios.get.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      const mockRequest = loadMockResponse('collectFees-CLMM-in');
+      // Make the request
+      const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/collect-fees`, {
+        params: mockRequest,
+      });
+
+      // Validate the response
+      expect(response.status).toBe(200);
+      expect(response.data.data.quoteFeeAmountCollected * -1).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Remove Liquidity Endpoint', () => {
+    test('returns successful liquidity remove', async () => {
+      const mockResponse = loadMockResponse('removeLiquidity-CLMM-out');
+
+      // Setup mock axios
+      axios.get.mockResolvedValueOnce({
+        status: 200,
+        data: mockResponse,
+      });
+
+      const mockRequest = loadMockResponse('removeLiquidity-CLMM-in');
       // Make the request
       const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/remove-liquidity`, {
         params: mockRequest,
@@ -297,13 +364,13 @@ describe('Osmosis AMM Tests (testnet)', () => {
 
       // Validate the response
       expect(response.status).toBe(200);
-      expect(response.data.data.quoteTokenAmountRemoved).toBeGreaterThan(0);
+      expect(response.data.data.baseTokenAmountRemoved).toBeGreaterThan(0);
     });
   });
 
   describe('fetch pools Endpoint', () => {
     test('fetch pools', async () => {
-      const mockResponse = loadMockResponse('fetchPools-GAMM-out');
+      const mockResponse = loadMockResponse('fetchPools-CLMM-out');
 
       // Setup mock axios
       axios.get.mockResolvedValueOnce({
@@ -311,7 +378,7 @@ describe('Osmosis AMM Tests (testnet)', () => {
         data: mockResponse,
       });
 
-      const mockRequest = loadMockResponse('fetchPools-GAMM-in');
+      const mockRequest = loadMockResponse('fetchPools-CLMM-in');
       // Make the request
       const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/fetch-pools`, {
         params: mockRequest,
@@ -325,7 +392,7 @@ describe('Osmosis AMM Tests (testnet)', () => {
 
   describe('pool info Endpoint', () => {
     test('pool info', async () => {
-      const mockResponse = loadMockResponse('poolInfo-GAMM-out');
+      const mockResponse = loadMockResponse('poolInfo-CLMM-out');
 
       // Setup mock axios
       axios.get.mockResolvedValueOnce({
@@ -333,7 +400,7 @@ describe('Osmosis AMM Tests (testnet)', () => {
         data: mockResponse,
       });
 
-      const mockRequest = loadMockResponse('poolInfo-GAMM-in');
+      const mockRequest = loadMockResponse('poolInfo-CLMM-in');
       // Make the request
       const response = await axios.get(`http://localhost:15888/connectors/${CONNECTOR}/${PROTOCOL}/pool-info`, {
         params: mockRequest,

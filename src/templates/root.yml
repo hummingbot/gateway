@@ -62,6 +62,23 @@ configurations:
   $namespace solana-devnet:
     configurationPath: chains/solana/devnet.yml
     schemaPath: solana-network-schema.json
+  
+  # Cosmos-Osmosis networks (barely using these, made mostly for future/support)
+  $namespace cosmos-mainnet:
+    configurationPath: chains/cosmos/cosmos-mainnet.yml
+    schemaPath: cosmos-network-schema.json
+
+  $namespace cosmos-testnet:
+    configurationPath: chains/cosmos/cosmos-testnet.yml
+    schemaPath: cosmos-network-schema.json
+
+  $namespace cosmos-osmosis-mainnet:
+    configurationPath: chains/cosmos/osmosis-mainnet.yml
+    schemaPath: cosmos-network-schema.json
+
+  $namespace cosmos-osmosis-testnet:
+    configurationPath: chains/cosmos/osmosis-testnet.yml
+    schemaPath: cosmos-network-schema.json
 
   # Connectors
   $namespace uniswap:

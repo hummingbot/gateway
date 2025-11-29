@@ -15,7 +15,7 @@ export namespace OsmosisConfig {
   export const tradingTypes = ['amm', 'clmm'] as const; // , 'router' previously referred to StableSwap but now deactivated (not many SS pools anyway)
   export const networks = ['mainnet', 'testnet'] as const;
   export const chainNames = ['osmosis-1', 'osmo-test-5'] as const;
-  export const chain = 'osmosis';
+  export const chain = 'cosmos';
 
   export interface NetworkConfig {
     chainType: string;

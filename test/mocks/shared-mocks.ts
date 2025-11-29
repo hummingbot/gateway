@@ -32,6 +32,15 @@ export const mockConfigStorage: Record<string, any> = {
   'ethereum-mainnet.nativeCurrencySymbol': 'ETH',
   'ethereum-goerli.nodeURL': 'https://goerli.infura.io/v3/test',
   'ethereum-goerli.nativeCurrencySymbol': 'ETH',
+  // Cosmos configs
+  'cosmos-mainnet.nodeURL': 'https://cosmos-rpc.publicnode.com:443',
+  'cosmos-mainnet.chainName': 'cosmoshub-4',
+  'cosmos-testnet.nodeURL': 'https://cosmos-testnet-rpc.polkachu.com',
+  'cosmos-testnet.chainName': 'theta-testnet-001',
+  'cosmos-osmosis-mainnet.nodeURL': 'https://rpc.osmosis.zone/',
+  'cosmos-osmosis-mainnet.chainName': 'osmosis-1',
+  'cosmos-osmosis-testnet.nodeURL': 'https://rpc.testnet.osmosis.zone/',
+  'cosmos-osmosis-testnet.chainName': 'osmo-test-5',
   // Connector configurations
   'jupiter.slippagePct': 1,
   'jupiter.priorityLevel': 'medium',
@@ -55,6 +64,10 @@ export const mockConfigManagerV2 = {
       'ethereum-goerli': {},
       'solana-mainnet-beta': {},
       'solana-devnet': {},
+      'cosmos-mainnet': {},
+      'cosmos-testnet': {},
+      'cosmos-osmosis-mainnet': {},
+      'cosmos-osmosis-testnet': {},
       uniswap: {},
       jupiter: {},
       meteora: {},
@@ -140,6 +153,12 @@ export const mockEthereumChainConfig = {
   rpcProvider: 'url',
 };
 
+export const mockCosmosChainConfig = {
+  defaultNetwork: 'osmosis-mainnet',
+  defaultWallet: 'test-wallet',
+  rpcProvider: 'url',
+};
+
 // Setup all common mocks
 export function setupCommonMocks(options: { skipLogger?: boolean } = {}) {
   // Mock logger only if not skipped
@@ -173,6 +192,11 @@ export function setupCommonMocks(options: { skipLogger?: boolean } = {}) {
   jest.mock('../../src/chains/ethereum/ethereum.config', () => ({
     ...jest.requireActual('../../src/chains/ethereum/ethereum.config'),
     getEthereumChainConfig: jest.fn().mockReturnValue(mockEthereumChainConfig),
+  }));
+
+  jest.mock('../../src/chains/cosmos/cosmos.config', () => ({
+    ...jest.requireActual('../../src/chains/cosmos/cosmos.config'),
+    getCosmosChainConfig: jest.fn().mockReturnValue(mockCosmosChainConfig),
   }));
 
   // Mock fs for token lists
@@ -221,6 +245,14 @@ export function resetAllMocks() {
     'ethereum-mainnet.nativeCurrencySymbol': 'ETH',
     'ethereum-goerli.nodeURL': 'https://goerli.infura.io/v3/test',
     'ethereum-goerli.nativeCurrencySymbol': 'ETH',
+    'cosmos-mainnet.nodeURL': 'https://cosmos-rpc.publicnode.com:443',
+    'cosmos-mainnet.chainName': 'cosmoshub-4',
+    'cosmos-testnet.nodeURL': 'https://cosmos-testnet-rpc.polkachu.com',
+    'cosmos-testnet.chainName': 'theta-testnet-001',
+    'cosmos-osmosis-mainnet.nodeURL': 'https://rpc.osmosis.zone/',
+    'cosmos-osmosis-mainnet.chainName': 'osmosis-1',
+    'cosmos-osmosis-testnet.nodeURL': 'https://rpc.testnet.osmosis.zone/',
+    'cosmos-osmosis-testnet.chainName': 'osmo-test-5',
     'jupiter.slippagePct': 1,
     'jupiter.priorityLevel': 'medium',
     'jupiter.apiKey': undefined,

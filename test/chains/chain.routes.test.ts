@@ -55,7 +55,7 @@ describe('Chain Routes', () => {
       // Verify cosmos networks
       const cosmos = data.chains.find((c: any) => c.chain === 'cosmos');
       expect(cosmos.networks.length).toBeGreaterThan(0);
-      expect(cosmos.networks).toContain('mainnet');
+      expect(cosmos.networks).toContain('osmosis-mainnet');
     });
   });
 });

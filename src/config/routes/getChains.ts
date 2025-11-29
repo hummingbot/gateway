@@ -50,7 +50,6 @@ export const getChainsRoute: FastifyPluginAsync = async (fastify) => {
 
         // Only process known chains
         if (['ethereum', 'solana', 'cosmos'].includes(chain)) {
-          // no networks for Cosmos, Osmosis is just a connector(?)
           if (!chainNetworks[chain]) {
             chainNetworks[chain] = [];
           }

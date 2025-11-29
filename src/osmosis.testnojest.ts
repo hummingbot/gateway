@@ -5,6 +5,7 @@ import * as https from 'https';
 import * as path from 'path';
 import * as pathog from 'path';
 
+import sensible from '@fastify/sensible';
 import { Type, Static } from '@sinclair/typebox';
 import axios from 'axios';
 import Decimal from 'decimal.js-light';
@@ -29,13 +30,13 @@ import { closePosition as closePositionCLMM } from './connectors/osmosis/clmm-ro
 import { collectFees } from './connectors/osmosis/clmm-routes/collectFees';
 import { fetchPools as fetchPoolsCLMM } from './connectors/osmosis/clmm-routes/fetchPools';
 import { openPosition } from './connectors/osmosis/clmm-routes/openPosition';
-import { executeSwap, quoteSwap } from './connectors/osmosis/osmosis.swap';
-
-// CLMM routes
 import { poolInfo as poolInfoCLMM } from './connectors/osmosis/clmm-routes/poolInfo';
 import { positionInfo as positionInfoCLMM } from './connectors/osmosis/clmm-routes/positionInfo';
 import { positionsOwned as positionsOwnedCLMM } from './connectors/osmosis/clmm-routes/positionsOwned';
 import { removeLiquidity as removeLiquidityCLMM } from './connectors/osmosis/clmm-routes/removeLiquidity';
+import { executeSwap, quoteSwap } from './connectors/osmosis/osmosis.swap';
+
+// CLMM routes
 
 // chain routes
 
@@ -98,9 +99,32 @@ import {
   TokensResponseSchema,
 } from './schemas/chain-schema';
 import { ConfigManagerV2 } from './services/config-manager-v2';
+import { logger } from './services/logger';
+import { displayChainConfigurations } from './services/startup-banner';
+import { tokensRoutes } from './tokens/tokens.routes';
+import { tradingRoutes, tradingClmmRoutes } from './trading/trading.routes';
+import { GATEWAY_VERSION } from './version';
 import { addWallet, getWallets } from './wallet/utils';
 import { CosmosAsset } from './chains/cosmos/cosmos.universaltypes';
 import { getOsmoWallet } from './connectors/osmosis/osmosis.controllers';
+import { isValidCosmosAddress } from './chains/cosmos/cosmos.validators';
+
+// ALL ROUTES/recreate
+import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
+import { solanaRoutes } from './chains/solana/solana.routes';
+import { configRoutes } from './config/config.routes';
+import { register0xRoutes } from './connectors/0x/0x.routes';
+import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
+import { meteoraRoutes } from './connectors/meteora/meteora.routes';
+import { osmosisChainRoutes } from './connectors/osmosis/chain-routes';
+import { osmosisRoutes } from './connectors/osmosis/osmosis.routes';
+import { pancakeswapRoutes } from './connectors/pancakeswap/pancakeswap.routes';
+import { pancakeswapSolRoutes } from './connectors/pancakeswap-sol/pancakeswap-sol.routes';
+import { raydiumRoutes } from './connectors/raydium/raydium.routes';
+import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
+import { getHttpsOptions } from './https';
+import { poolRoutes } from './pools/pools.routes';
+import { walletRoutes } from './wallet/wallet.routes';
 
 const CHAIN = 'cosmos';
 const CONNECTOR = 'osmosis';
@@ -131,12 +155,9 @@ async function loadMockResponse(filename) {
 
 async function writeMockResponse(filename: string, instance: object) {
   try {
-    // const filePath = path.join(`/home/chase/osmolarp3/gateway/test/connectors/osmosis/mocks/${filename}.json`);
     const filePath = path.join(__dirname, '..', 'test', 'connectors', 'osmosis', 'mocks', `${filename}.json`);
     console.log(filePath);
     const json = JSON.stringify(instance, null, 2);
-    // console.log(json);
-
     // fs.mkdirSync(mockDir); // Creates the directory if it doesn't exist
     fs.writeFileSync(filePath, json, 'utf-8');
   } catch (error) {
@@ -147,25 +168,64 @@ async function writeMockResponse(filename: string, instance: object) {
 async function testnojest() {
   const osmosis: Osmosis = Osmosis.getInstance(NETWORK);
   await osmosis.init();
-
   const fastify = Fastify();
-  (fastify as any).httpErrors = {
-    badRequest: (msg: string) => {
-      const error: any = new Error(msg);
-      error.statusCode = 400;
-      return error;
-    },
-    notFound: (msg: string) => {
-      const error: any = new Error(msg);
-      error.statusCode = 404;
-      return error;
-    },
-    internalServerError: (msg: string) => {
-      const error: any = new Error(msg);
-      error.statusCode = 500;
-      return error;
-    },
-  };
+  // let fastify: FastifyInstance;
+  // fastify = gatewayApp;
+  await fastify.register(sensible);
+
+  fastify.register(configRoutes, { prefix: '/config' });
+  fastify.register(walletRoutes, { prefix: '/wallet' });
+  fastify.register(tokensRoutes, { prefix: '/tokens' });
+  fastify.register(poolRoutes, { prefix: '/pools' });
+  fastify.register(tradingRoutes, { prefix: '/trading/swap' });
+  fastify.register(tradingClmmRoutes, { prefix: '/trading/clmm' });
+  fastify.register(solanaRoutes, { prefix: '/chains/solana' });
+  fastify.register(ethereumRoutes, { prefix: '/chains/ethereum' });
+  fastify.register(osmosisChainRoutes, { prefix: '/chains/cosmos' });
+  fastify.register(jupiterRoutes.router, {
+    prefix: '/connectors/jupiter/router',
+  });
+  fastify.register(meteoraRoutes.clmm, { prefix: '/connectors/meteora/clmm' });
+  fastify.register(raydiumRoutes.amm, { prefix: '/connectors/raydium/amm' });
+  fastify.register(raydiumRoutes.clmm, { prefix: '/connectors/raydium/clmm' });
+  fastify.register(uniswapRoutes.router, {
+    prefix: '/connectors/uniswap/router',
+  });
+  fastify.register(uniswapRoutes.amm, { prefix: '/connectors/uniswap/amm' });
+  fastify.register(uniswapRoutes.clmm, { prefix: '/connectors/uniswap/clmm' });
+  fastify.register(register0xRoutes);
+  fastify.register(pancakeswapRoutes.router, {
+    prefix: '/connectors/pancakeswap/router',
+  });
+  fastify.register(pancakeswapRoutes.amm, { prefix: '/connectors/pancakeswap/amm' });
+  fastify.register(pancakeswapRoutes.clmm, { prefix: '/connectors/pancakeswap/clmm' });
+  fastify.register(pancakeswapSolRoutes, { prefix: '/connectors/pancakeswap-sol' });
+  fastify.register(osmosisRoutes.amm, { prefix: '/connectors/osmosis/amm' });
+  fastify.register(osmosisRoutes.clmm, { prefix: '/connectors/osmosis/clmm' });
+
+  // (fastify as any).httpErrors = {
+  //   badRequest: (msg: string) => {
+  //     const error: any = new Error(msg);
+  //     error.statusCode = 400;
+  //     return error;
+  //   },
+  //   notFound: (msg: string) => {
+  //     const error: any = new Error(msg);
+  //     error.statusCode = 404;
+  //     return error;
+  //   },
+  //   internalServerError: (msg: string) => {
+  //     const error: any = new Error(msg);
+  //     error.statusCode = 500;
+  //     return error;
+  //   },
+  // };
+
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  } catch (err) {
+    console.debug(err);
+  }
 
   // TESTED ENDPOINTS
 
@@ -372,6 +432,27 @@ async function testnojest() {
   //   console.debug(response);
   //   writeMockResponse('executeSwap-GAMM-reverse-in', request);
   //   writeMockResponse('executeSwap-GAMM-reverse-out', response);
+  // } catch (err) {
+  //   console.debug(err);
+  // }
+
+  // try {
+  //   await new Promise((resolve) => setTimeout(resolve, 2000));
+  //   console.debug('executeSwap CLMM');
+  //   const request = {
+  //     baseToken: 'ION',
+  //     quoteToken: 'OSMO',
+  //     amount: 0.0001,
+  //     side: 'BUY',
+  //     slippagePct: 99,
+  //     chains: 'cosmos',
+  //     network: NETWORK,
+  //     walletAddress: TEST_WALLET,
+  //   };
+  //   const response = await executeSwap(fastify, request, 'CLMM');
+  //   console.debug(response);
+  //   writeMockResponse('executeSwap-CLMM-in', request);
+  //   writeMockResponse('executeSwap-CLMM-out', response);
   // } catch (err) {
   //   console.debug(err);
   // }
@@ -683,8 +764,8 @@ async function testnojest() {
   //   ) as CLMMPositionInfo;
   //   console.debug(response_CLMMPositionInfo);
   //   console.debug(clmmPositionAddress);
-  //   writeMockResponse('poolPosition-CLMM-in', request_CLMMGetPositionInfoRequestType);
-  //   writeMockResponse('poolPosition-CLMM-out', response_CLMMPositionInfo);
+  //   writeMockResponse('positionInfo-CLMM-in', request_CLMMGetPositionInfoRequestType);
+  //   writeMockResponse('positionInfo-CLMM-out', response_CLMMPositionInfo);
   // } catch (err) {
   //   console.debug(err);
   // }
