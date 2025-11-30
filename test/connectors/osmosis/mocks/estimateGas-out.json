@@ -1,0 +1,8 @@
+{
+  "timestamp": 1764052784917,
+  "denomination": "OSMO",
+  "feePerComputeUnit": 2000000,
+  "computeUnits": 0,
+  "feeAsset": "OSMO",
+  "fee": 0.03
+}

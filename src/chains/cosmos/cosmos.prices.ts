@@ -1,0 +1,127 @@
+import { PriceHash } from '@osmonauts/math/esm/types';
+
+import { CosmosAsset } from '../../chains/cosmos/cosmos.universaltypes';
+
+type CoinGeckoId = string;
+type CoinGeckoUSD = { usd: number };
+type CoinGeckoUSDResponse = Record<CoinGeckoId, CoinGeckoUSD>;
+
+const getAssetsWithGeckoIds = (assets: CosmosAsset[]) => {
+  return assets.filter((asset) => asset.coingeckoId);
+};
+
+const getGeckoIds = (assets: CosmosAsset[]) => {
+  return assets.map((asset) => asset.coingeckoId) as string[];
+};
+
+const formatPrices = (prices: CoinGeckoUSDResponse, assets: CosmosAsset[]): Record<string, number> => {
+  return Object.entries(prices).reduce((priceHash, cur) => {
+    const key = assets.find((asset) => asset.coingeckoId === cur[0])!.base;
+    // const key = assets.find((asset) => asset.coingeckoId === cur[0])!.symbol;  // hash by symbol
+    return { ...priceHash, [key]: cur[1].usd };
+  }, {});
+};
+
+export const getCoinGeckoPrices = async (assets: CosmosAsset[]): Promise<Record<string, number>> => {
+  const assetsWithGeckoIds = getAssetsWithGeckoIds(assets);
+  const geckoIds = getGeckoIds(assetsWithGeckoIds);
+
+  const priceData: CoinGeckoUSDResponse | undefined = await getData(geckoIds);
+  if (priceData) {
+    return formatPrices(priceData, assetsWithGeckoIds);
+  }
+  throw new Error('Osmosis failed to get prices from coingecko.com');
+};
+
+const getData = async (geckoIds: string[]): Promise<CoinGeckoUSDResponse | undefined> => {
+  let prices: CoinGeckoUSDResponse;
+  console.info('Osmosis: Getting coin prices from coingecko.');
+  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${geckoIds.join()}&vs_currencies=usd`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+    prices = (await response.json()) as CoinGeckoUSDResponse;
+    if (!response.ok) {
+      throw Error('Get price error');
+    }
+    return prices;
+  } catch (err) {
+    console.error(err);
+  }
+  return undefined;
+};
+
+export const getImperatorPriceHash = async (
+  tokenList?: CosmosAsset[],
+  url: string = 'https://api-osmosis.imperator.co/tokens/v2/all',
+) => {
+  let prices = [];
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw Error('Get price error');
+    prices = (await response.json()) as any[];
+  } catch (err) {
+    console.error(err);
+  }
+
+  let priceHash: PriceHash = {};
+  // need to sort from symbol->denom input to make testnet denoms work (prices always come with mainnet denoms)
+  if (tokenList && tokenList.length > 0) {
+    prices.forEach((element) => {
+      if (element.symbol) {
+        const testnet_element = tokenList.find(({ symbol }) => symbol == element.symbol);
+        if (testnet_element) {
+          priceHash[testnet_element.base] = element.price;
+        } else {
+          priceHash[element.denom] = element.price;
+        }
+      } else {
+        priceHash[element.denom] = element.price;
+      }
+    });
+  } else {
+    priceHash = prices.reduce(
+      (prev: any, cur: { denom: any; price: any }) => ({
+        ...prev,
+        [cur.denom]: cur.price,
+      }),
+      {},
+    );
+  }
+
+  return priceHash;
+};
+
+interface baseFee {
+  base_fee?: string;
+}
+
+export const getEIP1559DynamicBaseFee = async (url: string) => {
+  let fee: baseFee | undefined = undefined;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw Error('Get base fee error');
+    fee = (await response.json()) as baseFee;
+  } catch (err) {
+    console.error(err);
+    console.error('Fetch base fee failed, retrying.');
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        fee = (await response.json()) as baseFee;
+      }
+    } catch (err2) {
+      console.error('Osmosis: Get dynamic base fee error, returning default number.');
+    }
+  }
+  if (fee && fee.base_fee) {
+    const finalFee = Number(fee!.base_fee!).toString();
+    return finalFee;
+  }
+  return '';
+};

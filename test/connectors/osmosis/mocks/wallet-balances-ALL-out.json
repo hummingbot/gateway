@@ -1,0 +1,18 @@
+{
+  "gamm/pool/62": {
+    "value": "36022031254003350",
+    "decimals": 6
+  },
+  "ATOM": {
+    "value": "40924",
+    "decimals": 6
+  },
+  "ION": {
+    "value": "93777",
+    "decimals": 6
+  },
+  "OSMO": {
+    "value": "152046201",
+    "decimals": 6
+  }
+}

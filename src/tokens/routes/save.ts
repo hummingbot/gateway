@@ -87,7 +87,7 @@ export const saveTokenRoute: FastifyPluginAsync = async (fastify) => {
 
         // Refresh token list and trigger balance cache refresh for Solana chains (non-blocking)
         if (chain === 'solana') {
-          const { Solana } = await import('../../chains/solana/solana');
+          const { Solana } = await import('../../chains/solana/solana.js');
           Solana.getInstance(network)
             .then(async (solana) => {
               // Reload token list to include new token

@@ -1,0 +1,13 @@
+{
+  "0": {
+    "walletAddress": "osmo1gxfandcf6x6y0lv3afv0p4w4akv809ycrly4cs",
+    "poolAddress": "osmo1mw0ac6rwlp5r8wapwk3zs6g29h8fcscxqakdzw9emkne6c8wjp9q0t3v8t",
+    "baseTokenAmount": 0,
+    "quoteTokenAmount": 0,
+    "baseTokenAddress": "",
+    "quoteTokenAddress": "",
+    "price": 0.0007959260951650942,
+    "lpTokenAmount": 121988641470936
+  },
+  "network": "testnet"
+}

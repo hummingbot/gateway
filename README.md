@@ -1084,3 +1084,35 @@ If you see errors like `Cannot find module '@ledgerhq/hw-transport-node-hid'` or
 - Open the appropriate app (Ethereum or Solana) on the device
 - Try different USB ports or cables
 - Close Ledger Live if it's running (it may lock the device)
+
+## Running in Debug (vscode launch.json configurations - tested on Ubuntu)
+- Run single test file outside project (eg. import Chain or Connector and .init())
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "BUILD/DEBUG SINGLE FILE: src/testnojest.ts +externalTerminal",
+            "program": "${workspaceFolder}/dist/osmosis.testnojest.js",
+            "preLaunchTask": "npm: build",
+            "args": ["--passphrase=PASSPHRASE", "--dev"],
+            "env":{"START_SERVER":"true", "GATEWAY_TEST_MODE":"dev"},
+            "internalConsoleOptions": "openOnSessionStart",
+            "console": "externalTerminal",
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ]
+        },
+- Run whole project in debug mode (breakpoints work on TS files)
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "BUILD/DEBUG FULL: index.js +externalTerminal for info()",
+            "console": "externalTerminal",
+            "program": "${workspaceFolder}/dist/index.js",
+            "preLaunchTask": "npm: build",
+            "args": ["--passphrase=PASSPHRASE", "--dev"],
+            "env":{"START_SERVER":"true", "GATEWAY_TEST_MODE":"dev"},
+            "internalConsoleOptions": "openOnSessionStart",
+            "outFiles": [
+                "${workspaceFolder}/dist/**/*.js"
+            ]
+        },

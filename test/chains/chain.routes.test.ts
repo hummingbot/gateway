@@ -29,10 +29,11 @@ describe('Chain Routes', () => {
       expect(data).toHaveProperty('chains');
       expect(Array.isArray(data.chains)).toBe(true);
 
-      // Check that we have both ethereum and solana chains
+      // Check that we have all chains
       const chainNames = data.chains.map((c: any) => c.chain);
       expect(chainNames).toContain('ethereum');
       expect(chainNames).toContain('solana');
+      expect(chainNames).toContain('cosmos');
 
       // Each chain should have networks array
       data.chains.forEach((chain: any) => {
@@ -50,6 +51,11 @@ describe('Chain Routes', () => {
       const solana = data.chains.find((c: any) => c.chain === 'solana');
       expect(solana.networks.length).toBeGreaterThan(0);
       expect(solana.networks).toContain('mainnet-beta');
+
+      // Verify cosmos networks
+      const cosmos = data.chains.find((c: any) => c.chain === 'cosmos');
+      expect(cosmos.networks.length).toBeGreaterThan(0);
+      expect(cosmos.networks).toContain('osmosis-mainnet');
     });
   });
 });

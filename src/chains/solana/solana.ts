@@ -618,7 +618,7 @@ export class Solana {
     // Try Meteora
     try {
       const { getPositionsOwned: getMeteoraPositions } = await import(
-        '../../connectors/meteora/clmm-routes/positionsOwned'
+        '../../connectors/meteora/clmm-routes/positionsOwned.js'
       );
       // Create a minimal fastify-like object for validation
       const mockFastify = { httpErrors: { badRequest: (msg: string) => new Error(msg) } };
@@ -644,7 +644,7 @@ export class Solana {
     // Try Raydium CLMM
     try {
       const { getPositionsOwned: getRaydiumPositions } = await import(
-        '../../connectors/raydium/clmm-routes/positionsOwned'
+        '../../connectors/raydium/clmm-routes/positionsOwned.js'
       );
       const mockFastify = { httpErrors: { badRequest: (msg: string) => new Error(msg) } };
       const raydiumPositions = await getRaydiumPositions(mockFastify as any, this.network, walletAddress);
@@ -669,7 +669,7 @@ export class Solana {
     // Try PancakeSwap
     try {
       const { getPositionsOwned: getPancakeswapPositions } = await import(
-        '../../connectors/pancakeswap-sol/clmm-routes/positionsOwned'
+        '../../connectors/pancakeswap-sol/clmm-routes/positionsOwned.js'
       );
       const mockFastify = { httpErrors: { badRequest: (msg: string) => new Error(msg) } };
       const pancakeswapPositions = await getPancakeswapPositions(mockFastify as any, this.network, walletAddress);

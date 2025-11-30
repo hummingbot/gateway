@@ -27,7 +27,7 @@ export class SolanaPriorityFees {
 
     try {
       // Try to get Helius API key from RPC config
-      const { ConfigManagerV2 } = await import('../../services/config-manager-v2');
+      const { ConfigManagerV2 } = await import('../../services/config-manager-v2.js');
       const configManager = ConfigManagerV2.getInstance();
       const apiKey = configManager.get('helius.apiKey') || '';
 

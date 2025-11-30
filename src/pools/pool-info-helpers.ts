@@ -2,7 +2,7 @@
  * Helper functions for fetching pool info from connectors
  */
 
-import { FastifyInstance } from 'fastify';
+import { Osmosis } from '#src/connectors/osmosis/osmosis.js';
 
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
@@ -20,12 +20,12 @@ interface PoolInfoResult {
 /**
  * Get chain type for a connector from config
  */
-function getConnectorChain(connector: string): 'solana' | 'ethereum' | null {
+function getConnectorChain(connector: string): 'solana' | 'ethereum' | 'cosmos' | null {
   const config = connectorsConfig.find((c) => c.name === connector);
   if (!config) {
     return null;
   }
-  return config.chain as 'solana' | 'ethereum';
+  return config.chain as 'solana' | 'ethereum' | 'cosmos';
 }
 
 /**
@@ -146,6 +146,14 @@ export async function fetchPoolInfo(
           feePct: feePct,
         };
       }
+    } else if (connector === 'osmosis') {
+      const osmosis = await Osmosis.getInstance(network);
+      const poolInfo = await osmosis.controller.poolInfoRequest(osmosis, undefined, { network, poolAddress }, type);
+      return {
+        baseTokenAddress: poolInfo.baseTokenAddress,
+        quoteTokenAddress: poolInfo.quoteTokenAddress,
+        feePct: poolInfo.feePct,
+      };
     } else {
       logger.error(`Unsupported chain: ${chain} for connector: ${connector}`);
       return null;

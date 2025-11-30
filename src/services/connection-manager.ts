@@ -1,11 +1,12 @@
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
+import { Osmosis } from '../connectors/osmosis/osmosis';
 
 export interface Chain {
   // TODO: Add shared chain properties (e.g., network, chainId, etc.)
 }
 
-export type ChainInstance = Ethereum | Solana;
+export type ChainInstance = Ethereum | Solana | Osmosis;
 
 export class UnsupportedChainException extends Error {
   constructor(message?: string) {
@@ -32,7 +33,7 @@ export async function getInitializedChain<_T>(chain: string, network: string): P
  */
 export function getSupportedChains(): string[] {
   // These should match the chains in getChainInstance
-  return ['ethereum', 'solana'];
+  return ['ethereum', 'solana', 'cosmos'];
 }
 
 export async function getChainInstance(chain: string, network: string): Promise<ChainInstance | undefined> {
@@ -43,6 +44,8 @@ export async function getChainInstance(chain: string, network: string): Promise<
     connection = await Ethereum.getInstance(network);
   } else if (chainLower === 'solana') {
     connection = await Solana.getInstance(network);
+  } else if (chainLower === 'cosmos') {
+    connection = await Osmosis.getInstance(network);
   } else {
     connection = undefined;
   }
@@ -61,13 +64,13 @@ export async function getConnector(
 ): Promise<Connector> {
   // Dynamically import connector classes only when needed
   if (connector === 'uniswap') {
-    const { Uniswap } = await import('../connectors/uniswap/uniswap');
+    const { Uniswap } = await import('../connectors/uniswap/uniswap.js');
     return await Uniswap.getInstance(network);
   } else if (connector === 'jupiter') {
-    const { Jupiter } = await import('../connectors/jupiter/jupiter');
+    const { Jupiter } = await import('../connectors/jupiter/jupiter.js');
     return await Jupiter.getInstance(network);
   } else if (connector === 'meteora') {
-    const { Meteora } = await import('../connectors/meteora/meteora');
+    const { Meteora } = await import('../connectors/meteora/meteora.js');
     return await Meteora.getInstance(network);
   } else {
     throw new Error('unsupported chain or connector');

@@ -28,7 +28,7 @@ export async function executeSwap(
   slippagePct?: number,
 ): Promise<ExecuteSwapResponseType> {
   // Get quote first - this contains all the slippage calculations and pool lookup
-  const { quoteSwap } = await import('./quoteSwap');
+  const { quoteSwap } = await import('./quoteSwap.js');
   const quote = await quoteSwap(
     fastify,
     network,

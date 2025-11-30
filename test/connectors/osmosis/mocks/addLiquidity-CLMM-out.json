@@ -1,0 +1,10 @@
+{
+  "data": {
+    "fee": null,
+    "baseTokenAmountAdded": 0,
+    "quoteTokenAmountAdded": 0.135913,
+    "newPositionAddress": "3493"
+  },
+  "signature": "C1653509563DD5BA8F99AE96ADCA99442C704F747295CF62147B15B20FFE2FEE",
+  "status": 0
+}

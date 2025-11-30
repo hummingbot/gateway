@@ -3,6 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { Solana } from '../../chains/solana/solana';
 import { updateDefaultWallet } from '../../config/utils';
+import { Osmosis } from '../../connectors/osmosis/osmosis';
 import { logger } from '../../services/logger';
 import {
   SetDefaultWalletRequest,
@@ -30,6 +31,10 @@ export const setDefaultRoute: FastifyPluginAsync = async (fastify) => {
               chain: 'solana',
               address: '7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi',
             },
+            {
+              chain: 'cosmos',
+              address: 'osmo0000000000000000000000000000000000000000',
+            },
           ],
         },
         response: {
@@ -54,6 +59,8 @@ export const setDefaultRoute: FastifyPluginAsync = async (fastify) => {
           validatedAddress = Ethereum.validateAddress(address);
         } else if (chain.toLowerCase() === 'solana') {
           validatedAddress = Solana.validateAddress(address);
+        } else if (chain.toLowerCase() === 'cosmos') {
+          validatedAddress = Osmosis.validateAddress(address);
         } else {
           throw new Error(`Unsupported chain: ${chain}`);
         }

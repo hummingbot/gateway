@@ -2,7 +2,9 @@
   "compilerOptions": {
     "strict": false,
     "target": "ESNext",
-    "module": "CommonJS",
+    "module": "nodenext",
+    "isolatedModules": true,
+    "moduleResolution": "nodenext",
     "allowJs": true,
     "inlineSourceMap": true,
     "removeComments": true,
@@ -19,6 +21,7 @@
     "experimentalDecorators": true,
     "resolveJsonModule": true,
     "baseUrl": ".",
+    "rootDir": ".",
     "paths": {
       "#src": ["src/index.ts"],
       "#src/*": ["src/*"],

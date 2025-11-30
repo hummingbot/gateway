@@ -45,7 +45,7 @@ describe('Connector Routes', () => {
         });
 
         // Verify chain is valid
-        expect(['ethereum', 'solana']).toContain(connector.chain);
+        expect(['ethereum', 'solana', 'cosmos']).toContain(connector.chain);
 
         // Verify networks is an array
         expect(Array.isArray(connector.networks)).toBe(true);

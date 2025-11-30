@@ -1,0 +1,12 @@
+{
+  "signature": "4C1C3D9EEFA83EB9059A52C57280E02F2E60E1D2384E46A937E192D71E29F3BF",
+  "status": 0,
+  "data": {
+    "fee": 0,
+    "baseTokenAmountRemoved": 0.023782,
+    "quoteTokenAmountRemoved": 0,
+    "baseFeeAmountCollected": -0.013933,
+    "quoteFeeAmountCollected": 0,
+    "positionRentRefunded": 0
+  }
+}

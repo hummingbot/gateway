@@ -1,7 +1,5 @@
 import { Type, Static } from '@sinclair/typebox';
 
-import { TransactionStatus } from './chain-schema';
-
 export const FetchPoolsRequest = Type.Object(
   {
     network: Type.Optional(Type.String()), // Network
@@ -167,6 +165,7 @@ export const AddLiquidityResponse = Type.Object(
         fee: Type.Number(),
         baseTokenAmountAdded: Type.Number(),
         quoteTokenAmountAdded: Type.Number(),
+        newPositionAddress: Type.Optional(Type.String()), // Osmosis - returns new position address on AddLiqudity (and exclusively on AddLiquidity)
       }),
     ),
   },

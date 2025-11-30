@@ -1,3 +1,5 @@
+import { CosmosAsset } from '#src/chains/cosmos/cosmos.universaltypes.js';
+
 // Common token interface
 export interface Token {
   chainId?: number;
@@ -28,6 +30,10 @@ export interface SolanaToken extends Token {
   // Solana-specific fields can be added here if needed
 }
 
+export interface CosmosToken extends Token, CosmosAsset {
+  // Extended via CosmosAsset
+}
+
 // Token list format
 export interface TokenList {
   tokens: Token[];
@@ -40,6 +46,7 @@ export type TokenFileFormat = Token[];
 export enum SupportedChain {
   ETHEREUM = 'ethereum',
   SOLANA = 'solana',
+  COSMOS = 'cosmos',
 }
 
 // Chain validation

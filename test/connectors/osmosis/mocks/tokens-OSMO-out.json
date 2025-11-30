@@ -1,0 +1,11 @@
+{
+  "tokens": [
+    {
+      "chainId": 0,
+      "address": "uosmo",
+      "name": "Osmosis Testnet",
+      "symbol": "OSMO",
+      "decimals": 6
+    }
+  ]
+}

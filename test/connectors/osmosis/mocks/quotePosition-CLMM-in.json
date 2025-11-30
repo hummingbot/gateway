@@ -1,0 +1,9 @@
+{
+  "poolAddress": "osmo1rdm79d008fel4ppkgdcf8pgjwazf72sjfhpyx5kpzlck86slpjusek2en6",
+  "lowerPrice": 200,
+  "upperPrice": 1000,
+  "baseTokenAmount": 0.0002,
+  "quoteTokenAmount": 0.1,
+  "network": "testnet",
+  "slippagePct": 99
+}

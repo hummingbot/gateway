@@ -1,19 +1,18 @@
-import * as fs from 'fs';
-import * as path from 'path';
-
 import { FastifyInstance } from 'fastify';
-import * as yaml from 'js-yaml';
+import createError from 'http-errors';
+// createError used as a workaround to enable (actual, project-wide, sans jest) debugging,
+//    since fastify.httpErrors plugin is not being loaded prior to ts-compile.
 
 import { ConfigManagerV2 } from '../services/config-manager-v2';
 import { logger } from '../services/logger';
 
-export const getConfig = (fastify: FastifyInstance, namespace?: string): object => {
+export const getConfig = (_fastify: FastifyInstance, namespace?: string): object => {
   if (namespace) {
     logger.info(`Getting configuration for namespace: ${namespace}`);
     const namespaceConfig = ConfigManagerV2.getInstance().getNamespace(namespace);
 
     if (!namespaceConfig) {
-      throw fastify.httpErrors.notFound(`Namespace '${namespace}' not found`);
+      throw createError(404, `Namespace '${namespace}' not found`);
     }
 
     return namespaceConfig.configuration;
@@ -23,32 +22,31 @@ export const getConfig = (fastify: FastifyInstance, namespace?: string): object 
   return ConfigManagerV2.getInstance().allConfigurations;
 };
 
-export const updateConfig = (fastify: FastifyInstance, configPath: string, configValue: any): void => {
+export const updateConfig = (_fastify: FastifyInstance, configPath: string, configValue: any): void => {
   logger.info(`Updating config path: ${configPath} with value: ${JSON.stringify(configValue)}`);
-
   try {
     // Update the configuration using ConfigManagerV2
     ConfigManagerV2.getInstance().set(configPath, configValue);
     logger.info(`Successfully updated configuration: ${configPath}`);
   } catch (error) {
     logger.error(`Failed to update configuration: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(`Failed to update configuration: ${error.message}`);
+    throw createError(500, `Failed to update configuration: ${error.message}`);
   }
 };
 
 export const getDefaultPools = async (
-  fastify: FastifyInstance,
+  _fastify: FastifyInstance,
   connector: string,
   network: string,
 ): Promise<Record<string, string>> => {
   // Import PoolService here to avoid circular dependency
-  const { PoolService } = await import('../services/pool-service');
+  const { PoolService } = await import('../services/pool-service.js');
 
   // Parse connector name to extract base connector and type
   const [baseConnector, poolType] = connector.split('/');
 
   if (!baseConnector) {
-    throw fastify.httpErrors.badRequest('Connector name is required');
+    throw createError(400, 'Connector name is required');
   }
 
   // Determine the pool type (amm or clmm)
@@ -73,8 +71,7 @@ export const getDefaultPools = async (
 
 // Note: Pool management functions have been moved to PoolService
 // Use the /pools endpoints for pool management
-
-export const updateDefaultWallet = (fastify: FastifyInstance, chain: string, walletAddress: string): void => {
+export const updateDefaultWallet = (_fastify: FastifyInstance, chain: string, walletAddress: string): void => {
   logger.info(`Updating default wallet for ${chain} to: ${walletAddress}`);
 
   try {
@@ -84,6 +81,6 @@ export const updateDefaultWallet = (fastify: FastifyInstance, chain: string, wal
     logger.info(`Successfully updated default wallet for ${chain}`);
   } catch (error) {
     logger.error(`Failed to update default wallet: ${error.message}`);
-    throw fastify.httpErrors.internalServerError(`Failed to update default wallet: ${error.message}`);
+    throw createError(500, `Failed to update default wallet: ${error.message}`);
   }
 };

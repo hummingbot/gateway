@@ -6,6 +6,7 @@ import { PancakeswapConfig } from '#src/connectors/pancakeswap/pancakeswap.confi
 import { ZeroXConfig } from '../../connectors/0x/0x.config';
 import { JupiterConfig } from '../../connectors/jupiter/jupiter.config';
 import { MeteoraConfig } from '../../connectors/meteora/meteora.config';
+import { OsmosisConfig } from '../../connectors/osmosis/osmosis.config';
 import { PancakeswapSolConfig } from '../../connectors/pancakeswap-sol/pancakeswap-sol.config';
 import { RaydiumConfig } from '../../connectors/raydium/raydium.config';
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
@@ -69,6 +70,12 @@ export const connectorsConfig = [
     trading_types: [...PancakeswapSolConfig.tradingTypes],
     chain: PancakeswapSolConfig.chain,
     networks: [...PancakeswapSolConfig.networks],
+  },
+  {
+    name: 'osmosis',
+    trading_types: [...OsmosisConfig.tradingTypes],
+    chain: OsmosisConfig.chain,
+    networks: [...OsmosisConfig.networks],
   },
 ];
 
