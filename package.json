@@ -15,6 +15,8 @@
     "#test/*": "./test/*"
   },
   "scripts": {
+    "osmo": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" GATEWAY_TEST_MODE=dev jest --runInBand --verbose --coverage test/connectors/osmosis/amm.test.js",
+    "fast": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" GATEWAY_TEST_MODE=dev jest --runInBand --verbose --coverage test/pools/pools.routes.test.ts",
     "prebuild": "rimraf dist && mkdir dist",
     "build": "tsc --project tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run copy-files",
     "clean": "rm -rf ./node_modules && rm -rf ./coverage && rm -rf ./logs && rm -rf ./dist",
@@ -39,12 +41,12 @@
   "dependencies": {
     "@chain-registry/types": "^2.0.104",
     "@coral-xyz/anchor": "^0.30.1",
-    "@cosmjs/amino": "^0.37.0",
-    "@cosmjs/cosmwasm-stargate": "^0.37.0",
-    "@cosmjs/encoding": "^0.37.0",
+    "@cosmjs/amino": "^0.32.4",
+    "@cosmjs/cosmwasm-stargate": "^0.32.3",
+    "@cosmjs/encoding": "^0.32.4",
     "@cosmjs/proto-signing": "0.32.3",
-    "@cosmjs/stargate": "^0.37.0",
-    "@cosmjs/tendermint-rpc": "^0.37.0",
+    "@cosmjs/stargate": "^0.32.4",
+    "@cosmjs/tendermint-rpc": "^0.32.4",
     "@ethersproject/abstract-provider": "5.7.0",
     "@ethersproject/address": "5.7.0",
     "@ethersproject/contracts": "5.7.0",
