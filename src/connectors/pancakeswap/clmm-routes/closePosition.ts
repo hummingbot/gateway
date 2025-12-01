@@ -51,8 +51,8 @@ export async function closePosition(
   const positionManager = new Contract(positionManagerAddress, POSITION_MANAGER_ABI, ethereum.provider);
   const position = await positionManager.positions(positionAddress);
 
-  const token0 = pancakeswap.getTokenByAddress(position.token0);
-  const token1 = pancakeswap.getTokenByAddress(position.token1);
+  const token0 = await pancakeswap.getToken(position.token0);
+  const token1 = await pancakeswap.getToken(position.token1);
 
   const isBaseToken0 =
     token0.symbol === 'WETH' ||
@@ -119,7 +119,7 @@ export async function closePosition(
   const txParams = await ethereum.prepareGasOptions(undefined, CLMM_CLOSE_POSITION_GAS_LIMIT);
   txParams.value = BigNumber.from(value.toString());
   const tx = await positionManagerWithSigner.multicall([calldata], txParams);
-  const receipt = await tx.wait();
+  const receipt = await ethereum.handleTransactionExecution(tx);
 
   const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
   const token0AmountRemoved = formatTokenAmount(totalAmount0.quotient.toString(), token0.decimals);
@@ -138,7 +138,7 @@ export async function closePosition(
 
   return {
     signature: receipt.transactionHash,
-    status: 1,
+    status: receipt.status,
     data: {
       fee: gasFee,
       positionRentRefunded,

@@ -79,8 +79,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
         }
 
-        const baseTokenObj = uniswap.getTokenByAddress(poolInfo.baseTokenAddress);
-        const quoteTokenObj = uniswap.getTokenByAddress(poolInfo.quoteTokenAddress);
+        const baseTokenObj = await uniswap.getToken(poolInfo.baseTokenAddress);
+        const quoteTokenObj = await uniswap.getToken(poolInfo.quoteTokenAddress);
 
         if (!baseTokenObj || !quoteTokenObj) {
           throw fastify.httpErrors.badRequest('Token information not found for pool');
@@ -189,7 +189,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Wait for transaction confirmation
-        const receipt = await tx.wait();
+        const receipt = await ethereum.handleTransactionExecution(tx);
 
         // Format amounts for response
         const baseTokenAmountRemoved = formatTokenAmount(expectedBaseTokenAmount.toString(), baseTokenObj.decimals);
@@ -204,7 +204,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         return {
           signature: receipt.transactionHash,
-          status: 1, // CONFIRMED
+          status: receipt.status,
           data: {
             fee: gasFee,
             baseTokenAmountRemoved,

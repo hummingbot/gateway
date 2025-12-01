@@ -1,14 +1,6 @@
 import { Contract } from '@ethersproject/contracts';
-import { Token, CurrencyAmount, Percent } from '@uniswap/sdk-core';
-import {
-  Position,
-  Pool as V3Pool,
-  NonfungiblePositionManager,
-  MintOptions,
-  nearestUsableTick,
-  tickToPrice,
-  FeeAmount,
-} from '@uniswap/v3-sdk';
+import { CurrencyAmount, Percent } from '@uniswap/sdk-core';
+import { Position, NonfungiblePositionManager, MintOptions, nearestUsableTick } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import JSBI from 'jsbi';
@@ -26,8 +18,9 @@ import {
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Uniswap } from '../uniswap';
+import { UniswapConfig } from '../uniswap.config';
 import { getUniswapV3NftManagerAddress } from '../uniswap.contracts';
-import { formatTokenAmount, parseFeeTier, getUniswapPoolInfo } from '../uniswap.utils';
+import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
 export async function openPosition(
   fastify: FastifyInstance,
@@ -38,7 +31,7 @@ export async function openPosition(
   poolAddress: string,
   baseTokenAmount?: number,
   quoteTokenAmount?: number,
-  slippagePct?: number,
+  slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<OpenPositionResponseType> {
   // Validate essential parameters
   if (!lowerPrice || !upperPrice || !poolAddress || (baseTokenAmount === undefined && quoteTokenAmount === undefined)) {
@@ -55,8 +48,8 @@ export async function openPosition(
     throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
   }
 
-  const baseTokenObj = uniswap.getTokenByAddress(poolInfo.baseTokenAddress);
-  const quoteTokenObj = uniswap.getTokenByAddress(poolInfo.quoteTokenAddress);
+  const baseTokenObj = await uniswap.getToken(poolInfo.baseTokenAddress);
+  const quoteTokenObj = await uniswap.getToken(poolInfo.quoteTokenAddress);
 
   if (!baseTokenObj || !quoteTokenObj) {
     throw fastify.httpErrors.badRequest('Token information not found for pool');
@@ -75,7 +68,7 @@ export async function openPosition(
   }
 
   // Calculate slippage tolerance
-  const slippageTolerance = new Percent(Math.floor((slippagePct ?? uniswap.config.slippagePct) * 100), 10000);
+  const slippageTolerance = new Percent(Math.floor(slippagePct * 100), 10000);
 
   // Convert price range to ticks
   const token0 = pool.token0;
@@ -242,7 +235,7 @@ export async function openPosition(
   }
 
   // Wait for transaction confirmation
-  const receipt = await tx.wait();
+  const receipt = await ethereum.handleTransactionExecution(tx);
 
   // Find the NFT ID from the transaction logs
   let positionId = '';
@@ -273,7 +266,7 @@ export async function openPosition(
 
   return {
     signature: receipt.transactionHash,
-    status: 1,
+    status: receipt.status,
     data: {
       fee: gasFee,
       positionAddress: positionId,

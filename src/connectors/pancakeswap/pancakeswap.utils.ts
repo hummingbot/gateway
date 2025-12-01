@@ -7,6 +7,7 @@ import { Address } from 'viem';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { logger } from '../../services/logger';
 
+import { Pancakeswap } from './pancakeswap';
 import { IPancakeswapV2PairABI } from './pancakeswap.contracts';
 
 /**
@@ -117,32 +118,22 @@ export const formatTokenAmount = (amount: string | number, decimals: number): nu
 export async function getFullTokenFromSymbol(
   fastify: FastifyInstance,
   ethereum: Ethereum,
+  pancakeswap: Pancakeswap,
   tokenSymbol: string,
 ): Promise<Token> {
   if (!ethereum.ready()) {
     await ethereum.init();
   }
 
-  // Try to find token using ethereum's getToken method
-  const tokenInfo = ethereum.getToken(tokenSymbol);
+  // Get token from local token list
+  const tokenInfo = await ethereum.getToken(tokenSymbol);
 
   if (!tokenInfo) {
     throw fastify.httpErrors.badRequest(`Token ${tokenSymbol} is not supported`);
   }
 
-  const pancakeswapToken = new Token(
-    tokenInfo.chainId,
-    tokenInfo.address as Address,
-    tokenInfo.decimals,
-    tokenInfo.symbol,
-    tokenInfo.name,
-  );
-
-  if (!pancakeswapToken) {
-    throw fastify.httpErrors.internalServerError(`Failed to create token for ${tokenSymbol}`);
-  }
-
-  return pancakeswapToken;
+  // Convert to Pancakeswap SDK Token
+  return pancakeswap.getPancakeswapToken(tokenInfo);
 }
 
 /**

@@ -3,6 +3,7 @@ import { Static } from '@sinclair/typebox';
 import { Percent } from '@uniswap/sdk-core';
 import { BigNumber, utils } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
+import { re } from 'mathjs';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { wrapEthereum } from '../../../chains/ethereum/routes/wrap';
@@ -10,7 +11,8 @@ import { AddLiquidityResponseType, AddLiquidityResponse } from '../../../schemas
 import { logger } from '../../../services/logger';
 import { UniswapAmmAddLiquidityRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
-import { getUniswapV2RouterAddress, IUniswapV2Router02ABI } from '../uniswap.contracts';
+import { UniswapConfig } from '../uniswap.config';
+import { IUniswapV2Router02ABI } from '../uniswap.contracts';
 import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
 import { getUniswapAmmLiquidityQuote } from './quoteLiquidity';
@@ -27,7 +29,7 @@ async function addLiquidity(
   quoteToken: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
-  slippagePct?: number,
+  slippagePct: number = UniswapConfig.config.slippagePct,
   gasPrice?: string,
   maxGas?: number,
 ): Promise<AddLiquidityResponseType> {
@@ -38,7 +40,7 @@ async function addLiquidity(
   let baseWrapTxHash = null;
   if (baseToken === 'ETH') {
     const uniswap = await Uniswap.getInstance(networkToUse);
-    const wethToken = uniswap.getTokenBySymbol('WETH');
+    const wethToken = await uniswap.getToken('WETH');
     if (!wethToken) {
       throw new Error('WETH token not found');
     }
@@ -57,7 +59,7 @@ async function addLiquidity(
   let quoteWrapTxHash = null;
   if (quoteToken === 'ETH') {
     const uniswap = await Uniswap.getInstance(networkToUse);
-    const wethToken = uniswap.getTokenBySymbol('WETH');
+    const wethToken = await uniswap.getToken('WETH');
     if (!wethToken) {
       throw new Error('WETH token not found');
     }
@@ -96,7 +98,7 @@ async function addLiquidity(
   const router = new Contract(quote.routerAddress, IUniswapV2Router02ABI.abi, wallet);
 
   // Calculate slippage-adjusted amounts
-  const slippageTolerance = new Percent(Math.floor((slippagePct ?? uniswap.config.slippagePct) * 100), 10000);
+  const slippageTolerance = new Percent(Math.floor(slippagePct * 100), 10000);
 
   const slippageMultiplier = new Percent(1).subtract(slippageTolerance);
 
@@ -258,7 +260,7 @@ async function addLiquidity(
   }
 
   // Wait for transaction confirmation
-  const receipt = await tx.wait();
+  const receipt = await ethereum.handleTransactionExecution(tx);
 
   // Calculate gas fee
   const gasFee = formatTokenAmount(
@@ -268,7 +270,7 @@ async function addLiquidity(
 
   return {
     signature: receipt.transactionHash,
-    status: 1, // CONFIRMED
+    status: receipt.status,
     data: {
       fee: gasFee,
       baseTokenAmountAdded: quote.baseTokenAmount,

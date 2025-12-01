@@ -9,6 +9,7 @@ import { wrapEthereum } from '../../../chains/ethereum/routes/wrap';
 import { AddLiquidityResponseType, AddLiquidityResponse } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
+import { PancakeswapConfig } from '../pancakeswap.config';
 import { IPancakeswapV2Router02ABI } from '../pancakeswap.contracts';
 import { formatTokenAmount, getPancakeswapPoolInfo } from '../pancakeswap.utils';
 import { PancakeswapAmmAddLiquidityRequest } from '../schemas';
@@ -27,7 +28,7 @@ async function addLiquidity(
   quoteToken: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
-  slippagePct?: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
   gasPrice?: string,
   maxGas?: number,
 ): Promise<AddLiquidityResponseType> {
@@ -38,7 +39,7 @@ async function addLiquidity(
   let baseWrapTxHash = null;
   if (baseToken === 'ETH') {
     const pancakeswap = await Pancakeswap.getInstance(networkToUse);
-    const wethToken = pancakeswap.getTokenBySymbol('WETH');
+    const wethToken = await pancakeswap.getToken('WETH');
     if (!wethToken) {
       throw new Error('WETH token not found');
     }
@@ -57,7 +58,7 @@ async function addLiquidity(
   let quoteWrapTxHash = null;
   if (quoteToken === 'ETH') {
     const pancakeswap = await Pancakeswap.getInstance(networkToUse);
-    const wethToken = pancakeswap.getTokenBySymbol('WETH');
+    const wethToken = await pancakeswap.getToken('WETH');
     if (!wethToken) {
       throw new Error('WETH token not found');
     }
@@ -84,7 +85,6 @@ async function addLiquidity(
 
   // Get Ethereum instance
   const ethereum = await Ethereum.getInstance(networkToUse);
-  const pancakeswap = await Pancakeswap.getInstance(networkToUse);
 
   // Get wallet
   const wallet = await ethereum.getWallet(walletAddress);
@@ -96,7 +96,7 @@ async function addLiquidity(
   const router = new Contract(quote.routerAddress, IPancakeswapV2Router02ABI.abi, wallet);
 
   // Calculate slippage-adjusted amounts
-  const slippageTolerance = new Percent(Math.floor((slippagePct ?? pancakeswap.config.slippagePct) * 100), 10000);
+  const slippageTolerance = new Percent(Math.floor(slippagePct * 100), 10000);
 
   const slippageMultiplier = new Percent(1).subtract(slippageTolerance);
 
@@ -258,7 +258,7 @@ async function addLiquidity(
   }
 
   // Wait for transaction confirmation
-  const receipt = await tx.wait();
+  const receipt = await ethereum.handleTransactionExecution(tx);
 
   // Calculate gas fee
   const gasFee = formatTokenAmount(
@@ -268,7 +268,7 @@ async function addLiquidity(
 
   return {
     signature: receipt.transactionHash,
-    status: 1, // CONFIRMED
+    status: receipt.status,
     data: {
       fee: gasFee,
       baseTokenAmountAdded: quote.baseTokenAmount,

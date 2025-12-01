@@ -335,7 +335,7 @@ describe('Raydium', () => {
         const result = await raydiumInstance.getClmmPoolInfo('invalid-pool');
 
         expect(result).toBeNull();
-        expect(logger.error).toHaveBeenCalled();
+        expect(logger.debug).toHaveBeenCalled();
       });
     });
 

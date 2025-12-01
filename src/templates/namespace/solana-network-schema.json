@@ -2,8 +2,16 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
+    "chainID": {
+      "type": "integer",
+      "description": "Chain ID for this network (101 for mainnet-beta, 103 for devnet, 102 for testnet)"
+    },
     "nodeURL": { "type": "string" },
     "nativeCurrencySymbol": { "type": "string" },
+    "geckoId": {
+      "type": "string",
+      "description": "GeckoTerminal network ID for this network (e.g., 'solana' for mainnet-beta)"
+    },
     "swapProvider": {
       "type": "string",
       "description": "Default swap router provider for this network (format: connector/type, e.g., jupiter/router)",
@@ -14,6 +22,6 @@
     "confirmRetryCount": { "type": "number" },
     "minPriorityFeePerCU": { "type": "number" }
   },
-  "required": ["nodeURL", "nativeCurrencySymbol"],
+  "required": ["chainID", "nodeURL", "nativeCurrencySymbol", "geckoId"],
   "additionalProperties": false
 }

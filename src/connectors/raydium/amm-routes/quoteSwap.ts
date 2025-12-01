@@ -6,15 +6,11 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 import { Solana } from '../../../chains/solana/solana';
-import {
-  QuoteSwapResponseType,
-  QuoteSwapResponse,
-  QuoteSwapRequestType,
-  QuoteSwapRequest,
-} from '../../../schemas/amm-schema';
+import { QuoteSwapResponseType, QuoteSwapResponse, QuoteSwapRequestType } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
+import { RaydiumConfig } from '../raydium.config';
 import { RaydiumAmmQuoteSwapRequest } from '../schemas';
 
 async function quoteAmmSwap(
@@ -25,7 +21,7 @@ async function quoteAmmSwap(
   outputMint: string,
   amountIn?: string,
   amountOut?: string,
-  slippagePct?: number,
+  slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<any> {
   let poolInfo: ApiV3PoolInfoStandardItem;
   let poolKeys: any;
@@ -58,7 +54,7 @@ async function quoteAmmSwap(
   const baseIn = inputMint === poolInfo.mintA.address;
   const [mintIn, mintOut] = baseIn ? [poolInfo.mintA, poolInfo.mintB] : [poolInfo.mintB, poolInfo.mintA];
 
-  const effectiveSlippage = slippagePct === undefined ? 0.01 : slippagePct / 100;
+  const effectiveSlippage = slippagePct / 100;
 
   if (amountIn) {
     const out = raydium.raydiumSDK.liquidity.computeAmountOut({
@@ -124,7 +120,7 @@ async function quoteCpmmSwap(
   outputMint: string,
   amountIn?: string,
   amountOut?: string,
-  slippagePct?: number,
+  slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<any> {
   let poolInfo: ApiV3PoolInfoStandardItemCpmm;
   let poolKeys: any;
@@ -163,7 +159,7 @@ async function quoteCpmmSwap(
     );
 
     // Apply slippage to output amount
-    const effectiveSlippage = slippagePct === undefined ? 0.01 : slippagePct / 100;
+    const effectiveSlippage = slippagePct / 100;
     const minAmountOut = swapResult.destinationAmountSwapped
       .mul(new BN(Math.floor((1 - effectiveSlippage) * 10000)))
       .div(new BN(10000));
@@ -206,7 +202,7 @@ async function quoteCpmmSwap(
     });
 
     // Apply slippage to input amount
-    const effectiveSlippage = slippagePct === undefined ? 0.01 : slippagePct / 100;
+    const effectiveSlippage = slippagePct / 100;
     const maxAmountIn = swapResult.amountIn.mul(new BN(Math.floor((1 + effectiveSlippage) * 10000))).div(new BN(10000));
 
     return {
@@ -233,7 +229,7 @@ export async function getRawSwapQuote(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<any> {
   // Convert side to exactIn
   const exactIn = side === 'SELL';
@@ -384,7 +380,7 @@ async function formatSwapQuote(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
   logger.info(
     `formatSwapQuote: poolAddress=${poolAddress}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}`,
@@ -477,7 +473,7 @@ async function formatSwapQuote(
     amountIn: estimatedAmountIn,
     amountOut: estimatedAmountOut,
     price,
-    slippagePct: slippagePct || 1, // Default 1% if not provided
+    slippagePct: slippagePct,
     minAmountOut,
     maxAmountIn,
     priceImpactPct,
@@ -595,7 +591,7 @@ export async function quoteSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
   return await formatSwapQuote(fastify, network, poolAddress, baseToken, quoteToken, amount, side, slippagePct);
 }

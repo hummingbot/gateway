@@ -1,7 +1,48 @@
 import { Type } from '@sinclair/typebox';
 
+import { ConfigManagerV2 } from '../services/config-manager-v2';
+
+// Optional CoinGecko data for tokens
+export const TokenGeckoDataSchema = Type.Object({
+  coingeckoCoinId: Type.Union([Type.String(), Type.Null()], {
+    description: 'CoinGecko coin ID if available',
+  }),
+  imageUrl: Type.String({
+    description: 'Token image URL',
+  }),
+  priceUsd: Type.String({
+    description: 'Current price in USD',
+  }),
+  volumeUsd24h: Type.String({
+    description: '24h trading volume in USD',
+  }),
+  marketCapUsd: Type.String({
+    description: 'Market capitalization in USD',
+  }),
+  fdvUsd: Type.String({
+    description: 'Fully diluted valuation in USD',
+  }),
+  totalSupply: Type.String({
+    description: 'Normalized total supply (human-readable)',
+  }),
+  topPools: Type.Array(Type.String(), {
+    description: 'Array of top pool addresses',
+  }),
+  timestamp: Type.Number({
+    description: 'Unix timestamp (ms) when data was fetched',
+  }),
+});
+
+export type TokenGeckoData = typeof TokenGeckoDataSchema.static;
+
 // Individual token structure
 export const TokenSchema = Type.Object({
+  chainId: Type.Optional(
+    Type.Number({
+      description: 'The chain ID',
+      examples: [1, 101, 137],
+    }),
+  ),
   name: Type.String({
     description: 'The full name of the token',
     examples: ['USD Coin', 'Wrapped Ether'],
@@ -20,9 +61,17 @@ export const TokenSchema = Type.Object({
     maximum: 255,
     examples: [6, 18],
   }),
+  geckoData: Type.Optional(TokenGeckoDataSchema),
 });
 
-export type Token = typeof TokenSchema.static;
+export type Token = {
+  chainId?: number;
+  name: string;
+  symbol: string;
+  address: string;
+  decimals: number;
+  geckoData?: TokenGeckoData;
+};
 
 // Query parameters for listing tokens
 export const TokenListQuerySchema = Type.Object({
@@ -119,3 +168,28 @@ export const TokenOperationResponseSchema = Type.Object({
 });
 
 export type TokenOperationResponse = typeof TokenOperationResponseSchema.static;
+
+// Token info with optional CoinGecko data (returned by /tokens/find)
+export const TokenInfoSchema = Type.Composite([
+  TokenSchema,
+  Type.Object({
+    geckoData: Type.Optional(TokenGeckoDataSchema),
+  }),
+]);
+
+export type TokenInfo = typeof TokenInfoSchema.static;
+
+// Query parameters for finding token
+export const FindTokenQuerySchema = Type.Object({
+  chainNetwork: Type.String({
+    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
+    examples: ['solana-mainnet-beta', 'ethereum-mainnet', 'ethereum-base', 'ethereum-polygon'],
+  }),
+});
+
+export type FindTokenQuery = typeof FindTokenQuerySchema.static;
+
+// Response format for finding token (returns TokenSchema format ready to save)
+export const FindTokenResponseSchema = TokenSchema;
+
+export type FindTokenResponse = typeof FindTokenResponseSchema.static;

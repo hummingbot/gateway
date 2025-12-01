@@ -16,7 +16,7 @@ async function executeSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct: number,
+  slippagePct: number = JupiterConfig.config.slippagePct,
   priorityLevel?: string,
   maxLamports?: number,
 ): Promise<SwapExecuteResponseType> {
@@ -65,7 +65,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           quoteToken,
           amount,
           side as 'BUY' | 'SELL',
-          slippagePct ?? JupiterConfig.config.slippagePct,
+          slippagePct,
           priorityLevel,
           maxLamports,
         );

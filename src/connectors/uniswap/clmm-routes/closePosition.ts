@@ -61,8 +61,8 @@ export async function closePosition(
   const position = await positionManager.positions(positionAddress);
 
   // Get tokens by address
-  const token0 = uniswap.getTokenByAddress(position.token0);
-  const token1 = uniswap.getTokenByAddress(position.token1);
+  const token0 = await uniswap.getToken(position.token0);
+  const token1 = await uniswap.getToken(position.token1);
 
   // Determine base and quote tokens - WETH or lower address is base
   const isBaseToken0 =
@@ -153,7 +153,7 @@ export async function closePosition(
   const tx = await positionManagerWithSigner.multicall([calldata], txParams);
 
   // Wait for transaction confirmation
-  const receipt = await tx.wait();
+  const receipt = await ethereum.handleTransactionExecution(tx);
 
   // Calculate gas fee
   const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
@@ -178,7 +178,7 @@ export async function closePosition(
 
   return {
     signature: receipt.transactionHash,
-    status: 1,
+    status: receipt.status,
     data: {
       fee: gasFee,
       positionRentRefunded,

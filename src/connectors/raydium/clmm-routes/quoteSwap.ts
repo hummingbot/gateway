@@ -53,7 +53,7 @@ export async function getSwapQuote(
   amount: number,
   side: 'BUY' | 'SELL',
   poolAddress: string,
-  slippagePct?: number,
+  slippagePct: number = RaydiumConfig.config.slippagePct,
 ) {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
@@ -85,7 +85,7 @@ export async function getSwapQuote(
     connection: solana.connection,
     poolKeys: [clmmPoolInfo],
   });
-  const effectiveSlippage = new BN((slippagePct ?? RaydiumConfig.config.slippagePct) / 100);
+  const effectiveSlippage = new BN(slippagePct / 100);
 
   // Convert BN to number for slippage
   const effectiveSlippageNumber = effectiveSlippage.toNumber();
@@ -128,7 +128,7 @@ async function formatSwapQuote(
   amount: number,
   side: 'BUY' | 'SELL',
   poolAddress: string,
-  slippagePct?: number,
+  slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
   const { inputToken, outputToken, response } = await getSwapQuote(
     fastify,
@@ -229,7 +229,7 @@ async function formatSwapQuote(
       amountIn: isNaN(estimatedAmountIn) || !isFinite(estimatedAmountIn) ? 0 : estimatedAmountIn,
       amountOut: isNaN(estimatedAmountOut) || !isFinite(estimatedAmountOut) ? 0 : estimatedAmountOut,
       price: isNaN(price) || !isFinite(price) ? 0 : price,
-      slippagePct: slippagePct || 1, // Default 1% if not provided
+      slippagePct: slippagePct,
       minAmountOut: isNaN(estimatedAmountOut) || !isFinite(estimatedAmountOut) ? 0 : estimatedAmountOut,
       maxAmountIn: isNaN(maxAmountIn) || !isFinite(maxAmountIn) ? 0 : maxAmountIn,
       // CLMM-specific fields
@@ -244,7 +244,7 @@ async function formatSwapQuote(
     const estimatedAmountOut = exactInResponse.amountOut.amount.raw.toNumber() / 10 ** outputToken.decimals;
 
     // Calculate minAmountOut using slippage
-    const effectiveSlippage = slippagePct || 1;
+    const effectiveSlippage = slippagePct;
     const minAmountOut = estimatedAmountOut * (1 - effectiveSlippage / 100);
 
     const price = estimatedAmountIn > 0 ? estimatedAmountOut / estimatedAmountIn : 0;
@@ -266,7 +266,7 @@ async function formatSwapQuote(
       amountIn: isNaN(estimatedAmountIn) || !isFinite(estimatedAmountIn) ? 0 : estimatedAmountIn,
       amountOut: isNaN(estimatedAmountOut) || !isFinite(estimatedAmountOut) ? 0 : estimatedAmountOut,
       price: isNaN(price) || !isFinite(price) ? 0 : price,
-      slippagePct: slippagePct || 1, // Default 1% if not provided
+      slippagePct: slippagePct,
       minAmountOut: isNaN(minAmountOut) || !isFinite(minAmountOut) ? 0 : minAmountOut,
       maxAmountIn: isNaN(estimatedAmountIn) || !isFinite(estimatedAmountIn) ? 0 : estimatedAmountIn,
       // CLMM-specific fields
@@ -385,7 +385,7 @@ export async function quoteSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
   return await formatSwapQuote(fastify, network, baseToken, quoteToken, amount, side, poolAddress, slippagePct);
 }

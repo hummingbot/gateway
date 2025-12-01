@@ -64,6 +64,9 @@ export async function executeQuote(
     transaction = await jupiter.buildSwapTransaction(wallet, quote, maxLamports, priorityLevel);
   }
 
+  // Simulate transaction with proper error handling before sending
+  await solana.simulateWithErrorHandling(transaction, fastify);
+
   // Send and confirm transaction using Solana's method
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 

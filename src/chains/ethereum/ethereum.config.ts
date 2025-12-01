@@ -6,13 +6,13 @@ export interface EthereumNetworkConfig {
   chainID: number;
   nodeURL: string;
   nativeCurrencySymbol: string;
+  geckoId: string;
   swapProvider?: string;
   gasPrice?: number | null;
   baseFee?: number | null;
   priorityFee?: number | null;
   baseFeeMultiplier?: number;
-  infuraAPIKey?: string;
-  useInfuraWebSocket?: boolean;
+  transactionExecutionTimeoutMs?: number;
 }
 
 export interface EthereumChainConfig {
@@ -31,11 +31,13 @@ export function getEthereumNetworkConfig(network: string): EthereumNetworkConfig
     chainID: ConfigManagerV2.getInstance().get(namespaceId + '.chainID'),
     nodeURL: ConfigManagerV2.getInstance().get(namespaceId + '.nodeURL'),
     nativeCurrencySymbol: ConfigManagerV2.getInstance().get(namespaceId + '.nativeCurrencySymbol'),
+    geckoId: ConfigManagerV2.getInstance().get(namespaceId + '.geckoId'),
     swapProvider: ConfigManagerV2.getInstance().get(namespaceId + '.swapProvider'),
     gasPrice: ConfigManagerV2.getInstance().get(namespaceId + '.gasPrice'),
     baseFee: ConfigManagerV2.getInstance().get(namespaceId + '.baseFee'),
     priorityFee: ConfigManagerV2.getInstance().get(namespaceId + '.priorityFee'),
     baseFeeMultiplier: ConfigManagerV2.getInstance().get(namespaceId + '.baseFeeMultiplier'),
+    transactionExecutionTimeoutMs: ConfigManagerV2.getInstance().get(namespaceId + '.transactionExecutionTimeoutMs'),
   };
 }
 

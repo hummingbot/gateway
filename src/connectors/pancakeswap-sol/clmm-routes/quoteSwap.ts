@@ -4,6 +4,7 @@ import { Solana } from '../../../chains/solana/solana';
 import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
+import { PancakeswapSolConfig } from '../pancakeswap-sol.config';
 import { PancakeswapSolClmmQuoteSwapRequest, PancakeswapSolClmmQuoteSwapRequestType } from '../schemas';
 
 /**
@@ -29,7 +30,7 @@ export async function quoteSwap(
   amount: number,
   side: 'BUY' | 'SELL',
   poolAddress?: string,
-  slippagePct?: number,
+  slippagePct: number = PancakeswapSolConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const pancakeswapSol = await PancakeswapSol.getInstance(network);
@@ -71,7 +72,7 @@ export async function quoteSwap(
   const poolBaseBalance = isBaseTokenFirst ? poolInfo.baseTokenAmount : poolInfo.quoteTokenAmount;
   const poolQuoteBalance = isBaseTokenFirst ? poolInfo.quoteTokenAmount : poolInfo.baseTokenAmount;
 
-  const effectiveSlippage = slippagePct ?? 1.0; // Default 1% slippage
+  const effectiveSlippage = slippagePct;
   const feePct = poolInfo.feePct;
 
   let amountIn: number;

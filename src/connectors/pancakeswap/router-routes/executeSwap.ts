@@ -2,6 +2,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
+import { PancakeswapConfig } from '../pancakeswap.config';
 import { PancakeswapExecuteSwapRequest } from '../schemas';
 
 // Import the quote and execute functions
@@ -16,7 +17,7 @@ async function executeSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<SwapExecuteResponseType> {
   logger.info(`Executing swap: ${amount} ${baseToken} ${side} for ${quoteToken}`);
 

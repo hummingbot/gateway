@@ -5,7 +5,6 @@ import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
 import { EthereumLedger } from '../ethereum-ledger';
-import { waitForTransactionWithTimeout } from '../ethereum.utils';
 import { UnwrapRequestSchema, UnwrapResponseSchema, UnwrapRequestType, UnwrapResponseType } from '../schemas';
 
 // Default gas limit for unwrap operations
@@ -25,66 +24,43 @@ const WETH9ABI = [
   'function withdraw(uint256 amount) public',
 ];
 
-// Define wrapped native token addresses for different networks
-const WRAPPED_ADDRESSES: {
-  [key: string]: { address: string; symbol: string; nativeSymbol: string };
-} = {
-  mainnet: {
-    address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-    symbol: 'WETH',
-    nativeSymbol: 'ETH',
-  },
-  arbitrum: {
-    address: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
-    symbol: 'WETH',
-    nativeSymbol: 'ETH',
-  },
-  optimism: {
-    address: '0x4200000000000000000000000000000000000006',
-    symbol: 'WETH',
-    nativeSymbol: 'ETH',
-  },
-  base: {
-    address: '0x4200000000000000000000000000000000000006',
-    symbol: 'WETH',
-    nativeSymbol: 'ETH',
-  },
-  sepolia: {
-    address: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14',
-    symbol: 'WETH',
-    nativeSymbol: 'ETH',
-  },
-  polygon: {
-    address: '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619',
-    symbol: 'WETH',
-    nativeSymbol: 'MATIC',
-  },
-  bsc: {
-    address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
-    symbol: 'WBNB',
-    nativeSymbol: 'BNB',
-  },
-  avalanche: {
-    address: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
-    symbol: 'WAVAX',
-    nativeSymbol: 'AVAX',
-  },
-  celo: {
-    address: '0x471EcE3750Da237f93B8E339c536989b8978a438',
-    symbol: 'WCELO',
-    nativeSymbol: 'CELO',
-  },
-};
+/**
+ * Get wrapped token info for a network by looking up W+nativeCurrencySymbol in token list
+ * @param ethereum Ethereum instance
+ * @returns Wrapped token info (address, symbol, nativeSymbol)
+ */
+function getWrappedTokenInfo(ethereum: Ethereum): { address: string; symbol: string; nativeSymbol: string } {
+  const nativeSymbol = ethereum.nativeTokenSymbol;
+  const wrappedSymbol = `W${nativeSymbol}`;
+
+  // Look up wrapped token in token map
+  const wrappedToken = ethereum.tokenMap[wrappedSymbol];
+
+  if (!wrappedToken) {
+    throw new Error(
+      `Wrapped token ${wrappedSymbol} not found in token list for network ${ethereum.network}. ` +
+        `Please ensure ${wrappedSymbol} is configured in the token list.`,
+    );
+  }
+
+  return {
+    address: wrappedToken.address,
+    symbol: wrappedSymbol,
+    nativeSymbol: nativeSymbol,
+  };
+}
 
 export async function unwrapEthereum(fastify: FastifyInstance, network: string, address: string, amount: string) {
   // Get Ethereum instance for the specified network
   const ethereum = await Ethereum.getInstance(network);
   await ethereum.init();
 
-  // Get wrapped token info for the network
-  const wrappedInfo = WRAPPED_ADDRESSES[network];
-  if (!wrappedInfo) {
-    throw fastify.httpErrors.badRequest(`Wrapped token address not found for network: ${network}`);
+  // Get wrapped token info from token list
+  let wrappedInfo;
+  try {
+    wrappedInfo = getWrappedTokenInfo(ethereum);
+  } catch (error: any) {
+    throw fastify.httpErrors.badRequest(error.message);
   }
 
   // Check if this is a hardware wallet
@@ -138,8 +114,8 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
       // Send the signed transaction
       const txResponse = await ethereum.provider.sendTransaction(signedTx);
 
-      // Wait for confirmation with timeout (30 seconds for hardware wallets)
-      receipt = await waitForTransactionWithTimeout(txResponse, 30000);
+      // Wait for confirmation with timeout
+      receipt = await ethereum.handleTransactionExecution(txResponse);
 
       transaction = {
         hash: receipt.transactionHash,
@@ -179,7 +155,7 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
       nonce = transaction.nonce;
 
       // Wait for transaction confirmation with timeout
-      receipt = await waitForTransactionWithTimeout(transaction);
+      receipt = await ethereum.handleTransactionExecution(transaction);
     }
 
     // Calculate actual fee from receipt
@@ -191,7 +167,7 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
 
     return {
       signature: transaction.hash,
-      status: 1, // CONFIRMED
+      status: receipt.status,
       data: {
         nonce: nonce,
         fee: feeInEth,

@@ -7,6 +7,7 @@ import { Solana } from '../../../chains/solana/solana';
 import { AddLiquidityResponse, AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
+import { PancakeswapSolConfig } from '../pancakeswap-sol.config';
 import { buildAddLiquidityTransaction } from '../pancakeswap-sol.transactions';
 import { PancakeswapSolClmmAddLiquidityRequest } from '../schemas';
 
@@ -19,7 +20,7 @@ export async function addLiquidity(
   positionAddress: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
-  slippagePct?: number,
+  slippagePct: number = PancakeswapSolConfig.config.slippagePct,
 ): Promise<AddLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const pancakeswapSol = await PancakeswapSol.getInstance(network);
@@ -64,7 +65,7 @@ export async function addLiquidity(
   logger.info(`Quote Liquidity: ${quote.liquidity}`);
 
   // Apply slippage buffer (same as openPosition and Raydium)
-  const effectiveSlippage = slippagePct || 1.0;
+  const effectiveSlippage = slippagePct ?? PancakeswapSolConfig.config.slippagePct;
   const amount0Max = new BN(
     (quote.baseTokenAmountMax * (1 + effectiveSlippage / 100) * 10 ** baseToken.decimals).toFixed(0),
   );

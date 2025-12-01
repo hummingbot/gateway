@@ -16,7 +16,7 @@ import { formatTokenAmount } from '../pancakeswap.utils';
 
 // Define the request and response types
 const PositionsOwnedRequest = Type.Object({
-  network: Type.Optional(Type.String({ examples: ['base'], default: 'base' })),
+  network: Type.Optional(Type.String({ examples: ['bsc'], default: 'bsc' })),
   walletAddress: Type.String({ examples: ['<ethereum-wallet-address>'] }),
 });
 
@@ -83,8 +83,8 @@ export async function getPositionsOwned(
         continue;
       }
 
-      const token0 = pancakeswap.getTokenByAddress(positionDetails.token0);
-      const token1 = pancakeswap.getTokenByAddress(positionDetails.token1);
+      const token0 = await pancakeswap.getToken(positionDetails.token0);
+      const token1 = await pancakeswap.getToken(positionDetails.token1);
 
       const pool = await pancakeswap.getV3Pool(token0, token1, positionDetails.fee);
       if (!pool) {

@@ -1,6 +1,8 @@
 chainID: 42220
+geckoId: celo
 nodeURL: https://rpc.ankr.com/celo
 nativeCurrencySymbol: CELO
+transactionExecutionTimeoutMs: 10000 # Timeout for waiting for transaction execution (in milliseconds)
 swapProvider: uniswap/router
 
 # Legacy gas price (in GWEI)

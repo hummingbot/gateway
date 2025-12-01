@@ -59,7 +59,7 @@ export async function quoteLiquidity(
   poolAddress: string,
   baseTokenAmount?: number,
   quoteTokenAmount?: number,
-  slippagePct?: number,
+  slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<QuoteLiquidityResponseType> {
   try {
     const solana = await Solana.getInstance(network);
@@ -84,8 +84,7 @@ export async function quoteLiquidity(
 
     const epochInfo = await solana.connection.getEpochInfo();
     // Convert percentage to basis points (e.g., 1% = 100 basis points)
-    const slippageValue = slippagePct === 0 ? 0 : slippagePct || RaydiumConfig.config.slippagePct;
-    const slippage = new Percent(Math.floor(slippageValue * 100), 10000);
+    const slippage = new Percent(Math.floor(slippagePct * 100), 10000);
 
     const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
 

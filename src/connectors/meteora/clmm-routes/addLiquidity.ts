@@ -30,7 +30,7 @@ export async function addLiquidity(
   positionAddress: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
-  slippagePct?: number,
+  slippagePct: number = MeteoraConfig.config.slippagePct,
   strategyType?: StrategyType,
 ): Promise<AddLiquidityResponseType> {
   // Validate addresses first
@@ -94,8 +94,8 @@ export async function addLiquidity(
   const maxBinId = position.positionData.upperBinId;
   const minBinId = position.positionData.lowerBinId;
 
-  const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount), dlmmPool.tokenX.decimal));
-  const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(quoteTokenAmount), dlmmPool.tokenY.decimal));
+  const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount), dlmmPool.tokenX.mint.decimals));
+  const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(quoteTokenAmount), dlmmPool.tokenY.mint.decimals));
 
   const addLiquidityTx = await dlmmPool.addLiquidityByStrategy({
     positionPubKey: new PublicKey(position.publicKey),
@@ -107,7 +107,7 @@ export async function addLiquidity(
       minBinId,
       strategyType: strategyType ?? MeteoraConfig.config.strategyType,
     },
-    slippage: slippagePct ?? MeteoraConfig.config.slippagePct,
+    slippage: slippagePct,
   });
 
   // Set the fee payer for simulation

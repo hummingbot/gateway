@@ -1,7 +1,10 @@
 chainID: 137
+geckoId: polygon_pos
 nodeURL: https://rpc.ankr.com/polygon
 nativeCurrencySymbol: POL
+transactionExecutionTimeoutMs: 10000 # Timeout for waiting for transaction execution (in milliseconds)
 swapProvider: uniswap/router
+
 
 # EIP-1559 gas parameters (in GWEI)
 # If not set, will fetch from Etherscan API (if etherscanAPIKey is set in ethereum.yml) or network RPC

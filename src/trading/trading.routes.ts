@@ -3,6 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { poolsRoute } from './clmm/pools';
 import { positionsRoute } from './clmm/positions';
 import { positionsOwnedRoute } from './clmm/positions-owned';
+import { quotePositionRoute } from './clmm/quote-position';
 import { executeSwapRoute } from './swap/execute';
 import { quoteSwapRoute } from './swap/quote';
 import {
@@ -24,6 +25,7 @@ export const tradingClmmRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(poolsRoute);
   fastify.register(positionsRoute);
   fastify.register(positionsOwnedRoute);
+  fastify.register(quotePositionRoute);
 
   // Register CLMM transaction routes
   fastify.register(openPositionRoute);

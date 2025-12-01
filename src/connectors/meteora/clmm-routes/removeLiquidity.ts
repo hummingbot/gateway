@@ -51,59 +51,48 @@ export async function removeLiquidity(
   const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
   logger.info(`Removing ${percentageToRemove.toFixed(4)}% liquidity from position ${positionAddress}`);
-  const binIdsToRemove = position.positionData.positionBinData.map((bin) => bin.binId);
   const bps = new BN(percentageToRemove * 100);
+
+  // SDK v1.7.5 uses fromBinId and toBinId instead of binIds array
+  const fromBinId = position.positionData.lowerBinId;
+  const toBinId = position.positionData.upperBinId;
 
   const removeLiquidityTx = await dlmmPool.removeLiquidity({
     position: position.publicKey,
     user: wallet.publicKey,
-    binIds: binIdsToRemove,
+    fromBinId,
+    toBinId,
     bps: bps,
     shouldClaimAndClose: false,
   });
 
-  // Handle both single transaction and array of transactions
-  let signature: string;
-  let fee: number;
+  // Handle both single transaction and array of transactions (SDK v1.7.5 may return either)
+  const transactions = Array.isArray(removeLiquidityTx) ? removeLiquidityTx : [removeLiquidityTx];
 
-  if (Array.isArray(removeLiquidityTx)) {
-    // If multiple transactions are returned, execute them in sequence
-    logger.info(`Received ${removeLiquidityTx.length} transactions for removing liquidity`);
+  let totalFee = 0;
+  let lastSignature = '';
 
-    let totalFee = 0;
-    let lastSignature = '';
-
-    for (let i = 0; i < removeLiquidityTx.length; i++) {
-      const tx = removeLiquidityTx[i];
-      logger.info(`Executing transaction ${i + 1} of ${removeLiquidityTx.length}`);
-
-      // Set fee payer for simulation
-      tx.feePayer = wallet.publicKey;
-
-      // Simulate before sending
-      await solana.simulateWithErrorHandling(tx, fastify);
-
-      const result = await solana.sendAndConfirmTransaction(tx, [wallet]);
-      totalFee += result.fee;
-      lastSignature = result.signature;
+  for (let i = 0; i < transactions.length; i++) {
+    const tx = transactions[i];
+    if (transactions.length > 1) {
+      logger.info(`Executing transaction ${i + 1} of ${transactions.length}`);
     }
 
-    signature = lastSignature;
-    fee = totalFee;
-  } else {
-    // Single transaction case
     // Set fee payer for simulation
-    removeLiquidityTx.feePayer = wallet.publicKey;
+    tx.feePayer = wallet.publicKey;
 
-    // Simulate with error handling
-    await solana.simulateWithErrorHandling(removeLiquidityTx, fastify);
+    // Simulate before sending
+    await solana.simulateWithErrorHandling(tx, fastify);
 
     logger.info('Transaction simulated successfully, sending to network...');
 
-    const result = await solana.sendAndConfirmTransaction(removeLiquidityTx, [wallet]);
-    signature = result.signature;
-    fee = result.fee;
+    const result = await solana.sendAndConfirmTransaction(tx, [wallet]);
+    totalFee += result.fee;
+    lastSignature = result.signature;
   }
+
+  const signature = lastSignature;
+  const fee = totalFee;
 
   // Get transaction data for confirmation
   const txData = await solana.connection.getTransaction(signature, {
@@ -114,7 +103,7 @@ export async function removeLiquidity(
   const confirmed = txData !== null;
 
   if (confirmed && txData) {
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
       dlmmPool.tokenX.publicKey.toBase58(),
       dlmmPool.tokenY.publicKey.toBase58(),
     ]);

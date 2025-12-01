@@ -34,7 +34,7 @@ export async function openPosition(
   poolAddress: string,
   baseTokenAmount: number | undefined,
   quoteTokenAmount: number | undefined,
-  slippagePct?: number,
+  slippagePct: number = MeteoraConfig.config.slippagePct,
   strategyType?: number,
 ): Promise<OpenPositionResponseType> {
   const solana = await Solana.getInstance(network);
@@ -74,24 +74,8 @@ export async function openPosition(
     throw fastify.httpErrors.badRequest(MISSING_AMOUNTS_MESSAGE);
   }
 
-  // Check balances with SOL buffer
-  const balances = await solana.getBalance(wallet, [tokenXSymbol, tokenYSymbol, 'SOL']);
-  const requiredBaseAmount =
-    (baseTokenAmount || 0) + (tokenXSymbol === 'SOL' ? SOL_POSITION_RENT + SOL_TRANSACTION_BUFFER : 0);
-  const requiredQuoteAmount =
-    (quoteTokenAmount || 0) + (tokenYSymbol === 'SOL' ? SOL_POSITION_RENT + SOL_TRANSACTION_BUFFER : 0);
-
-  if (balances[tokenXSymbol] < requiredBaseAmount) {
-    throw fastify.httpErrors.badRequest(
-      INSUFFICIENT_BALANCE_MESSAGE(tokenXSymbol, requiredBaseAmount.toString(), balances[tokenXSymbol].toString()),
-    );
-  }
-
-  if (tokenYSymbol && balances[tokenYSymbol] < requiredQuoteAmount) {
-    throw fastify.httpErrors.badRequest(
-      `Insufficient ${tokenYSymbol} balance. Required: ${requiredQuoteAmount}, Available: ${balances[tokenYSymbol]}`,
-    );
-  }
+  // Note: Balance validation removed - insufficient balance will be caught during transaction execution
+  // This avoids issues with the deprecated getBalance() method and aligns with PancakeSwap-Sol behavior
 
   // Get current pool price from active bin
   const activeBin = await dlmmPool.getActiveBin();
@@ -124,12 +108,12 @@ export async function openPosition(
   const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false);
 
   // Don't add SOL rent to the liquidity amounts - rent is separate
-  const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount || 0), dlmmPool.tokenX.decimal));
-  const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(quoteTokenAmount || 0), dlmmPool.tokenY.decimal));
+  const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount || 0), dlmmPool.tokenX.mint.decimals));
+  const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(quoteTokenAmount || 0), dlmmPool.tokenY.mint.decimals));
 
   // Create position transaction following SDK example
   // Slippage needs to be in BPS (basis points): percentage * 100
-  const slippageBps = slippagePct ? slippagePct * 100 : undefined;
+  const slippageBps = slippagePct * 100;
 
   const createPositionTx = await dlmmPool.initializePositionAndAddLiquidityByStrategy({
     positionPubKey: newImbalancePosition.publicKey,
@@ -268,9 +252,9 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+          throw fastify.httpErrors.createError(e.statusCode, e.message || 'Request failed');
         }
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        throw fastify.httpErrors.internalServerError(e.message || 'Internal server error');
       }
     },
   );

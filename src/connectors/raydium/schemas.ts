@@ -532,6 +532,8 @@ export const RaydiumClmmGetPositionsOwnedRequest = Type.Object({
   }),
 });
 
+export type RaydiumClmmGetPositionsOwnedRequestType = Static<typeof RaydiumClmmGetPositionsOwnedRequest>;
+
 export const RaydiumClmmQuotePositionRequest = Type.Object({
   network: Type.Optional(
     Type.String({

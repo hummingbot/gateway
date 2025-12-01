@@ -17,7 +17,7 @@ import { PancakeswapSolClmmExecuteSwapRequest, PancakeswapSolClmmExecuteSwapRequ
  * NOTE: This uses manual transaction building with Anchor instruction encoding
  */
 export async function executeSwap(
-  _fastify: FastifyInstance,
+  fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   baseTokenSymbol: string,
@@ -27,6 +27,19 @@ export async function executeSwap(
   poolAddress?: string,
   slippagePct?: number,
 ): Promise<ExecuteSwapResponseType> {
+  // Get quote first - this contains all the slippage calculations and pool lookup
+  const { quoteSwap } = await import('./quoteSwap');
+  const quote = await quoteSwap(
+    fastify,
+    network,
+    baseTokenSymbol,
+    quoteTokenSymbol,
+    amount,
+    side,
+    poolAddress,
+    slippagePct,
+  );
+
   const solana = await Solana.getInstance(network);
   const pancakeswapSol = await PancakeswapSol.getInstance(network);
 
@@ -35,28 +48,16 @@ export async function executeSwap(
   const quoteToken = await solana.getToken(quoteTokenSymbol);
 
   if (!baseToken || !quoteToken) {
-    throw _fastify.httpErrors.notFound(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
+    throw fastify.httpErrors.notFound(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
   }
 
-  // If no pool address provided, try to find it from pool service
-  let poolAddressToUse = poolAddress;
-  if (!poolAddressToUse) {
-    const { PoolService } = await import('../../../services/pool-service');
-    const poolService = PoolService.getInstance();
-
-    const pool = await poolService.getPool('pancakeswap-sol', network, 'clmm', baseToken.symbol, quoteToken.symbol);
-
-    if (!pool) {
-      throw _fastify.httpErrors.notFound(`No CLMM pool found for ${baseToken.symbol}-${quoteToken.symbol}`);
-    }
-
-    poolAddressToUse = pool.address;
-  }
+  // Use pool address from quote
+  const poolAddressToUse = quote.poolAddress;
 
   // Get pool info
   const poolInfo = await pancakeswapSol.getClmmPoolInfo(poolAddressToUse);
   if (!poolInfo) {
-    throw _fastify.httpErrors.notFound(`Pool not found: ${poolAddressToUse}`);
+    throw fastify.httpErrors.notFound(`Pool not found: ${poolAddressToUse}`);
   }
 
   // Validate pool contains the requested tokens
@@ -64,7 +65,7 @@ export async function executeSwap(
   const requestedTokens = new Set([baseToken.address, quoteToken.address]);
 
   if (!poolTokens.has(baseToken.address) || !poolTokens.has(quoteToken.address)) {
-    throw _fastify.httpErrors.badRequest(
+    throw fastify.httpErrors.badRequest(
       `Pool ${poolAddressToUse} does not contain the requested token pair. ` +
         `Pool has: ${poolInfo.baseTokenAddress}, ${poolInfo.quoteTokenAddress}. ` +
         `Requested: ${baseToken.symbol} (${baseToken.address}), ${quoteToken.symbol} (${quoteToken.address})`,
@@ -79,40 +80,22 @@ export async function executeSwap(
     `Token addresses - base: ${baseToken.address}, quote: ${quoteToken.address}, pool base: ${poolInfo.baseTokenAddress}, pool quote: ${poolInfo.quoteTokenAddress}`,
   );
 
-  const effectiveSlippage = slippagePct ?? 1.0;
+  // Use amounts from quote - all slippage calculations are done there
+  const amountIn = quote.amountIn;
+  const amountOut = quote.amountOut;
+  const minAmountOut = quote.minAmountOut;
+  const maxAmountIn = quote.maxAmountIn;
 
-  // Calculate amounts
-  let amountIn: number;
-  let amountOut: number;
-  let inputMint: PublicKey;
-  let outputMint: PublicKey;
-  let isBaseInput: boolean;
-
-  if (side === 'SELL') {
-    // Selling base token for quote token
-    amountIn = amount;
-    amountOut = amount * currentPrice;
-    inputMint = new PublicKey(baseToken.address);
-    outputMint = new PublicKey(quoteToken.address);
-    // isBaseInput means: is the input token the pool's token0 (base)?
-    isBaseInput = inputMint.toString() === poolInfo.baseTokenAddress;
-
-    logger.info(`SELL: input=${inputMint.toString()}, output=${outputMint.toString()}, isBaseInput=${isBaseInput}`);
-  } else {
-    // Buying base token with quote token
-    amountOut = amount;
-    amountIn = amount * currentPrice;
-    inputMint = new PublicKey(quoteToken.address);
-    outputMint = new PublicKey(baseToken.address);
-    // isBaseInput means: is the input token the pool's token0 (base)?
-    isBaseInput = inputMint.toString() === poolInfo.baseTokenAddress;
-
-    logger.info(`BUY: input=${inputMint.toString()}, output=${outputMint.toString()}, isBaseInput=${isBaseInput}`);
-  }
-
-  // Convert to BN with decimals
+  // Determine token mints and direction
+  const inputMint = new PublicKey(quote.tokenIn);
+  const outputMint = new PublicKey(quote.tokenOut);
   const inputToken = side === 'SELL' ? baseToken : quoteToken;
   const outputToken = side === 'SELL' ? quoteToken : baseToken;
+
+  // isBaseInput means: is the input token the pool's token0 (base)?
+  const isBaseInput = inputMint.toString() === poolInfo.baseTokenAddress;
+
+  logger.info(`${side}: input=${inputMint.toString()}, output=${outputMint.toString()}, isBaseInput=${isBaseInput}`);
 
   // The swap_v2 instruction interprets parameters differently based on is_base_input:
   // - When is_base_input = true: amount is exact INPUT, other_amount_threshold is minimum OUTPUT
@@ -123,7 +106,6 @@ export async function executeSwap(
   if (isBaseInput) {
     // Exact input swap: we specify exact input amount and minimum output
     amountBN = new BN(Math.floor(amountIn * 10 ** inputToken.decimals));
-    const minAmountOut = amountOut * (1 - effectiveSlippage / 100);
     otherAmountThresholdBN = new BN(Math.floor(minAmountOut * 10 ** outputToken.decimals));
     logger.info(
       `Executing ${side} swap (exact input): ${amountIn.toFixed(6)} ${inputToken.symbol} for min ${minAmountOut.toFixed(6)} ${outputToken.symbol}`,
@@ -131,7 +113,6 @@ export async function executeSwap(
   } else {
     // Exact output swap: we specify exact output amount and maximum input
     amountBN = new BN(Math.floor(amountOut * 10 ** outputToken.decimals));
-    const maxAmountIn = amountIn * (1 + effectiveSlippage / 100);
     otherAmountThresholdBN = new BN(Math.floor(maxAmountIn * 10 ** inputToken.decimals));
     logger.info(
       `Executing ${side} swap (exact output): max ${maxAmountIn.toFixed(6)} ${inputToken.symbol} for ${amountOut.toFixed(6)} ${outputToken.symbol}`,
@@ -169,7 +150,7 @@ export async function executeSwap(
   transaction.sign([wallet]);
 
   // Simulate transaction
-  await solana.simulateWithErrorHandling(transaction, _fastify);
+  await solana.simulateWithErrorHandling(transaction, fastify);
 
   // Send and confirm transaction
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);

@@ -2,9 +2,12 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
+// eslint-disable-next-line import/order
 import { UniswapExecuteSwapRequest } from '../schemas';
 
 // Import the quote and execute functions
+import { UniswapConfig } from '../uniswap.config';
+
 import { executeQuote } from './executeQuote';
 import { quoteSwap } from './quoteSwap';
 
@@ -16,7 +19,7 @@ async function executeSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct: number,
+  slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<SwapExecuteResponseType> {
   logger.info(`Executing swap: ${amount} ${baseToken} ${side} for ${quoteToken}`);
 

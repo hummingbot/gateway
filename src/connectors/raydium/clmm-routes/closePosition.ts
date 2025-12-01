@@ -4,11 +4,7 @@ import { VersionedTransaction } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  ClosePositionResponse,
-  ClosePositionRequestType,
-  ClosePositionResponseType,
-} from '../../../schemas/clmm-schema';
+import { ClosePositionResponse, ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumClmmClosePositionRequest } from '../schemas';

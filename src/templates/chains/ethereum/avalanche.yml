@@ -1,6 +1,8 @@
 chainID: 43114
+geckoId: avax
 nodeURL: https://api.avax.network/ext/bc/C/rpc
 nativeCurrencySymbol: AVAX
+transactionExecutionTimeoutMs: 10000 # Timeout for waiting for transaction execution (in milliseconds)
 swapProvider: uniswap/router
 
 # Legacy gas price (in GWEI)

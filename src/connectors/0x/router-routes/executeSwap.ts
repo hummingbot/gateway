@@ -1,8 +1,8 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
+import { ZeroXConfig } from '../0x.config';
 import { ZeroXExecuteSwapRequest } from '../schemas';
 
 import { executeQuote } from './executeQuote';
@@ -16,7 +16,7 @@ async function executeSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct: number,
+  slippagePct: number = ZeroXConfig.config.slippagePct,
   gasPrice?: string,
   maxGas?: number,
 ): Promise<SwapExecuteResponseType> {

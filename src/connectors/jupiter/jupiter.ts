@@ -260,9 +260,8 @@ export class Jupiter {
     const swapTransactionBuf = Buffer.from(swapObj.swapTransaction, 'base64');
     const transaction = VersionedTransaction.deserialize(new Uint8Array(swapTransactionBuf));
 
-    // Sign and simulate the transaction
+    // Sign the transaction (simulation will be done by caller with proper error handling)
     transaction.sign([wallet.payer]);
-    await this.solana.simulateTransaction(transaction);
 
     return transaction;
   }
@@ -343,8 +342,7 @@ export class Jupiter {
     const transaction = VersionedTransaction.deserialize(new Uint8Array(swapTransactionBuf));
 
     // Don't sign the transaction - it will be signed by the hardware wallet
-    // But we still simulate it to ensure it's valid
-    await this.solana.simulateTransaction(transaction);
+    // Simulation will be done by caller with proper error handling
 
     return transaction;
   }

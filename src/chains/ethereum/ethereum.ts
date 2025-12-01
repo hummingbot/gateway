@@ -1,4 +1,4 @@
-import { Provider } from '@ethersproject/abstract-provider';
+import { Provider, TransactionResponse } from '@ethersproject/abstract-provider';
 import { BigNumber, Contract, ContractTransaction, providers, utils, Wallet, ethers } from 'ethers';
 import { getAddress } from 'ethers/lib/utils';
 import fse from 'fs-extra';
@@ -6,7 +6,8 @@ import fse from 'fs-extra';
 import { TokenValue, tokenValueToString } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { logger } from '../../services/logger';
+import { logger, redactUrl } from '../../services/logger';
+import { createRateLimitAwareEthereumProvider } from '../../services/rpc-connection-interceptor';
 import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
 
@@ -54,6 +55,7 @@ export class Ethereum {
     };
   } = {};
   private static GAS_PRICE_CACHE_MS = 10000; // 10 second cache
+  private _transactionExecutionTimeoutMs: number;
 
   // For backward compatibility
   public get chain(): string {
@@ -71,6 +73,7 @@ export class Ethereum {
     this.baseFee = config.baseFee;
     this.priorityFee = config.priorityFee;
     this.baseFeeMultiplier = config.baseFeeMultiplier || 1.2; // Default to 1.2
+    this._transactionExecutionTimeoutMs = config.transactionExecutionTimeoutMs ?? 30000; // Default to 30 seconds
 
     // Get chain config for etherscanAPIKey
     const chainConfig = getEthereumChainConfig();
@@ -92,12 +95,13 @@ export class Ethereum {
 
     // Initialize RPC connection based on provider
     if (rpcProvider === 'infura') {
-      logger.info(`Initializing Infura services for provider: ${rpcProvider}`);
-      this.initializeInfuraProvider(config);
+      this.initializeInfuraProvider();
     } else {
-      logger.info(`Using standard RPC provider: ${rpcProvider}`);
-      logger.info(`Initializing Ethereum connector for network: ${network}, RPC URL: ${this.rpcUrl}`);
-      this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
+      // Default: use nodeURL with rate limit detection
+      this.provider = createRateLimitAwareEthereumProvider(
+        new providers.StaticJsonRpcProvider(this.rpcUrl),
+        this.rpcUrl,
+      );
     }
   }
 
@@ -399,35 +403,44 @@ export class Ethereum {
   /**
    * Initialize Infura provider with configuration
    */
-  private initializeInfuraProvider(config: any): void {
+  private initializeInfuraProvider(): void {
     try {
       const configManager = ConfigManagerV2.getInstance();
-      const infuraApiKey = configManager.get('infura.apiKey') || '';
-      const useWebSocket = configManager.get('infura.useWebSocket') || false;
+      const providerConfig = {
+        apiKey: configManager.get('infura.apiKey') || '',
+        useWebSocket: configManager.get('infura.useWebSocket') || false,
+      };
 
-      if (!infuraApiKey || infuraApiKey.trim() === '') {
-        logger.warn(`⚠️ Infura provider selected but no API key configured`);
-        logger.info(`Using standard RPC from nodeURL: ${this.rpcUrl}`);
-        this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
+      // Validate API key
+      if (!providerConfig.apiKey || providerConfig.apiKey.trim() === '' || providerConfig.apiKey.includes('YOUR_')) {
+        logger.warn(`⚠️ Infura provider selected but no valid API key configured`);
+        logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
+        this.provider = createRateLimitAwareEthereumProvider(
+          new providers.StaticJsonRpcProvider(this.rpcUrl),
+          this.rpcUrl,
+        );
         return;
       }
 
-      // Merge configs for InfuraService
-      const mergedConfig = {
-        ...config,
-        infuraAPIKey: infuraApiKey,
-        useInfuraWebSocket: useWebSocket,
-      };
+      // Create InfuraService instance
+      this.infuraService = new InfuraService(providerConfig, {
+        chain: 'ethereum',
+        network: this.network,
+        chainId: this.chainId,
+      });
 
-      logger.info(`✅ Infura API key configured (length: ${infuraApiKey.length} chars)`);
-      logger.info(`Infura features enabled - WebSocket: ${useWebSocket}`);
+      logger.info(`✅ Infura API key configured (length: ${providerConfig.apiKey.length} chars)`);
+      logger.info(`Infura features enabled - WebSocket: ${providerConfig.useWebSocket}`);
 
-      this.infuraService = new InfuraService(mergedConfig);
+      // Use Infura provider
       this.provider = this.infuraService.getProvider() as providers.StaticJsonRpcProvider;
     } catch (error: any) {
       logger.warn(`Failed to initialize Infura provider: ${error.message}`);
-      logger.info(`Using standard RPC from nodeURL: ${this.rpcUrl}`);
-      this.provider = new providers.StaticJsonRpcProvider(this.rpcUrl);
+      logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
+      this.provider = createRateLimitAwareEthereumProvider(
+        new providers.StaticJsonRpcProvider(this.rpcUrl),
+        this.rpcUrl,
+      );
     }
   }
 
@@ -461,7 +474,6 @@ export class Ethereum {
       }));
 
       if (this.tokenList) {
-        logger.info(`Loaded ${this.tokenList.length} tokens for ethereum/${this.network}`);
         // Build token map for faster lookups
         this.tokenList.forEach((token: TokenInfo) => (this.tokenMap[token.symbol] = token));
       }
@@ -479,9 +491,11 @@ export class Ethereum {
   }
 
   /**
-   * Get token info by symbol or address
+   * Get token info by symbol or address from local token list only
+   * @param tokenSymbol Token symbol or contract address
+   * @returns TokenInfo object or undefined if token not found in local list
    */
-  public getToken(tokenSymbol: string): TokenInfo | undefined {
+  public async getToken(tokenSymbol: string): Promise<TokenInfo | undefined> {
     // First try to find token by symbol
     const tokenBySymbol = this.tokenList.find(
       (token: TokenInfo) => token.symbol.toUpperCase() === tokenSymbol.toUpperCase() && token.chainId === this.chainId,
@@ -511,11 +525,11 @@ export class Ethereum {
    * @param tokens Array of token symbols or addresses
    * @returns Map of token symbol to TokenInfo for found tokens
    */
-  public getTokensAsMap(tokens: string[]): Record<string, TokenInfo> {
+  public async getTokensAsMap(tokens: string[]): Promise<Record<string, TokenInfo>> {
     const tokenMap: Record<string, TokenInfo> = {};
 
     for (const symbolOrAddress of tokens) {
-      const tokenInfo = this.getToken(symbolOrAddress);
+      const tokenInfo = await this.getToken(symbolOrAddress);
       if (tokenInfo) {
         // Use the actual token symbol as the key, not the input which might be an address
         tokenMap[tokenInfo.symbol] = tokenInfo;
@@ -916,6 +930,39 @@ export class Ethereum {
     return ethers.utils.isAddress(address);
   }
 
+  public async handleTransactionExecution(tx: TransactionResponse): Promise<providers.TransactionReceipt> {
+    return await Promise.race([
+      tx.wait(1).then((receipt) => {
+        // Transaction confirmed
+        logger.info(
+          `Transaction ${tx.hash} ${receipt.status === 1 ? 'confirmed' : 'failed'} in block ${receipt.blockNumber}`,
+        );
+        return receipt;
+      }),
+      new Promise<providers.TransactionReceipt>((resolve) =>
+        setTimeout(() => {
+          // Timeout reached, treat as pending
+          logger.warn(`Transaction ${tx.hash} is still pending after timeout`);
+          resolve({
+            transactionHash: tx.hash,
+            blockHash: '',
+            blockNumber: null,
+            transactionIndex: null,
+            from: tx.from,
+            to: tx.to || null,
+            cumulativeGasUsed: BigNumber.from(0),
+            gasUsed: BigNumber.from(0),
+            contractAddress: null,
+            logs: [],
+            logsBloom: '',
+            status: 0, // PENDING
+            effectiveGasPrice: BigNumber.from(0),
+          } as providers.TransactionReceipt);
+        }, this._transactionExecutionTimeoutMs),
+      ),
+    ]);
+  }
+
   /**
    * Handle transaction confirmation status and return appropriate response
    * Similar to Solana's handleConfirmation helper
@@ -927,7 +974,7 @@ export class Ethereum {
    * @param side Trade side (optional)
    * @returns Response object with status and data
    */
-  public handleTransactionConfirmation(
+  public handleExecuteQuoteTransactionConfirmation(
     txReceipt: providers.TransactionReceipt | null,
     inputToken: string,
     outputToken: string,
@@ -1115,7 +1162,7 @@ export class Ethereum {
           return;
         }
 
-        const token = this.getToken(symbolOrAddress);
+        const token = await this.getToken(symbolOrAddress);
         if (token) {
           try {
             const contract = this.getContract(token.address, this.provider);

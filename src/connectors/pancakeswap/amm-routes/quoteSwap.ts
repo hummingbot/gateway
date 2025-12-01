@@ -12,6 +12,7 @@ import {
 } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
+import { PancakeswapConfig } from '../pancakeswap.config';
 import { formatTokenAmount, getPancakeswapPoolInfo } from '../pancakeswap.utils';
 
 async function quoteAmmSwap(
@@ -21,7 +22,7 @@ async function quoteAmmSwap(
   quoteToken: Token,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<any> {
   try {
     // Get the V2 pair
@@ -56,7 +57,7 @@ async function quoteAmmSwap(
     }
 
     // Calculate slippage-adjusted amounts
-    const slippageTolerance = new Percent(Math.floor((slippagePct ?? pancakeswap.config.slippagePct) * 100), 10000);
+    const slippageTolerance = new Percent(Math.floor(slippagePct * 100), 10000);
 
     const minAmountOut = exactIn
       ? trade.minimumAmountOut(slippageTolerance).quotient.toString()
@@ -112,7 +113,7 @@ export async function getPancakeswapAmmQuote(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<{
   quote: any;
   pancakeswap: any;
@@ -130,8 +131,8 @@ export async function getPancakeswapAmmQuote(
   }
 
   // Resolve tokens
-  const baseTokenObj = pancakeswap.getTokenBySymbol(baseToken);
-  const quoteTokenObj = pancakeswap.getTokenBySymbol(quoteToken);
+  const baseTokenObj = await pancakeswap.getToken(baseToken);
+  const quoteTokenObj = await pancakeswap.getToken(quoteToken);
 
   if (!baseTokenObj) {
     logger.error(`Base token not found: ${baseToken}`);
@@ -180,7 +181,7 @@ async function formatSwapQuote(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
   logger.info(
     `formatSwapQuote: poolAddress=${poolAddress}, baseToken=${baseToken}, quoteToken=${quoteToken}, amount=${amount}, side=${side}, network=${network}`,
@@ -250,7 +251,7 @@ async function formatSwapQuote(
       amountIn: quote.estimatedAmountIn,
       amountOut: quote.estimatedAmountOut,
       price,
-      slippagePct: slippagePct || 1, // Default 1% if not provided
+      slippagePct,
       minAmountOut: quote.minAmountOut,
       maxAmountIn: quote.maxAmountIn,
       // AMM-specific fields
@@ -328,7 +329,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             quoteTokenToUse = poolInfo.baseTokenAddress;
           } else {
             // Try to resolve baseToken as symbol to address
-            const resolvedToken = pancakeswap.getTokenBySymbol(baseToken);
+            const resolvedToken = await pancakeswap.getToken(baseToken);
 
             if (resolvedToken) {
               if (resolvedToken.address === poolInfo.baseTokenAddress) {
@@ -413,7 +414,7 @@ export async function quoteSwap(
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct?: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
   return await formatSwapQuote(fastify, network, poolAddress, baseToken, quoteToken, amount, side, slippagePct);
 }

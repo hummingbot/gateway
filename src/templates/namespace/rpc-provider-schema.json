@@ -1,14 +1,15 @@
 {
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
     "apiKey": {
       "type": "string",
-      "description": "Infura API key"
+      "description": "RPC provider API key"
     },
     "useWebSocket": {
       "type": "boolean",
       "default": true,
-      "description": "Enable WebSocket connections for real-time events"
+      "description": "Enable WebSocket connections for real-time transaction monitoring"
     }
   },
   "required": ["apiKey"],

@@ -291,57 +291,75 @@ To start the Gateway server in HTTPS mode, run the command without the `--dev` f
 pnpm start --passphrase=<PASSPHRASE>
 ```
 
-## Installation with Docker
+## Installation with Docker Compose
 
-### Step 1: Get the Docker Image
+### Prerequisites
 
-**Option A: Pull from Docker Hub**
+Install [Docker Compose](https://docs.docker.com/compose/install/) if you haven't already.
+
+### Step 1: Clone the Repository
+
 ```bash
-# Note: This image will be available after the v2.8 release
-docker pull hummingbot/gateway:latest
+# Clone Github repo
+git clone https://github.com/hummingbot/gateway.git
+
+# Navigate to the directory
+cd gateway
+
+# Switch to core-2.8 branch
+git checkout core-2.8
 ```
 
-**Option B: Build locally**
-```bash
-# Simple build
-docker build -t hummingbot/gateway:core-2.8 .
+### Step 2: Configure Environment Variables
 
-# Build with version tag and metadata
-docker build \
-  --build-arg BRANCH=$(git rev-parse --abbrev-ref HEAD) \
-  --build-arg COMMIT=$(git rev-parse HEAD) \
-  --build-arg BUILD_DATE=$(date -u +"%Y-%m-%d") \
-  -t hummingbot/gateway:core-2.8 .
+Edit `docker-compose.yml` to set your desired configuration:
+
+```yaml
+environment:
+  - GATEWAY_PASSPHRASE=a # Replace with a strong passphrase
+  - DEV=true # Set to false for HTTPS mode (requires certificates)
 ```
 
-### Step 2: Run the Gateway Container
+**Development mode (DEV=true)**:
+- Runs HTTP endpoints without SSL encryption
+- No certificate requirements
+- Ideal for local development and testing
 
-**Development mode (Unencrypted HTTP endpoints, default):**
+**Production mode (DEV=false)**:
+- Requires SSL certificates in the `certs/` directory
+- Runs HTTPS endpoints with encryption
+- Required for production deployments and Hummingbot client integration
+
+### Step 3: Launch Gateway
+
 ```bash
-docker run -p 15888:15888 \
-  -e GATEWAY_PASSPHRASE=admin \
-  -e GATEWAY_DEV=true \
-  -v $(pwd)/conf:/home/gateway/conf \
-  -v $(pwd)/logs:/home/gateway/logs \
-  hummingbot/gateway:core-2.8
+# Start Gateway in detached mode
+docker compose up -d
+
+# View logs to confirm Gateway is running
+docker compose logs -f gateway
 ```
 
-**Production mode (Encrypted HTTPS endpoints, requires Hummingbot certs):**
-```bash
-docker run -p 15888:15888 \
-  -e GATEWAY_PASSPHRASE=a \
-  -e GATEWAY_DEV=false \
-  -v $(pwd)/conf:/home/gateway/conf \
-  -v $(pwd)/logs:/home/gateway/logs \
-  -v $(pwd)/certs:/home/gateway/certs \
-  hummingbot/gateway:core-2.8
-```
-
-### Access Points
-
+Gateway will start and be accessible at:
 - Development mode: http://localhost:15888
-- Production mode: https://localhost:15888  
+- Production mode: https://localhost:15888
 - Swagger API docs: http://localhost:15888/docs (dev mode only)
+
+### Managing the Gateway Container
+
+```bash
+# Stop Gateway
+docker compose down
+
+# Restart Gateway
+docker compose restart
+
+# View logs
+docker compose logs -f gateway
+
+# Rebuild and restart (after code changes)
+docker compose up -d --build
+```
 
 
 ## API Endpoints Overview

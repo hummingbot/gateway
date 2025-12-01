@@ -6,19 +6,35 @@ import { Solana } from '../../../chains/solana/solana';
 import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
-import { sanitizeErrorMessage } from '../../../services/sanitize';
+import { sanitizeErrorMessage, sanitizeString } from '../../../services/sanitize';
 import { Jupiter } from '../jupiter';
 import { JupiterConfig } from '../jupiter.config';
 import { JupiterQuoteSwapRequest, JupiterQuoteSwapResponse } from '../schemas';
 
+class NotFoundError extends Error {
+  statusCode = 404;
+  constructor(message: string) {
+    super(message);
+    this.name = 'NotFoundError';
+  }
+}
+
+class BadRequestError extends Error {
+  statusCode = 400;
+  constructor(message: string) {
+    super(message);
+    this.name = 'BadRequestError';
+  }
+}
+
 export async function quoteSwap(
-  fastify: FastifyInstance,
+  _fastify: FastifyInstance,
   network: string,
   baseToken: string,
   quoteToken: string,
   amount: number,
   side: 'BUY' | 'SELL',
-  slippagePct: number,
+  slippagePct: number = JupiterConfig.config.slippagePct,
   onlyDirectRoutes?: boolean,
   restrictIntermediateTokens?: boolean,
 ): Promise<Static<typeof JupiterQuoteSwapResponse>> {
@@ -30,9 +46,7 @@ export async function quoteSwap(
   const quoteTokenInfo = await solana.getToken(quoteToken);
 
   if (!baseTokenInfo || !quoteTokenInfo) {
-    throw fastify.httpErrors.badRequest(
-      sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
-    );
+    throw new BadRequestError(sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken));
   }
 
   // Determine input/output based on side
@@ -44,10 +58,9 @@ export async function quoteSwap(
   logger.info(`Getting quote for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`);
 
   let quoteResponse;
-  let usedApproximation = false;
 
   try {
-    // Try to get quote with the requested swap mode
+    // Get quote with the appropriate swap mode
     quoteResponse = await jupiter.getQuote(
       inputToken.address,
       outputToken.address,
@@ -58,82 +71,15 @@ export async function quoteSwap(
       side === 'BUY' ? 'ExactOut' : 'ExactIn',
     );
   } catch (error) {
-    // If BUY side (ExactOut) fails, try approximation with ExactIn
-    if (
-      side === 'BUY' &&
-      error.message &&
-      (error.message.includes('ExactOut not supported') ||
-        error.message.includes('Route not found') ||
-        error.message.includes('Could not find any route'))
-    ) {
-      logger.info('ExactOut not supported, falling back to ExactIn with approximation');
-
-      // For approximation, we need to estimate the input amount
-      // Start with an initial estimate based on a simple conversion
-      // We'll use iterative refinement to get closer to the desired output
-      let estimatedInputAmount = amount; // Start with 1:1 ratio as initial guess
-      let lastQuote;
-      let attempts = 0;
-      const maxAttempts = 5;
-      const tolerance = 0.01; // 1% tolerance
-
-      while (attempts < maxAttempts) {
-        attempts++;
-
-        try {
-          // Get quote with ExactIn mode
-          lastQuote = await jupiter.getQuote(
-            quoteTokenInfo.address, // Swap input/output for ExactIn
-            baseTokenInfo.address,
-            estimatedInputAmount,
-            slippagePct,
-            onlyDirectRoutes ?? JupiterConfig.config.onlyDirectRoutes,
-            restrictIntermediateTokens ?? JupiterConfig.config.restrictIntermediateTokens,
-            'ExactIn',
-          );
-
-          if (!lastQuote) break;
-
-          // Check how close we are to the target output
-          const actualOutput = Number(lastQuote.outAmount) / Math.pow(10, baseTokenInfo.decimals);
-          const targetOutput = amount;
-          const difference = Math.abs(actualOutput - targetOutput) / targetOutput;
-
-          logger.debug(
-            `Approximation attempt ${attempts}: input=${estimatedInputAmount}, output=${actualOutput}, target=${targetOutput}, diff=${difference}`,
-          );
-
-          if (difference < tolerance) {
-            // Close enough, use this quote
-            quoteResponse = lastQuote;
-            usedApproximation = true;
-            logger.info(`Approximation successful after ${attempts} attempts`);
-            break;
-          }
-
-          // Adjust the input amount based on the ratio
-          estimatedInputAmount = estimatedInputAmount * (targetOutput / actualOutput);
-        } catch (innerError) {
-          logger.debug(`Approximation attempt ${attempts} failed:`, innerError.message);
-          break;
-        }
-      }
-
-      if (!quoteResponse && lastQuote) {
-        // Use the last quote even if not perfectly accurate
-        quoteResponse = lastQuote;
-        usedApproximation = true;
-        logger.info('Using approximate quote (may not match exact output amount)');
-      }
-    }
-
-    if (!quoteResponse) {
-      throw error; // Re-throw the original error if fallback didn't work
-    }
+    // Pass through Jupiter's error with context
+    const errorMessage = error?.message || String(error);
+    const tokenPair = `${sanitizeString(baseToken)} -> ${sanitizeString(quoteToken)}`;
+    const swapMode = side === 'BUY' ? 'ExactOut' : 'ExactIn';
+    throw new NotFoundError(`No route found for ${tokenPair} (${swapMode}). ${errorMessage}`);
   }
 
   if (!quoteResponse) {
-    throw fastify.httpErrors.notFound('No routes found for this swap');
+    throw new NotFoundError('No routes found for this swap');
   }
 
   const bestRoute = quoteResponse;
@@ -166,7 +112,7 @@ export async function quoteSwap(
     tokenIn: inputToken.address,
     tokenOut: outputToken.address,
     amountIn: side === 'SELL' ? amount : estimatedAmountIn,
-    amountOut: side === 'SELL' ? estimatedAmountOut : usedApproximation ? estimatedAmountOut : amount,
+    amountOut: side === 'SELL' ? estimatedAmountOut : amount,
     price,
     priceImpactPct: parseFloat(quoteResponse.priceImpactPct || '0'),
     minAmountOut,
@@ -185,8 +131,6 @@ export async function quoteSwap(
       contextSlot: quoteResponse.contextSlot,
       timeTaken: quoteResponse.timeTaken,
     },
-    // Include approximation flag if used
-    ...(usedApproximation && { approximation: true }),
   };
 }
 
@@ -224,7 +168,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           quoteToken,
           amount,
           side as 'BUY' | 'SELL',
-          slippagePct ?? JupiterConfig.config.slippagePct,
+          slippagePct,
           onlyDirectRoutes,
           restrictIntermediateTokens,
         );

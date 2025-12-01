@@ -5,6 +5,7 @@ import { Solana } from '../../../chains/solana/solana';
 import { QuotePositionResponse, QuotePositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
+import { PancakeswapSolConfig } from '../pancakeswap-sol.config';
 import {
   getLiquidityFromAmounts,
   getLiquidityFromSingleAmount,
@@ -25,6 +26,7 @@ async function quotePosition(
   poolAddress: string,
   baseTokenAmount?: number,
   quoteTokenAmount?: number,
+  slippagePct?: number,
 ): Promise<QuotePositionResponseType> {
   const solana = await Solana.getInstance(network);
   const pancakeswapSol = await PancakeswapSol.getInstance(network);
@@ -267,13 +269,18 @@ async function quotePosition(
   );
   logger.info(`Liquidity: ${liquidity.toString()}, Base limited: ${baseLimited}`);
 
+  // Apply slippage to calculate max amounts
+  // User amounts are the quoted amounts, max allows for slippage tolerance
+  const effectiveSlippage = slippagePct ?? PancakeswapSolConfig.config.slippagePct;
+  const slippageMultiplier = 1 + effectiveSlippage / 100;
+
   // Return quote with calculated amounts
   return {
     baseLimited,
     baseTokenAmount: calculatedBaseAmount,
     quoteTokenAmount: calculatedQuoteAmount,
-    baseTokenAmountMax: calculatedBaseAmount * 1.01, // 1% buffer for precision
-    quoteTokenAmountMax: calculatedQuoteAmount * 1.01,
+    baseTokenAmountMax: calculatedBaseAmount * slippageMultiplier,
+    quoteTokenAmountMax: calculatedQuoteAmount * slippageMultiplier,
     liquidity: liquidity.toString(),
   };
 }
@@ -305,6 +312,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           poolAddress,
           baseTokenAmount,
           quoteTokenAmount,
+          slippagePct,
         } = request.query;
 
         return await quotePosition(
@@ -315,6 +323,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           poolAddress,
           baseTokenAmount,
           quoteTokenAmount,
+          slippagePct,
         );
       } catch (e: any) {
         logger.error('Quote position error:', e);

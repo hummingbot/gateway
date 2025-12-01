@@ -1,4 +1,3 @@
-import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { PositionInfo, PositionInfoSchema, GetPositionInfoRequestType } from '../../../schemas/clmm-schema';
@@ -10,18 +9,18 @@ export async function getPositionInfo(
   fastify: FastifyInstance,
   network: string,
   positionAddress: string,
-  walletAddress: string,
 ): Promise<PositionInfo> {
   const meteora = await Meteora.getInstance(network);
 
-  try {
-    new PublicKey(walletAddress);
-  } catch (error) {
-    throw fastify.httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
+  if (!positionAddress) {
+    throw fastify.httpErrors.badRequest('Position address is required');
   }
 
-  const position = await meteora.getPositionInfo(positionAddress, new PublicKey(walletAddress));
-  return position;
+  const positionInfo = await meteora.getPositionInfoByAddress(positionAddress);
+  if (!positionInfo) {
+    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+  }
+  return positionInfo;
 }
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
@@ -42,9 +41,9 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { positionAddress, walletAddress } = request.query;
+        const { positionAddress } = request.query;
         const network = request.query.network;
-        return await getPositionInfo(fastify, network, positionAddress, walletAddress);
+        return await getPositionInfo(fastify, network, positionAddress);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

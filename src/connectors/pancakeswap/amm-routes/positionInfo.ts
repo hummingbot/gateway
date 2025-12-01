@@ -101,8 +101,8 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         const [token0, token1] = await Promise.all([pairContract.token0(), pairContract.token1()]);
 
         // Get token objects by address
-        const baseTokenObj = pancakeswap.getTokenByAddress(token0);
-        const quoteTokenObj = pancakeswap.getTokenByAddress(token1);
+        const baseTokenObj = await pancakeswap.getToken(token0);
+        const quoteTokenObj = await pancakeswap.getToken(token1);
 
         if (!baseTokenObj || !quoteTokenObj) {
           throw fastify.httpErrors.badRequest('Token information not found for pool');

@@ -101,6 +101,7 @@ describe('GET /quote-swap', () => {
     const mockEthereumInstance = {
       chainId: 1,
       getToken: jest.fn().mockResolvedValueOnce(mockWETH).mockResolvedValueOnce(mockUSDC),
+      getOrFetchToken: jest.fn().mockResolvedValueOnce(mockWETH).mockResolvedValueOnce(mockUSDC),
       provider: mockProvider,
       ready: jest.fn().mockReturnValue(true),
       init: jest.fn().mockResolvedValue(undefined),
@@ -173,7 +174,7 @@ describe('GET /quote-swap', () => {
     // Mock Uniswap instance
     const mockUniswapInstance = {
       router: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D',
-      getTokenBySymbol: jest.fn().mockImplementation((symbol) => {
+      getToken: jest.fn().mockImplementation((symbol) => {
         if (symbol === 'WETH' || symbol === mockWETH.address) return wethToken;
         if (symbol === 'USDC' || symbol === mockUSDC.address) return usdcToken;
         return null;
@@ -247,6 +248,7 @@ describe('GET /quote-swap', () => {
     const mockEthereumInstance = {
       chainId: 1,
       getToken: jest.fn().mockResolvedValueOnce(mockWETH).mockResolvedValueOnce(mockUSDC),
+      getOrFetchToken: jest.fn().mockResolvedValueOnce(mockWETH).mockResolvedValueOnce(mockUSDC),
       provider: mockProvider,
       ready: jest.fn().mockReturnValue(true),
       init: jest.fn().mockResolvedValue(undefined),
@@ -318,7 +320,7 @@ describe('GET /quote-swap', () => {
     // Mock Uniswap instance
     const mockUniswapInstance = {
       router: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D',
-      getTokenBySymbol: jest.fn().mockImplementation((symbol) => {
+      getToken: jest.fn().mockImplementation((symbol) => {
         if (symbol === 'WETH' || symbol === mockWETH.address) return wethToken;
         if (symbol === 'USDC' || symbol === mockUSDC.address) return usdcToken;
         return null;

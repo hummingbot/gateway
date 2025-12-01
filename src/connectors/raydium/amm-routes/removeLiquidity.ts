@@ -12,11 +12,7 @@ import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  RemoveLiquidityRequestType,
-  RemoveLiquidityResponse,
-  RemoveLiquidityResponseType,
-} from '../../../schemas/amm-schema';
+import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';

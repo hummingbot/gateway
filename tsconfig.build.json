@@ -10,5 +10,6 @@
     "sourceMap": true,
     "inlineSourceMap": false
   },
+  "include": ["src/**/*.ts", "src/**/*.json"],
   "exclude": ["node_modules", "dist", "coverage", "test", "test-scripts"]
 }

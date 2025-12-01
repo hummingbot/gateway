@@ -27,8 +27,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request): Promise<PoolInfo> => {
       try {
-        const { poolAddress } = request.query;
-        const network = request.query.network;
+        const { poolAddress, network } = request.query;
 
         const ethereum = await Ethereum.getInstance(network);
         const uniswap = await Uniswap.getInstance(network);
@@ -42,8 +41,8 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         const token1Address = await pairContract.token1();
 
         // Get token objects by address
-        const token0 = uniswap.getTokenByAddress(token0Address);
-        const token1 = uniswap.getTokenByAddress(token1Address);
+        const token0 = await uniswap.getToken(token0Address);
+        const token1 = await uniswap.getToken(token1Address);
 
         if (!token0 || !token1) {
           throw new Error('Could not find tokens for pool');

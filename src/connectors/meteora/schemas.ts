@@ -225,7 +225,7 @@ export const MeteoraClmmOpenPositionRequest = Type.Object({
   strategyType: Type.Optional(
     Type.Number({
       description: 'Strategy type for the position',
-      examples: [StrategyType.SpotImBalanced],
+      examples: [StrategyType.Spot],
       enum: Object.values(StrategyType).filter((x) => typeof x === 'number'),
     }),
   ),
@@ -275,7 +275,7 @@ export const MeteoraClmmAddLiquidityRequest = Type.Object({
   strategyType: Type.Optional(
     Type.Number({
       description: 'Strategy type for the position',
-      examples: [StrategyType.SpotImBalanced],
+      examples: [StrategyType.Spot],
       enum: Object.values(StrategyType).filter((x) => typeof x === 'number'),
     }),
   ),
@@ -415,13 +415,6 @@ export const MeteoraClmmGetPositionInfoRequest = Type.Object({
     description: 'Position NFT address',
     examples: ['<sample-position-address>'],
   }),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Solana wallet address',
-      default: solanaChainConfig.defaultWallet,
-      examples: [solanaChainConfig.defaultWallet],
-    }),
-  ),
 });
 
 // Meteora CLMM Get Positions Owned Request
@@ -438,6 +431,8 @@ export const MeteoraClmmGetPositionsOwnedRequest = Type.Object({
     examples: [solanaChainConfig.defaultWallet],
   }),
 });
+
+export type MeteoraClmmGetPositionsOwnedRequestType = Static<typeof MeteoraClmmGetPositionsOwnedRequest>;
 
 // Meteora CLMM Quote Position Request
 export const MeteoraClmmQuotePositionRequest = Type.Object({
@@ -484,7 +479,7 @@ export const MeteoraClmmQuotePositionRequest = Type.Object({
   strategyType: Type.Optional(
     Type.Number({
       description: 'Strategy type for the position',
-      examples: [StrategyType.SpotImBalanced],
+      examples: [StrategyType.Spot],
       enum: Object.values(StrategyType).filter((x) => typeof x === 'number'),
     }),
   ),

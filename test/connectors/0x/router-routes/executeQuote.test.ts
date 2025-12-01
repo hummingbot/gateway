@@ -1,4 +1,4 @@
-import { BigNumber } from 'ethers';
+import { BigNumber, providers } from 'ethers';
 
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { ZeroX } from '../../../../src/connectors/0x/0x';
@@ -143,7 +143,24 @@ describe('POST /execute-quote', () => {
         if (address === mockUSDC.address) return mockUSDC;
         return null;
       }),
-      handleTransactionConfirmation: jest
+      handleTransactionExecution: jest.fn().mockImplementation((tx) => {
+        return {
+          transactionHash: tx.hash,
+          blockHash: '',
+          blockNumber: null,
+          transactionIndex: null,
+          from: tx.from,
+          to: tx.to || null,
+          cumulativeGasUsed: BigNumber.from(0),
+          gasUsed: BigNumber.from(0),
+          contractAddress: null,
+          logs: [],
+          logsBloom: '',
+          status: 1,
+          effectiveGasPrice: BigNumber.from(0),
+        } as providers.TransactionReceipt;
+      }),
+      handleExecuteQuoteTransactionConfirmation: jest
         .fn()
         .mockImplementation((txReceipt, inputToken, outputToken, amountIn, amountOut) => {
           if (!txReceipt) {
@@ -238,7 +255,7 @@ describe('POST /execute-quote', () => {
         if (address === mockUSDC.address) return mockUSDC;
         return null;
       }),
-      handleTransactionConfirmation: jest
+      handleExecuteQuoteTransactionConfirmation: jest
         .fn()
         .mockImplementation((txReceipt, inputToken, outputToken, amountIn, amountOut) => {
           if (!txReceipt) {
