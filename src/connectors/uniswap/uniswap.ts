@@ -79,18 +79,22 @@ export class Uniswap {
       this.ethereum = await Ethereum.getInstance(this.networkName);
       this.chainId = this.ethereum.chainId;
 
-      // Initialize V2 (AMM) contracts
-      this.v2Factory = new Contract(
-        getUniswapV2FactoryAddress(this.networkName),
-        IUniswapV2FactoryABI.abi,
-        this.ethereum.provider,
-      );
+      try {
+        // Initialize V2 (AMM) contracts
+        this.v2Factory = new Contract(
+          getUniswapV2FactoryAddress(this.networkName),
+          IUniswapV2FactoryABI.abi,
+          this.ethereum.provider,
+        );
 
-      this.v2Router = new Contract(
-        getUniswapV2RouterAddress(this.networkName),
-        IUniswapV2Router02ABI.abi,
-        this.ethereum.provider,
-      );
+        this.v2Router = new Contract(
+          getUniswapV2RouterAddress(this.networkName),
+          IUniswapV2Router02ABI.abi,
+          this.ethereum.provider,
+        );
+      } catch (error) {
+        logger.info(`Uniswap V2 not available for network: ${this.networkName}, skipping intialization`);
+      }
 
       // Initialize V3 (CLMM) contracts
       this.v3Factory = new Contract(
