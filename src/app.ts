@@ -1,6 +1,7 @@
 // External dependencies
-import { spawn } from 'child_process';
 import { exec } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
 import { promisify } from 'util';
 
 import fastifyRateLimit from '@fastify/rate-limit';
@@ -46,6 +47,64 @@ const devMode = process.argv.includes('--dev') || process.env.GATEWAY_TEST_MODE 
 
 // Promisify exec for async/await usage
 const execPromise = promisify(exec);
+
+// PID file management for tracking the official Gateway process
+const PID_FILE = path.join(process.cwd(), 'gateway.pid');
+
+function writePidFile(): void {
+  try {
+    fs.writeFileSync(PID_FILE, process.pid.toString(), 'utf8');
+    logger.info(`PID file written: ${PID_FILE} (PID: ${process.pid})`);
+  } catch (error) {
+    logger.warn(`Failed to write PID file: ${error}`);
+  }
+}
+
+function readPidFile(): number | null {
+  try {
+    if (fs.existsSync(PID_FILE)) {
+      const pid = parseInt(fs.readFileSync(PID_FILE, 'utf8').trim(), 10);
+      return isNaN(pid) ? null : pid;
+    }
+  } catch (error) {
+    logger.warn(`Failed to read PID file: ${error}`);
+  }
+  return null;
+}
+
+function removePidFile(): void {
+  try {
+    if (fs.existsSync(PID_FILE)) {
+      fs.unlinkSync(PID_FILE);
+      logger.info('PID file removed');
+    }
+  } catch (error) {
+    logger.warn(`Failed to remove PID file: ${error}`);
+  }
+}
+
+async function killExistingGateway(): Promise<void> {
+  const existingPid = readPidFile();
+  if (existingPid && existingPid !== process.pid) {
+    logger.info(`Found existing Gateway process (PID: ${existingPid}), killing...`);
+    try {
+      process.kill(existingPid, 'SIGTERM');
+      // Wait a bit for graceful shutdown
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Force kill if still running
+      try {
+        process.kill(existingPid, 0); // Check if process exists
+        process.kill(existingPid, 'SIGKILL');
+        logger.info(`Force killed existing Gateway (PID: ${existingPid})`);
+      } catch {
+        // Process already dead, which is good
+      }
+    } catch (error) {
+      // Process doesn't exist or already dead
+      logger.info(`Existing Gateway process (PID: ${existingPid}) not running`);
+    }
+  }
+}
 
 const swaggerOptions = {
   openapi: {
@@ -335,13 +394,23 @@ const configureGatewayServer = () => {
   });
 
   // Restart endpoint (outside registerRoutes, only on main server)
+  // This closes the server and exits. The caller is responsible for restarting.
+  // - If run from terminal: user needs to start again manually
+  // - If run via process manager (PM2, systemd, Docker): it will auto-restart
   server.post('/restart', async (_req, reply) => {
     await reply.status(200).send();
-    // Spawn a new instance before exiting
-    spawn(process.argv[0], process.argv.slice(1), {
-      detached: true,
-      stdio: 'inherit',
-    });
+
+    logger.info('Restart requested - shutting down for restart...');
+
+    // Remove PID file
+    removePidFile();
+
+    // Close server to release the port
+    await server.close();
+
+    logger.info('Server closed. Exiting for restart...');
+
+    // Exit with code 0 - process manager will restart if configured
     process.exit(0);
   });
 
@@ -362,7 +431,10 @@ export const startGateway = async () => {
   logger.info(`🔧 Log level configured as: ${ConfigManagerV2.getInstance().get('server.logLevel') || 'info'}`);
 
   try {
-    // Kill any process using the gateway port
+    // Kill any existing Gateway process tracked by PID file
+    await killExistingGateway();
+
+    // Also kill any process using the gateway port (fallback)
     try {
       logger.info(`Checking for processes using port ${port}...`);
 
@@ -415,6 +487,9 @@ export const startGateway = async () => {
       await gatewayApp.listen({ port, host: '0.0.0.0' });
     }
 
+    // Write PID file after server successfully starts
+    writePidFile();
+
     // Single documentation log after server starts
     const docsUrl = docsPort ? `http://localhost:${docsPort}` : `${protocol}://localhost:${port}/docs`;
 
@@ -426,6 +501,9 @@ export const startGateway = async () => {
     // Set up graceful shutdown
     const shutdown = async () => {
       logger.info('Shutting down gracefully...');
+
+      // Remove PID file
+      removePidFile();
 
       // Close server
       await gatewayApp.close();
