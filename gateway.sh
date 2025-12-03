@@ -69,13 +69,6 @@ start_gateway() {
 
     log "Starting Gateway..."
 
-    # Check for required environment variables
-    if [ -z "$GATEWAY_PASSPHRASE" ]; then
-        error "GATEWAY_PASSPHRASE environment variable is required"
-        error "Usage: GATEWAY_PASSPHRASE=yourpassphrase $0 start"
-        return 1
-    fi
-
     # Parse additional arguments
     local dev_mode=""
     shift # Remove 'start' from args
@@ -85,11 +78,27 @@ start_gateway() {
                 dev_mode="--dev"
                 shift
                 ;;
+            --passphrase=*)
+                export GATEWAY_PASSPHRASE="${1#*=}"
+                shift
+                ;;
+            --passphrase)
+                export GATEWAY_PASSPHRASE="$2"
+                shift 2
+                ;;
             *)
                 shift
                 ;;
         esac
     done
+
+    # Check for required passphrase (from arg or environment)
+    if [ -z "$GATEWAY_PASSPHRASE" ]; then
+        error "Passphrase is required"
+        error "Usage: $0 start --passphrase=yourpassphrase [--dev]"
+        error "   or: GATEWAY_PASSPHRASE=yourpassphrase $0 start [--dev]"
+        return 1
+    fi
 
     # Start the wrapper process in the background
     (
@@ -237,17 +246,18 @@ usage() {
     echo "Usage: $0 <command> [options]"
     echo ""
     echo "Commands:"
-    echo "  start [--dev]    Start Gateway server (--dev for HTTP mode)"
-    echo "  stop             Stop Gateway server"
-    echo "  restart          Restart Gateway server"
-    echo "  status           Show Gateway status"
+    echo "  start --passphrase=<pass> [--dev]    Start Gateway server"
+    echo "  stop                                  Stop Gateway server"
+    echo "  restart                               Restart Gateway server"
+    echo "  status                                Show Gateway status"
     echo ""
-    echo "Environment variables:"
-    echo "  GATEWAY_PASSPHRASE    Required passphrase for wallet encryption"
+    echo "Options:"
+    echo "  --passphrase=<pass>    Passphrase for wallet encryption (required for start)"
+    echo "  --dev                  Run in HTTP mode (development)"
     echo ""
     echo "Examples:"
-    echo "  GATEWAY_PASSPHRASE=mypassword $0 start"
-    echo "  GATEWAY_PASSPHRASE=mypassword $0 start --dev"
+    echo "  $0 start --passphrase=mypassword"
+    echo "  $0 start --passphrase=mypassword --dev"
     echo "  $0 stop"
     echo "  $0 status"
     echo ""

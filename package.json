@@ -23,7 +23,7 @@
     "lint": "eslint src test --format table --fix",
     "setup": "bash ./gateway-setup.sh",
     "setup:with-defaults": "bash ./gateway-setup.sh --with-defaults",
-    "start": "START_SERVER=true node dist/index.js",
+    "start": "bash ./gateway.sh start",
     "copy-files": "copyfiles 'src/templates/namespace/*.json' 'src/templates/*.yml' 'src/templates/chains/**/*.yml' 'src/templates/connectors/*.yml' 'src/templates/tokens/**/*.json' 'src/templates/pools/*.json' dist && copyfiles -u 1 'src/connectors/pancakeswap-sol/idl/*.json' dist",
     "test": "GATEWAY_TEST_MODE=dev jest --verbose",
     "test:clear-cache": "jest --clearCache",
