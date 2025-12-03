@@ -16,10 +16,11 @@ import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { OpenPositionResponse, OpenPositionResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
 import { getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
@@ -152,7 +153,6 @@ async function addLiquidityInstructions(
 }
 
 export async function openPosition(
-  fastify: FastifyInstance,
   network: string,
   address: string,
   poolAddress: string,
@@ -164,7 +164,7 @@ export async function openPosition(
 ): Promise<OpenPositionResponseType> {
   // Validate prices
   if (lowerPrice >= upperPrice) {
-    throw fastify.httpErrors.badRequest('lowerPrice must be less than upperPrice');
+    throw httpErrors.badRequest('lowerPrice must be less than upperPrice');
   }
 
   // Check if liquidity should be added
@@ -180,7 +180,7 @@ export async function openPosition(
   // Fetch whirlpool data
   const whirlpool = await client.getPool(whirlpoolPubkey, IGNORE_CACHE);
   if (!whirlpool) {
-    throw fastify.httpErrors.notFound(`Whirlpool not found: ${poolAddress}`);
+    throw httpErrors.notFound(`Whirlpool not found: ${poolAddress}`);
   }
 
   await whirlpool.refreshData();
@@ -189,7 +189,7 @@ export async function openPosition(
   const mintA = await client.getFetcher().getMintInfo(whirlpool.getTokenAInfo().address);
   const mintB = await client.getFetcher().getMintInfo(whirlpool.getTokenBInfo().address);
   if (!mintA || !mintB) {
-    throw fastify.httpErrors.notFound('Token mint not found');
+    throw httpErrors.notFound('Token mint not found');
   }
 
   // Convert prices to initializable tick indices
@@ -208,7 +208,7 @@ export async function openPosition(
 
   // Validate tick indices
   if (lowerTickIndex >= upperTickIndex) {
-    throw fastify.httpErrors.badRequest('Calculated tick indices are invalid (lower >= upper)');
+    throw httpErrors.badRequest('Calculated tick indices are invalid (lower >= upper)');
   }
 
   // Build transaction
@@ -440,7 +440,7 @@ export async function openPosition(
 
   // Build, simulate, and send transaction
   const txPayload = await builder.build();
-  await solana.simulateWithErrorHandling(txPayload.transaction, fastify);
+  await solana.simulateWithErrorHandling(txPayload.transaction);
   const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [
     wallet,
     positionMintKeypair,
@@ -494,7 +494,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         const network = request.body.network;
 
         return await openPosition(
-          fastify,
           network,
           walletAddress,
           poolAddress,
@@ -507,7 +506,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error(e);
         if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        throw httpErrors.internalServerError('Internal server error');
       }
     },
   );

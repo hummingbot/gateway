@@ -10,6 +10,7 @@ import { closePosition as pancakeswapSolClosePosition } from '../../connectors/p
 import { closePosition as raydiumClosePosition } from '../../connectors/raydium/clmm-routes/closePosition';
 import { closePosition as uniswapClosePosition } from '../../connectors/uniswap/clmm-routes/closePosition';
 import { ClosePositionResponseType, ClosePositionResponse } from '../../schemas/clmm-schema';
+import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
 // Get default wallet from Solana config, fallback to Ethereum if Solana doesn't exist
@@ -90,32 +91,32 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         // Route to appropriate connector
         switch (connector) {
           case 'uniswap':
-            return await uniswapClosePosition(fastify, network, walletAddress, positionAddress);
+            return await uniswapClosePosition(network, walletAddress, positionAddress);
 
           case 'pancakeswap':
-            return await pancakeswapClosePosition(fastify, network, walletAddress, positionAddress);
+            return await pancakeswapClosePosition(network, walletAddress, positionAddress);
 
           case 'raydium':
-            return await raydiumClosePosition(fastify, network, walletAddress, positionAddress);
+            return await raydiumClosePosition(network, walletAddress, positionAddress);
 
           case 'meteora':
-            return await meteoraClosePosition(fastify, network, walletAddress, positionAddress);
+            return await meteoraClosePosition(network, walletAddress, positionAddress);
 
           case 'pancakeswap-sol':
-            return await pancakeswapSolClosePosition(fastify, network, walletAddress, positionAddress);
+            return await pancakeswapSolClosePosition(network, walletAddress, positionAddress);
 
           case 'orca':
-            return await orcaClosePosition(fastify, network, walletAddress, positionAddress);
+            return await orcaClosePosition(network, walletAddress, positionAddress);
 
           default:
-            throw fastify.httpErrors.badRequest(`Unsupported connector: ${connector}`);
+            throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
         }
       } catch (e: any) {
         logger.error('Failed to close position:', e);
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError('Failed to close position');
+        throw httpErrors.internalServerError('Failed to close position');
       }
     },
   );

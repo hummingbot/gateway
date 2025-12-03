@@ -16,27 +16,6 @@ const TEST_WALLET = '82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5';
 let solana: Solana;
 let pancakeswapSol: PancakeswapSol;
 
-// Mock fastify instance
-const mockFastify = {
-  httpErrors: {
-    notFound: (msg: string) => {
-      const err = new Error(msg) as Error & { statusCode: number };
-      err.statusCode = 404;
-      return err;
-    },
-    badRequest: (msg: string) => {
-      const err = new Error(msg) as Error & { statusCode: number };
-      err.statusCode = 400;
-      return err;
-    },
-    internalServerError: (msg: string) => {
-      const err = new Error(msg) as Error & { statusCode: number };
-      err.statusCode = 500;
-      return err;
-    },
-  },
-};
-
 describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
   beforeAll(async () => {
     solana = await Solana.getInstance(NETWORK);
@@ -46,7 +25,6 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
   describe('Quote Position Route', () => {
     it('should quote position with only base token amount specified', async () => {
       const quote = await quotePosition(
-        mockFastify as any,
         NETWORK,
         170, // lowerPrice
         200, // upperPrice
@@ -72,7 +50,6 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
 
     it('should quote position with only quote token amount specified', async () => {
       const quote = await quotePosition(
-        mockFastify as any,
         NETWORK,
         170,
         200,
@@ -96,7 +73,6 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
 
     it('should quote position with both token amounts (uses limiting amount)', async () => {
       const quote = await quotePosition(
-        mockFastify as any,
         NETWORK,
         170,
         200,
@@ -123,20 +99,19 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
     }, 30000);
 
     it('should reject invalid price range (lower >= upper)', async () => {
-      await expect(
-        quotePosition(mockFastify as any, NETWORK, 200, 170, SOL_USDC_POOL, 0.01, undefined),
-      ).rejects.toThrow('Lower price must be less than upper price');
+      await expect(quotePosition(NETWORK, 200, 170, SOL_USDC_POOL, 0.01, undefined)).rejects.toThrow(
+        'Lower price must be less than upper price',
+      );
     }, 30000);
 
     it('should reject when neither amount is specified', async () => {
-      await expect(
-        quotePosition(mockFastify as any, NETWORK, 170, 200, SOL_USDC_POOL, undefined, undefined),
-      ).rejects.toThrow('Must specify baseTokenAmount or quoteTokenAmount');
+      await expect(quotePosition(NETWORK, 170, 200, SOL_USDC_POOL, undefined, undefined)).rejects.toThrow(
+        'Must specify baseTokenAmount or quoteTokenAmount',
+      );
     }, 30000);
 
     it('should handle wide price range', async () => {
       const quote = await quotePosition(
-        mockFastify as any,
         NETWORK,
         100, // very wide range
         300,
@@ -156,7 +131,7 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
 
   describe('Quote Swap Route', () => {
     it('should quote SELL swap with exact input', async () => {
-      const quote = await quoteSwap(mockFastify as any, NETWORK, 'SOL', 'USDC', 0.01, 'SELL', SOL_USDC_POOL);
+      const quote = await quoteSwap(NETWORK, 'SOL', 'USDC', 0.01, 'SELL', SOL_USDC_POOL);
 
       expect(quote).toBeDefined();
       expect(quote.amountOut).toBeGreaterThan(0);
@@ -173,7 +148,7 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
     }, 30000);
 
     it('should quote BUY swap with exact output', async () => {
-      const quote = await quoteSwap(mockFastify as any, NETWORK, 'SOL', 'USDC', 0.01, 'BUY', SOL_USDC_POOL);
+      const quote = await quoteSwap(NETWORK, 'SOL', 'USDC', 0.01, 'BUY', SOL_USDC_POOL);
 
       expect(quote).toBeDefined();
       expect(quote.amountOut).toBeGreaterThan(0);
@@ -190,7 +165,6 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
 
     it('should handle different slippage percentages', async () => {
       const quote1 = await quoteSwap(
-        mockFastify as any,
         NETWORK,
         'SOL',
         'USDC',
@@ -201,7 +175,6 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
       );
 
       const quote2 = await quoteSwap(
-        mockFastify as any,
         NETWORK,
         'SOL',
         'USDC',
@@ -221,7 +194,6 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
 
     it('should find pool automatically when not specified', async () => {
       const quote = await quoteSwap(
-        mockFastify as any,
         NETWORK,
         'SOL',
         'USDC',
@@ -246,9 +218,9 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
       const currentPrice = poolInfo.price;
 
       // Quote position twice with same amounts
-      const quote1 = await quotePosition(mockFastify as any, NETWORK, 170, 200, SOL_USDC_POOL, 0.01, undefined);
+      const quote1 = await quotePosition(NETWORK, 170, 200, SOL_USDC_POOL, 0.01, undefined);
 
-      const quote2 = await quotePosition(mockFastify as any, NETWORK, 170, 200, SOL_USDC_POOL, 0.01, undefined);
+      const quote2 = await quotePosition(NETWORK, 170, 200, SOL_USDC_POOL, 0.01, undefined);
 
       // Liquidity should be the same
       expect(quote1.liquidity).toBe(quote2.liquidity);
@@ -264,7 +236,6 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
     it('should handle price out of range (above upper) with quote token', async () => {
       // Pool price is ~184, set range below it
       const quote = await quotePosition(
-        mockFastify as any,
         NETWORK,
         50, // lower
         100, // upper (both below current price)
@@ -287,7 +258,6 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
     it('should handle price out of range (above upper) with base token', async () => {
       // Pool price is ~184, set range below it
       const quote = await quotePosition(
-        mockFastify as any,
         NETWORK,
         50, // lower
         100, // upper (both below current price)
@@ -309,7 +279,6 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
     it('should handle price out of range (below lower) with base token', async () => {
       // Pool price is ~184, set range above it
       const quote = await quotePosition(
-        mockFastify as any,
         NETWORK,
         250, // lower (above current price)
         300, // upper
@@ -332,7 +301,6 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
     it('should handle price out of range (below lower) with quote token', async () => {
       // Pool price is ~184, set range above it
       const quote = await quotePosition(
-        mockFastify as any,
         NETWORK,
         250, // lower (above current price)
         300, // upper
@@ -355,16 +323,16 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
   describe('Error Handling', () => {
     it('should handle invalid pool address in quote-position', async () => {
       await expect(
-        quotePosition(mockFastify as any, NETWORK, 170, 200, '11111111111111111111111111111111', 0.01, undefined),
+        quotePosition(NETWORK, 170, 200, '11111111111111111111111111111111', 0.01, undefined),
       ).rejects.toThrow();
     }, 30000);
 
     it('should handle invalid token symbols in quote-swap', async () => {
-      await expect(quoteSwap(mockFastify as any, NETWORK, 'INVALID', 'USDC', 0.01, 'SELL')).rejects.toThrow();
+      await expect(quoteSwap(NETWORK, 'INVALID', 'USDC', 0.01, 'SELL')).rejects.toThrow();
     }, 30000);
 
     it('should handle zero amounts in quote-position', async () => {
-      await expect(quotePosition(mockFastify as any, NETWORK, 170, 200, SOL_USDC_POOL, 0, undefined)).rejects.toThrow();
+      await expect(quotePosition(NETWORK, 170, 200, SOL_USDC_POOL, 0, undefined)).rejects.toThrow();
     }, 30000);
 
     // Note: Negative amount validation removed - should be handled at API schema level

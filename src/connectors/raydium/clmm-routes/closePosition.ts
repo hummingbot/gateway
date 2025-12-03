@@ -1,10 +1,11 @@
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
 import { Static } from '@sinclair/typebox';
 import { VersionedTransaction } from '@solana/web3.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { ClosePositionResponse, ClosePositionResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumClmmClosePositionRequest } from '../schemas';
@@ -12,7 +13,6 @@ import { RaydiumClmmClosePositionRequest } from '../schemas';
 import { removeLiquidity } from './removeLiquidity';
 
 export async function closePosition(
-  _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   positionAddress: string,
@@ -33,14 +33,7 @@ export async function closePosition(
       const quoteTokenInfo = await solana.getToken(poolInfo.mintB.address);
 
       // When closePosition: true, the SDK removes liquidity AND collects fees in one transaction
-      const removeLiquidityResponse = await removeLiquidity(
-        _fastify,
-        network,
-        walletAddress,
-        positionAddress,
-        100,
-        true,
-      );
+      const removeLiquidityResponse = await removeLiquidity(network, walletAddress, positionAddress, 100, true);
 
       if (removeLiquidityResponse.status === 1 && removeLiquidityResponse.data) {
         // Use the new helper to extract balance changes including SOL handling
@@ -115,7 +108,7 @@ export async function closePosition(
     const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(signedTransaction);
 
     if (!confirmed || !txData) {
-      throw _fastify.httpErrors.internalServerError('Transaction failed to confirm');
+      throw httpErrors.internalServerError('Transaction failed to confirm');
     }
 
     const fee = (txData.meta?.fee || 0) * (1 / Math.pow(10, 9)); // Convert lamports to SOL
@@ -166,7 +159,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         const { network, walletAddress, positionAddress } = request.body;
         const networkToUse = network;
 
-        return await closePosition(fastify, networkToUse, walletAddress, positionAddress);
+        return await closePosition(networkToUse, walletAddress, positionAddress);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

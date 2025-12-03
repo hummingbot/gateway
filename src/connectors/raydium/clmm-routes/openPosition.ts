@@ -3,10 +3,11 @@ import { Static } from '@sinclair/typebox';
 import { VersionedTransaction } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { OpenPositionResponse, OpenPositionResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
@@ -15,7 +16,6 @@ import { RaydiumClmmOpenPositionRequest } from '../schemas';
 import { quotePosition } from './quotePosition';
 
 export async function openPosition(
-  _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   lowerPrice: number,
@@ -33,7 +33,7 @@ export async function openPosition(
 
   const poolResponse = await raydium.getClmmPoolfromAPI(poolAddress);
   if (!poolResponse) {
-    throw _fastify.httpErrors.notFound(`Pool not found for address: ${poolAddress}`);
+    throw httpErrors.notFound(`Pool not found for address: ${poolAddress}`);
   }
   const [poolInfo, poolKeys] = poolResponse;
   const rpcData = await raydium.getClmmPoolfromRPC(poolAddress);
@@ -55,11 +55,10 @@ export async function openPosition(
 
   // Validate price range
   if (lowerPrice >= upperPrice) {
-    throw _fastify.httpErrors.badRequest('Lower price must be less than upper price');
+    throw httpErrors.badRequest('Lower price must be less than upper price');
   }
 
   const quotePositionResponse = await quotePosition(
-    _fastify,
     network,
     lowerPrice,
     upperPrice,
@@ -106,7 +105,7 @@ export async function openPosition(
     isHardwareWallet,
     wallet,
   )) as VersionedTransaction;
-  await solana.simulateWithErrorHandling(transaction, _fastify);
+  await solana.simulateWithErrorHandling(transaction);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
@@ -177,7 +176,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         const networkToUse = network;
 
         return await openPosition(
-          fastify,
           networkToUse,
           walletAddress,
           lowerPrice,
@@ -190,9 +188,9 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+          throw httpErrors.createError(e.statusCode, 'Request failed');
         }
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        throw httpErrors.internalServerError('Internal server error');
       }
     },
   );

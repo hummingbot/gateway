@@ -1,6 +1,6 @@
 import { BN } from '@coral-xyz/anchor';
 import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import {
@@ -8,12 +8,12 @@ import {
   ClosePositionRequestType,
   ClosePositionResponseType,
 } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 import { MeteoraClmmClosePositionRequest } from '../schemas';
 
 export async function closePosition(
-  fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   positionAddress: string,
@@ -27,9 +27,7 @@ export async function closePosition(
     const positionResult = await meteora.getRawPosition(positionAddress, wallet.publicKey);
 
     if (!positionResult || !positionResult.position) {
-      throw fastify.httpErrors.notFound(
-        `Position not found: ${positionAddress}. Please provide a valid position address`,
-      );
+      throw httpErrors.notFound(`Position not found: ${positionAddress}. Please provide a valid position address`);
     }
 
     const { position, info } = positionResult;
@@ -77,7 +75,7 @@ export async function closePosition(
       tx.feePayer = wallet.publicKey;
 
       // Simulate with error handling
-      await solana.simulateWithErrorHandling(tx, fastify);
+      await solana.simulateWithErrorHandling(tx);
 
       logger.info('Transaction simulated successfully, sending to network...');
 
@@ -175,7 +173,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         const { network, walletAddress, positionAddress } = request.body;
         const networkToUse = network;
 
-        return await closePosition(fastify, networkToUse, walletAddress, positionAddress);
+        return await closePosition(networkToUse, walletAddress, positionAddress);
       } catch (e) {
         logger.error('Close position route error:', {
           message: e.message || 'Unknown error',

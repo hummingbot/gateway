@@ -1,10 +1,11 @@
 import { ReturnTypeComputeAmountOutFormat, ReturnTypeComputeAmountOutBaseOut } from '@raydium-io/raydium-sdk-v2';
 import { VersionedTransaction } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
@@ -14,7 +15,6 @@ import { RaydiumClmmExecuteSwapRequest, RaydiumClmmExecuteSwapRequestType } from
 import { getSwapQuote, convertAmountIn } from './quoteSwap';
 
 export async function executeSwap(
-  fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   baseToken: string,
@@ -33,11 +33,10 @@ export async function executeSwap(
   // Get pool info from address
   const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(poolAddress);
   if (!poolInfo) {
-    throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
+    throw httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
   }
 
   const { inputToken, outputToken, response, clmmPoolInfo } = await getSwapQuote(
-    fastify,
     network,
     baseToken,
     quoteToken,
@@ -164,7 +163,7 @@ export async function executeSwap(
   )) as VersionedTransaction;
 
   // Simulate transaction with proper error handling
-  await solana.simulateWithErrorHandling(transaction as VersionedTransaction, fastify);
+  await solana.simulateWithErrorHandling(transaction as VersionedTransaction);
 
   // Send and confirm - keep retry loop here for retrying same tx hash
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
@@ -218,7 +217,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           const quoteTokenInfo = await solana.getToken(quoteToken);
 
           if (!baseTokenInfo || !quoteTokenInfo) {
-            throw fastify.httpErrors.badRequest(
+            throw httpErrors.badRequest(
               sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
             );
           }
@@ -236,7 +235,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           );
 
           if (!pool) {
-            throw fastify.httpErrors.notFound(
+            throw httpErrors.notFound(
               `No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Raydium`,
             );
           }
@@ -245,7 +244,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         return await executeSwap(
-          fastify,
           networkToUse,
           walletAddress,
           baseToken,
@@ -260,7 +258,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError('Failed to get swap quote');
+        throw httpErrors.internalServerError('Failed to get swap quote');
       }
     },
   );

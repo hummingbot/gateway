@@ -1,7 +1,8 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { PancakeswapSolConfig } from '../pancakeswap-sol.config';
@@ -23,7 +24,6 @@ import { PancakeswapSolClmmQuoteSwapRequest, PancakeswapSolClmmQuoteSwapRequestT
  * For highest precision, this should be replaced with full tick array calculation.
  */
 export async function quoteSwap(
-  _fastify: FastifyInstance,
   network: string,
   baseTokenSymbol: string,
   quoteTokenSymbol: string,
@@ -40,7 +40,7 @@ export async function quoteSwap(
   const quoteToken = await solana.getToken(quoteTokenSymbol);
 
   if (!baseToken || !quoteToken) {
-    throw _fastify.httpErrors.notFound(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
+    throw httpErrors.notFound(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
   }
 
   // If no pool address provided, try to find it from pool service
@@ -52,7 +52,7 @@ export async function quoteSwap(
     const pool = await poolService.getPool('pancakeswap-sol', network, 'clmm', baseToken.symbol, quoteToken.symbol);
 
     if (!pool) {
-      throw _fastify.httpErrors.notFound(`No CLMM pool found for ${baseToken.symbol}-${quoteToken.symbol}`);
+      throw httpErrors.notFound(`No CLMM pool found for ${baseToken.symbol}-${quoteToken.symbol}`);
     }
 
     poolAddressToUse = pool.address;
@@ -61,7 +61,7 @@ export async function quoteSwap(
   // Get pool info
   const poolInfo = await pancakeswapSol.getClmmPoolInfo(poolAddressToUse);
   if (!poolInfo) {
-    throw _fastify.httpErrors.notFound(`Pool not found: ${poolAddressToUse}`);
+    throw httpErrors.notFound(`Pool not found: ${poolAddressToUse}`);
   }
 
   // Determine if baseToken matches pool's base or quote
@@ -172,7 +172,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         } = request.query;
 
         return await quoteSwap(
-          fastify,
           network,
           baseToken,
           quoteToken,
@@ -189,7 +188,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
         // Handle unknown errors
         const errorMessage = e.message || 'Failed to get swap quote';
-        throw fastify.httpErrors.internalServerError(errorMessage);
+        throw httpErrors.internalServerError(errorMessage);
       }
     },
   );

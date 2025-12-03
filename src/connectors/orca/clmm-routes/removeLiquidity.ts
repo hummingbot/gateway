@@ -10,17 +10,17 @@ import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
 import { getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
 import { OrcaClmmRemoveLiquidityRequest } from '../schemas';
 
 export async function removeLiquidity(
-  fastify: FastifyInstance,
   network: string,
   address: string,
   positionAddress: string,
@@ -28,7 +28,7 @@ export async function removeLiquidity(
   slippagePct: number,
 ): Promise<RemoveLiquidityResponseType> {
   if (liquidityPct <= 0 || liquidityPct > 100) {
-    throw fastify.httpErrors.badRequest('liquidityPct must be between 0 and 100');
+    throw httpErrors.badRequest('liquidityPct must be between 0 and 100');
   }
 
   const solana = await Solana.getInstance(network);
@@ -40,21 +40,21 @@ export async function removeLiquidity(
   // Fetch position data
   const position = await client.getPosition(positionPubkey);
   if (!position) {
-    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+    throw httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
   await position.refreshData();
 
   const positionMint = await client.getFetcher().getMintInfo(position.getData().positionMint);
   if (!positionMint) {
-    throw fastify.httpErrors.notFound(`Position mint not found: ${position.getData().positionMint.toString()}`);
+    throw httpErrors.notFound(`Position mint not found: ${position.getData().positionMint.toString()}`);
   }
 
   // Fetch whirlpool data
   const whirlpoolPubkey = position.getData().whirlpool;
   const whirlpool = await client.getPool(whirlpoolPubkey, IGNORE_CACHE);
   if (!whirlpool) {
-    throw fastify.httpErrors.notFound(`Whirlpool not found: ${whirlpoolPubkey.toString()}`);
+    throw httpErrors.notFound(`Whirlpool not found: ${whirlpoolPubkey.toString()}`);
   }
 
   await whirlpool.refreshData();
@@ -63,7 +63,7 @@ export async function removeLiquidity(
   const mintA = await client.getFetcher().getMintInfo(whirlpool.getTokenAInfo().address);
   const mintB = await client.getFetcher().getMintInfo(whirlpool.getTokenBInfo().address);
   if (!mintA || !mintB) {
-    throw fastify.httpErrors.notFound('Token mint not found');
+    throw httpErrors.notFound('Token mint not found');
   }
 
   // Calculate liquidity amount to remove
@@ -72,7 +72,7 @@ export async function removeLiquidity(
   );
 
   if (liquidityAmount.isZero() || liquidityAmount.gt(position.getData().liquidity)) {
-    throw fastify.httpErrors.badRequest('Invalid liquidity amount calculated');
+    throw httpErrors.badRequest('Invalid liquidity amount calculated');
   }
 
   // Get decrease liquidity quote
@@ -191,14 +191,14 @@ export async function removeLiquidity(
 
   // Build, simulate, and send transaction
   const txPayload = await builder.build();
-  await solana.simulateWithErrorHandling(txPayload.transaction, fastify);
+  await solana.simulateWithErrorHandling(txPayload.transaction);
   const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [wallet]);
 
   // Extract removed amounts from balance changes
   const tokenA = await solana.getToken(whirlpool.getTokenAInfo().address.toString());
   const tokenB = await solana.getToken(whirlpool.getTokenBInfo().address.toString());
   if (!tokenA || !tokenB) {
-    throw fastify.httpErrors.notFound('Tokens not found for balance extraction');
+    throw httpErrors.notFound('Tokens not found for balance extraction');
   }
 
   const { balanceChanges } = await solana.extractBalanceChangesAndFee(
@@ -243,7 +243,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const { walletAddress, positionAddress, liquidityPct = 100, slippagePct = 1 } = request.body;
         const network = request.body.network;
 
-        return await removeLiquidity(fastify, network, walletAddress, positionAddress, liquidityPct, slippagePct);
+        return await removeLiquidity(network, walletAddress, positionAddress, liquidityPct, slippagePct);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) throw e;

@@ -3,10 +3,11 @@ import { Static } from '@sinclair/typebox';
 import { Keypair, PublicKey, Transaction } from '@solana/web3.js';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { OpenPositionResponse, OpenPositionResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 import { MeteoraConfig } from '../meteora.config';
@@ -26,7 +27,6 @@ const SOL_POSITION_RENT = 0.05; // SOL amount required for position rent
 const SOL_TRANSACTION_BUFFER = 0.01; // Additional SOL buffer for transaction costs
 
 export async function openPosition(
-  fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   lowerPrice: number,
@@ -46,7 +46,7 @@ export async function openPosition(
     new PublicKey(walletAddress);
   } catch (error) {
     const invalidAddress = error.message.includes(poolAddress) ? 'pool' : 'wallet';
-    throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress));
+    throw httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress));
   }
 
   const wallet = await solana.getWallet(walletAddress);
@@ -56,15 +56,15 @@ export async function openPosition(
   try {
     dlmmPool = await meteora.getDlmmPool(poolAddress);
     if (!dlmmPool) {
-      throw fastify.httpErrors.notFound(POOL_NOT_FOUND_MESSAGE(poolAddress));
+      throw httpErrors.notFound(POOL_NOT_FOUND_MESSAGE(poolAddress));
     }
   } catch (error) {
     if (error instanceof Error && error.message.includes('Invalid account discriminator')) {
-      throw fastify.httpErrors.notFound(POOL_NOT_FOUND_MESSAGE(poolAddress));
+      throw httpErrors.notFound(POOL_NOT_FOUND_MESSAGE(poolAddress));
     }
     // Handle InvalidPositionWidth error from Meteora SDK
     if (error instanceof Error && error.message.includes('InvalidPositionWidth')) {
-      throw fastify.httpErrors.badRequest('Invalid position width. Please use a position width of 69 bins or lower.');
+      throw httpErrors.badRequest('Invalid position width. Please use a position width of 69 bins or lower.');
     }
     throw error; // Re-throw unexpected errors
   }
@@ -75,7 +75,7 @@ export async function openPosition(
   const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
   if (!baseTokenAmount && !quoteTokenAmount) {
-    throw fastify.httpErrors.badRequest(MISSING_AMOUNTS_MESSAGE);
+    throw httpErrors.badRequest(MISSING_AMOUNTS_MESSAGE);
   }
 
   // Note: Balance validation removed - insufficient balance will be caught during transaction execution
@@ -88,7 +88,7 @@ export async function openPosition(
   // Validate price position requirements
   if (currentPrice < lowerPrice) {
     if (!baseTokenAmount || baseTokenAmount <= 0 || (quoteTokenAmount !== undefined && quoteTokenAmount !== 0)) {
-      throw fastify.httpErrors.badRequest(
+      throw httpErrors.badRequest(
         OPEN_POSITION_ERROR_MESSAGE(
           `Current price ${currentPrice.toFixed(4)} is below lower price ${lowerPrice.toFixed(4)}. ` +
             `Requires positive ${tokenXSymbol} amount and zero ${tokenYSymbol} amount.`,
@@ -97,7 +97,7 @@ export async function openPosition(
     }
   } else if (currentPrice > upperPrice) {
     if (!quoteTokenAmount || quoteTokenAmount <= 0 || (baseTokenAmount !== undefined && baseTokenAmount !== 0)) {
-      throw fastify.httpErrors.badRequest(
+      throw httpErrors.badRequest(
         OPEN_POSITION_ERROR_MESSAGE(
           `Current price ${currentPrice.toFixed(4)} is above upper price ${upperPrice.toFixed(4)}. ` +
             `Requires positive ${tokenYSymbol} amount and zero ${tokenXSymbol} amount.`,
@@ -151,7 +151,7 @@ export async function openPosition(
   createPositionTx.feePayer = wallet.publicKey;
 
   // Simulate with error handling (no signing needed for simulation)
-  await solana.simulateWithErrorHandling(createPositionTx, fastify);
+  await solana.simulateWithErrorHandling(createPositionTx);
 
   logger.info('Transaction simulated successfully, sending to network...');
 
@@ -242,7 +242,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         const networkToUse = network;
 
         return await openPosition(
-          fastify,
           networkToUse,
           walletAddress,
           lowerPrice,
@@ -256,9 +255,9 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, e.message || 'Request failed');
+          throw httpErrors.createError(e.statusCode, e.message || 'Request failed');
         }
-        throw fastify.httpErrors.internalServerError(e.message || 'Internal server error');
+        throw httpErrors.internalServerError(e.message || 'Internal server error');
       }
     },
   );

@@ -1,14 +1,14 @@
 import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { CollectFeesResponse, CollectFeesResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSolClmmCollectFeesRequest } from '../schemas';
 
 import { removeLiquidity } from './removeLiquidity';
 
 async function collectFees(
-  _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   positionAddress: string,
@@ -17,7 +17,7 @@ async function collectFees(
 
   // Use the clever Raydium approach: remove 1% of liquidity to collect fees
   // This withdraws a tiny amount of liquidity + all accumulated fees
-  const removeLiquidityResponse = await removeLiquidity(_fastify, network, walletAddress, positionAddress, 1);
+  const removeLiquidityResponse = await removeLiquidity(network, walletAddress, positionAddress, 1);
 
   if (removeLiquidityResponse.status !== 1 || !removeLiquidityResponse.data) {
     return {
@@ -66,7 +66,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { network = 'mainnet-beta', walletAddress, positionAddress } = request.body;
 
-        return await collectFees(fastify, network, walletAddress!, positionAddress);
+        return await collectFees(network, walletAddress!, positionAddress);
       } catch (e: any) {
         logger.error('Collect fees error:', e);
         // Re-throw httpErrors as-is
@@ -75,7 +75,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         }
         // Handle unknown errors
         const errorMessage = e.message || 'Failed to collect fees';
-        throw fastify.httpErrors.internalServerError(errorMessage);
+        throw httpErrors.internalServerError(errorMessage);
       }
     },
   );

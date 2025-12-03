@@ -2,11 +2,12 @@ import { SwapQuoteExactOut, SwapQuote } from '@meteora-ag/dlmm';
 import { DecimalUtil } from '@orca-so/common-sdk';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 import { Solana } from '../../../chains/solana/solana';
 import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Meteora } from '../meteora';
@@ -14,7 +15,6 @@ import { MeteoraConfig } from '../meteora.config';
 import { MeteoraClmmQuoteSwapRequest, MeteoraClmmQuoteSwapRequestType } from '../schemas';
 
 export async function getRawSwapQuote(
-  fastify: FastifyInstance,
   network: string,
   baseTokenSymbol: string,
   quoteTokenSymbol: string,
@@ -29,12 +29,12 @@ export async function getRawSwapQuote(
   const quoteToken = await solana.getToken(quoteTokenSymbol);
 
   if (!baseToken || !quoteToken) {
-    throw fastify.httpErrors.notFound(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
+    throw httpErrors.notFound(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
   }
 
   const dlmmPool = await meteora.getDlmmPool(poolAddress);
   if (!dlmmPool) {
-    throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+    throw httpErrors.notFound(`Pool not found: ${poolAddress}`);
   }
 
   // For buy orders, we're swapping quote token for base token (ExactOut)
@@ -65,7 +65,6 @@ export async function getRawSwapQuote(
 }
 
 async function formatSwapQuote(
-  fastify: FastifyInstance,
   network: string,
   baseTokenSymbol: string,
   quoteTokenSymbol: string,
@@ -75,7 +74,6 @@ async function formatSwapQuote(
   slippagePct: number = MeteoraConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
   const { inputToken, outputToken, quote, dlmmPool } = await getRawSwapQuote(
-    fastify,
     network,
     baseTokenSymbol,
     quoteTokenSymbol,
@@ -170,7 +168,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Validate essential parameters
         if (!baseToken || !quoteToken || !amount || !side) {
-          throw fastify.httpErrors.badRequest('baseToken, quoteToken, amount, and side are required');
+          throw httpErrors.badRequest('baseToken, quoteToken, amount, and side are required');
         }
 
         const solana = await Solana.getInstance(networkUsed);
@@ -184,7 +182,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           const quoteTokenInfo = await solana.getToken(quoteToken);
 
           if (!baseTokenInfo || !quoteTokenInfo) {
-            throw fastify.httpErrors.badRequest(
+            throw httpErrors.badRequest(
               sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
             );
           }
@@ -202,7 +200,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           );
 
           if (!pool) {
-            throw fastify.httpErrors.notFound(
+            throw httpErrors.notFound(
               `No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Meteora`,
             );
           }
@@ -211,7 +209,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         const result = await formatSwapQuote(
-          fastify,
           networkUsed,
           baseToken,
           quoteToken,
@@ -223,7 +220,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         try {
           // Note: estimateGasSolana returns feePerComputeUnit, not gasLimit
-          await estimateGasSolana(fastify, networkUsed);
+          await estimateGasSolana(networkUsed);
         } catch (error) {
           logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
         }
@@ -232,9 +229,9 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+          throw httpErrors.createError(e.statusCode, 'Request failed');
         }
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        throw httpErrors.internalServerError('Internal server error');
       }
     },
   );
@@ -244,7 +241,6 @@ export default quoteSwapRoute;
 
 // Export quoteSwap wrapper for chain-level routes
 export async function quoteSwap(
-  fastify: FastifyInstance,
   network: string,
   poolAddress: string,
   baseToken: string,
@@ -253,5 +249,5 @@ export async function quoteSwap(
   side: 'BUY' | 'SELL',
   slippagePct?: number,
 ): Promise<QuoteSwapResponseType> {
-  return await formatSwapQuote(fastify, network, baseToken, quoteToken, amount, side, poolAddress, slippagePct);
+  return await formatSwapQuote(network, baseToken, quoteToken, amount, side, poolAddress, slippagePct);
 }

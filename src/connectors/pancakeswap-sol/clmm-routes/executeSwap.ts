@@ -1,10 +1,11 @@
 import { Static } from '@sinclair/typebox';
 import { PublicKey, VersionedTransaction } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { MIN_SQRT_PRICE_X64, MAX_SQRT_PRICE_X64 } from '../pancakeswap-sol.parser';
@@ -17,7 +18,6 @@ import { PancakeswapSolClmmExecuteSwapRequest, PancakeswapSolClmmExecuteSwapRequ
  * NOTE: This uses manual transaction building with Anchor instruction encoding
  */
 export async function executeSwap(
-  fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   baseTokenSymbol: string,
@@ -29,16 +29,7 @@ export async function executeSwap(
 ): Promise<ExecuteSwapResponseType> {
   // Get quote first - this contains all the slippage calculations and pool lookup
   const { quoteSwap } = await import('./quoteSwap');
-  const quote = await quoteSwap(
-    fastify,
-    network,
-    baseTokenSymbol,
-    quoteTokenSymbol,
-    amount,
-    side,
-    poolAddress,
-    slippagePct,
-  );
+  const quote = await quoteSwap(network, baseTokenSymbol, quoteTokenSymbol, amount, side, poolAddress, slippagePct);
 
   const solana = await Solana.getInstance(network);
   const pancakeswapSol = await PancakeswapSol.getInstance(network);
@@ -48,7 +39,7 @@ export async function executeSwap(
   const quoteToken = await solana.getToken(quoteTokenSymbol);
 
   if (!baseToken || !quoteToken) {
-    throw fastify.httpErrors.notFound(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
+    throw httpErrors.notFound(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
   }
 
   // Use pool address from quote
@@ -57,7 +48,7 @@ export async function executeSwap(
   // Get pool info
   const poolInfo = await pancakeswapSol.getClmmPoolInfo(poolAddressToUse);
   if (!poolInfo) {
-    throw fastify.httpErrors.notFound(`Pool not found: ${poolAddressToUse}`);
+    throw httpErrors.notFound(`Pool not found: ${poolAddressToUse}`);
   }
 
   // Validate pool contains the requested tokens
@@ -65,7 +56,7 @@ export async function executeSwap(
   const requestedTokens = new Set([baseToken.address, quoteToken.address]);
 
   if (!poolTokens.has(baseToken.address) || !poolTokens.has(quoteToken.address)) {
-    throw fastify.httpErrors.badRequest(
+    throw httpErrors.badRequest(
       `Pool ${poolAddressToUse} does not contain the requested token pair. ` +
         `Pool has: ${poolInfo.baseTokenAddress}, ${poolInfo.quoteTokenAddress}. ` +
         `Requested: ${baseToken.symbol} (${baseToken.address}), ${quoteToken.symbol} (${quoteToken.address})`,
@@ -150,7 +141,7 @@ export async function executeSwap(
   transaction.sign([wallet]);
 
   // Simulate transaction
-  await solana.simulateWithErrorHandling(transaction, fastify);
+  await solana.simulateWithErrorHandling(transaction);
 
   // Send and confirm transaction
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
@@ -217,7 +208,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         } = request.body;
 
         return await executeSwap(
-          fastify,
           network,
           walletAddress!,
           baseToken,
@@ -235,7 +225,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
         // Handle unknown errors
         const errorMessage = e.message || 'Failed to execute swap';
-        throw fastify.httpErrors.internalServerError(errorMessage);
+        throw httpErrors.internalServerError(errorMessage);
       }
     },
   );

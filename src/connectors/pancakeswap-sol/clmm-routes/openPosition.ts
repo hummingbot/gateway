@@ -1,10 +1,11 @@
 import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { OpenPositionResponse, OpenPositionResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { PancakeswapSolConfig } from '../pancakeswap-sol.config';
@@ -15,7 +16,6 @@ import { PancakeswapSolClmmOpenPositionRequest } from '../schemas';
 import { quotePosition } from './quotePosition';
 
 export async function openPosition(
-  _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   poolAddress: string,
@@ -39,7 +39,7 @@ export async function openPosition(
   // Get pool info
   const poolInfo = await pancakeswapSol.getClmmPoolInfo(poolAddress);
   if (!poolInfo) {
-    throw _fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+    throw httpErrors.notFound(`Pool not found: ${poolAddress}`);
   }
 
   logger.info(`Pool Info:`);
@@ -54,7 +54,7 @@ export async function openPosition(
   const quoteToken = await solana.getToken(poolInfo.quoteTokenAddress);
 
   if (!baseToken || !quoteToken) {
-    throw _fastify.httpErrors.notFound('Token information not found');
+    throw httpErrors.notFound('Token information not found');
   }
 
   logger.info(
@@ -67,7 +67,6 @@ export async function openPosition(
 
   // Get quote for position amounts with slippage
   const quote = await quotePosition(
-    _fastify,
     network,
     lowerPrice,
     upperPrice,
@@ -80,7 +79,7 @@ export async function openPosition(
   // Get pool data to extract tick spacing
   const poolAccountInfo = await solana.connection.getAccountInfo(poolPubkey);
   if (!poolAccountInfo) {
-    throw _fastify.httpErrors.notFound(`Pool account not found: ${poolAddress}`);
+    throw httpErrors.notFound(`Pool account not found: ${poolAddress}`);
   }
   const tickSpacing = parsePoolTickSpacing(poolAccountInfo.data);
 
@@ -140,7 +139,7 @@ export async function openPosition(
   // Sign with both wallet and NFT mint keypair
   transaction.sign([wallet, positionNftMint]);
 
-  await solana.simulateWithErrorHandling(transaction, _fastify);
+  await solana.simulateWithErrorHandling(transaction);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
@@ -210,7 +209,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         } = request.body;
 
         return await openPosition(
-          fastify,
           network,
           walletAddress!,
           poolAddress,
@@ -228,7 +226,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         }
         // Handle unknown errors
         const errorMessage = e.message || 'Failed to open position';
-        throw fastify.httpErrors.internalServerError(errorMessage);
+        throw httpErrors.internalServerError(errorMessage);
       }
     },
   );

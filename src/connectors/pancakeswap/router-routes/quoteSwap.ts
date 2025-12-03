@@ -1,10 +1,11 @@
 import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { getEthereumChainConfig } from '../../../chains/ethereum/ethereum.config';
 import { QuoteSwapRequestType } from '../../../schemas/router-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
@@ -13,7 +14,6 @@ import { PancakeswapConfig } from '../pancakeswap.config';
 import { PancakeswapQuoteSwapRequest, PancakeswapQuoteSwapResponse } from '../schemas';
 
 async function quoteSwap(
-  fastify: FastifyInstance,
   network: string,
   walletAddress: string | undefined,
   baseToken: string,
@@ -36,9 +36,7 @@ async function quoteSwap(
 
   if (!baseTokenInfo || !quoteTokenInfo) {
     logger.error(`[quoteSwap] Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
-    throw fastify.httpErrors.notFound(
-      sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
-    );
+    throw httpErrors.notFound(sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken));
   }
 
   logger.info(`[quoteSwap] Base token: ${baseTokenInfo.symbol} (${baseTokenInfo.address})`);
@@ -168,7 +166,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         } = request.query as typeof PancakeswapQuoteSwapRequest._type;
 
         return await quoteSwap(
-          fastify,
           network,
           walletAddress,
           baseToken,
@@ -180,7 +177,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         if (e.statusCode) throw e;
         logger.error('Error getting quote:', e);
-        throw fastify.httpErrors.internalServerError(e.message || 'Internal server error');
+        throw httpErrors.internalServerError(e.message || 'Internal server error');
       }
     },
   );

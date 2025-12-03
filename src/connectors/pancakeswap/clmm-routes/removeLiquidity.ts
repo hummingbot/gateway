@@ -2,7 +2,7 @@ import { Contract } from '@ethersproject/contracts';
 import { Percent, CurrencyAmount } from '@pancakeswap/sdk';
 import { NonfungiblePositionManager, Position } from '@pancakeswap/v3-sdk';
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 import { Address } from 'viem';
 
@@ -13,6 +13,7 @@ import {
   RemoveLiquidityResponseType,
   RemoveLiquidityResponse,
 } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
 import { POSITION_MANAGER_ABI, getPancakeswapV3NftManagerAddress } from '../pancakeswap.contracts';
@@ -22,25 +23,24 @@ import { formatTokenAmount } from '../pancakeswap.utils';
 const CLMM_REMOVE_LIQUIDITY_GAS_LIMIT = 500000;
 
 export async function removeLiquidity(
-  fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   positionAddress: string,
   percentageToRemove: number,
 ): Promise<RemoveLiquidityResponseType> {
   if (!positionAddress || percentageToRemove === undefined) {
-    throw fastify.httpErrors.badRequest('Missing required parameters');
+    throw httpErrors.badRequest('Missing required parameters');
   }
 
   if (percentageToRemove < 0 || percentageToRemove > 100) {
-    throw fastify.httpErrors.badRequest('Percentage to remove must be between 0 and 100');
+    throw httpErrors.badRequest('Percentage to remove must be between 0 and 100');
   }
 
   const pancakeswap = await Pancakeswap.getInstance(network);
   const ethereum = await Ethereum.getInstance(network);
   const wallet = await ethereum.getWallet(walletAddress);
   if (!wallet) {
-    throw fastify.httpErrors.badRequest('Wallet not found');
+    throw httpErrors.badRequest('Wallet not found');
   }
 
   const positionManagerAddress = getPancakeswapV3NftManagerAddress(network);
@@ -49,9 +49,9 @@ export async function removeLiquidity(
     await pancakeswap.checkNFTOwnership(positionAddress, walletAddress);
   } catch (error: any) {
     if (error.message.includes('is not owned by')) {
-      throw fastify.httpErrors.forbidden(error.message);
+      throw httpErrors.forbidden(error.message);
     }
-    throw fastify.httpErrors.badRequest(error.message);
+    throw httpErrors.badRequest(error.message);
   }
 
   const positionManager = new Contract(positionManagerAddress, POSITION_MANAGER_ABI, ethereum.provider);
@@ -67,7 +67,7 @@ export async function removeLiquidity(
   const currentLiquidity = position.liquidity;
   const pool = await pancakeswap.getV3Pool(token0, token1, position.fee);
   if (!pool) {
-    throw fastify.httpErrors.notFound('Pool not found for position');
+    throw httpErrors.notFound('Pool not found for position');
   }
 
   const positionSDK = new Position({
@@ -200,17 +200,17 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           const pancakeswap = await Pancakeswap.getInstance(network);
           walletAddress = await pancakeswap.getFirstWalletAddress();
           if (!walletAddress) {
-            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
+            throw httpErrors.badRequest('No wallet address provided and no default wallet found');
           }
         }
 
-        return await removeLiquidity(fastify, network, walletAddress, positionAddress, percentageToRemove);
+        return await removeLiquidity(network, walletAddress, positionAddress, percentageToRemove);
       } catch (e: any) {
         logger.error('Failed to remove liquidity:', e);
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError('Failed to remove liquidity');
+        throw httpErrors.internalServerError('Failed to remove liquidity');
       }
     },
   );

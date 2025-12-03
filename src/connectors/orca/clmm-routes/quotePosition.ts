@@ -1,14 +1,14 @@
 import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { QuotePositionResponseType, QuotePositionResponse } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
 import { quotePosition as getQuotePosition } from '../orca.utils';
 import { OrcaClmmQuotePositionRequest } from '../schemas';
 
 export async function quotePosition(
-  fastify: FastifyInstance,
   network: string,
   lowerPrice: number,
   upperPrice: number,
@@ -21,16 +21,16 @@ export async function quotePosition(
 
   // Validate price range
   if (lowerPrice >= upperPrice) {
-    throw fastify.httpErrors.badRequest('lowerPrice must be less than upperPrice');
+    throw httpErrors.badRequest('lowerPrice must be less than upperPrice');
   }
 
   if (lowerPrice <= 0 || upperPrice <= 0) {
-    throw fastify.httpErrors.badRequest('Prices must be positive');
+    throw httpErrors.badRequest('Prices must be positive');
   }
 
   // If neither amount is specified, return an error
   if (!baseTokenAmount && !quoteTokenAmount) {
-    throw fastify.httpErrors.badRequest('At least one of baseTokenAmount or quoteTokenAmount must be specified');
+    throw httpErrors.badRequest('At least one of baseTokenAmount or quoteTokenAmount must be specified');
   }
 
   // Get quote from utility method
@@ -76,7 +76,6 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         } = request.query;
 
         return await quotePosition(
-          fastify,
           network,
           lowerPrice,
           upperPrice,
@@ -88,7 +87,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error(e);
         if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Failed to quote position');
+        throw httpErrors.internalServerError('Failed to quote position');
       }
     },
   );

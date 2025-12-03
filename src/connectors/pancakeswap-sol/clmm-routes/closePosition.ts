@@ -1,10 +1,11 @@
 import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { ClosePositionResponse, ClosePositionResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol, PANCAKESWAP_CLMM_PROGRAM_ID } from '../pancakeswap-sol';
 import { buildDecreaseLiquidityV2Instruction, buildClosePositionInstruction } from '../pancakeswap-sol.instructions';
@@ -13,7 +14,6 @@ import { buildTransactionWithInstructions } from '../pancakeswap-sol.transaction
 import { PancakeswapSolClmmClosePositionRequest } from '../schemas';
 
 export async function closePosition(
-  _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   positionAddress: string,
@@ -24,7 +24,7 @@ export async function closePosition(
   // Validate position exists and get info
   const positionInfo = await pancakeswapSol.getPositionInfo(positionAddress);
   if (!positionInfo) {
-    throw _fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+    throw httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
   const wallet = await solana.getWallet(walletAddress);
@@ -39,7 +39,7 @@ export async function closePosition(
 
   const positionAccountInfo = await solana.connection.getAccountInfo(personalPosition);
   if (!positionAccountInfo) {
-    throw _fastify.httpErrors.notFound(`Position account not found: ${personalPosition.toString()}`);
+    throw httpErrors.notFound(`Position account not found: ${personalPosition.toString()}`);
   }
 
   // Parse position data to get liquidity (like removeLiquidity.ts)
@@ -56,7 +56,7 @@ export async function closePosition(
   const quoteToken = await solana.getToken(positionInfo.quoteTokenAddress);
 
   if (!baseToken || !quoteToken) {
-    throw _fastify.httpErrors.notFound('Token information not found');
+    throw httpErrors.notFound('Token information not found');
   }
 
   // Get priority fee
@@ -94,7 +94,7 @@ export async function closePosition(
 
   // Sign and send
   transaction.sign([wallet]);
-  await solana.simulateWithErrorHandling(transaction, _fastify);
+  await solana.simulateWithErrorHandling(transaction);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
@@ -155,7 +155,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { network = 'mainnet-beta', walletAddress, positionAddress } = request.body;
 
-        return await closePosition(fastify, network, walletAddress!, positionAddress);
+        return await closePosition(network, walletAddress!, positionAddress);
       } catch (e: any) {
         logger.error('Close position error:', e);
         // Re-throw httpErrors as-is
@@ -164,7 +164,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         }
         // Handle unknown errors
         const errorMessage = e.message || 'Failed to close position';
-        throw fastify.httpErrors.internalServerError(errorMessage);
+        throw httpErrors.internalServerError(errorMessage);
       }
     },
   );

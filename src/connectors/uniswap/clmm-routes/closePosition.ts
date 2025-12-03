@@ -2,7 +2,7 @@ import { Contract } from '@ethersproject/contracts';
 import { Percent, CurrencyAmount } from '@uniswap/sdk-core';
 import { NonfungiblePositionManager, Position } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
@@ -12,6 +12,7 @@ import {
   ClosePositionResponseType,
   ClosePositionResponse,
 } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { POSITION_MANAGER_ABI, getUniswapV3NftManagerAddress } from '../uniswap.contracts';
@@ -21,14 +22,13 @@ import { formatTokenAmount } from '../uniswap.utils';
 const CLMM_CLOSE_POSITION_GAS_LIMIT = 400000;
 
 export async function closePosition(
-  fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   positionAddress: string,
 ): Promise<ClosePositionResponseType> {
   // Validate essential parameters
   if (!positionAddress) {
-    throw fastify.httpErrors.badRequest('Missing required parameters');
+    throw httpErrors.badRequest('Missing required parameters');
   }
 
   // Get Uniswap and Ethereum instances
@@ -38,7 +38,7 @@ export async function closePosition(
   // Get the wallet
   const wallet = await ethereum.getWallet(walletAddress);
   if (!wallet) {
-    throw fastify.httpErrors.badRequest('Wallet not found');
+    throw httpErrors.badRequest('Wallet not found');
   }
 
   // Get position manager address
@@ -49,9 +49,9 @@ export async function closePosition(
     await uniswap.checkNFTOwnership(positionAddress, walletAddress);
   } catch (error: any) {
     if (error.message.includes('is not owned by')) {
-      throw fastify.httpErrors.forbidden(error.message);
+      throw httpErrors.forbidden(error.message);
     }
-    throw fastify.httpErrors.badRequest(error.message);
+    throw httpErrors.badRequest(error.message);
   }
 
   // Create position manager contract
@@ -74,7 +74,7 @@ export async function closePosition(
 
   // Check if position has already been closed
   if (currentLiquidity.isZero() && position.tokensOwed0.isZero() && position.tokensOwed1.isZero()) {
-    throw fastify.httpErrors.badRequest('Position has already been closed or has no liquidity/fees to collect');
+    throw httpErrors.badRequest('Position has already been closed or has no liquidity/fees to collect');
   }
 
   // Get fees owned
@@ -84,7 +84,7 @@ export async function closePosition(
   // Get the pool
   const pool = await uniswap.getV3Pool(token0, token1, position.fee);
   if (!pool) {
-    throw fastify.httpErrors.notFound('Pool not found for position');
+    throw httpErrors.notFound('Pool not found for position');
   }
 
   // Create a Position instance to calculate expected amounts
@@ -219,7 +219,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
           }
         }
 
-        return await closePosition(fastify, network, walletAddress, positionAddress);
+        return await closePosition(network, walletAddress, positionAddress);
       } catch (e: any) {
         logger.error('Failed to close position:', e);
         if (e.statusCode) {

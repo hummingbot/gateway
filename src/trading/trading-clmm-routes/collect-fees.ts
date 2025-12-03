@@ -10,6 +10,7 @@ import { collectFees as pancakeswapSolCollectFees } from '../../connectors/panca
 import { collectFees as raydiumCollectFees } from '../../connectors/raydium/clmm-routes/collectFees';
 import { collectFees as uniswapCollectFees } from '../../connectors/uniswap/clmm-routes/collectFees';
 import { CollectFeesResponseType, CollectFeesResponse } from '../../schemas/clmm-schema';
+import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
 // Get default wallet from Solana config, fallback to Ethereum if Solana doesn't exist
@@ -90,32 +91,32 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         // Route to appropriate connector
         switch (connector) {
           case 'uniswap':
-            return await uniswapCollectFees(fastify, network, walletAddress, positionAddress);
+            return await uniswapCollectFees(network, walletAddress, positionAddress);
 
           case 'pancakeswap':
-            return await pancakeswapCollectFees(fastify, network, walletAddress, positionAddress);
+            return await pancakeswapCollectFees(network, walletAddress, positionAddress);
 
           case 'raydium':
-            return await raydiumCollectFees(fastify, network, walletAddress, positionAddress);
+            return await raydiumCollectFees(network, walletAddress, positionAddress);
 
           case 'meteora':
-            return await meteoraCollectFees(fastify, network, walletAddress, positionAddress);
+            return await meteoraCollectFees(network, walletAddress, positionAddress);
 
           case 'pancakeswap-sol':
-            return await pancakeswapSolCollectFees(fastify, network, walletAddress, positionAddress);
+            return await pancakeswapSolCollectFees(network, walletAddress, positionAddress);
 
           case 'orca':
-            return await orcaCollectFees(fastify, network, walletAddress, positionAddress);
+            return await orcaCollectFees(network, walletAddress, positionAddress);
 
           default:
-            throw fastify.httpErrors.badRequest(`Unsupported connector: ${connector}`);
+            throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
         }
       } catch (e: any) {
         logger.error('Failed to collect fees:', e);
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError('Failed to collect fees');
+        throw httpErrors.internalServerError('Failed to collect fees');
       }
     },
   );

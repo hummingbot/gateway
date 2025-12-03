@@ -1,14 +1,14 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
 import { getOrcaSwapQuote } from '../orca.utils';
 import { OrcaClmmQuoteSwapRequest, OrcaClmmQuoteSwapRequestType } from '../schemas';
 
 export async function getRawSwapQuote(
-  fastify: FastifyInstance,
   network: string,
   baseTokenSymbol: string,
   quoteTokenSymbol: string,
@@ -25,7 +25,7 @@ export async function getRawSwapQuote(
   const quoteTokenInfo = await solana.getToken(quoteTokenSymbol);
 
   if (!baseTokenInfo || !quoteTokenInfo) {
-    throw fastify.httpErrors.badRequest(`Token not found: ${!baseTokenInfo ? baseTokenSymbol : quoteTokenSymbol}`);
+    throw httpErrors.badRequest(`Token not found: ${!baseTokenInfo ? baseTokenSymbol : quoteTokenSymbol}`);
   }
 
   // Determine input/output tokens based on side
@@ -45,7 +45,6 @@ export async function getRawSwapQuote(
 }
 
 async function formatSwapQuote(
-  fastify: FastifyInstance,
   network: string,
   baseTokenSymbol: string,
   quoteTokenSymbol: string,
@@ -55,7 +54,6 @@ async function formatSwapQuote(
   slippagePct: number = 1,
 ): Promise<QuoteSwapResponseType> {
   const quote = await getRawSwapQuote(
-    fastify,
     network,
     baseTokenSymbol,
     quoteTokenSymbol,
@@ -102,7 +100,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Validate essential parameters
         if (!baseToken || !quoteToken || !amount || !side) {
-          throw fastify.httpErrors.badRequest('baseToken, quoteToken, amount, and side are required');
+          throw httpErrors.badRequest('baseToken, quoteToken, amount, and side are required');
         }
 
         const solana = await Solana.getInstance(networkUsed);
@@ -115,7 +113,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           const quoteTokenInfo = await solana.getToken(quoteToken);
 
           if (!baseTokenInfo || !quoteTokenInfo) {
-            throw fastify.httpErrors.badRequest(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
+            throw httpErrors.badRequest(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
           }
 
           // Use PoolService to find pool by token pair
@@ -131,7 +129,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           );
 
           if (!pool) {
-            throw fastify.httpErrors.notFound(
+            throw httpErrors.notFound(
               `No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Orca`,
             );
           }
@@ -140,7 +138,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         return await formatSwapQuote(
-          fastify,
           networkUsed,
           baseToken,
           quoteToken,
@@ -152,7 +149,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error(e);
         if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        throw httpErrors.internalServerError('Internal server error');
       }
     },
   );
@@ -162,7 +159,6 @@ export default quoteSwapRoute;
 
 // Export quoteSwap wrapper for unified trading routes
 export async function quoteSwap(
-  fastify: FastifyInstance,
   network: string,
   baseToken: string,
   quoteToken: string,
@@ -171,5 +167,5 @@ export async function quoteSwap(
   poolAddress: string,
   slippagePct?: number,
 ): Promise<QuoteSwapResponseType> {
-  return await formatSwapQuote(fastify, network, baseToken, quoteToken, amount, side, poolAddress, slippagePct);
+  return await formatSwapQuote(network, baseToken, quoteToken, amount, side, poolAddress, slippagePct);
 }

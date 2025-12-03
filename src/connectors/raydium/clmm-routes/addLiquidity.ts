@@ -2,10 +2,11 @@ import { TxVersion } from '@raydium-io/raydium-sdk-v2';
 import { Static } from '@sinclair/typebox';
 import { VersionedTransaction } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { AddLiquidityResponse, AddLiquidityResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
@@ -14,7 +15,6 @@ import { RaydiumClmmAddLiquidityRequest } from '../schemas';
 import { quotePosition } from './quotePosition';
 
 export async function addLiquidity(
-  _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   positionAddress: string,
@@ -39,7 +39,6 @@ export async function addLiquidity(
   const quoteToken = await solana.getToken(poolInfo.mintB.address);
 
   const quotePositionResponse = await quotePosition(
-    _fastify,
     network,
     positionInfo.lowerPrice,
     positionInfo.upperPrice,
@@ -84,7 +83,7 @@ export async function addLiquidity(
     isHardwareWallet,
     wallet,
   )) as VersionedTransaction;
-  await solana.simulateWithErrorHandling(transaction, _fastify);
+  await solana.simulateWithErrorHandling(transaction);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
@@ -158,7 +157,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           request.body;
 
         return await addLiquidity(
-          fastify,
           network,
           walletAddress,
           positionAddress,
@@ -168,7 +166,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         );
       } catch (e) {
         logger.error(e);
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        throw httpErrors.internalServerError('Internal server error');
       }
     },
   );

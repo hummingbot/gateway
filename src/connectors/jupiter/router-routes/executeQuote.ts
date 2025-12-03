@@ -1,16 +1,16 @@
 import { Wallet } from '@coral-xyz/anchor';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { SolanaLedger } from '../../../chains/solana/solana-ledger';
 import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { Jupiter } from '../jupiter';
 import { JupiterExecuteQuoteRequest } from '../schemas';
 
 export async function executeQuote(
-  fastify: FastifyInstance,
   walletAddress: string,
   network: string,
   quoteId: string,
@@ -20,7 +20,7 @@ export async function executeQuote(
   // Retrieve cached quote
   const quote = quoteCache.get(quoteId);
   if (!quote) {
-    throw fastify.httpErrors.badRequest('Quote not found or expired');
+    throw httpErrors.badRequest('Quote not found or expired');
   }
 
   // Parse the quote to get token information
@@ -31,7 +31,7 @@ export async function executeQuote(
   const outputToken = await solana.getToken(quote.outputMint || quote.outputToken);
 
   if (!inputToken || !outputToken) {
-    throw fastify.httpErrors.badRequest('Invalid tokens in quote');
+    throw httpErrors.badRequest('Invalid tokens in quote');
   }
 
   // Check if this is a hardware wallet
@@ -65,7 +65,7 @@ export async function executeQuote(
   }
 
   // Simulate transaction with proper error handling before sending
-  await solana.simulateWithErrorHandling(transaction, fastify);
+  await solana.simulateWithErrorHandling(transaction);
 
   // Send and confirm transaction using Solana's method
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
@@ -110,11 +110,11 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
         const { walletAddress, network, quoteId, priorityLevel, maxLamports } =
           request.body as typeof JupiterExecuteQuoteRequest._type;
 
-        return await executeQuote(fastify, walletAddress, network, quoteId, priorityLevel, maxLamports);
+        return await executeQuote(walletAddress, network, quoteId, priorityLevel, maxLamports);
       } catch (e) {
         if (e.statusCode) throw e;
         logger.error('Error executing quote:', e);
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        throw httpErrors.internalServerError(e.message || 'Internal server error');
       }
     },
   );

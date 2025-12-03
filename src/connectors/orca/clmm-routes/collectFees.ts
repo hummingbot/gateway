@@ -3,17 +3,17 @@ import { WhirlpoolIx, TokenExtensionUtil, IGNORE_CACHE } from '@orca-so/whirlpoo
 import { Static } from '@sinclair/typebox';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { CollectFeesResponse, CollectFeesResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
 import { getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
 import { OrcaClmmCollectFeesRequest } from '../schemas';
 
 export async function collectFees(
-  fastify: FastifyInstance,
   network: string,
   address: string,
   positionAddress: string,
@@ -27,7 +27,7 @@ export async function collectFees(
   // Fetch position data
   const position = await client.getPosition(positionPubkey);
   if (!position) {
-    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+    throw httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
   await position.refreshData();
@@ -35,14 +35,14 @@ export async function collectFees(
   // Fetch position mint info
   const positionMint = await client.getFetcher().getMintInfo(position.getData().positionMint);
   if (!positionMint) {
-    throw fastify.httpErrors.notFound(`Position mint not found: ${position.getData().positionMint.toString()}`);
+    throw httpErrors.notFound(`Position mint not found: ${position.getData().positionMint.toString()}`);
   }
 
   // Fetch whirlpool data
   const whirlpoolPubkey = position.getData().whirlpool;
   const whirlpool = await client.getPool(whirlpoolPubkey, IGNORE_CACHE);
   if (!whirlpool) {
-    throw fastify.httpErrors.notFound(`Whirlpool not found: ${whirlpoolPubkey.toString()}`);
+    throw httpErrors.notFound(`Whirlpool not found: ${whirlpoolPubkey.toString()}`);
   }
 
   await whirlpool.refreshData();
@@ -51,7 +51,7 @@ export async function collectFees(
   const mintA = await client.getFetcher().getMintInfo(whirlpool.getTokenAInfo().address);
   const mintB = await client.getFetcher().getMintInfo(whirlpool.getTokenBInfo().address);
   if (!mintA || !mintB) {
-    throw fastify.httpErrors.notFound('Token mint not found');
+    throw httpErrors.notFound('Token mint not found');
   }
 
   // Fetch tick arrays
@@ -64,7 +64,7 @@ export async function collectFees(
   const lowerTickArray = await client.getFetcher().getTickArray(lowerTickArrayPubkey);
   const upperTickArray = await client.getFetcher().getTickArray(upperTickArrayPubkey);
   if (!lowerTickArray || !upperTickArray) {
-    throw fastify.httpErrors.notFound('Tick array not found');
+    throw httpErrors.notFound('Tick array not found');
   }
 
   // Build transaction
@@ -177,7 +177,7 @@ export async function collectFees(
   // Build and simulate transaction
   const txPayload = await builder.build();
   const transaction = txPayload.transaction;
-  await solana.simulateWithErrorHandling(transaction, fastify);
+  await solana.simulateWithErrorHandling(transaction);
 
   // Send and confirm transaction
   const { signature, fee } = await solana.sendAndConfirmTransaction(transaction, [wallet]);
@@ -186,7 +186,7 @@ export async function collectFees(
   const tokenA = await solana.getToken(whirlpool.getTokenAInfo().address.toString());
   const tokenB = await solana.getToken(whirlpool.getTokenBInfo().address.toString());
   if (!tokenA || !tokenB) {
-    throw fastify.httpErrors.notFound('Tokens not found for balance extraction');
+    throw httpErrors.notFound('Tokens not found for balance extraction');
   }
 
   const { balanceChanges } = await solana.extractBalanceChangesAndFee(
@@ -231,11 +231,11 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         const { walletAddress, positionAddress } = request.body;
         const network = request.body.network;
 
-        return await collectFees(fastify, network, walletAddress, positionAddress);
+        return await collectFees(network, walletAddress, positionAddress);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        throw httpErrors.internalServerError('Internal server error');
       }
     },
   );

@@ -1,14 +1,14 @@
 import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { CollectFeesResponse, CollectFeesRequestType, CollectFeesResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 import { MeteoraClmmCollectFeesRequest } from '../schemas';
 
 export async function collectFees(
-  fastify: FastifyInstance,
   network: string,
   address: string,
   positionAddress: string,
@@ -21,9 +21,7 @@ export async function collectFees(
   const positionResult = await meteora.getRawPosition(positionAddress, wallet.publicKey);
 
   if (!positionResult || !positionResult.position) {
-    throw fastify.httpErrors.notFound(
-      `Position not found: ${positionAddress}. Please provide a valid position address`,
-    );
+    throw httpErrors.notFound(`Position not found: ${positionAddress}. Please provide a valid position address`);
   }
 
   // Now safely destructure
@@ -31,7 +29,7 @@ export async function collectFees(
 
   const dlmmPool = await meteora.getDlmmPool(info.publicKey.toBase58());
   if (!dlmmPool) {
-    throw fastify.httpErrors.notFound(`Pool not found for position: ${positionAddress}`);
+    throw httpErrors.notFound(`Pool not found for position: ${positionAddress}`);
   }
 
   const tokenX = await solana.getToken(dlmmPool.tokenX.publicKey.toBase58());
@@ -60,7 +58,7 @@ export async function collectFees(
 
   for (const tx of transactions) {
     // Simulate with error handling
-    await solana.simulateWithErrorHandling(tx, fastify);
+    await solana.simulateWithErrorHandling(tx);
 
     logger.info('Transaction simulated successfully, sending to network...');
 
@@ -134,13 +132,13 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         const { network, walletAddress, positionAddress } = request.body;
         const networkToUse = network;
 
-        return await collectFees(fastify, networkToUse, walletAddress, positionAddress);
+        return await collectFees(networkToUse, walletAddress, positionAddress);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+          throw httpErrors.createError(e.statusCode, 'Request failed');
         }
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        throw httpErrors.internalServerError('Internal server error');
       }
     },
   );
