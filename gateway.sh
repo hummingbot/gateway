@@ -100,41 +100,30 @@ start_gateway() {
         return 1
     fi
 
-    # Start the wrapper process in the background
-    (
-        while true; do
-            log "Starting Gateway server..."
+    # Save wrapper PID
+    echo "$$" > "$WRAPPER_PID_FILE"
 
-            # Run Gateway
-            cd "$SCRIPT_DIR"
-            START_SERVER=true node dist/index.js $dev_mode
-            exit_code=$?
+    # Handle Ctrl+C gracefully
+    trap 'log "Received interrupt signal. Stopping..."; rm -f "$WRAPPER_PID_FILE"; exit 130' INT TERM
 
-            if [ $exit_code -eq 0 ]; then
-                log "Gateway requested restart (exit code 0). Restarting in 2 seconds..."
-                sleep 2
-            else
-                log "Gateway stopped (exit code $exit_code). Not restarting."
-                rm -f "$WRAPPER_PID_FILE"
-                break
-            fi
-        done
-    ) >> "$LOG_FILE" 2>&1 &
+    # Run in foreground with restart loop
+    while true; do
+        log "Starting Gateway server..."
 
-    # Capture the background job PID immediately after &
-    echo "$!" > "$WRAPPER_PID_FILE"
+        # Run Gateway
+        cd "$SCRIPT_DIR"
+        START_SERVER=true node dist/index.js $dev_mode
+        exit_code=$?
 
-    # Wait a moment for startup
-    sleep 3
-
-    if is_running; then
-        log "Gateway started successfully (PID: $(cat "$PID_FILE"))"
-        log "Wrapper PID: $(cat "$WRAPPER_PID_FILE")"
-        log "Logs: $LOG_FILE"
-    else
-        error "Gateway failed to start. Check logs: $LOG_FILE"
-        return 1
-    fi
+        if [ $exit_code -eq 0 ]; then
+            log "Gateway requested restart (exit code 0). Restarting in 2 seconds..."
+            sleep 2
+        else
+            log "Gateway stopped (exit code $exit_code). Not restarting."
+            rm -f "$WRAPPER_PID_FILE"
+            break
+        fi
+    done
 }
 
 # Stop the Gateway server

@@ -27,6 +27,7 @@ import { raydiumRoutes } from './connectors/raydium/raydium.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { getHttpsOptions } from './https';
 import { poolRoutes } from './pools/pools.routes';
+import { serverRoutes } from './server/server.routes';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import { logger } from './services/logger';
 import { quoteCache } from './services/quote-cache';
@@ -119,6 +120,8 @@ const swaggerOptions = {
       },
     ],
     tags: [
+      // Server lifecycle
+      { name: 'server', description: 'Server lifecycle endpoints (health, restart, stop)' },
       // Main categories
       { name: '/config', description: 'System configuration endpoints' },
       { name: '/wallet', description: 'Wallet management endpoints' },
@@ -280,6 +283,9 @@ const configureGatewayServer = () => {
 
   // Register routes on both servers
   const registerRoutes = async (app: FastifyInstance) => {
+    // Register server lifecycle routes (health, status, restart, stop)
+    app.register(serverRoutes);
+
     // Register system routes
     app.register(configRoutes, { prefix: '/config' });
 
@@ -386,32 +392,6 @@ const configureGatewayServer = () => {
       error: 'Internal Server Error',
       message: 'An unexpected error occurred',
     });
-  });
-
-  // Health check route (outside registerRoutes, only on main server)
-  server.get('/', async () => {
-    return { status: 'ok' };
-  });
-
-  // Restart endpoint (outside registerRoutes, only on main server)
-  // This closes the server and exits. The caller is responsible for restarting.
-  // - If run from terminal: user needs to start again manually
-  // - If run via process manager (PM2, systemd, Docker): it will auto-restart
-  server.post('/restart', async (_req, reply) => {
-    await reply.status(200).send();
-
-    logger.info('Restart requested - shutting down for restart...');
-
-    // Remove PID file
-    removePidFile();
-
-    // Close server to release the port
-    await server.close();
-
-    logger.info('Server closed. Exiting for restart...');
-
-    // Exit with code 0 - process manager will restart if configured
-    process.exit(0);
   });
 
   return server;
