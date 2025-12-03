@@ -92,6 +92,15 @@ configurations:
     configurationPath: connectors/pancakeswap-sol.yml
     schemaPath: pancakeswap-sol-schema.json
 
+  # RPC providers
+  $namespace helius:
+    configurationPath: rpc/helius.yml
+    schemaPath: rpc-provider-schema.json
+
+  $namespace infura:
+    configurationPath: rpc/infura.yml
+    schemaPath: rpc-provider-schema.json
+
   # API Keys (centralized)
   $namespace apiKeys:
     configurationPath: apiKeys.yml

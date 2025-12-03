@@ -2,7 +2,7 @@ import { Contract } from '@ethersproject/contracts';
 import { CurrencyAmount } from '@pancakeswap/sdk';
 import { NonfungiblePositionManager } from '@pancakeswap/v3-sdk';
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 import { Address } from 'viem';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
@@ -12,6 +12,7 @@ import {
   CollectFeesResponseType,
   CollectFeesResponse,
 } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
 import { POSITION_MANAGER_ABI, getPancakeswapV3NftManagerAddress } from '../pancakeswap.contracts';
@@ -21,20 +22,19 @@ import { formatTokenAmount } from '../pancakeswap.utils';
 const CLMM_COLLECT_FEES_GAS_LIMIT = 200000;
 
 export async function collectFees(
-  fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   positionAddress: string,
 ): Promise<CollectFeesResponseType> {
   if (!positionAddress) {
-    throw fastify.httpErrors.badRequest('Missing required parameters');
+    throw httpErrors.badRequest('Missing required parameters');
   }
 
   const pancakeswap = await Pancakeswap.getInstance(network);
   const ethereum = await Ethereum.getInstance(network);
   const wallet = await ethereum.getWallet(walletAddress);
   if (!wallet) {
-    throw fastify.httpErrors.badRequest('Wallet not found');
+    throw httpErrors.badRequest('Wallet not found');
   }
 
   const positionManagerAddress = getPancakeswapV3NftManagerAddress(network);
@@ -43,9 +43,9 @@ export async function collectFees(
     await pancakeswap.checkNFTOwnership(positionAddress, walletAddress);
   } catch (error: any) {
     if (error.message.includes('is not owned by')) {
-      throw fastify.httpErrors.forbidden(error.message);
+      throw httpErrors.forbidden(error.message);
     }
-    throw fastify.httpErrors.badRequest(error.message);
+    throw httpErrors.badRequest(error.message);
   }
 
   const positionManager = new Contract(positionManagerAddress, POSITION_MANAGER_ABI, ethereum.provider);
@@ -62,7 +62,7 @@ export async function collectFees(
   const feeAmount1 = position.tokensOwed1;
 
   if (feeAmount0.eq(0) && feeAmount1.eq(0)) {
-    throw fastify.httpErrors.badRequest('No fees to collect');
+    throw httpErrors.badRequest('No fees to collect');
   }
 
   const expectedCurrencyOwed0 = CurrencyAmount.fromRawAmount(token0, feeAmount0.toString());
@@ -154,17 +154,17 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
           const pancakeswap = await Pancakeswap.getInstance(network);
           walletAddress = await pancakeswap.getFirstWalletAddress();
           if (!walletAddress) {
-            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
+            throw httpErrors.badRequest('No wallet address provided and no default wallet found');
           }
         }
 
-        return await collectFees(fastify, network, walletAddress, positionAddress);
+        return await collectFees(network, walletAddress, positionAddress);
       } catch (e: any) {
         logger.error('Failed to collect fees:', e);
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError('Failed to collect fees');
+        throw httpErrors.internalServerError('Failed to collect fees');
       }
     },
   );

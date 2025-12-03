@@ -3,7 +3,7 @@ import { Static } from '@sinclair/typebox';
 import { VersionedTransaction } from '@solana/web3.js';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import {
@@ -11,12 +11,12 @@ import {
   RemoveLiquidityRequestType,
   RemoveLiquidityResponseType,
 } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumClmmRemoveLiquidityRequest } from '../schemas';
 
 export async function removeLiquidity(
-  _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   positionAddress: string,
@@ -78,7 +78,7 @@ export async function removeLiquidity(
     isHardwareWallet,
     wallet,
   )) as VersionedTransaction;
-  await solana.simulateWithErrorHandling(transaction, _fastify);
+  await solana.simulateWithErrorHandling(transaction);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
@@ -139,7 +139,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { network, walletAddress, positionAddress, percentageToRemove } = request.body;
 
-        return await removeLiquidity(fastify, network, walletAddress, positionAddress, percentageToRemove, false);
+        return await removeLiquidity(network, walletAddress, positionAddress, percentageToRemove, false);
       } catch (e) {
         logger.error(e);
         throw fastify.httpErrors.internalServerError('Internal server error');

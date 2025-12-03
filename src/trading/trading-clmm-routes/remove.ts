@@ -10,6 +10,7 @@ import { removeLiquidity as pancakeswapSolRemoveLiquidity } from '../../connecto
 import { removeLiquidity as raydiumRemoveLiquidity } from '../../connectors/raydium/clmm-routes/removeLiquidity';
 import { removeLiquidity as uniswapRemoveLiquidity } from '../../connectors/uniswap/clmm-routes/removeLiquidity';
 import { RemoveLiquidityResponseType, RemoveLiquidityResponse } from '../../schemas/clmm-schema';
+import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
 // Get default wallet from Solana config, fallback to Ethereum if Solana doesn't exist
@@ -97,44 +98,32 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         // Route to appropriate connector
         switch (connector) {
           case 'uniswap':
-            return await uniswapRemoveLiquidity(fastify, network, walletAddress, positionAddress, percentageToRemove);
+            return await uniswapRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
 
           case 'pancakeswap':
-            return await pancakeswapRemoveLiquidity(
-              fastify,
-              network,
-              walletAddress,
-              positionAddress,
-              percentageToRemove,
-            );
+            return await pancakeswapRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
 
           case 'raydium':
-            return await raydiumRemoveLiquidity(fastify, network, walletAddress, positionAddress, percentageToRemove);
+            return await raydiumRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
 
           case 'meteora':
-            return await meteoraRemoveLiquidity(fastify, network, walletAddress, positionAddress, percentageToRemove);
+            return await meteoraRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
 
           case 'pancakeswap-sol':
-            return await pancakeswapSolRemoveLiquidity(
-              fastify,
-              network,
-              walletAddress,
-              positionAddress,
-              percentageToRemove,
-            );
+            return await pancakeswapSolRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
 
           case 'orca':
-            return await orcaRemoveLiquidity(fastify, network, walletAddress, positionAddress, percentageToRemove, 1);
+            return await orcaRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove, 1);
 
           default:
-            throw fastify.httpErrors.badRequest(`Unsupported connector: ${connector}`);
+            throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
         }
       } catch (e: any) {
         logger.error('Failed to remove liquidity:', e);
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError('Failed to remove liquidity');
+        throw httpErrors.internalServerError('Failed to remove liquidity');
       }
     },
   );

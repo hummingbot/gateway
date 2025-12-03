@@ -1,8 +1,9 @@
 import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { QuotePositionResponse, QuotePositionResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { PancakeswapSolConfig } from '../pancakeswap-sol.config';
@@ -19,7 +20,6 @@ import { PancakeswapSolClmmQuotePositionRequest } from '../schemas';
  * Calculates token amounts needed for a position based on price range and current price
  */
 async function quotePosition(
-  _fastify: FastifyInstance,
   network: string,
   lowerPrice: number,
   upperPrice: number,
@@ -34,7 +34,7 @@ async function quotePosition(
   // Get pool info to get current price and tick spacing
   const poolInfo = await pancakeswapSol.getClmmPoolInfo(poolAddress);
   if (!poolInfo) {
-    throw _fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
+    throw httpErrors.notFound(`Pool not found: ${poolAddress}`);
   }
 
   const currentPrice = poolInfo.price;
@@ -42,7 +42,7 @@ async function quotePosition(
 
   // Validate price range
   if (lowerPrice >= upperPrice) {
-    throw _fastify.httpErrors.badRequest('Lower price must be less than upper price');
+    throw httpErrors.badRequest('Lower price must be less than upper price');
   }
 
   // Get token info for decimals
@@ -50,7 +50,7 @@ async function quotePosition(
   const quoteToken = await solana.getToken(poolInfo.quoteTokenAddress);
 
   if (!baseToken || !quoteToken) {
-    throw _fastify.httpErrors.notFound('Token information not found');
+    throw httpErrors.notFound('Token information not found');
   }
 
   // Calculate decimal difference for tick conversions
@@ -258,7 +258,7 @@ async function quotePosition(
     calculatedBaseAmount = amounts.amount0;
     calculatedQuoteAmount = amounts.amount1;
   } else {
-    throw _fastify.httpErrors.badRequest('Must specify baseTokenAmount or quoteTokenAmount');
+    throw httpErrors.badRequest('Must specify baseTokenAmount or quoteTokenAmount');
   }
 
   logger.info(
@@ -316,7 +316,6 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         } = request.query;
 
         return await quotePosition(
-          fastify,
           network,
           lowerPrice,
           upperPrice,
@@ -333,7 +332,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         }
         // Handle unknown errors
         const errorMessage = e.message || 'Failed to quote position';
-        throw fastify.httpErrors.internalServerError(errorMessage);
+        throw httpErrors.internalServerError(errorMessage);
       }
     },
   );

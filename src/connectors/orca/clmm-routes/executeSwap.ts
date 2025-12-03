@@ -12,18 +12,18 @@ import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { getSolanaChainConfig } from '../../../chains/solana/solana.config';
 import { ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
 import { handleWsolAta } from '../orca.utils';
 import { OrcaClmmExecuteSwapRequest, OrcaClmmExecuteSwapRequestType } from '../schemas';
 
 export async function executeSwap(
-  fastify: FastifyInstance,
   network: string,
   address: string,
   baseTokenIdentifier: string,
@@ -47,16 +47,14 @@ export async function executeSwap(
   const quoteTokenInfo = await solana.getToken(quoteTokenIdentifier);
 
   if (!baseTokenInfo || !quoteTokenInfo) {
-    throw fastify.httpErrors.badRequest(
-      `Token not found: ${!baseTokenInfo ? baseTokenIdentifier : quoteTokenIdentifier}`,
-    );
+    throw httpErrors.badRequest(`Token not found: ${!baseTokenInfo ? baseTokenIdentifier : quoteTokenIdentifier}`);
   }
 
   // Fetch token mint info
   const mintA = await client.getFetcher().getMintInfo(whirlpool.getTokenAInfo().address);
   const mintB = await client.getFetcher().getMintInfo(whirlpool.getTokenBInfo().address);
   if (!mintA || !mintB) {
-    throw fastify.httpErrors.notFound('Token mint not found');
+    throw httpErrors.notFound('Token mint not found');
   }
 
   // Determine swap direction
@@ -223,7 +221,7 @@ export async function executeSwap(
 
   // Build, simulate, and send transaction
   const txPayload = await builder.build();
-  await solana.simulateWithErrorHandling(txPayload.transaction, fastify);
+  await solana.simulateWithErrorHandling(txPayload.transaction);
   const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [wallet]);
 
   // Calculate balance changes based on side
@@ -285,7 +283,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           const quoteTokenInfo = await solana.getToken(quoteToken);
 
           if (!baseTokenInfo || !quoteTokenInfo) {
-            throw fastify.httpErrors.badRequest(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
+            throw httpErrors.badRequest(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
           }
 
           // Use PoolService to find pool by token pair
@@ -301,7 +299,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           );
 
           if (!pool) {
-            throw fastify.httpErrors.notFound(
+            throw httpErrors.notFound(
               `No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Orca`,
             );
           }
@@ -311,7 +309,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         logger.info(`Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddressUsed}`);
 
         return await executeSwap(
-          fastify,
           networkUsed,
           walletAddressUsed,
           baseToken,
@@ -333,10 +330,10 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         // Check for specific error messages
         const errorMessage = e.message || e.toString();
         if (errorMessage.includes('503') || errorMessage.includes('Service Unavailable')) {
-          throw fastify.httpErrors.serviceUnavailable('RPC service temporarily unavailable. Please try again.');
+          throw httpErrors.serviceUnavailable('RPC service temporarily unavailable. Please try again.');
         }
 
-        throw fastify.httpErrors.internalServerError(`Swap execution failed: ${errorMessage}`);
+        throw httpErrors.internalServerError(`Swap execution failed: ${errorMessage}`);
       }
     },
   );

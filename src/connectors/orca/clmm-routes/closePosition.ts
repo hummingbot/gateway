@@ -11,17 +11,17 @@ import { Static } from '@sinclair/typebox';
 import { TOKEN_2022_PROGRAM_ID, getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { ClosePositionResponse, ClosePositionResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
 import { getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
 import { OrcaClmmClosePositionRequest } from '../schemas';
 
 export async function closePosition(
-  fastify: FastifyInstance,
   network: string,
   address: string,
   positionAddress: string,
@@ -35,21 +35,21 @@ export async function closePosition(
   // Fetch position data
   const position = await client.getPosition(positionPubkey);
   if (!position) {
-    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+    throw httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
   await position.refreshData();
 
   const positionMint = await client.getFetcher().getMintInfo(position.getData().positionMint);
   if (!positionMint) {
-    throw fastify.httpErrors.notFound(`Position mint not found: ${position.getData().positionMint.toString()}`);
+    throw httpErrors.notFound(`Position mint not found: ${position.getData().positionMint.toString()}`);
   }
 
   // Fetch whirlpool data
   const whirlpoolPubkey = position.getData().whirlpool;
   const whirlpool = await client.getPool(whirlpoolPubkey, IGNORE_CACHE);
   if (!whirlpool) {
-    throw fastify.httpErrors.notFound(`Whirlpool not found: ${whirlpoolPubkey.toString()}`);
+    throw httpErrors.notFound(`Whirlpool not found: ${whirlpoolPubkey.toString()}`);
   }
 
   await whirlpool.refreshData();
@@ -58,7 +58,7 @@ export async function closePosition(
   const mintA = await client.getFetcher().getMintInfo(whirlpool.getTokenAInfo().address);
   const mintB = await client.getFetcher().getMintInfo(whirlpool.getTokenBInfo().address);
   if (!mintA || !mintB) {
-    throw fastify.httpErrors.notFound('Token mint not found');
+    throw httpErrors.notFound('Token mint not found');
   }
 
   // Build transaction
@@ -181,7 +181,7 @@ export async function closePosition(
     const lowerTickArray = await client.getFetcher().getTickArray(lower);
     const upperTickArray = await client.getFetcher().getTickArray(upper);
     if (!lowerTickArray || !upperTickArray) {
-      throw fastify.httpErrors.notFound('Tick array not found');
+      throw httpErrors.notFound('Tick array not found');
     }
 
     const collectQuote = collectFeesQuote({
@@ -283,14 +283,14 @@ export async function closePosition(
 
   // Build, simulate, and send transaction
   const txPayload = await builder.build();
-  await solana.simulateWithErrorHandling(txPayload.transaction, fastify);
+  await solana.simulateWithErrorHandling(txPayload.transaction);
   const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [wallet]);
 
   // Extract actual amounts from balance changes (more accurate than quotes)
   const tokenA = await solana.getToken(whirlpool.getTokenAInfo().address.toString());
   const tokenB = await solana.getToken(whirlpool.getTokenBInfo().address.toString());
   if (!tokenA || !tokenB) {
-    throw fastify.httpErrors.notFound('Tokens not found for balance extraction');
+    throw httpErrors.notFound('Tokens not found for balance extraction');
   }
 
   const { balanceChanges } = await solana.extractBalanceChangesAndFee(
@@ -364,7 +364,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         const { walletAddress, positionAddress } = request.body;
         const network = request.body.network;
 
-        return await closePosition(fastify, network, walletAddress, positionAddress);
+        return await closePosition(network, walletAddress, positionAddress);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) throw e;

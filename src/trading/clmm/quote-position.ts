@@ -1,5 +1,5 @@
 import { Type, Static } from '@sinclair/typebox';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
 import { getSolanaChainConfig } from '../../chains/solana/solana.config';
@@ -10,6 +10,7 @@ import { quotePosition as pancakeswapSolQuotePosition } from '../../connectors/p
 import { quotePosition as raydiumQuotePosition } from '../../connectors/raydium/clmm-routes/quotePosition';
 import { quotePosition as uniswapQuotePosition } from '../../connectors/uniswap/clmm-routes/quotePosition';
 import { QuotePositionResponseType, QuotePositionResponse } from '../../schemas/clmm-schema';
+import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
 // Constants for examples (using Meteora CLMM values)
@@ -93,7 +94,6 @@ function parseChainNetwork(chainNetwork: string): { chain: string; network: stri
  * Quote position from Solana connectors
  */
 async function getSolanaQuotePosition(
-  fastify: FastifyInstance,
   connector: string,
   network: string,
   lowerPrice: number,
@@ -108,7 +108,6 @@ async function getSolanaQuotePosition(
   switch (connector) {
     case 'raydium':
       return await raydiumQuotePosition(
-        fastify,
         network,
         lowerPrice,
         upperPrice,
@@ -119,7 +118,6 @@ async function getSolanaQuotePosition(
       );
     case 'meteora':
       return await meteoraQuotePosition(
-        fastify,
         network,
         lowerPrice,
         upperPrice,
@@ -130,7 +128,6 @@ async function getSolanaQuotePosition(
       );
     case 'pancakeswap-sol':
       return await pancakeswapSolQuotePosition(
-        fastify,
         network,
         lowerPrice,
         upperPrice,
@@ -140,7 +137,6 @@ async function getSolanaQuotePosition(
       );
     case 'orca':
       return await orcaQuotePosition(
-        fastify,
         network,
         lowerPrice,
         upperPrice,
@@ -150,7 +146,7 @@ async function getSolanaQuotePosition(
         slippagePct,
       );
     default:
-      throw fastify.httpErrors.badRequest(`Unsupported Solana CLMM connector: ${connector}`);
+      throw httpErrors.badRequest(`Unsupported Solana CLMM connector: ${connector}`);
   }
 }
 
@@ -158,7 +154,6 @@ async function getSolanaQuotePosition(
  * Quote position from Ethereum connectors
  */
 async function getEthereumQuotePosition(
-  fastify: FastifyInstance,
   connector: string,
   network: string,
   lowerPrice: number,
@@ -173,7 +168,6 @@ async function getEthereumQuotePosition(
   switch (connector) {
     case 'uniswap':
       return await uniswapQuotePosition(
-        fastify,
         network,
         lowerPrice,
         upperPrice,
@@ -184,7 +178,6 @@ async function getEthereumQuotePosition(
       );
     case 'pancakeswap':
       return await pancakeswapQuotePosition(
-        fastify,
         network,
         lowerPrice,
         upperPrice,
@@ -194,7 +187,7 @@ async function getEthereumQuotePosition(
         slippagePct,
       );
     default:
-      throw fastify.httpErrors.badRequest(`Unsupported Ethereum CLMM connector: ${connector}`);
+      throw httpErrors.badRequest(`Unsupported Ethereum CLMM connector: ${connector}`);
   }
 }
 
@@ -202,7 +195,6 @@ async function getEthereumQuotePosition(
  * Quote position across any supported CLMM connector
  */
 export async function getUnifiedQuotePosition(
-  fastify: FastifyInstance,
   connector: string,
   chainNetwork: string,
   lowerPrice: number,
@@ -219,7 +211,6 @@ export async function getUnifiedQuotePosition(
   switch (chain.toLowerCase()) {
     case 'ethereum':
       return getEthereumQuotePosition(
-        fastify,
         connector,
         network,
         lowerPrice,
@@ -232,7 +223,6 @@ export async function getUnifiedQuotePosition(
 
     case 'solana':
       return getSolanaQuotePosition(
-        fastify,
         connector,
         network,
         lowerPrice,
@@ -244,7 +234,7 @@ export async function getUnifiedQuotePosition(
       );
 
     default:
-      throw fastify.httpErrors.badRequest(`Unsupported chain: ${chain}`);
+      throw httpErrors.badRequest(`Unsupported chain: ${chain}`);
   }
 }
 
@@ -282,7 +272,6 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
 
       try {
         const result = await getUnifiedQuotePosition(
-          fastify,
           connector,
           chainNetwork,
           lowerPrice,

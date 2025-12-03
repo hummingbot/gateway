@@ -2,11 +2,12 @@ import { ApiV3PoolInfoStandardItem, ApiV3PoolInfoStandardItemCpmm, CurveCalculat
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 import { Solana } from '../../../chains/solana/solana';
 import { QuoteSwapResponseType, QuoteSwapResponse, QuoteSwapRequestType } from '../../../schemas/amm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
@@ -373,7 +374,6 @@ export async function getRawSwapQuote(
 }
 
 async function formatSwapQuote(
-  _fastify: FastifyInstance,
   network: string,
   poolAddress: string,
   baseToken: string,
@@ -503,7 +503,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Validate essential parameters
         if (!baseToken || !quoteToken || !amount || !side) {
-          throw fastify.httpErrors.badRequest('baseToken, quoteToken, amount, and side are required');
+          throw httpErrors.badRequest('baseToken, quoteToken, amount, and side are required');
         }
 
         const raydium = await Raydium.getInstance(networkToUse);
@@ -518,7 +518,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           const quoteTokenInfo = await solana.getToken(quoteToken);
 
           if (!baseTokenInfo || !quoteTokenInfo) {
-            throw fastify.httpErrors.badRequest(
+            throw httpErrors.badRequest(
               sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
             );
           }
@@ -536,7 +536,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           );
 
           if (!pool) {
-            throw fastify.httpErrors.notFound(
+            throw httpErrors.notFound(
               `No AMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Raydium`,
             );
           }
@@ -545,7 +545,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         const result = await formatSwapQuote(
-          fastify,
           networkToUse,
           poolAddressToUse,
           baseToken,
@@ -557,7 +556,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         let gasEstimation = null;
         try {
-          gasEstimation = await estimateGasSolana(fastify, networkToUse);
+          gasEstimation = await estimateGasSolana(networkToUse);
         } catch (error) {
           logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
         }
@@ -569,12 +568,12 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           throw e;
         }
         if (e.message?.includes('Pool not found')) {
-          throw fastify.httpErrors.notFound(e.message);
+          throw httpErrors.notFound(e.message);
         }
         if (e.message?.includes('Token not found')) {
-          throw fastify.httpErrors.badRequest(e.message);
+          throw httpErrors.badRequest(e.message);
         }
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        throw httpErrors.internalServerError('Internal server error');
       }
     },
   );
@@ -584,7 +583,6 @@ export default quoteSwapRoute;
 
 // Export quoteSwap wrapper for chain-level routes
 export async function quoteSwap(
-  fastify: FastifyInstance,
   network: string,
   poolAddress: string,
   baseToken: string,
@@ -593,5 +591,5 @@ export async function quoteSwap(
   side: 'BUY' | 'SELL',
   slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
-  return await formatSwapQuote(fastify, network, poolAddress, baseToken, quoteToken, amount, side, slippagePct);
+  return await formatSwapQuote(network, poolAddress, baseToken, quoteToken, amount, side, slippagePct);
 }

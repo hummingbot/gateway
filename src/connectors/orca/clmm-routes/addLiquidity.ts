@@ -10,17 +10,17 @@ import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { AddLiquidityResponse, AddLiquidityResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
 import { getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
 import { OrcaClmmAddLiquidityRequest } from '../schemas';
 
 export async function addLiquidity(
-  fastify: FastifyInstance,
   network: string,
   address: string,
   positionAddress: string,
@@ -30,7 +30,7 @@ export async function addLiquidity(
 ): Promise<AddLiquidityResponseType> {
   // Validate at least one amount is provided
   if ((!baseTokenAmount || baseTokenAmount <= 0) && (!quoteTokenAmount || quoteTokenAmount <= 0)) {
-    throw fastify.httpErrors.badRequest('At least one token amount must be provided and greater than 0');
+    throw httpErrors.badRequest('At least one token amount must be provided and greater than 0');
   }
 
   const solana = await Solana.getInstance(network);
@@ -47,26 +47,26 @@ export async function addLiquidity(
   const positionData = position.getData();
 
   if (!positionData) {
-    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+    throw httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
   const positionMint = await client.getFetcher().getMintInfo(positionData.positionMint);
   if (!positionMint) {
-    throw fastify.httpErrors.notFound(`Position mint not found: ${positionData.positionMint.toString()}`);
+    throw httpErrors.notFound(`Position mint not found: ${positionData.positionMint.toString()}`);
   }
 
   // Fetch whirlpool data
   const whirlpoolPubkey = positionData.whirlpool;
   const whirlpool = await client.getPool(whirlpoolPubkey, IGNORE_CACHE);
   if (!whirlpool) {
-    throw fastify.httpErrors.notFound(`Whirlpool not found: ${whirlpoolPubkey.toString()}`);
+    throw httpErrors.notFound(`Whirlpool not found: ${whirlpoolPubkey.toString()}`);
   }
 
   // Fetch token mint info
   const mintA = whirlpool.getTokenAInfo();
   const mintB = whirlpool.getTokenBInfo();
   if (!mintA || !mintB) {
-    throw fastify.httpErrors.notFound('Token mint not found');
+    throw httpErrors.notFound('Token mint not found');
   }
 
   // Get token extension context once
@@ -251,14 +251,14 @@ export async function addLiquidity(
 
   // Build, simulate, and send transaction
   const txPayload = await builder.build();
-  await solana.simulateWithErrorHandling(txPayload.transaction, fastify);
+  await solana.simulateWithErrorHandling(txPayload.transaction);
   const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [wallet]);
 
   // Extract added amounts from balance changes
   const tokenA = await solana.getToken(whirlpool.getTokenAInfo().address.toString());
   const tokenB = await solana.getToken(whirlpool.getTokenBInfo().address.toString());
   if (!tokenA || !tokenB) {
-    throw fastify.httpErrors.notFound('Tokens not found for balance extraction');
+    throw httpErrors.notFound('Tokens not found for balance extraction');
   }
 
   const { balanceChanges } = await solana.extractBalanceChangesAndFee(
@@ -304,7 +304,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const network = request.body.network;
 
         return await addLiquidity(
-          fastify,
           network,
           walletAddress,
           positionAddress,
@@ -315,7 +314,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error(e);
         if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        throw httpErrors.internalServerError('Internal server error');
       }
     },
   );

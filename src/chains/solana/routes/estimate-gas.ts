@@ -1,11 +1,12 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { EstimateGasRequestType, EstimateGasResponse, EstimateGasResponseSchema } from '../../../schemas/chain-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { SolanaEstimateGasRequest } from '../schemas';
 import { Solana } from '../solana';
 
-export async function estimateGasSolana(fastify: FastifyInstance, network: string): Promise<EstimateGasResponse> {
+export async function estimateGasSolana(network: string): Promise<EstimateGasResponse> {
   try {
     const solana = await Solana.getInstance(network);
     const priorityFeePerCUInLamports = await solana.estimateGasPrice();
@@ -62,7 +63,7 @@ export async function estimateGasSolana(fastify: FastifyInstance, network: strin
       };
     } catch (instanceError) {
       logger.error(`Error getting Solana instance for network ${network}: ${instanceError.message}`);
-      throw fastify.httpErrors.internalServerError(
+      throw httpErrors.internalServerError(
         `Failed to get Solana instance for network ${network}: ${instanceError.message}`,
       );
     }
@@ -87,7 +88,7 @@ export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { network } = request.query;
-      return await estimateGasSolana(fastify, network);
+      return await estimateGasSolana(network);
     },
   );
 };

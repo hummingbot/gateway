@@ -1,24 +1,20 @@
 import { BigNumber, utils } from 'ethers';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
 import { getEthereumChainConfig } from '../../../chains/ethereum/ethereum.config';
 import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { PancakeswapExecuteQuoteRequest } from '../schemas';
 
-async function executeQuote(
-  fastify: FastifyInstance,
-  walletAddress: string,
-  network: string,
-  quoteId: string,
-): Promise<SwapExecuteResponseType> {
+async function executeQuote(walletAddress: string, network: string, quoteId: string): Promise<SwapExecuteResponseType> {
   // Retrieve cached quote
   const cached = quoteCache.get(quoteId);
   if (!cached) {
-    throw fastify.httpErrors.badRequest('Quote not found or expired');
+    throw httpErrors.badRequest('Quote not found or expired');
   }
 
   const { quote, request } = cached;
@@ -47,7 +43,7 @@ async function executeQuote(
       const inputAmount = utils.formatUnits(requiredAllowance, inputToken.decimals);
       const currentAllowance = utils.formatUnits(tokenAllowance, inputToken.decimals);
 
-      throw fastify.httpErrors.badRequest(
+      throw httpErrors.badRequest(
         `Insufficient ${inputToken.symbol} allowance to ${universalRouterAddress}. ` +
           `Required: ${inputAmount}, Current: ${currentAllowance}. ` +
           `Please approve ${inputToken.symbol} using spender: "pancakeswap/router"`,
@@ -97,7 +93,7 @@ async function executeQuote(
         wallet = await ethereum.getWallet(walletAddress);
       } catch (err) {
         logger.error(`Failed to load wallet: ${err.message}`);
-        throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
+        throw httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
       }
 
       // Get gas options with increased gas limit for Universal Router V2
@@ -148,27 +144,27 @@ async function executeQuote(
 
     // Handle specific error cases
     if (error.message && error.message.includes('insufficient funds')) {
-      throw fastify.httpErrors.badRequest(
+      throw httpErrors.badRequest(
         'Insufficient funds for transaction. Please ensure you have enough ETH to cover gas costs.',
       );
     } else if (error.message && error.message.includes('cannot estimate gas')) {
-      throw fastify.httpErrors.badRequest(
+      throw httpErrors.badRequest(
         'Transaction would fail. This could be due to an expired quote, insufficient token balance, or market conditions have changed. Please request a new quote.',
       );
     } else if (error.message.includes('rejected on Ledger')) {
-      throw fastify.httpErrors.badRequest('Transaction rejected on Ledger device');
+      throw httpErrors.badRequest('Transaction rejected on Ledger device');
     } else if (error.message.includes('Ledger device is locked')) {
-      throw fastify.httpErrors.badRequest(error.message);
+      throw httpErrors.badRequest(error.message);
     } else if (error.message.includes('Wrong app is open')) {
-      throw fastify.httpErrors.badRequest(error.message);
+      throw httpErrors.badRequest(error.message);
     }
 
-    // Re-throw if already a fastify error
+    // Re-throw if already an http error
     if (error.statusCode) {
       throw error;
     }
 
-    throw fastify.httpErrors.internalServerError(`Failed to execute swap: ${error.message}`);
+    throw httpErrors.internalServerError(`Failed to execute swap: ${error.message}`);
   }
 
   // Calculate expected amounts from the trade
@@ -189,7 +185,7 @@ async function executeQuote(
   if (result.status === 0) {
     // Transaction failed
     logger.error(`Transaction failed on-chain. Receipt: ${JSON.stringify(txReceipt)}`);
-    throw fastify.httpErrors.internalServerError(
+    throw httpErrors.internalServerError(
       'Transaction reverted on-chain. This could be due to slippage, expired quote, insufficient funds, or other blockchain issues.',
     );
   }
@@ -235,11 +231,11 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
           quoteId,
         } = request.body as typeof PancakeswapExecuteQuoteRequest._type;
 
-        return await executeQuote(fastify, walletAddress, network, quoteId);
+        return await executeQuote(walletAddress, network, quoteId);
       } catch (e) {
         if (e.statusCode) throw e;
         logger.error('Error executing quote:', e);
-        throw fastify.httpErrors.internalServerError(e.message || 'Internal server error');
+        throw httpErrors.internalServerError(e.message || 'Internal server error');
       }
     },
   );

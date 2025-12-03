@@ -1,6 +1,6 @@
 import { Position, nearestUsableTick, tickToPrice } from '@pancakeswap/v3-sdk';
 import { utils } from 'ethers';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
 import {
@@ -9,6 +9,7 @@ import {
   QuotePositionResponseType,
   QuotePositionResponse,
 } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Pancakeswap } from '../pancakeswap';
@@ -65,7 +66,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           !poolAddress ||
           (baseTokenAmount === undefined && quoteTokenAmount === undefined)
         ) {
-          throw fastify.httpErrors.badRequest('Missing required parameters');
+          throw httpErrors.badRequest('Missing required parameters');
         }
 
         // Get Pancakeswap and Ethereum instances
@@ -74,20 +75,20 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         // Get pool information to determine tokens
         const poolInfo = await getPancakeswapPoolInfo(poolAddress, networkToUse, 'clmm');
         if (!poolInfo) {
-          throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
+          throw httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
         }
 
         const baseTokenObj = await pancakeswap.getToken(poolInfo.baseTokenAddress);
         const quoteTokenObj = await pancakeswap.getToken(poolInfo.quoteTokenAddress);
 
         if (!baseTokenObj || !quoteTokenObj) {
-          throw fastify.httpErrors.badRequest('Token information not found for pool');
+          throw httpErrors.badRequest('Token information not found for pool');
         }
 
         // Get the V3 pool
         const pool = await pancakeswap.getV3Pool(baseTokenObj, quoteTokenObj, undefined, poolAddress);
         if (!pool) {
-          throw fastify.httpErrors.notFound(`Pool not found for ${baseTokenObj.symbol}-${quoteTokenObj.symbol}`);
+          throw httpErrors.notFound(`Pool not found for ${baseTokenObj.symbol}-${quoteTokenObj.symbol}`);
         }
 
         // Convert price range to ticks
@@ -176,7 +177,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
 
         // Ensure lower < upper
         if (lowerTick >= upperTick) {
-          throw fastify.httpErrors.badRequest('Lower price must be less than upper price');
+          throw httpErrors.badRequest('Lower price must be less than upper price');
         }
 
         // Check if the current price is within the position range
@@ -314,7 +315,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
           }
           baseLimited = false;
         } else {
-          throw fastify.httpErrors.badRequest('Either base or quote token amount must be provided');
+          throw httpErrors.badRequest('Either base or quote token amount must be provided');
         }
 
         // Calculate the optimal amounts
@@ -372,7 +373,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError('Failed to quote position');
+        throw httpErrors.internalServerError('Failed to quote position');
       }
     },
   );
@@ -382,7 +383,6 @@ export default quotePositionRoute;
 
 // Export standalone function for use in unified routes
 export async function quotePosition(
-  fastify: FastifyInstance,
   network: string,
   lowerPrice: number,
   upperPrice: number,
@@ -393,7 +393,7 @@ export async function quotePosition(
 ): Promise<QuotePositionResponseType> {
   // Validate essential parameters
   if (!lowerPrice || !upperPrice || !poolAddress || (baseTokenAmount === undefined && quoteTokenAmount === undefined)) {
-    throw fastify.httpErrors.badRequest('Missing required parameters');
+    throw httpErrors.badRequest('Missing required parameters');
   }
 
   // Get Pancakeswap instance
@@ -402,20 +402,20 @@ export async function quotePosition(
   // Get pool information to determine tokens
   const poolInfo = await getPancakeswapPoolInfo(poolAddress, network, 'clmm');
   if (!poolInfo) {
-    throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
+    throw httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
   }
 
   const baseTokenObj = await pancakeswap.getToken(poolInfo.baseTokenAddress);
   const quoteTokenObj = await pancakeswap.getToken(poolInfo.quoteTokenAddress);
 
   if (!baseTokenObj || !quoteTokenObj) {
-    throw fastify.httpErrors.badRequest('Token information not found for pool');
+    throw httpErrors.badRequest('Token information not found for pool');
   }
 
   // Get the V3 pool
   const pool = await pancakeswap.getV3Pool(baseTokenObj, quoteTokenObj, undefined, poolAddress);
   if (!pool) {
-    throw fastify.httpErrors.notFound(`Pool not found for ${baseTokenObj.symbol}-${quoteTokenObj.symbol}`);
+    throw httpErrors.notFound(`Pool not found for ${baseTokenObj.symbol}-${quoteTokenObj.symbol}`);
   }
 
   // Convert price range to ticks
@@ -445,7 +445,7 @@ export async function quotePosition(
 
   // Ensure lower < upper
   if (lowerTick >= upperTick) {
-    throw fastify.httpErrors.badRequest('Lower price must be less than upper price');
+    throw httpErrors.badRequest('Lower price must be less than upper price');
   }
 
   // Calculate optimal token amounts
@@ -529,7 +529,7 @@ export async function quotePosition(
     }
     baseLimited = false;
   } else {
-    throw fastify.httpErrors.badRequest('Either base or quote token amount must be provided');
+    throw httpErrors.badRequest('Either base or quote token amount must be provided');
   }
 
   // Calculate the actual token amounts from the position

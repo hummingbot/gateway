@@ -7,7 +7,7 @@ import {
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 import { Solana } from '../../../chains/solana/solana';
@@ -17,6 +17,7 @@ import {
   QuoteSwapRequestType,
   QuoteSwapRequest,
 } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
@@ -46,7 +47,6 @@ export function convertAmountIn(
 }
 
 export async function getSwapQuote(
-  fastify: FastifyInstance,
   network: string,
   baseTokenSymbol: string,
   quoteTokenSymbol: string,
@@ -61,12 +61,12 @@ export async function getSwapQuote(
   const quoteToken = await solana.getToken(quoteTokenSymbol);
 
   if (!baseToken || !quoteToken) {
-    throw fastify.httpErrors.notFound(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
+    throw httpErrors.notFound(`Token not found: ${!baseToken ? baseTokenSymbol : quoteTokenSymbol}`);
   }
 
   const [poolInfo] = await raydium.getClmmPoolfromAPI(poolAddress);
   if (!poolInfo) {
-    throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
+    throw httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
   }
 
   // For buy orders, we're swapping quote token for base token (ExactOut)
@@ -121,7 +121,6 @@ export async function getSwapQuote(
 }
 
 async function formatSwapQuote(
-  fastify: FastifyInstance,
   network: string,
   baseTokenSymbol: string,
   quoteTokenSymbol: string,
@@ -131,7 +130,6 @@ async function formatSwapQuote(
   slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
   const { inputToken, outputToken, response } = await getSwapQuote(
-    fastify,
     network,
     baseTokenSymbol,
     quoteTokenSymbol,
@@ -300,7 +298,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Validate essential parameters
         if (!baseToken || !quoteToken || !amount || !side) {
-          throw fastify.httpErrors.badRequest('baseToken, quoteToken, amount, and side are required');
+          throw httpErrors.badRequest('baseToken, quoteToken, amount, and side are required');
         }
 
         const solana = await Solana.getInstance(networkToUse);
@@ -314,7 +312,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           const quoteTokenInfo = await solana.getToken(quoteToken);
 
           if (!baseTokenInfo || !quoteTokenInfo) {
-            throw fastify.httpErrors.badRequest(
+            throw httpErrors.badRequest(
               sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
             );
           }
@@ -332,7 +330,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           );
 
           if (!pool) {
-            throw fastify.httpErrors.notFound(
+            throw httpErrors.notFound(
               `No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Raydium`,
             );
           }
@@ -341,7 +339,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         const result = await formatSwapQuote(
-          fastify,
           networkToUse,
           baseToken,
           quoteToken,
@@ -353,7 +350,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         let gasEstimation = null;
         try {
-          gasEstimation = await estimateGasSolana(fastify, networkToUse);
+          gasEstimation = await estimateGasSolana(networkToUse);
         } catch (error) {
           logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
         }
@@ -368,7 +365,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError('Failed to get swap quote');
+        throw httpErrors.internalServerError('Failed to get swap quote');
       }
     },
   );
@@ -378,7 +375,6 @@ export default quoteSwapRoute;
 
 // Export quoteSwap wrapper for chain-level routes
 export async function quoteSwap(
-  fastify: FastifyInstance,
   network: string,
   poolAddress: string,
   baseToken: string,
@@ -387,5 +383,5 @@ export async function quoteSwap(
   side: 'BUY' | 'SELL',
   slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
-  return await formatSwapQuote(fastify, network, baseToken, quoteToken, amount, side, poolAddress, slippagePct);
+  return await formatSwapQuote(network, baseToken, quoteToken, amount, side, poolAddress, slippagePct);
 }

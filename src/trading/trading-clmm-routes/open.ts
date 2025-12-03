@@ -1,6 +1,7 @@
 import { Static, Type } from '@sinclair/typebox';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
+import { httpErrors } from '../../services/error-handler';
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
 import { Solana } from '../../chains/solana/solana';
@@ -139,7 +140,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         switch (connector) {
           case 'uniswap':
             return await uniswapOpenPosition(
-              fastify,
               network,
               walletAddress,
               lowerPrice,
@@ -152,7 +152,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
 
           case 'pancakeswap':
             return await pancakeswapOpenPosition(
-              fastify,
               network,
               walletAddress,
               lowerPrice,
@@ -165,7 +164,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
 
           case 'raydium':
             return await raydiumOpenPosition(
-              fastify,
               network,
               walletAddress,
               lowerPrice,
@@ -178,7 +176,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
 
           case 'meteora':
             return await meteoraOpenPosition(
-              fastify,
               network,
               walletAddress,
               lowerPrice,
@@ -191,7 +188,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
 
           case 'pancakeswap-sol':
             return await pancakeswapSolOpenPosition(
-              fastify,
               network,
               walletAddress,
               poolAddress,
@@ -204,7 +200,6 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
 
           case 'orca':
             return await orcaOpenPosition(
-              fastify,
               network,
               walletAddress,
               poolAddress,
@@ -216,14 +211,14 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
             );
 
           default:
-            throw fastify.httpErrors.badRequest(`Unsupported connector: ${connector}`);
+            throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
         }
       } catch (e: any) {
         logger.error('Failed to open position:', e);
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError('Failed to open position');
+        throw httpErrors.internalServerError('Failed to open position');
       }
     },
   );

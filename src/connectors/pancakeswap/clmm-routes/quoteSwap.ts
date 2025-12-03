@@ -1,7 +1,7 @@
 import { Token, CurrencyAmount, Percent, TradeType } from '@pancakeswap/sdk';
 import { Route as V3Route, Trade as V3Trade } from '@pancakeswap/v3-sdk';
 import { BigNumber, utils } from 'ethers';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import {
@@ -10,6 +10,7 @@ import {
   QuoteSwapRequest,
   QuoteSwapResponse,
 } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Pancakeswap } from '../pancakeswap';
@@ -111,7 +112,6 @@ async function quoteClmmSwap(
 }
 
 export async function getPancakeswapClmmQuote(
-  _fastify: FastifyInstance,
   network: string,
   poolAddress: string,
   baseToken: string,
@@ -179,7 +179,6 @@ export async function getPancakeswapClmmQuote(
 }
 
 async function formatSwapQuote(
-  fastify: FastifyInstance,
   network: string,
   poolAddress: string,
   baseToken: string,
@@ -195,7 +194,6 @@ async function formatSwapQuote(
   try {
     // Use the extracted quote function
     const { quote, ethereum } = await getPancakeswapClmmQuote(
-      fastify,
       network,
       poolAddress,
       baseToken,
@@ -310,7 +308,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
         // Validate essential parameters
         if (!baseToken || !amount || !side) {
-          throw fastify.httpErrors.badRequest('baseToken, amount, and side are required');
+          throw httpErrors.badRequest('baseToken, amount, and side are required');
         }
 
         const pancakeswap = await Pancakeswap.getInstance(networkToUse);
@@ -323,7 +321,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           // Pool address provided, get pool info to determine tokens
           const poolInfo = await getPancakeswapPoolInfo(poolAddressToUse, networkToUse, 'clmm');
           if (!poolInfo) {
-            throw fastify.httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddressToUse));
+            throw httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddressToUse));
           }
 
           // Determine which token is base and which is quote based on the provided baseToken
@@ -346,16 +344,16 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
                 baseTokenToUse = poolInfo.quoteTokenAddress;
                 quoteTokenToUse = poolInfo.baseTokenAddress;
               } else {
-                throw fastify.httpErrors.badRequest(`Token ${baseToken} not found in pool ${poolAddressToUse}`);
+                throw httpErrors.badRequest(`Token ${baseToken} not found in pool ${poolAddressToUse}`);
               }
             } else {
-              throw fastify.httpErrors.badRequest(`Token ${baseToken} not found in pool ${poolAddressToUse}`);
+              throw httpErrors.badRequest(`Token ${baseToken} not found in pool ${poolAddressToUse}`);
             }
           }
         } else {
           // No pool address provided, need quoteToken to find pool
           if (!quoteToken) {
-            throw fastify.httpErrors.badRequest('quoteToken is required when poolAddress is not provided');
+            throw httpErrors.badRequest('quoteToken is required when poolAddress is not provided');
           }
 
           baseTokenToUse = baseToken;
@@ -365,12 +363,11 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           poolAddressToUse = await pancakeswap.findDefaultPool(baseTokenToUse, quoteTokenToUse, 'clmm');
 
           if (!poolAddressToUse) {
-            throw fastify.httpErrors.notFound(`No CLMM pool found for pair ${baseTokenToUse}-${quoteTokenToUse}`);
+            throw httpErrors.notFound(`No CLMM pool found for pair ${baseTokenToUse}-${quoteTokenToUse}`);
           }
         }
 
         return await formatSwapQuote(
-          fastify,
           networkToUse,
           poolAddressToUse,
           baseTokenToUse,
@@ -385,7 +382,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           throw e;
         }
         logger.error('Unexpected error getting swap quote:', e);
-        throw fastify.httpErrors.internalServerError('Error getting swap quote');
+        throw httpErrors.internalServerError('Error getting swap quote');
       }
     },
   );
@@ -395,7 +392,6 @@ export default quoteSwapRoute;
 
 // Export quoteSwap wrapper for chain-level routes
 export async function quoteSwap(
-  fastify: FastifyInstance,
   network: string,
   poolAddress: string,
   baseToken: string,
@@ -404,5 +400,5 @@ export async function quoteSwap(
   side: 'BUY' | 'SELL',
   slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
-  return await formatSwapQuote(fastify, network, poolAddress, baseToken, quoteToken, amount, side, slippagePct);
+  return await formatSwapQuote(network, poolAddress, baseToken, quoteToken, amount, side, slippagePct);
 }

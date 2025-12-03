@@ -1,6 +1,7 @@
 import { BN } from '@coral-xyz/anchor';
 import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { PublicKey } from '@solana/web3.js';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import {
@@ -8,16 +9,15 @@ import {
   RemoveLiquidityRequestType,
   RemoveLiquidityResponseType,
 } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 import { MeteoraClmmRemoveLiquidityRequest } from '../schemas';
 
-// Using Fastify's native error handling
+// Using centralized error handling
 const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
-import { PublicKey } from '@solana/web3.js';
 
 export async function removeLiquidity(
-  fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   positionAddress: string,
@@ -32,15 +32,13 @@ export async function removeLiquidity(
     new PublicKey(walletAddress);
   } catch (error) {
     const invalidAddress = error.message.includes(positionAddress) ? 'position' : 'wallet';
-    throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress));
+    throw httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress));
   }
 
   const positionResult = await meteora.getRawPosition(positionAddress, wallet.publicKey);
 
   if (!positionResult || !positionResult.position) {
-    throw fastify.httpErrors.notFound(
-      `Position not found: ${positionAddress}. Please provide a valid position address`,
-    );
+    throw httpErrors.notFound(`Position not found: ${positionAddress}. Please provide a valid position address`);
   }
 
   const { position, info } = positionResult;
@@ -82,7 +80,7 @@ export async function removeLiquidity(
     tx.feePayer = wallet.publicKey;
 
     // Simulate before sending
-    await solana.simulateWithErrorHandling(tx, fastify);
+    await solana.simulateWithErrorHandling(tx);
 
     logger.info('Transaction simulated successfully, sending to network...');
 
@@ -156,7 +154,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
         const networkToUse = network;
 
-        return await removeLiquidity(fastify, networkToUse, walletAddress, positionAddress, liquidityPct);
+        return await removeLiquidity(networkToUse, walletAddress, positionAddress, liquidityPct);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

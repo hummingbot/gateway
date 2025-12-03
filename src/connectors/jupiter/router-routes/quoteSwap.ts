@@ -1,9 +1,10 @@
 import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 
 import { Solana } from '../../../chains/solana/solana';
 import { QuoteSwapRequestType } from '../../../schemas/router-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage, sanitizeString } from '../../../services/sanitize';
@@ -11,24 +12,7 @@ import { Jupiter } from '../jupiter';
 import { JupiterConfig } from '../jupiter.config';
 import { JupiterQuoteSwapRequest, JupiterQuoteSwapResponse } from '../schemas';
 
-class NotFoundError extends Error {
-  statusCode = 404;
-  constructor(message: string) {
-    super(message);
-    this.name = 'NotFoundError';
-  }
-}
-
-class BadRequestError extends Error {
-  statusCode = 400;
-  constructor(message: string) {
-    super(message);
-    this.name = 'BadRequestError';
-  }
-}
-
 export async function quoteSwap(
-  _fastify: FastifyInstance,
   network: string,
   baseToken: string,
   quoteToken: string,
@@ -46,7 +30,7 @@ export async function quoteSwap(
   const quoteTokenInfo = await solana.getToken(quoteToken);
 
   if (!baseTokenInfo || !quoteTokenInfo) {
-    throw new BadRequestError(sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken));
+    throw httpErrors.badRequest(sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken));
   }
 
   // Determine input/output based on side
@@ -75,11 +59,11 @@ export async function quoteSwap(
     const errorMessage = error?.message || String(error);
     const tokenPair = `${sanitizeString(baseToken)} -> ${sanitizeString(quoteToken)}`;
     const swapMode = side === 'BUY' ? 'ExactOut' : 'ExactIn';
-    throw new NotFoundError(`No route found for ${tokenPair} (${swapMode}). ${errorMessage}`);
+    throw httpErrors.notFound(`No route found for ${tokenPair} (${swapMode}). ${errorMessage}`);
   }
 
   if (!quoteResponse) {
-    throw new NotFoundError('No routes found for this swap');
+    throw httpErrors.notFound('No routes found for this swap');
   }
 
   const bestRoute = quoteResponse;
@@ -162,7 +146,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         } = request.query as typeof JupiterQuoteSwapRequest._type;
 
         return await quoteSwap(
-          fastify,
           network,
           baseToken,
           quoteToken,
@@ -175,7 +158,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         if (e.statusCode) throw e;
         logger.error('Error getting quote:', e);
-        throw fastify.httpErrors.internalServerError('Internal server error');
+        throw httpErrors.internalServerError(e.message || 'Internal server error');
       }
     },
   );

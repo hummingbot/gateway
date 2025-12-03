@@ -2,10 +2,11 @@ import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol, PANCAKESWAP_CLMM_PROGRAM_ID } from '../pancakeswap-sol';
 import { parsePositionData } from '../pancakeswap-sol.parser';
@@ -13,7 +14,6 @@ import { buildRemoveLiquidityTransaction } from '../pancakeswap-sol.transactions
 import { PancakeswapSolClmmRemoveLiquidityRequest } from '../schemas';
 
 export async function removeLiquidity(
-  _fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   positionAddress: string,
@@ -24,13 +24,13 @@ export async function removeLiquidity(
 
   // Validate percentage
   if (percentageToRemove <= 0 || percentageToRemove > 100) {
-    throw _fastify.httpErrors.badRequest('Percentage must be between 0 and 100');
+    throw httpErrors.badRequest('Percentage must be between 0 and 100');
   }
 
   // Get position info
   const positionInfo = await pancakeswapSol.getPositionInfo(positionAddress);
   if (!positionInfo) {
-    throw _fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+    throw httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
   // Get position account to extract liquidity
@@ -42,7 +42,7 @@ export async function removeLiquidity(
 
   const positionAccountInfo = await solana.connection.getAccountInfo(personalPosition);
   if (!positionAccountInfo) {
-    throw _fastify.httpErrors.notFound(`Position account not found: ${personalPosition.toString()}`);
+    throw httpErrors.notFound(`Position account not found: ${personalPosition.toString()}`);
   }
 
   const { liquidity } = parsePositionData(positionAccountInfo.data);
@@ -61,7 +61,7 @@ export async function removeLiquidity(
   const quoteToken = await solana.getToken(positionInfo.quoteTokenAddress);
 
   if (!baseToken || !quoteToken) {
-    throw _fastify.httpErrors.notFound('Token information not found');
+    throw httpErrors.notFound('Token information not found');
   }
 
   // Get priority fee
@@ -82,7 +82,7 @@ export async function removeLiquidity(
 
   // Sign and send
   transaction.sign([wallet]);
-  await solana.simulateWithErrorHandling(transaction, _fastify);
+  await solana.simulateWithErrorHandling(transaction);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
 
@@ -140,7 +140,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { network = 'mainnet-beta', walletAddress, positionAddress, percentageToRemove } = request.body;
 
-        return await removeLiquidity(fastify, network, walletAddress!, positionAddress, percentageToRemove);
+        return await removeLiquidity(network, walletAddress!, positionAddress, percentageToRemove);
       } catch (e: any) {
         logger.error('Remove liquidity error:', e);
         // Re-throw httpErrors as-is
@@ -149,7 +149,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
         // Handle unknown errors
         const errorMessage = e.message || 'Failed to remove liquidity';
-        throw fastify.httpErrors.internalServerError(errorMessage);
+        throw httpErrors.internalServerError(errorMessage);
       }
     },
   );

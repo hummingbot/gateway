@@ -2,17 +2,17 @@ import { TickUtils, PoolUtils } from '@raydium-io/raydium-sdk-v2';
 import { Static } from '@sinclair/typebox';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { QuotePositionResponseType, QuotePositionResponse } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
 import { RaydiumClmmQuotePositionRequest } from '../schemas';
 
 export async function quotePosition(
-  _fastify: FastifyInstance,
   network: string,
   lowerPrice: number,
   upperPrice: number,
@@ -187,7 +187,6 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         } = request.query;
 
         return await quotePosition(
-          fastify,
           network,
           lowerPrice,
           upperPrice,
@@ -200,7 +199,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         );
       } catch (e) {
         logger.error(e);
-        throw fastify.httpErrors.internalServerError('Failed to quote position');
+        throw httpErrors.internalServerError('Failed to quote position');
       }
     },
   );

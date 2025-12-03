@@ -1,4 +1,4 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import {
@@ -7,13 +7,13 @@ import {
   CollectFeesRequestType,
   CollectFeesResponseType,
 } from '../../../schemas/clmm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 
 import { removeLiquidity } from './removeLiquidity';
 
 export async function collectFees(
-  fastify: FastifyInstance,
   network: string,
   walletAddress: string,
   positionAddress: string,
@@ -29,7 +29,7 @@ export async function collectFees(
 
   const position = await raydium.getClmmPosition(positionAddress);
   if (!position) {
-    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+    throw httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
   const [poolInfo] = await raydium.getClmmPoolfromAPI(position.poolId.toBase58());
@@ -41,7 +41,6 @@ export async function collectFees(
 
   // Remove 1% of liquidity to collect fees
   const removeLiquidityResponse = await removeLiquidity(
-    fastify,
     network,
     walletAddress,
     positionAddress,
@@ -113,13 +112,13 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { network, walletAddress, positionAddress } = request.body;
-        return await collectFees(fastify, network, walletAddress, positionAddress);
+        return await collectFees(network, walletAddress, positionAddress);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, e.message);
+          throw httpErrors.createError(e.statusCode, e.message);
         }
-        throw fastify.httpErrors.internalServerError('Failed to collect fees');
+        throw httpErrors.internalServerError('Failed to collect fees');
       }
     },
   );

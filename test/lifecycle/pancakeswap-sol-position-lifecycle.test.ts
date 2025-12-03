@@ -91,18 +91,8 @@ describeTest('PancakeSwap Solana CLMM Position Lifecycle - MANUAL TEST', () => {
     // Import openPosition route function
     const { openPosition } = await import('../../src/connectors/pancakeswap-sol/clmm-routes/openPosition');
 
-    // Create mock fastify instance
-    const mockFastify = {
-      httpErrors: {
-        notFound: (msg: string) => new Error(msg),
-        badRequest: (msg: string) => new Error(msg),
-        internalServerError: (msg: string) => new Error(msg),
-      },
-    };
-
     // Call the route function directly
     const result = await openPosition(
-      mockFastify as any,
       TEST_CONFIG.network,
       TEST_CONFIG.walletAddress,
       TEST_CONFIG.poolAddress,
@@ -146,18 +136,8 @@ describeTest('PancakeSwap Solana CLMM Position Lifecycle - MANUAL TEST', () => {
     // Import addLiquidity route function
     const { addLiquidity } = await import('../../src/connectors/pancakeswap-sol/clmm-routes/addLiquidity');
 
-    // Create mock fastify instance
-    const mockFastify = {
-      httpErrors: {
-        notFound: (msg: string) => new Error(msg),
-        badRequest: (msg: string) => new Error(msg),
-        internalServerError: (msg: string) => new Error(msg),
-      },
-    };
-
     // Call the route function
     const result = await addLiquidity(
-      mockFastify as any,
       TEST_CONFIG.network,
       TEST_CONFIG.walletAddress,
       positionAddress,
@@ -189,18 +169,8 @@ describeTest('PancakeSwap Solana CLMM Position Lifecycle - MANUAL TEST', () => {
     // Import removeLiquidity route function
     const { removeLiquidity } = await import('../../src/connectors/pancakeswap-sol/clmm-routes/removeLiquidity');
 
-    // Create mock fastify instance
-    const mockFastify = {
-      httpErrors: {
-        notFound: (msg: string) => new Error(msg),
-        badRequest: (msg: string) => new Error(msg),
-        internalServerError: (msg: string) => new Error(msg),
-      },
-    };
-
     // Call the route function
     const result = await removeLiquidity(
-      mockFastify as any,
       TEST_CONFIG.network,
       TEST_CONFIG.walletAddress,
       positionAddress,
@@ -230,22 +200,8 @@ describeTest('PancakeSwap Solana CLMM Position Lifecycle - MANUAL TEST', () => {
     // Import closePosition route function
     const { closePosition } = await import('../../src/connectors/pancakeswap-sol/clmm-routes/closePosition');
 
-    // Create mock fastify instance
-    const mockFastify = {
-      httpErrors: {
-        notFound: (msg: string) => new Error(msg),
-        badRequest: (msg: string) => new Error(msg),
-        internalServerError: (msg: string) => new Error(msg),
-      },
-    };
-
     // Call the route function (automatically removes remaining liquidity)
-    const result = await closePosition(
-      mockFastify as any,
-      TEST_CONFIG.network,
-      TEST_CONFIG.walletAddress,
-      positionAddress,
-    );
+    const result = await closePosition(TEST_CONFIG.network, TEST_CONFIG.walletAddress, positionAddress);
 
     expect(result.status).toBe(1); // CONFIRMED
     expect(result.signature).toBeTruthy();

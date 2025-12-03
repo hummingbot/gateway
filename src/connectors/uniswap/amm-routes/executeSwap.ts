@@ -1,10 +1,11 @@
 import { BigNumber, Contract, utils } from 'ethers';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
 import { getEthereumChainConfig } from '../../../chains/ethereum/ethereum.config';
 import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { UniswapAmmExecuteSwapRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
@@ -18,7 +19,6 @@ import { getUniswapAmmQuote } from './quoteSwap';
 const AMM_SWAP_GAS_LIMIT = 300000;
 
 export async function executeAmmSwap(
-  fastify: FastifyInstance,
   walletAddress: string,
   network: string,
   baseToken: string,
@@ -35,20 +35,11 @@ export async function executeAmmSwap(
   // Find pool address
   const poolAddress = await uniswap.findDefaultPool(baseToken, quoteToken, 'amm');
   if (!poolAddress) {
-    throw fastify.httpErrors.notFound(`No AMM pool found for pair ${baseToken}-${quoteToken}`);
+    throw httpErrors.notFound(`No AMM pool found for pair ${baseToken}-${quoteToken}`);
   }
 
   // Get quote using the shared quote function
-  const { quote } = await getUniswapAmmQuote(
-    fastify,
-    network,
-    poolAddress,
-    baseToken,
-    quoteToken,
-    amount,
-    side,
-    slippagePct,
-  );
+  const { quote } = await getUniswapAmmQuote(network, poolAddress, baseToken, quoteToken, amount, side, slippagePct);
 
   // Check if this is a hardware wallet
   const isHardwareWallet = await ethereum.isHardwareWallet(walletAddress);
@@ -82,7 +73,7 @@ export async function executeAmmSwap(
   // Check if allowance is sufficient
   if (currentAllowance.lt(amountNeeded)) {
     logger.error(`Insufficient allowance for ${quote.inputToken.symbol}`);
-    throw fastify.httpErrors.badRequest(
+    throw httpErrors.badRequest(
       `Insufficient allowance for ${quote.inputToken.symbol}. Please approve at least ${formatTokenAmount(amountNeeded, quote.inputToken.decimals)} ${quote.inputToken.symbol} for the Uniswap router (${routerAddress})`,
     );
   }
@@ -167,7 +158,7 @@ export async function executeAmmSwap(
         wallet = await ethereum.getWallet(walletAddress);
       } catch (err) {
         logger.error(`Failed to load wallet: ${err.message}`);
-        throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
+        throw httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
       }
 
       const routerContract = new Contract(routerAddress, IUniswapV2Router02ABI.abi, wallet);
@@ -222,7 +213,7 @@ export async function executeAmmSwap(
     // Check if the transaction was successful
     if (receipt.status === 0) {
       logger.error(`Transaction failed on-chain. Receipt: ${JSON.stringify(receipt)}`);
-      throw fastify.httpErrors.internalServerError(
+      throw httpErrors.internalServerError(
         'Transaction reverted on-chain. This could be due to slippage, insufficient funds, or other blockchain issues.',
       );
     }
@@ -266,23 +257,23 @@ export async function executeAmmSwap(
 
     // Handle specific error cases
     if (error.message && error.message.includes('insufficient funds')) {
-      throw fastify.httpErrors.badRequest(
+      throw httpErrors.badRequest(
         'Insufficient funds for transaction. Please ensure you have enough ETH to cover gas costs.',
       );
     } else if (error.message.includes('rejected on Ledger')) {
-      throw fastify.httpErrors.badRequest('Transaction rejected on Ledger device');
+      throw httpErrors.badRequest('Transaction rejected on Ledger device');
     } else if (error.message.includes('Ledger device is locked')) {
-      throw fastify.httpErrors.badRequest(error.message);
+      throw httpErrors.badRequest(error.message);
     } else if (error.message.includes('Wrong app is open')) {
-      throw fastify.httpErrors.badRequest(error.message);
+      throw httpErrors.badRequest(error.message);
     }
 
-    // Re-throw if already a fastify error
+    // Re-throw if already an http error
     if (error.statusCode) {
       throw error;
     }
 
-    throw fastify.httpErrors.internalServerError(`Failed to execute swap: ${error.message}`);
+    throw httpErrors.internalServerError(`Failed to execute swap: ${error.message}`);
   }
 }
 
@@ -314,7 +305,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         } = request.body as typeof UniswapAmmExecuteSwapRequest._type;
 
         return await executeAmmSwap(
-          fastify,
           walletAddress,
           network,
           baseToken,
@@ -326,7 +316,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         if (e.statusCode) throw e;
         logger.error('Error executing swap:', e);
-        throw fastify.httpErrors.internalServerError(e.message || 'Internal server error');
+        throw httpErrors.internalServerError(e.message || 'Internal server error');
       }
     },
   );

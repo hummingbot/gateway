@@ -10,6 +10,7 @@ import { addLiquidity as pancakeswapSolAddLiquidity } from '../../connectors/pan
 import { addLiquidity as raydiumAddLiquidity } from '../../connectors/raydium/clmm-routes/addLiquidity';
 import { addLiquidity as uniswapAddLiquidity } from '../../connectors/uniswap/clmm-routes/addLiquidity';
 import { AddLiquidityResponseType, AddLiquidityResponse } from '../../schemas/clmm-schema';
+import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
 // Get default wallet from Solana config, fallback to Ethereum if Solana doesn't exist
@@ -120,7 +121,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         switch (connector) {
           case 'uniswap':
             return await uniswapAddLiquidity(
-              fastify,
               network,
               walletAddress,
               positionAddress,
@@ -131,7 +131,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
           case 'pancakeswap':
             return await pancakeswapAddLiquidity(
-              fastify,
               network,
               walletAddress,
               positionAddress,
@@ -142,7 +141,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
           case 'raydium':
             return await raydiumAddLiquidity(
-              fastify,
               network,
               walletAddress,
               positionAddress,
@@ -153,7 +151,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
           case 'meteora':
             return await meteoraAddLiquidity(
-              fastify,
               network,
               walletAddress,
               positionAddress,
@@ -164,7 +161,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
           case 'pancakeswap-sol':
             return await pancakeswapSolAddLiquidity(
-              fastify,
               network,
               walletAddress,
               positionAddress,
@@ -175,7 +171,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
 
           case 'orca':
             return await orcaAddLiquidity(
-              fastify,
               network,
               walletAddress,
               positionAddress,
@@ -185,14 +180,14 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             );
 
           default:
-            throw fastify.httpErrors.badRequest(`Unsupported connector: ${connector}`);
+            throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
         }
       } catch (e: any) {
         logger.error('Failed to add liquidity:', e);
         if (e.statusCode) {
           throw e;
         }
-        throw fastify.httpErrors.internalServerError('Failed to add liquidity');
+        throw httpErrors.internalServerError('Failed to add liquidity');
       }
     },
   );
