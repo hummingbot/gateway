@@ -22,7 +22,7 @@ async function quoteSwap(
   side: 'BUY' | 'SELL',
   slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<Static<typeof UniswapQuoteSwapResponse>> {
-  logger.info(`[quoteSwap] Starting quote generation`);
+  logger.info(`[quoteSwap] Starting quote generation using AlphaRouter`);
   logger.info(`[quoteSwap] Network: ${network}, Wallet: ${walletAddress || 'not provided'}`);
   logger.info(`[quoteSwap] Base: ${baseToken}, Quote: ${quoteToken}`);
   logger.info(`[quoteSwap] Amount: ${amount}, Side: ${side}, Slippage: ${slippagePct}%`);
@@ -54,32 +54,27 @@ async function quoteSwap(
   logger.info(`[quoteSwap] Output token: ${outputToken.symbol} (${outputToken.address})`);
   logger.info(`[quoteSwap] Exact in: ${exactIn}`);
 
-  // Get quote from Universal Router
-  logger.info(`[quoteSwap] Calling getUniversalRouterQuote...`);
-  const quoteResult = await uniswap.getUniversalRouterQuote(inputToken, outputToken, amount, side, walletAddress);
+  // Get quote from AlphaRouter (smart order router with split routing)
+  // Use a placeholder address for quotes when no wallet is provided
+  const recipient = walletAddress || '0x0000000000000000000000000000000000000001';
+  logger.info(`[quoteSwap] Calling getAlphaRouterQuote with slippage ${slippagePct}%...`);
+  const quoteResult = await uniswap.getAlphaRouterQuote(inputToken, outputToken, amount, side, recipient, slippagePct);
   logger.info(`[quoteSwap] Quote result received`);
 
   // Generate unique quote ID
   const quoteId = uuidv4();
   logger.info(`[quoteSwap] Generated quote ID: ${quoteId}`);
 
-  // Extract route information from quoteResult
-  const routePath = quoteResult.routePath;
+  // Extract route information from AlphaRouter result
+  const routePath = quoteResult.routeString;
   logger.info(`[quoteSwap] Route path: ${routePath}`);
 
-  // Calculate amounts based on quote
-  let estimatedAmountIn: number;
-  let estimatedAmountOut: number;
-
-  if (exactIn) {
-    estimatedAmountIn = amount;
-    estimatedAmountOut = parseFloat(quoteResult.quote.toExact());
-  } else {
-    estimatedAmountIn = parseFloat(quoteResult.trade.inputAmount.toExact());
-    estimatedAmountOut = amount;
-  }
+  // Get amounts from AlphaRouter result
+  const estimatedAmountIn = parseFloat(quoteResult.inputAmount);
+  const estimatedAmountOut = parseFloat(quoteResult.outputAmount);
 
   logger.info(`[quoteSwap] Estimated amounts - In: ${estimatedAmountIn}, Out: ${estimatedAmountOut}`);
+  logger.info(`[quoteSwap] Gas estimate: ${quoteResult.gasEstimate} (${quoteResult.gasEstimateUSD} USD)`);
 
   const minAmountOut = side === 'SELL' ? estimatedAmountOut * (1 - slippagePct / 100) : estimatedAmountOut;
   const maxAmountIn = side === 'BUY' ? estimatedAmountIn * (1 + slippagePct / 100) : estimatedAmountIn;
@@ -93,9 +88,11 @@ async function quoteSwap(
 
   // Cache the quote for execution
   // Store both quote and request data in the quote object for Uniswap
+  // Include 'trade' at top level for compatibility with executeQuote
   const cachedQuote = {
     quote: {
       ...quoteResult,
+      trade: quoteResult.route.trade, // Extract trade from SwapRoute for executeQuote compatibility
       methodParameters: quoteResult.methodParameters,
     },
     request: {
