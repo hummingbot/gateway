@@ -81,7 +81,12 @@ export class AlphaRouterService {
     logger.info(`[AlphaRouter] Recipient: ${options.recipient}`);
     logger.info(`[AlphaRouter] Slippage: ${options.slippageTolerance.toSignificant()}%`);
 
-    const swapRoute = await this.router.route(amount, tokenOut, tradeType, {
+    // For EXACT_INPUT: amount is the input, quoteCurrency is the output (what we're getting)
+    // For EXACT_OUTPUT: amount is the output, quoteCurrency is the input (what we're paying)
+    const quoteCurrency = tradeType === TradeType.EXACT_INPUT ? tokenOut : tokenIn;
+    logger.info(`[AlphaRouter] Quote currency: ${quoteCurrency.symbol} (${quoteCurrency.address})`);
+
+    const swapRoute = await this.router.route(amount, quoteCurrency, tradeType, {
       type: SwapType.UNIVERSAL_ROUTER,
       version: UniversalRouterVersion.V2_0,
       slippageTolerance: options.slippageTolerance,
