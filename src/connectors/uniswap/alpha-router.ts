@@ -74,17 +74,19 @@ export class AlphaRouterService {
       recipient: string;
     },
   ): Promise<AlphaRouterQuoteResult> {
-    logger.info(`[AlphaRouter] Starting quote generation`);
-    logger.info(`[AlphaRouter] Input: ${amount.toExact()} ${tokenIn.symbol} (${tokenIn.address})`);
-    logger.info(`[AlphaRouter] Output: ${tokenOut.symbol} (${tokenOut.address})`);
-    logger.info(`[AlphaRouter] Trade type: ${tradeType === TradeType.EXACT_INPUT ? 'EXACT_INPUT' : 'EXACT_OUTPUT'}`);
-    logger.info(`[AlphaRouter] Recipient: ${options.recipient}`);
-    logger.info(`[AlphaRouter] Slippage: ${options.slippageTolerance.toSignificant()}%`);
+    const tradeTypeStr = tradeType === TradeType.EXACT_INPUT ? 'EXACT_INPUT' : 'EXACT_OUTPUT';
+    logger.info(
+      `[AlphaRouter] Getting quote: ${amount.toExact()} ${tokenIn.symbol} -> ${tokenOut.symbol} (${tradeTypeStr})`,
+    );
+    logger.debug(`[AlphaRouter] Input token: ${tokenIn.symbol} (${tokenIn.address})`);
+    logger.debug(`[AlphaRouter] Output token: ${tokenOut.symbol} (${tokenOut.address})`);
+    logger.debug(`[AlphaRouter] Recipient: ${options.recipient}`);
+    logger.debug(`[AlphaRouter] Slippage: ${options.slippageTolerance.toSignificant()}%`);
 
     // For EXACT_INPUT: amount is the input, quoteCurrency is the output (what we're getting)
     // For EXACT_OUTPUT: amount is the output, quoteCurrency is the input (what we're paying)
     const quoteCurrency = tradeType === TradeType.EXACT_INPUT ? tokenOut : tokenIn;
-    logger.info(`[AlphaRouter] Quote currency: ${quoteCurrency.symbol} (${quoteCurrency.address})`);
+    logger.debug(`[AlphaRouter] Quote currency: ${quoteCurrency.symbol} (${quoteCurrency.address})`);
 
     const swapRoute = await this.router.route(amount, quoteCurrency, tradeType, {
       type: SwapType.UNIVERSAL_ROUTER,
@@ -98,10 +100,9 @@ export class AlphaRouterService {
       throw new Error(`No route found for ${tokenIn.symbol} -> ${tokenOut.symbol}`);
     }
 
-    logger.info(`[AlphaRouter] Route found!`);
-    logger.info(`[AlphaRouter] Quote: ${swapRoute.quote.toExact()} ${swapRoute.quote.currency.symbol}`);
-    logger.info(`[AlphaRouter] Gas estimate: ${swapRoute.estimatedGasUsed.toString()}`);
-    logger.info(`[AlphaRouter] Gas estimate USD: $${swapRoute.estimatedGasUsedUSD.toExact()}`);
+    logger.debug(`[AlphaRouter] Quote: ${swapRoute.quote.toExact()} ${swapRoute.quote.currency.symbol}`);
+    logger.debug(`[AlphaRouter] Gas estimate: ${swapRoute.estimatedGasUsed.toString()}`);
+    logger.debug(`[AlphaRouter] Gas estimate USD: $${swapRoute.estimatedGasUsedUSD.toExact()}`);
 
     // Log route details (split routing info)
     const routeStrings: string[] = [];
@@ -109,7 +110,7 @@ export class AlphaRouterService {
       const routeStr = route.tokenPath.map((t) => t.symbol).join(' -> ');
       const percent = route.percent;
       routeStrings.push(`${percent}% via ${routeStr}`);
-      logger.info(`[AlphaRouter] Route: ${percent}% via ${routeStr}`);
+      logger.debug(`[AlphaRouter] Route: ${percent}% via ${routeStr}`);
     }
 
     // Extract method parameters for Universal Router execution
@@ -120,9 +121,9 @@ export class AlphaRouterService {
         value: swapRoute.methodParameters.value,
         to: swapRoute.methodParameters.to,
       };
-      logger.info(`[AlphaRouter] Calldata length: ${methodParameters.calldata.length}`);
-      logger.info(`[AlphaRouter] Value: ${methodParameters.value}`);
-      logger.info(`[AlphaRouter] To: ${methodParameters.to}`);
+      logger.debug(`[AlphaRouter] Calldata length: ${methodParameters.calldata.length}`);
+      logger.debug(`[AlphaRouter] Value: ${methodParameters.value}`);
+      logger.debug(`[AlphaRouter] To: ${methodParameters.to}`);
     }
 
     const result: AlphaRouterQuoteResult = {
@@ -136,11 +137,9 @@ export class AlphaRouterService {
       methodParameters,
     };
 
-    logger.info(`[AlphaRouter] Quote generation complete`);
-    logger.info(`[AlphaRouter] Input: ${result.inputAmount} ${tokenIn.symbol}`);
-    logger.info(`[AlphaRouter] Output: ${result.outputAmount} ${tokenOut.symbol}`);
-    logger.info(`[AlphaRouter] Price Impact: ${result.priceImpact}%`);
-    logger.info(`[AlphaRouter] Routes: ${result.routeString}`);
+    logger.info(
+      `[AlphaRouter] Quote: ${result.inputAmount} ${tokenIn.symbol} -> ${result.outputAmount} ${tokenOut.symbol} (impact: ${result.priceImpact}%, route: ${result.routeString})`,
+    );
 
     return result;
   }
