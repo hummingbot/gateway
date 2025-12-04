@@ -84,6 +84,8 @@ export class UniversalRouterService {
       deadline: number;
       recipient: string;
       protocols?: PoolType[];
+      maxHops?: number;
+      maxSplits?: number;
     },
   ): Promise<UniversalRouterQuoteResult> {
     logger.info(`[UniversalRouter] Starting quote generation`);
@@ -94,6 +96,12 @@ export class UniversalRouterService {
     );
     logger.info(`[UniversalRouter] Recipient: ${options.recipient}`);
     logger.info(`[UniversalRouter] Slippage: ${options.slippageTolerance.toSignificant()}%`);
+    if (options.maxHops !== undefined) {
+      logger.info(`[UniversalRouter] Max hops: ${options.maxHops}`);
+    }
+    if (options.maxSplits !== undefined) {
+      logger.info(`[UniversalRouter] Max splits: ${options.maxSplits}`);
+    }
 
     const protocols = options.protocols || [PoolType.V2, PoolType.V3];
     logger.info(`[UniversalRouter] Protocols to check: ${protocols.join(', ')}`);
@@ -166,6 +174,8 @@ export class UniversalRouterService {
       quoteProvider,
       quoterOptimization: true,
       gasPriceWei,
+      maxHops: options.maxHops,
+      maxSplits: options.maxSplits,
     };
 
     // Create RouterTrade based on the best route
