@@ -20,4 +20,3 @@ coingecko: ''
 # Get your API key from https://etherscan.io/myapikey
 # Works for all Etherscan V2 API supported chains
 etherscan: ''
-
