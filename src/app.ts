@@ -362,6 +362,7 @@ const configureGatewayServer = () => {
   server.setErrorHandler((error, request, reply) => {
     // Handle validation errors
     if ('validation' in error && error.validation) {
+      logger.warn(`Validation error on ${request.method} ${request.url}: ${error.message}`);
       return reply.status(400).send({
         statusCode: 400,
         error: 'Validation Error',

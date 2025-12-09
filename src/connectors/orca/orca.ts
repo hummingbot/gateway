@@ -12,6 +12,7 @@ import { PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../chains/solana/solana';
 import { PositionInfo } from '../../schemas/clmm-schema';
+import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
 import { OrcaConfig } from './orca.config';
@@ -302,6 +303,13 @@ export class Orca {
    * @returns PositionInfo or null if not found
    */
   async getPositionInfo(positionAddress: string, walletAddress: string): Promise<PositionInfo | null> {
+    // Validate position address
+    try {
+      new PublicKey(positionAddress);
+    } catch {
+      throw httpErrors.badRequest(`Invalid position address: ${positionAddress}`);
+    }
+
     try {
       const client = await this.getWhirlpoolClientForWallet(walletAddress);
       const positionInfo = await getPositionDetails(client, positionAddress);

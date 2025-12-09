@@ -23,8 +23,8 @@ export async function getPositionsOwned(
   // Validate wallet address
   try {
     new PublicKey(walletAddressToUse);
-  } catch (error) {
-    throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
+  } catch {
+    throw fastify.httpErrors.badRequest(`Invalid wallet address: ${walletAddressToUse}`);
   }
 
   logger.info(`Fetching all Orca positions for wallet ${walletAddressToUse.slice(0, 8)}...`);
@@ -58,7 +58,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+          throw e; // Re-throw HttpErrors with original message
         }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }

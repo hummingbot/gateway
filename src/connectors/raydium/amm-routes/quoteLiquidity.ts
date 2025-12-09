@@ -238,6 +238,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         return await quoteLiquidity(fastify, network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
       } catch (e) {
         logger.error(e);
+        if (e.statusCode) throw e;
         throw fastify.httpErrors.internalServerError('Failed to quote position');
       }
     },

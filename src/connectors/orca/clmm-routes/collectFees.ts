@@ -183,20 +183,19 @@ export async function collectFees(
   const { signature, fee } = await solana.sendAndConfirmTransaction(transaction, [wallet]);
 
   // Extract collected fees from balance changes
-  const tokenA = await solana.getToken(whirlpool.getTokenAInfo().address.toString());
-  const tokenB = await solana.getToken(whirlpool.getTokenBInfo().address.toString());
-  if (!tokenA || !tokenB) {
-    throw httpErrors.notFound('Tokens not found for balance extraction');
-  }
+  const tokenAAddress = whirlpool.getTokenAInfo().address.toString();
+  const tokenBAddress = whirlpool.getTokenBInfo().address.toString();
+  const tokenA = await solana.getToken(tokenAAddress);
+  const tokenB = await solana.getToken(tokenBAddress);
 
   const { balanceChanges } = await solana.extractBalanceChangesAndFee(
     signature,
     client.getContext().wallet.publicKey.toString(),
-    [tokenA.address, tokenB.address],
+    [tokenAAddress, tokenBAddress],
   );
 
   logger.info(
-    `Fees collected: ${Math.abs(balanceChanges[0]).toFixed(6)} ${tokenA.symbol}, ${Math.abs(balanceChanges[1]).toFixed(6)} ${tokenB.symbol}`,
+    `Fees collected: ${Math.abs(balanceChanges[0]).toFixed(6)} ${tokenA?.symbol || 'tokenA'}, ${Math.abs(balanceChanges[1]).toFixed(6)} ${tokenB?.symbol || 'tokenB'}`,
   );
 
   return {

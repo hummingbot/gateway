@@ -41,8 +41,13 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { network = 'mainnet-beta', positionAddress } = request.query;
-      return await getPositionInfo(fastify, network, positionAddress);
+      try {
+        const { network = 'mainnet-beta', positionAddress } = request.query;
+        return await getPositionInfo(fastify, network, positionAddress);
+      } catch (e) {
+        if (e.statusCode) throw e;
+        throw fastify.httpErrors.internalServerError('Failed to fetch position info');
+      }
     },
   );
 };

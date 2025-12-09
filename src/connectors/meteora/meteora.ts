@@ -5,6 +5,7 @@ import { PublicKey, MemcmpFilter } from '@solana/web3.js';
 import { Solana } from '../../chains/solana/solana';
 import { MeteoraPoolInfo, PositionInfo, BinLiquidity } from '../../schemas/clmm-schema';
 import { convertDecimals } from '../../services/base';
+import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
 import { MeteoraConfig } from './meteora.config';
@@ -63,14 +64,22 @@ export class Meteora {
     }
 
     // Create a promise for the DLMM instance
-    const dlmmPoolPromise = DLMM.create(this.solana.connection, new PublicKey(poolAddress), {
-      cluster: this.solana.network as any,
-    }).then(async (dlmmPool) => {
-      await dlmmPool.refetchStates();
-      this.dlmmPools.set(poolAddress, dlmmPool);
-      this.dlmmPoolPromises.delete(poolAddress);
-      return dlmmPool;
-    });
+    const dlmmPoolPromise = (async () => {
+      try {
+        const dlmmPool = await DLMM.create(this.solana.connection, new PublicKey(poolAddress), {
+          cluster: this.solana.network as any,
+        });
+        await dlmmPool.refetchStates();
+        this.dlmmPools.set(poolAddress, dlmmPool);
+        this.dlmmPoolPromises.delete(poolAddress);
+        return dlmmPool;
+      } catch (error) {
+        this.dlmmPoolPromises.delete(poolAddress);
+        logger.error(`Failed to get DLMM pool ${poolAddress}: ${error.message}`);
+        // Pass along the original error message for better debugging
+        throw httpErrors.badRequest(`Invalid pool address: ${error.message}`);
+      }
+    })();
 
     this.dlmmPoolPromises.set(poolAddress, dlmmPoolPromise);
     return dlmmPoolPromise;
@@ -324,12 +333,19 @@ export class Meteora {
 
   /** Gets position information directly by position address (without needing wallet) */
   async getPositionInfoByAddress(positionAddress: string): Promise<PositionInfo> {
+    // Validate position address
+    let positionPubkey: PublicKey;
+    try {
+      positionPubkey = new PublicKey(positionAddress);
+    } catch {
+      throw httpErrors.badRequest(`Invalid position address: ${positionAddress}`);
+    }
+
     // Fetch the position account to extract pool address
-    const positionPubkey = new PublicKey(positionAddress);
     const positionAccount = await this.solana.connection.getAccountInfo(positionPubkey);
 
     if (!positionAccount) {
-      throw new Error(`Position ${positionAddress} not found`);
+      throw httpErrors.notFound(`Position not found: ${positionAddress}`);
     }
 
     // Parse the position account to extract the pool address (lbPair)
@@ -342,13 +358,13 @@ export class Meteora {
     const position = await dlmmPool.getPosition(positionPubkey);
 
     if (!position) {
-      throw new Error(`Position ${positionAddress} not found in pool ${poolAddress}`);
+      throw httpErrors.notFound(`Position ${positionAddress} not found in pool ${poolAddress}`);
     }
 
     const activeBin = await dlmmPool.getActiveBin();
 
     if (!activeBin || !activeBin.price || !activeBin.pricePerToken) {
-      throw new Error(`Invalid active bin data for pool: ${poolAddress}`);
+      throw httpErrors.badRequest(`Invalid active bin data for pool: ${poolAddress}`);
     }
 
     // Get prices from bin IDs
@@ -393,14 +409,14 @@ export class Meteora {
   async getPositionInfo(positionAddress: string, wallet: PublicKey): Promise<PositionInfo> {
     const { position, info } = await this.getRawPosition(positionAddress, wallet);
     if (!position) {
-      throw new Error('Position not found');
+      throw httpErrors.notFound(`Position not found: ${positionAddress}`);
     }
 
     const dlmmPool = await this.getDlmmPool(info.publicKey.toBase58());
     const activeBin = await dlmmPool.getActiveBin();
 
     if (!activeBin || !activeBin.price || !activeBin.pricePerToken) {
-      throw new Error(`Invalid active bin data for pool: ${info.publicKey.toBase58()}`);
+      throw httpErrors.badRequest(`Invalid active bin data for pool: ${info.publicKey.toBase58()}`);
     }
 
     // Get prices from bin IDs

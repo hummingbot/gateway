@@ -35,7 +35,7 @@ async function quoteClmmSwap(
       poolAddress,
     );
     if (!pool) {
-      throw new Error(`Pool not found for ${baseToken.symbol}-${quoteToken.symbol}`);
+      throw httpErrors.notFound(`Pool not found for ${baseToken.symbol}-${quoteToken.symbol}`);
     }
 
     // Determine which token is being traded (exact in/out)
@@ -141,12 +141,12 @@ export async function getPancakeswapClmmQuote(
 
   if (!baseTokenObj) {
     logger.error(`Base token not found: ${baseToken}`);
-    throw new Error(sanitizeErrorMessage('Base token not found: {}', baseToken));
+    throw httpErrors.notFound(sanitizeErrorMessage('Base token not found: {}', baseToken));
   }
 
   if (!quoteTokenObj) {
     logger.error(`Quote token not found: ${quoteToken}`);
-    throw new Error(sanitizeErrorMessage('Quote token not found: {}', quoteToken));
+    throw httpErrors.notFound(sanitizeErrorMessage('Quote token not found: {}', quoteToken));
   }
 
   logger.info(`Base token: ${baseTokenObj.symbol}, address=${baseTokenObj.address}, decimals=${baseTokenObj.decimals}`);
@@ -166,7 +166,7 @@ export async function getPancakeswapClmmQuote(
   );
 
   if (!quote) {
-    throw new Error('Failed to get swap quote');
+    throw httpErrors.internalServerError('Failed to get swap quote');
   }
 
   return {

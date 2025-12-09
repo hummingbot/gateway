@@ -142,9 +142,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
         };
       } catch (e) {
         logger.error(e);
-        if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, e.message);
-        }
+        if (e.statusCode) throw e;
         throw fastify.httpErrors.internalServerError('Failed to fetch position info');
       }
     },

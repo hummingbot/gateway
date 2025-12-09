@@ -32,6 +32,10 @@ export const updateConfig = (fastify: FastifyInstance, configPath: string, confi
     logger.info(`Successfully updated configuration: ${configPath}`);
   } catch (error) {
     logger.error(`Failed to update configuration: ${error.message}`);
+    // Re-throw if it already has a statusCode (HttpError from ConfigManagerV2)
+    if (error.statusCode) {
+      throw error;
+    }
     throw fastify.httpErrors.internalServerError(`Failed to update configuration: ${error.message}`);
   }
 };
@@ -84,6 +88,10 @@ export const updateDefaultWallet = (fastify: FastifyInstance, chain: string, wal
     logger.info(`Successfully updated default wallet for ${chain}`);
   } catch (error) {
     logger.error(`Failed to update default wallet: ${error.message}`);
+    // Re-throw if it already has a statusCode (HttpError from ConfigManagerV2)
+    if (error.statusCode) {
+      throw error;
+    }
     throw fastify.httpErrors.internalServerError(`Failed to update default wallet: ${error.message}`);
   }
 };

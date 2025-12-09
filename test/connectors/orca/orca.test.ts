@@ -457,19 +457,21 @@ describe('Orca', () => {
 
       // We need to test this method but it depends on getPositionDetails utility
       // For now, we'll test that it handles errors properly
-      const result = await orcaInstance.getPositionInfo('pos1', mockWallet.publicKey.toString());
+      // Use a valid Solana address format
+      const validAddress = '11111111111111111111111111111111';
+      const result = await orcaInstance.getPositionInfo(validAddress, mockWallet.publicKey.toString());
 
       // Since getPositionDetails is complex, result might be null
       expect(result === null || typeof result === 'object').toBe(true);
     });
 
-    it('should return null on error', async () => {
+    it('should throw badRequest for invalid position address', async () => {
       const mockContext = { wallet: mockWallet };
       (WhirlpoolContext.withProvider as jest.Mock).mockReturnValue(mockContext);
 
-      const result = await orcaInstance.getPositionInfo('invalid-pos', mockWallet.publicKey.toString());
-
-      expect(result).toBeNull();
+      await expect(orcaInstance.getPositionInfo('invalid-pos', mockWallet.publicKey.toString())).rejects.toThrow(
+        'Invalid position address',
+      );
     });
   });
 

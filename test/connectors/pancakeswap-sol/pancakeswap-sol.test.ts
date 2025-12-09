@@ -86,7 +86,7 @@ describe('PancakeSwap Solana Connector', () => {
         }
       } catch (error: any) {
         // Position may have been closed - skip test
-        if (error.message.includes('Position account not found')) {
+        if (error.message.includes('Position not found') || error.statusCode === 404) {
           console.log('\n⚠️  Test position has been closed - skipping test');
           expect(true).toBe(true); // Mark test as passed
         } else {
