@@ -80,7 +80,7 @@ function parseChainNetwork(chainNetwork: string): { chain: string; network: stri
   const parts = chainNetwork.split('-');
 
   if (parts.length < 2) {
-    throw new Error(
+    throw httpErrors.badRequest(
       `Invalid chain-network format: ${chainNetwork}. Expected format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)`,
     );
   }

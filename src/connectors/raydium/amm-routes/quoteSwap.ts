@@ -47,10 +47,10 @@ async function quoteAmmSwap(
   const [baseReserve, quoteReserve, status] = [rpcData.baseReserve, rpcData.quoteReserve, rpcData.status.toNumber()];
 
   if (poolInfo.mintA.address !== inputMint && poolInfo.mintB.address !== inputMint)
-    throw new Error('input mint does not match pool');
+    throw httpErrors.badRequest('input mint does not match pool');
 
   if (poolInfo.mintA.address !== outputMint && poolInfo.mintB.address !== outputMint)
-    throw new Error('output mint does not match pool');
+    throw httpErrors.badRequest('output mint does not match pool');
 
   const baseIn = inputMint === poolInfo.mintA.address;
   const [mintIn, mintOut] = baseIn ? [poolInfo.mintA, poolInfo.mintB] : [poolInfo.mintB, poolInfo.mintA];
@@ -110,7 +110,7 @@ async function quoteAmmSwap(
     };
   }
 
-  throw new Error('Either amountIn or amountOut must be provided');
+  throw httpErrors.badRequest('Either amountIn or amountOut must be provided');
 }
 
 async function quoteCpmmSwap(
@@ -140,10 +140,10 @@ async function quoteCpmmSwap(
   }
 
   if (inputMint !== poolInfo.mintA.address && inputMint !== poolInfo.mintB.address)
-    throw new Error('input mint does not match pool');
+    throw httpErrors.badRequest('input mint does not match pool');
 
   if (outputMint !== poolInfo.mintA.address && outputMint !== poolInfo.mintB.address)
-    throw new Error('output mint does not match pool');
+    throw httpErrors.badRequest('output mint does not match pool');
 
   const baseIn = inputMint === poolInfo.mintA.address;
 
@@ -219,7 +219,7 @@ async function quoteCpmmSwap(
     };
   }
 
-  throw new Error('Either amountIn or amountOut must be provided');
+  throw httpErrors.badRequest('Either amountIn or amountOut must be provided');
 }
 
 export async function getRawSwapQuote(
@@ -243,7 +243,7 @@ export async function getRawSwapQuote(
   const ammPoolInfo = await raydium.getAmmPoolInfo(poolId);
 
   if (!ammPoolInfo) {
-    throw new Error(`Pool not found: ${poolId}`);
+    throw httpErrors.notFound(`Pool not found: ${poolId}`);
   }
 
   logger.info(`Pool type: ${ammPoolInfo.poolType}`);
@@ -285,7 +285,7 @@ export async function getRawSwapQuote(
 
     // If still not resolved, throw error
     if (!resolvedBaseToken || !resolvedQuoteToken) {
-      throw new Error(`Token not found: ${!resolvedBaseToken ? baseToken : quoteToken}`);
+      throw httpErrors.notFound(`Token not found: ${!resolvedBaseToken ? baseToken : quoteToken}`);
     }
   }
 
@@ -301,11 +301,11 @@ export async function getRawSwapQuote(
 
   // Verify input and output tokens match pool tokens
   if (baseTokenAddress !== ammPoolInfo.baseTokenAddress && baseTokenAddress !== ammPoolInfo.quoteTokenAddress) {
-    throw new Error(`Base token ${baseToken} is not in pool ${poolId}`);
+    throw httpErrors.badRequest(`Base token ${baseToken} is not in pool ${poolId}`);
   }
 
   if (quoteTokenAddress !== ammPoolInfo.baseTokenAddress && quoteTokenAddress !== ammPoolInfo.quoteTokenAddress) {
-    throw new Error(`Quote token ${quoteToken} is not in pool ${poolId}`);
+    throw httpErrors.badRequest(`Quote token ${quoteToken} is not in pool ${poolId}`);
   }
 
   // Determine which token is input and which is output based on exactIn flag
@@ -352,7 +352,7 @@ export async function getRawSwapQuote(
       slippagePct,
     );
   } else {
-    throw new Error(`Unsupported pool type: ${ammPoolInfo.poolType}`);
+    throw httpErrors.badRequest(`Unsupported pool type: ${ammPoolInfo.poolType}`);
   }
 
   logger.info(
@@ -394,7 +394,7 @@ async function formatSwapQuote(
   const resolvedQuoteToken = await solana.getToken(quoteToken);
 
   if (!resolvedBaseToken || !resolvedQuoteToken) {
-    throw new Error(`Token not found: ${!resolvedBaseToken ? baseToken : quoteToken}`);
+    throw httpErrors.notFound(`Token not found: ${!resolvedBaseToken ? baseToken : quoteToken}`);
   }
 
   logger.info(
@@ -407,7 +407,7 @@ async function formatSwapQuote(
   // Get pool info
   const poolInfo = await raydium.getAmmPoolInfo(poolAddress);
   if (!poolInfo) {
-    throw new Error(sanitizeErrorMessage('Pool not found: {}', poolAddress));
+    throw httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
   }
 
   logger.info(

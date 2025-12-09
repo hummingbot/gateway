@@ -45,6 +45,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
         return await getPoolInfo(fastify, network, poolAddress);
       } catch (e) {
         logger.error(e);
+        if (e.statusCode) throw e;
         throw fastify.httpErrors.internalServerError('Failed to fetch pool info');
       }
     },

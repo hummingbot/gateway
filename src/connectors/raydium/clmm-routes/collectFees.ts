@@ -115,9 +115,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         return await collectFees(network, walletAddress, positionAddress);
       } catch (e) {
         logger.error(e);
-        if (e.statusCode) {
-          throw httpErrors.createError(e.statusCode, e.message);
-        }
+        if (e.statusCode) throw e;
         throw httpErrors.internalServerError('Failed to collect fees');
       }
     },

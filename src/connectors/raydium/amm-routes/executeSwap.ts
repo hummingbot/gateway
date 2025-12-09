@@ -256,6 +256,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         );
       } catch (e) {
         logger.error(e);
+        if (e.statusCode) throw e;
         throw httpErrors.internalServerError('Swap execution failed');
       }
     },

@@ -166,6 +166,9 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         );
       } catch (e) {
         logger.error(e);
+        if (e.statusCode) {
+          throw e; // Re-throw HttpErrors with original message
+        }
         throw httpErrors.internalServerError('Failed to quote position');
       }
     },

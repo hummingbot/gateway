@@ -284,7 +284,7 @@ describe('Unified Trading CLMM Routes', () => {
         url: '/trading/clmm/add',
         payload: {
           connector: 'pancakeswap',
-          network: 'bsc',
+          chainNetwork: 'ethereum-bsc',
           walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
           positionAddress: '12345',
           baseTokenAmount: 1,

@@ -29,7 +29,7 @@ async function quoteAmmSwap(
     // Get the V2 pair
     const pair = await uniswap.getV2Pool(baseToken, quoteToken, poolAddress);
     if (!pair) {
-      throw new Error(`Pool not found for ${baseToken.symbol}-${quoteToken.symbol}`);
+      throw httpErrors.notFound(`Pool not found for ${baseToken.symbol}-${quoteToken.symbol}`);
     }
 
     // Determine which token is being traded (exact in/out)
@@ -100,7 +100,7 @@ async function quoteAmmSwap(
     logger.error(`Error quoting AMM swap: ${error.message}`);
     // Check for insufficient reserves error from Uniswap SDK
     if (error.isInsufficientReservesError || error.name === 'InsufficientReservesError') {
-      throw new Error(`Insufficient liquidity in pool for ${baseToken.symbol}-${quoteToken.symbol}`);
+      throw httpErrors.badRequest(`Insufficient liquidity in pool for ${baseToken.symbol}-${quoteToken.symbol}`);
     }
     throw error;
   }
@@ -136,12 +136,12 @@ export async function getUniswapAmmQuote(
 
   if (!baseTokenObj) {
     logger.error(`Base token not found: ${baseToken}`);
-    throw new Error(`Base token not found: ${baseToken}`);
+    throw httpErrors.notFound(`Base token not found: ${baseToken}`);
   }
 
   if (!quoteTokenObj) {
     logger.error(`Quote token not found: ${quoteToken}`);
-    throw new Error(`Quote token not found: ${quoteToken}`);
+    throw httpErrors.notFound(`Quote token not found: ${quoteToken}`);
   }
 
   logger.info(`Base token: ${baseTokenObj.symbol}, address=${baseTokenObj.address}, decimals=${baseTokenObj.decimals}`);
@@ -161,7 +161,7 @@ export async function getUniswapAmmQuote(
   );
 
   if (!quote) {
-    throw new Error('Failed to get swap quote');
+    throw httpErrors.internalServerError('Failed to get swap quote');
   }
 
   return {

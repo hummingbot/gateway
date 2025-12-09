@@ -5,6 +5,7 @@ import BN from 'bn.js';
 import { Solana } from '../../chains/solana/solana';
 import { SolanaLedger } from '../../chains/solana/solana-ledger';
 import { PoolInfo as ClmmPoolInfo, PositionInfo } from '../../schemas/clmm-schema';
+import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
 import clmmIdl from './idl/clmm.json';
@@ -269,8 +270,15 @@ export class PancakeswapSol {
 
   /** Get position info from position NFT */
   async getPositionInfo(positionAddress: string): Promise<PositionInfo> {
+    // Validate position address
+    let positionNftMint: PublicKey;
+    try {
+      positionNftMint = new PublicKey(positionAddress);
+    } catch {
+      throw httpErrors.badRequest(`Invalid position address: ${positionAddress}`);
+    }
+
     // Get position PDA
-    const positionNftMint = new PublicKey(positionAddress);
     const [positionPda] = PublicKey.findProgramAddressSync(
       [Buffer.from('position'), positionNftMint.toBuffer()],
       PANCAKESWAP_CLMM_PROGRAM_ID,
@@ -279,7 +287,7 @@ export class PancakeswapSol {
     // Fetch position account data
     const accountInfo = await this.solana.connection.getAccountInfo(positionPda, 'confirmed');
     if (!accountInfo) {
-      throw new Error('Position account not found');
+      throw httpErrors.notFound(`Position not found: ${positionAddress}`);
     }
 
     const data = accountInfo.data;

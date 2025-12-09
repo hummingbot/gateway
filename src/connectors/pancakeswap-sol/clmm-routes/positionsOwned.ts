@@ -25,16 +25,16 @@ export async function getPositionsOwned(
   // Validate wallet address
   try {
     new PublicKey(walletAddress);
-  } catch (error) {
-    throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
+  } catch {
+    throw fastify.httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
   }
 
   // Validate pool address if provided
   if (poolAddress) {
     try {
       new PublicKey(poolAddress);
-    } catch (error) {
-      throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('pool'));
+    } catch {
+      throw fastify.httpErrors.badRequest(`Invalid pool address: ${poolAddress}`);
     }
   }
 

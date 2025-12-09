@@ -17,8 +17,8 @@ export async function getPositionsOwned(
   // Validate wallet address
   try {
     new PublicKey(walletAddress);
-  } catch (error) {
-    throw fastify.httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE('wallet'));
+  } catch {
+    throw fastify.httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
   }
 
   // Fetch from RPC (positions are cached individually by position address, not by wallet)

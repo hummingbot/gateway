@@ -29,10 +29,13 @@ export async function removeLiquidity(
 
   try {
     new PublicKey(positionAddress);
+  } catch {
+    throw httpErrors.badRequest(`Invalid position address: ${positionAddress}`);
+  }
+  try {
     new PublicKey(walletAddress);
-  } catch (error) {
-    const invalidAddress = error.message.includes(positionAddress) ? 'position' : 'wallet';
-    throw httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE(invalidAddress));
+  } catch {
+    throw httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
   }
 
   const positionResult = await meteora.getRawPosition(positionAddress, wallet.publicKey);
@@ -158,7 +161,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, 'Request failed');
+          throw e; // Re-throw HttpErrors with original message
         }
         throw fastify.httpErrors.internalServerError('Internal server error');
       }

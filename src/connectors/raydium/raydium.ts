@@ -20,6 +20,7 @@ import { Solana } from '../../chains/solana/solana';
 import { SolanaLedger } from '../../chains/solana/solana-ledger';
 import { PoolInfo as AmmPoolInfo } from '../../schemas/amm-schema';
 import { PoolInfo as ClmmPoolInfo, PositionInfo } from '../../schemas/clmm-schema';
+import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
 import { RaydiumConfig } from './raydium.config';
@@ -203,6 +204,13 @@ export class Raydium {
   }
 
   async getPositionInfo(positionAddress: string): Promise<PositionInfo | null> {
+    // Validate position address
+    try {
+      new PublicKey(positionAddress);
+    } catch {
+      throw httpErrors.badRequest(`Invalid position address: ${positionAddress}`);
+    }
+
     try {
       const position = await this.getClmmPosition(positionAddress);
       const poolIdString = position.poolId.toBase58();

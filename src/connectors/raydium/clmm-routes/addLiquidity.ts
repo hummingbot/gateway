@@ -92,19 +92,21 @@ export async function addLiquidity(
 
     // Handle balance changes - need to be careful when SOL is one of the tokens
     const tokenAddresses = [];
-    const isBaseSol = baseToken.symbol === 'SOL' || baseToken.address === 'So11111111111111111111111111111111111111112';
+    const baseTokenAddress = baseToken?.address || poolInfo.mintA.address;
+    const quoteTokenAddress = quoteToken?.address || poolInfo.mintB.address;
+    const isBaseSol = baseToken?.symbol === 'SOL' || baseTokenAddress === 'So11111111111111111111111111111111111111112';
     const isQuoteSol =
-      quoteToken.symbol === 'SOL' || quoteToken.address === 'So11111111111111111111111111111111111111112';
+      quoteToken?.symbol === 'SOL' || quoteTokenAddress === 'So11111111111111111111111111111111111111112';
 
     // Always get SOL balance change first
     tokenAddresses.push('So11111111111111111111111111111111111111112');
 
     // Add non-SOL tokens
     if (!isBaseSol) {
-      tokenAddresses.push(baseToken.address);
+      tokenAddresses.push(baseTokenAddress);
     }
     if (!isQuoteSol) {
-      tokenAddresses.push(quoteToken.address);
+      tokenAddresses.push(quoteTokenAddress);
     }
 
     const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, tokenAddresses);
@@ -166,6 +168,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         );
       } catch (e) {
         logger.error(e);
+        if (e.statusCode) throw e;
         throw httpErrors.internalServerError('Internal server error');
       }
     },

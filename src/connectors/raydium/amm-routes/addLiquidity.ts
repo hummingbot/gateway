@@ -215,8 +215,8 @@ async function addLiquidity(
     const tokenBInfo = await solana.getToken(poolInfo.mintB.address);
 
     const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
-      tokenAInfo.address,
-      tokenBInfo.address,
+      tokenAInfo?.address || poolInfo.mintA.address,
+      tokenBInfo?.address || poolInfo.mintB.address,
     ]);
 
     const baseTokenBalanceChange = balanceChanges[0];
@@ -271,9 +271,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         );
       } catch (e) {
         logger.error(e);
-        if (e.statusCode) {
-          throw fastify.httpErrors.createError(e.statusCode, e.message);
-        }
+        if (e.statusCode) throw e;
         throw fastify.httpErrors.internalServerError('Internal server error');
       }
     },

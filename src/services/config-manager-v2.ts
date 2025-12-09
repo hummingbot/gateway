@@ -7,6 +7,8 @@ import yaml from 'js-yaml';
 
 import { rootPath } from '../paths';
 
+import { httpErrors } from './error-handler';
+
 type Configuration = { [key: string]: any };
 type ConfigurationDefaults = { [namespaceId: string]: Configuration };
 interface _ConfigurationNamespaceDefinition {
@@ -239,7 +241,7 @@ export class ConfigurationNamespace {
     cursor[lastComponent] = value;
 
     if (!this.#validator(configClone)) {
-      throw new Error(`Cannot set ${this.id}.${configPath} to ${value}: ` + 'JSON schema violation.');
+      throw httpErrors.badRequest(`Cannot set ${this.id}.${configPath} to ${value}: JSON schema violation.`);
     }
 
     this.#configuration = configClone;
@@ -268,7 +270,7 @@ export class ConfigurationNamespace {
 
     // Validate the new configuration
     if (!this.#validator(configClone)) {
-      throw new Error(`Cannot delete ${this.id}.${configPath}: JSON schema violation.`);
+      throw httpErrors.badRequest(`Cannot delete ${this.id}.${configPath}: JSON schema violation.`);
     }
 
     this.#configuration = configClone;
@@ -405,13 +407,13 @@ export class ConfigManagerV2 {
   unpackFullConfigPath(fullConfigPath: string): UnpackedConfigNamespace {
     const pathComponents: Array<string> = fullConfigPath.split('.');
     if (pathComponents.length < 2) {
-      throw new Error('Configuration paths must have at least two components.');
+      throw httpErrors.badRequest('Configuration paths must have at least two components.');
     }
 
     const namespaceComponent: string = pathComponents[0];
     const namespace: ConfigurationNamespace | undefined = this.#namespaces[namespaceComponent];
     if (namespace === undefined) {
-      throw new Error(`The configuration namespace ${namespaceComponent} does not exist.`);
+      throw httpErrors.notFound(`The configuration namespace ${namespaceComponent} does not exist.`);
     }
 
     const configPath: string = pathComponents.slice(1).join('.');

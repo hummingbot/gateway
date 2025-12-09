@@ -36,9 +36,13 @@ export async function addLiquidity(
   // Validate addresses first
   try {
     new PublicKey(positionAddress);
+  } catch {
+    throw httpErrors.badRequest(`Invalid position address: ${positionAddress}`);
+  }
+  try {
     new PublicKey(address);
-  } catch (error) {
-    throw httpErrors.badRequest(INVALID_SOLANA_ADDRESS_MESSAGE(positionAddress));
+  } catch {
+    throw httpErrors.badRequest(`Invalid wallet address: ${address}`);
   }
 
   const solana = await Solana.getInstance(network);
@@ -194,7 +198,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
-          throw httpErrors.createError(e.statusCode, 'Request failed');
+          throw e; // Re-throw HttpErrors with original message
         }
         throw httpErrors.internalServerError('Internal server error');
       }

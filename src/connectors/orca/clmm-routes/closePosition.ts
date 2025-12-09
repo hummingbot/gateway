@@ -287,16 +287,15 @@ export async function closePosition(
   const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [wallet]);
 
   // Extract actual amounts from balance changes (more accurate than quotes)
-  const tokenA = await solana.getToken(whirlpool.getTokenAInfo().address.toString());
-  const tokenB = await solana.getToken(whirlpool.getTokenBInfo().address.toString());
-  if (!tokenA || !tokenB) {
-    throw httpErrors.notFound('Tokens not found for balance extraction');
-  }
+  const tokenAAddress = whirlpool.getTokenAInfo().address.toString();
+  const tokenBAddress = whirlpool.getTokenBInfo().address.toString();
+  const tokenA = await solana.getToken(tokenAAddress);
+  const tokenB = await solana.getToken(tokenBAddress);
 
   const { balanceChanges } = await solana.extractBalanceChangesAndFee(
     signature,
     client.getContext().wallet.publicKey.toString(),
-    [tokenA.address, tokenB.address],
+    [tokenAAddress, tokenBAddress],
   );
 
   // Total balance changes (positive values = received)
