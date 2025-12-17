@@ -22,6 +22,7 @@ import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { orcaRoutes } from './connectors/orca/orca.routes';
 import { pancakeswapRoutes } from './connectors/pancakeswap/pancakeswap.routes';
 import { pancakeswapSolRoutes } from './connectors/pancakeswap-sol/pancakeswap-sol.routes';
+import { pumpswapRoutes } from './connectors/pumpswap/pumpswap.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { getHttpsOptions } from './https';
@@ -277,6 +278,9 @@ const configureGatewayServer = () => {
 
     // PancakeSwap Solana routes
     app.register(pancakeswapSolRoutes, { prefix: '/connectors/pancakeswap-sol' });
+
+    // Pumpswap routes
+    app.register(pumpswapRoutes.amm, { prefix: '/connectors/pumpswap/amm' });
   };
 
   // Register routes on main server

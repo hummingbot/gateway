@@ -8,6 +8,7 @@ import { JupiterConfig } from '../../connectors/jupiter/jupiter.config';
 import { MeteoraConfig } from '../../connectors/meteora/meteora.config';
 import { OrcaConfig } from '../../connectors/orca/orca.config';
 import { PancakeswapSolConfig } from '../../connectors/pancakeswap-sol/pancakeswap-sol.config';
+import { PumpswapConfig } from '../../connectors/pumpswap/pumpswap.config';
 import { RaydiumConfig } from '../../connectors/raydium/raydium.config';
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 import { logger } from '../../services/logger';
@@ -76,6 +77,12 @@ export const connectorsConfig = [
     trading_types: [...OrcaConfig.tradingTypes],
     chain: OrcaConfig.chain,
     networks: [...OrcaConfig.networks],
+  },
+  {
+    name: 'pumpswap',
+    trading_types: [...PumpswapConfig.tradingTypes],
+    chain: PumpswapConfig.chain,
+    networks: [...PumpswapConfig.networks],
   },
 ];
 
