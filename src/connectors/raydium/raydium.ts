@@ -213,6 +213,13 @@ export class Raydium {
 
     try {
       const position = await this.getClmmPosition(positionAddress);
+
+      // Handle closed/burned positions - return null instead of throwing
+      if (!position) {
+        logger.debug(`Position not found or closed: ${positionAddress}`);
+        return null;
+      }
+
       const poolIdString = position.poolId.toBase58();
       const [poolInfo, poolKeys] = await this.getClmmPoolfromAPI(poolIdString);
 

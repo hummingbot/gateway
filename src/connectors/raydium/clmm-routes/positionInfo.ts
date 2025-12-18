@@ -18,7 +18,7 @@ export async function getPositionInfo(
   // Fetch position info directly from RPC
   const positionInfo = await raydium.getPositionInfo(positionAddress);
   if (!positionInfo) {
-    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+    throw fastify.httpErrors.notFound(`Position not found or closed: ${positionAddress}`);
   }
 
   return positionInfo;

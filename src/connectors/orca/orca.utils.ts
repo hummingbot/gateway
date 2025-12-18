@@ -38,6 +38,7 @@ import BN from 'bn.js';
 
 import { Solana } from '../../chains/solana/solana';
 import { PositionInfo, QuotePositionResponseType } from '../../schemas/clmm-schema';
+import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
 /**
@@ -54,7 +55,7 @@ export async function getPositionDetails(client: WhirlpoolClient, positionAddres
   // Use legacy SDK's fetcher which handles position PDA addresses directly
   const position = await client.getPosition(positionPubkey, IGNORE_CACHE);
   if (!position) {
-    throw new Error(`Position not found: ${positionAddress}`);
+    throw httpErrors.notFound(`Position not found or closed: ${positionAddress}`);
   }
 
   await position.refreshData();
@@ -63,7 +64,7 @@ export async function getPositionDetails(client: WhirlpoolClient, positionAddres
   const positionData = position.getData();
 
   if (!whirlpool) {
-    throw new Error(`Whirlpool not found for position: ${positionAddress}`);
+    throw httpErrors.notFound(`Whirlpool not found for position: ${positionAddress}`);
   }
 
   const mintA = await client.getFetcher().getMintInfo(whirlpool.tokenMintA);

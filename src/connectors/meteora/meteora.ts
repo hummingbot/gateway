@@ -345,7 +345,7 @@ export class Meteora {
     const positionAccount = await this.solana.connection.getAccountInfo(positionPubkey);
 
     if (!positionAccount) {
-      throw httpErrors.notFound(`Position not found: ${positionAddress}`);
+      throw httpErrors.notFound(`Position not found or closed: ${positionAddress}`);
     }
 
     // Parse the position account to extract the pool address (lbPair)
@@ -358,7 +358,7 @@ export class Meteora {
     const position = await dlmmPool.getPosition(positionPubkey);
 
     if (!position) {
-      throw httpErrors.notFound(`Position ${positionAddress} not found in pool ${poolAddress}`);
+      throw httpErrors.notFound(`Position not found or closed: ${positionAddress}`);
     }
 
     const activeBin = await dlmmPool.getActiveBin();
@@ -409,7 +409,7 @@ export class Meteora {
   async getPositionInfo(positionAddress: string, wallet: PublicKey): Promise<PositionInfo> {
     const { position, info } = await this.getRawPosition(positionAddress, wallet);
     if (!position) {
-      throw httpErrors.notFound(`Position not found: ${positionAddress}`);
+      throw httpErrors.notFound(`Position not found or closed: ${positionAddress}`);
     }
 
     const dlmmPool = await this.getDlmmPool(info.publicKey.toBase58());

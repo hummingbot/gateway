@@ -36,7 +36,7 @@ export async function getPositionInfo(
 
   const positionInfo = await orca.getPositionInfo(positionAddress, resolvedWalletAddress);
   if (!positionInfo) {
-    throw fastify.httpErrors.notFound(`Position not found: ${positionAddress}`);
+    throw fastify.httpErrors.notFound(`Position not found or closed: ${positionAddress}`);
   }
 
   return positionInfo;
