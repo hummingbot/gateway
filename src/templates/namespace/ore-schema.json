@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "commitment": {
+      "type": "string",
+      "description": "Default transaction confirmation commitment level",
+      "enum": ["processed", "confirmed", "finalized"]
+    },
+    "priorityFee": {
+      "type": "number",
+      "description": "Default priority fee in microlamports (0 = use network default)"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["commitment", "priorityFee"]
+}
