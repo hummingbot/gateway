@@ -41,6 +41,7 @@ import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
+import { SignerFactory, SolanaSigner } from './signers';
 import { SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
 
@@ -325,6 +326,67 @@ export class Solana {
     } catch (error) {
       throw new Error(`Invalid Solana address: ${address}`);
     }
+  }
+
+  /**
+   * Get a signer for the given wallet address
+   * Automatically detects wallet type (keypair, hardware, etc.)
+   *
+   * This is the recommended way to get a signer for signing transactions.
+   * It provides a unified interface regardless of the underlying wallet type.
+   *
+   * @param address - The wallet address to get a signer for
+   * @returns A SolanaSigner instance
+   */
+  async getSigner(address: string): Promise<SolanaSigner> {
+    return SignerFactory.getSigner(address);
+  }
+
+  /**
+   * Sign, simulate, and send a transaction using the abstract signer
+   *
+   * This method provides a unified way to sign and send transactions
+   * regardless of the wallet type (keypair, hardware, KMS, etc.)
+   *
+   * @param transaction - The transaction to sign and send
+   * @param signer - The signer to use
+   * @param options - Optional configuration
+   * @returns Transaction result with signature and confirmation status
+   */
+  async signAndSend(
+    transaction: Transaction | VersionedTransaction,
+    signer: SolanaSigner,
+    options?: {
+      skipSimulation?: boolean;
+      maxRetries?: number;
+    },
+  ): Promise<{ signature: string; confirmed: boolean; fee?: number }> {
+    const skipSimulation = options?.skipSimulation ?? false;
+
+    logger.info(`[Solana] Signing transaction with ${signer.type} signer for ${signer.address}`);
+
+    // Sign the transaction using the abstract signer
+    const [signedTx] = await signer.signTransactions([transaction]);
+
+    // Simulate if not skipped
+    if (!skipSimulation) {
+      logger.debug(`[Solana] Simulating transaction...`);
+      await this.simulateWithErrorHandling(signedTx);
+      logger.debug(`[Solana] Simulation successful`);
+    }
+
+    // Send and confirm
+    logger.debug(`[Solana] Sending transaction...`);
+    const { confirmed, signature, txData } = await this.sendAndConfirmRawTransaction(signedTx);
+
+    // Calculate fee if confirmed
+    let fee: number | undefined;
+    if (confirmed && txData) {
+      fee = this.getFee(txData);
+      logger.info(`[Solana] Transaction ${signature} confirmed with fee: ${fee.toFixed(6)} SOL`);
+    }
+
+    return { signature, confirmed, fee };
   }
 
   async encrypt(secret: string, password: string): Promise<string> {
