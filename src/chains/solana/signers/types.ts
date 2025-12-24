@@ -8,39 +8,81 @@ export type SignerType = 'keypair' | 'ledger' | 'aws-kms' | 'fireblocks' | 'turn
 /**
  * Error codes for signer operations
  * Modeled after @solana/keychain-core SignerErrorCode
+ *
+ * When @solana/keychain becomes available on npm, these codes should be
+ * compatible for easy migration.
  */
 export enum SignerErrorCode {
-  // Key validation
-  INVALID_PRIVATE_KEY = 'INVALID_PRIVATE_KEY',
-  INVALID_PUBLIC_KEY = 'INVALID_PUBLIC_KEY',
+  // Key validation (matches keychain-core)
+  INVALID_PRIVATE_KEY = 'SIGNER_INVALID_PRIVATE_KEY',
+  INVALID_PUBLIC_KEY = 'SIGNER_INVALID_PUBLIC_KEY',
 
-  // Operation failures
-  SIGNING_FAILED = 'SIGNING_FAILED',
-  SERIALIZATION_ERROR = 'SERIALIZATION_ERROR',
-  USER_REJECTED = 'USER_REJECTED',
-  TIMEOUT = 'TIMEOUT',
+  // Operation failures (matches keychain-core)
+  SIGNING_FAILED = 'SIGNER_SIGNING_FAILED',
+  SERIALIZATION_ERROR = 'SIGNER_SERIALIZATION_ERROR',
+  PARSING_ERROR = 'SIGNER_PARSING_ERROR',
+  USER_REJECTED = 'SIGNER_USER_REJECTED',
+  TIMEOUT = 'SIGNER_TIMEOUT',
 
-  // Infrastructure issues
-  NOT_AVAILABLE = 'NOT_AVAILABLE',
-  CONNECTION_ERROR = 'CONNECTION_ERROR',
-  DEVICE_LOCKED = 'DEVICE_LOCKED',
+  // Infrastructure issues (matches keychain-core)
+  NOT_AVAILABLE = 'SIGNER_NOT_AVAILABLE',
+  CONNECTION_ERROR = 'SIGNER_CONNECTION_ERROR',
+  HTTP_ERROR = 'SIGNER_HTTP_ERROR',
+  REMOTE_API_ERROR = 'SIGNER_REMOTE_API_ERROR',
+  IO_ERROR = 'SIGNER_IO_ERROR',
+  DEVICE_LOCKED = 'SIGNER_DEVICE_LOCKED',
 
-  // Configuration
-  CONFIG_ERROR = 'CONFIG_ERROR',
+  // Configuration (matches keychain-core)
+  CONFIG_ERROR = 'SIGNER_CONFIG_ERROR',
+
+  // Type checking (matches keychain-core)
+  EXPECTED_SOLANA_SIGNER = 'SIGNER_EXPECTED_SOLANA_SIGNER',
+}
+
+/**
+ * Context for signer errors (matches keychain-core pattern)
+ */
+export interface SignerErrorContext {
+  message?: string;
+  cause?: Error;
+  address?: string;
+  [key: string]: unknown;
 }
 
 /**
  * Custom error class for signer operations
+ * Modeled after @solana/keychain-core SignerError
  */
 export class SignerError extends Error {
   constructor(
     public readonly code: SignerErrorCode,
-    message: string,
+    messageOrContext: string | SignerErrorContext,
     public readonly cause?: Error,
   ) {
+    const message =
+      typeof messageOrContext === 'string' ? messageOrContext : messageOrContext.message || `Signer error: ${code}`;
     super(message);
     this.name = 'SignerError';
+    if (typeof messageOrContext !== 'string' && messageOrContext.cause) {
+      this.cause = messageOrContext.cause;
+    }
   }
+}
+
+/**
+ * Create a SignerError without throwing
+ * Matches keychain-core createSignerError pattern
+ */
+export function createSignerError(code: SignerErrorCode, context?: SignerErrorContext): SignerError {
+  return new SignerError(code, context || {});
+}
+
+/**
+ * Throw a SignerError immediately
+ * Matches keychain-core throwSignerError pattern
+ */
+export function throwSignerError(code: SignerErrorCode, context?: SignerErrorContext): never {
+  throw createSignerError(code, context);
 }
 
 /**
@@ -141,4 +183,35 @@ export interface WalletInfo {
   keyId?: string;
   vaultId?: string;
   region?: string;
+}
+
+/**
+ * Type guard to check if a value is a SolanaSigner
+ * Matches keychain-core isSolanaSigner pattern
+ */
+export function isSolanaSigner(value: unknown): value is SolanaSigner {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const signer = value as Record<string, unknown>;
+  return (
+    typeof signer.address === 'string' &&
+    typeof signer.type === 'string' &&
+    typeof signer.isAvailable === 'function' &&
+    typeof signer.getPublicKey === 'function' &&
+    typeof signer.signTransactions === 'function'
+  );
+}
+
+/**
+ * Assert that a value is a SolanaSigner
+ * Matches keychain-core assertIsSolanaSigner pattern
+ */
+export function assertIsSolanaSigner(value: unknown): asserts value is SolanaSigner {
+  if (!isSolanaSigner(value)) {
+    throwSignerError(SignerErrorCode.EXPECTED_SOLANA_SIGNER, {
+      message: 'Expected a SolanaSigner but received something else',
+    });
+  }
 }
