@@ -359,11 +359,23 @@ export class Solana {
     options?: {
       skipSimulation?: boolean;
       maxRetries?: number;
+      additionalKeypairs?: Keypair[];
     },
   ): Promise<{ signature: string; confirmed: boolean; fee?: number }> {
     const skipSimulation = options?.skipSimulation ?? false;
+    const additionalKeypairs = options?.additionalKeypairs ?? [];
 
     logger.info(`[Solana] Signing transaction with ${signer.type} signer for ${signer.address}`);
+
+    // Sign with additional keypairs first (e.g., new position accounts)
+    if (additionalKeypairs.length > 0) {
+      logger.debug(`[Solana] Signing with ${additionalKeypairs.length} additional keypair(s)`);
+      if (transaction instanceof VersionedTransaction) {
+        transaction.sign(additionalKeypairs);
+      } else {
+        transaction.partialSign(...additionalKeypairs);
+      }
+    }
 
     // Sign the transaction using the abstract signer
     const [signedTx] = await signer.signTransactions([transaction]);
@@ -435,8 +447,8 @@ export class Solana {
   /**
    * @deprecated Use the optimized implementation in routes/balances.ts instead
    */
-  async getBalance(wallet: Keypair, symbols?: string[]): Promise<Record<string, number>> {
-    const publicKey = wallet.publicKey;
+  async getBalance(wallet: Keypair | PublicKey, symbols?: string[]): Promise<Record<string, number>> {
+    const publicKey = wallet instanceof PublicKey ? wallet : wallet.publicKey;
     const balances: Record<string, number> = {};
 
     // Treat empty array as if no tokens were specified

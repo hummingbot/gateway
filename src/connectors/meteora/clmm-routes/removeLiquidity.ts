@@ -25,7 +25,8 @@ export async function removeLiquidity(
 ): Promise<RemoveLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
-  const wallet = await solana.getWallet(walletAddress);
+  const signer = await solana.getSigner(walletAddress);
+  const publicKey = signer.getPublicKey();
 
   try {
     new PublicKey(positionAddress);
@@ -38,7 +39,7 @@ export async function removeLiquidity(
     throw httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
   }
 
-  const positionResult = await meteora.getRawPosition(positionAddress, wallet.publicKey);
+  const positionResult = await meteora.getRawPosition(positionAddress, publicKey);
 
   if (!positionResult || !positionResult.position) {
     throw httpErrors.notFound(`Position not found: ${positionAddress}. Please provide a valid position address`);
@@ -60,7 +61,7 @@ export async function removeLiquidity(
 
   const removeLiquidityTx = await dlmmPool.removeLiquidity({
     position: position.publicKey,
-    user: wallet.publicKey,
+    user: publicKey,
     fromBinId,
     toBinId,
     bps: bps,
@@ -73,6 +74,8 @@ export async function removeLiquidity(
   let totalFee = 0;
   let lastSignature = '';
 
+  logger.info(`Using ${signer.type} signer for ${walletAddress}`);
+
   for (let i = 0; i < transactions.length; i++) {
     const tx = transactions[i];
     if (transactions.length > 1) {
@@ -80,15 +83,11 @@ export async function removeLiquidity(
     }
 
     // Set fee payer for simulation
-    tx.feePayer = wallet.publicKey;
+    tx.feePayer = publicKey;
 
-    // Simulate before sending
-    await solana.simulateWithErrorHandling(tx);
-
-    logger.info('Transaction simulated successfully, sending to network...');
-
-    const result = await solana.sendAndConfirmTransaction(tx, [wallet]);
-    totalFee += result.fee;
+    // Sign and send using unified signer pattern
+    const result = await solana.signAndSend(tx, signer);
+    totalFee += result.fee || 0;
     lastSignature = result.signature;
   }
 
@@ -104,7 +103,7 @@ export async function removeLiquidity(
   const confirmed = txData !== null;
 
   if (confirmed && txData) {
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, publicKey.toBase58(), [
       dlmmPool.tokenX.publicKey.toBase58(),
       dlmmPool.tokenY.publicKey.toBase58(),
     ]);
