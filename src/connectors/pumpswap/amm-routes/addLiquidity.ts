@@ -1,5 +1,18 @@
 import { Static } from '@sinclair/typebox';
-import { VersionedTransaction } from '@solana/web3.js';
+import {
+  TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
+  NATIVE_MINT,
+  getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountInstruction,
+} from '@solana/spl-token';
+import {
+  VersionedTransaction,
+  TransactionMessage,
+  PublicKey,
+  TransactionInstruction,
+  ComputeBudgetProgram,
+} from '@solana/web3.js';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
 import { FastifyPluginAsync } from 'fastify';
@@ -73,7 +86,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         // Calculate LP tokens to mint
         // For AMM: LP = sqrt(base * quote) - minimum liquidity
         // Simplified: use pool ratio to calculate LP tokens
-        const poolPubkey = new (await import('@solana/web3.js')).PublicKey(poolAddress);
+        const poolPubkey = new PublicKey(poolAddress);
         const poolAccountInfo = await solana.connection.getAccountInfo(poolPubkey);
         if (!poolAccountInfo) {
           throw fastify.httpErrors.notFound('Pool account not found');
@@ -91,6 +104,101 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           Math.floor((Number(lpSupply) * (Math.sqrt(newK) - Math.sqrt(oldK))) / Math.sqrt(oldK)).toString(),
         );
 
+        // Get base and quote mints
+        let offset = 11;
+        offset += 32; // Skip creator
+        const baseMint = new PublicKey(poolData.slice(offset, offset + 32));
+        offset += 32;
+        const quoteMint = new PublicKey(poolData.slice(offset, offset + 32));
+        offset += 32;
+        const lpMint = new PublicKey(poolData.slice(offset, offset + 32));
+
+        // Get token programs
+        const baseMintInfo = await solana.connection.getAccountInfo(baseMint);
+        const quoteMintInfo = await solana.connection.getAccountInfo(quoteMint);
+        const lpMintInfo = await solana.connection.getAccountInfo(lpMint);
+
+        const baseTokenProgram = baseMintInfo?.owner.equals(TOKEN_2022_PROGRAM_ID)
+          ? TOKEN_2022_PROGRAM_ID
+          : TOKEN_PROGRAM_ID;
+        const quoteTokenProgram = quoteMintInfo?.owner.equals(TOKEN_2022_PROGRAM_ID)
+          ? TOKEN_2022_PROGRAM_ID
+          : TOKEN_PROGRAM_ID;
+        const lpTokenProgram = lpMintInfo?.owner.equals(TOKEN_2022_PROGRAM_ID)
+          ? TOKEN_2022_PROGRAM_ID
+          : TOKEN_PROGRAM_ID;
+
+        // Get token accounts
+        const userBaseTokenAccount = getAssociatedTokenAddressSync(baseMint, walletPubkey, false, baseTokenProgram);
+        const userQuoteTokenAccount = getAssociatedTokenAddressSync(quoteMint, walletPubkey, false, quoteTokenProgram);
+        const userPoolTokenAccount = getAssociatedTokenAddressSync(lpMint, walletPubkey, false, lpTokenProgram);
+
+        // Check if token accounts exist
+        const [baseAccountInfo, quoteAccountInfo, lpAccountInfo] = await Promise.all([
+          solana.connection.getAccountInfo(userBaseTokenAccount),
+          solana.connection.getAccountInfo(userQuoteTokenAccount),
+          solana.connection.getAccountInfo(userPoolTokenAccount),
+        ]);
+
+        // Build transaction with all required instructions
+        const instructions: TransactionInstruction[] = [];
+
+        // Add compute budget
+        instructions.push(
+          ComputeBudgetProgram.setComputeUnitLimit({
+            units: 600000,
+          }),
+        );
+
+        // Handle base token (create ATA if needed, wrap SOL if native)
+        const isBaseSOL = baseMint.equals(NATIVE_MINT);
+        if (isBaseSOL) {
+          // Use solana.wrapSOL() which handles ATA creation and wrapping
+          const wrapInstructions = await solana.wrapSOL(walletPubkey, maxBaseAmountIn.toNumber(), baseTokenProgram);
+          instructions.push(...wrapInstructions);
+        } else if (!baseAccountInfo) {
+          instructions.push(
+            createAssociatedTokenAccountInstruction(
+              walletPubkey, // payer
+              userBaseTokenAccount, // ata
+              walletPubkey, // owner
+              baseMint, // mint
+              baseTokenProgram, // token program
+            ),
+          );
+        }
+
+        // Handle quote token (create ATA if needed, wrap SOL if native)
+        const isQuoteSOL = quoteMint.equals(NATIVE_MINT);
+        if (isQuoteSOL) {
+          // Use solana.wrapSOL() which handles ATA creation and wrapping
+          const wrapInstructions = await solana.wrapSOL(walletPubkey, maxQuoteAmountIn.toNumber(), quoteTokenProgram);
+          instructions.push(...wrapInstructions);
+        } else if (!quoteAccountInfo) {
+          instructions.push(
+            createAssociatedTokenAccountInstruction(
+              walletPubkey, // payer
+              userQuoteTokenAccount, // ata
+              walletPubkey, // owner
+              quoteMint, // mint
+              quoteTokenProgram, // token program
+            ),
+          );
+        }
+
+        // Create LP token account if needed
+        if (!lpAccountInfo) {
+          instructions.push(
+            createAssociatedTokenAccountInstruction(
+              walletPubkey, // payer
+              userPoolTokenAccount, // ata
+              walletPubkey, // owner
+              lpMint, // mint
+              lpTokenProgram, // token program
+            ),
+          );
+        }
+
         // Build deposit instruction
         const depositIx = await buildDepositInstruction(
           solana,
@@ -101,10 +209,9 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           maxQuoteAmountIn,
         );
 
-        // Build transaction
-        const instructions = [depositIx];
+        instructions.push(depositIx);
         const { blockhash } = await solana.connection.getLatestBlockhash('confirmed');
-        const messageV0 = new (await import('@solana/web3.js')).TransactionMessage({
+        const messageV0 = new TransactionMessage({
           payerKey: walletPubkey,
           recentBlockhash: blockhash,
           instructions,
@@ -154,9 +261,11 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
               : undefined,
         };
       } catch (e) {
-        logger.error(e);
+        logger.error('Add liquidity error:', e);
         if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Failed to add liquidity');
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        logger.error(`Failed to add liquidity: ${errorMessage}`);
+        throw fastify.httpErrors.internalServerError(`Failed to add liquidity: ${errorMessage}`);
       }
     },
   );

@@ -52,7 +52,6 @@ export class Pumpswap {
   /** Sets the owner for operations */
   public async setOwner(owner: Keypair | PublicKey): Promise<void> {
     this.owner = owner as Keypair;
-    logger.info('Pumpswap owner set');
   }
 
   /**

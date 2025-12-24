@@ -1,7 +1,6 @@
 import {
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
   NATIVE_MINT,
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
@@ -69,15 +68,53 @@ export async function buildSwapTransaction(
   const inputAccountInfo = await solana.connection.getAccountInfo(inputTokenAccount);
   const outputAccountInfo = await solana.connection.getAccountInfo(outputTokenAccount);
 
-  // Create output token account if needed
-  if (!outputAccountInfo) {
+  // Track if we're using WSOL (to handle wrapping/unwrapping)
+  const isInputSOL = inputMint.equals(NATIVE_MINT);
+  const isOutputSOL = outputMint.equals(NATIVE_MINT);
+
+  // Handle input token account
+  if (isInputSOL) {
+    // If input is native SOL, wrap it using Solana's wrapSOL method
+    // This also handles ATA creation if needed
+    const wrapInstructions = await solana.wrapSOL(walletPubkey, amountIn.toNumber(), inputTokenProgram);
+    instructions.push(...wrapInstructions);
+  } else if (!inputAccountInfo) {
+    // Create input token account if needed (for non-SOL tokens)
     instructions.push(
       createAssociatedTokenAccountInstruction(
-        walletPubkey,
-        outputTokenAccount,
-        walletPubkey,
-        outputMint,
-        outputTokenProgram,
+        walletPubkey, // payer
+        inputTokenAccount, // ata
+        walletPubkey, // owner
+        inputMint, // mint
+        inputTokenProgram, // token program
+      ),
+    );
+  }
+
+  // Handle output token account
+  if (isOutputSOL) {
+    // If output is native SOL, create the WSOL account if needed
+    // It will be unwrapped after the swap
+    if (!outputAccountInfo) {
+      instructions.push(
+        createAssociatedTokenAccountInstruction(
+          walletPubkey, // payer
+          outputTokenAccount, // ata
+          walletPubkey, // owner
+          outputMint, // mint
+          outputTokenProgram, // token program
+        ),
+      );
+    }
+  } else if (!outputAccountInfo) {
+    // Create output token account if needed (for non-SOL tokens)
+    instructions.push(
+      createAssociatedTokenAccountInstruction(
+        walletPubkey, // payer
+        outputTokenAccount, // ata
+        walletPubkey, // owner
+        outputMint, // mint
+        outputTokenProgram, // token program
       ),
     );
   }
@@ -91,6 +128,12 @@ export async function buildSwapTransaction(
     // Buying base (BUY) - use buy instruction
     const buyIx = await buildBuyInstruction(solana, poolPubkey, walletPubkey, minAmountOut, amountIn, true);
     instructions.push(buyIx);
+  }
+
+  // If output is native SOL, unwrap WSOL back to SOL
+  if (isOutputSOL) {
+    const unwrapIx = solana.unwrapSOL(walletPubkey, outputTokenProgram);
+    instructions.push(unwrapIx);
   }
 
   // Get recent blockhash

@@ -86,6 +86,32 @@ export async function getTokenProgramForMint(solana: Solana, mint: PublicKey): P
 }
 
 /**
+ * Get protocol fee recipient from global config account using Anchor IDL coder
+ */
+export async function getProtocolFeeRecipient(solana: Solana): Promise<PublicKey> {
+  const globalConfig = getGlobalConfigPDA();
+  const globalConfigAccount = await solana.connection.getAccountInfo(globalConfig);
+
+  if (!globalConfigAccount) {
+    throw new Error('Global config account not found');
+  }
+
+  const coder = new BorshCoder(idl);
+  // Decode the GlobalConfig account (skip the 8-byte discriminator)
+  const globalConfigData = coder.accounts.decode('GlobalConfig', globalConfigAccount.data);
+
+  // Get the first non-zero protocol fee recipient from the array
+  const protocolFeeRecipients = globalConfigData.protocol_fee_recipients as PublicKey[];
+  const protocolFeeRecipient = protocolFeeRecipients.find((recipient) => !recipient.equals(PublicKey.default));
+
+  if (!protocolFeeRecipient) {
+    throw new Error('No valid protocol fee recipient found in global config');
+  }
+
+  return protocolFeeRecipient;
+}
+
+/**
  * Build buy instruction (exact output)
  */
 export async function buildBuyInstruction(
@@ -143,16 +169,8 @@ export async function buildBuyInstruction(
   const userBaseTokenAccount = getAssociatedTokenAddressSync(baseMint, walletPubkey, false, baseTokenProgram);
   const userQuoteTokenAccount = getAssociatedTokenAddressSync(quoteMint, walletPubkey, false, quoteTokenProgram);
 
-  // Get protocol fee recipient (first one from global config)
-  // For now, we'll need to fetch global config to get the recipient
-  // This is a simplified version - you may need to fetch global config
-  const globalConfigAccount = await solana.connection.getAccountInfo(globalConfig);
-  let protocolFeeRecipient = PublicKey.default;
-  if (globalConfigAccount) {
-    // protocol_fee_recipients is at offset 33 (after admin + fees)
-    // It's an array of 8 pubkeys
-    protocolFeeRecipient = new PublicKey(globalConfigAccount.data.slice(33, 65));
-  }
+  // Get protocol fee recipient from global config
+  const protocolFeeRecipient = await getProtocolFeeRecipient(solana);
 
   const protocolFeeRecipientTokenAccount = getProtocolFeeRecipientTokenAccount(protocolFeeRecipient, quoteMint);
   const coinCreatorVaultAuthority = getCoinCreatorVaultAuthorityPDA(coinCreator);
@@ -186,7 +204,7 @@ export async function buildBuyInstruction(
   return new TransactionInstruction({
     programId: PUMPSWAP_PROGRAM_ID,
     keys: [
-      { pubkey: poolAddress, isSigner: false, isWritable: false }, // pool
+      { pubkey: poolAddress, isSigner: false, isWritable: true }, // pool
       { pubkey: walletPubkey, isSigner: true, isWritable: true }, // user
       { pubkey: globalConfig, isSigner: false, isWritable: false }, // global_config
       { pubkey: baseMint, isSigner: false, isWritable: false }, // base_mint
@@ -202,6 +220,7 @@ export async function buildBuyInstruction(
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
       { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // associated_token_program
       { pubkey: eventAuthority, isSigner: false, isWritable: false }, // event_authority
+      { pubkey: PUMPSWAP_PROGRAM_ID, isSigner: false, isWritable: false }, // program
       { pubkey: coinCreatorVaultATA, isSigner: false, isWritable: true }, // coin_creator_vault_ata
       { pubkey: coinCreatorVaultAuthority, isSigner: false, isWritable: false }, // coin_creator_vault_authority
       { pubkey: globalVolumeAccumulator, isSigner: false, isWritable: true }, // global_volume_accumulator
@@ -252,11 +271,8 @@ export async function buildSellInstruction(
   const userBaseTokenAccount = getAssociatedTokenAddressSync(baseMint, walletPubkey, false, baseTokenProgram);
   const userQuoteTokenAccount = getAssociatedTokenAddressSync(quoteMint, walletPubkey, false, quoteTokenProgram);
 
-  const globalConfigAccount = await solana.connection.getAccountInfo(globalConfig);
-  let protocolFeeRecipient = PublicKey.default;
-  if (globalConfigAccount) {
-    protocolFeeRecipient = new PublicKey(globalConfigAccount.data.slice(33, 65));
-  }
+  // Get protocol fee recipient from global config
+  const protocolFeeRecipient = await getProtocolFeeRecipient(solana);
 
   const protocolFeeRecipientTokenAccount = getProtocolFeeRecipientTokenAccount(protocolFeeRecipient, quoteMint);
   const coinCreatorVaultAuthority = getCoinCreatorVaultAuthorityPDA(coinCreator);
@@ -274,7 +290,7 @@ export async function buildSellInstruction(
   return new TransactionInstruction({
     programId: PUMPSWAP_PROGRAM_ID,
     keys: [
-      { pubkey: poolAddress, isSigner: false, isWritable: false }, // pool
+      { pubkey: poolAddress, isSigner: false, isWritable: true }, // pool
       { pubkey: walletPubkey, isSigner: true, isWritable: true }, // user
       { pubkey: globalConfig, isSigner: false, isWritable: false }, // global_config
       { pubkey: baseMint, isSigner: false, isWritable: false }, // base_mint
@@ -290,6 +306,7 @@ export async function buildSellInstruction(
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, // system_program
       { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // associated_token_program
       { pubkey: eventAuthority, isSigner: false, isWritable: false }, // event_authority
+      { pubkey: PUMPSWAP_PROGRAM_ID, isSigner: false, isWritable: false }, // program
       { pubkey: coinCreatorVaultATA, isSigner: false, isWritable: true }, // coin_creator_vault_ata
       { pubkey: coinCreatorVaultAuthority, isSigner: false, isWritable: false }, // coin_creator_vault_authority
       { pubkey: feeConfig, isSigner: false, isWritable: false }, // fee_config
@@ -330,11 +347,15 @@ export async function buildDepositInstruction(
   const poolQuoteTokenAccount = new PublicKey(poolData.slice(offset, offset + 32));
 
   const globalConfig = getGlobalConfigPDA();
-  const tokenProgram = await getTokenProgramForMint(solana, lpMint);
 
-  const userBaseTokenAccount = getAssociatedTokenAddressSync(baseMint, walletPubkey, false, TOKEN_PROGRAM_ID);
-  const userQuoteTokenAccount = getAssociatedTokenAddressSync(quoteMint, walletPubkey, false, TOKEN_PROGRAM_ID);
-  const userPoolTokenAccount = getAssociatedTokenAddressSync(lpMint, walletPubkey, false, tokenProgram);
+  // Get token programs for each mint
+  const baseTokenProgram = await getTokenProgramForMint(solana, baseMint);
+  const quoteTokenProgram = await getTokenProgramForMint(solana, quoteMint);
+  const lpTokenProgram = await getTokenProgramForMint(solana, lpMint);
+
+  const userBaseTokenAccount = getAssociatedTokenAddressSync(baseMint, walletPubkey, false, baseTokenProgram);
+  const userQuoteTokenAccount = getAssociatedTokenAddressSync(quoteMint, walletPubkey, false, quoteTokenProgram);
+  const userPoolTokenAccount = getAssociatedTokenAddressSync(lpMint, walletPubkey, false, lpTokenProgram);
 
   const eventAuthority = getEventAuthorityPDA();
 
@@ -362,6 +383,7 @@ export async function buildDepositInstruction(
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
       { pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false }, // token_2022_program
       { pubkey: eventAuthority, isSigner: false, isWritable: false }, // event_authority
+      { pubkey: PUMPSWAP_PROGRAM_ID, isSigner: false, isWritable: false }, // program
     ],
     data: instructionData,
   });
@@ -398,11 +420,15 @@ export async function buildWithdrawInstruction(
   const poolQuoteTokenAccount = new PublicKey(poolData.slice(offset, offset + 32));
 
   const globalConfig = getGlobalConfigPDA();
-  const tokenProgram = await getTokenProgramForMint(solana, lpMint);
 
-  const userBaseTokenAccount = getAssociatedTokenAddressSync(baseMint, walletPubkey, false, TOKEN_PROGRAM_ID);
-  const userQuoteTokenAccount = getAssociatedTokenAddressSync(quoteMint, walletPubkey, false, TOKEN_PROGRAM_ID);
-  const userPoolTokenAccount = getAssociatedTokenAddressSync(lpMint, walletPubkey, false, tokenProgram);
+  // Get token programs for each mint
+  const baseTokenProgram = await getTokenProgramForMint(solana, baseMint);
+  const quoteTokenProgram = await getTokenProgramForMint(solana, quoteMint);
+  const lpTokenProgram = await getTokenProgramForMint(solana, lpMint);
+
+  const userBaseTokenAccount = getAssociatedTokenAddressSync(baseMint, walletPubkey, false, baseTokenProgram);
+  const userQuoteTokenAccount = getAssociatedTokenAddressSync(quoteMint, walletPubkey, false, quoteTokenProgram);
+  const userPoolTokenAccount = getAssociatedTokenAddressSync(lpMint, walletPubkey, false, lpTokenProgram);
 
   const eventAuthority = getEventAuthorityPDA();
 
@@ -430,6 +456,7 @@ export async function buildWithdrawInstruction(
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program
       { pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false }, // token_2022_program
       { pubkey: eventAuthority, isSigner: false, isWritable: false }, // event_authority
+      { pubkey: PUMPSWAP_PROGRAM_ID, isSigner: false, isWritable: false }, // program
     ],
     data: instructionData,
   });
