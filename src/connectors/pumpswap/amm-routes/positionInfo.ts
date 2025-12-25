@@ -83,12 +83,15 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
           lpTokenAmount = accountInfo.value.uiAmount || 0;
 
           if (lpTokenAmount > 0) {
-            // Get LP supply from pool
-            const lpSupply = poolData.readBigUInt64LE(203); // offset 203-210
+            // Get LP supply from pool (raw format)
+            const lpSupplyRaw = poolData.readBigUInt64LE(203); // offset 203-210
+
+            // Get LP mint decimals to convert raw supply to UI format
+            const lpSupply = Number(lpSupplyRaw) / Math.pow(10, 9);
 
             // Calculate token amounts based on LP share
-            // For AMM: user's share = lpTokenAmount / lpSupply
-            const share = Number(lpTokenAmount) / Number(lpSupply);
+            // For AMM: user's share = lpTokenAmount / lpSupply (both in UI format)
+            const share = lpTokenAmount / lpSupply;
             baseTokenAmount = ammPoolInfo.baseTokenAmount * share;
             quoteTokenAmount = ammPoolInfo.quoteTokenAmount * share;
           }

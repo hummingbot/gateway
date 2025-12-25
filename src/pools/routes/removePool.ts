@@ -30,8 +30,8 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
         },
         querystring: Type.Object({
           connector: Type.String({
-            description: 'Connector (raydium, meteora, uniswap, orca)',
-            examples: ['raydium', 'meteora', 'uniswap', 'orca'],
+            description: 'Connector (raydium, meteora, uniswap, orca, pumpswap)',
+            examples: ['raydium', 'meteora', 'uniswap', 'orca', 'pumpswap'],
           }),
           network: Type.String({
             description: 'Network name (mainnet, mainnet-beta, etc)',

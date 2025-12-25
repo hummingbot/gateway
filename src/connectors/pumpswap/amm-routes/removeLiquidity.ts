@@ -83,8 +83,13 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Calculate expected output amounts
-        const lpSupply = poolData.readBigUInt64LE(203);
-        const share = lpTokenAmountToBurn / Number(lpSupply);
+        // Convert LP supply from raw to UI format (LP mint has 9 decimals)
+        const lpSupplyRaw = poolData.readBigUInt64LE(203);
+        const lpMintDecimals = 9;
+        const lpSupply = Number(lpSupplyRaw) / Math.pow(10, lpMintDecimals);
+
+        // Calculate share (both values in UI format)
+        const share = lpTokenAmountToBurn / lpSupply;
         const expectedBaseOut = poolInfo.baseTokenAmount * share;
         const expectedQuoteOut = poolInfo.quoteTokenAmount * share;
 

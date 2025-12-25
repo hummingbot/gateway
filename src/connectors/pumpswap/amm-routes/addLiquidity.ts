@@ -5,6 +5,7 @@ import {
   NATIVE_MINT,
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
+  getMint,
 } from '@solana/spl-token';
 import {
   VersionedTransaction,
@@ -93,16 +94,26 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         const poolData = poolAccountInfo.data;
-        const lpSupply = poolData.readBigUInt64LE(203); // offset 203-210
+        const lpSupplyRaw = poolData.readBigUInt64LE(203); // offset 203-210
+
+        // Get LP mint to convert supply to UI format for calculation
+        const lpMint = new PublicKey(poolData.slice(107, 139));
+        const lpMintDecimals = 9;
+        const lpSupply = Number(lpSupplyRaw) / Math.pow(10, lpMintDecimals);
 
         // Calculate LP tokens based on share of new liquidity
+        // For constant product AMM: LP = (sqrt(newK) - sqrt(oldK)) / sqrt(oldK) * totalSupply
+        // All values in UI format for calculation
         const newBaseReserve = poolInfo.baseTokenAmount + quote.baseTokenAmount;
         const newQuoteReserve = poolInfo.quoteTokenAmount + quote.quoteTokenAmount;
         const newK = newBaseReserve * newQuoteReserve;
         const oldK = poolInfo.baseTokenAmount * poolInfo.quoteTokenAmount;
-        const lpTokenAmountOut = new BN(
-          Math.floor((Number(lpSupply) * (Math.sqrt(newK) - Math.sqrt(oldK))) / Math.sqrt(oldK)).toString(),
-        );
+
+        // Calculate LP tokens in UI format
+        const lpTokenAmountOutUI = (lpSupply * (Math.sqrt(newK) - Math.sqrt(oldK))) / Math.sqrt(oldK);
+
+        // Convert back to raw format for BN
+        const lpTokenAmountOut = new BN(Math.floor(lpTokenAmountOutUI * Math.pow(10, lpMintDecimals)).toString());
 
         // Get base and quote mints
         let offset = 11;
@@ -110,13 +121,10 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const baseMint = new PublicKey(poolData.slice(offset, offset + 32));
         offset += 32;
         const quoteMint = new PublicKey(poolData.slice(offset, offset + 32));
-        offset += 32;
-        const lpMint = new PublicKey(poolData.slice(offset, offset + 32));
 
         // Get token programs
         const baseMintInfo = await solana.connection.getAccountInfo(baseMint);
         const quoteMintInfo = await solana.connection.getAccountInfo(quoteMint);
-        const lpMintInfo = await solana.connection.getAccountInfo(lpMint);
 
         const baseTokenProgram = baseMintInfo?.owner.equals(TOKEN_2022_PROGRAM_ID)
           ? TOKEN_2022_PROGRAM_ID
@@ -124,9 +132,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const quoteTokenProgram = quoteMintInfo?.owner.equals(TOKEN_2022_PROGRAM_ID)
           ? TOKEN_2022_PROGRAM_ID
           : TOKEN_PROGRAM_ID;
-        const lpTokenProgram = lpMintInfo?.owner.equals(TOKEN_2022_PROGRAM_ID)
-          ? TOKEN_2022_PROGRAM_ID
-          : TOKEN_PROGRAM_ID;
+        const lpTokenProgram = TOKEN_2022_PROGRAM_ID;
 
         // Get token accounts
         const userBaseTokenAccount = getAssociatedTokenAddressSync(baseMint, walletPubkey, false, baseTokenProgram);

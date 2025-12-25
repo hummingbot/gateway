@@ -403,7 +403,7 @@ docker compose up -d --build
 - `POST /connectors/{dex}/router/execute-quote` - Execute pre-fetched quote
 - `GET /connectors/0x/router/get-price` - Get price estimate (0x only)
 
-#### AMM Operations (Uniswap V2, PancakeSwap V2, Raydium)
+#### AMM Operations (Uniswap V2, PancakeSwap V2, Raydium, PumpAmm)
 - `GET /connectors/{dex}/amm/pool-info` - Pool information
 - `GET /connectors/{dex}/amm/position-info` - LP position details
 - `POST /connectors/{dex}/amm/add-liquidity` - Add liquidity
