@@ -16,6 +16,7 @@ export interface SolanaNetworkConfig {
 
 export interface SolanaChainConfig {
   defaultNetwork: string;
+  defaultNetworks?: string[];
   defaultWallet: string;
   rpcProvider: string;
 }
@@ -41,6 +42,7 @@ export function getSolanaNetworkConfig(network: string): SolanaNetworkConfig {
 export function getSolanaChainConfig(): SolanaChainConfig {
   return {
     defaultNetwork: ConfigManagerV2.getInstance().get('solana.defaultNetwork'),
+    defaultNetworks: ConfigManagerV2.getInstance().get('solana.defaultNetworks'),
     defaultWallet: ConfigManagerV2.getInstance().get('solana.defaultWallet'),
     rpcProvider: ConfigManagerV2.getInstance().get('solana.rpcProvider') || 'url',
   };
