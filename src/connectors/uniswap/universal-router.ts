@@ -185,7 +185,7 @@ export class UniversalRouterService {
 
     // Calculate route path
     const route = this.extractRoutePath(bestTrade);
-    const routePath = route.join(' -> ');
+    const routePath = route.join(', ');
     logger.info(`[UniversalRouter] Route path: ${routePath}`);
 
     // Skip gas estimation during quote phase - it will be done during execution
@@ -329,19 +329,41 @@ export class UniversalRouterService {
 
   /**
    * Extract route path from a trade
+   * Returns an array of route descriptions with percentages and full token paths
    */
   private extractRoutePath(trade: RouterTrade<Currency, Currency, TradeType>): string[] {
-    const path: string[] = [];
+    const routeDescriptions: string[] = [];
+    const totalInput = trade.inputAmount;
 
-    if (trade.swaps.length > 0) {
-      const firstSwap = trade.swaps[0];
-      const route = firstSwap.route;
+    for (const swap of trade.swaps) {
+      const route = swap.route;
 
-      path.push(route.input.symbol || (route.input as Token).address);
-      path.push(route.output.symbol || (route.output as Token).address);
+      // Get the full path of tokens from the route
+      // route.path contains all tokens including intermediates (e.g., [LINK, WETH, DAI])
+      let pathSymbols: string[];
+      if (route.path && route.path.length > 0) {
+        // Use the full path from the route
+        pathSymbols = route.path.map((currency: Currency) => {
+          const token = currency as Token;
+          return token.symbol || token.address;
+        });
+      } else {
+        // Fallback to input/output if path not available
+        pathSymbols = [
+          route.input.symbol || (route.input as Token).address,
+          route.output.symbol || (route.output as Token).address,
+        ];
+      }
+
+      // Calculate the percentage for this swap
+      const percent = Math.round((parseFloat(swap.inputAmount.toExact()) / parseFloat(totalInput.toExact())) * 100);
+
+      // Format as "X% via TOKEN1 -> TOKEN2 -> TOKEN3"
+      const pathStr = pathSymbols.join(' -> ');
+      routeDescriptions.push(`${percent}% via ${pathStr}`);
     }
 
-    return path;
+    return routeDescriptions;
   }
 
   /**
