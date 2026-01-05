@@ -176,3 +176,111 @@ export type ListHardwareWalletsResponse = Static<typeof ListHardwareWalletsRespo
 export type HardwareWalletInfo = Static<typeof HardwareWalletInfoSchema>;
 export type SetDefaultWalletRequest = Static<typeof SetDefaultWalletRequestSchema>;
 export type SetDefaultWalletResponse = Static<typeof SetDefaultWalletResponseSchema>;
+
+// Create wallet schemas
+export const CreateWalletRequestSchema = Type.Object({
+  chain: Type.String({
+    description: 'Blockchain to create wallet for',
+    enum: ['ethereum', 'solana'],
+    examples: ['solana', 'ethereum'],
+  }),
+  setDefault: Type.Optional(
+    Type.Boolean({
+      description: 'Set this wallet as the default for the chain',
+      default: false,
+    }),
+  ),
+});
+
+export const CreateWalletResponseSchema = Type.Object({
+  address: Type.String({
+    description: 'The wallet address that was created',
+  }),
+  chain: Type.String({
+    description: 'Blockchain name',
+  }),
+});
+
+// Show private key schemas
+export const ShowPrivateKeyRequestSchema = Type.Object({
+  chain: Type.String({
+    description: 'Blockchain of the wallet',
+    enum: ['ethereum', 'solana'],
+    examples: ['solana', 'ethereum'],
+  }),
+  address: Type.String({
+    description: 'Wallet address to get private key for',
+  }),
+  passphrase: Type.String({
+    description: 'Gateway passphrase for decryption (required for security)',
+  }),
+});
+
+export const ShowPrivateKeyResponseSchema = Type.Object({
+  address: Type.String({
+    description: 'The wallet address',
+  }),
+  chain: Type.String({
+    description: 'Blockchain name',
+  }),
+  privateKey: Type.String({
+    description: 'The decrypted private key',
+  }),
+});
+
+// Send transaction schemas
+export const SendTransactionRequestSchema = Type.Object({
+  chain: Type.String({
+    description: 'Blockchain to send transaction on',
+    enum: ['ethereum', 'solana'],
+    examples: ['solana', 'ethereum'],
+  }),
+  network: Type.String({
+    description: 'Network to use',
+    examples: ['mainnet', 'mainnet-beta'],
+  }),
+  address: Type.String({
+    description: 'Sender wallet address',
+  }),
+  toAddress: Type.String({
+    description: 'Recipient wallet address',
+  }),
+  amount: Type.String({
+    description: 'Amount to send (in human-readable format)',
+  }),
+  token: Type.Optional(
+    Type.String({
+      description: 'Token symbol or address (omit for native token)',
+    }),
+  ),
+});
+
+export const SendTransactionResponseSchema = Type.Object({
+  signature: Type.String({
+    description: 'Transaction signature/hash',
+  }),
+  status: Type.Number({
+    description: 'Transaction status: 1 = confirmed, 0 = pending, -1 = failed',
+  }),
+  amount: Type.String({
+    description: 'Amount sent',
+  }),
+  token: Type.String({
+    description: 'Token sent (symbol or native)',
+  }),
+  toAddress: Type.String({
+    description: 'Recipient address',
+  }),
+  fee: Type.Optional(
+    Type.Number({
+      description: 'Transaction fee',
+    }),
+  ),
+});
+
+export type CreateWalletRequest = Static<typeof CreateWalletRequestSchema>;
+export type CreateWalletResponse = Static<typeof CreateWalletResponseSchema>;
+export type ShowPrivateKeyRequest = Static<typeof ShowPrivateKeyRequestSchema>;
+export type ShowPrivateKeyResponse = Static<typeof ShowPrivateKeyResponseSchema>;
+export type SendTransactionRequest = Static<typeof SendTransactionRequestSchema>;
+export type SendTransactionResponse = Static<typeof SendTransactionResponseSchema>;

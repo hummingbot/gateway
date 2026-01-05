@@ -65,9 +65,7 @@ export class Solana {
   public network: string;
   public nativeTokenSymbol: string;
 
-  public tokenList: TokenInfo[] = [];
   public config: SolanaNetworkConfig;
-  private _tokenMap: Record<string, TokenInfo> = {};
   private rpcProviderService?: RPCProvider;
 
   private static _instances: { [name: string]: Solana };
@@ -162,8 +160,6 @@ export class Solana {
 
   private async init(): Promise<void> {
     try {
-      await this.loadTokens();
-
       // Initialize RPC provider service if configured
       if (this.rpcProviderService) {
         await this.rpcProviderService.initialize();
@@ -174,43 +170,30 @@ export class Solana {
     }
   }
 
+  /**
+   * Get the token list from TokenService (reads from disk each time)
+   */
   async getTokenList(): Promise<TokenInfo[]> {
-    // Always return the stored list loaded via TokenService
-    return this.tokenList;
-  }
-
-  async loadTokens(): Promise<void> {
-    try {
-      // Use TokenService to load tokens
-      const tokens = await TokenService.getInstance().loadTokenList('solana', this.network);
-
-      // Convert to TokenInfo format (SPL token registry format)
-      this.tokenList = tokens.map((token) => ({
-        address: token.address,
-        symbol: token.symbol,
-        name: token.name,
-        decimals: token.decimals,
-        chainId: 101, // Solana mainnet chainId
-      }));
-
-      // Create symbol -> token mapping
-      this.tokenList.forEach((token: TokenInfo) => {
-        this._tokenMap[token.symbol] = token;
-      });
-    } catch (error) {
-      logger.error(`Failed to load token list for ${this.network}: ${error.message}`);
-      throw error;
-    }
+    const tokens = await TokenService.getInstance().loadTokenList('solana', this.network);
+    return tokens.map((token) => ({
+      address: token.address,
+      symbol: token.symbol,
+      name: token.name,
+      decimals: token.decimals,
+      chainId: 101, // Solana mainnet chainId
+    }));
   }
 
   async getToken(addressOrSymbol: string): Promise<TokenInfo | null> {
+    const tokenList = await this.getTokenList();
+
     // First try to find by symbol (case-insensitive)
     const normalizedSearch = addressOrSymbol.toUpperCase().trim();
-    let token = this.tokenList.find((token: TokenInfo) => token.symbol.toUpperCase().trim() === normalizedSearch);
+    let token = tokenList.find((token: TokenInfo) => token.symbol.toUpperCase().trim() === normalizedSearch);
 
     // If not found by symbol, try to find by address
     if (!token) {
-      token = this.tokenList.find((token: TokenInfo) => token.address.toLowerCase() === addressOrSymbol.toLowerCase());
+      token = tokenList.find((token: TokenInfo) => token.address.toLowerCase() === addressOrSymbol.toLowerCase());
     }
 
     // If still not found, try to create a new token assuming addressOrSymbol is an address
@@ -278,11 +261,11 @@ export class Solana {
       // Read the wallet file using the safe path
       const encryptedPrivateKey: string = await fse.readFile(safeWalletPath, 'utf8');
 
-      const passphrase = ConfigManagerCertPassphrase.readPassphrase();
-      if (!passphrase) {
-        throw new Error('missing passphrase');
+      const walletKey = ConfigManagerCertPassphrase.readWalletKey();
+      if (!walletKey) {
+        throw new Error('missing wallet encryption key');
       }
-      const decrypted = await this.decrypt(encryptedPrivateKey, passphrase);
+      const decrypted = await this.decrypt(encryptedPrivateKey, walletKey);
 
       return Keypair.fromSecretKey(new Uint8Array(bs58.decode(decrypted)));
     } catch (error) {
@@ -376,6 +359,7 @@ export class Solana {
   async getBalance(wallet: Keypair, symbols?: string[]): Promise<Record<string, number>> {
     const publicKey = wallet.publicKey;
     const balances: Record<string, number> = {};
+    const tokenList = await this.getTokenList();
 
     // Treat empty array as if no tokens were specified
     const effectiveSymbols = symbols && symbols.length === 0 ? undefined : symbols;
@@ -456,7 +440,7 @@ export class Solana {
         }
 
         // Check if it's a token symbol in our list
-        const tokenBySymbol = this.tokenList.find((t) => t.symbol.toUpperCase() === s.toUpperCase());
+        const tokenBySymbol = tokenList.find((t) => t.symbol.toUpperCase() === s.toUpperCase());
 
         if (tokenBySymbol) {
           foundTokens.add(tokenBySymbol.symbol);
@@ -487,7 +471,7 @@ export class Solana {
               const { parsedAccount } = mintToAccount.get(mintAddress);
 
               // Try to get token from our token list
-              const token = this.tokenList.find((t) => t.address === mintAddress);
+              const token = tokenList.find((t) => t.address === mintAddress);
 
               if (token) {
                 // Token is in our list
@@ -514,10 +498,10 @@ export class Solana {
     } else {
       // No symbols provided or empty array - check all tokens in the token list
       // Note: When symbols is an empty array, we check all tokens in the token list
-      logger.info(`Checking balances for all ${this.tokenList.length} tokens in the token list`);
+      logger.info(`Checking balances for all ${tokenList.length} tokens in the token list`);
 
       // Process all tokens from the token list
-      for (const token of this.tokenList) {
+      for (const token of tokenList) {
         // Skip if already processed
         if (token.symbol === 'SOL' || foundTokens.has(token.symbol)) {
           continue;
@@ -768,6 +752,7 @@ export class Solana {
    */
   private async fetchTokenAccounts(publicKey: PublicKey): Promise<Map<string, TokenAccount>> {
     const tokenAccountsMap = new Map<string, TokenAccount>();
+    const tokenList = await this.getTokenList();
 
     try {
       // Fetch all accounts with base64 encoding - works reliably for all providers
@@ -791,7 +776,7 @@ export class Solana {
           const mintAddress = accountInfo.mint.toString();
 
           // Get decimals from token list (only process tokens in our list)
-          const tokenInList = this.tokenList.find((t) => t.address === mintAddress);
+          const tokenInList = tokenList.find((t) => t.address === mintAddress);
           if (!tokenInList) {
             // Skip tokens not in our token list
             logger.debug(`Skipping token ${mintAddress} - not in token list`);
@@ -931,11 +916,13 @@ export class Solana {
     balances: Record<string, number>,
   ): Promise<void> {
     const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
+    const tokenList = await this.getTokenList();
+
     for (const symbol of symbols) {
       if (symbol.toUpperCase() === 'SOL' || symbol === SOL_NATIVE_MINT) continue;
 
       // Try to find token by symbol
-      const tokenInfo = this.tokenList.find((t) => t.symbol.toUpperCase() === symbol.toUpperCase());
+      const tokenInfo = tokenList.find((t) => t.symbol.toUpperCase() === symbol.toUpperCase());
 
       if (tokenInfo) {
         // Token found in list
@@ -965,11 +952,12 @@ export class Solana {
     balances: Record<string, number>,
   ): Promise<void> {
     logger.info('Processing all token accounts (fetchAll=true)');
+    const tokenList = await this.getTokenList();
 
     for (const [mintAddress, tokenAccount] of tokenAccounts) {
       try {
         // Check if token is in our list
-        const tokenInfo = this.tokenList.find((t) => t.address === mintAddress);
+        const tokenInfo = tokenList.find((t) => t.address === mintAddress);
 
         if (tokenInfo) {
           const balance = this.getTokenBalance(tokenAccount, tokenInfo.decimals);
@@ -994,9 +982,10 @@ export class Solana {
     tokenAccounts: Map<string, TokenAccount>,
     balances: Record<string, number>,
   ): Promise<void> {
-    logger.info(`Checking balances for ${this.tokenList.length} tokens in token list`);
+    const tokenList = await this.getTokenList();
+    logger.info(`Checking balances for ${tokenList.length} tokens in token list`);
 
-    for (const tokenInfo of this.tokenList) {
+    for (const tokenInfo of tokenList) {
       if (tokenInfo.symbol === 'SOL') continue;
 
       const tokenAccount = tokenAccounts.get(tokenInfo.address);

@@ -161,10 +161,6 @@ export const TokenOperationResponseSchema = Type.Object({
   message: Type.String({
     description: 'Success message',
   }),
-  requiresRestart: Type.Boolean({
-    description: 'Whether gateway restart is required',
-    default: true,
-  }),
 });
 
 export type TokenOperationResponse = typeof TokenOperationResponseSchema.static;

@@ -32,6 +32,7 @@
     "test:cov": "GATEWAY_TEST_MODE=dev jest --runInBand --coverage ./test/",
     "test:scripts": "GATEWAY_TEST_MODE=dev jest --runInBand ./test-scripts/*.test.ts",
     "typecheck": "tsc --noEmit",
+    "wallet:create": "npx ts-node scripts/create-wallet.ts",
     "generate:openapi": "curl http://localhost:15888/docs/json -o openapi.json && echo 'OpenAPI spec saved to openapi.json'",
     "rebuild-bigint": "cd node_modules/bigint-buffer && pnpm run rebuild",
     "prepare": "pnpm husky"
