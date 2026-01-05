@@ -171,7 +171,8 @@ describe('Solana Wallet Operations', () => {
         },
       });
 
-      expect(response.statusCode).toBe(500);
+      // With sensible plugin, validation errors return 400 (bad request) instead of 500
+      expect(response.statusCode).toBe(400);
     });
 
     it('should fail with missing parameters', async () => {
@@ -356,7 +357,8 @@ describe('Solana Wallet Operations', () => {
         },
       });
 
-      expect(response.statusCode).toBe(500);
+      // With sensible plugin, validation errors return 400 (bad request) instead of 500
+      expect(response.statusCode).toBe(400);
     });
   });
 });

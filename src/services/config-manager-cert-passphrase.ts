@@ -10,6 +10,10 @@ export namespace ConfigManagerCertPassphrase {
     _exit: process.exit,
   };
 
+  /**
+   * Read the passphrase for SSL/startup from command line or environment.
+   * This is used for server initialization, SSL certificates, and wallet encryption.
+   */
   export const readPassphrase = (): string | undefined => {
     const argv = argvParser(process.argv, { string: [PASSPHRASE_ARGUMENT] });
     if (argv[PASSPHRASE_ARGUMENT]) {
@@ -25,5 +29,13 @@ export namespace ConfigManagerCertPassphrase {
     );
     bindings._exit();
     return;
+  };
+
+  /**
+   * Read the wallet encryption key.
+   * Uses the passphrase for wallet encryption.
+   */
+  export const readWalletKey = (): string | undefined => {
+    return readPassphrase();
   };
 }

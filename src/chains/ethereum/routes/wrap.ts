@@ -29,12 +29,14 @@ const WETH9ABI = [
  * @param ethereum Ethereum instance
  * @returns Wrapped token info (address, symbol, nativeSymbol)
  */
-function getWrappedTokenInfo(ethereum: Ethereum): { address: string; symbol: string; nativeSymbol: string } {
+async function getWrappedTokenInfo(
+  ethereum: Ethereum,
+): Promise<{ address: string; symbol: string; nativeSymbol: string }> {
   const nativeSymbol = ethereum.nativeTokenSymbol;
   const wrappedSymbol = `W${nativeSymbol}`;
 
-  // Look up wrapped token in token map
-  const wrappedToken = ethereum.tokenMap[wrappedSymbol];
+  // Look up wrapped token in token list
+  const wrappedToken = await ethereum.getToken(wrappedSymbol);
 
   if (!wrappedToken) {
     throw new Error(
@@ -58,7 +60,7 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
   // Get wrapped token info from token list
   let wrappedInfo;
   try {
-    wrappedInfo = getWrappedTokenInfo(ethereum);
+    wrappedInfo = await getWrappedTokenInfo(ethereum);
   } catch (error: any) {
     throw fastify.httpErrors.badRequest(error.message);
   }

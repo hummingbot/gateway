@@ -1,3 +1,14 @@
+import {
+  getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountInstruction,
+  createTransferInstruction,
+  TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+} from '@solana/spl-token';
+import { Keypair, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
+import bs58 from 'bs58';
+import { BigNumber, Wallet, utils } from 'ethers';
 import { FastifyInstance } from 'fastify';
 import fse from 'fs-extra';
 
@@ -16,7 +27,13 @@ import { logger } from '../services/logger';
 import {
   AddWalletRequest,
   AddWalletResponse,
+  CreateWalletRequest,
+  CreateWalletResponse,
   RemoveWalletRequest,
+  SendTransactionRequest,
+  SendTransactionResponse,
+  ShowPrivateKeyRequest,
+  ShowPrivateKeyResponse,
   SignMessageRequest,
   SignMessageResponse,
   GetWalletResponse,
@@ -74,9 +91,9 @@ export async function mkdirIfDoesNotExist(path: string): Promise<void> {
 }
 
 export async function addWallet(fastify: FastifyInstance, req: AddWalletRequest): Promise<AddWalletResponse> {
-  const passphrase = ConfigManagerCertPassphrase.readPassphrase();
-  if (!passphrase) {
-    throw fastify.httpErrors.internalServerError('No passphrase configured');
+  const walletKey = ConfigManagerCertPassphrase.readWalletKey();
+  if (!walletKey) {
+    throw fastify.httpErrors.internalServerError('No wallet encryption key configured');
   }
 
   // Validate chain name
@@ -105,12 +122,12 @@ export async function addWallet(fastify: FastifyInstance, req: AddWalletRequest)
       address = connection.getWalletFromPrivateKey(req.privateKey).address;
       // Further validate Ethereum address
       address = Ethereum.validateAddress(address);
-      encryptedPrivateKey = await connection.encrypt(req.privateKey, passphrase);
+      encryptedPrivateKey = await connection.encrypt(req.privateKey, walletKey);
     } else if (connection instanceof Solana) {
       address = connection.getKeypairFromPrivateKey(req.privateKey).publicKey.toBase58();
       // Further validate Solana address
       address = Solana.validateAddress(address);
-      encryptedPrivateKey = await connection.encrypt(req.privateKey, passphrase);
+      encryptedPrivateKey = await connection.encrypt(req.privateKey, walletKey);
     }
 
     if (address === undefined || encryptedPrivateKey === undefined) {
@@ -348,4 +365,348 @@ export async function isHardwareWallet(chain: string, address: string): Promise<
 export async function getHardwareWalletByAddress(chain: string, address: string): Promise<HardwareWalletData | null> {
   const wallets = await getHardwareWallets(chain);
   return wallets.find((w) => w.address === address) || null;
+}
+
+/**
+ * Generate a new wallet and add it to Gateway
+ */
+export async function createWallet(fastify: FastifyInstance, req: CreateWalletRequest): Promise<CreateWalletResponse> {
+  const walletKey = ConfigManagerCertPassphrase.readWalletKey();
+  if (!walletKey) {
+    throw fastify.httpErrors.internalServerError('No wallet encryption key configured');
+  }
+
+  // Validate chain name
+  if (!validateChainName(req.chain)) {
+    throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
+  }
+
+  let address: string;
+  let privateKey: string;
+  let encryptedPrivateKey: string;
+
+  // Default to mainnet-beta for Solana or mainnet for other chains
+  const network = req.chain === 'solana' ? 'mainnet-beta' : 'mainnet';
+
+  try {
+    if (req.chain.toLowerCase() === 'solana') {
+      // Generate Solana keypair
+      const keypair = Keypair.generate();
+      address = keypair.publicKey.toBase58();
+      privateKey = bs58.encode(keypair.secretKey);
+
+      // Get Solana connection for encryption
+      const connection = await getInitializedChain<Solana>(req.chain, network);
+      encryptedPrivateKey = await connection.encrypt(privateKey, walletKey);
+    } else if (req.chain.toLowerCase() === 'ethereum') {
+      // Generate Ethereum wallet
+      const wallet = Wallet.createRandom();
+      address = wallet.address;
+      privateKey = wallet.privateKey;
+
+      // Get Ethereum connection for encryption
+      const connection = await getInitializedChain<Ethereum>(req.chain, network);
+      encryptedPrivateKey = await connection.encrypt(privateKey, walletKey);
+    } else {
+      throw new Error(`Unsupported chain: ${req.chain}`);
+    }
+  } catch (e: unknown) {
+    if (e instanceof UnsupportedChainException) {
+      throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
+    }
+    throw e;
+  }
+
+  // Create safe path for wallet storage
+  const safeChain = sanitizePathComponent(req.chain.toLowerCase());
+  const path = `${walletPath}/${safeChain}`;
+
+  await mkdirIfDoesNotExist(path);
+
+  // Sanitize address for filename
+  const safeAddress = sanitizePathComponent(address);
+  await fse.writeFile(`${path}/${safeAddress}.json`, encryptedPrivateKey);
+
+  // Update default wallet if requested
+  if (req.setDefault) {
+    updateDefaultWallet(fastify, req.chain, address);
+  }
+
+  logger.info(`Created new ${req.chain} wallet: ${address}`);
+
+  return { address, chain: req.chain };
+}
+
+/**
+ * Show private key for a wallet (requires explicit passphrase verification)
+ */
+export async function showPrivateKey(
+  fastify: FastifyInstance,
+  req: ShowPrivateKeyRequest,
+): Promise<ShowPrivateKeyResponse> {
+  // Verify the provided passphrase matches the configured passphrase
+  const configuredPassphrase = ConfigManagerCertPassphrase.readPassphrase();
+  if (!configuredPassphrase) {
+    throw fastify.httpErrors.internalServerError('No passphrase configured');
+  }
+
+  if (req.passphrase !== configuredPassphrase) {
+    logger.warn(`Invalid passphrase provided for show-private-key request on ${req.chain}`);
+    throw fastify.httpErrors.unauthorized('Invalid passphrase');
+  }
+
+  // Validate chain name
+  if (!validateChainName(req.chain)) {
+    throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
+  }
+
+  // Validate the address based on chain type
+  let validatedAddress: string;
+  if (req.chain.toLowerCase() === 'ethereum') {
+    validatedAddress = Ethereum.validateAddress(req.address);
+  } else if (req.chain.toLowerCase() === 'solana') {
+    validatedAddress = Solana.validateAddress(req.address);
+  } else {
+    throw fastify.httpErrors.badRequest(`Unsupported chain: ${req.chain}`);
+  }
+
+  // Check if it's a hardware wallet (cannot show private key)
+  const isHardware = await isHardwareWallet(req.chain, validatedAddress);
+  if (isHardware) {
+    throw fastify.httpErrors.badRequest('Cannot show private key for hardware wallet');
+  }
+
+  // Read and decrypt the private key
+  const safeChain = sanitizePathComponent(req.chain.toLowerCase());
+  const safeAddress = sanitizePathComponent(validatedAddress);
+  const walletFilePath = `${walletPath}/${safeChain}/${safeAddress}.json`;
+
+  try {
+    const encryptedPrivateKey = await fse.readFile(walletFilePath, 'utf8');
+
+    // Default to mainnet-beta for Solana or mainnet for other chains
+    const network = req.chain === 'solana' ? 'mainnet-beta' : 'mainnet';
+
+    let privateKey: string;
+
+    if (req.chain.toLowerCase() === 'solana') {
+      const solana = await Solana.getInstance(network);
+      privateKey = await solana.decrypt(encryptedPrivateKey, configuredPassphrase);
+    } else {
+      const ethereum = await Ethereum.getInstance(network);
+      const wallet = await ethereum.decrypt(encryptedPrivateKey, configuredPassphrase);
+      privateKey = wallet.privateKey;
+    }
+
+    logger.info(`Private key requested for ${req.chain} wallet: ${validatedAddress}`);
+
+    return {
+      address: validatedAddress,
+      chain: req.chain,
+      privateKey,
+    };
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw fastify.httpErrors.notFound(`Wallet not found: ${validatedAddress}`);
+    }
+    throw fastify.httpErrors.internalServerError(`Failed to decrypt wallet: ${(error as Error).message}`);
+  }
+}
+
+/**
+ * Send a transaction (native token or SPL/ERC20 token transfer)
+ */
+export async function sendTransaction(
+  fastify: FastifyInstance,
+  req: SendTransactionRequest,
+): Promise<SendTransactionResponse> {
+  // Validate chain name
+  if (!validateChainName(req.chain)) {
+    throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
+  }
+
+  // Validate addresses based on chain type
+  let validatedFromAddress: string;
+  let validatedToAddress: string;
+
+  if (req.chain.toLowerCase() === 'ethereum') {
+    validatedFromAddress = Ethereum.validateAddress(req.address);
+    validatedToAddress = Ethereum.validateAddress(req.toAddress);
+  } else if (req.chain.toLowerCase() === 'solana') {
+    validatedFromAddress = Solana.validateAddress(req.address);
+    validatedToAddress = Solana.validateAddress(req.toAddress);
+  } else {
+    throw fastify.httpErrors.badRequest(`Unsupported chain: ${req.chain}`);
+  }
+
+  // Check if it's a hardware wallet (not supported for send)
+  const isHardware = await isHardwareWallet(req.chain, validatedFromAddress);
+  if (isHardware) {
+    throw fastify.httpErrors.badRequest('Send from hardware wallet not supported via API');
+  }
+
+  if (req.chain.toLowerCase() === 'solana') {
+    return await sendSolanaTransaction(fastify, req, validatedFromAddress, validatedToAddress);
+  } else {
+    return await sendEthereumTransaction(fastify, req, validatedFromAddress, validatedToAddress);
+  }
+}
+
+/**
+ * Send a Solana transaction
+ */
+async function sendSolanaTransaction(
+  fastify: FastifyInstance,
+  req: SendTransactionRequest,
+  fromAddress: string,
+  toAddress: string,
+): Promise<SendTransactionResponse> {
+  const solana = await Solana.getInstance(req.network);
+  const wallet = await solana.getWallet(fromAddress);
+  const amount = parseFloat(req.amount);
+  const toPubkey = new PublicKey(toAddress);
+
+  if (isNaN(amount) || amount <= 0) {
+    throw fastify.httpErrors.badRequest('Invalid amount');
+  }
+
+  const transaction = new Transaction();
+  let tokenSymbol: string;
+
+  if (!req.token || req.token.toUpperCase() === 'SOL') {
+    // Native SOL transfer
+    const lamports = Math.floor(amount * 1e9);
+    transaction.add(
+      SystemProgram.transfer({
+        fromPubkey: wallet.publicKey,
+        toPubkey,
+        lamports,
+      }),
+    );
+    tokenSymbol = 'SOL';
+  } else {
+    // SPL/Token2022 token transfer
+    const tokenInfo = await solana.getToken(req.token);
+    if (!tokenInfo) {
+      throw fastify.httpErrors.badRequest(`Token not found: ${req.token}`);
+    }
+
+    const mintPubkey = new PublicKey(tokenInfo.address);
+
+    // Detect if this is a Token2022 token by checking the mint account owner
+    const mintAccountInfo = await solana.connection.getAccountInfo(mintPubkey);
+    if (!mintAccountInfo) {
+      throw fastify.httpErrors.badRequest(`Token mint not found on-chain: ${tokenInfo.address}`);
+    }
+
+    const programId = mintAccountInfo.owner.equals(TOKEN_2022_PROGRAM_ID) ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID;
+
+    const fromTokenAccount = getAssociatedTokenAddressSync(mintPubkey, wallet.publicKey, false, programId);
+    const toTokenAccount = getAssociatedTokenAddressSync(mintPubkey, toPubkey, false, programId);
+
+    // Check if recipient's ATA exists, create it if not
+    const toTokenAccountInfo = await solana.connection.getAccountInfo(toTokenAccount);
+    if (!toTokenAccountInfo) {
+      logger.info(`Creating ATA for recipient ${toAddress} for token ${tokenInfo.symbol}`);
+      transaction.add(
+        createAssociatedTokenAccountInstruction(
+          wallet.publicKey, // payer
+          toTokenAccount, // associatedToken
+          toPubkey, // owner
+          mintPubkey, // mint
+          programId, // programId
+          ASSOCIATED_TOKEN_PROGRAM_ID, // associatedTokenProgramId
+        ),
+      );
+    }
+
+    const tokenAmount = Math.floor(amount * Math.pow(10, tokenInfo.decimals));
+
+    transaction.add(
+      createTransferInstruction(fromTokenAccount, toTokenAccount, wallet.publicKey, tokenAmount, [], programId),
+    );
+    tokenSymbol = tokenInfo.symbol;
+  }
+
+  try {
+    const { signature, fee } = await solana.sendAndConfirmTransaction(transaction, [wallet]);
+
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      amount: req.amount,
+      token: tokenSymbol,
+      toAddress,
+      fee,
+    };
+  } catch (error: unknown) {
+    logger.error(`Solana send failed: ${(error as Error).message}`);
+    throw fastify.httpErrors.internalServerError(`Transaction failed: ${(error as Error).message}`);
+  }
+}
+
+/**
+ * Send an Ethereum transaction
+ */
+async function sendEthereumTransaction(
+  fastify: FastifyInstance,
+  req: SendTransactionRequest,
+  fromAddress: string,
+  toAddress: string,
+): Promise<SendTransactionResponse> {
+  const ethereum = await Ethereum.getInstance(req.network);
+  const wallet = await ethereum.getWallet(fromAddress);
+  const amount = parseFloat(req.amount);
+
+  if (isNaN(amount) || amount <= 0) {
+    throw fastify.httpErrors.badRequest('Invalid amount');
+  }
+
+  let tokenSymbol: string;
+  let txResponse;
+
+  if (!req.token || req.token.toUpperCase() === ethereum.nativeTokenSymbol) {
+    // Native token transfer (ETH, MATIC, etc.)
+    const gasOptions = await ethereum.prepareGasOptions();
+    const amountWei = utils.parseEther(req.amount);
+
+    txResponse = await wallet.sendTransaction({
+      to: toAddress,
+      value: amountWei,
+      ...gasOptions,
+    });
+    tokenSymbol = ethereum.nativeTokenSymbol;
+  } else {
+    // ERC20 token transfer
+    const tokenInfo = await ethereum.getToken(req.token);
+    if (!tokenInfo) {
+      throw fastify.httpErrors.badRequest(`Token not found: ${req.token}`);
+    }
+
+    const contract = ethereum.getContract(tokenInfo.address, wallet);
+    const tokenAmount = utils.parseUnits(req.amount, tokenInfo.decimals);
+
+    const gasOptions = await ethereum.prepareGasOptions();
+    txResponse = await contract.transfer(toAddress, tokenAmount, gasOptions);
+    tokenSymbol = tokenInfo.symbol;
+  }
+
+  try {
+    const receipt = await ethereum.handleTransactionExecution(txResponse);
+    const fee = receipt.gasUsed
+      ? parseFloat(utils.formatEther(receipt.gasUsed.mul(receipt.effectiveGasPrice || BigNumber.from(0))))
+      : 0;
+
+    return {
+      signature: txResponse.hash,
+      status: receipt.status === 1 ? 1 : receipt.blockNumber ? -1 : 0,
+      amount: req.amount,
+      token: tokenSymbol,
+      toAddress,
+      fee,
+    };
+  } catch (error: unknown) {
+    logger.error(`Ethereum send failed: ${(error as Error).message}`);
+    throw fastify.httpErrors.internalServerError(`Transaction failed: ${(error as Error).message}`);
+  }
 }

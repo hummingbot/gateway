@@ -167,10 +167,7 @@ describe('Token Routes', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body).toEqual({
-        message: 'Token TEST added/updated successfully in ethereum/mainnet. Gateway restart required.',
-        requiresRestart: true,
-      });
+      expect(body.message).toBe('Token TEST added/updated successfully in ethereum/mainnet.');
     });
 
     it('should return 400 for invalid token data', async () => {
@@ -214,10 +211,7 @@ describe('Token Routes', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body).toEqual({
-        message: 'Token TEST added/updated successfully in ethereum/mainnet. Gateway restart required.',
-        requiresRestart: true,
-      });
+      expect(body.message).toBe('Token TEST added/updated successfully in ethereum/mainnet.');
     });
   });
 
@@ -233,11 +227,9 @@ describe('Token Routes', () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body).toEqual({
-        message:
-          'Token with address 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 removed successfully from ethereum/mainnet. Gateway restart required.',
-        requiresRestart: true,
-      });
+      expect(body.message).toBe(
+        'Token with address 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 removed successfully from ethereum/mainnet.',
+      );
     });
 
     it('should return 404 when token not found', async () => {

@@ -30,8 +30,6 @@ export type NewDebugMsgHandler = (msg: any) => void;
 export class Ethereum {
   private static _instances: { [name: string]: Ethereum };
   public provider: providers.StaticJsonRpcProvider;
-  public tokenList: TokenInfo[] = [];
-  public tokenMap: Record<string, TokenInfo> = {};
   public network: string;
   public nativeTokenSymbol: string;
   public chainId: number;
@@ -447,7 +445,6 @@ export class Ethereum {
    */
   public async init(): Promise<void> {
     try {
-      await this.loadTokens();
       this._initialized = true;
     } catch (e) {
       logger.error(`Failed to initialize Ethereum chain: ${e}`);
@@ -456,36 +453,15 @@ export class Ethereum {
   }
 
   /**
-   * Load tokens from the token list source
+   * Get all tokens from the token list (reads from disk each time)
    */
-  public async loadTokens(): Promise<void> {
-    logger.info(`Loading tokens for ethereum/${this.network} using TokenService`);
-    try {
-      // Use TokenService to load tokens
-      const tokens = await TokenService.getInstance().loadTokenList('ethereum', this.network);
-
-      // Convert to TokenInfo format with chainId and normalize addresses
-      this.tokenList = tokens.map((token) => ({
-        ...token,
-        address: getAddress(token.address), // Normalize to checksummed address
-        chainId: this.chainId,
-      }));
-
-      if (this.tokenList) {
-        // Build token map for faster lookups
-        this.tokenList.forEach((token: TokenInfo) => (this.tokenMap[token.symbol] = token));
-      }
-    } catch (error) {
-      logger.error(`Failed to load token list: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Get all tokens loaded from the token list
-   */
-  public get storedTokenList(): TokenInfo[] {
-    return Object.values(this.tokenMap);
+  public async getTokenList(): Promise<TokenInfo[]> {
+    const tokens = await TokenService.getInstance().loadTokenList('ethereum', this.network);
+    return tokens.map((token) => ({
+      ...token,
+      address: getAddress(token.address), // Normalize to checksummed address
+      chainId: this.chainId,
+    }));
   }
 
   /**
@@ -494,8 +470,10 @@ export class Ethereum {
    * @returns TokenInfo object or undefined if token not found in local list
    */
   public async getToken(tokenSymbol: string): Promise<TokenInfo | undefined> {
+    const tokenList = await this.getTokenList();
+
     // First try to find token by symbol
-    const tokenBySymbol = this.tokenList.find(
+    const tokenBySymbol = tokenList.find(
       (token: TokenInfo) => token.symbol.toUpperCase() === tokenSymbol.toUpperCase() && token.chainId === this.chainId,
     );
 
@@ -507,7 +485,7 @@ export class Ethereum {
     try {
       const normalizedAddress = utils.getAddress(tokenSymbol);
       // Try to find token by normalized address
-      return this.tokenList.find(
+      return tokenList.find(
         (token: TokenInfo) =>
           token.address.toLowerCase() === normalizedAddress.toLowerCase() && token.chainId === this.chainId,
       );
@@ -567,11 +545,11 @@ export class Ethereum {
       const path = `${walletPath}/ethereum`;
       const encryptedPrivateKey = await fse.readFile(`${path}/${validatedAddress}.json`, 'utf8');
 
-      const passphrase = ConfigManagerCertPassphrase.readPassphrase();
-      if (!passphrase) {
-        throw new Error('Missing passphrase');
+      const walletKey = ConfigManagerCertPassphrase.readWalletKey();
+      if (!walletKey) {
+        throw new Error('Missing wallet encryption key');
       }
-      return await this.decrypt(encryptedPrivateKey, passphrase);
+      return await this.decrypt(encryptedPrivateKey, walletKey);
     } catch (error) {
       if (error.message.includes('Invalid Ethereum address')) {
         throw error; // Re-throw validation errors
@@ -1119,10 +1097,11 @@ export class Ethereum {
     isHardware: boolean,
     balances: Record<string, number>,
   ): Promise<void> {
-    logger.info(`Checking balances for all ${this.storedTokenList.length} tokens in the token list`);
+    const tokenList = await this.getTokenList();
+    logger.info(`Checking balances for all ${tokenList.length} tokens in the token list`);
 
     await Promise.all(
-      this.storedTokenList.map(async (token) => {
+      tokenList.map(async (token) => {
         try {
           const contract = this.getContract(token.address, this.provider);
           const balance = isHardware
