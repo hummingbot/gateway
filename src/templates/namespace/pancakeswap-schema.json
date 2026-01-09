@@ -9,8 +9,12 @@
     "maximumHops": {
       "type": "integer",
       "description": "Maximum number of hops to consider for each swap"
+    },
+    "maximumSplits": {
+      "type": "integer",
+      "description": "Maximum number of split routes for optimal execution (e.g., 60% via V3, 40% via V2)"
     }
   },
   "additionalProperties": false,
-  "required": ["slippagePct", "maximumHops"]
+  "required": ["slippagePct", "maximumHops", "maximumSplits"]
 }
