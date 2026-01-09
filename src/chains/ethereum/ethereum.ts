@@ -928,23 +928,34 @@ export class Ethereum {
     return ethers.utils.isAddress(address);
   }
 
-  public async handleTransactionExecution(tx: TransactionResponse): Promise<providers.TransactionReceipt | null> {
+  public async handleTransactionExecution(tx: TransactionResponse): Promise<providers.TransactionReceipt> {
     return await Promise.race([
       tx.wait(1).then((receipt) => {
-        // Transaction confirmed (status: 1) or failed/reverted (status: 0)
+        // Transaction confirmed
         logger.info(
           `Transaction ${tx.hash} ${receipt.status === 1 ? 'confirmed' : 'failed'} in block ${receipt.blockNumber}`,
         );
         return receipt;
       }),
-      new Promise<null>((resolve) =>
+      new Promise<providers.TransactionReceipt>((resolve) =>
         setTimeout(() => {
-          // Timeout reached, transaction is still pending
-          // Return null to indicate pending - the caller should check for null
-          // Note: Do NOT return a fake receipt with status: 0, because in Ethereum
-          // receipt.status === 0 means "reverted/failed", not "pending"
+          // Timeout reached, treat as pending
           logger.warn(`Transaction ${tx.hash} is still pending after timeout`);
-          resolve(null);
+          resolve({
+            transactionHash: tx.hash,
+            blockHash: '',
+            blockNumber: null,
+            transactionIndex: null,
+            from: tx.from,
+            to: tx.to || null,
+            cumulativeGasUsed: BigNumber.from(0),
+            gasUsed: BigNumber.from(0),
+            contractAddress: null,
+            logs: [],
+            logsBloom: '',
+            status: 0, // PENDING
+            effectiveGasPrice: BigNumber.from(0),
+          } as providers.TransactionReceipt);
         }, this._transactionExecutionTimeoutMs),
       ),
     ]);
@@ -968,7 +979,6 @@ export class Ethereum {
     expectedAmountIn: number,
     expectedAmountOut: number,
     side?: 'BUY' | 'SELL',
-    txHash?: string, // Optional tx hash for pending transactions
   ): {
     signature: string;
     status: number;
@@ -986,8 +996,8 @@ export class Ethereum {
       // Transaction receipt not available - still pending
       logger.warn('Transaction pending, no receipt available yet');
       return {
-        signature: txHash || '', // Use provided txHash for pending transactions
-        status: 0, // PENDING (TransactionStatus.PENDING = 0)
+        signature: '',
+        status: 0, // PENDING
         data: undefined,
       };
     }
@@ -999,7 +1009,7 @@ export class Ethereum {
       logger.error(`Transaction ${signature} failed on-chain`);
       return {
         signature,
-        status: -1, // FAILED (TransactionStatus.FAILED = -1)
+        status: -1, // FAILED
         data: {
           tokenIn: inputToken,
           tokenOut: outputToken,
