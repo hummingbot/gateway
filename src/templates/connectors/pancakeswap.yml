@@ -1,9 +1,6 @@
-# Global settings for PancakeSwap
+# Global settings for Uniswap
 # Default slippage percentage for swaps (2%)
 slippagePct: 2
 
 # For each swap, the maximum number of hops to consider
 maximumHops: 4
-
-# Maximum number of split routes for optimal execution (e.g., 60% via V3, 40% via V2)
-maximumSplits: 4

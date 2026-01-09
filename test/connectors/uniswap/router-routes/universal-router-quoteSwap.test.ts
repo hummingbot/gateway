@@ -10,7 +10,15 @@ jest.mock('../../../../src/connectors/uniswap/uniswap');
 jest.mock('uuid');
 
 // Create a variable to store the mock implementation
-const mockGetAlphaRouterQuote = jest.fn();
+const mockGetQuote = jest.fn();
+const mockUniversalRouterService = {
+  getQuote: mockGetQuote,
+};
+
+// Mock the UniversalRouterService
+jest.mock('../../../../src/connectors/uniswap/universal-router', () => ({
+  UniversalRouterService: jest.fn().mockImplementation(() => mockUniversalRouterService),
+}));
 
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
@@ -51,16 +59,20 @@ describe('GET /quote-swap', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Reset the AlphaRouter mock to default behavior
-    // This matches the AlphaRouterQuoteResult interface
-    mockGetAlphaRouterQuote.mockResolvedValue({
-      route: { trade: { priceImpact: { toSignificant: () => '0.3' } } },
-      inputAmount: '1',
-      outputAmount: '3000',
+    // Reset the UniversalRouterService mock to default behavior
+    mockGetQuote.mockResolvedValue({
+      trade: {
+        inputAmount: { toExact: () => '1' },
+        outputAmount: { toExact: () => '3000' },
+        priceImpact: { toSignificant: () => '0.3' },
+      },
+      route: ['WETH', 'USDC'],
+      routePath: 'WETH -> USDC',
       priceImpact: 0.3,
-      routeString: 'WETH -> USDC',
-      gasEstimate: '300000',
-      gasEstimateUSD: '5.00',
+      estimatedGasUsed: { toString: () => '300000' },
+      estimatedGasUsedQuoteToken: { toExact: () => '0.5' },
+      quote: { toExact: () => '3000' },
+      quoteGasAdjusted: { toExact: () => '2999.5' },
       methodParameters: {
         calldata: '0x1234567890',
         value: '0x0',
@@ -104,7 +116,7 @@ describe('GET /quote-swap', () => {
     mockUniswap = {
       router: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
       getUniswapToken: jest.fn().mockImplementation((tokenInfo) => tokenInfo),
-      getAlphaRouterQuote: mockGetAlphaRouterQuote,
+      getUniversalRouterQuote: mockGetQuote,
     };
 
     (Ethereum.getInstance as jest.Mock).mockReturnValue(mockEthereum);
@@ -173,15 +185,20 @@ describe('GET /quote-swap', () => {
   });
 
   it('should return a valid quote for BUY side', async () => {
-    // Update mock for BUY side - AlphaRouterQuoteResult format
-    mockGetAlphaRouterQuote.mockResolvedValue({
-      route: { trade: { priceImpact: { toSignificant: () => '0.3' } } },
-      inputAmount: '3000',
-      outputAmount: '1',
+    // Update mock for BUY side
+    mockGetQuote.mockResolvedValue({
+      trade: {
+        inputAmount: { toExact: () => '3000' },
+        outputAmount: { toExact: () => '1' },
+        priceImpact: { toSignificant: () => '0.3' },
+      },
+      route: ['USDC', 'WETH'],
+      routePath: 'USDC -> WETH',
       priceImpact: 0.3,
-      routeString: 'USDC -> WETH',
-      gasEstimate: '300000',
-      gasEstimateUSD: '5.00',
+      estimatedGasUsed: { toString: () => '300000' },
+      estimatedGasUsedQuoteToken: { toExact: () => '0.5' },
+      quote: { toExact: () => '1' },
+      quoteGasAdjusted: { toExact: () => '0.9995' },
       methodParameters: {
         calldata: '0x1234567890',
         value: '0x0',

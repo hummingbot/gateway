@@ -18,7 +18,6 @@ export namespace PancakeswapConfig {
     // Global configuration
     slippagePct: number;
     maximumHops: number;
-    maximumSplits: number;
 
     // Available networks
     availableNetworks: Array<AvailableNetworks>;
@@ -26,8 +25,7 @@ export namespace PancakeswapConfig {
 
   export const config: RootConfig = {
     slippagePct: ConfigManagerV2.getInstance().get('pancakeswap.slippagePct'),
-    maximumHops: ConfigManagerV2.getInstance().get('pancakeswap.maximumHops'),
-    maximumSplits: ConfigManagerV2.getInstance().get('pancakeswap.maximumSplits'),
+    maximumHops: ConfigManagerV2.getInstance().get('pancakeswap.maximumHops') || 4,
 
     availableNetworks: [
       {
