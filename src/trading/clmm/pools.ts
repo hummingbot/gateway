@@ -34,13 +34,6 @@ const UnifiedPoolInfoRequestSchema = Type.Object({
     description: 'Pool contract address',
     examples: [CLMM_POOL_ADDRESS_EXAMPLE],
   }),
-  bins: Type.Optional(
-    Type.Boolean({
-      description: 'Include bin liquidity data (Meteora only)',
-      default: false,
-      examples: [true],
-    }),
-  ),
 });
 
 type UnifiedPoolInfoRequest = Static<typeof UnifiedPoolInfoRequestSchema>;
@@ -71,7 +64,6 @@ async function getSolanaPoolInfo(
   connector: string,
   network: string,
   poolAddress: string,
-  bins?: boolean,
 ): Promise<PoolInfo> {
   logger.info(`[CLMM] Getting pool info from ${connector} on solana/${network}`);
 
@@ -79,7 +71,7 @@ async function getSolanaPoolInfo(
     case 'raydium':
       return await raydiumGetPoolInfo(fastify, network, poolAddress);
     case 'meteora':
-      return await meteoraGetPoolInfo(fastify, network, poolAddress, bins);
+      return await meteoraGetPoolInfo(fastify, network, poolAddress);
     case 'pancakeswap-sol':
       return await pancakeswapSolGetPoolInfo(fastify, network, poolAddress);
     case 'orca':
@@ -118,7 +110,6 @@ export async function getUnifiedPoolInfo(
   connector: string,
   chainNetwork: string,
   poolAddress: string,
-  bins?: boolean,
 ): Promise<PoolInfo> {
   const { chain, network } = parseChainNetwork(chainNetwork);
 
@@ -129,7 +120,7 @@ export async function getUnifiedPoolInfo(
       return getEthereumPoolInfo(fastify, connector, network, poolAddress);
 
     case 'solana':
-      return getSolanaPoolInfo(fastify, connector, network, poolAddress, bins);
+      return getSolanaPoolInfo(fastify, connector, network, poolAddress);
 
     default:
       throw fastify.httpErrors.badRequest(`Unsupported chain: ${chain}`);
@@ -157,10 +148,10 @@ export const poolsRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request, reply) => {
-      const { connector, chainNetwork, poolAddress, bins } = request.query;
+      const { connector, chainNetwork, poolAddress } = request.query;
 
       try {
-        const result = await getUnifiedPoolInfo(fastify, connector, chainNetwork, poolAddress, bins);
+        const result = await getUnifiedPoolInfo(fastify, connector, chainNetwork, poolAddress);
         return reply.code(200).send(result);
       } catch (error: any) {
         logger.error(`[UnifiedCLMM] Pool info error: ${error.message}`);
