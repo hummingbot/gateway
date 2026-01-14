@@ -65,8 +65,6 @@ export async function closePosition(
     let totalFee = 0;
     let lastSignature = '';
 
-    let txConfirmed = true;
-
     for (let i = 0; i < transactions.length; i++) {
       const tx = transactions[i];
       if (transactions.length > 1) {
@@ -85,23 +83,9 @@ export async function closePosition(
       const result = await solana.sendAndConfirmTransaction(tx, [wallet]);
       totalFee += result.fee;
       lastSignature = result.signature;
-
-      // Track if any transaction didn't confirm
-      if (result.confirmed === false) {
-        txConfirmed = false;
-      }
     }
 
     const signature = lastSignature;
-
-    // If any transaction wasn't confirmed, return pending status
-    if (!txConfirmed) {
-      logger.warn(`Transaction ${signature} sent but not confirmed`);
-      return {
-        signature,
-        status: 0, // PENDING
-      };
-    }
 
     // Get transaction data for confirmation
     const txData = await solana.connection.getTransaction(signature, {

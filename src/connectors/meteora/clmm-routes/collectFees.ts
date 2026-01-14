@@ -55,7 +55,6 @@ export async function collectFees(
   // Simulate and send all transactions
   let totalFee = 0;
   let lastSignature = '';
-  let txConfirmed = true;
 
   for (const tx of transactions) {
     // Simulate with error handling
@@ -64,27 +63,13 @@ export async function collectFees(
     logger.info('Transaction simulated successfully, sending to network...');
 
     // Send and confirm transaction using sendAndConfirmTransaction which handles signing
-    const result = await solana.sendAndConfirmTransaction(tx, [wallet]);
-    lastSignature = result.signature;
-    totalFee += result.fee;
-
-    // Track if any transaction didn't confirm
-    if (result.confirmed === false) {
-      txConfirmed = false;
-    }
+    const { signature, fee } = await solana.sendAndConfirmTransaction(tx, [wallet]);
+    lastSignature = signature;
+    totalFee += fee;
   }
 
   const signature = lastSignature;
   const fee = totalFee;
-
-  // If any transaction wasn't confirmed, return pending status
-  if (!txConfirmed) {
-    logger.warn(`Transaction ${signature} sent but not confirmed`);
-    return {
-      signature,
-      status: 0, // PENDING
-    };
-  }
 
   // Get transaction data for confirmation
   const txData = await solana.connection.getTransaction(signature, {
