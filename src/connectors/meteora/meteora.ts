@@ -137,7 +137,7 @@ export class Meteora {
   }
 
   /** Gets comprehensive pool information */
-  async getPoolInfo(poolAddress: string): Promise<MeteoraPoolInfo | null> {
+  async getPoolInfo(poolAddress: string, includeBins: boolean = false): Promise<MeteoraPoolInfo | null> {
     try {
       const dlmmPool = await this.getDlmmPool(poolAddress);
       if (!dlmmPool) {
@@ -158,7 +158,7 @@ export class Meteora {
         return null;
       }
 
-      return {
+      const poolInfo: MeteoraPoolInfo = {
         address: poolAddress,
         baseTokenAddress: dlmmPool.tokenX.publicKey.toBase58(),
         quoteTokenAddress: dlmmPool.tokenY.publicKey.toBase58(),
@@ -171,8 +171,14 @@ export class Meteora {
         activeBinId: activeBin.binId,
         minBinId: dlmmPool.lbPair.parameters.minBinId,
         maxBinId: dlmmPool.lbPair.parameters.maxBinId,
-        bins: await this.getPoolLiquidity(poolAddress),
       };
+
+      // Only fetch bins if explicitly requested (expensive operation)
+      if (includeBins) {
+        poolInfo.bins = await this.getPoolLiquidity(poolAddress);
+      }
+
+      return poolInfo;
     } catch (error) {
       logger.debug(`Could not decode ${poolAddress} as Meteora pool: ${error}`);
       return null;

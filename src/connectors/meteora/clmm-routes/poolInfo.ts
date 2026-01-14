@@ -9,6 +9,7 @@ export async function getPoolInfo(
   fastify: FastifyInstance,
   network: string,
   poolAddress: string,
+  bins?: boolean,
 ): Promise<PoolInfo | MeteoraPoolInfo> {
   const meteora = await Meteora.getInstance(network);
   if (!meteora) {
@@ -20,7 +21,7 @@ export async function getPoolInfo(
   }
 
   // Fetch pool info directly from RPC
-  const poolInfo = (await meteora.getPoolInfo(poolAddress)) as MeteoraPoolInfo;
+  const poolInfo = (await meteora.getPoolInfo(poolAddress, bins)) as MeteoraPoolInfo;
   if (!poolInfo) {
     throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
   }
