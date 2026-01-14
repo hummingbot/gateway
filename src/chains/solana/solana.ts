@@ -37,6 +37,7 @@ import { createRateLimitAwareSolanaConnection } from '../../rpc/rpc-connection-i
 import { RPCProvider } from '../../rpc/rpc-provider-base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import { httpErrors } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
@@ -1314,7 +1315,9 @@ export class Solana {
       return { signature, fee: actualFee };
     }
 
-    throw new Error(`Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`);
+    throw httpErrors.transactionTimeout(
+      `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
+    );
   }
 
   private async prepareTx(
