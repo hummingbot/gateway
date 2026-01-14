@@ -1255,7 +1255,7 @@ export class Solana {
     tx: Transaction | VersionedTransaction,
     signers: Signer[] = [],
     priorityFeePerCU?: number,
-  ): Promise<{ signature: string; fee: number }> {
+  ): Promise<{ signature: string; fee: number; confirmed?: boolean }> {
     // Use provided priority fee or estimate it
     const currentPriorityFee = priorityFeePerCU ?? (await this.estimateGasPrice());
 
@@ -1312,12 +1312,18 @@ export class Solana {
     if (confirmed && txData) {
       const actualFee = this.getFee(txData);
       logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
-      return { signature, fee: actualFee };
+      return { signature, fee: actualFee, confirmed: true };
     }
 
-    throw httpErrors.transactionTimeout(
-      `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
-    );
+    // Transaction was sent but not confirmed - return signature with confirmed=false
+    // instead of throwing, so caller can decide what to do (retry, return pending status, etc.)
+    if (signature) {
+      logger.warn(`Transaction ${signature} sent but not confirmed after ${this.config.confirmRetryCount} attempts`);
+      return { signature, fee: 0, confirmed: false };
+    }
+
+    // No signature means transaction was never sent successfully
+    throw httpErrors.transactionTimeout(`Transaction failed to send after ${this.config.confirmRetryCount} attempts`);
   }
 
   private async prepareTx(

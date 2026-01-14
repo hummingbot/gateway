@@ -160,10 +160,27 @@ export async function openPosition(
 
   // Send and confirm the ORIGINAL unsigned transaction
   // sendAndConfirmTransaction will handle the signing and auto-simulate for optimal compute units
-  const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(createPositionTx, [
-    wallet,
-    newImbalancePosition,
-  ]);
+  const {
+    signature,
+    fee: txFee,
+    confirmed: txConfirmed,
+  } = await solana.sendAndConfirmTransaction(createPositionTx, [wallet, newImbalancePosition]);
+
+  // If transaction wasn't confirmed, return pending status with position address
+  if (txConfirmed === false) {
+    logger.warn(`Transaction ${signature} sent but not confirmed`);
+    return {
+      signature,
+      status: 0, // PENDING
+      data: {
+        fee: 0,
+        positionAddress: newImbalancePosition.publicKey.toBase58(),
+        positionRent: 0,
+        baseTokenAmountAdded: 0,
+        quoteTokenAmountAdded: 0,
+      },
+    };
+  }
 
   // Get transaction data for confirmation
   const txData = await solana.connection.getTransaction(signature, {

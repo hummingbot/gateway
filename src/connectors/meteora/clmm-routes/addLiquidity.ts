@@ -122,7 +122,16 @@ export async function addLiquidity(
 
   // Send and confirm transaction using sendAndConfirmTransaction which handles signing
   // Transaction will automatically simulate to determine optimal compute units
-  const { signature, fee } = await solana.sendAndConfirmTransaction(addLiquidityTx, [wallet]);
+  const { signature, fee, confirmed: txConfirmed } = await solana.sendAndConfirmTransaction(addLiquidityTx, [wallet]);
+
+  // If transaction wasn't confirmed, return pending status
+  if (txConfirmed === false) {
+    logger.warn(`Transaction ${signature} sent but not confirmed`);
+    return {
+      signature,
+      status: 0, // PENDING
+    };
+  }
 
   // Get transaction data for confirmation
   const txData = await solana.connection.getTransaction(signature, {
