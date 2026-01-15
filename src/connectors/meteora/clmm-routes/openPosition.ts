@@ -174,24 +174,39 @@ export async function openPosition(
   const confirmed = txData !== null;
 
   if (confirmed && txData) {
+    // Track wallet's balance changes for the tokens
     const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
-      tokenX?.address || dlmmPool.tokenX.publicKey.toBase58(),
-      tokenY?.address || dlmmPool.tokenY.publicKey.toBase58(),
+      dlmmPool.tokenX.publicKey.toBase58(),
+      dlmmPool.tokenY.publicKey.toBase58(),
     ]);
 
-    const baseTokenBalanceChange = balanceChanges[0];
-    const quoteTokenBalanceChange = balanceChanges[1];
+    // Balance changes are negative (tokens leaving wallet)
+    let baseAmountAdded = Math.abs(balanceChanges[0]);
+    let quoteAmountAdded = Math.abs(balanceChanges[1]);
 
-    // Calculate sentSOL based on which token is SOL
-    const sentSOL =
-      tokenXSymbol === 'SOL'
-        ? Math.abs(baseTokenBalanceChange - txFee)
-        : tokenYSymbol === 'SOL'
-          ? Math.abs(quoteTokenBalanceChange - txFee)
-          : txFee;
+    // Calculate position rent for new positions
+    // When SOL is base/quote, wallet balance change includes: liquidity + rent + fee
+    // We need to separate rent from liquidity
+    let positionRent = 0;
+    if (tokenXSymbol === 'SOL') {
+      // SOL is base token - subtract fee and rent from balance change
+      // Rent = total spent - fee - actual liquidity (what user requested)
+      const totalSOLSpent = baseAmountAdded;
+      const requestedLiquidity = baseTokenAmount || 0;
+      positionRent = totalSOLSpent - txFee - requestedLiquidity;
+      if (positionRent < 0) positionRent = 0;
+      baseAmountAdded = requestedLiquidity;
+    } else if (tokenYSymbol === 'SOL') {
+      // SOL is quote token
+      const totalSOLSpent = quoteAmountAdded;
+      const requestedLiquidity = quoteTokenAmount || 0;
+      positionRent = totalSOLSpent - txFee - requestedLiquidity;
+      if (positionRent < 0) positionRent = 0;
+      quoteAmountAdded = requestedLiquidity;
+    }
 
     logger.info(
-      `Position opened at ${newImbalancePosition.publicKey.toBase58()}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${tokenXSymbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${tokenYSymbol}`,
+      `Position opened at ${newImbalancePosition.publicKey.toBase58()}: ${baseAmountAdded.toFixed(4)} ${tokenXSymbol}, ${quoteAmountAdded.toFixed(4)} ${tokenYSymbol}, rent: ${positionRent.toFixed(6)} SOL`,
     );
 
     return {
@@ -200,9 +215,9 @@ export async function openPosition(
       data: {
         fee: txFee,
         positionAddress: newImbalancePosition.publicKey.toBase58(),
-        positionRent: sentSOL,
-        baseTokenAmountAdded: baseTokenBalanceChange,
-        quoteTokenAmountAdded: quoteTokenBalanceChange,
+        positionRent: positionRent,
+        baseTokenAmountAdded: baseAmountAdded,
+        quoteTokenAmountAdded: quoteAmountAdded,
       },
     };
   } else {

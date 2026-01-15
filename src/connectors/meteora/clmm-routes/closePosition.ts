@@ -98,24 +98,45 @@ export async function closePosition(
     if (confirmed && txData) {
       logger.info(`Position ${positionAddress} closed successfully with signature: ${signature}`);
 
-      // Extract balance changes for the tokens
+      // Track wallet's balance changes for the tokens
       const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
         dlmmPool.tokenX.publicKey.toBase58(),
         dlmmPool.tokenY.publicKey.toBase58(),
-        'So11111111111111111111111111111111111111112', // SOL (for rent refund)
       ]);
 
-      const totalTokenXReceived = Math.abs(balanceChanges[0]);
-      const totalTokenYReceived = Math.abs(balanceChanges[1]);
-      const returnedSOL = Math.abs(balanceChanges[2]);
+      // Balance changes are positive (tokens entering wallet)
+      let totalTokenXReceived = Math.abs(balanceChanges[0]);
+      let totalTokenYReceived = Math.abs(balanceChanges[1]);
+
+      // When SOL is base/quote, wallet receives: liquidity + fees + rent refund - tx fee
+      // We need to separate rent refund from the token amounts
+      let positionRentRefunded = 0;
+      if (tokenXSymbol === 'SOL') {
+        // SOL is base token
+        // Total SOL received = liquidity + fees + rent - tx fee
+        // We know fees from positionInfo, so:
+        // rent = total received + tx fee - liquidity - fees
+        // But we don't know liquidity separately, so use positionInfo.baseTokenAmount
+        const expectedLiquidity = positionInfo.baseTokenAmount;
+        positionRentRefunded = totalTokenXReceived + totalFee - expectedLiquidity - baseFeeAmount;
+        if (positionRentRefunded < 0) positionRentRefunded = 0;
+        // Adjust to exclude rent refund from token received
+        totalTokenXReceived = totalTokenXReceived - positionRentRefunded + totalFee;
+      } else if (tokenYSymbol === 'SOL') {
+        // SOL is quote token
+        const expectedLiquidity = positionInfo.quoteTokenAmount;
+        positionRentRefunded = totalTokenYReceived + totalFee - expectedLiquidity - quoteFeeAmount;
+        if (positionRentRefunded < 0) positionRentRefunded = 0;
+        totalTokenYReceived = totalTokenYReceived - positionRentRefunded + totalFee;
+      }
 
       // Separate fees from liquidity amounts
-      // Total received = liquidity removed + fees collected
+      // Total received (after rent adjustment) = liquidity removed + fees collected
       const baseTokenAmountRemoved = Math.max(0, totalTokenXReceived - baseFeeAmount);
       const quoteTokenAmountRemoved = Math.max(0, totalTokenYReceived - quoteFeeAmount);
 
       logger.info(
-        `Position closed: ${baseTokenAmountRemoved.toFixed(4)} ${tokenXSymbol} + ${baseFeeAmount.toFixed(4)} ${tokenXSymbol} fees, ${quoteTokenAmountRemoved.toFixed(4)} ${tokenYSymbol} + ${quoteFeeAmount.toFixed(4)} ${tokenYSymbol} fees, ${returnedSOL.toFixed(9)} SOL rent refunded`,
+        `Position closed: ${baseTokenAmountRemoved.toFixed(4)} ${tokenXSymbol} + ${baseFeeAmount.toFixed(4)} ${tokenXSymbol} fees, ${quoteTokenAmountRemoved.toFixed(4)} ${tokenYSymbol} + ${quoteFeeAmount.toFixed(4)} ${tokenYSymbol} fees, ${positionRentRefunded.toFixed(6)} SOL rent refunded`,
       );
 
       return {
@@ -123,7 +144,7 @@ export async function closePosition(
         status: 1, // CONFIRMED
         data: {
           fee: totalFee,
-          positionRentRefunded: returnedSOL,
+          positionRentRefunded: positionRentRefunded,
           baseTokenAmountRemoved,
           quoteTokenAmountRemoved,
           baseFeeAmountCollected: baseFeeAmount,
