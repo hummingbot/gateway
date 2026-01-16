@@ -82,7 +82,7 @@
     "@uniswap/router-sdk": "^2.0.4",
     "@uniswap/sdk": "3.0.3",
     "@uniswap/sdk-core": "^5.9.0",
-    "@uniswap/smart-order-router": "^3.59.0",
+    "@uniswap/smart-order-router": "^4.22.38",
     "@uniswap/universal-router-sdk": "^4.19.6",
     "@uniswap/v2-sdk": "^4.15.2",
     "@uniswap/v3-core": "^1.0.1",
