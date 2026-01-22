@@ -1,0 +1,14 @@
+chainID: 61
+nodeURL: https://etc.rivet.link
+nativeCurrencySymbol: ETC
+geckoId: ethereum-classic
+transactionExecutionTimeoutMs: 10000 # Timeout for waiting for transaction execution (in milliseconds)
+swapProvider: etcswap/router
+
+
+# EIP-1559 gas parameters (in GWEI)
+# Ethereum Classic uses legacy gas pricing, not EIP-1559
+# These values are optional fallbacks
+baseFee:
+baseFeeMultiplier: 1.2
+priorityFee: 0.001

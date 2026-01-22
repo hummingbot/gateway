@@ -17,6 +17,7 @@ import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
 import { configRoutes } from './config/config.routes';
 import { register0xRoutes } from './connectors/0x/0x.routes';
+import { etcswapRoutes } from './connectors/etcswap/etcswap.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { orcaRoutes } from './connectors/orca/orca.routes';
@@ -107,6 +108,10 @@ const swaggerOptions = {
       {
         name: '/connector/pancakeswap',
         description: 'PancakeSwap EVM connector endpoints',
+      },
+      {
+        name: '/connector/etcswap',
+        description: 'ETCswap connector endpoints (Ethereum Classic)',
       },
     ],
     components: {
@@ -277,6 +282,13 @@ const configureGatewayServer = () => {
 
     // PancakeSwap Solana routes
     app.register(pancakeswapSolRoutes, { prefix: '/connectors/pancakeswap-sol' });
+
+    // ETCswap routes (Ethereum Classic)
+    app.register(etcswapRoutes.router, {
+      prefix: '/connectors/etcswap/router',
+    });
+    app.register(etcswapRoutes.amm, { prefix: '/connectors/etcswap/amm' });
+    app.register(etcswapRoutes.clmm, { prefix: '/connectors/etcswap/clmm' });
   };
 
   // Register routes on main server

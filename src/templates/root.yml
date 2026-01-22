@@ -50,6 +50,14 @@ configurations:
     configurationPath: chains/ethereum/polygon.yml
     schemaPath: ethereum-network-schema.json
 
+  $namespace classic:
+    configurationPath: chains/ethereum/classic.yml
+    schemaPath: ethereum-network-schema.json
+
+  $namespace classic-mordor:
+    configurationPath: chains/ethereum/mordor.yml
+    schemaPath: ethereum-network-schema.json
+
   # Solana networks
   $namespace solana-mainnet-beta:
     configurationPath: chains/solana/mainnet-beta.yml
@@ -91,6 +99,10 @@ configurations:
   $namespace pancakeswap-sol:
     configurationPath: connectors/pancakeswap-sol.yml
     schemaPath: pancakeswap-sol-schema.json
+
+  $namespace etcswap:
+    configurationPath: connectors/etcswap.yml
+    schemaPath: etcswap-schema.json
 
   # API Keys (centralized)
   $namespace apiKeys:

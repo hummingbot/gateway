@@ -1,0 +1,23 @@
+[
+  {
+    "chainId": 61,
+    "name": "Wrapped ETC",
+    "symbol": "WETC",
+    "address": "0x1953cab0E5bFa6D4a9BaD6E05fD46C1CC6527a5a",
+    "decimals": 18
+  },
+  {
+    "chainId": 61,
+    "name": "Classic USD",
+    "symbol": "USC",
+    "address": "0xDE093684c796204224BC081f937aa059D903c52a",
+    "decimals": 6
+  },
+  {
+    "chainId": 61,
+    "name": "ECO Reward Token",
+    "symbol": "ECO",
+    "address": "0xc0364FB5498c17088A5B1d98F6FB3dB2Df9866a9",
+    "decimals": 18
+  }
+]
