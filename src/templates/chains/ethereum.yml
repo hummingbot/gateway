@@ -1,5 +1,11 @@
 defaultNetwork: mainnet
 defaultWallet: '<ethereum-wallet-address>'
 
+# Optional: List of networks to query for balance operations
+# If not specified, only defaultNetwork is used
+# defaultNetworks:
+#   - mainnet
+#   - base
+
 # RPC provider: 'url' uses nodeURL from network config, or specify a provider name (e.g., 'infura')
 rpcProvider: url
