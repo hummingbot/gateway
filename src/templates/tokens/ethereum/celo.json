@@ -15,13 +15,6 @@
   },
   {
     "chainId": 42220,
-    "name": "Allbridge SOL",
-    "symbol": "SOL",
-    "address": "0x173234922eB27d5138c5e481be9dF5261fAeD450",
-    "decimals": 18
-  },
-  {
-    "chainId": 42220,
     "name": "USD Coin",
     "symbol": "USDC",
     "address": "0xcebA9300f2b948710d2653dD7B07f33A8B32118C",
