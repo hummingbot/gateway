@@ -7,22 +7,15 @@ import * as yaml from 'js-yaml';
 import { ConfigManagerV2 } from '../services/config-manager-v2';
 import { logger } from '../services/logger';
 
-// Chain-level config fields that should be merged into network config
-// and routed to the chain namespace for updates
-const CHAIN_LEVEL_FIELDS: Record<string, string[]> = {
-  solana: ['defaultNetwork', 'defaultWallet', 'rpcProvider'],
-  ethereum: ['defaultNetwork', 'defaultWallet'],
-};
+// Known blockchain chains for chain-network parsing
+const KNOWN_CHAINS = ['solana', 'ethereum'];
 
 /**
  * Parse a chain-network namespace format into chain and network components.
  * Returns null if not a chain-network format.
  */
 function parseChainNetwork(namespace: string): { chain: string; network: string } | null {
-  // Known chains
-  const knownChains = ['solana', 'ethereum'];
-
-  for (const chain of knownChains) {
+  for (const chain of KNOWN_CHAINS) {
     if (namespace.startsWith(`${chain}-`)) {
       const network = namespace.slice(chain.length + 1);
       if (network) {
@@ -74,8 +67,9 @@ export const updateConfig = (fastify: FastifyInstance, configPath: string, confi
 
     const parsed = parseChainNetwork(namespace);
     if (parsed && field) {
-      const chainFields = CHAIN_LEVEL_FIELDS[parsed.chain] || [];
-      if (chainFields.includes(field)) {
+      // Check if this field exists in the chain config (not network config)
+      const chainConfig = ConfigManagerV2.getInstance().getNamespace(parsed.chain);
+      if (chainConfig && field in chainConfig.configuration) {
         // Route to the chain namespace instead
         const chainConfigPath = `${parsed.chain}.${pathParts.join('.')}`;
         logger.info(`Routing chain-level field to: ${chainConfigPath}`);

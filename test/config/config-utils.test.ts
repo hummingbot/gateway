@@ -14,6 +14,7 @@ jest.mock('../../src/services/logger', () => ({
 const mockSolanaChainConfig = {
   configuration: {
     defaultNetwork: 'mainnet-beta',
+    defaultNetworks: ['mainnet-beta'],
     defaultWallet: '82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5',
     rpcProvider: 'helius',
   },
@@ -31,6 +32,7 @@ const mockSolanaNetworkConfig = {
 const mockEthereumChainConfig = {
   configuration: {
     defaultNetwork: 'mainnet',
+    defaultNetworks: ['mainnet'],
     defaultWallet: '0x1234567890abcdef1234567890abcdef12345678',
   },
 };
