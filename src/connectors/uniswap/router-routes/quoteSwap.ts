@@ -40,6 +40,24 @@ async function quoteSwap(
     );
   }
 
+  // Handle same-token or equivalent-token quotes (return price=1)
+  // This covers: USDC/USDC, ETH/WETH, WETH/ETH, ETH/ETH (after conversion)
+  if (actualBaseToken.toUpperCase() === actualQuoteToken.toUpperCase()) {
+    logger.info(`[quoteSwap] Same/equivalent token quote: ${baseToken}/${quoteToken}, returning price=1`);
+    return {
+      quoteId: uuidv4(),
+      tokenIn: baseToken,
+      tokenOut: quoteToken,
+      amountIn: amount,
+      amountOut: amount,
+      price: 1,
+      priceImpactPct: 0,
+      minAmountOut: amount,
+      maxAmountIn: amount,
+      routePath: `${baseToken} -> ${quoteToken}`,
+    };
+  }
+
   // Resolve token symbols/addresses to token objects from local token list
   const baseTokenInfo = await ethereum.getToken(actualBaseToken);
   const quoteTokenInfo = await ethereum.getToken(actualQuoteToken);

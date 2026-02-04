@@ -420,4 +420,101 @@ describe('GET /quote-swap', () => {
       expect(body).toHaveProperty('tokenIn', mockWETH.address);
     });
   });
+
+  describe('same-token and equivalent-token quotes', () => {
+    it('should return price=1 for same token quote (USDC/USDC)', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'USDC',
+          quoteToken: 'USDC',
+          amount: '100',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      expect(body).toHaveProperty('price', 1);
+      expect(body).toHaveProperty('amountIn', 100);
+      expect(body).toHaveProperty('amountOut', 100);
+      expect(body).toHaveProperty('priceImpactPct', 0);
+    });
+
+    it('should return price=1 for ETH/WETH (native to wrapped)', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'ETH',
+          quoteToken: 'WETH',
+          amount: '1',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      expect(body).toHaveProperty('price', 1);
+      expect(body).toHaveProperty('amountIn', 1);
+      expect(body).toHaveProperty('amountOut', 1);
+      expect(body).toHaveProperty('priceImpactPct', 0);
+    });
+
+    it('should return price=1 for WETH/ETH (wrapped to native)', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'WETH',
+          quoteToken: 'ETH',
+          amount: '1',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      expect(body).toHaveProperty('price', 1);
+      expect(body).toHaveProperty('amountIn', 1);
+      expect(body).toHaveProperty('amountOut', 1);
+      expect(body).toHaveProperty('priceImpactPct', 0);
+    });
+
+    it('should return price=1 for ETH/ETH', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'ETH',
+          quoteToken: 'ETH',
+          amount: '1',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      expect(body).toHaveProperty('price', 1);
+      expect(body).toHaveProperty('amountIn', 1);
+      expect(body).toHaveProperty('amountOut', 1);
+    });
+  });
 });
