@@ -81,6 +81,7 @@ describe('GET /quote-swap', () => {
     mockEthereum = {
       provider: mockProvider,
       chainId: 1,
+      nativeTokenSymbol: 'ETH',
       getToken: jest.fn().mockImplementation((symbol: string) => {
         const tokens: any = {
           WETH: mockWETH,
@@ -306,5 +307,117 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(500);
+  });
+
+  describe('native token (ETH) to WETH conversion', () => {
+    it('should convert ETH baseToken to WETH and return valid quote', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'ETH',
+          quoteToken: 'USDC',
+          amount: '1',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      // Should use WETH address even though ETH was requested
+      expect(body).toHaveProperty('tokenIn', mockWETH.address);
+      expect(body).toHaveProperty('tokenOut', mockUSDC.address);
+      expect(body).toHaveProperty('amountIn', 1);
+      expect(body).toHaveProperty('amountOut');
+      expect(body.amountOut).toBeGreaterThan(0);
+    });
+
+    it('should convert ETH quoteToken to WETH and return valid quote', async () => {
+      // Update mock for ETH as quote token - SELL USDC for ETH
+      mockGetAlphaRouterQuote.mockResolvedValue({
+        route: { trade: { priceImpact: { toSignificant: () => '0.3' } } },
+        inputAmount: '3000',
+        outputAmount: '1',
+        priceImpact: 0.3,
+        routeString: 'USDC -> WETH',
+        gasEstimate: '300000',
+        gasEstimateUSD: '5.00',
+        methodParameters: {
+          calldata: '0x1234567890',
+          value: '0x0',
+          to: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'USDC',
+          quoteToken: 'ETH',
+          amount: '3000',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      // Should use WETH address even though ETH was requested as quote
+      // SELL side: input=base (USDC), output=quote (ETH->WETH)
+      expect(body).toHaveProperty('tokenIn', mockUSDC.address);
+      expect(body).toHaveProperty('tokenOut', mockWETH.address);
+    });
+
+    it('should handle lowercase eth token symbol', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'eth',
+          quoteToken: 'USDC',
+          amount: '1',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      // Should convert lowercase 'eth' to WETH
+      expect(body).toHaveProperty('tokenIn', mockWETH.address);
+    });
+
+    it('should handle mixed case Eth token symbol', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'Eth',
+          quoteToken: 'USDC',
+          amount: '1',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      // Should convert mixed case 'Eth' to WETH
+      expect(body).toHaveProperty('tokenIn', mockWETH.address);
+    });
   });
 });
