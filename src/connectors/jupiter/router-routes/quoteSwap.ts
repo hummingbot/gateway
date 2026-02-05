@@ -25,29 +25,6 @@ export async function quoteSwap(
   const solana = await Solana.getInstance(network);
   const jupiter = await Jupiter.getInstance(network);
 
-  // Normalize tokens - convert native SOL to WSOL for comparison
-  const nativeSymbol = solana.nativeTokenSymbol.toUpperCase();
-  const normalizedBase = baseToken.toUpperCase() === nativeSymbol ? 'WSOL' : baseToken.toUpperCase();
-  const normalizedQuote = quoteToken.toUpperCase() === nativeSymbol ? 'WSOL' : quoteToken.toUpperCase();
-
-  // Handle same-token or equivalent-token quotes (return price=1)
-  // This covers: USDC/USDC, SOL/WSOL, WSOL/SOL, SOL/SOL
-  if (normalizedBase === normalizedQuote) {
-    logger.info(`[quoteSwap] Same/equivalent token quote: ${baseToken}/${quoteToken}, returning price=1`);
-    return {
-      quoteId: uuidv4(),
-      tokenIn: baseToken,
-      tokenOut: quoteToken,
-      amountIn: amount,
-      amountOut: amount,
-      price: 1,
-      priceImpactPct: 0,
-      minAmountOut: amount,
-      maxAmountIn: amount,
-      routePath: `${baseToken} -> ${quoteToken}`,
-    };
-  }
-
   // Resolve token symbols to addresses
   const baseTokenInfo = await solana.getToken(baseToken);
   const quoteTokenInfo = await solana.getToken(quoteToken);
