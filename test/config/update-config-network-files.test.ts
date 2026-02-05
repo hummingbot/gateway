@@ -38,6 +38,7 @@ describe('updateConfig - Configuration updates', () => {
     mockConfigManager = {
       set: jest.fn(),
       get: jest.fn(),
+      getNamespace: jest.fn().mockReturnValue(null), // Return null so chain-level routing is skipped
     };
     (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue(mockConfigManager);
 
