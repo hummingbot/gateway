@@ -26,6 +26,9 @@ export const EstimateGasResponseSchema = Type.Object(
     gasType: Type.Optional(Type.String()), // Gas type: "legacy" or "eip1559"
     maxFeePerGas: Type.Optional(Type.Number()), // EIP-1559: Maximum fee per gas in gwei
     maxPriorityFeePerGas: Type.Optional(Type.Number()), // EIP-1559: Maximum priority fee per gas in gwei
+    // Solana Helius-specific fields
+    priorityFeeLevel: Type.Optional(Type.String()), // Helius priority level used: Min, Low, Medium, High, VeryHigh, UnsafeMax
+    priorityFeePerCUEstimate: Type.Optional(Type.Number()), // Raw Helius estimate in lamports/CU (before minimum enforcement)
   },
   { $id: 'EstimateGasResponse' },
 );

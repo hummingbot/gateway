@@ -42,7 +42,7 @@ import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
-import { SolanaPriorityFees } from './solana-priority-fees';
+import { PriorityFeeLevel, PriorityFeeResult, SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
 
 // Constants used for fee calculations
@@ -1136,8 +1136,20 @@ export class Solana {
     };
   }
 
-  async estimateGasPrice(): Promise<number> {
-    return await SolanaPriorityFees.estimatePriorityFee(this.config, this.network);
+  /**
+   * Estimate priority fee per compute unit
+   * @param priorityLevel Priority fee level (defaults to High)
+   */
+  async estimateGasPrice(priorityLevel?: PriorityFeeLevel): Promise<number> {
+    return await SolanaPriorityFees.estimatePriorityFee(this.config, this.network, priorityLevel);
+  }
+
+  /**
+   * Estimate priority fee with detailed results including raw Helius estimate
+   * @param priorityLevel Priority fee level (defaults to High)
+   */
+  async estimateGasPriceDetailed(priorityLevel?: PriorityFeeLevel): Promise<PriorityFeeResult> {
+    return await SolanaPriorityFees.estimatePriorityFeeDetailed(this.config, this.network, priorityLevel);
   }
 
   public async confirmTransaction(
