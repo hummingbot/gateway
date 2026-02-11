@@ -12,7 +12,7 @@ import {
   IGNORE_CACHE,
 } from '@orca-so/whirlpools-sdk';
 import { Static } from '@sinclair/typebox';
-import { getAssociatedTokenAddressSync } from '@solana/spl-token';
+import { TOKEN_2022_PROGRAM_ID, getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
@@ -135,6 +135,8 @@ async function addLiquidityInstructions(
       positionTokenAccount: getAssociatedTokenAddressSync(
         positionMintKeypair.publicKey,
         client.getContext().wallet.publicKey,
+        undefined,
+        TOKEN_2022_PROGRAM_ID,
       ),
       tokenMintA: whirlpool.getTokenAInfo().address,
       tokenMintB: whirlpool.getTokenBInfo().address,
@@ -361,23 +363,24 @@ export async function openPosition(
   const positionMintKeypair = Keypair.generate();
   const positionPda = PDAUtil.getPosition(ORCA_WHIRLPOOL_PROGRAM_ID, positionMintKeypair.publicKey);
 
-  // Always use TOKEN_PROGRAM with metadata (standard Orca positions)
-  // Position NFT token program is independent of pool's token programs
-  const metadataPda = PDAUtil.getPositionMetadata(positionMintKeypair.publicKey);
+  // Use Token-2022 position mint (embeds metadata in the mint account itself)
+  // This ensures all rent is fully refundable on close (fixes #584)
   builder.addInstruction(
-    WhirlpoolIx.openPositionWithMetadataIx(client.getContext().program, {
+    WhirlpoolIx.openPositionWithTokenExtensionsIx(client.getContext().program, {
       funder: client.getContext().wallet.publicKey,
       whirlpool: whirlpoolPubkey,
       tickLowerIndex: lowerTickIndex,
       tickUpperIndex: upperTickIndex,
       owner: client.getContext().wallet.publicKey,
-      positionMintAddress: positionMintKeypair.publicKey,
+      positionMint: positionMintKeypair.publicKey,
       positionPda,
       positionTokenAccount: getAssociatedTokenAddressSync(
         positionMintKeypair.publicKey,
         client.getContext().wallet.publicKey,
+        undefined,
+        TOKEN_2022_PROGRAM_ID,
       ),
-      metadataPda,
+      withTokenMetadataExtension: true,
     }),
   );
 
@@ -446,7 +449,26 @@ export async function openPosition(
     positionMintKeypair,
   ]);
 
-  const positionRent = 0.00203928; // Standard position account rent
+  // Calculate rent by querying the actual SOL balances of position accounts.
+  // This is more accurate than deriving from wallet SOL changes, which can be
+  // skewed by ephemeral wSOL wrapper create/close cycles within the same TX.
+  const LAMPORT_TO_SOL = 1e-9;
+  const positionTokenAccount = getAssociatedTokenAddressSync(
+    positionMintKeypair.publicKey,
+    client.getContext().wallet.publicKey,
+    undefined,
+    TOKEN_2022_PROGRAM_ID,
+  );
+  const [positionMintBalance, positionDataBalance, positionAtaBalance] = await Promise.all([
+    solana.connection.getBalance(positionMintKeypair.publicKey),
+    solana.connection.getBalance(positionPda.publicKey),
+    solana.connection.getBalance(positionTokenAccount),
+  ]);
+  const positionRent = (positionMintBalance + positionDataBalance + positionAtaBalance) * LAMPORT_TO_SOL;
+
+  logger.info(
+    `Position rent: mint=${positionMintBalance}, data=${positionDataBalance}, ata=${positionAtaBalance}, total=${positionRent} SOL`,
+  );
 
   if (shouldAddLiquidity) {
     logger.info(
