@@ -13,6 +13,7 @@ export interface SolanaNetworkConfig {
   confirmRetryCount: number;
   minPriorityFeePerCU: number;
   maxPriorityFeePerCU?: number;
+  priorityFeeLevel?: string;
 }
 
 export interface SolanaChainConfig {
@@ -38,6 +39,7 @@ export function getSolanaNetworkConfig(network: string): SolanaNetworkConfig {
     confirmRetryCount: ConfigManagerV2.getInstance().get(namespaceId + '.confirmRetryCount'),
     minPriorityFeePerCU: ConfigManagerV2.getInstance().get(namespaceId + '.minPriorityFeePerCU'),
     maxPriorityFeePerCU: ConfigManagerV2.getInstance().get(namespaceId + '.maxPriorityFeePerCU'),
+    priorityFeeLevel: ConfigManagerV2.getInstance().get(namespaceId + '.priorityFeeLevel'),
   };
 }
 

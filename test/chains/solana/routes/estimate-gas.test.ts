@@ -29,7 +29,7 @@ describe('Solana Estimate Gas Route', () => {
 
   describe('GET /chains/solana/estimate-gas', () => {
     const mockInstance = {
-      estimateGasPrice: jest.fn(),
+      estimateGasPriceDetailed: jest.fn(),
       config: {
         minPriorityFeePerCU: 0.5,
         defaultComputeUnits: 200000,
@@ -42,7 +42,11 @@ describe('Solana Estimate Gas Route', () => {
     });
 
     it('should return priority fee successfully from live estimation', async () => {
-      mockInstance.estimateGasPrice.mockResolvedValue(2.5);
+      mockInstance.estimateGasPriceDetailed.mockResolvedValue({
+        feePerComputeUnit: 2.5,
+        priorityFeeLevel: 'High',
+        priorityFeePerCUEstimate: 2.5,
+      });
 
       const response = await fastify.inject({
         method: 'GET',
@@ -62,12 +66,12 @@ describe('Solana Estimate Gas Route', () => {
       });
 
       expect(mockSolana.getInstance).toHaveBeenCalledWith('mainnet-beta');
-      expect(mockInstance.estimateGasPrice).toHaveBeenCalled();
+      expect(mockInstance.estimateGasPriceDetailed).toHaveBeenCalled();
     });
 
     it('should return minPriorityFeePerCU when priority fee estimation fails but instance is available', async () => {
       // First call for priority fee estimation fails
-      mockInstance.estimateGasPrice.mockRejectedValueOnce(new Error('RPC node unavailable'));
+      mockInstance.estimateGasPriceDetailed.mockRejectedValueOnce(new Error('RPC node unavailable'));
 
       // Second getInstance call for fallback succeeds
       mockSolana.getInstance
@@ -97,7 +101,7 @@ describe('Solana Estimate Gas Route', () => {
 
     it('should use default minPriorityFeePerCU when config value is undefined', async () => {
       const instanceWithoutMinFee = {
-        estimateGasPrice: jest.fn().mockRejectedValue(new Error('RPC unavailable')),
+        estimateGasPriceDetailed: jest.fn().mockRejectedValue(new Error('RPC unavailable')),
         config: {
           defaultComputeUnits: 200000,
         }, // No minPriorityFeePerCU defined
@@ -131,7 +135,11 @@ describe('Solana Estimate Gas Route', () => {
 
       for (const network of networks) {
         jest.clearAllMocks(); // Clear mocks between iterations
-        mockInstance.estimateGasPrice.mockResolvedValue(1.25);
+        mockInstance.estimateGasPriceDetailed.mockResolvedValue({
+          feePerComputeUnit: 1.25,
+          priorityFeeLevel: 'High',
+          priorityFeePerCUEstimate: 1.25,
+        });
         mockSolana.getInstance.mockResolvedValue(mockInstance as any);
 
         const response = await fastify.inject({
@@ -156,7 +164,11 @@ describe('Solana Estimate Gas Route', () => {
     });
 
     it('should return consistent response format', async () => {
-      mockInstance.estimateGasPrice.mockResolvedValue(3.75);
+      mockInstance.estimateGasPriceDetailed.mockResolvedValue({
+        feePerComputeUnit: 3.75,
+        priorityFeeLevel: 'High',
+        priorityFeePerCUEstimate: 3.75,
+      });
 
       const response = await fastify.inject({
         method: 'GET',
@@ -177,7 +189,11 @@ describe('Solana Estimate Gas Route', () => {
     });
 
     it('should handle missing network parameter by using default', async () => {
-      mockInstance.estimateGasPrice.mockResolvedValue(1.5);
+      mockInstance.estimateGasPriceDetailed.mockResolvedValue({
+        feePerComputeUnit: 1.5,
+        priorityFeeLevel: 'High',
+        priorityFeePerCUEstimate: 1.5,
+      });
 
       const response = await fastify.inject({
         method: 'GET',
@@ -199,7 +215,11 @@ describe('Solana Estimate Gas Route', () => {
 
     it('should handle high priority fees correctly', async () => {
       // Test with a high priority fee to ensure no rounding issues
-      mockInstance.estimateGasPrice.mockResolvedValue(100.123456);
+      mockInstance.estimateGasPriceDetailed.mockResolvedValue({
+        feePerComputeUnit: 100.123456,
+        priorityFeeLevel: 'High',
+        priorityFeePerCUEstimate: 100.123456,
+      });
 
       const response = await fastify.inject({
         method: 'GET',
@@ -221,7 +241,11 @@ describe('Solana Estimate Gas Route', () => {
 
     it('should handle zero priority fees by returning configured minimum', async () => {
       // When live estimation returns 0, it should fallback gracefully
-      mockInstance.estimateGasPrice.mockResolvedValue(0);
+      mockInstance.estimateGasPriceDetailed.mockResolvedValue({
+        feePerComputeUnit: 0,
+        priorityFeeLevel: 'High',
+        priorityFeePerCUEstimate: 0,
+      });
 
       const response = await fastify.inject({
         method: 'GET',

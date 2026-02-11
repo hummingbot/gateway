@@ -23,3 +23,7 @@ minPriorityFeePerCU: 0.01
 # Maximum priority fee per compute unit in lamports
 # This sets the ceiling for priority fees to prevent overpaying (default: 1.0 lamports/CU)
 maxPriorityFeePerCU: 1.0
+
+# Helius priority fee level for fee estimation
+# Options: Min, Low, Medium, High, VeryHigh, UnsafeMax (default: High)
+priorityFeeLevel: High

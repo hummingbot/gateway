@@ -6,11 +6,11 @@ import { logger } from '../../../services/logger';
 import { SolanaEstimateGasRequest, SolanaEstimateGasRequestType } from '../schemas';
 import { Solana } from '../solana';
 
-export async function estimateGasSolana(network: string, priorityFeeLevel?: string): Promise<EstimateGasResponse> {
+export async function estimateGasSolana(network: string): Promise<EstimateGasResponse> {
   try {
     const solana = await Solana.getInstance(network);
 
-    const feeResult = await solana.estimateGasPriceDetailed(priorityFeeLevel as any);
+    const feeResult = await solana.estimateGasPriceDetailed();
 
     // Get default compute units from config (typically 200000)
     const defaultComputeUnits = solana.config.defaultComputeUnits;
@@ -91,8 +91,8 @@ export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { network, priorityFeeLevel } = request.query;
-      return await estimateGasSolana(network, priorityFeeLevel);
+      const { network } = request.query;
+      return await estimateGasSolana(network);
     },
   );
 };

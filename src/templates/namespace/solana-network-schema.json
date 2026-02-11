@@ -27,6 +27,12 @@
     "maxPriorityFeePerCU": {
       "type": "number",
       "description": "Maximum priority fee per compute unit in lamports (ceiling for fee estimation)"
+    },
+    "priorityFeeLevel": {
+      "type": "string",
+      "description": "Helius priority fee level for fee estimation (default: High)",
+      "enum": ["Min", "Low", "Medium", "High", "VeryHigh", "UnsafeMax"],
+      "default": "High"
     }
   },
   "required": ["chainID", "nodeURL", "nativeCurrencySymbol", "geckoId"],

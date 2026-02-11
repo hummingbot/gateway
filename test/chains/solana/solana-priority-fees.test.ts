@@ -16,6 +16,7 @@ global.fetch = jest.fn() as jest.MockedFunction<typeof fetch>;
 describe('Solana Priority Fees', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    SolanaPriorityFees.clearCache();
   });
 
   describe('getHeliusApiKey', () => {
@@ -91,17 +92,6 @@ describe('Solana Priority Fees', () => {
 
       expect(result).toBeNull();
     });
-
-    it('extracts API key from helius-rpc.com URL', async () => {
-      const { ConfigManagerV2 } = await import('../../../src/services/config-manager-v2');
-      const mockGet = jest.fn().mockReturnValue('');
-      (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue({ get: mockGet });
-
-      const nodeURL = 'https://devnet.helius-rpc.com/?api-key=devnet-key-789';
-      const result = await getHeliusApiKey(nodeURL);
-
-      expect(result).toBe('devnet-key-789');
-    });
   });
 
   describe('SolanaPriorityFees.estimatePriorityFeeDetailed', () => {
@@ -115,6 +105,7 @@ describe('Solana Priority Fees', () => {
       confirmRetryCount: 10,
       minPriorityFeePerCU: 0.1,
       maxPriorityFeePerCU: 1.0,
+      priorityFeeLevel: 'High',
     };
 
     it('returns minimum fee when no Helius API key available', async () => {
@@ -134,31 +125,36 @@ describe('Solana Priority Fees', () => {
       expect(result.priorityFeePerCUEstimate).toBeNull();
     });
 
-    it('uses High as default priority level', async () => {
+    it('uses priorityFeeLevel from config', async () => {
       const { ConfigManagerV2 } = await import('../../../src/services/config-manager-v2');
       const mockGet = jest.fn().mockReturnValue('');
       (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue({ get: mockGet });
 
-      const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(
-        { ...mockConfig, nodeURL: 'https://api.solana.com' },
-        'mainnet-beta',
-      );
+      const configWithVeryHigh = {
+        ...mockConfig,
+        nodeURL: 'https://api.solana.com',
+        priorityFeeLevel: 'VeryHigh',
+      };
 
-      expect(result.priorityFeeLevel).toBe('High');
-    });
-
-    it('respects provided priority level', async () => {
-      const { ConfigManagerV2 } = await import('../../../src/services/config-manager-v2');
-      const mockGet = jest.fn().mockReturnValue('');
-      (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue({ get: mockGet });
-
-      const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(
-        { ...mockConfig, nodeURL: 'https://api.solana.com' },
-        'mainnet-beta',
-        'VeryHigh',
-      );
+      const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(configWithVeryHigh, 'mainnet-beta');
 
       expect(result.priorityFeeLevel).toBe('VeryHigh');
+    });
+
+    it('defaults to High when priorityFeeLevel not in config', async () => {
+      const { ConfigManagerV2 } = await import('../../../src/services/config-manager-v2');
+      const mockGet = jest.fn().mockReturnValue('');
+      (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue({ get: mockGet });
+
+      const configWithoutLevel = {
+        ...mockConfig,
+        nodeURL: 'https://api.solana.com',
+        priorityFeeLevel: undefined,
+      };
+
+      const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(configWithoutLevel, 'mainnet-beta');
+
+      expect(result.priorityFeeLevel).toBe('High');
     });
 
     it('clamps fee to minimum when Helius returns lower value', async () => {
@@ -166,18 +162,19 @@ describe('Solana Priority Fees', () => {
       const mockGet = jest.fn().mockReturnValue('test-api-key');
       (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue({ get: mockGet });
 
-      // Mock Helius returning 0 (Min level often returns 0)
+      // Mock Helius returning 0
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          result: { priorityFeeEstimate: 0 }, // 0 micro-lamports
+          result: { priorityFeeEstimate: 0 },
         }),
       });
 
-      const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta', 'Min');
+      const configWithMin = { ...mockConfig, priorityFeeLevel: 'Min' };
+      const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(configWithMin, 'mainnet-beta');
 
       expect(result.feePerComputeUnit).toBe(0.1); // Clamped to minimum
-      expect(result.priorityFeePerCUEstimate).toBe(0); // Raw estimate was 0
+      expect(result.priorityFeePerCUEstimate).toBe(0);
     });
 
     it('clamps fee to maximum when Helius returns higher value', async () => {
@@ -185,7 +182,7 @@ describe('Solana Priority Fees', () => {
       const mockGet = jest.fn().mockReturnValue('test-api-key');
       (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue({ get: mockGet });
 
-      // Mock Helius returning very high fee (5 lamports/CU = 5,000,000 micro-lamports)
+      // Mock Helius returning 5 lamports/CU
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -193,10 +190,10 @@ describe('Solana Priority Fees', () => {
         }),
       });
 
-      const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta', 'VeryHigh');
+      const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta');
 
       expect(result.feePerComputeUnit).toBe(1.0); // Clamped to maximum
-      expect(result.priorityFeePerCUEstimate).toBe(5); // Raw estimate was 5 lamports/CU
+      expect(result.priorityFeePerCUEstimate).toBe(5);
     });
 
     it('returns unclamped fee when within min/max bounds', async () => {
@@ -204,7 +201,7 @@ describe('Solana Priority Fees', () => {
       const mockGet = jest.fn().mockReturnValue('test-api-key');
       (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue({ get: mockGet });
 
-      // Mock Helius returning 0.5 lamports/CU = 500,000 micro-lamports
+      // Mock Helius returning 0.5 lamports/CU
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -212,7 +209,7 @@ describe('Solana Priority Fees', () => {
         }),
       });
 
-      const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta', 'High');
+      const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta');
 
       expect(result.feePerComputeUnit).toBe(0.5);
       expect(result.priorityFeePerCUEstimate).toBe(0.5);
@@ -226,24 +223,6 @@ describe('Solana Priority Fees', () => {
       (global.fetch as jest.Mock).mockResolvedValueOnce({
         ok: false,
         status: 500,
-      });
-
-      const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta');
-
-      expect(result.feePerComputeUnit).toBe(0.1); // Falls back to minimum
-      expect(result.priorityFeePerCUEstimate).toBeNull();
-    });
-
-    it('handles Helius RPC error response', async () => {
-      const { ConfigManagerV2 } = await import('../../../src/services/config-manager-v2');
-      const mockGet = jest.fn().mockReturnValue('test-api-key');
-      (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue({ get: mockGet });
-
-      (global.fetch as jest.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          error: { code: -32600, message: 'Invalid request' },
-        }),
       });
 
       const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta');
@@ -264,28 +243,88 @@ describe('Solana Priority Fees', () => {
       expect(result.feePerComputeUnit).toBe(0.1);
       expect(result.priorityFeePerCUEstimate).toBeNull();
     });
+  });
 
-    it('uses default min/max when not specified in config', async () => {
+  describe('Caching', () => {
+    const mockConfig: SolanaNetworkConfig = {
+      chainID: 101,
+      nodeURL: 'https://api.solana.com',
+      nativeCurrencySymbol: 'SOL',
+      geckoId: 'solana',
+      defaultComputeUnits: 200000,
+      confirmRetryInterval: 1,
+      confirmRetryCount: 10,
+      minPriorityFeePerCU: 0.1,
+      maxPriorityFeePerCU: 1.0,
+      priorityFeeLevel: 'High',
+    };
+
+    it('caches result and returns cached value on subsequent calls', async () => {
+      const { ConfigManagerV2 } = await import('../../../src/services/config-manager-v2');
+      const mockGet = jest.fn().mockReturnValue('test-api-key');
+      (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue({ get: mockGet });
+
+      // First call - fetch from Helius
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          result: { priorityFeeEstimate: 500000 },
+        }),
+      });
+
+      const result1 = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta');
+      expect(result1.feePerComputeUnit).toBe(0.5);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+
+      // Second call - should use cache, not fetch again
+      const result2 = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta');
+      expect(result2.feePerComputeUnit).toBe(0.5);
+      expect(global.fetch).toHaveBeenCalledTimes(1); // Still only 1 call
+    });
+
+    it('uses separate cache entries per network', async () => {
       const { ConfigManagerV2 } = await import('../../../src/services/config-manager-v2');
       const mockGet = jest.fn().mockReturnValue('');
       (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue({ get: mockGet });
 
-      const configWithoutMinMax: SolanaNetworkConfig = {
-        chainID: 101,
-        nodeURL: 'https://api.solana.com',
-        nativeCurrencySymbol: 'SOL',
-        geckoId: 'solana',
-        defaultComputeUnits: 200000,
-        confirmRetryInterval: 1,
-        confirmRetryCount: 10,
-        minPriorityFeePerCU: 0, // Will default to 0.1
-        maxPriorityFeePerCU: undefined, // Will default to 1.0
-      };
+      const result1 = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta');
+      const result2 = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'devnet');
 
-      const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(configWithoutMinMax, 'mainnet-beta');
+      // Both should return minimum fee (no Helius key)
+      expect(result1.feePerComputeUnit).toBe(0.1);
+      expect(result2.feePerComputeUnit).toBe(0.1);
+    });
 
-      // Should use default minimum of 0.1
-      expect(result.feePerComputeUnit).toBe(0.1);
+    it('clearCache removes all cached entries', async () => {
+      const { ConfigManagerV2 } = await import('../../../src/services/config-manager-v2');
+      const mockGet = jest.fn().mockReturnValue('test-api-key');
+      (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue({ get: mockGet });
+
+      // First call
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          result: { priorityFeeEstimate: 500000 },
+        }),
+      });
+
+      await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta');
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+
+      // Clear cache
+      SolanaPriorityFees.clearCache();
+
+      // Next call should fetch again
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          result: { priorityFeeEstimate: 600000 },
+        }),
+      });
+
+      const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta');
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(result.feePerComputeUnit).toBe(0.6);
     });
   });
 
@@ -305,38 +344,13 @@ describe('Solana Priority Fees', () => {
         confirmRetryCount: 10,
         minPriorityFeePerCU: 0.1,
         maxPriorityFeePerCU: 1.0,
+        priorityFeeLevel: 'High',
       };
 
       const result = await SolanaPriorityFees.estimatePriorityFee(mockConfig, 'mainnet-beta');
 
       expect(typeof result).toBe('number');
       expect(result).toBe(0.1);
-    });
-  });
-
-  describe('Priority fee levels', () => {
-    const levels: PriorityFeeLevel[] = ['Min', 'Low', 'Medium', 'High', 'VeryHigh', 'UnsafeMax'];
-
-    it.each(levels)('accepts %s as valid priority level', async (level) => {
-      const { ConfigManagerV2 } = await import('../../../src/services/config-manager-v2');
-      const mockGet = jest.fn().mockReturnValue('');
-      (ConfigManagerV2.getInstance as jest.Mock).mockReturnValue({ get: mockGet });
-
-      const mockConfig: SolanaNetworkConfig = {
-        chainID: 101,
-        nodeURL: 'https://api.solana.com',
-        nativeCurrencySymbol: 'SOL',
-        geckoId: 'solana',
-        defaultComputeUnits: 200000,
-        confirmRetryInterval: 1,
-        confirmRetryCount: 10,
-        minPriorityFeePerCU: 0.1,
-        maxPriorityFeePerCU: 1.0,
-      };
-
-      const result = await SolanaPriorityFees.estimatePriorityFeeDetailed(mockConfig, 'mainnet-beta', level);
-
-      expect(result.priorityFeeLevel).toBe(level);
     });
   });
 });

@@ -49,13 +49,6 @@ export const SolanaBalanceRequest = Type.Object({
 // Estimate gas request schema
 export const SolanaEstimateGasRequest = Type.Object({
   network: SolanaNetworkParameter,
-  priorityFeeLevel: Type.Optional(
-    Type.String({
-      description: 'Helius priority fee level for transaction processing',
-      enum: ['Min', 'Low', 'Medium', 'High', 'VeryHigh', 'UnsafeMax'],
-      default: 'High',
-    }),
-  ),
 });
 
 export type SolanaEstimateGasRequestType = Static<typeof SolanaEstimateGasRequest>;
