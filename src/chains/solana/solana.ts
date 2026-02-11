@@ -42,7 +42,7 @@ import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
-import { PriorityFeeLevel, PriorityFeeResult, SolanaPriorityFees } from './solana-priority-fees';
+import { PriorityFeeResult, SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
 
 // Constants used for fee calculations
@@ -1138,18 +1138,18 @@ export class Solana {
 
   /**
    * Estimate priority fee per compute unit
-   * @param priorityLevel Priority fee level (defaults to High)
+   * Uses config's priorityFeeLevel and caches result for 10 seconds
    */
-  async estimateGasPrice(priorityLevel?: PriorityFeeLevel): Promise<number> {
-    return await SolanaPriorityFees.estimatePriorityFee(this.config, this.network, priorityLevel);
+  async estimateGasPrice(): Promise<number> {
+    return await SolanaPriorityFees.estimatePriorityFee(this.config, this.network);
   }
 
   /**
    * Estimate priority fee with detailed results including raw Helius estimate
-   * @param priorityLevel Priority fee level (defaults to High)
+   * Uses config's priorityFeeLevel and caches result for 10 seconds
    */
-  async estimateGasPriceDetailed(priorityLevel?: PriorityFeeLevel): Promise<PriorityFeeResult> {
-    return await SolanaPriorityFees.estimatePriorityFeeDetailed(this.config, this.network, priorityLevel);
+  async estimateGasPriceDetailed(): Promise<PriorityFeeResult> {
+    return await SolanaPriorityFees.estimatePriorityFeeDetailed(this.config, this.network);
   }
 
   public async confirmTransaction(
@@ -1522,15 +1522,23 @@ export class Solana {
     }
 
     try {
-      logger.info(`🚀 Sent transaction ${signature}, monitoring via WebSocket...`);
-      const confirmationResult = await this.rpcProviderService.monitorTransaction(signature, 60000);
+      // Use same timeout as REST polling: confirmRetryInterval * confirmRetryCount
+      const timeout = this.config.confirmRetryInterval * this.config.confirmRetryCount * 1000;
+      logger.info(`Monitoring transaction ${signature} via WebSocket (timeout: ${timeout / 1000}s)`);
+      const confirmationResult = await this.rpcProviderService.monitorTransaction(signature, timeout);
 
       if (confirmationResult.confirmed) {
         logger.info(`✅ Transaction ${signature} confirmed via WebSocket`);
-        const txData = await this.connection.getTransaction(signature, {
-          commitment: 'confirmed',
-          maxSupportedTransactionVersion: 0,
-        });
+        // Retry getTransaction a few times - tx might not be indexed yet
+        let txData = null;
+        for (let i = 0; i < 5; i++) {
+          txData = await this.connection.getTransaction(signature, {
+            commitment: 'confirmed',
+            maxSupportedTransactionVersion: 0,
+          });
+          if (txData) break;
+          await new Promise((r) => setTimeout(r, 500));
+        }
         return { confirmed: true, txData };
       } else {
         logger.warn(`❌ Transaction ${signature} not confirmed via WebSocket within timeout`);
