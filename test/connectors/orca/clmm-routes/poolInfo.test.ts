@@ -1,7 +1,21 @@
+import BN from 'bn.js';
+
+import { Solana } from '../../../../src/chains/solana/solana';
 import { Orca } from '../../../../src/connectors/orca/orca';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 
 jest.mock('../../../../src/connectors/orca/orca');
+jest.mock('../../../../src/chains/solana/solana');
+jest.mock('@solana/spl-token', () => ({
+  getMint: jest.fn(),
+}));
+jest.mock('@orca-so/whirlpools-sdk', () => ({
+  PriceMath: {
+    sqrtPriceX64ToPrice: jest.fn().mockReturnValue({
+      toNumber: () => 200.5,
+    }),
+  },
+}));
 
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
@@ -12,7 +26,24 @@ const buildApp = async () => {
 };
 
 const mockPoolAddress = 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE';
-const mockPoolInfo = {
+
+// Mock whirlpool data (on-chain)
+// Use valid Solana base58 addresses (no 0, O, I, l characters)
+const mockWhirlpool = {
+  tokenMintA: 'So11111111111111111111111111111111111111112',
+  tokenMintB: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  tokenVaultA: '7jaiZR5Sk8hdYN9MxTpczTcwbWpb5WEoxSANuUwveuat',
+  tokenVaultB: '3YQm7ujtXWJU2e9jhp2QGHpnn1ShXn12QjvzMvDgabpX',
+  tickSpacing: 64,
+  feeRate: 400, // 0.04%
+  protocolFeeRate: 100, // 0.01%
+  tickCurrentIndex: -28800,
+  liquidity: new BN('1000000000'),
+  sqrtPrice: new BN('123456789'),
+};
+
+// Mock API pool info (for analytics fields)
+const mockApiPoolInfo = {
   address: mockPoolAddress,
   baseTokenAddress: 'So11111111111111111111111111111111111111112',
   quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
@@ -31,15 +62,42 @@ const mockPoolInfo = {
 
 describe('GET /pool-info', () => {
   let app: any;
+  let getMintMock: jest.Mock;
 
   beforeAll(async () => {
-    app = await buildApp();
+    // Import getMint mock
+    const splToken = await import('@solana/spl-token');
+    getMintMock = splToken.getMint as jest.Mock;
 
-    // Mock Orca.getInstance
+    app = await buildApp();
+  });
+
+  beforeEach(() => {
+    // Reset mocks before each test
+    jest.clearAllMocks();
+
+    // Mock Orca.getInstance with both getWhirlpool and getPoolInfo
     const mockOrca = {
-      getPoolInfo: jest.fn().mockResolvedValue(mockPoolInfo),
+      getWhirlpool: jest.fn().mockResolvedValue(mockWhirlpool),
+      getPoolInfo: jest.fn().mockResolvedValue(mockApiPoolInfo),
     };
     (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
+
+    // Mock Solana.getInstance
+    const mockConnection = {
+      getTokenAccountBalance: jest.fn().mockResolvedValue({
+        value: { amount: '1000000000000' }, // 1000 tokens with 9 decimals
+      }),
+    };
+    const mockSolana = {
+      connection: mockConnection,
+    };
+    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
+
+    // Mock getMint
+    getMintMock.mockResolvedValue({
+      decimals: 9,
+    });
   });
 
   afterAll(async () => {
@@ -102,6 +160,7 @@ describe('GET /pool-info', () => {
 
   it('should handle when pool not found', async () => {
     const mockOrca = {
+      getWhirlpool: jest.fn().mockResolvedValue(null),
       getPoolInfo: jest.fn().mockResolvedValue(null),
     };
     (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
@@ -121,7 +180,8 @@ describe('GET /pool-info', () => {
 
   it('should handle errors from Orca connector', async () => {
     const mockOrca = {
-      getPoolInfo: jest.fn().mockRejectedValue(new Error('Failed to fetch pool')),
+      getWhirlpool: jest.fn().mockRejectedValue(new Error('Failed to fetch pool')),
+      getPoolInfo: jest.fn().mockResolvedValue(mockApiPoolInfo),
     };
     (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
 
@@ -138,11 +198,6 @@ describe('GET /pool-info', () => {
   });
 
   it('should use default network if not provided', async () => {
-    const mockOrca = {
-      getPoolInfo: jest.fn().mockResolvedValue(mockPoolInfo),
-    };
-    (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
-
     const response = await app.inject({
       method: 'GET',
       url: '/pool-info',
