@@ -1499,6 +1499,33 @@ export class Solana {
   }
 
   /**
+   * Fetch transaction data with retry - data may not be immediately available after confirmation
+   */
+  private async _fetchTransactionWithRetry(
+    signature: string,
+    maxRetries: number = 5,
+    retryDelayMs: number = 500,
+    useParsed: boolean = false,
+  ): Promise<any> {
+    for (let i = 0; i < maxRetries; i++) {
+      const txData = useParsed
+        ? await this.connection.getParsedTransaction(signature, {
+            maxSupportedTransactionVersion: 0,
+          })
+        : await this.connection.getTransaction(signature, {
+            commitment: 'confirmed',
+            maxSupportedTransactionVersion: 0,
+          });
+      if (txData) return txData;
+      if (i < maxRetries - 1) {
+        logger.info(`Transaction ${signature} data not yet available, retry ${i + 1}/${maxRetries}...`);
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      }
+    }
+    return null;
+  }
+
+  /**
    * Confirm transaction via WebSocket monitoring
    */
   private async _confirmViaWebSocket(signature: string): Promise<{ confirmed: boolean; txData: any } | null> {
@@ -1507,15 +1534,16 @@ export class Solana {
     }
 
     try {
-      logger.info(`🚀 Sent transaction ${signature}, monitoring via WebSocket...`);
-      const confirmationResult = await this.rpcProviderService.monitorTransaction(signature, 60000);
+      const wsTimeout = this.config.confirmRetryInterval * this.config.confirmRetryCount * 1000;
+      logger.info(`🚀 Sent transaction ${signature}, monitoring via WebSocket (${wsTimeout / 1000}s timeout)...`);
+      const confirmationResult = await this.rpcProviderService.monitorTransaction(signature, wsTimeout);
 
       if (confirmationResult.confirmed) {
         logger.info(`✅ Transaction ${signature} confirmed via WebSocket`);
-        const txData = await this.connection.getTransaction(signature, {
-          commitment: 'confirmed',
-          maxSupportedTransactionVersion: 0,
-        });
+        const txData = await this._fetchTransactionWithRetry(signature);
+        if (!txData) {
+          logger.warn(`Transaction ${signature} confirmed but data not available`);
+        }
         return { confirmed: true, txData };
       } else {
         logger.warn(`❌ Transaction ${signature} not confirmed via WebSocket within timeout`);
@@ -1553,10 +1581,7 @@ export class Solana {
 
           if (status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized') {
             logger.info(`✅ Transaction ${signature} confirmed after ${attempts} attempts`);
-            const txData = await this.connection.getTransaction(signature, {
-              commitment: 'confirmed',
-              maxSupportedTransactionVersion: 0,
-            });
+            const txData = await this._fetchTransactionWithRetry(signature);
             return { confirmed: true, txData };
           }
         }
@@ -1653,13 +1678,11 @@ export class Solana {
     balanceChanges: number[];
     fee: number;
   }> {
-    // Fetch transaction details
-    const txDetails = await this.connection.getParsedTransaction(signature, {
-      maxSupportedTransactionVersion: 0,
-    });
+    // Fetch transaction details with retry (data may not be immediately available after confirmation)
+    const txDetails = await this._fetchTransactionWithRetry(signature, 5, 500, true);
 
     if (!txDetails) {
-      throw new Error(`Transaction ${signature} not found`);
+      throw new Error(`Transaction ${signature} not found after retries`);
     }
 
     // Calculate fee including priority fee using the same method as getFee
