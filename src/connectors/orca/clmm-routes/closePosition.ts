@@ -236,7 +236,9 @@ export async function closePosition(
       }),
     );
 
-    // Note: We'll extract actual fee amounts from balance changes after transaction
+    // Use collectQuote for fee amounts (derived from on-chain position data)
+    baseFeeAmountCollected = Number(collectQuote.feeOwedA) / Math.pow(10, mintA.decimals);
+    quoteFeeAmountCollected = Number(collectQuote.feeOwedB) / Math.pow(10, mintB.decimals);
   }
 
   // Step 4: Auto-unwrap WSOL to native SOL after receiving all tokens
@@ -281,52 +283,37 @@ export async function closePosition(
     }),
   );
 
+  // Calculate rent refund by querying position account balances BEFORE the TX.
+  // These accounts will be closed by the transaction, so we must read them now.
+  // This is more accurate than deriving from wallet SOL changes, which can be
+  // skewed by ephemeral wSOL wrapper create/close cycles within the same TX.
+  const LAMPORT_TO_SOL = 1e-9;
+  const positionMintPubkey = position.getData().positionMint;
+  const positionTokenAccount = getAssociatedTokenAddressSync(
+    positionMintPubkey,
+    client.getContext().wallet.publicKey,
+    undefined,
+    isToken2022 ? TOKEN_2022_PROGRAM_ID : undefined,
+  );
+  const [positionMintBalance, positionDataBalance, positionAtaBalance] = await Promise.all([
+    solana.connection.getBalance(positionMintPubkey),
+    solana.connection.getBalance(positionPubkey),
+    solana.connection.getBalance(positionTokenAccount),
+  ]);
+  const positionRentRefunded = (positionMintBalance + positionDataBalance + positionAtaBalance) * LAMPORT_TO_SOL;
+
+  logger.info(
+    `Position rent refund: mint=${positionMintBalance}, data=${positionDataBalance}, ata=${positionAtaBalance}, total=${positionRentRefunded} SOL`,
+  );
+
   // Build, simulate, and send transaction
   const txPayload = await builder.build();
   await solana.simulateWithErrorHandling(txPayload.transaction);
   const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [wallet]);
 
-  // Extract actual amounts from balance changes (more accurate than quotes)
-  const tokenAAddress = whirlpool.getTokenAInfo().address.toString();
-  const tokenBAddress = whirlpool.getTokenBInfo().address.toString();
-  const tokenA = await solana.getToken(tokenAAddress);
-  const tokenB = await solana.getToken(tokenBAddress);
-
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-    signature,
-    client.getContext().wallet.publicKey.toString(),
-    [tokenAAddress, tokenBAddress],
-  );
-
-  // Total balance changes (positive values = received)
-  const totalBaseChange = Math.abs(balanceChanges[0]);
-  const totalQuoteChange = Math.abs(balanceChanges[1]);
-
-  // If we removed liquidity, use the quote estimates as basis
-  // Otherwise, all balance change is from fees
-  if (hasLiquidity) {
-    // We have estimates from decreaseQuote, but actual amounts might differ slightly
-    // Use the estimates as reference, but ensure fees aren't negative
-    baseFeeAmountCollected = Math.max(0, totalBaseChange - baseTokenAmountRemoved);
-    quoteFeeAmountCollected = Math.max(0, totalQuoteChange - quoteTokenAmountRemoved);
-
-    // If fees would be negative, it means the estimate was slightly high
-    // Adjust the liquidity removed to match actual total
-    if (totalBaseChange < baseTokenAmountRemoved) {
-      baseTokenAmountRemoved = totalBaseChange;
-      baseFeeAmountCollected = 0;
-    }
-    if (totalQuoteChange < quoteTokenAmountRemoved) {
-      quoteTokenAmountRemoved = totalQuoteChange;
-      quoteFeeAmountCollected = 0;
-    }
-  } else {
-    // No liquidity removed, all balance change is fees
-    baseFeeAmountCollected = totalBaseChange;
-    quoteFeeAmountCollected = totalQuoteChange;
-  }
-
-  const positionRentRefunded = 0.00203928;
+  // Token amounts are already set from quotes:
+  // - baseTokenAmountRemoved / quoteTokenAmountRemoved from decreaseQuote (Step 2)
+  // - baseFeeAmountCollected / quoteFeeAmountCollected from collectQuote (Step 3)
 
   return {
     signature,
