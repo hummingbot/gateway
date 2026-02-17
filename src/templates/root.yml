@@ -92,6 +92,10 @@ configurations:
     configurationPath: connectors/pancakeswap-sol.yml
     schemaPath: pancakeswap-sol-schema.json
 
+  $namespace ore:
+    configurationPath: connectors/ore.yml
+    schemaPath: ore-schema.json
+
   # API Keys (centralized)
   $namespace apiKeys:
     configurationPath: apiKeys.yml
