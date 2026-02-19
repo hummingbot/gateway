@@ -10,7 +10,7 @@
  * - Universal Router: https://developer.pancakeswap.finance/contracts/v3/addresses#smart-router
  */
 
-import { Address } from 'viem';
+type Address = string;
 
 export interface PancakeswapContractAddresses {
   // V2 contracts
@@ -23,6 +23,7 @@ export interface PancakeswapContractAddresses {
   pancakeswapV3QuoterV2ContractAddress: Address;
   pancakeswapV3FactoryAddress: Address;
   pancakeswapV3PoolDeployerAddress: Address;
+  pancakeswapV3MasterchefAddress: Address;
 
   // Universal Router V2 (unified router for all protocols)
   universalRouterV2Address: Address;
@@ -43,6 +44,7 @@ export const contractAddresses: NetworkContractAddresses = {
     pancakeswapV3QuoterV2ContractAddress: '0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997',
     pancakeswapV3FactoryAddress: '0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865',
     pancakeswapV3PoolDeployerAddress: '0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9',
+    pancakeswapV3MasterchefAddress: '0x556B9306565093C855AEA9AE92A594704c2Cd59e',
     // Universal Router V2 - Official Pancakeswap address
     universalRouterV2Address: '0x13f4EA83D0bd40E75C8222255bc855a974568Dd4',
   },
@@ -56,6 +58,7 @@ export const contractAddresses: NetworkContractAddresses = {
     pancakeswapV3QuoterV2ContractAddress: '0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997',
     pancakeswapV3FactoryAddress: '0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865',
     pancakeswapV3PoolDeployerAddress: '0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9',
+    pancakeswapV3MasterchefAddress: '0x5e09ACf80C0296740eC5d6F643005a4ef8DaA694',
     // Universal Router V2 - Official Pancakeswap address
     universalRouterV2Address: '0x32226588378236Fd0c7c4053999F88aC0e5cAc77',
   },
@@ -69,6 +72,7 @@ export const contractAddresses: NetworkContractAddresses = {
     pancakeswapV3QuoterV2ContractAddress: '0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997',
     pancakeswapV3FactoryAddress: '0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865',
     pancakeswapV3PoolDeployerAddress: '0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9',
+    pancakeswapV3MasterchefAddress: '0xC6A2Db661D5a5690172d8eB0a7DEA2d3008665A3',
     // Universal Router V2 - Official Pancakeswap address
     universalRouterV2Address: '0x678Aa4bF4E210cf2166753e054d5b7c31cc7fa86',
   },
@@ -82,6 +86,7 @@ export const contractAddresses: NetworkContractAddresses = {
     pancakeswapV3QuoterV2ContractAddress: '0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997',
     pancakeswapV3FactoryAddress: '0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865',
     pancakeswapV3PoolDeployerAddress: '0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9',
+    pancakeswapV3MasterchefAddress: '0x556B9306565093C855AEA9AE92A594704c2Cd59e',
     // Universal Router V2 - Official Pancakeswap address
     universalRouterV2Address: '0x13f4EA83D0bd40E75C8222255bc855a974568Dd4',
   },
@@ -178,6 +183,16 @@ export function getPancakeswapV3PoolDeployerAddress(network: string): Address {
 
   if (!address) {
     throw new Error(`Pancakeswap V3 Factory address not configured for network: ${network}`);
+  }
+
+  return address;
+}
+
+export function getPancakeswapV3MasterchefAddress(network: string): string {
+  const address = contractAddresses[network]?.pancakeswapV3MasterchefAddress;
+
+  if (!address) {
+    throw new Error(`Pancakeswap V3 Masterchef address not configured for network: ${network}`);
   }
 
   return address;
