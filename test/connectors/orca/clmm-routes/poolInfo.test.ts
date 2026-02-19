@@ -6,8 +6,8 @@ import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 
 jest.mock('../../../../src/connectors/orca/orca');
 jest.mock('../../../../src/chains/solana/solana');
-jest.mock('@solana/spl-token', () => ({
-  getMint: jest.fn(),
+jest.mock('@solana-program/token-2022', () => ({
+  fetchAllMint: jest.fn(),
 }));
 jest.mock('@orca-so/whirlpools-sdk', () => ({
   PriceMath: {
@@ -62,12 +62,12 @@ const mockApiPoolInfo = {
 
 describe('GET /pool-info', () => {
   let app: any;
-  let getMintMock: jest.Mock;
+  let fetchAllMintMock: jest.Mock;
 
   beforeAll(async () => {
-    // Import getMint mock
-    const splToken = await import('@solana/spl-token');
-    getMintMock = splToken.getMint as jest.Mock;
+    // Import fetchAllMint mock
+    const token2022 = await import('@solana-program/token-2022');
+    fetchAllMintMock = token2022.fetchAllMint as jest.Mock;
 
     app = await buildApp();
   });
@@ -80,6 +80,7 @@ describe('GET /pool-info', () => {
     const mockOrca = {
       getWhirlpool: jest.fn().mockResolvedValue(mockWhirlpool),
       getPoolInfo: jest.fn().mockResolvedValue(mockApiPoolInfo),
+      solanaKitRpc: {}, // Mock RPC
     };
     (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
 
@@ -94,10 +95,11 @@ describe('GET /pool-info', () => {
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
 
-    // Mock getMint
-    getMintMock.mockResolvedValue({
-      decimals: 9,
-    });
+    // Mock fetchAllMint - returns array of mint data with .data.decimals structure
+    fetchAllMintMock.mockResolvedValue([
+      { data: { decimals: 9 } }, // mintA
+      { data: { decimals: 9 } }, // mintB
+    ]);
   });
 
   afterAll(async () => {
@@ -223,5 +225,74 @@ describe('GET /pool-info', () => {
     });
 
     expect(response.statusCode).toBe(503);
+  });
+
+  it('should handle Token2022 tokens like PYUSD', async () => {
+    // PYUSD is a Token2022 token - the fix uses fetchAllMint which supports both Token and Token2022
+    const pyusdPoolAddress = '9tXiuRRw7kbejLhZXtxDxYs2REe43uH2e7k1kocgdM9B';
+    const pyusdMint = '2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo';
+    const usdcMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+
+    // Mock whirlpool data with PYUSD (Token2022) and USDC (Token) pair
+    const mockPyusdWhirlpool = {
+      tokenMintA: pyusdMint,
+      tokenMintB: usdcMint,
+      tokenVaultA: '7jaiZR5Sk8hdYN9MxTpczTcwbWpb5WEoxSANuUwveuat',
+      tokenVaultB: '3YQm7ujtXWJU2e9jhp2QGHpnn1ShXn12QjvzMvDgabpX',
+      tickSpacing: 1,
+      feeRate: 100, // 0.01%
+      protocolFeeRate: 1300, // 0.13%
+      tickCurrentIndex: 0,
+      liquidity: new BN('43569222763129181'),
+      sqrtPrice: new BN('18447148653206777165'),
+    };
+
+    const mockPyusdApiPoolInfo = {
+      address: pyusdPoolAddress,
+      baseTokenAddress: pyusdMint,
+      quoteTokenAddress: usdcMint,
+      binStep: 1,
+      feePct: 0.01,
+      price: 1.0,
+      baseTokenAmount: 16826537.332925,
+      quoteTokenAmount: 14220697.597852,
+      activeBinId: 0,
+      liquidity: '43569222763129181',
+      sqrtPrice: '18447148653206777165',
+      tvlUsdc: 31045721.31,
+      protocolFeeRate: 0.13,
+      yieldOverTvl: 0.00000817197170889726,
+    };
+
+    const mockOrca = {
+      getWhirlpool: jest.fn().mockResolvedValue(mockPyusdWhirlpool),
+      getPoolInfo: jest.fn().mockResolvedValue(mockPyusdApiPoolInfo),
+      solanaKitRpc: {},
+    };
+    (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
+
+    // fetchAllMint handles both Token and Token2022 programs
+    // PYUSD has 6 decimals, USDC has 6 decimals
+    fetchAllMintMock.mockResolvedValue([
+      { data: { decimals: 6 } }, // PYUSD (Token2022)
+      { data: { decimals: 6 } }, // USDC (Token)
+    ]);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/pool-info',
+      query: {
+        network: 'mainnet-beta',
+        poolAddress: pyusdPoolAddress,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body).toHaveProperty('address', pyusdPoolAddress);
+    expect(body).toHaveProperty('baseTokenAddress', pyusdMint);
+    expect(body).toHaveProperty('quoteTokenAddress', usdcMint);
+    expect(body).toHaveProperty('feePct', 0.01);
+    expect(body).toHaveProperty('binStep', 1);
   });
 });
