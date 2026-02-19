@@ -81,7 +81,7 @@ export async function getPositionInfo(
   const [baseFeeAmount, quoteFeeAmount] = isBaseToken0 ? [feeAmount0, feeAmount1] : [feeAmount1, feeAmount0];
 
   const poolAddress = computePoolAddress({
-    deployerAddress: getPancakeswapV3PoolDeployerAddress(network),
+    deployerAddress: getPancakeswapV3PoolDeployerAddress(network) as `0x${string}`,
     tokenA: token0,
     tokenB: token1,
     fee,

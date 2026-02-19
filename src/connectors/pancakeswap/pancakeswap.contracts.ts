@@ -10,7 +10,7 @@
  * - Universal Router: https://developer.pancakeswap.finance/contracts/v3/addresses#smart-router
  */
 
-type Address = string;
+type Address = `0x${string}`;
 
 export interface PancakeswapContractAddresses {
   // V2 contracts

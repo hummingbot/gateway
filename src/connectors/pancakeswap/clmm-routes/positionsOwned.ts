@@ -106,7 +106,7 @@ export async function getPositionsOwned(
       positions.push({
         address: tokenId.toString(),
         poolAddress: computePoolAddress({
-          deployerAddress: getPancakeswapV3PoolDeployerAddress(network),
+          deployerAddress: getPancakeswapV3PoolDeployerAddress(network) as `0x${string}`,
           tokenA: token0,
           tokenB: token1,
           fee: positionDetails.fee,

@@ -56,11 +56,12 @@ export function validateChainName(chain: string): boolean {
   try {
     // Get supported chains directly without caching
     const supportedChains = getSupportedChains();
-    return supportedChains.includes(chain.toLowerCase());
+    // Also allow 'bsc' as it's mapped to 'ethereum'
+    return supportedChains.includes(chain.toLowerCase()) || chain.toLowerCase() === 'bsc';
   } catch (error) {
     // Fallback to hardcoded list if there's an error
     logger.warn(`Failed to get supported chains: ${error.message}. Using fallback list.`);
-    return ['ethereum', 'solana'].includes(chain.toLowerCase());
+    return ['ethereum', 'solana', 'bsc'].includes(chain.toLowerCase());
   }
 }
 
@@ -105,11 +106,19 @@ export async function addWallet(fastify: FastifyInstance, req: AddWalletRequest)
   let address: string | undefined;
   let encryptedPrivateKey: string | undefined;
 
-  // Default to mainnet-beta for Solana or mainnet for other chains
-  const network = req.chain === 'solana' ? 'mainnet-beta' : 'mainnet';
+  // Map 'bsc' to 'ethereum' chain, since BSC uses the Ethereum implementation
+  const chainForConnection = req.chain.toLowerCase() === 'bsc' ? 'ethereum' : req.chain;
+
+  // Default to mainnet-beta for Solana, bsc-testnet for bsc, or mainnet for other chains
+  let network = 'mainnet';
+  if (chainForConnection === 'solana') {
+    network = 'mainnet-beta';
+  } else if (req.chain.toLowerCase() === 'bsc') {
+    network = 'bsc-mainnet';
+  }
 
   try {
-    connection = await getInitializedChain<Chain>(req.chain, network);
+    connection = await getInitializedChain<Chain>(chainForConnection, network);
   } catch (e) {
     if (e instanceof UnsupportedChainException) {
       throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
@@ -168,9 +177,10 @@ export async function removeWallet(fastify: FastifyInstance, req: RemoveWalletRe
 
     // Validate the address based on chain type
     let validatedAddress: string;
-    if (req.chain.toLowerCase() === 'ethereum') {
+    const chainLower = req.chain.toLowerCase();
+    if (chainLower === 'ethereum' || chainLower === 'bsc') {
       validatedAddress = Ethereum.validateAddress(req.address);
-    } else if (req.chain.toLowerCase() === 'solana') {
+    } else if (chainLower === 'solana') {
       validatedAddress = Solana.validateAddress(req.address);
     } else {
       // This should not happen due to validateChainName check, but just in case
@@ -201,9 +211,10 @@ export async function signMessage(fastify: FastifyInstance, req: SignMessageRequ
 
     // Validate the address based on chain type
     let validatedAddress: string;
-    if (req.chain.toLowerCase() === 'ethereum') {
+    const chainLower = req.chain.toLowerCase();
+    if (chainLower === 'ethereum' || chainLower === 'bsc') {
       validatedAddress = Ethereum.validateAddress(req.address);
-    } else if (req.chain.toLowerCase() === 'solana') {
+    } else if (chainLower === 'solana') {
       validatedAddress = Solana.validateAddress(req.address);
     } else {
       throw new Error(`Unsupported chain: ${req.chain}`);
@@ -211,7 +222,9 @@ export async function signMessage(fastify: FastifyInstance, req: SignMessageRequ
 
     // Get connection with validated network parameter
     const safeNetwork = sanitizePathComponent(req.network);
-    const connection = await getInitializedChain(req.chain, safeNetwork);
+    // Map 'bsc' to 'ethereum' for connection
+    const chainForConnection = chainLower === 'bsc' ? 'ethereum' : req.chain;
+    const connection = await getInitializedChain(chainForConnection, safeNetwork);
 
     // getWallet now includes its own address validation
     const wallet = await (connection as any).getWallet(validatedAddress);
@@ -385,8 +398,16 @@ export async function createWallet(fastify: FastifyInstance, req: CreateWalletRe
   let privateKey: string;
   let encryptedPrivateKey: string;
 
-  // Default to mainnet-beta for Solana or mainnet for other chains
-  const network = req.chain === 'solana' ? 'mainnet-beta' : 'mainnet';
+  // Map 'bsc' to 'ethereum' chain
+  const chainForConnection = req.chain.toLowerCase() === 'bsc' ? 'ethereum' : req.chain;
+
+  // Default to mainnet-beta for Solana, bsc-mainnet for bsc, or mainnet for other chains
+  let network = 'mainnet';
+  if (chainForConnection === 'solana') {
+    network = 'mainnet-beta';
+  } else if (req.chain.toLowerCase() === 'bsc') {
+    network = 'bsc-mainnet';
+  }
 
   try {
     if (req.chain.toLowerCase() === 'solana') {
@@ -398,14 +419,14 @@ export async function createWallet(fastify: FastifyInstance, req: CreateWalletRe
       // Get Solana connection for encryption
       const connection = await getInitializedChain<Solana>(req.chain, network);
       encryptedPrivateKey = await connection.encrypt(privateKey, walletKey);
-    } else if (req.chain.toLowerCase() === 'ethereum') {
-      // Generate Ethereum wallet
+    } else if (req.chain.toLowerCase() === 'ethereum' || req.chain.toLowerCase() === 'bsc') {
+      // Generate Ethereum wallet (used for both Ethereum and BSC)
       const wallet = Wallet.createRandom();
       address = wallet.address;
       privateKey = wallet.privateKey;
 
-      // Get Ethereum connection for encryption
-      const connection = await getInitializedChain<Ethereum>(req.chain, network);
+      // Get Ethereum connection for encryption (works for BSC too via chainForConnection mapping)
+      const connection = await getInitializedChain<Ethereum>(chainForConnection, network);
       encryptedPrivateKey = await connection.encrypt(privateKey, walletKey);
     } else {
       throw new Error(`Unsupported chain: ${req.chain}`);
@@ -528,11 +549,12 @@ export async function sendTransaction(
   // Validate addresses based on chain type
   let validatedFromAddress: string;
   let validatedToAddress: string;
+  const chainLower = req.chain.toLowerCase();
 
-  if (req.chain.toLowerCase() === 'ethereum') {
+  if (chainLower === 'ethereum' || chainLower === 'bsc') {
     validatedFromAddress = Ethereum.validateAddress(req.address);
     validatedToAddress = Ethereum.validateAddress(req.toAddress);
-  } else if (req.chain.toLowerCase() === 'solana') {
+  } else if (chainLower === 'solana') {
     validatedFromAddress = Solana.validateAddress(req.address);
     validatedToAddress = Solana.validateAddress(req.toAddress);
   } else {
@@ -545,7 +567,7 @@ export async function sendTransaction(
     throw fastify.httpErrors.badRequest('Send from hardware wallet not supported via API');
   }
 
-  if (req.chain.toLowerCase() === 'solana') {
+  if (chainLower === 'solana') {
     return await sendSolanaTransaction(fastify, req, validatedFromAddress, validatedToAddress);
   } else {
     return await sendEthereumTransaction(fastify, req, validatedFromAddress, validatedToAddress);

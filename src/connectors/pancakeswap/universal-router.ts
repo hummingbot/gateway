@@ -316,7 +316,7 @@ export class UniversalRouterService {
       try {
         // Compute pool address
         const poolAddress = computePoolAddress({
-          deployerAddress: getPancakeswapV3PoolDeployerAddress(this.network),
+          deployerAddress: getPancakeswapV3PoolDeployerAddress(this.network) as `0x${string}`,
           tokenA,
           tokenB,
           fee,
@@ -375,7 +375,7 @@ export class UniversalRouterService {
     try {
       // Compute pair address
       const pairAddress = computePairAddress({
-        factoryAddress: getPancakeswapV2FactoryAddress(this.network),
+        factoryAddress: getPancakeswapV2FactoryAddress(this.network) as `0x${string}`,
         tokenA,
         tokenB,
       });

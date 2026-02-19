@@ -8,8 +8,8 @@ export const WalletAddressSchema = Type.String({
 export const AddWalletRequestSchema = Type.Object({
   chain: Type.String({
     description: 'Blockchain to add wallet to',
-    enum: ['ethereum', 'solana'],
-    examples: ['solana', 'ethereum'],
+    enum: ['ethereum', 'solana', 'bsc'],
+    examples: ['solana', 'ethereum', 'bsc'],
   }),
   privateKey: Type.String({
     description: 'Private key for the wallet',
@@ -51,8 +51,8 @@ export const GetWalletResponseSchema = Type.Object({
 export const RemoveWalletRequestSchema = Type.Object({
   chain: Type.String({
     description: 'Blockchain to remove wallet from',
-    enum: ['ethereum', 'solana'],
-    examples: ['solana', 'ethereum'],
+    enum: ['ethereum', 'solana', 'bsc'],
+    examples: ['solana', 'ethereum', 'bsc'],
   }),
   address: Type.String({
     description: 'Wallet address to remove',
@@ -80,9 +80,9 @@ export const SignMessageResponseSchema = Type.Object({
 export const AddHardwareWalletRequestSchema = Type.Object({
   chain: Type.String({
     description: 'Blockchain for hardware wallet',
-    enum: ['ethereum', 'solana'],
+    enum: ['ethereum', 'solana', 'bsc'],
     default: 'solana',
-    examples: ['solana', 'ethereum'],
+    examples: ['solana', 'ethereum', 'bsc'],
   }),
   address: Type.String({
     description: 'Hardware wallet address to add (must exist on connected Ledger device)',
@@ -138,8 +138,8 @@ export const ListHardwareWalletsResponseSchema = Type.Object({
 export const SetDefaultWalletRequestSchema = Type.Object({
   chain: Type.String({
     description: 'Blockchain to set default wallet for',
-    enum: ['ethereum', 'solana'],
-    examples: ['solana', 'ethereum'],
+    enum: ['ethereum', 'solana', 'bsc'],
+    examples: ['solana', 'ethereum', 'bsc'],
   }),
   address: Type.String({
     description: 'Wallet address to set as default',
