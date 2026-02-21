@@ -1,10 +1,10 @@
 import { Static, Type } from '@sinclair/typebox';
 import { FastifyInstance } from 'fastify';
 
-import { logger } from '../../../services/logger';
-import { Pancakeswap } from '../pancakeswap';
+import { logger } from '../../services/logger';
 
-import { closePosition } from './closePosition';
+import { closePosition } from './clmm-routes/closePosition';
+import { Pancakeswap } from './pancakeswap';
 
 const MasterChefUnstakeAndCloseSchema = Type.Object({
   network: Type.String({

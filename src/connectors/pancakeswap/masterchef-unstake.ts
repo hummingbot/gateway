@@ -1,7 +1,7 @@
 import { Static, Type } from '@sinclair/typebox';
 import { FastifyInstance } from 'fastify';
 
-import { Pancakeswap } from '../pancakeswap';
+import { Pancakeswap } from './pancakeswap';
 
 const MasterChefUnstakeSchema = Type.Object({
   network: Type.String({ description: 'Blockchain network (e.g., bsc-mainnet)' }),

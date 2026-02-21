@@ -1,7 +1,7 @@
 import { Static, Type } from '@sinclair/typebox';
 import { FastifyInstance } from 'fastify';
 
-import { Pancakeswap } from '../pancakeswap';
+import { Pancakeswap } from './pancakeswap';
 
 const MasterChefStakeSchema = Type.Object({
   network: Type.String({

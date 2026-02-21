@@ -37,7 +37,7 @@ This document provides a complete list of ALL files that were changed specifical
 - **[src/connectors/pancakeswap/clmm-routes/masterchef-stake.ts](src/connectors/pancakeswap/clmm-routes/masterchef-stake.ts)**
   - Updated request schema: Added `walletAddress` parameter (required)
   - Enhanced schema documentation with examples
-  - Changed endpoint path from `/connector/pancakeswap/clmm/masterchef-stake` to `/masterchef-stake`
+  - Changed endpoint path from `/connectors/pancakeswap/masterchef-stake` (moved from clmm-routes)
   - Updated tags from `['/connector/pancakeswap/clmm']` to `['/connector/pancakeswap']`
   - Improved OpenAPI documentation:
     - Added summary, description, operationId
@@ -47,7 +47,7 @@ This document provides a complete list of ALL files that were changed specifical
 
 - **[src/connectors/pancakeswap/clmm-routes/masterchef-unstake.ts](src/connectors/pancakeswap/clmm-routes/masterchef-unstake.ts)**
   - Updated request schema: Added `walletAddress` parameter (required)
-  - Changed endpoint path from `/connector/pancakeswap/clmm/masterchef-unstake` to `/masterchef-unstake`
+  - Changed endpoint path from `/connectors/pancakeswap/masterchef-unstake` (moved from clmm-routes)
   - Updated tags to match new structure
   - Updated to pass `walletAddress` to `unstakeNft()` method
   - Improved error responses
@@ -250,7 +250,7 @@ After applying changes, verify:
 
 1. **MasterChef Staking** 
    - Requires one-time: `setApprovalForAll(MasterChef, true)` on NFT Manager contract
-   - Test: POST `/connectors/pancakeswap/clmm/masterchef-stake`
+   - Test: POST `/connectors/pancakeswap/masterchef-stake`
 
 2. **Execute Swap Amounts**
    - Test: POST `/connectors/pancakeswap/clmm/execute-swap` with decimal amounts (0.032, 0.2, etc.)
