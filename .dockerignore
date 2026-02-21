@@ -4,3 +4,6 @@
 /logs
 /gateway.level
 /transactions.level
+node_modules
+dist
+.pnpm-store

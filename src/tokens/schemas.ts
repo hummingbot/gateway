@@ -79,12 +79,14 @@ export const TokenListQuerySchema = Type.Object({
     Type.String({
       description: 'Blockchain network (e.g., ethereum, solana)',
       examples: ['ethereum', 'solana'],
+      enum: ['ethereum', 'solana'],
     }),
   ),
   network: Type.Optional(
     Type.String({
-      description: 'Network name (e.g., mainnet, mainnet-beta)',
-      examples: ['mainnet', 'mainnet-beta', 'devnet'],
+      description: 'Network name (e.g., mainnet, mainnet-beta, bsc)',
+      examples: ['mainnet', 'mainnet-beta', 'devnet', 'bsc'],
+      enum: ['mainnet', 'mainnet-beta', 'devnet', 'bsc', 'arbitrum', 'base'],
     }),
   ),
   search: Type.Optional(

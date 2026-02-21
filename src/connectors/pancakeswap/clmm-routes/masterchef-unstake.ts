@@ -7,7 +7,7 @@ const MasterChefUnstakeSchema = Type.Object({
   network: Type.String({ description: 'Blockchain network (e.g., bsc-mainnet)' }),
   walletAddress: Type.String({
     description: 'The wallet address to receive the unstaked NFT and rewards',
-    examples: ['0xA57d70a25847A7457ED75E4e04F8d00bf1BE33bC'],
+    examples: ['0x742d35Cc6634C0532925a3b844Bc9e7595f42e0E'],
   }),
   tokenId: Type.Number({ description: 'Token ID of the NFT to unstake' }),
 });

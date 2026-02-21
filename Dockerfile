@@ -42,8 +42,8 @@ ENV BUILD_DATE=${BUILD_DATE}
 ENV INSTALLATION_TYPE=docker
 ENV DEV=true
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies (include devDependencies for build tooling like rimraf)
+RUN pnpm install --frozen-lockfile --prod=false
 
 # Copy the rest of the files
 COPY . .

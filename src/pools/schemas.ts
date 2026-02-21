@@ -5,13 +5,15 @@ import { ConfigManagerV2 } from '../services/config-manager-v2';
 // Pool list request
 export const PoolListRequestSchema = Type.Object({
   connector: Type.String({
-    description: 'Connector (raydium, meteora, uniswap, orca)',
-    examples: ['raydium', 'meteora', 'uniswap', 'orca'],
+    description: 'Connector (raydium, meteora, uniswap, orca, pancakeswap, pancakeswap-sol)',
+    examples: ['raydium', 'meteora', 'uniswap', 'orca', 'pancakeswap'],
+    enum: ['raydium', 'meteora', 'uniswap', 'orca', 'pancakeswap', 'pancakeswap-sol', 'jupiter', '0x'],
   }),
   network: Type.Optional(
     Type.String({
-      description: 'Optional: filter by network (mainnet, mainnet-beta, etc)',
-      examples: ['mainnet', 'mainnet-beta', 'base'],
+      description: 'Optional: filter by network (mainnet, mainnet-beta, bsc, etc)',
+      examples: ['mainnet', 'mainnet-beta', 'base', 'bsc', 'arbitrum'],
+      enum: ['mainnet', 'mainnet-beta', 'base', 'bsc', 'arbitrum', 'devnet'],
     }),
   ),
   type: Type.Optional(

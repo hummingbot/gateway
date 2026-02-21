@@ -12,8 +12,8 @@ const MasterChefStakeSchema = Type.Object({
   walletAddress: Type.String({
     description:
       'The wallet address that will sign and send the staking transaction. This must be an address with the necessary privileges to stake the NFT.',
-    examples: ['0xA57d70a25847A7457ED75E4e04F8d00bf1BE33bC'],
-    default: '0xA57d70a25847A7457ED75E4e04F8d00bf1BE33bC',
+    examples: ['0x742d35Cc6634C0532925a3b844Bc9e7595f42e0E'],
+    default: '0x742d35Cc6634C0532925a3b844Bc9e7595f42e0E',
   }),
   tokenId: Type.Number({
     description: 'Token ID of the NFT to stake in the MasterChef contract.',
@@ -61,7 +61,7 @@ export default async function masterchefStakeRoutes(fastify: FastifyInstance) {
           'Stake NFT': {
             value: {
               network: 'bsc',
-              walletAddress: '0xA57d70a25847A7457ED75E4e04F8d00bf1BE33bC',
+              walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f42e0E',
               tokenId: 6350589,
             },
           },
