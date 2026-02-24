@@ -1,6 +1,6 @@
 import { DecimalUtil } from '@orca-so/common-sdk';
 import { Static } from '@sinclair/typebox';
-import { Keypair, PublicKey, Transaction } from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync } from 'fastify';
@@ -16,15 +16,9 @@ import { MeteoraClmmOpenPositionRequest } from '../schemas';
 // Using Fastify's native error handling
 
 // Define error messages
-const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
 const POOL_NOT_FOUND_MESSAGE = (poolAddress: string) => `Pool not found: ${poolAddress}`;
 const MISSING_AMOUNTS_MESSAGE = 'Missing amounts for position creation';
-const INSUFFICIENT_BALANCE_MESSAGE = (token: string, required: string, actual: string) =>
-  `Insufficient balance for ${token}. Required: ${required}, Available: ${actual}`;
 const OPEN_POSITION_ERROR_MESSAGE = (error: any) => `Failed to open position: ${error.message || error}`;
-
-const SOL_POSITION_RENT = 0.05; // SOL amount required for position rent
-const SOL_TRANSACTION_BUFFER = 0.01; // Additional SOL buffer for transaction costs
 
 export async function openPosition(
   network: string,
@@ -174,6 +168,19 @@ export async function openPosition(
   const confirmed = txData !== null;
 
   if (confirmed && txData) {
+    // Extract position rent from the position account's SOL balance
+    // The position account is newly created, so its postBalance IS the rent
+    const positionPubkey = newImbalancePosition.publicKey;
+    const accountKeys = txData.transaction.message.getAccountKeys().staticAccountKeys;
+    const postBalances = txData.meta?.postBalances || [];
+
+    let positionRent = 0;
+    const positionAccountIndex = accountKeys.findIndex((key) => key.equals(positionPubkey));
+    if (positionAccountIndex !== -1) {
+      // Position account's balance after tx is the rent (it was 0 before creation)
+      positionRent = postBalances[positionAccountIndex] / 1e9; // Convert lamports to SOL
+    }
+
     // Track wallet's balance changes for the tokens
     const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
       dlmmPool.tokenX.publicKey.toBase58(),
@@ -184,25 +191,16 @@ export async function openPosition(
     let baseAmountAdded = Math.abs(balanceChanges[0]);
     let quoteAmountAdded = Math.abs(balanceChanges[1]);
 
-    // Calculate position rent for new positions
     // When SOL is base/quote, wallet balance change includes: liquidity + rent + fee
-    // We need to separate rent from liquidity
-    let positionRent = 0;
+    // We need to subtract rent to get actual liquidity added
     if (tokenXSymbol === 'SOL') {
-      // SOL is base token - subtract fee and rent from balance change
-      // Rent = total spent - fee - actual liquidity (what user requested)
-      const totalSOLSpent = baseAmountAdded;
-      const requestedLiquidity = baseTokenAmount || 0;
-      positionRent = totalSOLSpent - txFee - requestedLiquidity;
-      if (positionRent < 0) positionRent = 0;
-      baseAmountAdded = requestedLiquidity;
+      // SOL is base token - subtract rent from balance change to get actual liquidity
+      baseAmountAdded = baseAmountAdded - positionRent - txFee;
+      if (baseAmountAdded < 0) baseAmountAdded = 0;
     } else if (tokenYSymbol === 'SOL') {
-      // SOL is quote token
-      const totalSOLSpent = quoteAmountAdded;
-      const requestedLiquidity = quoteTokenAmount || 0;
-      positionRent = totalSOLSpent - txFee - requestedLiquidity;
-      if (positionRent < 0) positionRent = 0;
-      quoteAmountAdded = requestedLiquidity;
+      // SOL is quote token - subtract rent from balance change to get actual liquidity
+      quoteAmountAdded = quoteAmountAdded - positionRent - txFee;
+      if (quoteAmountAdded < 0) quoteAmountAdded = 0;
     }
 
     logger.info(
