@@ -96,8 +96,13 @@ describe('POST /execute-swap', () => {
   });
 
   it('should execute a CLMM swap for SELL side', async () => {
+    const mockSigner = {
+      type: 'keypair',
+      address: '11111111111111111111111111111111',
+      getPublicKey: () => mockWallet.publicKey,
+    };
     const mockSolanaInstance = {
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
+      getSigner: jest.fn().mockResolvedValue(mockSigner),
       getToken: jest
         .fn()
         .mockResolvedValueOnce(mockSOL)
@@ -110,8 +115,9 @@ describe('POST /execute-swap', () => {
         meta: { fee: 5000 },
         transaction: {},
       }),
-      sendAndConfirmTransaction: jest.fn().mockResolvedValue({
+      signAndSend: jest.fn().mockResolvedValue({
         signature: mockTransaction.signature,
+        confirmed: true,
         fee: 0.000005,
       }),
       connection: {
@@ -170,8 +176,13 @@ describe('POST /execute-swap', () => {
   });
 
   it('should execute a CLMM swap for BUY side', async () => {
+    const mockSigner = {
+      type: 'keypair',
+      address: '11111111111111111111111111111111',
+      getPublicKey: () => mockWallet.publicKey,
+    };
     const mockSolanaInstance = {
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
+      getSigner: jest.fn().mockResolvedValue(mockSigner),
       getToken: jest
         .fn()
         .mockResolvedValueOnce(mockSOL)
@@ -184,8 +195,9 @@ describe('POST /execute-swap', () => {
         meta: { fee: 5000 },
         transaction: {},
       }),
-      sendAndConfirmTransaction: jest.fn().mockResolvedValue({
+      signAndSend: jest.fn().mockResolvedValue({
         signature: mockTransaction.signature,
+        confirmed: true,
         fee: 0.000005,
       }),
       connection: {
@@ -246,8 +258,13 @@ describe('POST /execute-swap', () => {
   });
 
   it('should return 400 if token not found', async () => {
+    const mockSigner = {
+      type: 'keypair',
+      address: '11111111111111111111111111111111',
+      getPublicKey: () => mockWallet.publicKey,
+    };
     const mockSolanaInstance = {
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
+      getSigner: jest.fn().mockResolvedValue(mockSigner),
       getToken: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(mockUSDC),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);

@@ -25,7 +25,8 @@ export async function executeSwap(
   slippagePct: number = MeteoraConfig.config.slippagePct,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
-  const wallet = await solana.getWallet(address);
+  const signer = await solana.getSigner(address);
+  const publicKey = signer.getPublicKey();
 
   const {
     inputToken,
@@ -45,7 +46,7 @@ export async function executeSwap(
           outAmount: (swapQuote as SwapQuoteExactOut).outAmount,
           maxInAmount: (swapQuote as SwapQuoteExactOut).maxInAmount,
           lbPair: dlmmPool.pubkey,
-          user: wallet.publicKey,
+          user: publicKey,
           binArraysPubkey: (swapQuote as SwapQuoteExactOut).binArraysPubkey,
         })
       : await dlmmPool.swap({
@@ -54,17 +55,14 @@ export async function executeSwap(
           inAmount: swapAmount,
           minOutAmount: (swapQuote as SwapQuote).minOutAmount,
           lbPair: dlmmPool.pubkey,
-          user: wallet.publicKey,
+          user: publicKey,
           binArraysPubkey: (swapQuote as SwapQuote).binArraysPubkey,
         });
 
-  // Simulate transaction with proper error handling (before signing)
-  await solana.simulateWithErrorHandling(swapTx);
+  logger.info(`Using ${signer.type} signer for ${address}`);
 
-  logger.info('Transaction simulated successfully, sending to network...');
-
-  // Send and confirm transaction using sendAndConfirmTransaction which handles signing
-  const { signature, fee } = await solana.sendAndConfirmTransaction(swapTx, [wallet]);
+  // Sign and send using unified signer pattern
+  const { signature, fee } = await solana.signAndSend(swapTx, signer);
 
   logger.info(`Transaction sent with signature: ${signature}`);
 
@@ -81,7 +79,7 @@ export async function executeSwap(
     // Extract fee from the response
     const txFee = fee;
     // Transaction confirmed, extract balance changes
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, publicKey.toBase58(), [
       inputToken.address,
       outputToken.address,
     ]);

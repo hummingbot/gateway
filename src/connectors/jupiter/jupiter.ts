@@ -273,7 +273,27 @@ export class Jupiter {
   }
 
   /**
+   * Builds an unsigned swap transaction
+   * This is the preferred method for use with the signer abstraction pattern.
+   *
+   * @param walletAddress The public key of the wallet
+   * @param quote The quote response from Jupiter API
+   * @param maxLamports Maximum priority fee in lamports (optional)
+   * @param priorityLevel Priority level for transaction (optional)
+   * @returns Unsigned transaction ready for signing
+   */
+  public async buildUnsignedSwapTransaction(
+    walletAddress: string,
+    quote: QuoteResponse,
+    maxLamports?: number,
+    priorityLevel?: string,
+  ): Promise<VersionedTransaction> {
+    return this.buildSwapTransactionForHardwareWallet(walletAddress, quote, maxLamports, priorityLevel);
+  }
+
+  /**
    * Builds a swap transaction for hardware wallets (returns unsigned transaction)
+   * @deprecated Use buildUnsignedSwapTransaction instead
    * @param walletAddress The public key of the hardware wallet
    * @param quote The quote response from Jupiter API
    * @param maxLamports Maximum priority fee in lamports (optional)

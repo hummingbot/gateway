@@ -52,7 +52,8 @@ export async function openPosition(
     throw httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
   }
 
-  const wallet = await solana.getWallet(walletAddress);
+  const signer = await solana.getSigner(walletAddress);
+  const publicKey = signer.getPublicKey();
   const newImbalancePosition = new Keypair();
 
   let dlmmPool;
@@ -124,7 +125,7 @@ export async function openPosition(
 
   const createPositionTx = await dlmmPool.initializePositionAndAddLiquidityByStrategy({
     positionPubKey: newImbalancePosition.publicKey,
-    user: wallet.publicKey,
+    user: publicKey,
     totalXAmount,
     totalYAmount,
     strategy: {
@@ -149,21 +150,16 @@ export async function openPosition(
 
   // Log the transaction details before sending
   logger.info(`Transaction details: ${createPositionTx.instructions.length} instructions`);
+  logger.info(`Using ${signer.type} signer for ${walletAddress}`);
 
   // Set the fee payer for simulation
-  createPositionTx.feePayer = wallet.publicKey;
+  createPositionTx.feePayer = publicKey;
 
-  // Simulate with error handling (no signing needed for simulation)
-  await solana.simulateWithErrorHandling(createPositionTx);
-
-  logger.info('Transaction simulated successfully, sending to network...');
-
-  // Send and confirm the ORIGINAL unsigned transaction
-  // sendAndConfirmTransaction will handle the signing and auto-simulate for optimal compute units
-  const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(createPositionTx, [
-    wallet,
-    newImbalancePosition,
-  ]);
+  // Sign and send using unified signer pattern
+  // Pass newImbalancePosition as additional keypair since it's a new account that needs to sign
+  const { signature, fee: txFee } = await solana.signAndSend(createPositionTx, signer, {
+    additionalKeypairs: [newImbalancePosition],
+  });
 
   // Get transaction data for confirmation
   const txData = await solana.connection.getTransaction(signature, {
@@ -174,7 +170,7 @@ export async function openPosition(
   const confirmed = txData !== null;
 
   if (confirmed && txData) {
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, publicKey.toBase58(), [
       tokenX?.address || dlmmPool.tokenX.publicKey.toBase58(),
       tokenY?.address || dlmmPool.tokenY.publicKey.toBase58(),
     ]);

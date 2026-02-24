@@ -1,8 +1,6 @@
-import { Wallet } from '@coral-xyz/anchor';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { SolanaLedger } from '../../../chains/solana/solana-ledger';
 import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -34,41 +32,23 @@ export async function executeQuote(
     throw httpErrors.badRequest('Invalid tokens in quote');
   }
 
-  // Check if this is a hardware wallet
-  const isHardwareWallet = await solana.isHardwareWallet(walletAddress);
-  let transaction;
+  logger.info(`Executing quote ${quoteId} for ${inputToken.symbol} -> ${outputToken.symbol}`);
 
-  if (isHardwareWallet) {
-    // For hardware wallets, we need to build the transaction with the actual public key
-    // but sign it separately with Ledger
-    logger.info(`Hardware wallet detected for ${walletAddress}. Building transaction for Ledger signing.`);
+  // Get signer for the wallet (automatically handles keypair vs hardware wallet)
+  const signer = await solana.getSigner(walletAddress);
+  logger.info(`Using ${signer.type} signer for ${walletAddress}`);
 
-    // Jupiter needs to build the transaction with the actual user's public key
-    // We'll pass the hardware wallet address to Jupiter's buildSwapTransactionForHardwareWallet
-    logger.info(`Executing quote ${quoteId} for ${inputToken.symbol} -> ${outputToken.symbol} with hardware wallet`);
+  // Build unsigned transaction
+  const transaction = await jupiter.buildUnsignedSwapTransaction(walletAddress, quote, maxLamports, priorityLevel);
 
-    // Build the swap transaction for hardware wallet
-    transaction = await jupiter.buildSwapTransactionForHardwareWallet(walletAddress, quote, maxLamports, priorityLevel);
+  // Sign, simulate, and send using unified method
+  const { signature, confirmed, fee } = await solana.signAndSend(transaction, signer);
 
-    // Now sign with Ledger
-    const ledger = new SolanaLedger();
-    transaction = await ledger.signTransaction(walletAddress, transaction);
-  } else {
-    // Regular wallet flow
-    const keypair = await solana.getWallet(walletAddress);
-    const wallet = new Wallet(keypair as any);
-
-    logger.info(`Executing quote ${quoteId} for ${inputToken.symbol} -> ${outputToken.symbol}`);
-
-    // Build the swap transaction (will be signed by Jupiter)
-    transaction = await jupiter.buildSwapTransaction(wallet, quote, maxLamports, priorityLevel);
-  }
-
-  // Simulate transaction with proper error handling before sending
-  await solana.simulateWithErrorHandling(transaction);
-
-  // Send and confirm transaction using Solana's method
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
+  // Get transaction data for confirmation handling
+  const txData = await solana.connection.getTransaction(signature, {
+    commitment: 'confirmed',
+    maxSupportedTransactionVersion: 0,
+  });
 
   // Handle confirmation status
   const result = await solana.handleConfirmation(
