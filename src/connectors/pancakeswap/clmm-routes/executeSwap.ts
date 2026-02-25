@@ -70,18 +70,19 @@ export async function executeClmmSwap(
   const tokenContract = ethereum.getContract(quote.inputToken.address, ethereum.provider);
   const allowance = await tokenContract.allowance(walletAddress, routerAddress);
   const currentAllowance = BigNumber.from(allowance);
+  const amountNeededBN = BigNumber.from(amountNeeded);
 
   logger.info(
     `Current allowance: ${formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
   );
   logger.info(
-    `Amount needed: ${formatTokenAmount(amountNeeded, quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
+    `Amount needed: ${formatTokenAmount(amountNeededBN.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
   );
 
   // Check if allowance is sufficient
-  if (currentAllowance.lt(amountNeeded)) {
+  if (currentAllowance.lt(amountNeededBN)) {
     logger.error(`Insufficient allowance for ${quote.inputToken.symbol}`);
-    const requiredFormatted = formatTokenAmount(amountNeeded, quote.inputToken.decimals);
+    const requiredFormatted = formatTokenAmount(amountNeededBN.toString(), quote.inputToken.decimals);
     const currentFormatted = formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals);
     throw httpErrors.badRequest(
       `Insufficient allowance for ${quote.inputToken.symbol}. ` +
@@ -96,16 +97,12 @@ export async function executeClmmSwap(
     `Sufficient allowance exists: ${formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
   );
 
-  // Build swap parameters
+  // Build swap parameters - keep as base structure, actual amounts set per flow
   const swapParams = {
     tokenIn: quote.inputToken.address,
     tokenOut: quote.outputToken.address,
     fee: quote.feeTier,
     recipient: walletAddress,
-    amountIn: 0,
-    amountOut: 0,
-    amountInMaximum: 0,
-    amountOutMinimum: 0,
     sqrtPriceLimitX96: encodeSqrtRatioX96(
       quote.trade.executionPrice.numerator,
       quote.trade.executionPrice.denominator,
@@ -128,40 +125,34 @@ export async function executeClmmSwap(
 
       if (side === 'SELL') {
         // exactInputSingle - we know the exact input amount
-        swapParams.amountIn = quote.rawAmountIn;
-        swapParams.amountOutMinimum = quote.rawMinAmountOut;
-
         logger.info(`ExactInputSingle params:`);
-        logger.info(`  amountIn: ${swapParams.amountIn}`);
-        logger.info(`  amountOutMinimum: ${swapParams.amountOutMinimum}`);
+        logger.info(`  amountIn: ${quote.rawAmountIn}`);
+        logger.info(`  amountOutMinimum: ${quote.rawMinAmountOut}`);
 
         const exactInputParams = {
           tokenIn: swapParams.tokenIn,
           tokenOut: swapParams.tokenOut,
           fee: swapParams.fee,
           recipient: swapParams.recipient,
-          amountIn: swapParams.amountIn,
-          amountOutMinimum: swapParams.amountOutMinimum,
+          amountIn: quote.rawAmountIn,
+          amountOutMinimum: quote.rawMinAmountOut,
           sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
         };
 
         data = iface.encodeFunctionData('exactInputSingle', [exactInputParams]);
       } else {
         // exactOutputSingle - we know the exact output amount
-        swapParams.amountOut = quote.rawAmountOut;
-        swapParams.amountInMaximum = quote.rawMaxAmountIn;
-
         logger.info(`ExactOutputSingle params:`);
-        logger.info(`  amountOut: ${swapParams.amountOut}`);
-        logger.info(`  amountInMaximum: ${swapParams.amountInMaximum}`);
+        logger.info(`  amountOut: ${quote.rawAmountOut}`);
+        logger.info(`  amountInMaximum: ${quote.rawMaxAmountIn}`);
 
         const exactOutputParams = {
           tokenIn: swapParams.tokenIn,
           tokenOut: swapParams.tokenOut,
           fee: swapParams.fee,
           recipient: swapParams.recipient,
-          amountOut: swapParams.amountOut,
-          amountInMaximum: swapParams.amountInMaximum,
+          amountOut: quote.rawAmountOut,
+          amountInMaximum: quote.rawMaxAmountIn,
           sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
         };
 
@@ -208,12 +199,9 @@ export async function executeClmmSwap(
       let tx;
       if (side === 'SELL') {
         // exactInputSingle - we know the exact input amount
-        swapParams.amountIn = quote.rawAmountIn;
-        swapParams.amountOutMinimum = quote.rawMinAmountOut;
-
         logger.info(`ExactInputSingle params:`);
-        logger.info(`  amountIn: ${swapParams.amountIn}`);
-        logger.info(`  amountOutMinimum: ${swapParams.amountOutMinimum}`);
+        logger.info(`  amountIn: ${quote.rawAmountIn}`);
+        logger.info(`  amountOutMinimum: ${quote.rawMinAmountOut}`);
 
         const exactInputParams = {
           tokenIn: swapParams.tokenIn,
@@ -221,28 +209,25 @@ export async function executeClmmSwap(
           fee: swapParams.fee,
           recipient: swapParams.recipient,
           deadline: Date.now() + 300,
-          amountIn: swapParams.amountIn,
-          amountOutMinimum: swapParams.amountOutMinimum,
+          amountIn: quote.rawAmountIn,
+          amountOutMinimum: quote.rawMinAmountOut,
           sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
         };
 
         tx = await routerContract.exactInputSingle(exactInputParams, txOptions);
       } else {
         // exactOutputSingle - we know the exact output amount
-        swapParams.amountOut = quote.rawAmountOut;
-        swapParams.amountInMaximum = quote.rawMaxAmountIn;
-
         logger.info(`ExactOutputSingle params:`);
-        logger.info(`  amountOut: ${swapParams.amountOut}`);
-        logger.info(`  amountInMaximum: ${swapParams.amountInMaximum}`);
+        logger.info(`  amountOut: ${quote.rawAmountOut}`);
+        logger.info(`  amountInMaximum: ${quote.rawMaxAmountIn}`);
 
         const exactOutputParams = {
           tokenIn: swapParams.tokenIn,
           tokenOut: swapParams.tokenOut,
           fee: swapParams.fee,
           recipient: swapParams.recipient,
-          amountOut: swapParams.amountOut,
-          amountInMaximum: swapParams.amountInMaximum,
+          amountOut: quote.rawAmountOut,
+          amountInMaximum: quote.rawMaxAmountIn,
           sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
         };
 
