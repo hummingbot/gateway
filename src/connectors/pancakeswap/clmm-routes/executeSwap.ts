@@ -27,27 +27,18 @@ export async function executeClmmSwap(
   side: 'BUY' | 'SELL',
   slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<SwapExecuteResponseType> {
-  // Comprehensive logging for debugging BigInt conversion issues
-  logger.info(`=== executeClmmSwap START ===`);
-  logger.info(`Input: amount=${amount}, type=${typeof amount}, side=${side}`);
-  logger.info(`Wallet: ${walletAddress}, Network: ${network}`);
-  logger.info(`Base token: ${baseToken}, Quote token: ${quoteToken}`);
-  logger.info(`Slippage: ${slippagePct}%`);
-
   const ethereum = await Ethereum.getInstance(network);
   await ethereum.init();
 
   const pancakeswap = await Pancakeswap.getInstance(network);
 
   // Find pool address
-  logger.info(`Finding default pool for pair ${baseToken}-${quoteToken}...`);
   const poolAddress = await pancakeswap.findDefaultPool(baseToken, quoteToken, 'clmm');
   if (!poolAddress) {
     throw httpErrors.notFound(`No CLMM pool found for pair ${baseToken}-${quoteToken}`);
   }
 
   // Get quote using the shared quote function
-  logger.info(`Getting quote with amount=${amount}...`);
   const { quote } = await getPancakeswapClmmQuote(
     network,
     poolAddress,
@@ -57,14 +48,6 @@ export async function executeClmmSwap(
     side,
     slippagePct,
   );
-  logger.info(`Quote received successfully`);
-  logger.info(`Quote details:`);
-  logger.info(`  rawAmountIn: ${quote.rawAmountIn} (type: ${typeof quote.rawAmountIn})`);
-  logger.info(`  rawAmountOut: ${quote.rawAmountOut} (type: ${typeof quote.rawAmountOut})`);
-  logger.info(`  rawMinAmountOut: ${quote.rawMinAmountOut} (type: ${typeof quote.rawMinAmountOut})`);
-  logger.info(`  rawMaxAmountIn: ${quote.rawMaxAmountIn} (type: ${typeof quote.rawMaxAmountIn})`);
-  logger.info(`  estimatedAmountIn: ${quote.estimatedAmountIn}`);
-  logger.info(`  estimatedAmountOut: ${quote.estimatedAmountOut}`);
 
   // Check if this is a hardware wallet
   const isHardwareWallet = await ethereum.isHardwareWallet(walletAddress);
@@ -81,27 +64,24 @@ export async function executeClmmSwap(
   logger.info(`Fee tier: ${quote.feeTier}`);
 
   // Check allowance for input token
-  logger.info(`Checking token allowance...`);
   const amountNeeded = side === 'SELL' ? quote.rawAmountIn : quote.rawMaxAmountIn;
-  logger.info(`Amount needed: ${amountNeeded} (type: ${typeof amountNeeded})`);
 
   // Use provider for both hardware and regular wallets to check allowance
   const tokenContract = ethereum.getContract(quote.inputToken.address, ethereum.provider);
   const allowance = await tokenContract.allowance(walletAddress, routerAddress);
   const currentAllowance = BigNumber.from(allowance);
-  const amountNeededBN = BigNumber.from(amountNeeded);
 
   logger.info(
     `Current allowance: ${formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
   );
   logger.info(
-    `Amount needed: ${formatTokenAmount(amountNeededBN.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
+    `Amount needed: ${formatTokenAmount(amountNeeded, quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
   );
 
   // Check if allowance is sufficient
-  if (currentAllowance.lt(amountNeededBN)) {
+  if (currentAllowance.lt(amountNeeded)) {
     logger.error(`Insufficient allowance for ${quote.inputToken.symbol}`);
-    const requiredFormatted = formatTokenAmount(amountNeededBN.toString(), quote.inputToken.decimals);
+    const requiredFormatted = formatTokenAmount(amountNeeded, quote.inputToken.decimals);
     const currentFormatted = formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals);
     throw httpErrors.badRequest(
       `Insufficient allowance for ${quote.inputToken.symbol}. ` +
@@ -127,12 +107,13 @@ export async function executeClmmSwap(
     amountInMaximum: 0,
     amountOutMinimum: 0,
     sqrtPriceLimitX96: encodeSqrtRatioX96(
-      quote.trade.executionPrice.numerator,
-      quote.trade.executionPrice.denominator,
+      quote.trade.executionPrice.numerator.toString(),
+      quote.trade.executionPrice.denominator.toString(),
     ).toString(),
   };
 
   let receipt;
+  let txHash: string = '';
 
   try {
     if (isHardwareWallet) {
@@ -152,58 +133,40 @@ export async function executeClmmSwap(
         swapParams.amountOutMinimum = quote.rawMinAmountOut;
 
         logger.info(`ExactInputSingle params:`);
-        logger.info(`  amountIn: ${swapParams.amountIn} (type: ${typeof swapParams.amountIn})`);
-        logger.info(`  amountOutMinimum: ${swapParams.amountOutMinimum} (type: ${typeof swapParams.amountOutMinimum})`);
-        logger.info(`Calling encodeFunctionData with exactInputSingle...`);
+        logger.info(`  amountIn: ${swapParams.amountIn}`);
+        logger.info(`  amountOutMinimum: ${swapParams.amountOutMinimum}`);
 
         const exactInputParams = {
           tokenIn: swapParams.tokenIn,
           tokenOut: swapParams.tokenOut,
           fee: swapParams.fee,
           recipient: swapParams.recipient,
-          deadline: Math.floor(Date.now() / 1000) + 300,
-          amountIn: quote.rawAmountIn,
-          amountOutMinimum: quote.rawMinAmountOut,
+          amountIn: swapParams.amountIn,
+          amountOutMinimum: swapParams.amountOutMinimum,
           sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
         };
 
-        try {
-          data = iface.encodeFunctionData('exactInputSingle', [exactInputParams]);
-          logger.info(`Successfully encoded exactInputSingle`);
-        } catch (encodeErr) {
-          logger.error(`encodeFunctionData failed for exactInputSingle: ${encodeErr.message}`);
-          logger.error(`Stack: ${encodeErr.stack}`);
-          throw encodeErr;
-        }
+        data = iface.encodeFunctionData('exactInputSingle', [exactInputParams]);
       } else {
         // exactOutputSingle - we know the exact output amount
         swapParams.amountOut = quote.rawAmountOut;
         swapParams.amountInMaximum = quote.rawMaxAmountIn;
 
         logger.info(`ExactOutputSingle params:`);
-        logger.info(`  amountOut: ${swapParams.amountOut} (type: ${typeof swapParams.amountOut})`);
-        logger.info(`  amountInMaximum: ${swapParams.amountInMaximum} (type: ${typeof swapParams.amountInMaximum})`);
-        logger.info(`Calling encodeFunctionData with exactOutputSingle...`);
+        logger.info(`  amountOut: ${swapParams.amountOut}`);
+        logger.info(`  amountInMaximum: ${swapParams.amountInMaximum}`);
 
         const exactOutputParams = {
           tokenIn: swapParams.tokenIn,
           tokenOut: swapParams.tokenOut,
           fee: swapParams.fee,
           recipient: swapParams.recipient,
-          deadline: Math.floor(Date.now() / 1000) + 300,
-          amountOut: quote.rawAmountOut,
-          amountInMaximum: quote.rawMaxAmountIn,
+          amountOut: swapParams.amountOut,
+          amountInMaximum: swapParams.amountInMaximum,
           sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
         };
 
-        try {
-          data = iface.encodeFunctionData('exactOutputSingle', [exactOutputParams]);
-          logger.info(`Successfully encoded exactOutputSingle`);
-        } catch (encodeErr) {
-          logger.error(`encodeFunctionData failed for exactOutputSingle: ${encodeErr.message}`);
-          logger.error(`Stack: ${encodeErr.stack}`);
-          throw encodeErr;
-        }
+        data = iface.encodeFunctionData('exactOutputSingle', [exactOutputParams]);
       }
 
       // Get gas options using estimateGasPrice
@@ -223,8 +186,9 @@ export async function executeClmmSwap(
 
       // Send the signed transaction
       const txResponse = await ethereum.provider.sendTransaction(signedTx);
+      txHash = txResponse.hash;
 
-      logger.info(`Transaction sent: ${txResponse.hash}`);
+      logger.info(`Transaction sent: ${txHash}`);
 
       // Wait for confirmation with timeout
       receipt = await ethereum.handleTransactionExecution(txResponse);
@@ -249,64 +213,67 @@ export async function executeClmmSwap(
         swapParams.amountIn = quote.rawAmountIn;
         swapParams.amountOutMinimum = quote.rawMinAmountOut;
 
-        logger.info(`ExactInputSingle params (regular wallet):`);
-        logger.info(`  amountIn: ${swapParams.amountIn} (type: ${typeof swapParams.amountIn})`);
-        logger.info(`  amountOutMinimum: ${swapParams.amountOutMinimum} (type: ${typeof swapParams.amountOutMinimum})`);
+        logger.info(`ExactInputSingle params:`);
+        logger.info(`  amountIn: ${swapParams.amountIn}`);
+        logger.info(`  amountOutMinimum: ${swapParams.amountOutMinimum}`);
 
         const exactInputParams = {
           tokenIn: swapParams.tokenIn,
           tokenOut: swapParams.tokenOut,
           fee: swapParams.fee,
           recipient: swapParams.recipient,
-          deadline: Math.floor(Date.now() / 1000) + 300,
-          amountIn: quote.rawAmountIn,
-          amountOutMinimum: quote.rawMinAmountOut,
+          deadline: Date.now() + 300,
+          amountIn: swapParams.amountIn,
+          amountOutMinimum: swapParams.amountOutMinimum,
           sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
         };
 
-        logger.info(`Calling exactInputSingle on contract...`);
-        try {
-          tx = await routerContract.exactInputSingle(exactInputParams, txOptions);
-          logger.info(`exactInputSingle transaction sent: ${tx.hash}`);
-        } catch (txErr) {
-          logger.error(`exactInputSingle contract call failed: ${txErr.message}`);
-          logger.error(`Stack: ${txErr.stack}`);
-          throw txErr;
-        }
+        tx = await routerContract.exactInputSingle(exactInputParams, txOptions);
       } else {
         // exactOutputSingle - we know the exact output amount
         swapParams.amountOut = quote.rawAmountOut;
         swapParams.amountInMaximum = quote.rawMaxAmountIn;
 
-        logger.info(`ExactOutputSingle params (regular wallet):`);
-        logger.info(`  amountOut: ${swapParams.amountOut} (type: ${typeof swapParams.amountOut})`);
-        logger.info(`  amountInMaximum: ${swapParams.amountInMaximum} (type: ${typeof swapParams.amountInMaximum})`);
+        logger.info(`ExactOutputSingle params:`);
+        logger.info(`  amountOut: ${swapParams.amountOut}`);
+        logger.info(`  amountInMaximum: ${swapParams.amountInMaximum}`);
 
         const exactOutputParams = {
           tokenIn: swapParams.tokenIn,
           tokenOut: swapParams.tokenOut,
           fee: swapParams.fee,
           recipient: swapParams.recipient,
-          amountOut: quote.rawAmountOut,
-          amountInMaximum: quote.rawMaxAmountIn,
+          amountOut: swapParams.amountOut,
+          amountInMaximum: swapParams.amountInMaximum,
           sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
         };
 
-        logger.info(`Calling exactOutputSingle on contract...`);
-        try {
-          tx = await routerContract.exactOutputSingle(exactOutputParams, txOptions);
-          logger.info(`exactOutputSingle transaction sent: ${tx.hash}`);
-        } catch (txErr) {
-          logger.error(`exactOutputSingle contract call failed: ${txErr.message}`);
-          logger.error(`Stack: ${txErr.stack}`);
-          throw txErr;
-        }
+        tx = await routerContract.exactOutputSingle(exactOutputParams, txOptions);
       }
 
-      logger.info(`Transaction sent: ${tx.hash}`);
+      txHash = tx.hash;
+      logger.info(`Transaction sent: ${txHash}`);
 
       // Wait for transaction confirmation
       receipt = await ethereum.handleTransactionExecution(tx);
+    }
+
+    // Handle pending transaction (receipt is null when timeout is reached)
+    if (!receipt) {
+      logger.warn(`Transaction ${txHash} is still pending - returning pending status`);
+      return {
+        signature: txHash,
+        status: 2, // PENDING
+        data: {
+          tokenIn: quote.inputToken.address,
+          tokenOut: quote.outputToken.address,
+          amountIn: quote.estimatedAmountIn,
+          amountOut: quote.estimatedAmountOut,
+          fee: 0,
+          baseTokenBalanceChange: 0,
+          quoteTokenBalanceChange: 0,
+        },
+      };
     }
 
     // Check if the transaction was successful

@@ -79,7 +79,6 @@ async function quoteClmmSwap(
 
     // Calculate amounts - trade object has inputAmount and outputAmount for both types
     const estimatedAmountIn = formatTokenAmount(trade.inputAmount.quotient.toString(), inputToken.decimals);
-
     const estimatedAmountOut = formatTokenAmount(trade.outputAmount.quotient.toString(), outputToken.decimals);
 
     const minAmountOutValue = formatTokenAmount(minAmountOut, outputToken.decimals);
@@ -87,13 +86,6 @@ async function quoteClmmSwap(
 
     // Calculate price impact
     const priceImpact = parseFloat(trade.priceImpact.toSignificant(4));
-
-    // Convert JSBI BigInt to BigNumber then to string to avoid scientific notation
-    // This matches the working pattern from openPosition.ts
-    const rawAmountIn = BigNumber.from(trade.inputAmount.quotient.toString()).toString();
-    const rawAmountOut = BigNumber.from(trade.outputAmount.quotient.toString()).toString();
-    const rawMinAmountOut = BigNumber.from(minAmountOut).toString();
-    const rawMaxAmountIn = BigNumber.from(maxAmountIn).toString();
 
     return {
       poolAddress,
@@ -105,11 +97,11 @@ async function quoteClmmSwap(
       inputToken,
       outputToken,
       trade,
-      // Raw values for execution - converted through BigNumber to ensure proper formatting
-      rawAmountIn,
-      rawAmountOut,
-      rawMinAmountOut,
-      rawMaxAmountIn,
+      // Add raw values for execution - normalize through BigNumber to ensure clean decimal strings
+      rawAmountIn: BigNumber.from(trade.inputAmount.quotient.toString()).toString(),
+      rawAmountOut: BigNumber.from(trade.outputAmount.quotient.toString()).toString(),
+      rawMinAmountOut: BigNumber.from(minAmountOut).toString(),
+      rawMaxAmountIn: BigNumber.from(maxAmountIn).toString(),
       feeTier: pool.fee,
     };
   } catch (error) {
