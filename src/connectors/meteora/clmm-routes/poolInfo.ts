@@ -19,7 +19,7 @@ export async function getPoolInfo(
     throw fastify.httpErrors.badRequest('Pool address is required');
   }
 
-  // Fetch pool info directly from RPC
+  // Fetch pool info directly from RPC (always includes bins)
   const poolInfo = (await meteora.getPoolInfo(poolAddress)) as MeteoraPoolInfo;
   if (!poolInfo) {
     throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);

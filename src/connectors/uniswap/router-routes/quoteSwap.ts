@@ -28,13 +28,44 @@ async function quoteSwap(
   const ethereum = await Ethereum.getInstance(network);
   const uniswap = await Uniswap.getInstance(network);
 
+  // Convert native token (ETH) to WETH for quote purposes
+  // Native tokens aren't in the token list, but WETH has equivalent value
+  const nativeSymbol = ethereum.nativeTokenSymbol.toUpperCase();
+  const actualBaseToken = baseToken.toUpperCase() === nativeSymbol ? 'WETH' : baseToken;
+  const actualQuoteToken = quoteToken.toUpperCase() === nativeSymbol ? 'WETH' : quoteToken;
+
+  if (actualBaseToken !== baseToken || actualQuoteToken !== quoteToken) {
+    logger.info(
+      `[quoteSwap] Converted native token: ${baseToken}/${quoteToken} -> ${actualBaseToken}/${actualQuoteToken}`,
+    );
+  }
+
+  // Handle same-token or equivalent-token quotes (return price=1)
+  // This covers: USDC/USDC, ETH/WETH, WETH/ETH, ETH/ETH (after conversion)
+  if (actualBaseToken.toUpperCase() === actualQuoteToken.toUpperCase()) {
+    logger.info(`[quoteSwap] Same/equivalent token quote: ${baseToken}/${quoteToken}, returning price=1`);
+    return {
+      quoteId: uuidv4(),
+      tokenIn: baseToken,
+      tokenOut: quoteToken,
+      amountIn: amount,
+      amountOut: amount,
+      price: 1,
+      priceImpactPct: 0,
+      minAmountOut: amount,
+      maxAmountIn: amount,
+      routePath: `${baseToken} -> ${quoteToken}`,
+    };
+  }
+
   // Resolve token symbols/addresses to token objects from local token list
-  const baseTokenInfo = await ethereum.getToken(baseToken);
-  const quoteTokenInfo = await ethereum.getToken(quoteToken);
+  const baseTokenInfo = await ethereum.getToken(actualBaseToken);
+  const quoteTokenInfo = await ethereum.getToken(actualQuoteToken);
 
   if (!baseTokenInfo || !quoteTokenInfo) {
-    logger.error(`[quoteSwap] Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
-    throw httpErrors.notFound(sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken));
+    const missingToken = !baseTokenInfo ? actualBaseToken : actualQuoteToken;
+    logger.error(`[quoteSwap] Token not found: ${missingToken}`);
+    throw httpErrors.notFound(sanitizeErrorMessage('Token not found: {}', missingToken));
   }
 
   logger.debug(`[quoteSwap] Base token: ${baseTokenInfo.symbol} (${baseTokenInfo.address})`);

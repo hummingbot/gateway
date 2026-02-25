@@ -22,20 +22,6 @@
   },
   {
     "chainId": 56,
-    "name": "Binance Pegged DAI",
-    "symbol": "DAI",
-    "address": "0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
-    "name": "Binance Pegged ETH",
-    "symbol": "ETH",
-    "address": "0x2170Ed0880ac9A755fd29B2688956BD959F933F8",
-    "decimals": 18
-  },
-  {
-    "chainId": 56,
     "name": "Binance Pegged USD Coin",
     "symbol": "USDC",
     "address": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",

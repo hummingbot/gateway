@@ -343,7 +343,7 @@ export class ConfigManagerV2 {
       };
 
       // Copy all template directories
-      const templateDirectories = ['chains', 'connectors', 'namespace', 'pools', 'tokens', 'rpc'];
+      const templateDirectories = ['chains', 'connectors', 'pools', 'tokens', 'rpc'];
       for (const dir of templateDirectories) {
         const targetPath = path.join(ConfigDir, dir);
         const templatePath = path.join(ConfigTemplatesDir, dir);

@@ -37,11 +37,12 @@ import { createRateLimitAwareSolanaConnection } from '../../rpc/rpc-connection-i
 import { RPCProvider } from '../../rpc/rpc-provider-base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import { httpErrors } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
-import { SolanaPriorityFees } from './solana-priority-fees';
+import { PriorityFeeResult, SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
 
 // Constants used for fee calculations
@@ -1135,8 +1136,20 @@ export class Solana {
     };
   }
 
+  /**
+   * Estimate priority fee per compute unit
+   * Uses config's priorityFeeLevel and caches result for 10 seconds
+   */
   async estimateGasPrice(): Promise<number> {
     return await SolanaPriorityFees.estimatePriorityFee(this.config, this.network);
+  }
+
+  /**
+   * Estimate priority fee with detailed results including raw Helius estimate
+   * Uses config's priorityFeeLevel and caches result for 10 seconds
+   */
+  async estimateGasPriceDetailed(): Promise<PriorityFeeResult> {
+    return await SolanaPriorityFees.estimatePriorityFeeDetailed(this.config, this.network);
   }
 
   public async confirmTransaction(
@@ -1314,7 +1327,9 @@ export class Solana {
       return { signature, fee: actualFee };
     }
 
-    throw new Error(`Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`);
+    throw httpErrors.transactionTimeout(
+      `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
+    );
   }
 
   private async prepareTx(
