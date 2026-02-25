@@ -27,18 +27,27 @@ export async function executeClmmSwap(
   side: 'BUY' | 'SELL',
   slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<SwapExecuteResponseType> {
+  // Comprehensive logging for debugging BigInt conversion issues
+  logger.info(`=== executeClmmSwap START ===`);
+  logger.info(`Input: amount=${amount}, type=${typeof amount}, side=${side}`);
+  logger.info(`Wallet: ${walletAddress}, Network: ${network}`);
+  logger.info(`Base token: ${baseToken}, Quote token: ${quoteToken}`);
+  logger.info(`Slippage: ${slippagePct}%`);
+
   const ethereum = await Ethereum.getInstance(network);
   await ethereum.init();
 
   const pancakeswap = await Pancakeswap.getInstance(network);
 
   // Find pool address
+  logger.info(`Finding default pool for pair ${baseToken}-${quoteToken}...`);
   const poolAddress = await pancakeswap.findDefaultPool(baseToken, quoteToken, 'clmm');
   if (!poolAddress) {
     throw httpErrors.notFound(`No CLMM pool found for pair ${baseToken}-${quoteToken}`);
   }
 
   // Get quote using the shared quote function
+  logger.info(`Getting quote with amount=${amount}...`);
   const { quote } = await getPancakeswapClmmQuote(
     network,
     poolAddress,
@@ -48,6 +57,14 @@ export async function executeClmmSwap(
     side,
     slippagePct,
   );
+  logger.info(`Quote received successfully`);
+  logger.info(`Quote details:`);
+  logger.info(`  rawAmountIn: ${quote.rawAmountIn} (type: ${typeof quote.rawAmountIn})`);
+  logger.info(`  rawAmountOut: ${quote.rawAmountOut} (type: ${typeof quote.rawAmountOut})`);
+  logger.info(`  rawMinAmountOut: ${quote.rawMinAmountOut} (type: ${typeof quote.rawMinAmountOut})`);
+  logger.info(`  rawMaxAmountIn: ${quote.rawMaxAmountIn} (type: ${typeof quote.rawMaxAmountIn})`);
+  logger.info(`  estimatedAmountIn: ${quote.estimatedAmountIn}`);
+  logger.info(`  estimatedAmountOut: ${quote.estimatedAmountOut}`);
 
   // Check if this is a hardware wallet
   const isHardwareWallet = await ethereum.isHardwareWallet(walletAddress);
@@ -64,24 +81,27 @@ export async function executeClmmSwap(
   logger.info(`Fee tier: ${quote.feeTier}`);
 
   // Check allowance for input token
+  logger.info(`Checking token allowance...`);
   const amountNeeded = side === 'SELL' ? quote.rawAmountIn : quote.rawMaxAmountIn;
+  logger.info(`Amount needed: ${amountNeeded} (type: ${typeof amountNeeded})`);
 
   // Use provider for both hardware and regular wallets to check allowance
   const tokenContract = ethereum.getContract(quote.inputToken.address, ethereum.provider);
   const allowance = await tokenContract.allowance(walletAddress, routerAddress);
   const currentAllowance = BigNumber.from(allowance);
+  const amountNeededBN = BigNumber.from(amountNeeded);
 
   logger.info(
     `Current allowance: ${formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
   );
   logger.info(
-    `Amount needed: ${formatTokenAmount(amountNeeded, quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
+    `Amount needed: ${formatTokenAmount(amountNeededBN.toString(), quote.inputToken.decimals)} ${quote.inputToken.symbol}`,
   );
 
   // Check if allowance is sufficient
-  if (currentAllowance.lt(amountNeeded)) {
+  if (currentAllowance.lt(amountNeededBN)) {
     logger.error(`Insufficient allowance for ${quote.inputToken.symbol}`);
-    const requiredFormatted = formatTokenAmount(amountNeeded, quote.inputToken.decimals);
+    const requiredFormatted = formatTokenAmount(amountNeededBN.toString(), quote.inputToken.decimals);
     const currentFormatted = formatTokenAmount(currentAllowance.toString(), quote.inputToken.decimals);
     throw httpErrors.badRequest(
       `Insufficient allowance for ${quote.inputToken.symbol}. ` +
@@ -132,40 +152,58 @@ export async function executeClmmSwap(
         swapParams.amountOutMinimum = quote.rawMinAmountOut;
 
         logger.info(`ExactInputSingle params:`);
-        logger.info(`  amountIn: ${swapParams.amountIn}`);
-        logger.info(`  amountOutMinimum: ${swapParams.amountOutMinimum}`);
+        logger.info(`  amountIn: ${swapParams.amountIn} (type: ${typeof swapParams.amountIn})`);
+        logger.info(`  amountOutMinimum: ${swapParams.amountOutMinimum} (type: ${typeof swapParams.amountOutMinimum})`);
+        logger.info(`Calling encodeFunctionData with exactInputSingle...`);
 
         const exactInputParams = {
           tokenIn: swapParams.tokenIn,
           tokenOut: swapParams.tokenOut,
           fee: swapParams.fee,
           recipient: swapParams.recipient,
-          amountIn: swapParams.amountIn,
-          amountOutMinimum: swapParams.amountOutMinimum,
+          deadline: Math.floor(Date.now() / 1000) + 300,
+          amountIn: quote.rawAmountIn,
+          amountOutMinimum: quote.rawMinAmountOut,
           sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
         };
 
-        data = iface.encodeFunctionData('exactInputSingle', [exactInputParams]);
+        try {
+          data = iface.encodeFunctionData('exactInputSingle', [exactInputParams]);
+          logger.info(`Successfully encoded exactInputSingle`);
+        } catch (encodeErr) {
+          logger.error(`encodeFunctionData failed for exactInputSingle: ${encodeErr.message}`);
+          logger.error(`Stack: ${encodeErr.stack}`);
+          throw encodeErr;
+        }
       } else {
         // exactOutputSingle - we know the exact output amount
         swapParams.amountOut = quote.rawAmountOut;
         swapParams.amountInMaximum = quote.rawMaxAmountIn;
 
         logger.info(`ExactOutputSingle params:`);
-        logger.info(`  amountOut: ${swapParams.amountOut}`);
-        logger.info(`  amountInMaximum: ${swapParams.amountInMaximum}`);
+        logger.info(`  amountOut: ${swapParams.amountOut} (type: ${typeof swapParams.amountOut})`);
+        logger.info(`  amountInMaximum: ${swapParams.amountInMaximum} (type: ${typeof swapParams.amountInMaximum})`);
+        logger.info(`Calling encodeFunctionData with exactOutputSingle...`);
 
         const exactOutputParams = {
           tokenIn: swapParams.tokenIn,
           tokenOut: swapParams.tokenOut,
           fee: swapParams.fee,
           recipient: swapParams.recipient,
-          amountOut: swapParams.amountOut,
-          amountInMaximum: swapParams.amountInMaximum,
+          deadline: Math.floor(Date.now() / 1000) + 300,
+          amountOut: quote.rawAmountOut,
+          amountInMaximum: quote.rawMaxAmountIn,
           sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
         };
 
-        data = iface.encodeFunctionData('exactOutputSingle', [exactOutputParams]);
+        try {
+          data = iface.encodeFunctionData('exactOutputSingle', [exactOutputParams]);
+          logger.info(`Successfully encoded exactOutputSingle`);
+        } catch (encodeErr) {
+          logger.error(`encodeFunctionData failed for exactOutputSingle: ${encodeErr.message}`);
+          logger.error(`Stack: ${encodeErr.stack}`);
+          throw encodeErr;
+        }
       }
 
       // Get gas options using estimateGasPrice
@@ -211,42 +249,58 @@ export async function executeClmmSwap(
         swapParams.amountIn = quote.rawAmountIn;
         swapParams.amountOutMinimum = quote.rawMinAmountOut;
 
-        logger.info(`ExactInputSingle params:`);
-        logger.info(`  amountIn: ${swapParams.amountIn}`);
-        logger.info(`  amountOutMinimum: ${swapParams.amountOutMinimum}`);
+        logger.info(`ExactInputSingle params (regular wallet):`);
+        logger.info(`  amountIn: ${swapParams.amountIn} (type: ${typeof swapParams.amountIn})`);
+        logger.info(`  amountOutMinimum: ${swapParams.amountOutMinimum} (type: ${typeof swapParams.amountOutMinimum})`);
 
         const exactInputParams = {
           tokenIn: swapParams.tokenIn,
           tokenOut: swapParams.tokenOut,
           fee: swapParams.fee,
           recipient: swapParams.recipient,
-          deadline: Date.now() + 300,
-          amountIn: swapParams.amountIn,
-          amountOutMinimum: swapParams.amountOutMinimum,
+          deadline: Math.floor(Date.now() / 1000) + 300,
+          amountIn: quote.rawAmountIn,
+          amountOutMinimum: quote.rawMinAmountOut,
           sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
         };
 
-        tx = await routerContract.exactInputSingle(exactInputParams, txOptions);
+        logger.info(`Calling exactInputSingle on contract...`);
+        try {
+          tx = await routerContract.exactInputSingle(exactInputParams, txOptions);
+          logger.info(`exactInputSingle transaction sent: ${tx.hash}`);
+        } catch (txErr) {
+          logger.error(`exactInputSingle contract call failed: ${txErr.message}`);
+          logger.error(`Stack: ${txErr.stack}`);
+          throw txErr;
+        }
       } else {
         // exactOutputSingle - we know the exact output amount
         swapParams.amountOut = quote.rawAmountOut;
         swapParams.amountInMaximum = quote.rawMaxAmountIn;
 
-        logger.info(`ExactOutputSingle params:`);
-        logger.info(`  amountOut: ${swapParams.amountOut}`);
-        logger.info(`  amountInMaximum: ${swapParams.amountInMaximum}`);
+        logger.info(`ExactOutputSingle params (regular wallet):`);
+        logger.info(`  amountOut: ${swapParams.amountOut} (type: ${typeof swapParams.amountOut})`);
+        logger.info(`  amountInMaximum: ${swapParams.amountInMaximum} (type: ${typeof swapParams.amountInMaximum})`);
 
         const exactOutputParams = {
           tokenIn: swapParams.tokenIn,
           tokenOut: swapParams.tokenOut,
           fee: swapParams.fee,
           recipient: swapParams.recipient,
-          amountOut: swapParams.amountOut,
-          amountInMaximum: swapParams.amountInMaximum,
+          amountOut: quote.rawAmountOut,
+          amountInMaximum: quote.rawMaxAmountIn,
           sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,
         };
 
-        tx = await routerContract.exactOutputSingle(exactOutputParams, txOptions);
+        logger.info(`Calling exactOutputSingle on contract...`);
+        try {
+          tx = await routerContract.exactOutputSingle(exactOutputParams, txOptions);
+          logger.info(`exactOutputSingle transaction sent: ${tx.hash}`);
+        } catch (txErr) {
+          logger.error(`exactOutputSingle contract call failed: ${txErr.message}`);
+          logger.error(`Stack: ${txErr.stack}`);
+          throw txErr;
+        }
       }
 
       logger.info(`Transaction sent: ${tx.hash}`);

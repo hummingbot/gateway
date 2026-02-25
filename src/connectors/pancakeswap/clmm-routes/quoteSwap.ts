@@ -88,6 +88,13 @@ async function quoteClmmSwap(
     // Calculate price impact
     const priceImpact = parseFloat(trade.priceImpact.toSignificant(4));
 
+    // Convert JSBI BigInt to BigNumber then to string to avoid scientific notation
+    // This matches the working pattern from openPosition.ts
+    const rawAmountIn = BigNumber.from(trade.inputAmount.quotient.toString()).toString();
+    const rawAmountOut = BigNumber.from(trade.outputAmount.quotient.toString()).toString();
+    const rawMinAmountOut = BigNumber.from(minAmountOut).toString();
+    const rawMaxAmountIn = BigNumber.from(maxAmountIn).toString();
+
     return {
       poolAddress,
       estimatedAmountIn,
@@ -98,11 +105,11 @@ async function quoteClmmSwap(
       inputToken,
       outputToken,
       trade,
-      // Add raw values for execution
-      rawAmountIn: trade.inputAmount.quotient.toString(),
-      rawAmountOut: trade.outputAmount.quotient.toString(),
-      rawMinAmountOut: minAmountOut,
-      rawMaxAmountIn: maxAmountIn,
+      // Raw values for execution - converted through BigNumber to ensure proper formatting
+      rawAmountIn,
+      rawAmountOut,
+      rawMinAmountOut,
+      rawMaxAmountIn,
       feeTier: pool.fee,
     };
   } catch (error) {
