@@ -27,7 +27,9 @@ import { getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
 import { OrcaClmmOpenPositionRequest } from '../schemas';
 
 /**
- * Initialize tick arrays if they don't exist
+ * Initialize tick arrays if they don't exist.
+ * Returns the pubkeys of any newly-created tick arrays so their rent
+ * can be included in the total position rent calculation.
  */
 async function initializeTickArrays(
   builder: TransactionBuilder,
@@ -36,8 +38,10 @@ async function initializeTickArrays(
   whirlpoolPubkey: PublicKey,
   lowerTickIndex: number,
   upperTickIndex: number,
-): Promise<void> {
+): Promise<PublicKey[]> {
   await whirlpool.refreshData();
+
+  const newTickArrayPubkeys: PublicKey[] = [];
 
   const lowerTickArrayPda = PDAUtil.getTickArrayFromTickIndex(
     lowerTickIndex,
@@ -64,6 +68,7 @@ async function initializeTickArrays(
         tickArrayPda: lowerTickArrayPda,
       }),
     );
+    newTickArrayPubkeys.push(lowerTickArrayPda.publicKey);
   }
 
   if (!upperTickArray && !upperTickArrayPda.publicKey.equals(lowerTickArrayPda.publicKey)) {
@@ -75,7 +80,10 @@ async function initializeTickArrays(
         tickArrayPda: upperTickArrayPda,
       }),
     );
+    newTickArrayPubkeys.push(upperTickArrayPda.publicKey);
   }
+
+  return newTickArrayPubkeys;
 }
 
 /**
@@ -216,8 +224,15 @@ export async function openPosition(
   // Build transaction
   const builder = new TransactionBuilder(client.getContext().connection, client.getContext().wallet);
 
-  // Initialize tick arrays if needed
-  await initializeTickArrays(builder, client, whirlpool, whirlpoolPubkey, lowerTickIndex, upperTickIndex);
+  // Initialize tick arrays if needed (returns pubkeys of newly-created arrays for rent tracking)
+  const newTickArrayPubkeys = await initializeTickArrays(
+    builder,
+    client,
+    whirlpool,
+    whirlpoolPubkey,
+    lowerTickIndex,
+    upperTickIndex,
+  );
 
   // If we're adding liquidity, prepare WSOL wrapping FIRST (before opening position)
   let baseTokenAmountAdded = 0;
@@ -449,26 +464,77 @@ export async function openPosition(
     positionMintKeypair,
   ]);
 
-  // Calculate rent by querying the actual SOL balances of position accounts.
-  // This is more accurate than deriving from wallet SOL changes, which can be
-  // skewed by ephemeral wSOL wrapper create/close cycles within the same TX.
-  const LAMPORT_TO_SOL = 1e-9;
-  const positionTokenAccount = getAssociatedTokenAddressSync(
-    positionMintKeypair.publicKey,
-    client.getContext().wallet.publicKey,
-    undefined,
-    TOKEN_2022_PROGRAM_ID,
-  );
-  const [positionMintBalance, positionDataBalance, positionAtaBalance] = await Promise.all([
-    solana.connection.getBalance(positionMintKeypair.publicKey),
-    solana.connection.getBalance(positionPda.publicKey),
-    solana.connection.getBalance(positionTokenAccount),
-  ]);
-  const positionRent = (positionMintBalance + positionDataBalance + positionAtaBalance) * LAMPORT_TO_SOL;
+  // Extract position rent from the confirmed transaction's postBalances.
+  // Newly-created accounts have preBalance=0, so their postBalance IS the rent.
+  // This captures ALL rent including tick arrays (~0.013 SOL each) that were
+  // previously missed when only querying 3 position accounts.
+  const txData = await solana.connection.getTransaction(signature, {
+    commitment: 'confirmed',
+    maxSupportedTransactionVersion: 0,
+  });
 
-  logger.info(
-    `Position rent: mint=${positionMintBalance}, data=${positionDataBalance}, ata=${positionAtaBalance}, total=${positionRent} SOL`,
-  );
+  let positionRent = 0;
+
+  if (txData) {
+    const accountKeys = txData.transaction.message.getAccountKeys().staticAccountKeys;
+    const preBalances = txData.meta?.preBalances || [];
+    const postBalances = txData.meta?.postBalances || [];
+
+    // All accounts whose rent should be tracked: position mint, PDA, ATA, + tick arrays
+    const positionTokenAccount = getAssociatedTokenAddressSync(
+      positionMintKeypair.publicKey,
+      client.getContext().wallet.publicKey,
+      undefined,
+      TOKEN_2022_PROGRAM_ID,
+    );
+    const rentAccounts: PublicKey[] = [
+      positionMintKeypair.publicKey,
+      positionPda.publicKey,
+      positionTokenAccount,
+      ...newTickArrayPubkeys,
+    ];
+
+    let totalRentLamports = 0;
+    for (const pubkey of rentAccounts) {
+      const idx = accountKeys.findIndex((key) => key.equals(pubkey));
+      if (idx !== -1 && preBalances[idx] === 0 && postBalances[idx] > 0) {
+        totalRentLamports += postBalances[idx];
+        logger.info(`Rent for ${pubkey.toString()}: ${postBalances[idx]} lamports`);
+      }
+    }
+    positionRent = totalRentLamports / 1e9;
+
+    // Use actual balance changes from the TX for token amounts when liquidity was added
+    if (shouldAddLiquidity) {
+      const tokenMintA = whirlpool.getTokenAInfo().address.toString();
+      const tokenMintB = whirlpool.getTokenBInfo().address.toString();
+
+      const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+        tokenMintA,
+        tokenMintB,
+      ]);
+
+      // Balance changes are negative (tokens leaving wallet)
+      let actualBaseAdded = Math.abs(balanceChanges[0]);
+      let actualQuoteAdded = Math.abs(balanceChanges[1]);
+
+      // When SOL is one of the tokens, wallet balance change includes: liquidity + rent + fee
+      // Subtract rent and fee to get actual liquidity added
+      const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
+      if (tokenMintA === SOL_NATIVE_MINT) {
+        actualBaseAdded = actualBaseAdded - positionRent - fee;
+        if (actualBaseAdded < 0) actualBaseAdded = 0;
+      } else if (tokenMintB === SOL_NATIVE_MINT) {
+        actualQuoteAdded = actualQuoteAdded - positionRent - fee;
+        if (actualQuoteAdded < 0) actualQuoteAdded = 0;
+      }
+
+      baseTokenAmountAdded = actualBaseAdded;
+      quoteTokenAmountAdded = actualQuoteAdded;
+    }
+  }
+
+  logger.info(`Position rent: ${positionRent} SOL (${newTickArrayPubkeys.length} new tick arrays)`);
 
   if (shouldAddLiquidity) {
     logger.info(

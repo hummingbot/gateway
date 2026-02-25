@@ -105,8 +105,24 @@ describe('POST /open-position', () => {
         signature: 'test-signature',
         fee: 0.000005,
       }),
+      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
+        balanceChanges: [-1.0, -200.0],
+        fee: 0.000005,
+      }),
       connection: {
-        getBalance: jest.fn().mockResolvedValue(2039280), // ~0.00204 SOL rent per account
+        getTransaction: jest.fn().mockResolvedValue({
+          transaction: {
+            message: {
+              getAccountKeys: () => ({
+                staticAccountKeys: [],
+              }),
+            },
+          },
+          meta: {
+            preBalances: [],
+            postBalances: [],
+          },
+        }),
       },
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);

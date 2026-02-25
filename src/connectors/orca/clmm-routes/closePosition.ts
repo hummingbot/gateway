@@ -1,8 +1,6 @@
 import { Percentage, TransactionBuilder } from '@orca-so/common-sdk';
 import {
-  TickArrayUtil,
   WhirlpoolIx,
-  collectFeesQuote,
   decreaseLiquidityQuoteByLiquidityWithParams,
   TokenExtensionUtil,
   IGNORE_CACHE,
@@ -176,30 +174,10 @@ export async function closePosition(
   }
 
   // Step 3: Collect fees if there are fees owed or if we just removed liquidity
+  // Note: Fee amounts are derived from actual TX balance changes after execution,
+  // not from collectFeesQuote() which reads stale position data before
+  // updateFeesAndRewards executes on-chain.
   if (hasFees || hasLiquidity) {
-    const { lower, upper } = getTickArrayPubkeys(position.getData(), whirlpool.getData(), whirlpoolPubkey);
-    const lowerTickArray = await client.getFetcher().getTickArray(lower);
-    const upperTickArray = await client.getFetcher().getTickArray(upper);
-    if (!lowerTickArray || !upperTickArray) {
-      throw httpErrors.notFound('Tick array not found');
-    }
-
-    const collectQuote = collectFeesQuote({
-      position: position.getData(),
-      tickLower: TickArrayUtil.getTickFromArray(
-        lowerTickArray,
-        position.getData().tickLowerIndex,
-        whirlpool.getData().tickSpacing,
-      ),
-      tickUpper: TickArrayUtil.getTickFromArray(
-        upperTickArray,
-        position.getData().tickUpperIndex,
-        whirlpool.getData().tickSpacing,
-      ),
-      whirlpool: whirlpool.getData(),
-      tokenExtensionCtx: await TokenExtensionUtil.buildTokenExtensionContext(client.getFetcher(), whirlpool.getData()),
-    });
-
     builder.addInstruction(
       WhirlpoolIx.collectFeesV2Ix(client.getContext().program, {
         position: positionPubkey,
@@ -235,10 +213,6 @@ export async function closePosition(
         ),
       }),
     );
-
-    // Use collectQuote for fee amounts (derived from on-chain position data)
-    baseFeeAmountCollected = Number(collectQuote.feeOwedA) / Math.pow(10, mintA.decimals);
-    quoteFeeAmountCollected = Number(collectQuote.feeOwedB) / Math.pow(10, mintB.decimals);
   }
 
   // Step 4: Auto-unwrap WSOL to native SOL after receiving all tokens
@@ -283,37 +257,87 @@ export async function closePosition(
     }),
   );
 
-  // Calculate rent refund by querying position account balances BEFORE the TX.
-  // These accounts will be closed by the transaction, so we must read them now.
-  // This is more accurate than deriving from wallet SOL changes, which can be
-  // skewed by ephemeral wSOL wrapper create/close cycles within the same TX.
-  const LAMPORT_TO_SOL = 1e-9;
-  const positionMintPubkey = position.getData().positionMint;
-  const positionTokenAccount = getAssociatedTokenAddressSync(
-    positionMintPubkey,
-    client.getContext().wallet.publicKey,
-    undefined,
-    isToken2022 ? TOKEN_2022_PROGRAM_ID : undefined,
-  );
-  const [positionMintBalance, positionDataBalance, positionAtaBalance] = await Promise.all([
-    solana.connection.getBalance(positionMintPubkey),
-    solana.connection.getBalance(positionPubkey),
-    solana.connection.getBalance(positionTokenAccount),
-  ]);
-  const positionRentRefunded = (positionMintBalance + positionDataBalance + positionAtaBalance) * LAMPORT_TO_SOL;
-
-  logger.info(
-    `Position rent refund: mint=${positionMintBalance}, data=${positionDataBalance}, ata=${positionAtaBalance}, total=${positionRentRefunded} SOL`,
-  );
-
   // Build, simulate, and send transaction
   const txPayload = await builder.build();
   await solana.simulateWithErrorHandling(txPayload.transaction);
   const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [wallet]);
 
-  // Token amounts are already set from quotes:
-  // - baseTokenAmountRemoved / quoteTokenAmountRemoved from decreaseQuote (Step 2)
-  // - baseFeeAmountCollected / quoteFeeAmountCollected from collectQuote (Step 3)
+  // Extract rent refund and actual token amounts from the confirmed transaction.
+  // Position accounts (mint, PDA, ATA) are closed by the TX, so their preBalance = rent refunded.
+  // Tick arrays are NOT closed (shared resources), so they are not included here.
+  const txData = await solana.connection.getTransaction(signature, {
+    commitment: 'confirmed',
+    maxSupportedTransactionVersion: 0,
+  });
+
+  let positionRentRefunded = 0;
+
+  if (txData) {
+    const accountKeys = txData.transaction.message.getAccountKeys().staticAccountKeys;
+    const preBalances = txData.meta?.preBalances || [];
+    const postBalances = txData.meta?.postBalances || [];
+
+    // Position accounts whose rent gets refunded on close
+    const positionMintPubkey = position.getData().positionMint;
+    const positionTokenAccount = getAssociatedTokenAddressSync(
+      positionMintPubkey,
+      client.getContext().wallet.publicKey,
+      undefined,
+      isToken2022 ? TOKEN_2022_PROGRAM_ID : undefined,
+    );
+    const rentAccounts: PublicKey[] = [positionMintPubkey, positionPubkey, positionTokenAccount];
+
+    let totalRentLamports = 0;
+    for (const pubkey of rentAccounts) {
+      const idx = accountKeys.findIndex((key) => key.equals(pubkey));
+      if (idx !== -1 && postBalances[idx] === 0 && preBalances[idx] > 0) {
+        totalRentLamports += preBalances[idx];
+        logger.info(`Rent refunded from ${pubkey.toString()}: ${preBalances[idx]} lamports`);
+      }
+    }
+    positionRentRefunded = totalRentLamports / 1e9;
+
+    // Derive actual token amounts from TX balance changes
+    const tokenMintA = whirlpool.getTokenAInfo().address.toString();
+    const tokenMintB = whirlpool.getTokenBInfo().address.toString();
+
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+      tokenMintA,
+      tokenMintB,
+    ]);
+
+    // Balance changes are positive (tokens entering wallet)
+    let totalBaseReceived = Math.abs(balanceChanges[0]);
+    let totalQuoteReceived = Math.abs(balanceChanges[1]);
+
+    // When SOL is one of the tokens, wallet balance change includes:
+    // liquidity + fees + rent refund - tx fee
+    // Subtract rent refund and add back tx fee to isolate actual token amounts
+    const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
+    if (tokenMintA === SOL_NATIVE_MINT) {
+      totalBaseReceived = totalBaseReceived - positionRentRefunded + fee;
+      if (totalBaseReceived < 0) totalBaseReceived = 0;
+    } else if (tokenMintB === SOL_NATIVE_MINT) {
+      totalQuoteReceived = totalQuoteReceived - positionRentRefunded + fee;
+      if (totalQuoteReceived < 0) totalQuoteReceived = 0;
+    }
+
+    // Separate fees from liquidity amounts:
+    // totalReceived = liquidityRemoved + feesCollected
+    // feesCollected = totalReceived - liquidityRemoved (from decreaseQuote estimate)
+    baseFeeAmountCollected = Math.max(0, totalBaseReceived - baseTokenAmountRemoved);
+    quoteFeeAmountCollected = Math.max(0, totalQuoteReceived - quoteTokenAmountRemoved);
+
+    // Update removed amounts to actuals (totalReceived - fees)
+    baseTokenAmountRemoved = totalBaseReceived - baseFeeAmountCollected;
+    quoteTokenAmountRemoved = totalQuoteReceived - quoteFeeAmountCollected;
+  }
+
+  logger.info(
+    `Position closed: removed=${baseTokenAmountRemoved.toFixed(6)} tokenA + ${quoteTokenAmountRemoved.toFixed(6)} tokenB, ` +
+      `fees=${baseFeeAmountCollected.toFixed(6)} tokenA + ${quoteFeeAmountCollected.toFixed(6)} tokenB, ` +
+      `rent refunded=${positionRentRefunded.toFixed(6)} SOL`,
+  );
 
   return {
     signature,
