@@ -36,7 +36,8 @@ describe('Solana RPC Provider Configuration Tests', () => {
       const mainnetConfig = getSolanaNetworkConfig('mainnet-beta');
 
       expect(devnetConfig.nodeURL).toContain('devnet');
-      expect(mainnetConfig.nodeURL).toContain('mainnet-beta');
+      // Mainnet URL can be standard Solana RPC or Helius (which uses 'mainnet' without '-beta')
+      expect(mainnetConfig.nodeURL).toMatch(/mainnet|helius/);
 
       expect(devnetConfig.nativeCurrencySymbol).toBe('SOL');
       expect(mainnetConfig.nativeCurrencySymbol).toBe('SOL');

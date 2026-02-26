@@ -1,13 +1,10 @@
 import { BN } from '@coral-xyz/anchor';
 import { Static } from '@sinclair/typebox';
+import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  ClosePositionResponse,
-  ClosePositionRequestType,
-  ClosePositionResponseType,
-} from '../../../schemas/clmm-schema';
+import { ClosePositionResponse, ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
@@ -98,24 +95,48 @@ export async function closePosition(
     if (confirmed && txData) {
       logger.info(`Position ${positionAddress} closed successfully with signature: ${signature}`);
 
-      // Extract balance changes for the tokens
+      // Extract position rent refunded from the position account's preBalance
+      // When closing, the position account's lamports (rent) are returned to the wallet
+      const positionPubkey = new PublicKey(positionAddress);
+      const accountKeys = txData.transaction.message.getAccountKeys().staticAccountKeys;
+      const preBalances = txData.meta?.preBalances || [];
+
+      let positionRentRefunded = 0;
+      const positionAccountIndex = accountKeys.findIndex((key) => key.equals(positionPubkey));
+      if (positionAccountIndex !== -1) {
+        // Position account's balance before closing IS the rent that gets refunded
+        positionRentRefunded = preBalances[positionAccountIndex] / 1e9; // Convert lamports to SOL
+      }
+
+      // Track wallet's balance changes for the tokens
       const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
         dlmmPool.tokenX.publicKey.toBase58(),
         dlmmPool.tokenY.publicKey.toBase58(),
-        'So11111111111111111111111111111111111111112', // SOL (for rent refund)
       ]);
 
-      const totalTokenXReceived = Math.abs(balanceChanges[0]);
-      const totalTokenYReceived = Math.abs(balanceChanges[1]);
-      const returnedSOL = Math.abs(balanceChanges[2]);
+      // Balance changes are positive (tokens entering wallet)
+      let totalTokenXReceived = Math.abs(balanceChanges[0]);
+      let totalTokenYReceived = Math.abs(balanceChanges[1]);
+
+      // When SOL is base/quote, wallet balance change includes: liquidity + fees + rent refund - tx fee
+      // We need to subtract rent refund to get actual token amounts
+      if (tokenXSymbol === 'SOL') {
+        // SOL is base token - subtract rent refund and add back tx fee
+        totalTokenXReceived = totalTokenXReceived - positionRentRefunded + totalFee;
+        if (totalTokenXReceived < 0) totalTokenXReceived = 0;
+      } else if (tokenYSymbol === 'SOL') {
+        // SOL is quote token - subtract rent refund and add back tx fee
+        totalTokenYReceived = totalTokenYReceived - positionRentRefunded + totalFee;
+        if (totalTokenYReceived < 0) totalTokenYReceived = 0;
+      }
 
       // Separate fees from liquidity amounts
-      // Total received = liquidity removed + fees collected
+      // Total received (after rent adjustment) = liquidity removed + fees collected
       const baseTokenAmountRemoved = Math.max(0, totalTokenXReceived - baseFeeAmount);
       const quoteTokenAmountRemoved = Math.max(0, totalTokenYReceived - quoteFeeAmount);
 
       logger.info(
-        `Position closed: ${baseTokenAmountRemoved.toFixed(4)} ${tokenXSymbol} + ${baseFeeAmount.toFixed(4)} ${tokenXSymbol} fees, ${quoteTokenAmountRemoved.toFixed(4)} ${tokenYSymbol} + ${quoteFeeAmount.toFixed(4)} ${tokenYSymbol} fees, ${returnedSOL.toFixed(9)} SOL rent refunded`,
+        `Position closed: ${baseTokenAmountRemoved.toFixed(4)} ${tokenXSymbol} + ${baseFeeAmount.toFixed(4)} ${tokenXSymbol} fees, ${quoteTokenAmountRemoved.toFixed(4)} ${tokenYSymbol} + ${quoteFeeAmount.toFixed(4)} ${tokenYSymbol} fees, ${positionRentRefunded.toFixed(6)} SOL rent refunded`,
       );
 
       return {
@@ -123,7 +144,7 @@ export async function closePosition(
         status: 1, // CONFIRMED
         data: {
           fee: totalFee,
-          positionRentRefunded: returnedSOL,
+          positionRentRefunded: positionRentRefunded,
           baseTokenAmountRemoved,
           quoteTokenAmountRemoved,
           baseFeeAmountCollected: baseFeeAmount,

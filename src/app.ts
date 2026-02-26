@@ -308,11 +308,16 @@ const configureGatewayServer = () => {
 
     // Handle Fastify's native errors (includes rate limit errors with statusCode 429)
     if (error.statusCode && error.statusCode >= 400) {
-      return reply.status(error.statusCode).send({
+      const response: Record<string, unknown> = {
         statusCode: error.statusCode,
         error: error.name,
         message: error.message,
-      });
+      };
+      // Include error code if present (for specific error types like TRANSACTION_TIMEOUT)
+      if ('code' in error && error.code) {
+        response.code = error.code;
+      }
+      return reply.status(error.statusCode).send(response);
     }
 
     // Log and handle unexpected errors

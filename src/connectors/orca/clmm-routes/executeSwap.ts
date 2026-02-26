@@ -7,6 +7,7 @@ import {
   swapQuoteByOutputToken,
   IGNORE_CACHE,
   SwapQuote,
+  TokenExtensionUtil,
 } from '@orca-so/whirlpools-sdk';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
@@ -187,16 +188,34 @@ export async function executeSwap(
   // Get oracle PDA
   const oraclePda = PDAUtil.getOracle(ORCA_WHIRLPOOL_PROGRAM_ID, whirlpoolPubkey);
 
-  // Add swap instruction
+  // Add swap V2 instruction (supports Token-2022 tokens)
   builder.addInstruction(
-    WhirlpoolIx.swapIx(client.getContext().program, {
+    WhirlpoolIx.swapV2Ix(client.getContext().program, {
       ...quote,
       whirlpool: whirlpoolPubkey,
       tokenAuthority: client.getContext().wallet.publicKey,
+      tokenMintA: whirlpool.getTokenAInfo().address,
+      tokenMintB: whirlpool.getTokenBInfo().address,
       tokenOwnerAccountA,
       tokenVaultA: whirlpool.getTokenVaultAInfo().address,
       tokenOwnerAccountB,
       tokenVaultB: whirlpool.getTokenVaultBInfo().address,
+      tokenProgramA: mintA.tokenProgram,
+      tokenProgramB: mintB.tokenProgram,
+      tokenTransferHookAccountsA: await TokenExtensionUtil.getExtraAccountMetasForTransferHook(
+        client.getContext().connection,
+        mintA,
+        tokenOwnerAccountA,
+        whirlpool.getTokenVaultAInfo().address,
+        client.getContext().wallet.publicKey,
+      ),
+      tokenTransferHookAccountsB: await TokenExtensionUtil.getExtraAccountMetasForTransferHook(
+        client.getContext().connection,
+        mintB,
+        tokenOwnerAccountB,
+        whirlpool.getTokenVaultBInfo().address,
+        client.getContext().wallet.publicKey,
+      ),
       oracle: oraclePda.publicKey,
     }),
   );
