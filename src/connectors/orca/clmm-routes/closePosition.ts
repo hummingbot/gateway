@@ -1,5 +1,6 @@
 import { Percentage, TransactionBuilder } from '@orca-so/common-sdk';
 import {
+  ORCA_WHIRLPOOL_PROGRAM_ID,
   WhirlpoolIx,
   decreaseLiquidityQuoteByLiquidityWithParams,
   TokenExtensionUtil,
@@ -16,7 +17,7 @@ import { ClosePositionResponse, ClosePositionResponseType } from '../../../schem
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
-import { getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
+import { extractInnerTransferAmounts, getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
 import { OrcaClmmClosePositionRequest } from '../schemas';
 
 export async function closePosition(
@@ -169,14 +170,14 @@ export async function closePosition(
       }),
     );
 
-    baseTokenAmountRemoved = Number(decreaseQuote.tokenEstA) / Math.pow(10, mintA.decimals);
-    quoteTokenAmountRemoved = Number(decreaseQuote.tokenEstB) / Math.pow(10, mintB.decimals);
+    // Note: baseTokenAmountRemoved/quoteTokenAmountRemoved are set from actual
+    // TX inner instruction transfers after execution, not from the estimate here.
   }
 
   // Step 3: Collect fees if there are fees owed or if we just removed liquidity
-  // Note: Fee amounts are derived from actual TX balance changes after execution,
-  // not from collectFeesQuote() which reads stale position data before
-  // updateFeesAndRewards executes on-chain.
+  // Note: Fee amounts are derived from inner instruction transfers after execution,
+  // which gives us exact amounts from the collectFees instruction separately
+  // from the decreaseLiquidity instruction.
   if (hasFees || hasLiquidity) {
     builder.addInstruction(
       WhirlpoolIx.collectFeesV2Ix(client.getContext().program, {
@@ -297,40 +298,39 @@ export async function closePosition(
     }
     positionRentRefunded = totalRentLamports / 1e9;
 
-    // Derive actual token amounts from TX balance changes
+    // Extract exact transfer amounts per Whirlpool instruction from inner instructions.
+    // The close TX has Whirlpool instructions in order:
+    //   updateFeesAndRewards (no transfers) → decreaseLiquidity (transfers) → collectFees (transfers) → closePosition (no transfers)
+    // extractInnerTransferAmounts returns only groups that have transfers, so:
+    //   transferGroups[0] = decreaseLiquidity amounts, transferGroups[1] = collectFees amounts
     const tokenMintA = whirlpool.getTokenAInfo().address.toString();
     const tokenMintB = whirlpool.getTokenBInfo().address.toString();
 
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
-      tokenMintA,
-      tokenMintB,
-    ]);
+    const { transferGroups } = await extractInnerTransferAmounts(
+      solana.connection,
+      signature,
+      ORCA_WHIRLPOOL_PROGRAM_ID.toString(),
+      [tokenMintA, tokenMintB],
+    );
 
-    // Balance changes are positive (tokens entering wallet)
-    let totalBaseReceived = Math.abs(balanceChanges[0]);
-    let totalQuoteReceived = Math.abs(balanceChanges[1]);
-
-    // When SOL is one of the tokens, wallet balance change includes:
-    // liquidity + fees + rent refund - tx fee
-    // Subtract rent refund and add back tx fee to isolate actual token amounts
-    const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
-    if (tokenMintA === SOL_NATIVE_MINT) {
-      totalBaseReceived = totalBaseReceived - positionRentRefunded + fee;
-      if (totalBaseReceived < 0) totalBaseReceived = 0;
-    } else if (tokenMintB === SOL_NATIVE_MINT) {
-      totalQuoteReceived = totalQuoteReceived - positionRentRefunded + fee;
-      if (totalQuoteReceived < 0) totalQuoteReceived = 0;
+    if (transferGroups.length >= 2) {
+      // First transfer group: decreaseLiquidity (liquidity removed)
+      baseTokenAmountRemoved = transferGroups[0][0];
+      quoteTokenAmountRemoved = transferGroups[0][1];
+      // Second transfer group: collectFees (fees collected)
+      baseFeeAmountCollected = transferGroups[1][0];
+      quoteFeeAmountCollected = transferGroups[1][1];
+    } else if (transferGroups.length === 1) {
+      // Only one group with transfers — could be just decreaseLiquidity or just collectFees
+      if (hasLiquidity) {
+        baseTokenAmountRemoved = transferGroups[0][0];
+        quoteTokenAmountRemoved = transferGroups[0][1];
+      } else {
+        baseFeeAmountCollected = transferGroups[0][0];
+        quoteFeeAmountCollected = transferGroups[0][1];
+      }
     }
-
-    // Separate fees from liquidity amounts:
-    // totalReceived = liquidityRemoved + feesCollected
-    // feesCollected = totalReceived - liquidityRemoved (from decreaseQuote estimate)
-    baseFeeAmountCollected = Math.max(0, totalBaseReceived - baseTokenAmountRemoved);
-    quoteFeeAmountCollected = Math.max(0, totalQuoteReceived - quoteTokenAmountRemoved);
-
-    // Update removed amounts to actuals (totalReceived - fees)
-    baseTokenAmountRemoved = totalBaseReceived - baseFeeAmountCollected;
-    quoteTokenAmountRemoved = totalQuoteReceived - quoteFeeAmountCollected;
+    // If transferGroups is empty, position had no liquidity and no fees — values stay at 0
   }
 
   logger.info(

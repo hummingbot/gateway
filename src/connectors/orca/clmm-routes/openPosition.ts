@@ -23,7 +23,7 @@ import { OpenPositionResponse, OpenPositionResponseType } from '../../../schemas
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
-import { getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
+import { extractInnerTransferAmounts, getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
 import { OrcaClmmOpenPositionRequest } from '../schemas';
 
 /**
@@ -504,33 +504,24 @@ export async function openPosition(
     }
     positionRent = totalRentLamports / 1e9;
 
-    // Use actual balance changes from the TX for token amounts when liquidity was added
+    // Extract actual token amounts from the increaseLiquidity instruction's inner transfers.
+    // This avoids the SOL adjustment complexity (rent, fee) needed with aggregate balance changes.
     if (shouldAddLiquidity) {
       const tokenMintA = whirlpool.getTokenAInfo().address.toString();
       const tokenMintB = whirlpool.getTokenBInfo().address.toString();
 
-      const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
-        tokenMintA,
-        tokenMintB,
-      ]);
+      const { transferGroups } = await extractInnerTransferAmounts(
+        solana.connection,
+        signature,
+        ORCA_WHIRLPOOL_PROGRAM_ID.toString(),
+        [tokenMintA, tokenMintB],
+      );
 
-      // Balance changes are negative (tokens leaving wallet)
-      let actualBaseAdded = Math.abs(balanceChanges[0]);
-      let actualQuoteAdded = Math.abs(balanceChanges[1]);
-
-      // When SOL is one of the tokens, wallet balance change includes: liquidity + rent + fee
-      // Subtract rent and fee to get actual liquidity added
-      const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
-      if (tokenMintA === SOL_NATIVE_MINT) {
-        actualBaseAdded = actualBaseAdded - positionRent - fee;
-        if (actualBaseAdded < 0) actualBaseAdded = 0;
-      } else if (tokenMintB === SOL_NATIVE_MINT) {
-        actualQuoteAdded = actualQuoteAdded - positionRent - fee;
-        if (actualQuoteAdded < 0) actualQuoteAdded = 0;
+      // For open position, the only Whirlpool instruction with transfers is increaseLiquidity
+      if (transferGroups.length >= 1) {
+        baseTokenAmountAdded = transferGroups[0][0];
+        quoteTokenAmountAdded = transferGroups[0][1];
       }
-
-      baseTokenAmountAdded = actualBaseAdded;
-      quoteTokenAmountAdded = actualQuoteAdded;
     }
   }
 
