@@ -49,6 +49,14 @@ export async function executeClmmSwap(
     slippagePct,
   );
 
+  // Log quote values for debugging
+  logger.info(`Quote values received:`);
+  logger.info(`  rawAmountIn: ${quote.rawAmountIn} (type: ${typeof quote.rawAmountIn})`);
+  logger.info(`  rawAmountOut: ${quote.rawAmountOut} (type: ${typeof quote.rawAmountOut})`);
+  logger.info(`  rawMinAmountOut: ${quote.rawMinAmountOut} (type: ${typeof quote.rawMinAmountOut})`);
+  logger.info(`  rawMaxAmountIn: ${quote.rawMaxAmountIn} (type: ${typeof quote.rawMaxAmountIn})`);
+  logger.info(`  feeTier: ${quote.feeTier}`);
+
   // Check if this is a hardware wallet
   const isHardwareWallet = await ethereum.isHardwareWallet(walletAddress);
 
@@ -243,6 +251,7 @@ export async function executeClmmSwap(
           tokenOut: swapParams.tokenOut,
           fee: swapParams.fee,
           recipient: swapParams.recipient,
+          deadline: Date.now() + 300,
           amountOut: swapParams.amountOut,
           amountInMaximum: swapParams.amountInMaximum,
           sqrtPriceLimitX96: swapParams.sqrtPriceLimitX96,

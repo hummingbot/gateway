@@ -87,6 +87,27 @@ async function quoteClmmSwap(
     // Calculate price impact
     const priceImpact = parseFloat(trade.priceImpact.toSignificant(4));
 
+    // Ensure all required values are defined before converting to BigNumber
+    const rawAmountInStr = trade.inputAmount.quotient.toString();
+    const rawAmountOutStr = trade.outputAmount.quotient.toString();
+
+    if (!rawAmountInStr || !rawAmountOutStr || !minAmountOut || !maxAmountIn) {
+      logger.error(
+        `Missing required values in trade: rawAmountIn=${rawAmountInStr}, rawAmountOut=${rawAmountOutStr}, minAmountOut=${minAmountOut}, maxAmountIn=${maxAmountIn}`,
+      );
+      throw new Error('Failed to calculate swap amounts - missing required values from trade');
+    }
+
+    // Convert to BigNumber strings for safe handling in execution
+    const rawAmountIn = BigNumber.from(rawAmountInStr).toString();
+    const rawAmountOut = BigNumber.from(rawAmountOutStr).toString();
+    const rawMinAmountOut = BigNumber.from(minAmountOut).toString();
+    const rawMaxAmountIn = BigNumber.from(maxAmountIn).toString();
+
+    logger.info(
+      `Raw values calculated: rawAmountIn=${rawAmountIn}, rawAmountOut=${rawAmountOut}, rawMinAmountOut=${rawMinAmountOut}, rawMaxAmountIn=${rawMaxAmountIn}`,
+    );
+
     return {
       poolAddress,
       estimatedAmountIn,
@@ -97,11 +118,11 @@ async function quoteClmmSwap(
       inputToken,
       outputToken,
       trade,
-      // Add raw values for execution - normalize through BigNumber to ensure clean decimal strings
-      rawAmountIn: BigNumber.from(trade.inputAmount.quotient.toString()).toString(),
-      rawAmountOut: BigNumber.from(trade.outputAmount.quotient.toString()).toString(),
-      rawMinAmountOut: BigNumber.from(minAmountOut).toString(),
-      rawMaxAmountIn: BigNumber.from(maxAmountIn).toString(),
+      // Add raw values for execution - normalized through BigNumber to ensure clean decimal strings
+      rawAmountIn,
+      rawAmountOut,
+      rawMinAmountOut,
+      rawMaxAmountIn,
       feeTier: pool.fee,
     };
   } catch (error) {
