@@ -91,6 +91,8 @@ export const PositionInfoSchema = Type.Object(
     lowerPrice: Type.Number(),
     upperPrice: Type.Number(),
     price: Type.Number(),
+    liquidity: Type.Optional(Type.String({ description: 'Liquidity amount in the position' })),
+    inRange: Type.Optional(Type.Boolean({ description: 'Whether the position is currently in range (active)' })),
     rewardTokenAddress: Type.Optional(Type.String()),
     rewardAmount: Type.Optional(Type.Number()),
   },

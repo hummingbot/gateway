@@ -18,6 +18,9 @@ import { formatTokenAmount } from '../pancakeswap.utils';
 const PositionsOwnedRequest = Type.Object({
   network: Type.Optional(Type.String({ examples: ['bsc'], default: 'bsc' })),
   walletAddress: Type.String({ examples: ['<ethereum-wallet-address>'] }),
+  activeOnly: Type.Optional(
+    Type.Boolean({ description: 'If true, only return positions with active liquidity (in range)', default: false }),
+  ),
 });
 
 const PositionsOwnedResponse = Type.Array(PositionInfoSchema);
@@ -47,6 +50,7 @@ export async function getPositionsOwned(
   fastify: FastifyInstance,
   network: string,
   walletAddress?: string,
+  activeOnly: boolean = false,
 ): Promise<PositionInfo[]> {
   const pancakeswap = await Pancakeswap.getInstance(network);
   const ethereum = await Ethereum.getInstance(network);
@@ -89,6 +93,14 @@ export async function getPositionsOwned(
       const pool = await pancakeswap.getV3Pool(token0, token1, positionDetails.fee);
       if (!pool) {
         logger.warn(`Pool not found for position ${tokenId}`);
+        continue;
+      }
+
+      // Check if position is in range
+      const inRange = pool.tickCurrent >= positionDetails.tickLower && pool.tickCurrent < positionDetails.tickUpper;
+
+      // If activeOnly is true, skip positions that are not in range
+      if (activeOnly && !inRange) {
         continue;
       }
 
@@ -170,9 +182,9 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { walletAddress } = request.query;
+        const { walletAddress, activeOnly } = request.query;
         const network = request.query.network;
-        return await getPositionsOwned(fastify, network, walletAddress);
+        return await getPositionsOwned(fastify, network, walletAddress, activeOnly);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

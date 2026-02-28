@@ -87,6 +87,9 @@ export async function getPositionInfo(
     fee,
   });
 
+  // Check if position is in range
+  const inRange = pool.tickCurrent >= tickLower && pool.tickCurrent < tickUpper;
+
   return {
     address: positionAddress,
     poolAddress,
@@ -101,6 +104,8 @@ export async function getPositionInfo(
     lowerPrice: parseFloat(lowerPrice),
     upperPrice: parseFloat(upperPrice),
     price: parseFloat(price),
+    liquidity: liquidity.toString(),
+    inRange,
   };
 }
 
