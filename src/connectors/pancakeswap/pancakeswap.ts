@@ -4,8 +4,8 @@ import { PoolType } from '@pancakeswap/smart-router';
 import { Pair as V2Pair } from '@pancakeswap/v2-sdk';
 import { abi as IPancakeswapV3FactoryABI } from '@pancakeswap/v3-core/artifacts/contracts/interfaces/IPancakeV3Factory.sol/IPancakeV3Factory.json';
 import { abi as IPancakeswapV3PoolABI } from '@pancakeswap/v3-core/artifacts/contracts/interfaces/IPancakeV3Pool.sol/IPancakeV3Pool.json';
-import { FeeAmount, Pool as V3Pool } from '@pancakeswap/v3-sdk';
-import { Contract, constants } from 'ethers';
+import { FeeAmount, Pool as V3Pool, tickToPrice } from '@pancakeswap/v3-sdk';
+import { Contract, constants, utils } from 'ethers';
 import { getAddress } from 'ethers/lib/utils';
 import { Address } from 'viem';
 
@@ -469,6 +469,37 @@ export class Pancakeswap {
   }
 
   /**
+   * Get MasterChef reward data for a V3 pool, useful for APR estimation.
+   * @param poolAddress The V3 pool contract address
+   * @returns Pool ID, CAKE rewards per second (in CAKE units), reward period end time (unix), and active status
+   */
+  public async getPoolMasterchefData(poolAddress: string): Promise<{
+    poolId: number;
+    cakePerSecond: number;
+    rewardEndTime: number;
+    isRewardActive: boolean;
+  }> {
+    try {
+      const [poolId, periodInfo] = await Promise.all([
+        this.getV3PoolIdFromMasterChef(poolAddress),
+        this.masterChef.getLatestPeriodInfo(poolAddress),
+      ]);
+
+      const [cakePerSecondRaw, endTime] = periodInfo;
+      const now = Math.floor(Date.now() / 1000);
+      const rewardEndTime = Number(endTime);
+      const isRewardActive = rewardEndTime > now;
+      // CAKE token has 18 decimals
+      const cakePerSecond = parseFloat(cakePerSecondRaw.toString()) / 1e18;
+
+      return { poolId, cakePerSecond, rewardEndTime, isRewardActive };
+    } catch (error) {
+      logger.error(`Failed to get MasterChef data for pool ${poolAddress}: ${error.message}`);
+      return { poolId: 0, cakePerSecond: 0, rewardEndTime: 0, isRewardActive: false };
+    }
+  }
+
+  /**
    * Get a V3 pool by token addresses and fee
    */
   private async getV3PoolByTokens(token0: string, token1: string, fee: number): Promise<string | null> {
@@ -562,13 +593,36 @@ export class Pancakeswap {
   }
 
   /**
-   * Stake an NFT in the MasterChef contract using a specific wallet
-   * Staking is done by transferring the NFT to the MasterChef contract
-   * The MasterChef contract has an onERC721Received handler that processes the stake
+   * Stake an NFT in the MasterChef contract using a specific wallet.
+   * Staking is done by transferring the NFT to the MasterChef contract.
+   * The MasterChef contract has an onERC721Received handler that processes the stake.
    * @param tokenId The ID of the NFT to stake
    * @param walletAddress The wallet address to use for signing
+   * @returns Enriched stake result including pool info, price range, and CAKE reward metadata
    */
-  public async stakeNft(tokenId: number, walletAddress: string): Promise<void> {
+  public async stakeNft(
+    tokenId: number,
+    walletAddress: string,
+  ): Promise<{
+    txHash: string;
+    poolId: number;
+    poolAddress: string;
+    baseTokenAddress: string;
+    baseTokenSymbol: string;
+    quoteTokenAddress: string;
+    quoteTokenSymbol: string;
+    feePct: number;
+    liquidity: string;
+    tickLower: number;
+    tickUpper: number;
+    currentPrice: number;
+    lowerPrice: number;
+    upperPrice: number;
+    inRange: boolean;
+    cakePerSecond: number;
+    rewardEndTime: number;
+    isRewardActive: boolean;
+  }> {
     try {
       // First, verify NFT ownership
       logger.info(`Verifying ownership of NFT ${tokenId} for wallet ${walletAddress}`);
@@ -757,6 +811,71 @@ export class Pancakeswap {
       }
 
       logger.info(`Successfully staked NFT with tokenId ${tokenId} in transaction ${tx.hash}`);
+
+      // ── Gather enriched response data ──────────────────────────────────────
+      const [token0Obj, token1Obj, mcData] = await Promise.all([
+        this.getToken(position.token0),
+        this.getToken(position.token1),
+        this.getPoolMasterchefData(v3Pool),
+      ]);
+
+      const pool = token0Obj && token1Obj ? await this.getV3Pool(token0Obj, token1Obj, position.fee) : null;
+
+      // Determine base/quote ordering (WETH is always quote; otherwise sort by address)
+      const isBaseToken0 =
+        (token0Obj?.symbol !== 'WETH' && token1Obj?.symbol === 'WETH') ||
+        (token0Obj?.symbol !== 'WETH' &&
+          token1Obj?.symbol !== 'WETH' &&
+          token0Obj?.address.toLowerCase() < token1Obj?.address.toLowerCase());
+
+      const baseTokenAddress = isBaseToken0 ? (token0Obj?.address ?? '') : (token1Obj?.address ?? '');
+      const baseTokenSymbol = isBaseToken0 ? (token0Obj?.symbol ?? '') : (token1Obj?.symbol ?? '');
+      const quoteTokenAddress = isBaseToken0 ? (token1Obj?.address ?? '') : (token0Obj?.address ?? '');
+      const quoteTokenSymbol = isBaseToken0 ? (token1Obj?.symbol ?? '') : (token0Obj?.symbol ?? '');
+
+      let currentPrice = 0;
+      let lowerPrice = 0;
+      let upperPrice = 0;
+      let inRange = false;
+
+      if (pool && token0Obj && token1Obj) {
+        currentPrice = isBaseToken0
+          ? parseFloat(pool.token0Price.toSignificant(8))
+          : parseFloat(pool.token1Price.toSignificant(8));
+
+        const lowerTickPrice = tickToPrice(token0Obj, token1Obj, position.tickLower);
+        const upperTickPrice = tickToPrice(token0Obj, token1Obj, position.tickUpper);
+        // When base=token0 prices are already in base/quote direction; when base=token1 we invert and swap bounds
+        lowerPrice = isBaseToken0
+          ? parseFloat(lowerTickPrice.toSignificant(8))
+          : parseFloat(upperTickPrice.invert().toSignificant(8));
+        upperPrice = isBaseToken0
+          ? parseFloat(upperTickPrice.toSignificant(8))
+          : parseFloat(lowerTickPrice.invert().toSignificant(8));
+
+        inRange = pool.tickCurrent >= position.tickLower && pool.tickCurrent < position.tickUpper;
+      }
+
+      return {
+        txHash: tx.hash,
+        poolId: mcData.poolId,
+        poolAddress: v3Pool,
+        baseTokenAddress,
+        baseTokenSymbol,
+        quoteTokenAddress,
+        quoteTokenSymbol,
+        feePct: position.fee / 10000,
+        liquidity,
+        tickLower: position.tickLower,
+        tickUpper: position.tickUpper,
+        currentPrice,
+        lowerPrice,
+        upperPrice,
+        inRange,
+        cakePerSecond: mcData.cakePerSecond,
+        rewardEndTime: mcData.rewardEndTime,
+        isRewardActive: mcData.isRewardActive,
+      };
     } catch (error) {
       logger.error(`Failed to stake NFT: ${error.message}`);
       throw error;
@@ -764,17 +883,60 @@ export class Pancakeswap {
   }
 
   /**
-   * Unstake an NFT from the MasterChef contract
+   * Unstake an NFT from the MasterChef contract and collect accumulated CAKE rewards.
    * @param tokenId The ID of the NFT to unstake
-   * @param walletAddress The wallet address to receive the rewards and NFT
+   * @param walletAddress The wallet address to receive the NFT and rewards
+   * @returns Transaction hash, CAKE reward amount, and reward token details
    */
-  public async unstakeNft(tokenId: number, walletAddress: string): Promise<void> {
+  public async unstakeNft(
+    tokenId: number,
+    walletAddress: string,
+  ): Promise<{
+    txHash: string;
+    rewardAmount: number;
+    rewardToken: string;
+    rewardTokenAddress: string;
+  }> {
     try {
       const wallet = await this.ethereum.getWallet(walletAddress);
       const contractWithSigner = this.masterChef.connect(wallet);
       const tx = await contractWithSigner.withdraw(tokenId, walletAddress, { gasLimit: 500000 });
-      await tx.wait();
-      logger.info(`Successfully unstaked NFT with tokenId ${tokenId} and sent rewards to ${walletAddress}`);
+      const receipt = await tx.wait();
+
+      // Parse the CAKE reward from the Harvest event emitted during withdraw
+      let rewardAmount = 0;
+      try {
+        const iface = new utils.Interface(PancakeswapV3MasterchefABI);
+        for (const log of receipt.logs) {
+          try {
+            const parsed = iface.parseLog(log);
+            if (parsed.name === 'Harvest') {
+              // reward is a non-indexed uint256 in the event data
+              rewardAmount = parseFloat(parsed.args.reward.toString()) / 1e18;
+              break;
+            }
+          } catch {
+            // Not a Harvest log from this contract, skip
+          }
+        }
+      } catch (parseErr) {
+        logger.warn(`Could not parse Harvest event from unstake receipt: ${parseErr.message}`);
+      }
+
+      // Resolve CAKE token address and symbol
+      let rewardTokenAddress = '';
+      let rewardToken = 'CAKE';
+      try {
+        rewardTokenAddress = await this.masterChef.CAKE();
+        const cakeToken = await this.getToken(rewardTokenAddress);
+        if (cakeToken?.symbol) rewardToken = cakeToken.symbol;
+      } catch (tokenErr) {
+        logger.warn(`Could not resolve CAKE token info: ${tokenErr.message}`);
+      }
+
+      logger.info(`Successfully unstaked NFT ${tokenId}: earned ${rewardAmount} ${rewardToken}, tx ${tx.hash}`);
+
+      return { txHash: tx.hash, rewardAmount, rewardToken, rewardTokenAddress };
     } catch (error) {
       logger.error(`Failed to unstake NFT: ${error.message}`);
       throw error;

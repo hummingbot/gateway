@@ -268,6 +268,21 @@ export async function openPosition(
   const baseAmountUsed = isBaseToken0 ? actualToken0Amount : actualToken1Amount;
   const quoteAmountUsed = isBaseToken0 ? actualToken1Amount : actualToken0Amount;
 
+  // ── Enriched pool / MasterChef data ────────────────────────────────────────
+  const feePct = pool.fee / 10000;
+  const currentPrice = isBaseToken0
+    ? parseFloat(pool.token0Price.toSignificant(8))
+    : parseFloat(pool.token1Price.toSignificant(8));
+  const inRange = pool.tickCurrent >= lowerTick && pool.tickCurrent < upperTick;
+
+  // Fetch MasterChef reward data — non-critical, fall back to zeros on error
+  let mcData = { poolId: 0, cakePerSecond: 0, rewardEndTime: 0, isRewardActive: false };
+  try {
+    mcData = await pancakeswap.getPoolMasterchefData(poolAddress);
+  } catch (mcError) {
+    logger.warn(`Could not fetch MasterChef data for pool ${poolAddress}: ${mcError.message}`);
+  }
+
   return {
     signature: receipt.transactionHash,
     status: receipt.status,
@@ -277,6 +292,23 @@ export async function openPosition(
       positionRent,
       baseTokenAmountAdded: baseAmountUsed,
       quoteTokenAmountAdded: quoteAmountUsed,
+      poolAddress,
+      baseTokenAddress: isBaseToken0 ? token0.address : token1.address,
+      baseTokenSymbol: isBaseToken0 ? token0.symbol : token1.symbol,
+      quoteTokenAddress: isBaseToken0 ? token1.address : token0.address,
+      quoteTokenSymbol: isBaseToken0 ? token1.symbol : token0.symbol,
+      feePct,
+      currentPrice,
+      lowerPrice,
+      upperPrice,
+      liquidity: position.liquidity.toString(),
+      tickLower: lowerTick,
+      tickUpper: upperTick,
+      inRange,
+      masterchefPoolId: mcData.poolId,
+      cakePerSecond: mcData.cakePerSecond,
+      rewardEndTime: mcData.rewardEndTime,
+      isRewardActive: mcData.isRewardActive,
     },
   };
 }

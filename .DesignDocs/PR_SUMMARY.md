@@ -1,6 +1,6 @@
 # PR Summary: PancakeSwap CLMM LP Management & MasterChef Integration on BSC
 
-@cardosofede ~ You said you'd take a look at this and I just saw that new post about bsc and don't know if it resolves these issues or not. I did move them up a level in the path like you asked 
+@cardosofede ~ You said you'd take a look at this and I just saw that new post about bsc and don't know if it resolves these issues or not. I did move them up a level in the path like you asked.
 
 ## What's Included
 

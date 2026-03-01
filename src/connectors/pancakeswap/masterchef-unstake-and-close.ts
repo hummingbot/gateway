@@ -1,8 +1,6 @@
 import { Static, Type } from '@sinclair/typebox';
 import { FastifyInstance } from 'fastify';
 
-import { logger } from '../../services/logger';
-
 import { closePosition } from './clmm-routes/closePosition';
 import { Pancakeswap } from './pancakeswap';
 
@@ -32,54 +30,37 @@ export default async function masterchefUnstakeAndCloseRoutes(fastify: FastifyIn
         summary: 'Unstake NFT from MasterChef and close the position',
         description:
           'Unstakes a PancakeSwap CLMM position NFT from the MasterChef contract and then closes the position. ' +
-          'This is a convenience endpoint that chains two operations: unstake (withdraw from MasterChef) and close-position (remove liquidity and burn NFT). ' +
-          'The unstake operation will return the NFT to your wallet and send any accumulated rewards. ' +
-          'The close operation will then remove all remaining liquidity, collect any fees, and burn the NFT. ' +
-          'Returns detailed information about tokens and fees collected during the close operation.',
+          'This is a convenience endpoint that chains two operations: unstake (withdraw from MasterChef, harvesting CAKE) and close-position (remove liquidity and burn NFT). ' +
+          'The response includes: CAKE rewards earned during unstake, token symbols and amounts returned when closing, and all collected trading fees.',
         tags: ['/connector/pancakeswap'],
         body: MasterChefUnstakeAndCloseSchema,
         response: {
           200: Type.Object({
-            message: Type.String({
-              description: 'Success message',
-            }),
-            unstakeTransaction: Type.String({
-              description: 'Transaction hash from the unstake operation',
-            }),
-            closeTransaction: Type.String({
-              description: 'Transaction hash from the close position operation',
-            }),
+            message: Type.String({ description: 'Success message' }),
+            unstakeTransaction: Type.String({ description: 'Transaction hash from the unstake operation' }),
+            closeTransaction: Type.String({ description: 'Transaction hash from the close position operation' }),
+            // CAKE rewards from unstaking
+            cakeRewardAmount: Type.Number({ description: 'Amount of CAKE tokens harvested during the unstake' }),
+            rewardToken: Type.String({ description: 'Reward token symbol (CAKE)' }),
+            rewardTokenAddress: Type.String({ description: 'Reward token contract address' }),
+            // LP position close details
             positionClosed: Type.Object({
-              fee: Type.Number({
-                description: 'Transaction fee paid in ETH',
-              }),
-              positionRentRefunded: Type.Number({
-                description: 'Position rent refunded',
-              }),
-              baseTokenAmountRemoved: Type.Number({
-                description: 'Amount of base token removed from the position',
-              }),
+              fee: Type.Number({ description: 'Gas fee paid for the close transaction (in ETH/BNB)' }),
+              positionRentRefunded: Type.Number({ description: 'Position rent refunded (0 on EVM chains)' }),
+              baseTokenAmountRemoved: Type.Number({ description: 'Amount of base token removed from the position' }),
               quoteTokenAmountRemoved: Type.Number({
                 description: 'Amount of quote token removed from the position',
               }),
-              baseFeeAmountCollected: Type.Number({
-                description: 'Base token fees collected',
-              }),
-              quoteFeeAmountCollected: Type.Number({
-                description: 'Quote token fees collected',
-              }),
+              baseFeeAmountCollected: Type.Number({ description: 'Accumulated base token trading fees collected' }),
+              quoteFeeAmountCollected: Type.Number({ description: 'Accumulated quote token trading fees collected' }),
+              baseTokenSymbol: Type.Optional(Type.String({ description: 'Base token symbol (e.g. CAKE)' })),
+              baseTokenAddress: Type.Optional(Type.String({ description: 'Base token contract address' })),
+              quoteTokenSymbol: Type.Optional(Type.String({ description: 'Quote token symbol (e.g. USDT)' })),
+              quoteTokenAddress: Type.Optional(Type.String({ description: 'Quote token contract address' })),
             }),
           }),
-          400: Type.Object({
-            error: Type.String({
-              description: 'Error message for invalid input or request.',
-            }),
-          }),
-          500: Type.Object({
-            error: Type.String({
-              description: 'Error message for internal server or transaction errors.',
-            }),
-          }),
+          400: Type.Object({ error: Type.String() }),
+          500: Type.Object({ error: Type.String() }),
         },
         consumes: ['application/json'],
         produces: ['application/json'],
@@ -107,25 +88,24 @@ export default async function masterchefUnstakeAndCloseRoutes(fastify: FastifyIn
       );
 
       try {
-        let unstakeTransactionHash = '';
-
-        // Step 1: Unstake the NFT from MasterChef
+        // Step 1: Unstake the NFT from MasterChef (also harvests accumulated CAKE)
         fastify.log.info(`Step 1: Unstaking NFT ${tokenId} from MasterChef...`);
+        let unstakeResult: { txHash: string; rewardAmount: number; rewardToken: string; rewardTokenAddress: string };
         try {
           const pancakeswap = await Pancakeswap.getInstance(network);
-          await pancakeswap.unstakeNft(tokenId, walletAddress);
-          fastify.log.info(`Successfully unstaked tokenId ${tokenId}`);
-          // Note: unstakeNft doesn't return tx hash, so we log that it was executed
-          unstakeTransactionHash = `unstaked_${tokenId}`;
+          unstakeResult = await pancakeswap.unstakeNft(tokenId, walletAddress);
+          fastify.log.info(
+            `Successfully unstaked tokenId ${tokenId}: earned ${unstakeResult.rewardAmount} ${unstakeResult.rewardToken}, tx ${unstakeResult.txHash}`,
+          );
         } catch (unstakeError: any) {
           fastify.log.error(`Unstaking failed: ${unstakeError.message}`);
           throw new Error(`Failed to unstake NFT: ${unstakeError.message}`);
         }
 
-        // Add a small delay to ensure the transaction is settled before closing
+        // Add a small delay to ensure the unstake transaction is settled before closing
         await new Promise((resolve) => setTimeout(resolve, 2000));
 
-        // Step 2: Close the position (remove liquidity and burn NFT)
+        // Step 2: Close the position (remove all liquidity, collect fees, burn NFT)
         fastify.log.info(`Step 2: Closing position for NFT ${tokenId}...`);
         let closeResult;
         try {
@@ -136,13 +116,21 @@ export default async function masterchefUnstakeAndCloseRoutes(fastify: FastifyIn
           throw new Error(`Failed to close position: ${closeError.message}`);
         }
 
-        fastify.log.info(`Successfully completed unstake and close operations for tokenId ${tokenId}`);
+        const baseSymbol = closeResult.data?.baseTokenSymbol ?? '';
+        const quoteSymbol = closeResult.data?.quoteTokenSymbol ?? '';
+
+        fastify.log.info(`Successfully completed unstake-and-close for tokenId ${tokenId}`);
         reply.status(200).send({
           message:
-            `Successfully unstaked NFT with tokenId ${tokenId} from MasterChef and closed the position. ` +
-            `The liquidity has been removed, fees have been collected, and the NFT has been burned.`,
-          unstakeTransaction: unstakeTransactionHash,
+            `Successfully unstaked NFT ${tokenId} from MasterChef (harvested ${unstakeResult.rewardAmount} ${unstakeResult.rewardToken}) ` +
+            `and closed the position (returned ${closeResult.data?.baseTokenAmountRemoved ?? 0} ${baseSymbol} + ` +
+            `${closeResult.data?.quoteTokenAmountRemoved ?? 0} ${quoteSymbol}). ` +
+            `The NFT has been burned.`,
+          unstakeTransaction: unstakeResult.txHash,
           closeTransaction: closeResult.signature,
+          cakeRewardAmount: unstakeResult.rewardAmount,
+          rewardToken: unstakeResult.rewardToken,
+          rewardTokenAddress: unstakeResult.rewardTokenAddress,
           positionClosed: closeResult.data,
         });
       } catch (error: any) {

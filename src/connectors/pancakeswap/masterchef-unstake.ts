@@ -4,9 +4,9 @@ import { FastifyInstance } from 'fastify';
 import { Pancakeswap } from './pancakeswap';
 
 const MasterChefUnstakeSchema = Type.Object({
-  network: Type.String({ description: 'Blockchain network (e.g., bsc-mainnet)' }),
+  network: Type.String({ description: 'Blockchain network (e.g., bsc)' }),
   walletAddress: Type.String({
-    description: 'The wallet address to receive the unstaked NFT and rewards',
+    description: 'The wallet address to receive the unstaked NFT and any accumulated CAKE rewards',
     examples: ['0x742d35Cc6634C0532925a3b844Bc9e7595f42e0E'],
   }),
   tokenId: Type.Number({ description: 'Token ID of the NFT to unstake' }),
@@ -14,16 +14,31 @@ const MasterChefUnstakeSchema = Type.Object({
 
 type MasterChefUnstakeRequest = Static<typeof MasterChefUnstakeSchema>;
 
+const MasterChefUnstakeResponse = Type.Object({
+  message: Type.String({ description: 'Human-readable success message.' }),
+  txHash: Type.String({ description: 'Transaction hash of the unstake (withdraw) transaction.' }),
+  // CAKE reward details
+  rewardAmount: Type.Number({
+    description: 'Amount of CAKE tokens harvested and sent to walletAddress during this unstake.',
+  }),
+  rewardToken: Type.String({ description: 'Reward token symbol (CAKE).' }),
+  rewardTokenAddress: Type.String({ description: 'Reward token contract address.' }),
+});
+
 export default async function masterchefUnstakeRoutes(fastify: FastifyInstance) {
   fastify.post<{ Body: MasterChefUnstakeRequest }>(
     '/masterchef-unstake',
     {
       schema: {
-        description: 'Unstake an NFT from the MasterChef contract',
+        summary: 'Unstake an NFT from the MasterChef contract and collect CAKE rewards',
+        description:
+          'Withdraws a staked PancakeSwap CLMM position NFT from the MasterChef contract. ' +
+          'Any accumulated CAKE rewards are automatically harvested and sent to walletAddress. ' +
+          'The response includes the actual CAKE amount earned.',
         tags: ['/connector/pancakeswap'],
         body: MasterChefUnstakeSchema,
         response: {
-          200: Type.Object({ message: Type.String() }),
+          200: MasterChefUnstakeResponse,
           400: Type.Object({ error: Type.String() }),
           500: Type.Object({ error: Type.String() }),
         },
@@ -38,11 +53,21 @@ export default async function masterchefUnstakeRoutes(fastify: FastifyInstance) 
 
       try {
         const pancakeswap = await Pancakeswap.getInstance(network);
-        await pancakeswap.unstakeNft(tokenId, walletAddress);
-        fastify.log.info(`Successfully unstaked tokenId ${tokenId}`);
-        reply
-          .status(200)
-          .send({ message: `Successfully unstaked NFT with tokenId ${tokenId} and sent rewards to ${walletAddress}` });
+        const result = await pancakeswap.unstakeNft(tokenId, walletAddress);
+
+        fastify.log.info(
+          `Successfully unstaked tokenId ${tokenId}: earned ${result.rewardAmount} ${result.rewardToken}, tx ${result.txHash}`,
+        );
+
+        reply.status(200).send({
+          message:
+            `Successfully unstaked NFT ${tokenId} from MasterChef. ` +
+            `Harvested ${result.rewardAmount} ${result.rewardToken} to ${walletAddress}.`,
+          txHash: result.txHash,
+          rewardAmount: result.rewardAmount,
+          rewardToken: result.rewardToken,
+          rewardTokenAddress: result.rewardTokenAddress,
+        });
       } catch (error) {
         fastify.log.error(`Failed to unstake tokenId ${tokenId}: ${error.message}`);
         reply.status(500).send({ error: `Failed to unstake NFT: ${error.message}` });

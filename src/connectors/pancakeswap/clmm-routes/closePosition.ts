@@ -146,6 +146,10 @@ export async function closePosition(
       quoteTokenAmountRemoved,
       baseFeeAmountCollected,
       quoteFeeAmountCollected,
+      baseTokenAddress: isBaseToken0 ? token0.address : token1.address,
+      baseTokenSymbol: isBaseToken0 ? token0.symbol : token1.symbol,
+      quoteTokenAddress: isBaseToken0 ? token1.address : token0.address,
+      quoteTokenSymbol: isBaseToken0 ? token1.symbol : token0.symbol,
     },
   };
 }

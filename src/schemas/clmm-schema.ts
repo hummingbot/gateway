@@ -138,6 +138,38 @@ export const OpenPositionResponse = Type.Object(
         positionRent: Type.Number(),
         baseTokenAmountAdded: Type.Number(),
         quoteTokenAmountAdded: Type.Number(),
+        // Pool information
+        poolAddress: Type.Optional(Type.String({ description: 'Pool contract address' })),
+        baseTokenAddress: Type.Optional(Type.String({ description: 'Base token contract address' })),
+        baseTokenSymbol: Type.Optional(Type.String({ description: 'Base token symbol (e.g. CAKE)' })),
+        quoteTokenAddress: Type.Optional(Type.String({ description: 'Quote token contract address' })),
+        quoteTokenSymbol: Type.Optional(Type.String({ description: 'Quote token symbol (e.g. USDT)' })),
+        feePct: Type.Optional(Type.Number({ description: 'Pool fee as a percentage (e.g. 0.25 for 0.25%)' })),
+        currentPrice: Type.Optional(Type.Number({ description: 'Current pool price in base/quote terms' })),
+        lowerPrice: Type.Optional(Type.Number({ description: 'Position lower price bound' })),
+        upperPrice: Type.Optional(Type.Number({ description: 'Position upper price bound' })),
+        liquidity: Type.Optional(Type.String({ description: 'Raw liquidity units of the new position' })),
+        tickLower: Type.Optional(Type.Number({ description: 'Lower tick of the position' })),
+        tickUpper: Type.Optional(Type.Number({ description: 'Upper tick of the position' })),
+        inRange: Type.Optional(
+          Type.Boolean({ description: 'Whether the position is currently in range and earning fees' }),
+        ),
+        // MasterChef reward info (for APR estimation)
+        masterchefPoolId: Type.Optional(
+          Type.Number({ description: 'MasterChef pool ID; 0 means pool is not registered' }),
+        ),
+        cakePerSecond: Type.Optional(
+          Type.Number({
+            description:
+              'CAKE tokens distributed per second across the full pool; use with pool liquidity to estimate APR',
+          }),
+        ),
+        rewardEndTime: Type.Optional(
+          Type.Number({ description: 'Unix timestamp when the current CAKE reward period ends' }),
+        ),
+        isRewardActive: Type.Optional(
+          Type.Boolean({ description: 'Whether the CAKE reward period is currently active' }),
+        ),
       }),
     ),
   },
@@ -257,6 +289,11 @@ export const ClosePositionResponse = Type.Object(
         quoteTokenAmountRemoved: Type.Number(),
         baseFeeAmountCollected: Type.Number(),
         quoteFeeAmountCollected: Type.Number(),
+        // Token identification
+        baseTokenAddress: Type.Optional(Type.String({ description: 'Base token contract address' })),
+        baseTokenSymbol: Type.Optional(Type.String({ description: 'Base token symbol (e.g. CAKE)' })),
+        quoteTokenAddress: Type.Optional(Type.String({ description: 'Quote token contract address' })),
+        quoteTokenSymbol: Type.Optional(Type.String({ description: 'Quote token symbol (e.g. USDT)' })),
       }),
     ),
   },
