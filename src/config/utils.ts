@@ -7,6 +7,25 @@ import * as yaml from 'js-yaml';
 import { ConfigManagerV2 } from '../services/config-manager-v2';
 import { logger } from '../services/logger';
 
+// Known blockchain chains for chain-network parsing
+const KNOWN_CHAINS = ['solana', 'ethereum'];
+
+/**
+ * Parse a chain-network namespace format into chain and network components.
+ * Returns null if not a chain-network format.
+ */
+function parseChainNetwork(namespace: string): { chain: string; network: string } | null {
+  for (const chain of KNOWN_CHAINS) {
+    if (namespace.startsWith(`${chain}-`)) {
+      const network = namespace.slice(chain.length + 1);
+      if (network) {
+        return { chain, network };
+      }
+    }
+  }
+  return null;
+}
+
 export const getConfig = (fastify: FastifyInstance, namespace?: string): object => {
   if (namespace) {
     logger.info(`Getting configuration for namespace: ${namespace}`);
@@ -14,6 +33,20 @@ export const getConfig = (fastify: FastifyInstance, namespace?: string): object 
 
     if (!namespaceConfig) {
       throw fastify.httpErrors.notFound(`Namespace '${namespace}' not found`);
+    }
+
+    // Check if this is a chain-network format (e.g., solana-mainnet-beta)
+    const parsed = parseChainNetwork(namespace);
+    if (parsed) {
+      // Get the parent chain config and merge it
+      const chainConfig = ConfigManagerV2.getInstance().getNamespace(parsed.chain);
+      if (chainConfig) {
+        // Merge chain config into network config (network config takes precedence for conflicts)
+        return {
+          ...chainConfig.configuration,
+          ...namespaceConfig.configuration,
+        };
+      }
     }
 
     return namespaceConfig.configuration;
@@ -27,6 +60,25 @@ export const updateConfig = (fastify: FastifyInstance, configPath: string, confi
   logger.info(`Updating config path: ${configPath} with value: ${JSON.stringify(configValue)}`);
 
   try {
+    // Check if the configPath uses a chain-network namespace with a chain-level field
+    // e.g., "solana-mainnet-beta.defaultWallet" should route to "solana.defaultWallet"
+    const [namespace, ...pathParts] = configPath.split('.');
+    const field = pathParts[0];
+
+    const parsed = parseChainNetwork(namespace);
+    if (parsed && field) {
+      // Check if this field exists in the chain config (not network config)
+      const chainConfig = ConfigManagerV2.getInstance().getNamespace(parsed.chain);
+      if (chainConfig && field in chainConfig.configuration) {
+        // Route to the chain namespace instead
+        const chainConfigPath = `${parsed.chain}.${pathParts.join('.')}`;
+        logger.info(`Routing chain-level field to: ${chainConfigPath}`);
+        ConfigManagerV2.getInstance().set(chainConfigPath, configValue);
+        logger.info(`Successfully updated configuration: ${chainConfigPath}`);
+        return;
+      }
+    }
+
     // Update the configuration using ConfigManagerV2
     ConfigManagerV2.getInstance().set(configPath, configValue);
     logger.info(`Successfully updated configuration: ${configPath}`);

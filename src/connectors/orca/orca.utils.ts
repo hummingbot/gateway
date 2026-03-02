@@ -32,7 +32,7 @@ import type {
 } from '@solana/kit';
 import { address } from '@solana/kit';
 import { NATIVE_MINT, createAssociatedTokenAccountIdempotentInstruction } from '@solana/spl-token';
-import { PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey } from '@solana/web3.js';
 import { fetchAllMint, Mint } from '@solana-program/token-2022';
 import BN from 'bn.js';
 
@@ -147,6 +147,154 @@ export async function getPositionDetails(client: WhirlpoolClient, positionAddres
     quoteTokenAmount: Number(tokenAmounts.tokenB.toString()) / Math.pow(10, mintB.decimals),
     price: price.toNumber(),
   };
+}
+
+/**
+ * Extracts SPL token transfer amounts from the inner instructions of a confirmed
+ * Solana transaction, grouped by the top-level instruction they belong to.
+ *
+ * This uses `getParsedTransaction` to get pre-decoded SPL token transfer
+ * instructions, then filters for inner instructions belonging to the specified
+ * program (e.g. ORCA_WHIRLPOOL_PROGRAM_ID). Only groups that contain actual
+ * transfers are returned, preserving execution order.
+ *
+ * For a close-position TX the Whirlpool instructions are:
+ *   updateFeesAndRewards (no transfers) → decreaseLiquidity (transfers) → collectFees (transfers) → closePosition (no transfers)
+ * So transferGroups[0] = decreaseLiquidity amounts, transferGroups[1] = collectFees amounts.
+ *
+ * For an open-position TX with liquidity, only increaseLiquidity has transfers,
+ * so transferGroups[0] = amounts deposited.
+ *
+ * @param connection - Solana web3 Connection object
+ * @param signature - Transaction signature
+ * @param programId - Program ID string to filter top-level instructions by
+ * @param tokenMints - Array of token mint addresses; returned amounts are ordered to match this array
+ * @param maxRetries - Number of retry attempts if the transaction isn't available yet (default 5)
+ * @param retryDelayMs - Delay between retries in milliseconds (default 2000)
+ * @returns Object with transferGroups: number[][] — each group is an array of amounts per token mint in human-readable units
+ */
+export async function extractInnerTransferAmounts(
+  connection: Connection,
+  signature: string,
+  programId: string,
+  tokenMints: string[],
+  maxRetries: number = 5,
+  retryDelayMs: number = 2000,
+): Promise<{ transferGroups: number[][] }> {
+  // Retry loop — the parsed transaction may not be immediately available after confirmation
+  let parsedTx: any = null;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    parsedTx = await connection.getParsedTransaction(signature, {
+      commitment: 'confirmed',
+      maxSupportedTransactionVersion: 0,
+    });
+    if (parsedTx) break;
+    logger.info(`Waiting for parsed transaction (attempt ${attempt + 1}/${maxRetries})...`);
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+  }
+
+  if (!parsedTx) {
+    logger.warn(`Could not fetch parsed transaction for ${signature} after ${maxRetries} attempts`);
+    return { transferGroups: [] };
+  }
+
+  const innerInstructions = parsedTx.meta?.innerInstructions || [];
+  const tokenBalances = [...(parsedTx.meta?.preTokenBalances || []), ...(parsedTx.meta?.postTokenBalances || [])];
+
+  // Build a map from account address → mint address using token balances
+  const accountKeys = parsedTx.transaction.message.accountKeys;
+  const accountToMint: Record<string, string> = {};
+  for (const tb of tokenBalances) {
+    const accountAddress = accountKeys[tb.accountIndex]?.pubkey?.toString();
+    if (accountAddress && tb.mint) {
+      accountToMint[accountAddress] = tb.mint;
+    }
+  }
+
+  // Build a map from account address → decimals
+  const accountToDecimals: Record<string, number> = {};
+  for (const tb of tokenBalances) {
+    const accountAddress = accountKeys[tb.accountIndex]?.pubkey?.toString();
+    if (accountAddress && tb.uiTokenAmount?.decimals !== undefined) {
+      accountToDecimals[accountAddress] = tb.uiTokenAmount.decimals;
+    }
+  }
+
+  // Also build a mint → decimals map for transferChecked
+  const mintToDecimals: Record<string, number> = {};
+  for (const tb of tokenBalances) {
+    if (tb.mint && tb.uiTokenAmount?.decimals !== undefined) {
+      mintToDecimals[tb.mint] = tb.uiTokenAmount.decimals;
+    }
+  }
+
+  // Find top-level instruction indices that match the target programId
+  const topLevelInstructions = parsedTx.transaction.message.instructions;
+  const targetIndices: number[] = [];
+  for (let i = 0; i < topLevelInstructions.length; i++) {
+    const ix = topLevelInstructions[i];
+    const ixProgramId = ix.programId?.toString();
+    if (ixProgramId === programId) {
+      targetIndices.push(i);
+    }
+  }
+
+  const transferGroups: number[][] = [];
+
+  for (const targetIdx of targetIndices) {
+    // Find the inner instructions block for this top-level instruction index
+    const innerBlock = innerInstructions.find((block: any) => block.index === targetIdx);
+    if (!innerBlock || !innerBlock.instructions) continue;
+
+    // Accumulate transfer amounts per mint for this instruction group
+    const mintAmounts: Record<string, number> = {};
+    for (const mint of tokenMints) {
+      mintAmounts[mint] = 0;
+    }
+
+    let hasTransfers = false;
+
+    for (const innerIx of innerBlock.instructions) {
+      const parsed = innerIx.parsed;
+      if (!parsed) continue;
+
+      let mint: string | undefined;
+      let rawAmount: string | undefined;
+      let decimals: number | undefined;
+
+      if (parsed.type === 'transferChecked' && parsed.info) {
+        // transferChecked includes mint and tokenAmount directly
+        mint = parsed.info.mint;
+        rawAmount = parsed.info.tokenAmount?.amount;
+        decimals = parsed.info.tokenAmount?.decimals;
+      } else if (parsed.type === 'transfer' && parsed.info) {
+        // Plain transfer doesn't include mint — resolve from source or destination account
+        rawAmount = parsed.info.amount;
+        const source = parsed.info.source;
+        const destination = parsed.info.destination;
+        mint = accountToMint[source] || accountToMint[destination];
+        decimals = accountToDecimals[source] || accountToDecimals[destination];
+      }
+
+      if (!mint || !rawAmount) continue;
+      if (!tokenMints.includes(mint)) continue;
+      if (decimals === undefined) {
+        decimals = mintToDecimals[mint] || 0;
+      }
+
+      const humanAmount = Number(rawAmount) / Math.pow(10, decimals);
+      mintAmounts[mint] += humanAmount;
+      hasTransfers = true;
+    }
+
+    if (hasTransfers) {
+      // Return amounts in the same order as the tokenMints array
+      const group = tokenMints.map((mint) => mintAmounts[mint] || 0);
+      transferGroups.push(group);
+    }
+  }
+
+  return { transferGroups };
 }
 
 /**

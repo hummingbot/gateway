@@ -1,8 +1,7 @@
 import { Percentage, TransactionBuilder } from '@orca-so/common-sdk';
 import {
-  TickArrayUtil,
+  ORCA_WHIRLPOOL_PROGRAM_ID,
   WhirlpoolIx,
-  collectFeesQuote,
   decreaseLiquidityQuoteByLiquidityWithParams,
   TokenExtensionUtil,
   IGNORE_CACHE,
@@ -18,7 +17,7 @@ import { ClosePositionResponse, ClosePositionResponseType } from '../../../schem
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
-import { getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
+import { extractInnerTransferAmounts, getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
 import { OrcaClmmClosePositionRequest } from '../schemas';
 
 export async function closePosition(
@@ -171,35 +170,15 @@ export async function closePosition(
       }),
     );
 
-    baseTokenAmountRemoved = Number(decreaseQuote.tokenEstA) / Math.pow(10, mintA.decimals);
-    quoteTokenAmountRemoved = Number(decreaseQuote.tokenEstB) / Math.pow(10, mintB.decimals);
+    // Note: baseTokenAmountRemoved/quoteTokenAmountRemoved are set from actual
+    // TX inner instruction transfers after execution, not from the estimate here.
   }
 
   // Step 3: Collect fees if there are fees owed or if we just removed liquidity
+  // Note: Fee amounts are derived from inner instruction transfers after execution,
+  // which gives us exact amounts from the collectFees instruction separately
+  // from the decreaseLiquidity instruction.
   if (hasFees || hasLiquidity) {
-    const { lower, upper } = getTickArrayPubkeys(position.getData(), whirlpool.getData(), whirlpoolPubkey);
-    const lowerTickArray = await client.getFetcher().getTickArray(lower);
-    const upperTickArray = await client.getFetcher().getTickArray(upper);
-    if (!lowerTickArray || !upperTickArray) {
-      throw httpErrors.notFound('Tick array not found');
-    }
-
-    const collectQuote = collectFeesQuote({
-      position: position.getData(),
-      tickLower: TickArrayUtil.getTickFromArray(
-        lowerTickArray,
-        position.getData().tickLowerIndex,
-        whirlpool.getData().tickSpacing,
-      ),
-      tickUpper: TickArrayUtil.getTickFromArray(
-        upperTickArray,
-        position.getData().tickUpperIndex,
-        whirlpool.getData().tickSpacing,
-      ),
-      whirlpool: whirlpool.getData(),
-      tokenExtensionCtx: await TokenExtensionUtil.buildTokenExtensionContext(client.getFetcher(), whirlpool.getData()),
-    });
-
     builder.addInstruction(
       WhirlpoolIx.collectFeesV2Ix(client.getContext().program, {
         position: positionPubkey,
@@ -235,8 +214,6 @@ export async function closePosition(
         ),
       }),
     );
-
-    // Note: We'll extract actual fee amounts from balance changes after transaction
   }
 
   // Step 4: Auto-unwrap WSOL to native SOL after receiving all tokens
@@ -286,47 +263,81 @@ export async function closePosition(
   await solana.simulateWithErrorHandling(txPayload.transaction);
   const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [wallet]);
 
-  // Extract actual amounts from balance changes (more accurate than quotes)
-  const tokenAAddress = whirlpool.getTokenAInfo().address.toString();
-  const tokenBAddress = whirlpool.getTokenBInfo().address.toString();
-  const tokenA = await solana.getToken(tokenAAddress);
-  const tokenB = await solana.getToken(tokenBAddress);
+  // Extract rent refund and actual token amounts from the confirmed transaction.
+  // Position accounts (mint, PDA, ATA) are closed by the TX, so their preBalance = rent refunded.
+  // Tick arrays are NOT closed (shared resources), so they are not included here.
+  const txData = await solana.connection.getTransaction(signature, {
+    commitment: 'confirmed',
+    maxSupportedTransactionVersion: 0,
+  });
 
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-    signature,
-    client.getContext().wallet.publicKey.toString(),
-    [tokenAAddress, tokenBAddress],
-  );
+  let positionRentRefunded = 0;
 
-  // Total balance changes (positive values = received)
-  const totalBaseChange = Math.abs(balanceChanges[0]);
-  const totalQuoteChange = Math.abs(balanceChanges[1]);
+  if (txData) {
+    const accountKeys = txData.transaction.message.getAccountKeys().staticAccountKeys;
+    const preBalances = txData.meta?.preBalances || [];
+    const postBalances = txData.meta?.postBalances || [];
 
-  // If we removed liquidity, use the quote estimates as basis
-  // Otherwise, all balance change is from fees
-  if (hasLiquidity) {
-    // We have estimates from decreaseQuote, but actual amounts might differ slightly
-    // Use the estimates as reference, but ensure fees aren't negative
-    baseFeeAmountCollected = Math.max(0, totalBaseChange - baseTokenAmountRemoved);
-    quoteFeeAmountCollected = Math.max(0, totalQuoteChange - quoteTokenAmountRemoved);
+    // Position accounts whose rent gets refunded on close
+    const positionMintPubkey = position.getData().positionMint;
+    const positionTokenAccount = getAssociatedTokenAddressSync(
+      positionMintPubkey,
+      client.getContext().wallet.publicKey,
+      undefined,
+      isToken2022 ? TOKEN_2022_PROGRAM_ID : undefined,
+    );
+    const rentAccounts: PublicKey[] = [positionMintPubkey, positionPubkey, positionTokenAccount];
 
-    // If fees would be negative, it means the estimate was slightly high
-    // Adjust the liquidity removed to match actual total
-    if (totalBaseChange < baseTokenAmountRemoved) {
-      baseTokenAmountRemoved = totalBaseChange;
-      baseFeeAmountCollected = 0;
+    let totalRentLamports = 0;
+    for (const pubkey of rentAccounts) {
+      const idx = accountKeys.findIndex((key) => key.equals(pubkey));
+      if (idx !== -1 && postBalances[idx] === 0 && preBalances[idx] > 0) {
+        totalRentLamports += preBalances[idx];
+        logger.info(`Rent refunded from ${pubkey.toString()}: ${preBalances[idx]} lamports`);
+      }
     }
-    if (totalQuoteChange < quoteTokenAmountRemoved) {
-      quoteTokenAmountRemoved = totalQuoteChange;
-      quoteFeeAmountCollected = 0;
+    positionRentRefunded = totalRentLamports / 1e9;
+
+    // Extract exact transfer amounts per Whirlpool instruction from inner instructions.
+    // The close TX has Whirlpool instructions in order:
+    //   updateFeesAndRewards (no transfers) → decreaseLiquidity (transfers) → collectFees (transfers) → closePosition (no transfers)
+    // extractInnerTransferAmounts returns only groups that have transfers, so:
+    //   transferGroups[0] = decreaseLiquidity amounts, transferGroups[1] = collectFees amounts
+    const tokenMintA = whirlpool.getTokenAInfo().address.toString();
+    const tokenMintB = whirlpool.getTokenBInfo().address.toString();
+
+    const { transferGroups } = await extractInnerTransferAmounts(
+      solana.connection,
+      signature,
+      ORCA_WHIRLPOOL_PROGRAM_ID.toString(),
+      [tokenMintA, tokenMintB],
+    );
+
+    if (transferGroups.length >= 2) {
+      // First transfer group: decreaseLiquidity (liquidity removed)
+      baseTokenAmountRemoved = transferGroups[0][0];
+      quoteTokenAmountRemoved = transferGroups[0][1];
+      // Second transfer group: collectFees (fees collected)
+      baseFeeAmountCollected = transferGroups[1][0];
+      quoteFeeAmountCollected = transferGroups[1][1];
+    } else if (transferGroups.length === 1) {
+      // Only one group with transfers — could be just decreaseLiquidity or just collectFees
+      if (hasLiquidity) {
+        baseTokenAmountRemoved = transferGroups[0][0];
+        quoteTokenAmountRemoved = transferGroups[0][1];
+      } else {
+        baseFeeAmountCollected = transferGroups[0][0];
+        quoteFeeAmountCollected = transferGroups[0][1];
+      }
     }
-  } else {
-    // No liquidity removed, all balance change is fees
-    baseFeeAmountCollected = totalBaseChange;
-    quoteFeeAmountCollected = totalQuoteChange;
+    // If transferGroups is empty, position had no liquidity and no fees — values stay at 0
   }
 
-  const positionRentRefunded = 0.00203928;
+  logger.info(
+    `Position closed: removed=${baseTokenAmountRemoved.toFixed(6)} tokenA + ${quoteTokenAmountRemoved.toFixed(6)} tokenB, ` +
+      `fees=${baseFeeAmountCollected.toFixed(6)} tokenA + ${quoteFeeAmountCollected.toFixed(6)} tokenB, ` +
+      `rent refunded=${positionRentRefunded.toFixed(6)} SOL`,
+  );
 
   return {
     signature,

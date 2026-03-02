@@ -158,7 +158,7 @@ export class Meteora {
         return null;
       }
 
-      return {
+      const poolInfo: MeteoraPoolInfo = {
         address: poolAddress,
         baseTokenAddress: dlmmPool.tokenX.publicKey.toBase58(),
         quoteTokenAddress: dlmmPool.tokenY.publicKey.toBase58(),
@@ -173,6 +173,8 @@ export class Meteora {
         maxBinId: dlmmPool.lbPair.parameters.maxBinId,
         bins: await this.getPoolLiquidity(poolAddress),
       };
+
+      return poolInfo;
     } catch (error) {
       logger.debug(`Could not decode ${poolAddress} as Meteora pool: ${error}`);
       return null;
@@ -345,7 +347,15 @@ export class Meteora {
     const positionAccount = await this.solana.connection.getAccountInfo(positionPubkey);
 
     if (!positionAccount) {
-      throw httpErrors.notFound(`Position not found or closed: ${positionAddress}`);
+      // Check if the position ever existed by looking at transaction history
+      const signatures = await this.solana.connection.getSignaturesForAddress(positionPubkey, { limit: 1 });
+      if (signatures.length > 0) {
+        // Position had transactions, so it was created and later closed
+        throw httpErrors.notFound(`Position closed: ${positionAddress}`);
+      } else {
+        // No transactions found, position never existed
+        throw httpErrors.notFound(`Position not found: ${positionAddress}`);
+      }
     }
 
     // Parse the position account to extract the pool address (lbPair)
