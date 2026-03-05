@@ -1,0 +1,4 @@
+# Global settings for Pumpswap
+# Default slippage percentage for swaps (e.g., 1 = 1%)
+slippagePct: 2
+

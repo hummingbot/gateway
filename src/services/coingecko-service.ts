@@ -45,6 +45,7 @@ const DEX_CONNECTOR_MAPPING: Record<string, DexConnectorInfo> = {
   'meteora-dlmm': { connector: 'meteora', type: 'clmm' },
   'pancakeswap-v3-solana': { connector: 'pancakeswap-sol', type: 'clmm' },
   orca: { connector: 'orca', type: 'clmm' },
+  pumpswap: { connector: 'pumpswap', type: 'amm' },
 
   // ========== Ethereum Mainnet DEXes (network: eth) ==========
   uniswap_v2: { connector: 'uniswap', type: 'amm' },

@@ -5,8 +5,8 @@ import { ConfigManagerV2 } from '../services/config-manager-v2';
 // Pool list request
 export const PoolListRequestSchema = Type.Object({
   connector: Type.String({
-    description: 'Connector (raydium, meteora, uniswap, orca)',
-    examples: ['raydium', 'meteora', 'uniswap', 'orca'],
+    description: 'Connector (raydium, meteora, uniswap, orca, pumpswap)',
+    examples: ['raydium', 'meteora', 'uniswap', 'orca', 'pumpswap'],
   }),
   network: Type.Optional(
     Type.String({
@@ -52,8 +52,8 @@ export const PoolListResponseSchema = Type.Array(PoolTemplateSchema);
 // Add pool request
 export const PoolAddRequestSchema = Type.Object({
   connector: Type.String({
-    description: 'Connector (raydium, meteora, uniswap, orca)',
-    examples: ['raydium', 'meteora', 'uniswap', 'orca'],
+    description: 'Connector (raydium, meteora, uniswap, orca, pumpswap)',
+    examples: ['raydium', 'meteora', 'uniswap', 'orca', 'pumpswap'],
   }),
   type: Type.String({
     description: 'Pool type',
@@ -97,8 +97,8 @@ export const PoolAddRequestSchema = Type.Object({
 // Get pool request
 export const GetPoolRequestSchema = Type.Object({
   connector: Type.String({
-    description: 'Connector (raydium, meteora, uniswap, orca)',
-    examples: ['raydium', 'meteora', 'uniswap', 'orca'],
+    description: 'Connector (raydium, meteora, uniswap, orca, pumpswap)',
+    examples: ['raydium', 'meteora', 'uniswap', 'orca', 'pumpswap'],
   }),
   network: Type.String({
     description: 'Network name (mainnet, mainnet-beta, etc)',
@@ -167,8 +167,9 @@ export const FindPoolsQuerySchema = Type.Object({
   }),
   connector: Type.Optional(
     Type.String({
-      description: 'Filter by connector name (e.g., raydium, meteora, uniswap, pancakeswap, pancakeswap-sol)',
-      examples: ['raydium', 'meteora', 'uniswap', 'pancakeswap', 'pancakeswap-sol', 'orca'],
+      description:
+        'Filter by connector name (e.g., raydium, meteora, uniswap, pancakeswap, pancakeswap-sol, orca, pumpswap)',
+      examples: ['raydium', 'meteora', 'uniswap', 'pancakeswap', 'pancakeswap-sol', 'orca', 'pumpswap'],
     }),
   ),
   type: Type.Optional(
