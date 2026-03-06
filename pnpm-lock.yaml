@@ -14,6 +14,7 @@ overrides:
   '@openzeppelin/contracts': ^4.9.6
   pbkdf2: ^3.1.3
   axios: ^1.8.4
+  jsbi: ^3.2.5
 
 importers:
 
@@ -22,6 +23,18 @@ importers:
       '@coral-xyz/anchor':
         specifier: ^0.30.1
         version: 0.30.1(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      '@etcswapv2/sdk':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@etcswapv2/sdk-core':
+        specifier: ^1.0.3
+        version: 1.0.3
+      '@etcswapv3/router-sdk':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@etcswapv3/sdk':
+        specifier: ^1.0.2
+        version: 1.0.2
       '@ethersproject/abstract-provider':
         specifier: 5.7.0
         version: 5.7.0
@@ -929,6 +942,26 @@ packages:
   '@eslint/js@8.57.1':
     resolution: {integrity: sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+
+  '@etcswapv2/sdk-core@1.0.2':
+    resolution: {integrity: sha512-rXW0GH/dA9uxYnewvfJd+5qhkftawXBtIZjrTt95cHVy5ItMGTC6+tDUn/oaBj8VrkpZ1gwPW6LPohSwI1WKkw==}
+    engines: {node: '>=18'}
+
+  '@etcswapv2/sdk-core@1.0.3':
+    resolution: {integrity: sha512-cz3cPGhy0QlAWJw1lLNTB23e03+SpOwy1KFcZW6NWgsVSbEAsdBQxxiDUUpB3L1r6SPNf6Wg8ROiismOKbrUGg==}
+    engines: {node: '>=18'}
+
+  '@etcswapv2/sdk@1.0.2':
+    resolution: {integrity: sha512-UqLk+bCjmpPiifV2IkMIMHb0HXT/WsiPfAC0tlF79Eyq3KRuUw+ZMgfriNkWV/0MargvKJwGCqFweZr82HllIA==}
+    engines: {node: '>=18'}
+
+  '@etcswapv3/router-sdk@1.0.2':
+    resolution: {integrity: sha512-EbYs894TSRjfJzQZS3mH0QUPDH4HSY+4dw8W5Hyqy0n+Voggbmyh/WGEx6VQGkDETxqDJH6+FohiwsSUBkmEsw==}
+    engines: {node: '>=18'}
+
+  '@etcswapv3/sdk@1.0.2':
+    resolution: {integrity: sha512-K6Vn5bQ8KmRty0CvFHsUUlo7byh5habwIPW/2CndDTjeekf89RrwHFC9PPoUBosC5gcxB8+VgzbocGogj1M+zw==}
+    engines: {node: '>=18'}
 
   '@eth-optimism/contracts@0.6.0':
     resolution: {integrity: sha512-vQ04wfG9kMf1Fwy3FEMqH2QZbgS0gldKhcBeBUPfO8zu68L61VI97UDXmsMQXzTsEAxK8HnokW3/gosl4/NW3w==}
@@ -2731,7 +2764,7 @@ packages:
     resolution: {integrity: sha512-Bmg46KXDSfE1AAf1tPg+vDzMngVoGfzdohekhjJ1hIQG13tXcjEykqapQy+CrJUqXLL3lQvZj2uVEKfzCNH74Q==}
     engines: {node: '>=10'}
     peerDependencies:
-      jsbi: ^3.2.0
+      jsbi: ^3.2.5
 
   '@uniswap/swap-router-contracts@1.3.1':
     resolution: {integrity: sha512-mh/YNbwKb7Mut96VuEtL+Z5bRe0xVIbjjiryn+iMMrK2sFKhR4duk/86mEz0UO5gSx4pQIw9G5276P5heY/7Rg==}
@@ -8094,6 +8127,57 @@ snapshots:
       - supports-color
 
   '@eslint/js@8.57.1': {}
+
+  '@etcswapv2/sdk-core@1.0.2':
+    dependencies:
+      '@ethersproject/address': 5.7.0
+      '@ethersproject/bytes': 5.8.0
+      '@ethersproject/keccak256': 5.8.0
+      '@ethersproject/strings': 5.8.0
+      big.js: 6.2.2
+      decimal.js-light: 2.5.1
+      jsbi: 3.2.5
+      tiny-invariant: 1.3.3
+      toformat: 2.0.0
+
+  '@etcswapv2/sdk-core@1.0.3':
+    dependencies:
+      '@ethersproject/address': 5.7.0
+      '@ethersproject/bytes': 5.8.0
+      '@ethersproject/keccak256': 5.8.0
+      '@ethersproject/strings': 5.8.0
+      big.js: 6.2.2
+      decimal.js-light: 2.5.1
+      jsbi: 3.2.5
+      tiny-invariant: 1.3.3
+      toformat: 2.0.0
+
+  '@etcswapv2/sdk@1.0.2':
+    dependencies:
+      '@etcswapv2/sdk-core': 1.0.2
+      '@ethersproject/address': 5.7.0
+      '@ethersproject/solidity': 5.7.0
+      jsbi: 3.2.5
+      tiny-invariant: 1.3.3
+      tiny-warning: 1.0.3
+
+  '@etcswapv3/router-sdk@1.0.2':
+    dependencies:
+      '@etcswapv2/sdk': 1.0.2
+      '@etcswapv2/sdk-core': 1.0.2
+      '@etcswapv3/sdk': 1.0.2
+      '@ethersproject/abi': 5.8.0
+      jsbi: 3.2.5
+      tiny-invariant: 1.3.3
+
+  '@etcswapv3/sdk@1.0.2':
+    dependencies:
+      '@etcswapv2/sdk-core': 1.0.2
+      '@ethersproject/abi': 5.8.0
+      '@ethersproject/address': 5.7.0
+      '@ethersproject/solidity': 5.7.0
+      jsbi: 3.2.5
+      tiny-invariant: 1.3.3
 
   '@eth-optimism/contracts@0.6.0(bufferutil@4.0.9)(ethers@5.8.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
     dependencies:

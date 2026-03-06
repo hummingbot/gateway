@@ -39,6 +39,10 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",
+    "@etcswapv2/sdk": "^1.0.2",
+    "@etcswapv2/sdk-core": "^1.0.3",
+    "@etcswapv3/router-sdk": "^1.0.2",
+    "@etcswapv3/sdk": "^1.0.2",
     "@ethersproject/abstract-provider": "5.7.0",
     "@ethersproject/address": "5.7.0",
     "@ethersproject/contracts": "5.7.0",
@@ -171,7 +175,8 @@
     "mkdirp": "^1.0.4",
     "@openzeppelin/contracts": "^4.9.6",
     "pbkdf2": "^3.1.3",
-    "axios": "^1.8.4"
+    "axios": "^1.8.4",
+    "jsbi": "^3.2.5"
   },
   "files": [
     "/dist"

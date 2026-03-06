@@ -1,0 +1,16 @@
+[
+  {
+    "chainId": 63,
+    "name": "Wrapped ETC",
+    "symbol": "WETC",
+    "address": "0x1953cab0E5bFa6D4a9BaD6E05fD46C1CC6527a5a",
+    "decimals": 18
+  },
+  {
+    "chainId": 63,
+    "name": "Classic USD",
+    "symbol": "USC",
+    "address": "0xDE093684c796204224BC081f937aa059D903c52a",
+    "decimals": 18
+  }
+]
