@@ -25,3 +25,6 @@ src/**/*.js.map
 
 # MCP servers configuration
 .mcp.json
+
+# PID files from gateway lifecycle manager
+*.pid
