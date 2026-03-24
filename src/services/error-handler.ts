@@ -1,3 +1,12 @@
+// Error codes for specific error types
+export const ErrorCode = {
+  TRANSACTION_TIMEOUT: 'TRANSACTION_TIMEOUT',
+  INSUFFICIENT_BALANCE: 'INSUFFICIENT_BALANCE',
+  INVALID_PARAMS: 'INVALID_PARAMS',
+} as const;
+
+export type ErrorCodeType = (typeof ErrorCode)[keyof typeof ErrorCode];
+
 /**
  * Custom HTTP error class for use throughout the application.
  * These errors carry a statusCode that Fastify's error handler will properly handle.
@@ -5,12 +14,14 @@
 export class HttpError extends Error {
   statusCode: number;
   error: string;
+  code?: ErrorCodeType;
 
-  constructor(statusCode: number, message: string) {
+  constructor(statusCode: number, message: string, code?: ErrorCodeType) {
     super(message);
     this.statusCode = statusCode;
     this.error = HttpError.getErrorName(statusCode);
     this.name = 'HttpError';
+    this.code = code;
   }
 
   private static getErrorName(statusCode: number): string {
@@ -62,6 +73,10 @@ export function forbidden(message: string): HttpError {
   return new HttpError(403, message);
 }
 
+export function transactionTimeout(message: string): HttpError {
+  return new HttpError(504, message, ErrorCode.TRANSACTION_TIMEOUT);
+}
+
 /**
  * HTTP errors object - drop-in replacement for fastify.httpErrors
  */
@@ -71,5 +86,6 @@ export const httpErrors = {
   internalServerError,
   serviceUnavailable,
   forbidden,
+  transactionTimeout,
   createError: (statusCode: number, message: string) => new HttpError(statusCode, message),
 };

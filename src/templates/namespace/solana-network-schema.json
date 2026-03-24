@@ -20,8 +20,21 @@
     "defaultComputeUnits": { "type": "number" },
     "confirmRetryInterval": { "type": "number" },
     "confirmRetryCount": { "type": "number" },
-    "minPriorityFeePerCU": { "type": "number" }
+    "minPriorityFeePerCU": {
+      "type": "number",
+      "description": "Minimum priority fee per compute unit in lamports (floor for fee estimation)"
+    },
+    "maxPriorityFeePerCU": {
+      "type": "number",
+      "description": "Maximum priority fee per compute unit in lamports (ceiling for fee estimation)"
+    },
+    "priorityFeeLevel": {
+      "type": "string",
+      "description": "Helius priority fee level for fee estimation (default: High)",
+      "enum": ["Min", "Low", "Medium", "High", "VeryHigh", "UnsafeMax"],
+      "default": "High"
+    }
   },
   "required": ["chainID", "nodeURL", "nativeCurrencySymbol", "geckoId"],
-  "additionalProperties": false
+  "additionalProperties": true
 }

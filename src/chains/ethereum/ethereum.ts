@@ -1080,6 +1080,7 @@ export class Ethereum {
 
   /**
    * Get balances for all tokens in the token list
+   * Processes tokens sequentially to prevent RPC timeouts
    */
   private async getAllTokenBalances(
     address: string,
@@ -1090,26 +1091,24 @@ export class Ethereum {
     const tokenList = await this.getTokenList();
     logger.info(`Checking balances for all ${tokenList.length} tokens in the token list`);
 
-    await Promise.all(
-      tokenList.map(async (token) => {
-        try {
-          const contract = this.getContract(token.address, this.provider);
-          const balance = isHardware
-            ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 2000, token.symbol)
-            : await this.getERC20Balance(contract, wallet!, token.decimals, 2000, token.symbol);
+    for (const token of tokenList) {
+      try {
+        const contract = this.getContract(token.address, this.provider);
+        const balance = isHardware
+          ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 5000, token.symbol)
+          : await this.getERC20Balance(contract, wallet!, token.decimals, 5000, token.symbol);
 
-          const balanceNum = parseFloat(tokenValueToString(balance));
+        const balanceNum = parseFloat(tokenValueToString(balance));
 
-          // Only add tokens with non-zero balances
-          if (balanceNum > 0) {
-            balances[token.symbol] = balanceNum;
-            logger.debug(`Found non-zero balance for ${token.symbol}: ${balanceNum}`);
-          }
-        } catch (err) {
-          logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
+        // Only add tokens with non-zero balances
+        if (balanceNum > 0) {
+          balances[token.symbol] = balanceNum;
+          logger.debug(`Found non-zero balance for ${token.symbol}: ${balanceNum}`);
         }
-      }),
-    );
+      } catch (err) {
+        logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
+      }
+    }
   }
 
   /**

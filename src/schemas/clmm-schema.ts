@@ -60,7 +60,7 @@ export const MeteoraPoolInfoSchema = Type.Composite(
       dynamicFeePct: Type.Number(),
       minBinId: Type.Number(),
       maxBinId: Type.Number(),
-      bins: Type.Array(BinLiquiditySchema),
+      bins: Type.Optional(Type.Array(BinLiquiditySchema)),
     }),
   ],
   { $id: 'MeteoraPoolInfo' },

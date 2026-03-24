@@ -51,6 +51,8 @@ export const SolanaEstimateGasRequest = Type.Object({
   network: SolanaNetworkParameter,
 });
 
+export type SolanaEstimateGasRequestType = Static<typeof SolanaEstimateGasRequest>;
+
 // Poll request schema
 export const SolanaPollRequest = Type.Object({
   network: SolanaNetworkParameter,

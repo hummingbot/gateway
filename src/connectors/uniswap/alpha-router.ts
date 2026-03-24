@@ -1,4 +1,5 @@
 import { BaseProvider } from '@ethersproject/providers';
+import { Protocol } from '@uniswap/router-sdk';
 import { CurrencyAmount, Percent, Token, TradeType } from '@uniswap/sdk-core';
 import { AlphaRouter, SwapRoute, SwapType } from '@uniswap/smart-order-router';
 import { UniversalRouterVersion } from '@uniswap/universal-router-sdk';
@@ -88,13 +89,22 @@ export class AlphaRouterService {
     const quoteCurrency = tradeType === TradeType.EXACT_INPUT ? tokenOut : tokenIn;
     logger.debug(`[AlphaRouter] Quote currency: ${quoteCurrency.symbol} (${quoteCurrency.address})`);
 
-    const swapRoute = await this.router.route(amount, quoteCurrency, tradeType, {
-      type: SwapType.UNIVERSAL_ROUTER,
-      version: UniversalRouterVersion.V2_0,
-      slippageTolerance: options.slippageTolerance,
-      deadlineOrPreviousBlockhash: options.deadline,
-      recipient: options.recipient,
-    });
+    const swapRoute = await this.router.route(
+      amount,
+      quoteCurrency,
+      tradeType,
+      {
+        type: SwapType.UNIVERSAL_ROUTER,
+        version: UniversalRouterVersion.V2_0,
+        slippageTolerance: options.slippageTolerance,
+        deadlineOrPreviousBlockhash: options.deadline,
+        recipient: options.recipient,
+      },
+      {
+        // Exclude V4 protocol - not all chains have V4 pool addresses configured
+        protocols: [Protocol.V2, Protocol.V3],
+      },
+    );
 
     if (!swapRoute) {
       throw new Error(`No route found for ${tokenIn.symbol} -> ${tokenOut.symbol}`);

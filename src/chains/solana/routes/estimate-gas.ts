@@ -1,21 +1,22 @@
 import { FastifyPluginAsync } from 'fastify';
 
-import { EstimateGasRequestType, EstimateGasResponse, EstimateGasResponseSchema } from '../../../schemas/chain-schema';
+import { EstimateGasResponse, EstimateGasResponseSchema } from '../../../schemas/chain-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
-import { SolanaEstimateGasRequest } from '../schemas';
+import { SolanaEstimateGasRequest, SolanaEstimateGasRequestType } from '../schemas';
 import { Solana } from '../solana';
 
 export async function estimateGasSolana(network: string): Promise<EstimateGasResponse> {
   try {
     const solana = await Solana.getInstance(network);
-    const priorityFeePerCUInLamports = await solana.estimateGasPrice();
+
+    const feeResult = await solana.estimateGasPriceDetailed();
 
     // Get default compute units from config (typically 200000)
     const defaultComputeUnits = solana.config.defaultComputeUnits;
 
     // Calculate total priority fee in lamports
-    const totalPriorityFeeInLamports = priorityFeePerCUInLamports * defaultComputeUnits;
+    const totalPriorityFeeInLamports = feeResult.feePerComputeUnit * defaultComputeUnits;
 
     // Add base fee (5000 lamports per signature)
     const baseFeeInLamports = 5000;
@@ -25,12 +26,14 @@ export async function estimateGasSolana(network: string): Promise<EstimateGasRes
     const totalFeeInSol = totalFeeInLamports / 1e9;
 
     return {
-      feePerComputeUnit: priorityFeePerCUInLamports,
+      feePerComputeUnit: feeResult.feePerComputeUnit,
       denomination: 'lamports',
       computeUnits: defaultComputeUnits,
       feeAsset: solana.nativeTokenSymbol,
       fee: totalFeeInSol,
       timestamp: Date.now(),
+      priorityFeeLevel: feeResult.priorityFeeLevel,
+      priorityFeePerCUEstimate: feeResult.priorityFeePerCUEstimate ?? undefined,
     };
   } catch (error) {
     logger.error(`Error estimating gas for network ${network}: ${error.message}`);
@@ -72,13 +75,14 @@ export async function estimateGasSolana(network: string): Promise<EstimateGasRes
 
 export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: EstimateGasRequestType;
+    Querystring: SolanaEstimateGasRequestType;
     Reply: EstimateGasResponse;
   }>(
     '/estimate-gas',
     {
       schema: {
-        description: 'Estimate gas prices for Solana transactions',
+        description:
+          'Estimate priority fees for Solana transactions. Optionally pass addresses (program IDs, pools) for Helius-specific fee estimation.',
         tags: ['/chain/solana'],
         querystring: SolanaEstimateGasRequest,
         response: {

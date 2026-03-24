@@ -104,16 +104,26 @@ export async function removeLiquidity(
   const confirmed = txData !== null;
 
   if (confirmed && txData) {
+    // Track wallet's balance changes for the tokens
     const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
       dlmmPool.tokenX.publicKey.toBase58(),
       dlmmPool.tokenY.publicKey.toBase58(),
     ]);
 
-    const tokenXRemovedAmount = balanceChanges[0];
-    const tokenYRemovedAmount = balanceChanges[1];
+    // Balance changes are positive (tokens entering wallet)
+    let tokenXRemovedAmount = Math.abs(balanceChanges[0]);
+    let tokenYRemovedAmount = Math.abs(balanceChanges[1]);
+
+    // When SOL is base/quote, wallet receives: liquidity - tx fee
+    // Add back the fee to get actual liquidity removed
+    if (tokenXSymbol === 'SOL') {
+      tokenXRemovedAmount += fee;
+    } else if (tokenYSymbol === 'SOL') {
+      tokenYRemovedAmount += fee;
+    }
 
     logger.info(
-      `Liquidity removed from position ${positionAddress}: ${Math.abs(tokenXRemovedAmount).toFixed(4)} ${tokenXSymbol}, ${Math.abs(tokenYRemovedAmount).toFixed(4)} ${tokenYSymbol}`,
+      `Liquidity removed from position ${positionAddress}: ${tokenXRemovedAmount.toFixed(4)} ${tokenXSymbol}, ${tokenYRemovedAmount.toFixed(4)} ${tokenYSymbol}`,
     );
 
     return {
@@ -121,8 +131,8 @@ export async function removeLiquidity(
       status: 1, // CONFIRMED
       data: {
         fee,
-        baseTokenAmountRemoved: Math.abs(tokenXRemovedAmount),
-        quoteTokenAmountRemoved: Math.abs(tokenYRemovedAmount),
+        baseTokenAmountRemoved: tokenXRemovedAmount,
+        quoteTokenAmountRemoved: tokenYRemovedAmount,
       },
     };
   } else {

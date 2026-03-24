@@ -1,7 +1,21 @@
+import BN from 'bn.js';
+
+import { Solana } from '../../../../src/chains/solana/solana';
 import { Orca } from '../../../../src/connectors/orca/orca';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 
 jest.mock('../../../../src/connectors/orca/orca');
+jest.mock('../../../../src/chains/solana/solana');
+jest.mock('@solana-program/token-2022', () => ({
+  fetchAllMint: jest.fn(),
+}));
+jest.mock('@orca-so/whirlpools-sdk', () => ({
+  PriceMath: {
+    sqrtPriceX64ToPrice: jest.fn().mockReturnValue({
+      toNumber: () => 200.5,
+    }),
+  },
+}));
 
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
@@ -12,7 +26,24 @@ const buildApp = async () => {
 };
 
 const mockPoolAddress = 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE';
-const mockPoolInfo = {
+
+// Mock whirlpool data (on-chain)
+// Use valid Solana base58 addresses (no 0, O, I, l characters)
+const mockWhirlpool = {
+  tokenMintA: 'So11111111111111111111111111111111111111112',
+  tokenMintB: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  tokenVaultA: '7jaiZR5Sk8hdYN9MxTpczTcwbWpb5WEoxSANuUwveuat',
+  tokenVaultB: '3YQm7ujtXWJU2e9jhp2QGHpnn1ShXn12QjvzMvDgabpX',
+  tickSpacing: 64,
+  feeRate: 400, // 0.04%
+  protocolFeeRate: 100, // 0.01%
+  tickCurrentIndex: -28800,
+  liquidity: new BN('1000000000'),
+  sqrtPrice: new BN('123456789'),
+};
+
+// Mock API pool info (for analytics fields)
+const mockApiPoolInfo = {
   address: mockPoolAddress,
   baseTokenAddress: 'So11111111111111111111111111111111111111112',
   quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
@@ -31,15 +62,44 @@ const mockPoolInfo = {
 
 describe('GET /pool-info', () => {
   let app: any;
+  let fetchAllMintMock: jest.Mock;
 
   beforeAll(async () => {
-    app = await buildApp();
+    // Import fetchAllMint mock
+    const token2022 = await import('@solana-program/token-2022');
+    fetchAllMintMock = token2022.fetchAllMint as jest.Mock;
 
-    // Mock Orca.getInstance
+    app = await buildApp();
+  });
+
+  beforeEach(() => {
+    // Reset mocks before each test
+    jest.clearAllMocks();
+
+    // Mock Orca.getInstance with both getWhirlpool and getPoolInfo
     const mockOrca = {
-      getPoolInfo: jest.fn().mockResolvedValue(mockPoolInfo),
+      getWhirlpool: jest.fn().mockResolvedValue(mockWhirlpool),
+      getPoolInfo: jest.fn().mockResolvedValue(mockApiPoolInfo),
+      solanaKitRpc: {}, // Mock RPC
     };
     (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
+
+    // Mock Solana.getInstance
+    const mockConnection = {
+      getTokenAccountBalance: jest.fn().mockResolvedValue({
+        value: { amount: '1000000000000' }, // 1000 tokens with 9 decimals
+      }),
+    };
+    const mockSolana = {
+      connection: mockConnection,
+    };
+    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
+
+    // Mock fetchAllMint - returns array of mint data with .data.decimals structure
+    fetchAllMintMock.mockResolvedValue([
+      { data: { decimals: 9 } }, // mintA
+      { data: { decimals: 9 } }, // mintB
+    ]);
   });
 
   afterAll(async () => {
@@ -102,6 +162,7 @@ describe('GET /pool-info', () => {
 
   it('should handle when pool not found', async () => {
     const mockOrca = {
+      getWhirlpool: jest.fn().mockResolvedValue(null),
       getPoolInfo: jest.fn().mockResolvedValue(null),
     };
     (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
@@ -121,7 +182,8 @@ describe('GET /pool-info', () => {
 
   it('should handle errors from Orca connector', async () => {
     const mockOrca = {
-      getPoolInfo: jest.fn().mockRejectedValue(new Error('Failed to fetch pool')),
+      getWhirlpool: jest.fn().mockRejectedValue(new Error('Failed to fetch pool')),
+      getPoolInfo: jest.fn().mockResolvedValue(mockApiPoolInfo),
     };
     (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
 
@@ -138,11 +200,6 @@ describe('GET /pool-info', () => {
   });
 
   it('should use default network if not provided', async () => {
-    const mockOrca = {
-      getPoolInfo: jest.fn().mockResolvedValue(mockPoolInfo),
-    };
-    (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
-
     const response = await app.inject({
       method: 'GET',
       url: '/pool-info',
@@ -168,5 +225,74 @@ describe('GET /pool-info', () => {
     });
 
     expect(response.statusCode).toBe(503);
+  });
+
+  it('should handle Token2022 tokens like PYUSD', async () => {
+    // PYUSD is a Token2022 token - the fix uses fetchAllMint which supports both Token and Token2022
+    const pyusdPoolAddress = '9tXiuRRw7kbejLhZXtxDxYs2REe43uH2e7k1kocgdM9B';
+    const pyusdMint = '2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo';
+    const usdcMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+
+    // Mock whirlpool data with PYUSD (Token2022) and USDC (Token) pair
+    const mockPyusdWhirlpool = {
+      tokenMintA: pyusdMint,
+      tokenMintB: usdcMint,
+      tokenVaultA: '7jaiZR5Sk8hdYN9MxTpczTcwbWpb5WEoxSANuUwveuat',
+      tokenVaultB: '3YQm7ujtXWJU2e9jhp2QGHpnn1ShXn12QjvzMvDgabpX',
+      tickSpacing: 1,
+      feeRate: 100, // 0.01%
+      protocolFeeRate: 1300, // 0.13%
+      tickCurrentIndex: 0,
+      liquidity: new BN('43569222763129181'),
+      sqrtPrice: new BN('18447148653206777165'),
+    };
+
+    const mockPyusdApiPoolInfo = {
+      address: pyusdPoolAddress,
+      baseTokenAddress: pyusdMint,
+      quoteTokenAddress: usdcMint,
+      binStep: 1,
+      feePct: 0.01,
+      price: 1.0,
+      baseTokenAmount: 16826537.332925,
+      quoteTokenAmount: 14220697.597852,
+      activeBinId: 0,
+      liquidity: '43569222763129181',
+      sqrtPrice: '18447148653206777165',
+      tvlUsdc: 31045721.31,
+      protocolFeeRate: 0.13,
+      yieldOverTvl: 0.00000817197170889726,
+    };
+
+    const mockOrca = {
+      getWhirlpool: jest.fn().mockResolvedValue(mockPyusdWhirlpool),
+      getPoolInfo: jest.fn().mockResolvedValue(mockPyusdApiPoolInfo),
+      solanaKitRpc: {},
+    };
+    (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
+
+    // fetchAllMint handles both Token and Token2022 programs
+    // PYUSD has 6 decimals, USDC has 6 decimals
+    fetchAllMintMock.mockResolvedValue([
+      { data: { decimals: 6 } }, // PYUSD (Token2022)
+      { data: { decimals: 6 } }, // USDC (Token)
+    ]);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/pool-info',
+      query: {
+        network: 'mainnet-beta',
+        poolAddress: pyusdPoolAddress,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body).toHaveProperty('address', pyusdPoolAddress);
+    expect(body).toHaveProperty('baseTokenAddress', pyusdMint);
+    expect(body).toHaveProperty('quoteTokenAddress', usdcMint);
+    expect(body).toHaveProperty('feePct', 0.01);
+    expect(body).toHaveProperty('binStep', 1);
   });
 });

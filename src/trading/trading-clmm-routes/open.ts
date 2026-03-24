@@ -91,6 +91,13 @@ const UnifiedOpenPositionRequest = Type.Object({
       examples: [1],
     }),
   ),
+  // Meteora-specific parameter (optional, ignored by other connectors)
+  strategyType: Type.Optional(
+    Type.Number({
+      description: 'Strategy type for Meteora positions (0=Spot, 1=Curve). Only applies to Meteora connector.',
+      examples: [0],
+    }),
+  ),
 });
 
 // Import connector functions
@@ -131,6 +138,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
+          strategyType,
         } = request.body;
 
         // Parse chain and network from chainNetwork parameter
@@ -184,6 +192,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
               baseTokenAmount,
               quoteTokenAmount,
               slippagePct,
+              strategyType,
             );
 
           case 'pancakeswap-sol':
