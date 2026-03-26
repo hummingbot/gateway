@@ -191,6 +191,99 @@ export const UnwrapResponseSchema = Type.Object({
   ),
 });
 
+// Solana instruction key schema (USDM format)
+export const SolanaInstructionKeySchema = Type.Object({
+  pubkey: Type.String({
+    description: 'Base58 encoded public key',
+  }),
+  isSigner: Type.Boolean({
+    description: 'Whether this key is a signer',
+  }),
+  isWritable: Type.Boolean({
+    description: 'Whether this key is writable',
+  }),
+});
+
+// Solana instruction schema (USDM format)
+export const SolanaInstructionSchema = Type.Object({
+  keys: Type.Array(SolanaInstructionKeySchema, {
+    description: 'Array of account keys for the instruction',
+  }),
+  programId: Type.String({
+    description: 'Base58 encoded program ID',
+  }),
+  data: Type.String({
+    description: 'Base64 encoded instruction data',
+  }),
+});
+
+// Execute transaction request schema
+export const SolanaExecuteTxRequestSchema = Type.Object({
+  network: SolanaNetworkParameter,
+  walletAddress: SolanaAddressParameter,
+  // Option 1: Serialized transaction
+  serializedTx: Type.Optional(
+    Type.String({
+      description: 'Base64 encoded serialized VersionedTransaction or Transaction',
+    }),
+  ),
+  // Option 2: Instructions array
+  instructions: Type.Optional(
+    Type.Array(SolanaInstructionSchema, {
+      description: 'Array of transaction instructions',
+    }),
+  ),
+  // Option 3: Single instruction (USDM format)
+  ix: Type.Optional(SolanaInstructionSchema),
+  // Gas/priority options
+  priorityFeePerCU: Type.Optional(
+    Type.Number({
+      description: 'Priority fee in lamports per compute unit',
+      minimum: 0,
+    }),
+  ),
+  computeUnits: Type.Optional(
+    Type.Number({
+      description: 'Compute unit limit for the transaction',
+      minimum: 0,
+    }),
+  ),
+  // Signing options
+  skipSign: Type.Optional(
+    Type.Boolean({
+      description: 'Skip signing (transaction is already signed)',
+      default: false,
+    }),
+  ),
+  // Address lookup tables for versioned transactions
+  addressLookupTables: Type.Optional(
+    Type.Array(Type.String(), {
+      description: 'Array of address lookup table addresses (Base58)',
+    }),
+  ),
+});
+
+// Execute transaction response schema
+export const SolanaExecuteTxResponseSchema = Type.Object({
+  signature: Type.String({
+    description: 'Transaction hash/signature',
+  }),
+  status: Type.Number({
+    description: 'Transaction status: 0=pending, 1=confirmed, -1=failed',
+    enum: [-1, 0, 1],
+  }),
+  fee: Type.Optional(
+    Type.Number({
+      description: 'Transaction fee paid (in SOL)',
+    }),
+  ),
+  error: Type.Optional(
+    Type.String({
+      description: 'Error message if transaction failed',
+    }),
+  ),
+});
+
 // Type exports
 export type SolanaQuoteSwapRequestType = Static<typeof SolanaQuoteSwapRequest>;
 export type SolanaExecuteSwapRequestType = Static<typeof SolanaExecuteSwapRequest>;
@@ -198,3 +291,7 @@ export type WrapRequestType = Static<typeof WrapRequestSchema>;
 export type WrapResponseType = Static<typeof WrapResponseSchema>;
 export type UnwrapRequestType = Static<typeof UnwrapRequestSchema>;
 export type UnwrapResponseType = Static<typeof UnwrapResponseSchema>;
+export type SolanaInstructionKey = Static<typeof SolanaInstructionKeySchema>;
+export type SolanaInstruction = Static<typeof SolanaInstructionSchema>;
+export type SolanaExecuteTxRequest = Static<typeof SolanaExecuteTxRequestSchema>;
+export type SolanaExecuteTxResponse = Static<typeof SolanaExecuteTxResponseSchema>;

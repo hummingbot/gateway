@@ -20,3 +20,9 @@ coingecko: ''
 # Get your API key from https://etherscan.io/myapikey
 # Works for all Etherscan V2 API supported chains
 etherscan: ''
+
+# Privy - Server wallet signing
+# Get your credentials from https://dashboard.privy.io
+# Required for Privy wallet integration
+privyAppId: ''
+privyAppSecret: ''

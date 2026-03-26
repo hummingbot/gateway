@@ -4,6 +4,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 
 import fastifyRateLimit from '@fastify/rate-limit';
+import sensible from '@fastify/sensible';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -165,6 +166,9 @@ const configureGatewayServer = () => {
   if (docsServer) {
     docsServer.withTypeProvider<TypeBoxTypeProvider>();
   }
+
+  // Register sensible globally for httpErrors support
+  server.register(sensible);
 
   // Register rate limiting globally
   server.register(fastifyRateLimit, {
