@@ -35,6 +35,28 @@ export interface PrivyWalletInfo {
 }
 
 /**
+ * Validate wallet ID to prevent SSRF attacks
+ * Privy wallet IDs should only contain alphanumeric characters, hyphens, and underscores
+ * @param walletId The wallet ID to validate
+ * @throws Error if wallet ID contains invalid characters
+ */
+function validateWalletId(walletId: string): void {
+  if (!walletId || typeof walletId !== 'string') {
+    throw new Error('Invalid wallet ID: must be a non-empty string');
+  }
+  // Only allow alphanumeric characters, hyphens, and underscores
+  // This prevents path traversal (../) and URL manipulation attacks
+  const validPattern = /^[a-zA-Z0-9_-]+$/;
+  if (!validPattern.test(walletId)) {
+    throw new Error('Invalid wallet ID: contains disallowed characters');
+  }
+  // Reasonable length limit to prevent abuse
+  if (walletId.length > 128) {
+    throw new Error('Invalid wallet ID: exceeds maximum length');
+  }
+}
+
+/**
  * Client for Privy Server Wallet API
  */
 export class PrivyClient {
@@ -78,7 +100,10 @@ export class PrivyClient {
       throw new Error('Privy credentials not configured');
     }
 
-    const url = `${this.baseUrl}/wallets/${walletId}/rpc`;
+    // Validate wallet ID to prevent SSRF attacks
+    validateWalletId(walletId);
+
+    const url = `${this.baseUrl}/wallets/${encodeURIComponent(walletId)}/rpc`;
     logger.info(`Privy RPC request to wallet ${walletId}: ${request.method}`);
 
     const response = await fetch(url, {
@@ -112,7 +137,10 @@ export class PrivyClient {
       throw new Error('Privy credentials not configured');
     }
 
-    const url = `${this.baseUrl}/wallets/${walletId}`;
+    // Validate wallet ID to prevent SSRF attacks
+    validateWalletId(walletId);
+
+    const url = `${this.baseUrl}/wallets/${encodeURIComponent(walletId)}`;
     logger.info(`Fetching Privy wallet info for ${walletId}`);
 
     const response = await fetch(url, {
