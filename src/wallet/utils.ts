@@ -16,6 +16,7 @@ import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
 import { updateDefaultWallet } from '../config/utils';
 import { ConfigManagerCertPassphrase } from '../services/config-manager-cert-passphrase';
+import { ConfigManagerV2 } from '../services/config-manager-v2';
 import {
   getInitializedChain,
   UnsupportedChainException,
@@ -177,12 +178,35 @@ export async function removeWallet(fastify: FastifyInstance, req: RemoveWalletRe
       throw new Error(`Unsupported chain: ${req.chain}`);
     }
 
+    // Check if this is the default wallet before removing
+    const chainLower = req.chain.toLowerCase();
+    const currentDefaultWallet = ConfigManagerV2.getInstance().get(`${chainLower}.defaultWallet`);
+    const isDefaultWallet =
+      currentDefaultWallet && currentDefaultWallet.toLowerCase() === validatedAddress.toLowerCase();
+
     // Create safe file path
-    const safeChain = sanitizePathComponent(req.chain.toLowerCase());
+    const safeChain = sanitizePathComponent(chainLower);
     const safeAddress = sanitizePathComponent(validatedAddress);
 
     // Remove file
     await fse.remove(`${walletPath}/${safeChain}/${safeAddress}.json`);
+
+    // If the deleted wallet was the default, update the default wallet
+    if (isDefaultWallet) {
+      // Get all remaining wallet addresses (both regular and hardware)
+      const remainingAddresses = await getAllWalletAddressesForChain(chainLower);
+
+      if (remainingAddresses.length > 0) {
+        // Set the first remaining wallet as the new default
+        const newDefaultWallet = remainingAddresses[0];
+        ConfigManagerV2.getInstance().set(`${chainLower}.defaultWallet`, newDefaultWallet);
+        logger.info(`Set new default wallet for ${chainLower}: ${newDefaultWallet}`);
+      } else {
+        // No wallets remaining, clear the default wallet
+        ConfigManagerV2.getInstance().set(`${chainLower}.defaultWallet`, '');
+        logger.info(`Cleared default wallet for ${chainLower} (no wallets remaining)`);
+      }
+    }
   } catch (error) {
     if (error.message.includes('Invalid') || error.message.includes('Unrecognized')) {
       throw fastify.httpErrors.badRequest(error.message);
@@ -405,6 +429,37 @@ export async function getHardwareWallets(chain: string): Promise<HardwareWalletD
 export async function getHardwareWalletAddresses(chain: string): Promise<string[]> {
   const wallets = await getHardwareWallets(chain);
   return wallets.map((w) => w.address);
+}
+
+/**
+ * Get all wallet addresses for a chain (both regular and hardware wallets)
+ */
+export async function getAllWalletAddressesForChain(chain: string): Promise<string[]> {
+  const chainLower = chain.toLowerCase();
+  const safeChain = sanitizePathComponent(chainLower);
+
+  // Get regular wallet addresses
+  const walletFiles = await getJsonFiles(`${walletPath}/${safeChain}`);
+  const regularAddresses = walletFiles
+    .map((file) => file.replace('.json', ''))
+    .filter((address) => {
+      // Validate addresses based on chain type
+      try {
+        if (chainLower === 'ethereum') {
+          return /^0x[a-fA-F0-9]{40}$/i.test(address);
+        } else if (chainLower === 'solana') {
+          return address.length >= 32 && address.length <= 44;
+        }
+        return false;
+      } catch {
+        return false;
+      }
+    });
+
+  // Get hardware wallet addresses
+  const hardwareAddresses = await getHardwareWalletAddresses(chain);
+
+  return [...regularAddresses, ...hardwareAddresses];
 }
 
 export async function saveHardwareWallets(chain: string, wallets: HardwareWalletData[]): Promise<void> {

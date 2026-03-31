@@ -4,6 +4,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { Solana } from '../../chains/solana/solana';
+import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';
 import {
   RemoveWalletRequest,
@@ -11,7 +12,14 @@ import {
   RemoveWalletRequestSchema,
   RemoveWalletResponseSchema,
 } from '../schemas';
-import { removeWallet, validateChainName, isHardwareWallet, getHardwareWallets, saveHardwareWallets } from '../utils';
+import {
+  removeWallet,
+  validateChainName,
+  isHardwareWallet,
+  getHardwareWallets,
+  saveHardwareWallets,
+  getAllWalletAddressesForChain,
+} from '../utils';
 
 export const removeWalletRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
@@ -50,6 +58,12 @@ export const removeWalletRoute: FastifyPluginAsync = async (fastify) => {
       if (await isHardwareWallet(chain, validatedAddress)) {
         logger.info(`Removing hardware wallet: ${validatedAddress} from chain: ${chain}`);
 
+        // Check if this is the default wallet before removing
+        const chainLower = chain.toLowerCase();
+        const currentDefaultWallet = ConfigManagerV2.getInstance().get(`${chainLower}.defaultWallet`);
+        const isDefaultWallet =
+          currentDefaultWallet && currentDefaultWallet.toLowerCase() === validatedAddress.toLowerCase();
+
         const wallets = await getHardwareWallets(chain);
         const index = wallets.findIndex((w) => w.address === validatedAddress);
         if (index === -1) {
@@ -58,6 +72,23 @@ export const removeWalletRoute: FastifyPluginAsync = async (fastify) => {
 
         wallets.splice(index, 1);
         await saveHardwareWallets(chain, wallets);
+
+        // If the deleted wallet was the default, update the default wallet
+        if (isDefaultWallet) {
+          // Get all remaining wallet addresses (both regular and hardware)
+          const remainingAddresses = await getAllWalletAddressesForChain(chain);
+
+          if (remainingAddresses.length > 0) {
+            // Set the first remaining wallet as the new default
+            const newDefaultWallet = remainingAddresses[0];
+            ConfigManagerV2.getInstance().set(`${chainLower}.defaultWallet`, newDefaultWallet);
+            logger.info(`Set new default wallet for ${chainLower}: ${newDefaultWallet}`);
+          } else {
+            // No wallets remaining, clear the default wallet
+            ConfigManagerV2.getInstance().set(`${chainLower}.defaultWallet`, '');
+            logger.info(`Cleared default wallet for ${chainLower} (no wallets remaining)`);
+          }
+        }
 
         return {
           message: `Hardware wallet ${validatedAddress} removed successfully`,
