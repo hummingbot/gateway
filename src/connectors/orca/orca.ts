@@ -286,7 +286,18 @@ export class Orca {
       const client = await this.getWhirlpoolClientForWallet(walletAddress);
 
       for (const position of positionsForOwner) {
-        positions.push(await getPositionDetails(client, address(position.address)));
+        try {
+          const positionDetails = await getPositionDetails(client, address(position.address));
+          positions.push(positionDetails);
+        } catch (positionError: any) {
+          // Skip positions that fail to fetch (e.g., closed positions, invalid data)
+          // Only log as debug since this is expected for closed positions
+          if (positionError.statusCode === 404) {
+            logger.debug(`Position ${position.address} appears to be closed, skipping`);
+          } else {
+            logger.warn(`Error fetching position ${position.address}: ${positionError.message}`);
+          }
+        }
       }
 
       return positions;

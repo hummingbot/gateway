@@ -99,7 +99,7 @@ export async function unwrapSolana(
     }
 
     // Simulate transaction with proper error handling before sending
-    await solana.simulateWithErrorHandling(transaction, fastify);
+    await solana.simulateWithErrorHandling(transaction);
 
     // Send and confirm transaction
     const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);

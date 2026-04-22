@@ -18,11 +18,14 @@ jest.mock('@orca-so/whirlpools-sdk', () => ({
     getOracle: jest.fn().mockReturnValue({ publicKey: 'oracle-pubkey' }),
   },
   WhirlpoolIx: {
-    swapIx: jest.fn().mockReturnValue({
+    swapV2Ix: jest.fn().mockReturnValue({
       instructions: [],
       cleanupInstructions: [],
       signers: [],
     }),
+  },
+  TokenExtensionUtil: {
+    getExtraAccountMetasForTransferHook: jest.fn().mockResolvedValue([]),
   },
   IGNORE_CACHE: true,
 }));

@@ -19,12 +19,12 @@ jest.mock('@orca-so/whirlpools-sdk', () => ({
     priceToTickIndex: jest.fn().mockReturnValue(-28800),
   },
   WhirlpoolIx: {
-    openPositionIx: jest.fn().mockReturnValue({
+    openPositionWithTokenExtensionsIx: jest.fn().mockReturnValue({
       instructions: [],
       cleanupInstructions: [],
       signers: [],
     }),
-    increaseLiquidityIx: jest.fn().mockReturnValue({
+    increaseLiquidityV2Ix: jest.fn().mockReturnValue({
       instructions: [],
       cleanupInstructions: [],
       signers: [],
@@ -42,8 +42,10 @@ jest.mock('@orca-so/whirlpools-sdk', () => ({
   }),
   TokenExtensionUtil: {
     isV2IxRequiredPool: jest.fn().mockReturnValue(false),
+    buildTokenExtensionContext: jest.fn().mockResolvedValue({}),
   },
   ORCA_WHIRLPOOL_PROGRAM_ID: 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc',
+  IGNORE_CACHE: true,
 }));
 jest.mock('@orca-so/common-sdk', () => ({
   Percentage: {
@@ -103,6 +105,25 @@ describe('POST /open-position', () => {
         signature: 'test-signature',
         fee: 0.000005,
       }),
+      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
+        balanceChanges: [-1.0, -200.0],
+        fee: 0.000005,
+      }),
+      connection: {
+        getTransaction: jest.fn().mockResolvedValue({
+          transaction: {
+            message: {
+              getAccountKeys: () => ({
+                staticAccountKeys: [],
+              }),
+            },
+          },
+          meta: {
+            preBalances: [],
+            postBalances: [],
+          },
+        }),
+      },
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
 

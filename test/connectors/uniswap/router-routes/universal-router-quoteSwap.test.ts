@@ -10,15 +10,7 @@ jest.mock('../../../../src/connectors/uniswap/uniswap');
 jest.mock('uuid');
 
 // Create a variable to store the mock implementation
-const mockGetQuote = jest.fn();
-const mockUniversalRouterService = {
-  getQuote: mockGetQuote,
-};
-
-// Mock the UniversalRouterService
-jest.mock('../../../../src/connectors/uniswap/universal-router', () => ({
-  UniversalRouterService: jest.fn().mockImplementation(() => mockUniversalRouterService),
-}));
+const mockGetAlphaRouterQuote = jest.fn();
 
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
@@ -59,20 +51,16 @@ describe('GET /quote-swap', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Reset the UniversalRouterService mock to default behavior
-    mockGetQuote.mockResolvedValue({
-      trade: {
-        inputAmount: { toExact: () => '1' },
-        outputAmount: { toExact: () => '3000' },
-        priceImpact: { toSignificant: () => '0.3' },
-      },
-      route: ['WETH', 'USDC'],
-      routePath: 'WETH -> USDC',
+    // Reset the AlphaRouter mock to default behavior
+    // This matches the AlphaRouterQuoteResult interface
+    mockGetAlphaRouterQuote.mockResolvedValue({
+      route: { trade: { priceImpact: { toSignificant: () => '0.3' } } },
+      inputAmount: '1',
+      outputAmount: '3000',
       priceImpact: 0.3,
-      estimatedGasUsed: { toString: () => '300000' },
-      estimatedGasUsedQuoteToken: { toExact: () => '0.5' },
-      quote: { toExact: () => '3000' },
-      quoteGasAdjusted: { toExact: () => '2999.5' },
+      routeString: 'WETH -> USDC',
+      gasEstimate: '300000',
+      gasEstimateUSD: '5.00',
       methodParameters: {
         calldata: '0x1234567890',
         value: '0x0',
@@ -93,6 +81,7 @@ describe('GET /quote-swap', () => {
     mockEthereum = {
       provider: mockProvider,
       chainId: 1,
+      nativeTokenSymbol: 'ETH',
       getToken: jest.fn().mockImplementation((symbol: string) => {
         const tokens: any = {
           WETH: mockWETH,
@@ -116,7 +105,7 @@ describe('GET /quote-swap', () => {
     mockUniswap = {
       router: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
       getUniswapToken: jest.fn().mockImplementation((tokenInfo) => tokenInfo),
-      getUniversalRouterQuote: mockGetQuote,
+      getAlphaRouterQuote: mockGetAlphaRouterQuote,
     };
 
     (Ethereum.getInstance as jest.Mock).mockReturnValue(mockEthereum);
@@ -185,20 +174,15 @@ describe('GET /quote-swap', () => {
   });
 
   it('should return a valid quote for BUY side', async () => {
-    // Update mock for BUY side
-    mockGetQuote.mockResolvedValue({
-      trade: {
-        inputAmount: { toExact: () => '3000' },
-        outputAmount: { toExact: () => '1' },
-        priceImpact: { toSignificant: () => '0.3' },
-      },
-      route: ['USDC', 'WETH'],
-      routePath: 'USDC -> WETH',
+    // Update mock for BUY side - AlphaRouterQuoteResult format
+    mockGetAlphaRouterQuote.mockResolvedValue({
+      route: { trade: { priceImpact: { toSignificant: () => '0.3' } } },
+      inputAmount: '3000',
+      outputAmount: '1',
       priceImpact: 0.3,
-      estimatedGasUsed: { toString: () => '300000' },
-      estimatedGasUsedQuoteToken: { toExact: () => '0.5' },
-      quote: { toExact: () => '1' },
-      quoteGasAdjusted: { toExact: () => '0.9995' },
+      routeString: 'USDC -> WETH',
+      gasEstimate: '300000',
+      gasEstimateUSD: '5.00',
       methodParameters: {
         calldata: '0x1234567890',
         value: '0x0',
@@ -323,5 +307,214 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(500);
+  });
+
+  describe('native token (ETH) to WETH conversion', () => {
+    it('should convert ETH baseToken to WETH and return valid quote', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'ETH',
+          quoteToken: 'USDC',
+          amount: '1',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      // Should use WETH address even though ETH was requested
+      expect(body).toHaveProperty('tokenIn', mockWETH.address);
+      expect(body).toHaveProperty('tokenOut', mockUSDC.address);
+      expect(body).toHaveProperty('amountIn', 1);
+      expect(body).toHaveProperty('amountOut');
+      expect(body.amountOut).toBeGreaterThan(0);
+    });
+
+    it('should convert ETH quoteToken to WETH and return valid quote', async () => {
+      // Update mock for ETH as quote token - SELL USDC for ETH
+      mockGetAlphaRouterQuote.mockResolvedValue({
+        route: { trade: { priceImpact: { toSignificant: () => '0.3' } } },
+        inputAmount: '3000',
+        outputAmount: '1',
+        priceImpact: 0.3,
+        routeString: 'USDC -> WETH',
+        gasEstimate: '300000',
+        gasEstimateUSD: '5.00',
+        methodParameters: {
+          calldata: '0x1234567890',
+          value: '0x0',
+          to: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
+        },
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'USDC',
+          quoteToken: 'ETH',
+          amount: '3000',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      // Should use WETH address even though ETH was requested as quote
+      // SELL side: input=base (USDC), output=quote (ETH->WETH)
+      expect(body).toHaveProperty('tokenIn', mockUSDC.address);
+      expect(body).toHaveProperty('tokenOut', mockWETH.address);
+    });
+
+    it('should handle lowercase eth token symbol', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'eth',
+          quoteToken: 'USDC',
+          amount: '1',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      // Should convert lowercase 'eth' to WETH
+      expect(body).toHaveProperty('tokenIn', mockWETH.address);
+    });
+
+    it('should handle mixed case Eth token symbol', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'Eth',
+          quoteToken: 'USDC',
+          amount: '1',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      // Should convert mixed case 'Eth' to WETH
+      expect(body).toHaveProperty('tokenIn', mockWETH.address);
+    });
+  });
+
+  describe('same-token and equivalent-token quotes', () => {
+    it('should return price=1 for same token quote (USDC/USDC)', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'USDC',
+          quoteToken: 'USDC',
+          amount: '100',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      expect(body).toHaveProperty('price', 1);
+      expect(body).toHaveProperty('amountIn', 100);
+      expect(body).toHaveProperty('amountOut', 100);
+      expect(body).toHaveProperty('priceImpactPct', 0);
+    });
+
+    it('should return price=1 for ETH/WETH (native to wrapped)', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'ETH',
+          quoteToken: 'WETH',
+          amount: '1',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      expect(body).toHaveProperty('price', 1);
+      expect(body).toHaveProperty('amountIn', 1);
+      expect(body).toHaveProperty('amountOut', 1);
+      expect(body).toHaveProperty('priceImpactPct', 0);
+    });
+
+    it('should return price=1 for WETH/ETH (wrapped to native)', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'WETH',
+          quoteToken: 'ETH',
+          amount: '1',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      expect(body).toHaveProperty('price', 1);
+      expect(body).toHaveProperty('amountIn', 1);
+      expect(body).toHaveProperty('amountOut', 1);
+      expect(body).toHaveProperty('priceImpactPct', 0);
+    });
+
+    it('should return price=1 for ETH/ETH', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'ETH',
+          quoteToken: 'ETH',
+          amount: '1',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      expect(body).toHaveProperty('price', 1);
+      expect(body).toHaveProperty('amountIn', 1);
+      expect(body).toHaveProperty('amountOut', 1);
+    });
   });
 });

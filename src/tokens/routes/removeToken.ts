@@ -45,8 +45,7 @@ export const removeTokenRoute: FastifyPluginAsync = async (fastify) => {
         await tokenService.removeToken(chain, network, address);
 
         return {
-          message: `Token with address ${address} removed successfully from ${chain}/${network}. Gateway restart required.`,
-          requiresRestart: true,
+          message: `Token with address ${address} removed successfully from ${chain}/${network}.`,
         };
       } catch (error) {
         handleTokenError(fastify, error, 'Failed to remove token');

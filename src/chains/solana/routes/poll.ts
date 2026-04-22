@@ -4,13 +4,12 @@ import { PollRequestType, PollResponseType, PollResponseSchema } from '../../../
 import { logger } from '../../../services/logger';
 import { SolanaPollRequest } from '../schemas';
 import { Solana } from '../solana';
+import { parseSolanaError } from '../solana-error-parser';
 
 export async function pollSolanaTransaction(
   _fastify: FastifyInstance,
   network: string,
   signature: string,
-  tokens?: string[],
-  walletAddress?: string,
 ): Promise<PollResponseType> {
   const solana = await Solana.getInstance(network);
 
@@ -24,9 +23,9 @@ export async function pollSolanaTransaction(
         signature,
         txBlock: null,
         txStatus: 0,
-        txData: null,
         fee: null,
-        error: 'Invalid transaction signature format',
+        error: 'INVALID_INPUT: Invalid transaction signature format',
+        txData: null,
       };
     }
 
@@ -38,69 +37,26 @@ export async function pollSolanaTransaction(
         signature,
         txBlock: null,
         txStatus: 0,
-        txData: null,
         fee: null,
+        error: null,
+        txData: null,
       };
     }
 
     const txStatus = await solana.getTransactionStatusCode(txData as any);
 
-    let fee: number;
-    let tokenBalanceChanges: Record<string, number> | undefined;
+    // Extract fee from transaction
+    const fee = txData.meta?.fee ? txData.meta.fee / 1e9 : 0; // Convert lamports to SOL
 
-    // Calculate token balance changes if tokens array is provided and not empty, and wallet address is provided
-    if (tokens && tokens.length > 0 && walletAddress) {
-      try {
-        // Convert symbols to addresses
-        const tokenAddresses: string[] = [];
-        const tokenMap = new Map<string, string>(); // Map from input value to address
-
-        for (const token of tokens) {
-          const tokenInfo = await solana.getToken(token);
-          if (tokenInfo) {
-            tokenAddresses.push(tokenInfo.address);
-            tokenMap.set(token, tokenInfo.address);
-          } else {
-            logger.warn(`Could not find token info for: ${token}`);
-          }
-        }
-
-        if (tokenAddresses.length > 0) {
-          const result = await solana.extractBalanceChangesAndFee(signature, walletAddress, tokenAddresses);
-          fee = result.fee;
-
-          // Build balance changes dictionary with original input values as keys
-          tokenBalanceChanges = {};
-          let i = 0;
-          for (const token of tokens) {
-            const address = tokenMap.get(token);
-            if (address) {
-              tokenBalanceChanges[token] = result.balanceChanges[i];
-              i++;
-            }
-          }
-
-          logger.info(
-            `Transaction ${signature} - Status: ${txStatus}, Fee: ${fee} SOL, Balance Changes: ${JSON.stringify(tokenBalanceChanges)}`,
-          );
-        } else {
-          logger.warn('No valid tokens found');
-          fee = 0;
-        }
-      } catch (error) {
-        logger.error(`Error calculating balance changes for transaction ${signature}: ${error.message}`);
-        // Set fee to 0 on error
-        fee = 0;
-      }
+    // Check for transaction error and parse it
+    let error: string | null = null;
+    if (txData.meta?.err) {
+      const errorStr = JSON.stringify(txData.meta.err);
+      const parsed = parseSolanaError(errorStr);
+      error = `${parsed.type} (${parsed.errorCodeHex || 'unknown'}): ${parsed.message}`;
+      logger.info(`Transaction ${signature} failed: ${error}`);
     } else {
-      // Just get the fee when no tokens specified or empty array
-      const feeResult = await solana.extractBalanceChangesAndFee(
-        signature,
-        walletAddress || '', // Use provided wallet address or empty string
-        [],
-      );
-      fee = feeResult.fee;
-      logger.info(`Polling for transaction ${signature}, Status: ${txStatus}, Fee: ${fee} SOL`);
+      logger.info(`Transaction ${signature} - Status: ${txStatus}, Fee: ${fee} SOL`);
     }
 
     return {
@@ -109,19 +65,19 @@ export async function pollSolanaTransaction(
       txBlock: txData.slot,
       txStatus,
       fee,
-      tokenBalanceChanges,
+      error,
       txData,
     };
-  } catch (error) {
-    logger.error(`Error polling transaction ${signature}: ${error.message}`);
+  } catch (err) {
+    logger.error(`Error polling transaction ${signature}: ${(err as Error).message}`);
     return {
       currentBlock: await solana.getCurrentBlockNumber(),
       signature,
       txBlock: null,
       txStatus: 0,
-      txData: null,
       fee: null,
       error: 'Transaction not found or invalid',
+      txData: null,
     };
   }
 }
@@ -143,8 +99,8 @@ export const pollRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { network, signature, tokens, walletAddress } = request.body;
-      return await pollSolanaTransaction(fastify, network, signature, tokens, walletAddress);
+      const { network, signature } = request.body;
+      return await pollSolanaTransaction(fastify, network, signature);
     },
   );
 };

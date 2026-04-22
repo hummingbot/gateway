@@ -12,7 +12,7 @@ import {
   IGNORE_CACHE,
 } from '@orca-so/whirlpools-sdk';
 import { Static } from '@sinclair/typebox';
-import { getAssociatedTokenAddressSync } from '@solana/spl-token';
+import { TOKEN_2022_PROGRAM_ID, getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
@@ -23,11 +23,13 @@ import { OpenPositionResponse, OpenPositionResponseType } from '../../../schemas
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
-import { getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
+import { extractInnerTransferAmounts, getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
 import { OrcaClmmOpenPositionRequest } from '../schemas';
 
 /**
- * Initialize tick arrays if they don't exist
+ * Initialize tick arrays if they don't exist.
+ * Returns the pubkeys of any newly-created tick arrays so their rent
+ * can be included in the total position rent calculation.
  */
 async function initializeTickArrays(
   builder: TransactionBuilder,
@@ -36,8 +38,10 @@ async function initializeTickArrays(
   whirlpoolPubkey: PublicKey,
   lowerTickIndex: number,
   upperTickIndex: number,
-): Promise<void> {
+): Promise<PublicKey[]> {
   await whirlpool.refreshData();
+
+  const newTickArrayPubkeys: PublicKey[] = [];
 
   const lowerTickArrayPda = PDAUtil.getTickArrayFromTickIndex(
     lowerTickIndex,
@@ -64,6 +68,7 @@ async function initializeTickArrays(
         tickArrayPda: lowerTickArrayPda,
       }),
     );
+    newTickArrayPubkeys.push(lowerTickArrayPda.publicKey);
   }
 
   if (!upperTickArray && !upperTickArrayPda.publicKey.equals(lowerTickArrayPda.publicKey)) {
@@ -75,7 +80,10 @@ async function initializeTickArrays(
         tickArrayPda: upperTickArrayPda,
       }),
     );
+    newTickArrayPubkeys.push(upperTickArrayPda.publicKey);
   }
+
+  return newTickArrayPubkeys;
 }
 
 /**
@@ -135,6 +143,8 @@ async function addLiquidityInstructions(
       positionTokenAccount: getAssociatedTokenAddressSync(
         positionMintKeypair.publicKey,
         client.getContext().wallet.publicKey,
+        undefined,
+        TOKEN_2022_PROGRAM_ID,
       ),
       tokenMintA: whirlpool.getTokenAInfo().address,
       tokenMintB: whirlpool.getTokenBInfo().address,
@@ -214,8 +224,15 @@ export async function openPosition(
   // Build transaction
   const builder = new TransactionBuilder(client.getContext().connection, client.getContext().wallet);
 
-  // Initialize tick arrays if needed
-  await initializeTickArrays(builder, client, whirlpool, whirlpoolPubkey, lowerTickIndex, upperTickIndex);
+  // Initialize tick arrays if needed (returns pubkeys of newly-created arrays for rent tracking)
+  const newTickArrayPubkeys = await initializeTickArrays(
+    builder,
+    client,
+    whirlpool,
+    whirlpoolPubkey,
+    lowerTickIndex,
+    upperTickIndex,
+  );
 
   // If we're adding liquidity, prepare WSOL wrapping FIRST (before opening position)
   let baseTokenAmountAdded = 0;
@@ -361,23 +378,24 @@ export async function openPosition(
   const positionMintKeypair = Keypair.generate();
   const positionPda = PDAUtil.getPosition(ORCA_WHIRLPOOL_PROGRAM_ID, positionMintKeypair.publicKey);
 
-  // Always use TOKEN_PROGRAM with metadata (standard Orca positions)
-  // Position NFT token program is independent of pool's token programs
-  const metadataPda = PDAUtil.getPositionMetadata(positionMintKeypair.publicKey);
+  // Use Token-2022 position mint (embeds metadata in the mint account itself)
+  // This ensures all rent is fully refundable on close (fixes #584)
   builder.addInstruction(
-    WhirlpoolIx.openPositionWithMetadataIx(client.getContext().program, {
+    WhirlpoolIx.openPositionWithTokenExtensionsIx(client.getContext().program, {
       funder: client.getContext().wallet.publicKey,
       whirlpool: whirlpoolPubkey,
       tickLowerIndex: lowerTickIndex,
       tickUpperIndex: upperTickIndex,
       owner: client.getContext().wallet.publicKey,
-      positionMintAddress: positionMintKeypair.publicKey,
+      positionMint: positionMintKeypair.publicKey,
       positionPda,
       positionTokenAccount: getAssociatedTokenAddressSync(
         positionMintKeypair.publicKey,
         client.getContext().wallet.publicKey,
+        undefined,
+        TOKEN_2022_PROGRAM_ID,
       ),
-      metadataPda,
+      withTokenMetadataExtension: true,
     }),
   );
 
@@ -446,7 +464,68 @@ export async function openPosition(
     positionMintKeypair,
   ]);
 
-  const positionRent = 0.00203928; // Standard position account rent
+  // Extract position rent from the confirmed transaction's postBalances.
+  // Newly-created accounts have preBalance=0, so their postBalance IS the rent.
+  // This captures ALL rent including tick arrays (~0.013 SOL each) that were
+  // previously missed when only querying 3 position accounts.
+  const txData = await solana.connection.getTransaction(signature, {
+    commitment: 'confirmed',
+    maxSupportedTransactionVersion: 0,
+  });
+
+  let positionRent = 0;
+
+  if (txData) {
+    const accountKeys = txData.transaction.message.getAccountKeys().staticAccountKeys;
+    const preBalances = txData.meta?.preBalances || [];
+    const postBalances = txData.meta?.postBalances || [];
+
+    // All accounts whose rent should be tracked: position mint, PDA, ATA, + tick arrays
+    const positionTokenAccount = getAssociatedTokenAddressSync(
+      positionMintKeypair.publicKey,
+      client.getContext().wallet.publicKey,
+      undefined,
+      TOKEN_2022_PROGRAM_ID,
+    );
+    const rentAccounts: PublicKey[] = [
+      positionMintKeypair.publicKey,
+      positionPda.publicKey,
+      positionTokenAccount,
+      ...newTickArrayPubkeys,
+    ];
+
+    let totalRentLamports = 0;
+    for (const pubkey of rentAccounts) {
+      const idx = accountKeys.findIndex((key) => key.equals(pubkey));
+      if (idx !== -1 && preBalances[idx] === 0 && postBalances[idx] > 0) {
+        totalRentLamports += postBalances[idx];
+        logger.info(`Rent for ${pubkey.toString()}: ${postBalances[idx]} lamports`);
+      }
+    }
+    positionRent = totalRentLamports / 1e9;
+
+    // Extract actual token amounts from the increaseLiquidity instruction's inner transfers.
+    // This avoids the SOL adjustment complexity (rent, fee) needed with aggregate balance changes.
+    if (shouldAddLiquidity) {
+      const tokenMintA = whirlpool.getTokenAInfo().address.toString();
+      const tokenMintB = whirlpool.getTokenBInfo().address.toString();
+
+      const { transferGroups } = await extractInnerTransferAmounts(
+        solana.connection,
+        signature,
+        ORCA_WHIRLPOOL_PROGRAM_ID.toString(),
+        [tokenMintA, tokenMintB],
+      );
+
+      // For open position, the only Whirlpool instruction with transfers is increaseLiquidity
+      if (transferGroups.length >= 1) {
+        baseTokenAmountAdded = transferGroups[0][0];
+        quoteTokenAmountAdded = transferGroups[0][1];
+      }
+    }
+  }
+
+  logger.info(`Position rent: ${positionRent} SOL (${newTickArrayPubkeys.length} new tick arrays)`);
 
   if (shouldAddLiquidity) {
     logger.info(

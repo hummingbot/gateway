@@ -59,11 +59,11 @@ export async function quoteSwap(
     const errorMessage = error?.message || String(error);
     const tokenPair = `${sanitizeString(baseToken)} -> ${sanitizeString(quoteToken)}`;
     const swapMode = side === 'BUY' ? 'ExactOut' : 'ExactIn';
-    throw httpErrors.notFound(`No route found for ${tokenPair} (${swapMode}). ${errorMessage}`);
+    throw httpErrors.noRouteFound(`No route found for ${tokenPair} (${swapMode}). ${errorMessage}`);
   }
 
   if (!quoteResponse) {
-    throw httpErrors.notFound('No routes found for this swap');
+    throw httpErrors.noRouteFound('No routes found for this swap');
   }
 
   const bestRoute = quoteResponse;

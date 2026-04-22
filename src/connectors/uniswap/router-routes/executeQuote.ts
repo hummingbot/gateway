@@ -110,7 +110,8 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
   }
 
   // Execute the swap transaction
-  let txReceipt;
+  let txReceipt: Awaited<ReturnType<typeof ethereum.handleTransactionExecution>> = null;
+  let txHash: string | undefined;
 
   try {
     if (isHardwareWallet) {
@@ -139,6 +140,8 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
 
       // Send the signed transaction
       const txResponse = await ethereum.provider.sendTransaction(signedTx);
+      txHash = txResponse.hash;
+      logger.info(`Transaction sent: ${txHash}`);
 
       // Wait for confirmation with timeout
       txReceipt = await ethereum.handleTransactionExecution(txResponse);
@@ -171,7 +174,8 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
 
       // Send transaction directly without relying on ethers' automatic gas estimation
       const txResponse = await wallet.sendTransaction(txData);
-      logger.info(`Transaction sent: ${txResponse.hash}`);
+      txHash = txResponse.hash;
+      logger.info(`Transaction sent: ${txHash}`);
 
       // Wait for transaction confirmation with timeout
       txReceipt = await ethereum.handleTransactionExecution(txResponse);
@@ -262,6 +266,7 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
   const expectedAmountOut = parseFloat(quote.trade.outputAmount.toExact());
 
   // Use the new handleExecuteQuoteTransactionConfirmation helper
+  // Pass txHash for pending transactions (when txReceipt is null)
   const result = ethereum.handleExecuteQuoteTransactionConfirmation(
     txReceipt,
     inputToken.address,
@@ -269,10 +274,12 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
     expectedAmountIn,
     expectedAmountOut,
     side,
+    txHash,
   );
 
   // Handle different transaction states
-  if (result.status === 0) {
+  // Status codes: 1 = CONFIRMED, 0 = PENDING, -1 = FAILED
+  if (result.status === -1) {
     // Transaction failed
     logger.error(`Transaction failed on-chain. Receipt: ${JSON.stringify(txReceipt)}`);
     throw httpErrors.internalServerError(
@@ -280,7 +287,7 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
     );
   }
 
-  if (result.status === -1) {
+  if (result.status === 0) {
     // Transaction is still pending
     logger.info(`Transaction ${result.signature || 'pending'} is still pending`);
     return result;

@@ -165,7 +165,7 @@ describe('GET /quote-swap', () => {
     expect(JSON.parse(response.body)).toHaveProperty('error');
   });
 
-  it('should return 404 if no routes found', async () => {
+  it('should return 400 if no routes found', async () => {
     const mockSolanaInstance = {
       getToken: jest.fn().mockResolvedValueOnce(mockSOL).mockResolvedValueOnce(mockUSDC),
     };
@@ -189,11 +189,11 @@ describe('GET /quote-swap', () => {
       },
     });
 
-    expect(response.statusCode).toBe(404);
+    expect(response.statusCode).toBe(400);
     expect(JSON.parse(response.body)).toHaveProperty('error');
   });
 
-  it('should return 404 with Jupiter error message when ExactOut fails for BUY side', async () => {
+  it('should return 400 with Jupiter error message when ExactOut fails for BUY side', async () => {
     const mockSolanaInstance = {
       getToken: jest.fn().mockResolvedValueOnce(mockSOL).mockResolvedValueOnce(mockUSDC),
     };
@@ -217,7 +217,7 @@ describe('GET /quote-swap', () => {
       },
     });
 
-    expect(response.statusCode).toBe(404);
+    expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body).toHaveProperty('error');
     expect(body.message).toContain('No route found for');

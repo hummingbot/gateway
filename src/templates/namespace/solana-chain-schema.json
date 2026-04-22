@@ -6,6 +6,13 @@
       "type": "string",
       "description": "Default network for Solana operations"
     },
+    "defaultNetworks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of networks to query for balance operations. If not specified, falls back to defaultNetwork only."
+    },
     "defaultWallet": {
       "type": "string",
       "description": "Default wallet address for examples and testing"
@@ -18,5 +25,5 @@
     }
   },
   "required": ["defaultNetwork", "defaultWallet"],
-  "additionalProperties": false
+  "additionalProperties": true
 }

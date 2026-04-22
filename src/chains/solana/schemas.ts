@@ -51,6 +51,8 @@ export const SolanaEstimateGasRequest = Type.Object({
   network: SolanaNetworkParameter,
 });
 
+export type SolanaEstimateGasRequestType = Static<typeof SolanaEstimateGasRequest>;
+
 // Poll request schema
 export const SolanaPollRequest = Type.Object({
   network: SolanaNetworkParameter,
@@ -58,18 +60,6 @@ export const SolanaPollRequest = Type.Object({
     description: 'Transaction signature to poll',
     examples: [EXAMPLE_SIGNATURE],
   }),
-  tokens: Type.Optional(
-    Type.Array(Type.String(), {
-      description: 'Tokens to track balance changes for',
-      examples: [EXAMPLE_TOKENS],
-    }),
-  ),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address to track balance changes for',
-      default: solanaChainConfig.defaultWallet,
-    }),
-  ),
 });
 
 // Quote swap request schema

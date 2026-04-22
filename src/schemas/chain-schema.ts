@@ -26,6 +26,9 @@ export const EstimateGasResponseSchema = Type.Object(
     gasType: Type.Optional(Type.String()), // Gas type: "legacy" or "eip1559"
     maxFeePerGas: Type.Optional(Type.Number()), // EIP-1559: Maximum fee per gas in gwei
     maxPriorityFeePerGas: Type.Optional(Type.Number()), // EIP-1559: Maximum priority fee per gas in gwei
+    // Solana Helius-specific fields
+    priorityFeeLevel: Type.Optional(Type.String()), // Helius priority level used: Min, Low, Medium, High, VeryHigh, UnsafeMax
+    priorityFeePerCUEstimate: Type.Optional(Type.Number()), // Raw Helius estimate in lamports/CU (before minimum enforcement)
   },
   { $id: 'EstimateGasResponse' },
 );
@@ -86,16 +89,6 @@ export const PollRequestSchema = Type.Object(
   {
     network: Type.Optional(Type.String()),
     signature: Type.String({ description: 'Transaction signature/hash' }),
-    tokens: Type.Optional(
-      Type.Array(Type.String(), {
-        description: 'Array of token symbols or addresses for balance change calculation',
-      }),
-    ),
-    walletAddress: Type.Optional(
-      Type.String({
-        description: 'Wallet address for balance change calculation (required if tokens provided)',
-      }),
-    ),
   },
   { $id: 'PollRequest' },
 );
@@ -106,15 +99,10 @@ export const PollResponseSchema = Type.Object(
     currentBlock: Type.Number(),
     signature: Type.String(),
     txBlock: Type.Union([Type.Number(), Type.Null()]),
-    txStatus: Type.Number(),
+    txStatus: Type.Number({ description: 'Transaction status: 1 = confirmed, 0 = pending, -1 = failed' }),
     fee: Type.Union([Type.Number(), Type.Null()]),
-    tokenBalanceChanges: Type.Optional(
-      Type.Record(Type.String(), Type.Number(), {
-        description: 'Dictionary of token balance changes keyed by token input value (symbol or address)',
-      }),
-    ),
+    error: Type.Union([Type.String({ description: 'Error info if failed: "TYPE (code): message"' }), Type.Null()]),
     txData: Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()]),
-    error: Type.Optional(Type.String()),
   },
   { $id: 'PollResponse' },
 );

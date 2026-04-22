@@ -22,25 +22,54 @@ async function quoteSwap(
   side: 'BUY' | 'SELL',
   slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<Static<typeof UniswapQuoteSwapResponse>> {
-  logger.info(`[quoteSwap] Starting quote generation`);
-  logger.info(`[quoteSwap] Network: ${network}, Wallet: ${walletAddress || 'not provided'}`);
-  logger.info(`[quoteSwap] Base: ${baseToken}, Quote: ${quoteToken}`);
-  logger.info(`[quoteSwap] Amount: ${amount}, Side: ${side}, Slippage: ${slippagePct}%`);
+  logger.info(`[quoteSwap] ${baseToken}/${quoteToken} ${side} ${amount} on ${network}`);
+  logger.debug(`[quoteSwap] Wallet: ${walletAddress || 'not provided'}, Slippage: ${slippagePct}%`);
 
   const ethereum = await Ethereum.getInstance(network);
   const uniswap = await Uniswap.getInstance(network);
 
-  // Resolve token symbols/addresses to token objects from local token list
-  const baseTokenInfo = await ethereum.getToken(baseToken);
-  const quoteTokenInfo = await ethereum.getToken(quoteToken);
+  // Convert native token (ETH) to WETH for quote purposes
+  // Native tokens aren't in the token list, but WETH has equivalent value
+  const nativeSymbol = ethereum.nativeTokenSymbol.toUpperCase();
+  const actualBaseToken = baseToken.toUpperCase() === nativeSymbol ? 'WETH' : baseToken;
+  const actualQuoteToken = quoteToken.toUpperCase() === nativeSymbol ? 'WETH' : quoteToken;
 
-  if (!baseTokenInfo || !quoteTokenInfo) {
-    logger.error(`[quoteSwap] Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
-    throw httpErrors.notFound(sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken));
+  if (actualBaseToken !== baseToken || actualQuoteToken !== quoteToken) {
+    logger.info(
+      `[quoteSwap] Converted native token: ${baseToken}/${quoteToken} -> ${actualBaseToken}/${actualQuoteToken}`,
+    );
   }
 
-  logger.info(`[quoteSwap] Base token: ${baseTokenInfo.symbol} (${baseTokenInfo.address})`);
-  logger.info(`[quoteSwap] Quote token: ${quoteTokenInfo.symbol} (${quoteTokenInfo.address})`);
+  // Handle same-token or equivalent-token quotes (return price=1)
+  // This covers: USDC/USDC, ETH/WETH, WETH/ETH, ETH/ETH (after conversion)
+  if (actualBaseToken.toUpperCase() === actualQuoteToken.toUpperCase()) {
+    logger.info(`[quoteSwap] Same/equivalent token quote: ${baseToken}/${quoteToken}, returning price=1`);
+    return {
+      quoteId: uuidv4(),
+      tokenIn: baseToken,
+      tokenOut: quoteToken,
+      amountIn: amount,
+      amountOut: amount,
+      price: 1,
+      priceImpactPct: 0,
+      minAmountOut: amount,
+      maxAmountIn: amount,
+      routePath: `${baseToken} -> ${quoteToken}`,
+    };
+  }
+
+  // Resolve token symbols/addresses to token objects from local token list
+  const baseTokenInfo = await ethereum.getToken(actualBaseToken);
+  const quoteTokenInfo = await ethereum.getToken(actualQuoteToken);
+
+  if (!baseTokenInfo || !quoteTokenInfo) {
+    const missingToken = !baseTokenInfo ? actualBaseToken : actualQuoteToken;
+    logger.error(`[quoteSwap] Token not found: ${missingToken}`);
+    throw httpErrors.notFound(sanitizeErrorMessage('Token not found: {}', missingToken));
+  }
+
+  logger.debug(`[quoteSwap] Base token: ${baseTokenInfo.symbol} (${baseTokenInfo.address})`);
+  logger.debug(`[quoteSwap] Quote token: ${quoteTokenInfo.symbol} (${quoteTokenInfo.address})`);
 
   // Convert to Uniswap SDK Token objects
   const baseTokenObj = uniswap.getUniswapToken(baseTokenInfo);
@@ -50,36 +79,26 @@ async function quoteSwap(
   const exactIn = side === 'SELL';
   const [inputToken, outputToken] = exactIn ? [baseTokenObj, quoteTokenObj] : [quoteTokenObj, baseTokenObj];
 
-  logger.info(`[quoteSwap] Input token: ${inputToken.symbol} (${inputToken.address})`);
-  logger.info(`[quoteSwap] Output token: ${outputToken.symbol} (${outputToken.address})`);
-  logger.info(`[quoteSwap] Exact in: ${exactIn}`);
+  logger.debug(`[quoteSwap] Input: ${inputToken.symbol}, Output: ${outputToken.symbol}, Exact in: ${exactIn}`);
 
-  // Get quote from Universal Router
-  logger.info(`[quoteSwap] Calling getUniversalRouterQuote...`);
-  const quoteResult = await uniswap.getUniversalRouterQuote(inputToken, outputToken, amount, side, walletAddress);
-  logger.info(`[quoteSwap] Quote result received`);
+  // Get quote from AlphaRouter (smart order router with split routing)
+  // Use a placeholder address for quotes when no wallet is provided
+  const recipient = walletAddress || '0x0000000000000000000000000000000000000001';
+  const quoteResult = await uniswap.getAlphaRouterQuote(inputToken, outputToken, amount, side, recipient, slippagePct);
 
   // Generate unique quote ID
   const quoteId = uuidv4();
-  logger.info(`[quoteSwap] Generated quote ID: ${quoteId}`);
 
-  // Extract route information from quoteResult
-  const routePath = quoteResult.routePath;
-  logger.info(`[quoteSwap] Route path: ${routePath}`);
+  // Extract route information from AlphaRouter result
+  const routePath = quoteResult.routeString;
 
-  // Calculate amounts based on quote
-  let estimatedAmountIn: number;
-  let estimatedAmountOut: number;
+  // Get amounts from AlphaRouter result
+  const estimatedAmountIn = parseFloat(quoteResult.inputAmount);
+  const estimatedAmountOut = parseFloat(quoteResult.outputAmount);
 
-  if (exactIn) {
-    estimatedAmountIn = amount;
-    estimatedAmountOut = parseFloat(quoteResult.quote.toExact());
-  } else {
-    estimatedAmountIn = parseFloat(quoteResult.trade.inputAmount.toExact());
-    estimatedAmountOut = amount;
-  }
-
-  logger.info(`[quoteSwap] Estimated amounts - In: ${estimatedAmountIn}, Out: ${estimatedAmountOut}`);
+  logger.debug(
+    `[quoteSwap] Quote ${quoteId}: ${estimatedAmountIn} -> ${estimatedAmountOut}, gas: ${quoteResult.gasEstimate}`,
+  );
 
   const minAmountOut = side === 'SELL' ? estimatedAmountOut * (1 - slippagePct / 100) : estimatedAmountOut;
   const maxAmountIn = side === 'BUY' ? estimatedAmountIn * (1 + slippagePct / 100) : estimatedAmountIn;
@@ -89,13 +108,15 @@ async function quoteSwap(
     side === 'SELL'
       ? estimatedAmountOut / estimatedAmountIn // SELL: USDC per HBOT
       : estimatedAmountIn / estimatedAmountOut; // BUY: USDC per HBOT
-  logger.info(`[quoteSwap] Price: ${price}, Min out: ${minAmountOut}, Max in: ${maxAmountIn}`);
+  logger.debug(`[quoteSwap] Price: ${price}, Min out: ${minAmountOut}, Max in: ${maxAmountIn}`);
 
   // Cache the quote for execution
   // Store both quote and request data in the quote object for Uniswap
+  // Include 'trade' at top level for compatibility with executeQuote
   const cachedQuote = {
     quote: {
       ...quoteResult,
+      trade: quoteResult.route.trade, // Extract trade from SwapRoute for executeQuote compatibility
       methodParameters: quoteResult.methodParameters,
     },
     request: {
@@ -114,13 +135,13 @@ async function quoteSwap(
   quoteCache.set(quoteId, cachedQuote);
 
   logger.info(
-    `[quoteSwap] Cached quote ${quoteId}: ${estimatedAmountIn} ${inputToken.symbol} -> ${estimatedAmountOut} ${outputToken.symbol}`,
+    `[quoteSwap] Quote ${quoteId}: ${estimatedAmountIn} ${inputToken.symbol} -> ${estimatedAmountOut} ${outputToken.symbol}`,
   );
-  logger.info(`[quoteSwap] Method parameters available: ${!!quoteResult.methodParameters}`);
+  logger.debug(`[quoteSwap] Method parameters available: ${!!quoteResult.methodParameters}`);
   if (quoteResult.methodParameters) {
-    logger.info(`[quoteSwap] Calldata length: ${quoteResult.methodParameters.calldata.length}`);
-    logger.info(`[quoteSwap] Value: ${quoteResult.methodParameters.value}`);
-    logger.info(`[quoteSwap] To: ${quoteResult.methodParameters.to}`);
+    logger.debug(
+      `[quoteSwap] Calldata length: ${quoteResult.methodParameters.calldata.length}, To: ${quoteResult.methodParameters.to}`,
+    );
   }
 
   return {

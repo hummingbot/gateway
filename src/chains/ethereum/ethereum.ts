@@ -30,8 +30,6 @@ export type NewDebugMsgHandler = (msg: any) => void;
 export class Ethereum {
   private static _instances: { [name: string]: Ethereum };
   public provider: providers.StaticJsonRpcProvider;
-  public tokenList: TokenInfo[] = [];
-  public tokenMap: Record<string, TokenInfo> = {};
   public network: string;
   public nativeTokenSymbol: string;
   public chainId: number;
@@ -447,7 +445,6 @@ export class Ethereum {
    */
   public async init(): Promise<void> {
     try {
-      await this.loadTokens();
       this._initialized = true;
     } catch (e) {
       logger.error(`Failed to initialize Ethereum chain: ${e}`);
@@ -456,36 +453,15 @@ export class Ethereum {
   }
 
   /**
-   * Load tokens from the token list source
+   * Get all tokens from the token list (reads from disk each time)
    */
-  public async loadTokens(): Promise<void> {
-    logger.info(`Loading tokens for ethereum/${this.network} using TokenService`);
-    try {
-      // Use TokenService to load tokens
-      const tokens = await TokenService.getInstance().loadTokenList('ethereum', this.network);
-
-      // Convert to TokenInfo format with chainId and normalize addresses
-      this.tokenList = tokens.map((token) => ({
-        ...token,
-        address: getAddress(token.address), // Normalize to checksummed address
-        chainId: this.chainId,
-      }));
-
-      if (this.tokenList) {
-        // Build token map for faster lookups
-        this.tokenList.forEach((token: TokenInfo) => (this.tokenMap[token.symbol] = token));
-      }
-    } catch (error) {
-      logger.error(`Failed to load token list: ${error.message}`);
-      throw error;
-    }
-  }
-
-  /**
-   * Get all tokens loaded from the token list
-   */
-  public get storedTokenList(): TokenInfo[] {
-    return Object.values(this.tokenMap);
+  public async getTokenList(): Promise<TokenInfo[]> {
+    const tokens = await TokenService.getInstance().loadTokenList('ethereum', this.network);
+    return tokens.map((token) => ({
+      ...token,
+      address: getAddress(token.address), // Normalize to checksummed address
+      chainId: this.chainId,
+    }));
   }
 
   /**
@@ -494,8 +470,10 @@ export class Ethereum {
    * @returns TokenInfo object or undefined if token not found in local list
    */
   public async getToken(tokenSymbol: string): Promise<TokenInfo | undefined> {
+    const tokenList = await this.getTokenList();
+
     // First try to find token by symbol
-    const tokenBySymbol = this.tokenList.find(
+    const tokenBySymbol = tokenList.find(
       (token: TokenInfo) => token.symbol.toUpperCase() === tokenSymbol.toUpperCase() && token.chainId === this.chainId,
     );
 
@@ -507,7 +485,7 @@ export class Ethereum {
     try {
       const normalizedAddress = utils.getAddress(tokenSymbol);
       // Try to find token by normalized address
-      return this.tokenList.find(
+      return tokenList.find(
         (token: TokenInfo) =>
           token.address.toLowerCase() === normalizedAddress.toLowerCase() && token.chainId === this.chainId,
       );
@@ -567,11 +545,11 @@ export class Ethereum {
       const path = `${walletPath}/ethereum`;
       const encryptedPrivateKey = await fse.readFile(`${path}/${validatedAddress}.json`, 'utf8');
 
-      const passphrase = ConfigManagerCertPassphrase.readPassphrase();
-      if (!passphrase) {
-        throw new Error('Missing passphrase');
+      const walletKey = ConfigManagerCertPassphrase.readWalletKey();
+      if (!walletKey) {
+        throw new Error('Missing wallet encryption key');
       }
-      return await this.decrypt(encryptedPrivateKey, passphrase);
+      return await this.decrypt(encryptedPrivateKey, walletKey);
     } catch (error) {
       if (error.message.includes('Invalid Ethereum address')) {
         throw error; // Re-throw validation errors
@@ -928,34 +906,23 @@ export class Ethereum {
     return ethers.utils.isAddress(address);
   }
 
-  public async handleTransactionExecution(tx: TransactionResponse): Promise<providers.TransactionReceipt> {
+  public async handleTransactionExecution(tx: TransactionResponse): Promise<providers.TransactionReceipt | null> {
     return await Promise.race([
       tx.wait(1).then((receipt) => {
-        // Transaction confirmed
+        // Transaction confirmed (status: 1) or failed/reverted (status: 0)
         logger.info(
           `Transaction ${tx.hash} ${receipt.status === 1 ? 'confirmed' : 'failed'} in block ${receipt.blockNumber}`,
         );
         return receipt;
       }),
-      new Promise<providers.TransactionReceipt>((resolve) =>
+      new Promise<null>((resolve) =>
         setTimeout(() => {
-          // Timeout reached, treat as pending
+          // Timeout reached, transaction is still pending
+          // Return null to indicate pending - the caller should check for null
+          // Note: Do NOT return a fake receipt with status: 0, because in Ethereum
+          // receipt.status === 0 means "reverted/failed", not "pending"
           logger.warn(`Transaction ${tx.hash} is still pending after timeout`);
-          resolve({
-            transactionHash: tx.hash,
-            blockHash: '',
-            blockNumber: null,
-            transactionIndex: null,
-            from: tx.from,
-            to: tx.to || null,
-            cumulativeGasUsed: BigNumber.from(0),
-            gasUsed: BigNumber.from(0),
-            contractAddress: null,
-            logs: [],
-            logsBloom: '',
-            status: 0, // PENDING
-            effectiveGasPrice: BigNumber.from(0),
-          } as providers.TransactionReceipt);
+          resolve(null);
         }, this._transactionExecutionTimeoutMs),
       ),
     ]);
@@ -979,6 +946,7 @@ export class Ethereum {
     expectedAmountIn: number,
     expectedAmountOut: number,
     side?: 'BUY' | 'SELL',
+    txHash?: string, // Optional tx hash for pending transactions
   ): {
     signature: string;
     status: number;
@@ -996,8 +964,8 @@ export class Ethereum {
       // Transaction receipt not available - still pending
       logger.warn('Transaction pending, no receipt available yet');
       return {
-        signature: '',
-        status: 0, // PENDING
+        signature: txHash || '', // Use provided txHash for pending transactions
+        status: 0, // PENDING (TransactionStatus.PENDING = 0)
         data: undefined,
       };
     }
@@ -1009,7 +977,7 @@ export class Ethereum {
       logger.error(`Transaction ${signature} failed on-chain`);
       return {
         signature,
-        status: -1, // FAILED
+        status: -1, // FAILED (TransactionStatus.FAILED = -1)
         data: {
           tokenIn: inputToken,
           tokenOut: outputToken,
@@ -1112,6 +1080,7 @@ export class Ethereum {
 
   /**
    * Get balances for all tokens in the token list
+   * Processes tokens sequentially to prevent RPC timeouts
    */
   private async getAllTokenBalances(
     address: string,
@@ -1119,28 +1088,27 @@ export class Ethereum {
     isHardware: boolean,
     balances: Record<string, number>,
   ): Promise<void> {
-    logger.info(`Checking balances for all ${this.storedTokenList.length} tokens in the token list`);
+    const tokenList = await this.getTokenList();
+    logger.info(`Checking balances for all ${tokenList.length} tokens in the token list`);
 
-    await Promise.all(
-      this.storedTokenList.map(async (token) => {
-        try {
-          const contract = this.getContract(token.address, this.provider);
-          const balance = isHardware
-            ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 2000, token.symbol)
-            : await this.getERC20Balance(contract, wallet!, token.decimals, 2000, token.symbol);
+    for (const token of tokenList) {
+      try {
+        const contract = this.getContract(token.address, this.provider);
+        const balance = isHardware
+          ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 5000, token.symbol)
+          : await this.getERC20Balance(contract, wallet!, token.decimals, 5000, token.symbol);
 
-          const balanceNum = parseFloat(tokenValueToString(balance));
+        const balanceNum = parseFloat(tokenValueToString(balance));
 
-          // Only add tokens with non-zero balances
-          if (balanceNum > 0) {
-            balances[token.symbol] = balanceNum;
-            logger.debug(`Found non-zero balance for ${token.symbol}: ${balanceNum}`);
-          }
-        } catch (err) {
-          logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
+        // Only add tokens with non-zero balances
+        if (balanceNum > 0) {
+          balances[token.symbol] = balanceNum;
+          logger.debug(`Found non-zero balance for ${token.symbol}: ${balanceNum}`);
         }
-      }),
-    );
+      } catch (err) {
+        logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
+      }
+    }
   }
 
   /**

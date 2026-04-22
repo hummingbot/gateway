@@ -142,5 +142,38 @@ describe('UniversalRouterService', () => {
       expect(quote.methodParameters).toHaveProperty('to');
       expect(quote.methodParameters.to).toBe('0x13f4EA83D0bd40E75C8222255bc855a974568Dd4');
     });
+
+    it('should format routePath with percentage and token symbols', async () => {
+      const amount = CurrencyAmount.fromRawAmount(WBNB, '1000000000000000000');
+      const options = {
+        slippageTolerance: new Percent(1, 100),
+        deadline: Math.floor(Date.now() / 1000) + 1800,
+        recipient: '0x0000000000000000000000000000000000000001',
+        protocols: [PoolType.V2],
+      };
+
+      // Mock a simple V2 pair
+      const mockContract = {
+        getReserves: jest
+          .fn()
+          .mockResolvedValue([
+            BigNumber.from('1000000000000000000000'),
+            BigNumber.from('3000000000000'),
+            BigNumber.from('1234567890'),
+          ]),
+        token0: jest.fn().mockResolvedValue(WBNB.address),
+        token1: jest.fn().mockResolvedValue(USDC.address),
+      };
+
+      (Contract as any).mockImplementation(() => mockContract);
+
+      const quote = await universalRouter.getQuote(WBNB, USDC, amount, TradeType.EXACT_INPUT, options);
+
+      // Verify routePath format includes percentage and "via"
+      // Format should be like "100% via WBNB -> USDC" or for multi-hop "100% via LINK -> WBNB -> DAI"
+      expect(quote.routePath).toMatch(/^\d+% via .+$/);
+      expect(quote.routePath).toContain('% via');
+      expect(quote.routePath).toContain('->');
+    });
   });
 });

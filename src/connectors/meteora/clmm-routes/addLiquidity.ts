@@ -133,24 +133,34 @@ export async function addLiquidity(
   const confirmed = txData !== null;
 
   if (confirmed && txData) {
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, dlmmPool.pubkey.toBase58(), [
+    // Track wallet's balance changes for the tokens
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
       dlmmPool.tokenX.publicKey.toBase58(),
       dlmmPool.tokenY.publicKey.toBase58(),
     ]);
 
-    const tokenXAddedAmount = balanceChanges[0];
-    const tokenYAddedAmount = balanceChanges[1];
+    // Balance changes are negative (tokens leaving wallet)
+    let tokenXAddedAmount = Math.abs(balanceChanges[0]);
+    let tokenYAddedAmount = Math.abs(balanceChanges[1]);
+
+    // When SOL is base/quote, wallet pays: liquidity + tx fee
+    // Subtract fee to get actual liquidity added
+    if (tokenXSymbol === 'SOL') {
+      tokenXAddedAmount -= fee;
+    } else if (tokenYSymbol === 'SOL') {
+      tokenYAddedAmount -= fee;
+    }
 
     logger.info(
-      `Liquidity added to position ${positionAddress}: ${Math.abs(tokenXAddedAmount).toFixed(4)} ${tokenXSymbol}, ${Math.abs(tokenYAddedAmount).toFixed(4)} ${tokenYSymbol}`,
+      `Liquidity added to position ${positionAddress}: ${tokenXAddedAmount.toFixed(4)} ${tokenXSymbol}, ${tokenYAddedAmount.toFixed(4)} ${tokenYSymbol}`,
     );
 
     return {
       signature,
       status: 1, // CONFIRMED
       data: {
-        baseTokenAmountAdded: Math.abs(tokenXAddedAmount),
-        quoteTokenAmountAdded: Math.abs(tokenYAddedAmount),
+        baseTokenAmountAdded: tokenXAddedAmount,
+        quoteTokenAmountAdded: tokenYAddedAmount,
         fee,
       },
     };

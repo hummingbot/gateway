@@ -222,6 +222,8 @@ export class Pancakeswap {
         deadline: Math.floor(Date.now() / 1000 + 1800), // 30 minutes
         recipient,
         protocols: protocolsToUse,
+        maxHops: this.config.maximumHops,
+        maxSplits: this.config.maximumSplits,
       },
     );
 

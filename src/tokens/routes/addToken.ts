@@ -30,8 +30,7 @@ export const addTokenRoute: FastifyPluginAsync = async (fastify) => {
         await tokenService.addToken(chain, network, token);
 
         return {
-          message: `Token ${token.symbol} added/updated successfully in ${chain}/${network}. Gateway restart required.`,
-          requiresRestart: true,
+          message: `Token ${token.symbol} added/updated successfully in ${chain}/${network}.`,
         };
       } catch (error) {
         handleTokenError(fastify, error, 'Failed to add token');

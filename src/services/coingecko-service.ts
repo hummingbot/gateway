@@ -1,6 +1,5 @@
-import axios, { AxiosInstance } from 'axios';
-
 import { ConfigManagerV2 } from './config-manager-v2';
+import { createHttpClient, HttpClient, HttpClientError } from './http-client';
 import { logger } from './logger';
 
 /**
@@ -216,7 +215,7 @@ export interface GeckoTerminalTokenInfo {
  */
 export class CoinGeckoService {
   private static instance: CoinGeckoService;
-  private client: AxiosInstance;
+  private client: HttpClient;
   private apiKey: string | undefined;
   private baseURL = 'https://api.geckoterminal.com/api/v2';
 
@@ -224,7 +223,7 @@ export class CoinGeckoService {
     const configManager = ConfigManagerV2.getInstance();
     this.apiKey = configManager.get('apiKeys.coingecko');
 
-    this.client = axios.create({
+    this.client = createHttpClient({
       baseURL: this.baseURL,
       timeout: 30000,
       headers: {
@@ -409,7 +408,7 @@ export class CoinGeckoService {
 
       return pools;
     } catch (error: any) {
-      if (error.response?.status === 404) {
+      if (error instanceof HttpClientError && error.response?.status === 404) {
         logger.warn(`Token ${tokenAddress} not found on ${chainNetwork}`);
         return [];
       }
@@ -484,7 +483,7 @@ export class CoinGeckoService {
 
       return pools;
     } catch (error: any) {
-      if (error.response?.status === 404) {
+      if (error instanceof HttpClientError && error.response?.status === 404) {
         logger.warn(`Network ${chainNetwork} not found`);
         return [];
       }
@@ -568,7 +567,7 @@ export class CoinGeckoService {
           : undefined,
       };
     } catch (error: any) {
-      if (error.response?.status === 404) {
+      if (error instanceof HttpClientError && error.response?.status === 404) {
         throw new Error(`Token ${tokenAddress} not found on ${chainNetwork}`);
       }
 
@@ -674,7 +673,7 @@ export class CoinGeckoService {
         topPools,
       };
     } catch (error: any) {
-      if (error.response?.status === 404) {
+      if (error instanceof HttpClientError && error.response?.status === 404) {
         throw new Error(`Token ${tokenAddress} not found on ${chainNetwork}`);
       }
 
@@ -708,7 +707,7 @@ export class CoinGeckoService {
       const pool = response.data.data;
       return this.transformPool(pool);
     } catch (error: any) {
-      if (error.response?.status === 404) {
+      if (error instanceof HttpClientError && error.response?.status === 404) {
         throw new Error(`Pool ${poolAddress} not found on ${chainNetwork}`);
       }
 

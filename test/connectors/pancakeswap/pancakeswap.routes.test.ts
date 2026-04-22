@@ -45,17 +45,29 @@ describe('Pancakeswap Routes Structure', () => {
 
   describe('Route Registration', () => {
     it('should register all Pancakeswap route types', async () => {
-      const routes = fastify.printRoutes();
+      // Verify routes are registered by checking they return non-404 responses
+      // (they may return 400 for missing params, but 404 means route doesn't exist)
 
-      // Check that Pancakeswap routes are registered (both EVM and Solana)
-      expect(routes).toContain('pancakeswap');
-      expect(routes).toContain('router/');
+      // Check router route
+      const routerResponse = await fastify.inject({
+        method: 'GET',
+        url: '/connectors/pancakeswap/router/quote-swap',
+      });
+      expect(routerResponse.statusCode).not.toBe(404);
 
-      // Check that Pancakeswap AMM routes are registered
-      expect(routes).toContain('amm/');
+      // Check AMM route
+      const ammResponse = await fastify.inject({
+        method: 'GET',
+        url: '/connectors/pancakeswap/amm/pool-info',
+      });
+      expect(ammResponse.statusCode).not.toBe(404);
 
-      // Check that Pancakeswap CLMM routes are registered
-      expect(routes).toContain('clmm/');
+      // Check CLMM route
+      const clmmResponse = await fastify.inject({
+        method: 'GET',
+        url: '/connectors/pancakeswap/clmm/pool-info',
+      });
+      expect(clmmResponse.statusCode).not.toBe(404);
     });
   });
 });

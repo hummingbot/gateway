@@ -37,11 +37,12 @@ import { createRateLimitAwareSolanaConnection } from '../../rpc/rpc-connection-i
 import { RPCProvider } from '../../rpc/rpc-provider-base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import { httpErrors } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
-import { SolanaPriorityFees } from './solana-priority-fees';
+import { PriorityFeeResult, SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
 
 // Constants used for fee calculations
@@ -65,9 +66,7 @@ export class Solana {
   public network: string;
   public nativeTokenSymbol: string;
 
-  public tokenList: TokenInfo[] = [];
   public config: SolanaNetworkConfig;
-  private _tokenMap: Record<string, TokenInfo> = {};
   private rpcProviderService?: RPCProvider;
 
   private static _instances: { [name: string]: Solana };
@@ -162,8 +161,6 @@ export class Solana {
 
   private async init(): Promise<void> {
     try {
-      await this.loadTokens();
-
       // Initialize RPC provider service if configured
       if (this.rpcProviderService) {
         await this.rpcProviderService.initialize();
@@ -174,43 +171,30 @@ export class Solana {
     }
   }
 
+  /**
+   * Get the token list from TokenService (reads from disk each time)
+   */
   async getTokenList(): Promise<TokenInfo[]> {
-    // Always return the stored list loaded via TokenService
-    return this.tokenList;
-  }
-
-  async loadTokens(): Promise<void> {
-    try {
-      // Use TokenService to load tokens
-      const tokens = await TokenService.getInstance().loadTokenList('solana', this.network);
-
-      // Convert to TokenInfo format (SPL token registry format)
-      this.tokenList = tokens.map((token) => ({
-        address: token.address,
-        symbol: token.symbol,
-        name: token.name,
-        decimals: token.decimals,
-        chainId: 101, // Solana mainnet chainId
-      }));
-
-      // Create symbol -> token mapping
-      this.tokenList.forEach((token: TokenInfo) => {
-        this._tokenMap[token.symbol] = token;
-      });
-    } catch (error) {
-      logger.error(`Failed to load token list for ${this.network}: ${error.message}`);
-      throw error;
-    }
+    const tokens = await TokenService.getInstance().loadTokenList('solana', this.network);
+    return tokens.map((token) => ({
+      address: token.address,
+      symbol: token.symbol,
+      name: token.name,
+      decimals: token.decimals,
+      chainId: 101, // Solana mainnet chainId
+    }));
   }
 
   async getToken(addressOrSymbol: string): Promise<TokenInfo | null> {
+    const tokenList = await this.getTokenList();
+
     // First try to find by symbol (case-insensitive)
     const normalizedSearch = addressOrSymbol.toUpperCase().trim();
-    let token = this.tokenList.find((token: TokenInfo) => token.symbol.toUpperCase().trim() === normalizedSearch);
+    let token = tokenList.find((token: TokenInfo) => token.symbol.toUpperCase().trim() === normalizedSearch);
 
     // If not found by symbol, try to find by address
     if (!token) {
-      token = this.tokenList.find((token: TokenInfo) => token.address.toLowerCase() === addressOrSymbol.toLowerCase());
+      token = tokenList.find((token: TokenInfo) => token.address.toLowerCase() === addressOrSymbol.toLowerCase());
     }
 
     // If still not found, try to create a new token assuming addressOrSymbol is an address
@@ -278,11 +262,11 @@ export class Solana {
       // Read the wallet file using the safe path
       const encryptedPrivateKey: string = await fse.readFile(safeWalletPath, 'utf8');
 
-      const passphrase = ConfigManagerCertPassphrase.readPassphrase();
-      if (!passphrase) {
-        throw new Error('missing passphrase');
+      const walletKey = ConfigManagerCertPassphrase.readWalletKey();
+      if (!walletKey) {
+        throw new Error('missing wallet encryption key');
       }
-      const decrypted = await this.decrypt(encryptedPrivateKey, passphrase);
+      const decrypted = await this.decrypt(encryptedPrivateKey, walletKey);
 
       return Keypair.fromSecretKey(new Uint8Array(bs58.decode(decrypted)));
     } catch (error) {
@@ -376,6 +360,7 @@ export class Solana {
   async getBalance(wallet: Keypair, symbols?: string[]): Promise<Record<string, number>> {
     const publicKey = wallet.publicKey;
     const balances: Record<string, number> = {};
+    const tokenList = await this.getTokenList();
 
     // Treat empty array as if no tokens were specified
     const effectiveSymbols = symbols && symbols.length === 0 ? undefined : symbols;
@@ -456,7 +441,7 @@ export class Solana {
         }
 
         // Check if it's a token symbol in our list
-        const tokenBySymbol = this.tokenList.find((t) => t.symbol.toUpperCase() === s.toUpperCase());
+        const tokenBySymbol = tokenList.find((t) => t.symbol.toUpperCase() === s.toUpperCase());
 
         if (tokenBySymbol) {
           foundTokens.add(tokenBySymbol.symbol);
@@ -487,7 +472,7 @@ export class Solana {
               const { parsedAccount } = mintToAccount.get(mintAddress);
 
               // Try to get token from our token list
-              const token = this.tokenList.find((t) => t.address === mintAddress);
+              const token = tokenList.find((t) => t.address === mintAddress);
 
               if (token) {
                 // Token is in our list
@@ -514,10 +499,10 @@ export class Solana {
     } else {
       // No symbols provided or empty array - check all tokens in the token list
       // Note: When symbols is an empty array, we check all tokens in the token list
-      logger.info(`Checking balances for all ${this.tokenList.length} tokens in the token list`);
+      logger.info(`Checking balances for all ${tokenList.length} tokens in the token list`);
 
       // Process all tokens from the token list
-      for (const token of this.tokenList) {
+      for (const token of tokenList) {
         // Skip if already processed
         if (token.symbol === 'SOL' || foundTokens.has(token.symbol)) {
           continue;
@@ -768,6 +753,7 @@ export class Solana {
    */
   private async fetchTokenAccounts(publicKey: PublicKey): Promise<Map<string, TokenAccount>> {
     const tokenAccountsMap = new Map<string, TokenAccount>();
+    const tokenList = await this.getTokenList();
 
     try {
       // Fetch all accounts with base64 encoding - works reliably for all providers
@@ -791,7 +777,7 @@ export class Solana {
           const mintAddress = accountInfo.mint.toString();
 
           // Get decimals from token list (only process tokens in our list)
-          const tokenInList = this.tokenList.find((t) => t.address === mintAddress);
+          const tokenInList = tokenList.find((t) => t.address === mintAddress);
           if (!tokenInList) {
             // Skip tokens not in our token list
             logger.debug(`Skipping token ${mintAddress} - not in token list`);
@@ -931,11 +917,13 @@ export class Solana {
     balances: Record<string, number>,
   ): Promise<void> {
     const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
+    const tokenList = await this.getTokenList();
+
     for (const symbol of symbols) {
       if (symbol.toUpperCase() === 'SOL' || symbol === SOL_NATIVE_MINT) continue;
 
       // Try to find token by symbol
-      const tokenInfo = this.tokenList.find((t) => t.symbol.toUpperCase() === symbol.toUpperCase());
+      const tokenInfo = tokenList.find((t) => t.symbol.toUpperCase() === symbol.toUpperCase());
 
       if (tokenInfo) {
         // Token found in list
@@ -965,11 +953,12 @@ export class Solana {
     balances: Record<string, number>,
   ): Promise<void> {
     logger.info('Processing all token accounts (fetchAll=true)');
+    const tokenList = await this.getTokenList();
 
     for (const [mintAddress, tokenAccount] of tokenAccounts) {
       try {
         // Check if token is in our list
-        const tokenInfo = this.tokenList.find((t) => t.address === mintAddress);
+        const tokenInfo = tokenList.find((t) => t.address === mintAddress);
 
         if (tokenInfo) {
           const balance = this.getTokenBalance(tokenAccount, tokenInfo.decimals);
@@ -994,9 +983,10 @@ export class Solana {
     tokenAccounts: Map<string, TokenAccount>,
     balances: Record<string, number>,
   ): Promise<void> {
-    logger.info(`Checking balances for ${this.tokenList.length} tokens in token list`);
+    const tokenList = await this.getTokenList();
+    logger.info(`Checking balances for ${tokenList.length} tokens in token list`);
 
-    for (const tokenInfo of this.tokenList) {
+    for (const tokenInfo of tokenList) {
       if (tokenInfo.symbol === 'SOL') continue;
 
       const tokenAccount = tokenAccounts.get(tokenInfo.address);
@@ -1146,8 +1136,20 @@ export class Solana {
     };
   }
 
+  /**
+   * Estimate priority fee per compute unit
+   * Uses config's priorityFeeLevel and caches result for 10 seconds
+   */
   async estimateGasPrice(): Promise<number> {
     return await SolanaPriorityFees.estimatePriorityFee(this.config, this.network);
+  }
+
+  /**
+   * Estimate priority fee with detailed results including raw Helius estimate
+   * Uses config's priorityFeeLevel and caches result for 10 seconds
+   */
+  async estimateGasPriceDetailed(): Promise<PriorityFeeResult> {
+    return await SolanaPriorityFees.estimatePriorityFeeDetailed(this.config, this.network);
   }
 
   public async confirmTransaction(
@@ -1176,7 +1178,12 @@ export class Solana {
 
         // Check if transaction is already confirmed but had an error
         if (txData.meta?.err) {
-          throw new Error(`Transaction failed with error: ${JSON.stringify(txData.meta.err)}`);
+          const { parseSolanaError, getUserFriendlyErrorMessage } = await import('./solana-error-parser');
+          const errorStr = JSON.stringify(txData.meta.err);
+          const parsed = parseSolanaError(errorStr);
+          const friendlyMsg = getUserFriendlyErrorMessage(errorStr);
+          logger.error(`Transaction ${signature} failed: ${parsed.type} (code: ${parsed.errorCodeHex || 'unknown'})`);
+          throw new Error(friendlyMsg);
         }
 
         // More definitive check using slot confirmation
@@ -1207,56 +1214,12 @@ export class Solana {
       return 0;
     }
 
-    // Base fee from meta (in lamports)
-    const baseFee = txData.meta.fee || 0;
+    // meta.fee is the TOTAL fee paid (already includes base fee + priority fee)
+    // Solana RPC returns the complete fee in this field
+    const totalFeeLamports = txData.meta.fee || 0;
+    const totalFee = totalFeeLamports * LAMPORT_TO_SOL;
 
-    // Extract priority fee from compute budget instructions
-    let priorityFee = 0;
-    try {
-      const computeBudgetProgramId = 'ComputeBudget111111111111111111111111111111';
-      const instructions = txData.transaction?.message?.instructions || [];
-      const accountKeys = txData.transaction?.message?.accountKeys || [];
-
-      // Find SetComputeUnitPrice instruction
-      for (const ix of instructions) {
-        const programId = accountKeys[ix.programIdIndex]?.toString() || accountKeys[ix.programIdIndex];
-
-        if (programId === computeBudgetProgramId && ix.data) {
-          // Decode base58 instruction data
-          const data = typeof ix.data === 'string' ? bs58.decode(ix.data) : ix.data;
-
-          // SetComputeUnitPrice instruction has discriminator [3] and u64 microLamports
-          if (data.length >= 9 && data[0] === 3) {
-            // Read u64 little-endian (microlamports per CU)
-            const microLamportsPerCU =
-              data[1] |
-              (data[2] << 8) |
-              (data[3] << 16) |
-              (data[4] << 24) |
-              (data[5] << 32) |
-              (data[6] << 40) |
-              (data[7] << 48) |
-              (data[8] << 56);
-
-            // Priority fee = (microlamports per CU) * (CUs consumed) / 1,000,000
-            const computeUnitsConsumed = txData.meta.computeUnitsConsumed || 0;
-            priorityFee = Math.floor((microLamportsPerCU * computeUnitsConsumed) / 1_000_000);
-            break;
-          }
-        }
-      }
-    } catch (error) {
-      logger.warn(`Failed to extract priority fee: ${error.message}`);
-    }
-
-    // Total fee = base fee + priority fee (convert to SOL)
-    const totalFee = (baseFee + priorityFee) * LAMPORT_TO_SOL;
-
-    if (priorityFee > 0) {
-      logger.info(
-        `Transaction fees: base=${baseFee} lamports, priority=${priorityFee} lamports, total=${baseFee + priorityFee} lamports (${totalFee.toFixed(9)} SOL)`,
-      );
-    }
+    logger.info(`Transaction fee: ${totalFeeLamports} lamports (${totalFee.toFixed(9)} SOL)`);
 
     return totalFee;
   }
@@ -1325,7 +1288,9 @@ export class Solana {
       return { signature, fee: actualFee };
     }
 
-    throw new Error(`Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`);
+    throw httpErrors.transactionTimeout(
+      `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
+    );
   }
 
   private async prepareTx(
@@ -1510,6 +1475,33 @@ export class Solana {
   }
 
   /**
+   * Fetch transaction data with retry - data may not be immediately available after confirmation
+   */
+  private async _fetchTransactionWithRetry(
+    signature: string,
+    maxRetries: number = 5,
+    retryDelayMs: number = 500,
+    useParsed: boolean = false,
+  ): Promise<any> {
+    for (let i = 0; i < maxRetries; i++) {
+      const txData = useParsed
+        ? await this.connection.getParsedTransaction(signature, {
+            maxSupportedTransactionVersion: 0,
+          })
+        : await this.connection.getTransaction(signature, {
+            commitment: 'confirmed',
+            maxSupportedTransactionVersion: 0,
+          });
+      if (txData) return txData;
+      if (i < maxRetries - 1) {
+        logger.info(`Transaction ${signature} data not yet available, retry ${i + 1}/${maxRetries}...`);
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      }
+    }
+    return null;
+  }
+
+  /**
    * Confirm transaction via WebSocket monitoring
    */
   private async _confirmViaWebSocket(signature: string): Promise<{ confirmed: boolean; txData: any } | null> {
@@ -1518,18 +1510,38 @@ export class Solana {
     }
 
     try {
-      logger.info(`🚀 Sent transaction ${signature}, monitoring via WebSocket...`);
-      const confirmationResult = await this.rpcProviderService.monitorTransaction(signature, 60000);
+      const wsTimeout = this.config.confirmRetryInterval * this.config.confirmRetryCount * 1000;
+      logger.info(`🚀 Sent transaction ${signature}, monitoring via WebSocket (${wsTimeout / 1000}s timeout)...`);
+      const confirmationResult = await this.rpcProviderService.monitorTransaction(signature, wsTimeout);
 
       if (confirmationResult.confirmed) {
         logger.info(`✅ Transaction ${signature} confirmed via WebSocket`);
-        const txData = await this.connection.getTransaction(signature, {
-          commitment: 'confirmed',
-          maxSupportedTransactionVersion: 0,
-        });
+        const txData = await this._fetchTransactionWithRetry(signature);
+        if (!txData) {
+          logger.warn(`Transaction ${signature} confirmed but data not available`);
+        }
         return { confirmed: true, txData };
       } else {
         logger.warn(`❌ Transaction ${signature} not confirmed via WebSocket within timeout`);
+        // WebSocket timed out - do a final check to see if transaction landed on-chain
+        // It could have succeeded, failed, or still be pending
+        const txData = await this._fetchTransactionWithRetry(signature, 2, 500);
+        if (txData) {
+          // Transaction is on-chain - check if it succeeded or failed
+          const failed = txData.meta?.err !== null;
+          if (failed) {
+            const { parseSolanaError } = await import('./solana-error-parser');
+            const errorStr = JSON.stringify(txData.meta?.err);
+            const parsed = parseSolanaError(errorStr);
+            logger.error(
+              `❌ Transaction ${signature} failed on-chain: ${parsed.type} - ${parsed.message} (code: ${parsed.errorCodeHex || 'unknown'})`,
+            );
+          } else {
+            logger.info(`✅ Transaction ${signature} confirmed on-chain (missed WebSocket notification)`);
+          }
+          return { confirmed: !failed, txData };
+        }
+        // Transaction not found on-chain yet - return as pending
         return { confirmed: false, txData: null };
       }
     } catch (wsError: any) {
@@ -1558,16 +1570,18 @@ export class Solana {
 
         if (status) {
           if (status.err) {
-            logger.error(`❌ Transaction ${signature} failed with error:`, status.err);
+            const { parseSolanaError } = await import('./solana-error-parser');
+            const errorStr = JSON.stringify(status.err);
+            const parsed = parseSolanaError(errorStr);
+            logger.error(
+              `❌ Transaction ${signature} failed: ${parsed.type} - ${parsed.message} (code: ${parsed.errorCodeHex || 'unknown'})`,
+            );
             return { confirmed: false, txData: null };
           }
 
           if (status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized') {
             logger.info(`✅ Transaction ${signature} confirmed after ${attempts} attempts`);
-            const txData = await this.connection.getTransaction(signature, {
-              commitment: 'confirmed',
-              maxSupportedTransactionVersion: 0,
-            });
+            const txData = await this._fetchTransactionWithRetry(signature);
             return { confirmed: true, txData };
           }
         }
@@ -1664,13 +1678,11 @@ export class Solana {
     balanceChanges: number[];
     fee: number;
   }> {
-    // Fetch transaction details
-    const txDetails = await this.connection.getParsedTransaction(signature, {
-      maxSupportedTransactionVersion: 0,
-    });
+    // Fetch transaction details with retry (data may not be immediately available after confirmation)
+    const txDetails = await this._fetchTransactionWithRetry(signature, 5, 500, true);
 
     if (!txDetails) {
-      throw new Error(`Transaction ${signature} not found`);
+      throw new Error(`Transaction ${signature} not found after retries`);
     }
 
     // Calculate fee including priority fee using the same method as getFee
@@ -1864,83 +1876,44 @@ export class Solana {
   /**
    * Helper function to simulate transaction with proper error handling
    * @param transaction Transaction to simulate
-   * @param fastify Fastify instance for error responses
    * @returns Promise that resolves if simulation succeeds, throws descriptive error otherwise
    */
-  public async simulateWithErrorHandling(
-    transaction: VersionedTransaction | Transaction,
-    fastify?: any,
-  ): Promise<void> {
+  public async simulateWithErrorHandling(transaction: VersionedTransaction | Transaction): Promise<void> {
     try {
       await this.simulateTransaction(transaction);
     } catch (simulationError: any) {
       const errorMessage = simulationError?.message || '';
 
-      // Helpers to safely create HTTP-style errors even if fastify is undefined
-      const httpErrors = fastify?.httpErrors;
-      const asBadRequest = (msg: string) => {
-        if (httpErrors?.badRequest) return httpErrors.badRequest(msg);
-        const e = new Error(msg) as Error & { statusCode?: number };
-        e.statusCode = 400;
-        return e;
-      };
+      // Import error helpers and parser
+      const { simulationFailed, insufficientBalance, slippageExceeded } = await import('../../services/error-handler');
+      const { parseSolanaError } = await import('./solana-error-parser');
 
-      // Known program-specific messages
-      if (
-        errorMessage.includes('Error Code: InvalidPositionWidth') ||
-        errorMessage.includes('custom program error: 0x1798')
-      ) {
-        throw asBadRequest(
-          'Error Code: InvalidPositionWidth. Error Number: 6040. Error Message: Invalid position width. ' +
-            'Please use a position width of 69 bins or lower.',
-        );
-      }
-      if (
-        errorMessage.includes('Error Code: PriceSlippageCheck') ||
-        errorMessage.includes('custom program error: 0x1785')
-      ) {
-        throw asBadRequest(
-          'Position/Swap failed: Price slippage check failed. The calculated price from ticks does not match expected values. ' +
-            "This can happen if: (1) price moved significantly since quote was calculated, (2) token amounts don't match the price range, " +
-            'or (3) tick spacing constraints are not met. Try: increasing slippage tolerance, adjusting token amounts to better match current price, ' +
-            'or using a wider price range.',
-        );
-      }
-      if (
-        errorMessage.includes('Error Code: TooLittleOutputReceived') ||
-        errorMessage.includes('custom program error: 0x1786')
-      ) {
-        throw asBadRequest(
-          'Swap failed: Slippage tolerance exceeded. Output would be less than your minimum. Consider increasing slippage.',
-        );
-      }
-      if (
-        errorMessage.includes('Error Code: TooMuchInputPaid') ||
-        errorMessage.includes('custom program error: 0x1787')
-      ) {
-        throw asBadRequest(
-          'Swap failed: Slippage tolerance exceeded. Input would be more than your maximum. Consider increasing slippage.',
-        );
-      }
-      if (errorMessage.includes('SqrtPriceLimitOverflow') || errorMessage.includes('custom program error: 0x177d')) {
-        throw asBadRequest(
-          'Swap failed: Square root price limit overflow. Adjust price limit/direction or retry with default limits.',
-        );
-      }
-      if (errorMessage.includes('InsufficientFunds') || errorMessage.toLowerCase().includes('insufficient')) {
-        throw asBadRequest('Transaction failed: Insufficient funds. Please check your token balance.');
-      }
-      if (errorMessage.includes('AccountNotFound')) {
-        throw asBadRequest(
-          'Transaction failed: One or more required accounts not found. The pool or token accounts may not be initialized.',
-        );
-      }
+      // Parse the error using the utility
+      const parsedError = parseSolanaError(errorMessage);
 
-      // Generic fallback
-      logger.error('Transaction simulation failed:', simulationError);
-      throw asBadRequest(
-        'Transaction simulation failed. This usually means the swap parameters are invalid or market conditions changed. Try again.',
-      );
+      // Throw appropriate error based on parsed type
+      switch (parsedError.type) {
+        case 'SLIPPAGE_EXCEEDED':
+          throw slippageExceeded(parsedError.message);
+
+        case 'INSUFFICIENT_BALANCE':
+          throw insufficientBalance(parsedError.message);
+
+        case 'INVALID_POSITION':
+        case 'PRICE_LIMIT_OVERFLOW':
+        case 'ACCOUNT_NOT_FOUND':
+        case 'MATH_OVERFLOW':
+          throw simulationFailed(parsedError.message);
+
+        default:
+          // Generic simulation failure
+          logger.error('Transaction simulation failed:', simulationError);
+          throw simulationFailed(
+            parsedError.errorCodeHex
+              ? `Transaction simulation failed. Error code: ${parsedError.errorCodeHex}.`
+              : 'Transaction simulation failed.',
+          );
+      }
     }
   }
 

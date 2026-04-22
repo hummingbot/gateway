@@ -2,7 +2,7 @@ services:
   gateway:
     restart: always
     container_name: gateway
-    image: hummingbot/gateway:PR543
+    image: hummingbot/gateway:latest
     # build: # Uncomment this build section and comment image to build Hummingbot locally
     #   context: .
     #   dockerfile: Dockerfile

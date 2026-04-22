@@ -450,10 +450,6 @@ export const OrcaClmmGetPositionsOwnedRequest = Type.Object({
       examples: [solanaChainConfig.defaultWallet],
     }),
   ),
-  poolAddress: Type.String({
-    description: 'Orca CLMM pool address',
-    examples: [CLMM_POOL_ADDRESS_EXAMPLE],
-  }),
 });
 
 // Orca CLMM Quote Position Request
