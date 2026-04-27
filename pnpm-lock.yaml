@@ -178,9 +178,6 @@ importers:
       app-root-path:
         specifier: ^3.1.0
         version: 3.1.0
-      axios:
-        specifier: ^1.8.4
-        version: 1.12.0(debug@4.4.0)
       bigint-buffer:
         specifier: 1.1.5
         version: 1.1.5

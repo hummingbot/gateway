@@ -45,7 +45,9 @@ export async function executeQuote(
 
     // Jupiter needs to build the transaction with the actual user's public key
     // We'll pass the hardware wallet address to Jupiter's buildSwapTransactionForHardwareWallet
-    logger.info(`Executing quote ${quoteId} for ${inputToken.symbol} -> ${outputToken.symbol} with hardware wallet`);
+    logger.info(
+      `Executing quote ${quoteId} for ${inputToken.symbol} -> ${outputToken.symbol}, slippageBps=${quote.slippageBps} (hardware wallet)`,
+    );
 
     // Build the swap transaction for hardware wallet
     transaction = await jupiter.buildSwapTransactionForHardwareWallet(walletAddress, quote, maxLamports, priorityLevel);
@@ -58,7 +60,9 @@ export async function executeQuote(
     const keypair = await solana.getWallet(walletAddress);
     const wallet = new Wallet(keypair as any);
 
-    logger.info(`Executing quote ${quoteId} for ${inputToken.symbol} -> ${outputToken.symbol}`);
+    logger.info(
+      `Executing quote ${quoteId} for ${inputToken.symbol} -> ${outputToken.symbol}, slippageBps=${quote.slippageBps}`,
+    );
 
     // Build the swap transaction (will be signed by Jupiter)
     transaction = await jupiter.buildSwapTransaction(wallet, quote, maxLamports, priorityLevel);

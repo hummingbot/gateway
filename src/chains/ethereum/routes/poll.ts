@@ -109,8 +109,9 @@ export async function pollEthereumTransaction(
       signature,
       txBlock,
       txStatus,
+      fee: null,
+      error: null,
       txData: toEthereumTransactionResponse(txData),
-      fee: null, // Optional field
     };
   } catch (error) {
     if (error.statusCode) {

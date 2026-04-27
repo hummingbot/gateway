@@ -1,9 +1,9 @@
 import { Wallet } from '@coral-xyz/anchor';
 import { VersionedTransaction } from '@solana/web3.js';
-import axios, { AxiosInstance } from 'axios';
 
 import { Solana } from '../../chains/solana/solana';
 import { getSolanaNetworkConfig } from '../../chains/solana/solana.config';
+import { createHttpClient, HttpClient, HttpClientError } from '../../services/http-client';
 import { logger } from '../../services/logger';
 
 import { JupiterConfig } from './jupiter.config';
@@ -37,7 +37,7 @@ export class Jupiter {
   private static _instances: { [name: string]: Jupiter };
   private solana: Solana;
   public config: JupiterConfig.RootConfig;
-  private httpClient: AxiosInstance;
+  private httpClient: HttpClient;
 
   private constructor() {
     this.config = JupiterConfig.config;
@@ -63,7 +63,7 @@ export class Jupiter {
       );
     }
 
-    this.httpClient = axios.create({
+    this.httpClient = createHttpClient({
       baseURL,
       timeout: 30000,
       headers,
@@ -130,12 +130,18 @@ export class Jupiter {
       throw new Error(`Token not found: ${!inputToken ? inputTokenIdentifier : outputTokenIdentifier}`);
     }
 
-    const slippageBps = Math.round((slippagePct ?? this.config.slippagePct) * 100);
+    const effectiveSlippagePct = slippagePct ?? this.config.slippagePct;
+    const slippageBps = Math.round(effectiveSlippagePct * 100);
     const tokenDecimals = swapMode === 'ExactOut' ? outputToken.decimals : inputToken.decimals;
     const quoteAmount = Math.floor(amount * 10 ** tokenDecimals);
 
+    logger.info(
+      `Jupiter quote: ${inputToken.symbol}->${outputToken.symbol}, amount=${amount}, slippagePct=${effectiveSlippagePct}% (${slippageBps} bps), swapMode=${swapMode}, onlyDirectRoutes=${onlyDirectRoutes}, restrictIntermediateTokens=${restrictIntermediateTokens}`,
+    );
+
     // Build query parameters for the REST API
-    const params = new URLSearchParams({
+    // Note: maxAccounts parameter has been deprecated
+    const params = {
       inputMint: inputToken.address,
       outputMint: outputToken.address,
       amount: quoteAmount.toString(),
@@ -143,17 +149,12 @@ export class Jupiter {
       swapMode: swapMode,
       onlyDirectRoutes: onlyDirectRoutes.toString(),
       restrictIntermediateTokens: restrictIntermediateTokens.toString(),
-    });
+    };
 
-    // Note: maxAccounts parameter has been deprecated
-
-    logger.debug(
-      `Getting Jupiter quote for ${inputToken.symbol} to ${outputToken.symbol} with params:`,
-      Object.fromEntries(params),
-    );
+    logger.debug(`Getting Jupiter quote for ${inputToken.symbol} to ${outputToken.symbol} with params:`, params);
 
     try {
-      const response = await this.httpClient.get('/swap/v1/quote', { params });
+      const response = await this.httpClient.get<QuoteResponse>('/swap/v1/quote', { params });
       const quote = response.data;
 
       if (!quote) {
@@ -164,29 +165,30 @@ export class Jupiter {
       logger.debug('Got Jupiter quote:', quote);
       return quote;
     } catch (error) {
-      const axiosError = error as any; // Type assertion for axios error
-      logger.error('Jupiter API error:', axiosError.message);
-      if (axiosError.response?.data) {
-        logger.error('Jupiter API error response:', axiosError.response.data);
+      if (error instanceof HttpClientError) {
+        logger.error('Jupiter API error:', error.message);
+        if (error.response?.data) {
+          logger.error('Jupiter API error response:', error.response.data);
 
-        // Handle specific error messages
-        if (typeof axiosError.response.data === 'string') {
-          if (axiosError.response.data === 'Route not found') {
+          // Handle specific error messages
+          if (typeof error.response.data === 'string') {
+            if (error.response.data === 'Route not found') {
+              if (swapMode === 'ExactOut') {
+                throw new Error('ExactOut not supported for this token pair');
+              } else {
+                throw new Error('No route found for this token pair');
+              }
+            }
+            throw new Error(`Jupiter API error: ${error.response.data}`);
+          } else if (error.response.data.errorCode === 'COULD_NOT_FIND_ANY_ROUTE') {
             if (swapMode === 'ExactOut') {
               throw new Error('ExactOut not supported for this token pair');
             } else {
               throw new Error('No route found for this token pair');
             }
+          } else if (error.response.data.error) {
+            throw new Error(`Jupiter API error: ${error.response.data.error}`);
           }
-          throw new Error(`Jupiter API error: ${axiosError.response.data}`);
-        } else if (axiosError.response.data.errorCode === 'COULD_NOT_FIND_ANY_ROUTE') {
-          if (swapMode === 'ExactOut') {
-            throw new Error('ExactOut not supported for this token pair');
-          } else {
-            throw new Error('No route found for this token pair');
-          }
-        } else if (axiosError.response.data.error) {
-          throw new Error(`Jupiter API error: ${axiosError.response.data.error}`);
         }
       }
       throw error;
@@ -235,22 +237,20 @@ export class Jupiter {
           },
         };
 
-        const response = await this.httpClient.post('/swap/v1/swap', swapRequest);
+        const response = await this.httpClient.post<SwapResponse>('/swap/v1/swap', swapRequest);
         swapObj = response.data;
         break; // Success, exit the retry loop
       } catch (error) {
-        const axiosError = error as any; // Type assertion for axios error
-        lastError = axiosError;
-        logger.error(
-          `Fetching swap object attempt ${attempt}/${retryCount} failed:`,
-          axiosError.response?.status
-            ? {
-                error: axiosError.message,
-                status: axiosError.response.status,
-                data: axiosError.response.data,
-              }
-            : axiosError,
-        );
+        lastError = error instanceof Error ? error : new Error(String(error));
+        if (error instanceof HttpClientError) {
+          logger.error(`Fetching swap object attempt ${attempt}/${retryCount} failed:`, {
+            error: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+          });
+        } else {
+          logger.error(`Fetching swap object attempt ${attempt}/${retryCount} failed:`, error);
+        }
 
         if (attempt < retryCount) {
           logger.info(`Waiting ${retryInterval}ms before retry...`);
@@ -316,22 +316,20 @@ export class Jupiter {
           },
         };
 
-        const response = await this.httpClient.post('/swap/v1/swap', swapRequest);
+        const response = await this.httpClient.post<SwapResponse>('/swap/v1/swap', swapRequest);
         swapObj = response.data;
         break; // Success, exit the retry loop
       } catch (error) {
-        const axiosError = error as any;
-        lastError = axiosError;
-        logger.error(
-          `Fetching swap object attempt ${attempt}/${retryCount} failed:`,
-          axiosError.response?.status
-            ? {
-                error: axiosError.message,
-                status: axiosError.response.status,
-                data: axiosError.response.data,
-              }
-            : axiosError,
-        );
+        lastError = error instanceof Error ? error : new Error(String(error));
+        if (error instanceof HttpClientError) {
+          logger.error(`Fetching swap object attempt ${attempt}/${retryCount} failed:`, {
+            error: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+          });
+        } else {
+          logger.error(`Fetching swap object attempt ${attempt}/${retryCount} failed:`, error);
+        }
 
         if (attempt < retryCount) {
           logger.info(`Waiting ${retryInterval}ms before retry...`);

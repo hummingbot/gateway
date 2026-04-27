@@ -1,8 +1,14 @@
 // Error codes for specific error types
+// Retryable: TRANSACTION_TIMEOUT (tx submitted but confirmation timed out)
+// Non-retryable: all others (simulation failed, invalid params, etc.)
+// Special: NO_ROUTE_FOUND (can retry with flipped direction - ExactIn instead of ExactOut)
 export const ErrorCode = {
-  TRANSACTION_TIMEOUT: 'TRANSACTION_TIMEOUT',
-  INSUFFICIENT_BALANCE: 'INSUFFICIENT_BALANCE',
-  INVALID_PARAMS: 'INVALID_PARAMS',
+  TRANSACTION_TIMEOUT: 'TRANSACTION_TIMEOUT', // Retryable - tx may have succeeded
+  SIMULATION_FAILED: 'SIMULATION_FAILED', // Non-retryable - tx would fail on-chain
+  INSUFFICIENT_BALANCE: 'INSUFFICIENT_BALANCE', // Non-retryable - not enough funds
+  INVALID_PARAMS: 'INVALID_PARAMS', // Non-retryable - bad request params
+  SLIPPAGE_EXCEEDED: 'SLIPPAGE_EXCEEDED', // Non-retryable - price moved too much
+  NO_ROUTE_FOUND: 'NO_ROUTE_FOUND', // Can retry with flipped direction (ExactIn vs ExactOut)
 } as const;
 
 export type ErrorCodeType = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -77,6 +83,22 @@ export function transactionTimeout(message: string): HttpError {
   return new HttpError(504, message, ErrorCode.TRANSACTION_TIMEOUT);
 }
 
+export function simulationFailed(message: string): HttpError {
+  return new HttpError(400, message, ErrorCode.SIMULATION_FAILED);
+}
+
+export function insufficientBalance(message: string): HttpError {
+  return new HttpError(400, message, ErrorCode.INSUFFICIENT_BALANCE);
+}
+
+export function slippageExceeded(message: string): HttpError {
+  return new HttpError(400, message, ErrorCode.SLIPPAGE_EXCEEDED);
+}
+
+export function noRouteFound(message: string): HttpError {
+  return new HttpError(400, message, ErrorCode.NO_ROUTE_FOUND);
+}
+
 /**
  * HTTP errors object - drop-in replacement for fastify.httpErrors
  */
@@ -87,5 +109,9 @@ export const httpErrors = {
   serviceUnavailable,
   forbidden,
   transactionTimeout,
+  simulationFailed,
+  insufficientBalance,
+  slippageExceeded,
+  noRouteFound,
   createError: (statusCode: number, message: string) => new HttpError(statusCode, message),
 };

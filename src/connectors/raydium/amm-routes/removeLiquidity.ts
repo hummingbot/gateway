@@ -209,7 +209,7 @@ async function removeLiquidity(
     )) as Transaction;
   }
 
-  await solana.simulateWithErrorHandling(signedTransaction, _fastify);
+  await solana.simulateWithErrorHandling(signedTransaction);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(signedTransaction);
   if (confirmed && txData) {

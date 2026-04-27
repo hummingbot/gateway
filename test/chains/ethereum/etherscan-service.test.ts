@@ -1,9 +1,16 @@
-import axios from 'axios';
-
 import { EtherscanService } from '../../../src/chains/ethereum/etherscan-service';
+import { HttpClientError, httpGet } from '../../../src/services/http-client';
 
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+// Mock only the httpGet function, keep other exports (like HttpClientError)
+jest.mock('../../../src/services/http-client', () => {
+  const actual = jest.requireActual('../../../src/services/http-client');
+  return {
+    ...actual,
+    httpGet: jest.fn(),
+  };
+});
+
+const mockedHttpGet = httpGet as jest.MockedFunction<typeof httpGet>;
 
 describe('EtherscanService', () => {
   let etherscanService: EtherscanService;
@@ -82,9 +89,11 @@ describe('EtherscanService', () => {
             gasUsedRatio: '0.435419730941365,0.0126618899438999',
           },
         },
+        status: 200,
+        statusText: 'OK',
       };
 
-      mockedAxios.get.mockResolvedValue(mockResponse);
+      mockedHttpGet.mockResolvedValue(mockResponse);
 
       const result = await etherscanService.getGasOracle();
 
@@ -95,7 +104,7 @@ describe('EtherscanService', () => {
         priorityFeeFast: 0.32341308,
       });
 
-      expect(mockedAxios.get).toHaveBeenCalledWith(
+      expect(mockedHttpGet).toHaveBeenCalledWith(
         'https://api.etherscan.io/v2/api',
         expect.objectContaining({
           params: {
@@ -116,9 +125,11 @@ describe('EtherscanService', () => {
           message: 'NOTOK',
           result: 'Error! Invalid API key',
         },
+        status: 200,
+        statusText: 'OK',
       };
 
-      mockedAxios.get.mockResolvedValue(mockResponse);
+      mockedHttpGet.mockResolvedValue(mockResponse);
 
       await expect(etherscanService.getGasOracle()).rejects.toThrow(
         'Failed to fetch gas data from Etherscan: Etherscan API error: NOTOK',
@@ -126,23 +137,21 @@ describe('EtherscanService', () => {
     });
 
     it('should handle 401 unauthorized error', async () => {
-      const mockError = {
-        response: { status: 401 },
-        message: 'Unauthorized',
-      };
+      const mockError = new HttpClientError('Unauthorized', {
+        status: 401,
+        statusText: 'Unauthorized',
+      });
 
-      mockedAxios.get.mockRejectedValue(mockError);
+      mockedHttpGet.mockRejectedValue(mockError);
 
       await expect(etherscanService.getGasOracle()).rejects.toThrow('Invalid Etherscan API key');
     });
 
     it('should handle timeout error', async () => {
-      const mockError = {
-        code: 'ETIMEDOUT',
-        message: 'Timeout',
-      };
+      const mockError = new HttpClientError('Timeout');
+      mockError.code = 'ECONNABORTED';
 
-      mockedAxios.get.mockRejectedValue(mockError);
+      mockedHttpGet.mockRejectedValue(mockError);
 
       await expect(etherscanService.getGasOracle()).rejects.toThrow('Etherscan API request timeout');
     });
@@ -164,13 +173,15 @@ describe('EtherscanService', () => {
             UsdPrice: '0.19475759691524',
           },
         },
+        status: 200,
+        statusText: 'OK',
       };
 
-      mockedAxios.get.mockResolvedValue(mockResponse);
+      mockedHttpGet.mockResolvedValue(mockResponse);
 
       await polygonService.getGasOracle();
 
-      expect(mockedAxios.get).toHaveBeenCalledWith(
+      expect(mockedHttpGet).toHaveBeenCalledWith(
         'https://api.etherscan.io/v2/api',
         expect.objectContaining({
           params: expect.objectContaining({
@@ -198,9 +209,11 @@ describe('EtherscanService', () => {
             gasUsedRatio: '0.5',
           },
         },
+        status: 200,
+        statusText: 'OK',
       };
 
-      mockedAxios.get.mockResolvedValue(mockResponse);
+      mockedHttpGet.mockResolvedValue(mockResponse);
     });
 
     it('should return propose (average) speed prices by default', async () => {

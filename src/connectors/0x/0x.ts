@@ -1,8 +1,8 @@
-import axios, { AxiosInstance } from 'axios';
 import { BigNumber } from 'ethers';
 
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import { createHttpClient, HttpClient, HttpClientError } from '../../services/http-client';
 import { logger } from '../../services/logger';
 
 import { ZeroXConfig } from './0x.config';
@@ -57,7 +57,7 @@ export interface ZeroXQuoteResponse extends ZeroXPriceResponse {
 
 export class ZeroX {
   private static instances: Map<string, ZeroX> = new Map();
-  private client: AxiosInstance;
+  private client: HttpClient;
   private apiKey: string;
   private _slippagePct: number;
 
@@ -76,7 +76,7 @@ export class ZeroX {
 
     const apiEndpoint = ZeroXConfig.getApiEndpoint(network);
 
-    this.client = axios.create({
+    this.client = createHttpClient({
       baseURL: apiEndpoint,
       timeout: ConfigManagerV2.getInstance().get('0x.requestTimeout') || 30000,
       headers: {
@@ -84,26 +84,8 @@ export class ZeroX {
         '0x-version': 'v2',
         'Content-Type': 'application/json',
       },
+      enableLogging: ConfigManagerV2.getInstance().get('0x.enableLogging'),
     });
-
-    // Add request/response logging if enabled
-    if (ConfigManagerV2.getInstance().get('0x.enableLogging')) {
-      this.client.interceptors.request.use((config) => {
-        logger.debug(`0x API Request: ${config.method} ${config.url}`);
-        return config;
-      });
-
-      this.client.interceptors.response.use(
-        (response) => {
-          logger.debug(`0x API Response: ${response.status}`);
-          return response;
-        },
-        (error) => {
-          logger.error(`0x API Error: ${error.message}`);
-          return Promise.reject(error);
-        },
-      );
-    }
   }
 
   public static async getInstance(network: string): Promise<ZeroX> {
@@ -151,7 +133,7 @@ export class ZeroX {
 
       return response.data;
     } catch (error: any) {
-      if (error.response?.data) {
+      if (error instanceof HttpClientError && error.response?.data) {
         logger.error(`0x API Error Response: ${JSON.stringify(error.response.data)}`);
         throw new Error(
           `0x API Error: ${error.response.data.reason || error.response.data.message || JSON.stringify(error.response.data)}`,
@@ -195,7 +177,7 @@ export class ZeroX {
 
       return response.data;
     } catch (error: any) {
-      if (error.response?.data) {
+      if (error instanceof HttpClientError && error.response?.data) {
         logger.error(`0x API Error Response: ${JSON.stringify(error.response.data)}`);
         throw new Error(
           `0x API Error: ${error.response.data.reason || error.response.data.message || JSON.stringify(error.response.data)}`,

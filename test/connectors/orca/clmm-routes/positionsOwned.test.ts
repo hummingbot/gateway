@@ -78,7 +78,6 @@ describe('GET /positions-owned', () => {
       query: {
         network: 'mainnet-beta',
         walletAddress: mockWalletAddress,
-        poolAddress: 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE',
       },
     });
 
@@ -108,7 +107,6 @@ describe('GET /positions-owned', () => {
       query: {
         network: 'mainnet-beta',
         walletAddress: mockWalletAddress,
-        poolAddress: 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE',
       },
     });
 
@@ -131,7 +129,12 @@ describe('GET /positions-owned', () => {
     expect(response.statusCode).toBe(400);
   });
 
-  it('should return 400 when poolAddress is missing', async () => {
+  it('should succeed when poolAddress is not provided', async () => {
+    const mockOrca = {
+      getPositionsForWalletAddress: jest.fn().mockResolvedValue(mockPositions),
+    };
+    (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
+
     const response = await app.inject({
       method: 'GET',
       url: '/positions-owned',
@@ -141,7 +144,7 @@ describe('GET /positions-owned', () => {
       },
     });
 
-    expect(response.statusCode).toBe(400);
+    expect(response.statusCode).toBe(200);
   });
 
   it('should use default network if not provided', async () => {
@@ -155,7 +158,6 @@ describe('GET /positions-owned', () => {
       url: '/positions-owned',
       query: {
         walletAddress: mockWalletAddress,
-        poolAddress: 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE',
       },
     });
 
@@ -175,7 +177,6 @@ describe('GET /positions-owned', () => {
       query: {
         network: 'mainnet-beta',
         walletAddress: mockWalletAddress,
-        poolAddress: 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE',
       },
     });
 
@@ -192,7 +193,6 @@ describe('GET /positions-owned', () => {
         query: {
           network: 'mainnet-beta',
           walletAddress: invalidAddress,
-          poolAddress: 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE',
         },
       });
 

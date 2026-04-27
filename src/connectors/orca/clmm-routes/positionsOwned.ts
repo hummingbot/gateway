@@ -43,7 +43,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     '/positions-owned',
     {
       schema: {
-        description: "Retrieve a list of positions owned by a user's wallet in a specific Orca pool",
+        description: "Retrieve all positions owned by a user's wallet across Orca CLMM pools",
         tags: ['/connector/orca'],
         querystring: OrcaClmmGetPositionsOwnedRequest,
         response: {

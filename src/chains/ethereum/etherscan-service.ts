@@ -1,5 +1,4 @@
-import axios from 'axios';
-
+import { httpGet, HttpClientError } from '../../services/http-client';
 import { logger } from '../../services/logger';
 
 /**
@@ -91,7 +90,7 @@ export class EtherscanService {
         `Request params: ${JSON.stringify({ chainid: this.chainId, module: 'gastracker', action: 'gasoracle', apikey: '***' })}`,
       );
 
-      const response = await axios.get<EtherscanGasOracleResponse>(EtherscanService.BASE_URL, {
+      const response = await httpGet<EtherscanGasOracleResponse>(EtherscanService.BASE_URL, {
         params,
         timeout: 5000,
       });
@@ -119,11 +118,13 @@ export class EtherscanService {
 
       return gasData;
     } catch (error: any) {
-      if (error.response?.status === 401) {
-        throw new Error('Invalid Etherscan API key');
-      }
-      if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
-        throw new Error('Etherscan API request timeout');
+      if (error instanceof HttpClientError) {
+        if (error.response?.status === 401) {
+          throw new Error('Invalid Etherscan API key');
+        }
+        if (error.code === 'ECONNABORTED') {
+          throw new Error('Etherscan API request timeout');
+        }
       }
       throw new Error(`Failed to fetch gas data from Etherscan: ${error.message}`);
     }
