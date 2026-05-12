@@ -4,18 +4,8 @@
 
 import { connectorsConfig } from '../config/routes/getConnectors';
 
-export interface PoolGeckoData {
-  volumeUsd24h: string;
-  liquidityUsd: string;
-  priceNative: string;
-  priceUsd: string;
-  buys24h: number;
-  sells24h: number;
-  apr?: number; // Annualized percentage rate: (volume * feePct / liquidity) * 365
-  timestamp: number;
-}
-
 export interface PoolTemplate {
+  connector: string; // 'raydium', 'uniswap', 'orca', etc.
   type: 'amm' | 'clmm';
   network: string;
   baseSymbol: string; // Required - resolved from token service or CoinGecko
@@ -26,10 +16,7 @@ export interface PoolTemplate {
   address: string;
 }
 
-export interface Pool extends PoolTemplate {
-  // Optional CoinGecko market data (stored when saving pools)
-  geckoData?: PoolGeckoData;
-}
+export type Pool = PoolTemplate;
 
 export type PoolFileFormat = Pool[];
 
@@ -49,13 +36,15 @@ export function isSupportedConnector(connector: string): boolean {
 }
 
 export interface PoolListRequest {
-  connector: string;
-  network?: string;
+  chain: string;
+  network: string;
+  connector?: string; // Optional filter by connector
   type?: 'amm' | 'clmm';
   search?: string;
 }
 
 export interface PoolAddRequest {
+  chain: string;
   connector: string;
   type: 'amm' | 'clmm';
   network: string;

@@ -1,5 +1,6 @@
 [
   {
+    "connector": "pancakeswap",
     "type": "clmm",
     "network": "bsc",
     "baseSymbol": "USDT",
@@ -10,6 +11,7 @@
     "address": "0x172fcd41e0913e95784454622d1c3724f546f849"
   },
   {
+    "connector": "pancakeswap",
     "type": "clmm",
     "network": "bsc",
     "baseSymbol": "CAKE",

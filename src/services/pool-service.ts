@@ -30,24 +30,29 @@ export class PoolService {
 
   /**
    * Get the path to a pool list file with security validation
+   * Now uses chain/network structure instead of connector
    */
-  private getPoolListPath(connector: string): string {
+  private getPoolListPath(chain: string, network: string): string {
     // Validate inputs to prevent path traversal
-    if (!connector) {
-      throw new Error('Connector parameter is required');
+    if (!chain || !network) {
+      throw new Error('Chain and network parameters are required');
     }
 
     // Remove any path traversal attempts
-    const sanitizedConnector = path.basename(connector);
+    const sanitizedChain = path.basename(chain);
+    const sanitizedNetwork = path.basename(network);
 
     // Additional validation - only allow alphanumeric, dash, and underscore
     const validPathRegex = /^[a-zA-Z0-9_-]+$/;
-    if (!validPathRegex.test(sanitizedConnector)) {
-      throw new Error(`Invalid connector name: ${connector}`);
+    if (!validPathRegex.test(sanitizedChain)) {
+      throw new Error(`Invalid chain name: ${chain}`);
+    }
+    if (!validPathRegex.test(sanitizedNetwork)) {
+      throw new Error(`Invalid network name: ${network}`);
     }
 
-    // Construct the path - now using flat structure
-    const poolListPath = path.join(rootPath(), 'conf', 'pools', `${sanitizedConnector}.json`);
+    // Construct the path - now using chain/network structure
+    const poolListPath = path.join(rootPath(), 'conf', 'pools', sanitizedChain, `${sanitizedNetwork}.json`);
 
     // Ensure the resolved path is within the expected directory
     const expectedRoot = path.join(rootPath(), 'conf', 'pools');
@@ -61,17 +66,33 @@ export class PoolService {
 
   /**
    * Get the template path for initial pool data
+   * Now uses chain/network structure
    */
-  private getTemplatePath(connector: string): string {
-    const sanitizedConnector = path.basename(connector);
+  private getTemplatePath(chain: string, network: string): string {
+    const sanitizedChain = path.basename(chain);
+    const sanitizedNetwork = path.basename(network);
 
-    return path.join(rootPath(), 'dist', 'src', 'templates', 'pools', `${sanitizedConnector}.json`);
+    return path.join(rootPath(), 'dist', 'src', 'templates', 'pools', sanitizedChain, `${sanitizedNetwork}.json`);
   }
 
   /**
-   * Validate connector
+   * Validate chain
    */
-  private async validateConnector(connector: string): Promise<void> {
+  private validateChain(chain: string): SupportedChain {
+    switch (chain.toLowerCase()) {
+      case 'ethereum':
+        return SupportedChain.ETHEREUM;
+      case 'solana':
+        return SupportedChain.SOLANA;
+      default:
+        throw new Error(`Unsupported chain: ${chain}. Supported chains: ethereum, solana`);
+    }
+  }
+
+  /**
+   * Validate connector (optional, for filtering)
+   */
+  private validateConnector(connector: string): void {
     if (!isSupportedConnector(connector)) {
       throw new Error(
         `Unsupported connector: ${connector}. Supported connectors: ${getSupportedConnectors().join(', ')}`,
@@ -80,34 +101,10 @@ export class PoolService {
   }
 
   /**
-   * Get chain for a connector by looking it up in the connectors configuration
-   */
-  private getChainForConnector(connector: string): SupportedChain {
-    // Find the connector configuration
-    const connectorInfo = connectorsConfig.find((c) => c.name === connector);
-
-    if (!connectorInfo) {
-      throw new Error(
-        `Unknown connector: ${connector}. Available connectors: ${connectorsConfig.map((c) => c.name).join(', ')}`,
-      );
-    }
-
-    // Map chain string to SupportedChain enum
-    switch (connectorInfo.chain.toLowerCase()) {
-      case 'ethereum':
-        return SupportedChain.ETHEREUM;
-      case 'solana':
-        return SupportedChain.SOLANA;
-      default:
-        throw new Error(`Unsupported chain '${connectorInfo.chain}' for connector: ${connector}`);
-    }
-  }
-
-  /**
    * Initialize pool list from template if it doesn't exist
    */
-  private async initializePoolList(connector: string): Promise<Pool[]> {
-    const templatePath = this.getTemplatePath(connector);
+  private async initializePoolList(chain: string, network: string): Promise<Pool[]> {
+    const templatePath = this.getTemplatePath(chain, network);
 
     // If template exists, use it
     if (fs.existsSync(templatePath)) {
@@ -115,7 +112,7 @@ export class PoolService {
         const data = await readFile(templatePath, 'utf8');
         return JSON.parse(data);
       } catch (error) {
-        logger.warn(`Failed to read template for ${connector}: ${error.message}`);
+        logger.warn(`Failed to read template for ${chain}/${network}: ${error.message}`);
       }
     }
 
@@ -126,16 +123,16 @@ export class PoolService {
   /**
    * Load pool list from file
    */
-  public async loadPoolList(connector: string): Promise<Pool[]> {
-    await this.validateConnector(connector);
+  public async loadPoolList(chain: string, network: string): Promise<Pool[]> {
+    this.validateChain(chain);
 
-    const poolListPath = this.getPoolListPath(connector);
+    const poolListPath = this.getPoolListPath(chain, network);
 
     if (!fs.existsSync(poolListPath)) {
       // Initialize from template if available
-      const initialPools = await this.initializePoolList(connector);
+      const initialPools = await this.initializePoolList(chain, network);
       if (initialPools.length > 0) {
-        await this.savePoolList(connector, initialPools);
+        await this.savePoolList(chain, network, initialPools);
         return initialPools;
       }
       return [];
@@ -160,20 +157,18 @@ export class PoolService {
 
   /**
    * Save pool list to file with atomic write
-   * Strips geckoData before saving (only saves core pool template data)
    */
-  public async savePoolList(connector: string, pools: Pool[]): Promise<void> {
-    await this.validateConnector(connector);
+  public async savePoolList(chain: string, network: string, pools: Pool[]): Promise<void> {
+    this.validateChain(chain);
 
-    const poolListPath = this.getPoolListPath(connector);
+    const poolListPath = this.getPoolListPath(chain, network);
     const dirPath = path.dirname(poolListPath);
 
-    // Ensure directory exists
+    // Ensure directory exists (now includes chain subdirectory)
     if (!fs.existsSync(dirPath)) {
       await fse.ensureDir(dirPath);
     }
 
-    // Save pools with geckoData included (similar to token storage)
     // Use atomic write (write to temp file then rename)
     const tempPath = `${poolListPath}.tmp`;
 
@@ -190,16 +185,22 @@ export class PoolService {
   }
 
   /**
-   * List all pools for a connector with optional filtering
+   * List all pools for a chain/network with optional filtering
    */
-  public async listPools(connector: string, network?: string, type?: 'amm' | 'clmm', search?: string): Promise<Pool[]> {
-    const pools = await this.loadPoolList(connector);
+  public async listPools(
+    chain: string,
+    network: string,
+    connector?: string,
+    type?: 'amm' | 'clmm',
+    search?: string,
+  ): Promise<Pool[]> {
+    const pools = await this.loadPoolList(chain, network);
 
     let filteredPools = pools;
 
-    // Filter by network if specified
-    if (network) {
-      filteredPools = filteredPools.filter((pool) => pool.network === network);
+    // Filter by connector if specified
+    if (connector) {
+      filteredPools = filteredPools.filter((pool) => pool.connector === connector);
     }
 
     // Filter by type if specified
@@ -225,13 +226,14 @@ export class PoolService {
    * Get a specific pool by token pair
    */
   public async getPool(
-    connector: string,
+    chain: string,
     network: string,
     type: 'amm' | 'clmm',
     baseSymbol: string,
     quoteSymbol: string,
+    connector?: string,
   ): Promise<Pool | null> {
-    const pools = await this.listPools(connector, network, type);
+    const pools = await this.listPools(chain, network, connector, type);
 
     // Find by exact match or reversed match
     const pool = pools.find(
@@ -246,7 +248,15 @@ export class PoolService {
   /**
    * Validate pool data
    */
-  public async validatePool(connector: string, pool: Pool): Promise<void> {
+  public async validatePool(chain: string, pool: Pool): Promise<void> {
+    // Validate connector field
+    if (!pool.connector || pool.connector.trim() === '') {
+      throw new Error('Connector is required');
+    }
+
+    // Validate connector is supported
+    this.validateConnector(pool.connector);
+
     // Validate optional symbol fields (warn if empty but don't fail)
     if (pool.baseSymbol && pool.baseSymbol.trim() === '') {
       logger.warn('Base token symbol is empty string');
@@ -287,9 +297,9 @@ export class PoolService {
     }
 
     // Validate address format based on chain
-    const chain = this.getChainForConnector(connector);
+    const chainEnum = this.validateChain(chain);
 
-    if (chain === SupportedChain.SOLANA) {
+    if (chainEnum === SupportedChain.SOLANA) {
       // Validate Solana addresses
       try {
         new PublicKey(pool.address);
@@ -298,7 +308,7 @@ export class PoolService {
       } catch {
         throw new Error('Invalid Solana address');
       }
-    } else if (chain === SupportedChain.ETHEREUM) {
+    } else if (chainEnum === SupportedChain.ETHEREUM) {
       // Validate Ethereum addresses
       if (!ethers.utils.isAddress(pool.address)) {
         throw new Error('Invalid Ethereum pool address');
@@ -320,10 +330,10 @@ export class PoolService {
   /**
    * Add a new pool
    */
-  public async addPool(connector: string, pool: Pool): Promise<void> {
-    await this.validatePool(connector, pool);
+  public async addPool(chain: string, network: string, pool: Pool): Promise<void> {
+    await this.validatePool(chain, pool);
 
-    const pools = await this.loadPoolList(connector);
+    const pools = await this.loadPoolList(chain, network);
 
     // Check for duplicate address only
     if (pools.some((p) => p.address.toLowerCase() === pool.address.toLowerCase())) {
@@ -331,54 +341,53 @@ export class PoolService {
     }
 
     pools.push(pool);
-    await this.savePoolList(connector, pools);
+    await this.savePoolList(chain, network, pools);
   }
 
   /**
    * Remove a pool by address
    */
-  public async removePool(connector: string, network: string, type: 'amm' | 'clmm', address: string): Promise<void> {
-    const pools = await this.loadPoolList(connector);
+  public async removePool(chain: string, network: string, address: string): Promise<void> {
+    const pools = await this.loadPoolList(chain, network);
     const initialLength = pools.length;
 
-    const filteredPools = pools.filter(
-      (p) => !(p.address.toLowerCase() === address.toLowerCase() && p.network === network && p.type === type),
-    );
+    const filteredPools = pools.filter((p) => p.address.toLowerCase() !== address.toLowerCase());
 
     if (filteredPools.length === initialLength) {
-      throw new Error(`Pool with address ${address} not found on ${network} ${type}`);
+      throw new Error(`Pool with address ${address} not found on ${chain}/${network}`);
     }
 
-    await this.savePoolList(connector, filteredPools);
+    await this.savePoolList(chain, network, filteredPools);
   }
 
   /**
    * Get a pool by address
    */
-  public async getPoolByAddress(connector: string, address: string): Promise<Pool | null> {
-    const pools = await this.loadPoolList(connector);
+  public async getPoolByAddress(chain: string, network: string, address: string): Promise<Pool | null> {
+    const pools = await this.loadPoolList(chain, network);
     return pools.find((p) => p.address.toLowerCase() === address.toLowerCase()) || null;
   }
 
   /**
-   * Get a pool by metadata (type, network, token addresses)
+   * Get a pool by metadata (type, token addresses, optional connector)
    * This finds pools with identical token pair but potentially different fee tiers or addresses
    */
   public async getPoolByMetadata(
-    connector: string,
-    type: 'amm' | 'clmm',
+    chain: string,
     network: string,
+    type: 'amm' | 'clmm',
     baseTokenAddress: string,
     quoteTokenAddress: string,
+    connector?: string,
   ): Promise<Pool | null> {
-    const pools = await this.loadPoolList(connector);
+    const pools = await this.loadPoolList(chain, network);
     return (
       pools.find(
         (p) =>
           p.type === type &&
-          p.network === network &&
           p.baseTokenAddress.toLowerCase() === baseTokenAddress.toLowerCase() &&
-          p.quoteTokenAddress.toLowerCase() === quoteTokenAddress.toLowerCase(),
+          p.quoteTokenAddress.toLowerCase() === quoteTokenAddress.toLowerCase() &&
+          (!connector || p.connector === connector),
       ) || null
     );
   }
@@ -386,10 +395,10 @@ export class PoolService {
   /**
    * Update an existing pool by address
    */
-  public async updatePoolByAddress(connector: string, pool: Pool): Promise<void> {
-    await this.validatePool(connector, pool);
+  public async updatePoolByAddress(chain: string, network: string, pool: Pool): Promise<void> {
+    await this.validatePool(chain, pool);
 
-    const pools = await this.loadPoolList(connector);
+    const pools = await this.loadPoolList(chain, network);
 
     // Find the pool to update by address
     const existingIndex = pools.findIndex((p) => p.address.toLowerCase() === pool.address.toLowerCase());
@@ -400,28 +409,28 @@ export class PoolService {
 
     // Update the pool
     pools[existingIndex] = pool;
-    await this.savePoolList(connector, pools);
+    await this.savePoolList(chain, network, pools);
   }
 
   /**
    * Update an existing pool
    */
-  public async updatePool(connector: string, pool: Pool): Promise<void> {
-    await this.validatePool(connector, pool);
+  public async updatePool(chain: string, network: string, pool: Pool): Promise<void> {
+    await this.validatePool(chain, pool);
 
-    const pools = await this.loadPoolList(connector);
+    const pools = await this.loadPoolList(chain, network);
 
-    // Find the pool to update by matching token pair, network, and type
+    // Find the pool to update by matching token pair, connector, and type
     const existingIndex = pools.findIndex(
       (p) =>
-        p.network === pool.network &&
+        p.connector === pool.connector &&
         p.type === pool.type &&
         ((p.baseSymbol === pool.baseSymbol && p.quoteSymbol === pool.quoteSymbol) ||
           (p.baseSymbol === pool.quoteSymbol && p.quoteSymbol === pool.baseSymbol)),
     );
 
     if (existingIndex === -1) {
-      throw new Error(`Pool for ${pool.baseSymbol}-${pool.quoteSymbol} not found on ${pool.network} ${pool.type}`);
+      throw new Error(`Pool for ${pool.baseSymbol}-${pool.quoteSymbol} not found on ${network} ${pool.type}`);
     }
 
     // Check if the new address is already used by another pool
@@ -435,19 +444,20 @@ export class PoolService {
 
     // Update the pool
     pools[existingIndex] = pool;
-    await this.savePoolList(connector, pools);
+    await this.savePoolList(chain, network, pools);
   }
 
   /**
-   * Get default pools for a connector in the format expected by connectors
+   * Get default pools for a chain/network/connector in the format expected by connectors
    */
   public async getDefaultPools(
-    connector: string,
+    chain: string,
     network: string,
     type: 'amm' | 'clmm',
+    connector?: string,
   ): Promise<Record<string, string>> {
     try {
-      const pools = await this.listPools(connector, network, type);
+      const pools = await this.listPools(chain, network, connector, type);
       const poolMap: Record<string, string> = {};
 
       for (const pool of pools) {
@@ -460,5 +470,20 @@ export class PoolService {
       logger.error(`Failed to get default pools: ${error.message}`);
       return {};
     }
+  }
+
+  /**
+   * Get chain for a connector by looking it up in the connectors configuration
+   */
+  public getChainForConnector(connector: string): string {
+    const connectorInfo = connectorsConfig.find((c) => c.name === connector);
+
+    if (!connectorInfo) {
+      throw new Error(
+        `Unknown connector: ${connector}. Available connectors: ${connectorsConfig.map((c) => c.name).join(', ')}`,
+      );
+    }
+
+    return connectorInfo.chain;
   }
 }

@@ -1,23 +1,11 @@
-import { Solana } from '../../../../src/chains/solana/solana';
 import { Orca } from '../../../../src/connectors/orca/orca';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 
-jest.mock('../../../../src/chains/solana/solana', () => ({
-  Solana: {
-    getInstance: jest.fn(),
-  },
-}));
-
-jest.mock('../../../../src/connectors/orca/orca', () => ({
-  Orca: {
-    getInstance: jest.fn(),
-  },
-}));
-
+jest.mock('../../../../src/connectors/orca/orca');
 jest.mock('../../../../src/chains/solana/solana.config', () => ({
   getSolanaChainConfig: jest.fn().mockReturnValue({
     defaultNetwork: 'mainnet-beta',
-    defaultWallet: 'BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF',
+    defaultWallet: '11111111111111111111111111111111',
   }),
 }));
 
@@ -29,168 +17,211 @@ const buildApp = async () => {
   return server;
 };
 
-describe('GET /fetch-pools', () => {
-  let app: ReturnType<typeof fastifyWithTypeProvider>;
+// Mock Orca API response format
+const mockOrcaApiResponse = [
+  {
+    address: 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE',
+    tokenMintA: 'So11111111111111111111111111111111111111112',
+    tokenMintB: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    tokenA: {
+      symbol: 'SOL',
+      name: 'Wrapped SOL',
+      decimals: 9,
+      imageUrl:
+        'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
+    },
+    tokenB: {
+      symbol: 'USDC',
+      name: 'USD Coin',
+      decimals: 6,
+      imageUrl:
+        'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png',
+    },
+    tickSpacing: 64,
+    feeRate: 2500, // 0.25% in hundredths of basis points
+    price: '150.5',
+    tvlUsdc: 5000000,
+    feeApr: { day: 0.15 },
+    totalApr: { day: 0.25 },
+    volume: { day: 1000000 },
+    fees: { day: 2500 },
+  },
+  {
+    address: '2AEWSvUds1wsufnsDPCXjFsJCMJH5SNNm7fSF4kxys9a',
+    tokenMintA: 'So11111111111111111111111111111111111111112',
+    tokenMintB: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+    tokenA: {
+      symbol: 'SOL',
+      name: 'Wrapped SOL',
+      decimals: 9,
+      imageUrl: 'https://example.com/sol.png',
+    },
+    tokenB: {
+      symbol: 'USDT',
+      name: 'USDT',
+      decimals: 6,
+      imageUrl: 'https://example.com/usdt.png',
+    },
+    tickSpacing: 64,
+    feeRate: 2500,
+    price: '148.2',
+    tvlUsdc: 3000000,
+    feeApr: { day: 0.12 },
+    totalApr: { day: 0.2 },
+    volume: { day: 800000 },
+    fees: { day: 2000 },
+  },
+];
+
+describe('GET /fetch-pools (Orca)', () => {
+  let server: any;
 
   beforeAll(async () => {
-    app = await buildApp();
-    await app.ready();
+    server = await buildApp();
   });
 
   afterAll(async () => {
-    await app.close();
+    if (server) {
+      await server.close();
+    }
   });
 
-  describe('successful pool fetching', () => {
-    it('should fetch pools successfully', async () => {
-      const mockPools = [
-        {
-          address: 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE',
-          baseTokenAddress: 'So11111111111111111111111111111111111111112',
-          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-          binStep: 64,
-          feePct: 0.25,
-          price: 150.5,
-          baseTokenAmount: 1000,
-          quoteTokenAmount: 150500,
-          activeBinId: 12345,
-        },
-        {
-          address: '2AEWSvUds1wsufnsDPCXjFsJCMJH5SNNm7fSF4kxys9a',
-          baseTokenAddress: 'So11111111111111111111111111111111111111112',
-          quoteTokenAddress: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
-          binStep: 64,
-          feePct: 0.25,
-          price: 148.2,
-          baseTokenAmount: 2000,
-          quoteTokenAmount: 296400,
-          activeBinId: 12340,
-        },
-      ];
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-      const mockOrca = {
-        getPools: jest.fn().mockResolvedValue(mockPools),
-      };
-      const mockSolana = {
-        getToken: jest.fn().mockResolvedValue({ symbol: 'SOL' }),
-      };
-      (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
-      (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
+  it('should fetch pools with default parameters', async () => {
+    const mockOrcaInstance = {
+      fetchPoolsFromApi: jest.fn().mockResolvedValue(mockOrcaApiResponse),
+    };
+    (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrcaInstance);
 
-      const response = await app.inject({
-        method: 'GET',
-        url: '/fetch-pools',
-        query: {
-          network: 'mainnet-beta',
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      if (response.statusCode === 200) {
-        const body = JSON.parse(response.body);
-        expect(Array.isArray(body)).toBe(true);
-        expect(mockOrca.getPools).toHaveBeenCalled();
-      }
+    const response = await server.inject({
+      method: 'GET',
+      url: '/fetch-pools?network=mainnet-beta',
     });
 
-    it('should use default network if not provided', async () => {
-      const mockOrca = {
-        getPools: jest.fn().mockResolvedValue([]),
-      };
-      const mockSolana = {
-        getToken: jest.fn().mockResolvedValue({ symbol: 'SOL' }),
-      };
-      (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
-      (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
 
-      const response = await app.inject({
-        method: 'GET',
-        url: '/fetch-pools',
-        query: {},
-      });
+    expect(body).toHaveProperty('pools');
+    expect(body).toHaveProperty('total', 2);
+    expect(body).toHaveProperty('page', 1);
+    expect(body).toHaveProperty('pageSize', 50);
 
-      expect(response.statusCode).toBe(200);
-    });
-
-    it('should return empty array when no pools found', async () => {
-      const mockOrca = {
-        getPools: jest.fn().mockResolvedValue([]),
-      };
-      const mockSolana = {
-        getToken: jest.fn().mockResolvedValue({ symbol: 'SOL' }),
-      };
-      (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
-      (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
-
-      const response = await app.inject({
-        method: 'GET',
-        url: '/fetch-pools',
-        query: {
-          network: 'mainnet-beta',
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body).toEqual([]);
+    expect(body.pools).toHaveLength(2);
+    expect(body.pools[0]).toEqual({
+      address: 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE',
+      name: 'SOL-USDC',
+      baseTokenAddress: 'So11111111111111111111111111111111111111112',
+      baseTokenSymbol: 'SOL',
+      quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+      quoteTokenSymbol: 'USDC',
+      binStep: 64,
+      baseFee: 0.25,
+      price: 150.5,
+      tvl: 5000000,
+      apr: 15, // 0.15 * 100
+      apy: 25, // 0.25 * 100
+      volume24h: 1000000,
+      fees24h: 2500,
     });
   });
 
-  describe('error handling', () => {
-    it('should handle Orca errors gracefully', async () => {
-      const mockOrca = {
-        getPools: jest.fn().mockRejectedValue(new Error('Failed to fetch pools')),
-      };
-      const mockSolana = {
-        getToken: jest.fn().mockResolvedValue({ symbol: 'SOL' }),
-      };
-      (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
-      (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
+  it('should fetch pools with search query', async () => {
+    const mockOrcaInstance = {
+      fetchPoolsFromApi: jest.fn().mockResolvedValue([mockOrcaApiResponse[0]]),
+    };
+    (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrcaInstance);
 
-      const response = await app.inject({
-        method: 'GET',
-        url: '/fetch-pools',
-        query: {
-          network: 'mainnet-beta',
-        },
-      });
-
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+    const response = await server.inject({
+      method: 'GET',
+      url: '/fetch-pools?network=mainnet-beta&query=SOL-USDC&limit=10',
     });
 
-    it('should handle service unavailable', async () => {
-      (Orca.getInstance as jest.Mock).mockResolvedValue(null);
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
 
-      const response = await app.inject({
-        method: 'GET',
-        url: '/fetch-pools',
-        query: {
-          network: 'mainnet-beta',
-        },
-      });
+    expect(body.pools).toHaveLength(1);
+    expect(body.pools[0].name).toBe('SOL-USDC');
 
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+    // Verify fetchPoolsFromApi was called with correct params
+    expect(mockOrcaInstance.fetchPoolsFromApi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limit: 10,
+        query: 'SOL-USDC',
+      }),
+    );
+  });
+
+  it('should fetch pools with sorting', async () => {
+    const mockOrcaInstance = {
+      fetchPoolsFromApi: jest.fn().mockResolvedValue(mockOrcaApiResponse),
+    };
+    (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrcaInstance);
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/fetch-pools?network=mainnet-beta&sortBy=tvl&sortDirection=desc',
     });
 
-    it('should handle invalid network', async () => {
-      const mockOrca = {
-        getPools: jest.fn().mockRejectedValue(new Error('Invalid network')),
-      };
-      const mockSolana = {
-        getToken: jest.fn().mockResolvedValue({ symbol: 'SOL' }),
-      };
-      (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
-      (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
+    expect(response.statusCode).toBe(200);
+    expect(mockOrcaInstance.fetchPoolsFromApi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sortBy: 'tvl',
+        sortDirection: 'desc',
+      }),
+    );
+  });
 
-      const response = await app.inject({
-        method: 'GET',
-        url: '/fetch-pools',
-        query: {
-          network: 'invalid-network',
-        },
-      });
+  it('should handle API errors gracefully', async () => {
+    const mockOrcaInstance = {
+      fetchPoolsFromApi: jest.fn().mockRejectedValue(new Error('Orca API error')),
+    };
+    (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrcaInstance);
 
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+    const response = await server.inject({
+      method: 'GET',
+      url: '/fetch-pools?network=mainnet-beta',
     });
+
+    expect(response.statusCode).toBe(500);
+    expect(JSON.parse(response.body)).toHaveProperty('error');
+  });
+
+  it('should handle empty pool results', async () => {
+    const mockOrcaInstance = {
+      fetchPoolsFromApi: jest.fn().mockResolvedValue([]),
+    };
+    (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrcaInstance);
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/fetch-pools?network=mainnet-beta&query=NONEXISTENT',
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.pools).toHaveLength(0);
+    expect(body.total).toBe(0);
+  });
+
+  it('should pass verifiedOnly parameter to API', async () => {
+    const mockOrcaInstance = {
+      fetchPoolsFromApi: jest.fn().mockResolvedValue([mockOrcaApiResponse[0]]),
+    };
+    (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrcaInstance);
+
+    const response = await server.inject({
+      method: 'GET',
+      url: '/fetch-pools?network=mainnet-beta&verifiedOnly=true',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mockOrcaInstance.fetchPoolsFromApi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        verifiedOnly: true,
+      }),
+    );
   });
 });

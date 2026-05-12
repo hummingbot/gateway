@@ -3,7 +3,6 @@
  */
 
 import { CoinGeckoService, TopPoolInfo } from '../services/coingecko-service';
-import { extractRawPoolData, toPoolGeckoData } from '../services/gecko-types';
 import { logger } from '../services/logger';
 
 import { fetchPoolInfo, resolveTokenSymbols } from './pool-info-helpers';
@@ -51,8 +50,35 @@ export async function fetchDetailedPoolInfo(chainNetwork: string, address: strin
     poolInfo.quoteTokenAddress,
   );
 
-  const baseSymbol = symbols.baseSymbol || poolData.baseTokenSymbol;
-  const quoteSymbol = symbols.quoteSymbol || poolData.quoteTokenSymbol;
+  // If symbols not found locally (or are DUMMY_ placeholders), fetch from GeckoTerminal token info endpoint
+  let baseSymbol = symbols.baseSymbol;
+  let quoteSymbol = symbols.quoteSymbol;
+
+  // Check if symbol is missing or is a DUMMY_ placeholder
+  const needsBaseSymbol = !baseSymbol || baseSymbol.startsWith('DUMMY_');
+  const needsQuoteSymbol = !quoteSymbol || quoteSymbol.startsWith('DUMMY_');
+
+  if (needsBaseSymbol) {
+    try {
+      const tokenInfo = await coinGeckoService.getTokenInfo(chainNetwork, poolInfo.baseTokenAddress);
+      baseSymbol = tokenInfo.symbol;
+      logger.info(`Resolved base token symbol from GeckoTerminal: ${baseSymbol}`);
+    } catch (error) {
+      logger.warn(`Failed to fetch base token info, using pool name: ${error.message}`);
+      baseSymbol = poolData.baseTokenSymbol;
+    }
+  }
+
+  if (needsQuoteSymbol) {
+    try {
+      const tokenInfo = await coinGeckoService.getTokenInfo(chainNetwork, poolInfo.quoteTokenAddress);
+      quoteSymbol = tokenInfo.symbol;
+      logger.info(`Resolved quote token symbol from GeckoTerminal: ${quoteSymbol}`);
+    } catch (error) {
+      logger.warn(`Failed to fetch quote token info, using pool name: ${error.message}`);
+      quoteSymbol = poolData.quoteTokenSymbol;
+    }
+  }
 
   if (!baseSymbol || !quoteSymbol) {
     throw new Error(
@@ -60,23 +86,8 @@ export async function fetchDetailedPoolInfo(chainNetwork: string, address: strin
     );
   }
 
-  // Calculate APR if we have volume and liquidity data
-  let apr: number | undefined;
-  if (poolData.volumeUsd24h && poolData.liquidityUsd) {
-    const volume = parseFloat(poolData.volumeUsd24h);
-    const liquidity = parseFloat(poolData.liquidityUsd);
-    if (!isNaN(volume) && !isNaN(liquidity) && liquidity > 0) {
-      // APR = (daily volume * fee% / liquidity) * 365 * 100
-      apr = ((volume * (poolInfo.feePct / 100)) / liquidity) * 365 * 100;
-    }
-  }
-
-  // Create pool object with CoinGecko data separated
-  // Use typed transformation helper to ensure consistent geckoData format
-  const rawPoolData = extractRawPoolData(poolData);
-  const geckoData = toPoolGeckoData(rawPoolData, apr);
-
   const pool: Pool = {
+    connector: poolData.connector,
     type: poolData.type as 'amm' | 'clmm',
     network,
     baseSymbol,
@@ -85,7 +96,6 @@ export async function fetchDetailedPoolInfo(chainNetwork: string, address: strin
     quoteTokenAddress: poolInfo.quoteTokenAddress,
     feePct: poolInfo.feePct,
     address,
-    geckoData,
   };
 
   return {

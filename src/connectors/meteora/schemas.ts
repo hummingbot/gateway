@@ -365,24 +365,40 @@ export const MeteoraClmmFetchPoolsRequest = Type.Object({
       enum: [...MeteoraConfig.networks],
     }),
   ),
+  page: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      default: 0,
+      description: 'Page number (0-based)',
+      examples: [0],
+    }),
+  ),
   limit: Type.Optional(
     Type.Number({
       minimum: 1,
-      default: 10,
-      description: 'Maximum number of pools to return',
-      examples: [10],
+      maximum: 1000,
+      default: 50,
+      description: 'Maximum number of pools to return (max 1000)',
+      examples: [50],
     }),
   ),
-  tokenA: Type.Optional(
+  query: Type.Optional(
     Type.String({
-      description: 'First token symbol or address',
-      examples: [BASE_TOKEN],
+      description: 'Search query to match pools by name, tokens, or address',
+      examples: ['SOL', 'USDC', 'SOL-USDC'],
     }),
   ),
-  tokenB: Type.Optional(
+  sortBy: Type.Optional(
     Type.String({
-      description: 'Second token symbol or address',
-      examples: [QUOTE_TOKEN],
+      description: 'Sort by field (volume, fees, tvl, apr) with optional time window',
+      default: 'volume_24h:desc',
+      examples: ['volume_24h:desc', 'tvl:desc', 'apr:desc'],
+    }),
+  ),
+  includeUnverified: Type.Optional(
+    Type.Boolean({
+      description: 'Include pools with unverified tokens',
+      default: true,
     }),
   ),
 });

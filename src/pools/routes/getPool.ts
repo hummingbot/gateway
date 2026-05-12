@@ -7,9 +7,10 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Params: { tradingPair: string };
     Querystring: {
-      connector: string;
+      chain: string;
       network: string;
       type: string;
+      connector?: string;
     };
   }>(
     '/:tradingPair',
@@ -51,7 +52,7 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { tradingPair } = request.params;
-      const { connector, network, type } = request.query;
+      const { chain, network, type, connector } = request.query;
       const poolService = PoolService.getInstance();
 
       try {
@@ -62,10 +63,20 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
           throw new Error('Invalid trading pair format. Expected: BASE-QUOTE (e.g., ETH-USDC)');
         }
 
-        const pool = await poolService.getPool(connector, network, type as 'amm' | 'clmm', baseToken, quoteToken);
+        const pool = await poolService.getPool(
+          chain,
+          network,
+          type as 'amm' | 'clmm',
+          baseToken,
+          quoteToken,
+          connector,
+        );
 
         if (!pool) {
-          throw fastify.httpErrors.notFound(`Pool for ${tradingPair} not found in ${connector} ${type} on ${network}`);
+          const connectorInfo = connector ? ` (connector: ${connector})` : '';
+          throw fastify.httpErrors.notFound(
+            `Pool for ${tradingPair} not found on ${chain}/${network} ${type}${connectorInfo}`,
+          );
         }
 
         return pool;

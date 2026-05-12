@@ -4,15 +4,63 @@ import { TransactionStatus } from './chain-schema';
 
 export const FetchPoolsRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()), // Network
-    limit: Type.Optional(Type.Number({ minimum: 1 })), // Maximum number of pools to return
-    tokenA: Type.Optional(Type.String()), // First token symbol or address
-    tokenB: Type.Optional(Type.String()), // Second token symbol or address
+    network: Type.Optional(Type.String({ description: 'Network to use' })),
+    limit: Type.Optional(
+      Type.Number({
+        minimum: 1,
+        maximum: 100,
+        default: 50,
+        description: 'Maximum number of pools to return',
+      }),
+    ),
+    query: Type.Optional(
+      Type.String({
+        description: 'Search query to match pools by name, tokens, or address',
+      }),
+    ),
+    sortBy: Type.Optional(
+      Type.String({
+        description: 'Sort by field (connector-specific)',
+      }),
+    ),
   },
   { $id: 'FetchPoolsRequest' },
 );
 
 export type FetchPoolsRequestType = Static<typeof FetchPoolsRequest>;
+
+// Standardized pool list item schema for fetch-pools response
+export const PoolListItemSchema = Type.Object(
+  {
+    address: Type.String({ description: 'Pool address' }),
+    name: Type.String({ description: 'Pool name (e.g., SOL-USDC)' }),
+    baseTokenAddress: Type.String({ description: 'Base token address' }),
+    baseTokenSymbol: Type.String({ description: 'Base token symbol' }),
+    quoteTokenAddress: Type.String({ description: 'Quote token address' }),
+    quoteTokenSymbol: Type.String({ description: 'Quote token symbol' }),
+    binStep: Type.Number({ description: 'Bin step / tick spacing' }),
+    baseFee: Type.Number({ description: 'Base fee percentage' }),
+    price: Type.Number({ description: 'Current price' }),
+    tvl: Type.Number({ description: 'Total value locked in USD' }),
+    apr: Type.Optional(Type.Number({ description: 'Annual percentage rate' })),
+    apy: Type.Optional(Type.Number({ description: 'Annual percentage yield' })),
+    volume24h: Type.Optional(Type.Number({ description: '24-hour trading volume' })),
+    fees24h: Type.Optional(Type.Number({ description: '24-hour fees collected' })),
+  },
+  { $id: 'PoolListItem' },
+);
+export type PoolListItem = Static<typeof PoolListItemSchema>;
+
+export const FetchPoolsResponse = Type.Object(
+  {
+    pools: Type.Array(PoolListItemSchema),
+    total: Type.Number({ description: 'Total number of matching pools' }),
+    page: Type.Number({ description: 'Current page number' }),
+    pageSize: Type.Number({ description: 'Number of pools per page' }),
+  },
+  { $id: 'FetchPoolsResponse' },
+);
+export type FetchPoolsResponseType = Static<typeof FetchPoolsResponse>;
 
 export const GetPositionsOwnedRequest = Type.Object(
   {

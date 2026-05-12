@@ -87,12 +87,20 @@ export class Orca {
 
   /**
    * Fetches pools from Orca API and maps them to OrcaPoolInfo format
-   * @param limit Maximum number of pools to return (maps to 'size' parameter)
-   * @param tokenSymbolA Optional first token symbol (e.g., 'SOL')
-   * @param tokenSymbolB Optional second token symbol (e.g., 'USDC')
+   * @param options Fetch options
    * @returns Array of OrcaPoolInfo objects
    */
-  async getPools(limit?: number, tokenSymbolA?: string, tokenSymbolB?: string): Promise<OrcaPoolInfo[]> {
+  async getPools(
+    options: {
+      limit?: number;
+      query?: string;
+      sortBy?: string;
+      sortDirection?: string;
+      verifiedOnly?: boolean;
+    } = {},
+  ): Promise<OrcaPoolInfo[]> {
+    const { limit = 50, query, sortBy = 'volume', sortDirection = 'desc', verifiedOnly = false } = options;
+
     try {
       let baseUrl: string;
       if (this.solana.network === 'mainnet-beta') {
@@ -103,21 +111,25 @@ export class Orca {
 
       const params = new URLSearchParams();
 
-      // Build search query from token symbols
-      if (tokenSymbolA && tokenSymbolB) {
-        params.append('q', `${tokenSymbolA} ${tokenSymbolB}`);
-      } else if (tokenSymbolA) {
-        params.append('q', tokenSymbolA);
-      } else if (tokenSymbolB) {
-        params.append('q', tokenSymbolB);
+      if (query) {
+        params.append('q', query);
       }
-
-      // Add size parameter (limit)
       if (limit) {
         params.append('size', limit.toString());
       }
+      if (sortBy) {
+        params.append('sortBy', sortBy);
+      }
+      if (sortDirection) {
+        params.append('sortDirection', sortDirection);
+      }
+      if (verifiedOnly) {
+        params.append('verifiedOnly', 'true');
+      }
 
       const url = `${baseUrl}?${params.toString()}`;
+      logger.info(`Fetching Orca pools from API: ${url}`);
+
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -129,6 +141,64 @@ export class Orca {
 
       // Map API response to OrcaPoolInfo format
       return pools.map((pool: any) => this.mapApiPoolToPoolInfo(pool));
+    } catch (error) {
+      logger.error('Error fetching pools from Orca API:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches raw pool data from Orca API (for fetch-pools endpoint)
+   * Returns raw API response without mapping to OrcaPoolInfo
+   */
+  async fetchPoolsFromApi(
+    options: {
+      limit?: number;
+      query?: string;
+      sortBy?: string;
+      sortDirection?: string;
+      verifiedOnly?: boolean;
+    } = {},
+  ): Promise<any[]> {
+    const { limit = 50, query, sortBy = 'volume', sortDirection = 'desc', verifiedOnly = false } = options;
+
+    try {
+      let baseUrl: string;
+      if (this.solana.network === 'mainnet-beta') {
+        baseUrl = 'https://api.orca.so/v2/solana/pools/search';
+      } else {
+        baseUrl = 'https://api.devnet.orca.so/v2/solana/pools/search';
+      }
+
+      const params = new URLSearchParams();
+
+      if (query) {
+        params.append('q', query);
+      }
+      if (limit) {
+        params.append('size', limit.toString());
+      }
+      if (sortBy) {
+        params.append('sortBy', sortBy);
+      }
+      if (sortDirection) {
+        params.append('sortDirection', sortDirection);
+      }
+      if (verifiedOnly) {
+        params.append('verifiedOnly', 'true');
+      }
+
+      const url = `${baseUrl}?${params.toString()}`;
+      logger.info(`Fetching Orca pools from API: ${url}`);
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Orca API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.data || [];
     } catch (error) {
       logger.error('Error fetching pools from Orca API:', error);
       throw error;

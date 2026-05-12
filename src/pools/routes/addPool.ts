@@ -26,6 +26,7 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const {
+        chain,
         connector,
         type,
         network,
@@ -70,8 +71,9 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
           finalQuoteSymbol = finalQuoteSymbol || resolvedQuote;
         }
 
-        // Step 3: Create enhanced pool object
+        // Step 3: Create enhanced pool object with connector field
         const pool: Pool = {
+          connector,
           type,
           network,
           baseSymbol: finalBaseSymbol,
@@ -84,46 +86,47 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
 
         // Step 4: Check if a pool with same token pair already exists (ignoring feePct)
         const existingPoolByMetadata = await poolService.getPoolByMetadata(
-          connector,
-          type,
+          chain,
           network,
+          type,
           baseTokenAddress,
           quoteTokenAddress,
+          connector,
         );
 
         if (existingPoolByMetadata) {
           if (existingPoolByMetadata.address.toLowerCase() === address.toLowerCase()) {
             // Same pool (same address and token pair), just update it (fee tier may have changed)
-            await poolService.updatePool(connector, pool);
+            await poolService.updatePool(chain, network, pool);
             return {
-              message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} updated to ${finalFeePct}% fee in ${connector} ${type} on ${network}`,
+              message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} updated to ${finalFeePct}% fee in ${connector} ${type} on ${chain}/${network}`,
             };
           } else {
             // Different address but same token pair - replace the old pool
-            await poolService.removePool(connector, network, type, existingPoolByMetadata.address);
-            await poolService.addPool(connector, pool);
+            await poolService.removePool(chain, network, existingPoolByMetadata.address);
+            await poolService.addPool(chain, network, pool);
             return {
-              message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} (${finalFeePct}% fee) replaced (old: ${existingPoolByMetadata.address} ${existingPoolByMetadata.feePct}% fee, new: ${address}) in ${connector} ${type} on ${network}`,
+              message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} (${finalFeePct}% fee) replaced (old: ${existingPoolByMetadata.address} ${existingPoolByMetadata.feePct}% fee, new: ${address}) in ${connector} ${type} on ${chain}/${network}`,
             };
           }
         }
 
         // Step 5: No pool with matching metadata exists - check if address is used
-        const existingPoolByAddress = await poolService.getPoolByAddress(connector, address);
+        const existingPoolByAddress = await poolService.getPoolByAddress(chain, network, address);
 
         if (existingPoolByAddress) {
           // Address exists but with different metadata - this shouldn't happen normally
           // but we'll update it anyway
-          await poolService.updatePool(connector, pool);
+          await poolService.updatePool(chain, network, pool);
           return {
-            message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} (${finalFeePct}% fee) updated successfully in ${connector} ${type} on ${network}`,
+            message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} (${finalFeePct}% fee) updated successfully in ${connector} ${type} on ${chain}/${network}`,
           };
         }
 
         // Step 6: Completely new pool - add it
-        await poolService.addPool(connector, pool);
+        await poolService.addPool(chain, network, pool);
         return {
-          message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} (${finalFeePct}% fee) added successfully to ${connector} ${type} on ${network}`,
+          message: `Pool ${finalBaseSymbol}-${finalQuoteSymbol} (${finalFeePct}% fee) added successfully to ${connector} ${type} on ${chain}/${network}`,
         };
       } catch (error) {
         if (error.statusCode) {
