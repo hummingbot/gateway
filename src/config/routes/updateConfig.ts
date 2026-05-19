@@ -1,5 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import { Ethereum } from '../../chains/ethereum/ethereum';
+import { Solana } from '../../chains/solana/solana';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';
 import {
@@ -81,6 +83,20 @@ export const updateConfigRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         updateConfig(fastify, fullPath, processedValue);
+
+        // If nodeURL changed, evict the cached chain instance so the next request
+        // re-creates it with the new provider (Blockchain lens: network RPC is runtime config).
+        if (path === 'nodeURL') {
+          // namespace is e.g. "ethereum-bsc" or "solana-mainnet-beta"
+          const nsParts = namespace.split('-');
+          const chain = nsParts[0];
+          const network = nsParts.slice(1).join('-');
+          if (chain === 'ethereum' && network) {
+            Ethereum.resetInstance(network);
+          } else if (chain === 'solana' && network) {
+            Solana.resetInstance(network);
+          }
+        }
 
         // Build descriptive message
         const description = `'${namespace}.${path}'`;
