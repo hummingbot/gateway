@@ -1,0 +1,21 @@
+{
+  "message": "Successfully staked NFT 6350589 (CAKE/USDT) in MasterChef pool #3",
+  "txHash": "0xabc123def456abc123def456abc123def456abc123def456abc123def456abc1",
+  "poolAddress": "0xA5067360b13Fc7A2685Dc82dcD1bF2B4B8D7868B",
+  "poolId": 3,
+  "baseTokenAddress": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
+  "baseTokenSymbol": "CAKE",
+  "quoteTokenAddress": "0x55d398326f99059fF775485246999027B3197955",
+  "quoteTokenSymbol": "USDT",
+  "feePct": 0.25,
+  "liquidity": "987654321098765",
+  "tickLower": -887272,
+  "tickUpper": 887272,
+  "currentPrice": 2.45,
+  "lowerPrice": 1.0,
+  "upperPrice": 5.0,
+  "inRange": true,
+  "cakePerSecond": 0.00423,
+  "rewardEndTime": 1780000000,
+  "isRewardActive": true
+}

@@ -20,17 +20,30 @@ describe('Pancakeswap Routes Structure', () => {
   });
 
   describe('Folder Structure', () => {
-    it('should have router-routes, amm-routes, and clmm-routes folders', () => {
+    it('should have router-routes, amm-routes, clmm-routes, and nft-staking folders', () => {
       const pancakeswapPath = path.join(__dirname, '../../../src/connectors/pancakeswap');
       const routerRoutesPath = path.join(pancakeswapPath, 'router-routes');
       const ammRoutesPath = path.join(pancakeswapPath, 'amm-routes');
       const clmmRoutesPath = path.join(pancakeswapPath, 'clmm-routes');
+      const nftStakingPath = path.join(pancakeswapPath, 'nft-staking');
       const oldRoutesPath = path.join(pancakeswapPath, 'routes');
 
       expect(fs.existsSync(routerRoutesPath)).toBe(true);
       expect(fs.existsSync(ammRoutesPath)).toBe(true);
       expect(fs.existsSync(clmmRoutesPath)).toBe(true);
+      expect(fs.existsSync(nftStakingPath)).toBe(true);
       expect(fs.existsSync(oldRoutesPath)).toBe(false);
+    });
+
+    it('should have correct files in nft-staking folder', () => {
+      const nftStakingPath = path.join(__dirname, '../../../src/connectors/pancakeswap/nft-staking');
+      const files = fs.readdirSync(nftStakingPath);
+
+      expect(files).toContain('index.ts');
+      expect(files).toContain('masterchef-stake.ts');
+      expect(files).toContain('masterchef-unstake.ts');
+      expect(files).toContain('masterchef-unstake-and-close.ts');
+      expect(files).toContain('masterchef-knows-pool.ts');
     });
 
     it('should have correct files in router-routes folder', () => {
@@ -68,6 +81,31 @@ describe('Pancakeswap Routes Structure', () => {
         url: '/connectors/pancakeswap/clmm/pool-info',
       });
       expect(clmmResponse.statusCode).not.toBe(404);
+
+      // Check NFT staking routes — POST endpoints, 404 means unregistered
+      const stakeResponse = await fastify.inject({
+        method: 'POST',
+        url: '/connectors/pancakeswap/nft-staking/masterchef-stake',
+      });
+      expect(stakeResponse.statusCode).not.toBe(404);
+
+      const unstakeResponse = await fastify.inject({
+        method: 'POST',
+        url: '/connectors/pancakeswap/nft-staking/masterchef-unstake',
+      });
+      expect(unstakeResponse.statusCode).not.toBe(404);
+
+      const unstakeAndCloseResponse = await fastify.inject({
+        method: 'POST',
+        url: '/connectors/pancakeswap/nft-staking/masterchef-unstake-and-close',
+      });
+      expect(unstakeAndCloseResponse.statusCode).not.toBe(404);
+
+      const knowsPoolResponse = await fastify.inject({
+        method: 'POST',
+        url: '/connectors/pancakeswap/nft-staking/masterchef-knows-pool',
+      });
+      expect(knowsPoolResponse.statusCode).not.toBe(404);
     });
   });
 });

@@ -1,0 +1,7 @@
+{
+  "message": "Successfully unstaked NFT 6350589 from MasterChef. Harvested 12.345678 CAKE to 0x742d35Cc6634C0532925a3b844Bc9e7595f42e0E.",
+  "txHash": "0xdef789abc123def789abc123def789abc123def789abc123def789abc123def7",
+  "rewardAmount": 12.345678,
+  "rewardToken": "CAKE",
+  "rewardTokenAddress": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82"
+}

@@ -1,0 +1,20 @@
+{
+  "message": "Successfully unstaked NFT 6450873 from MasterChef (harvested 5.0 CAKE) and closed the position (returned 100.0 CAKE + 245.0 USDT). The NFT has been burned.",
+  "unstakeTransaction": "0xaaa111bbb222ccc333ddd444eee555fff666aaa111bbb222ccc333ddd444eee5",
+  "closeTransaction": "0xfff666eee555ddd444ccc333bbb222aaa111fff666eee555ddd444ccc333bbb2",
+  "cakeRewardAmount": 5.0,
+  "rewardToken": "CAKE",
+  "rewardTokenAddress": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
+  "positionClosed": {
+    "fee": 0.00045,
+    "positionRentRefunded": 0,
+    "baseTokenAmountRemoved": 100.0,
+    "quoteTokenAmountRemoved": 245.0,
+    "baseFeeAmountCollected": 1.23,
+    "quoteFeeAmountCollected": 3.01,
+    "baseTokenSymbol": "CAKE",
+    "baseTokenAddress": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
+    "quoteTokenSymbol": "USDT",
+    "quoteTokenAddress": "0x55d398326f99059fF775485246999027B3197955"
+  }
+}

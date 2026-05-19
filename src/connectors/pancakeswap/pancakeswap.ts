@@ -4,8 +4,8 @@ import { PoolType } from '@pancakeswap/smart-router';
 import { Pair as V2Pair } from '@pancakeswap/v2-sdk';
 import { abi as IPancakeswapV3FactoryABI } from '@pancakeswap/v3-core/artifacts/contracts/interfaces/IPancakeV3Factory.sol/IPancakeV3Factory.json';
 import { abi as IPancakeswapV3PoolABI } from '@pancakeswap/v3-core/artifacts/contracts/interfaces/IPancakeV3Pool.sol/IPancakeV3Pool.json';
-import { FeeAmount, Pool as V3Pool } from '@pancakeswap/v3-sdk';
-import { Contract, constants } from 'ethers';
+import { FeeAmount, Pool as V3Pool, tickToPrice } from '@pancakeswap/v3-sdk';
+import { Contract, constants, utils } from 'ethers';
 import { getAddress } from 'ethers/lib/utils';
 import { Address } from 'viem';
 
@@ -22,8 +22,10 @@ import {
   getPancakeswapV3NftManagerAddress,
   getPancakeswapV3QuoterV2ContractAddress,
   getPancakeswapV3FactoryAddress,
+  getPancakeswapV3MasterchefAddress,
 } from './pancakeswap.contracts';
 import { isValidV2Pool, isValidV3Pool } from './pancakeswap.utils';
+import PancakeswapV3MasterchefABI from './PancakeswapV3Masterchef.abi.json';
 import { UniversalRouterService } from './universal-router';
 
 export class Pancakeswap {
@@ -48,6 +50,7 @@ export class Pancakeswap {
   private v3NFTManager: Contract;
   private v3Quoter: Contract;
   private universalRouter: UniversalRouterService;
+  private masterChef: Contract;
 
   // Network information
   private networkName: string;
@@ -134,6 +137,13 @@ export class Pancakeswap {
 
       // Initialize Universal Router service
       this.universalRouter = new UniversalRouterService(this.ethereum.provider, this.chainId, this.networkName);
+
+      // Initialize MasterChef contract with full ABI
+      this.masterChef = new Contract(
+        getPancakeswapV3MasterchefAddress(this.networkName),
+        PancakeswapV3MasterchefABI,
+        this.ethereum.provider,
+      );
 
       // Ensure ethereum is initialized
       if (!this.ethereum.ready()) {
@@ -524,6 +534,365 @@ export class Pancakeswap {
       throw new Error(
         `Insufficient NFT approval. Please approve the position NFT (${positionId}) for the Pancakeswap Position Manager (${operatorAddress})`,
       );
+    }
+  }
+
+  /**
+   * Get the pool ID for a V3 pool address from MasterChef (returns 0 if not registered)
+   */
+  public async getV3PoolIdFromMasterChef(poolAddress: string): Promise<number> {
+    const contract = new Contract(this.masterChef.address, PancakeswapV3MasterchefABI, this.ethereum.provider);
+    const pid = await contract.v3PoolAddressPid(poolAddress);
+    return Number(pid);
+  }
+
+  /**
+   * Get MasterChef reward data for a V3 pool, useful for APR estimation.
+   */
+  public async getPoolMasterchefData(poolAddress: string): Promise<{
+    poolId: number;
+    cakePerSecond: number;
+    rewardEndTime: number;
+    isRewardActive: boolean;
+  }> {
+    try {
+      const [poolId, periodInfo] = await Promise.all([
+        this.getV3PoolIdFromMasterChef(poolAddress),
+        this.masterChef.getLatestPeriodInfo(poolAddress),
+      ]);
+
+      const [cakePerSecondRaw, endTime] = periodInfo;
+      const now = Math.floor(Date.now() / 1000);
+      const rewardEndTime = Number(endTime);
+      const isRewardActive = rewardEndTime > now;
+      const cakePerSecond = parseFloat(cakePerSecondRaw.toString()) / 1e18;
+
+      return { poolId, cakePerSecond, rewardEndTime, isRewardActive };
+    } catch (error) {
+      logger.error(`Failed to get MasterChef data for pool ${poolAddress}: ${error.message}`);
+      return { poolId: 0, cakePerSecond: 0, rewardEndTime: 0, isRewardActive: false };
+    }
+  }
+
+  /**
+   * Get a V3 pool by token addresses and fee
+   */
+  private async getV3PoolByTokens(token0: string, token1: string, fee: number): Promise<string | null> {
+    try {
+      const poolAddress = await this.v3Factory.getPool(token0, token1, fee);
+      if (poolAddress && poolAddress !== constants.AddressZero) {
+        return poolAddress;
+      }
+      return null;
+    } catch (error) {
+      logger.error(`Error getting pool: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Stake an NFT in the MasterChef contract using a specific wallet.
+   */
+  public async stakeNft(
+    tokenId: number,
+    walletAddress: string,
+  ): Promise<{
+    txHash: string;
+    poolId: number;
+    poolAddress: string;
+    baseTokenAddress: string;
+    baseTokenSymbol: string;
+    quoteTokenAddress: string;
+    quoteTokenSymbol: string;
+    feePct: number;
+    liquidity: string;
+    tickLower: number;
+    tickUpper: number;
+    currentPrice: number;
+    lowerPrice: number;
+    upperPrice: number;
+    inRange: boolean;
+    cakePerSecond: number;
+    rewardEndTime: number;
+    isRewardActive: boolean;
+  }> {
+    try {
+      logger.info(`Verifying ownership of NFT ${tokenId} for wallet ${walletAddress}`);
+      await this.checkNFTOwnership(tokenId.toString(), walletAddress);
+
+      const masterChefAddress = getPancakeswapV3MasterchefAddress(this.networkName);
+      const nftManagerAddress = getPancakeswapV3NftManagerAddress(this.networkName);
+
+      logger.info(`MasterChef Address: ${masterChefAddress}`);
+      logger.info(`NFT Manager Address: ${nftManagerAddress}`);
+
+      // Get position details from NFT Manager
+      const positionContract = new Contract(
+        nftManagerAddress,
+        [
+          {
+            inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+            name: 'positions',
+            outputs: [
+              { internalType: 'uint96', name: 'nonce', type: 'uint96' },
+              { internalType: 'address', name: 'operator', type: 'address' },
+              { internalType: 'address', name: 'token0', type: 'address' },
+              { internalType: 'address', name: 'token1', type: 'address' },
+              { internalType: 'uint24', name: 'fee', type: 'uint24' },
+              { internalType: 'int24', name: 'tickLower', type: 'int24' },
+              { internalType: 'int24', name: 'tickUpper', type: 'int24' },
+              { internalType: 'uint128', name: 'liquidity', type: 'uint128' },
+              { internalType: 'uint256', name: 'feeGrowthInside0LastX128', type: 'uint256' },
+              { internalType: 'uint256', name: 'feeGrowthInside1LastX128', type: 'uint256' },
+              { internalType: 'uint128', name: 'tokensOwed0', type: 'uint128' },
+              { internalType: 'uint128', name: 'tokensOwed1', type: 'uint128' },
+            ],
+            stateMutability: 'view',
+            type: 'function',
+          },
+        ],
+        this.ethereum.provider,
+      );
+
+      const position = await positionContract.positions(tokenId);
+      const liquidity = position.liquidity.toString();
+      logger.info(
+        `Position liquidity: ${liquidity}, Fee: ${position.fee}, Tick range: [${position.tickLower}, ${position.tickUpper}]`,
+      );
+
+      if (liquidity === '0') {
+        throw new Error(
+          `Position ${tokenId} has zero liquidity and cannot be staked. ` +
+            `Please add liquidity to the position before staking.`,
+        );
+      }
+
+      // Check if pool is registered in MasterChef
+      const v3Pool = await this.getV3PoolByTokens(position.token0, position.token1, position.fee);
+      if (!v3Pool) {
+        throw new Error(
+          `Could not find pool for tokens with fee ${position.fee}. ` +
+            `The pool may not exist or may not be registered in MasterChef.`,
+        );
+      }
+
+      const poolId = await this.getV3PoolIdFromMasterChef(v3Pool);
+      logger.info(`Pool ID in MasterChef: ${poolId}`);
+
+      if (poolId === 0) {
+        throw new Error(
+          `Pool for position ${tokenId} is not registered in MasterChef. ` +
+            `Only positions in MasterChef-registered pools can be staked.`,
+        );
+      }
+
+      // Check if NFT is already staked
+      const ownerCheckContract = new Contract(
+        nftManagerAddress,
+        [
+          {
+            inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
+            name: 'ownerOf',
+            outputs: [{ internalType: 'address', name: '', type: 'address' }],
+            stateMutability: 'view',
+            type: 'function',
+          },
+        ],
+        this.ethereum.provider,
+      );
+
+      const currentOwner = await ownerCheckContract.ownerOf(tokenId);
+      if (currentOwner.toLowerCase() === masterChefAddress.toLowerCase()) {
+        throw new Error(`NFT ${tokenId} is already staked in MasterChef.`);
+      }
+      if (currentOwner.toLowerCase() !== walletAddress.toLowerCase()) {
+        throw new Error(`NFT ${tokenId} is not owned by wallet ${walletAddress}.`);
+      }
+
+      // Check approval
+      const approvalCheckContract = new Contract(
+        nftManagerAddress,
+        [
+          {
+            inputs: [
+              { internalType: 'address', name: 'owner', type: 'address' },
+              { internalType: 'address', name: 'operator', type: 'address' },
+            ],
+            name: 'isApprovedForAll',
+            outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
+            stateMutability: 'view',
+            type: 'function',
+          },
+        ],
+        this.ethereum.provider,
+      );
+
+      const isApproved = await approvalCheckContract.isApprovedForAll(walletAddress, masterChefAddress);
+      if (!isApproved) {
+        throw new Error(
+          `MasterChef is not approved to transfer your NFTs. ` +
+            `Please approve MasterChef to manage your LP NFTs by calling setApprovalForAll ` +
+            `on the NonfungiblePositionManager contract (${nftManagerAddress}) ` +
+            `with operator=${masterChefAddress}, approved=true.`,
+        );
+      }
+
+      // Stake by transferring the NFT to MasterChef
+      const wallet = await this.ethereum.getWallet(walletAddress);
+      const nftManagerContract = new Contract(
+        nftManagerAddress,
+        [
+          {
+            inputs: [
+              { internalType: 'address', name: 'from', type: 'address' },
+              { internalType: 'address', name: 'to', type: 'address' },
+              { internalType: 'uint256', name: 'tokenId', type: 'uint256' },
+            ],
+            name: 'safeTransferFrom',
+            outputs: [],
+            stateMutability: 'nonpayable',
+            type: 'function',
+          },
+        ],
+        wallet,
+      );
+
+      const tx = await nftManagerContract['safeTransferFrom(address,address,uint256)'](
+        walletAddress,
+        masterChefAddress,
+        tokenId,
+        { gasLimit: 600000 },
+      );
+
+      logger.info(`Transfer transaction sent: ${tx.hash}`);
+      const receipt = await tx.wait();
+
+      if (!receipt || receipt.status !== 1) {
+        throw new Error(`Staking transaction failed.`);
+      }
+
+      // Gather enriched response data
+      const [token0Obj, token1Obj, mcData] = await Promise.all([
+        this.getToken(position.token0),
+        this.getToken(position.token1),
+        this.getPoolMasterchefData(v3Pool),
+      ]);
+
+      const pool = token0Obj && token1Obj ? await this.getV3Pool(token0Obj, token1Obj, position.fee) : null;
+
+      const isBaseToken0 =
+        (token0Obj?.symbol !== 'WETH' && token1Obj?.symbol === 'WETH') ||
+        (token0Obj?.symbol !== 'WETH' &&
+          token1Obj?.symbol !== 'WETH' &&
+          token0Obj?.address.toLowerCase() < token1Obj?.address.toLowerCase());
+
+      const baseTokenAddress = isBaseToken0 ? (token0Obj?.address ?? '') : (token1Obj?.address ?? '');
+      const baseTokenSymbol = isBaseToken0 ? (token0Obj?.symbol ?? '') : (token1Obj?.symbol ?? '');
+      const quoteTokenAddress = isBaseToken0 ? (token1Obj?.address ?? '') : (token0Obj?.address ?? '');
+      const quoteTokenSymbol = isBaseToken0 ? (token1Obj?.symbol ?? '') : (token0Obj?.symbol ?? '');
+
+      let currentPrice = 0;
+      let lowerPrice = 0;
+      let upperPrice = 0;
+      let inRange = false;
+
+      if (pool && token0Obj && token1Obj) {
+        currentPrice = isBaseToken0
+          ? parseFloat(pool.token0Price.toSignificant(8))
+          : parseFloat(pool.token1Price.toSignificant(8));
+
+        const lowerTickPrice = tickToPrice(token0Obj, token1Obj, position.tickLower);
+        const upperTickPrice = tickToPrice(token0Obj, token1Obj, position.tickUpper);
+
+        lowerPrice = isBaseToken0
+          ? parseFloat(lowerTickPrice.toSignificant(8))
+          : parseFloat(upperTickPrice.invert().toSignificant(8));
+        upperPrice = isBaseToken0
+          ? parseFloat(upperTickPrice.toSignificant(8))
+          : parseFloat(lowerTickPrice.invert().toSignificant(8));
+
+        inRange = pool.tickCurrent >= position.tickLower && pool.tickCurrent < position.tickUpper;
+      }
+
+      return {
+        txHash: tx.hash,
+        poolId: mcData.poolId,
+        poolAddress: v3Pool,
+        baseTokenAddress,
+        baseTokenSymbol,
+        quoteTokenAddress,
+        quoteTokenSymbol,
+        feePct: position.fee / 10000,
+        liquidity,
+        tickLower: position.tickLower,
+        tickUpper: position.tickUpper,
+        currentPrice,
+        lowerPrice,
+        upperPrice,
+        inRange,
+        cakePerSecond: mcData.cakePerSecond,
+        rewardEndTime: mcData.rewardEndTime,
+        isRewardActive: mcData.isRewardActive,
+      };
+    } catch (error) {
+      logger.error(`Failed to stake NFT: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Unstake an NFT from the MasterChef contract and collect accumulated CAKE rewards.
+   */
+  public async unstakeNft(
+    tokenId: number,
+    walletAddress: string,
+  ): Promise<{
+    txHash: string;
+    rewardAmount: number;
+    rewardToken: string;
+    rewardTokenAddress: string;
+  }> {
+    try {
+      const wallet = await this.ethereum.getWallet(walletAddress);
+      const contractWithSigner = this.masterChef.connect(wallet);
+      const tx = await contractWithSigner.withdraw(tokenId, walletAddress, { gasLimit: 500000 });
+      const receipt = await tx.wait();
+
+      // Parse the CAKE reward from the Harvest event
+      let rewardAmount = 0;
+      try {
+        const iface = new utils.Interface(PancakeswapV3MasterchefABI);
+        for (const log of receipt.logs) {
+          try {
+            const parsed = iface.parseLog(log);
+            if (parsed.name === 'Harvest') {
+              rewardAmount = parseFloat(parsed.args.reward.toString()) / 1e18;
+              break;
+            }
+          } catch {
+            // Not a Harvest log from this contract, skip
+          }
+        }
+      } catch (parseErr) {
+        logger.warn(`Could not parse Harvest event from unstake receipt: ${parseErr.message}`);
+      }
+
+      // Resolve CAKE token address and symbol
+      let rewardTokenAddress = '';
+      let rewardToken = 'CAKE';
+      try {
+        rewardTokenAddress = await this.masterChef.CAKE();
+        const cakeToken = await this.getToken(rewardTokenAddress);
+        if (cakeToken?.symbol) rewardToken = cakeToken.symbol;
+      } catch (tokenErr) {
+        logger.warn(`Could not resolve CAKE token info: ${tokenErr.message}`);
+      }
+
+      logger.info(`Successfully unstaked NFT ${tokenId}: earned ${rewardAmount} ${rewardToken}, tx ${tx.hash}`);
+      return { txHash: tx.hash, rewardAmount, rewardToken, rewardTokenAddress };
+    } catch (error) {
+      logger.error(`Failed to unstake NFT: ${error.message}`);
+      throw error;
     }
   }
 
