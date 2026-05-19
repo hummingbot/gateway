@@ -1,4 +1,3 @@
-import { FeeAmount } from '@uniswap/v3-sdk';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
@@ -41,8 +40,7 @@ export async function getPoolInfo(fastify: FastifyInstance, network: string, poo
   const token1 = pool.token1;
   const isBaseToken0 = baseTokenObj.address.toLowerCase() === token0.address.toLowerCase();
 
-  // Calculate price based on sqrtPriceX96
-  const sqrtPriceX96 = pool.sqrtRatioX96;
+  // Calculate price based on pool ratios
   const price0 = pool.token0Price.toSignificant(15);
   const price1 = pool.token1Price.toSignificant(15);
 
@@ -106,8 +104,22 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request): Promise<PoolInfo> => {
       try {
+        let network = request.query.network;
+        const chainNetwork = request.query.chainNetwork;
         const { poolAddress } = request.query;
-        const network = request.query.network;
+
+        // Support both chainNetwork (e.g., "ethereum-mainnet") and network (e.g., "mainnet") formats
+        if (chainNetwork && !network) {
+          // Parse chainNetwork format: split by '-' and take the last part as network
+          // This handles formats like "ethereum-mainnet" -> "mainnet", "ethereum-base" -> "base"
+          const parts = chainNetwork.split('-');
+          if (parts.length >= 2) {
+            network = parts.slice(1).join('-');
+          } else {
+            network = chainNetwork;
+          }
+        }
+
         return await getPoolInfo(fastify, network, poolAddress);
       } catch (e) {
         logger.error(e);

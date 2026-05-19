@@ -19,9 +19,16 @@ const CLMM_POOL_ADDRESS_EXAMPLE = '0xd0b53d9277642d899df5c87a3966a349a798f224'; 
 // ========================================
 
 export const UniswapAmmGetPoolInfoRequest = Type.Object({
+  chainNetwork: Type.Optional(
+    Type.String({
+      description:
+        'Chain and network in format: chain-network (e.g., ethereum-mainnet, ethereum-base) or just network name',
+      examples: ['ethereum-mainnet', 'ethereum-base', 'mainnet', 'base'],
+    }),
+  ),
   network: Type.Optional(
     Type.String({
-      description: 'The EVM network to use',
+      description: 'The EVM network to use (alternative to chainNetwork)',
       default: ethereumChainConfig.defaultNetwork,
       enum: [...UniswapConfig.networks],
     }),
@@ -37,9 +44,16 @@ export const UniswapAmmGetPoolInfoRequest = Type.Object({
 // ========================================
 
 export const UniswapClmmGetPoolInfoRequest = Type.Object({
+  chainNetwork: Type.Optional(
+    Type.String({
+      description:
+        'Chain and network in format: chain-network (e.g., ethereum-mainnet, ethereum-base) or just network name',
+      examples: ['ethereum-mainnet', 'ethereum-base', 'mainnet', 'base'],
+    }),
+  ),
   network: Type.Optional(
     Type.String({
-      description: 'The EVM network to use',
+      description: 'The EVM network to use (alternative to chainNetwork)',
       default: ethereumChainConfig.defaultNetwork,
       enum: [...UniswapConfig.networks],
     }),
