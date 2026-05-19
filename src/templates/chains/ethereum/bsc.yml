@@ -1,6 +1,6 @@
 chainID: 56
 geckoId: bsc
-nodeURL: https://binance.llamarpc.com
+nodeURL: https://bsc-rpc.publicnode.com
 nativeCurrencySymbol: BNB
 transactionExecutionTimeoutMs: 10000 # Timeout for waiting for transaction execution (in milliseconds)
 swapProvider: pancakeswap/router
