@@ -160,10 +160,29 @@ export async function addWallet(fastify: FastifyInstance, req: AddWalletRequest)
 
   await mkdirIfDoesNotExist(path);
 
-  // Store both the encrypted key and the network as metadata
+  // Merge network into existing wallet file (same address can be registered for multiple networks)
   const safeAddress = sanitizePathComponent(address);
-  const walletData = JSON.stringify({ encryptedKey: encryptedPrivateKey, network });
-  await fse.writeFile(`${path}/${safeAddress}.json`, walletData);
+  const filePath = `${path}/${safeAddress}.json`;
+  let networks: string[] = [network];
+  let encryptedKeyToWrite = encryptedPrivateKey;
+
+  const fileExists = await fse.pathExists(filePath);
+  if (fileExists) {
+    try {
+      const existing = await readWalletFileData(filePath, network);
+      // Preserve the existing encrypted key (identical key, just adding new network)
+      encryptedKeyToWrite = existing.encryptedKey;
+      networks = existing.networks;
+      if (!networks.includes(network)) {
+        networks.push(network);
+      }
+    } catch {
+      // Could not read existing file — overwrite with fresh data
+    }
+  }
+
+  const walletData = JSON.stringify({ encryptedKey: encryptedKeyToWrite, network, networks });
+  await fse.writeFile(filePath, walletData);
 
   if (req.setDefault) {
     updateDefaultWallet(fastify, resolvedChain, address);
@@ -291,23 +310,25 @@ async function getJsonFiles(source: string): Promise<string[]> {
 }
 
 /**
- * Read wallet data from a file. Supports both new format {encryptedKey, network}
- * and legacy format (raw encrypted string). Returns the encrypted key and network.
+ * Read wallet data from a file. Supports both new format {encryptedKey, network, networks[]}
+ * and legacy format (raw encrypted string). Returns the encrypted key, primary network, and all networks.
  */
 async function readWalletFileData(
   filePath: string,
   defaultNetwork: string,
-): Promise<{ encryptedKey: string; network: string }> {
+): Promise<{ encryptedKey: string; network: string; networks: string[] }> {
   const content = await fse.readFile(filePath, 'utf8');
   try {
     const parsed = JSON.parse(content);
     if (parsed && typeof parsed.encryptedKey === 'string') {
-      return { encryptedKey: parsed.encryptedKey, network: parsed.network || defaultNetwork };
+      const network = parsed.network || defaultNetwork;
+      const networks: string[] = Array.isArray(parsed.networks) ? parsed.networks : [network];
+      return { encryptedKey: parsed.encryptedKey, network, networks };
     }
   } catch {
     // Not JSON - legacy format: raw encrypted string
   }
-  return { encryptedKey: content, network: defaultNetwork };
+  return { encryptedKey: content, network: defaultNetwork, networks: [defaultNetwork] };
 }
 
 export async function getWallets(
@@ -341,24 +362,35 @@ export async function getWallets(
         if (!isValid) continue;
 
         try {
-          const { network } = await readWalletFileData(`${walletPath}/${safeChain}/${file}`, defaultNetwork);
-          walletDetails.push({ address, network });
+          const { networks } = await readWalletFileData(`${walletPath}/${safeChain}/${file}`, defaultNetwork);
+          // Expand one WalletEntry per network so callers see each (address, network) pair
+          for (const net of networks) {
+            walletDetails.push({ address, network: net, networks });
+          }
         } catch {
-          walletDetails.push({ address, network: defaultNetwork });
+          walletDetails.push({ address, network: defaultNetwork, networks: [defaultNetwork] });
         }
       }
 
-      // Backwards-compatible plain address strings (Hummingbot client expects string[])
-      const walletAddresses = walletDetails.map((e) => e.address);
+      // Backwards-compatible plain address strings — unique addresses only (Hummingbot: string[])
+      const walletAddresses = [...new Set(walletDetails.map((e) => e.address))];
+
+      // Read the configured default wallet for this chain
+      const defaultWallet = ConfigManagerV2.getInstance().get(`${safeChain}.defaultWallet`) || undefined;
 
       // Get hardware wallet entries if requested
       const hardwareDetails: WalletEntry[] = showHardware
-        ? (await getHardwareWallets(chain)).map((w) => ({ address: w.address, network: w.network || defaultNetwork }))
+        ? (await getHardwareWallets(chain)).map((w) => ({
+            address: w.address,
+            network: w.network || defaultNetwork,
+            networks: w.networks ?? [w.network || defaultNetwork],
+          }))
         : [];
       const hardwareWalletAddresses = hardwareDetails.map((e) => e.address);
 
       responses.push({
         chain: safeChain,
+        defaultWallet: defaultWallet || undefined,
         // Backwards-compatible string arrays (always present)
         walletAddresses,
         // Enriched detail arrays — new consumers opt-in, old consumers ignore
@@ -381,6 +413,7 @@ export interface HardwareWalletData {
   derivationPath: string;
   addedAt: string;
   network?: string;
+  networks?: string[];
 }
 
 export function getHardwareWalletPath(chain: string): string {
@@ -474,66 +507,80 @@ export async function createWallet(fastify: FastifyInstance, req: CreateWalletRe
     throw fastify.httpErrors.internalServerError('No wallet encryption key configured');
   }
 
-  // Validate chain name
-  if (!validateChainName(req.chain)) {
-    throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
+  // Resolve chain and network from chainNetwork if provided
+  let resolvedChain = req.chain;
+  let resolvedNetwork = (req as any).network as string | undefined;
+
+  if ((req as any).chainNetwork) {
+    const parts = ((req as any).chainNetwork as string).split('-');
+    if (parts.length >= 2) {
+      resolvedChain = parts[0];
+      resolvedNetwork = parts.slice(1).join('-');
+    } else {
+      resolvedChain = (req as any).chainNetwork;
+    }
   }
+
+  // Validate chain name
+  if (!validateChainName(resolvedChain)) {
+    throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${resolvedChain}`);
+  }
+
+  // Default to mainnet-beta for Solana or mainnet for other chains
+  const network = resolvedNetwork || (resolvedChain === 'solana' ? 'mainnet-beta' : 'mainnet');
 
   let address: string;
   let privateKey: string;
   let encryptedPrivateKey: string;
 
-  // Default to mainnet-beta for Solana or mainnet for other chains
-  const network = req.chain === 'solana' ? 'mainnet-beta' : 'mainnet';
-
   try {
-    if (req.chain.toLowerCase() === 'solana') {
+    if (resolvedChain.toLowerCase() === 'solana') {
       // Generate Solana keypair
       const keypair = Keypair.generate();
       address = keypair.publicKey.toBase58();
       privateKey = bs58.encode(keypair.secretKey);
 
       // Get Solana connection for encryption
-      const connection = await getInitializedChain<Solana>(req.chain, network);
+      const connection = await getInitializedChain<Solana>(resolvedChain, network);
       encryptedPrivateKey = await connection.encrypt(privateKey, walletKey);
-    } else if (req.chain.toLowerCase() === 'ethereum') {
+    } else if (resolvedChain.toLowerCase() === 'ethereum') {
       // Generate Ethereum wallet
       const wallet = Wallet.createRandom();
       address = wallet.address;
       privateKey = wallet.privateKey;
 
       // Get Ethereum connection for encryption
-      const connection = await getInitializedChain<Ethereum>(req.chain, network);
+      const connection = await getInitializedChain<Ethereum>(resolvedChain, network);
       encryptedPrivateKey = await connection.encrypt(privateKey, walletKey);
     } else {
-      throw new Error(`Unsupported chain: ${req.chain}`);
+      throw new Error(`Unsupported chain: ${resolvedChain}`);
     }
   } catch (e: unknown) {
     if (e instanceof UnsupportedChainException) {
-      throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
+      throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${resolvedChain}`);
     }
     throw e;
   }
 
   // Create safe path for wallet storage
-  const safeChain = sanitizePathComponent(req.chain.toLowerCase());
+  const safeChain = sanitizePathComponent(resolvedChain.toLowerCase());
   const path = `${walletPath}/${safeChain}`;
 
   await mkdirIfDoesNotExist(path);
 
   // Sanitize address for filename
   const safeAddress = sanitizePathComponent(address);
-  const walletData = JSON.stringify({ encryptedKey: encryptedPrivateKey, network });
+  const walletData = JSON.stringify({ encryptedKey: encryptedPrivateKey, network, networks: [network] });
   await fse.writeFile(`${path}/${safeAddress}.json`, walletData);
 
   // Update default wallet if requested
   if (req.setDefault) {
-    updateDefaultWallet(fastify, req.chain, address);
+    updateDefaultWallet(fastify, resolvedChain, address);
   }
 
-  logger.info(`Created new ${req.chain} wallet: ${address}`);
+  logger.info(`Created new ${resolvedChain} wallet: ${address}`);
 
-  return { address, chain: req.chain };
+  return { address, chain: resolvedChain, network };
 }
 
 /**
@@ -618,7 +665,7 @@ export async function getWalletBalance(
   req: WalletBalanceRequest,
 ): Promise<WalletBalanceResponse> {
   // Resolve chain and network from chainNetwork if provided
-  let resolvedChain = req.chain;
+  let resolvedChain = req.chain ?? '';
   let resolvedNetwork = req.network;
 
   if (req.chainNetwork) {
@@ -631,8 +678,8 @@ export async function getWalletBalance(
     }
   }
 
-  if (!validateChainName(resolvedChain)) {
-    throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${resolvedChain}`);
+  if (!resolvedChain || !validateChainName(resolvedChain)) {
+    throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${resolvedChain || '(none)'}`);
   }
 
   const network = resolvedNetwork || (resolvedChain === 'solana' ? 'mainnet-beta' : 'mainnet');

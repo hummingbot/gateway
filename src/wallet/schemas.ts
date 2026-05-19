@@ -51,9 +51,15 @@ export const GetWalletsQuerySchema = Type.Object({
 export const WalletEntrySchema = Type.Object({
   address: WalletAddressSchema,
   network: Type.String({
-    description: 'The network this wallet was registered for (e.g. mainnet, bsc, mainnet-beta)',
+    description: 'Primary network this wallet was registered for (e.g. mainnet, bsc, mainnet-beta)',
     examples: ['mainnet', 'bsc', 'mainnet-beta'],
   }),
+  networks: Type.Optional(
+    Type.Array(Type.String(), {
+      description: 'All networks this wallet address has been registered for',
+      examples: [['mainnet', 'bsc']],
+    }),
+  ),
 });
 
 export const GetWalletResponseSchema = Type.Object({
@@ -61,6 +67,12 @@ export const GetWalletResponseSchema = Type.Object({
     description: 'Blockchain name',
     examples: ['solana', 'ethereum'],
   }),
+  defaultWallet: Type.Optional(
+    Type.String({
+      description: 'The default wallet address for this chain, if configured',
+      examples: ['0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf'],
+    }),
+  ),
   walletAddresses: Type.Array(Type.String(), {
     description: 'List of regular wallet addresses (backwards-compatible plain strings)',
   }),
@@ -117,6 +129,19 @@ export const AddHardwareWalletRequestSchema = Type.Object({
     default: 'solana',
     examples: ['solana', 'ethereum'],
   }),
+  network: Type.Optional(
+    Type.String({
+      description:
+        'Network within the chain (e.g. bsc, mainnet, arbitrum). Optional — defaults to mainnet/mainnet-beta.',
+      examples: ['mainnet', 'bsc', 'arbitrum', 'mainnet-beta'],
+    }),
+  ),
+  chainNetwork: Type.Optional(
+    Type.String({
+      description: 'Chain and network combined (e.g. ethereum-bsc). Overrides chain/network if provided.',
+      examples: ['ethereum-mainnet', 'ethereum-bsc', 'solana-mainnet-beta'],
+    }),
+  ),
   address: Type.String({
     description: 'Hardware wallet address to add (must exist on connected Ledger device)',
   }),
@@ -138,6 +163,12 @@ export const AddHardwareWalletResponseSchema = Type.Object({
   derivationPath: Type.String({
     description: 'BIP32/BIP44 derivation path used',
   }),
+  network: Type.Optional(
+    Type.String({
+      description: 'Network the hardware wallet was registered for',
+      examples: ['mainnet', 'bsc', 'mainnet-beta'],
+    }),
+  ),
   message: Type.String({
     description: 'Success message',
   }),
@@ -217,6 +248,19 @@ export const CreateWalletRequestSchema = Type.Object({
     enum: ['ethereum', 'solana'],
     examples: ['solana', 'ethereum'],
   }),
+  network: Type.Optional(
+    Type.String({
+      description:
+        'Network within the chain (e.g. bsc, mainnet, arbitrum). Optional — defaults to mainnet/mainnet-beta.',
+      examples: ['mainnet', 'bsc', 'arbitrum', 'mainnet-beta'],
+    }),
+  ),
+  chainNetwork: Type.Optional(
+    Type.String({
+      description: 'Chain and network combined (e.g. ethereum-bsc). Overrides chain/network if provided.',
+      examples: ['ethereum-mainnet', 'ethereum-bsc', 'solana-mainnet-beta'],
+    }),
+  ),
   setDefault: Type.Optional(
     Type.Boolean({
       description: 'Set this wallet as the default for the chain',
@@ -231,6 +275,9 @@ export const CreateWalletResponseSchema = Type.Object({
   }),
   chain: Type.String({
     description: 'Blockchain name',
+  }),
+  network: Type.String({
+    description: 'Network the wallet was created for',
   }),
 });
 
@@ -320,11 +367,13 @@ export type SendTransactionResponse = Static<typeof SendTransactionResponseSchem
 
 // Balance schemas
 export const WalletBalanceRequestSchema = Type.Object({
-  chain: Type.String({
-    description: 'Blockchain name',
-    enum: ['ethereum', 'solana'],
-    examples: ['ethereum', 'solana'],
-  }),
+  chain: Type.Optional(
+    Type.String({
+      description: 'Blockchain name. Optional when chainNetwork is provided.',
+      enum: ['ethereum', 'solana'],
+      examples: ['ethereum', 'solana'],
+    }),
+  ),
   network: Type.Optional(
     Type.String({
       description: 'Network within the chain (e.g. bsc, mainnet, arbitrum). Defaults to mainnet/mainnet-beta.',
