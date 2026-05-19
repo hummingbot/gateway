@@ -679,6 +679,26 @@ export async function getWalletBalance(
     throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${resolvedChain || '(none)'}`);
   }
 
+  // Blockchain lens: If network not specified, check if address is registered in wallet store
+  // and use its primary network (networks[0]) for address-only balance queries.
+  // This preserves context for known wallets while supporting arbitrary address queries.
+  if (!resolvedNetwork) {
+    try {
+      const walletResponses = await getWallets(fastify, true, true);
+      const chainResponse = walletResponses.find((r) => r.chain.toLowerCase() === resolvedChain.toLowerCase());
+      if (chainResponse?.walletDetails) {
+        const walletEntry = chainResponse.walletDetails.find(
+          (w: WalletEntry) => w.address.toLowerCase() === req.address.toLowerCase(),
+        );
+        if (walletEntry && walletEntry.networks && walletEntry.networks.length > 0) {
+          resolvedNetwork = walletEntry.networks[0]; // Use primary registered network
+        }
+      }
+    } catch {
+      // If wallet lookup fails, fall back to default network below
+    }
+  }
+
   const network = resolvedNetwork || (resolvedChain === 'solana' ? 'mainnet-beta' : 'mainnet');
 
   let balances: Record<string, number>;
