@@ -9,7 +9,10 @@ export const getWalletsRoute: FastifyPluginAsync = async (fastify) => {
     '/',
     {
       schema: {
-        description: 'Get all wallets across different chains',
+        description:
+          'Get all wallets across chains. Response includes `walletAddresses` (backwards-compatible string[]) ' +
+          'and `walletDetails` (enriched, one entry per address×network pair showing all registered networks). ' +
+          'The `defaultWallet` field indicates the configured default address for each chain.',
         tags: ['/wallet'],
         querystring: GetWalletsQuerySchema,
         response: {

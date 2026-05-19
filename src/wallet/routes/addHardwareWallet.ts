@@ -28,6 +28,16 @@ async function addHardwareWallet(
     throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);
   }
 
+  // Resolve network from chainNetwork if provided
+  let resolvedNetwork = (req as any).network as string | undefined;
+  if ((req as any).chainNetwork) {
+    const parts = ((req as any).chainNetwork as string).split('-');
+    if (parts.length >= 2) {
+      resolvedNetwork = parts.slice(1).join('-');
+    }
+  }
+  const network = resolvedNetwork || (req.chain.toLowerCase() === 'solana' ? 'mainnet-beta' : 'mainnet');
+
   const hardwareWalletService = HardwareWalletService.getInstance();
 
   // Check if device is connected
@@ -150,6 +160,9 @@ async function addHardwareWallet(
     // Get existing hardware wallets
     const existingWallets = await getHardwareWallets(req.chain);
 
+    // Stamp resolved network onto the wallet entry
+    walletInfo.network = network;
+
     // Check if address already exists
     const existingIndex = existingWallets.findIndex((w) => w.address === validatedAddress);
 
@@ -211,9 +224,28 @@ export const addHardwareWalletRoute: FastifyPluginAsync = async (fastify) => {
     '/add-hardware',
     {
       schema: {
-        description: 'Add a hardware wallet',
+        description:
+          'Add a hardware (Ledger) wallet. The address must be derivable from the connected Ledger device. ' +
+          'Optionally specify `network` (e.g. `bsc`) or `chainNetwork` (e.g. `ethereum-bsc`) to register ' +
+          'the address for a specific network — defaults to mainnet/mainnet-beta.',
         tags: ['/wallet'],
-        body: AddHardwareWalletRequestSchema,
+        body: {
+          ...AddHardwareWalletRequestSchema,
+          examples: [
+            {
+              summary: 'Solana hardware wallet (default network)',
+              value: { chain: 'solana', address: '<ledger-address>', setDefault: false },
+            },
+            {
+              summary: 'Ethereum BSC hardware wallet',
+              value: { chain: 'ethereum', network: 'bsc', address: '<ledger-address>' },
+            },
+            {
+              summary: 'Ethereum Arbitrum via chainNetwork',
+              value: { chainNetwork: 'ethereum-arbitrum', address: '<ledger-address>' },
+            },
+          ],
+        },
         response: {
           200: AddHardwareWalletResponseSchema,
         },
