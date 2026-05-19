@@ -232,18 +232,9 @@ export const addHardwareWalletRoute: FastifyPluginAsync = async (fastify) => {
         body: {
           ...AddHardwareWalletRequestSchema,
           examples: [
-            {
-              summary: 'Solana hardware wallet (default network)',
-              value: { chain: 'solana', address: '<ledger-address>', setDefault: false },
-            },
-            {
-              summary: 'Ethereum BSC hardware wallet',
-              value: { chain: 'ethereum', network: 'bsc', address: '<ledger-address>' },
-            },
-            {
-              summary: 'Ethereum Arbitrum via chainNetwork',
-              value: { chainNetwork: 'ethereum-arbitrum', address: '<ledger-address>' },
-            },
+            { chain: 'solana', address: '<ledger-address>', setDefault: false },
+            { chain: 'ethereum', network: 'bsc', address: '<ledger-address>' },
+            { chainNetwork: 'ethereum-arbitrum', address: '<ledger-address>' },
           ],
         },
         response: {

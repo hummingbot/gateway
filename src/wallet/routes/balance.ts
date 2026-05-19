@@ -8,9 +8,21 @@ export const walletBalanceRoute: FastifyPluginAsync = async (fastify) => {
     '/balance',
     {
       schema: {
-        description: 'Get token balances for a wallet address on a given chain/network',
+        description:
+          'Get token balances for any wallet address on a given chain/network. ' +
+          'Does not require the wallet to be registered with Gateway. ' +
+          'Pass `tokens: []` or omit `tokens` to return all non-zero balances. ' +
+          'Use `network` or `chainNetwork` (e.g. `ethereum-bsc`) to target a specific network.',
         tags: ['/wallet'],
-        body: WalletBalanceRequestSchema,
+        body: {
+          ...WalletBalanceRequestSchema,
+          examples: [
+            { chain: 'ethereum', address: '0xYourAddress' },
+            { chain: 'ethereum', network: 'bsc', address: '0xYourAddress', tokens: ['BNB', 'CAKE'] },
+            { chainNetwork: 'ethereum-arbitrum', address: '0xYourAddress', tokens: ['ETH', 'USDC'] },
+            { chain: 'solana', address: 'YourSolanaAddress' },
+          ],
+        },
         response: {
           200: WalletBalanceResponseSchema,
         },
