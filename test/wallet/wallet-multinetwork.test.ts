@@ -187,11 +187,11 @@ describe('GET /wallet/ — multi-network walletDetails and defaultWallet', () =>
     expect(eth.walletAddresses).toHaveLength(1);
     expect(eth.walletAddresses[0]).toBe(TEST_ETH_ADDRESS);
 
-    // walletDetails must expand to one entry per network
-    expect(eth.walletDetails).toHaveLength(2);
-    const networks = eth.walletDetails.map((d: any) => d.network);
-    expect(networks).toContain('mainnet');
-    expect(networks).toContain('bsc');
+    // walletDetails must remain one entry per unique address (networks[] carries all)
+    expect(eth.walletDetails).toHaveLength(1);
+    const allNetworks = eth.walletDetails[0].networks;
+    expect(allNetworks).toContain('mainnet');
+    expect(allNetworks).toContain('bsc');
 
     // Each walletDetail entry carries the full networks[] array
     eth.walletDetails.forEach((d: any) => {
@@ -268,7 +268,7 @@ describe('GET /wallet/ — multi-network walletDetails and defaultWallet', () =>
 
     // Legacy wallets should default to mainnet, walletDetails has 1 entry
     expect(eth.walletDetails).toHaveLength(1);
-    expect(eth.walletDetails[0].network).toBe('mainnet');
+    expect(eth.walletDetails[0].networks[0]).toBe('mainnet');
     expect(eth.walletDetails[0].networks).toEqual(['mainnet']);
   });
 });
@@ -365,7 +365,8 @@ describe('Backwards compatibility — walletAddresses remains string[]', () => {
     expect(eth.walletAddresses).toHaveLength(1); // one address, deduplicated
     expect(eth.walletAddresses[0]).toBe(TEST_ETH_ADDRESS);
 
-    // walletDetails expands to 3 entries (one per network)
-    expect(eth.walletDetails).toHaveLength(3);
+    // walletDetails is one entry per address; networks[] lists all networks
+    expect(eth.walletDetails).toHaveLength(1);
+    expect(eth.walletDetails[0].networks).toHaveLength(3);
   });
 });

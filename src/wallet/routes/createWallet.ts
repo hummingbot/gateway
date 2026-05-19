@@ -21,22 +21,10 @@ export const createWalletRoute: FastifyPluginAsync = async (fastify) => {
         body: {
           ...CreateWalletRequestSchema,
           examples: [
-            {
-              summary: 'New Solana mainnet-beta wallet',
-              value: { chain: 'solana', setDefault: true },
-            },
-            {
-              summary: 'New Ethereum mainnet wallet',
-              value: { chain: 'ethereum', setDefault: false },
-            },
-            {
-              summary: 'New Ethereum BSC wallet',
-              value: { chain: 'ethereum', network: 'bsc' },
-            },
-            {
-              summary: 'New Ethereum Arbitrum wallet via chainNetwork',
-              value: { chainNetwork: 'ethereum-arbitrum' },
-            },
+            { chain: 'solana', setDefault: true },
+            { chain: 'ethereum', setDefault: false },
+            { chain: 'ethereum', network: 'bsc' },
+            { chainNetwork: 'ethereum-arbitrum' },
           ],
         },
         response: {

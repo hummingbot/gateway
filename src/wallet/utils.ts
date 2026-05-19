@@ -363,12 +363,10 @@ export async function getWallets(
 
         try {
           const { networks } = await readWalletFileData(`${walletPath}/${safeChain}/${file}`, defaultNetwork);
-          // Expand one WalletEntry per network so callers see each (address, network) pair
-          for (const net of networks) {
-            walletDetails.push({ address, network: net, networks });
-          }
+          // One WalletEntry per unique address — networks[] carries all registered networks
+          walletDetails.push({ address, networks });
         } catch {
-          walletDetails.push({ address, network: defaultNetwork, networks: [defaultNetwork] });
+          walletDetails.push({ address, networks: [defaultNetwork] });
         }
       }
 
@@ -382,7 +380,6 @@ export async function getWallets(
       const hardwareDetails: WalletEntry[] = showHardware
         ? (await getHardwareWallets(chain)).map((w) => ({
             address: w.address,
-            network: w.network || defaultNetwork,
             networks: w.networks ?? [w.network || defaultNetwork],
           }))
         : [];

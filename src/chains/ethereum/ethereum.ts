@@ -1066,26 +1066,15 @@ export class Ethereum {
     // Treat empty array as if no tokens were specified
     const effectiveTokens = tokens && tokens.length === 0 ? undefined : tokens;
 
-    // Check if this is a hardware wallet
-    const isHardware = await this.isHardwareWallet(address);
-    let wallet: Wallet | null = null;
-
-    if (!isHardware) {
-      wallet = await this.getWallet(address);
-    }
-
-    // Always get native token balance
-    const nativeBalance = isHardware
-      ? await this.getNativeBalanceByAddress(address)
-      : await this.getNativeBalance(wallet!);
+    // Balance queries are read-only — no private key needed, use address directly.
+    // This keeps the Security lens: never decrypt keys for operations that don't sign.
+    const nativeBalance = await this.getNativeBalanceByAddress(address);
     balances[this.nativeTokenSymbol] = parseFloat(tokenValueToString(nativeBalance));
 
     if (!effectiveTokens) {
-      // No tokens specified, check all tokens in token list
-      await this.getAllTokenBalances(address, wallet, isHardware, balances);
+      await this.getAllTokenBalances(address, null, true, balances);
     } else {
-      // Get specific token balances
-      await this.getSpecificTokenBalances(effectiveTokens, address, wallet, isHardware, balances);
+      await this.getSpecificTokenBalances(effectiveTokens, address, null, true, balances);
     }
 
     return balances;

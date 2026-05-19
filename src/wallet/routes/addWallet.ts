@@ -17,22 +17,10 @@ export const addWalletRoute: FastifyPluginAsync = async (fastify) => {
         body: {
           ...AddWalletRequestSchema,
           examples: [
-            {
-              summary: 'Ethereum mainnet wallet',
-              value: { chain: 'ethereum', privateKey: '<your-private-key>', setDefault: true },
-            },
-            {
-              summary: 'Ethereum BSC wallet via network param',
-              value: { chain: 'ethereum', network: 'bsc', privateKey: '<your-private-key>' },
-            },
-            {
-              summary: 'Ethereum Arbitrum wallet via chainNetwork shorthand',
-              value: { chainNetwork: 'ethereum-arbitrum', privateKey: '<your-private-key>' },
-            },
-            {
-              summary: 'Solana mainnet-beta wallet',
-              value: { chain: 'solana', privateKey: '<your-private-key>', setDefault: true },
-            },
+            { chain: 'ethereum', privateKey: '<your-private-key>', setDefault: true },
+            { chain: 'ethereum', network: 'bsc', privateKey: '<your-private-key>' },
+            { chainNetwork: 'ethereum-arbitrum', privateKey: '<your-private-key>' },
+            { chain: 'solana', privateKey: '<your-private-key>', setDefault: true },
           ],
         },
         response: {
