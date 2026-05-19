@@ -18,6 +18,7 @@ export type PoolInfo = Static<typeof PoolInfoSchema>;
 
 export const GetPoolInfoRequest = Type.Object(
   {
+    chainNetwork: Type.Optional(Type.String()),
     network: Type.Optional(Type.String()),
     poolAddress: Type.String(),
   },

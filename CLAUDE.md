@@ -1,8 +1,19 @@
 # AI Agent Instructions
 
 This file provides guidance to AI coding assistants when working with code in this repository.
+Keep this file in sync with `.github/copilot-instructions.md` — changes to one must be reflected in the other.
+
+## Lenses
+
+Apply all lenses before proposing any solution. Each lens constrains acceptable answers.
+
+- Hummingbot lens: Gateway is consumed by Hummingbot Python strategies via typed connector classes. API response shapes are parsed directly into Python dicts — breaking changes to field types or names silently corrupt live trading bots. Prefer additive changes (new optional fields) over mutations. `walletAddresses` must remain `string[]`. Use Tolerant Reader pattern for all response extensions.
+- Blockchain lens: The `chain` field is the technology substrate (ethereum = all EVM, solana = SVM). `network` is the L1/L2 brand discriminator (mainnet, bsc, arbitrum, base, polygon, avalanche). A wallet address is chain-scoped, not network-scoped — the same keypair works across all EVM networks. Wallet files are stored under `conf/wallets/<chain>/<address>.json` as `{encryptedKey, network}` JSON; legacy files contain a raw encrypted string and must be handled transparently.
+- System Architect lens: Routes follow `/{resource}/{operation}` REST conventions. Schemas are TypeBox objects auto-published to Swagger — every new field must be typed. Backwards compatibility is enforced via optional fields, never field removal or type mutation. Singleton pattern governs chain/connector instances (`getInstance(network)`). Error responses must use Fastify `httpErrors` — never throw raw errors from route handlers.
+- Bitcoin lens: Not directly supported, but cryptographic primitives (key derivation, encryption, signing) must remain chain-agnostic. Wallet encryption uses a passphrase-derived key stored outside source control. Never log or expose private keys or passphrases in any code path.
 
 ## Build & Command Reference
+
 - Build: `pnpm build`
 - Start server: `pnpm start --passphrase=<PASSPHRASE>`
 - Start in dev mode: `pnpm start --passphrase=<PASSPHRASE> --dev` (HTTP mode, no SSL)
@@ -19,6 +30,7 @@ This file provides guidance to AI coding assistants when working with code in th
 ## Architecture Overview
 
 ### Gateway Pattern
+
 - RESTful API gateway providing standardized endpoints for blockchain and DEX interactions
 - Built with Fastify framework using TypeBox for schema validation
 - Supports both HTTP (dev mode) and HTTPS (production) protocols

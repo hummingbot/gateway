@@ -543,7 +543,20 @@ export class Ethereum {
       const validatedAddress = Ethereum.validateAddress(address);
 
       const path = `${walletPath}/ethereum`;
-      const encryptedPrivateKey = await fse.readFile(`${path}/${validatedAddress}.json`, 'utf8');
+      const fileContent = await fse.readFile(`${path}/${validatedAddress}.json`, 'utf8');
+
+      // Support both new JSON format {encryptedKey, network} and legacy raw string
+      let encryptedPrivateKey = fileContent;
+      let network = this.network;
+      try {
+        const parsed = JSON.parse(fileContent);
+        if (parsed && typeof parsed.encryptedKey === 'string') {
+          encryptedPrivateKey = parsed.encryptedKey;
+          network = parsed.network || this.network;
+        }
+      } catch {
+        // Legacy format: raw encrypted string
+      }
 
       const walletKey = ConfigManagerCertPassphrase.readWalletKey();
       if (!walletKey) {
