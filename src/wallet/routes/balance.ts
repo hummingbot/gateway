@@ -9,7 +9,7 @@ export const walletBalanceRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get token balances for a wallet address on a given chain/network',
-        tags: ['wallet'],
+        tags: ['/wallet'],
         body: WalletBalanceRequestSchema,
         response: {
           200: WalletBalanceResponseSchema,
