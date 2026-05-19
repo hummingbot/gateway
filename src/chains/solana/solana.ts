@@ -1110,6 +1110,17 @@ export class Solana {
     }
   }
 
+  /**
+   * Evict a cached instance so the next call to getInstance() re-creates it.
+   * Use this after changing nodeURL in config so the new provider is picked up.
+   */
+  public static resetInstance(network: string): void {
+    if (Solana._instances && network in Solana._instances) {
+      delete Solana._instances[network];
+      logger.info(`Solana instance for '${network}' evicted — will re-initialize on next request`);
+    }
+  }
+
   public async estimateGas(computeUnits?: number): Promise<number> {
     const computeUnitsToUse = computeUnits || this.config.defaultComputeUnits;
     const priorityFeePerCU = await this.estimateGasPrice();

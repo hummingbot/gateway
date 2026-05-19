@@ -793,6 +793,17 @@ export class Ethereum {
     }
   }
 
+  /**
+   * Evict a cached instance so the next call to getInstance() re-creates it.
+   * Use this after changing nodeURL in config so the new provider is picked up.
+   */
+  public static resetInstance(network: string): void {
+    if (Ethereum._instances && network in Ethereum._instances) {
+      delete Ethereum._instances[network];
+      logger.info(`Ethereum instance for '${network}' evicted — will re-initialize on next request`);
+    }
+  }
+
   // WETH ABI for wrap/unwrap operations
   private static WETH9ABI = [
     // Standard ERC20 functions
