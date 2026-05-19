@@ -117,6 +117,7 @@ export type MeteoraPoolInfo = Static<typeof MeteoraPoolInfoSchema>;
 
 export const GetPoolInfoRequest = Type.Object(
   {
+    chainNetwork: Type.Optional(Type.String()),
     network: Type.Optional(Type.String()),
     poolAddress: Type.String(),
   },

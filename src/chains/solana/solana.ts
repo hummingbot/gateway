@@ -260,7 +260,18 @@ export class Solana {
       const safeWalletPath = getSafeWalletFilePath('solana', validatedAddress);
 
       // Read the wallet file using the safe path
-      const encryptedPrivateKey: string = await fse.readFile(safeWalletPath, 'utf8');
+      const fileContent: string = await fse.readFile(safeWalletPath, 'utf8');
+
+      // Support both new JSON format {encryptedKey, network} and legacy raw string
+      let encryptedPrivateKey = fileContent;
+      try {
+        const parsed = JSON.parse(fileContent);
+        if (parsed && typeof parsed.encryptedKey === 'string') {
+          encryptedPrivateKey = parsed.encryptedKey;
+        }
+      } catch {
+        // Legacy format: raw encrypted string
+      }
 
       const walletKey = ConfigManagerCertPassphrase.readWalletKey();
       if (!walletKey) {
