@@ -19,9 +19,16 @@ const CLMM_POOL_ADDRESS_EXAMPLE = '0x172fcd41e0913e95784454622d1c3724f546f849'; 
 // ========================================
 
 export const PancakeswapAmmGetPoolInfoRequest = Type.Object({
+  chainNetwork: Type.Optional(
+    Type.String({
+      description:
+        'Chain and network in format: chain-network (e.g., ethereum-mainnet, ethereum-bsc) or just network name',
+      examples: ['ethereum-mainnet', 'ethereum-bsc', 'mainnet', 'bsc'],
+    }),
+  ),
   network: Type.Optional(
     Type.String({
-      description: 'The EVM network to use',
+      description: 'The EVM network to use (alternative to chainNetwork)',
       default: ethereumChainConfig.defaultNetwork,
       enum: [...PancakeswapConfig.networks],
     }),
@@ -37,9 +44,16 @@ export const PancakeswapAmmGetPoolInfoRequest = Type.Object({
 // ========================================
 
 export const PancakeswapClmmGetPoolInfoRequest = Type.Object({
+  chainNetwork: Type.Optional(
+    Type.String({
+      description:
+        'Chain and network in format: chain-network (e.g., ethereum-mainnet, ethereum-bsc) or just network name',
+      examples: ['ethereum-mainnet', 'ethereum-bsc', 'mainnet', 'bsc'],
+    }),
+  ),
   network: Type.Optional(
     Type.String({
-      description: 'The EVM network to use',
+      description: 'The EVM network to use (alternative to chainNetwork)',
       default: 'bsc',
       examples: ['bsc'],
       enum: [...PancakeswapConfig.networks],

@@ -84,7 +84,21 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     async (request): Promise<PoolInfo> => {
       try {
         const { poolAddress } = request.query;
-        const network = request.query.network;
+        let network = request.query.network;
+        const chainNetwork = request.query.chainNetwork;
+
+        // Support both chainNetwork (e.g., "ethereum-bsc") and network (e.g., "bsc") formats
+        if (chainNetwork && !network) {
+          // Parse chainNetwork format: split by '-' and take the last part as network
+          // This handles formats like "ethereum-mainnet" -> "mainnet", "ethereum-bsc" -> "bsc"
+          const parts = chainNetwork.split('-');
+          if (parts.length >= 2) {
+            network = parts.slice(1).join('-');
+          } else {
+            network = chainNetwork;
+          }
+        }
+
         return await getPoolInfo(fastify, network, poolAddress);
       } catch (e) {
         logger.error(e);
