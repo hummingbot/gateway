@@ -1,4 +1,3 @@
-import { encodeSqrtRatioX96 } from '@uniswap/v3-sdk';
 import { BigNumber, Contract, utils } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
@@ -106,10 +105,11 @@ export async function executeClmmSwap(
     amountOut: 0,
     amountInMaximum: 0,
     amountOutMinimum: 0,
-    sqrtPriceLimitX96: encodeSqrtRatioX96(
-      quote.trade.executionPrice.numerator,
-      quote.trade.executionPrice.denominator,
-    ).toString(),
+    // Use '0' for no price limit — avoids JSBI→native-BigInt conversion failure
+    // that occurs when PancakeSwap SDK JSBI objects are passed to @uniswap/v3-sdk's
+    // encodeSqrtRatioX96 which internally calls BigInt(jsbiObj) and throws.
+    // Slippage is handled by amountOutMinimum/amountInMaximum instead.
+    sqrtPriceLimitX96: '0',
   };
 
   let receipt;
