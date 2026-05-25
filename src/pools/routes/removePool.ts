@@ -29,12 +29,12 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
         },
         querystring: Type.Object({
           chain: Type.String({
-            description: 'Blockchain chain (solana, ethereum)',
+            description: 'Blockchain chain substrate (ethereum = all EVM networks incl. BSC, solana = SVM)',
             examples: ['solana', 'ethereum'],
           }),
           network: Type.String({
-            description: 'Network name (mainnet, mainnet-beta, etc)',
-            examples: ['mainnet', 'mainnet-beta'],
+            description: 'Network name — EVM: mainnet, bsc, arbitrum, base, polygon; Solana: mainnet-beta, devnet',
+            examples: ['mainnet', 'bsc', 'arbitrum', 'base', 'mainnet-beta'],
           }),
         }),
         response: {

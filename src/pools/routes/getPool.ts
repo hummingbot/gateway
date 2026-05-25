@@ -23,8 +23,8 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
           properties: {
             tradingPair: {
               type: 'string',
-              description: 'Trading pair (e.g., SOL-USDC, ETH-USDC)',
-              examples: ['SOL-USDC', 'ETH-USDC'],
+              description: 'Trading pair (e.g., SOL-USDC, ETH-USDC, WBNB-USDT for BSC)',
+              examples: ['SOL-USDC', 'ETH-USDC', 'WBNB-USDT', 'CAKE-USDT'],
             },
           },
           required: ['tradingPair'],

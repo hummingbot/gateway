@@ -18,8 +18,20 @@ export type PoolInfo = Static<typeof PoolInfoSchema>;
 
 export const GetPoolInfoRequest = Type.Object(
   {
-    chainNetwork: Type.Optional(Type.String()),
-    network: Type.Optional(Type.String()),
+    chainNetwork: Type.Optional(
+      Type.String({
+        description:
+          'Chain-network in format chain-network (e.g., ethereum-bsc, ethereum-mainnet). Takes priority over network.',
+        examples: ['ethereum-bsc', 'ethereum-mainnet', 'ethereum-arbitrum', 'ethereum-base'],
+      }),
+    ),
+    network: Type.Optional(
+      Type.String({
+        description:
+          'EVM network name (bsc, mainnet, arbitrum, base, polygon). Use chainNetwork for explicit chain scoping.',
+        examples: ['bsc', 'mainnet', 'arbitrum', 'base'],
+      }),
+    ),
     poolAddress: Type.String(),
   },
   { $id: 'GetPoolInfoRequest' },
@@ -28,7 +40,12 @@ export type GetPoolInfoRequestType = Static<typeof GetPoolInfoRequest>;
 
 export const AddLiquidityRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: Type.Optional(
+      Type.String({
+        description: 'EVM network name (bsc, mainnet, arbitrum, base, polygon) or chainNetwork format (ethereum-bsc).',
+        examples: ['bsc', 'mainnet', 'arbitrum', 'base'],
+      }),
+    ),
     walletAddress: Type.Optional(Type.String()),
     poolAddress: Type.String(),
     baseTokenAmount: Type.Number(),
@@ -76,7 +93,12 @@ export type QuoteLiquidityResponseType = Static<typeof QuoteLiquidityResponse>;
 
 export const RemoveLiquidityRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: Type.Optional(
+      Type.String({
+        description: 'EVM network name (bsc, mainnet, arbitrum, base, polygon) or chainNetwork format (ethereum-bsc).',
+        examples: ['bsc', 'mainnet', 'arbitrum', 'base'],
+      }),
+    ),
     walletAddress: Type.Optional(Type.String()),
     poolAddress: Type.String(),
     percentageToRemove: Type.Number({ minimum: 0, maximum: 100 }),
@@ -120,7 +142,12 @@ export type PositionInfo = Static<typeof PositionInfoSchema>;
 
 export const GetPositionInfoRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: Type.Optional(
+      Type.String({
+        description: 'EVM network name (bsc, mainnet, arbitrum, base, polygon) or chainNetwork format (ethereum-bsc).',
+        examples: ['bsc', 'mainnet', 'arbitrum', 'base'],
+      }),
+    ),
     poolAddress: Type.String(),
     walletAddress: Type.Optional(Type.String()),
   },
@@ -134,7 +161,12 @@ export type GetPositionInfoRequestType = Static<typeof GetPositionInfoRequest>;
 
 export const QuoteSwapRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: Type.Optional(
+      Type.String({
+        description: 'EVM network name (bsc, mainnet, arbitrum, base, polygon) or chainNetwork format (ethereum-bsc).',
+        examples: ['bsc', 'mainnet', 'arbitrum', 'base'],
+      }),
+    ),
     poolAddress: Type.Optional(
       Type.String({
         description: 'Pool address (optional - can be looked up from baseToken and quoteToken)',
@@ -179,7 +211,12 @@ export type QuoteSwapResponseType = Static<typeof QuoteSwapResponse>;
 export const ExecuteSwapRequest = Type.Object(
   {
     walletAddress: Type.Optional(Type.String()),
-    network: Type.Optional(Type.String()),
+    network: Type.Optional(
+      Type.String({
+        description: 'EVM network name (bsc, mainnet, arbitrum, base, polygon) or chainNetwork format (ethereum-bsc).',
+        examples: ['bsc', 'mainnet', 'arbitrum', 'base'],
+      }),
+    ),
     poolAddress: Type.Optional(
       Type.String({
         description: 'Pool address (optional - can be looked up from baseToken and quoteToken)',
