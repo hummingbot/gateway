@@ -1,0 +1,9 @@
+[
+  {
+    "chainId": 999,
+    "name": "Wrapped HYPE",
+    "symbol": "WHYPE",
+    "address": "0x5555555555555555555555555555555555555555",
+    "decimals": 18
+  }
+]

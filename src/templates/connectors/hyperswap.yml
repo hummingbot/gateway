@@ -1,0 +1,5 @@
+# Global settings for HyperSwap
+slippagePct: 2
+
+# For each AMM swap, the maximum number of hops to consider.
+maximumHops: 4
