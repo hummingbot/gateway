@@ -5,17 +5,18 @@ import { ConfigManagerV2 } from '../services/config-manager-v2';
 // Pool list request
 export const PoolListRequestSchema = Type.Object({
   chain: Type.String({
-    description: 'Blockchain chain (solana, ethereum)',
+    description: 'Blockchain chain substrate (ethereum = all EVM networks incl. BSC, solana = SVM)',
     examples: ['solana', 'ethereum'],
   }),
   network: Type.String({
-    description: 'Network name (mainnet-beta, mainnet, base, etc)',
-    examples: ['mainnet-beta', 'mainnet', 'base', 'arbitrum'],
+    description:
+      'Network name — EVM: mainnet, bsc, arbitrum, base, polygon, avalanche, optimism; Solana: mainnet-beta, devnet',
+    examples: ['mainnet-beta', 'mainnet', 'bsc', 'base', 'arbitrum', 'polygon'],
   }),
   connector: Type.Optional(
     Type.String({
-      description: 'Optional: filter by connector (raydium, meteora, uniswap, orca)',
-      examples: ['raydium', 'meteora', 'uniswap', 'orca'],
+      description: 'Optional: filter by connector (raydium, meteora, uniswap, orca, pancakeswap)',
+      examples: ['raydium', 'meteora', 'uniswap', 'orca', 'pancakeswap'],
     }),
   ),
   type: Type.Optional(
@@ -60,12 +61,12 @@ export const PoolListResponseSchema = Type.Array(PoolTemplateSchema);
 // Add pool request
 export const PoolAddRequestSchema = Type.Object({
   chain: Type.String({
-    description: 'Blockchain chain (solana, ethereum)',
+    description: 'Blockchain chain substrate (ethereum = all EVM networks incl. BSC, solana = SVM)',
     examples: ['solana', 'ethereum'],
   }),
   connector: Type.String({
-    description: 'Connector (raydium, meteora, uniswap, orca)',
-    examples: ['raydium', 'meteora', 'uniswap', 'orca'],
+    description: 'Connector (raydium, meteora, uniswap, orca, pancakeswap)',
+    examples: ['raydium', 'meteora', 'uniswap', 'orca', 'pancakeswap'],
   }),
   type: Type.String({
     description: 'Pool type',
@@ -73,12 +74,12 @@ export const PoolAddRequestSchema = Type.Object({
     enum: ['clmm', 'amm'],
   }),
   network: Type.String({
-    description: 'Network name (mainnet, mainnet-beta, etc)',
-    examples: ['mainnet-beta', 'mainnet'],
+    description: 'Network name — EVM: mainnet, bsc, arbitrum, base, polygon; Solana: mainnet-beta, devnet',
+    examples: ['mainnet-beta', 'mainnet', 'bsc', 'arbitrum', 'base'],
     default: 'mainnet-beta',
   }),
   address: Type.String({
-    description: 'Pool contract address',
+    description: 'Pool contract address (40-char EVM address or Solana base58 address)',
   }),
   baseSymbol: Type.Optional(
     Type.String({
@@ -113,12 +114,12 @@ export const PoolAddRequestSchema = Type.Object({
 // Get pool request
 export const GetPoolRequestSchema = Type.Object({
   chain: Type.String({
-    description: 'Blockchain chain (solana, ethereum)',
+    description: 'Blockchain chain substrate (ethereum = all EVM networks incl. BSC, solana = SVM)',
     examples: ['solana', 'ethereum'],
   }),
   network: Type.String({
-    description: 'Network name (mainnet, mainnet-beta, etc)',
-    examples: ['mainnet-beta', 'mainnet'],
+    description: 'Network name — EVM: mainnet, bsc, arbitrum, base, polygon; Solana: mainnet-beta, devnet',
+    examples: ['mainnet-beta', 'mainnet', 'bsc', 'arbitrum', 'base'],
     default: 'mainnet-beta',
   }),
   type: Type.String({
@@ -128,8 +129,8 @@ export const GetPoolRequestSchema = Type.Object({
   }),
   connector: Type.Optional(
     Type.String({
-      description: 'Optional: filter by connector (raydium, meteora, uniswap, orca)',
-      examples: ['raydium', 'meteora', 'uniswap', 'orca'],
+      description: 'Optional: filter by connector (raydium, meteora, uniswap, orca, pancakeswap)',
+      examples: ['raydium', 'meteora', 'uniswap', 'orca', 'pancakeswap'],
     }),
   ),
 });
@@ -147,13 +148,21 @@ export type PoolInfo = typeof PoolInfoSchema.static;
 // Find pools query parameters
 export const FindPoolsQuerySchema = Type.Object({
   chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    examples: ['solana-mainnet-beta', 'ethereum-mainnet', 'ethereum-base', 'ethereum-polygon'],
+    description:
+      'Chain and network in format: chain-network (e.g., ethereum-bsc, solana-mainnet-beta). Chain is the substrate (ethereum covers all EVM), network is the L1/L2 brand.',
+    examples: [
+      'ethereum-bsc',
+      'ethereum-mainnet',
+      'ethereum-arbitrum',
+      'ethereum-base',
+      'ethereum-polygon',
+      'solana-mainnet-beta',
+    ],
   }),
   connector: Type.Optional(
     Type.String({
-      description: 'Filter by connector name (e.g., raydium, meteora, uniswap, pancakeswap, pancakeswap-sol)',
-      examples: ['raydium', 'meteora', 'uniswap', 'pancakeswap', 'pancakeswap-sol', 'orca'],
+      description: 'Filter by connector name (e.g., pancakeswap for BSC, uniswap for EVM, raydium/meteora for Solana)',
+      examples: ['pancakeswap', 'uniswap', 'raydium', 'meteora', 'orca'],
     }),
   ),
   type: Type.Optional(

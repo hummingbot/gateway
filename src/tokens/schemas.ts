@@ -42,14 +42,15 @@ export type Token = {
 export const TokenListQuerySchema = Type.Object({
   chain: Type.Optional(
     Type.String({
-      description: 'Blockchain network (e.g., ethereum, solana)',
+      description: 'Blockchain chain substrate (ethereum = all EVM networks incl. BSC, solana = SVM)',
       examples: ['ethereum', 'solana'],
     }),
   ),
   network: Type.Optional(
     Type.String({
-      description: 'Network name (e.g., mainnet, mainnet-beta)',
-      examples: ['mainnet', 'mainnet-beta', 'devnet'],
+      description:
+        'Network name — EVM: mainnet, bsc, arbitrum, base, polygon, avalanche, optimism, celo; Solana: mainnet-beta, devnet',
+      examples: ['mainnet', 'bsc', 'arbitrum', 'base', 'polygon', 'mainnet-beta', 'devnet'],
     }),
   ),
   search: Type.Optional(
@@ -65,12 +66,13 @@ export type TokenListQuery = typeof TokenListQuerySchema.static;
 // Query parameters for viewing a specific token
 export const TokenViewQuerySchema = Type.Object({
   chain: Type.String({
-    description: 'Blockchain network (e.g., ethereum, solana)',
+    description: 'Blockchain chain substrate (ethereum = all EVM networks incl. BSC, solana = SVM)',
     examples: ['ethereum', 'solana'],
   }),
   network: Type.String({
-    description: 'Network name (e.g., mainnet, mainnet-beta)',
-    examples: ['mainnet', 'mainnet-beta', 'devnet'],
+    description:
+      'Network name — EVM: mainnet, bsc, arbitrum, base, polygon, avalanche, optimism, celo; Solana: mainnet-beta, devnet',
+    examples: ['mainnet', 'bsc', 'arbitrum', 'base', 'mainnet-beta'],
   }),
 });
 
@@ -79,12 +81,12 @@ export type TokenViewQuery = typeof TokenViewQuerySchema.static;
 // Request body for adding a token
 export const TokenAddRequestSchema = Type.Object({
   chain: Type.String({
-    description: 'Blockchain network (e.g., ethereum, solana)',
+    description: 'Blockchain chain substrate (ethereum = all EVM networks incl. BSC, solana = SVM)',
     examples: ['ethereum', 'solana'],
   }),
   network: Type.String({
-    description: 'Network name (e.g., mainnet, mainnet-beta)',
-    examples: ['mainnet', 'mainnet-beta', 'devnet'],
+    description: 'Network name — EVM: mainnet, bsc, arbitrum, base, polygon; Solana: mainnet-beta, devnet',
+    examples: ['mainnet', 'bsc', 'arbitrum', 'base', 'mainnet-beta'],
   }),
   token: TokenSchema,
 });
@@ -94,12 +96,12 @@ export type TokenAddRequest = typeof TokenAddRequestSchema.static;
 // Query parameters for removing a token
 export const TokenRemoveQuerySchema = Type.Object({
   chain: Type.String({
-    description: 'Blockchain network (e.g., ethereum, solana)',
+    description: 'Blockchain chain substrate (ethereum = all EVM networks incl. BSC, solana = SVM)',
     examples: ['ethereum', 'solana'],
   }),
   network: Type.String({
-    description: 'Network name (e.g., mainnet, mainnet-beta)',
-    examples: ['mainnet', 'mainnet-beta', 'devnet'],
+    description: 'Network name — EVM: mainnet, bsc, arbitrum, base, polygon; Solana: mainnet-beta, devnet',
+    examples: ['mainnet', 'bsc', 'arbitrum', 'base', 'mainnet-beta'],
   }),
 });
 
@@ -138,8 +140,16 @@ export type TokenInfo = typeof TokenInfoSchema.static;
 // Query parameters for finding token
 export const FindTokenQuerySchema = Type.Object({
   chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    examples: ['solana-mainnet-beta', 'ethereum-mainnet', 'ethereum-base', 'ethereum-polygon'],
+    description:
+      'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet, ethereum-bsc)',
+    examples: [
+      'ethereum-mainnet',
+      'ethereum-bsc',
+      'ethereum-arbitrum',
+      'ethereum-base',
+      'ethereum-polygon',
+      'solana-mainnet-beta',
+    ],
   }),
 });
 

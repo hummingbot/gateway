@@ -9,7 +9,13 @@ export enum TransactionStatus {
 
 export const EstimateGasRequestSchema = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: Type.Optional(
+      Type.String({
+        description:
+          'Network name (bsc, mainnet, arbitrum, base, polygon, mainnet-beta). Route is chain-scoped, e.g. POST /chains/ethereum/estimateGas with network=bsc.',
+        examples: ['bsc', 'mainnet', 'arbitrum', 'base', 'mainnet-beta'],
+      }),
+    ),
   },
   { $id: 'EstimateGasRequest' },
 );
@@ -36,7 +42,13 @@ export type EstimateGasResponse = Static<typeof EstimateGasResponseSchema>;
 
 export const BalanceRequestSchema = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: Type.Optional(
+      Type.String({
+        description:
+          'Network name (bsc, mainnet, arbitrum, base, polygon, mainnet-beta). Route is chain-scoped, e.g. POST /chains/ethereum/balances with network=bsc.',
+        examples: ['bsc', 'mainnet', 'arbitrum', 'base', 'mainnet-beta'],
+      }),
+    ),
     address: Type.Optional(Type.String()),
     tokens: Type.Optional(
       Type.Array(Type.String(), {
@@ -63,7 +75,13 @@ export type BalanceResponseType = Static<typeof BalanceResponseSchema>;
 
 export const TokensRequestSchema = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: Type.Optional(
+      Type.String({
+        description:
+          'Network name (bsc, mainnet, arbitrum, base, polygon, mainnet-beta). Route is chain-scoped, e.g. GET /chains/ethereum/tokens with network=bsc.',
+        examples: ['bsc', 'mainnet', 'arbitrum', 'base', 'mainnet-beta'],
+      }),
+    ),
     tokenSymbols: Type.Optional(Type.Union([Type.String(), Type.Array(Type.String())])),
   },
   { $id: 'TokensRequest' },
@@ -87,7 +105,12 @@ export type TokensResponseType = Static<typeof TokensResponseSchema>;
 
 export const PollRequestSchema = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: Type.Optional(
+      Type.String({
+        description: 'Network name (bsc, mainnet, arbitrum, base, polygon, mainnet-beta).',
+        examples: ['bsc', 'mainnet', 'arbitrum', 'base', 'mainnet-beta'],
+      }),
+    ),
     signature: Type.String({ description: 'Transaction signature/hash' }),
   },
   { $id: 'PollRequest' },
@@ -110,7 +133,12 @@ export type PollResponseType = Static<typeof PollResponseSchema>;
 
 export const StatusRequestSchema = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: Type.Optional(
+      Type.String({
+        description: 'Network name (bsc, mainnet, arbitrum, base, polygon, mainnet-beta).',
+        examples: ['bsc', 'mainnet', 'arbitrum', 'base', 'mainnet-beta'],
+      }),
+    ),
   },
   { $id: 'StatusRequest' },
 );
