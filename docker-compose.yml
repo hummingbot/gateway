@@ -2,10 +2,9 @@ services:
   gateway:
     restart: always
     container_name: gateway
-    image: hummingbot/gateway:PR543
-    # build: # Uncomment this build section and comment image to build Hummingbot locally
-    #   context: .
-    #   dockerfile: Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "15888:15888"
     volumes:
@@ -14,4 +13,4 @@ services:
       - ./certs:/home/gateway/certs
     environment:
       - GATEWAY_PASSPHRASE=a # replace with a strong passphrase
-      - DEV=true # set to false to require certificates for HTTPS
+      - DEV=true # HTTP mode — set to false to require TLS certificates

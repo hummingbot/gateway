@@ -15,7 +15,8 @@ Apply all lenses before proposing any solution. Each lens constrains acceptable 
 - QA lens: Validate backwards compatibility at every response boundary. Legacy wallet files must parse identically. New optional fields should not break old consumers. Test migration scenarios: old wallets → new system, new fields with old clients. Regression suite covers all breaking-change-adjacent code paths.
 - Security lens: Never log or expose private keys, passphrases, mnemonic seeds, or decrypted values. All file I/O must use `getSafeWalletFilePath()` with sanitized inputs. Wallet encryption keys derive from passphrase outside source control. Validate address formats to prevent injection. All secrets must be stored in `conf/` outside repo.
 
-## Build & Command Reference
+- Markdown lens: All `.md` files must render cleanly — headings surrounded by blank lines, lists surrounded by blank lines, fenced code blocks surrounded by blank lines, no bare URLs (wrap in angle brackets or `[text](url)`), no trailing spaces, consistent ATX-style headings (`##` not underline). PR descriptions, README sections, and CLAUDE.md must follow these rules. Use `<!--` comments only for meta-notes, never for hiding required content.
+- Documentation lens: Every public API change needs three things in the same commit — (1) updated TypeBox schema `description` fields visible in Swagger, (2) at minimum one Swagger `examples` entry showing BSC or the most common real-world usage, (3) a matching update to any relevant section in CLAUDE.md or copilot-instructions.md. Explanations must be concise (1–2 sentences), concrete (show the actual value, not a placeholder), and target the operator/bot-developer persona — not implementers. Avoid restating the field name; explain *why* it matters and what values are valid.
 
 - Build: `pnpm build`
 - Start server: `pnpm start --passphrase=<PASSPHRASE>`
