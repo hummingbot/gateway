@@ -3,8 +3,10 @@ import { BigNumber, Contract, ContractTransaction, providers, utils, Wallet, eth
 import { getAddress } from 'ethers/lib/utils';
 import fse from 'fs-extra';
 
+import { ChainstackService } from '../../rpc/chainstack-service';
 import { InfuraService } from '../../rpc/infura-service';
 import { createRateLimitAwareEthereumProvider } from '../../rpc/rpc-connection-interceptor';
+import { RPCProvider } from '../../rpc/rpc-provider-base';
 import { TokenValue, tokenValueToString } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
@@ -41,6 +43,7 @@ export class Ethereum {
   public baseFeeMultiplier: number;
   private _initialized: boolean = false;
   private infuraService?: InfuraService;
+  private chainstackService?: ChainstackService;
   private etherscanService?: EtherscanService;
 
   private static lastGasPriceEstimate: {
@@ -94,6 +97,8 @@ export class Ethereum {
     // Initialize RPC connection based on provider
     if (rpcProvider === 'infura') {
       this.initializeInfuraProvider();
+    } else if (rpcProvider === 'chainstack') {
+      this.initializeChainstackProvider();
     } else {
       // Default: use nodeURL with rate limit detection
       this.provider = createRateLimitAwareEthereumProvider(
@@ -441,10 +446,53 @@ export class Ethereum {
   }
 
   /**
+   * Initialize Chainstack provider with configuration
+   *
+   * Discovery runs during async init(); this sync setup only validates the
+   * API key and seeds `this.provider` with nodeURL. Once init() resolves, the
+   * provider is swapped to the Chainstack-discovered endpoint.
+   */
+  private initializeChainstackProvider(): void {
+    // Placeholder provider — swapped to the Chainstack URL in init() after discovery.
+    this.provider = createRateLimitAwareEthereumProvider(new providers.StaticJsonRpcProvider(this.rpcUrl), this.rpcUrl);
+
+    try {
+      const configManager = ConfigManagerV2.getInstance();
+      const apiKey = configManager.get('apiKeys.chainstack') || '';
+
+      if (!apiKey || apiKey.trim() === '' || apiKey.includes('YOUR_')) {
+        logger.warn(`⚠️ Chainstack provider selected but no valid API key configured`);
+        logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
+        return;
+      }
+
+      this.chainstackService = new ChainstackService(
+        { apiKey },
+        { chain: 'ethereum', network: this.network, chainId: this.chainId },
+      );
+
+      logger.info(`✅ Chainstack API key configured (length: ${apiKey.length} chars)`);
+    } catch (error: any) {
+      logger.warn(`Failed to initialize Chainstack provider: ${error.message}, falling back to standard RPC`);
+    }
+  }
+
+  /**
    * Initialize the Ethereum connector
    */
   public async init(): Promise<void> {
     try {
+      if (this.chainstackService) {
+        try {
+          await this.chainstackService.initialize();
+          this.provider = this.chainstackService.getProvider();
+          logger.info(`Using Chainstack RPC URL: ${redactUrl(this.chainstackService.getHttpUrl())}`);
+        } catch (providerError: any) {
+          logger.warn(`Chainstack initialize failed: ${providerError.message}, using nodeURL fallback`);
+          this.chainstackService = undefined;
+        }
+      }
+
       this._initialized = true;
     } catch (e) {
       logger.error(`Failed to initialize Ethereum chain: ${e}`);
@@ -594,10 +642,12 @@ export class Ethereum {
   }
 
   /**
-   * Get the InfuraService instance if initialized
+   * Get the active RPC provider service (Infura, Chainstack, etc.) if one
+   * is configured. Returns the polymorphic base type so callers don't need
+   * to special-case providers — mirrors Solana.getRpcProviderService().
    */
-  public getInfuraService(): InfuraService | null {
-    return this.infuraService || null;
+  public getRpcProviderService(): RPCProvider | null {
+    return this.chainstackService || this.infuraService || null;
   }
 
   /**
