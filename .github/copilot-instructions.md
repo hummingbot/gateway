@@ -48,6 +48,23 @@ Apply all lenses before proposing any solution. Each lens constrains acceptable 
 - Tests required for all new functionality (min 75% coverage for PRs)
 - Test files mirror `src/` structure under `test/`; mocks live in `test/mocks/`
 
+## Swagger / OpenAPI Documentation
+
+Gateway auto-generates Swagger UI from TypeBox schemas via `@fastify/swagger` + `@fastify/swagger-ui`.
+
+- **Live UI**: `http://localhost:15888/docs` (dev mode) or `https://localhost:15888/docs` (production)
+- **JSON spec**: `GET /docs/json` — used to regenerate `openapi.json` at root
+- **Schema location**: All TypeBox schemas live in `src/schemas/`, `src/{module}/schemas.ts`, or inline in route files
+- Every route **must** declare `schema: { tags, summary, description, body/querystring, response }` — undecorated routes are invisible in Swagger
+- Use `description` on every `Type.Object` field to explain purpose, valid values, and format
+- `examples` arrays must include **BSC** alongside mainnet for every EVM `network` field: `['mainnet', 'bsc', 'arbitrum', 'base', 'polygon', 'avalanche']`
+- `chainNetwork` examples must put `ethereum-bsc` first after `ethereum-mainnet`: `['ethereum-mainnet', 'ethereum-bsc', 'ethereum-arbitrum', 'solana-mainnet-beta']`
+- `chain` field description must read: `'Blockchain substrate — use "ethereum" for all EVM networks (mainnet, BSC, Arbitrum, Base, Polygon, Avalanche), "solana" for all SVM networks'`
+- Response schemas must match actual handler return types exactly — mismatches silently break Hummingbot Python parsing
+- Tag groupings: `chains`, `connectors`, `wallet`, `config`, `pools`, `tokens` — use the tag matching the module folder
+- Never use `Type.Any()` in a route schema; prefer `Type.Unknown()` with a description if shape varies
+- After adding/changing schemas, run `pnpm build` and verify the route appears correctly in Swagger UI
+
 ## Key Patterns
 
 - New wallet files: `JSON.stringify({ encryptedKey, network })` — always read with fallback to legacy raw string
