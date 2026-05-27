@@ -92,6 +92,10 @@ configurations:
     configurationPath: connectors/pancakeswap-sol.yml
     schemaPath: pancakeswap-sol-schema.json
 
+  $namespace metadao:
+    configurationPath: connectors/metadao.yml
+    schemaPath: metadao-schema.json
+
   # API Keys (centralized)
   $namespace apiKeys:
     configurationPath: apiKeys.yml

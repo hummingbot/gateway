@@ -5,6 +5,7 @@ import { PancakeswapConfig } from '#src/connectors/pancakeswap/pancakeswap.confi
 
 import { ZeroXConfig } from '../../connectors/0x/0x.config';
 import { JupiterConfig } from '../../connectors/jupiter/jupiter.config';
+import { MetaDaoConfig } from '../../connectors/metadao/metadao.config';
 import { MeteoraConfig } from '../../connectors/meteora/meteora.config';
 import { OrcaConfig } from '../../connectors/orca/orca.config';
 import { PancakeswapSolConfig } from '../../connectors/pancakeswap-sol/pancakeswap-sol.config';
@@ -76,6 +77,12 @@ export const connectorsConfig = [
     trading_types: [...OrcaConfig.tradingTypes],
     chain: OrcaConfig.chain,
     networks: [...OrcaConfig.networks],
+  },
+  {
+    name: 'metadao',
+    trading_types: [...MetaDaoConfig.tradingTypes],
+    chain: MetaDaoConfig.chain,
+    networks: [...MetaDaoConfig.networks],
   },
 ];
 

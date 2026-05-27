@@ -18,6 +18,7 @@ import { solanaRoutes } from './chains/solana/solana.routes';
 import { configRoutes } from './config/config.routes';
 import { register0xRoutes } from './connectors/0x/0x.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
+import { metadaoRoutes } from './connectors/metadao/metadao.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { orcaRoutes } from './connectors/orca/orca.routes';
 import { pancakeswapRoutes } from './connectors/pancakeswap/pancakeswap.routes';
@@ -82,6 +83,10 @@ const swaggerOptions = {
       {
         name: '/connector/jupiter',
         description: 'Jupiter connector endpoints',
+      },
+      {
+        name: '/connector/metadao',
+        description: 'MetaDAO Futarchy connector endpoints (experimental)',
       },
       {
         name: '/connector/meteora',
@@ -247,6 +252,9 @@ const configureGatewayServer = () => {
     app.register(jupiterRoutes.router, {
       prefix: '/connectors/jupiter/router',
     });
+
+    // MetaDAO routes (experimental)
+    app.register(metadaoRoutes.futarchy, { prefix: '/connectors/metadao/futarchy' });
 
     // Meteora routes
     app.register(meteoraRoutes.clmm, { prefix: '/connectors/meteora/clmm' });
