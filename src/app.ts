@@ -55,6 +55,7 @@ const swaggerOptions = {
       version: GATEWAY_VERSION,
     },
     servers: [
+      { url: '/' },
       {
         url: `http://localhost:${ConfigManagerV2.getInstance().get('server.port')}`,
       },

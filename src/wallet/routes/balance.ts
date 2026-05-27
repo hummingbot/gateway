@@ -11,10 +11,10 @@ export const walletBalanceRoute: FastifyPluginAsync = async (fastify) => {
         description:
           'Get token balances for any wallet address on a given chain/network. ' +
           'Does not require the wallet to be registered with Gateway. ' +
-          "Network resolution (Blockchain lens): If `network` is omitted, uses the address's primary registered network if found in wallet store; " +
-          'otherwise defaults to mainnet/mainnet-beta. ' +
-          'Pass `tokens: []` or omit `tokens` to return all non-zero balances. ' +
-          'Use `network` or `chainNetwork` (e.g. `ethereum-bsc`) to explicitly target a specific network.',
+          'If `network` is omitted, Gateway checks whether the address is already registered and uses its primary network; ' +
+          'otherwise it defaults to `mainnet` (Ethereum) or `mainnet-beta` (Solana). ' +
+          'Omit `tokens` or pass `tokens: []` to return all non-zero balances. ' +
+          'Use `chainNetwork` (e.g. `"ethereum-bsc"`) as a shorthand for `chain` + `network` together.',
         tags: ['/wallet'],
         body: {
           ...WalletBalanceRequestSchema,

@@ -208,5 +208,69 @@ describe('POST /wallet/balance', () => {
       });
       expect(response.statusCode).toBe(500);
     });
+
+    it('returns 400 when neither chain nor chainNetwork is provided', async () => {
+      const response = await gatewayApp.inject({
+        method: 'POST',
+        url: '/wallet/balance',
+        payload: { address: TEST_ETH_ADDRESS },
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 400 for malformed chainNetwork with no hyphen', async () => {
+      const response = await gatewayApp.inject({
+        method: 'POST',
+        url: '/wallet/balance',
+        payload: { chainNetwork: 'ethereummainnet', address: TEST_ETH_ADDRESS },
+      });
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('chain + address only (no network field)', () => {
+    it('returns 200 with mainnet when only chain and address provided', async () => {
+      const instanceSpy = jest.fn().mockResolvedValue(mockEthInstance);
+      patch(Ethereum, 'getInstance', instanceSpy);
+
+      const response = await gatewayApp.inject({
+        method: 'POST',
+        url: '/wallet/balance',
+        payload: { chain: 'ethereum', address: TEST_ETH_ADDRESS },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.chain).toBe('ethereum');
+      expect(body.network).toBe('mainnet');
+      expect(body.address).toBe(TEST_ETH_ADDRESS);
+      expect(instanceSpy).toHaveBeenCalledWith('mainnet');
+    });
+
+    it('returns 200 with mainnet-beta when only chain=solana and address provided', async () => {
+      const instanceSpy = jest.fn().mockResolvedValue(mockSolInstance);
+      patch(Solana, 'getInstance', instanceSpy);
+
+      const response = await gatewayApp.inject({
+        method: 'POST',
+        url: '/wallet/balance',
+        payload: { chain: 'solana', address: TEST_SOL_ADDRESS },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body).network).toBe('mainnet-beta');
+      expect(instanceSpy).toHaveBeenCalledWith('mainnet-beta');
+    });
+
+    it('accepts ethereum-mainnet as chainNetwork and defaults network correctly', async () => {
+      const response = await gatewayApp.inject({
+        method: 'POST',
+        url: '/wallet/balance',
+        payload: { chainNetwork: 'ethereum-mainnet', address: TEST_ETH_ADDRESS },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body).network).toBe('mainnet');
+    });
   });
 });

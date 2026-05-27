@@ -595,4 +595,181 @@ describe('Wallet New Routes', () => {
       expect(showKeyResult.privateKey).toBeDefined();
     });
   });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // DELETE /wallet/remove
+  // ─────────────────────────────────────────────────────────────────────────────
+  describe('DELETE /wallet/remove', () => {
+    beforeEach(() => {
+      mockWallets.ethereum.add(testEthAddress);
+      mockWallets.solana.add(testSolanaAddress);
+    });
+
+    it('removes an existing ethereum wallet', async () => {
+      const response = await gatewayApp.inject({
+        method: 'DELETE',
+        url: '/wallet/remove',
+        payload: { chain: 'ethereum', address: testEthAddress },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.payload);
+      expect(body.message).toBeDefined();
+    });
+
+    it('removes an existing solana wallet', async () => {
+      const response = await gatewayApp.inject({
+        method: 'DELETE',
+        url: '/wallet/remove',
+        payload: { chain: 'solana', address: testSolanaAddress },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.payload);
+      expect(body.message).toBeDefined();
+    });
+
+    it('returns 400 for unrecognized chain', async () => {
+      const response = await gatewayApp.inject({
+        method: 'DELETE',
+        url: '/wallet/remove',
+        payload: { chain: 'bitcoin', address: testEthAddress },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 4xx when address is missing', async () => {
+      const response = await gatewayApp.inject({
+        method: 'DELETE',
+        url: '/wallet/remove',
+        payload: { chain: 'ethereum' },
+      });
+
+      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+    });
+
+    it('returns 4xx when chain is missing', async () => {
+      const response = await gatewayApp.inject({
+        method: 'DELETE',
+        url: '/wallet/remove',
+        payload: { address: testEthAddress },
+      });
+
+      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+    });
+
+    it('returns 4xx when wallet file does not exist', async () => {
+      (mockFse.remove as jest.Mock).mockRejectedValue(
+        Object.assign(new Error('ENOENT: no such file'), { code: 'ENOENT' }),
+      );
+
+      const response = await gatewayApp.inject({
+        method: 'DELETE',
+        url: '/wallet/remove',
+        payload: { chain: 'ethereum', address: '0x1111111111111111111111111111111111111111' },
+      });
+
+      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // POST /wallet/setDefault
+  // ─────────────────────────────────────────────────────────────────────────────
+  describe('POST /wallet/setDefault', () => {
+    beforeEach(() => {
+      mockWallets.ethereum.add(testEthAddress);
+      mockWallets.solana.add(testSolanaAddress);
+    });
+
+    it('sets default wallet for ethereum', async () => {
+      const response = await gatewayApp.inject({
+        method: 'POST',
+        url: '/wallet/setDefault',
+        payload: { chain: 'ethereum', address: testEthAddress },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.payload);
+      expect(body.address).toBe(testEthAddress);
+      expect(body.chain).toBe('ethereum');
+    });
+
+    it('sets default wallet for solana', async () => {
+      const response = await gatewayApp.inject({
+        method: 'POST',
+        url: '/wallet/setDefault',
+        payload: { chain: 'solana', address: testSolanaAddress },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.payload);
+      expect(body.address).toBe(testSolanaAddress);
+      expect(body.chain).toBe('solana');
+    });
+
+    it('returns 400 for unrecognized chain', async () => {
+      const response = await gatewayApp.inject({
+        method: 'POST',
+        url: '/wallet/setDefault',
+        payload: { chain: 'tron', address: testEthAddress },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 4xx when address is missing', async () => {
+      const response = await gatewayApp.inject({
+        method: 'POST',
+        url: '/wallet/setDefault',
+        payload: { chain: 'ethereum' },
+      });
+
+      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+    });
+
+    it('returns 4xx when chain is missing', async () => {
+      const response = await gatewayApp.inject({
+        method: 'POST',
+        url: '/wallet/setDefault',
+        payload: { address: testEthAddress },
+      });
+
+      expect(response.statusCode).toBeGreaterThanOrEqual(400);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // GET /wallet/ — list wallets
+  // ─────────────────────────────────────────────────────────────────────────────
+  describe('GET /wallet/', () => {
+    it('returns empty walletAddresses array when no wallets registered', async () => {
+      mockWallets.ethereum.clear();
+      mockWallets.solana.clear();
+
+      const response = await gatewayApp.inject({ method: 'GET', url: '/wallet/' });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.payload);
+      expect(Array.isArray(body)).toBe(true);
+      body.forEach((entry: any) => {
+        expect(Array.isArray(entry.walletAddresses)).toBe(true);
+      });
+    });
+
+    it('walletAddresses is always string[] (backwards-compat)', async () => {
+      mockWallets.ethereum.add(testEthAddress);
+
+      const response = await gatewayApp.inject({ method: 'GET', url: '/wallet/' });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.payload);
+      const ethEntry = body.find((e: any) => e.chain === 'ethereum');
+      if (ethEntry) {
+        expect(Array.isArray(ethEntry.walletAddresses)).toBe(true);
+        ethEntry.walletAddresses.forEach((a: any) => expect(typeof a).toBe('string'));
+      }
+    });
+  });
 });
