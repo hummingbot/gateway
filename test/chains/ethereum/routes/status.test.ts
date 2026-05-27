@@ -44,7 +44,7 @@ describe('Ethereum Status Route', () => {
       provider: {
         getBlockNumber: jest.fn(),
       },
-      getInfuraService: jest.fn(),
+      getRpcProviderService: jest.fn(),
     };
 
     const mockInfuraService = {
@@ -56,6 +56,8 @@ describe('Ethereum Status Route', () => {
       mockEthereumInstance.provider.getBlockNumber.mockResolvedValue(23329000);
       // Reset rpcUrl to default
       mockEthereumInstance.rpcUrl = 'https://eth.llamarpc.com';
+      mockEthereumInstance.getRpcProviderService.mockReset();
+      mockInfuraService.getHttpUrl.mockReset();
     });
 
     it('should return status with standard rpcUrl when rpcProvider is "url"', async () => {
@@ -85,7 +87,7 @@ describe('Ethereum Status Route', () => {
         rpcProvider: 'infura',
       });
 
-      mockEthereumInstance.getInfuraService.mockReturnValue(mockInfuraService);
+      mockEthereumInstance.getRpcProviderService.mockReturnValue(mockInfuraService);
       mockInfuraService.getHttpUrl.mockReturnValue('https://mainnet.infura.io/v3/test-key');
 
       const result = await getEthereumStatus('mainnet');
@@ -101,6 +103,7 @@ describe('Ethereum Status Route', () => {
       });
 
       expect(mockInfuraService.getHttpUrl).toHaveBeenCalled();
+      expect(mockEthereumInstance.getRpcProviderService).toHaveBeenCalled();
     });
 
     it('should fallback to standard rpcUrl when rpcProvider is "infura" but service is not available', async () => {
@@ -110,7 +113,7 @@ describe('Ethereum Status Route', () => {
         rpcProvider: 'infura',
       });
 
-      mockEthereumInstance.getInfuraService.mockReturnValue(null);
+      mockEthereumInstance.getRpcProviderService.mockReturnValue(null);
 
       const result = await getEthereumStatus('mainnet');
 
@@ -132,7 +135,7 @@ describe('Ethereum Status Route', () => {
         rpcProvider: 'infura',
       });
 
-      mockEthereumInstance.getInfuraService.mockReturnValue(mockInfuraService);
+      mockEthereumInstance.getRpcProviderService.mockReturnValue(mockInfuraService);
       mockInfuraService.getHttpUrl.mockImplementation(() => {
         throw new Error('Infura service error');
       });
@@ -152,7 +155,9 @@ describe('Ethereum Status Route', () => {
         swapProvider: 'uniswap/router',
       });
 
-      expect(mockWarn).toHaveBeenCalledWith('Failed to get Infura URL, using standard rpcUrl: Infura service error');
+      expect(mockWarn).toHaveBeenCalledWith(
+        'Failed to get RPC provider URL, using standard rpcUrl: Infura service error',
+      );
 
       mockWarn.mockRestore();
     });
@@ -185,7 +190,7 @@ describe('Ethereum Status Route', () => {
       });
 
       mockEthereumInstance.rpcUrl = 'https://polygon-rpc.com';
-      mockEthereumInstance.getInfuraService.mockReturnValue(mockInfuraService);
+      mockEthereumInstance.getRpcProviderService.mockReturnValue(mockInfuraService);
       mockInfuraService.getHttpUrl.mockReturnValue('https://polygon-mainnet.infura.io/v3/test-key');
 
       const result = await getEthereumStatus('polygon');
@@ -201,6 +206,7 @@ describe('Ethereum Status Route', () => {
       });
 
       expect(mockInfuraService.getHttpUrl).toHaveBeenCalled();
+      expect(mockEthereumInstance.getRpcProviderService).toHaveBeenCalled();
     });
 
     it('should handle getBlockNumber timeout and continue with block number 0', async () => {
@@ -244,13 +250,13 @@ describe('Ethereum Status Route', () => {
       provider: {
         getBlockNumber: jest.fn(),
       },
-      getInfuraService: jest.fn(),
+      getRpcProviderService: jest.fn(),
     };
 
     beforeEach(() => {
       mockEthereum.getInstance.mockResolvedValue(mockEthereumInstance as any);
       mockEthereumInstance.provider.getBlockNumber.mockResolvedValue(23329000);
-      mockEthereumInstance.getInfuraService.mockReturnValue(null);
+      mockEthereumInstance.getRpcProviderService.mockReturnValue(null);
 
       getEthereumChainConfig.mockReturnValue({
         defaultNetwork: 'mainnet',

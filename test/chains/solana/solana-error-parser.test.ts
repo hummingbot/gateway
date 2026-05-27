@@ -3,6 +3,7 @@ import {
   isSlippageError,
   isInsufficientBalanceError,
   getUserFriendlyErrorMessage,
+  extractProgramLogs,
   PROGRAM_IDS,
 } from '../../../src/chains/solana/solana-error-parser';
 
@@ -212,6 +213,82 @@ describe('Solana Error Parser', () => {
         const result = parseSolanaError(errorMessage);
 
         expect(result.type).toBe('ACCOUNT_NOT_FOUND');
+      });
+    });
+
+    describe('InstructionError variants (non-Custom)', () => {
+      it('should parse InvalidAccountData with the failing instruction index', () => {
+        const errorMessage = `Transaction simulation failed: \nError: {"InstructionError":[3,"InvalidAccountData"]}\nProgram Logs: Program JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4 invoke [1]`;
+        const result = parseSolanaError(errorMessage);
+
+        expect(result.type).toBe('INSTRUCTION_ERROR');
+        expect(result.instructionIndex).toBe(3);
+        expect(result.errorCode).toBeNull();
+        expect(result.message).toContain('invalid or unexpected data');
+        expect(result.message).toContain('failing instruction index 3');
+      });
+
+      it('should parse InvalidAccountOwner', () => {
+        const result = parseSolanaError(`{"InstructionError":[1,"InvalidAccountOwner"]}`);
+
+        expect(result.type).toBe('INSTRUCTION_ERROR');
+        expect(result.instructionIndex).toBe(1);
+      });
+
+      it('should map UninitializedAccount to ACCOUNT_NOT_FOUND', () => {
+        const result = parseSolanaError(`{"InstructionError":[2,"UninitializedAccount"]}`);
+
+        expect(result.type).toBe('ACCOUNT_NOT_FOUND');
+        expect(result.instructionIndex).toBe(2);
+      });
+
+      it('should map InsufficientFunds variant to INSUFFICIENT_BALANCE', () => {
+        const result = parseSolanaError(`{"InstructionError":[0,"InsufficientFunds"]}`);
+
+        expect(result.type).toBe('INSUFFICIENT_BALANCE');
+        expect(result.instructionIndex).toBe(0);
+      });
+
+      it('should still extract custom error code from InstructionError with Custom variant', () => {
+        const result = parseSolanaError(`{"InstructionError":[3,{"Custom":6001}]}`);
+
+        expect(result.type).toBe('SLIPPAGE_EXCEEDED');
+        expect(result.errorCode).toBe(6001);
+        expect(result.instructionIndex).toBe(3);
+      });
+
+      it('should return null instruction index when there is no InstructionError', () => {
+        const result = parseSolanaError(`custom program error: 0x1771`);
+
+        expect(result.instructionIndex).toBeNull();
+      });
+
+      it('should produce a user-friendly message for instruction errors', () => {
+        const message = getUserFriendlyErrorMessage(`{"InstructionError":[3,"InvalidAccountData"]}`);
+        expect(message).toContain('Transaction simulation failed');
+      });
+    });
+
+    describe('extractProgramLogs', () => {
+      it('should extract program log lines from a simulation error message', () => {
+        const errorMessage = `Transaction simulation failed: \nError: {"InstructionError":[3,"InvalidAccountData"]}\nProgram Logs: Program JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4 invoke [1]\nProgram log: Instruction: Route\nProgram JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4 failed: invalid account data`;
+        const logs = extractProgramLogs(errorMessage);
+
+        expect(logs.length).toBe(3);
+        expect(logs[0]).toContain('invoke [1]');
+        expect(logs[2]).toContain('failed: invalid account data');
+      });
+
+      it('should return an empty array when no program logs are present', () => {
+        expect(extractProgramLogs(`custom program error: 0x1771`)).toEqual([]);
+      });
+
+      it('should cap the number of returned lines', () => {
+        const manyLines = Array.from({ length: 30 }, (_, i) => `Program log: line ${i}`).join('\n');
+        const logs = extractProgramLogs(`Program Logs: ${manyLines}`, 5);
+
+        expect(logs.length).toBe(5);
+        expect(logs[4]).toContain('line 29');
       });
     });
 

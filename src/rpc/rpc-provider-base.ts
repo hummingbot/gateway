@@ -84,10 +84,15 @@ export abstract class RPCProvider {
   }
 
   /**
-   * Get the HTTP RPC URL for this provider and network
-   * Must be implemented by subclasses
+   * Get the HTTP RPC URL for this provider and network.
+   * Returns null when the URL is not yet available (e.g. before initialize()
+   * has resolved discovery). Subclasses override to return a concrete URL.
+   * Callers can swap their RPC connection whenever this returns a non-null
+   * value, without needing to know which provider subclass is in use.
    */
-  public abstract getHttpUrl(): string;
+  public getHttpUrl(): string | null {
+    return null;
+  }
 
   /**
    * Get the WebSocket RPC URL for this provider and network

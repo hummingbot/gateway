@@ -51,7 +51,7 @@ export class HeliusService extends RPCProvider {
     super(config, networkInfo);
   }
 
-  public getHttpUrl(): string {
+  public override getHttpUrl(): string {
     const isDevnet = this.networkInfo.network.includes('devnet');
     const subdomain = isDevnet ? 'devnet' : 'mainnet';
     return `https://${subdomain}.helius-rpc.com/?api-key=${this.config.apiKey}`;

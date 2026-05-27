@@ -11,6 +11,11 @@ helius: ''
 # Supports 30+ networks including mainnet, Polygon, Arbitrum, etc.
 infura: ''
 
+# Chainstack - Multi-chain RPC provider (Solana + EVM)
+# Get your API key from https://console.chainstack.com/user/settings/api-keys
+# Auto-discovers deployed nodes via the Platform API
+chainstack: ''
+
 # CoinGecko - Price data and pool information
 # Get your API key from https://www.coingecko.com/en/api/pricing
 # Free tier: 30 calls/minute without key
