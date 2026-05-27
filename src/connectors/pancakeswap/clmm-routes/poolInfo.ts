@@ -1,13 +1,20 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import JSBI from 'jsbi';
 
 import { GetPoolInfoRequestType, PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
+import { computeUniswapBinDistribution } from '../../uniswap/uniswap.utils';
 import { Pancakeswap } from '../pancakeswap';
 import { formatTokenAmount, getPancakeswapPoolInfo } from '../pancakeswap.utils';
 import { PancakeswapClmmGetPoolInfoRequest } from '../schemas';
 
-export async function getPoolInfo(fastify: FastifyInstance, network: string, poolAddress: string): Promise<PoolInfo> {
+export async function getPoolInfo(
+  fastify: FastifyInstance,
+  network: string,
+  poolAddress: string,
+  binCount: number = 0,
+): Promise<PoolInfo> {
   const pancakeswap = await Pancakeswap.getInstance(network);
 
   if (!poolAddress) {
@@ -52,7 +59,7 @@ export async function getPoolInfo(fastify: FastifyInstance, network: string, poo
   const tickSpacing = pool.tickSpacing;
   const activeBinId = pool.tickCurrent;
 
-  return {
+  const result: PoolInfo = {
     address: poolAddress,
     baseTokenAddress: baseTokenObj.address,
     quoteTokenAddress: quoteTokenObj.address,
@@ -63,6 +70,22 @@ export async function getPoolInfo(fastify: FastifyInstance, network: string, poo
     quoteTokenAmount: quoteTokenAmount,
     activeBinId: activeBinId,
   };
+
+  if (binCount > 0) {
+    result.bins = await computeUniswapBinDistribution({
+      poolAddress,
+      network,
+      tickSpacing,
+      currentTick: activeBinId,
+      sqrtPriceX96: JSBI.BigInt(pool.sqrtRatioX96.toString()),
+      decimalsBase: baseTokenObj.decimals,
+      decimalsQuote: quoteTokenObj.decimals,
+      isBaseToken0,
+      binCount,
+    });
+  }
+
+  return result;
 }
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
@@ -83,9 +106,9 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request): Promise<PoolInfo> => {
       try {
-        const { poolAddress } = request.query;
+        const { poolAddress, binCount = 0 } = request.query;
         const network = request.query.network;
-        return await getPoolInfo(fastify, network, poolAddress);
+        return await getPoolInfo(fastify, network, poolAddress, binCount);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

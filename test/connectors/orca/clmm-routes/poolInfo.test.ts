@@ -6,6 +6,9 @@ import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 
 jest.mock('../../../../src/connectors/orca/orca');
 jest.mock('../../../../src/chains/solana/solana');
+jest.mock('../../../../src/connectors/orca/orca.utils', () => ({
+  computeOrcaBinDistribution: jest.fn(),
+}));
 jest.mock('@solana-program/token-2022', () => ({
   fetchAllMint: jest.fn(),
 }));
@@ -294,5 +297,70 @@ describe('GET /pool-info', () => {
     expect(body).toHaveProperty('quoteTokenAddress', usdcMint);
     expect(body).toHaveProperty('feePct', 0.01);
     expect(body).toHaveProperty('binStep', 1);
+  });
+
+  describe('binCount parameter', () => {
+    it('returns pool info without bins when binCount is not provided', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/pool-info',
+        query: { network: 'mainnet-beta', poolAddress: mockPoolAddress },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.bins).toBeUndefined();
+    });
+
+    it('returns pool info without bins when binCount=0', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/pool-info',
+        query: { network: 'mainnet-beta', poolAddress: mockPoolAddress, binCount: '0' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.bins).toBeUndefined();
+    });
+
+    it('returns bins array of correct length when binCount=10', async () => {
+      const { computeOrcaBinDistribution } = require('../../../../src/connectors/orca/orca.utils');
+      const mockBins = Array.from({ length: 10 }, (_, i) => ({
+        binId: mockWhirlpool.tickCurrentIndex - 300 + i * 64,
+        price: 200 + i * 0.5,
+        baseTokenAmount: 50,
+        quoteTokenAmount: 10000,
+      }));
+      (computeOrcaBinDistribution as jest.Mock).mockResolvedValue(mockBins);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/pool-info',
+        query: { network: 'mainnet-beta', poolAddress: mockPoolAddress, binCount: '10' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(Array.isArray(body.bins)).toBe(true);
+      expect(body.bins).toHaveLength(10);
+      expect(body.bins[0]).toHaveProperty('binId');
+      expect(body.bins[0]).toHaveProperty('price');
+      expect(body.bins[0]).toHaveProperty('baseTokenAmount');
+      expect(body.bins[0]).toHaveProperty('quoteTokenAmount');
+      expect(computeOrcaBinDistribution).toHaveBeenCalledWith(
+        expect.objectContaining({ binCount: 10, poolAddress: mockPoolAddress }),
+      );
+    });
+
+    it('returns 400 when binCount exceeds maximum (401)', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/pool-info',
+        query: { network: 'mainnet-beta', poolAddress: mockPoolAddress, binCount: '402' },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
   });
 });

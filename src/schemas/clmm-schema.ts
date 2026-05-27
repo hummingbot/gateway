@@ -74,10 +74,12 @@ export type GetPositionsOwnedRequestType = Static<typeof GetPositionsOwnedReques
 
 export const BinLiquiditySchema = Type.Object(
   {
-    binId: Type.Number(),
-    price: Type.Number(),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
+    binId: Type.Number({
+      description: 'Tick index (Uniswap/PancakeSwap/Orca) or bin index (Meteora/Raydium) identifying this price bucket',
+    }),
+    price: Type.Number({ description: 'Mid-price of this bin expressed as quoteToken per baseToken' }),
+    baseTokenAmount: Type.Number({ description: 'Amount of base token liquidity in this bin' }),
+    quoteTokenAmount: Type.Number({ description: 'Amount of quote token liquidity in this bin' }),
   },
   { $id: 'BinLiquidity' },
 );
@@ -95,6 +97,12 @@ export const PoolInfoSchema = Type.Object(
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
     activeBinId: Type.Number(),
+    bins: Type.Optional(
+      Type.Array(BinLiquiditySchema, {
+        description:
+          'Per-tick liquidity distribution around the active tick. Present only when binCount > 0 was requested.',
+      }),
+    ),
   },
   { $id: 'PoolInfo' },
 );
@@ -108,7 +116,6 @@ export const MeteoraPoolInfoSchema = Type.Composite(
       dynamicFeePct: Type.Number(),
       minBinId: Type.Number(),
       maxBinId: Type.Number(),
-      bins: Type.Optional(Type.Array(BinLiquiditySchema)),
     }),
   ],
   { $id: 'MeteoraPoolInfo' },
@@ -119,6 +126,14 @@ export const GetPoolInfoRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
     poolAddress: Type.String(),
+    binCount: Type.Optional(
+      Type.Integer({
+        description: 'If > 0, include a `bins` array of per-tick token amounts. Default 0.',
+        default: 0,
+        minimum: 0,
+        maximum: 401,
+      }),
+    ),
   },
   { $id: 'GetPoolInfoRequest' },
 );

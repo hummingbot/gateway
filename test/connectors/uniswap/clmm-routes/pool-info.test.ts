@@ -204,4 +204,119 @@ describe('GET /pool-info (Uniswap CLMM)', () => {
     // Price flips correspondingly (USDC per USDM1 was 1.01146; USDM1 per USDC ≈ 0.98867).
     expect(body.price).toBeCloseTo(0.98867, 4);
   });
+
+  describe('binCount parameter', () => {
+    function buildBaseMocks() {
+      const { Uniswap } = require('../../../../src/connectors/uniswap/uniswap');
+      const { getUniswapPoolInfo, formatTokenAmount } = require('../../../../src/connectors/uniswap/uniswap.utils');
+
+      (getUniswapPoolInfo as jest.Mock).mockResolvedValue({
+        baseTokenAddress: USDM1.address,
+        quoteTokenAddress: USDC.address,
+        poolType: 'clmm',
+      });
+      (formatTokenAmount as jest.Mock).mockImplementation(
+        (amount: string, decimals: number) => Number(amount) / Math.pow(10, decimals),
+      );
+
+      const mockPool = {
+        token0: { address: USDM1.address, decimals: USDM1.decimals },
+        token1: { address: USDC.address, decimals: USDC.decimals },
+        liquidity: POOL_LIQUIDITY,
+        sqrtRatioX96: BigNumber.from('79228162514264337593543950336'),
+        token0Price: { toSignificant: () => '1.01146' },
+        token1Price: { toSignificant: () => '0.98867' },
+        fee: 100,
+        tickSpacing: 1,
+        tickCurrent: -276211,
+      };
+
+      (Uniswap.getInstance as jest.Mock).mockResolvedValue({
+        getToken: jest.fn().mockImplementation((addr: string) => {
+          if (addr.toLowerCase() === USDM1.address.toLowerCase()) return USDM1;
+          if (addr.toLowerCase() === USDC.address.toLowerCase()) return USDC;
+          return null;
+        }),
+        getV3Pool: jest.fn().mockResolvedValue(mockPool),
+      });
+
+      (Ethereum.getInstance as jest.Mock).mockResolvedValue({
+        provider: { _isProvider: true },
+        getContract: jest.fn().mockImplementation((tokenAddress: string) => ({ address: tokenAddress })),
+        getERC20BalanceByAddress: jest.fn().mockImplementation((contract: any, _address: string, decimals: number) => {
+          if (contract.address === USDM1.address) return Promise.resolve({ value: USDM1_RAW_BALANCE, decimals });
+          return Promise.resolve({ value: USDC_RAW_BALANCE, decimals });
+        }),
+      });
+    }
+
+    it('returns pool info without bins when binCount is not provided', async () => {
+      buildBaseMocks();
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/pool-info',
+        query: { network: 'mainnet', poolAddress: POOL_ADDRESS },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.bins).toBeUndefined();
+    });
+
+    it('returns pool info without bins when binCount=0', async () => {
+      buildBaseMocks();
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/pool-info',
+        query: { network: 'mainnet', poolAddress: POOL_ADDRESS, binCount: '0' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.bins).toBeUndefined();
+    });
+
+    it('returns bins array of correct length when binCount=10', async () => {
+      buildBaseMocks();
+
+      const { computeUniswapBinDistribution } = require('../../../../src/connectors/uniswap/uniswap.utils');
+      const mockBins = Array.from({ length: 10 }, (_, i) => ({
+        binId: -276211 + i,
+        price: 1.01 + i * 0.001,
+        baseTokenAmount: 1000,
+        quoteTokenAmount: 1010,
+      }));
+      (computeUniswapBinDistribution as jest.Mock).mockResolvedValue(mockBins);
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/pool-info',
+        query: { network: 'mainnet', poolAddress: POOL_ADDRESS, binCount: '10' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(Array.isArray(body.bins)).toBe(true);
+      expect(body.bins).toHaveLength(10);
+      expect(body.bins[0]).toHaveProperty('binId');
+      expect(body.bins[0]).toHaveProperty('price');
+      expect(body.bins[0]).toHaveProperty('baseTokenAmount');
+      expect(body.bins[0]).toHaveProperty('quoteTokenAmount');
+      expect(computeUniswapBinDistribution).toHaveBeenCalledWith(
+        expect.objectContaining({ binCount: 10, poolAddress: POOL_ADDRESS }),
+      );
+    });
+
+    it('returns 400 when binCount exceeds maximum (401)', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/pool-info',
+        query: { network: 'mainnet', poolAddress: POOL_ADDRESS, binCount: '402' },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+  });
 });

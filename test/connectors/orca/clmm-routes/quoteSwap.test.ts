@@ -317,4 +317,90 @@ describe('GET /quote-swap', () => {
       expect(response.statusCode).toBeGreaterThanOrEqual(400);
     });
   });
+
+  describe('price unit consistency (regression: BUY-side inversion fix)', () => {
+    // The price field must always be expressed as quoteToken per baseToken,
+    // regardless of which side the swap is on. Before the fix, BUY-side quotes
+    // returned baseToken/quoteToken — a ~40000x difference for SOL/USDC.
+
+    beforeEach(() => {
+      // Re-establish the Solana mock — a previous validation test overrides it
+      // with a null-returning stub and doesn't restore it.
+      const mockSolana = {
+        getToken: jest.fn().mockImplementation((symbol: string) => {
+          if (symbol === 'SOL' || symbol === mockBaseTokenInfo.address) return mockBaseTokenInfo;
+          if (symbol === 'USDC' || symbol === mockQuoteTokenInfo.address) return mockQuoteTokenInfo;
+          return null;
+        }),
+      };
+      (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
+
+      // Clear any unconsumed "once" overrides left over from the error-handling
+      // describe (mockRejectedValueOnce wasn't consumed because that test's route
+      // call threw a 400 before reaching getOrcaSwapQuote).
+      const { getOrcaSwapQuote } = require('../../../../src/connectors/orca/orca.utils');
+      (getOrcaSwapQuote as jest.Mock).mockReset();
+      (getOrcaSwapQuote as jest.Mock).mockResolvedValue(mockSwapQuote);
+    });
+
+    it('SELL price is quoteToken/baseToken (USDC per SOL)', async () => {
+      // SELL 1 SOL → receive 200 USDC ⇒ price should be 200 (USDC/SOL)
+      const { getOrcaSwapQuote } = require('../../../../src/connectors/orca/orca.utils');
+      (getOrcaSwapQuote as jest.Mock).mockResolvedValue({
+        ...mockSwapQuote,
+        inputAmount: 1.0, // base (SOL) sold
+        outputAmount: 200, // quote (USDC) received
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet-beta',
+          baseToken: 'SOL',
+          quoteToken: 'USDC',
+          amount: 1.0,
+          side: 'SELL',
+          poolAddress: mockPoolAddress,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      // price = outputAmount / inputAmount = 200 / 1 = 200
+      expect(body.price).toBeCloseTo(200, 4);
+    });
+
+    it('BUY price is quoteToken/baseToken (USDC per SOL) — same scale as SELL', async () => {
+      // BUY 1 SOL for 200 USDC. Swap helper returns: input=200 USDC, output=1 SOL
+      // Before fix: price = outputAmount/inputAmount = 1/200 = 0.005 (WRONG)
+      // After fix:  price = inputAmount/outputAmount = 200/1 = 200 (CORRECT)
+      const { getOrcaSwapQuote } = require('../../../../src/connectors/orca/orca.utils');
+      (getOrcaSwapQuote as jest.Mock).mockResolvedValue({
+        ...mockSwapQuote,
+        inputAmount: 200, // quote (USDC) spent
+        outputAmount: 1.0, // base (SOL) received
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet-beta',
+          baseToken: 'SOL',
+          quoteToken: 'USDC',
+          amount: 1.0,
+          side: 'BUY',
+          poolAddress: mockPoolAddress,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      // price = quoteAmount / baseAmount = inputAmount / outputAmount = 200 / 1 = 200
+      expect(body.price).toBeCloseTo(200, 4);
+      // Regression guard: the pre-fix value was ~0.005 (base/quote, inverted)
+      expect(body.price).toBeGreaterThan(1);
+    });
+  });
 });

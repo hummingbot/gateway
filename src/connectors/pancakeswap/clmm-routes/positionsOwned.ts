@@ -16,8 +16,23 @@ import { formatTokenAmount } from '../pancakeswap.utils';
 
 // Define the request and response types
 const PositionsOwnedRequest = Type.Object({
-  network: Type.Optional(Type.String({ examples: ['bsc'], default: 'bsc' })),
-  walletAddress: Type.String({ examples: ['<ethereum-wallet-address>'] }),
+  network: Type.Optional(
+    Type.String({
+      description: 'EVM network to use — PancakeSwap V3 is primarily deployed on BSC',
+      examples: ['bsc'],
+      default: 'bsc',
+    }),
+  ),
+  walletAddress: Type.String({
+    description: 'EVM wallet address to query for PancakeSwap V3 NFT positions',
+    examples: ['0xYourWalletAddressHere'],
+  }),
+  activeOnly: Type.Optional(
+    Type.Boolean({
+      default: false,
+      description: 'When true, only return positions with active liquidity (liquidity > 0)',
+    }),
+  ),
 });
 
 const PositionsOwnedResponse = Type.Array(PositionInfoSchema);
@@ -47,6 +62,7 @@ export async function getPositionsOwned(
   fastify: FastifyInstance,
   network: string,
   walletAddress?: string,
+  activeOnly: boolean = false,
 ): Promise<PositionInfo[]> {
   const pancakeswap = await Pancakeswap.getInstance(network);
   const ethereum = await Ethereum.getInstance(network);
@@ -79,7 +95,7 @@ export async function getPositionsOwned(
       const tokenId = await positionManager.tokenOfOwnerByIndex(walletAddress, i);
       const positionDetails = await positionManager.positions(tokenId);
 
-      if (positionDetails.liquidity.eq(0)) {
+      if (activeOnly && positionDetails.liquidity.eq(0)) {
         continue;
       }
 
@@ -99,9 +115,7 @@ export async function getPositionsOwned(
         liquidity: positionDetails.liquidity.toString(),
       });
 
-      const isBaseToken0 =
-        token0.symbol === 'WETH' ||
-        (token1.symbol !== 'WETH' && token0.address.toLowerCase() < token1.address.toLowerCase());
+      const isBaseToken0 = token0.address.toLowerCase() < token1.address.toLowerCase();
 
       positions.push({
         address: tokenId.toString(),
@@ -172,7 +186,8 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { walletAddress } = request.query;
         const network = request.query.network;
-        return await getPositionsOwned(fastify, network, walletAddress);
+        const activeOnly = request.query.activeOnly ?? false;
+        return await getPositionsOwned(fastify, network, walletAddress, activeOnly);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

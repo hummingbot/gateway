@@ -98,7 +98,11 @@ async function formatSwapQuote(
     const maxAmountIn = DecimalUtil.fromBN(exactOutQuote.maxInAmount, inputToken.decimals).toNumber();
     const amountOut = DecimalUtil.fromBN(exactOutQuote.outAmount, outputToken.decimals).toNumber();
 
-    const price = amountOut / estimatedAmountIn;
+    // Always quote/base regardless of side. On BUY the input token is the
+    // quote and the output token is the base, so price = in/out = quote/base.
+    // The previous `amountOut / estimatedAmountIn` returned base/quote on BUY
+    // and quote/base on SELL — so BUY quotes appeared at a different scale.
+    const price = amountOut > 0 ? estimatedAmountIn / amountOut : 0;
 
     return {
       // Base QuoteSwapResponse fields in correct order
