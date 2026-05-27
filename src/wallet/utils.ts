@@ -114,6 +114,11 @@ export async function addWallet(fastify: FastifyInstance, req: AddWalletRequest)
     }
   }
 
+  // Require at least one of chain or chainNetwork
+  if (!resolvedChain) {
+    throw fastify.httpErrors.badRequest('Either "chain" or "chainNetwork" is required');
+  }
+
   // Validate chain name
   if (!validateChainName(resolvedChain)) {
     throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${resolvedChain}`);
@@ -365,7 +370,11 @@ export async function getWallets(
           const { networks } = await readWalletFileData(`${walletPath}/${safeChain}/${file}`, defaultNetwork);
           // One WalletEntry per unique address — networks[] carries all registered networks
           walletDetails.push({ address, networks });
-        } catch {
+        } catch (readError) {
+          logger.warn(
+            `Could not read wallet file ${walletPath}/${safeChain}/${file}: ${readError.message}. ` +
+              `Defaulting to network "${defaultNetwork}" — wallet may be misrouted if it belongs to a different network.`,
+          );
           walletDetails.push({ address, networks: [defaultNetwork] });
         }
       }
@@ -516,6 +525,11 @@ export async function createWallet(fastify: FastifyInstance, req: CreateWalletRe
     } else {
       resolvedChain = (req as any).chainNetwork;
     }
+  }
+
+  // Require at least one of chain or chainNetwork
+  if (!resolvedChain) {
+    throw fastify.httpErrors.badRequest('Either "chain" or "chainNetwork" is required');
   }
 
   // Validate chain name

@@ -279,5 +279,124 @@ describe('Wallet Network & ChainNetwork Support', () => {
       expect(ethereumEntry.walletAddresses.length).toBe(1);
       expect(ethereumEntry.walletAddresses[0]).toBe('0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf');
     });
+
+    it('should emit a logger.warn and default to chain default network for a corrupted wallet file', async () => {
+      const mockWalletFiles = [
+        { name: '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf.json', isDirectory: () => false, isFile: () => true },
+      ] as any;
+
+      (mockFse.readdir as jest.Mock)
+        .mockResolvedValueOnce([{ name: 'ethereum', isDirectory: () => true }] as any)
+        .mockResolvedValueOnce(mockWalletFiles);
+
+      // Simulate an unreadable / corrupted file by throwing on readFile
+      (mockFse.readFile as jest.Mock).mockRejectedValue(new Error('EACCES: permission denied'));
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/wallet/',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      const ethereumEntry = body.find((e: any) => e.chain === 'ethereum');
+
+      // Address should still appear, defaulted to mainnet
+      expect(ethereumEntry.walletAddresses).toContain('0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf');
+      expect(ethereumEntry.walletDetails[0].networks[0]).toBe('mainnet');
+    });
+  });
+
+  describe('POST /wallet/add - Missing/Invalid Parameters', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      (mockFse.pathExists as jest.Mock).mockResolvedValue(false);
+      (mockFse.mkdir as jest.Mock).mockResolvedValue(undefined);
+      (mockFse.writeFile as jest.Mock).mockResolvedValue(undefined);
+    });
+
+    it('should return 400 when neither chain nor chainNetwork is provided', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/wallet/add',
+        payload: {
+          privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.message).toMatch(/chain|chainNetwork/i);
+    });
+
+    it('should return 400 for an unrecognized chain value', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/wallet/add',
+        payload: {
+          chain: 'bitcoin',
+          privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('should return 400 when chainNetwork is malformed (no hyphen)', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/wallet/add',
+        payload: {
+          chainNetwork: 'ethereummainnet',
+          privateKey: '0x0000000000000000000000000000000000000000000000000000000000000001',
+        },
+      });
+
+      // chainNetwork without hyphen is treated as chain name, which fails validateChainName
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('should return 400 when privateKey is missing', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/wallet/add',
+        payload: {
+          chain: 'ethereum',
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('POST /wallet/create - Missing/Invalid Parameters', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      (mockFse.pathExists as jest.Mock).mockResolvedValue(false);
+      (mockFse.mkdir as jest.Mock).mockResolvedValue(undefined);
+      (mockFse.writeFile as jest.Mock).mockResolvedValue(undefined);
+    });
+
+    it('should return 400 when neither chain nor chainNetwork is provided', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/wallet/create',
+        payload: {},
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('should return 400 for an unrecognized chain value', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/wallet/create',
+        payload: {
+          chain: 'tron',
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
   });
 });
