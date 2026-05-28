@@ -205,7 +205,7 @@ export async function approveEthereumToken(
         // Wait for the transaction to be mined with timeout (60 seconds for approvals)
         const receipt = await ethereum.handleTransactionExecution(tx);
 
-        if (receipt.status === -1) {
+        if (!receipt || receipt.status === -1) {
           throw new Error('Transaction timed out or failed to get receipt');
         }
 

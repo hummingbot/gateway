@@ -99,9 +99,7 @@ export async function getPositionsOwned(
         liquidity: positionDetails.liquidity.toString(),
       });
 
-      const isBaseToken0 =
-        token0.symbol === 'WETH' ||
-        (token1.symbol !== 'WETH' && token0.address.toLowerCase() < token1.address.toLowerCase());
+      const isBaseToken0 = token0.address.toLowerCase() < token1.address.toLowerCase();
 
       positions.push({
         address: tokenId.toString(),

@@ -7,12 +7,14 @@ import { Solana } from '../../../chains/solana/solana';
 import { GetPoolInfoRequestType, PoolInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
+import { computeOrcaBinDistribution } from '../orca.utils';
 import { OrcaClmmGetPoolInfoRequest, OrcaPoolInfo, OrcaPoolInfoSchema } from '../schemas';
 
 export async function getPoolInfo(
   fastify: FastifyInstance,
   network: string,
   poolAddress: string,
+  binCount: number = 0,
 ): Promise<PoolInfo | OrcaPoolInfo> {
   const orca = await Orca.getInstance(network);
   if (!orca) {
@@ -74,6 +76,19 @@ export async function getPoolInfo(
     yieldOverTvl: apiPoolInfo?.yieldOverTvl ?? 0,
   };
 
+  if (binCount > 0) {
+    poolInfo.bins = await computeOrcaBinDistribution({
+      rpc: orca.solanaKitRpc,
+      poolAddress,
+      tickSpacing: whirlpool.tickSpacing,
+      currentTickIndex: whirlpool.tickCurrentIndex,
+      currentSqrtPrice: whirlpool.sqrtPrice,
+      decimalsA: mintA.data.decimals,
+      decimalsB: mintB.data.decimals,
+      binCount,
+    });
+  }
+
   return poolInfo;
 }
 
@@ -95,9 +110,9 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { poolAddress } = request.query;
+        const { poolAddress, binCount = 0 } = request.query;
         const network = request.query.network;
-        return (await getPoolInfo(fastify, network, poolAddress)) as OrcaPoolInfo;
+        return (await getPoolInfo(fastify, network, poolAddress, binCount)) as OrcaPoolInfo;
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

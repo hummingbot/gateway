@@ -1,4 +1,4 @@
-import { Type } from '@sinclair/typebox';
+import { Type, Static } from '@sinclair/typebox';
 
 import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
 
@@ -49,7 +49,18 @@ export const PancakeswapClmmGetPoolInfoRequest = Type.Object({
     description: 'Pancakeswap V3 pool address',
     examples: [CLMM_POOL_ADDRESS_EXAMPLE],
   }),
+  binCount: Type.Optional(
+    Type.Integer({
+      description:
+        'If > 0, include a `bins` array (per-tickSpacing token amounts around the current tick). ' +
+        'Default 0 — pool-info skips the extra eth_call.',
+      default: 0,
+      minimum: 0,
+      maximum: 401,
+    }),
+  ),
 });
+export type PancakeswapClmmGetPoolInfoRequestType = Static<typeof PancakeswapClmmGetPoolInfoRequest>;
 
 // ========================================
 // Router Request Schemas
@@ -591,3 +602,94 @@ export const PancakeswapClmmExecuteSwapRequest = Type.Object({
     }),
   ),
 });
+
+const POSITION_ID_EXAMPLE = '1234';
+
+export const MasterchefKnowsPoolRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'The EVM network to use',
+      default: 'bsc',
+      examples: ['bsc'],
+      enum: [...PancakeswapConfig.networks],
+    }),
+  ),
+  poolAddress: Type.String({
+    description: 'PancakeSwap V3 pool address to check against MasterChef',
+    examples: ['0x172fcd41e0913e95784454622d1c3724f546f849'],
+  }),
+});
+export type MasterchefKnowsPoolRequestType = Static<typeof MasterchefKnowsPoolRequest>;
+
+export const MasterchefKnowsPoolResponse = Type.Object({
+  registered: Type.Boolean({ description: 'Whether the pool is registered in MasterChef V3' }),
+  pid: Type.Optional(Type.Number({ description: 'MasterChef pool ID (present when registered)' })),
+});
+export type MasterchefKnowsPoolResponseType = Static<typeof MasterchefKnowsPoolResponse>;
+
+export const MasterchefStakeRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'The EVM network to use',
+      default: 'bsc',
+      examples: ['bsc'],
+      enum: [...PancakeswapConfig.networks],
+    }),
+  ),
+  walletAddress: Type.Optional(Type.String({ description: 'Wallet address that owns the NFT position' })),
+  tokenId: Type.String({ description: 'NFT position token ID to stake', examples: [POSITION_ID_EXAMPLE] }),
+});
+export type MasterchefStakeRequestType = Static<typeof MasterchefStakeRequest>;
+
+export const MasterchefStakeResponse = Type.Object({
+  signature: Type.String({ description: 'Transaction hash of the stake transaction' }),
+  status: Type.Number({ description: 'Transaction status (1 = success)' }),
+  tokenId: Type.String({ description: 'NFT position token ID that was staked' }),
+  fee: Type.String({ description: 'Gas fee paid for the transaction in native token' }),
+});
+export type MasterchefStakeResponseType = Static<typeof MasterchefStakeResponse>;
+
+export const MasterchefUnstakeRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'The EVM network to use',
+      default: 'bsc',
+      examples: ['bsc'],
+      enum: [...PancakeswapConfig.networks],
+    }),
+  ),
+  walletAddress: Type.Optional(Type.String({ description: 'Wallet address that owns the staked NFT position' })),
+  tokenId: Type.String({ description: 'NFT position token ID to unstake', examples: [POSITION_ID_EXAMPLE] }),
+});
+export type MasterchefUnstakeRequestType = Static<typeof MasterchefUnstakeRequest>;
+
+export const MasterchefUnstakeResponse = Type.Object({
+  signature: Type.String({ description: 'Transaction hash of the unstake transaction' }),
+  status: Type.Number({ description: 'Transaction status (1 = success)' }),
+  tokenId: Type.String({ description: 'NFT position token ID that was unstaked' }),
+  fee: Type.String({ description: 'Gas fee paid for the transaction in native token' }),
+});
+export type MasterchefUnstakeResponseType = Static<typeof MasterchefUnstakeResponse>;
+
+export const MasterchefUnstakeAndCloseRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'The EVM network to use',
+      default: 'bsc',
+      examples: ['bsc'],
+      enum: [...PancakeswapConfig.networks],
+    }),
+  ),
+  walletAddress: Type.Optional(Type.String({ description: 'Wallet address that owns the staked NFT position' })),
+  tokenId: Type.String({ description: 'NFT position token ID to unstake and close', examples: [POSITION_ID_EXAMPLE] }),
+});
+export type MasterchefUnstakeAndCloseRequestType = Static<typeof MasterchefUnstakeAndCloseRequest>;
+
+export const MasterchefUnstakeAndCloseResponse = Type.Object({
+  unstakeSignature: Type.String({ description: 'Transaction hash of the unstake transaction' }),
+  closeSignature: Type.String({ description: 'Transaction hash of the close transaction' }),
+  status: Type.Number({ description: 'Final transaction status (1 = success)' }),
+  tokenId: Type.String({ description: 'NFT position token ID that was unstaked and closed' }),
+  fee: Type.String({ description: 'Total gas fee paid for both transactions in native token' }),
+});
+export type MasterchefUnstakeAndCloseResponseType = Static<typeof MasterchefUnstakeAndCloseResponse>;

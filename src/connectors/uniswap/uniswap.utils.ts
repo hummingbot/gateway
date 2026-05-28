@@ -2,7 +2,7 @@ import { Contract } from '@ethersproject/contracts';
 import { Token } from '@uniswap/sdk-core';
 import { Pair as V2Pair } from '@uniswap/v2-sdk';
 import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
-import { FeeAmount, Pool as V3Pool } from '@uniswap/v3-sdk';
+import { FeeAmount, Pool as V3Pool, SqrtPriceMath, TickMath } from '@uniswap/v3-sdk';
 import { FastifyInstance } from 'fastify';
 import JSBI from 'jsbi';
 
@@ -300,4 +300,128 @@ export async function getUniswapPoolInfo(
   }
 
   return getV3PoolInfo(poolAddress, network);
+}
+
+export interface UniswapBinDistributionEntry {
+  binId: number;
+  price: number;
+  baseTokenAmount: number;
+  quoteTokenAmount: number;
+}
+
+export async function computeUniswapBinDistribution(args: {
+  poolAddress: string;
+  network: string;
+  tickSpacing: number;
+  currentTick: number;
+  sqrtPriceX96: JSBI;
+  decimalsBase: number;
+  decimalsQuote: number;
+  isBaseToken0: boolean;
+  binCount: number;
+}): Promise<UniswapBinDistributionEntry[]> {
+  const {
+    poolAddress,
+    network,
+    tickSpacing,
+    currentTick,
+    sqrtPriceX96,
+    decimalsBase,
+    decimalsQuote,
+    isBaseToken0,
+    binCount,
+  } = args;
+  if (binCount <= 0) return [];
+
+  const ethereum = await Ethereum.getInstance(network);
+
+  // Fetch slot0 and liquidity for tick data via pool contract
+  const poolContract = new Contract(poolAddress, IUniswapV3PoolABI, ethereum.provider);
+
+  const halfBins = Math.floor(binCount / 2);
+  const snapped = Math.floor(currentTick / tickSpacing) * tickSpacing;
+  const firstBinStart = snapped - halfBins * tickSpacing;
+  const scaleBase = Math.pow(10, decimalsBase);
+  const scaleQuote = Math.pow(10, decimalsQuote);
+
+  // Fetch liquidityNet for each tick boundary in range
+  const boundaries: number[] = [];
+  for (let i = 0; i <= binCount; i++) {
+    boundaries.push(firstBinStart + i * tickSpacing);
+  }
+
+  // Fetch ticks in parallel (batched)
+  const tickDataMap: Record<number, JSBI> = {};
+  const tickResults = await Promise.allSettled(
+    boundaries.map(async (tick) => {
+      try {
+        const t = await poolContract.ticks(tick);
+        return { tick, liquidityNet: JSBI.BigInt(t.liquidityNet.toString()) };
+      } catch {
+        return { tick, liquidityNet: JSBI.BigInt(0) };
+      }
+    }),
+  );
+  for (const r of tickResults) {
+    if (r.status === 'fulfilled') {
+      tickDataMap[r.value.tick] = r.value.liquidityNet;
+    }
+  }
+
+  // Fetch active liquidity
+  let activeLiquidity: JSBI;
+  try {
+    const liq = await poolContract.liquidity();
+    activeLiquidity = JSBI.BigInt(liq.toString());
+  } catch {
+    activeLiquidity = JSBI.BigInt(0);
+  }
+
+  const curIdx = Math.floor((currentTick - firstBinStart) / tickSpacing);
+  const binLs: JSBI[] = new Array(binCount);
+  binLs[curIdx] = activeLiquidity;
+  for (let i = curIdx + 1; i < binCount; i++) {
+    const ln = tickDataMap[boundaries[i]] ?? JSBI.BigInt(0);
+    binLs[i] = JSBI.add(binLs[i - 1], ln);
+  }
+  for (let i = curIdx - 1; i >= 0; i--) {
+    const ln = tickDataMap[boundaries[i + 1]] ?? JSBI.BigInt(0);
+    binLs[i] = JSBI.subtract(binLs[i + 1], ln);
+  }
+
+  const bins: UniswapBinDistributionEntry[] = [];
+  for (let i = 0; i < binCount; i++) {
+    const tickStart = boundaries[i];
+    const tickEnd = boundaries[i + 1];
+    const L = binLs[i];
+    let rawA = JSBI.BigInt(0);
+    let rawB = JSBI.BigInt(0);
+    if (JSBI.greaterThan(L, JSBI.BigInt(0))) {
+      const sqrtA = TickMath.getSqrtRatioAtTick(tickStart);
+      const sqrtB = TickMath.getSqrtRatioAtTick(tickEnd);
+      if (currentTick >= tickEnd) {
+        rawB = SqrtPriceMath.getAmount1Delta(sqrtA, sqrtB, L, false);
+      } else if (currentTick < tickStart) {
+        rawA = SqrtPriceMath.getAmount0Delta(sqrtA, sqrtB, L, false);
+      } else {
+        rawA = SqrtPriceMath.getAmount0Delta(sqrtPriceX96, sqrtB, L, false);
+        rawB = SqrtPriceMath.getAmount1Delta(sqrtA, sqrtPriceX96, L, false);
+      }
+    }
+    // token0 may be base or quote depending on pool ordering
+    const token0Amount = parseFloat(rawA.toString()) / (isBaseToken0 ? scaleBase : scaleQuote);
+    const token1Amount = parseFloat(rawB.toString()) / (isBaseToken0 ? scaleQuote : scaleBase);
+    const baseTokenAmount = isBaseToken0 ? token0Amount : token1Amount;
+    const quoteTokenAmount = isBaseToken0 ? token1Amount : token0Amount;
+    const priceRaw =
+      Math.pow(1.0001, tickStart) *
+      Math.pow(10, isBaseToken0 ? decimalsBase - decimalsQuote : decimalsQuote - decimalsBase);
+    bins.push({
+      binId: tickStart,
+      price: isBaseToken0 ? 1 / priceRaw : priceRaw,
+      baseTokenAmount,
+      quoteTokenAmount,
+    });
+  }
+  return bins;
 }

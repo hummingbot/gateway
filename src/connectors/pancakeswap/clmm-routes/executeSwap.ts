@@ -1,4 +1,3 @@
-import { encodeSqrtRatioX96 } from '@uniswap/v3-sdk';
 import { BigNumber, Contract, utils } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
@@ -106,10 +105,7 @@ export async function executeClmmSwap(
     amountOut: 0,
     amountInMaximum: 0,
     amountOutMinimum: 0,
-    sqrtPriceLimitX96: encodeSqrtRatioX96(
-      quote.trade.executionPrice.numerator,
-      quote.trade.executionPrice.denominator,
-    ).toString(),
+    sqrtPriceLimitX96: 0,
   };
 
   let receipt;

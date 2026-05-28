@@ -957,7 +957,8 @@ export class Ethereum {
   }
 
   public async handleTransactionExecution(tx: TransactionResponse): Promise<providers.TransactionReceipt | null> {
-    return await Promise.race([
+    // Race the standard confirmation wait against the configured timeout.
+    const raced = await Promise.race([
       tx.wait(1).then((receipt) => {
         // Transaction confirmed (status: 1) or failed/reverted (status: 0)
         logger.info(
@@ -965,17 +966,40 @@ export class Ethereum {
         );
         return receipt;
       }),
-      new Promise<null>((resolve) =>
-        setTimeout(() => {
-          // Timeout reached, transaction is still pending
-          // Return null to indicate pending - the caller should check for null
-          // Note: Do NOT return a fake receipt with status: 0, because in Ethereum
-          // receipt.status === 0 means "reverted/failed", not "pending"
-          logger.warn(`Transaction ${tx.hash} is still pending after timeout`);
-          resolve(null);
-        }, this._transactionExecutionTimeoutMs),
-      ),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), this._transactionExecutionTimeoutMs)),
     ]);
+    if (raced) {
+      return raced;
+    }
+
+    // Timed out — the transaction is broadcast but not yet confirmed. Ethereum
+    // blocks are ~12s, so a healthy tx can still need a few more blocks. Poll
+    // the receipt over an extended window before concluding it is genuinely
+    // pending; this avoids reporting a confirmed tx as a failure.
+    // Note: Do NOT return a fake receipt with status: 0 — in Ethereum
+    // receipt.status === 0 means "reverted/failed", not "pending".
+    const extraWindowMs = 90_000;
+    const pollIntervalMs = 5_000;
+    logger.warn(
+      `Transaction ${tx.hash} not confirmed within ${this._transactionExecutionTimeoutMs}ms — ` +
+        `polling for receipt up to a further ${extraWindowMs}ms`,
+    );
+    const deadline = Date.now() + extraWindowMs;
+    while (Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+      const receipt = await this.getTransactionReceipt(tx.hash);
+      if (receipt) {
+        logger.info(
+          `Transaction ${tx.hash} ${receipt.status === 1 ? 'confirmed' : 'failed'} ` +
+            `in block ${receipt.blockNumber} (after extended poll)`,
+        );
+        return receipt;
+      }
+    }
+
+    // Genuinely still pending — caller must handle null.
+    logger.warn(`Transaction ${tx.hash} still pending after extended poll`);
+    return null;
   }
 
   /**

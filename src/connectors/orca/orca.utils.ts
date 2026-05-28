@@ -1,5 +1,12 @@
 import { TransactionBuilder } from '@orca-so/common-sdk';
-import { fetchAllTickArray, fetchOracle, fetchWhirlpool, getTickArrayAddress } from '@orca-so/whirlpools-client';
+import {
+  fetchAllTickArray,
+  fetchAllPositionWithFilter,
+  fetchOracle,
+  fetchWhirlpool,
+  getTickArrayAddress,
+  positionWhirlpoolFilter,
+} from '@orca-so/whirlpools-client';
 import {
   IncreaseLiquidityQuote,
   TransferFee,
@@ -10,6 +17,10 @@ import {
   priceToTickIndex,
   sqrtPriceToPrice,
   swapQuoteByInputToken,
+  tickIndexToPrice,
+  tickIndexToSqrtPrice,
+  tryGetAmountDeltaA,
+  tryGetAmountDeltaB,
 } from '@orca-so/whirlpools-core';
 import {
   ORCA_WHIRLPOOL_PROGRAM_ID,
@@ -701,4 +712,67 @@ export function getTickArrayPubkeys(
       ORCA_WHIRLPOOL_PROGRAM_ID,
     ).publicKey,
   };
+}
+
+export interface OrcaBinDistributionEntry {
+  binId: number;
+  price: number;
+  baseTokenAmount: number;
+  quoteTokenAmount: number;
+}
+
+export async function computeOrcaBinDistribution(args: {
+  rpc: Parameters<typeof fetchAllPositionWithFilter>[0];
+  poolAddress: string;
+  tickSpacing: number;
+  currentTickIndex: number;
+  currentSqrtPrice: bigint;
+  decimalsA: number;
+  decimalsB: number;
+  binCount: number;
+}): Promise<OrcaBinDistributionEntry[]> {
+  const { rpc, poolAddress, tickSpacing, currentTickIndex, currentSqrtPrice, decimalsA, decimalsB, binCount } = args;
+  if (binCount <= 0) return [];
+
+  const positionAccounts = await fetchAllPositionWithFilter(rpc, positionWhirlpoolFilter(address(poolAddress)));
+
+  const halfBins = Math.floor(binCount / 2);
+  const snappedCurrent = Math.floor(currentTickIndex / tickSpacing) * tickSpacing;
+  const firstBinStart = snappedCurrent - halfBins * tickSpacing;
+  const scaleA = 10 ** decimalsA;
+  const scaleB = 10 ** decimalsB;
+
+  const bins: OrcaBinDistributionEntry[] = [];
+  for (let i = 0; i < binCount; i++) {
+    const tickStart = firstBinStart + i * tickSpacing;
+    const tickEnd = tickStart + tickSpacing;
+    let binL = 0n;
+    for (const account of positionAccounts) {
+      const p = account.data;
+      if (p.tickLowerIndex < tickEnd && p.tickUpperIndex > tickStart) {
+        binL += p.liquidity;
+      }
+    }
+    let rawA = 0n;
+    let rawB = 0n;
+    if (binL > 0n) {
+      const sqrtA = tickIndexToSqrtPrice(tickStart);
+      const sqrtB = tickIndexToSqrtPrice(tickEnd);
+      if (currentTickIndex >= tickEnd) {
+        rawB = tryGetAmountDeltaB(sqrtA, sqrtB, binL, false);
+      } else if (currentTickIndex < tickStart) {
+        rawA = tryGetAmountDeltaA(sqrtA, sqrtB, binL, false);
+      } else {
+        rawA = tryGetAmountDeltaA(currentSqrtPrice, sqrtB, binL, false);
+        rawB = tryGetAmountDeltaB(sqrtA, currentSqrtPrice, binL, false);
+      }
+    }
+    bins.push({
+      binId: tickStart,
+      price: tickIndexToPrice(tickStart, decimalsA, decimalsB),
+      baseTokenAmount: Number(rawA) / scaleA,
+      quoteTokenAmount: Number(rawB) / scaleB,
+    });
+  }
+  return bins;
 }
