@@ -32,6 +32,7 @@ import fse from 'fs-extra';
 // TODO: Replace with Fastify httpErrors
 const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
 
+import { ChainstackService } from '../../rpc/chainstack-service';
 import { HeliusService } from '../../rpc/helius-service';
 import { createRateLimitAwareSolanaConnection } from '../../rpc/rpc-connection-interceptor';
 import { RPCProvider } from '../../rpc/rpc-provider-base';
@@ -83,6 +84,8 @@ export class Solana {
     // Initialize RPC connection based on provider
     if (rpcProvider === 'helius') {
       this.initializeHeliusProvider();
+    } else if (rpcProvider === 'chainstack') {
+      this.initializeChainstackProvider();
     } else {
       // Default: use nodeURL
       this.connection = createRateLimitAwareSolanaConnection(
@@ -91,6 +94,41 @@ export class Solana {
         }),
         this.config.nodeURL,
       );
+    }
+  }
+
+  /**
+   * Initialize Chainstack RPC provider
+   *
+   * Chainstack discovery runs in the async init() after construction; we
+   * pre-seed `this.connection` with nodeURL and, on success, swap it to the
+   * discovered Chainstack endpoint once the Platform API returns the node.
+   */
+  private initializeChainstackProvider() {
+    // Placeholder connection — swapped to the Chainstack URL in init() after discovery.
+    this.connection = createRateLimitAwareSolanaConnection(
+      new Connection(this.config.nodeURL, { commitment: 'confirmed' }),
+      this.config.nodeURL,
+    );
+
+    try {
+      const configManager = ConfigManagerV2.getInstance();
+      const apiKey = configManager.get('apiKeys.chainstack') || '';
+
+      if (!apiKey || apiKey.trim() === '' || apiKey.includes('YOUR_')) {
+        logger.warn(`⚠️ Chainstack provider selected but no valid API key configured`);
+        logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.config.nodeURL)}`);
+        return;
+      }
+
+      this.rpcProviderService = new ChainstackService(
+        { apiKey },
+        { chain: 'solana', network: this.network, chainId: this.config.chainID },
+      );
+
+      logger.info(`✅ Chainstack API key configured (length: ${apiKey.length} chars)`);
+    } catch (error: any) {
+      logger.warn(`Failed to initialize Chainstack provider: ${error.message}, falling back to standard RPC`);
     }
   }
 
@@ -161,9 +199,28 @@ export class Solana {
 
   private async init(): Promise<void> {
     try {
-      // Initialize RPC provider service if configured
+      // Initialize RPC provider service if configured. Some providers
+      // (Chainstack) only know their HTTP URL after initialize() resolves
+      // discovery; others (Helius) return it eagerly. Treat both uniformly:
+      // if getHttpUrl() yields a URL, swap the connection to it.
       if (this.rpcProviderService) {
-        await this.rpcProviderService.initialize();
+        try {
+          await this.rpcProviderService.initialize();
+
+          const rpcUrl = this.rpcProviderService.getHttpUrl();
+          if (rpcUrl) {
+            logger.info(`Using ${this.rpcProviderService.getProviderName()} RPC URL: ${redactUrl(rpcUrl)}`);
+            this.connection = createRateLimitAwareSolanaConnection(
+              new Connection(rpcUrl, { commitment: 'confirmed' }),
+              rpcUrl,
+            );
+          }
+        } catch (providerError: any) {
+          logger.warn(
+            `${this.rpcProviderService.getProviderName()} initialize failed: ${providerError.message}, using nodeURL fallback`,
+          );
+          this.rpcProviderService = undefined;
+        }
       }
     } catch (e) {
       logger.error(`Failed to initialize ${this.network}: ${e}`);
@@ -1886,10 +1943,25 @@ export class Solana {
 
       // Import error helpers and parser
       const { simulationFailed, insufficientBalance, slippageExceeded } = await import('../../services/error-handler');
-      const { parseSolanaError } = await import('./solana-error-parser');
+      const { parseSolanaError, extractProgramLogs } = await import('./solana-error-parser');
 
       // Parse the error using the utility
       const parsedError = parseSolanaError(errorMessage);
+
+      // Compose a detailed message including the failing instruction index and
+      // program logs, so callers can diagnose failures without digging through
+      // Gateway server logs.
+      const buildDetail = (base: string): string => {
+        const parts = [base];
+        if (parsedError.instructionIndex !== null) {
+          parts.push(`Failing instruction index: ${parsedError.instructionIndex}.`);
+        }
+        const logs = extractProgramLogs(errorMessage);
+        if (logs.length > 0) {
+          parts.push(`Program logs:\n${logs.join('\n')}`);
+        }
+        return parts.join('\n');
+      };
 
       // Throw appropriate error based on parsed type
       switch (parsedError.type) {
@@ -1899,19 +1971,23 @@ export class Solana {
         case 'INSUFFICIENT_BALANCE':
           throw insufficientBalance(parsedError.message);
 
+        case 'INSTRUCTION_ERROR':
         case 'INVALID_POSITION':
         case 'PRICE_LIMIT_OVERFLOW':
         case 'ACCOUNT_NOT_FOUND':
         case 'MATH_OVERFLOW':
-          throw simulationFailed(parsedError.message);
+          logger.error('Transaction simulation failed:', simulationError);
+          throw simulationFailed(buildDetail(parsedError.message));
 
         default:
           // Generic simulation failure
           logger.error('Transaction simulation failed:', simulationError);
           throw simulationFailed(
-            parsedError.errorCodeHex
-              ? `Transaction simulation failed. Error code: ${parsedError.errorCodeHex}.`
-              : 'Transaction simulation failed.',
+            buildDetail(
+              parsedError.errorCodeHex
+                ? `Transaction simulation failed. Error code: ${parsedError.errorCodeHex}.`
+                : 'Transaction simulation failed.',
+            ),
           );
       }
     }

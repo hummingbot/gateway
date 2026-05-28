@@ -13,17 +13,15 @@ export async function getEthereumStatus(network: string): Promise<StatusResponse
     const chain = 'ethereum';
     const rpcProvider = chainConfig.rpcProvider || 'url';
 
-    // Get the actual RPC URL based on provider
+    // Get the actual RPC URL from the active provider (if any)
     let rpcUrl = ethereum.rpcUrl; // Default to standard rpcUrl
-    if (rpcProvider === 'infura') {
-      const infuraService = ethereum.getInfuraService();
-      if (infuraService) {
-        try {
-          rpcUrl = infuraService.getHttpUrl();
-        } catch (error) {
-          // If Infura URL generation fails, fall back to standard rpcUrl
-          logger.warn(`Failed to get Infura URL, using standard rpcUrl: ${error.message}`);
-        }
+    const rpcProviderService = ethereum.getRpcProviderService();
+    if (rpcProviderService) {
+      try {
+        rpcUrl = rpcProviderService.getHttpUrl() ?? rpcUrl;
+      } catch (error) {
+        // If provider URL generation fails, fall back to standard rpcUrl
+        logger.warn(`Failed to get RPC provider URL, using standard rpcUrl: ${error.message}`);
       }
     }
 

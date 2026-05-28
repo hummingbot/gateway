@@ -33,7 +33,7 @@ export class InfuraService extends RPCProvider {
   /**
    * Get the Infura HTTP RPC URL for the current network
    */
-  public getHttpUrl(): string {
+  public override getHttpUrl(): string {
     const network = this.getInfuraNetworkName();
     return `https://${network}.infura.io/v3/${this.config.apiKey}`;
   }

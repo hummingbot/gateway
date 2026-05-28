@@ -18,7 +18,7 @@ export async function getSolanaStatus(fastify: FastifyInstance, network: string)
     const rpcProviderService = solana.getRpcProviderService();
     if (rpcProviderService) {
       try {
-        rpcUrl = rpcProviderService.getHttpUrl();
+        rpcUrl = rpcProviderService.getHttpUrl() ?? rpcUrl;
       } catch (error) {
         // If provider URL generation fails, fall back to nodeURL
         logger.warn(`Failed to get RPC provider URL, using nodeURL: ${error.message}`);

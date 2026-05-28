@@ -64,6 +64,16 @@ async function displaySolanaConfig(): Promise<void> {
     // Initialize Solana instance (this triggers auto-subscription to wallets if WebSocket enabled)
     try {
       const solana = await Solana.getInstance(defaultNetwork);
+
+      // Chainstack discovers its URL asynchronously during getInstance(); pick it up now.
+      if (rpcProvider === 'chainstack') {
+        try {
+          nodeURL = solana.getRpcProviderService()?.getHttpUrl() ?? nodeURL;
+        } catch (error: any) {
+          logger.debug(`Unable to get Chainstack URL: ${error.message}`);
+        }
+      }
+
       const slot = await solana.connection.getSlot();
 
       logger.info(
@@ -119,6 +129,16 @@ async function displayEthereumConfig(): Promise<void> {
     // Initialize Ethereum instance and fetch current block number
     try {
       const ethereum = await Ethereum.getInstance(defaultNetwork);
+
+      // Chainstack discovers its URL asynchronously during getInstance(); pick it up now.
+      if (rpcProvider === 'chainstack') {
+        try {
+          nodeURL = ethereum.getRpcProviderService()?.getHttpUrl() ?? nodeURL;
+        } catch (error: any) {
+          logger.debug(`Unable to get Chainstack URL: ${error.message}`);
+        }
+      }
+
       const blockNumber = await ethereum.provider.getBlockNumber();
 
       logger.info(

@@ -33,8 +33,8 @@ export const getLocalDate = () => {
  * @param url - The URL that may contain sensitive information
  * @returns URL with API keys redacted
  */
-export const redactUrl = (url: string): string => {
-  if (!url) return url;
+export const redactUrl = (url: string | null | undefined): string => {
+  if (!url) return url ?? '';
 
   let redacted = url;
 
@@ -44,6 +44,12 @@ export const redactUrl = (url: string): string => {
   // Redact Infura-style path API keys (e.g., /v3/API_KEY)
   // Match 32 characters of alphanumeric after /v3/
   redacted = redacted.replace(/(\/v3\/)([a-zA-Z0-9]{32})($|\/|\?)/gi, '$1***$3');
+
+  // Redact Chainstack-style path tokens (e.g.,
+  //   https://<network>.core.chainstack.com/<token>
+  //   https://<network>.p2pify.com/<token>
+  // ). The path segment IS the per-node access credential.
+  redacted = redacted.replace(/(core\.chainstack\.com|p2pify\.com)\/[A-Za-z0-9]+/gi, '$1/***');
 
   return redacted;
 };
