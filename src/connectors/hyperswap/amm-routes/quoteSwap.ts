@@ -265,9 +265,6 @@ async function formatSwapQuote(
 }
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  // Import the httpErrors plugin to ensure it's available
-  await fastify.register(require('@fastify/sensible'));
-
   fastify.get<{
     Querystring: QuoteSwapRequestType;
     Reply: QuoteSwapResponseType;

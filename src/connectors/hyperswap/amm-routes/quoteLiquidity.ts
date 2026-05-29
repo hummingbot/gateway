@@ -174,7 +174,6 @@ export async function getHyperswapAmmLiquidityQuote(
 }
 
 export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
   fastify.get<{
     Querystring: QuoteLiquidityRequestType;
     Reply: QuoteLiquidityResponseType;

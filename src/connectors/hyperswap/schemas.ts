@@ -8,11 +8,10 @@ import { HyperswapConfig } from './hyperswap.config';
 const ethereumChainConfig = getEthereumChainConfig();
 
 // Constants for examples
-const BASE_TOKEN = 'USDT';
-const QUOTE_TOKEN = 'WBNB';
+const BASE_TOKEN = 'WETH';
+const QUOTE_TOKEN = 'USDC';
 const SWAP_AMOUNT = 10;
-const AMM_POOL_ADDRESS_EXAMPLE = '0x88A43bbDF9D098eEC7bCEda4e2494615dfD9bB9C'; // Hyperswap V2 WETH-USDC pool on Base
-const CLMM_POOL_ADDRESS_EXAMPLE = '0x172fcd41e0913e95784454622d1c3724f546f849'; // Hyperswap V3 USDT-WBNB pool on BSC
+const AMM_POOL_ADDRESS_EXAMPLE = '0x88A43bbDF9D098eEC7bCEda4e2494615dfD9bB9C'; // Hyperswap V2 WETH-USDC pool on HyperEVM
 
 // ========================================
 // AMM Request Schemas
@@ -29,25 +28,6 @@ export const HyperswapAmmGetPoolInfoRequest = Type.Object({
   poolAddress: Type.String({
     description: 'Hyperswap V2 pool address',
     examples: [AMM_POOL_ADDRESS_EXAMPLE],
-  }),
-});
-
-// ========================================
-// CLMM Request Schemas
-// ========================================
-
-export const HyperswapClmmGetPoolInfoRequest = Type.Object({
-  network: Type.Optional(
-    Type.String({
-      description: 'The EVM network to use',
-      default: 'bsc',
-      examples: ['bsc'],
-      enum: [...HyperswapConfig.networks],
-    }),
-  ),
-  poolAddress: Type.String({
-    description: 'Hyperswap V3 pool address',
-    examples: [CLMM_POOL_ADDRESS_EXAMPLE],
   }),
 });
 
@@ -133,28 +113,6 @@ export const HyperswapQuoteSwapResponse = Type.Object({
   ),
 });
 
-// Hyperswap-specific execute-quote request
-export const HyperswapExecuteQuoteRequest = Type.Object({
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address that will execute the swap',
-      default: ethereumChainConfig.defaultWallet,
-      examples: [ethereumChainConfig.defaultWallet],
-    }),
-  ),
-  network: Type.Optional(
-    Type.String({
-      description: 'The blockchain network to use',
-      default: ethereumChainConfig.defaultNetwork,
-      enum: [...HyperswapConfig.networks],
-    }),
-  ),
-  quoteId: Type.String({
-    description: 'ID of the quote to execute',
-    examples: ['123e4567-e89b-12d3-a456-426614174000'],
-  }),
-});
-
 // Hyperswap AMM Add Liquidity Request
 export const HyperswapAmmAddLiquidityRequest = Type.Object({
   network: Type.Optional(
@@ -223,6 +181,14 @@ export const HyperswapAmmRemoveLiquidityRequest = Type.Object({
     maximum: 100,
     description: 'Percentage of liquidity to remove',
   }),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: HyperswapConfig.config.slippagePct,
+    }),
+  ),
   gasPrice: Type.Optional(
     Type.String({
       description: 'Gas price in wei for the transaction',
@@ -261,309 +227,11 @@ export const HyperswapAmmExecuteSwapRequest = Type.Object({
     description: 'Base token symbol or address',
     examples: [BASE_TOKEN],
   }),
-  quoteToken: Type.Optional(
-    Type.String({
-      description: 'Quote token symbol or address',
-      examples: [QUOTE_TOKEN],
-    }),
-  ),
-  amount: Type.Number({
-    description: 'Amount to swap',
-    examples: [SWAP_AMOUNT],
-  }),
-  side: Type.String({
-    enum: ['BUY', 'SELL'],
-    default: 'SELL',
-  }),
-  slippagePct: Type.Optional(
-    Type.Number({
-      minimum: 0,
-      maximum: 100,
-      description: 'Maximum acceptable slippage percentage',
-      default: HyperswapConfig.config.slippagePct,
-    }),
-  ),
-});
-
-// Hyperswap-specific execute-swap request
-export const HyperswapExecuteSwapRequest = Type.Object({
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address that will execute the swap',
-      default: ethereumChainConfig.defaultWallet,
-      examples: [ethereumChainConfig.defaultWallet],
-    }),
-  ),
-  network: Type.Optional(
-    Type.String({
-      description: 'The blockchain network to use',
-      default: ethereumChainConfig.defaultNetwork,
-      enum: [...HyperswapConfig.networks],
-    }),
-  ),
-  baseToken: Type.String({
-    description: 'Token to determine swap direction',
-    examples: [BASE_TOKEN],
-  }),
   quoteToken: Type.String({
-    description: 'The other token in the pair',
+    description: 'Quote token symbol or address',
     examples: [QUOTE_TOKEN],
   }),
   amount: Type.Number({
-    description: 'Amount of base token to trade',
-    examples: [SWAP_AMOUNT],
-  }),
-  side: Type.String({
-    description:
-      'Trade direction - BUY means buying base token with quote token, SELL means selling base token for quote token',
-    enum: ['BUY', 'SELL'],
-  }),
-  slippagePct: Type.Optional(
-    Type.Number({
-      minimum: 0,
-      maximum: 100,
-      description: 'Maximum acceptable slippage percentage',
-      default: HyperswapConfig.config.slippagePct,
-      examples: [1],
-    }),
-  ),
-});
-
-// Hyperswap CLMM Open Position Request
-export const HyperswapClmmOpenPositionRequest = Type.Object({
-  network: Type.Optional(
-    Type.String({
-      description: 'The EVM network to use',
-      default: 'bsc',
-      examples: ['bsc'],
-      enum: [...HyperswapConfig.networks],
-    }),
-  ),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address that will open the position',
-      default: ethereumChainConfig.defaultWallet,
-    }),
-  ),
-  lowerPrice: Type.Number({
-    description: 'Lower price bound for the position',
-  }),
-  upperPrice: Type.Number({
-    description: 'Upper price bound for the position',
-  }),
-  poolAddress: Type.String({
-    description: 'Address of the Hyperswap V3 pool',
-  }),
-  baseTokenAmount: Type.Optional(
-    Type.Number({
-      description: 'Amount of base token to deposit',
-    }),
-  ),
-  quoteTokenAmount: Type.Optional(
-    Type.Number({
-      description: 'Amount of quote token to deposit',
-    }),
-  ),
-  slippagePct: Type.Optional(
-    Type.Number({
-      minimum: 0,
-      maximum: 100,
-      description: 'Maximum acceptable slippage percentage',
-      default: HyperswapConfig.config.slippagePct,
-    }),
-  ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
-});
-
-// Hyperswap CLMM Add Liquidity Request
-export const HyperswapClmmAddLiquidityRequest = Type.Object({
-  network: Type.Optional(
-    Type.String({
-      description: 'The EVM network to use',
-      default: 'bsc',
-      examples: ['bsc'],
-      enum: [...HyperswapConfig.networks],
-    }),
-  ),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address that will add liquidity',
-      default: ethereumChainConfig.defaultWallet,
-    }),
-  ),
-  positionAddress: Type.String({
-    description: 'NFT token ID of the position',
-  }),
-  baseTokenAmount: Type.Number({
-    description: 'Amount of base token to add',
-  }),
-  quoteTokenAmount: Type.Number({
-    description: 'Amount of quote token to add',
-  }),
-  slippagePct: Type.Optional(
-    Type.Number({
-      minimum: 0,
-      maximum: 100,
-      description: 'Maximum acceptable slippage percentage',
-      default: HyperswapConfig.config.slippagePct,
-    }),
-  ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
-});
-
-// Hyperswap CLMM Remove Liquidity Request
-export const HyperswapClmmRemoveLiquidityRequest = Type.Object({
-  network: Type.Optional(
-    Type.String({
-      description: 'The EVM network to use',
-      default: 'bsc',
-      examples: ['bsc'],
-      enum: [...HyperswapConfig.networks],
-    }),
-  ),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address that will remove liquidity',
-      default: ethereumChainConfig.defaultWallet,
-    }),
-  ),
-  positionAddress: Type.String({
-    description: 'NFT token ID of the position',
-  }),
-  percentageToRemove: Type.Number({
-    minimum: 0,
-    maximum: 100,
-    description: 'Percentage of liquidity to remove',
-  }),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
-});
-
-// Hyperswap CLMM Close Position Request
-export const HyperswapClmmClosePositionRequest = Type.Object({
-  network: Type.Optional(
-    Type.String({
-      description: 'The EVM network to use',
-      default: 'bsc',
-      examples: ['bsc'],
-      enum: [...HyperswapConfig.networks],
-    }),
-  ),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address that will close the position',
-      default: ethereumChainConfig.defaultWallet,
-    }),
-  ),
-  positionAddress: Type.String({
-    description: 'NFT token ID of the position to close',
-  }),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
-});
-
-// Hyperswap CLMM Collect Fees Request
-export const HyperswapClmmCollectFeesRequest = Type.Object({
-  network: Type.Optional(
-    Type.String({
-      description: 'The EVM network to use',
-      default: 'bsc',
-      examples: ['bsc'],
-      enum: [...HyperswapConfig.networks],
-    }),
-  ),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address that will collect fees',
-      default: ethereumChainConfig.defaultWallet,
-    }),
-  ),
-  positionAddress: Type.String({
-    description: 'NFT token ID of the position',
-  }),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
-});
-
-// Hyperswap CLMM Execute Swap Request
-export const HyperswapClmmExecuteSwapRequest = Type.Object({
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address that will execute the swap',
-      default: ethereumChainConfig.defaultWallet,
-    }),
-  ),
-  network: Type.Optional(
-    Type.String({
-      description: 'The EVM network to use',
-      default: 'bsc',
-      examples: ['bsc'],
-      enum: [...HyperswapConfig.networks],
-    }),
-  ),
-  poolAddress: Type.Optional(
-    Type.String({
-      description: 'Pool address (optional - can be looked up from tokens)',
-    }),
-  ),
-  baseToken: Type.String({
-    description: 'Base token symbol or address',
-    examples: [BASE_TOKEN],
-  }),
-  quoteToken: Type.Optional(
-    Type.String({
-      description: 'Quote token symbol or address',
-      examples: [QUOTE_TOKEN],
-    }),
-  ),
-  amount: Type.Number({
     description: 'Amount to swap',
     examples: [SWAP_AMOUNT],
   }),
@@ -577,17 +245,6 @@ export const HyperswapClmmExecuteSwapRequest = Type.Object({
       maximum: 100,
       description: 'Maximum acceptable slippage percentage',
       default: HyperswapConfig.config.slippagePct,
-    }),
-  ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
     }),
   ),
 });

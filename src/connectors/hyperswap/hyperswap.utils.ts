@@ -27,15 +27,10 @@ export const findPoolAddress = (
 };
 
 export const formatTokenAmount = (amount: string | number, decimals: number): number => {
-  try {
-    if (typeof amount === 'string') {
-      return parseFloat(amount) / Math.pow(10, decimals);
-    }
-    return amount / Math.pow(10, decimals);
-  } catch (error) {
-    logger.error(`Error formatting token amount: ${error}`);
-    return 0;
+  if (typeof amount === 'string') {
+    return parseFloat(amount) / Math.pow(10, decimals);
   }
+  return amount / Math.pow(10, decimals);
 };
 
 export async function getFullTokenFromSymbol(

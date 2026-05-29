@@ -8,6 +8,7 @@ import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { RemoveLiquidityResponseType, RemoveLiquidityResponse } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Hyperswap } from '../hyperswap';
+import { HyperswapConfig } from '../hyperswap.config';
 import { getHyperswapV2RouterAddress, IHyperswapV2Router02ABI, IHyperswapV2PairABI } from '../hyperswap.contracts';
 import { formatTokenAmount, getHyperswapPoolInfo } from '../hyperswap.utils';
 import { HyperswapAmmRemoveLiquidityRequest } from '../schemas';
@@ -18,8 +19,6 @@ import { checkLPAllowance } from './positionInfo';
 const AMM_REMOVE_LIQUIDITY_GAS_LIMIT = 400000;
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-
   fastify.post<{
     Body: Static<typeof HyperswapAmmRemoveLiquidityRequest>;
     Reply: RemoveLiquidityResponseType;
@@ -41,6 +40,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           network,
           poolAddress,
           percentageToRemove,
+          slippagePct = HyperswapConfig.config.slippagePct,
           walletAddress: requestedWalletAddress,
           gasPrice,
           maxGas,
@@ -121,8 +121,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const routerAddress = getHyperswapV2RouterAddress(networkToUse);
         const router = new Contract(routerAddress, IHyperswapV2Router02ABI.abi, wallet);
 
-        // Calculate slippage-adjusted amounts (0.5% slippage by default)
-        const slippageTolerance = new Percent(5, 1000); // 0.5%
+        const slippageTolerance = new Percent(Math.floor(slippagePct * 100), 10000);
         const slippageMultiplier = new Percent(1).subtract(slippageTolerance);
 
         const baseTokenMinAmount = expectedBaseTokenAmount
@@ -143,49 +142,21 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         // Prepare the transaction parameters
         const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
 
-        let tx;
-
         // Prepare gas options
         // Convert gasPrice from wei to gwei if provided
         const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
         const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_REMOVE_LIQUIDITY_GAS_LIMIT);
 
-        // Check if one of the tokens is WETH
-        if (baseTokenObj.symbol === 'WETH') {
-          // Remove liquidity WETH + Token
-          tx = await router.removeLiquidityETH(
-            token0IsBase ? token1 : token0, // The non-WETH token
-            liquidityToRemove,
-            token0IsBase ? quoteTokenMinAmount : baseTokenMinAmount, // Min amount of the token
-            token0IsBase ? baseTokenMinAmount : quoteTokenMinAmount, // Min amount of WETH
-            walletAddress,
-            deadline,
-            gasOptions,
-          );
-        } else if (quoteTokenObj.symbol === 'WETH') {
-          // Remove liquidity Token + WETH
-          tx = await router.removeLiquidityETH(
-            token0IsBase ? token0 : token1, // The non-WETH token
-            liquidityToRemove,
-            token0IsBase ? baseTokenMinAmount : quoteTokenMinAmount, // Min amount of the token
-            token0IsBase ? quoteTokenMinAmount : baseTokenMinAmount, // Min amount of WETH
-            walletAddress,
-            deadline,
-            gasOptions,
-          );
-        } else {
-          // Remove liquidity Token + Token
-          tx = await router.removeLiquidity(
-            token0,
-            token1,
-            liquidityToRemove,
-            token0IsBase ? baseTokenMinAmount : quoteTokenMinAmount, // Min amount of token0
-            token0IsBase ? quoteTokenMinAmount : baseTokenMinAmount, // Min amount of token1
-            walletAddress,
-            deadline,
-            gasOptions,
-          );
-        }
+        const tx = await router.removeLiquidity(
+          token0,
+          token1,
+          liquidityToRemove,
+          token0IsBase ? baseTokenMinAmount : quoteTokenMinAmount,
+          token0IsBase ? quoteTokenMinAmount : baseTokenMinAmount,
+          walletAddress,
+          deadline,
+          gasOptions,
+        );
 
         // Wait for transaction confirmation
         const receipt = await ethereum.handleTransactionExecution(tx);

@@ -16,7 +16,7 @@ export namespace HyperswapConfig {
 
   export const config: RootConfig = {
     slippagePct: ConfigManagerV2.getInstance().get('hyperswap.slippagePct'),
-    maximumHops: ConfigManagerV2.getInstance().get('hyperswap.maximumHops') || 4,
+    maximumHops: ConfigManagerV2.getInstance().get('hyperswap.maximumHops'),
     availableNetworks: [
       {
         chain,

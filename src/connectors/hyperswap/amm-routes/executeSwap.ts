@@ -304,11 +304,15 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
         } = request.body as typeof HyperswapAmmExecuteSwapRequest._type;
 
+        if (!quoteToken) {
+          throw httpErrors.badRequest('quoteToken is required');
+        }
+
         return await executeAmmSwap(
           walletAddress,
           network,
           baseToken,
-          quoteToken || '', // Handle optional quoteToken
+          quoteToken,
           amount,
           side as 'BUY' | 'SELL',
           slippagePct,

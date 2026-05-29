@@ -111,151 +111,64 @@ async function addLiquidity(
   // Prepare the transaction parameters
   const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
 
-  let tx;
+  const baseTokenContract = ethereum.getContract(quote.baseTokenObj.address, wallet);
+  const baseAllowance = await ethereum.getERC20Allowance(
+    baseTokenContract,
+    wallet,
+    quote.routerAddress,
+    quote.baseTokenObj.decimals,
+  );
 
-  // Check if one of the tokens is WETH
-  if (quote.baseTokenObj.symbol === 'WETH') {
-    // Check allowance for quote token
-    const tokenContract = ethereum.getContract(quote.quoteTokenObj.address, wallet);
-    const allowance = await ethereum.getERC20Allowance(
-      tokenContract,
-      wallet,
-      quote.routerAddress,
-      quote.quoteTokenObj.decimals,
-    );
+  const quoteTokenContract = ethereum.getContract(quote.quoteTokenObj.address, wallet);
+  const quoteAllowance = await ethereum.getERC20Allowance(
+    quoteTokenContract,
+    wallet,
+    quote.routerAddress,
+    quote.quoteTokenObj.decimals,
+  );
 
-    const currentAllowance = BigNumber.from(allowance.value);
-    logger.info(
-      `Current allowance for ${quote.quoteTokenObj.symbol}: ${formatTokenAmount(currentAllowance.toString(), quote.quoteTokenObj.decimals)}`,
-    );
-    logger.info(
-      `Amount needed for ${quote.quoteTokenObj.symbol}: ${formatTokenAmount(quote.rawQuoteTokenAmount.toString(), quote.quoteTokenObj.decimals)}`,
-    );
+  const currentBaseAllowance = BigNumber.from(baseAllowance.value);
+  const currentQuoteAllowance = BigNumber.from(quoteAllowance.value);
 
-    // Check if allowance is sufficient
-    if (currentAllowance.lt(quote.rawQuoteTokenAmount)) {
-      throw new Error(
-        `Insufficient allowance for ${quote.quoteTokenObj.symbol}. Please approve at least ${formatTokenAmount(quote.rawQuoteTokenAmount.toString(), quote.quoteTokenObj.decimals)} ${quote.quoteTokenObj.symbol} for the Hyperswap router (${quote.routerAddress})`,
-      );
-    }
+  logger.info(
+    `Current base allowance for ${quote.baseTokenObj.symbol}: ${formatTokenAmount(currentBaseAllowance.toString(), quote.baseTokenObj.decimals)}`,
+  );
+  logger.info(
+    `Amount needed for ${quote.baseTokenObj.symbol}: ${formatTokenAmount(quote.rawBaseTokenAmount.toString(), quote.baseTokenObj.decimals)}`,
+  );
+  logger.info(
+    `Current quote allowance for ${quote.quoteTokenObj.symbol}: ${formatTokenAmount(currentQuoteAllowance.toString(), quote.quoteTokenObj.decimals)}`,
+  );
+  logger.info(
+    `Amount needed for ${quote.quoteTokenObj.symbol}: ${formatTokenAmount(quote.rawQuoteTokenAmount.toString(), quote.quoteTokenObj.decimals)}`,
+  );
 
-    // Add liquidity ETH + Token
-    tx = await router.addLiquidityETH(
-      quote.quoteTokenObj.address,
-      quote.rawQuoteTokenAmount,
-      quoteTokenMinAmount,
-      baseTokenMinAmount,
-      walletAddress,
-      deadline,
-      {
-        value: quote.rawBaseTokenAmount,
-        gasLimit: 300000,
-      },
-    );
-  } else if (quote.quoteTokenObj.symbol === 'WETH') {
-    // Check allowance for base token
-    const tokenContract = ethereum.getContract(quote.baseTokenObj.address, wallet);
-    const allowance = await ethereum.getERC20Allowance(
-      tokenContract,
-      wallet,
-      quote.routerAddress,
-      quote.baseTokenObj.decimals,
-    );
-
-    const currentAllowance = BigNumber.from(allowance.value);
-    logger.info(
-      `Current allowance for ${quote.baseTokenObj.symbol}: ${formatTokenAmount(currentAllowance.toString(), quote.baseTokenObj.decimals)}`,
-    );
-    logger.info(
-      `Amount needed for ${quote.baseTokenObj.symbol}: ${formatTokenAmount(quote.rawBaseTokenAmount.toString(), quote.baseTokenObj.decimals)}`,
-    );
-
-    // Check if allowance is sufficient
-    if (currentAllowance.lt(quote.rawBaseTokenAmount)) {
-      throw new Error(
-        `Insufficient allowance for ${quote.baseTokenObj.symbol}. Please approve at least ${formatTokenAmount(quote.rawBaseTokenAmount.toString(), quote.baseTokenObj.decimals)} ${quote.baseTokenObj.symbol} for the Hyperswap router (${quote.routerAddress})`,
-      );
-    }
-
-    // Add liquidity Token + ETH
-    // Convert gasPrice from wei to gwei if provided
-    const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-    const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_ADD_LIQUIDITY_GAS_LIMIT);
-    gasOptions.value = quote.rawQuoteTokenAmount;
-
-    tx = await router.addLiquidityETH(
-      quote.baseTokenObj.address,
-      quote.rawBaseTokenAmount,
-      baseTokenMinAmount,
-      quoteTokenMinAmount,
-      walletAddress,
-      deadline,
-      gasOptions,
-    );
-  } else {
-    // Both tokens are ERC20 - check allowances for both
-    const baseTokenContract = ethereum.getContract(quote.baseTokenObj.address, wallet);
-    const baseAllowance = await ethereum.getERC20Allowance(
-      baseTokenContract,
-      wallet,
-      quote.routerAddress,
-      quote.baseTokenObj.decimals,
-    );
-
-    const quoteTokenContract = ethereum.getContract(quote.quoteTokenObj.address, wallet);
-    const quoteAllowance = await ethereum.getERC20Allowance(
-      quoteTokenContract,
-      wallet,
-      quote.routerAddress,
-      quote.quoteTokenObj.decimals,
-    );
-
-    const currentBaseAllowance = BigNumber.from(baseAllowance.value);
-    const currentQuoteAllowance = BigNumber.from(quoteAllowance.value);
-
-    logger.info(
-      `Current base allowance for ${quote.baseTokenObj.symbol}: ${formatTokenAmount(currentBaseAllowance.toString(), quote.baseTokenObj.decimals)}`,
-    );
-    logger.info(
-      `Amount needed for ${quote.baseTokenObj.symbol}: ${formatTokenAmount(quote.rawBaseTokenAmount.toString(), quote.baseTokenObj.decimals)}`,
-    );
-    logger.info(
-      `Current quote allowance for ${quote.quoteTokenObj.symbol}: ${formatTokenAmount(currentQuoteAllowance.toString(), quote.quoteTokenObj.decimals)}`,
-    );
-    logger.info(
-      `Amount needed for ${quote.quoteTokenObj.symbol}: ${formatTokenAmount(quote.rawQuoteTokenAmount.toString(), quote.quoteTokenObj.decimals)}`,
-    );
-
-    // Check if both allowances are sufficient
-    if (currentBaseAllowance.lt(quote.rawBaseTokenAmount)) {
-      throw new Error(
-        `Insufficient allowance for ${quote.baseTokenObj.symbol}. Please approve at least ${formatTokenAmount(quote.rawBaseTokenAmount.toString(), quote.baseTokenObj.decimals)} ${quote.baseTokenObj.symbol} for the Hyperswap router (${quote.routerAddress})`,
-      );
-    }
-
-    if (currentQuoteAllowance.lt(quote.rawQuoteTokenAmount)) {
-      throw new Error(
-        `Insufficient allowance for ${quote.quoteTokenObj.symbol}. Please approve at least ${formatTokenAmount(quote.rawQuoteTokenAmount.toString(), quote.quoteTokenObj.decimals)} ${quote.quoteTokenObj.symbol} for the Hyperswap router (${quote.routerAddress})`,
-      );
-    }
-
-    // Add liquidity Token + Token
-    // Convert gasPrice from wei to gwei if provided
-    const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-    const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_ADD_LIQUIDITY_GAS_LIMIT);
-
-    tx = await router.addLiquidity(
-      quote.baseTokenObj.address,
-      quote.quoteTokenObj.address,
-      quote.rawBaseTokenAmount,
-      quote.rawQuoteTokenAmount,
-      baseTokenMinAmount,
-      quoteTokenMinAmount,
-      walletAddress,
-      deadline,
-      gasOptions,
+  if (currentBaseAllowance.lt(quote.rawBaseTokenAmount)) {
+    throw new Error(
+      `Insufficient allowance for ${quote.baseTokenObj.symbol}. Please approve at least ${formatTokenAmount(quote.rawBaseTokenAmount.toString(), quote.baseTokenObj.decimals)} ${quote.baseTokenObj.symbol} for the Hyperswap router (${quote.routerAddress})`,
     );
   }
+
+  if (currentQuoteAllowance.lt(quote.rawQuoteTokenAmount)) {
+    throw new Error(
+      `Insufficient allowance for ${quote.quoteTokenObj.symbol}. Please approve at least ${formatTokenAmount(quote.rawQuoteTokenAmount.toString(), quote.quoteTokenObj.decimals)} ${quote.quoteTokenObj.symbol} for the Hyperswap router (${quote.routerAddress})`,
+    );
+  }
+
+  const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
+  const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_ADD_LIQUIDITY_GAS_LIMIT);
+
+  const tx = await router.addLiquidity(
+    quote.baseTokenObj.address,
+    quote.quoteTokenObj.address,
+    quote.rawBaseTokenAmount,
+    quote.rawQuoteTokenAmount,
+    baseTokenMinAmount,
+    quoteTokenMinAmount,
+    walletAddress,
+    deadline,
+    gasOptions,
+  );
 
   // Wait for transaction confirmation
   const receipt = await ethereum.handleTransactionExecution(tx);
@@ -280,8 +193,6 @@ async function addLiquidity(
 }
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-
   fastify.post<{
     Body: Static<typeof HyperswapAmmAddLiquidityRequest>;
     Reply: AddLiquidityResponseType;
