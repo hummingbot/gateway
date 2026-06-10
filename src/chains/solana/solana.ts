@@ -41,7 +41,13 @@ import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { httpErrors } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
-import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
+import { PrivySolanaSigner } from '../../wallet/privy';
+import {
+  getSafeWalletFilePath,
+  isHardwareWallet as isHardwareWalletUtil,
+  isPrivyWallet as isPrivyWalletUtil,
+  getPrivyWalletByAddress,
+} from '../../wallet/utils';
 
 import { PriorityFeeResult, SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
@@ -347,6 +353,31 @@ export class Solana {
       logger.error(`Error checking hardware wallet status: ${error.message}`);
       return false;
     }
+  }
+
+  /**
+   * Check if an address is a Privy wallet
+   */
+  async isPrivyWallet(address: string): Promise<boolean> {
+    try {
+      return await isPrivyWalletUtil('solana', address);
+    } catch (error) {
+      logger.error(`Error checking Privy wallet status: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Get a Privy signer for an address
+   * @param address The wallet address
+   * @returns PrivySolanaSigner instance
+   */
+  async getPrivySigner(address: string): Promise<PrivySolanaSigner> {
+    const privyWallet = await getPrivyWalletByAddress('solana', address);
+    if (!privyWallet) {
+      throw new Error(`Privy wallet not found for address: ${address}`);
+    }
+    return new PrivySolanaSigner(privyWallet.privyWalletId, address);
   }
 
   /**

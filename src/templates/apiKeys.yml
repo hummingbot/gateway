@@ -25,3 +25,15 @@ coingecko: ''
 # Get your API key from https://etherscan.io/myapikey
 # Works for all Etherscan V2 API supported chains
 etherscan: ''
+
+# Privy - Server wallet signing
+# Get your credentials from https://dashboard.privy.io
+# Required for Privy wallet integration
+privyAppId: ''
+privyAppSecret: ''
+
+# Privy authorization key (optional but strongly recommended)
+# Base64-encoded P-256 private key (PKCS8, no PEM headers) registered as the
+# owner of your Privy wallets and policies. Required to sign requests when a
+# wallet has an owner; without an owner, the app secret alone can bypass policies.
+privyAuthorizationKey: ''

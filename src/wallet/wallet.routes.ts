@@ -2,9 +2,11 @@ import sensible from '@fastify/sensible';
 import { FastifyPluginAsync } from 'fastify';
 
 import { addHardwareWalletRoute } from './routes/addHardwareWallet';
+import { addPrivyWalletRoute } from './routes/addPrivyWallet';
 import { addWalletRoute } from './routes/addWallet';
 import { createWalletRoute } from './routes/createWallet';
 import { getWalletsRoute } from './routes/getWallets';
+import { removePrivyWalletRoute } from './routes/removePrivyWallet';
 import { removeWalletRoute } from './routes/removeWallet';
 import { sendTransactionRoute } from './routes/sendTransaction';
 import { setDefaultRoute } from './routes/setDefault';
@@ -19,7 +21,9 @@ export const walletRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(addWalletRoute);
   await fastify.register(createWalletRoute);
   await fastify.register(addHardwareWalletRoute);
+  await fastify.register(addPrivyWalletRoute);
   await fastify.register(removeWalletRoute);
+  await fastify.register(removePrivyWalletRoute);
   await fastify.register(setDefaultRoute);
   await fastify.register(showPrivateKeyRoute);
   await fastify.register(sendTransactionRoute);

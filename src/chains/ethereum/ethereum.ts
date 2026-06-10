@@ -12,7 +12,13 @@ import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
-import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
+import { PrivyEvmSigner } from '../../wallet/privy';
+import {
+  walletPath,
+  isHardwareWallet as checkIsHardwareWallet,
+  isPrivyWallet as checkIsPrivyWallet,
+  getPrivyWalletByAddress,
+} from '../../wallet/utils';
 
 import { getEthereumNetworkConfig, getEthereumChainConfig } from './ethereum.config';
 import { EtherscanService } from './etherscan-service';
@@ -660,6 +666,31 @@ export class Ethereum {
       logger.error(`Error checking hardware wallet status: ${error.message}`);
       return false;
     }
+  }
+
+  /**
+   * Check if an address is a Privy wallet
+   */
+  public async isPrivyWallet(address: string): Promise<boolean> {
+    try {
+      return await checkIsPrivyWallet('ethereum', address);
+    } catch (error) {
+      logger.error(`Error checking Privy wallet status: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Get a Privy signer for an address
+   * @param address The wallet address
+   * @returns PrivyEvmSigner instance
+   */
+  public async getPrivySigner(address: string): Promise<PrivyEvmSigner> {
+    const privyWallet = await getPrivyWalletByAddress('ethereum', address);
+    if (!privyWallet) {
+      throw new Error(`Privy wallet not found for address: ${address}`);
+    }
+    return new PrivyEvmSigner(privyWallet.privyWalletId, address, this.chainId, this.provider);
   }
 
   /**

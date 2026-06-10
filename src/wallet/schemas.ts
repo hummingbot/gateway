@@ -46,6 +46,11 @@ export const GetWalletResponseSchema = Type.Object({
       description: 'List of hardware wallet addresses (Ledger)',
     }),
   ),
+  privyWalletAddresses: Type.Optional(
+    Type.Array(WalletAddressSchema, {
+      description: 'List of Privy server wallet addresses',
+    }),
+  ),
 });
 
 export const RemoveWalletRequestSchema = Type.Object({

@@ -70,6 +70,7 @@
     "@pancakeswap/v3-periphery": "^1.0.2",
     "@pancakeswap/v3-sdk": "^3.9.5",
     "@pancakeswap/v4-sdk": "^0.1.8",
+    "@privy-io/node": "^0.21.0",
     "@raydium-io/raydium-sdk-v2": "0.1.141-alpha",
     "@sinclair/typebox": "^0.33.22",
     "@solana-program/token-2022": "^0.6.0",

@@ -318,11 +318,13 @@ export async function getWallets(
 
       // Get hardware wallet addresses if requested
       const hardwareAddresses = showHardware ? await getHardwareWalletAddresses(chain) : [];
+      const privyAddresses = await getPrivyWalletAddresses(chain);
 
       responses.push({
         chain: safeChain,
         walletAddresses: safeWalletAddresses,
         hardwareWalletAddresses: hardwareAddresses.length > 0 ? hardwareAddresses : undefined,
+        privyWalletAddresses: privyAddresses.length > 0 ? privyAddresses : undefined,
       });
     }
 
@@ -338,6 +340,64 @@ export interface HardwareWalletData {
   publicKey: string;
   derivationPath: string;
   addedAt: string;
+}
+
+// Privy wallet functions
+export interface PrivyWalletData {
+  address: string;
+  privyWalletId: string;
+  addedAt: string;
+}
+
+export function getPrivyWalletPath(chain: string): string {
+  const safeChain = sanitizePathComponent(chain.toLowerCase());
+  return `${walletPath}/${safeChain}/privy-wallets.json`;
+}
+
+export async function getPrivyWallets(chain: string): Promise<PrivyWalletData[]> {
+  try {
+    const filePath = getPrivyWalletPath(chain);
+    const exists = await fse.pathExists(filePath);
+    if (!exists) {
+      return [];
+    }
+
+    const content = await fse.readFile(filePath, 'utf8');
+    const data = JSON.parse(content);
+
+    if (!data.wallets || !Array.isArray(data.wallets)) {
+      logger.warn(`Invalid Privy wallet file format for ${chain}`);
+      return [];
+    }
+
+    return data.wallets;
+  } catch (error) {
+    logger.error(`Failed to read Privy wallets for ${chain}: ${error.message}`);
+    return [];
+  }
+}
+
+export async function getPrivyWalletAddresses(chain: string): Promise<string[]> {
+  const wallets = await getPrivyWallets(chain);
+  return wallets.map((w) => w.address);
+}
+
+export async function savePrivyWallets(chain: string, wallets: PrivyWalletData[]): Promise<void> {
+  const filePath = getPrivyWalletPath(chain);
+  const dirPath = `${walletPath}/${sanitizePathComponent(chain.toLowerCase())}`;
+
+  await mkdirIfDoesNotExist(dirPath);
+  await fse.writeFile(filePath, JSON.stringify({ wallets }, null, 2));
+}
+
+export async function isPrivyWallet(chain: string, address: string): Promise<boolean> {
+  const privyAddresses = await getPrivyWalletAddresses(chain);
+  return privyAddresses.some((a) => a.toLowerCase() === address.toLowerCase());
+}
+
+export async function getPrivyWalletByAddress(chain: string, address: string): Promise<PrivyWalletData | null> {
+  const wallets = await getPrivyWallets(chain);
+  return wallets.find((w) => w.address.toLowerCase() === address.toLowerCase()) || null;
 }
 
 export function getHardwareWalletPath(chain: string): string {

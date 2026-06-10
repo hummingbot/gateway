@@ -21,6 +21,18 @@
     "etherscan": {
       "type": "string",
       "description": "Etherscan API key for gas prices (https://etherscan.io/myapikey)"
+    },
+    "privyAppId": {
+      "type": "string",
+      "description": "Privy App ID for server wallet signing (https://dashboard.privy.io)"
+    },
+    "privyAppSecret": {
+      "type": "string",
+      "description": "Privy App Secret for server wallet signing (https://dashboard.privy.io)"
+    },
+    "privyAuthorizationKey": {
+      "type": "string",
+      "description": "Privy authorization private key (base64 P-256 PKCS8) used to sign wallet requests when wallets/policies have an owner"
     }
   },
   "additionalProperties": true
