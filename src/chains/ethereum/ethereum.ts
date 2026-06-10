@@ -390,7 +390,7 @@ export class Ethereum {
   /**
    * Get a contract instance for a token using standard ERC20 interface
    */
-  public getContract(tokenAddress: string, signerOrProvider?: Wallet | Provider): Contract {
+  public getContract(tokenAddress: string, signerOrProvider?: Wallet | PrivyEvmSigner | Provider): Contract {
     // Standard ERC20 interface ABI - the minimum needed for our operations
     const erc20Interface = [
       'function name() view returns (string)',
@@ -694,6 +694,30 @@ export class Ethereum {
   }
 
   /**
+   * Resolve the wallet type for an address: hardware (Ledger), privy, or local (encrypted key).
+   */
+  public async getWalletType(address: string): Promise<'local' | 'hardware' | 'privy'> {
+    if (await this.isHardwareWallet(address)) {
+      return 'hardware';
+    }
+    if (await this.isPrivyWallet(address)) {
+      return 'privy';
+    }
+    return 'local';
+  }
+
+  /**
+   * Get an ethers Signer for an address: a PrivyEvmSigner for Privy wallets, otherwise
+   * the local Wallet. Hardware wallets sign through EthereumLedger and are not handled here.
+   */
+  public async getSigner(address: string): Promise<Wallet | PrivyEvmSigner> {
+    if (await this.isPrivyWallet(address)) {
+      return await this.getPrivySigner(address);
+    }
+    return await this.getWallet(address);
+  }
+
+  /**
    * Encrypt a private key
    */
   public encrypt(privateKey: string, password: string): Promise<string> {
@@ -788,7 +812,7 @@ export class Ethereum {
    */
   public async getERC20Allowance(
     contract: Contract,
-    wallet: Wallet,
+    wallet: Wallet | PrivyEvmSigner,
     spender: string,
     decimals: number,
   ): Promise<TokenValue> {
@@ -828,7 +852,7 @@ export class Ethereum {
    */
   public async approveERC20(
     contract: Contract,
-    wallet: Wallet,
+    wallet: Wallet | PrivyEvmSigner,
     spender: string,
     amount: BigNumber,
   ): Promise<providers.TransactionResponse> {
@@ -1158,26 +1182,26 @@ export class Ethereum {
     // Treat empty array as if no tokens were specified
     const effectiveTokens = tokens && tokens.length === 0 ? undefined : tokens;
 
-    // Check if this is a hardware wallet
-    const isHardware = await this.isHardwareWallet(address);
+    // Hardware and Privy wallets have no local key file: read balances by address
+    const addressOnly = (await this.isHardwareWallet(address)) || (await this.isPrivyWallet(address));
     let wallet: Wallet | null = null;
 
-    if (!isHardware) {
+    if (!addressOnly) {
       wallet = await this.getWallet(address);
     }
 
     // Always get native token balance
-    const nativeBalance = isHardware
+    const nativeBalance = addressOnly
       ? await this.getNativeBalanceByAddress(address)
       : await this.getNativeBalance(wallet!);
     balances[this.nativeTokenSymbol] = parseFloat(tokenValueToString(nativeBalance));
 
     if (!effectiveTokens) {
       // No tokens specified, check all tokens in token list
-      await this.getAllTokenBalances(address, wallet, isHardware, balances);
+      await this.getAllTokenBalances(address, wallet, addressOnly, balances);
     } else {
       // Get specific token balances
-      await this.getSpecificTokenBalances(effectiveTokens, address, wallet, isHardware, balances);
+      await this.getSpecificTokenBalances(effectiveTokens, address, wallet, addressOnly, balances);
     }
 
     return balances;
@@ -1190,7 +1214,7 @@ export class Ethereum {
   private async getAllTokenBalances(
     address: string,
     wallet: Wallet | null,
-    isHardware: boolean,
+    addressOnly: boolean,
     balances: Record<string, number>,
   ): Promise<void> {
     const tokenList = await this.getTokenList();
@@ -1199,7 +1223,7 @@ export class Ethereum {
     for (const token of tokenList) {
       try {
         const contract = this.getContract(token.address, this.provider);
-        const balance = isHardware
+        const balance = addressOnly
           ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 5000, token.symbol)
           : await this.getERC20Balance(contract, wallet!, token.decimals, 5000, token.symbol);
 
@@ -1223,7 +1247,7 @@ export class Ethereum {
     tokens: string[],
     address: string,
     wallet: Wallet | null,
-    isHardware: boolean,
+    addressOnly: boolean,
     balances: Record<string, number>,
   ): Promise<void> {
     await Promise.all(
@@ -1237,7 +1261,7 @@ export class Ethereum {
         if (token) {
           try {
             const contract = this.getContract(token.address, this.provider);
-            const balance = isHardware
+            const balance = addressOnly
               ? await this.getERC20BalanceByAddress(contract, address, token.decimals, 5000, token.symbol)
               : await this.getERC20Balance(contract, wallet!, token.decimals, 5000, token.symbol);
 

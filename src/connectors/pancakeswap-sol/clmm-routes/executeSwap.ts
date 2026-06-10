@@ -1,5 +1,5 @@
 import { Static } from '@sinclair/typebox';
-import { PublicKey, VersionedTransaction } from '@solana/web3.js';
+import { Keypair, PublicKey, VersionedTransaction } from '@solana/web3.js';
 import BN from 'bn.js';
 import { FastifyPluginAsync } from 'fastify';
 
@@ -114,9 +114,9 @@ export async function executeSwap(
   // The slippage protection is handled by otherAmountThreshold
   const sqrtPriceLimitX64 = new BN(0);
 
-  // Get wallet keypair
-  const wallet = await solana.getWallet(walletAddress);
-  const walletPubkey = wallet.publicKey;
+  // Prepare wallet (Keypair for local wallets, PublicKey for hardware/Privy)
+  const { wallet, walletType } = await solana.prepareWallet(walletAddress);
+  const walletPubkey = wallet instanceof Keypair ? wallet.publicKey : wallet;
 
   // Get priority fee
   const priorityFeeInLamports = await solana.estimateGasPrice();
@@ -138,13 +138,13 @@ export async function executeSwap(
   );
 
   // Sign transaction
-  transaction.sign([wallet]);
+  const signedTransaction = await solana.signTransactionByType(transaction, walletAddress, walletType, wallet);
 
   // Simulate transaction
-  await solana.simulateWithErrorHandling(transaction);
+  await solana.simulateWithErrorHandling(signedTransaction);
 
   // Send and confirm transaction
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(signedTransaction);
 
   if (confirmed && txData) {
     const totalFee = txData.meta.fee;

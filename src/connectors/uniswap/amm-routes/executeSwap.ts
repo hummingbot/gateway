@@ -155,7 +155,7 @@ export async function executeAmmSwap(
       // Regular wallet flow
       let wallet;
       try {
-        wallet = await ethereum.getWallet(walletAddress);
+        wallet = await ethereum.getSigner(walletAddress);
       } catch (err) {
         logger.error(`Failed to load wallet: ${err.message}`);
         throw httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);

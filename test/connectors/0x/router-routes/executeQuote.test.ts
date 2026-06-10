@@ -124,7 +124,7 @@ describe('POST /execute-quote', () => {
     mockTransaction.wait.mockResolvedValue(mockReceipt);
 
     const mockEthereumInstance = {
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
+      getSigner: jest.fn().mockResolvedValue(mockWallet),
       getContract: jest.fn().mockReturnValue({}),
       getERC20Allowance: jest.fn().mockResolvedValue({
         value: BigNumber.from('1000000000000000000'),
@@ -238,7 +238,7 @@ describe('POST /execute-quote', () => {
     mockTransaction.wait.mockResolvedValue(mockReceipt);
 
     const mockEthereumInstance = {
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
+      getSigner: jest.fn().mockResolvedValue(mockWallet),
       getContract: jest.fn().mockReturnValue({}),
       getERC20Allowance: jest.fn().mockResolvedValue({ value: BigNumber.from('0') }),
       approveERC20: jest.fn().mockResolvedValue({}),

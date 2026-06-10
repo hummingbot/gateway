@@ -280,7 +280,7 @@ export class Jupiter {
    * @param priorityLevel Priority level for transaction (optional)
    * @returns Unsigned transaction ready for hardware wallet signing
    */
-  public async buildSwapTransactionForHardwareWallet(
+  public async buildUnsignedSwapTransaction(
     walletAddress: string,
     quote: QuoteResponse,
     maxLamports?: number,
@@ -291,7 +291,7 @@ export class Jupiter {
     const level = priorityLevel || this.config.priorityLevel;
 
     logger.info(
-      `Building unsigned swap transaction for hardware wallet ${walletAddress} with priority level ${level} and max ${feeLamports} lamports`,
+      `Building unsigned swap transaction for externally-signed wallet ${walletAddress} with priority level ${level} and max ${feeLamports} lamports`,
     );
 
     // Get swap object from Jupiter API with retry logic

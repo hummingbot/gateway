@@ -5,7 +5,6 @@ import { logger } from '../../../services/logger';
 import { WrapRequestSchema, WrapResponseSchema, WrapRequestType, WrapResponseType } from '../schemas';
 import { Solana } from '../solana';
 import { handleSolanaTransactionError } from '../solana-errors';
-import { SolanaLedger } from '../solana-ledger';
 
 /**
  * Wrap SOL to WSOL
@@ -27,8 +26,7 @@ export async function wrapSolana(
     throw fastify.httpErrors.badRequest('Amount must be greater than 0');
   }
 
-  // Check if this is a hardware wallet
-  const isHardware = await solana.isHardwareWallet(address);
+  const walletType = await solana.getWalletType(address);
 
   try {
     const walletPubkey = new PublicKey(address);
@@ -49,18 +47,8 @@ export async function wrapSolana(
     // Create versioned transaction
     let transaction = new VersionedTransaction(messageV0);
 
-    if (isHardware) {
-      // Hardware wallet flow
-      logger.info(`Hardware wallet detected for ${address}. Building wrap transaction for Ledger signing.`);
-
-      const ledger = new SolanaLedger();
-      const signedTx = await ledger.signTransaction(address, transaction);
-      transaction = signedTx as VersionedTransaction;
-    } else {
-      // Regular wallet flow
-      const keypair = await solana.getWallet(address);
-      transaction.sign([keypair]);
-    }
+    const wallet = walletType === 'local' ? await solana.getWallet(address) : walletPubkey;
+    transaction = await solana.signTransactionByType(transaction, address, walletType, wallet);
 
     // Simulate transaction with proper error handling before sending
     await solana.simulateWithErrorHandling(transaction);

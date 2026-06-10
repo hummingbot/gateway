@@ -27,11 +27,11 @@ export async function getEthereumAllowances(
     const ethereum = await Ethereum.getInstance(network);
     await ethereum.init();
 
-    // Check if this is a hardware wallet
-    const isHardware = await ethereum.isHardwareWallet(address);
+    // Hardware and Privy wallets have no local key file: read allowances by address
+    const addressOnly = (await ethereum.isHardwareWallet(address)) || (await ethereum.isPrivyWallet(address));
     let wallet: ethers.Wallet | null = null;
 
-    if (!isHardware) {
+    if (!addressOnly) {
       wallet = await ethereum.getWallet(address);
     }
 
@@ -119,7 +119,7 @@ export async function getEthereumAllowances(
           try {
             // First check if token is approved to Permit2
             const tokenContract = ethereum.getContract(tokenInfoMap[symbol].address, ethereum.provider);
-            const tokenToPermit2Allowance = isHardware
+            const tokenToPermit2Allowance = addressOnly
               ? await ethereum.getERC20AllowanceByAddress(
                   tokenContract,
                   address,
@@ -179,7 +179,7 @@ export async function getEthereumAllowances(
         Object.keys(tokenInfoMap).map(async (symbol) => {
           const contract = ethereum.getContract(tokenInfoMap[symbol].address, ethereum.provider);
           approvals[symbol] = tokenValueToString(
-            isHardware
+            addressOnly
               ? await ethereum.getERC20AllowanceByAddress(
                   contract,
                   address,

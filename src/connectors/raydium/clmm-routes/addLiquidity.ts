@@ -25,8 +25,8 @@ export async function addLiquidity(
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
 
-  // Prepare wallet and check if it's hardware
-  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
+  // Prepare wallet and resolve its type
+  const { wallet, walletType } = await raydium.prepareWallet(walletAddress);
 
   const positionInfo = await raydium.getPositionInfo(positionAddress);
   const position = await raydium.getClmmPosition(positionAddress);
@@ -77,12 +77,7 @@ export async function addLiquidity(
   });
 
   // Sign transaction using helper
-  transaction = (await raydium.signTransaction(
-    transaction,
-    walletAddress,
-    isHardwareWallet,
-    wallet,
-  )) as VersionedTransaction;
+  transaction = (await raydium.signTransaction(transaction, walletAddress, walletType, wallet)) as VersionedTransaction;
   await solana.simulateWithErrorHandling(transaction);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);

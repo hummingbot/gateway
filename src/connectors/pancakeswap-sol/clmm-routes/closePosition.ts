@@ -27,7 +27,7 @@ export async function closePosition(
     throw httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
 
-  const wallet = await solana.getWallet(walletAddress);
+  const { wallet, walletType } = await solana.prepareWallet(walletAddress);
   const walletPubkey = new PublicKey(walletAddress);
   const positionNftMint = new PublicKey(positionAddress);
 
@@ -93,10 +93,10 @@ export async function closePosition(
   );
 
   // Sign and send
-  transaction.sign([wallet]);
-  await solana.simulateWithErrorHandling(transaction);
+  const signedTransaction = await solana.signTransactionByType(transaction, walletAddress, walletType, wallet);
+  await solana.simulateWithErrorHandling(signedTransaction);
 
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(signedTransaction);
 
   if (confirmed && txData) {
     const totalFee = txData.meta.fee;

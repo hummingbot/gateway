@@ -35,7 +35,7 @@ export async function collectFees(
   const ethereum = await Ethereum.getInstance(network);
 
   // Get the wallet
-  const wallet = await ethereum.getWallet(walletAddress);
+  const wallet = await ethereum.getSigner(walletAddress);
   if (!wallet) {
     throw httpErrors.badRequest('Wallet not found');
   }

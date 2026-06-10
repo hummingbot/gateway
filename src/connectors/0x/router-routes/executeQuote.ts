@@ -23,7 +23,7 @@ async function executeQuote(
   }
 
   const ethereum = await Ethereum.getInstance(network);
-  const wallet = await ethereum.getWallet(walletAddress);
+  const wallet = await ethereum.getSigner(walletAddress);
   const zeroX = await ZeroX.getInstance(network);
 
   logger.info(`Executing quote ${quoteId} on ${network}`);

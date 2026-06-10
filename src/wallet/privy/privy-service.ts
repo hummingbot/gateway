@@ -8,6 +8,8 @@
  * signing time.
  */
 
+import { createPrivateKey, createPublicKey } from 'crypto';
+
 // Type-only import: the SDK is loaded lazily in getClient() because it pulls in
 // ESM-only dependencies that must not load unless Privy is actually used.
 import type { PrivyClient, AuthorizationContext } from '@privy-io/node';
@@ -35,6 +37,33 @@ export interface PrivyEthereumTransactionInput {
   maxFeePerGas?: string;
   maxPriorityFeePerGas?: string;
   type?: 0 | 1 | 2;
+}
+
+export interface PrivyPolicyRuleCondition {
+  field_source: string;
+  field: string;
+  operator: string;
+  value: string | string[];
+}
+
+export interface PrivyPolicyRule {
+  name: string;
+  method: string;
+  action: 'ALLOW' | 'DENY';
+  conditions: PrivyPolicyRuleCondition[];
+}
+
+export interface PrivyCreatePolicyParams {
+  chainType: 'ethereum' | 'solana';
+  name: string;
+  rules: PrivyPolicyRule[];
+}
+
+export interface PrivyPolicyInfo {
+  id: string;
+  name: string;
+  chainType: string;
+  ownerId: string | null;
 }
 
 interface PrivyCredentials {
@@ -236,6 +265,78 @@ export class PrivyService {
       return response.signature;
     } catch (error) {
       this.handleError('signMessage', error);
+    }
+  }
+
+  /**
+   * Whether an authorization (owner) key is configured. Resources created while a key is
+   * configured are owned by that key, so the app secret alone cannot modify them.
+   */
+  public hasAuthorizationKey(): boolean {
+    const { authorizationKey } = this.getCredentials();
+    return !!authorizationKey;
+  }
+
+  /**
+   * Derive the P-256 public key (base64 SPKI, no PEM headers — the format Privy accepts
+   * as a resource owner) from the configured authorization private key (base64 PKCS8).
+   * The SDK only exposes generateP256KeyPair, not public-key derivation, so use node:crypto.
+   */
+  private getAuthorizationPublicKey(): string {
+    const { authorizationKey } = this.getCredentials();
+    if (!authorizationKey) {
+      throw new Error('Privy authorization key not configured. Set apiKeys.privyAuthorizationKey.');
+    }
+    const privateKey = createPrivateKey({
+      key: Buffer.from(authorizationKey, 'base64'),
+      format: 'der',
+      type: 'pkcs8',
+    });
+    return createPublicKey(privateKey).export({ format: 'der', type: 'spki' }).toString('base64');
+  }
+
+  /**
+   * Create a signing policy in Privy. If an authorization key is configured, the policy is
+   * owned by that key (Privy then requires its signature to modify or detach the policy).
+   */
+  async createPolicy(params: PrivyCreatePolicyParams): Promise<PrivyPolicyInfo> {
+    try {
+      const owner = this.hasAuthorizationKey() ? { public_key: this.getAuthorizationPublicKey() } : undefined;
+      const policy = await this.getClient()
+        .policies()
+        .create({
+          version: '1.0',
+          name: params.name,
+          chain_type: params.chainType,
+          rules: params.rules as any,
+          ...(owner ? { owner } : {}),
+        });
+      return {
+        id: policy.id,
+        name: policy.name,
+        chainType: policy.chain_type,
+        ownerId: policy.owner_id ?? null,
+      };
+    } catch (error) {
+      this.handleError('createPolicy', error);
+    }
+  }
+
+  /**
+   * Attach a policy to a wallet. Includes the authorization context when an authorization
+   * key is configured (required when the wallet has an owner).
+   */
+  async attachPolicyToWallet(walletId: string, policyId: string): Promise<void> {
+    validateWalletId(walletId);
+    try {
+      await this.getClient()
+        .wallets()
+        .update(walletId, {
+          policy_ids: [policyId],
+          authorization_context: this.getAuthorizationContext(),
+        });
+    } catch (error) {
+      this.handleError('attachPolicyToWallet', error);
     }
   }
 }

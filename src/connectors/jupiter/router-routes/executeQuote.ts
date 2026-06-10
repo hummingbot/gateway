@@ -2,7 +2,6 @@ import { Wallet } from '@coral-xyz/anchor';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { SolanaLedger } from '../../../chains/solana/solana-ledger';
 import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -34,27 +33,20 @@ export async function executeQuote(
     throw httpErrors.badRequest('Invalid tokens in quote');
   }
 
-  // Check if this is a hardware wallet
-  const isHardwareWallet = await solana.isHardwareWallet(walletAddress);
+  const walletType = await solana.getWalletType(walletAddress);
   let transaction;
 
-  if (isHardwareWallet) {
-    // For hardware wallets, we need to build the transaction with the actual public key
-    // but sign it separately with Ledger
-    logger.info(`Hardware wallet detected for ${walletAddress}. Building transaction for Ledger signing.`);
-
-    // Jupiter needs to build the transaction with the actual user's public key
-    // We'll pass the hardware wallet address to Jupiter's buildSwapTransactionForHardwareWallet
+  if (walletType !== 'local') {
+    // Hardware and Privy wallets sign externally: build the unsigned transaction with
+    // the wallet's public key, then sign through the matching signer
     logger.info(
-      `Executing quote ${quoteId} for ${inputToken.symbol} -> ${outputToken.symbol}, slippageBps=${quote.slippageBps} (hardware wallet)`,
+      `Executing quote ${quoteId} for ${inputToken.symbol} -> ${outputToken.symbol}, slippageBps=${quote.slippageBps} (${walletType} wallet)`,
     );
 
-    // Build the swap transaction for hardware wallet
-    transaction = await jupiter.buildSwapTransactionForHardwareWallet(walletAddress, quote, maxLamports, priorityLevel);
+    transaction = await jupiter.buildUnsignedSwapTransaction(walletAddress, quote, maxLamports, priorityLevel);
 
-    // Now sign with Ledger
-    const ledger = new SolanaLedger();
-    transaction = await ledger.signTransaction(walletAddress, transaction);
+    const walletPublicKey = await solana.getPublicKey(walletAddress);
+    transaction = await solana.signTransactionByType(transaction, walletAddress, walletType, walletPublicKey);
   } else {
     // Regular wallet flow
     const keypair = await solana.getWallet(walletAddress);

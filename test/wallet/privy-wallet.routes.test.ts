@@ -9,13 +9,16 @@ jest.mock('../../src/config/utils');
 
 import { Ethereum } from '../../src/chains/ethereum/ethereum';
 import { Solana } from '../../src/chains/solana/solana';
+import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
 import { getPrivyService } from '../../src/wallet/privy/privy-service';
 import { addPrivyWalletRoute } from '../../src/wallet/routes/addPrivyWallet';
 import { removePrivyWalletRoute } from '../../src/wallet/routes/removePrivyWallet';
 import { getPrivyWallets, savePrivyWallets, validateChainName } from '../../src/wallet/utils';
+import { patch, unpatch } from '../services/patch';
 
 const SOLANA_ADDRESS = 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH';
 const WALLET_ID = 'wallet_abc123';
+const TEST_PASSPHRASE = 'test-passphrase';
 
 describe('Privy Wallet Routes', () => {
   let app: FastifyInstance;
@@ -26,6 +29,7 @@ describe('Privy Wallet Routes', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    patch(ConfigManagerCertPassphrase, 'readPassphrase', () => TEST_PASSPHRASE);
 
     app = Fastify();
     await app.register(sensible);
@@ -52,6 +56,7 @@ describe('Privy Wallet Routes', () => {
   });
 
   afterEach(async () => {
+    unpatch();
     await app.close();
   });
 
@@ -60,7 +65,7 @@ describe('Privy Wallet Routes', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/add-privy',
-        payload: { chain: 'solana', privyWalletId: WALLET_ID },
+        payload: { chain: 'solana', privyWalletId: WALLET_ID, passphrase: TEST_PASSPHRASE },
       });
 
       expect(response.statusCode).toBe(200);
@@ -88,7 +93,7 @@ describe('Privy Wallet Routes', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/add-privy',
-        payload: { chain: 'solana', privyWalletId: WALLET_ID },
+        payload: { chain: 'solana', privyWalletId: WALLET_ID, passphrase: TEST_PASSPHRASE },
       });
 
       expect(response.statusCode).toBe(200);
@@ -100,13 +105,35 @@ describe('Privy Wallet Routes', () => {
       expect(body.warnings[1]).toContain('No owner');
     });
 
+    it('rejects an invalid passphrase with 401', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/add-privy',
+        payload: { chain: 'solana', privyWalletId: WALLET_ID, passphrase: 'wrong-passphrase' },
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(JSON.parse(response.body).message).toContain('Invalid passphrase');
+      expect(savePrivyWallets).not.toHaveBeenCalled();
+    });
+
+    it('rejects a missing passphrase with 400', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/add-privy',
+        payload: { chain: 'solana', privyWalletId: WALLET_ID },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
     it('rejects when Privy credentials are not configured', async () => {
       mockPrivyService.isConfigured.mockReturnValue(false);
 
       const response = await app.inject({
         method: 'POST',
         url: '/add-privy',
-        payload: { chain: 'solana', privyWalletId: WALLET_ID },
+        payload: { chain: 'solana', privyWalletId: WALLET_ID, passphrase: TEST_PASSPHRASE },
       });
 
       expect(response.statusCode).toBe(400);
@@ -117,7 +144,7 @@ describe('Privy Wallet Routes', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/add-privy',
-        payload: { chain: 'ethereum', privyWalletId: WALLET_ID },
+        payload: { chain: 'ethereum', privyWalletId: WALLET_ID, passphrase: TEST_PASSPHRASE },
       });
 
       expect(response.statusCode).toBe(400);
@@ -132,7 +159,7 @@ describe('Privy Wallet Routes', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/add-privy',
-        payload: { chain: 'solana', privyWalletId: WALLET_ID },
+        payload: { chain: 'solana', privyWalletId: WALLET_ID, passphrase: TEST_PASSPHRASE },
       });
 
       expect(response.statusCode).toBe(400);
@@ -145,7 +172,7 @@ describe('Privy Wallet Routes', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/add-privy',
-        payload: { chain: 'solana', privyWalletId: WALLET_ID },
+        payload: { chain: 'solana', privyWalletId: WALLET_ID, passphrase: TEST_PASSPHRASE },
       });
 
       expect(response.statusCode).toBe(400);
@@ -162,18 +189,33 @@ describe('Privy Wallet Routes', () => {
       const response = await app.inject({
         method: 'DELETE',
         url: '/remove-privy',
-        payload: { chain: 'solana', address: SOLANA_ADDRESS },
+        payload: { chain: 'solana', address: SOLANA_ADDRESS, passphrase: TEST_PASSPHRASE },
       });
 
       expect(response.statusCode).toBe(200);
       expect(savePrivyWallets).toHaveBeenCalledWith('solana', []);
     });
 
+    it('rejects an invalid passphrase with 401', async () => {
+      (getPrivyWallets as jest.Mock).mockResolvedValue([
+        { address: SOLANA_ADDRESS, privyWalletId: WALLET_ID, addedAt: new Date().toISOString() },
+      ]);
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: '/remove-privy',
+        payload: { chain: 'solana', address: SOLANA_ADDRESS, passphrase: 'wrong-passphrase' },
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(savePrivyWallets).not.toHaveBeenCalled();
+    });
+
     it('returns 404 for an unknown wallet', async () => {
       const response = await app.inject({
         method: 'DELETE',
         url: '/remove-privy',
-        payload: { chain: 'solana', address: SOLANA_ADDRESS },
+        payload: { chain: 'solana', address: SOLANA_ADDRESS, passphrase: TEST_PASSPHRASE },
       });
 
       expect(response.statusCode).toBe(404);

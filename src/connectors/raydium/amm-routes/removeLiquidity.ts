@@ -11,7 +11,7 @@ import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { Solana } from '../../../chains/solana/solana';
+import { Solana, SolanaWalletType } from '../../../chains/solana/solana';
 import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
@@ -99,7 +99,7 @@ async function calculateLpAmountToRemove(
   poolAddress: string,
   percentageToRemove: number,
   walletAddress: string,
-  isHardwareWallet: boolean,
+  walletType: SolanaWalletType,
 ): Promise<BN> {
   let lpMint: string;
 
@@ -111,7 +111,7 @@ async function calculateLpAmountToRemove(
   }
 
   // Get user's LP token account
-  const walletPublicKey = isHardwareWallet ? await solana.getPublicKey(walletAddress) : (wallet as any).publicKey;
+  const walletPublicKey = walletType !== 'local' ? await solana.getPublicKey(walletAddress) : (wallet as any).publicKey;
   const lpTokenAccounts = await solana.connection.getTokenAccountsByOwner(walletPublicKey, {
     mint: new PublicKey(lpMint),
   });
@@ -143,8 +143,8 @@ async function removeLiquidity(
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
 
-  // Prepare wallet and check if it's hardware
-  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
+  // Prepare wallet and resolve its type
+  const { wallet, walletType } = await raydium.prepareWallet(walletAddress);
 
   const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
   const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddress);
@@ -162,7 +162,7 @@ async function removeLiquidity(
     poolAddress,
     percentageToRemove,
     walletAddress,
-    isHardwareWallet,
+    walletType,
   );
 
   logger.info(`Removing ${percentageToRemove.toFixed(4)}% liquidity from pool ${poolAddress}...`);
@@ -192,7 +192,7 @@ async function removeLiquidity(
     signedTransaction = (await raydium.signTransaction(
       transaction,
       walletAddress,
-      isHardwareWallet,
+      walletType,
       wallet,
     )) as VersionedTransaction;
   } else {
@@ -200,11 +200,12 @@ async function removeLiquidity(
     const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash();
     txAsTransaction.recentBlockhash = blockhash;
     txAsTransaction.lastValidBlockHeight = lastValidBlockHeight;
-    txAsTransaction.feePayer = isHardwareWallet ? await solana.getPublicKey(walletAddress) : (wallet as any).publicKey;
+    txAsTransaction.feePayer =
+      walletType !== 'local' ? await solana.getPublicKey(walletAddress) : (wallet as any).publicKey;
     signedTransaction = (await raydium.signTransaction(
       txAsTransaction,
       walletAddress,
-      isHardwareWallet,
+      walletType,
       wallet,
     )) as Transaction;
   }

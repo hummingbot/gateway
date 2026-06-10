@@ -5,6 +5,7 @@ import { getSpender as pancakeswapSpender } from '../../../connectors/pancakeswa
 import { getSpender as uniswapSpender } from '../../../connectors/uniswap/uniswap.contracts';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
+import { PrivyEvmSigner } from '../../../wallet/privy';
 import { Ethereum } from '../ethereum';
 import { EthereumLedger } from '../ethereum-ledger';
 import { ApproveRequestSchema, ApproveResponseSchema, ApproveRequestType, ApproveResponseType } from '../schemas';
@@ -188,9 +189,9 @@ export async function approveEthereumToken(
         };
       } else {
         // Regular wallet flow
-        let wallet: ethers.Wallet;
+        let wallet: ethers.Wallet | PrivyEvmSigner;
         try {
-          wallet = await ethereum.getWallet(address);
+          wallet = await ethereum.getSigner(address);
         } catch (err) {
           logger.error(`Failed to load wallet: ${err.message}`);
           throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);
@@ -304,7 +305,7 @@ export async function approveEthereumToken(
         }
       } else {
         // Regular wallet flow for Permit2 approve
-        const wallet = await ethereum.getWallet(address);
+        const wallet = await ethereum.getSigner(address);
         const permit2Contract = new ethers.Contract(PERMIT2_ADDRESS, permit2ApproveABI, wallet);
 
         logger.info(

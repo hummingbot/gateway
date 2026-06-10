@@ -21,8 +21,8 @@ export async function closePosition(
     const solana = await Solana.getInstance(network);
     const raydium = await Raydium.getInstance(network);
 
-    // Prepare wallet and check if it's hardware
-    const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
+    // Prepare wallet and resolve its type
+    const { wallet, walletType } = await raydium.prepareWallet(walletAddress);
 
     const position = await raydium.getClmmPosition(positionAddress);
 
@@ -101,7 +101,7 @@ export async function closePosition(
     const signedTransaction = (await raydium.signTransaction(
       result.transaction,
       walletAddress,
-      isHardwareWallet,
+      walletType,
       wallet,
     )) as VersionedTransaction;
 

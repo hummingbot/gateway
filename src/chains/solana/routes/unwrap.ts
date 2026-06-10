@@ -6,7 +6,6 @@ import { logger } from '../../../services/logger';
 import { UnwrapRequestSchema, UnwrapResponseSchema, UnwrapRequestType, UnwrapResponseType } from '../schemas';
 import { Solana } from '../solana';
 import { handleSolanaTransactionError } from '../solana-errors';
-import { SolanaLedger } from '../solana-ledger';
 
 /**
  * Unwrap WSOL to SOL
@@ -21,8 +20,7 @@ export async function unwrapSolana(
   // Get Solana instance for the specified network
   const solana = await Solana.getInstance(network);
 
-  // Check if this is a hardware wallet
-  const isHardware = await solana.isHardwareWallet(address);
+  const walletType = await solana.getWalletType(address);
 
   try {
     const walletPubkey = new PublicKey(address);
@@ -85,18 +83,8 @@ export async function unwrapSolana(
     // Create versioned transaction
     let transaction = new VersionedTransaction(messageV0);
 
-    if (isHardware) {
-      // Hardware wallet flow
-      logger.info(`Hardware wallet detected for ${address}. Building unwrap transaction for Ledger signing.`);
-
-      const ledger = new SolanaLedger();
-      const signedTx = await ledger.signTransaction(address, transaction);
-      transaction = signedTx as VersionedTransaction;
-    } else {
-      // Regular wallet flow
-      const keypair = await solana.getWallet(address);
-      transaction.sign([keypair]);
-    }
+    const wallet = walletType === 'local' ? await solana.getWallet(address) : walletPubkey;
+    transaction = await solana.signTransactionByType(transaction, address, walletType, wallet);
 
     // Simulate transaction with proper error handling before sending
     await solana.simulateWithErrorHandling(transaction);

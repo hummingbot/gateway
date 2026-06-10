@@ -3,6 +3,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
+import { PrivyEvmSigner } from '../../../wallet/privy';
 import { Ethereum } from '../ethereum';
 import { EthereumLedger } from '../ethereum-ledger';
 import { WrapRequestSchema, WrapResponseSchema, WrapRequestType, WrapResponseType } from '../schemas';
@@ -117,9 +118,9 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
       };
     } else {
       // Regular wallet flow
-      let wallet: ethers.Wallet;
+      let wallet: ethers.Wallet | PrivyEvmSigner;
       try {
-        wallet = await ethereum.getWallet(address);
+        wallet = await ethereum.getSigner(address);
       } catch (err) {
         logger.error(`Failed to load wallet: ${err.message}`);
         throw fastify.httpErrors.internalServerError(`Failed to load wallet: ${err.message}`);

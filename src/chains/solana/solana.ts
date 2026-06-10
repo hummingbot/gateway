@@ -49,8 +49,11 @@ import {
   getPrivyWalletByAddress,
 } from '../../wallet/utils';
 
+import { SolanaLedger } from './solana-ledger';
 import { PriorityFeeResult, SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
+
+export type SolanaWalletType = 'local' | 'hardware' | 'privy';
 
 // Constants used for fee calculations
 export const BASE_FEE = 5000;
@@ -378,6 +381,59 @@ export class Solana {
       throw new Error(`Privy wallet not found for address: ${address}`);
     }
     return new PrivySolanaSigner(privyWallet.privyWalletId, address);
+  }
+
+  /**
+   * Resolve the wallet type for an address: hardware (Ledger), privy, or local (encrypted keypair).
+   */
+  async getWalletType(address: string): Promise<SolanaWalletType> {
+    if (await this.isHardwareWallet(address)) {
+      return 'hardware';
+    }
+    if (await this.isPrivyWallet(address)) {
+      return 'privy';
+    }
+    return 'local';
+  }
+
+  /**
+   * Prepare a wallet for transaction building: a Keypair for local wallets, or the
+   * PublicKey for hardware and Privy wallets (which sign externally).
+   */
+  async prepareWallet(address: string): Promise<{ wallet: Keypair | PublicKey; walletType: SolanaWalletType }> {
+    const walletType = await this.getWalletType(address);
+    const wallet = walletType === 'local' ? await this.getWallet(address) : await this.getPublicKey(address);
+    return { wallet, walletType };
+  }
+
+  /**
+   * Sign a transaction with the signing method matching the wallet type.
+   */
+  async signTransactionByType<T extends Transaction | VersionedTransaction>(
+    transaction: T,
+    address: string,
+    walletType: SolanaWalletType,
+    wallet: Keypair | PublicKey,
+  ): Promise<T> {
+    switch (walletType) {
+      case 'hardware': {
+        logger.info(`Hardware wallet detected for ${address}. Signing transaction with Ledger.`);
+        const ledger = new SolanaLedger();
+        return (await ledger.signTransaction(address, transaction)) as T;
+      }
+      case 'privy': {
+        const privySigner = await this.getPrivySigner(address);
+        return await privySigner.signTransaction(transaction);
+      }
+      default: {
+        if (transaction instanceof VersionedTransaction) {
+          transaction.sign([wallet as Keypair]);
+        } else {
+          (transaction as Transaction).sign(wallet as Keypair);
+        }
+        return transaction;
+      }
+    }
   }
 
   /**

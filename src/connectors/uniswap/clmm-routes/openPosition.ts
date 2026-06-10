@@ -56,7 +56,7 @@ export async function openPosition(
   }
 
   // Get the wallet
-  const wallet = await ethereum.getWallet(walletAddress);
+  const wallet = await ethereum.getSigner(walletAddress);
   if (!wallet) {
     throw httpErrors.badRequest('Wallet not found');
   }

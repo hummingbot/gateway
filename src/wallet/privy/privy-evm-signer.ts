@@ -29,16 +29,17 @@ function toHexQuantity(value: BigNumberish | undefined): string | undefined {
 }
 
 export class PrivyEvmSigner extends Signer {
+  // Public for drop-in compatibility with ethers.Wallet
+  public readonly address: string;
   private privyService: PrivyService;
   private walletId: string;
-  private _address: string;
   private chainId: number;
 
   constructor(walletId: string, address: string, chainId: number, provider: Provider) {
     super();
     this.privyService = getPrivyService();
     this.walletId = walletId;
-    this._address = address;
+    this.address = address;
     this.chainId = chainId;
     // Use Object.defineProperty to set provider since base class declares it as readonly
     Object.defineProperty(this, 'provider', {
@@ -50,7 +51,7 @@ export class PrivyEvmSigner extends Signer {
   }
 
   async getAddress(): Promise<string> {
-    return this._address;
+    return this.address;
   }
 
   async signMessage(message: string | Uint8Array): Promise<string> {
@@ -72,7 +73,7 @@ export class PrivyEvmSigner extends Signer {
     const resolved = await utils.resolveProperties(transaction);
     const tx: PrivyEthereumTransactionInput = {
       to: resolved.to,
-      from: this._address,
+      from: this.address,
       nonce: resolved.nonce !== undefined ? BigNumber.from(resolved.nonce).toNumber() : undefined,
       chainId: this.chainId,
       data: resolved.data ? utils.hexlify(resolved.data) : undefined,
@@ -97,7 +98,7 @@ export class PrivyEvmSigner extends Signer {
     const parsed = utils.parseTransaction(signedTx);
 
     const mismatches: string[] = [];
-    if (parsed.from?.toLowerCase() !== this._address.toLowerCase()) {
+    if (parsed.from?.toLowerCase() !== this.address.toLowerCase()) {
       mismatches.push('from');
     }
     if ((parsed.to?.toLowerCase() ?? undefined) !== submitted.to?.toLowerCase()) {
@@ -129,10 +130,10 @@ export class PrivyEvmSigner extends Signer {
     const tx = { ...transaction };
 
     if (tx.nonce === undefined) {
-      tx.nonce = await this.provider.getTransactionCount(this._address, 'pending');
+      tx.nonce = await this.provider.getTransactionCount(this.address, 'pending');
     }
     if (tx.gasLimit === undefined) {
-      tx.gasLimit = await this.provider.estimateGas({ ...tx, from: this._address });
+      tx.gasLimit = await this.provider.estimateGas({ ...tx, from: this.address });
     }
     if (tx.gasPrice === undefined && tx.maxFeePerGas === undefined) {
       const feeData = await this.provider.getFeeData();
@@ -168,6 +169,6 @@ export class PrivyEvmSigner extends Signer {
   }
 
   connect(provider: Provider): PrivyEvmSigner {
-    return new PrivyEvmSigner(this.walletId, this._address, this.chainId, provider);
+    return new PrivyEvmSigner(this.walletId, this.address, this.chainId, provider);
   }
 }

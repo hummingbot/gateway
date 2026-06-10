@@ -33,7 +33,7 @@ export async function addLiquidity(
 
   const uniswap = await Uniswap.getInstance(network);
   const ethereum = await Ethereum.getInstance(network);
-  const wallet = await ethereum.getWallet(walletAddress);
+  const wallet = await ethereum.getSigner(walletAddress);
   if (!wallet) {
     throw httpErrors.badRequest('Wallet not found');
   }

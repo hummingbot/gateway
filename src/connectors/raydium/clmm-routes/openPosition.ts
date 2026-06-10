@@ -28,8 +28,8 @@ export async function openPosition(
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
 
-  // Prepare wallet and check if it's hardware
-  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
+  // Prepare wallet and resolve its type
+  const { wallet, walletType } = await raydium.prepareWallet(walletAddress);
 
   const poolResponse = await raydium.getClmmPoolfromAPI(poolAddress);
   if (!poolResponse) {
@@ -99,12 +99,7 @@ export async function openPosition(
   });
 
   // Sign transaction using helper
-  const transaction = (await raydium.signTransaction(
-    txn,
-    walletAddress,
-    isHardwareWallet,
-    wallet,
-  )) as VersionedTransaction;
+  const transaction = (await raydium.signTransaction(txn, walletAddress, walletType, wallet)) as VersionedTransaction;
   await solana.simulateWithErrorHandling(transaction);
 
   const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);

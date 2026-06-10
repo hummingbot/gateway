@@ -61,7 +61,7 @@ export async function openPosition(
     `Tokens: ${baseToken.symbol}/${quoteToken.symbol} (${baseToken.decimals}/${quoteToken.decimals} decimals)`,
   );
 
-  const wallet = await solana.getWallet(walletAddress);
+  const { wallet, walletType } = await solana.prepareWallet(walletAddress);
   const walletPubkey = new PublicKey(walletAddress);
   const poolPubkey = new PublicKey(poolAddress);
 
@@ -136,12 +136,13 @@ export async function openPosition(
     priorityFeePerCU,
   );
 
-  // Sign with both wallet and NFT mint keypair
-  transaction.sign([wallet, positionNftMint]);
+  // The position NFT mint always signs locally; the wallet signs according to its type
+  transaction.sign([positionNftMint]);
+  const signedTransaction = await solana.signTransactionByType(transaction, walletAddress, walletType, wallet);
 
-  await solana.simulateWithErrorHandling(transaction);
+  await solana.simulateWithErrorHandling(signedTransaction);
 
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(signedTransaction);
 
   if (confirmed && txData) {
     const totalFee = txData.meta.fee;

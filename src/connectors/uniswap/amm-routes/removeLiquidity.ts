@@ -87,7 +87,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Get the wallet
-        const wallet = await ethereum.getWallet(walletAddress);
+        const wallet = await ethereum.getSigner(walletAddress);
         if (!wallet) {
           throw fastify.httpErrors.badRequest('Wallet not found');
         }

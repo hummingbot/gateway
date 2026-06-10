@@ -7,6 +7,7 @@ import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
 import { updateDefaultWallet } from '../../config/utils';
+import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { getPrivyService } from '../privy';
 import { getPrivyWallets, savePrivyWallets, validateChainName } from '../utils';
@@ -21,6 +22,9 @@ export const AddPrivyWalletRequestSchema = Type.Object({
   privyWalletId: Type.String({
     description: 'Privy wallet ID (from Privy dashboard or API)',
     examples: ['wallet_abc123'],
+  }),
+  passphrase: Type.String({
+    description: 'Gateway passphrase (required for security)',
   }),
   setDefault: Type.Optional(
     Type.Boolean({
@@ -71,6 +75,7 @@ export const addPrivyWalletRoute: FastifyPluginAsync = async (fastify) => {
             {
               chain: 'solana',
               privyWalletId: 'wallet_abc123',
+              passphrase: '<gateway-passphrase>',
               setDefault: true,
             },
           ],
@@ -81,7 +86,18 @@ export const addPrivyWalletRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { chain, privyWalletId, setDefault } = request.body;
+      const { chain, privyWalletId, passphrase, setDefault } = request.body;
+
+      // Verify the provided passphrase matches the configured passphrase
+      // (same pattern as show-private-key)
+      const configuredPassphrase = ConfigManagerCertPassphrase.readPassphrase();
+      if (!configuredPassphrase) {
+        throw fastify.httpErrors.internalServerError('No passphrase configured');
+      }
+      if (passphrase !== configuredPassphrase) {
+        logger.warn(`Invalid passphrase provided for add-privy request on ${chain}`);
+        throw fastify.httpErrors.unauthorized('Invalid passphrase');
+      }
 
       // Validate chain name
       if (!validateChainName(chain)) {

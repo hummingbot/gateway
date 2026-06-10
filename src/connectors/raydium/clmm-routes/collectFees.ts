@@ -21,8 +21,8 @@ export async function collectFees(
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
 
-  // Prepare wallet and check if it's hardware
-  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
+  // Prepare wallet and resolve its type
+  const { wallet, walletType } = await raydium.prepareWallet(walletAddress);
 
   // Set the owner for SDK operations
   await raydium.setOwner(wallet);

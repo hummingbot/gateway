@@ -8,6 +8,8 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../chains/ethereum/ethereum';
 import { Solana } from '../../chains/solana/solana';
+import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
+import { logger } from '../../services/logger';
 import { getPrivyWallets, savePrivyWallets, validateChainName } from '../utils';
 
 // Request schema
@@ -19,6 +21,9 @@ export const RemovePrivyWalletRequestSchema = Type.Object({
   }),
   address: Type.String({
     description: 'Wallet address to remove',
+  }),
+  passphrase: Type.String({
+    description: 'Gateway passphrase (required for security)',
   }),
 });
 
@@ -48,6 +53,7 @@ export const removePrivyWalletRoute: FastifyPluginAsync = async (fastify) => {
             {
               chain: 'solana',
               address: 'So11111111111111111111111111111111111111112',
+              passphrase: '<gateway-passphrase>',
             },
           ],
         },
@@ -64,7 +70,18 @@ export const removePrivyWalletRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { chain, address } = request.body;
+      const { chain, address, passphrase } = request.body;
+
+      // Verify the provided passphrase matches the configured passphrase
+      // (same pattern as show-private-key)
+      const configuredPassphrase = ConfigManagerCertPassphrase.readPassphrase();
+      if (!configuredPassphrase) {
+        throw fastify.httpErrors.internalServerError('No passphrase configured');
+      }
+      if (passphrase !== configuredPassphrase) {
+        logger.warn(`Invalid passphrase provided for remove-privy request on ${chain}`);
+        throw fastify.httpErrors.unauthorized('Invalid passphrase');
+      }
 
       // Validate chain name
       if (!validateChainName(chain)) {

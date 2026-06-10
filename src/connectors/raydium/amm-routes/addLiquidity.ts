@@ -116,8 +116,8 @@ async function addLiquidity(
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
 
-  // Prepare wallet and check if it's hardware
-  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
+  // Prepare wallet and resolve its type
+  const { wallet, walletType } = await raydium.prepareWallet(walletAddress);
 
   const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
   if (!ammPoolInfo) {
@@ -190,7 +190,7 @@ async function addLiquidity(
     signedTransaction = (await raydium.signTransaction(
       transaction,
       walletAddress,
-      isHardwareWallet,
+      walletType,
       wallet,
     )) as VersionedTransaction;
   } else {
@@ -198,11 +198,12 @@ async function addLiquidity(
     const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash();
     txAsTransaction.recentBlockhash = blockhash;
     txAsTransaction.lastValidBlockHeight = lastValidBlockHeight;
-    txAsTransaction.feePayer = isHardwareWallet ? await solana.getPublicKey(walletAddress) : (wallet as any).publicKey;
+    txAsTransaction.feePayer =
+      walletType !== 'local' ? await solana.getPublicKey(walletAddress) : (wallet as any).publicKey;
     signedTransaction = (await raydium.signTransaction(
       txAsTransaction,
       walletAddress,
-      isHardwareWallet,
+      walletType,
       wallet,
     )) as Transaction;
   }

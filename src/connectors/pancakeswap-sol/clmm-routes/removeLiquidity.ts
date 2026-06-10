@@ -53,7 +53,7 @@ export async function removeLiquidity(
   logger.info(`Removing ${percentageToRemove}% liquidity from position ${positionAddress}`);
   logger.info(`Total liquidity: ${liquidity.toString()}, removing: ${liquidityToRemove.toString()}`);
 
-  const wallet = await solana.getWallet(walletAddress);
+  const { wallet, walletType } = await solana.prepareWallet(walletAddress);
   const walletPubkey = new PublicKey(walletAddress);
 
   // Get base and quote tokens
@@ -81,10 +81,10 @@ export async function removeLiquidity(
   );
 
   // Sign and send
-  transaction.sign([wallet]);
-  await solana.simulateWithErrorHandling(transaction);
+  const signedTransaction = await solana.signTransactionByType(transaction, walletAddress, walletType, wallet);
+  await solana.simulateWithErrorHandling(signedTransaction);
 
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(signedTransaction);
 
   if (confirmed && txData) {
     const totalFee = txData.meta.fee;
