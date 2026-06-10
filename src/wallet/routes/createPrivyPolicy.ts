@@ -7,6 +7,7 @@
 import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
+import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { logger } from '../../services/logger';
 import { getPrivyService, PrivyPolicyRule } from '../privy/privy-service';
 
@@ -20,6 +21,9 @@ export const CreatePrivyPolicyRequestSchema = Type.Object({
   name: Type.String({
     description: 'Name to assign to the policy in Privy',
     examples: ['Gateway allowlist'],
+  }),
+  passphrase: Type.String({
+    description: 'Gateway passphrase (required for security)',
   }),
   allowedAddresses: Type.Array(Type.String(), {
     description:
@@ -116,6 +120,12 @@ export const createPrivyPolicyRoute: FastifyPluginAsync = async (fastify) => {
   }>(
     '/privy-policy',
     {
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: '1 minute',
+        },
+      },
       schema: {
         description:
           'Create a Privy signing policy that only allows transactions to allowlisted addresses (Ethereum) or programs (Solana), and optionally attach it to a Privy wallet',
@@ -126,6 +136,7 @@ export const createPrivyPolicyRoute: FastifyPluginAsync = async (fastify) => {
             {
               chain: 'solana',
               name: 'Gateway allowlist',
+              passphrase: '<gateway-passphrase>',
               allowedAddresses: ['675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8'],
               attachToWalletId: 'wallet_abc123',
             },
@@ -137,7 +148,17 @@ export const createPrivyPolicyRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { chain, name, allowedAddresses, attachToWalletId } = request.body;
+      const { chain, name, passphrase, allowedAddresses, attachToWalletId } = request.body;
+
+      // Verify the provided passphrase matches the configured passphrase
+      const configuredPassphrase = ConfigManagerCertPassphrase.readPassphrase();
+      if (!configuredPassphrase) {
+        throw fastify.httpErrors.internalServerError('No passphrase configured');
+      }
+      if (passphrase !== configuredPassphrase) {
+        logger.warn('Invalid passphrase provided for privy-policy request');
+        throw fastify.httpErrors.unauthorized('Invalid passphrase');
+      }
 
       const privyService = getPrivyService();
       if (!privyService.isConfigured()) {

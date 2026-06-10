@@ -3,13 +3,16 @@ import Fastify, { FastifyInstance } from 'fastify';
 
 jest.mock('../../src/wallet/privy/privy-service');
 
+import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
 import { getPrivyService } from '../../src/wallet/privy/privy-service';
 import { createPrivyPolicyRoute } from '../../src/wallet/routes/createPrivyPolicy';
+import { patch, unpatch } from '../services/patch';
 
 const ETH_ADDRESS = '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45';
 const SOLANA_PROGRAM_ID = '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8';
 const POLICY_ID = 'policy_xyz789';
 const WALLET_ID = 'wallet_abc123';
+const TEST_PASSPHRASE = 'test-passphrase';
 const OWNER_ID = 'quorum_456';
 
 describe('Privy Policy Route', () => {
@@ -28,6 +31,8 @@ describe('Privy Policy Route', () => {
     await app.register(sensible);
     await app.register(createPrivyPolicyRoute);
 
+    patch(ConfigManagerCertPassphrase, 'readPassphrase', () => TEST_PASSPHRASE);
+
     mockPrivyService = {
       isConfigured: jest.fn().mockReturnValue(true),
       hasAuthorizationKey: jest.fn().mockReturnValue(true),
@@ -43,14 +48,36 @@ describe('Privy Policy Route', () => {
   });
 
   afterEach(async () => {
+    unpatch();
     await app.close();
+  });
+
+  it('rejects an invalid passphrase', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/privy-policy',
+      payload: {
+        passphrase: 'wrong-passphrase',
+        chain: 'ethereum',
+        name: 'Eth allowlist',
+        allowedAddresses: [ETH_ADDRESS],
+      },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(mockPrivyService.createPolicy).not.toHaveBeenCalled();
   });
 
   it('creates an ethereum policy with an allowlist ALLOW rule and a catch-all DENY rule', async () => {
     const response = await app.inject({
       method: 'POST',
       url: '/privy-policy',
-      payload: { chain: 'ethereum', name: 'Eth allowlist', allowedAddresses: [ETH_ADDRESS] },
+      payload: {
+        passphrase: TEST_PASSPHRASE,
+        chain: 'ethereum',
+        name: 'Eth allowlist',
+        allowedAddresses: [ETH_ADDRESS],
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -94,7 +121,12 @@ describe('Privy Policy Route', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/privy-policy',
-      payload: { chain: 'solana', name: 'Sol allowlist', allowedAddresses: [SOLANA_PROGRAM_ID] },
+      payload: {
+        passphrase: TEST_PASSPHRASE,
+        chain: 'solana',
+        name: 'Sol allowlist',
+        allowedAddresses: [SOLANA_PROGRAM_ID],
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -134,6 +166,7 @@ describe('Privy Policy Route', () => {
       method: 'POST',
       url: '/privy-policy',
       payload: {
+        passphrase: TEST_PASSPHRASE,
         chain: 'solana',
         name: 'Sol allowlist',
         allowedAddresses: [SOLANA_PROGRAM_ID],
@@ -154,6 +187,7 @@ describe('Privy Policy Route', () => {
       method: 'POST',
       url: '/privy-policy',
       payload: {
+        passphrase: TEST_PASSPHRASE,
         chain: 'solana',
         name: 'Sol allowlist',
         allowedAddresses: [SOLANA_PROGRAM_ID],
@@ -179,7 +213,12 @@ describe('Privy Policy Route', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/privy-policy',
-      payload: { chain: 'ethereum', name: 'Eth allowlist', allowedAddresses: [ETH_ADDRESS] },
+      payload: {
+        passphrase: TEST_PASSPHRASE,
+        chain: 'ethereum',
+        name: 'Eth allowlist',
+        allowedAddresses: [ETH_ADDRESS],
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -195,7 +234,12 @@ describe('Privy Policy Route', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/privy-policy',
-      payload: { chain: 'ethereum', name: 'Eth allowlist', allowedAddresses: [ETH_ADDRESS] },
+      payload: {
+        passphrase: TEST_PASSPHRASE,
+        chain: 'ethereum',
+        name: 'Eth allowlist',
+        allowedAddresses: [ETH_ADDRESS],
+      },
     });
 
     expect(response.statusCode).toBe(400);
@@ -209,7 +253,12 @@ describe('Privy Policy Route', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/privy-policy',
-      payload: { chain: 'ethereum', name: 'Eth allowlist', allowedAddresses: [ETH_ADDRESS] },
+      payload: {
+        passphrase: TEST_PASSPHRASE,
+        chain: 'ethereum',
+        name: 'Eth allowlist',
+        allowedAddresses: [ETH_ADDRESS],
+      },
     });
 
     expect(response.statusCode).toBe(400);
@@ -220,7 +269,7 @@ describe('Privy Policy Route', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/privy-policy',
-      payload: { chain: 'ethereum', name: 'Eth allowlist', allowedAddresses: [] },
+      payload: { passphrase: TEST_PASSPHRASE, chain: 'ethereum', name: 'Eth allowlist', allowedAddresses: [] },
     });
 
     expect(response.statusCode).toBe(400);
