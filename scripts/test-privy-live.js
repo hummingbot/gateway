@@ -22,7 +22,6 @@ const fs = require('fs');
 const path = require('path');
 
 const { Connection, PublicKey, SystemProgram, Transaction } = require('@solana/web3.js');
-const axios = require('axios');
 const yaml = require('js-yaml');
 
 const PRIVY_API_URL = 'https://api.privy.io/v1';
@@ -97,32 +96,30 @@ function privyHeaders(credentials) {
   };
 }
 
-function describePrivyError(error) {
-  if (error.response) {
-    const detail = JSON.stringify(error.response.data);
-    return `HTTP ${error.response.status}: ${detail}`;
+async function privyGet(credentials, urlPath) {
+  const response = await fetch(`${PRIVY_API_URL}${urlPath}`, { headers: privyHeaders(credentials) });
+  const body = await response.text();
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${body}`);
   }
-  return error.message;
+  return JSON.parse(body);
 }
 
 // Test 1: Verify credentials by listing wallets via raw REST
 async function testCredentials(credentials) {
-  let response;
+  let data;
   try {
-    response = await axios.get(`${PRIVY_API_URL}/wallets`, {
-      headers: privyHeaders(credentials),
-      params: { limit: 10 },
-    });
+    data = await privyGet(credentials, '/wallets');
   } catch (error) {
-    throw new Error(`Privy credentials rejected - ${describePrivyError(error)}`);
+    throw new Error(`Privy credentials rejected - ${error.message}`);
   }
 
-  const wallets = response.data.data;
+  const wallets = data.data;
   if (!Array.isArray(wallets)) {
-    throw new Error(`Unexpected response from ${PRIVY_API_URL}/wallets: ${JSON.stringify(response.data)}`);
+    throw new Error(`Unexpected response from ${PRIVY_API_URL}/wallets: ${JSON.stringify(data)}`);
   }
 
-  log(`Credentials valid. App has ${wallets.length}${response.data.next_cursor ? '+' : ''} wallet(s)`, 'info');
+  log(`Credentials valid. App has ${wallets.length}${data.next_cursor ? '+' : ''} wallet(s)`, 'info');
   wallets.forEach((w) => {
     log(`  ${w.id} | ${w.chain_type} | ${w.address}`, 'info');
   });
@@ -134,16 +131,13 @@ async function testCredentials(credentials) {
 
 // Test 2: Fetch a specific wallet and print its metadata
 async function testGetWallet(credentials, walletId) {
-  let response;
+  let wallet;
   try {
-    response = await axios.get(`${PRIVY_API_URL}/wallets/${walletId}`, {
-      headers: privyHeaders(credentials),
-    });
+    wallet = await privyGet(credentials, `/wallets/${encodeURIComponent(walletId)}`);
   } catch (error) {
-    throw new Error(`Failed to fetch wallet ${walletId} - ${describePrivyError(error)}`);
+    throw new Error(`Failed to fetch wallet ${walletId} - ${error.message}`);
   }
 
-  const wallet = response.data;
   log(`Wallet id:    ${wallet.id}`, 'info');
   log(`Address:      ${wallet.address}`, 'info');
   log(`Chain type:   ${wallet.chain_type}`, 'info');
