@@ -132,10 +132,28 @@ export class PrivyService {
   /**
    * Log the full provider error at debug level, throw a sanitized error to callers.
    * Privy error bodies can include wallet addresses and internal trace IDs.
+   *
+   * Known Privy error shapes (verified live):
+   * - Policy denial: HTTP 400, body {"error": "...", "code": "policy_violation"}
+   * - Missing owner signature: HTTP 401, body {"error": "Missing `privy-authorization-signature` header ..."}
    */
   private handleError(operation: string, error: any): never {
     const status = error?.status ? ` (HTTP ${error.status})` : '';
     logger.debug(`Privy ${operation} error detail: ${error?.message ?? error}`);
+    if (error?.error?.code === 'policy_violation') {
+      const message = `Privy ${operation} denied by wallet policy: the transaction violates the policy attached to this wallet`;
+      logger.error(message);
+      throw new Error(message);
+    }
+    if (
+      error?.status === 401 &&
+      typeof error?.error?.error === 'string' &&
+      error.error.error.includes('authorization')
+    ) {
+      const message = `Privy ${operation} rejected: wallet has an owner and requires an authorization key signature. Set apiKeys.privyAuthorizationKey to the wallet owner's private key`;
+      logger.error(message);
+      throw new Error(message);
+    }
     logger.error(`Privy ${operation} failed${status}`);
     throw new Error(`Privy ${operation} failed${status}`);
   }
