@@ -20,18 +20,15 @@ describe('PrivyService error handling', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    patch(ConfigManagerV2.getInstance(), 'get', (key: string) => {
-      const values: Record<string, string> = {
-        'apiKeys.privyAppId': 'test-app-id',
-        'apiKeys.privyAppSecret': 'test-app-secret',
-      };
-      return values[key] || '';
-    });
+    // App ID comes from config; the app secret is read from the environment.
+    patch(ConfigManagerV2.getInstance(), 'get', (key: string) => (key === 'apiKeys.privyAppId' ? 'test-app-id' : ''));
+    process.env.GATEWAY_PRIVY_APP_SECRET = 'test-app-secret';
     service = new PrivyService();
   });
 
   afterEach(() => {
     unpatch();
+    delete process.env.GATEWAY_PRIVY_APP_SECRET;
   });
 
   it('maps policy_violation errors to a clear policy denial message', async () => {

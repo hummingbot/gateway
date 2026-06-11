@@ -163,14 +163,14 @@ export const createPrivyPolicyRoute: FastifyPluginAsync = async (fastify) => {
       const privyService = getPrivyService();
       if (!privyService.isConfigured()) {
         throw fastify.httpErrors.badRequest(
-          'Privy credentials not configured. Set apiKeys.privyAppId and apiKeys.privyAppSecret in conf/apiKeys.yml',
+          'Privy credentials not configured. Set apiKeys.privyAppId in conf/apiKeys.yml and the GATEWAY_PRIVY_APP_SECRET environment variable',
         );
       }
 
       const warnings: string[] = [];
       if (!privyService.hasAuthorizationKey()) {
         warnings.push(
-          'No authorization key is configured (apiKeys.privyAuthorizationKey): the policy has no owner, so anyone holding the app secret can change or remove it.',
+          'No authorization key is configured (GATEWAY_PRIVY_AUTHORIZATION_KEY): the policy has no owner, so anyone holding the app secret can change or remove it.',
         );
       }
 

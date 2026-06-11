@@ -107,7 +107,7 @@ export const addPrivyWalletRoute: FastifyPluginAsync = async (fastify) => {
       const privyService = getPrivyService();
       if (!privyService.isConfigured()) {
         throw fastify.httpErrors.badRequest(
-          'Privy credentials not configured. Set apiKeys.privyAppId and apiKeys.privyAppSecret in conf/apiKeys.yml',
+          'Privy credentials not configured. Set apiKeys.privyAppId in conf/apiKeys.yml and the GATEWAY_PRIVY_APP_SECRET environment variable',
         );
       }
 

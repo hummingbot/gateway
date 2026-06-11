@@ -86,14 +86,19 @@ export class PrivyService {
   private clientCredentials: string = '';
 
   /**
-   * Read credentials from config at call time so runtime config updates take effect.
+   * Read credentials at call time so runtime changes take effect.
+   *
+   * The app ID is non-sensitive (it appears in public URLs) and lives in config.
+   * The app secret and authorization (owner) key are secrets and are read ONLY from
+   * environment variables, never from conf on disk — so a read of the config files
+   * cannot recover them, and they can be injected at runtime by a secret manager.
    */
   private getCredentials(): PrivyCredentials {
     const configManager = ConfigManagerV2.getInstance();
     return {
       appId: configManager.get('apiKeys.privyAppId') || '',
-      appSecret: configManager.get('apiKeys.privyAppSecret') || '',
-      authorizationKey: configManager.get('apiKeys.privyAuthorizationKey') || undefined,
+      appSecret: process.env.GATEWAY_PRIVY_APP_SECRET || '',
+      authorizationKey: process.env.GATEWAY_PRIVY_AUTHORIZATION_KEY || undefined,
     };
   }
 
@@ -105,7 +110,9 @@ export class PrivyService {
   private getClient(): PrivyClient {
     const credentials = this.getCredentials();
     if (!credentials.appId || !credentials.appSecret) {
-      throw new Error('Privy credentials not configured. Set apiKeys.privyAppId and apiKeys.privyAppSecret.');
+      throw new Error(
+        'Privy credentials not configured. Set apiKeys.privyAppId in conf and the GATEWAY_PRIVY_APP_SECRET environment variable.',
+      );
     }
     const fingerprint = `${credentials.appId}:${credentials.appSecret}`;
     if (!this.client || this.clientCredentials !== fingerprint) {
@@ -150,7 +157,7 @@ export class PrivyService {
       typeof error?.error?.error === 'string' &&
       error.error.error.includes('authorization')
     ) {
-      const message = `Privy ${operation} rejected: wallet has an owner and requires an authorization key signature. Set apiKeys.privyAuthorizationKey to the wallet owner's private key`;
+      const message = `Privy ${operation} rejected: wallet has an owner and requires an authorization key signature. Set the GATEWAY_PRIVY_AUTHORIZATION_KEY environment variable to the wallet owner's private key`;
       logger.error(message);
       throw new Error(message);
     }
@@ -303,7 +310,9 @@ export class PrivyService {
   private getAuthorizationPublicKey(): string {
     const { authorizationKey } = this.getCredentials();
     if (!authorizationKey) {
-      throw new Error('Privy authorization key not configured. Set apiKeys.privyAuthorizationKey.');
+      throw new Error(
+        'Privy authorization key not configured. Set the GATEWAY_PRIVY_AUTHORIZATION_KEY environment variable.',
+      );
     }
     const privateKey = createPrivateKey({
       key: Buffer.from(authorizationKey, 'base64'),

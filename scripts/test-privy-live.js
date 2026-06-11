@@ -8,8 +8,9 @@
  * a signature on a trivial Solana self-transfer to exercise attached policies.
  *
  * Prerequisites:
- * - Privy credentials configured in conf/apiKeys.yml:
- *     privyAppId, privyAppSecret, and optionally privyAuthorizationKey
+ * - apiKeys.privyAppId set in conf/apiKeys.yml
+ * - GATEWAY_PRIVY_APP_SECRET (and, for owned wallets, GATEWAY_PRIVY_AUTHORIZATION_KEY)
+ *     exported in the environment — run: source conf/privy-secrets.env
  * - For --test-sign: `pnpm build` so dist/ is available
  *
  * Usage:
@@ -65,7 +66,7 @@ async function testCase(name, fn) {
   }
 }
 
-// Read Privy credentials from conf/apiKeys.yml (no fallbacks: fail loudly)
+// App ID from conf; secrets from env vars (no fallbacks: fail loudly)
 function loadCredentials() {
   const configPath = path.join(__dirname, '..', 'conf', 'apiKeys.yml');
   if (!fs.existsSync(configPath)) {
@@ -74,16 +75,18 @@ function loadCredentials() {
 
   const config = yaml.load(fs.readFileSync(configPath, 'utf8'));
   const appId = config.privyAppId;
-  const appSecret = config.privyAppSecret;
+  const appSecret = process.env.GATEWAY_PRIVY_APP_SECRET;
 
   if (!appId || !appSecret) {
-    throw new Error('privyAppId and privyAppSecret must be set in conf/apiKeys.yml');
+    throw new Error(
+      'Set apiKeys.privyAppId in conf and export GATEWAY_PRIVY_APP_SECRET (run: source conf/privy-secrets.env)',
+    );
   }
 
   return {
     appId,
     appSecret,
-    authorizationKey: config.privyAuthorizationKey || undefined,
+    authorizationKey: process.env.GATEWAY_PRIVY_AUTHORIZATION_KEY || undefined,
   };
 }
 
@@ -124,7 +127,7 @@ async function testCredentials(credentials) {
     log(`  ${w.id} | ${w.chain_type} | ${w.address}`, 'info');
   });
   if (!credentials.authorizationKey) {
-    log('No privyAuthorizationKey configured: owned wallets/policies cannot be signed for or modified', 'warn');
+    log('No GATEWAY_PRIVY_AUTHORIZATION_KEY set: owned wallets/policies cannot be signed for or modified', 'warn');
   }
   return wallets;
 }

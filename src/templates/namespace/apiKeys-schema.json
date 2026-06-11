@@ -24,15 +24,7 @@
     },
     "privyAppId": {
       "type": "string",
-      "description": "Privy App ID for server wallet signing (https://dashboard.privy.io)"
-    },
-    "privyAppSecret": {
-      "type": "string",
-      "description": "Privy App Secret for server wallet signing (https://dashboard.privy.io)"
-    },
-    "privyAuthorizationKey": {
-      "type": "string",
-      "description": "Privy authorization private key (base64 P-256 PKCS8) used to sign wallet requests when wallets/policies have an owner"
+      "description": "Privy App ID for server wallet signing (https://dashboard.privy.io). The app secret and authorization key are secrets read from the GATEWAY_PRIVY_APP_SECRET and GATEWAY_PRIVY_AUTHORIZATION_KEY environment variables, not from config."
     }
   },
   "additionalProperties": true

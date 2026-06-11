@@ -28,12 +28,14 @@ etherscan: ''
 
 # Privy - Server wallet signing
 # Get your credentials from https://dashboard.privy.io
-# Required for Privy wallet integration
+# Required for Privy wallet integration.
+#
+# Only the (non-sensitive) App ID lives here. The two secrets are read from
+# environment variables ONLY, never from this file, so reading conf cannot recover
+# them and they can be injected at runtime by a secret manager:
+#   GATEWAY_PRIVY_APP_SECRET           - Privy app secret
+#   GATEWAY_PRIVY_AUTHORIZATION_KEY    - base64 P-256 PKCS8 private key (no PEM headers)
+#                                        that owns your Privy wallets/policies; required
+#                                        to sign once a wallet has an owner. Keep this off
+#                                        any host that builds transactions if you can.
 privyAppId: ''
-privyAppSecret: ''
-
-# Privy authorization key (optional but strongly recommended)
-# Base64-encoded P-256 private key (PKCS8, no PEM headers) registered as the
-# owner of your Privy wallets and policies. Required to sign requests when a
-# wallet has an owner; without an owner, the app secret alone can bypass policies.
-privyAuthorizationKey: ''
