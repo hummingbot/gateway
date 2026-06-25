@@ -23,7 +23,7 @@ import { OpenPositionResponse, OpenPositionResponseType } from '../../../schemas
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
-import { extractInnerTransferAmounts, getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
+import { extractInnerTransferAmounts, getTickArrayPubkeys, handleWsolAta, retryOrcaRpcRead } from '../orca.utils';
 import { OrcaClmmOpenPositionRequest } from '../schemas';
 
 /**
@@ -468,10 +468,12 @@ export async function openPosition(
   // Newly-created accounts have preBalance=0, so their postBalance IS the rent.
   // This captures ALL rent including tick arrays (~0.013 SOL each) that were
   // previously missed when only querying 3 position accounts.
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  const txData = await retryOrcaRpcRead('open-position getTransaction', () =>
+    solana.connection.getTransaction(signature, {
+      commitment: 'confirmed',
+      maxSupportedTransactionVersion: 0,
+    }),
+  );
 
   let positionRent = 0;
 

@@ -21,6 +21,7 @@ import { ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/c
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
+import { retryOrcaRpcRead } from '../orca.utils';
 import { OrcaClmmExecuteSwapRequest, OrcaClmmExecuteSwapRequestType } from '../schemas';
 
 const COMPUTE_BUDGET_PROGRAM_ID = address('ComputeBudget111111111111111111111111111111');
@@ -151,10 +152,12 @@ export async function executeSwap(
   // behind confirmation, so retry a few times before giving up.
   let feeLamports = 0;
   for (let attempt = 0; attempt < 4; attempt++) {
-    const confirmedTx = await solana.connection.getTransaction(signature, {
-      commitment: 'confirmed',
-      maxSupportedTransactionVersion: 0,
-    });
+    const confirmedTx = await retryOrcaRpcRead('swap getTransaction', () =>
+      solana.connection.getTransaction(signature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      }),
+    );
     if (confirmedTx?.meta?.fee != null) {
       feeLamports = confirmedTx.meta.fee;
       break;

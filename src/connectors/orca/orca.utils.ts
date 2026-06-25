@@ -43,6 +43,31 @@ import { PositionInfo, QuotePositionResponseType } from '../../schemas/clmm-sche
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
+const ORCA_RPC_READ_RETRY_DELAYS_MS = [5000, 10000, 20000];
+
+function isRateLimitError(error: any): boolean {
+  const message = String(error?.message || error || '').toLowerCase();
+  return error?.statusCode === 429 || message.includes('429') || message.includes('too many requests');
+}
+
+export async function retryOrcaRpcRead<T>(operationName: string, operation: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      if (!isRateLimitError(error) || attempt >= ORCA_RPC_READ_RETRY_DELAYS_MS.length) {
+        throw error;
+      }
+      const delayMs = ORCA_RPC_READ_RETRY_DELAYS_MS[attempt];
+      logger.warn(
+        `Orca ${operationName} hit RPC 429 after web3.js retries; retrying in ${delayMs}ms ` +
+          `(${attempt + 1}/${ORCA_RPC_READ_RETRY_DELAYS_MS.length})`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+}
+
 /**
  * Extracts detailed position information including fees, token amounts, and pricing.
  * This function fetches all necessary on-chain data and calculates derived values.
@@ -186,10 +211,12 @@ export async function extractInnerTransferAmounts(
   // Retry loop — the parsed transaction may not be immediately available after confirmation
   let parsedTx: any = null;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
-    parsedTx = await connection.getParsedTransaction(signature, {
-      commitment: 'confirmed',
-      maxSupportedTransactionVersion: 0,
-    });
+    parsedTx = await retryOrcaRpcRead('getParsedTransaction', () =>
+      connection.getParsedTransaction(signature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      }),
+    );
     if (parsedTx) break;
     logger.info(`Waiting for parsed transaction (attempt ${attempt + 1}/${maxRetries})...`);
     await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
