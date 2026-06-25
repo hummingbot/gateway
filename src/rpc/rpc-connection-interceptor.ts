@@ -8,6 +8,8 @@ import { providers } from 'ethers';
 
 import { logger } from '../services/logger';
 
+const SOLANA_READ_RETRY_DELAYS_MS = [5000, 5000, 5000];
+
 /**
  * Redact sensitive parts of RPC URL (API keys, tokens)
  */
@@ -39,6 +41,14 @@ function is429Error(error: any): boolean {
   );
 }
 
+function isRetryableSolanaReadMethod(prop: string | symbol): boolean {
+  return typeof prop === 'string' && prop.startsWith('get');
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Create error message based on chain type
  */
@@ -57,6 +67,13 @@ function createRateLimitErrorMessage(rpcUrl: string, chainType: 'solana' | 'ethe
       `To fix: Add an RPC provider API key to conf/apiKeys.yml and set 'rpcProvider' in conf/chains/ethereum.yml`
     );
   }
+}
+
+function createRateLimitError(rpcUrl: string, chainType: 'solana' | 'ethereum'): Error {
+  const rateLimitError: any = new Error(createRateLimitErrorMessage(rpcUrl, chainType));
+  rateLimitError.statusCode = 429;
+  rateLimitError.name = 'TooManyRequestsError';
+  return rateLimitError;
 }
 
 /**
@@ -78,22 +95,32 @@ export function createRateLimitAwareSolanaConnection(connection: Connection, rpc
 
       // Return wrapped async function that catches 429 errors
       return async function (this: Connection, ...args: any[]) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-          return await (value as (...args: any[]) => any).apply(target, args);
-        } catch (error: any) {
-          if (is429Error(error)) {
+        const maxAttempts = isRetryableSolanaReadMethod(prop) ? SOLANA_READ_RETRY_DELAYS_MS.length + 1 : 1;
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+            return await (value as (...args: any[]) => any).apply(target, args);
+          } catch (error: any) {
+            if (!is429Error(error)) {
+              throw error;
+            }
+
             const redactedUrl = redactUrl(rpcUrl);
+            if (attempt < maxAttempts - 1) {
+              const delayMs = SOLANA_READ_RETRY_DELAYS_MS[attempt];
+              logger.warn(
+                `Solana RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}. ` +
+                  `Retrying in ${delayMs}ms (${attempt + 1}/${SOLANA_READ_RETRY_DELAYS_MS.length})`,
+              );
+              await sleep(delayMs);
+              continue;
+            }
+
             logger.error(`⚠️  Solana RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}`);
             logger.error(`Original error: ${error.message}`);
-
-            // Create error with statusCode property that Fastify's error handler recognizes
-            const rateLimitError: any = new Error(createRateLimitErrorMessage(rpcUrl, 'solana'));
-            rateLimitError.statusCode = 429;
-            rateLimitError.name = 'TooManyRequestsError';
-            throw rateLimitError;
+            throw createRateLimitError(rpcUrl, 'solana');
           }
-          throw error;
         }
       };
     },
@@ -127,12 +154,7 @@ export function createRateLimitAwareEthereumProvider<T extends providers.BasePro
             const redactedUrl = redactUrl(rpcUrl);
             logger.error(`⚠️  Ethereum RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}`);
             logger.error(`Original error: ${error.message}`);
-
-            // Create error with statusCode property that Fastify's error handler recognizes
-            const rateLimitError: any = new Error(createRateLimitErrorMessage(rpcUrl, 'ethereum'));
-            rateLimitError.statusCode = 429;
-            rateLimitError.name = 'TooManyRequestsError';
-            throw rateLimitError;
+            throw createRateLimitError(rpcUrl, 'ethereum');
           }
           throw error;
         }

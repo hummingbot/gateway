@@ -5,9 +5,15 @@ import { createRateLimitAwareSolanaConnection } from '../../../src/rpc/rpc-conne
 describe('Solana Rate Limit Interceptor', () => {
   let mockConnection: jest.Mocked<Connection>;
   let wrappedConnection: Connection;
+  let setTimeoutSpy: jest.SpyInstance;
   const testRpcUrl = 'https://api.mainnet-beta.solana.com';
 
   beforeEach(() => {
+    setTimeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
+      callback();
+      return 0 as any;
+    });
+
     // Create a mock Connection
     mockConnection = {
       getBalance: jest.fn(),
@@ -20,6 +26,10 @@ describe('Solana Rate Limit Interceptor', () => {
     } as any;
 
     wrappedConnection = createRateLimitAwareSolanaConnection(mockConnection, testRpcUrl);
+  });
+
+  afterEach(() => {
+    setTimeoutSpy.mockRestore();
   });
 
   describe('429 Error Detection', () => {
@@ -185,9 +195,21 @@ describe('Solana Rate Limit Interceptor', () => {
       ).rejects.toMatchObject({
         statusCode: 429,
       });
+      expect(mockConnection.getTransaction).toHaveBeenCalledTimes(4);
     });
 
-    it('should intercept sendRawTransaction', async () => {
+    it('should retry getTransaction and return successful response', async () => {
+      const error429 = new Error('Too many requests');
+      (error429 as any).statusCode = 429;
+      const txData = { meta: { fee: 123 } } as any;
+
+      mockConnection.getTransaction.mockRejectedValueOnce(error429).mockResolvedValueOnce(txData);
+
+      await expect(wrappedConnection.getTransaction('signature123')).resolves.toBe(txData);
+      expect(mockConnection.getTransaction).toHaveBeenCalledTimes(2);
+    });
+
+    it('should not retry sendRawTransaction', async () => {
       const error429 = new Error('Too many requests');
       (error429 as any).statusCode = 429;
 
@@ -196,6 +218,7 @@ describe('Solana Rate Limit Interceptor', () => {
       await expect(wrappedConnection.sendRawTransaction(Buffer.from([]))).rejects.toMatchObject({
         statusCode: 429,
       });
+      expect(mockConnection.sendRawTransaction).toHaveBeenCalledTimes(1);
     });
   });
 

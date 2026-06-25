@@ -17,7 +17,7 @@ import { ClosePositionResponse, ClosePositionResponseType } from '../../../schem
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
-import { extractInnerTransferAmounts, getTickArrayPubkeys, handleWsolAta, retryOrcaRpcRead } from '../orca.utils';
+import { extractInnerTransferAmounts, getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
 import { OrcaClmmClosePositionRequest } from '../schemas';
 
 export async function closePosition(
@@ -266,12 +266,10 @@ export async function closePosition(
   // Extract rent refund and actual token amounts from the confirmed transaction.
   // Position accounts (mint, PDA, ATA) are closed by the TX, so their preBalance = rent refunded.
   // Tick arrays are NOT closed (shared resources), so they are not included here.
-  const txData = await retryOrcaRpcRead('close-position getTransaction', () =>
-    solana.connection.getTransaction(signature, {
-      commitment: 'confirmed',
-      maxSupportedTransactionVersion: 0,
-    }),
-  );
+  const txData = await solana.connection.getTransaction(signature, {
+    commitment: 'confirmed',
+    maxSupportedTransactionVersion: 0,
+  });
 
   let positionRentRefunded = 0;
 
