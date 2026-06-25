@@ -1,6 +1,10 @@
 import { Connection, PublicKey } from '@solana/web3.js';
+import { providers } from 'ethers';
 
-import { createRateLimitAwareSolanaConnection } from '../../../src/rpc/rpc-connection-interceptor';
+import {
+  createRateLimitAwareEthereumProvider,
+  createRateLimitAwareSolanaConnection,
+} from '../../../src/rpc/rpc-connection-interceptor';
 
 describe('Solana Rate Limit Interceptor', () => {
   let mockConnection: jest.Mocked<Connection>;
@@ -237,5 +241,53 @@ describe('Solana Rate Limit Interceptor', () => {
 
       expect(result).toBe(1000000000);
     });
+  });
+});
+
+describe('Ethereum Rate Limit Interceptor', () => {
+  let mockProvider: jest.Mocked<providers.BaseProvider>;
+  let wrappedProvider: providers.BaseProvider;
+  let setTimeoutSpy: jest.SpyInstance;
+  const testRpcUrl = 'https://eth.llamarpc.com';
+
+  beforeEach(() => {
+    setTimeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
+      callback();
+      return 0 as any;
+    });
+
+    mockProvider = {
+      getBalance: jest.fn(),
+      sendTransaction: jest.fn(),
+    } as any;
+
+    wrappedProvider = createRateLimitAwareEthereumProvider(mockProvider, testRpcUrl);
+  });
+
+  afterEach(() => {
+    setTimeoutSpy.mockRestore();
+  });
+
+  it('should retry getBalance and return successful response', async () => {
+    const error429 = new Error('Too many requests');
+    (error429 as any).statusCode = 429;
+
+    mockProvider.getBalance.mockRejectedValueOnce(error429).mockResolvedValueOnce(123 as any);
+
+    await expect(wrappedProvider.getBalance('0x0000000000000000000000000000000000000000')).resolves.toBe(123);
+    expect(mockProvider.getBalance).toHaveBeenCalledTimes(2);
+  });
+
+  it('should not retry sendTransaction', async () => {
+    const error429 = new Error('Too many requests');
+    (error429 as any).statusCode = 429;
+
+    mockProvider.sendTransaction.mockRejectedValue(error429);
+
+    await expect(wrappedProvider.sendTransaction('0x')).rejects.toMatchObject({
+      statusCode: 429,
+      name: 'TooManyRequestsError',
+    });
+    expect(mockProvider.sendTransaction).toHaveBeenCalledTimes(1);
   });
 });

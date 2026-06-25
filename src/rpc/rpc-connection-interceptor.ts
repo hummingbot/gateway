@@ -8,7 +8,7 @@ import { providers } from 'ethers';
 
 import { logger } from '../services/logger';
 
-const SOLANA_READ_RETRY_DELAYS_MS = [5000, 5000, 5000];
+const READ_RETRY_DELAYS_MS = [5000, 5000, 5000];
 
 /**
  * Redact sensitive parts of RPC URL (API keys, tokens)
@@ -41,7 +41,7 @@ function is429Error(error: any): boolean {
   );
 }
 
-function isRetryableSolanaReadMethod(prop: string | symbol): boolean {
+function isRetryableReadMethod(prop: string | symbol): boolean {
   return typeof prop === 'string' && prop.startsWith('get');
 }
 
@@ -95,7 +95,7 @@ export function createRateLimitAwareSolanaConnection(connection: Connection, rpc
 
       // Return wrapped async function that catches 429 errors
       return async function (this: Connection, ...args: any[]) {
-        const maxAttempts = isRetryableSolanaReadMethod(prop) ? SOLANA_READ_RETRY_DELAYS_MS.length + 1 : 1;
+        const maxAttempts = isRetryableReadMethod(prop) ? READ_RETRY_DELAYS_MS.length + 1 : 1;
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
           try {
@@ -108,10 +108,10 @@ export function createRateLimitAwareSolanaConnection(connection: Connection, rpc
 
             const redactedUrl = redactUrl(rpcUrl);
             if (attempt < maxAttempts - 1) {
-              const delayMs = SOLANA_READ_RETRY_DELAYS_MS[attempt];
+              const delayMs = READ_RETRY_DELAYS_MS[attempt];
               logger.warn(
                 `Solana RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}. ` +
-                  `Retrying in ${delayMs}ms (${attempt + 1}/${SOLANA_READ_RETRY_DELAYS_MS.length})`,
+                  `Retrying in ${delayMs}ms (${attempt + 1}/${READ_RETRY_DELAYS_MS.length})`,
               );
               await sleep(delayMs);
               continue;
@@ -146,17 +146,32 @@ export function createRateLimitAwareEthereumProvider<T extends providers.BasePro
 
       // Return wrapped async function that catches 429 errors
       return async function (this: T, ...args: any[]) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-          return await (value as (...args: any[]) => any).apply(target, args);
-        } catch (error: any) {
-          if (is429Error(error)) {
+        const maxAttempts = isRetryableReadMethod(prop) ? READ_RETRY_DELAYS_MS.length + 1 : 1;
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+            return await (value as (...args: any[]) => any).apply(target, args);
+          } catch (error: any) {
+            if (!is429Error(error)) {
+              throw error;
+            }
+
             const redactedUrl = redactUrl(rpcUrl);
+            if (attempt < maxAttempts - 1) {
+              const delayMs = READ_RETRY_DELAYS_MS[attempt];
+              logger.warn(
+                `Ethereum RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}. ` +
+                  `Retrying in ${delayMs}ms (${attempt + 1}/${READ_RETRY_DELAYS_MS.length})`,
+              );
+              await sleep(delayMs);
+              continue;
+            }
+
             logger.error(`⚠️  Ethereum RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}`);
             logger.error(`Original error: ${error.message}`);
             throw createRateLimitError(rpcUrl, 'ethereum');
           }
-          throw error;
         }
       };
     },
