@@ -257,6 +257,7 @@ describe('Ethereum Rate Limit Interceptor', () => {
     });
 
     mockProvider = {
+      call: jest.fn(),
       getBalance: jest.fn(),
       sendTransaction: jest.fn(),
     } as any;
@@ -276,6 +277,16 @@ describe('Ethereum Rate Limit Interceptor', () => {
 
     await expect(wrappedProvider.getBalance('0x0000000000000000000000000000000000000000')).resolves.toBe(123);
     expect(mockProvider.getBalance).toHaveBeenCalledTimes(2);
+  });
+
+  it('should retry call and return successful response', async () => {
+    const error429 = new Error('Too many requests');
+    (error429 as any).statusCode = 429;
+
+    mockProvider.call.mockRejectedValueOnce(error429).mockResolvedValueOnce('0x01');
+
+    await expect(wrappedProvider.call({ to: '0x0000000000000000000000000000000000000000' })).resolves.toBe('0x01');
+    expect(mockProvider.call).toHaveBeenCalledTimes(2);
   });
 
   it('should not retry sendTransaction', async () => {

@@ -1180,6 +1180,9 @@ export class Ethereum {
           logger.debug(`Found non-zero balance for ${token.symbol}: ${balanceNum}`);
         }
       } catch (err) {
+        if ((err as any).statusCode === 429) {
+          throw err;
+        }
         logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
       }
     }
@@ -1212,6 +1215,9 @@ export class Ethereum {
 
             balances[token.symbol] = parseFloat(tokenValueToString(balance));
           } catch (err) {
+            if ((err as any).statusCode === 429) {
+              throw err;
+            }
             logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
             balances[token.symbol] = 0;
           }

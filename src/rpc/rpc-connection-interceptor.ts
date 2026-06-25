@@ -42,7 +42,7 @@ function is429Error(error: any): boolean {
 }
 
 function isRetryableReadMethod(prop: string | symbol): boolean {
-  return typeof prop === 'string' && prop.startsWith('get');
+  return typeof prop === 'string' && (prop.startsWith('get') || prop === 'call');
 }
 
 function sleep(ms: number): Promise<void> {
