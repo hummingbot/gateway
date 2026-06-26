@@ -8,6 +8,11 @@ import { providers } from 'ethers';
 
 import { logger } from '../services/logger';
 
+// Solana read RPC retry schedule. Ethereum is intentionally NOT retried here:
+// the ethers provider already retries 429s internally (throttleLimit, default
+// 12, with Retry-After support), so a second retry layer would only compound
+// blocking time. The Ethereum wrapper below just normalizes 429s into a clean
+// error so routes can surface them instead of masking them as 0/500.
 const READ_RETRY_DELAYS_MS = [5000, 5000, 5000];
 
 /**
@@ -144,34 +149,21 @@ export function createRateLimitAwareEthereumProvider<T extends providers.BasePro
         return value;
       }
 
-      // Return wrapped async function that catches 429 errors
+      // Return wrapped async function that normalizes 429 errors. No retry here:
+      // ethers already retries 429s internally before they reach this wrapper.
       return async function (this: T, ...args: any[]) {
-        const maxAttempts = isRetryableReadMethod(prop) ? READ_RETRY_DELAYS_MS.length + 1 : 1;
-
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-            return await (value as (...args: any[]) => any).apply(target, args);
-          } catch (error: any) {
-            if (!is429Error(error)) {
-              throw error;
-            }
-
-            const redactedUrl = redactUrl(rpcUrl);
-            if (attempt < maxAttempts - 1) {
-              const delayMs = READ_RETRY_DELAYS_MS[attempt];
-              logger.warn(
-                `Ethereum RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}. ` +
-                  `Retrying in ${delayMs}ms (${attempt + 1}/${READ_RETRY_DELAYS_MS.length})`,
-              );
-              await sleep(delayMs);
-              continue;
-            }
-
-            logger.error(`⚠️  Ethereum RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}`);
-            logger.error(`Original error: ${error.message}`);
-            throw createRateLimitError(rpcUrl, 'ethereum');
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+          return await (value as (...args: any[]) => any).apply(target, args);
+        } catch (error: any) {
+          if (!is429Error(error)) {
+            throw error;
           }
+
+          const redactedUrl = redactUrl(rpcUrl);
+          logger.error(`⚠️  Ethereum RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}`);
+          logger.error(`Original error: ${error.message}`);
+          throw createRateLimitError(rpcUrl, 'ethereum');
         }
       };
     },

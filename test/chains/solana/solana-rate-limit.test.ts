@@ -269,24 +269,40 @@ describe('Ethereum Rate Limit Interceptor', () => {
     setTimeoutSpy.mockRestore();
   });
 
-  it('should retry getBalance and return successful response', async () => {
+  // Ethereum is NOT retried here — ethers retries 429s internally. The wrapper
+  // only normalizes a 429 into a clean TooManyRequestsError so routes can surface it.
+  it('should not retry getBalance and normalize the 429', async () => {
     const error429 = new Error('Too many requests');
     (error429 as any).statusCode = 429;
 
-    mockProvider.getBalance.mockRejectedValueOnce(error429).mockResolvedValueOnce(123 as any);
+    mockProvider.getBalance.mockRejectedValue(error429);
 
-    await expect(wrappedProvider.getBalance('0x0000000000000000000000000000000000000000')).resolves.toBe(123);
-    expect(mockProvider.getBalance).toHaveBeenCalledTimes(2);
+    await expect(wrappedProvider.getBalance('0x0000000000000000000000000000000000000000')).rejects.toMatchObject({
+      statusCode: 429,
+      name: 'TooManyRequestsError',
+    });
+    expect(mockProvider.getBalance).toHaveBeenCalledTimes(1);
   });
 
-  it('should retry call and return successful response', async () => {
+  it('should not retry call and normalize the 429', async () => {
     const error429 = new Error('Too many requests');
     (error429 as any).statusCode = 429;
 
-    mockProvider.call.mockRejectedValueOnce(error429).mockResolvedValueOnce('0x01');
+    mockProvider.call.mockRejectedValue(error429);
 
-    await expect(wrappedProvider.call({ to: '0x0000000000000000000000000000000000000000' })).resolves.toBe('0x01');
-    expect(mockProvider.call).toHaveBeenCalledTimes(2);
+    await expect(wrappedProvider.call({ to: '0x0000000000000000000000000000000000000000' })).rejects.toMatchObject({
+      statusCode: 429,
+      name: 'TooManyRequestsError',
+    });
+    expect(mockProvider.call).toHaveBeenCalledTimes(1);
+  });
+
+  it('should pass through non-429 errors unchanged', async () => {
+    mockProvider.getBalance.mockRejectedValue(new Error('Network connection failed'));
+
+    await expect(wrappedProvider.getBalance('0x0000000000000000000000000000000000000000')).rejects.toThrow(
+      'Network connection failed',
+    );
   });
 
   it('should not retry sendTransaction', async () => {
