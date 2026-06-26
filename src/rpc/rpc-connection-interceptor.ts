@@ -8,12 +8,13 @@ import { providers } from 'ethers';
 
 import { logger } from '../services/logger';
 
-// Read RPC retry schedule, applied to both chains. This Proxy is the single
-// retry layer: the ethers provider is constructed with throttleLimit: 1 (see
-// ethereum.ts) so it does NOT retry 429s internally, and web3.js's own retry
-// budget is short — so retrying here, after the client gives up, is what makes
-// reads tolerate rate limits. Writes are never retried (no double-broadcast).
-const READ_RETRY_DELAYS_MS = [5000, 5000, 5000];
+// Read RPC retry policy, applied to both chains. This Proxy is the single
+// retry layer: ethers and web3.js built-in 429 retries are disabled, so use
+// bounded exponential backoff with jitter. Writes are never retried.
+const READ_RETRY_ATTEMPTS = 3;
+const READ_RETRY_BASE_DELAY_MS = 500;
+const READ_RETRY_MAX_DELAY_MS = 5000;
+const READ_RETRY_JITTER = 0.2;
 
 /**
  * Redact sensitive parts of RPC URL (API keys, tokens)
@@ -52,6 +53,12 @@ function isRetryableReadMethod(prop: string | symbol): boolean {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getReadRetryDelayMs(attempt: number): number {
+  const delay = Math.min(READ_RETRY_BASE_DELAY_MS * 2 ** attempt, READ_RETRY_MAX_DELAY_MS);
+  const jitter = delay * READ_RETRY_JITTER * (Math.random() * 2 - 1);
+  return Math.round(delay + jitter);
 }
 
 /**
@@ -100,7 +107,7 @@ export function createRateLimitAwareSolanaConnection(connection: Connection, rpc
 
       // Return wrapped async function that catches 429 errors
       return async function (this: Connection, ...args: any[]) {
-        const maxAttempts = isRetryableReadMethod(prop) ? READ_RETRY_DELAYS_MS.length + 1 : 1;
+        const maxAttempts = isRetryableReadMethod(prop) ? READ_RETRY_ATTEMPTS + 1 : 1;
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
           try {
@@ -113,10 +120,10 @@ export function createRateLimitAwareSolanaConnection(connection: Connection, rpc
 
             const redactedUrl = redactUrl(rpcUrl);
             if (attempt < maxAttempts - 1) {
-              const delayMs = READ_RETRY_DELAYS_MS[attempt];
+              const delayMs = getReadRetryDelayMs(attempt);
               logger.warn(
                 `Solana RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}. ` +
-                  `Retrying in ${delayMs}ms (${attempt + 1}/${READ_RETRY_DELAYS_MS.length})`,
+                  `Retrying in ${delayMs}ms (${attempt + 1}/${READ_RETRY_ATTEMPTS})`,
               );
               await sleep(delayMs);
               continue;
@@ -155,7 +162,7 @@ export function createRateLimitAwareEthereumProvider<T extends providers.BasePro
       // avoiding a compounding retry. This also covers rate limits returned as a
       // JSON-RPC error body (HTTP 200), which ethers' own throttle would ignore.
       return async function (this: T, ...args: any[]) {
-        const maxAttempts = isRetryableReadMethod(prop) ? READ_RETRY_DELAYS_MS.length + 1 : 1;
+        const maxAttempts = isRetryableReadMethod(prop) ? READ_RETRY_ATTEMPTS + 1 : 1;
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
           try {
@@ -168,10 +175,10 @@ export function createRateLimitAwareEthereumProvider<T extends providers.BasePro
 
             const redactedUrl = redactUrl(rpcUrl);
             if (attempt < maxAttempts - 1) {
-              const delayMs = READ_RETRY_DELAYS_MS[attempt];
+              const delayMs = getReadRetryDelayMs(attempt);
               logger.warn(
                 `Ethereum RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}. ` +
-                  `Retrying in ${delayMs}ms (${attempt + 1}/${READ_RETRY_DELAYS_MS.length})`,
+                  `Retrying in ${delayMs}ms (${attempt + 1}/${READ_RETRY_ATTEMPTS})`,
               );
               await sleep(delayMs);
               continue;

@@ -10,6 +10,7 @@ describe('Solana Rate Limit Interceptor', () => {
   let mockConnection: jest.Mocked<Connection>;
   let wrappedConnection: Connection;
   let setTimeoutSpy: jest.SpyInstance;
+  let randomSpy: jest.SpyInstance | undefined;
   const testRpcUrl = 'https://api.mainnet-beta.solana.com';
 
   beforeEach(() => {
@@ -33,6 +34,8 @@ describe('Solana Rate Limit Interceptor', () => {
   });
 
   afterEach(() => {
+    randomSpy?.mockRestore();
+    randomSpy = undefined;
     setTimeoutSpy.mockRestore();
   });
 
@@ -200,6 +203,28 @@ describe('Solana Rate Limit Interceptor', () => {
         statusCode: 429,
       });
       expect(mockConnection.getTransaction).toHaveBeenCalledTimes(4);
+    });
+
+    it('should use growing exponential retry delays', async () => {
+      randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+      const error429 = new Error('Too many requests');
+      (error429 as any).statusCode = 429;
+
+      mockConnection.getTransaction.mockRejectedValue(error429);
+
+      await expect(wrappedConnection.getTransaction('signature123')).rejects.toMatchObject({ statusCode: 429 });
+      expect(setTimeoutSpy.mock.calls.map((call) => call[1])).toEqual([500, 1000, 2000]);
+    });
+
+    it('should keep jitter within 20 percent of the retry delay', async () => {
+      randomSpy = jest.spyOn(Math, 'random').mockReturnValueOnce(0).mockReturnValueOnce(1).mockReturnValueOnce(0.5);
+      const error429 = new Error('Too many requests');
+      (error429 as any).statusCode = 429;
+
+      mockConnection.getTransaction.mockRejectedValue(error429);
+
+      await expect(wrappedConnection.getTransaction('signature123')).rejects.toMatchObject({ statusCode: 429 });
+      expect(setTimeoutSpy.mock.calls.map((call) => call[1])).toEqual([400, 1200, 2000]);
     });
 
     it('should retry getTransaction and return successful response', async () => {
