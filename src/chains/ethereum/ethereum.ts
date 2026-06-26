@@ -100,9 +100,10 @@ export class Ethereum {
     } else if (rpcProvider === 'chainstack') {
       this.initializeChainstackProvider();
     } else {
-      // Default: use nodeURL with rate limit detection
+      // Default: use nodeURL with rate limit detection. throttleLimit: 1 disables
+      // ethers' built-in 429 retry so the interceptor is the single retry layer.
       this.provider = createRateLimitAwareEthereumProvider(
-        new providers.StaticJsonRpcProvider(this.rpcUrl),
+        new providers.StaticJsonRpcProvider({ url: this.rpcUrl, throttleLimit: 1 }),
         this.rpcUrl,
       );
     }
@@ -418,7 +419,7 @@ export class Ethereum {
         logger.warn(`⚠️ Infura provider selected but no valid API key configured`);
         logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
         this.provider = createRateLimitAwareEthereumProvider(
-          new providers.StaticJsonRpcProvider(this.rpcUrl),
+          new providers.StaticJsonRpcProvider({ url: this.rpcUrl, throttleLimit: 1 }),
           this.rpcUrl,
         );
         return;
@@ -439,7 +440,7 @@ export class Ethereum {
       logger.warn(`Failed to initialize Infura provider: ${error.message}`);
       logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
       this.provider = createRateLimitAwareEthereumProvider(
-        new providers.StaticJsonRpcProvider(this.rpcUrl),
+        new providers.StaticJsonRpcProvider({ url: this.rpcUrl, throttleLimit: 1 }),
         this.rpcUrl,
       );
     }
@@ -454,7 +455,10 @@ export class Ethereum {
    */
   private initializeChainstackProvider(): void {
     // Placeholder provider — swapped to the Chainstack URL in init() after discovery.
-    this.provider = createRateLimitAwareEthereumProvider(new providers.StaticJsonRpcProvider(this.rpcUrl), this.rpcUrl);
+    this.provider = createRateLimitAwareEthereumProvider(
+      new providers.StaticJsonRpcProvider({ url: this.rpcUrl, throttleLimit: 1 }),
+      this.rpcUrl,
+    );
 
     try {
       const configManager = ConfigManagerV2.getInstance();

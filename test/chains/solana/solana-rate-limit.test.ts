@@ -269,9 +269,20 @@ describe('Ethereum Rate Limit Interceptor', () => {
     setTimeoutSpy.mockRestore();
   });
 
-  // Ethereum is NOT retried here — ethers retries 429s internally. The wrapper
-  // only normalizes a 429 into a clean TooManyRequestsError so routes can surface it.
-  it('should not retry getBalance and normalize the 429', async () => {
+  // Ethereum reads are retried here. The provider is built with throttleLimit: 1
+  // (see ethereum.ts) so ethers doesn't retry 429s itself — this Proxy is the
+  // single retry layer, and it also covers 429s returned as a JSON-RPC error body.
+  it('should retry getBalance and return successful response', async () => {
+    const error429 = new Error('Too many requests');
+    (error429 as any).statusCode = 429;
+
+    mockProvider.getBalance.mockRejectedValueOnce(error429).mockResolvedValueOnce(123 as any);
+
+    await expect(wrappedProvider.getBalance('0x0000000000000000000000000000000000000000')).resolves.toBe(123);
+    expect(mockProvider.getBalance).toHaveBeenCalledTimes(2);
+  });
+
+  it('should retry getBalance up to 4 attempts then throw a normalized 429', async () => {
     const error429 = new Error('Too many requests');
     (error429 as any).statusCode = 429;
 
@@ -281,20 +292,28 @@ describe('Ethereum Rate Limit Interceptor', () => {
       statusCode: 429,
       name: 'TooManyRequestsError',
     });
-    expect(mockProvider.getBalance).toHaveBeenCalledTimes(1);
+    expect(mockProvider.getBalance).toHaveBeenCalledTimes(4);
   });
 
-  it('should not retry call and normalize the 429', async () => {
+  it('should retry call and return successful response', async () => {
     const error429 = new Error('Too many requests');
     (error429 as any).statusCode = 429;
 
-    mockProvider.call.mockRejectedValue(error429);
+    mockProvider.call.mockRejectedValueOnce(error429).mockResolvedValueOnce('0x01');
 
-    await expect(wrappedProvider.call({ to: '0x0000000000000000000000000000000000000000' })).rejects.toMatchObject({
-      statusCode: 429,
-      name: 'TooManyRequestsError',
-    });
-    expect(mockProvider.call).toHaveBeenCalledTimes(1);
+    await expect(wrappedProvider.call({ to: '0x0000000000000000000000000000000000000000' })).resolves.toBe('0x01');
+    expect(mockProvider.call).toHaveBeenCalledTimes(2);
+  });
+
+  it('should detect 429 returned as a JSON-RPC error body and retry', async () => {
+    const bodyError = new Error(
+      'processing response error: {"jsonrpc":"2.0","error":{"code": 429, "message":"Too many requests"}}',
+    );
+
+    mockProvider.call.mockRejectedValueOnce(bodyError).mockResolvedValueOnce('0x01');
+
+    await expect(wrappedProvider.call({ to: '0x0000000000000000000000000000000000000000' })).resolves.toBe('0x01');
+    expect(mockProvider.call).toHaveBeenCalledTimes(2);
   });
 
   it('should pass through non-429 errors unchanged', async () => {

@@ -8,11 +8,11 @@ import { providers } from 'ethers';
 
 import { logger } from '../services/logger';
 
-// Solana read RPC retry schedule. Ethereum is intentionally NOT retried here:
-// the ethers provider already retries 429s internally (throttleLimit, default
-// 12, with Retry-After support), so a second retry layer would only compound
-// blocking time. The Ethereum wrapper below just normalizes 429s into a clean
-// error so routes can surface them instead of masking them as 0/500.
+// Read RPC retry schedule, applied to both chains. This Proxy is the single
+// retry layer: the ethers provider is constructed with throttleLimit: 1 (see
+// ethereum.ts) so it does NOT retry 429s internally, and web3.js's own retry
+// budget is short — so retrying here, after the client gives up, is what makes
+// reads tolerate rate limits. Writes are never retried (no double-broadcast).
 const READ_RETRY_DELAYS_MS = [5000, 5000, 5000];
 
 /**
@@ -149,21 +149,38 @@ export function createRateLimitAwareEthereumProvider<T extends providers.BasePro
         return value;
       }
 
-      // Return wrapped async function that normalizes 429 errors. No retry here:
-      // ethers already retries 429s internally before they reach this wrapper.
+      // Return wrapped async function that retries read 429s, then normalizes.
+      // This is the single retry layer for Ethereum reads: the underlying provider
+      // is constructed with throttleLimit: 1 so ethers does NOT retry 429s itself,
+      // avoiding a compounding retry. This also covers rate limits returned as a
+      // JSON-RPC error body (HTTP 200), which ethers' own throttle would ignore.
       return async function (this: T, ...args: any[]) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-          return await (value as (...args: any[]) => any).apply(target, args);
-        } catch (error: any) {
-          if (!is429Error(error)) {
-            throw error;
-          }
+        const maxAttempts = isRetryableReadMethod(prop) ? READ_RETRY_DELAYS_MS.length + 1 : 1;
 
-          const redactedUrl = redactUrl(rpcUrl);
-          logger.error(`⚠️  Ethereum RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}`);
-          logger.error(`Original error: ${error.message}`);
-          throw createRateLimitError(rpcUrl, 'ethereum');
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+            return await (value as (...args: any[]) => any).apply(target, args);
+          } catch (error: any) {
+            if (!is429Error(error)) {
+              throw error;
+            }
+
+            const redactedUrl = redactUrl(rpcUrl);
+            if (attempt < maxAttempts - 1) {
+              const delayMs = READ_RETRY_DELAYS_MS[attempt];
+              logger.warn(
+                `Ethereum RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}. ` +
+                  `Retrying in ${delayMs}ms (${attempt + 1}/${READ_RETRY_DELAYS_MS.length})`,
+              );
+              await sleep(delayMs);
+              continue;
+            }
+
+            logger.error(`⚠️  Ethereum RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}`);
+            logger.error(`Original error: ${error.message}`);
+            throw createRateLimitError(rpcUrl, 'ethereum');
+          }
         }
       };
     },
