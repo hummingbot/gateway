@@ -25,7 +25,7 @@ export async function executeSwap(
   slippagePct: number = MeteoraConfig.config.slippagePct,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
-  const wallet = await solana.getWallet(address);
+  const walletPubkey = await solana.getPublicKey(address);
 
   const {
     inputToken,
@@ -45,7 +45,7 @@ export async function executeSwap(
           outAmount: (swapQuote as SwapQuoteExactOut).outAmount,
           maxInAmount: (swapQuote as SwapQuoteExactOut).maxInAmount,
           lbPair: dlmmPool.pubkey,
-          user: wallet.publicKey,
+          user: walletPubkey,
           binArraysPubkey: (swapQuote as SwapQuoteExactOut).binArraysPubkey,
         })
       : await dlmmPool.swap({
@@ -54,7 +54,7 @@ export async function executeSwap(
           inAmount: swapAmount,
           minOutAmount: (swapQuote as SwapQuote).minOutAmount,
           lbPair: dlmmPool.pubkey,
-          user: wallet.publicKey,
+          user: walletPubkey,
           binArraysPubkey: (swapQuote as SwapQuote).binArraysPubkey,
         });
 
@@ -64,7 +64,7 @@ export async function executeSwap(
   logger.info('Transaction simulated successfully, sending to network...');
 
   // Send and confirm transaction using sendAndConfirmTransaction which handles signing
-  const { signature, fee } = await solana.sendAndConfirmTransaction(swapTx, [wallet]);
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(swapTx, address);
 
   logger.info(`Transaction sent with signature: ${signature}`);
 
@@ -81,7 +81,7 @@ export async function executeSwap(
     // Extract fee from the response
     const txFee = fee;
     // Transaction confirmed, extract balance changes
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletPubkey.toBase58(), [
       inputToken.address,
       outputToken.address,
     ]);

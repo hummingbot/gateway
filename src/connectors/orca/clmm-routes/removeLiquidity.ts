@@ -33,7 +33,6 @@ export async function removeLiquidity(
 
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
-  const wallet = await solana.getWallet(address);
   const client = await orca.getWhirlpoolClientForWallet(address);
   const positionPubkey = new PublicKey(positionAddress);
 
@@ -192,7 +191,7 @@ export async function removeLiquidity(
   // Build, simulate, and send transaction
   const txPayload = await builder.build();
   await solana.simulateWithErrorHandling(txPayload.transaction);
-  const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [wallet]);
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(txPayload.transaction, address);
 
   // Extract removed amounts from balance changes
   const tokenAAddress = whirlpool.getTokenAInfo().address.toString();

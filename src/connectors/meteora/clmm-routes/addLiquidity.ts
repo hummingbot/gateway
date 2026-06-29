@@ -47,7 +47,7 @@ export async function addLiquidity(
 
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
-  const wallet = await solana.getWallet(address);
+  const walletPubkey = await solana.getPublicKey(address);
 
   // Validate amounts
   if (baseTokenAmount <= 0 && quoteTokenAmount <= 0) {
@@ -55,7 +55,7 @@ export async function addLiquidity(
   }
 
   // Get position - handle null return gracefully
-  const positionResult = await meteora.getRawPosition(positionAddress, wallet.publicKey);
+  const positionResult = await meteora.getRawPosition(positionAddress, walletPubkey);
 
   if (!positionResult || !positionResult.position) {
     throw httpErrors.notFound(`Position not found: ${positionAddress}. Please provide a valid position address`);
@@ -74,7 +74,7 @@ export async function addLiquidity(
   const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
   // Check balances with transaction buffer
-  const balances = await solana.getBalance(wallet, [tokenXSymbol, tokenYSymbol, 'SOL']);
+  const balances = await solana.getBalances(address, [tokenXSymbol, tokenYSymbol, 'SOL']);
   const requiredBase = baseTokenAmount + (tokenXSymbol === 'SOL' ? SOL_TRANSACTION_BUFFER : 0);
   const requiredQuote = quoteTokenAmount + (tokenYSymbol === 'SOL' ? SOL_TRANSACTION_BUFFER : 0);
 
@@ -101,7 +101,7 @@ export async function addLiquidity(
 
   const addLiquidityTx = await dlmmPool.addLiquidityByStrategy({
     positionPubKey: new PublicKey(position.publicKey),
-    user: wallet.publicKey,
+    user: walletPubkey,
     totalXAmount,
     totalYAmount,
     strategy: {
@@ -113,7 +113,7 @@ export async function addLiquidity(
   });
 
   // Set the fee payer for simulation
-  addLiquidityTx.feePayer = wallet.publicKey;
+  addLiquidityTx.feePayer = walletPubkey;
 
   // Simulate with error handling
   await solana.simulateWithErrorHandling(addLiquidityTx);
@@ -122,7 +122,7 @@ export async function addLiquidity(
 
   // Send and confirm transaction using sendAndConfirmTransaction which handles signing
   // Transaction will automatically simulate to determine optimal compute units
-  const { signature, fee } = await solana.sendAndConfirmTransaction(addLiquidityTx, [wallet]);
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(addLiquidityTx, address);
 
   // Get transaction data for confirmation
   const txData = await solana.connection.getTransaction(signature, {
@@ -134,7 +134,7 @@ export async function addLiquidity(
 
   if (confirmed && txData) {
     // Track wallet's balance changes for the tokens
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletPubkey.toBase58(), [
       dlmmPool.tokenX.publicKey.toBase58(),
       dlmmPool.tokenY.publicKey.toBase58(),
     ]);

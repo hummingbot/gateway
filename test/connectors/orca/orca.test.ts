@@ -67,6 +67,7 @@ describe('Orca', () => {
       connection: mockConnection,
       network: 'mainnet-beta',
       getWallet: jest.fn().mockResolvedValue(mockWallet),
+      prepareWallet: jest.fn().mockResolvedValue({ wallet: mockWallet, walletType: 'local' }),
     };
 
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
@@ -155,7 +156,9 @@ describe('Orca', () => {
       const wallet1 = Keypair.generate();
       const wallet2 = Keypair.generate();
 
-      mockSolanaInstance.getWallet.mockResolvedValueOnce(wallet1).mockResolvedValueOnce(wallet2);
+      mockSolanaInstance.prepareWallet
+        .mockResolvedValueOnce({ wallet: wallet1, walletType: 'local' })
+        .mockResolvedValueOnce({ wallet: wallet2, walletType: 'local' });
 
       const mockContext1 = { wallet: wallet1 };
       const mockContext2 = { wallet: wallet2 };

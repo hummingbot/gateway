@@ -8,7 +8,7 @@ import {
   WhirlpoolClient,
 } from '@orca-so/whirlpools-sdk';
 import { address, createSolanaRpc, mainnet, devnet } from '@solana/kit';
-import { PublicKey } from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../chains/solana/solana';
 import { PositionInfo } from '../../schemas/clmm-schema';
@@ -67,9 +67,19 @@ export class Orca {
 
   async getWhirlpoolContextForWallet(walletAddress: string): Promise<WhirlpoolContext> {
     if (!this.whirlpoolContextMap[walletAddress]) {
-      const walletKeypair = await this.solana.getWallet(walletAddress);
-      const wallet = new Wallet(walletKeypair);
-      const provider = new AnchorProvider(this.solana.connection, wallet, {
+      const { wallet, walletType } = await this.solana.prepareWallet(walletAddress);
+      // Local wallets sign in-process; Privy/Ledger sign externally, so the provider
+      // only needs the public key. The no-op signer is never invoked: routes build
+      // with `.build()` (not buildAndExecute) and sign via signTransactionByType.
+      const anchorWallet: Wallet =
+        walletType === 'local'
+          ? new Wallet(wallet as Keypair)
+          : ({
+              publicKey: wallet as PublicKey,
+              signTransaction: async (tx: any) => tx,
+              signAllTransactions: async (txs: any) => txs,
+            } as unknown as Wallet);
+      const provider = new AnchorProvider(this.solana.connection, anchorWallet, {
         commitment: 'processed',
       });
       this.whirlpoolContextMap[walletAddress] = WhirlpoolContext.withProvider(provider);

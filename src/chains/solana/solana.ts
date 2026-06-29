@@ -41,7 +41,7 @@ import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { httpErrors } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
-import { PrivySolanaSigner } from '../../wallet/privy';
+import { PrivySolanaSigner, getPrivyService } from '../../wallet/privy';
 import {
   getSafeWalletFilePath,
   isHardwareWallet as isHardwareWalletUtil,
@@ -381,6 +381,29 @@ export class Solana {
       throw new Error(`Privy wallet not found for address: ${address}`);
     }
     return new PrivySolanaSigner(privyWallet.privyWalletId, address);
+  }
+
+  /**
+   * Build a @solana/kit signer for an address, for kit-native SDKs (e.g. the Orca v4
+   * Whirlpools SDK). Local wallets sign with their keypair; Privy wallets sign through
+   * Privy (policy enforced). Hardware wallets are not supported on the kit path.
+   */
+  async getSolanaKitSigner(address: string): Promise<any> {
+    const walletType = await this.getWalletType(address);
+    if (walletType === 'local') {
+      const keypair = await this.getWallet(address);
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { createKeyPairSignerFromBytes } = require('@solana/kit') as typeof import('@solana/kit');
+      return createKeyPairSignerFromBytes(keypair.secretKey);
+    }
+    if (walletType === 'privy') {
+      const privyWallet = await getPrivyWalletByAddress('solana', address);
+      if (!privyWallet) {
+        throw new Error(`Privy wallet not found for address: ${address}`);
+      }
+      return getPrivyService().getSolanaKitSigner(privyWallet.privyWalletId, address);
+    }
+    throw new Error(`Kit-based signing is not supported for ${walletType} wallets (address ${address})`);
   }
 
   /**
@@ -1432,6 +1455,86 @@ export class Solana {
       return { signature, fee: actualFee };
     }
 
+    throw httpErrors.transactionTimeout(
+      `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
+    );
+  }
+
+  /**
+   * Sign and send a legacy Transaction using the signing method matching the wallet
+   * type (local keypair, Privy, or Ledger). Unlike sendAndConfirmTransaction, the fee
+   * payer is resolved from `address` so Privy/hardware wallets — which have no local
+   * secret key — work too. `extraSigners` are additional in-process keypairs the
+   * transaction requires (e.g. a freshly generated position-mint).
+   */
+  public async sendAndConfirmTransactionForWallet(
+    tx: Transaction | VersionedTransaction,
+    address: string,
+    extraSigners: Keypair[] = [],
+    priorityFeePerCU?: number,
+  ): Promise<{ signature: string; fee: number }> {
+    const { wallet, walletType } = await this.prepareWallet(address);
+
+    // Local wallets sign in-process: reuse the standard path (keypair + extras).
+    if (walletType === 'local') {
+      return this.sendAndConfirmTransaction(tx, [wallet as Keypair, ...extraSigners], priorityFeePerCU);
+    }
+
+    // External wallets (Privy/Ledger): add the compute budget and sign any extra
+    // keypairs, then sign the fee payer externally.
+    const currentPriorityFee = priorityFeePerCU ?? (await this.estimateGasPrice());
+    let computeUnitsToUse: number;
+    try {
+      const sim =
+        tx instanceof VersionedTransaction
+          ? await this.connection.simulateTransaction(tx, { replaceRecentBlockhash: true, sigVerify: false })
+          : await this.connection.simulateTransaction(tx);
+      computeUnitsToUse = sim.value.unitsConsumed
+        ? Math.ceil(sim.value.unitsConsumed * 1.1)
+        : this.config.defaultComputeUnits;
+    } catch (error) {
+      logger.warn(`Failed to simulate for compute units: ${(error as Error).message}, using default`);
+      computeUnitsToUse = this.config.defaultComputeUnits;
+    }
+
+    let prepared: Transaction | VersionedTransaction;
+    if (tx instanceof VersionedTransaction) {
+      // Adds compute budget and signs the extra keypairs; the fee-payer slot is left
+      // empty for the external signer.
+      prepared = await this.prepareVersionedTx(tx, currentPriorityFee, computeUnitsToUse, extraSigners);
+    } else {
+      const priorityFeeMicroLamports = Math.floor(currentPriorityFee * 1_000_000);
+      tx.feePayer = wallet as PublicKey;
+      tx.instructions = [
+        ...tx.instructions.filter((inst) => !inst.programId.equals(ComputeBudgetProgram.programId)),
+        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFeeMicroLamports }),
+        ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnitsToUse }),
+      ];
+      const {
+        value: { lastValidBlockHeight, blockhash },
+      } = await this.connection.getLatestBlockhashAndContext('confirmed');
+      tx.lastValidBlockHeight = lastValidBlockHeight;
+      tx.recentBlockhash = blockhash;
+      if (extraSigners.length) tx.partialSign(...extraSigners);
+      prepared = tx;
+    }
+
+    const signedTx = await this.signTransactionByType(prepared, address, walletType, wallet);
+    // Re-apply extra signatures in case the external signer did not preserve them.
+    if (extraSigners.length) {
+      if (signedTx instanceof VersionedTransaction) {
+        signedTx.sign([...extraSigners]);
+      } else {
+        (signedTx as Transaction).partialSign(...extraSigners);
+      }
+    }
+
+    const { confirmed, signature, txData } = await this._sendAndConfirmRawTransaction(signedTx.serialize());
+    if (confirmed && txData) {
+      const actualFee = this.getFee(txData);
+      logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
+      return { signature, fee: actualFee };
+    }
     throw httpErrors.transactionTimeout(
       `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
     );

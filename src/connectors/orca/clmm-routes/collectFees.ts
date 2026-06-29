@@ -20,7 +20,6 @@ export async function collectFees(
 ): Promise<CollectFeesResponseType> {
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
-  const wallet = await solana.getWallet(address);
   const client = await orca.getWhirlpoolClientForWallet(address);
   const positionPubkey = new PublicKey(positionAddress);
 
@@ -180,7 +179,7 @@ export async function collectFees(
   await solana.simulateWithErrorHandling(transaction);
 
   // Send and confirm transaction
-  const { signature, fee } = await solana.sendAndConfirmTransaction(transaction, [wallet]);
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(transaction, address);
 
   // Extract collected fees from balance changes
   const tokenAAddress = whirlpool.getTokenAInfo().address.toString();

@@ -98,6 +98,11 @@ describe('POST /execute-swap', () => {
   it('should execute a CLMM swap for SELL side', async () => {
     const mockSolanaInstance = {
       getWallet: jest.fn().mockResolvedValue(mockWallet),
+      getPublicKey: jest.fn().mockResolvedValue(mockWallet.publicKey),
+      sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({
+        signature: mockTransaction.signature,
+        fee: 0.000005,
+      }),
       getToken: jest
         .fn()
         .mockResolvedValueOnce(mockSOL)
@@ -172,6 +177,11 @@ describe('POST /execute-swap', () => {
   it('should execute a CLMM swap for BUY side', async () => {
     const mockSolanaInstance = {
       getWallet: jest.fn().mockResolvedValue(mockWallet),
+      getPublicKey: jest.fn().mockResolvedValue(mockWallet.publicKey),
+      sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({
+        signature: mockTransaction.signature,
+        fee: 0.000005,
+      }),
       getToken: jest
         .fn()
         .mockResolvedValueOnce(mockSOL)
@@ -248,6 +258,11 @@ describe('POST /execute-swap', () => {
   it('should return 400 if token not found', async () => {
     const mockSolanaInstance = {
       getWallet: jest.fn().mockResolvedValue(mockWallet),
+      getPublicKey: jest.fn().mockResolvedValue(mockWallet.publicKey),
+      sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({
+        signature: mockTransaction.signature,
+        fee: 0.000005,
+      }),
       getToken: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(mockUSDC),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);

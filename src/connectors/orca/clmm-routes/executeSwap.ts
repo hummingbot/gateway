@@ -36,7 +36,6 @@ export async function executeSwap(
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
-  const wallet = await solana.getWallet(address);
   const client = await orca.getWhirlpoolClientForWallet(address);
   const whirlpoolPubkey = new PublicKey(poolAddress);
   const whirlpool = await client.getPool(whirlpoolPubkey, IGNORE_CACHE);
@@ -241,7 +240,7 @@ export async function executeSwap(
   // Build, simulate, and send transaction
   const txPayload = await builder.build();
   await solana.simulateWithErrorHandling(txPayload.transaction);
-  const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [wallet]);
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(txPayload.transaction, address, []);
 
   // Calculate balance changes based on side
   const amountIn = Number(quote.estimatedAmountIn) / Math.pow(10, inputDecimals);

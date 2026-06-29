@@ -18,10 +18,10 @@ export async function closePosition(
   try {
     const solana = await Solana.getInstance(network);
     const meteora = await Meteora.getInstance(network);
-    const wallet = await solana.getWallet(walletAddress);
+    const walletPubkey = await solana.getPublicKey(walletAddress);
 
     // Get position and pool info
-    const positionResult = await meteora.getRawPosition(positionAddress, wallet.publicKey);
+    const positionResult = await meteora.getRawPosition(positionAddress, walletPubkey);
 
     if (!positionResult || !positionResult.position) {
       throw httpErrors.notFound(`Position not found: ${positionAddress}. Please provide a valid position address`);
@@ -35,7 +35,7 @@ export async function closePosition(
     const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
     // Get position info to track fees separately
-    const positionInfo = await meteora.getPositionInfo(positionAddress, wallet.publicKey);
+    const positionInfo = await meteora.getPositionInfo(positionAddress, walletPubkey);
     const baseFeeAmount = positionInfo.baseFeeAmount;
     const quoteFeeAmount = positionInfo.quoteFeeAmount;
 
@@ -49,7 +49,7 @@ export async function closePosition(
 
     const removeLiquidityTxs = await dlmmPool.removeLiquidity({
       position: position.publicKey,
-      user: wallet.publicKey,
+      user: walletPubkey,
       fromBinId,
       toBinId,
       bps: bps,
@@ -69,7 +69,7 @@ export async function closePosition(
       }
 
       // Set fee payer for simulation
-      tx.feePayer = wallet.publicKey;
+      tx.feePayer = walletPubkey;
 
       // Simulate with error handling
       await solana.simulateWithErrorHandling(tx);
@@ -77,7 +77,7 @@ export async function closePosition(
       logger.info('Transaction simulated successfully, sending to network...');
 
       // Send and confirm transaction
-      const result = await solana.sendAndConfirmTransaction(tx, [wallet]);
+      const result = await solana.sendAndConfirmTransactionForWallet(tx, walletAddress);
       totalFee += result.fee;
       lastSignature = result.signature;
     }
@@ -109,7 +109,7 @@ export async function closePosition(
       }
 
       // Track wallet's balance changes for the tokens
-      const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+      const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletPubkey.toBase58(), [
         dlmmPool.tokenX.publicKey.toBase58(),
         dlmmPool.tokenY.publicKey.toBase58(),
       ]);

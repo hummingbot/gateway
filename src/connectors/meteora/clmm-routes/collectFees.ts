@@ -15,10 +15,10 @@ export async function collectFees(
 ): Promise<CollectFeesResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
-  const wallet = await solana.getWallet(address);
+  const walletPubkey = await solana.getPublicKey(address);
 
   // Get position result and check if it's null before destructuring
-  const positionResult = await meteora.getRawPosition(positionAddress, wallet.publicKey);
+  const positionResult = await meteora.getRawPosition(positionAddress, walletPubkey);
 
   if (!positionResult || !positionResult.position) {
     throw httpErrors.notFound(`Position not found: ${positionAddress}. Please provide a valid position address`);
@@ -40,7 +40,7 @@ export async function collectFees(
   logger.info(`Collecting fees from position ${positionAddress}`);
 
   const claimSwapFeeTxs = await dlmmPool.claimSwapFee({
-    owner: wallet.publicKey,
+    owner: walletPubkey,
     position: position,
   });
 
@@ -49,7 +49,7 @@ export async function collectFees(
 
   // Set fee payer for all transactions
   transactions.forEach((tx) => {
-    tx.feePayer = wallet.publicKey;
+    tx.feePayer = walletPubkey;
   });
 
   // Simulate and send all transactions
@@ -63,7 +63,7 @@ export async function collectFees(
     logger.info('Transaction simulated successfully, sending to network...');
 
     // Send and confirm transaction using sendAndConfirmTransaction which handles signing
-    const { signature, fee } = await solana.sendAndConfirmTransaction(tx, [wallet]);
+    const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(tx, address);
     lastSignature = signature;
     totalFee += fee;
   }
@@ -80,7 +80,7 @@ export async function collectFees(
   const confirmed = txData !== null;
 
   if (confirmed && txData) {
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletPubkey.toBase58(), [
       dlmmPool.tokenX.publicKey.toBase58(),
       dlmmPool.tokenY.publicKey.toBase58(),
     ]);
