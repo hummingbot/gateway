@@ -289,26 +289,6 @@ describe('GET /quote-swap', () => {
     expect(body.message).toContain('Token not found');
   });
 
-  // Skip this test since the UniversalRouterService is instantiated inside the function
-  // and our mock setup doesn't allow for dynamic error injection
-  it.skip('should handle errors gracefully', async () => {
-    const response = await server.inject({
-      method: 'GET',
-      url: '/quote-swap',
-      query: {
-        network: 'mainnet',
-        walletAddress: '0x0000000000000000000000000000000000000001',
-        baseToken: 'WETH',
-        quoteToken: 'USDC',
-        amount: '1',
-        side: 'SELL',
-        slippagePct: '1',
-      },
-    });
-
-    expect(response.statusCode).toBe(500);
-  });
-
   describe('native token (ETH) to WETH conversion', () => {
     it('should convert ETH baseToken to WETH and return valid quote', async () => {
       const response = await server.inject({

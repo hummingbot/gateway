@@ -1,23 +1,13 @@
 import { TransactionBuilder } from '@orca-so/common-sdk';
-import {
-  fetchAllPositionWithFilter,
-  fetchAllTickArray,
-  fetchOracle,
-  fetchWhirlpool,
-  getTickArrayAddress,
-  positionWhirlpoolFilter,
-} from '@orca-so/whirlpools-client';
+import { swapInstructions, setWhirlpoolsConfig } from '@orca-so/whirlpools';
+import { fetchWhirlpool, fetchAllPositionWithFilter, positionWhirlpoolFilter } from '@orca-so/whirlpools-client';
 import {
   IncreaseLiquidityQuote,
   TransferFee,
-  getTickArrayStartTickIndex,
   increaseLiquidityQuoteA,
   increaseLiquidityQuoteB,
-  isInitializedWithAdaptiveFee,
   priceToTickIndex,
   sqrtPriceToPrice,
-  swapQuoteByInputToken,
-  swapQuoteByOutputToken,
   tickIndexToPrice,
   tickIndexToSqrtPrice,
   tryGetAmountDeltaA,
@@ -370,125 +360,63 @@ export interface OrcaSwapQuote {
 export async function getOrcaSwapQuote(
   rpc: Rpc<GetAccountInfoApi & GetMultipleAccountsApi & GetEpochInfoApi>,
   poolAddress: string,
-  inputTokenMint: string,
-  outputTokenMint: string,
+  baseTokenMint: string,
+  quoteTokenMint: string,
   amount: number,
   side: 'BUY' | 'SELL',
   slippagePct: number = 1,
+  network: string = 'mainnet-beta',
 ): Promise<OrcaSwapQuote> {
-  const currentEpoch = await rpc.getEpochInfo().send();
+  await setWhirlpoolsConfig(network === 'mainnet-beta' ? 'solanaMainnet' : 'solanaDevnet');
+
   const whirlpoolAddress = address(poolAddress);
   const whirlpool = await fetchWhirlpool(rpc, whirlpoolAddress);
-
   if (!whirlpool.data) {
     throw new Error(`Whirlpool not found: ${poolAddress}`);
   }
 
-  const isAdaptiveFee = isInitializedWithAdaptiveFee(whirlpool.data);
   const [mintA, mintB] = await fetchAllMint(rpc, [whirlpool.data.tokenMintA, whirlpool.data.tokenMintB]);
+  const tokenAMint = whirlpool.data.tokenMintA.toString();
 
-  // Determine if we're swapping A->B or B->A
-  const aToB = inputTokenMint === whirlpool.data.tokenMintA;
-  const inputMint = aToB ? mintA : mintB;
-  const outputMint = aToB ? mintB : mintA;
+  // BUY  -> buy `amount` of base token (exact output, input = quote token)
+  // SELL -> sell `amount` of base token (exact input, input = base token)
+  const isBuy = side === 'BUY';
+  const inputTokenMint = isBuy ? quoteTokenMint : baseTokenMint;
+  const outputTokenMint = isBuy ? baseTokenMint : quoteTokenMint;
+  const inputIsA = inputTokenMint === tokenAMint;
+  const inputDecimals = inputIsA ? mintA.data.decimals : mintB.data.decimals;
+  const outputDecimals = inputIsA ? mintB.data.decimals : mintA.data.decimals;
+  const slippageBps = Math.round(slippagePct * 100);
 
-  // Fetch tick arrays needed for swap calculation
-  const tickSpacing = whirlpool.data.tickSpacing;
-  const currentTickIndex = whirlpool.data.tickCurrentIndex;
+  // The v4 SDK resolves tick arrays, the oracle and Token-2022 transfer fees
+  // internally. Unlike the legacy whirlpools-core swapQuoteByInputToken/
+  // swapQuoteByOutputToken, it correctly quotes adaptive-fee whirlpools
+  // (fee tier index >= 1024, e.g. CASH/USDC) — the legacy WASM path panics
+  // with `unreachable` on those pools even when the oracle is supplied.
+  const swapParams = isBuy
+    ? { outputAmount: BigInt(Math.floor(amount * Math.pow(10, outputDecimals))), mint: address(outputTokenMint) }
+    : { inputAmount: BigInt(Math.floor(amount * Math.pow(10, inputDecimals))), mint: address(inputTokenMint) };
+  const { quote } = await swapInstructions(rpc as any, swapParams as any, whirlpoolAddress, slippageBps);
 
-  // Get the starting tick array index
-  const startTickIndex = getTickArrayStartTickIndex(currentTickIndex, tickSpacing);
+  const estimatedAmountIn = isBuy ? (quote as any).tokenEstIn : (quote as any).tokenIn;
+  const estimatedAmountOut = isBuy ? (quote as any).tokenOut : (quote as any).tokenEstOut;
 
-  // Fetch multiple tick arrays (we need at least 3 for most swaps)
-  const tickArrayAddresses = [];
-  for (let i = -1; i <= 1; i++) {
-    const tickArrayAddress = await getTickArrayAddress(whirlpoolAddress, startTickIndex + i * tickSpacing * 88);
-    tickArrayAddresses.push(tickArrayAddress[0]);
-  }
+  const inputAmount = Number(estimatedAmountIn) / Math.pow(10, inputDecimals);
+  const outputAmount = Number(estimatedAmountOut) / Math.pow(10, outputDecimals);
+  const minOutputAmount = isBuy ? outputAmount : Number((quote as any).tokenMinOut) / Math.pow(10, outputDecimals);
+  const maxInputAmount = isBuy ? Number((quote as any).tokenMaxIn) / Math.pow(10, inputDecimals) : inputAmount;
 
-  const tickArrays = await fetchAllTickArray(rpc, tickArrayAddresses);
+  // Price is always expressed in quote-per-base units, independent of side.
+  const baseAmount = isBuy ? outputAmount : inputAmount;
+  const quoteAmount = isBuy ? inputAmount : outputAmount;
+  const executionPrice = baseAmount > 0 ? quoteAmount / baseAmount : 0;
 
-  // On BUY the route passes (input=quote, output=base) and `amount` is the
-  // desired base (output) amount → exact-output quote. On SELL `amount` is the
-  // base (input) amount → exact-input quote. Convert using the decimals of the
-  // token the amount actually refers to.
-  const exactOut = side === 'BUY';
-  const amountDecimals = exactOut ? outputMint.data.decimals : inputMint.data.decimals;
-  const amountBigInt = BigInt(Math.floor(amount * Math.pow(10, amountDecimals)));
-
-  // Get transfer fees
-  const inputTransferFee = getCurrentTransferFee(inputMint, currentEpoch.epoch);
-  const outputTransferFee = getCurrentTransferFee(outputMint, currentEpoch.epoch);
-
-  // Get oracle only if isAdaptiveFee is true
-  let oracle = { data: null };
-  if (isAdaptiveFee) {
-    oracle = await fetchOracle(rpc, whirlpool.address);
-    if (!oracle.data) {
-      throw new Error(`Oracle not found: ${whirlpool.address}`);
-    }
-  } else {
-    // If not adaptive fee, supply dummy oracle structure as expected later
-    oracle.data = null;
-  }
-
-  // Get timestamp in big int
-  const timestamp = BigInt(Math.floor(Date.now() / 1000));
-
-  // Get swap quote. `swapQuoteByOutputToken`/`swapQuoteByInputToken` take a
-  // `specifiedTokenA` flag: for exact-out it means "output is token A"
-  // (= !aToB), for exact-in it means "input is token A" (= aToB).
-  const slippageBps = slippagePct * 100; // Convert to basis points (1% = 100)
-  let estimatedAmountIn: bigint;
-  let estimatedAmountOut: bigint;
-  if (exactOut) {
-    const quote = swapQuoteByOutputToken(
-      amountBigInt,
-      !aToB,
-      slippageBps,
-      whirlpool.data,
-      oracle.data,
-      tickArrays.map((ta) => ta.data),
-      timestamp,
-      inputTransferFee,
-      outputTransferFee,
-    );
-    estimatedAmountIn = quote.tokenEstIn;
-    estimatedAmountOut = quote.tokenOut;
-  } else {
-    const quote = swapQuoteByInputToken(
-      amountBigInt,
-      aToB,
-      slippageBps,
-      whirlpool.data,
-      oracle.data,
-      tickArrays.map((ta) => ta.data),
-      timestamp,
-      inputTransferFee,
-      outputTransferFee,
-    );
-    estimatedAmountIn = quote.tokenIn;
-    estimatedAmountOut = quote.tokenEstOut;
-  }
-
-  // Convert bigints to human-readable numbers
-  const inputAmount = Number(estimatedAmountIn) / Math.pow(10, inputMint.data.decimals);
-  const outputAmount = Number(estimatedAmountOut) / Math.pow(10, outputMint.data.decimals);
-
-  // Apply slippage for min/max amounts
-  const minOutputAmount = outputAmount * (1 - slippagePct / 100);
-  const maxInputAmount = inputAmount * (1 + slippagePct / 100);
-
-  // Calculate price and price impact. `currentPrice` is token B per token A.
-  // `executionPrice = outputAmount / inputAmount` is B-per-A when swapping
-  // A->B but A-per-B when swapping B->A, so normalize it to B-per-A before
-  // comparing — otherwise the B->A branch mixes units and reports a price
-  // impact inflated by roughly currentPrice^2.
+  // Spot price in the same quote/base convention. sqrtPriceToPrice returns
+  // tokenB per tokenA, so we invert when base is tokenB.
   const currentPrice = sqrtPriceToPrice(whirlpool.data.sqrtPrice, mintA.data.decimals, mintB.data.decimals);
-  const executionPrice = outputAmount / inputAmount;
-  const executionPriceBPerA = aToB ? executionPrice : 1 / executionPrice;
-
-  const priceImpactPct = Math.abs((executionPriceBPerA - currentPrice) / currentPrice) * 100;
+  const baseIsA = baseTokenMint === tokenAMint;
+  const spotRate = baseIsA ? currentPrice : 1 / currentPrice;
+  const priceImpactPct = spotRate > 0 ? Math.abs((spotRate - executionPrice) / spotRate) * 100 : 0;
 
   return {
     inputToken: inputTokenMint,

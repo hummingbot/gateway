@@ -28,18 +28,16 @@ export async function getRawSwapQuote(
     throw httpErrors.badRequest(`Token not found: ${!baseTokenInfo ? baseTokenSymbol : quoteTokenSymbol}`);
   }
 
-  // Determine input/output tokens based on side
-  const [inputToken, outputToken] = side === 'BUY' ? [quoteTokenInfo, baseTokenInfo] : [baseTokenInfo, quoteTokenInfo];
-
-  // Get swap quote using helper
+  // Get swap quote using helper (BUY = exact output of base, SELL = exact input of base)
   const quote = await getOrcaSwapQuote(
     orca.solanaKitRpc,
     poolAddress,
-    inputToken.address,
-    outputToken.address,
+    baseTokenInfo.address,
+    quoteTokenInfo.address,
     amount,
     side,
     slippagePct,
+    network,
   );
 
   return quote;
@@ -64,23 +62,13 @@ async function formatSwapQuote(
     slippagePct,
   );
 
-  // Always report price as quote/base regardless of side. The helper returns
-  // `executionPrice = outputAmount / inputAmount`, which is base/quote on BUY
-  // (input=quote, output=base) and quote/base on SELL — i.e. it flips with
-  // side. Reconstruct quote/base here so the response price has consistent
-  // units. Without this, BUY quotes for a USDC/USDM1 pool look like 0.987
-  // while SELL quotes for the same pool look like 1.012.
-  const baseAmount = side === 'BUY' ? quote.outputAmount : quote.inputAmount;
-  const quoteAmount = side === 'BUY' ? quote.inputAmount : quote.outputAmount;
-  const price = baseAmount > 0 ? quoteAmount / baseAmount : 0;
-
   return {
     poolAddress,
     tokenIn: quote.inputToken,
     tokenOut: quote.outputToken,
     amountIn: quote.inputAmount,
     amountOut: quote.outputAmount,
-    price,
+    price: quote.price,
     slippagePct,
     minAmountOut: quote.minOutputAmount,
     maxAmountIn: quote.maxInputAmount,
