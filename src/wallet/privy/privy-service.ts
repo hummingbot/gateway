@@ -13,6 +13,7 @@ import { createPrivateKey, createPublicKey } from 'crypto';
 // Type-only import: the SDK is loaded lazily in getClient() because it pulls in
 // ESM-only dependencies that must not load unless Privy is actually used.
 import type { PrivyClient, AuthorizationContext } from '@privy-io/node';
+import type { SolanaKitSigner } from '@privy-io/node/solana-kit';
 
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { logger } from '../../services/logger';
@@ -200,6 +201,27 @@ export class PrivyService {
     } catch (error) {
       this.handleError('signSolanaTransaction', error);
     }
+  }
+
+  /**
+   * Build a @solana/kit signer backed by this Privy wallet. It is used to sign
+   * transactions produced by kit-native SDKs (e.g. the Orca v4 Whirlpools SDK):
+   * it implements the kit TransactionPartialSigner interface, so it composes with
+   * signTransactionMessageWithSigners and co-signs alongside other (keypair) signers.
+   * Signing goes through Privy, so the wallet policy is enforced.
+   */
+  getSolanaKitSigner(walletId: string, walletAddress: string): SolanaKitSigner {
+    validateWalletId(walletId);
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { createSolanaKitSigner } =
+      require('@privy-io/node/solana-kit') as typeof import('@privy-io/node/solana-kit');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { address } = require('@solana/kit') as typeof import('@solana/kit');
+    return createSolanaKitSigner(this.getClient(), {
+      walletId,
+      address: address(walletAddress),
+      authorizationContext: this.getAuthorizationContext(),
+    });
   }
 
   /**
