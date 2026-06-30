@@ -11,6 +11,9 @@
  * register the printed wallet with: POST /wallet/add-swig.
  *
  * Usage (all via env so secrets never land in shell history files):
+ *   # Owner, either:
+ *   GATEWAY_SWIG_OWNER_ADDRESS=<owner pubkey in Gateway keystore> GATEWAY_PASSPHRASE=<pass>  # preferred: key stays encrypted
+ *   # ...or a raw secret:
  *   GATEWAY_SWIG_OWNER_KEY=<base58 secret key> \
  *   GATEWAY_SWIG_DELEGATE_ADDRESS=<delegate pubkey already added to Gateway keystore> \
  *   GATEWAY_SWIG_NETWORK=mainnet-beta \
@@ -41,8 +44,36 @@ import {
   sendAndConfirmTransaction,
 } from '@solana/web3.js';
 import bs58 from 'bs58';
+import fse from 'fs-extra';
 
+import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
+import { decryptSecret } from '../../src/services/secure-keystore';
 import { getSwigService, SwigTokenLimit } from '../../src/wallet/swig';
+import { getSafeWalletFilePath } from '../../src/wallet/utils';
+
+/**
+ * Load the owner keypair. Prefer the encrypted Gateway keystore (the secret never leaves the
+ * file): set GATEWAY_SWIG_OWNER_ADDRESS + the Gateway passphrase (GATEWAY_PASSPHRASE env or
+ * --passphrase). Fallback: GATEWAY_SWIG_OWNER_KEY as a raw base58 secret.
+ */
+async function loadOwnerKeypair(): Promise<Keypair> {
+  const ownerKey = process.env.GATEWAY_SWIG_OWNER_KEY;
+  if (ownerKey) {
+    return Keypair.fromSecretKey(Uint8Array.from(bs58.decode(ownerKey)));
+  }
+  const ownerAddress = process.env.GATEWAY_SWIG_OWNER_ADDRESS;
+  if (!ownerAddress) {
+    throw new Error('Set GATEWAY_SWIG_OWNER_ADDRESS (keystore) or GATEWAY_SWIG_OWNER_KEY (base58 secret)');
+  }
+  const passphrase = ConfigManagerCertPassphrase.readPassphrase();
+  if (!passphrase) {
+    throw new Error('Owner is in the keystore but no passphrase given (set GATEWAY_PASSPHRASE or --passphrase)');
+  }
+  const filePath = getSafeWalletFilePath('solana', ownerAddress);
+  const encrypted = await fse.readFile(filePath, 'utf8');
+  const decrypted = decryptSecret(encrypted, passphrase);
+  return Keypair.fromSecretKey(Uint8Array.from(bs58.decode(decrypted)));
+}
 
 // Inner programs an Orca or Meteora swap CPIs into; every one a wrapped instruction touches
 // must be whitelisted on the delegate role or the Swig program rejects the sign (0xbbe).
@@ -78,7 +109,6 @@ function parseTokenLimits(raw: string | undefined): SwigTokenLimit[] {
 }
 
 async function main(): Promise<void> {
-  const ownerKey = requireEnv('GATEWAY_SWIG_OWNER_KEY');
   const delegateAddress = requireEnv('GATEWAY_SWIG_DELEGATE_ADDRESS');
   const network = process.env.GATEWAY_SWIG_NETWORK || 'mainnet-beta';
   const rpcUrl = process.env.GATEWAY_SWIG_RPC_URL || clusterApiUrl(network === 'devnet' ? 'devnet' : 'mainnet-beta');
@@ -94,7 +124,7 @@ async function main(): Promise<void> {
     );
   }
 
-  const owner = Keypair.fromSecretKey(Uint8Array.from(bs58.decode(ownerKey)));
+  const owner = await loadOwnerKeypair();
   const delegatePublicKey = new PublicKey(delegateAddress);
   const connection = new Connection(rpcUrl, 'confirmed');
   const swigService = getSwigService();

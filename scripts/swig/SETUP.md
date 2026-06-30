@@ -27,11 +27,16 @@ USDC) — no separate funding wallet is needed.
 
 | Role | Address (this setup) | Where it lives |
 |---|---|---|
-| **Owner / root** — creates the wallet, admin, and funds it | `DQcmxgGCEwThGCzV6NmFG2WsbUpch3HLoZAhctcgeRM9` | offline (1Password) |
+| **Owner / root** — creates the wallet, admin, and funds it | `DQcmxgGCEwThGCzV6NmFG2WsbUpch3HLoZAhctcgeRM9` | encrypted in this Gateway's keystore (`conf/wallets/solana/`) |
 | **Delegate** — the key Gateway signs with, bounded on-chain | `v9Ch97Dc9xwz4tkDT65LQARRFbniTK8VHCGpxa2oW8a` | this Gateway's keystore |
 
 They must be different keys: the whole point is that the key Gateway holds (delegate) is *not*
 the key that controls everything (owner).
+
+> ⚠️ **Security note:** the owner key is currently in `conf/wallets/solana/` alongside the
+> delegate. That weakens the Swig guarantee — anyone with the passphrase + host gets *both*
+> keys and can drain everything. After you've verified the setup, **move the owner key to
+> 1Password and delete it from `conf/`** so it's truly offline.
 
 Common values used below:
 
@@ -45,12 +50,14 @@ POOL  = 2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3   (Meteora SOL/USDC CLMM)
 
 ## Step 1 — Provision + fund the Swig (you run this, with the owner key)
 
-Run on your own machine. The owner key stays in the env var; only public output is printed.
-This **also funds** the delegate (SOL for fees) and the Swig wallet (USDC) from the owner, so
-it's the only owner-signed step.
+Run on your own machine. The owner key is read **straight from the encrypted keystore** using
+your Gateway passphrase — it never leaves the file. Only public output is printed. This **also
+funds** the delegate (SOL for fees) and the Swig wallet (USDC) from the owner, so it's the
+only owner-signed step.
 
 ```bash
-GATEWAY_SWIG_OWNER_KEY=<owner secret, base58 — from 1Password> \
+GATEWAY_SWIG_OWNER_ADDRESS=DQcmxgGCEwThGCzV6NmFG2WsbUpch3HLoZAhctcgeRM9 \
+GATEWAY_PASSPHRASE=<your gateway passphrase> \
 GATEWAY_SWIG_DELEGATE_ADDRESS=v9Ch97Dc9xwz4tkDT65LQARRFbniTK8VHCGpxa2oW8a \
 GATEWAY_SWIG_NETWORK=mainnet-beta \
 GATEWAY_SWIG_RPC_URL=https://greatest-virulent-water.solana-mainnet.quiknode.pro/126039d23539f652e6c848093477fcfcf5ca96d3/ \
@@ -60,6 +67,9 @@ GATEWAY_SWIG_FUND_WALLET_TOKENS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:100
   npx ts-node scripts/swig/create-swig-wallet.ts
 ```
 
+- The owner key is loaded from `conf/wallets/solana/DQcmx….json` via your passphrase. (If you
+  ever have it as a raw secret instead, use `GATEWAY_SWIG_OWNER_KEY=<base58>` and drop the
+  address + passphrase.)
 - `GATEWAY_SWIG_TOKEN_LIMITS` — the on-chain **spend cap**, `mint:amount` in base units.
   `50000000` = **50 USDC** (6 decimals) one-time cap.
 - `GATEWAY_SWIG_FUND_DELEGATE_SOL=0.03` — owner sends 0.03 SOL to the delegate for fees.
