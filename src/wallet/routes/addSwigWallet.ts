@@ -3,9 +3,9 @@
  * Registers an existing Swig smart-contract wallet with Gateway.
  *
  * The Swig account and its restricted delegate role are provisioned out-of-band by the
- * operator (see scripts/swig/create-swig-wallet.ts) using the offline owner key. This
- * route verifies on-chain that the delegate role exists, derives the funds-owner
- * address, and stores the mapping so Gateway can sign through the wallet.
+ * operator using the offline owner key (see src/wallet/swig/README.md → "Configuring
+ * restrictions"). This route verifies on-chain that the delegate role exists, derives the
+ * funds-owner address, and stores the mapping so Gateway can sign through the wallet.
  */
 
 import { Type, Static } from '@sinclair/typebox';

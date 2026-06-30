@@ -37,7 +37,7 @@ export async function executeQuote(
   // Swig delegate) — no per-wallet-type branching here. NOTE: Jupiter routes through many
   // programs, so a Swig role that restricts programs will block it; a Swig wallet used with
   // Jupiter needs a token-cap-only role (per-mint caps still bound the blast radius). See
-  // docs/proposals/swig-wallet-integration.md.
+  // src/wallet/swig/README.md.
   logger.info(
     `Executing quote ${quoteId} for ${inputToken.symbol} -> ${outputToken.symbol}, slippageBps=${quote.slippageBps}`,
   );
