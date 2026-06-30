@@ -323,7 +323,12 @@ describe('Unified Trading CLMM Routes', () => {
         },
       });
 
-      expect(response.statusCode).not.toBe(404);
+      // "Accepted" means dispatched to the meteora handler, not rejected as an unsupported
+      // connector (the only 400 this route raises). The handler now builds with the wallet's
+      // public key instead of loading it from the keystore (so Swig/hardware wallets work),
+      // so the fake position legitimately returns 404 "position not found" — itself proof the
+      // connector was reached. Assert it was not the unsupported-connector 400.
+      expect(response.statusCode).not.toBe(400);
     });
 
     it('should accept pancakeswap-sol connector', async () => {
