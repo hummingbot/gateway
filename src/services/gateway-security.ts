@@ -10,7 +10,7 @@
  * Everything here is pure/Node-crypto only and unit-tested; no external dependency.
  */
 
-import { createHash, randomBytes, timingSafeEqual } from 'crypto';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 
@@ -41,19 +41,20 @@ export function isSensitivePath(url: string): boolean {
   return SENSITIVE_PREFIXES.some((re) => re.test(pathOnly)) || SENSITIVE_CONNECTOR.test(pathOnly);
 }
 
-/** Constant-time string equality (hash both sides so lengths never leak / never throw). */
+/**
+ * Constant-time comparison of two secrets (used for the API token).
+ *
+ * A length check short-circuits first: the token has a fixed, non-secret length, so this
+ * leaks nothing useful, and it lets `timingSafeEqual` (which requires equal-length inputs)
+ * compare the contents in constant time. We deliberately do NOT pre-hash the inputs — a
+ * 256-bit random bearer token is not a low-entropy password and needs no slow KDF; hashing
+ * it with a fast digest would also (correctly) be flagged as an insufficient password hash.
+ */
 export function constantTimeEqual(a: string, b: string): boolean {
-  const ha = createHash('sha256')
-    .update(a ?? '')
-    .digest();
-  const hb = createHash('sha256')
-    .update(b ?? '')
-    .digest();
-  try {
-    return timingSafeEqual(new Uint8Array(ha), new Uint8Array(hb));
-  } catch {
-    return false;
-  }
+  const ba = Buffer.from(a ?? '', 'utf8');
+  const bb = Buffer.from(b ?? '', 'utf8');
+  if (ba.length !== bb.length) return false;
+  return timingSafeEqual(new Uint8Array(ba), new Uint8Array(bb));
 }
 
 /** Extract the token from an `Authorization: Bearer <token>` header. */
