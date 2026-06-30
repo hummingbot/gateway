@@ -27,7 +27,9 @@ export async function closePosition(
 ): Promise<ClosePositionResponseType> {
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
-  const wallet = await solana.getWallet(address);
+  // Build with the wallet's public key as authority — works for every wallet type
+  // (local, hardware, Swig PDA). Signing/sending is delegated to
+  // sendAndConfirmTransactionForWallet, which knows how to sign for each type.
   const client = await orca.getWhirlpoolClientForWallet(address);
   const positionPubkey = new PublicKey(positionAddress);
 
@@ -258,10 +260,10 @@ export async function closePosition(
     }),
   );
 
-  // Build, simulate, and send transaction
+  // Build and send transaction via the wallet-type-aware chokepoint (handles
+  // local/hardware/Swig and simulates the non-Swig path internally).
   const txPayload = await builder.build();
-  await solana.simulateWithErrorHandling(txPayload.transaction);
-  const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [wallet]);
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(txPayload.transaction, address);
 
   // Extract rent refund and actual token amounts from the confirmed transaction.
   // Position accounts (mint, PDA, ATA) are closed by the TX, so their preBalance = rent refunded.

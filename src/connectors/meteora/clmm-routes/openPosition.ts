@@ -46,7 +46,10 @@ export async function openPosition(
     throw httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
   }
 
-  const wallet = await solana.getWallet(walletAddress);
+  // Build with the wallet's public key as authority — works for every wallet type
+  // (local, hardware, Swig PDA). Signing/sending is delegated to
+  // sendAndConfirmTransactionForWallet, which knows how to sign for each type.
+  const walletPublicKey = new PublicKey(walletAddress);
   const newImbalancePosition = new Keypair();
 
   let dlmmPool;
@@ -118,7 +121,7 @@ export async function openPosition(
 
   const createPositionTx = await dlmmPool.initializePositionAndAddLiquidityByStrategy({
     positionPubKey: newImbalancePosition.publicKey,
-    user: wallet.publicKey,
+    user: walletPublicKey,
     totalXAmount,
     totalYAmount,
     strategy: {
@@ -145,17 +148,12 @@ export async function openPosition(
   logger.info(`Transaction details: ${createPositionTx.instructions.length} instructions`);
 
   // Set the fee payer for simulation
-  createPositionTx.feePayer = wallet.publicKey;
+  createPositionTx.feePayer = walletPublicKey;
 
-  // Simulate with error handling (no signing needed for simulation)
-  await solana.simulateWithErrorHandling(createPositionTx);
-
-  logger.info('Transaction simulated successfully, sending to network...');
-
-  // Send and confirm the ORIGINAL unsigned transaction
-  // sendAndConfirmTransaction will handle the signing and auto-simulate for optimal compute units
-  const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(createPositionTx, [
-    wallet,
+  // Sign + send via the wallet-type-aware chokepoint (handles local/hardware/Swig and
+  // simulates the non-Swig path internally). The newly generated position keypair is passed
+  // as an extra signer.
+  const { signature, fee: txFee } = await solana.sendAndConfirmTransactionForWallet(createPositionTx, walletAddress, [
     newImbalancePosition,
   ]);
 
@@ -182,7 +180,7 @@ export async function openPosition(
     }
 
     // Track wallet's balance changes for the tokens
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletPublicKey.toBase58(), [
       dlmmPool.tokenX.publicKey.toBase58(),
       dlmmPool.tokenY.publicKey.toBase58(),
     ]);

@@ -1,6 +1,6 @@
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
 import { Static } from '@sinclair/typebox';
-import { VersionedTransaction } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
@@ -21,8 +21,10 @@ export async function closePosition(
     const solana = await Solana.getInstance(network);
     const raydium = await Raydium.getInstance(network);
 
-    // Prepare wallet and check if it's hardware
-    const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
+    // Set the SDK owner to the wallet's public key — works for every wallet type (local,
+    // hardware, Swig PDA). The tx is built unsigned; signing/sending is delegated to
+    // sendAndConfirmTransactionForWallet, which signs for the wallet's type.
+    await raydium.setOwner(new PublicKey(walletAddress));
 
     const position = await raydium.getClmmPosition(positionAddress);
 
@@ -97,15 +99,14 @@ export async function closePosition(
 
     logger.info('Close position transaction created:', result.transaction);
 
-    // Sign transaction using helper
-    const signedTransaction = (await raydium.signTransaction(
-      result.transaction,
-      walletAddress,
-      isHardwareWallet,
-      wallet,
-    )) as VersionedTransaction;
-
-    const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(signedTransaction);
+    // Sign + send via the wallet-type-aware chokepoint (handles local/hardware/Swig and
+    // simulates the non-Swig path internally).
+    const { signature } = await solana.sendAndConfirmTransactionForWallet(result.transaction, walletAddress);
+    const txData = await solana.connection.getTransaction(signature, {
+      commitment: 'confirmed',
+      maxSupportedTransactionVersion: 0,
+    });
+    const confirmed = txData !== null;
 
     if (!confirmed || !txData) {
       throw httpErrors.internalServerError('Transaction failed to confirm');

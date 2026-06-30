@@ -8,7 +8,7 @@ import {
   toToken,
 } from '@raydium-io/raydium-sdk-v2';
 import { Static } from '@sinclair/typebox';
-import { VersionedTransaction, Transaction } from '@solana/web3.js';
+import { VersionedTransaction, Transaction, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
@@ -116,8 +116,10 @@ async function addLiquidity(
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
 
-  // Prepare wallet and check if it's hardware
-  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
+  // Set the SDK owner to the wallet's public key — works for every wallet type (local,
+  // hardware, Swig PDA). The tx is built unsigned; signing/sending is delegated to
+  // sendAndConfirmTransactionForWallet, which signs for the wallet's type.
+  await raydium.setOwner(new PublicKey(walletAddress));
 
   const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
   if (!ammPoolInfo) {
@@ -184,32 +186,15 @@ async function addLiquidity(
     quoteTokenAmount,
   );
 
-  // Sign transaction using helper
-  let signedTransaction: VersionedTransaction | Transaction;
-  if (transaction instanceof VersionedTransaction) {
-    signedTransaction = (await raydium.signTransaction(
-      transaction,
-      walletAddress,
-      isHardwareWallet,
-      wallet,
-    )) as VersionedTransaction;
-  } else {
-    const txAsTransaction = transaction as Transaction;
-    const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash();
-    txAsTransaction.recentBlockhash = blockhash;
-    txAsTransaction.lastValidBlockHeight = lastValidBlockHeight;
-    txAsTransaction.feePayer = isHardwareWallet ? await solana.getPublicKey(walletAddress) : (wallet as any).publicKey;
-    signedTransaction = (await raydium.signTransaction(
-      txAsTransaction,
-      walletAddress,
-      isHardwareWallet,
-      wallet,
-    )) as Transaction;
-  }
+  // Sign + send via the wallet-type-aware chokepoint (handles local/hardware/Swig and
+  // simulates the non-Swig path internally).
+  const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
+  const txData = await solana.connection.getTransaction(signature, {
+    commitment: 'confirmed',
+    maxSupportedTransactionVersion: 0,
+  });
+  const confirmed = txData !== null;
 
-  await solana.simulateWithErrorHandling(signedTransaction);
-
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(signedTransaction);
   if (confirmed && txData) {
     const tokenAInfo = await solana.getToken(poolInfo.mintA.address);
     const tokenBInfo = await solana.getToken(poolInfo.mintB.address);

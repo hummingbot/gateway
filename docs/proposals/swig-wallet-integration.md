@@ -118,13 +118,27 @@ All additive; mirrors the Privy layout under `src/wallet/`.
 
 ## Scope / boundaries (honest)
 
-- **Orca is the first target** (the live USDM1/SPCX venue). Its swap path is fully wired.
-- **Jupiter is intentionally NOT integrated yet.** The generic signer already handles
-  versioned + ALT transactions (the hard part of a Jupiter integration), but `executeQuote`
-  is left untouched per the current focus. Note: restricting an aggregator like Jupiter by
-  program ID is impractical (it routes dynamically) — only the token spend caps would bound it.
-- Other legacy connectors (Meteora, Raydium, Orca LP) work through the same
-  `sendAndConfirmTransactionForWallet` chokepoint, but are not the focus and are unverified.
+Swig support is wired across all Solana connectors through a single, wallet-type-agnostic
+seam: every route builds with the wallet's public key and sends via
+`Solana.sendAndConfirmTransactionForWallet`, which handles `local | hardware | swig`
+internally (for Swig: wrap in the Swig `sign` instruction, rebuild with the delegate as fee
+payer, sign). Connectors contain **no** per-wallet-type branching.
+
+- **Swaps:** Orca (CLMM), Meteora (DLMM), Raydium (AMM + CLMM), and **Jupiter** (router).
+- **Liquidity / positions:** add/remove liquidity, open/close position, collect fees on Orca,
+  Meteora, and Raydium CLMM (+ Raydium AMM add/remove). `openPosition` co-signs the generated
+  position-mint keypair via the chokepoint's `extraSigners`.
+- **Jupiter caveat (important):** an aggregator routes through many programs dynamically, so a
+  Swig role that **restricts programs** will block it. A Swig wallet used with Jupiter needs a
+  **token-cap-only role** (no program allowlist) — the per-mint spend caps still bound the
+  blast radius (e.g. "can only ever spend USDM1, up to its cap"). See the token-cap discussion
+  in the security model.
+
+**Verification status (honest):** only the **Orca swap** path is mainnet-validated (see
+below). Every other path (Jupiter, Meteora, Raydium, and all liquidity/position operations)
+is **wired and unit-tested but not yet mainnet-verified**. Two paths warrant live testing
+before production: routes that **wrap/unwrap native SOL**, and **openPosition** (the
+ephemeral-mint co-signer surviving the Swig wrap/rebuild).
 ## Mainnet validation (2026-06-29)
 
 Validated end-to-end on Solana mainnet with a real wallet (`DQcm…`), via the operational

@@ -183,7 +183,9 @@ export async function openPosition(
 
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
-  const wallet = await solana.getWallet(address);
+  // Build with the wallet's public key as authority — works for every wallet type
+  // (local, hardware, Swig PDA). Signing/sending is delegated to
+  // sendAndConfirmTransactionForWallet, which knows how to sign for each type.
   const client = await orca.getWhirlpoolClientForWallet(address);
   const whirlpoolPubkey = new PublicKey(poolAddress);
 
@@ -456,11 +458,11 @@ export async function openPosition(
     );
   }
 
-  // Build, simulate, and send transaction
+  // Build and send transaction via the wallet-type-aware chokepoint (handles
+  // local/hardware/Swig and simulates the non-Swig path internally). The freshly
+  // generated position mint must co-sign, so it is passed as an extra signer.
   const txPayload = await builder.build();
-  await solana.simulateWithErrorHandling(txPayload.transaction);
-  const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [
-    wallet,
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(txPayload.transaction, address, [
     positionMintKeypair,
   ]);
 

@@ -1513,6 +1513,12 @@ export class Solana {
       );
     }
 
+    // Non-swig wallets execute the transaction as built. Pre-flight simulate here (once, for
+    // every connector) so callers get a clear error instead of a failed on-chain send; this
+    // is why connectors no longer simulate themselves. Swig is excluded above because its
+    // unsigned, PDA-authored tx is only executable after the wrap/rebuild.
+    await this.simulateWithErrorHandling(tx);
+
     const { wallet, walletType } = await this.prepareWallet(address);
 
     // Local wallets sign in-process: reuse the standard path (keypair + extras).

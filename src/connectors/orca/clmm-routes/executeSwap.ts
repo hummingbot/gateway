@@ -1,17 +1,6 @@
 import { swapInstructions, setWhirlpoolsConfig, setNativeMintWrappingStrategy } from '@orca-so/whirlpools';
 import { fetchWhirlpool } from '@orca-so/whirlpools-client';
-import {
-  address,
-  appendTransactionMessageInstructions,
-  createNoopSigner,
-  createTransactionMessage,
-  getBase64EncodedWireTransaction,
-  pipe,
-  setTransactionMessageFeePayerSigner,
-  setTransactionMessageLifetimeUsingBlockhash,
-  signTransactionMessageWithSigners,
-  type Instruction,
-} from '@solana/kit';
+import { address, createNoopSigner, type Instruction } from '@solana/kit';
 import { Transaction } from '@solana/web3.js';
 import { fetchAllMint } from '@solana-program/token-2022';
 import { FastifyPluginAsync } from 'fastify';
@@ -26,21 +15,6 @@ import { Orca } from '../orca';
 import { OrcaClmmExecuteSwapRequest, OrcaClmmExecuteSwapRequestType } from '../schemas';
 
 const COMPUTE_BUDGET_PROGRAM_ID = address('ComputeBudget111111111111111111111111111111');
-const COMPUTE_UNIT_LIMIT = 600_000;
-
-function setComputeUnitLimitIx(units: number): Instruction {
-  const data = new Uint8Array(5);
-  data[0] = 2;
-  new DataView(data.buffer).setUint32(1, units, true);
-  return { accounts: [], programAddress: COMPUTE_BUDGET_PROGRAM_ID, data };
-}
-
-function setComputeUnitPriceIx(microLamportsPerCU: bigint): Instruction {
-  const data = new Uint8Array(9);
-  data[0] = 3;
-  new DataView(data.buffer).setBigUint64(1, microLamportsPerCU, true);
-  return { accounts: [], programAddress: COMPUTE_BUDGET_PROGRAM_ID, data };
-}
 
 export async function executeSwap(
   network: string,
@@ -89,13 +63,9 @@ export async function executeSwap(
 
   const slippageBps = Math.round(slippagePct * 100);
 
-  // Kit signer for the wallet. For a Swig wallet (a PDA with no key) use a no-op signer
-  // so the swap instructions are built with the Swig wallet as the token authority; the
-  // transaction is later rebuilt and wrapped through the Swig program. Otherwise use the
-  // real kit signer: local keypair. Swig wallets take the wrap-and-rebuild path instead.
-  const walletType = await solana.getWalletType(walletAddress);
-  const signer =
-    walletType === 'swig' ? createNoopSigner(address(walletAddress)) : await solana.getSolanaKitSigner(walletAddress);
+  // Build the swap with a no-op fee-payer signer carrying just the wallet's public key —
+  // signing is external (sendAndConfirmTransactionForWallet handles local/hardware/Swig).
+  const signer = createNoopSigner(address(walletAddress));
 
   // Build the swap instructions via the v4 SDK — it resolves tick arrays, the
   // oracle (adaptive-fee pools), Token-2022 transfer fees and native-SOL
@@ -125,93 +95,20 @@ export async function executeSwap(
       `(pool ${poolAddress}, ${side})`,
   );
 
-  if (walletType === 'swig') {
-    // Convert the kit swap instructions to web3.js and let Gateway wrap them in the
-    // Swig `sign` instruction, rebuild with the delegate as fee payer, sign and send.
-    // Compute-budget instructions are dropped here; the Swig rebuild re-adds them.
-    const innerInstructions = (swapInstrs as Instruction[])
-      .filter((ix) => ix.programAddress !== COMPUTE_BUDGET_PROGRAM_ID)
-      .map(kitInstructionToWeb3);
-    const swigTx = new Transaction();
-    swigTx.add(...innerInstructions);
+  // Convert the kit instructions to web3.js and sign/send via the wallet-type-aware
+  // chokepoint. Compute-budget instructions are dropped here; the chokepoint re-adds them
+  // (and, for Swig, wraps the rest in the Swig `sign` instruction before the delegate signs).
+  const innerInstructions = (swapInstrs as Instruction[])
+    .filter((ix) => ix.programAddress !== COMPUTE_BUDGET_PROGRAM_ID)
+    .map(kitInstructionToWeb3);
+  const tx = new Transaction();
+  tx.add(...innerInstructions);
 
-    const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(swigTx, walletAddress);
-    logger.info(`Orca swap executed via Swig: ${signature} (fee ${fee} SOL)`);
-
-    const baseChange = isBuyingSide ? amountOut : -amountIn;
-    const quoteChange = isBuyingSide ? -amountIn : amountOut;
-    return {
-      signature,
-      status: 1, // CONFIRMED
-      data: {
-        tokenIn: inputTokenInfo.address,
-        tokenOut: outputTokenInfo.address,
-        amountIn,
-        amountOut,
-        fee,
-        baseTokenBalanceChange: baseChange,
-        quoteTokenBalanceChange: quoteChange,
-      },
-    };
-  }
-
-  // Prepend compute-budget instructions; drop any the SDK may have included.
-  const priorityFeePerCU = await solana.estimateGasPrice();
-  const microLamportsPerCU = BigInt(Math.max(1, Math.ceil(priorityFeePerCU * 1_000_000)));
-  const allInstructions: Instruction[] = [
-    setComputeUnitLimitIx(COMPUTE_UNIT_LIMIT),
-    setComputeUnitPriceIx(microLamportsPerCU),
-    ...(swapInstrs as Instruction[]).filter((ix) => ix.programAddress !== COMPUTE_BUDGET_PROGRAM_ID),
-  ];
-
-  const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
-
-  const txMessage = pipe(
-    createTransactionMessage({ version: 0 }),
-    (msg) => setTransactionMessageFeePayerSigner(signer, msg),
-    (msg) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, msg),
-    (msg) => appendTransactionMessageInstructions(allInstructions, msg),
-  );
-
-  // signTransactionMessageWithSigners signs with the fee-payer signer (local keypair
-  // (hardware/Swig) plus any other signers the SDK embedded. Gateway broadcasts the result.
-  const signedTx = await signTransactionMessageWithSigners(txMessage);
-  const wireBytes = Buffer.from(getBase64EncodedWireTransaction(signedTx), 'base64');
-
-  const signature = await solana.connection.sendRawTransaction(wireBytes, {
-    skipPreflight: false,
-    preflightCommitment: 'processed',
-  });
-
-  await solana.connection.confirmTransaction(
-    {
-      signature,
-      blockhash: latestBlockhash.blockhash,
-      lastValidBlockHeight: Number(latestBlockhash.lastValidBlockHeight),
-    },
-    'confirmed',
-  );
-
-  // Network fee from the confirmed transaction. getTransaction can briefly lag
-  // behind confirmation, so retry a few times before giving up.
-  let feeLamports = 0;
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const confirmedTx = await solana.connection.getTransaction(signature, {
-      commitment: 'confirmed',
-      maxSupportedTransactionVersion: 0,
-    });
-    if (confirmedTx?.meta?.fee != null) {
-      feeLamports = confirmedTx.meta.fee;
-      break;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 800));
-  }
-  const fee = feeLamports / 1e9;
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(tx, walletAddress);
+  logger.info(`Orca swap executed: ${signature} (fee ${fee} SOL)`);
 
   const baseTokenBalanceChange = isBuyingSide ? amountOut : -amountIn;
   const quoteTokenBalanceChange = isBuyingSide ? -amountIn : amountOut;
-
-  logger.info(`Orca swap executed: ${signature} (fee ${fee} SOL)`);
 
   return {
     signature,

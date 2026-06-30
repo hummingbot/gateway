@@ -110,7 +110,7 @@ describe('POST /execute-swap', () => {
         meta: { fee: 5000 },
         transaction: {},
       }),
-      sendAndConfirmTransaction: jest.fn().mockResolvedValue({
+      sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({
         signature: mockTransaction.signature,
         fee: 0.000005,
       }),
@@ -184,7 +184,7 @@ describe('POST /execute-swap', () => {
         meta: { fee: 5000 },
         transaction: {},
       }),
-      sendAndConfirmTransaction: jest.fn().mockResolvedValue({
+      sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({
         signature: mockTransaction.signature,
         fee: 0.000005,
       }),

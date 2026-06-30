@@ -1,4 +1,5 @@
 import { Static } from '@sinclair/typebox';
+import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
@@ -15,10 +16,13 @@ export async function collectFees(
 ): Promise<CollectFeesResponseType> {
   const solana = await Solana.getInstance(network);
   const meteora = await Meteora.getInstance(network);
-  const wallet = await solana.getWallet(address);
+  // Build with the wallet's public key as authority — works for every wallet type
+  // (local, hardware, Swig PDA). Signing/sending is delegated to
+  // sendAndConfirmTransactionForWallet, which knows how to sign for each type.
+  const walletPublicKey = new PublicKey(address);
 
   // Get position result and check if it's null before destructuring
-  const positionResult = await meteora.getRawPosition(positionAddress, wallet.publicKey);
+  const positionResult = await meteora.getRawPosition(positionAddress, walletPublicKey);
 
   if (!positionResult || !positionResult.position) {
     throw httpErrors.notFound(`Position not found: ${positionAddress}. Please provide a valid position address`);
@@ -40,7 +44,7 @@ export async function collectFees(
   logger.info(`Collecting fees from position ${positionAddress}`);
 
   const claimSwapFeeTxs = await dlmmPool.claimSwapFee({
-    owner: wallet.publicKey,
+    owner: walletPublicKey,
     position: position,
   });
 
@@ -49,21 +53,17 @@ export async function collectFees(
 
   // Set fee payer for all transactions
   transactions.forEach((tx) => {
-    tx.feePayer = wallet.publicKey;
+    tx.feePayer = walletPublicKey;
   });
 
-  // Simulate and send all transactions
+  // Send all transactions
   let totalFee = 0;
   let lastSignature = '';
 
   for (const tx of transactions) {
-    // Simulate with error handling
-    await solana.simulateWithErrorHandling(tx);
-
-    logger.info('Transaction simulated successfully, sending to network...');
-
-    // Send and confirm transaction using sendAndConfirmTransaction which handles signing
-    const { signature, fee } = await solana.sendAndConfirmTransaction(tx, [wallet]);
+    // Sign + send via the wallet-type-aware chokepoint (handles local/hardware/Swig and
+    // simulates the non-Swig path internally).
+    const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(tx, address);
     lastSignature = signature;
     totalFee += fee;
   }
@@ -80,7 +80,7 @@ export async function collectFees(
   const confirmed = txData !== null;
 
   if (confirmed && txData) {
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletPublicKey.toBase58(), [
       dlmmPool.tokenX.publicKey.toBase58(),
       dlmmPool.tokenY.publicKey.toBase58(),
     ]);

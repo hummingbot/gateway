@@ -8,7 +8,6 @@ import { ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/c
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
-import { Meteora } from '../meteora';
 import { MeteoraConfig } from '../meteora.config';
 import { MeteoraClmmExecuteSwapRequest, MeteoraClmmExecuteSwapRequestType } from '../schemas';
 
@@ -25,7 +24,10 @@ export async function executeSwap(
   slippagePct: number = MeteoraConfig.config.slippagePct,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
-  const wallet = await solana.getWallet(address);
+  // Build with the wallet's public key as token authority — works for every wallet type
+  // (local, hardware, Swig PDA). Signing/sending is delegated to
+  // sendAndConfirmTransactionForWallet, which knows how to sign for each type.
+  const walletPublicKey = new PublicKey(address);
 
   const {
     inputToken,
@@ -45,7 +47,7 @@ export async function executeSwap(
           outAmount: (swapQuote as SwapQuoteExactOut).outAmount,
           maxInAmount: (swapQuote as SwapQuoteExactOut).maxInAmount,
           lbPair: dlmmPool.pubkey,
-          user: wallet.publicKey,
+          user: walletPublicKey,
           binArraysPubkey: (swapQuote as SwapQuoteExactOut).binArraysPubkey,
         })
       : await dlmmPool.swap({
@@ -54,17 +56,13 @@ export async function executeSwap(
           inAmount: swapAmount,
           minOutAmount: (swapQuote as SwapQuote).minOutAmount,
           lbPair: dlmmPool.pubkey,
-          user: wallet.publicKey,
+          user: walletPublicKey,
           binArraysPubkey: (swapQuote as SwapQuote).binArraysPubkey,
         });
 
-  // Simulate transaction with proper error handling (before signing)
-  await solana.simulateWithErrorHandling(swapTx);
-
-  logger.info('Transaction simulated successfully, sending to network...');
-
-  // Send and confirm transaction using sendAndConfirmTransaction which handles signing
-  const { signature, fee } = await solana.sendAndConfirmTransaction(swapTx, [wallet]);
+  // Sign + send via the wallet-type-aware chokepoint (handles local/hardware/Swig and
+  // simulates the non-Swig path internally).
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(swapTx, address);
 
   logger.info(`Transaction sent with signature: ${signature}`);
 
@@ -81,7 +79,7 @@ export async function executeSwap(
     // Extract fee from the response
     const txFee = fee;
     // Transaction confirmed, extract balance changes
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletPublicKey.toBase58(), [
       inputToken.address,
       outputToken.address,
     ]);

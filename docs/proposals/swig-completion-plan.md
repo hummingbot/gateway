@@ -97,18 +97,20 @@ goal ("no stealable key on the server") is only met once a **`kms` backend** exi
 - **Acceptance:** a full Orca swap through a Swig wallet whose delegate key is *not present on
   the host* (KMS), verified on mainnet.
 
-### 2. Connector coverage — *decide and enforce scope*
+### 2. Connector coverage — *wired everywhere; mainnet-verify the rest*
 
-Only Orca `executeSwap` is verified. Other Solana connectors (Meteora, Raydium AMM/CLMM,
-Orca LP open/close/collect, Jupiter) route through the same `sendAndConfirmTransactionForWallet`
-chokepoint but are **unverified**, and some won't behave (Jupiter can't be program-restricted;
-LP adds touch position-mint signers).
+All Solana connectors are now wired through the single wallet-type-agnostic chokepoint
+(`Solana.sendAndConfirmTransactionForWallet`): swaps on Orca, Meteora, Raydium (AMM+CLMM) and
+Jupiter, plus add/remove-liquidity, open/close-position and collect-fees on the CLMM venues.
+Connectors carry **no per-wallet-type branching** — they build with the wallet's public key
+and call the chokepoint.
 
-- **Pick one:** (a) explicitly **scope to Orca swaps** for v1 and have every other Solana
-  connector throw a clear "Swig wallets are only supported for Orca swaps" error for swig
-  wallets (matches the CLAUDE.md "throw clear errors, no silent fallback" rule); or (b) verify
-  each path on mainnet before claiming support.
-- Recommended: **(a) for the first PR.** It's honest, small, and matches what's tested.
+Only **Orca swap** is mainnet-verified. Remaining work is **verification, not wiring**:
+- Mainnet-test each path with a Swig wallet, prioritising (a) native-SOL wrap/unwrap routes
+  and (b) `openPosition` (ephemeral position-mint co-signer surviving the wrap/rebuild — passed
+  via the chokepoint's `extraSigners`).
+- **Jupiter** needs a **token-cap-only** Swig role (program-restricted roles block an
+  aggregator); per-mint caps still bound the blast radius. Documented in the integration doc.
 
 ### 3. License — *verified Apache-2.0; not a blocker*
 
