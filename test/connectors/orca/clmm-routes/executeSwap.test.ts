@@ -1,3 +1,4 @@
+import { createKeyPairSignerFromBytes } from '@solana/kit';
 import { Keypair } from '@solana/web3.js';
 
 import { Solana } from '../../../../src/chains/solana/solana';
@@ -52,6 +53,7 @@ jest.mock('@solana/spl-token', () => ({
 jest.mock('@orca-so/whirlpools', () => ({
   swapInstructions: jest.fn(),
   setWhirlpoolsConfig: jest.fn().mockResolvedValue(undefined),
+  setNativeMintWrappingStrategy: jest.fn(),
 }));
 jest.mock('@orca-so/whirlpools-client', () => ({
   fetchWhirlpool: jest.fn(),
@@ -346,6 +348,8 @@ describe('POST /execute-swap', () => {
           return null;
         }),
         getWallet: jest.fn().mockResolvedValue(mockWallet),
+        getWalletType: jest.fn().mockResolvedValue('local'),
+        getSolanaKitSigner: jest.fn().mockImplementation(() => createKeyPairSignerFromBytes(mockWallet.secretKey)),
         estimateGasPrice: jest.fn().mockResolvedValue(0.0001),
         connection: mockConnection,
       });

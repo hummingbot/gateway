@@ -304,11 +304,13 @@ export async function getWallets(
 
       // Get hardware wallet addresses if requested
       const hardwareAddresses = showHardware ? await getHardwareWalletAddresses(chain) : [];
+      const swigAddresses = await getSwigWalletAddresses(chain);
 
       responses.push({
         chain: safeChain,
         walletAddresses: safeWalletAddresses,
         hardwareWalletAddresses: hardwareAddresses.length > 0 ? hardwareAddresses : undefined,
+        swigWalletAddresses: swigAddresses.length > 0 ? swigAddresses : undefined,
       });
     }
 
@@ -324,6 +326,79 @@ export interface HardwareWalletData {
   publicKey: string;
   derivationPath: string;
   addedAt: string;
+}
+
+// Hardware wallet functions (continued below)
+
+// Swig smart-wallet functions
+export interface SwigWalletData {
+  /** The Swig wallet (funds-owner) address — what Gateway treats as the wallet. */
+  address: string;
+  /** The Swig account (PDA) address, used to fetch on-chain Swig state. */
+  accountAddress: string;
+  /** Owner/root authority public key (kept offline). */
+  ownerAddress: string;
+  /** Delegate authority public key — the key Gateway signs with (custody set by delegateSigner). */
+  delegateAddress: string;
+  /**
+   * Where the delegate's signing key lives: 'local' (encrypted keystore, signs in-process)
+   * or 'kms' (cloud KMS/HSM, no raw key on host). Defaults to 'local' when absent.
+   */
+  delegateSigner?: 'local' | 'kms';
+  /** Base58-encoded 32-byte Swig id used to create the account. */
+  id: string;
+  addedAt: string;
+}
+
+export function getSwigWalletPath(chain: string): string {
+  const safeChain = sanitizePathComponent(chain.toLowerCase());
+  return `${walletPath}/${safeChain}/swig-wallets.json`;
+}
+
+export async function getSwigWallets(chain: string): Promise<SwigWalletData[]> {
+  try {
+    const filePath = getSwigWalletPath(chain);
+    const exists = await fse.pathExists(filePath);
+    if (!exists) {
+      return [];
+    }
+
+    const content = await fse.readFile(filePath, 'utf8');
+    const data = JSON.parse(content);
+
+    if (!data.wallets || !Array.isArray(data.wallets)) {
+      logger.warn(`Invalid Swig wallet file format for ${chain}`);
+      return [];
+    }
+
+    return data.wallets;
+  } catch (error) {
+    logger.error(`Failed to read Swig wallets for ${chain}: ${error.message}`);
+    return [];
+  }
+}
+
+export async function getSwigWalletAddresses(chain: string): Promise<string[]> {
+  const wallets = await getSwigWallets(chain);
+  return wallets.map((w) => w.address);
+}
+
+export async function saveSwigWallets(chain: string, wallets: SwigWalletData[]): Promise<void> {
+  const filePath = getSwigWalletPath(chain);
+  const dirPath = `${walletPath}/${sanitizePathComponent(chain.toLowerCase())}`;
+
+  await mkdirIfDoesNotExist(dirPath);
+  await fse.writeFile(filePath, JSON.stringify({ wallets }, null, 2));
+}
+
+export async function isSwigWallet(chain: string, address: string): Promise<boolean> {
+  const swigAddresses = await getSwigWalletAddresses(chain);
+  return swigAddresses.some((a) => a.toLowerCase() === address.toLowerCase());
+}
+
+export async function getSwigWalletByAddress(chain: string, address: string): Promise<SwigWalletData | null> {
+  const wallets = await getSwigWallets(chain);
+  return wallets.find((w) => w.address.toLowerCase() === address.toLowerCase()) || null;
 }
 
 export function getHardwareWalletPath(chain: string): string {

@@ -40,10 +40,25 @@ import { httpErrors } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
 import { encryptSecret, decryptSecret, isLegacyKeystore } from '../../services/secure-keystore';
 import { TokenService } from '../../services/token-service';
-import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
+import {
+  SwigSolanaSigner,
+  SwigDelegateSigner,
+  LocalKeystoreDelegateSigner,
+  DelegateSignerType,
+} from '../../wallet/swig';
+import {
+  getSafeWalletFilePath,
+  isHardwareWallet as isHardwareWalletUtil,
+  isSwigWallet as isSwigWalletUtil,
+  getSwigWalletByAddress,
+  SwigWalletData,
+} from '../../wallet/utils';
 
+import { SolanaLedger } from './solana-ledger';
 import { PriorityFeeResult, SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
+
+export type SolanaWalletType = 'local' | 'hardware' | 'swig';
 
 // Constants used for fee calculations
 export const BASE_FEE = 5000;
@@ -358,6 +373,94 @@ export class Solana {
     } catch (error) {
       logger.error(`Error checking hardware wallet status: ${error.message}`);
       return false;
+    }
+  }
+
+  /**
+   * Build a @solana/kit signer for an address, for kit-native SDKs (e.g. the Orca v4
+   * Whirlpools SDK). Local wallets sign with their keypair. Hardware and Swig wallets are
+   * not supported on the kit path (they sign externally / via instruction wrapping).
+   */
+  async getSolanaKitSigner(address: string): Promise<any> {
+    const walletType = await this.getWalletType(address);
+    if (walletType === 'local') {
+      const keypair = await this.getWallet(address);
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { createKeyPairSignerFromBytes } = require('@solana/kit') as typeof import('@solana/kit');
+      return createKeyPairSignerFromBytes(keypair.secretKey);
+    }
+    if (walletType === 'swig') {
+      // A Swig wallet (PDA) has no key to sign with: connectors must rebuild and wrap
+      // the transaction via rebuildAndSignSwigTransaction instead of a kit signer.
+      throw new Error(
+        `Swig wallets cannot produce a kit signer (address ${address}); route the swap through rebuildAndSignSwigTransaction`,
+      );
+    }
+    throw new Error(`Kit-based signing is not supported for ${walletType} wallets (address ${address})`);
+  }
+
+  /**
+   * Resolve the wallet type for an address: hardware (Ledger), swig (smart-wallet PDA),
+   * or local (encrypted keypair).
+   */
+  async getWalletType(address: string): Promise<SolanaWalletType> {
+    if (await this.isHardwareWallet(address)) {
+      return 'hardware';
+    }
+    if (await this.isSwigWallet(address)) {
+      return 'swig';
+    }
+    return 'local';
+  }
+
+  async isSwigWallet(address: string): Promise<boolean> {
+    try {
+      return await isSwigWalletUtil('solana', address);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Prepare a wallet for transaction building: a Keypair for local wallets, or the
+   * PublicKey for hardware and Swig wallets (which sign externally).
+   */
+  async prepareWallet(address: string): Promise<{ wallet: Keypair | PublicKey; walletType: SolanaWalletType }> {
+    const walletType = await this.getWalletType(address);
+    const wallet = walletType === 'local' ? await this.getWallet(address) : await this.getPublicKey(address);
+    return { wallet, walletType };
+  }
+
+  /**
+   * Sign a transaction with the signing method matching the wallet type.
+   */
+  async signTransactionByType<T extends Transaction | VersionedTransaction>(
+    transaction: T,
+    address: string,
+    walletType: SolanaWalletType,
+    wallet: Keypair | PublicKey,
+  ): Promise<T> {
+    switch (walletType) {
+      case 'hardware': {
+        logger.info(`Hardware wallet detected for ${address}. Signing transaction with Ledger.`);
+        const ledger = new SolanaLedger();
+        return (await ledger.signTransaction(address, transaction)) as T;
+      }
+      case 'swig': {
+        // Swig wallets cannot sign a pre-built transaction in place: the instructions
+        // must be wrapped and the transaction rebuilt. Use rebuildAndSignSwigTransaction.
+        throw new Error(
+          `Swig wallets cannot sign a pre-built transaction (address ${address}); use rebuildAndSignSwigTransaction`,
+        );
+      }
+      default: {
+        if (transaction instanceof VersionedTransaction) {
+          transaction.sign([wallet as Keypair]);
+        } else {
+          (transaction as Transaction).sign(wallet as Keypair);
+        }
+        return transaction;
+      }
     }
   }
 
@@ -1330,6 +1433,148 @@ export class Solana {
       return { signature, fee: actualFee };
     }
 
+    throw httpErrors.transactionTimeout(
+      `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
+    );
+  }
+
+  /**
+   * Sign and send a legacy Transaction using the signing method matching the wallet
+   * type (local keypair, Swig, or Ledger). Unlike sendAndConfirmTransaction, the fee
+   * payer is resolved from `address` so Swig/hardware wallets — which have no local
+   * secret key — work too. `extraSigners` are additional in-process keypairs the
+   * transaction requires (e.g. a freshly generated position-mint).
+   */
+  /**
+   * Rebuild a connector-built transaction so it executes through a Swig wallet and sign
+   * it with the wallet's delegate keypair. The inner instructions are wrapped in the
+   * Swig `sign` instruction (executed via CPI under the delegate role's permissions) and
+   * the delegate becomes fee payer + signer. Returns a signed VersionedTransaction.
+   */
+  public async rebuildAndSignSwigTransaction(
+    tx: Transaction | VersionedTransaction,
+    address: string,
+    options: { extraSigners?: Keypair[]; priorityFeeMicroLamports?: number; computeUnitLimit?: number } = {},
+  ): Promise<VersionedTransaction> {
+    const swigWallet = await getSwigWalletByAddress('solana', address);
+    if (!swigWallet) {
+      throw new Error(`Swig wallet not registered for address: ${address}`);
+    }
+    const delegate = await this.getSwigDelegateSigner(swigWallet);
+    const signer = new SwigSolanaSigner(this.connection, new PublicKey(swigWallet.accountAddress), delegate);
+    return signer.rebuildAndSign(tx, options);
+  }
+
+  /**
+   * Resolve the Swig delegate signer for a registered wallet. The custody backend is
+   * pluggable (see wallet/swig/delegate-signer.ts): `local` decrypts the delegate key from
+   * the keystore and signs in-process; `kms` would sign through a cloud KMS/HSM without the
+   * raw key ever reaching the host. KMS is a documented seam — implement a SwigDelegateSigner
+   * backed by your KMS and return it here.
+   */
+  private async getSwigDelegateSigner(swigWallet: SwigWalletData): Promise<SwigDelegateSigner> {
+    const signerType: DelegateSignerType = swigWallet.delegateSigner ?? 'local';
+    switch (signerType) {
+      case 'local': {
+        const delegateKeypair = await this.getWallet(swigWallet.delegateAddress);
+        return new LocalKeystoreDelegateSigner(delegateKeypair);
+      }
+      case 'kms':
+        throw new Error(
+          `KMS delegate signer is not implemented yet (wallet ${swigWallet.address}); implement a SwigDelegateSigner ` +
+            `backed by your KMS in wallet/swig/delegate-signer.ts and resolve it in Solana.getSwigDelegateSigner`,
+        );
+      default:
+        throw new Error(`Unknown Swig delegate signer type '${signerType}' for wallet ${swigWallet.address}`);
+    }
+  }
+
+  public async sendAndConfirmTransactionForWallet(
+    tx: Transaction | VersionedTransaction,
+    address: string,
+    extraSigners: Keypair[] = [],
+    priorityFeePerCU?: number,
+  ): Promise<{ signature: string; fee: number }> {
+    // Swig wallets are PDAs with no key: rebuild + wrap the transaction, then broadcast.
+    if (await this.isSwigWallet(address)) {
+      const priorityFee = priorityFeePerCU ?? (await this.estimateGasPrice());
+      const signedTx = await this.rebuildAndSignSwigTransaction(tx, address, {
+        extraSigners,
+        priorityFeeMicroLamports: Math.floor(priorityFee * 1_000_000),
+      });
+      const { confirmed, signature, txData } = await this._sendAndConfirmRawTransaction(signedTx.serialize());
+      if (confirmed && txData) {
+        const actualFee = this.getFee(txData);
+        logger.info(`Swig transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
+        return { signature, fee: actualFee };
+      }
+      throw httpErrors.transactionTimeout(
+        `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
+      );
+    }
+
+    const { wallet, walletType } = await this.prepareWallet(address);
+
+    // Local wallets sign in-process: reuse the standard path (keypair + extras).
+    if (walletType === 'local') {
+      return this.sendAndConfirmTransaction(tx, [wallet as Keypair, ...extraSigners], priorityFeePerCU);
+    }
+
+    // External wallets (hardware/Ledger): add the compute budget and sign any extra
+    // keypairs, then sign the fee payer externally.
+    const currentPriorityFee = priorityFeePerCU ?? (await this.estimateGasPrice());
+    let computeUnitsToUse: number;
+    try {
+      const sim =
+        tx instanceof VersionedTransaction
+          ? await this.connection.simulateTransaction(tx, { replaceRecentBlockhash: true, sigVerify: false })
+          : await this.connection.simulateTransaction(tx);
+      computeUnitsToUse = sim.value.unitsConsumed
+        ? Math.ceil(sim.value.unitsConsumed * 1.1)
+        : this.config.defaultComputeUnits;
+    } catch (error) {
+      logger.warn(`Failed to simulate for compute units: ${(error as Error).message}, using default`);
+      computeUnitsToUse = this.config.defaultComputeUnits;
+    }
+
+    let prepared: Transaction | VersionedTransaction;
+    if (tx instanceof VersionedTransaction) {
+      // Adds compute budget and signs the extra keypairs; the fee-payer slot is left
+      // empty for the external signer.
+      prepared = await this.prepareVersionedTx(tx, currentPriorityFee, computeUnitsToUse, extraSigners);
+    } else {
+      const priorityFeeMicroLamports = Math.floor(currentPriorityFee * 1_000_000);
+      tx.feePayer = wallet as PublicKey;
+      tx.instructions = [
+        ...tx.instructions.filter((inst) => !inst.programId.equals(ComputeBudgetProgram.programId)),
+        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFeeMicroLamports }),
+        ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnitsToUse }),
+      ];
+      const {
+        value: { lastValidBlockHeight, blockhash },
+      } = await this.connection.getLatestBlockhashAndContext('confirmed');
+      tx.lastValidBlockHeight = lastValidBlockHeight;
+      tx.recentBlockhash = blockhash;
+      if (extraSigners.length) tx.partialSign(...extraSigners);
+      prepared = tx;
+    }
+
+    const signedTx = await this.signTransactionByType(prepared, address, walletType, wallet);
+    // Re-apply extra signatures in case the external signer did not preserve them.
+    if (extraSigners.length) {
+      if (signedTx instanceof VersionedTransaction) {
+        signedTx.sign([...extraSigners]);
+      } else {
+        (signedTx as Transaction).partialSign(...extraSigners);
+      }
+    }
+
+    const { confirmed, signature, txData } = await this._sendAndConfirmRawTransaction(signedTx.serialize());
+    if (confirmed && txData) {
+      const actualFee = this.getFee(txData);
+      logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
+      return { signature, fee: actualFee };
+    }
     throw httpErrors.transactionTimeout(
       `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
     );

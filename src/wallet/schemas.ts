@@ -46,6 +46,11 @@ export const GetWalletResponseSchema = Type.Object({
       description: 'List of hardware wallet addresses (Ledger)',
     }),
   ),
+  swigWalletAddresses: Type.Optional(
+    Type.Array(WalletAddressSchema, {
+      description: 'List of Swig smart-contract wallet addresses',
+    }),
+  ),
 });
 
 export const RemoveWalletRequestSchema = Type.Object({

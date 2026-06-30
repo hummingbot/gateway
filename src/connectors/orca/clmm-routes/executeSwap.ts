@@ -1,9 +1,9 @@
-import { swapInstructions, setWhirlpoolsConfig } from '@orca-so/whirlpools';
+import { swapInstructions, setWhirlpoolsConfig, setNativeMintWrappingStrategy } from '@orca-so/whirlpools';
 import { fetchWhirlpool } from '@orca-so/whirlpools-client';
 import {
   address,
   appendTransactionMessageInstructions,
-  createKeyPairSignerFromBytes,
+  createNoopSigner,
   createTransactionMessage,
   getBase64EncodedWireTransaction,
   pipe,
@@ -12,6 +12,7 @@ import {
   signTransactionMessageWithSigners,
   type Instruction,
 } from '@solana/kit';
+import { Transaction } from '@solana/web3.js';
 import { fetchAllMint } from '@solana-program/token-2022';
 import { FastifyPluginAsync } from 'fastify';
 
@@ -20,6 +21,7 @@ import { getSolanaChainConfig } from '../../../chains/solana/solana.config';
 import { ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
+import { kitInstructionToWeb3 } from '../../../wallet/swig';
 import { Orca } from '../orca';
 import { OrcaClmmExecuteSwapRequest, OrcaClmmExecuteSwapRequestType } from '../schemas';
 
@@ -62,6 +64,10 @@ export async function executeSwap(
   }
 
   await setWhirlpoolsConfig(network === 'mainnet-beta' ? 'solanaMainnet' : 'solanaDevnet');
+  // Wrap native SOL via the wallet's deterministic ATA rather than an ephemeral keypair:
+  // this avoids an extra co-signer (so hardware/Swig can sign alone) and lets a wallet
+  // policy allowlist the wSOL account. Must be set before swapInstructions().
+  setNativeMintWrappingStrategy('ata');
 
   // Fetch pool to determine canonical token A/B ordering and decimals
   const whirlpoolAddress = address(poolAddress);
@@ -82,7 +88,14 @@ export async function executeSwap(
   const outputDecimals = inputIsA ? mintB.data.decimals : mintA.data.decimals;
 
   const slippageBps = Math.round(slippagePct * 100);
-  const signer = await createKeyPairSignerFromBytes((await solana.getWallet(walletAddress)).secretKey);
+
+  // Kit signer for the wallet. For a Swig wallet (a PDA with no key) use a no-op signer
+  // so the swap instructions are built with the Swig wallet as the token authority; the
+  // transaction is later rebuilt and wrapped through the Swig program. Otherwise use the
+  // real kit signer: local keypair. Swig wallets take the wrap-and-rebuild path instead.
+  const walletType = await solana.getWalletType(walletAddress);
+  const signer =
+    walletType === 'swig' ? createNoopSigner(address(walletAddress)) : await solana.getSolanaKitSigner(walletAddress);
 
   // Build the swap instructions via the v4 SDK — it resolves tick arrays, the
   // oracle (adaptive-fee pools), Token-2022 transfer fees and native-SOL
@@ -112,6 +125,36 @@ export async function executeSwap(
       `(pool ${poolAddress}, ${side})`,
   );
 
+  if (walletType === 'swig') {
+    // Convert the kit swap instructions to web3.js and let Gateway wrap them in the
+    // Swig `sign` instruction, rebuild with the delegate as fee payer, sign and send.
+    // Compute-budget instructions are dropped here; the Swig rebuild re-adds them.
+    const innerInstructions = (swapInstrs as Instruction[])
+      .filter((ix) => ix.programAddress !== COMPUTE_BUDGET_PROGRAM_ID)
+      .map(kitInstructionToWeb3);
+    const swigTx = new Transaction();
+    swigTx.add(...innerInstructions);
+
+    const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(swigTx, walletAddress);
+    logger.info(`Orca swap executed via Swig: ${signature} (fee ${fee} SOL)`);
+
+    const baseChange = isBuyingSide ? amountOut : -amountIn;
+    const quoteChange = isBuyingSide ? -amountIn : amountOut;
+    return {
+      signature,
+      status: 1, // CONFIRMED
+      data: {
+        tokenIn: inputTokenInfo.address,
+        tokenOut: outputTokenInfo.address,
+        amountIn,
+        amountOut,
+        fee,
+        baseTokenBalanceChange: baseChange,
+        quoteTokenBalanceChange: quoteChange,
+      },
+    };
+  }
+
   // Prepend compute-budget instructions; drop any the SDK may have included.
   const priorityFeePerCU = await solana.estimateGasPrice();
   const microLamportsPerCU = BigInt(Math.max(1, Math.ceil(priorityFeePerCU * 1_000_000)));
@@ -130,6 +173,8 @@ export async function executeSwap(
     (msg) => appendTransactionMessageInstructions(allInstructions, msg),
   );
 
+  // signTransactionMessageWithSigners signs with the fee-payer signer (local keypair
+  // (hardware/Swig) plus any other signers the SDK embedded. Gateway broadcasts the result.
   const signedTx = await signTransactionMessageWithSigners(txMessage);
   const wireBytes = Buffer.from(getBase64EncodedWireTransaction(signedTx), 'base64');
 
