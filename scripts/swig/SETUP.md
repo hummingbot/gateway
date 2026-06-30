@@ -20,13 +20,18 @@ for how Swig works and why.
 A Swig wallet whose delegate role allows **Orca + Meteora swaps** and can spend **USDC up to a
 cap**, signed by Gateway with a delegate key, while the owner key stays offline.
 
-## The three keys
+## The two keys
+
+The design needs exactly two distinct keys. The **owner** also funds (it already holds SOL +
+USDC) — no separate funding wallet is needed.
 
 | Role | Address (this setup) | Where it lives |
 |---|---|---|
-| **Owner / root** | `DQcmxgGCEwThGCzV6NmFG2WsbUpch3HLoZAhctcgeRM9` | offline (1Password) |
-| **Delegate** (Gateway signs with this) | `v9Ch97Dc9xwz4tkDT65LQARRFbniTK8VHCGpxa2oW8a` | this Gateway's keystore |
-| **Funding source** | `82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5` | your other wallet (Phantom / `~/gateway`) |
+| **Owner / root** — creates the wallet, admin, and funds it | `DQcmxgGCEwThGCzV6NmFG2WsbUpch3HLoZAhctcgeRM9` | offline (1Password) |
+| **Delegate** — the key Gateway signs with, bounded on-chain | `v9Ch97Dc9xwz4tkDT65LQARRFbniTK8VHCGpxa2oW8a` | this Gateway's keystore |
+
+They must be different keys: the whole point is that the key Gateway holds (delegate) is *not*
+the key that controls everything (owner).
 
 Common values used below:
 
@@ -38,9 +43,11 @@ POOL  = 2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3   (Meteora SOL/USDC CLMM)
 
 ---
 
-## Step 1 — Provision the Swig (you run this, with the owner key)
+## Step 1 — Provision + fund the Swig (you run this, with the owner key)
 
 Run on your own machine. The owner key stays in the env var; only public output is printed.
+This **also funds** the delegate (SOL for fees) and the Swig wallet (USDC) from the owner, so
+it's the only owner-signed step.
 
 ```bash
 GATEWAY_SWIG_OWNER_KEY=<owner secret, base58 — from 1Password> \
@@ -48,14 +55,20 @@ GATEWAY_SWIG_DELEGATE_ADDRESS=v9Ch97Dc9xwz4tkDT65LQARRFbniTK8VHCGpxa2oW8a \
 GATEWAY_SWIG_NETWORK=mainnet-beta \
 GATEWAY_SWIG_RPC_URL=https://greatest-virulent-water.solana-mainnet.quiknode.pro/126039d23539f652e6c848093477fcfcf5ca96d3/ \
 GATEWAY_SWIG_TOKEN_LIMITS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:50000000 \
+GATEWAY_SWIG_FUND_DELEGATE_SOL=0.03 \
+GATEWAY_SWIG_FUND_WALLET_TOKENS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:10000000 \
   npx ts-node scripts/swig/create-swig-wallet.ts
 ```
 
-- `GATEWAY_SWIG_TOKEN_LIMITS` is `mint:amount` in base units. `50000000` = **50 USDC** (6 decimals)
-  one-time spend cap.
+- `GATEWAY_SWIG_TOKEN_LIMITS` — the on-chain **spend cap**, `mint:amount` in base units.
+  `50000000` = **50 USDC** (6 decimals) one-time cap.
+- `GATEWAY_SWIG_FUND_DELEGATE_SOL=0.03` — owner sends 0.03 SOL to the delegate for fees.
+- `GATEWAY_SWIG_FUND_WALLET_TOKENS=…:10000000` — owner sends **10 USDC** to the new Swig wallet
+  (base units, same convention as the cap). Omit either funding var to skip that transfer.
 - The default program allowlist already covers Orca + Meteora. Add more venues with
   `GATEWAY_SWIG_ALLOWED_PROGRAMS=<id,id>`.
-- The owner (`DQcmx…`) pays ~0.01 SOL rent — make sure it has a little SOL.
+- The owner (`DQcmx…`) pays rent + the funding transfers — it currently holds ~0.31 SOL and
+  ~266 USDC, which is plenty.
 
 It prints a JSON block like:
 
@@ -95,35 +108,13 @@ curl -s -X POST http://localhost:15888/wallet/add-swig \
 Gateway verifies the delegate role exists on-chain and stores the mapping. A 200 with
 `"Swig wallet registered successfully"` means you're set.
 
----
-
-## Step 3 — Fund it (from your `82…` wallet)
-
-Two transfers, both from `82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5`:
-
-| To | Amount | Purpose |
-|---|---|---|
-| `v9Ch97…` (delegate) | **0.03 SOL** | pays transaction fees (it starts at 0) |
-| `<new Swig address>` (from step 1) | **~10 USDC** | the token to swap |
-
-Easiest is to send both from Phantom. With the Solana CLI (needs the `82…` keypair file):
-
-```bash
-# 0.03 SOL to the delegate
-solana transfer v9Ch97Dc9xwz4tkDT65LQARRFbniTK8VHCGpxa2oW8a 0.03 \
-  --from <82 keypair.json> --url $RPC --allow-unfunded-recipient
-
-# 10 USDC to the new Swig wallet (creates its USDC account if needed)
-spl-token transfer EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v 10 <new Swig address> \
-  --owner <82 keypair.json> --url $RPC --fund-recipient
-```
-
-> The **delegate** needs SOL or the swap fails at fee-payer resolution before it ever reaches
-> the Swig program. The **Swig wallet** needs the input token (USDC) within its cap.
+> Funding done in step 1: the **delegate** needs SOL or the swap fails at fee-payer resolution
+> before it ever reaches the Swig program; the **Swig wallet** needs the input token (USDC)
+> within its cap. To fund separately instead, just send those two amounts from any wallet.
 
 ---
 
-## Step 4 — Test swap on Meteora
+## Step 3 — Test swap on Meteora
 
 Swap ~1 USDC → SOL on the Meteora SOL/USDC pool, signed through the Swig wallet:
 
@@ -152,7 +143,7 @@ curl -s -X POST http://localhost:15888/connectors/meteora/clmm/execute-swap \
 | Symptom | Cause | Fix |
 |---|---|---|
 | `custom program error: 0xbbe` | a program the swap touches isn't on the delegate allowlist | re-provision (step 1) with that program id in `GATEWAY_SWIG_ALLOWED_PROGRAMS` |
-| `AccountNotFound` / fails before any program logs | delegate has 0 SOL (can't pay fees) | send SOL to the delegate (step 3) |
+| `AccountNotFound` / fails before any program logs | delegate has 0 SOL (can't pay fees) | fund the delegate with SOL (step 1's `GATEWAY_SWIG_FUND_DELEGATE_SOL`) |
 | swap reverts on the token transfer | input mint not capped, or cap too low | re-provision with the mint in `GATEWAY_SWIG_TOKEN_LIMITS`, or raise the cap |
 | `Swig wallet not registered for address` | step 2 skipped or wrong `address` | register the wallet's funds-owner `address` from step 1 |
 | `No delegate role found` at register | wrong `delegateAddress`, or provisioning didn't finish | re-check step 1 output; the delegate must match |

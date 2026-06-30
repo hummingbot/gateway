@@ -17,10 +17,29 @@
  *   GATEWAY_SWIG_RPC_URL=<rpc url> \
  *   GATEWAY_SWIG_TOKEN_LIMITS=<mint:amount,mint:amount> \
  *   [GATEWAY_SWIG_ALLOWED_PROGRAMS=<programId,programId>] \
+ *   [GATEWAY_SWIG_FUND_DELEGATE_SOL=<sol>]              # owner sends SOL to the delegate for fees
+ *   [GATEWAY_SWIG_FUND_WALLET_TOKENS=<mint:amount>]     # owner sends tokens (base units) to the Swig wallet
  *   npx ts-node scripts/swig/create-swig-wallet.ts
+ *
+ * Funding is optional and paid by the owner (no separate funding wallet needed). Amounts are
+ * base units, matching GATEWAY_SWIG_TOKEN_LIMITS (e.g. 10 USDC = 10000000).
  */
 
-import { clusterApiUrl, Connection, Keypair, PublicKey, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
+import {
+  createAssociatedTokenAccountIdempotentInstruction,
+  createTransferInstruction,
+  getAssociatedTokenAddressSync,
+} from '@solana/spl-token';
+import {
+  clusterApiUrl,
+  Connection,
+  Keypair,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  sendAndConfirmTransaction,
+} from '@solana/web3.js';
 import bs58 from 'bs58';
 
 import { getSwigService, SwigTokenLimit } from '../../src/wallet/swig';
@@ -110,7 +129,42 @@ async function main(): Promise<void> {
 
   // 3. Resolve the funds-owner address used by connectors.
   const swig = await swigService.fetchSwig(connection, accountAddress);
-  const walletAddress = (await swigService.getWalletAddress(swig)).toBase58();
+  const walletPk = await swigService.getWalletAddress(swig);
+  const walletAddress = walletPk.toBase58();
+
+  // 4. (Optional) Fund from the owner, since the owner key is already loaded here — no
+  // separate wallet needed. The delegate needs SOL to pay fees; the Swig wallet needs the
+  // input token to trade. Both transfers are signed and paid by the owner.
+  const fundDelegateSol = process.env.GATEWAY_SWIG_FUND_DELEGATE_SOL;
+  if (fundDelegateSol) {
+    const lamports = Math.round(Number(fundDelegateSol) * LAMPORTS_PER_SOL);
+    if (!Number.isFinite(lamports) || lamports <= 0) {
+      throw new Error(`Invalid GATEWAY_SWIG_FUND_DELEGATE_SOL: ${fundDelegateSol}`);
+    }
+    console.log(`\nFunding delegate ${delegateAddress} with ${fundDelegateSol} SOL ...`);
+    const ix = SystemProgram.transfer({ fromPubkey: owner.publicKey, toPubkey: delegatePublicKey, lamports });
+    const sig = await sendAndConfirmTransaction(connection, new Transaction().add(ix), [owner]);
+    console.log(`  funded (tx ${sig})`);
+  }
+
+  const fundWalletTokens = parseTokenLimits(process.env.GATEWAY_SWIG_FUND_WALLET_TOKENS);
+  for (const { mint, amount } of fundWalletTokens) {
+    const mintPk = new PublicKey(mint);
+    // Pick the mint's token program (SPL Token vs Token-2022) from its account owner.
+    const mintInfo = await connection.getAccountInfo(mintPk);
+    if (!mintInfo) throw new Error(`Mint not found: ${mint}`);
+    const tokenProgram = mintInfo.owner;
+    const ownerAta = getAssociatedTokenAddressSync(mintPk, owner.publicKey, false, tokenProgram);
+    // The Swig funds-owner is a PDA (off-curve), so allowOwnerOffCurve = true.
+    const destAta = getAssociatedTokenAddressSync(mintPk, walletPk, true, tokenProgram);
+    console.log(`\nFunding Swig wallet ${walletAddress} with ${amount} (base units) of ${mint} ...`);
+    const tx = new Transaction().add(
+      createAssociatedTokenAccountIdempotentInstruction(owner.publicKey, destAta, walletPk, mintPk, tokenProgram),
+      createTransferInstruction(ownerAta, destAta, owner.publicKey, amount, [], tokenProgram),
+    );
+    const sig = await sendAndConfirmTransaction(connection, tx, [owner]);
+    console.log(`  funded (tx ${sig})`);
+  }
 
   console.log('\nDone. Register with POST /wallet/add-swig using:');
   console.log(
