@@ -1,0 +1,88 @@
+/**
+ * Gateway network-security helpers (hummingbot/gateway#652, §1/§2/§4).
+ *
+ * Design principle: LOOPBACK IS TRUSTED. A request from 127.0.0.1/::1 is already on the
+ * machine (where it could read the keystore anyway), so the new controls — API-token auth,
+ * strict rate-limiting/lockout — apply ONLY to non-loopback (network-reachable) requests.
+ * This keeps the normal local-bot experience completely unchanged (zero UX cost) while
+ * hardening the case that actually matters: Gateway reachable over a network.
+ *
+ * Everything here is pure/Node-crypto only and unit-tested; no external dependency.
+ */
+
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import path from 'path';
+
+/** True for any loopback address form Node/Fastify may report. */
+export function isLoopbackAddress(ip: string | undefined): boolean {
+  if (!ip) return false;
+  const addr = ip.toLowerCase();
+  return (
+    addr === '127.0.0.1' ||
+    addr === '::1' ||
+    addr === '::ffff:127.0.0.1' || // IPv4-mapped IPv6
+    addr === 'localhost' ||
+    addr.startsWith('127.') // 127.0.0.0/8
+  );
+}
+
+/** True when the bind host exposes Gateway beyond loopback (i.e. to the network). */
+export function isExposedHost(host: string): boolean {
+  return !isLoopbackAddress(host);
+}
+
+/** Path prefixes that move funds or reveal/modify secrets — gated behind auth when exposed. */
+const SENSITIVE_PREFIXES = [/^\/wallet(\/|$)/, /^\/config\/update(\/|$)/];
+const SENSITIVE_CONNECTOR = /^\/connectors\/[^/]+\/(amm|clmm|router)\/(execute|add|remove|open|close|collect)/i;
+
+export function isSensitivePath(url: string): boolean {
+  const pathOnly = url.split('?')[0];
+  return SENSITIVE_PREFIXES.some((re) => re.test(pathOnly)) || SENSITIVE_CONNECTOR.test(pathOnly);
+}
+
+/** Constant-time string equality (hash both sides so lengths never leak / never throw). */
+export function constantTimeEqual(a: string, b: string): boolean {
+  const ha = createHash('sha256')
+    .update(a ?? '')
+    .digest();
+  const hb = createHash('sha256')
+    .update(b ?? '')
+    .digest();
+  try {
+    return timingSafeEqual(new Uint8Array(ha), new Uint8Array(hb));
+  } catch {
+    return false;
+  }
+}
+
+/** Extract the token from an `Authorization: Bearer <token>` header. */
+export function extractBearerToken(authorization: string | undefined): string {
+  if (!authorization) return '';
+  return authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+}
+
+/**
+ * Load the Gateway API token, or generate a 256-bit one on first run.
+ * Precedence: GATEWAY_API_KEY env > <confDir>/api-key file > generate + persist (0600).
+ * The token authenticates network (non-loopback) requests; it is separate from the
+ * wallet-encryption passphrase so the two secrets do not share a single point of failure.
+ */
+export function loadOrCreateApiKey(confDir: string): string {
+  if (process.env.GATEWAY_API_KEY) return process.env.GATEWAY_API_KEY.trim();
+  const keyPath = path.join(confDir, 'api-key');
+  if (existsSync(keyPath)) {
+    return readFileSync(keyPath, 'utf8').trim();
+  }
+  const key = randomBytes(32).toString('hex'); // 256-bit
+  if (!existsSync(confDir)) mkdirSync(confDir, { recursive: true, mode: 0o700 });
+  writeFileSync(keyPath, key, { mode: 0o600 });
+  chmodSync(keyPath, 0o600); // enforce even if umask widened it
+  return key;
+}
+
+/** The configured bind address (default loopback). Set GATEWAY_BIND_ADDRESS to expose. */
+export function getBindAddress(): string {
+  const fromEnv = process.env.GATEWAY_BIND_ADDRESS?.trim();
+  return fromEnv && fromEnv.length > 0 ? fromEnv : '127.0.0.1';
+}

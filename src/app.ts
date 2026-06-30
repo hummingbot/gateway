@@ -25,8 +25,18 @@ import { pancakeswapSolRoutes } from './connectors/pancakeswap-sol/pancakeswap-s
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { getHttpsOptions } from './https';
+import { rootPath } from './paths';
 import { poolRoutes } from './pools/pools.routes';
 import { ConfigManagerV2 } from './services/config-manager-v2';
+import {
+  constantTimeEqual,
+  extractBearerToken,
+  getBindAddress,
+  isExposedHost,
+  isLoopbackAddress,
+  isSensitivePath,
+  loadOrCreateApiKey,
+} from './services/gateway-security';
 import { logger } from './services/logger';
 import { quoteCache } from './services/quote-cache';
 import { displayChainConfigurations } from './services/startup-banner';
@@ -166,11 +176,15 @@ const configureGatewayServer = () => {
     docsServer.withTypeProvider<TypeBoxTypeProvider>();
   }
 
-  // Register rate limiting globally
+  // Register rate limiting globally. Loopback (the local bot) is never rate-limited, so
+  // there is zero impact on normal local use; network clients are limited and repeat
+  // abusers are temporarily banned (429 -> 403). (hummingbot/gateway#652 §2)
   server.register(fastifyRateLimit, {
     max: 100, // maximum 100 requests
     timeWindow: '1 minute', // per 1 minute window
     global: true, // apply to all routes
+    ban: 4, // after exceeding the limit repeatedly, temporarily lock the source out (403)
+    allowList: (request) => isLoopbackAddress(request.ip),
     errorResponseBuilder: function (_request, context) {
       return {
         statusCode: 429,
@@ -182,41 +196,67 @@ const configureGatewayServer = () => {
     },
   });
 
-  // Register Swagger
-  server.register(fastifySwagger, swaggerOptions);
+  // API-token auth for fund-moving / secret routes (hummingbot/gateway#652 §1).
+  // OPT-IN: enabled when GATEWAY_API_KEY or GATEWAY_REQUIRE_AUTH=true is set — which you do
+  // when exposing Gateway to a network. It is OFF by default so it never breaks a local or
+  // Docker deployment (where the source IP is the bridge gateway, not loopback); the default
+  // protection is binding to loopback (§4). When enabled, loopback requests are trusted and
+  // only NON-loopback requests to sensitive routes must present the token (constant-time).
+  const requireAuth = process.env.GATEWAY_REQUIRE_AUTH === 'true' || !!process.env.GATEWAY_API_KEY;
+  if (requireAuth) {
+    const gatewayApiKey = loadOrCreateApiKey(`${rootPath()}/conf`);
+    logger.info('API-token authentication is enabled for network requests to fund-moving routes.');
+    server.addHook('onRequest', async (request, reply) => {
+      if (isLoopbackAddress(request.ip)) return; // trusted
+      if (!isSensitivePath(request.url)) return; // only gate sensitive routes
+      const token = extractBearerToken(request.headers['authorization'] as string | undefined);
+      if (!constantTimeEqual(token, gatewayApiKey)) {
+        logger.warn(`Rejected unauthenticated request from ${request.ip}: ${request.method} ${request.url}`);
+        reply.code(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Invalid or missing API key' });
+      }
+    });
+  }
 
-  // Register Swagger UI based on configuration
-  if (!docsPort) {
-    // If no docs port, serve docs on main server at /docs
-    server.register(fastifySwaggerUi, {
-      routePrefix: '/docs',
-      uiConfig: {
-        docExpansion: 'none',
-        deepLinking: false,
-        tryItOutEnabled: true,
-        displayRequestDuration: true,
-        persistAuthorization: true,
-        filter: true,
-        defaultModelExpandDepth: 3,
-        defaultModelsExpandDepth: 3,
-      },
-      staticCSP: true,
-      transformStaticCSP: (header) => header,
-    });
-  } else {
-    // Otherwise set up separate docs server
-    docsServer?.register(fastifySwagger, swaggerOptions);
-    docsServer?.register(fastifySwaggerUi, {
-      routePrefix: '/',
-      uiConfig: {
-        docExpansion: 'none',
-        deepLinking: false,
-        tryItOutEnabled: true,
-        displayRequestDuration: true,
-        persistAuthorization: true,
-        filter: true,
-      },
-    });
+  // Serve Swagger/OpenAPI docs only on loopback (or when explicitly enabled). An exposed
+  // /docs hands an attacker the full route map of fund-handling endpoints. (#652)
+  const exposeDocs = !isExposedHost(getBindAddress()) || process.env.GATEWAY_ENABLE_DOCS === 'true';
+  if (exposeDocs) {
+    // Register Swagger
+    server.register(fastifySwagger, swaggerOptions);
+
+    // Register Swagger UI based on configuration
+    if (!docsPort) {
+      // If no docs port, serve docs on main server at /docs
+      server.register(fastifySwaggerUi, {
+        routePrefix: '/docs',
+        uiConfig: {
+          docExpansion: 'none',
+          deepLinking: false,
+          tryItOutEnabled: true,
+          displayRequestDuration: true,
+          persistAuthorization: true,
+          filter: true,
+          defaultModelExpandDepth: 3,
+          defaultModelsExpandDepth: 3,
+        },
+        staticCSP: true,
+        transformStaticCSP: (header) => header,
+      });
+    } else {
+      // Otherwise set up separate docs server
+      docsServer?.register(fastifySwagger, swaggerOptions);
+      docsServer?.register(fastifySwaggerUi, {
+        routePrefix: '/',
+        uiConfig: {
+          docExpansion: 'none',
+          deepLinking: false,
+          tryItOutEnabled: true,
+          displayRequestDuration: true,
+          persistAuthorization: true,
+          filter: true,
+        },
+      });
+    }
   }
 
   // Register routes on both servers
@@ -413,12 +453,24 @@ export const startGateway = async () => {
       logger.warn(`Error while checking for processes on port ${port}: ${error}`);
     }
 
+    // Bind to loopback by default; expose to the network only via GATEWAY_BIND_ADDRESS.
+    // This is the single highest-value control: most remote attacks require reaching the
+    // service. (hummingbot/gateway#652 §4)
+    const bindAddress = getBindAddress();
+    if (isExposedHost(bindAddress)) {
+      logger.warn(
+        `⚠️  Gateway is binding to ${bindAddress} (NOT loopback) — it is reachable from your network. ` +
+          `Network requests to fund-moving routes require the API token (conf/api-key or GATEWAY_API_KEY). ` +
+          `Prefer keeping Gateway on 127.0.0.1 and reaching it over a VPN/Tailscale.`,
+      );
+    }
+
     if (devMode) {
       logger.info('🔴 Running in development mode with (unsafe!) HTTP endpoints');
-      await gatewayApp.listen({ port, host: '0.0.0.0' });
+      await gatewayApp.listen({ port, host: bindAddress });
     } else {
       logger.info('🟢 Running in secured mode with behind HTTPS endpoints');
-      await gatewayApp.listen({ port, host: '0.0.0.0' });
+      await gatewayApp.listen({ port, host: bindAddress });
     }
 
     // Single documentation log after server starts

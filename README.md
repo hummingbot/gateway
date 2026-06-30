@@ -172,6 +172,25 @@ When adding a pool via `POST /pools`, Gateway automatically:
 
 This ensures stored pool data always matches the actual on-chain pool state.
 
+## Security
+
+Gateway holds wallet private keys and exposes fund-moving endpoints, so treat it like a hot
+wallet. See **[docs/security-hardening.md](docs/security-hardening.md)** for the full threat
+model and rationale. Essentials:
+
+- **Keep Gateway on localhost.** It binds to `127.0.0.1` by default and is not reachable from
+  your network. To expose it deliberately, set `GATEWAY_BIND_ADDRESS=0.0.0.0`, enable the API
+  token (`GATEWAY_REQUIRE_AUTH=true`, then send `Authorization: Bearer <conf/api-key>` from
+  your client), and ideally reach it over a VPN/Tailscale rather than a public port. Never run
+  `--dev` (HTTP) on an untrusted network (e.g. public WiFi).
+- **Use a strong passphrase.** The Gateway passphrase encrypts your wallet keys at rest
+  (scrypt + AES-256-GCM). A weak passphrase (e.g. `a`) can be brute-forced in seconds if a key
+  file ever leaks — defeating the encryption. Use a long, random passphrase (24+ random
+  characters or a 6-word diceware phrase) and store it separately from where `conf/wallets/`
+  is backed up.
+- **Treat the trading bot/agent as an untrusted client** — keep private keys out of its
+  context; Gateway signs internally and never returns raw keys.
+
 ## Installation from Source
 
 ### Prerequisites
