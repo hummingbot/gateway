@@ -144,6 +144,29 @@ instructions); the delegate can never widen its own permissions.
 `POST /wallet/add-swig` then registers the provisioned wallet with Gateway and verifies the
 delegate role exists on-chain; it does **not** create or widen the role.
 
+### Provisioning a fresh wallet (offline)
+
+`scripts/swig/create-swig-wallet.ts` runs the create + add-delegate flow offline with the
+owner key (kept in env so it never lands on the Gateway host or in shell history). Its
+default allowlist covers **both Orca and Meteora** swaps (Orca Whirlpools + Meteora DLMM +
+SPL Token + Token-2022 + ATA) — a swap on either venue CPIs only into its own program plus
+the token/ATA programs (verified on mainnet). Add more venues with
+`GATEWAY_SWIG_ALLOWED_PROGRAMS`.
+
+```bash
+GATEWAY_SWIG_OWNER_KEY=<base58 owner secret>        # offline; from 1Password, not committed
+GATEWAY_SWIG_DELEGATE_ADDRESS=<delegate pubkey>     # a Gateway local wallet (so it can sign)
+GATEWAY_SWIG_NETWORK=mainnet-beta \
+GATEWAY_SWIG_RPC_URL=<rpc url> \
+GATEWAY_SWIG_TOKEN_LIMITS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:1000000 \
+  npx ts-node scripts/swig/create-swig-wallet.ts
+```
+
+It prints the JSON body for `POST /wallet/add-swig`. The **delegate** must hold a little SOL
+to pay fees, and the **Swig wallet** must hold the input token (within its cap) for a swap to
+land. A delegate with no SOL fails simulation at fee-payer resolution before reaching the
+Swig program.
+
 ## Pointers
 
 - KMS / keyless custody follow-up: [hummingbot/gateway#662](https://github.com/hummingbot/gateway/issues/662)

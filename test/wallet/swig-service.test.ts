@@ -58,4 +58,36 @@ describe('SwigService', () => {
     );
     expect(conn.getAccountInfo).not.toHaveBeenCalled();
   });
+
+  describe('buildDelegateActions (delegate role permissions)', () => {
+    const ORCA = 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc';
+    const METEORA = 'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo';
+    const SPL_TOKEN = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+    const ATA = 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL';
+    const USDC = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+    const RAYDIUM_CLMM = 'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK';
+
+    // buildDelegateActions is private; exercise it directly to prove the on-chain role a
+    // fresh provisioning would create actually permits the intended programs/mints.
+    const buildActions = (allowedProgramIds: string[], tokenLimits: { mint: string; amount: bigint }[]) =>
+      (service as any).buildDelegateActions({ allowedProgramIds, tokenLimits });
+
+    it('permits Orca AND Meteora (the re-provisioned multi-venue allowlist), denies others', () => {
+      const actions: any = buildActions([ORCA, METEORA, SPL_TOKEN, ATA], [{ mint: USDC, amount: 1_000_000n }]);
+
+      expect(actions.canUseProgram(new PublicKey(ORCA))).toBe(true);
+      expect(actions.canUseProgram(new PublicKey(METEORA))).toBe(true);
+      expect(actions.canUseProgram(new PublicKey(SPL_TOKEN))).toBe(true);
+      // A program not on the allowlist is denied (default-deny).
+      expect(actions.canUseProgram(new PublicKey(RAYDIUM_CLMM))).toBe(false);
+
+      // The capped mint is spendable up to its limit; an un-capped mint is not.
+      expect(actions.canSpendToken(new PublicKey(USDC))).toBe(true);
+      expect(actions.tokenSpendLimit(new PublicKey(USDC))).toBe(1_000_000n);
+    });
+
+    it('rejects a role with no allowed programs', () => {
+      expect(() => buildActions([], [{ mint: USDC, amount: 1n }])).toThrow(/at least one allowed program/);
+    });
+  });
 });
