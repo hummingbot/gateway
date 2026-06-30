@@ -377,29 +377,6 @@ export class Solana {
   }
 
   /**
-   * Build a @solana/kit signer for an address, for kit-native SDKs (e.g. the Orca v4
-   * Whirlpools SDK). Local wallets sign with their keypair. Hardware and Swig wallets are
-   * not supported on the kit path (they sign externally / via instruction wrapping).
-   */
-  async getSolanaKitSigner(address: string): Promise<any> {
-    const walletType = await this.getWalletType(address);
-    if (walletType === 'local') {
-      const keypair = await this.getWallet(address);
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { createKeyPairSignerFromBytes } = require('@solana/kit') as typeof import('@solana/kit');
-      return createKeyPairSignerFromBytes(keypair.secretKey);
-    }
-    if (walletType === 'swig') {
-      // A Swig wallet (PDA) has no key to sign with: connectors must rebuild and wrap
-      // the transaction via rebuildAndSignSwigTransaction instead of a kit signer.
-      throw new Error(
-        `Swig wallets cannot produce a kit signer (address ${address}); route the swap through rebuildAndSignSwigTransaction`,
-      );
-    }
-    throw new Error(`Kit-based signing is not supported for ${walletType} wallets (address ${address})`);
-  }
-
-  /**
    * Resolve the wallet type for an address: hardware (Ledger), swig (smart-wallet PDA),
    * or local (encrypted keypair).
    */
@@ -1439,13 +1416,6 @@ export class Solana {
   }
 
   /**
-   * Sign and send a legacy Transaction using the signing method matching the wallet
-   * type (local keypair, Swig, or Ledger). Unlike sendAndConfirmTransaction, the fee
-   * payer is resolved from `address` so Swig/hardware wallets — which have no local
-   * secret key — work too. `extraSigners` are additional in-process keypairs the
-   * transaction requires (e.g. a freshly generated position-mint).
-   */
-  /**
    * Rebuild a connector-built transaction so it executes through a Swig wallet and sign
    * it with the wallet's delegate keypair. The inner instructions are wrapped in the
    * Swig `sign` instruction (executed via CPI under the delegate role's permissions) and
@@ -1511,6 +1481,14 @@ export class Solana {
       throw httpErrors.transactionTimeout(
         `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
       );
+    }
+
+    // A connector may hand us a legacy transaction with no fee payer (it builds with the
+    // wallet's public key as token authority and leaves the fee payer for us). Resolve it to
+    // the wallet now, otherwise compiling the message for simulation throws "Transaction fee
+    // payer required". The per-type signing below pays from this same address.
+    if (!(tx instanceof VersionedTransaction) && !tx.feePayer) {
+      tx.feePayer = new PublicKey(address);
     }
 
     // Non-swig wallets execute the transaction as built. Pre-flight simulate here (once, for
@@ -1742,7 +1720,6 @@ export class Solana {
 
     modifiedTx.signatures = originalSignatures;
     modifiedTx.sign([..._signers]);
-    console.log('modifiedTx:', modifiedTx);
 
     return modifiedTx;
   }

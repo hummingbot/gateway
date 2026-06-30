@@ -1,7 +1,7 @@
 import { swapInstructions, setWhirlpoolsConfig, setNativeMintWrappingStrategy } from '@orca-so/whirlpools';
 import { fetchWhirlpool } from '@orca-so/whirlpools-client';
 import { address, createNoopSigner, type Instruction } from '@solana/kit';
-import { Transaction } from '@solana/web3.js';
+import { PublicKey, Transaction } from '@solana/web3.js';
 import { fetchAllMint } from '@solana-program/token-2022';
 import { FastifyPluginAsync } from 'fastify';
 
@@ -103,6 +103,10 @@ export async function executeSwap(
     .map(kitInstructionToWeb3);
   const tx = new Transaction();
   tx.add(...innerInstructions);
+  // This route hand-builds a legacy transaction; set the fee payer to the wallet so the
+  // chokepoint's pre-flight simulate can compile the message (the chokepoint signs/pays
+  // from this same address for every wallet type).
+  tx.feePayer = new PublicKey(walletAddress);
 
   const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(tx, walletAddress);
   logger.info(`Orca swap executed: ${signature} (fee ${fee} SOL)`);
