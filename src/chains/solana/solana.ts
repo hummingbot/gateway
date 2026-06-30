@@ -1,5 +1,3 @@
-import crypto from 'crypto';
-
 import {
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
@@ -40,6 +38,7 @@ import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { httpErrors } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
+import { encryptSecret, decryptSecret, isLegacyKeystore } from '../../services/secure-keystore';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
@@ -325,6 +324,19 @@ export class Solana {
       }
       const decrypted = await this.decrypt(encryptedPrivateKey, walletKey);
 
+      // Migrate legacy (PBKDF2-5000 + AES-256-CTR) key files to the hardened format on
+      // unlock, and tighten file permissions to owner-only (hummingbot/gateway#652).
+      if (isLegacyKeystore(encryptedPrivateKey)) {
+        try {
+          const upgraded = await this.encrypt(decrypted, walletKey);
+          await fse.writeFile(safeWalletPath, upgraded, { mode: 0o600 });
+          await fse.chmod(safeWalletPath, 0o600);
+          logger.info(`Upgraded keystore for ${validatedAddress} to the hardened format (scrypt + AES-256-GCM)`);
+        } catch (migrateError) {
+          logger.warn(`Failed to upgrade keystore for ${validatedAddress}: ${(migrateError as Error).message}`);
+        }
+      }
+
       return Keypair.fromSecretKey(new Uint8Array(bs58.decode(decrypted)));
     } catch (error) {
       if (error.message.includes('Invalid Solana address')) {
@@ -368,47 +380,20 @@ export class Solana {
     }
   }
 
+  /**
+   * Encrypt a wallet secret for at-rest storage using the hardened keystore format
+   * (scrypt + AES-256-GCM). See services/secure-keystore.ts and hummingbot/gateway#652.
+   */
   async encrypt(secret: string, password: string): Promise<string> {
-    const algorithm = 'aes-256-ctr';
-    const iv = crypto.randomBytes(16);
-    const salt = crypto.randomBytes(32);
-    const key = crypto.pbkdf2Sync(password, new Uint8Array(salt), 5000, 32, 'sha512');
-    const cipher = crypto.createCipheriv(algorithm, new Uint8Array(key), new Uint8Array(iv));
-
-    const encryptedBuffers = [
-      new Uint8Array(cipher.update(new Uint8Array(Buffer.from(secret)))),
-      new Uint8Array(cipher.final()),
-    ];
-    const encrypted = Buffer.concat(encryptedBuffers);
-
-    const ivJSON = iv.toJSON();
-    const saltJSON = salt.toJSON();
-    const encryptedJSON = encrypted.toJSON();
-
-    return JSON.stringify({
-      algorithm,
-      iv: ivJSON,
-      salt: saltJSON,
-      encrypted: encryptedJSON,
-    });
+    return encryptSecret(secret, password);
   }
 
+  /**
+   * Decrypt a wallet secret. Reads both the hardened format and the legacy
+   * (PBKDF2-5000 + AES-256-CTR) format so existing wallets keep working.
+   */
   async decrypt(encryptedSecret: string, password: string): Promise<string> {
-    const hash = JSON.parse(encryptedSecret);
-    const salt = new Uint8Array(Buffer.from(hash.salt, 'utf8'));
-    const iv = new Uint8Array(Buffer.from(hash.iv, 'utf8'));
-
-    const key = crypto.pbkdf2Sync(password, salt, 5000, 32, 'sha512');
-
-    const decipher = crypto.createDecipheriv(hash.algorithm, new Uint8Array(key), iv);
-
-    const decryptedBuffers = [
-      new Uint8Array(decipher.update(new Uint8Array(Buffer.from(hash.encrypted, 'hex')))),
-      new Uint8Array(decipher.final()),
-    ];
-    const decrypted = Buffer.concat(decryptedBuffers);
-
-    return decrypted.toString();
+    return decryptSecret(encryptedSecret, password);
   }
 
   /**
