@@ -41,15 +41,29 @@ describe('gateway-security', () => {
       '/wallet/add-swig',
       '/connectors/orca/clmm/execute-swap',
       '/connectors/jupiter/router/execute-quote',
+      '/restart',
+      '/trading/swap/execute',
+      '/trading/clmm/open',
+      '/trading/clmm/add',
+      '/trading/clmm/remove',
+      '/trading/clmm/collect-fees',
+      '/trading/clmm/close',
     ])('sensitive: %s', (url) => {
       expect(isSensitivePath(url)).toBe(true);
     });
-    it.each(['/docs', '/config/namespaces', '/chains/solana/status', '/connectors/orca/clmm/quote-swap'])(
-      'not sensitive: %s',
-      (url) => {
-        expect(isSensitivePath(url)).toBe(false);
-      },
-    );
+    it.each([
+      '/docs',
+      '/config/namespaces',
+      '/chains/solana/status',
+      '/connectors/orca/clmm/quote-swap',
+      '/trading/swap/quote',
+      '/trading/clmm/pool-info',
+      '/trading/clmm/position-info',
+      '/trading/clmm/positions-owned',
+      '/trading/clmm/quote-position',
+    ])('not sensitive: %s', (url) => {
+      expect(isSensitivePath(url)).toBe(false);
+    });
   });
 
   describe('constantTimeEqual', () => {

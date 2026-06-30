@@ -33,12 +33,20 @@ export function isExposedHost(host: string): boolean {
 }
 
 /** Path prefixes that move funds or reveal/modify secrets — gated behind auth when exposed. */
-const SENSITIVE_PREFIXES = [/^\/wallet(\/|$)/, /^\/config\/update(\/|$)/];
+const SENSITIVE_PREFIXES = [/^\/wallet(\/|$)/, /^\/config\/update(\/|$)/, /^\/restart(\/|$)/];
 const SENSITIVE_CONNECTOR = /^\/connectors\/[^/]+\/(amm|clmm|router)\/(execute|add|remove|open|close|collect)/i;
+// Unified cross-chain trading namespace: only the fund-moving routes. Read-only routes
+// (/trading/swap/quote, /trading/clmm/pool-info|position-info|positions-owned|quote-position)
+// stay public by design.
+const SENSITIVE_TRADING = /^\/trading\/(swap\/execute|clmm\/(open|add|remove|collect-fees|close))(\/|$)/i;
 
 export function isSensitivePath(url: string): boolean {
   const pathOnly = url.split('?')[0];
-  return SENSITIVE_PREFIXES.some((re) => re.test(pathOnly)) || SENSITIVE_CONNECTOR.test(pathOnly);
+  return (
+    SENSITIVE_PREFIXES.some((re) => re.test(pathOnly)) ||
+    SENSITIVE_CONNECTOR.test(pathOnly) ||
+    SENSITIVE_TRADING.test(pathOnly)
+  );
 }
 
 /**
