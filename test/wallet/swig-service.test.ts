@@ -43,4 +43,19 @@ describe('SwigService', () => {
     const signer = Keypair.generate().publicKey;
     expect(service.requireRole(fakeSwig, signer, 'delegate')).toBe(role);
   });
+
+  it('buildAddTokenLimitsInstructions rejects an empty token-limit list before touching the chain', async () => {
+    const conn: any = {
+      // fail loudly if the route reached the chain despite an empty list
+      getAccountInfo: jest.fn(() => {
+        throw new Error('should not fetch');
+      }),
+    };
+    const owner = Keypair.generate().publicKey;
+    const delegate = Keypair.generate().publicKey;
+    await expect(service.buildAddTokenLimitsInstructions(conn, owner, owner, delegate, [])).rejects.toThrow(
+      /No token limits provided/,
+    );
+    expect(conn.getAccountInfo).not.toHaveBeenCalled();
+  });
 });

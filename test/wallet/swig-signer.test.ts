@@ -1,10 +1,12 @@
 import {
+  AddressLookupTableAccount,
   ComputeBudgetProgram,
   Connection,
   Keypair,
   PublicKey,
   SystemProgram,
   Transaction,
+  TransactionMessage,
   VersionedTransaction,
 } from '@solana/web3.js';
 
@@ -62,5 +64,102 @@ describe('SwigSolanaSigner.rebuildAndSign', () => {
     tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }));
     const signer = new SwigSolanaSigner(connection, account, new LocalKeystoreDelegateSigner(delegate));
     await expect(signer.rebuildAndSign(tx)).rejects.toThrow('no instructions to wrap');
+  });
+
+  it('injects compute-budget ixs (limit + price) when the tx has none', async () => {
+    const swigWallet = Keypair.generate().publicKey;
+    const tx = new Transaction();
+    tx.add(SystemProgram.transfer({ fromPubkey: swigWallet, toPubkey: swigWallet, lamports: 1 }));
+
+    const signer = new SwigSolanaSigner(connection, account, new LocalKeystoreDelegateSigner(delegate));
+    const out = await signer.rebuildAndSign(tx, { priorityFeeMicroLamports: 2500, computeUnitLimit: 321_000 });
+
+    // The wrapped set passed for signing is [CU-limit, CU-price, ...wrapped inner]. We assert
+    // the two compute-budget ixs were prepended by checking the compiled program ids.
+    const programIds = out.message.compiledInstructions.map((ci) =>
+      out.message.staticAccountKeys[ci.programIdIndex].toBase58(),
+    );
+    const computeBudgetCount = programIds.filter((id) => id === ComputeBudgetProgram.programId.toBase58()).length;
+    expect(computeBudgetCount).toBe(2);
+  });
+
+  it('co-signs with extraSigners before the delegate signs the fee-payer slot', async () => {
+    const swigWallet = Keypair.generate().publicKey;
+    const extra = Keypair.generate();
+    const tx = new Transaction();
+    // An instruction that requires the extra signer as a signer key.
+    tx.add(SystemProgram.transfer({ fromPubkey: extra.publicKey, toPubkey: swigWallet, lamports: 1 }));
+
+    const signer = new SwigSolanaSigner(connection, account, new LocalKeystoreDelegateSigner(delegate));
+    const out = await signer.rebuildAndSign(tx, { extraSigners: [extra] });
+
+    // Both the delegate (fee payer, slot 0) and the extra signer produced non-empty signatures.
+    const keys = out.message.staticAccountKeys.map((k) => k.toBase58());
+    const extraIdx = keys.indexOf(extra.publicKey.toBase58());
+    expect(out.message.staticAccountKeys[0].equals(delegate.publicKey)).toBe(true);
+    expect(out.signatures[0].some((b) => b !== 0)).toBe(true);
+    expect(extraIdx).toBeGreaterThanOrEqual(0);
+    expect(out.signatures[extraIdx].some((b) => b !== 0)).toBe(true);
+  });
+
+  describe('versioned / address-lookup-table path', () => {
+    const lookupKey = Keypair.generate().publicKey;
+    const lookedUpAddress = Keypair.generate().publicKey;
+
+    function versionedTxWithLookup(): VersionedTransaction {
+      const payer = Keypair.generate().publicKey;
+      const lookupTable = new AddressLookupTableAccount({
+        key: lookupKey,
+        state: {
+          deactivationSlot: BigInt('18446744073709551615'),
+          lastExtendedSlot: 0,
+          lastExtendedSlotStartIndex: 0,
+          authority: payer,
+          addresses: [lookedUpAddress],
+        },
+      });
+      const message = new TransactionMessage({
+        payerKey: payer,
+        recentBlockhash: BLOCKHASH,
+        instructions: [SystemProgram.transfer({ fromPubkey: payer, toPubkey: lookedUpAddress, lamports: 1 })],
+      }).compileToV0Message([lookupTable]);
+      return new VersionedTransaction(message);
+    }
+
+    it('resolves lookup tables, decompiles, wraps and signs', async () => {
+      const tx = versionedTxWithLookup();
+      (connection as any).getAddressLookupTable = jest.fn(async (key: PublicKey) => {
+        expect(key.equals(lookupKey)).toBe(true);
+        return {
+          value: new AddressLookupTableAccount({
+            key: lookupKey,
+            state: {
+              deactivationSlot: BigInt('18446744073709551615'),
+              lastExtendedSlot: 0,
+              lastExtendedSlotStartIndex: 0,
+              authority: undefined,
+              addresses: [lookedUpAddress],
+            },
+          }),
+        };
+      });
+
+      const signer = new SwigSolanaSigner(connection, account, new LocalKeystoreDelegateSigner(delegate));
+      const out = await signer.rebuildAndSign(tx);
+
+      expect((connection as any).getAddressLookupTable).toHaveBeenCalledTimes(1);
+      // The transfer instruction was decompiled and wrapped (identity wrap).
+      expect(wrapInstructions).toHaveBeenCalledTimes(1);
+      expect(wrapInstructions.mock.calls[0][2]).toHaveLength(1);
+      expect(out).toBeInstanceOf(VersionedTransaction);
+    });
+
+    it('throws when a referenced lookup table is missing', async () => {
+      const tx = versionedTxWithLookup();
+      (connection as any).getAddressLookupTable = jest.fn(async () => ({ value: null }));
+
+      const signer = new SwigSolanaSigner(connection, account, new LocalKeystoreDelegateSigner(delegate));
+      await expect(signer.rebuildAndSign(tx)).rejects.toThrow(/Address lookup table not found/);
+    });
   });
 });
