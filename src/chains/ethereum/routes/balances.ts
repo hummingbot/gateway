@@ -17,6 +17,9 @@ export async function getEthereumBalances(
     return { balances };
   } catch (error) {
     logger.error(`Error getting balances: ${error.message}`);
+    if (error.statusCode === 429) {
+      throw error;
+    }
     throw fastify.httpErrors.internalServerError(`Failed to get balances: ${error.message}`);
   }
 }

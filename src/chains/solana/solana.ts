@@ -12,6 +12,7 @@ import {
 import { TokenInfo } from '@solana/spl-token-registry';
 import {
   Connection,
+  ConnectionConfig,
   Keypair,
   PublicKey,
   ComputeBudgetProgram,
@@ -29,6 +30,14 @@ import fse from 'fs-extra';
 
 // TODO: Replace with Fastify httpErrors
 const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
+
+// Shared Connection config. disableRetryOnRateLimit turns off web3.js' built-in
+// 429 retry so the rate-limit interceptor is the single retry layer (mirrors
+// throttleLimit: 1 on the Ethereum provider) — avoids compounding retries.
+const SOLANA_CONNECTION_CONFIG: ConnectionConfig = {
+  commitment: 'confirmed',
+  disableRetryOnRateLimit: true,
+};
 
 import { ChainstackService } from '../../rpc/chainstack-service';
 import { HeliusService } from '../../rpc/helius-service';
@@ -88,9 +97,7 @@ export class Solana {
     } else {
       // Default: use nodeURL
       this.connection = createRateLimitAwareSolanaConnection(
-        new Connection(this.config.nodeURL, {
-          commitment: 'confirmed',
-        }),
+        new Connection(this.config.nodeURL, SOLANA_CONNECTION_CONFIG),
         this.config.nodeURL,
       );
     }
@@ -106,7 +113,7 @@ export class Solana {
   private initializeChainstackProvider() {
     // Placeholder connection — swapped to the Chainstack URL in init() after discovery.
     this.connection = createRateLimitAwareSolanaConnection(
-      new Connection(this.config.nodeURL, { commitment: 'confirmed' }),
+      new Connection(this.config.nodeURL, SOLANA_CONNECTION_CONFIG),
       this.config.nodeURL,
     );
 
@@ -145,9 +152,7 @@ export class Solana {
         logger.warn(`⚠️ Helius provider selected but no valid API key configured`);
         logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.config.nodeURL)}`);
         this.connection = createRateLimitAwareSolanaConnection(
-          new Connection(this.config.nodeURL, {
-            commitment: 'confirmed',
-          }),
+          new Connection(this.config.nodeURL, SOLANA_CONNECTION_CONFIG),
           this.config.nodeURL,
         );
         return;
@@ -164,19 +169,12 @@ export class Solana {
       logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${redactUrl(rpcUrl)}`);
       logger.info(`✅ Helius API key configured (length: ${apiKey.length} chars)`);
 
-      this.connection = createRateLimitAwareSolanaConnection(
-        new Connection(rpcUrl, {
-          commitment: 'confirmed',
-        }),
-        rpcUrl,
-      );
+      this.connection = createRateLimitAwareSolanaConnection(new Connection(rpcUrl, SOLANA_CONNECTION_CONFIG), rpcUrl);
     } catch (error: any) {
       // If Helius config not found (e.g., in tests), fallback to standard RPC
       logger.warn(`Failed to initialize Helius provider: ${error.message}, falling back to standard RPC`);
       this.connection = createRateLimitAwareSolanaConnection(
-        new Connection(this.config.nodeURL, {
-          commitment: 'confirmed',
-        }),
+        new Connection(this.config.nodeURL, SOLANA_CONNECTION_CONFIG),
         this.config.nodeURL,
       );
     }
@@ -210,7 +208,7 @@ export class Solana {
           if (rpcUrl) {
             logger.info(`Using ${this.rpcProviderService.getProviderName()} RPC URL: ${redactUrl(rpcUrl)}`);
             this.connection = createRateLimitAwareSolanaConnection(
-              new Connection(rpcUrl, { commitment: 'confirmed' }),
+              new Connection(rpcUrl, SOLANA_CONNECTION_CONFIG),
               rpcUrl,
             );
           }
