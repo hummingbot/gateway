@@ -36,8 +36,17 @@ import { Solana } from '../../../src/chains/solana/solana';
 describe('Solana Rate Limit Error Propagation', () => {
   let solana: Solana;
   let mockConnection: jest.Mocked<Connection>;
+  let setTimeoutSpy: jest.SpyInstance;
 
   beforeEach(async () => {
+    setTimeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
+      if (String(callback).includes('Confirmation timed out')) {
+        return 0 as any;
+      }
+      callback();
+      return 0 as any;
+    });
+
     // Clear all instances before each test
     (Solana as any)._instances = new Map();
 
@@ -58,6 +67,7 @@ describe('Solana Rate Limit Error Propagation', () => {
   });
 
   afterEach(() => {
+    setTimeoutSpy.mockRestore();
     jest.clearAllMocks();
   });
 
