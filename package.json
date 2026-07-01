@@ -33,6 +33,8 @@
     "test:scripts": "GATEWAY_TEST_MODE=dev jest --runInBand ./test-scripts/*.test.ts",
     "typecheck": "tsc --noEmit",
     "wallet:create": "npx ts-node scripts/create-wallet.ts",
+    "swig:setup": "npx ts-node -P scripts/tsconfig.json scripts/swig/setup-swig-wallet.ts",
+    "swig:provision": "npx ts-node -P scripts/tsconfig.json scripts/swig/create-swig-wallet.ts",
     "generate:openapi": "curl http://localhost:15888/docs/json -o openapi.json && echo 'OpenAPI spec saved to openapi.json'",
     "rebuild-bigint": "cd node_modules/bigint-buffer && pnpm run rebuild",
     "prepare": "pnpm husky"

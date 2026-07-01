@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".."
+  },
+  "include": ["swig/**/*.ts", "../src/**/*.ts"],
+  "ts-node": {
+    // Load the whole program (scripts + src) so global type augmentations like
+    // @fastify/sensible's fastify.httpErrors resolve regardless of import order.
+    // Without this, ts-node compiles files one-by-one and src/wallet/utils.ts
+    // fails with "httpErrors does not exist" depending on what was loaded first.
+    "files": true
+  }
+}

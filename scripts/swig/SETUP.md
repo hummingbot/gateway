@@ -4,6 +4,29 @@ A simple, end-to-end guide to provision a Swig smart-wallet, register it with Ga
 it, and run a test swap on Meteora. See [`../../src/wallet/swig/README.md`](../../src/wallet/swig/README.md)
 for how Swig works and why.
 
+## TL;DR — one command
+
+`pnpm swig:setup` does everything below except final registration: it generates a fresh
+delegate key into the keystore, registers your Ledger as the owner (if connected), checks the
+owner's balances cover the plan, provisions the Swig on-chain, funds it, and prints the exact
+`POST /wallet/add-swig` call to finish. With a Ledger owner (recommended — connect it, open the
+Solana app, enable blind signing):
+
+```bash
+GATEWAY_PASSPHRASE=<your gateway passphrase> \
+GATEWAY_SWIG_OWNER_ADDRESS=<your Ledger Solana address> \
+GATEWAY_SWIG_RPC_URL=<your Solana mainnet RPC URL> \
+GATEWAY_SWIG_TOKEN_LIMITS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:50000000 \
+GATEWAY_SWIG_FUND_DELEGATE_SOL=0.03 \
+GATEWAY_SWIG_FUND_WALLET_TOKENS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:10000000 \
+  pnpm swig:setup
+```
+
+You approve ~4 transactions on the device, then run the printed registration call (Step 2
+below) and the test swap (Step 3). Run it with no env vars to see full usage. The manual
+step-by-step flow follows if you prefer to run each piece yourself — `pnpm swig:provision`
+is the provision-only step against a delegate key you already have.
+
 ## Security rules (read first)
 
 - **Never paste a private key or passphrase into a chat, a commit, or a log.** Secrets go in
