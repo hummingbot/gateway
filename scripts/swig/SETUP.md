@@ -33,10 +33,32 @@ USDC) — no separate funding wallet is needed.
 They must be different keys: the whole point is that the key Gateway holds (delegate) is *not*
 the key that controls everything (owner).
 
-> ⚠️ **Security note:** the owner key is currently in `conf/wallets/solana/` alongside the
-> delegate. That weakens the Swig guarantee — anyone with the passphrase + host gets *both*
-> keys and can drain everything. After you've verified the setup, **move the owner key to
-> 1Password and delete it from `conf/`** so it's truly offline.
+**Owner options** — the provisioning script accepts any of these as the owner (pick one):
+
+| Owner type | How | Safety |
+|---|---|---|
+| **Hardware (Ledger)** | `GATEWAY_SWIG_OWNER_ADDRESS=<registered Ledger pubkey>` | best — key never leaves the device |
+| **Keystore** | `GATEWAY_SWIG_OWNER_ADDRESS=<pubkey>` + `GATEWAY_PASSPHRASE=<pass>` | key stays encrypted on disk |
+| **Raw secret** | `GATEWAY_SWIG_OWNER_KEY=<base58>` | least safe — plaintext secret |
+
+> ⚠️ **Security note:** if you use the keystore owner (`DQcmx…`), that key sits in
+> `conf/wallets/solana/` next to the delegate — anyone with the passphrase + host gets *both*
+> keys. A **hardware-wallet owner avoids this entirely** (recommended). If you do use the
+> keystore owner, move it to 1Password and delete it from `conf/` once you've verified the setup.
+
+### Using a hardware wallet as owner
+
+1. **Register the Ledger** (once): connect it, open the Solana app, then
+   ```bash
+   curl -s -X POST http://localhost:15888/wallet/add-hardware \
+     -H 'Content-Type: application/json' \
+     -d '{"chain":"solana","address":"<your Ledger Solana address>"}'
+   ```
+2. **Enable blind signing** in the Ledger Solana app (the Swig create/add-delegate
+   instructions are custom-program calls the device can't decode).
+3. In Step 1 below, set `GATEWAY_SWIG_OWNER_ADDRESS=<Ledger address>` (no passphrase needed)
+   and keep the device connected — you'll **approve ~4 transactions** on it (create, add
+   delegate, fund SOL, fund USDC). The Ledger address must hold the SOL + USDC to fund.
 
 Common values used below:
 
@@ -48,12 +70,12 @@ POOL  = 2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3   (Meteora SOL/USDC CLMM)
 
 ---
 
-## Step 1 — Provision + fund the Swig (you run this, with the owner key)
+## Step 1 — Provision + fund the Swig (you run this)
 
-Run on your own machine. The owner key is read **straight from the encrypted keystore** using
-your Gateway passphrase — it never leaves the file. Only public output is printed. This **also
-funds** the delegate (SOL for fees) and the Swig wallet (USDC) from the owner, so it's the
-only owner-signed step.
+Run on your own machine. Only public output is printed. This one owner-signed step creates the
+Swig, adds the restricted delegate role, and **funds** the delegate (SOL for fees) and the Swig
+wallet (USDC) from the owner. Set the owner via one of the three options above — example here
+uses the **keystore** owner:
 
 ```bash
 GATEWAY_SWIG_OWNER_ADDRESS=DQcmxgGCEwThGCzV6NmFG2WsbUpch3HLoZAhctcgeRM9 \
@@ -67,9 +89,10 @@ GATEWAY_SWIG_FUND_WALLET_TOKENS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:100
   npx ts-node scripts/swig/create-swig-wallet.ts
 ```
 
-- The owner key is loaded from `conf/wallets/solana/DQcmx….json` via your passphrase. (If you
-  ever have it as a raw secret instead, use `GATEWAY_SWIG_OWNER_KEY=<base58>` and drop the
-  address + passphrase.)
+- **Hardware owner:** replace the first two lines with just
+  `GATEWAY_SWIG_OWNER_ADDRESS=<Ledger address>` (no passphrase), keep the device connected, and
+  approve each transaction on it.
+- The keystore owner is loaded from `conf/wallets/solana/<address>.json` via your passphrase.
 - `GATEWAY_SWIG_TOKEN_LIMITS` — the on-chain **spend cap**, `mint:amount` in base units.
   `50000000` = **50 USDC** (6 decimals) one-time cap.
 - `GATEWAY_SWIG_FUND_DELEGATE_SOL=0.03` — owner sends 0.03 SOL to the delegate for fees.

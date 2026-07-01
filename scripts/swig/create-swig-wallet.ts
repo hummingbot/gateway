@@ -11,10 +11,12 @@
  * register the printed wallet with: POST /wallet/add-swig.
  *
  * Usage (all via env so secrets never land in shell history files):
- *   # Owner, either:
- *   GATEWAY_SWIG_OWNER_ADDRESS=<owner pubkey in Gateway keystore> GATEWAY_PASSPHRASE=<pass>  # preferred: key stays encrypted
- *   # ...or a raw secret:
- *   GATEWAY_SWIG_OWNER_KEY=<base58 secret key> \
+ *   # Owner — pick ONE:
+ *   GATEWAY_SWIG_OWNER_ADDRESS=<registered hardware/Ledger pubkey>                          # best: key never leaves the device
+ *   GATEWAY_SWIG_OWNER_ADDRESS=<owner pubkey in Gateway keystore> GATEWAY_PASSPHRASE=<pass>  # key stays encrypted on disk
+ *   GATEWAY_SWIG_OWNER_KEY=<base58 secret key>                                              # raw secret (least safe)
+ *   # (a hardware owner must be added first via POST /wallet/add-hardware, connected, Solana
+ *   #  app open, blind signing enabled; you approve each tx on the device)
  *   GATEWAY_SWIG_DELEGATE_ADDRESS=<delegate pubkey already added to Gateway keystore> \
  *   GATEWAY_SWIG_NETWORK=mainnet-beta \
  *   GATEWAY_SWIG_RPC_URL=<rpc url> \
@@ -46,25 +48,78 @@ import {
 import bs58 from 'bs58';
 import fse from 'fs-extra';
 
+import { SolanaLedger } from '../../src/chains/solana/solana-ledger';
 import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
 import { decryptSecret } from '../../src/services/secure-keystore';
 import { getSwigService, SwigTokenLimit } from '../../src/wallet/swig';
-import { getSafeWalletFilePath } from '../../src/wallet/utils';
+import { getHardwareWalletByAddress, getSafeWalletFilePath } from '../../src/wallet/utils';
 
 /**
- * Load the owner keypair. Prefer the encrypted Gateway keystore (the secret never leaves the
- * file): set GATEWAY_SWIG_OWNER_ADDRESS + the Gateway passphrase (GATEWAY_PASSPHRASE env or
- * --passphrase). Fallback: GATEWAY_SWIG_OWNER_KEY as a raw base58 secret.
+ * The owner (root) authority that signs the create + add-delegate + funding transactions.
+ * It can be a software keypair (base58 or the encrypted keystore) or a hardware wallet
+ * (Ledger) — the wallet type only affects how a transaction is signed.
  */
-async function loadOwnerKeypair(): Promise<Keypair> {
+interface OwnerSigner {
+  readonly publicKey: PublicKey;
+  /** Sign the owner-only transaction and broadcast it, returning the signature. */
+  signAndSend(connection: Connection, tx: Transaction): Promise<string>;
+}
+
+/** Software owner: signs in-process with its keypair. */
+class KeypairOwnerSigner implements OwnerSigner {
+  constructor(private readonly keypair: Keypair) {}
+  get publicKey(): PublicKey {
+    return this.keypair.publicKey;
+  }
+  async signAndSend(connection: Connection, tx: Transaction): Promise<string> {
+    // sendAndConfirmTransaction fills in fee payer (signer[0]) and a recent blockhash.
+    return sendAndConfirmTransaction(connection, tx, [this.keypair]);
+  }
+}
+
+/** Hardware owner: the key never leaves the Ledger; each tx is confirmed on the device. */
+class LedgerOwnerSigner implements OwnerSigner {
+  private readonly ledger = new SolanaLedger();
+  constructor(public readonly publicKey: PublicKey) {}
+  async signAndSend(connection: Connection, tx: Transaction): Promise<string> {
+    // We sign manually, so the fee payer and blockhash must be set before signing.
+    tx.feePayer = this.publicKey;
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+    tx.recentBlockhash = blockhash;
+    const signed = (await this.ledger.signTransaction(this.publicKey.toBase58(), tx)) as Transaction;
+    const signature = await connection.sendRawTransaction(signed.serialize(), { preflightCommitment: 'confirmed' });
+    await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
+    return signature;
+  }
+}
+
+/**
+ * Resolve the owner signer. Precedence:
+ *   1. GATEWAY_SWIG_OWNER_KEY  — raw base58 secret (software).
+ *   2. GATEWAY_SWIG_OWNER_ADDRESS registered as a hardware wallet — sign on the Ledger.
+ *   3. GATEWAY_SWIG_OWNER_ADDRESS in the encrypted keystore — decrypt with the passphrase.
+ */
+async function loadOwnerSigner(): Promise<OwnerSigner> {
   const ownerKey = process.env.GATEWAY_SWIG_OWNER_KEY;
   if (ownerKey) {
-    return Keypair.fromSecretKey(Uint8Array.from(bs58.decode(ownerKey)));
+    return new KeypairOwnerSigner(Keypair.fromSecretKey(Uint8Array.from(bs58.decode(ownerKey))));
   }
   const ownerAddress = process.env.GATEWAY_SWIG_OWNER_ADDRESS;
   if (!ownerAddress) {
-    throw new Error('Set GATEWAY_SWIG_OWNER_ADDRESS (keystore) or GATEWAY_SWIG_OWNER_KEY (base58 secret)');
+    throw new Error('Set GATEWAY_SWIG_OWNER_ADDRESS (keystore or hardware) or GATEWAY_SWIG_OWNER_KEY (base58 secret)');
   }
+
+  // Hardware wallet takes precedence: if the owner address is a registered Ledger, sign on it.
+  const hardwareWallet = await getHardwareWalletByAddress('solana', ownerAddress);
+  if (hardwareWallet) {
+    console.log('Owner is a hardware wallet (Ledger).');
+    console.log('  Connect it, open the Solana app, and enable blind signing (the Swig');
+    console.log('  create/add-delegate instructions are custom-program calls). You will');
+    console.log('  approve several transactions on the device.');
+    return new LedgerOwnerSigner(new PublicKey(ownerAddress));
+  }
+
+  // Otherwise decrypt the owner keypair from the keystore with the Gateway passphrase.
   const passphrase = ConfigManagerCertPassphrase.readPassphrase();
   if (!passphrase) {
     throw new Error('Owner is in the keystore but no passphrase given (set GATEWAY_PASSPHRASE or --passphrase)');
@@ -72,7 +127,7 @@ async function loadOwnerKeypair(): Promise<Keypair> {
   const filePath = getSafeWalletFilePath('solana', ownerAddress);
   const encrypted = await fse.readFile(filePath, 'utf8');
   const decrypted = decryptSecret(encrypted, passphrase);
-  return Keypair.fromSecretKey(Uint8Array.from(bs58.decode(decrypted)));
+  return new KeypairOwnerSigner(Keypair.fromSecretKey(Uint8Array.from(bs58.decode(decrypted))));
 }
 
 // Inner programs an Orca or Meteora swap CPIs into; every one a wrapped instruction touches
@@ -124,7 +179,7 @@ async function main(): Promise<void> {
     );
   }
 
-  const owner = await loadOwnerKeypair();
+  const owner = await loadOwnerSigner();
   const delegatePublicKey = new PublicKey(delegateAddress);
   const connection = new Connection(rpcUrl, 'confirmed');
   const swigService = getSwigService();
@@ -142,7 +197,7 @@ async function main(): Promise<void> {
     ownerPublicKey: owner.publicKey,
   });
   console.log(`\nCreating Swig account ${accountAddress.toBase58()} ...`);
-  const createSig = await sendAndConfirmTransaction(connection, new Transaction().add(createInstruction), [owner]);
+  const createSig = await owner.signAndSend(connection, new Transaction().add(createInstruction));
   console.log(`  created (tx ${createSig})`);
 
   // 2. Add the restricted delegate role (signed by the owner).
@@ -154,7 +209,7 @@ async function main(): Promise<void> {
     delegatePublicKey,
     { allowedProgramIds, tokenLimits },
   );
-  const addSig = await sendAndConfirmTransaction(connection, new Transaction().add(...addInstructions), [owner]);
+  const addSig = await owner.signAndSend(connection, new Transaction().add(...addInstructions));
   console.log(`  added (tx ${addSig})`);
 
   // 3. Resolve the funds-owner address used by connectors.
@@ -173,7 +228,7 @@ async function main(): Promise<void> {
     }
     console.log(`\nFunding delegate ${delegateAddress} with ${fundDelegateSol} SOL ...`);
     const ix = SystemProgram.transfer({ fromPubkey: owner.publicKey, toPubkey: delegatePublicKey, lamports });
-    const sig = await sendAndConfirmTransaction(connection, new Transaction().add(ix), [owner]);
+    const sig = await owner.signAndSend(connection, new Transaction().add(ix));
     console.log(`  funded (tx ${sig})`);
   }
 
@@ -192,7 +247,7 @@ async function main(): Promise<void> {
       createAssociatedTokenAccountIdempotentInstruction(owner.publicKey, destAta, walletPk, mintPk, tokenProgram),
       createTransferInstruction(ownerAta, destAta, owner.publicKey, amount, [], tokenProgram),
     );
-    const sig = await sendAndConfirmTransaction(connection, tx, [owner]);
+    const sig = await owner.signAndSend(connection, tx);
     console.log(`  funded (tx ${sig})`);
   }
 
