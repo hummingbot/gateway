@@ -81,10 +81,15 @@ describe('gateway-security', () => {
   });
 
   describe('getBindAddress', () => {
-    it('defaults to loopback', () => expect(getBindAddress()).toBe('127.0.0.1'));
+    it('defaults to loopback on bare metal', () => expect(getBindAddress(false)).toBe('127.0.0.1'));
+    it('defaults to all-interfaces inside a container', () => expect(getBindAddress(true)).toBe('0.0.0.0'));
     it('honors GATEWAY_BIND_ADDRESS', () => {
       process.env.GATEWAY_BIND_ADDRESS = '0.0.0.0';
-      expect(getBindAddress()).toBe('0.0.0.0');
+      expect(getBindAddress(false)).toBe('0.0.0.0');
+    });
+    it('lets GATEWAY_BIND_ADDRESS pin loopback even inside a container', () => {
+      process.env.GATEWAY_BIND_ADDRESS = '127.0.0.1';
+      expect(getBindAddress(true)).toBe('127.0.0.1');
     });
   });
 

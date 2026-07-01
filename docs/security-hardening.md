@@ -69,19 +69,35 @@ Mapped to the four areas of #652. Ranked by value; all are ~zero-UX-cost for a l
 
 ### §4 — Bind to loopback by default (the keystone)
 
-**What:** Gateway defaults to binding `127.0.0.1`. Exposing it to the network is an
-explicit opt-in (`GATEWAY_BIND_ADDRESS`), and when exposed it **refuses to start without an
-API token** and logs a loud warning. The shipped `docker-compose.yml` publishes the port on
-the host loopback only (`127.0.0.1:15888:15888`) while the container binds `0.0.0.0`
-(required inside Docker) — so the host is not network-reachable by default.
+**What:** On bare metal Gateway defaults to binding `127.0.0.1`. **Inside a container it
+defaults to `0.0.0.0`** (auto-detected via `/.dockerenv` / `/run/.containerenv`) because a
+container that binds its own loopback is unreachable from sibling containers — e.g. the
+Hummingbot API calling `https://gateway:15888`, or any bridged client. In the container case
+the network boundary is the **host-publish policy**, not the in-container bind: the shipped
+`docker-compose.yml` publishes the port on the host loopback only (`127.0.0.1:15888:15888`),
+and the Hummingbot API publishes to loopback / an internal network with mTLS. Either bind can
+still be pinned explicitly with `GATEWAY_BIND_ADDRESS`; exposing the *host* to the network is
+the real opt-in, and when the token is enabled non-loopback traffic must present it.
 
 **Why:** This neutralizes essentially every threat above at the source — scanning bots,
 autonomous exploit chains, credential attacks, and AirSnitch MITM all require network
 reachability. For a single-user local bot it costs nothing (the bot talks to `127.0.0.1`).
 
-> **Breaking change:** deployments that *relied* on Gateway being reachable across the
-> network will need to set `GATEWAY_BIND_ADDRESS` and an API token, or (recommended) reach
-> it over Tailscale/WireGuard. That break is the point — those deployments were exposed.
+> **Breaking change (bare metal):** a host `pnpm start` that *relied* on Gateway being
+> reachable across the network will need to set `GATEWAY_BIND_ADDRESS` and enable the API
+> token, or (recommended) reach it over Tailscale/WireGuard. That break is the point — those
+> deployments were exposed. Containerized deployments (Compose, Hummingbot API) are
+> unaffected: the container keeps binding `0.0.0.0`, and exposure is governed by the
+> host-publish policy below.
+>
+> ⚠️ **Do not run Gateway with `--network host` on a public host.** Host networking collapses
+> the container into the host's network namespace, so the `0.0.0.0` container default becomes
+> reachable on *every* host interface — an in-container loopback bind cannot save you here. If
+> you must use `--network host` (Hummingbot API does this on native Linux), the port must be
+> firewalled to trusted sources, and the connection must be secured by **mTLS** (`DEV=false`,
+> client-cert required — as the Hummingbot API does) and/or a strong **non-default passphrase
+> and API token**. Prefer bridge networking with a loopback host-publish (`127.0.0.1:15888`)
+> or a VPN/overlay network for anything reachable beyond the host.
 
 ### §1 — Real API token, separate from the passphrase, constant-time compare
 

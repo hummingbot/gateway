@@ -52,6 +52,10 @@ export async function estimateGasEthereum(fastify: FastifyInstance, network: str
   } catch (error) {
     logger.error(`Error estimating gas for network ${network}: ${error.message}`);
 
+    if (error.statusCode === 429) {
+      throw error;
+    }
+
     // Check if it's a network/RPC error
     if (error.message?.includes('RPC') || error.message?.includes('network') || error.message?.includes('provider')) {
       throw fastify.httpErrors.serviceUnavailable(`RPC provider unavailable for network ${network}: ${error.message}`);
