@@ -63,7 +63,7 @@ the key that controls everything (owner).
 Common values used below:
 
 ```
-RPC   = https://greatest-virulent-water.solana-mainnet.quiknode.pro/126039d23539f652e6c848093477fcfcf5ca96d3/
+RPC   = <your Solana mainnet RPC URL>   # e.g. a private QuickNode/Helius endpoint — keep it out of version control
 USDC  = EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
 POOL  = 2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3   (Meteora SOL/USDC CLMM)
 ```
@@ -82,7 +82,7 @@ GATEWAY_SWIG_OWNER_ADDRESS=DQcmxgGCEwThGCzV6NmFG2WsbUpch3HLoZAhctcgeRM9 \
 GATEWAY_PASSPHRASE=<your gateway passphrase> \
 GATEWAY_SWIG_DELEGATE_ADDRESS=v9Ch97Dc9xwz4tkDT65LQARRFbniTK8VHCGpxa2oW8a \
 GATEWAY_SWIG_NETWORK=mainnet-beta \
-GATEWAY_SWIG_RPC_URL=https://greatest-virulent-water.solana-mainnet.quiknode.pro/126039d23539f652e6c848093477fcfcf5ca96d3/ \
+GATEWAY_SWIG_RPC_URL=<your Solana mainnet RPC URL> \
 GATEWAY_SWIG_TOKEN_LIMITS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:50000000 \
 GATEWAY_SWIG_FUND_DELEGATE_SOL=0.03 \
 GATEWAY_SWIG_FUND_WALLET_TOKENS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:10000000 \
