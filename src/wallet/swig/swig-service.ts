@@ -163,6 +163,54 @@ export class SwigService {
     });
   }
 
+  /**
+   * Build instructions that ADD programs to an existing delegate role's allowlist (e.g.
+   * enabling a new trading venue). Owner-signed admin action, same shape as
+   * buildAddTokenLimitsInstructions.
+   */
+  async buildAddProgramLimitsInstructions(
+    connection: Connection,
+    accountAddress: PublicKey,
+    ownerPublicKey: PublicKey,
+    delegatePublicKey: PublicKey,
+    programIds: string[],
+  ): Promise<TransactionInstruction[]> {
+    const sdk = this.getSdk();
+    if (programIds.length === 0) {
+      throw new Error('No program ids provided');
+    }
+    const swig = await sdk.fetchSwig(connection, accountAddress);
+    const rootRole = this.requireRole(swig, ownerPublicKey, 'owner/root');
+    const delegateRole = this.requireRole(swig, delegatePublicKey, 'delegate');
+    let builder = sdk.Actions.set();
+    for (const programId of programIds) {
+      builder = builder.programLimit({ programId });
+    }
+    const update = sdk.updateAuthorityAddActions(builder.get());
+    return sdk.getUpdateAuthorityInstructions(swig, rootRole.id, delegateRole.id, update, {
+      payer: ownerPublicKey,
+    });
+  }
+
+  /**
+   * Build instructions that REMOVE a delegate role from the Swig entirely — the kill
+   * switch for a compromised or retired delegate key. Owner-signed admin action.
+   */
+  async buildRemoveDelegateInstructions(
+    connection: Connection,
+    accountAddress: PublicKey,
+    ownerPublicKey: PublicKey,
+    delegatePublicKey: PublicKey,
+  ): Promise<TransactionInstruction[]> {
+    const sdk = this.getSdk();
+    const swig = await sdk.fetchSwig(connection, accountAddress);
+    const rootRole = this.requireRole(swig, ownerPublicKey, 'owner/root');
+    const delegateRole = this.requireRole(swig, delegatePublicKey, 'delegate');
+    return sdk.getRemoveAuthorityInstructions(swig, rootRole.id, delegateRole.id, {
+      payer: ownerPublicKey,
+    });
+  }
+
   /** Fetch the on-chain Swig account. Throws if the account does not exist. */
   async fetchSwig(connection: Connection, accountAddress: PublicKey): Promise<Swig> {
     return this.getSdk().fetchSwig(connection, accountAddress);

@@ -35,6 +35,13 @@
     "wallet:create": "npx ts-node scripts/create-wallet.ts",
     "swig:setup": "npx ts-node -P scripts/tsconfig.json scripts/swig/setup-swig-wallet.ts",
     "swig:provision": "npx ts-node -P scripts/tsconfig.json scripts/swig/create-swig-wallet.ts",
+    "swig:init": "npx ts-node -P scripts/tsconfig.json scripts/swig/init-swig.ts",
+    "swig:add-delegate": "npx ts-node -P scripts/tsconfig.json scripts/swig/add-delegate.ts",
+    "swig:allow-program": "npx ts-node -P scripts/tsconfig.json scripts/swig/allow-program.ts",
+    "swig:add-token": "npx ts-node -P scripts/tsconfig.json scripts/swig/add-token.ts",
+    "swig:fund": "npx ts-node -P scripts/tsconfig.json scripts/swig/fund.ts",
+    "swig:show": "npx ts-node -P scripts/tsconfig.json scripts/swig/show.ts",
+    "swig:revoke-delegate": "npx ts-node -P scripts/tsconfig.json scripts/swig/revoke-delegate.ts",
     "generate:openapi": "curl http://localhost:15888/docs/json -o openapi.json && echo 'OpenAPI spec saved to openapi.json'",
     "rebuild-bigint": "cd node_modules/bigint-buffer && pnpm run rebuild",
     "prepare": "pnpm husky"

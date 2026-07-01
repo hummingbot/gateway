@@ -1,162 +1,166 @@
-# Set up a Swig wallet that trades on Orca + Meteora
+# Swig wallet setup guide
 
-A simple, end-to-end guide to provision a Swig smart-wallet, register it with Gateway, fund
-it, and run a test swap on Meteora. See [`../../src/wallet/swig/README.md`](../../src/wallet/swig/README.md)
-for how Swig works and why.
+Provision a Swig smart-wallet for Gateway: a self-custodial, on-chain policy layer that lets
+Gateway trade unattended while a compromised host can only do **allowlisted swaps up to
+per-mint caps** — never drain funds. See [`../../src/wallet/swig/README.md`](../../src/wallet/swig/README.md)
+for how Swig works internally.
 
-## TL;DR — one command
+## Security rules (read first)
 
-`pnpm swig:setup` does everything below except final registration: it generates a fresh
-delegate key into the keystore, registers your Ledger as the owner (if connected), checks the
-owner's balances cover the plan, provisions the Swig on-chain, funds it, and prints the exact
-`POST /wallet/add-swig` call to finish. With a Ledger owner (recommended — connect it, open the
-Solana app, enable blind signing):
+- **Never paste a private key or passphrase into a chat, a commit, or a log.** Secrets go in
+  environment variables on your own machine only.
+- The **owner key** is your treasury key. It signs admin actions here and **never touches the
+  Gateway host**. A hardware wallet (Ledger) owner is strongly recommended.
+- If a key is ever exposed, **rotate it immediately** (see [Revoke / rotate](#revoke--rotate-the-delegate)).
+- Gateway only ever holds the **delegate** key, which is bounded on-chain — default-deny.
+
+## The three addresses
+
+| Role | Has a private key? | Where it lives | What it can do |
+|---|---|---|---|
+| **Owner / root** | yes | your Ledger (offline) | everything: admin the policy, withdraw, revoke |
+| **Delegate** | yes | Gateway keystore (`conf/wallets/solana/`, encrypted) | only allowlisted programs, only capped mints |
+| **Swig wallet** (funds owner) | **no — it's a PDA** | on-chain | holds the funds; moved only via owner or delegate |
+
+The scripts always **generate a fresh delegate key** — never reuse a trading wallet as the
+delegate; the whole point is that the key Gateway holds is not a key that controls anything else.
+
+## Prerequisites
+
+- Ledger: connected, unlocked, **Solana app open**, **blind signing enabled** (the Swig
+  instructions are custom-program calls the device can't decode).
+- The owner (Ledger) address holds enough SOL for rent/fees plus whatever you plan to fund.
+- A private Solana RPC URL (the public one rate-limits hard). **Never commit it.**
+- Common values used in the examples:
+
+```
+USDC mint          = EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v   (6 decimals: 50 USDC = 50000000)
+Meteora SOL/USDC   = 2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3   (CLMM pool for the test swap)
+```
+
+Every script reads the same base env vars; export them once per shell:
 
 ```bash
-GATEWAY_PASSPHRASE=<your gateway passphrase> \
-GATEWAY_SWIG_OWNER_ADDRESS=<your Ledger Solana address> \
-GATEWAY_SWIG_RPC_URL=<your Solana mainnet RPC URL> \
+export GATEWAY_PASSPHRASE=<your gateway passphrase>
+export GATEWAY_SWIG_OWNER_ADDRESS=<your Ledger Solana address>
+export GATEWAY_SWIG_RPC_URL=<your private Solana mainnet RPC URL>
+```
+
+> Any script run with missing inputs prints exactly what's missing and a usage example —
+> when in doubt, just run it.
+
+---
+
+## Path A — step by step (recommended)
+
+One script per owner-signed action, **one Ledger approval each**. This is the path that lets
+you evolve the policy later (add a venue, add a token, top up a cap) without re-provisioning.
+
+### Step 1 — create the Swig wallet
+
+```bash
+pnpm swig:init
+```
+
+The Ledger approves **1 transaction** (create account, owner = root). It prints the
+**Swig account (PDA)**, the **funds-owner address** (the address you fund and trade with),
+and the **base58 id** (needed at registration). Export the PDA for all following steps:
+
+```bash
+export GATEWAY_SWIG_ACCOUNT=<Swig account (PDA) printed above>
+```
+
+### Step 2 — add the delegate
+
+```bash
+pnpm swig:add-delegate
+```
+
+Generates a **fresh delegate key** encrypted into the Gateway keystore (the secret is never
+printed), then the Ledger approves **1 transaction** adding its role with a baseline policy:
+token programs only — **no venues, no spendable mints**. The delegate can do nothing yet.
+
+```bash
+export GATEWAY_SWIG_DELEGATE_ADDRESS=<delegate address printed above>
+```
+
+### Step 3 — allow trading venues
+
+```bash
+GATEWAY_SWIG_VENUES=orca,meteora pnpm swig:allow-program
+```
+
+**1 approval** no matter how many venues in the call. Presets: `orca`, `meteora`,
+`raydium-amm`, `raydium-clmm`; raw ids via `GATEWAY_SWIG_PROGRAM_IDS=<id,...>`.
+
+> **Jupiter:** no preset, on purpose. An aggregator routes through arbitrary programs, so a
+> Jupiter wallet must stay **token-cap-only** — skip this step and rely on Step 4's caps.
+
+### Step 4 — cap the tokens the delegate may spend
+
+```bash
+# 50 USDC one-time spend cap
+GATEWAY_SWIG_TOKEN_LIMITS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:50000000 pnpm swig:add-token
+```
+
+**1 approval.** Caps are **one-time allowances**: the delegate spends them down and they're
+exhausted — run this again to grant more. Base units (50 USDC with 6 decimals = `50000000`).
+An un-capped mint is hard-blocked, whatever the venue allowlist says.
+
+### Step 5 — fund it
+
+```bash
+# 0.03 SOL to the delegate (tx fees) + 10 USDC to the Swig wallet, in ONE transaction
+GATEWAY_SWIG_FUND_DELEGATE_SOL=0.03 \
+GATEWAY_SWIG_FUND_WALLET_TOKENS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:10000000 \
+  pnpm swig:fund
+```
+
+**1 approval.** The delegate needs SOL or swaps fail at fee-payer resolution; the Swig wallet
+needs the input token (within its cap). You can also just send both from any wallet.
+
+### Step 6 — verify the policy (read-only, run anytime)
+
+```bash
+GATEWAY_SWIG_TOKEN_MINTS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v pnpm swig:show
+```
+
+No signing. Prints each role, which venue programs the delegate may use, and the **remaining**
+spend cap per mint. Run it after every policy change.
+
+---
+
+## Path B — one-shot (demo convenience)
+
+`pnpm swig:setup` compresses Steps 1–5 into one command (~4 Ledger approvals): fresh delegate,
+Orca + Meteora allowlist, your caps, your funding. Same on-chain result; you just can't
+review between steps.
+
+```bash
 GATEWAY_SWIG_TOKEN_LIMITS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:50000000 \
 GATEWAY_SWIG_FUND_DELEGATE_SOL=0.03 \
 GATEWAY_SWIG_FUND_WALLET_TOKENS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:10000000 \
   pnpm swig:setup
 ```
 
-You approve ~4 transactions on the device, then run the printed registration call (Step 2
-below) and the test swap (Step 3). Run it with no env vars to see full usage. The manual
-step-by-step flow follows if you prefer to run each piece yourself — `pnpm swig:provision`
-is the provision-only step against a delegate key you already have.
-
-## Security rules (read first)
-
-- **Never paste a private key or passphrase into a chat, a commit, or a log.** Secrets go in
-  environment variables on your own machine only.
-- The **owner key** is your treasury key. It signs once here and **never touches the Gateway
-  host**. Keep it in 1Password; load it into the env var only for the moment you run step 1.
-- If a key is ever exposed, **rotate it immediately**.
-- Gateway only ever holds the **delegate** key, which is bounded on-chain (allowlisted
-  programs + per-mint spend caps) — a compromised host can only swap on the allowed venues up
-  to the caps.
-
-## What you'll end up with
-
-A Swig wallet whose delegate role allows **Orca + Meteora swaps** and can spend **USDC up to a
-cap**, signed by Gateway with a delegate key, while the owner key stays offline.
-
-## The two keys
-
-The design needs exactly two distinct keys. The **owner** also funds (it already holds SOL +
-USDC) — no separate funding wallet is needed.
-
-| Role | Address (this setup) | Where it lives |
-|---|---|---|
-| **Owner / root** — creates the wallet, admin, and funds it | `DQcmxgGCEwThGCzV6NmFG2WsbUpch3HLoZAhctcgeRM9` | encrypted in this Gateway's keystore (`conf/wallets/solana/`) |
-| **Delegate** — the key Gateway signs with, bounded on-chain | `v9Ch97Dc9xwz4tkDT65LQARRFbniTK8VHCGpxa2oW8a` | this Gateway's keystore |
-
-They must be different keys: the whole point is that the key Gateway holds (delegate) is *not*
-the key that controls everything (owner).
-
-**Owner options** — the provisioning script accepts any of these as the owner (pick one):
-
-| Owner type | How | Safety |
-|---|---|---|
-| **Hardware (Ledger)** | `GATEWAY_SWIG_OWNER_ADDRESS=<registered Ledger pubkey>` | best — key never leaves the device |
-| **Keystore** | `GATEWAY_SWIG_OWNER_ADDRESS=<pubkey>` + `GATEWAY_PASSPHRASE=<pass>` | key stays encrypted on disk |
-| **Raw secret** | `GATEWAY_SWIG_OWNER_KEY=<base58>` | least safe — plaintext secret |
-
-> ⚠️ **Security note:** if you use the keystore owner (`DQcmx…`), that key sits in
-> `conf/wallets/solana/` next to the delegate — anyone with the passphrase + host gets *both*
-> keys. A **hardware-wallet owner avoids this entirely** (recommended). If you do use the
-> keystore owner, move it to 1Password and delete it from `conf/` once you've verified the setup.
-
-### Using a hardware wallet as owner
-
-1. **Register the Ledger** (once): connect it, open the Solana app, then
-   ```bash
-   curl -s -X POST http://localhost:15888/wallet/add-hardware \
-     -H 'Content-Type: application/json' \
-     -d '{"chain":"solana","address":"<your Ledger Solana address>"}'
-   ```
-2. **Enable blind signing** in the Ledger Solana app (the Swig create/add-delegate
-   instructions are custom-program calls the device can't decode).
-3. In Step 1 below, set `GATEWAY_SWIG_OWNER_ADDRESS=<Ledger address>` (no passphrase needed)
-   and keep the device connected — you'll **approve ~4 transactions** on it (create, add
-   delegate, fund SOL, fund USDC). The Ledger address must hold the SOL + USDC to fund.
-
-Common values used below:
-
-```
-RPC   = <your Solana mainnet RPC URL>   # e.g. a private QuickNode/Helius endpoint — keep it out of version control
-USDC  = EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
-POOL  = 2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3   (Meteora SOL/USDC CLMM)
-```
+(`pnpm swig:provision` is the legacy provision-only script for a delegate key you already have.)
 
 ---
 
-## Step 1 — Provision + fund the Swig (you run this)
+## Register with Gateway
 
-Run on your own machine. Only public output is printed. This one owner-signed step creates the
-Swig, adds the restricted delegate role, and **funds** the delegate (SOL for fees) and the Swig
-wallet (USDC) from the owner. Set the owner via one of the three options above — example here
-uses the **keystore** owner:
-
-```bash
-GATEWAY_SWIG_OWNER_ADDRESS=DQcmxgGCEwThGCzV6NmFG2WsbUpch3HLoZAhctcgeRM9 \
-GATEWAY_PASSPHRASE=<your gateway passphrase> \
-GATEWAY_SWIG_DELEGATE_ADDRESS=v9Ch97Dc9xwz4tkDT65LQARRFbniTK8VHCGpxa2oW8a \
-GATEWAY_SWIG_NETWORK=mainnet-beta \
-GATEWAY_SWIG_RPC_URL=<your Solana mainnet RPC URL> \
-GATEWAY_SWIG_TOKEN_LIMITS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:50000000 \
-GATEWAY_SWIG_FUND_DELEGATE_SOL=0.03 \
-GATEWAY_SWIG_FUND_WALLET_TOKENS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:10000000 \
-  npx ts-node scripts/swig/create-swig-wallet.ts
-```
-
-- **Hardware owner:** replace the first two lines with just
-  `GATEWAY_SWIG_OWNER_ADDRESS=<Ledger address>` (no passphrase), keep the device connected, and
-  approve each transaction on it.
-- The keystore owner is loaded from `conf/wallets/solana/<address>.json` via your passphrase.
-- `GATEWAY_SWIG_TOKEN_LIMITS` — the on-chain **spend cap**, `mint:amount` in base units.
-  `50000000` = **50 USDC** (6 decimals) one-time cap.
-- `GATEWAY_SWIG_FUND_DELEGATE_SOL=0.03` — owner sends 0.03 SOL to the delegate for fees.
-- `GATEWAY_SWIG_FUND_WALLET_TOKENS=…:10000000` — owner sends **10 USDC** to the new Swig wallet
-  (base units, same convention as the cap). Omit either funding var to skip that transfer.
-- The default program allowlist already covers Orca + Meteora. Add more venues with
-  `GATEWAY_SWIG_ALLOWED_PROGRAMS=<id,id>`.
-- The owner (`DQcmx…`) pays rent + the funding transfers — it currently holds ~0.31 SOL and
-  ~266 USDC, which is plenty.
-
-It prints a JSON block like:
-
-```json
-{
-  "network": "mainnet-beta",
-  "accountAddress": "<swig PDA>",
-  "address": "<NEW SWIG WALLET ADDRESS>",
-  "ownerAddress": "DQcmxgGCEwThGCzV6NmFG2WsbUpch3HLoZAhctcgeRM9",
-  "delegateAddress": "v9Ch97Dc9xwz4tkDT65LQARRFbniTK8VHCGpxa2oW8a",
-  "id": "<base58 id>"
-}
-```
-
-**Keep that JSON** — you need it for step 2, and the `address` field is the wallet you fund and trade with.
-
----
-
-## Step 2 — Register it with Gateway
-
-Start Gateway (`pnpm start --passphrase=<your gateway passphrase>`), then POST the JSON from
-step 1, adding your Gateway passphrase:
+Start Gateway (`pnpm start --passphrase=<pass>`), then register the wallet — `swig:init` /
+`swig:setup` printed every value:
 
 ```bash
 curl -s -X POST http://localhost:15888/wallet/add-swig \
   -H 'Content-Type: application/json' \
   -d '{
     "network": "mainnet-beta",
-    "accountAddress": "<swig PDA from step 1>",
-    "ownerAddress": "DQcmxgGCEwThGCzV6NmFG2WsbUpch3HLoZAhctcgeRM9",
-    "delegateAddress": "v9Ch97Dc9xwz4tkDT65LQARRFbniTK8VHCGpxa2oW8a",
-    "id": "<id from step 1>",
+    "accountAddress": "<Swig account (PDA)>",
+    "ownerAddress": "<owner address>",
+    "delegateAddress": "<delegate address>",
+    "id": "<base58 id>",
     "passphrase": "<your gateway passphrase>"
   }'
 ```
@@ -164,22 +168,16 @@ curl -s -X POST http://localhost:15888/wallet/add-swig \
 Gateway verifies the delegate role exists on-chain and stores the mapping. A 200 with
 `"Swig wallet registered successfully"` means you're set.
 
-> Funding done in step 1: the **delegate** needs SOL or the swap fails at fee-payer resolution
-> before it ever reaches the Swig program; the **Swig wallet** needs the input token (USDC)
-> within its cap. To fund separately instead, just send those two amounts from any wallet.
+## Test swap (Meteora)
 
----
-
-## Step 3 — Test swap on Meteora
-
-Swap ~1 USDC → SOL on the Meteora SOL/USDC pool, signed through the Swig wallet:
+Swap ~1 USDC → SOL through the Swig wallet (`walletAddress` = the **funds-owner address**):
 
 ```bash
 curl -s -X POST http://localhost:15888/connectors/meteora/clmm/execute-swap \
   -H 'Content-Type: application/json' \
   -d '{
     "network": "mainnet-beta",
-    "walletAddress": "<new Swig address>",
+    "walletAddress": "<funds-owner address>",
     "baseToken": "SOL",
     "quoteToken": "USDC",
     "amount": 1,
@@ -189,8 +187,34 @@ curl -s -X POST http://localhost:15888/connectors/meteora/clmm/execute-swap \
   }'
 ```
 
-`side: SELL` here sells the quote (USDC) for the base (SOL). A 200 with a `signature` and
-`status: 1` (CONFIRMED) means **Swig + Meteora works**. Look the signature up on Solscan.
+A 200 with a `signature` and `status: 1` (CONFIRMED) means the whole chain works. Look the
+signature up on Solscan; then `pnpm swig:show` to watch the USDC cap tick down.
+
+---
+
+## Ongoing policy management
+
+Each is **one Ledger approval**, applied to the live wallet — no re-provisioning:
+
+| I want to… | Run |
+|---|---|
+| Add a venue (e.g. Raydium CLMM) | `GATEWAY_SWIG_VENUES=raydium-clmm pnpm swig:allow-program` |
+| Enable a new token | `GATEWAY_SWIG_TOKEN_LIMITS=<mint>:<cap> pnpm swig:add-token` |
+| Top up an exhausted cap | same `swig:add-token` call again |
+| Top up funds | `pnpm swig:fund` |
+| Audit what's allowed right now | `pnpm swig:show` (read-only) |
+
+### Revoke / rotate the delegate
+
+If the Gateway host may be compromised, or to rotate keys:
+
+```bash
+pnpm swig:revoke-delegate      # 1 approval — the delegate immediately loses all access
+```
+
+Then remove the registration (`DELETE /wallet/remove-swig`), delete the old key file from
+`conf/wallets/solana/`, and re-run Steps 2–4 for a new delegate. Funds in the Swig wallet
+are untouched throughout — only the owner can move them out.
 
 ---
 
@@ -198,11 +222,14 @@ curl -s -X POST http://localhost:15888/connectors/meteora/clmm/execute-swap \
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `custom program error: 0xbbe` | a program the swap touches isn't on the delegate allowlist | re-provision (step 1) with that program id in `GATEWAY_SWIG_ALLOWED_PROGRAMS` |
-| `AccountNotFound` / fails before any program logs | delegate has 0 SOL (can't pay fees) | fund the delegate with SOL (step 1's `GATEWAY_SWIG_FUND_DELEGATE_SOL`) |
-| swap reverts on the token transfer | input mint not capped, or cap too low | re-provision with the mint in `GATEWAY_SWIG_TOKEN_LIMITS`, or raise the cap |
-| `Swig wallet not registered for address` | step 2 skipped or wrong `address` | register the wallet's funds-owner `address` from step 1 |
-| `No delegate role found` at register | wrong `delegateAddress`, or provisioning didn't finish | re-check step 1 output; the delegate must match |
+| script exits asking for env vars | missing input | it lists exactly what to set; copy the printed example |
+| `Ledger device is locked` | device locked / wrong app | unlock, open the Solana app |
+| approval fails on device | blind signing off | enable blind signing in the Solana app settings |
+| `custom program error: 0xbbe` | swap touches a program not on the allowlist | `pnpm swig:allow-program` with that venue/program id |
+| `AccountNotFound` / fails before program logs | delegate has 0 SOL | `pnpm swig:fund` with `GATEWAY_SWIG_FUND_DELEGATE_SOL` |
+| swap reverts on the token transfer | input mint un-capped or cap exhausted | `pnpm swig:add-token` for that mint |
+| `Swig wallet not registered for address` | registration skipped or wrong address | register the **funds-owner address** from `swig:init` |
+| `No delegate role found` | wrong delegate address, or role was revoked | check `pnpm swig:show`; re-add if needed |
 
-To inspect what a wallet's delegate role actually allows, fetch the Swig account and call
-`actions.canUseProgram(...)` / `actions.canSpendToken(...)` (see `SwigService`).
+`pnpm swig:show` is the first stop for any policy question — it prints what the on-chain role
+actually allows right now.

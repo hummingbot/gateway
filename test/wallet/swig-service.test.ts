@@ -44,6 +44,20 @@ describe('SwigService', () => {
     expect(service.requireRole(fakeSwig, signer, 'delegate')).toBe(role);
   });
 
+  it('buildAddProgramLimitsInstructions rejects an empty program list before touching the chain', async () => {
+    const conn: any = {
+      getAccountInfo: jest.fn(() => {
+        throw new Error('should not fetch');
+      }),
+    };
+    const owner = Keypair.generate().publicKey;
+    const delegate = Keypair.generate().publicKey;
+    await expect(service.buildAddProgramLimitsInstructions(conn, owner, owner, delegate, [])).rejects.toThrow(
+      /No program ids provided/,
+    );
+    expect(conn.getAccountInfo).not.toHaveBeenCalled();
+  });
+
   it('buildAddTokenLimitsInstructions rejects an empty token-limit list before touching the chain', async () => {
     const conn: any = {
       // fail loudly if the route reached the chain despite an empty list
