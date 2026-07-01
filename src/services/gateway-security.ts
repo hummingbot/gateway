@@ -90,8 +90,27 @@ export function loadOrCreateApiKey(confDir: string): string {
   return key;
 }
 
-/** The configured bind address (default loopback). Set GATEWAY_BIND_ADDRESS to expose. */
-export function getBindAddress(): string {
+/**
+ * True when Gateway is running inside a container (Docker/Podman). Uses the same markers the
+ * Hummingbot API relies on, so the two stay in agreement about the deployment shape.
+ */
+export function isRunningInContainer(): boolean {
+  return existsSync('/.dockerenv') || existsSync('/run/.containerenv');
+}
+
+/**
+ * The configured bind address. Precedence:
+ *   1. GATEWAY_BIND_ADDRESS — explicit override always wins.
+ *   2. 0.0.0.0 when running inside a container — the container must be reachable from sibling
+ *      containers (e.g. the Hummingbot API calling `https://gateway:15888`, or a bridged
+ *      client). Inside a container the network boundary is the HOST-PUBLISH policy (Gateway's
+ *      own docker-compose publishes to 127.0.0.1 on the host; the Hummingbot API publishes to
+ *      loopback / an internal network) plus mTLS and the API token — NOT an in-container
+ *      loopback bind, which would make Gateway unreachable and is what §4 originally regressed.
+ *   3. 127.0.0.1 on bare metal — the §4 loopback-by-default control for a host `pnpm start`.
+ */
+export function getBindAddress(inContainer: boolean = isRunningInContainer()): string {
   const fromEnv = process.env.GATEWAY_BIND_ADDRESS?.trim();
-  return fromEnv && fromEnv.length > 0 ? fromEnv : '127.0.0.1';
+  if (fromEnv && fromEnv.length > 0) return fromEnv;
+  return inContainer ? '0.0.0.0' : '127.0.0.1';
 }

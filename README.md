@@ -178,10 +178,14 @@ Gateway holds wallet private keys and exposes fund-moving endpoints, so treat it
 wallet. See **[docs/security-hardening.md](docs/security-hardening.md)** for the full threat
 model and rationale. Essentials:
 
-- **Keep Gateway on localhost.** It binds to `127.0.0.1` by default and is not reachable from
-  your network. To expose it deliberately, set `GATEWAY_BIND_ADDRESS=0.0.0.0`, enable the API
-  token (`GATEWAY_REQUIRE_AUTH=true`, then send `Authorization: Bearer <conf/api-key>` from
-  your client), and ideally reach it over a VPN/Tailscale rather than a public port. Never run
+- **Keep Gateway on localhost.** A bare-metal run binds to `127.0.0.1` by default and is not
+  reachable from your network. (Inside a container it binds `0.0.0.0` so sibling containers can
+  reach it — exposure is then governed by how the port is published: the shipped
+  `docker-compose.yml` publishes to `127.0.0.1:15888` only. **Never** run the container with
+  `--network host` on a public host without mTLS/token + a firewall.) To expose a bare-metal
+  Gateway deliberately, set `GATEWAY_BIND_ADDRESS=0.0.0.0`, enable the API token
+  (`GATEWAY_REQUIRE_AUTH=true`, then send `Authorization: Bearer <conf/api-key>` from your
+  client), and ideally reach it over a VPN/Tailscale rather than a public port. Never run
   `--dev` (HTTP) on an untrusted network (e.g. public WiFi).
 - **Use a strong passphrase.** The Gateway passphrase encrypts your wallet keys at rest
   (scrypt + AES-256-GCM). A weak passphrase (e.g. `a`) can be brute-forced in seconds if a key
