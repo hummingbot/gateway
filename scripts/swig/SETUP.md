@@ -97,7 +97,12 @@ pnpm swig:add-delegate
 
 Generates a **fresh delegate key** encrypted into the Gateway keystore (the secret is never
 printed), then the Ledger approves **1 transaction** adding its role with a baseline policy:
-token programs only — **no venues, no spendable mints**. The delegate can do nothing yet.
+token + System programs only — **no venues, no spendable mints, no SOL cap**. The delegate
+can do nothing yet. (System is in the baseline because native-SOL wraps and position rent
+need it; it moves nothing until you grant a SOL cap, which is the actual bound.)
+
+> Wallets provisioned before System was in the baseline need it added for liquidity
+> operations: `GATEWAY_SWIG_PROGRAM_IDS=11111111111111111111111111111111 pnpm swig:allow-program`
 
 ```bash
 export GATEWAY_SWIG_DELEGATE_ADDRESS=<delegate address printed above>
@@ -353,6 +358,7 @@ wider one on another.
 | `custom program error: 0xbbe` before the swap logs | swap touches a program not on the allowlist | `pnpm swig:allow-program` with that venue/program id |
 | `0xbbe` AFTER the swap fully executed in the logs | wallet paid lamports (ATA rent, SOL wrap) but the role has no SOL cap | `GATEWAY_SWIG_SOL_LIMIT=0.1 pnpm swig:add-token` |
 | `0x7d0` (ConstraintMut) on Meteora BUY swaps | DLMM SDK marks `binArrayBitmapExtension` read-only; fixed in Gateway ≥ this branch | update Gateway / rebuild |
+| Orca `close-position` fails with `SBF program panicked` (`range end index 64 out of range for slice of length 0`) | **upstream Swig program bug**: a wrapped tx cannot close a wallet token account that existed before the tx, and Orca's close burns the pre-existing position-NFT account | use `remove-liquidity` (works — funds recovered); the empty position shell (~0.01 SOL rent) stays until the Swig program is fixed |
 | `AccountNotFound` / fails before program logs | delegate has 0 SOL | `pnpm swig:fund` with `GATEWAY_SWIG_FUND_DELEGATE_SOL` |
 | `InsufficientFundsForRent {account_index: 0}` in simulation, or `TRANSACTION_TIMEOUT` with the tx never landing | Swig wallet PDA has no SOL headroom (created at exactly the rent floor) | `pnpm swig:fund` with `GATEWAY_SWIG_FUND_WALLET_SOL=0.01` |
 | swap reverts on the token transfer | input mint un-capped or cap exhausted | `pnpm swig:add-token` for that mint |

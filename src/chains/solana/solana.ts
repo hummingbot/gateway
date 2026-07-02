@@ -2324,7 +2324,8 @@ export class Solana {
     checkBalance: boolean = false,
   ): Promise<TransactionInstruction[]> {
     const instructions: TransactionInstruction[] = [];
-    const wsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, walletPubkey, false, tokenProgram);
+    // allowOwnerOffCurve: the wallet may be an off-curve PDA (Swig funds owner).
+    const wsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, walletPubkey, true, tokenProgram);
 
     // Check if WSOL account exists
     const accountInfo = await this.connection.getAccountInfo(wsolAccount);
@@ -2372,7 +2373,8 @@ export class Solana {
    * @returns Instruction to close WSOL account and return SOL
    */
   public unwrapSOL(walletPubkey: PublicKey, tokenProgram: PublicKey = TOKEN_PROGRAM_ID): TransactionInstruction {
-    const wsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, walletPubkey, false, tokenProgram);
+    // allowOwnerOffCurve: the wallet may be an off-curve PDA (Swig funds owner).
+    const wsolAccount = getAssociatedTokenAddressSync(NATIVE_MINT, walletPubkey, true, tokenProgram);
     return createCloseAccountInstruction(wsolAccount, walletPubkey, walletPubkey, [], tokenProgram);
   }
 

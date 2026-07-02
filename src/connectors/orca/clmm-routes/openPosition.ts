@@ -114,13 +114,13 @@ async function addLiquidityInstructions(
   const tokenOwnerAccountA = getAssociatedTokenAddressSync(
     whirlpool.getTokenAInfo().address,
     client.getContext().wallet.publicKey,
-    undefined,
+    true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
     mintA.tokenProgram,
   );
   const tokenOwnerAccountB = getAssociatedTokenAddressSync(
     whirlpool.getTokenBInfo().address,
     client.getContext().wallet.publicKey,
-    undefined,
+    true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
     mintB.tokenProgram,
   );
 
@@ -143,7 +143,7 @@ async function addLiquidityInstructions(
       positionTokenAccount: getAssociatedTokenAddressSync(
         positionMintKeypair.publicKey,
         client.getContext().wallet.publicKey,
-        undefined,
+        true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
         TOKEN_2022_PROGRAM_ID,
       ),
       tokenMintA: whirlpool.getTokenAInfo().address,
@@ -320,13 +320,13 @@ export async function openPosition(
     const tokenOwnerAccountA = getAssociatedTokenAddressSync(
       whirlpool.getTokenAInfo().address,
       client.getContext().wallet.publicKey,
-      undefined,
+      true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
       mintA.tokenProgram,
     );
     const tokenOwnerAccountB = getAssociatedTokenAddressSync(
       whirlpool.getTokenBInfo().address,
       client.getContext().wallet.publicKey,
-      undefined,
+      true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
       mintB.tokenProgram,
     );
 
@@ -394,7 +394,7 @@ export async function openPosition(
       positionTokenAccount: getAssociatedTokenAddressSync(
         positionMintKeypair.publicKey,
         client.getContext().wallet.publicKey,
-        undefined,
+        true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
         TOKEN_2022_PROGRAM_ID,
       ),
       withTokenMetadataExtension: true,
@@ -426,13 +426,13 @@ export async function openPosition(
     const tokenOwnerAccountA = getAssociatedTokenAddressSync(
       whirlpool.getTokenAInfo().address,
       client.getContext().wallet.publicKey,
-      undefined,
+      true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
       mintA.tokenProgram,
     );
     const tokenOwnerAccountB = getAssociatedTokenAddressSync(
       whirlpool.getTokenBInfo().address,
       client.getContext().wallet.publicKey,
-      undefined,
+      true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
       mintB.tokenProgram,
     );
 
@@ -486,7 +486,7 @@ export async function openPosition(
     const positionTokenAccount = getAssociatedTokenAddressSync(
       positionMintKeypair.publicKey,
       client.getContext().wallet.publicKey,
-      undefined,
+      true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
       TOKEN_2022_PROGRAM_ID,
     );
     const rentAccounts: PublicKey[] = [

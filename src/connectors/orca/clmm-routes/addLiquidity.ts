@@ -155,13 +155,13 @@ export async function addLiquidity(
   const tokenOwnerAccountA = getAssociatedTokenAddressSync(
     whirlpool.getTokenAInfo().address,
     client.getContext().wallet.publicKey,
-    undefined,
+    true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
     mintA.tokenProgram,
   );
   const tokenOwnerAccountB = getAssociatedTokenAddressSync(
     whirlpool.getTokenBInfo().address,
     client.getContext().wallet.publicKey,
-    undefined,
+    true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
     mintB.tokenProgram,
   );
 
@@ -200,7 +200,7 @@ export async function addLiquidity(
       positionTokenAccount: getAssociatedTokenAddressSync(
         positionData.positionMint,
         client.getContext().wallet.publicKey,
-        undefined,
+        true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
         positionMint.tokenProgram,
       ),
       tickArrayLower: lower,

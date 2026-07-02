@@ -69,13 +69,13 @@ export async function closePosition(
   const tokenOwnerAccountA = getAssociatedTokenAddressSync(
     whirlpool.getTokenAInfo().address,
     client.getContext().wallet.publicKey,
-    undefined,
+    true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
     mintA.tokenProgram,
   );
   const tokenOwnerAccountB = getAssociatedTokenAddressSync(
     whirlpool.getTokenBInfo().address,
     client.getContext().wallet.publicKey,
-    undefined,
+    true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
     mintB.tokenProgram,
   );
 
@@ -143,7 +143,7 @@ export async function closePosition(
         positionTokenAccount: getAssociatedTokenAddressSync(
           position.getData().positionMint,
           client.getContext().wallet.publicKey,
-          undefined,
+          true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
           positionMint.tokenProgram,
         ),
         tickArrayLower: lower,
@@ -190,7 +190,7 @@ export async function closePosition(
         positionTokenAccount: getAssociatedTokenAddressSync(
           position.getData().positionMint,
           client.getContext().wallet.publicKey,
-          undefined,
+          true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
           positionMint.tokenProgram,
         ),
         tokenOwnerAccountA,
@@ -252,7 +252,7 @@ export async function closePosition(
       positionTokenAccount: getAssociatedTokenAddressSync(
         position.getData().positionMint,
         client.getContext().wallet.publicKey,
-        undefined,
+        true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
         isToken2022 ? TOKEN_2022_PROGRAM_ID : undefined,
       ),
       positionMint: position.getData().positionMint,
@@ -285,7 +285,7 @@ export async function closePosition(
     const positionTokenAccount = getAssociatedTokenAddressSync(
       positionMintPubkey,
       client.getContext().wallet.publicKey,
-      undefined,
+      true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
       isToken2022 ? TOKEN_2022_PROGRAM_ID : undefined,
     );
     const rentAccounts: PublicKey[] = [positionMintPubkey, positionPubkey, positionTokenAccount];

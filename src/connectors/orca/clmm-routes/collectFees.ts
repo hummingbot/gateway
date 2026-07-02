@@ -77,13 +77,13 @@ export async function collectFees(
   const tokenOwnerAccountA = getAssociatedTokenAddressSync(
     whirlpool.getTokenAInfo().address,
     client.getContext().wallet.publicKey,
-    undefined,
+    true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
     mintA.tokenProgram,
   );
   const tokenOwnerAccountB = getAssociatedTokenAddressSync(
     whirlpool.getTokenBInfo().address,
     client.getContext().wallet.publicKey,
-    undefined,
+    true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
     mintB.tokenProgram,
   );
 
@@ -127,7 +127,7 @@ export async function collectFees(
       positionTokenAccount: getAssociatedTokenAddressSync(
         position.getData().positionMint,
         client.getContext().wallet.publicKey,
-        undefined,
+        true, // allowOwnerOffCurve — the wallet may be an off-curve Swig PDA
         positionMint.tokenProgram,
       ),
       tokenOwnerAccountA,

@@ -69,12 +69,16 @@ function loadSwigEnvFile(): void {
 loadSwigEnvFile();
 
 // Every venue's swap CPIs into the token/ATA programs, so a delegate role always needs
-// these. On their own they let the delegate move nothing: default-deny still holds because
-// no mint is capped and no venue program is allowed yet.
+// these. System is required for native-SOL wraps and position rent (any wallet-paid
+// lamport transfer) — harmless on its own because every lamport debit is still tallied
+// against the role's SOL cap, and with no cap set the Swig program blocks it anyway.
+// On their own these programs let the delegate move nothing: default-deny still holds
+// because no mint is capped, no SOL cap is set, and no venue program is allowed yet.
 export const BASE_TOKEN_PROGRAMS = [
   'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', // SPL Token
   'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb', // SPL Token-2022 (USDM1)
   'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL', // Associated Token Account
+  '11111111111111111111111111111111', // System (wraps + rent; bounded by the SOL cap)
 ];
 
 // Named venue → program ids for the delegate allowlist. Every program a wrapped instruction
