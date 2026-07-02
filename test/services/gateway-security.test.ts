@@ -8,7 +8,9 @@ import {
   getBindAddress,
   isExposedHost,
   isLoopbackAddress,
+  isPrivateNetworkAddress,
   isSensitivePath,
+  isTrustedLocalAddress,
   loadOrCreateApiKey,
 } from '../../src/services/gateway-security';
 
@@ -32,6 +34,48 @@ describe('gateway-security', () => {
     expect(isExposedHost('::1')).toBe(false);
     expect(isExposedHost('0.0.0.0')).toBe(true);
     expect(isExposedHost('192.168.1.5')).toBe(true);
+  });
+
+  describe('isPrivateNetworkAddress', () => {
+    it.each([
+      '10.0.0.3',
+      '10.255.255.255',
+      '172.16.0.1',
+      '172.18.0.2', // typical docker-compose bridge
+      '172.31.255.254',
+      '192.168.1.5',
+      '::ffff:172.18.0.2', // IPv4-mapped IPv6 (Node/Fastify form)
+      'fd00::1', // IPv6 unique-local (docker IPv6 bridge)
+      'fc00::abcd',
+    ])('true for %s', (ip) => {
+      expect(isPrivateNetworkAddress(ip)).toBe(true);
+    });
+    it.each([
+      '8.8.8.8',
+      '1.1.1.1',
+      '172.15.0.1', // just below the /12
+      '172.32.0.1', // just above the /12
+      '193.168.1.1', // not 192.168
+      '11.0.0.0', // not 10/8
+      '127.0.0.1', // loopback is not "private-network" here
+      'fe80::1', // link-local, deliberately excluded
+      '2001:4860:4860::8888', // public IPv6
+      undefined,
+    ])('false for %s', (ip) => {
+      expect(isPrivateNetworkAddress(ip as any)).toBe(false);
+    });
+  });
+
+  describe('isTrustedLocalAddress (rate-limit allowlist)', () => {
+    it.each(['127.0.0.1', '::1', '::ffff:127.0.0.1', '10.0.0.5', '172.18.0.2', '192.168.0.9', 'fd00::2'])(
+      'true for %s (loopback or private/bridge)',
+      (ip) => {
+        expect(isTrustedLocalAddress(ip)).toBe(true);
+      },
+    );
+    it.each(['8.8.8.8', '203.0.113.7', '2001:4860:4860::8888', undefined])('false for public %s', (ip) => {
+      expect(isTrustedLocalAddress(ip as any)).toBe(false);
+    });
   });
 
   describe('isSensitivePath', () => {

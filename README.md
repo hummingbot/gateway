@@ -193,6 +193,10 @@ wallet. Essentials:
   is backed up.
 - **Treat the trading bot/agent as an untrusted client** — keep private keys out of its
   context; Gateway signs internally and never returns raw keys.
+- **Rate limiting** (100 req/min, escalating to a temporary lockout) applies only to
+  **public/untrusted** sources. A co-located bot is exempt: loopback (bare-metal same host) and
+  private/container-network addresses (a sibling container over the Docker bridge, e.g. `172.x`)
+  are trusted and never throttled, so normal bot polling is never rate-limited.
 
 ## Installation from Source
 
