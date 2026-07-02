@@ -35,6 +35,7 @@ import {
   isExposedHost,
   isLoopbackAddress,
   isSensitivePath,
+  isTrustedLocalAddress,
   loadOrCreateApiKey,
 } from './services/gateway-security';
 import { logger } from './services/logger';
@@ -176,15 +177,18 @@ const configureGatewayServer = () => {
     docsServer.withTypeProvider<TypeBoxTypeProvider>();
   }
 
-  // Register rate limiting globally. Loopback (the local bot) is never rate-limited, so
-  // there is zero impact on normal local use; network clients are limited and repeat
-  // abusers are temporarily banned (429 -> 403). (hummingbot/gateway#652 §2)
+  // Register rate limiting globally. Trusted-local clients (the local bot on loopback, or a
+  // sibling container/LAN host on a private-network address) are never rate-limited, so there
+  // is zero impact on a co-located Hummingbot bot — including the standard Docker deployment
+  // where the bot reaches Gateway over the compose bridge (a 172.x/10.x source, not loopback).
+  // Public/untrusted clients are limited and repeat abusers are temporarily banned (429 ->
+  // 403). (hummingbot/gateway#652 §2)
   server.register(fastifyRateLimit, {
     max: 100, // maximum 100 requests
     timeWindow: '1 minute', // per 1 minute window
     global: true, // apply to all routes
     ban: 4, // after exceeding the limit repeatedly, temporarily lock the source out (403)
-    allowList: (request) => isLoopbackAddress(request.ip),
+    allowList: (request) => isTrustedLocalAddress(request.ip),
     errorResponseBuilder: function (_request, context) {
       return {
         statusCode: 429,

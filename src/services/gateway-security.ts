@@ -32,6 +32,42 @@ export function isExposedHost(host: string): boolean {
   return !isLoopbackAddress(host);
 }
 
+/**
+ * True for RFC1918 private ranges (10/8, 172.16/12, 192.168/16) and IPv6 unique-local
+ * (fc00::/7) — i.e. a request that arrived over a private/container network rather than the
+ * public internet. This is the address a co-located bot uses to reach Gateway: in the standard
+ * Docker deployment the Hummingbot API calls `gateway:15888` over the compose bridge, so its
+ * source IP is the bridge's private address (e.g. 172.18.0.x), NOT loopback.
+ */
+export function isPrivateNetworkAddress(ip: string | undefined): boolean {
+  if (!ip) return false;
+  let addr = ip.toLowerCase().trim();
+  // Normalize IPv4-mapped IPv6 (e.g. ::ffff:172.18.0.2) to its IPv4 form.
+  if (addr.startsWith('::ffff:')) addr = addr.slice('::ffff:'.length);
+  // IPv6 unique-local addresses (fc00::/7) — Docker's default IPv6 bridge subnet.
+  if (/^f[cd][0-9a-f]*:/.test(addr)) return true;
+  const m = addr.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!m) return false;
+  const [a, b] = [Number(m[1]), Number(m[2])];
+  if (a === 10) return true; // 10.0.0.0/8
+  if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
+  if (a === 192 && b === 168) return true; // 192.168.0.0/16
+  return false;
+}
+
+/**
+ * Clients trusted enough to skip the global rate limit: loopback plus the private/container
+ * network. The rate limiter exists to throttle UNTRUSTED public clients; a co-located bot
+ * (same host via loopback, or a sibling container over the bridge) is inside the trust
+ * boundary that access control (opt-in API token + bind policy + mTLS) already governs, so it
+ * must not be throttled. Public-internet sources still get the limit. NOTE: this is NOT used
+ * for auth — API-token auth stays loopback-only so enabling it still forces a bridged client
+ * to present the token.
+ */
+export function isTrustedLocalAddress(ip: string | undefined): boolean {
+  return isLoopbackAddress(ip) || isPrivateNetworkAddress(ip);
+}
+
 /** Path prefixes that move funds or reveal/modify secrets — gated behind auth when exposed. */
 const SENSITIVE_PREFIXES = [/^\/wallet(\/|$)/, /^\/config\/update(\/|$)/, /^\/restart(\/|$)/];
 const SENSITIVE_CONNECTOR = /^\/connectors\/[^/]+\/(amm|clmm|router)\/(execute|add|remove|open|close|collect)/i;
