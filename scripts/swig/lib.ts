@@ -242,6 +242,16 @@ export function requirePassphrase(): string {
   return passphrase;
 }
 
+/** Parse GATEWAY_SWIG_SOL_LIMIT (whole SOL) into lamports, or undefined if unset. */
+export function parseSolLimitLamports(raw: string | undefined): bigint | undefined {
+  if (!raw) return undefined;
+  const lamports = Math.round(Number(raw) * LAMPORTS_PER_SOL);
+  if (!Number.isFinite(lamports) || lamports <= 0) {
+    throw new Error(`Invalid GATEWAY_SWIG_SOL_LIMIT: ${raw}`);
+  }
+  return BigInt(lamports);
+}
+
 export function parseTokenLimits(raw: string | undefined): SwigTokenLimit[] {
   if (!raw) return [];
   return raw.split(',').map((entry) => {
@@ -330,8 +340,12 @@ export interface ProvisionParams {
   connection: Connection;
   allowedProgramIds: string[];
   tokenLimits: SwigTokenLimit[];
+  /** One-time SOL cap (lamports) for wallet-paid rent/wraps; omit and SOL-touching swaps fail 0xbbe. */
+  solLimitLamports?: bigint;
   /** Owner sends this much SOL to the delegate for fees (optional). */
   fundDelegateSol?: string;
+  /** Owner sends this much SOL to the Swig wallet as rent/wrap headroom (optional). */
+  fundWalletSol?: string;
   /** Owner sends these tokens (base units) to the new Swig wallet (optional). */
   fundWalletTokens?: SwigTokenLimit[];
 }
@@ -376,7 +390,7 @@ export async function provisionSwig(params: ProvisionParams): Promise<ProvisionR
     accountAddress,
     owner.publicKey,
     delegatePublicKey,
-    { allowedProgramIds, tokenLimits },
+    { allowedProgramIds, tokenLimits, solLimitLamports: params.solLimitLamports },
   );
   const addSig = await owner.signAndSend(connection, new Transaction().add(...addInstructions));
   console.log(`  added (tx ${addSig})`);
@@ -395,6 +409,19 @@ export async function provisionSwig(params: ProvisionParams): Promise<ProvisionR
     }
     console.log(`\nFunding delegate ${delegatePublicKey.toBase58()} with ${params.fundDelegateSol} SOL ...`);
     const ix = SystemProgram.transfer({ fromPubkey: owner.publicKey, toPubkey: delegatePublicKey, lamports });
+    const sig = await owner.signAndSend(connection, new Transaction().add(ix));
+    console.log(`  funded (tx ${sig})`);
+  }
+
+  if (params.fundWalletSol) {
+    // The wallet PDA starts at exactly the rent-exempt floor; without headroom, DEX SDK
+    // simulations (which use the wallet as payer) fail with InsufficientFundsForRent.
+    const lamports = Math.round(Number(params.fundWalletSol) * LAMPORTS_PER_SOL);
+    if (!Number.isFinite(lamports) || lamports <= 0) {
+      throw new Error(`Invalid GATEWAY_SWIG_FUND_WALLET_SOL: ${params.fundWalletSol}`);
+    }
+    console.log(`\nFunding Swig wallet ${walletAddress} with ${params.fundWalletSol} SOL headroom ...`);
+    const ix = SystemProgram.transfer({ fromPubkey: owner.publicKey, toPubkey: walletPk, lamports });
     const sig = await owner.signAndSend(connection, new Transaction().add(ix));
     console.log(`  funded (tx ${sig})`);
   }
@@ -438,6 +465,7 @@ export async function buildFundTransaction(
   swigWalletPk: PublicKey,
   fundDelegateSol: string | undefined,
   fundWalletTokens: SwigTokenLimit[],
+  fundWalletSol?: string,
 ): Promise<Transaction | null> {
   const tx = new Transaction();
   if (fundDelegateSol) {
@@ -450,6 +478,17 @@ export async function buildFundTransaction(
     }
     console.log(`  + send ${fundDelegateSol} SOL to delegate ${delegatePk.toBase58()}`);
     tx.add(SystemProgram.transfer({ fromPubkey: ownerPk, toPubkey: delegatePk, lamports }));
+  }
+  if (fundWalletSol) {
+    // The Swig funds-owner PDA is created holding exactly the rent-exempt minimum. DEX SDKs
+    // simulate with the wallet as payer, so without SOL headroom every simulation fails with
+    // InsufficientFundsForRent — native-SOL wraps need real balance too.
+    const lamports = Math.round(Number(fundWalletSol) * LAMPORTS_PER_SOL);
+    if (!Number.isFinite(lamports) || lamports <= 0) {
+      throw new Error(`Invalid GATEWAY_SWIG_FUND_WALLET_SOL: ${fundWalletSol}`);
+    }
+    console.log(`  + send ${fundWalletSol} SOL to Swig wallet ${swigWalletPk.toBase58()}`);
+    tx.add(SystemProgram.transfer({ fromPubkey: ownerPk, toPubkey: swigWalletPk, lamports }));
   }
   for (const { mint, amount } of fundWalletTokens) {
     const mintPk = new PublicKey(mint);
@@ -506,6 +545,10 @@ export async function printPolicy(
     const allowed = probePrograms.filter(([, id]) => actions.canUseProgram(new PublicKey(id)));
     console.log(
       `  Programs allowed: ${allowed.length ? allowed.map(([v, id]) => `${v} (${id})`).join(', ') : '(none probed positive)'}`,
+    );
+    const solLimit = actions.solSpendLimit?.();
+    console.log(
+      `  SOL cap: ${solLimit === undefined || solLimit === null ? 'NONE — wallet-paid rent/wraps will fail (grant via GATEWAY_SWIG_SOL_LIMIT on swig:add-token)' : `${Number(solLimit) / 1e9} SOL remaining`}`,
     );
     for (const mint of mints) {
       const limit = actions.tokenSpendLimit?.(new PublicKey(mint));

@@ -8,6 +8,7 @@
  *   GATEWAY_SWIG_RPC_URL=<rpc url> \
  *   [GATEWAY_SWIG_DELEGATE_ADDRESS=<delegate pubkey>] \   # required with FUND_DELEGATE_SOL
  *   [GATEWAY_SWIG_FUND_DELEGATE_SOL=0.03] \
+ *   [GATEWAY_SWIG_FUND_WALLET_SOL=0.01] \                 # SOL headroom for the wallet PDA (sims/wraps)
  *   [GATEWAY_SWIG_FUND_WALLET_TOKENS=<mint:amount,...>] \  # base units
  *     pnpm swig:fund
  */
@@ -26,9 +27,12 @@ import {
 
 async function main(): Promise<void> {
   const fundDelegateSol = process.env.GATEWAY_SWIG_FUND_DELEGATE_SOL;
+  const fundWalletSol = process.env.GATEWAY_SWIG_FUND_WALLET_SOL;
   const fundWalletTokens = parseTokenLimits(process.env.GATEWAY_SWIG_FUND_WALLET_TOKENS);
-  if (!fundDelegateSol && fundWalletTokens.length === 0) {
-    throw new Error('Nothing to fund: set GATEWAY_SWIG_FUND_DELEGATE_SOL and/or GATEWAY_SWIG_FUND_WALLET_TOKENS.');
+  if (!fundDelegateSol && !fundWalletSol && fundWalletTokens.length === 0) {
+    throw new Error(
+      'Nothing to fund: set GATEWAY_SWIG_FUND_DELEGATE_SOL, GATEWAY_SWIG_FUND_WALLET_SOL and/or GATEWAY_SWIG_FUND_WALLET_TOKENS.',
+    );
   }
   const { connection } = getConnectionFromEnv();
   const accountAddress = requireSwigAccount();
@@ -49,6 +53,7 @@ async function main(): Promise<void> {
     walletPk,
     fundDelegateSol,
     fundWalletTokens,
+    fundWalletSol,
   );
   if (!tx) throw new Error('Nothing to fund.');
   const sig = await owner.signAndSend(connection, tx);

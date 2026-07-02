@@ -38,6 +38,11 @@ export interface SwigRoleRestrictions {
   allowedProgramIds: string[];
   /** Per-mint one-time spend caps enforced on-chain across CPIs. */
   tokenLimits: SwigTokenLimit[];
+  /**
+   * One-time SOL spend cap in lamports. Needed for any wallet-paid lamport debit (ATA
+   * rent, native-SOL wraps); without it such swaps fail post-execution with 0xbbe.
+   */
+  solLimitLamports?: bigint;
 }
 
 export interface CreateSwigInstructionParams {
@@ -87,6 +92,9 @@ export class SwigService {
     }
     for (const limit of restrictions.tokenLimits) {
       builder = builder.tokenLimit({ mint: limit.mint, amount: limit.amount });
+    }
+    if (restrictions.solLimitLamports && restrictions.solLimitLamports > 0n) {
+      builder = builder.solLimit({ amount: restrictions.solLimitLamports });
     }
     return builder.get();
   }
@@ -158,6 +166,33 @@ export class SwigService {
       builder = builder.tokenLimit({ mint: limit.mint, amount: limit.amount });
     }
     const update = sdk.updateAuthorityAddActions(builder.get());
+    return sdk.getUpdateAuthorityInstructions(swig, rootRole.id, delegateRole.id, update, {
+      payer: ownerPublicKey,
+    });
+  }
+
+  /**
+   * Build instructions that ADD a one-time SOL spend cap to an existing delegate role.
+   * A delegate needs this for any wallet-paid lamport debit: ATA rent when a swap creates
+   * the wallet's token account, and native-SOL wraps — without it the Swig program rejects
+   * the sign with PermissionDeniedMissingPermission (0xbbe) even though the swap itself
+   * succeeded. Owner-signed admin action.
+   */
+  async buildAddSolLimitInstructions(
+    connection: Connection,
+    accountAddress: PublicKey,
+    ownerPublicKey: PublicKey,
+    delegatePublicKey: PublicKey,
+    lamports: bigint,
+  ): Promise<TransactionInstruction[]> {
+    const sdk = this.getSdk();
+    if (lamports <= 0n) {
+      throw new Error('SOL limit must be positive');
+    }
+    const swig = await sdk.fetchSwig(connection, accountAddress);
+    const rootRole = this.requireRole(swig, ownerPublicKey, 'owner/root');
+    const delegateRole = this.requireRole(swig, delegatePublicKey, 'delegate');
+    const update = sdk.updateAuthorityAddActions(sdk.Actions.set().solLimit({ amount: lamports }).get());
     return sdk.getUpdateAuthorityInstructions(swig, rootRole.id, delegateRole.id, update, {
       payer: ownerPublicKey,
     });

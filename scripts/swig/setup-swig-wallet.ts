@@ -39,6 +39,7 @@ import {
   ensureHardwareOwnerRegistered,
   generateAndSaveDelegate,
   loadOwnerSigner,
+  parseSolLimitLamports,
   parseTokenLimits,
   provisionSwig,
   requirePassphrase,
@@ -54,15 +55,20 @@ Optional:
   GATEWAY_SWIG_RPC_URL          Solana RPC (default: public mainnet — use a private one)
   GATEWAY_SWIG_NETWORK          mainnet-beta (default) | devnet
   GATEWAY_SWIG_ALLOWED_PROGRAMS Program allowlist (default: Orca + Meteora + token programs)
+  GATEWAY_SWIG_SOL_LIMIT           One-time SOL cap for wallet-paid rent/wraps, e.g. 0.1 —
+                                   without it SOL-touching swaps fail post-execution (0xbbe)
   GATEWAY_SWIG_FUND_DELEGATE_SOL   SOL the owner sends the delegate for fees, e.g. 0.03
+  GATEWAY_SWIG_FUND_WALLET_SOL     SOL headroom the owner sends the Swig wallet, e.g. 0.01
   GATEWAY_SWIG_FUND_WALLET_TOKENS  Tokens the owner sends the Swig wallet: <mint:amount,...>
 
-Example (Ledger owner, 50 USDC cap, fund 10 USDC + 0.03 SOL):
+Example (Ledger owner, 50 USDC cap, 0.1 SOL cap, fund 10 USDC + fee/headroom SOL):
   GATEWAY_PASSPHRASE=<pass> \\
   GATEWAY_SWIG_OWNER_ADDRESS=<your Ledger Solana address> \\
   GATEWAY_SWIG_RPC_URL=<your rpc url> \\
   GATEWAY_SWIG_TOKEN_LIMITS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:50000000 \\
+  GATEWAY_SWIG_SOL_LIMIT=0.1 \\
   GATEWAY_SWIG_FUND_DELEGATE_SOL=0.03 \\
+  GATEWAY_SWIG_FUND_WALLET_SOL=0.01 \\
   GATEWAY_SWIG_FUND_WALLET_TOKENS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:10000000 \\
     pnpm swig:setup
 `;
@@ -181,6 +187,11 @@ async function main(): Promise<void> {
     .map((p) => p.trim())
     .filter(Boolean);
   const tokenLimits = parseTokenLimits(process.env.GATEWAY_SWIG_TOKEN_LIMITS);
+  const solLimitLamports = parseSolLimitLamports(process.env.GATEWAY_SWIG_SOL_LIMIT);
+  if (!solLimitLamports) {
+    console.log('⚠ GATEWAY_SWIG_SOL_LIMIT not set — swaps that make the wallet pay lamports (ATA rent,');
+    console.log('  native-SOL wraps) will fail with 0xbbe. Grant later with pnpm swig:add-token.');
+  }
   const fundDelegateSol = process.env.GATEWAY_SWIG_FUND_DELEGATE_SOL;
   const fundWalletTokens = parseTokenLimits(process.env.GATEWAY_SWIG_FUND_WALLET_TOKENS);
   const connection = new Connection(rpcUrl, 'confirmed');
@@ -238,7 +249,9 @@ async function main(): Promise<void> {
       connection,
       allowedProgramIds,
       tokenLimits,
+      solLimitLamports,
       fundDelegateSol,
+      fundWalletSol: process.env.GATEWAY_SWIG_FUND_WALLET_SOL,
       fundWalletTokens,
     });
   } catch (error: any) {

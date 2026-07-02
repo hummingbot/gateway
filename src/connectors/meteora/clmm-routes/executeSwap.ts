@@ -13,6 +13,26 @@ import { MeteoraClmmExecuteSwapRequest, MeteoraClmmExecuteSwapRequestType } from
 
 import { getRawSwapQuote } from './quoteSwap';
 
+const DLMM_PROGRAM_ID = new PublicKey('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo');
+
+/**
+ * DLMM SDK 1.7.5 marks the optional binArrayBitmapExtension account (index 1 of
+ * swapExactOut/SwapExactOut2) read-only, but the deployed program declares it `mut` — so on
+ * any pool that HAS a bitmap extension the swap fails on-chain with ConstraintMut (0x7d0).
+ * Promote it to writable. When the pool has no extension the SDK passes the DLMM program id
+ * as a placeholder, which must stay read-only.
+ */
+function fixExactOutBitmapExtensionMeta<T extends { instructions?: { programId: PublicKey; keys: any[] }[] }>(
+  tx: T,
+): T {
+  for (const ix of tx.instructions ?? []) {
+    if (ix.programId?.equals?.(DLMM_PROGRAM_ID) && ix.keys?.length > 1 && !ix.keys[1].pubkey.equals(DLMM_PROGRAM_ID)) {
+      ix.keys[1].isWritable = true;
+    }
+  }
+  return tx;
+}
+
 export async function executeSwap(
   network: string,
   address: string,
@@ -41,15 +61,17 @@ export async function executeSwap(
 
   const swapTx =
     side === 'BUY'
-      ? await dlmmPool.swapExactOut({
-          inToken: new PublicKey(inputToken.address),
-          outToken: new PublicKey(outputToken.address),
-          outAmount: (swapQuote as SwapQuoteExactOut).outAmount,
-          maxInAmount: (swapQuote as SwapQuoteExactOut).maxInAmount,
-          lbPair: dlmmPool.pubkey,
-          user: walletPublicKey,
-          binArraysPubkey: (swapQuote as SwapQuoteExactOut).binArraysPubkey,
-        })
+      ? fixExactOutBitmapExtensionMeta(
+          await dlmmPool.swapExactOut({
+            inToken: new PublicKey(inputToken.address),
+            outToken: new PublicKey(outputToken.address),
+            outAmount: (swapQuote as SwapQuoteExactOut).outAmount,
+            maxInAmount: (swapQuote as SwapQuoteExactOut).maxInAmount,
+            lbPair: dlmmPool.pubkey,
+            user: walletPublicKey,
+            binArraysPubkey: (swapQuote as SwapQuoteExactOut).binArraysPubkey,
+          }),
+        )
       : await dlmmPool.swap({
           inToken: new PublicKey(inputToken.address),
           outToken: new PublicKey(outputToken.address),

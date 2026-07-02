@@ -130,25 +130,37 @@ role. Missing one shows up later as `custom program error: 0xbbe`.
 ### Step 4 — cap the tokens the delegate may spend
 
 ```bash
-# 50 USDC one-time spend cap
-GATEWAY_SWIG_TOKEN_LIMITS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:50000000 pnpm swig:add-token
+# 50 USDC one-time spend cap + 0.1 SOL cap, one approval
+GATEWAY_SWIG_TOKEN_LIMITS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:50000000 \
+GATEWAY_SWIG_SOL_LIMIT=0.1 \
+  pnpm swig:add-token
 ```
 
 **1 approval.** Caps are **one-time allowances**: the delegate spends them down and they're
 exhausted — run this again to grant more. Base units (50 USDC with 6 decimals = `50000000`).
 An un-capped mint is hard-blocked, whatever the venue allowlist says.
 
+The **SOL cap is not optional in practice**: swaps routinely make the wallet pay small
+lamport debits (rent when creating its token accounts, native-SOL wraps), and the Swig
+program tallies every wallet lamport decrease against the SOL cap — with none set, the swap
+executes and is then rejected post-run with `0xbbe`. 0.1 SOL covers ~50 account creations;
+it is also the bound on wallet SOL a compromised delegate could move.
+
 ### Step 5 — fund it
 
 ```bash
-# 0.03 SOL to the delegate (tx fees) + 10 USDC to the Swig wallet, in ONE transaction
+# ONE transaction: 0.03 SOL to the delegate (tx fees) + 0.01 SOL headroom and 10 USDC to the Swig wallet
 GATEWAY_SWIG_FUND_DELEGATE_SOL=0.03 \
+GATEWAY_SWIG_FUND_WALLET_SOL=0.01 \
 GATEWAY_SWIG_FUND_WALLET_TOKENS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:10000000 \
   pnpm swig:fund
 ```
 
-**1 approval.** The delegate needs SOL or swaps fail at fee-payer resolution; the Swig wallet
-needs the input token (within its cap). You can also just send both from any wallet.
+**1 approval.** All three funding legs matter: the delegate needs SOL or swaps fail at
+fee-payer resolution; the Swig wallet needs the input token (within its cap); and the wallet
+needs a little SOL of its own — the PDA is created holding exactly the rent-exempt minimum,
+and DEX SDKs simulate with the wallet as payer, so with zero headroom every swap dies in
+simulation with `InsufficientFundsForRent`. You can also just send all of it from any wallet.
 
 ### Step 6 — verify the policy (read-only, run anytime)
 
@@ -169,7 +181,9 @@ review between steps.
 
 ```bash
 GATEWAY_SWIG_TOKEN_LIMITS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:50000000 \
+GATEWAY_SWIG_SOL_LIMIT=0.1 \
 GATEWAY_SWIG_FUND_DELEGATE_SOL=0.03 \
+GATEWAY_SWIG_FUND_WALLET_SOL=0.01 \
 GATEWAY_SWIG_FUND_WALLET_TOKENS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:10000000 \
   pnpm swig:setup
 ```
@@ -201,7 +215,10 @@ Gateway verifies the delegate role exists on-chain and stores the mapping. A 200
 
 ## Test swap (Meteora)
 
-Swap ~1 USDC → SOL through the Swig wallet (`walletAddress` = the **funds-owner address**):
+Buy 0.05 SOL with USDC through the Swig wallet (`walletAddress` = the **funds-owner
+address**). `side` refers to the **base** token: `BUY` buys SOL spending USDC, `SELL` sells
+SOL for USDC — and `amount` is always denominated in the base token. Since the wallet was
+funded with USDC, the test uses `BUY`:
 
 ```bash
 curl -s -X POST http://localhost:15888/connectors/meteora/clmm/execute-swap \
@@ -211,8 +228,8 @@ curl -s -X POST http://localhost:15888/connectors/meteora/clmm/execute-swap \
     "walletAddress": "<funds-owner address>",
     "baseToken": "SOL",
     "quoteToken": "USDC",
-    "amount": 1,
-    "side": "SELL",
+    "amount": 0.05,
+    "side": "BUY",
     "poolAddress": "2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3",
     "slippagePct": 1
   }'
@@ -231,7 +248,7 @@ Each is **one Ledger approval**, applied to the live wallet — no re-provisioni
 |---|---|
 | Add a venue (e.g. Raydium CLMM) | `GATEWAY_SWIG_VENUES=raydium-clmm pnpm swig:allow-program` |
 | Enable a new token | `GATEWAY_SWIG_TOKEN_LIMITS=<mint>:<cap> pnpm swig:add-token` |
-| Top up an exhausted cap | same `swig:add-token` call again |
+| Top up an exhausted cap (token or SOL) | same `swig:add-token` call again (`GATEWAY_SWIG_SOL_LIMIT` for SOL) |
 | Top up funds | `pnpm swig:fund` |
 | Audit what's allowed right now | `pnpm swig:show` (read-only) |
 
@@ -333,8 +350,11 @@ wider one on another.
 | script exits asking for env vars | missing input | it lists exactly what to set; copy the printed example |
 | `Ledger device is locked` | device locked / wrong app | unlock, open the Solana app |
 | approval fails on device | blind signing off | enable blind signing in the Solana app settings |
-| `custom program error: 0xbbe` | swap touches a program not on the allowlist | `pnpm swig:allow-program` with that venue/program id |
+| `custom program error: 0xbbe` before the swap logs | swap touches a program not on the allowlist | `pnpm swig:allow-program` with that venue/program id |
+| `0xbbe` AFTER the swap fully executed in the logs | wallet paid lamports (ATA rent, SOL wrap) but the role has no SOL cap | `GATEWAY_SWIG_SOL_LIMIT=0.1 pnpm swig:add-token` |
+| `0x7d0` (ConstraintMut) on Meteora BUY swaps | DLMM SDK marks `binArrayBitmapExtension` read-only; fixed in Gateway ≥ this branch | update Gateway / rebuild |
 | `AccountNotFound` / fails before program logs | delegate has 0 SOL | `pnpm swig:fund` with `GATEWAY_SWIG_FUND_DELEGATE_SOL` |
+| `InsufficientFundsForRent {account_index: 0}` in simulation, or `TRANSACTION_TIMEOUT` with the tx never landing | Swig wallet PDA has no SOL headroom (created at exactly the rent floor) | `pnpm swig:fund` with `GATEWAY_SWIG_FUND_WALLET_SOL=0.01` |
 | swap reverts on the token transfer | input mint un-capped or cap exhausted | `pnpm swig:add-token` for that mint |
 | `Swig wallet not registered for address` | registration skipped or wrong address | register the **funds-owner address** from `swig:init` |
 | `No delegate role found` | wrong delegate address, or role was revoked | check `pnpm swig:show`; re-add if needed |

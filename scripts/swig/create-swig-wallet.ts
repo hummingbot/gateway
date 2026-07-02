@@ -36,7 +36,13 @@
 
 import { clusterApiUrl, Connection, PublicKey } from '@solana/web3.js';
 
-import { DEFAULT_ALLOWED_PROGRAMS, loadOwnerSigner, parseTokenLimits, provisionSwig } from './lib';
+import {
+  DEFAULT_ALLOWED_PROGRAMS,
+  loadOwnerSigner,
+  parseSolLimitLamports,
+  parseTokenLimits,
+  provisionSwig,
+} from './lib';
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -78,6 +84,7 @@ async function main(): Promise<void> {
     connection,
     allowedProgramIds,
     tokenLimits,
+    solLimitLamports: parseSolLimitLamports(process.env.GATEWAY_SWIG_SOL_LIMIT),
     fundDelegateSol: process.env.GATEWAY_SWIG_FUND_DELEGATE_SOL,
     fundWalletTokens: parseTokenLimits(process.env.GATEWAY_SWIG_FUND_WALLET_TOKENS),
   });
