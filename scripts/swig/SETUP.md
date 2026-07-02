@@ -25,6 +25,21 @@ for how Swig works internally.
 The scripts always **generate a fresh delegate key** — never reuse a trading wallet as the
 delegate; the whole point is that the key Gateway holds is not a key that controls anything else.
 
+## Script reference
+
+| Command | Signs | Purpose |
+|---|---|---|
+| `pnpm swig:init` | owner | create the Swig account (owner = root) |
+| `pnpm swig:add-delegate` | owner | fresh delegate key + role with the do-nothing baseline |
+| `pnpm swig:allow-program` | owner | grant venues (presets) or raw program ids |
+| `pnpm swig:add-token` | owner | add per-mint spend caps and/or the SOL cap |
+| `pnpm swig:fund` | owner | SOL to delegate + SOL/tokens to the wallet, one tx |
+| `pnpm swig:show` | — | read-only live-policy + balance audit |
+| `pnpm swig:owner-close` | owner | close an empty Orca position the delegate can't |
+| `pnpm swig:revoke-delegate` | owner | kill switch: remove a delegate role |
+| `pnpm swig:setup` | owner | one-shot: init + delegate + policy + funding |
+| `pnpm swig:provision` | owner | legacy: provision against an existing delegate key |
+
 ## Prerequisites
 
 - Ledger: connected, unlocked, **Solana app open**, **blind signing enabled** (the Swig
@@ -243,6 +258,12 @@ curl -s -X POST http://localhost:15888/connectors/meteora/clmm/execute-swap \
 A 200 with a `signature` and `status: 1` (CONFIRMED) means the whole chain works. Look the
 signature up on Solscan; then `pnpm swig:show` to watch the USDC cap tick down.
 
+The liquidity lifecycle works the same way through the standard Gateway routes
+(`open-position`, `add-liquidity`, `remove-liquidity`, `collect-fees`, `positions-owned`,
+`close-position`) with the funds-owner address as `walletAddress` — all delegate-signed and
+unattended. The one exception is closing an **Orca** position, which is owner-signed via
+`pnpm swig:owner-close` (see Troubleshooting for why).
+
 ---
 
 ## Ongoing policy management
@@ -255,6 +276,7 @@ Each is **one Ledger approval**, applied to the live wallet — no re-provisioni
 | Enable a new token | `GATEWAY_SWIG_TOKEN_LIMITS=<mint>:<cap> pnpm swig:add-token` |
 | Top up an exhausted cap (token or SOL) | same `swig:add-token` call again (`GATEWAY_SWIG_SOL_LIMIT` for SOL) |
 | Top up funds | `pnpm swig:fund` |
+| Close an empty Orca position (burn NFT, reclaim rent) | `GATEWAY_SWIG_POSITION=<address> pnpm swig:owner-close` — owner-signed; the delegate cannot (see Troubleshooting) |
 | Audit what's allowed right now | `pnpm swig:show` (read-only) |
 
 ### Revoke / rotate the delegate
@@ -295,10 +317,10 @@ delegate as lost.
 Run `pnpm swig:revoke-delegate` from your own machine — one Ledger approval and the stolen key
 loses all access, instantly and on-chain. Until you do, the damage is bounded by the policy:
 the thief can only invoke the allowlisted venue programs and move **capped mints up to their
-remaining caps** — note the caps bound the *amount*, not the destination, so assume anything
-under an active cap is spendable by the attacker. SOL in the Swig wallet, un-capped mints,
-and every other program are hard-blocked. This bounded blast radius is the entire point of
-the design.
+remaining caps, and wallet SOL up to the remaining SOL cap** — note the caps bound the
+*amount*, not the destination, so assume anything under an active cap is spendable by the
+attacker. Un-capped mints, SOL beyond the cap, and every other program are hard-blocked.
+This bounded blast radius is the entire point of the design.
 
 ### What if I lose the Ledger (owner)?
 
@@ -319,10 +341,11 @@ policy are all derivable from the account itself (`pnpm swig:show`).
 
 ### Can the delegate send funds to an arbitrary address?
 
-For **capped mints, yes — up to the cap**: the token programs are on the allowlist, and the
-cap bounds the amount, not the destination. For everything else, no: un-capped mints and the
-wallet's SOL cannot be moved by the delegate at all. Size your caps as "the most I'm willing
-to lose to a full host compromise", not as a convenience number.
+For **capped assets, yes — up to the cap**: the token/System programs are on the allowlist,
+and caps bound the amount, not the destination. That includes wallet SOL up to the SOL cap.
+For everything else, no: un-capped mints and SOL beyond the cap cannot be moved by the
+delegate at all. Size every cap as "the most I'm willing to lose to a full host compromise",
+not as a convenience number.
 
 ### How do I get funds back out to my Ledger?
 
@@ -358,7 +381,7 @@ wider one on another.
 | `custom program error: 0xbbe` before the swap logs | swap touches a program not on the allowlist | `pnpm swig:allow-program` with that venue/program id |
 | `0xbbe` AFTER the swap fully executed in the logs | wallet paid lamports (ATA rent, SOL wrap) but the role has no SOL cap | `GATEWAY_SWIG_SOL_LIMIT=0.1 pnpm swig:add-token` |
 | `0x7d0` (ConstraintMut) on Meteora BUY swaps | DLMM SDK marks `binArrayBitmapExtension` read-only; fixed in Gateway ≥ this branch | update Gateway / rebuild |
-| Orca `close-position` fails with `SBF program panicked` (`range end index 64 out of range for slice of length 0`) | **Swig design restriction**: inside a wrapped sign, a pre-existing wallet token account may only change its *balance* — closing it is disallowed (the sanctioned path is Swig's own `CloseTokenAccountV1`). Orca's close burns the pre-existing position-NFT token account, so it can never pass. (That it *panics* instead of returning `AccountDataModifiedUnexpectedly` is an upstream bug, but fixing it would only make this fail cleanly.) | use `remove-liquidity` (works — funds recovered); the empty position shell (~0.01 SOL rent) is stuck under the delegate; the owner can reclaim it outside Gateway if needed |
+| Orca `close-position` fails with `SBF program panicked` (`range end index 64 out of range for slice of length 0`) | **Swig design restriction**: inside a wrapped sign, a bounded role may only change a pre-existing wallet token account's *balance* — closing it is disallowed, and Orca's close burns the pre-existing position-NFT token account. (That it *panics* instead of returning a clean error is an upstream bug.) Roles with `All` permission skip these checks, so the owner can do it. | `remove-liquidity` via Gateway (delegate) to recover funds, then `GATEWAY_SWIG_POSITION=<address> pnpm swig:owner-close` (one Ledger approval) to close the shell, burn the NFT, and refund rent |
 | `AccountNotFound` / fails before program logs | delegate has 0 SOL | `pnpm swig:fund` with `GATEWAY_SWIG_FUND_DELEGATE_SOL` |
 | `InsufficientFundsForRent {account_index: 0}` in simulation, or `TRANSACTION_TIMEOUT` with the tx never landing | Swig wallet PDA has no SOL headroom (created at exactly the rent floor) | `pnpm swig:fund` with `GATEWAY_SWIG_FUND_WALLET_SOL=0.01` |
 | swap reverts on the token transfer | input mint un-capped or cap exhausted | `pnpm swig:add-token` for that mint |

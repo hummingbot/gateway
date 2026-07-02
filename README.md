@@ -175,8 +175,7 @@ This ensures stored pool data always matches the actual on-chain pool state.
 ## Security
 
 Gateway holds wallet private keys and exposes fund-moving endpoints, so treat it like a hot
-wallet. See **[docs/security-hardening.md](docs/security-hardening.md)** for the full threat
-model and rationale. Essentials:
+wallet. Essentials:
 
 - **Keep Gateway on localhost.** A bare-metal run binds to `127.0.0.1` by default and is not
   reachable from your network. (Inside a container it binds `0.0.0.0` so sibling containers can

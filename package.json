@@ -41,6 +41,7 @@
     "swig:add-token": "npx ts-node -P scripts/tsconfig.json scripts/swig/add-token.ts",
     "swig:fund": "npx ts-node -P scripts/tsconfig.json scripts/swig/fund.ts",
     "swig:show": "npx ts-node -P scripts/tsconfig.json scripts/swig/show.ts",
+    "swig:owner-close": "npx ts-node -P scripts/tsconfig.json scripts/swig/owner-close-orca-position.ts",
     "swig:revoke-delegate": "npx ts-node -P scripts/tsconfig.json scripts/swig/revoke-delegate.ts",
     "generate:openapi": "curl http://localhost:15888/docs/json -o openapi.json && echo 'OpenAPI spec saved to openapi.json'",
     "rebuild-bigint": "cd node_modules/bigint-buffer && pnpm run rebuild",
