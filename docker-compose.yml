@@ -7,11 +7,18 @@ services:
     #   context: .
     #   dockerfile: Dockerfile
     ports:
-      - "15888:15888"
+      # Published on the HOST LOOPBACK ONLY — Gateway is not reachable from your network by
+      # default. To expose it deliberately, change to "0.0.0.0:15888:15888", set
+      # GATEWAY_REQUIRE_AUTH=true (then copy conf/api-key into your client), and ideally put
+      # it behind a VPN/Tailscale. See docs/security-hardening.md. (hummingbot/gateway#652)
+      - "127.0.0.1:15888:15888"
     volumes:
       - ./conf:/home/gateway/conf
       - ./logs:/home/gateway/logs
       - ./certs:/home/gateway/certs
     environment:
-      - GATEWAY_PASSPHRASE=a # replace with a strong passphrase
+      # The container binds all interfaces internally; the host only publishes on loopback above.
+      - GATEWAY_BIND_ADDRESS=0.0.0.0
+      - GATEWAY_ENABLE_DOCS=true # /docs reachable via the host loopback
+      - GATEWAY_PASSPHRASE=a # ⚠️ CHANGE THIS — use a long, random passphrase (see docs/security-hardening.md)
       - DEV=true # set to false to require certificates for HTTPS

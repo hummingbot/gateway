@@ -172,6 +172,32 @@ When adding a pool via `POST /pools`, Gateway automatically:
 
 This ensures stored pool data always matches the actual on-chain pool state.
 
+## Security
+
+Gateway holds wallet private keys and exposes fund-moving endpoints, so treat it like a hot
+wallet. Essentials:
+
+- **Keep Gateway on localhost.** A bare-metal run binds to `127.0.0.1` by default and is not
+  reachable from your network. (Inside a container it binds `0.0.0.0` so sibling containers can
+  reach it — exposure is then governed by how the port is published: the shipped
+  `docker-compose.yml` publishes to `127.0.0.1:15888` only. **Never** run the container with
+  `--network host` on a public host without mTLS/token + a firewall.) To expose a bare-metal
+  Gateway deliberately, set `GATEWAY_BIND_ADDRESS=0.0.0.0`, enable the API token
+  (`GATEWAY_REQUIRE_AUTH=true`, then send `Authorization: Bearer <conf/api-key>` from your
+  client), and ideally reach it over a VPN/Tailscale rather than a public port. Never run
+  `--dev` (HTTP) on an untrusted network (e.g. public WiFi).
+- **Use a strong passphrase.** The Gateway passphrase encrypts your wallet keys at rest
+  (scrypt + AES-256-GCM). A weak passphrase (e.g. `a`) can be brute-forced in seconds if a key
+  file ever leaks — defeating the encryption. Use a long, random passphrase (24+ random
+  characters or a 6-word diceware phrase) and store it separately from where `conf/wallets/`
+  is backed up.
+- **Treat the trading bot/agent as an untrusted client** — keep private keys out of its
+  context; Gateway signs internally and never returns raw keys.
+- **Rate limiting** (100 req/min, escalating to a temporary lockout) applies only to
+  **public/untrusted** sources. A co-located bot is exempt: loopback (bare-metal same host) and
+  private/container-network addresses (a sibling container over the Docker bridge, e.g. `172.x`)
+  are trusted and never throttled, so normal bot polling is never rate-limited.
+
 ## Installation from Source
 
 ### Prerequisites
