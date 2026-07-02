@@ -110,7 +110,19 @@ GATEWAY_SWIG_VENUES=orca,meteora pnpm swig:allow-program
 ```
 
 **1 approval** no matter how many venues in the call. Presets: `orca`, `meteora`,
-`raydium-amm`, `raydium-clmm`; raw ids via `GATEWAY_SWIG_PROGRAM_IDS=<id,...>`.
+`raydium-amm`, `raydium-clmm`.
+
+**Custom programs** (a stablecoin treasury, a vault, any protocol without a preset) are
+allowlisted by raw id:
+
+```bash
+GATEWAY_SWIG_PROGRAM_IDS=<programId,...> pnpm swig:allow-program
+```
+
+To find the right id(s), run the operation once from a normal wallet (or find any successful
+transaction of it) and read the invoke logs on Solscan: every program it invokes must be on
+the allowlist — except ComputeBudget, which stays top-level and never runs under the Swig
+role. Missing one shows up later as `custom program error: 0xbbe`.
 
 > **Jupiter:** no preset, on purpose. An aggregator routes through arbitrary programs, so a
 > Jupiter wallet must stay **token-cap-only** — skip this step and rely on Step 4's caps.

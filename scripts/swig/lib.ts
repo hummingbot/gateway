@@ -88,6 +88,10 @@ export const VENUE_PROGRAMS: Record<string, string[]> = {
   'raydium-amm': ['675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8'], // Raydium AMM v4
   'raydium-clmm': ['CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK'], // Raydium CLMM
 };
+// Any other protocol (a treasury program, a custom vault, …) is allowlisted by raw id via
+// GATEWAY_SWIG_PROGRAM_IDS. To find the right id(s), inspect a successful transaction of the
+// operation on-chain: every program in the invoke logs except ComputeBudget (which stays
+// top-level/unwrapped) and programs already allowed must be added, or the sign fails (0xbbe).
 
 // Default allowlist for the one-shot setup: token programs + the mainnet-verified venues.
 export const DEFAULT_ALLOWED_PROGRAMS = [...VENUE_PROGRAMS.orca, ...VENUE_PROGRAMS.meteora, ...BASE_TOKEN_PROGRAMS];
