@@ -38,7 +38,7 @@ USDC mint          = EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v   (6 decimals:
 Meteora SOL/USDC   = 2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3   (CLMM pool for the test swap)
 ```
 
-Every script reads the same base env vars; export them once per shell:
+Every script reads the same base env vars. Either export them once per shell:
 
 ```bash
 export GATEWAY_PASSPHRASE=<your gateway passphrase>
@@ -46,6 +46,25 @@ export GATEWAY_SWIG_OWNER_ADDRESS=<your Ledger Solana address>
 export GATEWAY_SWIG_RPC_URL=<your private Solana mainnet RPC URL>
 ```
 
+…or persist them in **`conf/swig.env`** (gitignored, `chmod 600`), which every `swig:*`
+script auto-loads — real environment variables always override the file, so one-off
+overrides still work. As you complete steps, append the printed values
+(`GATEWAY_SWIG_ACCOUNT`, `GATEWAY_SWIG_DELEGATE_ADDRESS`) so later steps and future
+sessions need no exports:
+
+```bash
+# conf/swig.env
+GATEWAY_PASSPHRASE=<pass>            # optional — omit on production hosts and export per-session
+GATEWAY_SWIG_OWNER_ADDRESS=<Ledger address>
+GATEWAY_SWIG_RPC_URL=<rpc url>
+GATEWAY_SWIG_ACCOUNT=<PDA, printed by swig:init>
+GATEWAY_SWIG_DELEGATE_ADDRESS=<printed by swig:add-delegate>
+```
+
+> Storing the passphrase next to the keystore it decrypts weakens the encryption to disk
+> access; fine for a demo, remove it for production. `SWIG_ENV_FILE=<path>` points the
+> scripts at a different file.
+>
 > Any script run with missing inputs prints exactly what's missing and a usage example —
 > when in doubt, just run it.
 

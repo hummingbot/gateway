@@ -43,6 +43,31 @@ import {
   HardwareWalletData,
 } from '../../src/wallet/utils';
 
+/**
+ * Auto-load conf/swig.env (or SWIG_ENV_FILE) so operators can persist the GATEWAY_SWIG_*
+ * values between sessions instead of exporting them every time. Runs once at import, i.e.
+ * for every swig:* script. Real environment variables always win — the file only fills in
+ * what's unset — so a one-off override like `GATEWAY_SWIG_VENUES=orca pnpm swig:...` works.
+ */
+function loadSwigEnvFile(): void {
+  const envPath = process.env.SWIG_ENV_FILE || 'conf/swig.env';
+  if (!fse.pathExistsSync(envPath)) return;
+  let loaded = 0;
+  for (const line of fse.readFileSync(envPath, 'utf8').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq <= 0) continue;
+    const key = trimmed.slice(0, eq).trim();
+    if (process.env[key] === undefined) {
+      process.env[key] = trimmed.slice(eq + 1).trim();
+      loaded++;
+    }
+  }
+  if (loaded > 0) console.log(`Loaded ${loaded} setting(s) from ${envPath}`);
+}
+loadSwigEnvFile();
+
 // Every venue's swap CPIs into the token/ATA programs, so a delegate role always needs
 // these. On their own they let the delegate move nothing: default-deny still holds because
 // no mint is capped and no venue program is allowed yet.
