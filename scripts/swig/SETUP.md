@@ -218,6 +218,83 @@ are untouched throughout — only the owner can move them out.
 
 ---
 
+## FAQ
+
+### What happens if my delegate key is lost (host died, keystore deleted, passphrase forgotten)?
+
+**Your funds are safe.** The delegate never holds the funds — the Swig wallet (a keyless PDA)
+does, and the owner (your Ledger) has full authority over it regardless of what happens to the
+delegate. A lost delegate only means Gateway can't trade until you replace it:
+
+1. `pnpm swig:revoke-delegate` — remove the dead role (good hygiene; strictly required only if
+   the key might be *stolen* rather than lost).
+2. `pnpm swig:add-delegate` — mint a new delegate, then re-grant venues and caps (Steps 3–4).
+3. Re-register with Gateway (`DELETE /wallet/remove-swig`, then `POST /wallet/add-swig` with
+   the new delegate).
+
+The only real loss is the small fee SOL sitting on the delegate address itself (e.g. the
+0.03 SOL from `swig:fund`) — with the key gone, that SOL is unrecoverable. A forgotten
+Gateway passphrase is the same scenario: the keystore can't be decrypted, so treat the
+delegate as lost.
+
+### What if the delegate key is *stolen* (host compromised)?
+
+Run `pnpm swig:revoke-delegate` from your own machine — one Ledger approval and the stolen key
+loses all access, instantly and on-chain. Until you do, the damage is bounded by the policy:
+the thief can only invoke the allowlisted venue programs and move **capped mints up to their
+remaining caps** — note the caps bound the *amount*, not the destination, so assume anything
+under an active cap is spendable by the attacker. SOL in the Swig wallet, un-capped mints,
+and every other program are hard-blocked. This bounded blast radius is the entire point of
+the design.
+
+### What if I lose the Ledger (owner)?
+
+Restore the seed phrase on a new device — the owner is the address, not the physical Ledger,
+and everything keeps working. If the seed phrase itself is lost, you've lost the root
+authority: no policy changes, no revoke, no owner withdrawals, ever. The delegate keeps
+working within its existing caps — you could still trade and route proceeds out through
+allowlisted swaps, but nothing more. Protect the seed accordingly; the owner is the single
+point of ultimate control by design.
+
+### What if I lose the Swig account address or id (e.g. `conf/` wiped)?
+
+Nothing is lost on-chain. Gateway stores registrations in
+`conf/wallets/solana/swig-wallets.json` — backing that file up is enough to re-register
+anywhere. If it's gone, the Swig account address and id are recoverable from the owner's
+transaction history (the `swig:init` transaction on Solscan); the funds-owner address and
+policy are all derivable from the account itself (`pnpm swig:show`).
+
+### Can the delegate send funds to an arbitrary address?
+
+For **capped mints, yes — up to the cap**: the token programs are on the allowlist, and the
+cap bounds the amount, not the destination. For everything else, no: un-capped mints and the
+wallet's SOL cannot be moved by the delegate at all. Size your caps as "the most I'm willing
+to lose to a full host compromise", not as a convenience number.
+
+### How do I get funds back out to my Ledger?
+
+The owner (root) can always move everything — that authority never expires and needs no
+policy. There's no dedicated sweep script yet; the Swig SDK's `getTransferAssetsInstructions`
+does it (owner-signed), or simply swap out through an allowlisted venue and withdraw. For the
+delegate's leftover fee SOL: that's a normal keypair in the Gateway keystore, so any standard
+transfer signed by it works.
+
+### A cap ran out mid-strategy — is something broken?
+
+No — caps are **one-time allowances**, spent down to zero by design. Swaps start failing on
+the token transfer once exhausted. Top up with the same `pnpm swig:add-token` call (one Ledger
+approval); `pnpm swig:show` shows the remaining amount per mint.
+
+### Can I run multiple delegates on one Swig wallet?
+
+Yes, on-chain: each `pnpm swig:add-delegate` adds an independent role with its own allowlist
+and caps, revocable separately. Note that a single Gateway instance registers **one delegate
+per Swig wallet** (registration is keyed by the wallet's funds-owner address), so multiple
+delegates means multiple Gateway instances — e.g. a conservative delegate on one host and a
+wider one on another.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
