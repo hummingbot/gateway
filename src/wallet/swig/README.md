@@ -146,20 +146,21 @@ delegate role exists on-chain; it does **not** create or widen the role.
 
 ### Provisioning a fresh wallet (offline)
 
-`scripts/swig/create-swig-wallet.ts` runs the create + add-delegate flow offline with the
-owner key (kept in env so it never lands on the Gateway host or in shell history). Its
-default allowlist covers **both Orca and Meteora** swaps (Orca Whirlpools + Meteora DLMM +
-SPL Token + Token-2022 + ATA) — a swap on either venue CPIs only into its own program plus
-the token/ATA programs (verified on mainnet). Add more venues with
-`GATEWAY_SWIG_ALLOWED_PROGRAMS`.
+`scripts/swig/create-swig.ts` (`pnpm swig:create`) is Step 1 of every deploy: offline, with the
+owner key kept in env (never lands on the Gateway host or in shell history), it registers the
+owner, creates the Swig, and mints a **fresh** bounded delegate whose baseline is the token +
+System programs plus a one-time SOL cap — no venues, no spendable mints yet. The deploy-specific
+grants are separate, one owner approval each: `swig:allow-program` (venues, e.g. Orca + Meteora
+Whirlpools/DLMM), `swig:add-token` (per-mint caps), then `swig:fund`. See
+`scripts/swig/SETUP.md` for the full step-by-step.
 
 ```bash
-GATEWAY_SWIG_OWNER_KEY=<base58 owner secret>        # offline; from 1Password, not committed
-GATEWAY_SWIG_DELEGATE_ADDRESS=<delegate pubkey>     # a Gateway local wallet (so it can sign)
+GATEWAY_PASSPHRASE=<pass>                            # encrypts the freshly-generated delegate key
+GATEWAY_SWIG_OWNER_ADDRESS=<Ledger or keystore owner pubkey>   # owner secret never leaves the device
 GATEWAY_SWIG_NETWORK=mainnet-beta \
 GATEWAY_SWIG_RPC_URL=<rpc url> \
-GATEWAY_SWIG_TOKEN_LIMITS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:1000000 \
-  npx ts-node scripts/swig/create-swig-wallet.ts
+GATEWAY_SWIG_SOL_LIMIT=0.1 \
+  pnpm swig:create
 ```
 
 It prints the JSON body for `POST /wallet/add-swig`. The **delegate** must hold a little SOL

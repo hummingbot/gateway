@@ -1,29 +1,31 @@
 /**
- * swig:add-delegate — Step 2: mint a FRESH delegate key into the Gateway keystore and add
- * its role to the Swig with a baseline policy: token programs only (SPL Token, Token-2022,
- * ATA). One owner (Ledger) approval.
+ * swig:add-delegate — add ANOTHER bounded delegate to an EXISTING Swig. Used to rotate a
+ * delegate (after swig:revoke-delegate) or to run a second, independently-bounded delegate.
+ * First-time setup uses swig:create instead, which creates the Swig and its first delegate
+ * together.
  *
- * The baseline is default-deny in practice: the delegate cannot touch any trading venue
- * (swig:allow-program) and cannot spend any mint (swig:add-token) until you grant them.
+ * Mints a FRESH delegate key into the Gateway keystore and adds its role with the baseline
+ * policy — token + System programs + a one-time SOL cap (default 0.1) — but no venues and no
+ * spendable mints. The delegate can do nothing until you grant them with swig:allow-program
+ * and swig:add-token. One owner (Ledger) approval.
  *
  * Usage:
  *   GATEWAY_PASSPHRASE=<pass> \
  *   GATEWAY_SWIG_OWNER_ADDRESS=<owner pubkey> \
- *   GATEWAY_SWIG_ACCOUNT=<Swig PDA from swig:init> \
+ *   GATEWAY_SWIG_ACCOUNT=<Swig PDA from swig:create> \
  *   GATEWAY_SWIG_RPC_URL=<rpc url> \
+ *   [GATEWAY_SWIG_SOL_LIMIT=0.1] \
  *     pnpm swig:add-delegate
  */
 
-import { PublicKey, Transaction } from '@solana/web3.js';
-
-import { getSwigService } from '../../src/wallet/swig';
+import { Transaction } from '@solana/web3.js';
 
 import {
-  BASE_TOKEN_PROGRAMS,
-  generateAndSaveDelegate,
+  buildFreshDelegateRole,
   getConnectionFromEnv,
   loadOwnerSigner,
   requireSwigAccount,
+  resolveDelegateSolLimit,
 } from './lib';
 
 async function main(): Promise<void> {
@@ -36,38 +38,35 @@ async function main(): Promise<void> {
   const { connection } = getConnectionFromEnv();
   const accountAddress = requireSwigAccount();
   const owner = await loadOwnerSigner();
-  const swigService = getSwigService();
+  const solLimitLamports = resolveDelegateSolLimit();
 
   console.log('Generating a fresh delegate keypair (encrypted into conf/wallets/solana/, never printed) ...');
-  const delegateAddress = await generateAndSaveDelegate();
-  console.log(`✓ Delegate created: ${delegateAddress}`);
-
-  const instructions = await swigService.buildAddDelegateInstructions(
+  const { delegateAddress, instructions } = await buildFreshDelegateRole(
     connection,
     accountAddress,
     owner.publicKey,
-    new PublicKey(delegateAddress),
-    { allowedProgramIds: BASE_TOKEN_PROGRAMS, tokenLimits: [] },
+    solLimitLamports,
   );
+  console.log(`✓ Delegate created: ${delegateAddress}`);
 
   console.log('\nThe owner will now sign ONE transaction: add the delegate role with the');
-  console.log('baseline policy (token programs only — no venues, no spendable mints yet).');
+  console.log('baseline policy (token + System programs + SOL cap — no venues, no spendable mints yet).');
   let sig: string;
   try {
     sig = await owner.signAndSend(connection, new Transaction().add(...instructions));
   } catch (error: any) {
     console.error(`\nAdding the role failed: ${error.message}`);
-    console.error(`The delegate key ${delegateAddress} is already in the keystore. Either delete`);
-    console.error(`conf/wallets/solana/${delegateAddress}.json and re-run, or retry the role add with`);
-    console.error('scripts/swig/create-swig-wallet.ts against that delegate.');
+    console.error(`The delegate key ${delegateAddress} is already in the keystore but has no role.`);
+    console.error(`Delete the orphaned key and re-run to mint a fresh delegate:`);
+    console.error(`  rm conf/wallets/solana/${delegateAddress}.json && pnpm swig:add-delegate`);
     process.exit(1);
   }
   console.log(`✓ Delegate role added (tx ${sig})`);
 
-  console.log('\nNext: grant what this delegate may do (each is one owner approval):');
-  console.log(`  export GATEWAY_SWIG_DELEGATE_ADDRESS=${delegateAddress}`);
+  console.log('\nPersist the delegate and grant what it may do (each is one owner approval):');
+  console.log(`  echo 'GATEWAY_SWIG_DELEGATE_ADDRESS=${delegateAddress}' >> conf/swig.env`);
   console.log('  GATEWAY_SWIG_VENUES=orca,meteora pnpm swig:allow-program');
-  console.log('  GATEWAY_SWIG_TOKEN_LIMITS=<mint:amount> pnpm swig:add-token');
+  console.log('  GATEWAY_SWIG_TOKEN_LIMITS=<mint>:<amount> pnpm swig:add-token');
 }
 
 main().catch((error) => {

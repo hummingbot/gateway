@@ -29,16 +29,14 @@ delegate; the whole point is that the key Gateway holds is not a key that contro
 
 | Command | Signs | Purpose |
 |---|---|---|
-| `pnpm swig:init` | owner | create the Swig account (owner = root) |
-| `pnpm swig:add-delegate` | owner | fresh delegate key + role with the do-nothing baseline |
-| `pnpm swig:allow-program` | owner | grant venues (presets) or raw program ids |
-| `pnpm swig:add-token` | owner | add per-mint spend caps and/or the SOL cap |
-| `pnpm swig:fund` | owner | SOL to delegate + SOL/tokens to the wallet, one tx |
-| `pnpm swig:show` | — | read-only live-policy + balance audit |
-| `pnpm swig:owner-close` | owner | close an empty Orca position the delegate can't |
+| `pnpm swig:create` | owner | **Step 1** — create the Swig + a bounded delegate (token/System programs + SOL cap) |
+| `pnpm swig:allow-program` | owner | **Step 2** — grant venues (presets) or raw program ids |
+| `pnpm swig:add-token` | owner | **Step 3** — add per-mint spend caps (and top up the SOL cap) |
+| `pnpm swig:fund` | owner | **Step 4** — SOL to delegate + SOL/tokens to the wallet, one tx |
+| `pnpm swig:show` | — | **Step 5** — read-only live-policy + balance audit |
+| `pnpm swig:add-delegate` | owner | rotate: add another bounded delegate to an existing Swig |
 | `pnpm swig:revoke-delegate` | owner | kill switch: remove a delegate role |
-| `pnpm swig:setup` | owner | one-shot: init + delegate + policy + funding |
-| `pnpm swig:provision` | owner | legacy: provision against an existing delegate key |
+| `pnpm swig:owner-close` | owner | close an empty Orca position the delegate can't |
 
 ## Prerequisites
 
@@ -63,17 +61,16 @@ export GATEWAY_SWIG_RPC_URL=<your private Solana mainnet RPC URL>
 
 …or persist them in **`conf/swig.env`** (gitignored, `chmod 600`), which every `swig:*`
 script auto-loads — real environment variables always override the file, so one-off
-overrides still work. As you complete steps, append the printed values
-(`GATEWAY_SWIG_ACCOUNT`, `GATEWAY_SWIG_DELEGATE_ADDRESS`) so later steps and future
-sessions need no exports:
+overrides still work. `swig:create` prints the values to append (`GATEWAY_SWIG_ACCOUNT`,
+`GATEWAY_SWIG_DELEGATE_ADDRESS`) so later steps and future sessions need no exports:
 
 ```bash
 # conf/swig.env
 GATEWAY_PASSPHRASE=<pass>            # optional — omit on production hosts and export per-session
 GATEWAY_SWIG_OWNER_ADDRESS=<Ledger address>
 GATEWAY_SWIG_RPC_URL=<rpc url>
-GATEWAY_SWIG_ACCOUNT=<PDA, printed by swig:init>
-GATEWAY_SWIG_DELEGATE_ADDRESS=<printed by swig:add-delegate>
+GATEWAY_SWIG_ACCOUNT=<PDA, printed by swig:create>
+GATEWAY_SWIG_DELEGATE_ADDRESS=<printed by swig:create>
 ```
 
 > Storing the passphrase next to the keystore it decrypts weakens the encryption to disk
@@ -85,45 +82,39 @@ GATEWAY_SWIG_DELEGATE_ADDRESS=<printed by swig:add-delegate>
 
 ---
 
-## Path A — step by step (recommended)
+## Setup — step by step
 
-One script per owner-signed action, **one Ledger approval each**. This is the path that lets
-you evolve the policy later (add a venue, add a token, top up a cap) without re-provisioning.
+One script per owner-signed action. **Step 1 does the part that's identical in every deploy**
+(create the wallet and a bounded delegate); Steps 2–4 are the deploy-specific grants and
+funding. This is also the path that lets you evolve the policy later (add a venue, add a
+token, top up a cap) without re-provisioning.
 
-### Step 1 — create the Swig wallet
-
-```bash
-pnpm swig:init
-```
-
-The Ledger approves **1 transaction** (create account, owner = root). It prints the
-**Swig account (PDA)**, the **funds-owner address** (the address you fund and trade with),
-and the **base58 id** (needed at registration). Export the PDA for all following steps:
+### Step 1 — create the wallet and its bounded delegate
 
 ```bash
-export GATEWAY_SWIG_ACCOUNT=<Swig account (PDA) printed above>
+pnpm swig:create
 ```
 
-### Step 2 — add the delegate
+**2 Ledger approvals.** In one command it: registers your Ledger owner (if new), creates the
+Swig account (owner = root), and adds a **fresh delegate** with the baseline policy — token +
+System programs + a one-time **SOL cap** (default 0.1) — but **no venues and no spendable
+mints**. The delegate can do nothing until Steps 2–3. It prints the **funds-owner address**
+(fund + trade with this), the **Swig account (PDA)**, the **delegate address**, and the
+**base58 id** (needed at registration). Persist the two that later steps read:
 
 ```bash
-pnpm swig:add-delegate
+echo 'GATEWAY_SWIG_ACCOUNT=<PDA printed above>' >> conf/swig.env
+echo 'GATEWAY_SWIG_DELEGATE_ADDRESS=<delegate printed above>' >> conf/swig.env
 ```
 
-Generates a **fresh delegate key** encrypted into the Gateway keystore (the secret is never
-printed), then the Ledger approves **1 transaction** adding its role with a baseline policy:
-token + System programs only — **no venues, no spendable mints, no SOL cap**. The delegate
-can do nothing yet. (System is in the baseline because native-SOL wraps and position rent
-need it; it moves nothing until you grant a SOL cap, which is the actual bound.)
+> **Why the SOL cap is a Step 1 basic, not a per-token choice:** swaps routinely make the
+> wallet pay small lamport debits (rent when creating its token accounts, native-SOL wraps),
+> and the Swig program tallies every wallet lamport decrease against the SOL cap — with none
+> set, the swap executes and is then rejected post-run with `0xbbe`. So every deploy needs one;
+> `swig:create` sets 0.1 SOL by default (covers ~50 account creations, and bounds the wallet
+> SOL a compromised delegate could move). Override with `GATEWAY_SWIG_SOL_LIMIT=<sol>`.
 
-> Wallets provisioned before System was in the baseline need it added for liquidity
-> operations: `GATEWAY_SWIG_PROGRAM_IDS=11111111111111111111111111111111 pnpm swig:allow-program`
-
-```bash
-export GATEWAY_SWIG_DELEGATE_ADDRESS=<delegate address printed above>
-```
-
-### Step 3 — allow trading venues
+### Step 2 — allow trading venues
 
 ```bash
 GATEWAY_SWIG_VENUES=orca,meteora pnpm swig:allow-program
@@ -145,14 +136,13 @@ the allowlist — except ComputeBudget, which stays top-level and never runs und
 role. Missing one shows up later as `custom program error: 0xbbe`.
 
 > **Jupiter:** no preset, on purpose. An aggregator routes through arbitrary programs, so a
-> Jupiter wallet must stay **token-cap-only** — skip this step and rely on Step 4's caps.
+> Jupiter wallet must stay **token-cap-only** — skip this step and rely on Step 3's caps.
 
-### Step 4 — cap the tokens the delegate may spend
+### Step 3 — cap the tokens the delegate may spend
 
 ```bash
-# 50 USDC one-time spend cap + 0.1 SOL cap, one approval
+# 50 USDC one-time spend cap, one approval
 GATEWAY_SWIG_TOKEN_LIMITS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:50000000 \
-GATEWAY_SWIG_SOL_LIMIT=0.1 \
   pnpm swig:add-token
 ```
 
@@ -160,13 +150,14 @@ GATEWAY_SWIG_SOL_LIMIT=0.1 \
 exhausted — run this again to grant more. Base units (50 USDC with 6 decimals = `50000000`).
 An un-capped mint is hard-blocked, whatever the venue allowlist says.
 
-The **SOL cap is not optional in practice**: swaps routinely make the wallet pay small
-lamport debits (rent when creating its token accounts, native-SOL wraps), and the Swig
-program tallies every wallet lamport decrease against the SOL cap — with none set, the swap
-executes and is then rejected post-run with `0xbbe`. 0.1 SOL covers ~50 account creations;
-it is also the bound on wallet SOL a compromised delegate could move.
+The SOL cap was already set in Step 1. To **top it up** later, add `GATEWAY_SWIG_SOL_LIMIT`
+to this same call:
 
-### Step 5 — fund it
+```bash
+GATEWAY_SWIG_SOL_LIMIT=0.1 pnpm swig:add-token   # adds another 0.1 SOL of one-time headroom
+```
+
+### Step 4 — fund it
 
 ```bash
 # ONE transaction: 0.03 SOL to the delegate (tx fees) + 0.01 SOL headroom and 10 USDC to the Swig wallet
@@ -182,7 +173,7 @@ needs a little SOL of its own — the PDA is created holding exactly the rent-ex
 and DEX SDKs simulate with the wallet as payer, so with zero headroom every swap dies in
 simulation with `InsufficientFundsForRent`. You can also just send all of it from any wallet.
 
-### Step 6 — verify the policy (read-only, run anytime)
+### Step 5 — verify the policy (read-only, run anytime)
 
 ```bash
 GATEWAY_SWIG_TOKEN_MINTS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v pnpm swig:show
@@ -193,29 +184,10 @@ spend cap per mint. Run it after every policy change.
 
 ---
 
-## Path B — one-shot (demo convenience)
-
-`pnpm swig:setup` compresses Steps 1–5 into one command (~4 Ledger approvals): fresh delegate,
-Orca + Meteora allowlist, your caps, your funding. Same on-chain result; you just can't
-review between steps.
-
-```bash
-GATEWAY_SWIG_TOKEN_LIMITS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:50000000 \
-GATEWAY_SWIG_SOL_LIMIT=0.1 \
-GATEWAY_SWIG_FUND_DELEGATE_SOL=0.03 \
-GATEWAY_SWIG_FUND_WALLET_SOL=0.01 \
-GATEWAY_SWIG_FUND_WALLET_TOKENS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:10000000 \
-  pnpm swig:setup
-```
-
-(`pnpm swig:provision` is the legacy provision-only script for a delegate key you already have.)
-
----
-
 ## Register with Gateway
 
-Start Gateway (`pnpm start --passphrase=<pass>`), then register the wallet — `swig:init` /
-`swig:setup` printed every value:
+Start Gateway (`pnpm start --passphrase=<pass>`), then register the wallet — `swig:create`
+printed every value:
 
 ```bash
 curl -s -X POST http://localhost:15888/wallet/add-swig \
@@ -288,8 +260,9 @@ pnpm swig:revoke-delegate      # 1 approval — the delegate immediately loses a
 ```
 
 Then remove the registration (`DELETE /wallet/remove-swig`), delete the old key file from
-`conf/wallets/solana/`, and re-run Steps 2–4 for a new delegate. Funds in the Swig wallet
-are untouched throughout — only the owner can move them out.
+`conf/wallets/solana/`, mint a replacement on the **same** Swig with `pnpm swig:add-delegate`,
+re-grant its venues and caps (Steps 2–3), and re-register. Funds in the Swig wallet are
+untouched throughout — only the owner can move them out.
 
 ---
 
@@ -303,7 +276,8 @@ delegate. A lost delegate only means Gateway can't trade until you replace it:
 
 1. `pnpm swig:revoke-delegate` — remove the dead role (good hygiene; strictly required only if
    the key might be *stolen* rather than lost).
-2. `pnpm swig:add-delegate` — mint a new delegate, then re-grant venues and caps (Steps 3–4).
+2. `pnpm swig:add-delegate` — mint a new delegate on the same Swig, then re-grant venues and
+   caps (Steps 2–3).
 3. Re-register with Gateway (`DELETE /wallet/remove-swig`, then `POST /wallet/add-swig` with
    the new delegate).
 
@@ -336,7 +310,7 @@ point of ultimate control by design.
 Nothing is lost on-chain. Gateway stores registrations in
 `conf/wallets/solana/swig-wallets.json` — backing that file up is enough to re-register
 anywhere. If it's gone, the Swig account address and id are recoverable from the owner's
-transaction history (the `swig:init` transaction on Solscan); the funds-owner address and
+transaction history (the `swig:create` transaction on Solscan); the funds-owner address and
 policy are all derivable from the account itself (`pnpm swig:show`).
 
 ### Can the delegate send funds to an arbitrary address?
@@ -379,13 +353,13 @@ wider one on another.
 | `Ledger device is locked` | device locked / wrong app | unlock, open the Solana app |
 | approval fails on device | blind signing off | enable blind signing in the Solana app settings |
 | `custom program error: 0xbbe` before the swap logs | swap touches a program not on the allowlist | `pnpm swig:allow-program` with that venue/program id |
-| `0xbbe` AFTER the swap fully executed in the logs | wallet paid lamports (ATA rent, SOL wrap) but the role has no SOL cap | `GATEWAY_SWIG_SOL_LIMIT=0.1 pnpm swig:add-token` |
+| `0xbbe` AFTER the swap fully executed in the logs | wallet paid lamports (ATA rent, SOL wrap) beyond the role's SOL cap (or the cap is exhausted) | top up: `GATEWAY_SWIG_SOL_LIMIT=0.1 pnpm swig:add-token` |
 | `0x7d0` (ConstraintMut) on Meteora BUY swaps | DLMM SDK marks `binArrayBitmapExtension` read-only; fixed in Gateway ≥ this branch | update Gateway / rebuild |
 | Orca `close-position` fails with `SBF program panicked` (`range end index 64 out of range for slice of length 0`) | **Swig design restriction**: inside a wrapped sign, a bounded role may only change a pre-existing wallet token account's *balance* — closing it is disallowed, and Orca's close burns the pre-existing position-NFT token account. (That it *panics* instead of returning a clean error is an upstream bug.) Roles with `All` permission skip these checks, so the owner can do it. | `remove-liquidity` via Gateway (delegate) to recover funds, then `GATEWAY_SWIG_POSITION=<address> pnpm swig:owner-close` (one Ledger approval) to close the shell, burn the NFT, and refund rent |
 | `AccountNotFound` / fails before program logs | delegate has 0 SOL | `pnpm swig:fund` with `GATEWAY_SWIG_FUND_DELEGATE_SOL` |
 | `InsufficientFundsForRent {account_index: 0}` in simulation, or `TRANSACTION_TIMEOUT` with the tx never landing | Swig wallet PDA has no SOL headroom (created at exactly the rent floor) | `pnpm swig:fund` with `GATEWAY_SWIG_FUND_WALLET_SOL=0.01` |
 | swap reverts on the token transfer | input mint un-capped or cap exhausted | `pnpm swig:add-token` for that mint |
-| `Swig wallet not registered for address` | registration skipped or wrong address | register the **funds-owner address** from `swig:init` |
+| `Swig wallet not registered for address` | registration skipped or wrong address | register the **funds-owner address** from `swig:create` |
 | `No delegate role found` | wrong delegate address, or role was revoked | check `pnpm swig:show`; re-add if needed |
 
 `pnpm swig:show` is the first stop for any policy question — it prints what the on-chain role

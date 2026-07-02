@@ -2,11 +2,11 @@
  * Shared building blocks for provisioning a Swig smart-contract wallet.
  *
  * Entry-point scripts (see SETUP.md for the step-by-step guide):
- *   - setup-swig-wallet.ts  : one-shot — generate delegate + register owner + provision
- *   - create-swig-wallet.ts : provision only (delegate already exists)
- *   Per-step scripts, one owner (Ledger) approval each:
- *   - init-swig.ts, add-delegate.ts, allow-program.ts, add-token.ts, fund.ts,
- *     revoke-delegate.ts, and show.ts (read-only policy inspector)
+ *   - create-swig.ts   : Step 1 — create the Swig + a bounded delegate (token/System programs
+ *                        + SOL cap) in one command; the invariant part of every deploy.
+ *   Then, per-step (one owner/Ledger approval each):
+ *   - allow-program.ts (venues), add-token.ts (token caps), fund.ts, show.ts (read-only),
+ *   - add-delegate.ts (add another/rotated delegate to an existing Swig), revoke-delegate.ts
  *
  * SECURITY: functions here may generate or decrypt keys. Secrets are only ever written
  * to the encrypted keystore (mode 0600) and are NEVER printed or returned.
@@ -25,6 +25,7 @@ import {
   PublicKey,
   SystemProgram,
   Transaction,
+  TransactionInstruction,
   sendAndConfirmTransaction,
 } from '@solana/web3.js';
 import bs58 from 'bs58';
@@ -144,11 +145,11 @@ export function getConnectionFromEnv(): { network: string; rpcUrl: string; conne
   return { network, rpcUrl, connection: new Connection(rpcUrl, 'confirmed') };
 }
 
-/** The Swig account (PDA) targeted by a per-step script. Printed by swig:init. */
+/** The Swig account (PDA) targeted by a per-step script. Printed by swig:create. */
 export function requireSwigAccount(): PublicKey {
   const raw = process.env.GATEWAY_SWIG_ACCOUNT;
   if (!raw) {
-    throw new Error('Set GATEWAY_SWIG_ACCOUNT=<Swig account (PDA) address> — printed by pnpm swig:init.');
+    throw new Error('Set GATEWAY_SWIG_ACCOUNT=<Swig account (PDA) address> — printed by pnpm swig:create.');
   }
   return new PublicKey(raw);
 }
@@ -291,6 +292,56 @@ export async function generateAndSaveDelegate(): Promise<string> {
 }
 
 /**
+ * Default one-time SOL cap for a bounded delegate. The SOL cap is not optional in practice:
+ * swaps routinely make the wallet pay small lamport debits (ATA rent when it creates a token
+ * account, native-SOL wraps), and the Swig program tallies every wallet-lamport decrease
+ * against this cap — with none set the swap executes and is then rejected post-run with 0xbbe.
+ * 0.1 SOL covers ~50 account creations and bounds the wallet SOL a compromised delegate could
+ * move. Because it is a mandatory basic, every provisioning path sets it; override per deploy.
+ */
+export const DEFAULT_SOL_LIMIT_SOL = '0.1';
+
+/**
+ * Resolve the delegate's one-time SOL cap from GATEWAY_SWIG_SOL_LIMIT, defaulting to
+ * DEFAULT_SOL_LIMIT_SOL, and log which value was used (no hidden magic).
+ */
+export function resolveDelegateSolLimit(): bigint {
+  const raw = process.env.GATEWAY_SWIG_SOL_LIMIT;
+  const lamports = parseSolLimitLamports(raw ?? DEFAULT_SOL_LIMIT_SOL) as bigint;
+  console.log(
+    raw
+      ? `SOL cap: ${raw} SOL (from GATEWAY_SWIG_SOL_LIMIT).`
+      : `SOL cap: ${DEFAULT_SOL_LIMIT_SOL} SOL (default; override with GATEWAY_SWIG_SOL_LIMIT).`,
+  );
+  return lamports;
+}
+
+/**
+ * Generate a FRESH delegate keypair (encrypted into the keystore, never printed) and build the
+ * owner-signed instructions that add its bounded role to an existing Swig: the baseline
+ * token/System programs plus the SOL cap — but NO trading venues and NO token caps yet. Those
+ * are the deploy-specific grants (swig:allow-program, swig:add-token). Returns the new delegate
+ * address and the instructions for the owner to sign. Reusing an existing wallet as the
+ * delegate is never supported — the whole design is that Gateway's key controls nothing else.
+ */
+export async function buildFreshDelegateRole(
+  connection: Connection,
+  accountAddress: PublicKey,
+  ownerPublicKey: PublicKey,
+  solLimitLamports: bigint,
+): Promise<{ delegateAddress: string; instructions: TransactionInstruction[] }> {
+  const delegateAddress = await generateAndSaveDelegate();
+  const instructions = await getSwigService().buildAddDelegateInstructions(
+    connection,
+    accountAddress,
+    ownerPublicKey,
+    new PublicKey(delegateAddress),
+    { allowedProgramIds: BASE_TOKEN_PROGRAMS, tokenLimits: [], solLimitLamports },
+  );
+  return { delegateAddress, instructions };
+}
+
+/**
  * Ensure the owner address is registered as a Solana hardware wallet. If it already is,
  * this is a no-op. Otherwise it queries the connected Ledger (searching the standard
  * derivation paths) to confirm the address is derivable and records its path — the same
@@ -336,126 +387,6 @@ export async function ensureHardwareOwnerRegistered(ownerAddress: string): Promi
   wallets.push(found);
   await saveHardwareWallets('solana', wallets);
   return found;
-}
-
-export interface ProvisionParams {
-  owner: OwnerSigner;
-  delegatePublicKey: PublicKey;
-  connection: Connection;
-  allowedProgramIds: string[];
-  tokenLimits: SwigTokenLimit[];
-  /** One-time SOL cap (lamports) for wallet-paid rent/wraps; omit and SOL-touching swaps fail 0xbbe. */
-  solLimitLamports?: bigint;
-  /** Owner sends this much SOL to the delegate for fees (optional). */
-  fundDelegateSol?: string;
-  /** Owner sends this much SOL to the Swig wallet as rent/wrap headroom (optional). */
-  fundWalletSol?: string;
-  /** Owner sends these tokens (base units) to the new Swig wallet (optional). */
-  fundWalletTokens?: SwigTokenLimit[];
-}
-
-export interface ProvisionResult {
-  network: string;
-  accountAddress: string;
-  address: string;
-  ownerAddress: string;
-  delegateAddress: string;
-  id: string;
-}
-
-/**
- * Create the Swig, add the restricted delegate role, and optionally fund the delegate (SOL)
- * and the Swig wallet (tokens) from the owner. Every owner-signed step goes through
- * `owner.signAndSend` (keypair or Ledger). Returns the registration payload for
- * POST /wallet/add-swig.
- */
-export async function provisionSwig(params: ProvisionParams): Promise<ProvisionResult> {
-  const { owner, delegatePublicKey, connection, allowedProgramIds, tokenLimits } = params;
-  const network = process.env.GATEWAY_SWIG_NETWORK || 'mainnet-beta';
-  const swigService = getSwigService();
-
-  if (tokenLimits.length === 0) {
-    throw new Error('No token spend caps set. Refusing to create an uncapped delegate role.');
-  }
-
-  // 1. Create the Swig with the owner as root authority.
-  const { id, accountAddress, createInstruction } = await swigService.buildCreateInstruction({
-    payer: owner.publicKey,
-    ownerPublicKey: owner.publicKey,
-  });
-  console.log(`\nCreating Swig account ${accountAddress.toBase58()} ...`);
-  const createSig = await owner.signAndSend(connection, new Transaction().add(createInstruction));
-  console.log(`  created (tx ${createSig})`);
-
-  // 2. Add the restricted delegate role (signed by the owner).
-  console.log('Adding restricted delegate role ...');
-  const addInstructions = await swigService.buildAddDelegateInstructions(
-    connection,
-    accountAddress,
-    owner.publicKey,
-    delegatePublicKey,
-    { allowedProgramIds, tokenLimits, solLimitLamports: params.solLimitLamports },
-  );
-  const addSig = await owner.signAndSend(connection, new Transaction().add(...addInstructions));
-  console.log(`  added (tx ${addSig})`);
-
-  // 3. Resolve the funds-owner address used by connectors.
-  const swig = await swigService.fetchSwig(connection, accountAddress);
-  const walletPk = await swigService.getWalletAddress(swig);
-  const walletAddress = walletPk.toBase58();
-
-  // 4. (Optional) Fund from the owner — no separate wallet needed. The delegate needs SOL to
-  // pay fees; the Swig wallet needs the input token to trade.
-  if (params.fundDelegateSol) {
-    const lamports = Math.round(Number(params.fundDelegateSol) * LAMPORTS_PER_SOL);
-    if (!Number.isFinite(lamports) || lamports <= 0) {
-      throw new Error(`Invalid GATEWAY_SWIG_FUND_DELEGATE_SOL: ${params.fundDelegateSol}`);
-    }
-    console.log(`\nFunding delegate ${delegatePublicKey.toBase58()} with ${params.fundDelegateSol} SOL ...`);
-    const ix = SystemProgram.transfer({ fromPubkey: owner.publicKey, toPubkey: delegatePublicKey, lamports });
-    const sig = await owner.signAndSend(connection, new Transaction().add(ix));
-    console.log(`  funded (tx ${sig})`);
-  }
-
-  if (params.fundWalletSol) {
-    // The wallet PDA starts at exactly the rent-exempt floor; without headroom, DEX SDK
-    // simulations (which use the wallet as payer) fail with InsufficientFundsForRent.
-    const lamports = Math.round(Number(params.fundWalletSol) * LAMPORTS_PER_SOL);
-    if (!Number.isFinite(lamports) || lamports <= 0) {
-      throw new Error(`Invalid GATEWAY_SWIG_FUND_WALLET_SOL: ${params.fundWalletSol}`);
-    }
-    console.log(`\nFunding Swig wallet ${walletAddress} with ${params.fundWalletSol} SOL headroom ...`);
-    const ix = SystemProgram.transfer({ fromPubkey: owner.publicKey, toPubkey: walletPk, lamports });
-    const sig = await owner.signAndSend(connection, new Transaction().add(ix));
-    console.log(`  funded (tx ${sig})`);
-  }
-
-  for (const { mint, amount } of params.fundWalletTokens ?? []) {
-    const mintPk = new PublicKey(mint);
-    // Pick the mint's token program (SPL Token vs Token-2022) from its account owner.
-    const mintInfo = await connection.getAccountInfo(mintPk);
-    if (!mintInfo) throw new Error(`Mint not found: ${mint}`);
-    const tokenProgram = mintInfo.owner;
-    const ownerAta = getAssociatedTokenAddressSync(mintPk, owner.publicKey, false, tokenProgram);
-    // The Swig funds-owner is a PDA (off-curve), so allowOwnerOffCurve = true.
-    const destAta = getAssociatedTokenAddressSync(mintPk, walletPk, true, tokenProgram);
-    console.log(`\nFunding Swig wallet ${walletAddress} with ${amount} (base units) of ${mint} ...`);
-    const tx = new Transaction().add(
-      createAssociatedTokenAccountIdempotentInstruction(owner.publicKey, destAta, walletPk, mintPk, tokenProgram),
-      createTransferInstruction(ownerAta, destAta, owner.publicKey, amount, [], tokenProgram),
-    );
-    const sig = await owner.signAndSend(connection, tx);
-    console.log(`  funded (tx ${sig})`);
-  }
-
-  return {
-    network,
-    accountAddress: accountAddress.toBase58(),
-    address: walletAddress,
-    ownerAddress: owner.publicKey.toBase58(),
-    delegateAddress: delegatePublicKey.toBase58(),
-    id: bs58.encode(id),
-  };
 }
 
 /**

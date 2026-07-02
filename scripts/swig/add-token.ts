@@ -4,9 +4,10 @@
  * run this again to grant more.
  *
  * Two kinds of cap, either or both per call:
- *   - per-mint token caps (GATEWAY_SWIG_TOKEN_LIMITS)
- *   - a SOL cap (GATEWAY_SWIG_SOL_LIMIT) — required for any wallet-paid lamport debit:
- *     ATA rent when a swap creates a token account, and native-SOL wraps. Without it those
+ *   - per-mint token caps (GATEWAY_SWIG_TOKEN_LIMITS) — the usual reason to run this.
+ *   - a SOL cap top-up (GATEWAY_SWIG_SOL_LIMIT). swig:create already sets a SOL cap at
+ *     creation; add more here when it runs low. The SOL cap covers wallet-paid lamport debits
+ *     (ATA rent when a swap creates a token account, native-SOL wraps); with none left those
  *     swaps fail with 0xbbe (PermissionDeniedMissingPermission) AFTER the swap executes.
  *
  * Usage:
