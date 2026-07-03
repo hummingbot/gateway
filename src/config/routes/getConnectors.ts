@@ -4,6 +4,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { PancakeswapConfig } from '#src/connectors/pancakeswap/pancakeswap.config';
 
 import { ZeroXConfig } from '../../connectors/0x/0x.config';
+import { HyperswapConfig } from '../../connectors/hyperswap/hyperswap.config';
 import { JupiterConfig } from '../../connectors/jupiter/jupiter.config';
 import { MeteoraConfig } from '../../connectors/meteora/meteora.config';
 import { OrcaConfig } from '../../connectors/orca/orca.config';
@@ -64,6 +65,12 @@ export const connectorsConfig = [
     trading_types: [...PancakeswapConfig.tradingTypes],
     chain: PancakeswapConfig.chain,
     networks: [...PancakeswapConfig.networks],
+  },
+  {
+    name: 'hyperswap',
+    trading_types: [...HyperswapConfig.tradingTypes],
+    chain: HyperswapConfig.chain,
+    networks: [...HyperswapConfig.networks],
   },
   {
     name: 'pancakeswap-sol',

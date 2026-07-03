@@ -1,0 +1,11 @@
+chainID: 999
+nodeURL: https://rpc.hyperliquid.xyz/evm
+nativeCurrencySymbol: HYPE
+geckoId: hyperliquid
+transactionExecutionTimeoutMs: 10000 # Timeout for waiting for transaction execution (in milliseconds)
+swapProvider: hyperswap/amm
+
+# HyperEVM fee parameters are fetched from the configured RPC by default.
+baseFee:
+baseFeeMultiplier: 1.2
+priorityFee:
