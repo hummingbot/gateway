@@ -151,17 +151,9 @@ owner key kept in env (never lands on the Gateway host or in shell history), it 
 owner, creates the Swig, and mints a **fresh** bounded delegate whose baseline is the token +
 System programs plus a one-time SOL cap — no venues, no spendable mints yet. The deploy-specific
 grants are separate, one owner approval each: `swig:allow-program` (venues, e.g. Orca + Meteora
-Whirlpools/DLMM), `swig:add-token` (per-mint caps), then `swig:fund`. See
-`scripts/swig/SETUP.md` for the full step-by-step.
-
-```bash
-GATEWAY_PASSPHRASE=<pass>                            # encrypts the freshly-generated delegate key
-GATEWAY_SWIG_OWNER_ADDRESS=<Ledger or keystore owner pubkey>   # owner secret never leaves the device
-GATEWAY_SWIG_NETWORK=mainnet-beta \
-GATEWAY_SWIG_RPC_URL=<rpc url> \
-GATEWAY_SWIG_SOL_LIMIT=0.1 \
-  pnpm swig:create
-```
+Whirlpools/DLMM), `swig:add-token` (per-mint caps), then `swig:fund`. Network and RPC come from
+Gateway's Solana config; the passphrase is passed via env, never a file. See
+[`../../../scripts/swig/SETUP.md`](../../../scripts/swig/SETUP.md) for the full step-by-step.
 
 It prints the JSON body for `POST /wallet/add-swig`. The **delegate** must hold a little SOL
 to pay fees, and the **Swig wallet** must hold the input token (within its cap) for a swap to

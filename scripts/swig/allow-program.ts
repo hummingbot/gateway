@@ -6,7 +6,7 @@
  *   GATEWAY_SWIG_OWNER_ADDRESS=<owner pubkey> \
  *   GATEWAY_SWIG_ACCOUNT=<Swig PDA> \
  *   GATEWAY_SWIG_DELEGATE_ADDRESS=<delegate pubkey> \
- *   GATEWAY_SWIG_RPC_URL=<rpc url> \
+ *   [GATEWAY_SWIG_RPC_URL=<rpc url>] \   # optional — defaults to the network nodeURL in conf/
  *   GATEWAY_SWIG_VENUES=orca,meteora \            # named presets, and/or:
  *   GATEWAY_SWIG_PROGRAM_IDS=<programId,...> \    # raw program ids
  *     pnpm swig:allow-program

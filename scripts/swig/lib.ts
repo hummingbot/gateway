@@ -18,7 +18,6 @@ import {
   getAssociatedTokenAddressSync,
 } from '@solana/spl-token';
 import {
-  clusterApiUrl,
   Connection,
   Keypair,
   LAMPORTS_PER_SOL,
@@ -32,7 +31,9 @@ import bs58 from 'bs58';
 import fse from 'fs-extra';
 
 import { SolanaLedger } from '../../src/chains/solana/solana-ledger';
+import { getSolanaChainConfig, getSolanaNetworkConfig } from '../../src/chains/solana/solana.config';
 import { HardwareWalletService } from '../../src/services/hardware-wallet-service';
+import { redactUrl } from '../../src/services/logger';
 import { encryptSecret, decryptSecret } from '../../src/services/secure-keystore';
 import { getSwigService, SwigTokenLimit } from '../../src/wallet/swig';
 import {
@@ -44,11 +45,16 @@ import {
   HardwareWalletData,
 } from '../../src/wallet/utils';
 
+// Secrets are NEVER read from the env file — the passphrase (and any raw key) must come from a
+// real environment variable, exported per session, so it isn't persisted next to the keystore.
+const ENV_FILE_SECRET_KEYS = new Set(['GATEWAY_PASSPHRASE', 'GATEWAY_SWIG_OWNER_KEY']);
+
 /**
- * Auto-load conf/swig.env (or SWIG_ENV_FILE) so operators can persist the GATEWAY_SWIG_*
- * values between sessions instead of exporting them every time. Runs once at import, i.e.
- * for every swig:* script. Real environment variables always win — the file only fills in
- * what's unset — so a one-off override like `GATEWAY_SWIG_VENUES=orca pnpm swig:...` works.
+ * Auto-load conf/swig.env (or SWIG_ENV_FILE) so operators can persist the non-secret
+ * GATEWAY_SWIG_* values between sessions instead of exporting them every time. Runs once at
+ * import, i.e. for every swig:* script. Real environment variables always win — the file only
+ * fills in what's unset — so a one-off override like `GATEWAY_SWIG_VENUES=orca pnpm swig:...`
+ * works. Secrets (ENV_FILE_SECRET_KEYS) are skipped even if present.
  */
 function loadSwigEnvFile(): void {
   const envPath = process.env.SWIG_ENV_FILE || 'conf/swig.env';
@@ -60,6 +66,12 @@ function loadSwigEnvFile(): void {
     const eq = trimmed.indexOf('=');
     if (eq <= 0) continue;
     const key = trimmed.slice(0, eq).trim();
+    if (ENV_FILE_SECRET_KEYS.has(key)) {
+      console.log(
+        `⚠ Ignoring ${key} in ${envPath} — export it as an environment variable instead; secrets are not read from the file.`,
+      );
+      continue;
+    }
     if (process.env[key] === undefined) {
       process.env[key] = trimmed.slice(eq + 1).trim();
       loaded++;
@@ -135,14 +147,33 @@ export function resolveVenuePrograms(venuesRaw: string | undefined, programIdsRa
   return [...new Set(programIds)];
 }
 
-/** Shared env resolution for the per-step scripts: network, RPC connection. */
+/**
+ * Shared connection resolution for every swig script. Network and RPC come from Gateway's own
+ * Solana config in conf/ (solana.defaultNetwork and the network's nodeURL) so the scripts talk
+ * to the same node the server does — no separate RPC to configure. GATEWAY_SWIG_NETWORK /
+ * GATEWAY_SWIG_RPC_URL still override for one-offs.
+ */
 export function getConnectionFromEnv(): { network: string; rpcUrl: string; connection: Connection } {
-  const network = process.env.GATEWAY_SWIG_NETWORK || 'mainnet-beta';
-  const rpcUrl = process.env.GATEWAY_SWIG_RPC_URL || clusterApiUrl(network === 'devnet' ? 'devnet' : 'mainnet-beta');
-  if (!process.env.GATEWAY_SWIG_RPC_URL) {
-    console.log('⚠ GATEWAY_SWIG_RPC_URL not set — using the public RPC, which rate-limits hard.');
+  const network = process.env.GATEWAY_SWIG_NETWORK || getSolanaChainConfig().defaultNetwork;
+  let rpcUrl = process.env.GATEWAY_SWIG_RPC_URL;
+  if (rpcUrl) {
+    console.log(`RPC: ${redactUrl(rpcUrl)} (from GATEWAY_SWIG_RPC_URL)`);
+  } else {
+    rpcUrl = getSolanaNetworkConfig(network).nodeURL;
+    if (!rpcUrl) {
+      throw new Error(
+        `No nodeURL configured for solana ${network} in conf/chains/solana/${network}.yml. ` +
+          'Set it there, or pass GATEWAY_SWIG_RPC_URL=<rpc url>.',
+      );
+    }
+    console.log(`RPC: ${redactUrl(rpcUrl)} (from conf/chains/solana/${network}.yml)`);
   }
   return { network, rpcUrl, connection: new Connection(rpcUrl, 'confirmed') };
+}
+
+/** The default Solana wallet from Gateway config (solana.defaultWallet); '' when unset. */
+export function getDefaultSolanaWallet(): string {
+  return getSolanaChainConfig().defaultWallet || '';
 }
 
 /** The Swig account (PDA) targeted by a per-step script. Printed by swig:create. */
@@ -194,10 +225,36 @@ export class LedgerOwnerSigner implements OwnerSigner {
 }
 
 /**
- * Resolve the owner signer. Precedence:
+ * Resolve a signer for any Gateway-managed Solana address:
+ *   - a registered hardware wallet  → sign on the Ledger (each tx approved on the device);
+ *   - otherwise an encrypted keystore wallet → decrypt with the passphrase and sign in-process.
+ * Used for both the Swig owner (root) and the funding source, so either can be a Ledger or a
+ * plain keystore wallet.
+ */
+export async function loadSignerForAddress(address: string, role: string): Promise<OwnerSigner> {
+  const hardwareWallet = await getHardwareWalletByAddress('solana', address);
+  if (hardwareWallet) {
+    console.log(`${role} is a hardware wallet (Ledger) — connect it, open the Solana app, enable`);
+    console.log('  blind signing (Swig instructions are custom-program calls), and approve on the device.');
+    return new LedgerOwnerSigner(new PublicKey(address));
+  }
+  const passphrase = requirePassphrase();
+  const filePath = getSafeWalletFilePath('solana', address);
+  if (!(await fse.pathExists(filePath))) {
+    throw new Error(
+      `${role} ${address} is neither a registered Ledger nor an encrypted keystore wallet in conf/wallets/solana/.`,
+    );
+  }
+  const encrypted = await fse.readFile(filePath, 'utf8');
+  const decrypted = decryptSecret(encrypted, passphrase);
+  console.log(`${role} is a keystore wallet (${address}) — signs in-process, no device needed.`);
+  return new KeypairOwnerSigner(Keypair.fromSecretKey(Uint8Array.from(bs58.decode(decrypted))));
+}
+
+/**
+ * Resolve the owner (root) signer. Precedence:
  *   1. GATEWAY_SWIG_OWNER_KEY  — raw base58 secret (software).
- *   2. GATEWAY_SWIG_OWNER_ADDRESS registered as a hardware wallet — sign on the Ledger.
- *   3. GATEWAY_SWIG_OWNER_ADDRESS in the encrypted keystore — decrypt with the passphrase.
+ *   2. GATEWAY_SWIG_OWNER_ADDRESS — a registered Ledger, else an encrypted keystore wallet.
  */
 export async function loadOwnerSigner(): Promise<OwnerSigner> {
   const ownerKey = process.env.GATEWAY_SWIG_OWNER_KEY;
@@ -208,23 +265,7 @@ export async function loadOwnerSigner(): Promise<OwnerSigner> {
   if (!ownerAddress) {
     throw new Error('Set GATEWAY_SWIG_OWNER_ADDRESS (keystore or hardware) or GATEWAY_SWIG_OWNER_KEY (base58 secret)');
   }
-
-  // Hardware wallet takes precedence: if the owner address is a registered Ledger, sign on it.
-  const hardwareWallet = await getHardwareWalletByAddress('solana', ownerAddress);
-  if (hardwareWallet) {
-    console.log('Owner is a hardware wallet (Ledger).');
-    console.log('  Connect it, open the Solana app, and enable blind signing (the Swig');
-    console.log('  create/add-delegate instructions are custom-program calls). You will');
-    console.log('  approve several transactions on the device.');
-    return new LedgerOwnerSigner(new PublicKey(ownerAddress));
-  }
-
-  // Otherwise decrypt the owner keypair from the keystore with the Gateway passphrase.
-  const passphrase = requirePassphrase();
-  const filePath = getSafeWalletFilePath('solana', ownerAddress);
-  const encrypted = await fse.readFile(filePath, 'utf8');
-  const decrypted = decryptSecret(encrypted, passphrase);
-  return new KeypairOwnerSigner(Keypair.fromSecretKey(Uint8Array.from(bs58.decode(decrypted))));
+  return loadSignerForAddress(ownerAddress, 'Owner');
 }
 
 /**

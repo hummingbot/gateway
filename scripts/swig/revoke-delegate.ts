@@ -7,7 +7,7 @@
  *   GATEWAY_SWIG_OWNER_ADDRESS=<owner pubkey> \
  *   GATEWAY_SWIG_ACCOUNT=<Swig PDA> \
  *   GATEWAY_SWIG_DELEGATE_ADDRESS=<delegate pubkey to revoke> \
- *   GATEWAY_SWIG_RPC_URL=<rpc url> \
+ *   [GATEWAY_SWIG_RPC_URL=<rpc url>] \   # optional — defaults to the network nodeURL in conf/
  *     pnpm swig:revoke-delegate
  */
 

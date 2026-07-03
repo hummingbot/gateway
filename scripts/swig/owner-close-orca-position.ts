@@ -15,7 +15,7 @@
  *   GATEWAY_SWIG_OWNER_ADDRESS=<Ledger pubkey> \
  *   GATEWAY_SWIG_ACCOUNT=<Swig PDA> \
  *   GATEWAY_SWIG_POSITION=<position address> \
- *   GATEWAY_SWIG_RPC_URL=<rpc url> \
+ *   [GATEWAY_SWIG_RPC_URL=<rpc url>] \   # optional — defaults to the network nodeURL in conf/
  *     pnpm swig:owner-close
  */
 

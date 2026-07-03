@@ -16,16 +16,17 @@
  *   - swig:add-token      — per-mint spend caps
  *   - swig:fund           — move SOL/tokens into the delegate and wallet
  *
- * Usage (secrets via env so they never hit shell history):
+ * Network + RPC come from Gateway's Solana config (conf/): solana.defaultNetwork and the
+ * network's nodeURL. Override per-run with GATEWAY_SWIG_NETWORK / GATEWAY_SWIG_RPC_URL.
+ *
+ * Usage (the passphrase via env only, never a file, so it isn't persisted by the keystore):
  *   GATEWAY_PASSPHRASE=<pass> \                 # encrypts the generated delegate key
  *   GATEWAY_SWIG_OWNER_ADDRESS=<Ledger or keystore owner pubkey> \
- *   GATEWAY_SWIG_RPC_URL=<rpc url> \
- *   [GATEWAY_SWIG_NETWORK=mainnet-beta] \
  *   [GATEWAY_SWIG_SOL_LIMIT=0.1] \              # one-time SOL cap; defaults to 0.1
  *     pnpm swig:create
  */
 
-import { clusterApiUrl, Connection, LAMPORTS_PER_SOL, PublicKey, Transaction } from '@solana/web3.js';
+import { LAMPORTS_PER_SOL, PublicKey, Transaction } from '@solana/web3.js';
 import bs58 from 'bs58';
 
 import { getSwigService } from '../../src/wallet/swig';
@@ -33,6 +34,7 @@ import { getSwigService } from '../../src/wallet/swig';
 import {
   buildFreshDelegateRole,
   ensureHardwareOwnerRegistered,
+  getConnectionFromEnv,
   loadOwnerSigner,
   requirePassphrase,
   resolveDelegateSolLimit,
@@ -40,17 +42,16 @@ import {
 
 const USAGE = `
 Required environment variables:
-  GATEWAY_PASSPHRASE            Gateway passphrase (encrypts the new delegate key)
+  GATEWAY_PASSPHRASE            Gateway passphrase (encrypts the new delegate key) — env only
   GATEWAY_SWIG_OWNER_ADDRESS    Owner pubkey — your Ledger address (or a keystore wallet)
-Optional:
-  GATEWAY_SWIG_RPC_URL          Solana RPC (default: public mainnet — use a private one)
-  GATEWAY_SWIG_NETWORK          mainnet-beta (default) | devnet
+Optional (network + RPC default from Gateway's Solana config in conf/):
+  GATEWAY_SWIG_NETWORK          override solana.defaultNetwork
+  GATEWAY_SWIG_RPC_URL          override the network's nodeURL
   GATEWAY_SWIG_SOL_LIMIT        One-time SOL cap for wallet-paid rent/wraps (default: 0.1)
 
 Example (Ledger owner):
   GATEWAY_PASSPHRASE=<pass> \\
   GATEWAY_SWIG_OWNER_ADDRESS=<your Ledger Solana address> \\
-  GATEWAY_SWIG_RPC_URL=<your rpc url> \\
     pnpm swig:create
 `;
 
@@ -84,9 +85,6 @@ function validateInputs(): string[] {
       );
     }
   }
-  if (!process.env.GATEWAY_SWIG_RPC_URL) {
-    console.log('⚠ GATEWAY_SWIG_RPC_URL not set — using the public RPC, which rate-limits hard.');
-  }
   return problems;
 }
 
@@ -100,9 +98,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const network = process.env.GATEWAY_SWIG_NETWORK || 'mainnet-beta';
-  const rpcUrl = process.env.GATEWAY_SWIG_RPC_URL || clusterApiUrl(network === 'devnet' ? 'devnet' : 'mainnet-beta');
-  const connection = new Connection(rpcUrl, 'confirmed');
+  const { network, connection } = getConnectionFromEnv();
   const solLimitLamports = resolveDelegateSolLimit();
   const swigService = getSwigService();
 
@@ -125,7 +121,6 @@ async function main(): Promise<void> {
   }
   const owner = await loadOwnerSigner();
   console.log(`Network: ${network}`);
-  console.log(`RPC:     ${rpcUrl}`);
   console.log(`Owner:   ${owner.publicKey.toBase58()}`);
 
   const solBalance = await connection.getBalance(owner.publicKey);

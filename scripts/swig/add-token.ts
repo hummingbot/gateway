@@ -14,7 +14,7 @@
  *   GATEWAY_SWIG_OWNER_ADDRESS=<owner pubkey> \
  *   GATEWAY_SWIG_ACCOUNT=<Swig PDA> \
  *   GATEWAY_SWIG_DELEGATE_ADDRESS=<delegate pubkey> \
- *   GATEWAY_SWIG_RPC_URL=<rpc url> \
+ *   [GATEWAY_SWIG_RPC_URL=<rpc url>] \   # optional — defaults to the network nodeURL in conf/
  *   [GATEWAY_SWIG_TOKEN_LIMITS=<mint:amount,...>] \   # base units, e.g. 50 USDC = ...USDC mint...:50000000
  *   [GATEWAY_SWIG_SOL_LIMIT=<sol>] \                  # e.g. 0.1
  *     pnpm swig:add-token

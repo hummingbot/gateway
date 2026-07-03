@@ -7,7 +7,7 @@
  *
  * Usage:
  *   GATEWAY_SWIG_ACCOUNT=<Swig PDA> \
- *   GATEWAY_SWIG_RPC_URL=<rpc url> \
+ *   [GATEWAY_SWIG_RPC_URL=<rpc url>] \   # optional — defaults to the network nodeURL in conf/
  *   [GATEWAY_SWIG_TOKEN_MINTS=<mint,...>] \    # check spend caps for these mints
  *   [GATEWAY_SWIG_PROGRAM_IDS=<id,...>] \      # probe extra programs beyond the presets
  *     pnpm swig:show

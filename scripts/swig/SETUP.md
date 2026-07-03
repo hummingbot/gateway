@@ -43,7 +43,10 @@ delegate; the whole point is that the key Gateway holds is not a key that contro
 - Ledger: connected, unlocked, **Solana app open**, **blind signing enabled** (the Swig
   instructions are custom-program calls the device can't decode).
 - The owner (Ledger) address holds enough SOL for rent/fees plus whatever you plan to fund.
-- A private Solana RPC URL (the public one rate-limits hard). **Never commit it.**
+- **Network and RPC come from Gateway's own Solana config** (`conf/chains/solana.yml` →
+  `defaultNetwork`, and `conf/chains/solana/<network>.yml` → `nodeURL`). The scripts read them
+  automatically — no separate RPC to set. Use a private `nodeURL` there; the public one
+  rate-limits hard. Override per-run with `GATEWAY_SWIG_RPC_URL` / `GATEWAY_SWIG_NETWORK`.
 - Common values used in the examples:
 
 ```
@@ -51,31 +54,29 @@ USDC mint          = EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v   (6 decimals:
 Meteora SOL/USDC   = 2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3   (CLMM pool for the test swap)
 ```
 
-Every script reads the same base env vars. Either export them once per shell:
+The **passphrase is passed via an environment variable, never a file** (it's the key that
+decrypts the keystore). Export it for the session:
 
 ```bash
 export GATEWAY_PASSPHRASE=<your gateway passphrase>
 export GATEWAY_SWIG_OWNER_ADDRESS=<your Ledger Solana address>
-export GATEWAY_SWIG_RPC_URL=<your private Solana mainnet RPC URL>
 ```
 
-…or persist them in **`conf/swig.env`** (gitignored, `chmod 600`), which every `swig:*`
-script auto-loads — real environment variables always override the file, so one-off
-overrides still work. `swig:create` prints the values to append (`GATEWAY_SWIG_ACCOUNT`,
+The non-secret addresses can be persisted in **`conf/swig.env`** (gitignored, `chmod 600`),
+which every `swig:*` script auto-loads — real environment variables always override the file.
+`swig:create` prints the values to append (`GATEWAY_SWIG_ACCOUNT`,
 `GATEWAY_SWIG_DELEGATE_ADDRESS`) so later steps and future sessions need no exports:
 
 ```bash
-# conf/swig.env
-GATEWAY_PASSPHRASE=<pass>            # optional — omit on production hosts and export per-session
+# conf/swig.env  — non-secrets only
 GATEWAY_SWIG_OWNER_ADDRESS=<Ledger address>
-GATEWAY_SWIG_RPC_URL=<rpc url>
 GATEWAY_SWIG_ACCOUNT=<PDA, printed by swig:create>
 GATEWAY_SWIG_DELEGATE_ADDRESS=<printed by swig:create>
 ```
 
-> Storing the passphrase next to the keystore it decrypts weakens the encryption to disk
-> access; fine for a demo, remove it for production. `SWIG_ENV_FILE=<path>` points the
-> scripts at a different file.
+> `GATEWAY_PASSPHRASE` (and any raw key) is **ignored if found in this file** — the scripts
+> refuse to read secrets from disk and print a warning; always export it as an environment
+> variable. `SWIG_ENV_FILE=<path>` points the scripts at a different file.
 >
 > Any script run with missing inputs prints exactly what's missing and a usage example —
 > when in doubt, just run it.
@@ -159,19 +160,30 @@ GATEWAY_SWIG_SOL_LIMIT=0.1 pnpm swig:add-token   # adds another 0.1 SOL of one-t
 
 ### Step 4 — fund it
 
+Funds can come from **anywhere** — only the amounts matter. `swig:fund` bundles the legs into
+**one transaction** signed by a funding source you choose:
+
+- **From a non-hardware wallet** (no device): a regular Gateway keystore wallet signs in
+  process. By default it uses your `solana.defaultWallet` from config; point at another with
+  `GATEWAY_SWIG_FUND_FROM=<address>`. Needs `GATEWAY_PASSPHRASE` to decrypt it.
+- **From your Ledger owner:** set `GATEWAY_SWIG_FUND_FROM=<owner Ledger address>` (or leave the
+  owner as the default) and approve the one transaction on the device.
+
 ```bash
 # ONE transaction: 0.03 SOL to the delegate (tx fees) + 0.01 SOL headroom and 10 USDC to the Swig wallet
+# Funder = solana.defaultWallet (override with GATEWAY_SWIG_FUND_FROM=<Ledger or keystore address>)
 GATEWAY_SWIG_FUND_DELEGATE_SOL=0.03 \
 GATEWAY_SWIG_FUND_WALLET_SOL=0.01 \
 GATEWAY_SWIG_FUND_WALLET_TOKENS=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:10000000 \
   pnpm swig:fund
 ```
 
-**1 approval.** All three funding legs matter: the delegate needs SOL or swaps fail at
+**1 signature.** All three funding legs matter: the delegate needs SOL or swaps fail at
 fee-payer resolution; the Swig wallet needs the input token (within its cap); and the wallet
 needs a little SOL of its own — the PDA is created holding exactly the rent-exempt minimum,
 and DEX SDKs simulate with the wallet as payer, so with zero headroom every swap dies in
-simulation with `InsufficientFundsForRent`. You can also just send all of it from any wallet.
+simulation with `InsufficientFundsForRent`. The funder must hold everything it's sending; you
+can also skip this script and send the SOL/tokens from any wallet by hand.
 
 ### Step 5 — verify the policy (read-only, run anytime)
 
