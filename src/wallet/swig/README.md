@@ -30,15 +30,17 @@ its on-chain limits.
 
 Verified on mainnet. Swig is **default-deny, per mint**:
 
-- 🔒 **Cannot** move SOL or call any non-allowlisted program (no drainer, no staking, no
-  arbitrary CPI) — hard-blocked by the program allowlist.
-- 🔒 **Cannot** move any token that has not been explicitly enabled on the role — even the
-  token transfer itself succeeds, then Swig reverts the whole transaction.
-- ⚠️ **Can** move the tokens you explicitly enabled (e.g. USDC for trading), to any
-  destination, **up to their per-mint spend caps**. `tokenLimit` bounds the *amount*, not
-  the destination.
+- 🔒 **Cannot** call any non-allowlisted program (no drainer, no staking, no arbitrary CPI)
+  — hard-blocked by the program allowlist.
+- 🔒 **Cannot** move any un-capped token — even the transfer itself succeeds, then Swig
+  reverts the whole transaction. SOL beyond the role's SOL cap is blocked the same way.
+- ⚠️ **Can** move the tokens you explicitly enabled (e.g. USDC for trading) up to their
+  per-mint spend caps, **and** wallet SOL up to a small one-time **SOL cap** (every deploy
+  sets one — default 0.1 SOL — because swaps make the wallet pay lamports for ATA rent and
+  native-SOL wraps). Caps bound the *amount*, not the destination.
 - 🔁 **Revocable:** the owner rotates/removes the delegate role to cut the attacker off; the
-  loss is bounded to `enabled mints × caps × hot-wallet balance`, never "all funds."
+  loss is bounded to `enabled mints × caps + the SOL cap`, within the hot-wallet balance —
+  never "all funds."
 
 Pinning withdrawals to the owner address (`tokenDestinationLimit`) is possible but **blocks
 swaps for that mint** (a swap sends tokens to the pool vault, not the owner), so it is not
@@ -48,15 +50,18 @@ used for trading mints. The practical guarantee is default-deny + per-mint caps.
 
 The delegate is a local **Ed25519** keypair, encrypted at rest with a passphrase-derived
 key. A local key is acceptable here precisely because Swig — not key secrecy — is the
-protection. For defense-in-depth the at-rest encryption should match the **keystore v3**
-grade that Gateway's Ethereum wallets and Hummingbot already use:
+protection. For defense-in-depth the at-rest encryption is now at/above the **keystore v3**
+grade that Gateway's Ethereum wallets and Hummingbot use:
 
 - **Gateway Ethereum** (`ethereum.ts`): ethers `Wallet.encrypt` → keystore v3 (scrypt +
   AES-128-CTR + keccak MAC). ✅
 - **Hummingbot** (`config_crypt.py`): `eth_account` keystore v3 (PBKDF2 ~1,000,000 iters /
   scrypt + MAC). ✅
-- **Gateway Solana** (`solana.ts` `encrypt`): custom `aes-256-ctr` + PBKDF2 **5,000 iters**,
-  **no MAC**. ⚠️ Weaker KDF and no integrity check — the target to upgrade for the Swig key.
+- **Gateway Solana** (`services/secure-keystore.ts`): **scrypt** (N=2¹⁷ ≈ 128 MB, the OWASP
+  minimum) **+ AES-256-GCM** — authenticated encryption, so a wrong passphrase or a tampered
+  file fails loudly (the GCM tag is the integrity check). Shipped in **#659**; the old
+  PBKDF2-5,000 / AES-256-CTR / no-MAC format survives only as a read-only path and is
+  auto-migrated to the hardened format on the next decrypt. ✅
 
 The harder-to-steal end of the spectrum (cloud KMS / HSM / enclave, non-exportable +
 revocable) is tracked as a follow-up enhancement
@@ -67,9 +72,9 @@ behind `SwigDelegateSigner` (`delegate-signer.ts`) — `local` ships now, `kms` 
 ## Configuring restrictions (the delegate role)
 
 A Swig wallet's guardrails are the **delegate role's actions**: an allowlist of **programs**
-the delegate may invoke and a per-mint **spend cap** on the tokens it may move. Everything
-not listed is denied. These are set when the role is created (with the offline owner key) and
-amended later by the owner.
+the delegate may invoke, a per-mint **spend cap** on the tokens it may move, and a one-time
+**SOL cap** for wallet-paid rent/wraps. Everything not listed is denied. These are set when
+the role is created (with the offline owner key) and amended later by the owner.
 
 The action set is built in `SwigService.buildDelegateActions` from a `SwigRoleRestrictions`:
 
@@ -77,11 +82,13 @@ The action set is built in `SwigService.buildDelegateActions` from a `SwigRoleRe
 interface SwigRoleRestrictions {
   allowedProgramIds: string[];   // every program the wrapped instructions CPI into
   tokenLimits: { mint: string; amount: bigint }[];  // per-mint one-time spend caps (base units)
+  solLimitLamports?: bigint;     // one-time SOL cap: wallet-paid ATA rent + native-SOL wraps
 }
 ```
 
-`Actions.set().programLimit({ programId })…tokenLimit({ mint, amount })…get()` — drop either
-and that dimension becomes default-deny.
+`Actions.set().programLimit({ programId })…tokenLimit({ mint, amount })…solLimit({ amount })…get()`
+— drop a dimension and it becomes default-deny (an absent `solLimit` blocks every wallet-paid
+lamport debit, so swaps that create an ATA or wrap SOL revert post-execution with `0xbbe`).
 
 ### Program restrictions
 
@@ -116,17 +123,21 @@ programs:
 ### Token restrictions
 
 `tokenLimits` enables specific mints for spending and caps the **amount** (in base units) the
-delegate may move of each. A mint with no `tokenLimit` cannot be moved at all — even native
-SOL is denied unless explicitly enabled. The cap bounds the amount, **not the destination**
-(pinning the destination would break swaps, which send to a pool vault — see above).
+delegate may move of each. A mint with no `tokenLimit` cannot be moved at all. Native SOL is
+governed separately by `solLimitLamports` (the SOL cap): the delegate may spend wallet SOL up
+to that cap and no further — it exists so swaps can pay ATA rent and wrap SOL, not to move
+capital. The caps bound the amount, **not the destination** (pinning the destination would
+break swaps, which send to a pool vault — see above).
 
 To restrict Gateway to, say, **USDM1 only**, give the delegate role a single `tokenLimit` for
-the USDM1 mint and nothing else: every other mint, and SOL, is then unspendable.
+the USDM1 mint and nothing else: every other mint is then unspendable, and SOL only to the
+small rent/wrap cap.
 
 ```ts
 const restrictions = {
-  allowedProgramIds: [ORCA_WHIRLPOOLS, SPL_TOKEN, TOKEN_2022, ATA_PROGRAM],
+  allowedProgramIds: [ORCA_WHIRLPOOLS, SPL_TOKEN, TOKEN_2022, ATA_PROGRAM, SYSTEM_PROGRAM],
   tokenLimits: [{ mint: USDM1_MINT, amount: 1_000_000_000n }], // 1,000 USDM1 @ 6 decimals
+  solLimitLamports: 100_000_000n, // 0.1 SOL cap for ATA rent / native-SOL wraps
 };
 ```
 
@@ -136,10 +147,17 @@ All role changes are **owner-authorized** (the offline root key signs the return
 instructions); the delegate can never widen its own permissions.
 
 - **At role creation** — `SwigService.buildAddDelegateInstructions(connection, account, owner,
-  delegate, restrictions)` adds the restricted delegate to a freshly created Swig.
-- **Enabling a new token later** — `SwigService.buildAddTokenLimitsInstructions(connection,
-  account, owner, delegate, tokenLimits)` adds per-mint caps to the existing delegate role
-  (e.g. turning on a new trading pair) without touching the program allowlist.
+  delegate, restrictions)` adds the restricted delegate (programs + token caps + SOL cap) to a
+  freshly created Swig. This backs `pnpm swig:create` / `swig:add-delegate`.
+- **Enabling a new token later** — `SwigService.buildAddTokenLimitsInstructions(...)` adds
+  per-mint caps to the existing role (e.g. a new trading pair) without touching the allowlist
+  (`swig:add-token`).
+- **Allowing a new venue** — `SwigService.buildAddProgramLimitsInstructions(...)` extends the
+  program allowlist (`swig:allow-program`).
+- **Topping up the SOL cap** — `SwigService.buildAddSolLimitInstructions(...)` adds one-time SOL
+  headroom (`swig:add-token` with a SOL amount).
+- **Revoking** — `SwigService.buildRemoveDelegateInstructions(...)` removes the role entirely
+  (`swig:revoke-delegate`).
 
 `POST /wallet/add-swig` then registers the provisioned wallet with Gateway and verifies the
 delegate role exists on-chain; it does **not** create or widen the role.
