@@ -1,0 +1,13 @@
+[
+  {
+    "connector": "uniswap",
+    "type": "amm",
+    "network": "optimism",
+    "baseSymbol": "OP",
+    "quoteSymbol": "USDC",
+    "address": "0x1c3140ab59d6caf9fa7459c6f83d4b52ba881d36",
+    "baseTokenAddress": "0x4200000000000000000000000000000000000042",
+    "quoteTokenAddress": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
+    "feePct": 0.3
+  }
+]

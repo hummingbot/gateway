@@ -47,6 +47,18 @@ jest.mock('@solana/spl-token', () => ({
   createAssociatedTokenAccountIdempotentInstruction: jest.fn(),
   createSyncNativeInstruction: jest.fn(),
 }));
+// v4 whirlpools SDK path — swapInstructions resolves tick arrays, the oracle
+// (adaptive-fee pools) and Token-2022 extensions internally.
+jest.mock('@orca-so/whirlpools', () => ({
+  swapInstructions: jest.fn(),
+  setWhirlpoolsConfig: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('@orca-so/whirlpools-client', () => ({
+  fetchWhirlpool: jest.fn(),
+}));
+jest.mock('@solana-program/token-2022', () => ({
+  fetchAllMint: jest.fn(),
+}));
 
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
@@ -308,6 +320,146 @@ describe('POST /execute-swap', () => {
 
       // Should return error status code
       expect(response.statusCode).toBeGreaterThanOrEqual(400);
+    });
+  });
+
+  describe('successful execution (v4 SDK path)', () => {
+    const { swapInstructions } = require('@orca-so/whirlpools');
+    const { fetchWhirlpool } = require('@orca-so/whirlpools-client');
+    const { fetchAllMint } = require('@solana-program/token-2022');
+
+    // Any valid base58-encoded 32 bytes works as a blockhash for offline signing
+    const mockBlockhash = Keypair.generate().publicKey.toBase58();
+    let mockConnection: any;
+
+    beforeEach(() => {
+      (swapInstructions as jest.Mock).mockClear();
+      mockConnection = {
+        sendRawTransaction: jest.fn().mockResolvedValue('mock-signature'),
+        confirmTransaction: jest.fn().mockResolvedValue({ value: { err: null } }),
+        getTransaction: jest.fn().mockResolvedValue({ meta: { fee: 5000 } }),
+      };
+      (Solana.getInstance as jest.Mock).mockResolvedValue({
+        getToken: jest.fn().mockImplementation((symbol: string) => {
+          if (symbol === 'SOL' || symbol === mockBaseTokenInfo.address) return mockBaseTokenInfo;
+          if (symbol === 'USDC' || symbol === mockQuoteTokenInfo.address) return mockQuoteTokenInfo;
+          return null;
+        }),
+        getWallet: jest.fn().mockResolvedValue(mockWallet),
+        estimateGasPrice: jest.fn().mockResolvedValue(0.0001),
+        connection: mockConnection,
+      });
+      (Orca.getInstance as jest.Mock).mockResolvedValue({
+        solanaKitRpc: {
+          getLatestBlockhash: jest.fn().mockReturnValue({
+            send: jest.fn().mockResolvedValue({ value: { blockhash: mockBlockhash, lastValidBlockHeight: 12345n } }),
+          }),
+        },
+      });
+      (fetchWhirlpool as jest.Mock).mockResolvedValue({
+        data: { tokenMintA: mockBaseTokenInfo.address, tokenMintB: mockQuoteTokenInfo.address },
+      });
+      (fetchAllMint as jest.Mock).mockResolvedValue([
+        { data: { decimals: mockBaseTokenInfo.decimals } },
+        { data: { decimals: mockQuoteTokenInfo.decimals } },
+      ]);
+    });
+
+    it('executes a SELL as exact-in of the base token and reports balance changes', async () => {
+      (swapInstructions as jest.Mock).mockResolvedValue({
+        instructions: [],
+        quote: {
+          tokenIn: 1_000_000_000n, // 1 SOL in
+          tokenEstOut: 63_900_000n, // 63.9 USDC out
+        },
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/execute-swap',
+        payload: {
+          network: 'mainnet-beta',
+          walletAddress: mockWalletAddress,
+          baseToken: 'SOL',
+          quoteToken: 'USDC',
+          amount: 1.0,
+          side: 'SELL',
+          poolAddress: mockPoolAddress,
+          slippagePct: 1,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.signature).toBe('mock-signature');
+      expect(body.status).toBe(1);
+      expect(body.data.amountIn).toBeCloseTo(1);
+      expect(body.data.amountOut).toBeCloseTo(63.9);
+      expect(body.data.baseTokenBalanceChange).toBeCloseTo(-1);
+      expect(body.data.quoteTokenBalanceChange).toBeCloseTo(63.9);
+      expect(body.data.fee).toBeCloseTo(5000 / 1e9);
+
+      // exact-in request for the base mint
+      const [, params, , slippageBps] = (swapInstructions as jest.Mock).mock.calls[0];
+      expect(params).toEqual({ inputAmount: 1_000_000_000n, mint: mockBaseTokenInfo.address });
+      expect(slippageBps).toBe(100);
+      expect(mockConnection.sendRawTransaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('executes a BUY as exact-out of the base token and reports balance changes', async () => {
+      (swapInstructions as jest.Mock).mockResolvedValue({
+        instructions: [],
+        quote: {
+          tokenEstIn: 64_100_000n, // 64.1 USDC in
+          tokenOut: 1_000_000_000n, // 1 SOL out
+        },
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/execute-swap',
+        payload: {
+          network: 'mainnet-beta',
+          walletAddress: mockWalletAddress,
+          baseToken: 'SOL',
+          quoteToken: 'USDC',
+          amount: 1.0,
+          side: 'BUY',
+          poolAddress: mockPoolAddress,
+          slippagePct: 1,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.data.amountIn).toBeCloseTo(64.1);
+      expect(body.data.amountOut).toBeCloseTo(1);
+      expect(body.data.baseTokenBalanceChange).toBeCloseTo(1);
+      expect(body.data.quoteTokenBalanceChange).toBeCloseTo(-64.1);
+
+      // exact-out request for the base mint
+      const [, params] = (swapInstructions as jest.Mock).mock.calls[0];
+      expect(params).toEqual({ outputAmount: 1_000_000_000n, mint: mockBaseTokenInfo.address });
+    });
+
+    it('returns 500 when the v4 SDK fails to build the swap', async () => {
+      (swapInstructions as jest.Mock).mockRejectedValue(new Error('no route'));
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/execute-swap',
+        payload: {
+          network: 'mainnet-beta',
+          walletAddress: mockWalletAddress,
+          baseToken: 'SOL',
+          quoteToken: 'USDC',
+          amount: 1.0,
+          side: 'SELL',
+          poolAddress: mockPoolAddress,
+        },
+      });
+
+      expect(response.statusCode).toBe(500);
     });
   });
 });

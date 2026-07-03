@@ -1,4 +1,4 @@
-import { Type } from '@sinclair/typebox';
+import { Type, Static } from '@sinclair/typebox';
 
 import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
 
@@ -48,7 +48,18 @@ export const UniswapClmmGetPoolInfoRequest = Type.Object({
     description: 'Uniswap V3 pool address',
     examples: [CLMM_POOL_ADDRESS_EXAMPLE],
   }),
+  binCount: Type.Optional(
+    Type.Integer({
+      description:
+        'If > 0, include a `bins` array (per-tickSpacing token amounts around the current tick), ' +
+        'mirroring Meteora pool-info.bins[]. Default 0 — pool-info skips the extra eth_calls.',
+      default: 0,
+      minimum: 0,
+      maximum: 401,
+    }),
+  ),
 });
+export type UniswapClmmGetPoolInfoRequestType = Static<typeof UniswapClmmGetPoolInfoRequest>;
 
 // ========================================
 // Router Request Schemas

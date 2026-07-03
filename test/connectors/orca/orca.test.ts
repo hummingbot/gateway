@@ -230,7 +230,7 @@ describe('Orca', () => {
         json: async () => mockApiResponse,
       } as any);
 
-      const pools = await orcaInstance.getPools(10, 'SOL', 'USDC');
+      const pools = await orcaInstance.getPools({ limit: 10, query: 'SOL USDC' });
 
       expect(pools).toHaveLength(1);
       expect(pools[0]).toEqual({
@@ -267,7 +267,7 @@ describe('Orca', () => {
         json: async () => ({ data: [] }),
       } as any);
 
-      await orcaInstance.getPools(5, 'SOL', 'USDC');
+      await orcaInstance.getPools({ limit: 5, query: 'SOL USDC' });
 
       expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('q=SOL+USDC'));
       expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('size=5'));

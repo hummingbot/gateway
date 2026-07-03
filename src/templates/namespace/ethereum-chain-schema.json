@@ -19,9 +19,9 @@
     },
     "rpcProvider": {
       "type": "string",
-      "enum": ["url", "infura"],
+      "enum": ["url", "infura", "chainstack"],
       "default": "url",
-      "description": "RPC provider to use: 'url' for standard nodeURL from network config, 'infura' for Infura service across all networks"
+      "description": "RPC provider to use: 'url' for standard nodeURL from network config, 'infura' for Infura service, or 'chainstack' for Chainstack Platform API auto-discovery"
     }
   },
   "required": ["defaultNetwork", "defaultWallet"],

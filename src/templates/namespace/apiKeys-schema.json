@@ -10,6 +10,10 @@
       "type": "string",
       "description": "Infura API key for Ethereum RPC (https://infura.io)"
     },
+    "chainstack": {
+      "type": "string",
+      "description": "Chainstack Platform API key for multi-chain RPC (https://console.chainstack.com)"
+    },
     "coingecko": {
       "type": "string",
       "description": "CoinGecko API key for price data (https://www.coingecko.com/en/api/pricing)"

@@ -12,6 +12,7 @@ export type SolanaErrorType =
   | 'PRICE_LIMIT_OVERFLOW'
   | 'ACCOUNT_NOT_FOUND'
   | 'MATH_OVERFLOW'
+  | 'INSTRUCTION_ERROR'
   | 'UNKNOWN';
 
 export interface ParsedSolanaError {
@@ -19,6 +20,8 @@ export interface ParsedSolanaError {
   program: string;
   errorCode: number | null;
   errorCodeHex: string | null;
+  /** Index of the failing instruction, when the error is an InstructionError */
+  instructionIndex: number | null;
   message: string;
   rawError: string;
 }
@@ -170,6 +173,61 @@ const GENERIC_ERROR_CODES: Record<number, { type: SolanaErrorType; message: stri
 };
 
 /**
+ * Runtime `InstructionError` variants (non-`Custom`) that Solana returns when a
+ * program rejects an account or fails outside of a custom program error code.
+ * These appear in errors like {"InstructionError":[3,"InvalidAccountData"]} and
+ * carry no numeric error code, so they need to be matched by variant name.
+ */
+const INSTRUCTION_ERROR_VARIANTS: Record<string, { type: SolanaErrorType; message: string }> = {
+  InvalidAccountData: {
+    type: 'INSTRUCTION_ERROR',
+    message:
+      'An account passed to the instruction has invalid or unexpected data. ' +
+      'It may be uninitialized, owned by the wrong program, or hold a different token mint than expected.',
+  },
+  InvalidAccountOwner: {
+    type: 'INSTRUCTION_ERROR',
+    message: 'An account passed to the instruction is owned by an unexpected program.',
+  },
+  IllegalOwner: {
+    type: 'INSTRUCTION_ERROR',
+    message: 'An account passed to the instruction has an illegal owner.',
+  },
+  AccountNotExecutable: {
+    type: 'INSTRUCTION_ERROR',
+    message: 'An account expected to be an executable program is not executable.',
+  },
+  AccountDataTooSmall: {
+    type: 'INSTRUCTION_ERROR',
+    message: 'An account passed to the instruction has insufficient data size.',
+  },
+  NotEnoughAccountKeys: {
+    type: 'INSTRUCTION_ERROR',
+    message: 'The instruction was given fewer account keys than required.',
+  },
+  UninitializedAccount: {
+    type: 'ACCOUNT_NOT_FOUND',
+    message: 'An account passed to the instruction is uninitialized.',
+  },
+  MissingAccount: {
+    type: 'ACCOUNT_NOT_FOUND',
+    message: 'A required account was missing from the instruction.',
+  },
+  InsufficientFunds: {
+    type: 'INSUFFICIENT_BALANCE',
+    message: 'Insufficient funds to complete the instruction.',
+  },
+  ProgramFailedToComplete: {
+    type: 'INSTRUCTION_ERROR',
+    message: 'The program failed to complete execution.',
+  },
+  ComputationalBudgetExceeded: {
+    type: 'INSTRUCTION_ERROR',
+    message: 'The instruction exceeded its computational budget.',
+  },
+};
+
+/**
  * Generic error patterns that apply across programs
  * These are checked when program-specific codes don't match
  */
@@ -227,6 +285,42 @@ function extractErrorCode(errorMessage: string): { code: number | null; hex: str
 }
 
 /**
+ * Extract the failing instruction index and the (non-`Custom`) error variant
+ * from an InstructionError, e.g. {"InstructionError":[3,"InvalidAccountData"]}.
+ * For custom program errors ({"InstructionError":[3,{"Custom":6001}]}) the
+ * variant is returned as null since the numeric code is extracted separately.
+ */
+function extractInstructionError(errorMessage: string): { index: number | null; variant: string | null } {
+  const match = errorMessage.match(/"InstructionError"\s*:\s*\[\s*(\d+)\s*,\s*(.+?)\s*\]/);
+  if (!match) {
+    return { index: null, variant: null };
+  }
+  const index = parseInt(match[1], 10);
+  // The variant is either a quoted string ("InvalidAccountData") or an object ({"Custom":6001}).
+  const variantMatch = match[2].match(/^"([A-Za-z]+)"$/);
+  return { index, variant: variantMatch ? variantMatch[1] : null };
+}
+
+/**
+ * Extract the program log lines from a simulation error message.
+ * `simulateTransaction` appends logs after a `Program Logs:` marker; this
+ * returns the trailing lines (most relevant to the failure) for surfacing.
+ */
+export function extractProgramLogs(errorMessage: string, maxLines = 12): string[] {
+  const marker = 'Program Logs:';
+  const markerIndex = errorMessage.indexOf(marker);
+  if (markerIndex === -1) {
+    return [];
+  }
+  const lines = errorMessage
+    .slice(markerIndex + marker.length)
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  return lines.slice(-maxLines);
+}
+
+/**
  * Extract program ID from error message
  */
 function extractProgramId(errorMessage: string): string | null {
@@ -280,6 +374,7 @@ export function parseSolanaError(errorMessage: string): ParsedSolanaError {
   const { code, hex } = extractErrorCode(errorMessage);
   const programId = extractProgramId(errorMessage);
   const programName = getProgramName(programId);
+  const { index: instructionIndex, variant: instructionVariant } = extractInstructionError(errorMessage);
 
   // Try program-specific error code lookup
   if (programId && code !== null && PROGRAM_ERROR_CODES[programId]) {
@@ -290,6 +385,7 @@ export function parseSolanaError(errorMessage: string): ParsedSolanaError {
         program: programName,
         errorCode: code,
         errorCodeHex: hex,
+        instructionIndex,
         message: errorInfo.message,
         rawError: errorMessage,
       };
@@ -304,7 +400,23 @@ export function parseSolanaError(errorMessage: string): ParsedSolanaError {
       program: programName,
       errorCode: code,
       errorCodeHex: hex,
+      instructionIndex,
       message: errorInfo.message,
+      rawError: errorMessage,
+    };
+  }
+
+  // Try non-`Custom` InstructionError variants (e.g. InvalidAccountData), which carry no numeric code
+  if (instructionVariant && INSTRUCTION_ERROR_VARIANTS[instructionVariant]) {
+    const errorInfo = INSTRUCTION_ERROR_VARIANTS[instructionVariant];
+    const indexSuffix = instructionIndex !== null ? ` (failing instruction index ${instructionIndex})` : '';
+    return {
+      type: errorInfo.type,
+      program: programName,
+      errorCode: code,
+      errorCodeHex: hex,
+      instructionIndex,
+      message: `${errorInfo.message}${indexSuffix}`,
       rawError: errorMessage,
     };
   }
@@ -317,6 +429,7 @@ export function parseSolanaError(errorMessage: string): ParsedSolanaError {
         program: programName,
         errorCode: code,
         errorCodeHex: hex,
+        instructionIndex,
         message,
         rawError: errorMessage,
       };
@@ -329,6 +442,7 @@ export function parseSolanaError(errorMessage: string): ParsedSolanaError {
     program: programName,
     errorCode: code,
     errorCodeHex: hex,
+    instructionIndex,
     message: 'Transaction failed with an unknown error.',
     rawError: errorMessage,
   };
@@ -369,6 +483,8 @@ export function getUserFriendlyErrorMessage(errorMessage: string): string {
       return `Transaction failed: ${parsed.message} The pool or token accounts may not be initialized.`;
     case 'MATH_OVERFLOW':
       return `Transaction failed: ${parsed.message} Try reducing the amount or adjusting parameters.`;
+    case 'INSTRUCTION_ERROR':
+      return `Transaction simulation failed: ${parsed.message}`;
     default:
       return `Transaction failed. ${parsed.errorCodeHex ? `Error code: ${parsed.errorCodeHex}` : 'Unknown error.'}`;
   }

@@ -378,21 +378,36 @@ export const OrcaClmmFetchPoolsRequest = Type.Object({
   limit: Type.Optional(
     Type.Number({
       minimum: 1,
-      default: 10,
+      maximum: 100,
+      default: 50,
       description: 'Maximum number of pools to return',
-      examples: [10],
+      examples: [50],
     }),
   ),
-  tokenA: Type.Optional(
+  query: Type.Optional(
     Type.String({
-      description: 'First token symbol or address',
-      examples: [BASE_TOKEN],
+      description: 'Search query to match pools by name, tokens, or address',
+      examples: ['SOL', 'USDC', 'SOL-USDC'],
     }),
   ),
-  tokenB: Type.Optional(
+  sortBy: Type.Optional(
     Type.String({
-      description: 'Second token symbol or address',
-      examples: [QUOTE_TOKEN],
+      description: 'Sort by field',
+      enum: ['volume', 'tvl', 'fees', 'rewards', 'yieldovertvl'],
+      default: 'volume',
+    }),
+  ),
+  sortDirection: Type.Optional(
+    Type.String({
+      description: 'Sort direction',
+      enum: ['asc', 'desc'],
+      default: 'desc',
+    }),
+  ),
+  verifiedOnly: Type.Optional(
+    Type.Boolean({
+      description: 'Only return pools with verified tokens',
+      default: false,
     }),
   ),
 });
@@ -410,7 +425,20 @@ export const OrcaClmmGetPoolInfoRequest = Type.Object({
     description: 'Orca CLMM pool address',
     examples: [CLMM_POOL_ADDRESS_EXAMPLE],
   }),
+  // binCount inherited from base GetPoolInfoRequest semantics — declared
+  // explicitly here so the Orca network enum override stays a flat schema.
+  binCount: Type.Optional(
+    Type.Integer({
+      description:
+        'If > 0, include a `bins` array (per-tickSpacing token amounts around the current tick). ' +
+        'Default 0 — pool-info skips the extra getProgramAccounts call.',
+      default: 0,
+      minimum: 0,
+      maximum: 401,
+    }),
+  ),
 });
+export type OrcaClmmGetPoolInfoRequestType = Static<typeof OrcaClmmGetPoolInfoRequest>;
 
 // Orca CLMM Get Position Info Request
 export const OrcaClmmGetPositionInfoRequest = Type.Object({

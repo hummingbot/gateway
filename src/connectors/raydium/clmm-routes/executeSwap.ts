@@ -1,6 +1,5 @@
 import { ReturnTypeComputeAmountOutFormat, ReturnTypeComputeAmountOutBaseOut } from '@raydium-io/raydium-sdk-v2';
 import { VersionedTransaction } from '@solana/web3.js';
-import BN from 'bn.js';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
@@ -12,7 +11,7 @@ import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
 import { RaydiumClmmExecuteSwapRequest, RaydiumClmmExecuteSwapRequestType } from '../schemas';
 
-import { getSwapQuote, convertAmountIn } from './quoteSwap';
+import { getSwapQuote } from './quoteSwap';
 
 export async function executeSwap(
   network: string,
@@ -108,19 +107,13 @@ export async function executeSwap(
   let transaction: VersionedTransaction;
   if (side === 'BUY') {
     const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut;
-    const amountIn = convertAmountIn(
-      amount,
-      inputToken.decimals,
-      outputToken.decimals,
-      exactOutResponse.amountIn.amount,
-    );
-    const amountInWithSlippage = amountIn * 10 ** inputToken.decimals * (1 + slippagePct / 100);
-    // logger.info(`amountInWithSlippage: ${amountInWithSlippage}`);
+    // maxAmountIn already includes slippage (SDK computed it from the slippage
+    // passed to computeAmountIn) and is denominated in the input token's units.
     ({ transaction } = (await raydium.raydiumSDK.clmm.swapBaseOut({
       poolInfo,
       poolKeys,
       outputMint: outputToken.address,
-      amountInMax: new BN(Math.floor(amountInWithSlippage)),
+      amountInMax: exactOutResponse.maxAmountIn.amount,
       amountOut: exactOutResponse.realAmountOut.amount,
       observationId: clmmPoolInfo.observationId,
       ownerInfo: {

@@ -1,72 +1,67 @@
-import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
-import { Solana } from '../../../chains/solana/solana';
-import { PoolInfo, PoolInfoSchema, FetchPoolsRequestType } from '../../../schemas/clmm-schema';
+import { FetchPoolsResponse } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
-import { Meteora } from '../meteora';
+import { Meteora, MeteoraApiPool } from '../meteora';
 import { MeteoraClmmFetchPoolsRequest } from '../schemas';
-// Using Fastify's native error handling
 
 export const fetchPoolsRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: FetchPoolsRequestType;
-    Reply: PoolInfo[];
+    Querystring: {
+      network?: string;
+      page?: number;
+      limit?: number;
+      query?: string;
+      sortBy?: string;
+      includeUnverified?: boolean;
+    };
   }>('/fetch-pools', {
     schema: {
-      description: 'Fetch info about Meteora pools',
+      description: 'Fetch Meteora pools from API with search and sorting',
       tags: ['/connector/meteora'],
       querystring: MeteoraClmmFetchPoolsRequest,
       response: {
-        200: Type.Array(PoolInfoSchema),
+        200: FetchPoolsResponse,
       },
     },
     handler: async (request, _reply) => {
       try {
-        const { limit, tokenA, tokenB } = request.query;
-        const network = request.query.network;
+        const { network, page, limit, query, sortBy, includeUnverified } = request.query;
 
         const meteora = await Meteora.getInstance(network);
-        const solana = await Solana.getInstance(network);
 
-        let tokenMintA, tokenMintB;
+        const result = await meteora.fetchPoolsFromApi({
+          page,
+          limit,
+          query,
+          sortBy,
+          includeUnverified,
+        });
 
-        if (tokenA) {
-          const tokenInfoA = await solana.getToken(tokenA);
-          if (!tokenInfoA) {
-            throw fastify.httpErrors.notFound(`Token ${tokenA} not found`);
-          }
-          tokenMintA = tokenInfoA.address;
-        }
+        // Map API response to simplified format
+        const pools = result.pools.map((pool: MeteoraApiPool) => ({
+          address: pool.address,
+          name: pool.name,
+          baseTokenAddress: pool.token_x.address,
+          baseTokenSymbol: pool.token_x.symbol,
+          quoteTokenAddress: pool.token_y.address,
+          quoteTokenSymbol: pool.token_y.symbol,
+          binStep: pool.pool_config.bin_step,
+          baseFee: pool.pool_config.base_fee_pct,
+          price: pool.current_price,
+          tvl: pool.tvl,
+          apr: pool.apr,
+          apy: pool.apy,
+          volume24h: pool.volume?.['24h'],
+          fees24h: pool.fees?.['24h'],
+        }));
 
-        if (tokenB) {
-          const tokenInfoB = await solana.getToken(tokenB);
-          if (!tokenInfoB) {
-            throw fastify.httpErrors.notFound(`Token ${tokenB} not found`);
-          }
-          tokenMintB = tokenInfoB.address;
-        }
-
-        const pairs = await meteora.getPools(limit, tokenMintA, tokenMintB);
-        if (!Array.isArray(pairs)) {
-          logger.error('No matching Meteora pools found');
-          return [];
-        }
-
-        const poolInfos = await Promise.all(
-          pairs
-            .filter((pair) => pair?.publicKey?.toString)
-            .map(async (pair) => {
-              try {
-                return await meteora.getPoolInfo(pair.publicKey.toString());
-              } catch (error) {
-                logger.error(`Failed to get pool info for ${pair.publicKey.toString()}: ${error.message}`);
-                throw fastify.httpErrors.notFound(`Pool not found: ${pair.publicKey.toString()}`);
-              }
-            }),
-        );
-
-        return poolInfos.filter(Boolean);
+        return {
+          pools,
+          total: result.total,
+          page: result.page,
+          pageSize: result.pageSize,
+        };
       } catch (e) {
         logger.error('Error in fetch-pools:', e);
         if (e.statusCode) throw e;

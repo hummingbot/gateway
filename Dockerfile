@@ -1,5 +1,6 @@
 # Set the base image
-FROM node:20-bookworm-slim
+# Node 20 reached EOL in April 2026; using Node 22 LTS.
+FROM node:22-bookworm-slim
 
 # WORKDIR /usr/src/app/
 WORKDIR /home/gateway
@@ -16,11 +17,11 @@ RUN mkdir -p    /home/gateway/conf \
                 /home/gateway/logs \
                 /home/gateway/certs
 
-# Install pnpm
-RUN npm install -g pnpm@latest
+# Install pnpm (pinned to major to keep Docker builds reproducible)
+RUN npm install -g pnpm@11
 
-# Copy package files first
-COPY package.json pnpm-lock.yaml ./
+# Copy package files first (pnpm-workspace.yaml carries overrides + allowBuilds, needed at install time)
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Dockerfile author / maintainer
 LABEL maintainer="Michael Feng <mike@hummingbot.org>"

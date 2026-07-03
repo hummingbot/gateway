@@ -472,11 +472,12 @@ export class Uniswap {
       const poolService = PoolService.getInstance();
 
       const pool = await poolService.getPool(
-        'uniswap',
+        'ethereum',
         this.networkName,
         poolType,
         baseTokenInfo.symbol,
         quoteTokenInfo.symbol,
+        'uniswap',
       );
 
       if (!pool) {

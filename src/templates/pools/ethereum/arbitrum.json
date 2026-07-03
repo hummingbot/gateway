@@ -1,0 +1,24 @@
+[
+  {
+    "connector": "uniswap",
+    "type": "amm",
+    "network": "arbitrum",
+    "baseSymbol": "ARB",
+    "quoteSymbol": "USDC",
+    "address": "0xcda53b1f66614552f834ceef361a8d12a0b8dad8",
+    "baseTokenAddress": "0x912CE59144191C1204E64559FE8253a0e49E6548",
+    "quoteTokenAddress": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+    "feePct": 0.3
+  },
+  {
+    "connector": "uniswap",
+    "type": "clmm",
+    "network": "arbitrum",
+    "baseSymbol": "WETH",
+    "quoteSymbol": "USDC",
+    "address": "0xc473e2aee3441bf9240be85eb122abb059a3b57c",
+    "baseTokenAddress": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+    "quoteTokenAddress": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+    "feePct": 0.3
+  }
+]

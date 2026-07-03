@@ -4,15 +4,22 @@ import { fetchAllMint } from '@solana-program/token-2022';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { GetPoolInfoRequestType, PoolInfo } from '../../../schemas/clmm-schema';
+import { PoolInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
-import { OrcaClmmGetPoolInfoRequest, OrcaPoolInfo, OrcaPoolInfoSchema } from '../schemas';
+import { computeOrcaBinDistribution } from '../orca.utils';
+import {
+  OrcaClmmGetPoolInfoRequest,
+  OrcaClmmGetPoolInfoRequestType,
+  OrcaPoolInfo,
+  OrcaPoolInfoSchema,
+} from '../schemas';
 
 export async function getPoolInfo(
   fastify: FastifyInstance,
   network: string,
   poolAddress: string,
+  binCount: number = 0,
 ): Promise<PoolInfo | OrcaPoolInfo> {
   const orca = await Orca.getInstance(network);
   if (!orca) {
@@ -74,12 +81,28 @@ export async function getPoolInfo(
     yieldOverTvl: apiPoolInfo?.yieldOverTvl ?? 0,
   };
 
+  // Optionally include the per-bin distribution around the current tick.
+  // Only fires the extra getProgramAccounts call when binCount > 0 so the
+  // default pool-info latency is unchanged.
+  if (binCount > 0) {
+    poolInfo.bins = await computeOrcaBinDistribution({
+      rpc: orca.solanaKitRpc,
+      poolAddress,
+      tickSpacing: whirlpool.tickSpacing,
+      currentTickIndex: whirlpool.tickCurrentIndex,
+      currentSqrtPrice: whirlpool.sqrtPrice,
+      decimalsA: mintA.data.decimals,
+      decimalsB: mintB.data.decimals,
+      binCount,
+    });
+  }
+
   return poolInfo;
 }
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetPoolInfoRequestType;
+    Querystring: OrcaClmmGetPoolInfoRequestType;
     Reply: OrcaPoolInfo;
   }>(
     '/pool-info',
@@ -95,9 +118,8 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { poolAddress } = request.query;
-        const network = request.query.network;
-        return (await getPoolInfo(fastify, network, poolAddress)) as OrcaPoolInfo;
+        const { poolAddress, binCount = 0, network } = request.query;
+        return (await getPoolInfo(fastify, network, poolAddress, binCount)) as OrcaPoolInfo;
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

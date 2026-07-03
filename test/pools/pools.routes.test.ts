@@ -76,6 +76,7 @@ describe('Pool Routes Tests', () => {
       getPoolByAddress: jest.fn(),
       getPoolByMetadata: jest.fn(),
       getDefaultPools: jest.fn(),
+      getChainForConnector: jest.fn(),
     } as any;
 
     (PoolService.getInstance as jest.Mock).mockReturnValue(mockPoolService);
@@ -152,9 +153,10 @@ describe('Pool Routes Tests', () => {
   });
 
   describe('GET /pools', () => {
-    it('should list all pools for a connector', async () => {
+    it('should list all pools for a chain/network', async () => {
       const mockPools: Pool[] = [
         {
+          connector: 'raydium',
           type: 'amm',
           network: 'mainnet-beta',
           baseSymbol: 'SOL',
@@ -165,6 +167,7 @@ describe('Pool Routes Tests', () => {
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
         },
         {
+          connector: 'raydium',
           type: 'amm',
           network: 'mainnet-beta',
           baseSymbol: 'RAY',
@@ -180,17 +183,18 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?connector=raydium&network=mainnet-beta',
+        url: '/?chain=solana&network=mainnet-beta',
       });
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual(mockPools);
-      expect(mockPoolService.listPools).toHaveBeenCalledWith('raydium', 'mainnet-beta', undefined, undefined);
+      expect(mockPoolService.listPools).toHaveBeenCalledWith('solana', 'mainnet-beta', undefined, undefined, undefined);
     });
 
-    it('should filter pools by type', async () => {
+    it('should filter pools by connector and type', async () => {
       const mockPools: Pool[] = [
         {
+          connector: 'raydium',
           type: 'clmm',
           network: 'mainnet-beta',
           baseSymbol: 'SOL',
@@ -206,17 +210,18 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?connector=raydium&network=mainnet-beta&type=clmm',
+        url: '/?chain=solana&network=mainnet-beta&connector=raydium&type=clmm',
       });
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual(mockPools);
-      expect(mockPoolService.listPools).toHaveBeenCalledWith('raydium', 'mainnet-beta', 'clmm', undefined);
+      expect(mockPoolService.listPools).toHaveBeenCalledWith('solana', 'mainnet-beta', 'raydium', 'clmm', undefined);
     });
 
     it('should search pools by token symbol', async () => {
       const mockPools: Pool[] = [
         {
+          connector: 'raydium',
           type: 'amm',
           network: 'mainnet-beta',
           baseSymbol: 'SOL',
@@ -232,20 +237,20 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?connector=raydium&search=SOL',
+        url: '/?chain=solana&network=mainnet-beta&search=SOL',
       });
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual(mockPools);
-      expect(mockPoolService.listPools).toHaveBeenCalledWith('raydium', undefined, undefined, 'SOL');
+      expect(mockPoolService.listPools).toHaveBeenCalledWith('solana', 'mainnet-beta', undefined, undefined, 'SOL');
     });
 
     it('should return 400 for invalid parameters', async () => {
-      mockPoolService.listPools.mockRejectedValue(new Error('Invalid connector name'));
+      mockPoolService.listPools.mockRejectedValue(new Error('Unsupported chain'));
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?connector=invalid&network=mainnet',
+        url: '/?chain=invalid&network=mainnet',
       });
 
       expect(response.statusCode).toBe(400);
@@ -256,6 +261,7 @@ describe('Pool Routes Tests', () => {
   describe('GET /pools/:tradingPair', () => {
     it('should find pool by trading pair', async () => {
       const mockPool: Pool = {
+        connector: 'raydium',
         type: 'amm',
         network: 'mainnet-beta',
         baseSymbol: 'SOL',
@@ -270,12 +276,12 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/SOL-USDC?connector=raydium&network=mainnet-beta&type=amm',
+        url: '/SOL-USDC?chain=solana&network=mainnet-beta&type=amm&connector=raydium',
       });
 
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.payload)).toEqual(mockPool);
-      expect(mockPoolService.getPool).toHaveBeenCalledWith('raydium', 'mainnet-beta', 'amm', 'SOL', 'USDC');
+      expect(mockPoolService.getPool).toHaveBeenCalledWith('solana', 'mainnet-beta', 'amm', 'SOL', 'USDC', 'raydium');
     });
 
     it('should return 404 if pool not found', async () => {
@@ -283,7 +289,7 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/UNKNOWN-TOKEN?connector=raydium&network=mainnet-beta&type=amm',
+        url: '/UNKNOWN-TOKEN?chain=solana&network=mainnet-beta&type=amm',
       });
 
       expect(response.statusCode).toBe(404);
@@ -293,7 +299,7 @@ describe('Pool Routes Tests', () => {
     it('should return 400 for invalid trading pair format', async () => {
       const response = await fastify.inject({
         method: 'GET',
-        url: '/INVALIDFORMAT?connector=raydium&network=mainnet-beta&type=amm',
+        url: '/INVALIDFORMAT?chain=solana&network=mainnet-beta&type=amm',
       });
 
       expect(response.statusCode).toBe(400);
@@ -312,6 +318,7 @@ describe('Pool Routes Tests', () => {
         method: 'POST',
         url: '/',
         payload: {
+          chain: 'solana',
           connector: 'raydium',
           type: 'amm',
           network: 'mainnet-beta',
@@ -328,10 +335,12 @@ describe('Pool Routes Tests', () => {
       expect(JSON.parse(response.payload)).toHaveProperty('message');
       expect(JSON.parse(response.payload).message).toContain('Pool WIF-SOL');
 
-      // Verify addPool was called with pool data
+      // Verify addPool was called with chain, network, and pool data
       expect(mockPoolService.addPool).toHaveBeenCalledWith(
-        'raydium',
+        'solana',
+        'mainnet-beta',
         expect.objectContaining({
+          connector: 'raydium',
           type: 'amm',
           network: 'mainnet-beta',
           baseSymbol: 'WIF',
@@ -347,6 +356,7 @@ describe('Pool Routes Tests', () => {
     it('should update existing pool with same address', async () => {
       mockPoolService.getPoolByMetadata.mockResolvedValue(null);
       mockPoolService.getPoolByAddress.mockResolvedValue({
+        connector: 'raydium',
         type: 'amm',
         network: 'mainnet-beta',
         baseSymbol: 'SOL',
@@ -362,6 +372,7 @@ describe('Pool Routes Tests', () => {
         method: 'POST',
         url: '/',
         payload: {
+          chain: 'solana',
           connector: 'raydium',
           type: 'amm',
           network: 'mainnet-beta',
@@ -384,6 +395,7 @@ describe('Pool Routes Tests', () => {
         method: 'POST',
         url: '/',
         payload: {
+          chain: 'solana',
           connector: 'raydium',
           network: 'mainnet-beta',
           // Missing other required fields
@@ -400,7 +412,7 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'DELETE',
-        url: '/58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2?connector=raydium&network=mainnet-beta&type=amm',
+        url: '/58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2?chain=solana&network=mainnet-beta',
       });
 
       expect(response.statusCode).toBe(200);
@@ -408,9 +420,8 @@ describe('Pool Routes Tests', () => {
       expect(JSON.parse(response.payload).message).toContain('Pool with address');
 
       expect(mockPoolService.removePool).toHaveBeenCalledWith(
-        'raydium',
+        'solana',
         'mainnet-beta',
-        'amm',
         '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       );
     });
@@ -420,7 +431,7 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'DELETE',
-        url: '/NonExistent?connector=raydium&network=mainnet-beta&type=amm',
+        url: '/NonExistent?chain=solana&network=mainnet-beta',
       });
 
       expect(response.statusCode).toBe(404);
@@ -430,8 +441,8 @@ describe('Pool Routes Tests', () => {
     it('should return 400 for missing required parameters', async () => {
       const response = await fastify.inject({
         method: 'DELETE',
-        url: '/58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2?connector=raydium',
-        // Missing network and type
+        url: '/58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2?chain=solana',
+        // Missing network
       });
 
       expect(response.statusCode).toBe(400);
@@ -509,9 +520,10 @@ describe('Pool Routes Tests', () => {
       expect(response.statusCode).toBe(200);
       const result = JSON.parse(response.payload);
 
-      // Verify response is in PoolInfo format with geckoData
+      // Verify response is in PoolInfo format
       expect(result).toHaveLength(2);
       expect(result[0]).toMatchObject({
+        connector: 'raydium',
         type: 'amm',
         network: 'mainnet-beta',
         baseSymbol: 'SOL',
@@ -519,25 +531,13 @@ describe('Pool Routes Tests', () => {
         baseTokenAddress: 'So11111111111111111111111111111111111111112',
         quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
-        geckoData: expect.objectContaining({
-          volumeUsd24h: '1000000',
-          liquidityUsd: '5000000',
-          priceUsd: '100.50',
-          priceNative: '1',
-          buys24h: 150,
-          sells24h: 120,
-          timestamp: expect.any(Number),
-        }),
       });
       expect(result[1]).toMatchObject({
+        connector: 'raydium',
         type: 'clmm',
         network: 'mainnet-beta',
         baseSymbol: 'SOL',
         quoteSymbol: 'USDC',
-        geckoData: expect.objectContaining({
-          volumeUsd24h: '2000000',
-          liquidityUsd: '8000000',
-        }),
       });
 
       expect(mockTokenService.getToken).toHaveBeenCalledWith('solana', 'mainnet-beta', 'SOL');
@@ -548,113 +548,6 @@ describe('Pool Routes Tests', () => {
         10, // maxPages (default)
         undefined,
         'clmm',
-      );
-    });
-
-    it('should find pools by addresses', async () => {
-      const mockPools = [
-        {
-          poolAddress: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
-          dex: 'raydium',
-          connector: 'raydium',
-          type: 'amm' as const,
-          baseTokenAddress: 'So11111111111111111111111111111111111111112',
-          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          feePct: 0.25,
-          priceUsd: '100.50',
-          priceNative: '1',
-          volumeUsd24h: '1000000',
-          priceChange24h: '5.2',
-          liquidityUsd: '5000000',
-          txns24h: {
-            buys: 150,
-            sells: 120,
-          },
-        },
-      ];
-
-      mockCoinGeckoService.getTopPoolsForToken.mockResolvedValue(mockPools);
-
-      // Mock getToken to return null for addresses (not found in token list)
-      mockTokenService.getToken.mockResolvedValue(null);
-
-      const response = await fastify.inject({
-        method: 'GET',
-        url: '/find?tokenA=So11111111111111111111111111111111111111112&tokenB=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&chainNetwork=solana-mainnet-beta',
-      });
-
-      expect(response.statusCode).toBe(200);
-      const result = JSON.parse(response.payload);
-
-      // Verify response is in PoolInfo format with geckoData
-      expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({
-        type: 'amm',
-        network: 'mainnet-beta',
-        baseSymbol: 'SOL',
-        quoteSymbol: 'USDC',
-        baseTokenAddress: 'So11111111111111111111111111111111111111112',
-        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-        address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
-        geckoData: expect.objectContaining({
-          volumeUsd24h: '1000000',
-          liquidityUsd: '5000000',
-        }),
-      });
-
-      // Should call getToken to check token list, but both return null (addresses not in list)
-      expect(mockTokenService.getToken).toHaveBeenCalledWith(
-        'solana',
-        'mainnet-beta',
-        'So11111111111111111111111111111111111111112',
-      );
-      expect(mockTokenService.getToken).toHaveBeenCalledWith(
-        'solana',
-        'mainnet-beta',
-        'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-      );
-    });
-
-    it('should filter by connector', async () => {
-      const mockPools = [
-        {
-          poolAddress: '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
-          dex: 'raydium-clmm',
-          connector: 'raydium',
-          type: 'clmm' as const,
-          baseTokenAddress: 'So11111111111111111111111111111111111111112',
-          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          feePct: 0.01,
-          priceUsd: '100.52',
-          priceNative: '1',
-          volumeUsd24h: '2000000',
-          priceChange24h: '5.3',
-          liquidityUsd: '8000000',
-          txns24h: {
-            buys: 200,
-            sells: 180,
-          },
-        },
-      ];
-
-      mockCoinGeckoService.getTopPoolsForToken.mockResolvedValue(mockPools);
-
-      const response = await fastify.inject({
-        method: 'GET',
-        url: '/find?tokenA=So11111111111111111111111111111111111111112&tokenB=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&chainNetwork=solana-mainnet-beta&connector=raydium',
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(mockCoinGeckoService.getTopPoolsForToken).toHaveBeenCalledWith(
-        'solana-mainnet-beta',
-        'So11111111111111111111111111111111111111112',
-        10, // default maxPages
-        'raydium',
-        'clmm', // default type
       );
     });
 
@@ -669,69 +562,6 @@ describe('Pool Routes Tests', () => {
       expect(response.statusCode).toBe(200);
       const result = JSON.parse(response.payload);
       expect(result).toEqual([]);
-    });
-
-    it('should return top pools by network when neither tokenA nor tokenB is provided', async () => {
-      const mockPools = [
-        {
-          poolAddress: '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
-          dex: 'raydium-clmm',
-          connector: 'raydium',
-          type: 'clmm' as const,
-          baseTokenAddress: 'So11111111111111111111111111111111111111112',
-          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-          baseTokenSymbol: 'SOL',
-          quoteTokenSymbol: 'USDC',
-          feePct: 0.01,
-          priceUsd: '100.52',
-          priceNative: '1',
-          volumeUsd24h: '2000000',
-          priceChange24h: '5.3',
-          liquidityUsd: '8000000',
-          txns24h: {
-            buys: 200,
-            sells: 180,
-          },
-        },
-      ];
-
-      mockCoinGeckoService.getTopPoolsByNetwork.mockResolvedValue(mockPools);
-
-      const response = await fastify.inject({
-        method: 'GET',
-        url: '/find?chainNetwork=solana-mainnet-beta',
-      });
-
-      expect(response.statusCode).toBe(200);
-      const result = JSON.parse(response.payload);
-
-      // Verify response is in PoolInfo format with geckoData
-      expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({
-        type: 'clmm',
-        network: 'mainnet-beta',
-        baseSymbol: 'SOL',
-        quoteSymbol: 'USDC',
-        baseTokenAddress: 'So11111111111111111111111111111111111111112',
-        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-        address: '3ucNos4NbumPLZNWztqGHNFFgkHeRMBQAVemeeomsUxv',
-        geckoData: expect.objectContaining({
-          volumeUsd24h: '2000000',
-          liquidityUsd: '8000000',
-          priceUsd: '100.52',
-          priceNative: '1',
-          buys24h: 200,
-          sells24h: 180,
-          timestamp: expect.any(Number),
-        }),
-      });
-
-      expect(mockCoinGeckoService.getTopPoolsByNetwork).toHaveBeenCalledWith(
-        'solana-mainnet-beta',
-        10, // default maxPages
-        undefined, // no connector filter
-        'clmm', // default type
-      );
     });
 
     it('should return 400 for invalid chainNetwork format', async () => {

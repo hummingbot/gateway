@@ -579,9 +579,6 @@ export class CoinGeckoService {
   /**
    * Get token info with market data including price, volume, market cap, and top pools
    * This uses the extended endpoint that includes top_pools relationship
-   *
-   * The market data fields in the return value can be transformed to TokenGeckoData
-   * using toTokenGeckoData() helper from gecko-types.ts
    */
   public async getTokenInfoWithMarketData(
     chainNetwork: string,
@@ -591,7 +588,6 @@ export class CoinGeckoService {
     name: string;
     symbol: string;
     decimals: number;
-    // Fields below can be transformed to TokenGeckoData using toTokenGeckoData()
     coingeckoCoinId: string | null;
     imageUrl: string;
     priceUsd: string;

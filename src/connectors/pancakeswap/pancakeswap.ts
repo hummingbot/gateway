@@ -412,11 +412,12 @@ export class Pancakeswap {
       const poolService = PoolService.getInstance();
 
       const pool = await poolService.getPool(
-        'pancakeswap',
+        'ethereum',
         this.networkName,
         poolType,
         baseTokenInfo.symbol,
         quoteTokenInfo.symbol,
+        'pancakeswap',
       );
 
       if (!pool) {
