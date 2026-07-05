@@ -1492,7 +1492,7 @@ export class Solana {
       const priorityFeeMicroLamports = Math.floor(currentPriorityFee * 1_000_000);
       tx.feePayer = wallet as PublicKey;
       tx.instructions = [
-        ...tx.instructions.filter((inst) => !inst.programId.equals(ComputeBudgetProgram.programId)),
+        ...tx.instructions.filter((inst) => !Solana.isReplacedComputeBudgetInstruction(inst.programId, inst.data)),
         ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFeeMicroLamports }),
         ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnitsToUse }),
       ];
@@ -1525,6 +1525,16 @@ export class Solana {
     throw this.confirmationTimeoutError(signature);
   }
 
+  /**
+   * True for ComputeBudget instructions Gateway manages itself (SetComputeUnitLimit,
+   * SetComputeUnitPrice — discriminators 2 and 3). Other ComputeBudget instruction types
+   * (e.g. RequestHeapFrame, SetLoadedAccountsDataSizeLimit) must be preserved: some
+   * aggregator programs (Titan) require a larger heap frame and crash without it.
+   */
+  private static isReplacedComputeBudgetInstruction(programId: PublicKey, data: Uint8Array | Buffer): boolean {
+    return programId.equals(ComputeBudgetProgram.programId) && (data[0] === 2 || data[0] === 3);
+  }
+
   private async prepareTx(
     tx: Transaction,
     currentPriorityFee: number,
@@ -1536,9 +1546,10 @@ export class Solana {
       microLamports: priorityFeeMicroLamports,
     });
 
-    // Remove any existing priority fee instructions and add the new one
+    // Remove any existing CU-price/limit instructions (preserving other ComputeBudget
+    // types like RequestHeapFrame) and add the new one
     tx.instructions = [
-      ...tx.instructions.filter((inst) => !inst.programId.equals(ComputeBudgetProgram.programId)),
+      ...tx.instructions.filter((inst) => !Solana.isReplacedComputeBudgetInstruction(inst.programId, inst.data)),
       priorityFeeInstruction,
     ];
 
@@ -1622,9 +1633,11 @@ export class Solana {
         }),
       );
     } else {
-      // Remove compute budget instructions from original instructions
+      // Remove existing CU-price/limit instructions, preserving other ComputeBudget
+      // instruction types (e.g. RequestHeapFrame, which some aggregator programs require)
       const nonComputeBudgetInstructions = originalMessage.compiledInstructions.filter(
-        (ix) => !originalMessage.staticAccountKeys[ix.programIdIndex].equals(ComputeBudgetProgram.programId),
+        (ix) =>
+          !Solana.isReplacedComputeBudgetInstruction(originalMessage.staticAccountKeys[ix.programIdIndex], ix.data),
       );
 
       // Create modified instructions
