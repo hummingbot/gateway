@@ -1,0 +1,15 @@
+# Default slippage percentage for swaps (as a decimal, e.g., 1 = 1%)
+slippagePct: 1
+
+# DFlow API key
+# Without a key: uses dev-quote-api.dflow.net (rate-limited, development only)
+# With a key: uses quote-api.dflow.net (production)
+# Apply at https://pond.dflow.net/build/api-key (see src/connectors/dflow/README.md)
+apiKey: ''
+
+# Compute unit price in micro-lamports for priority fees
+# 0 = let DFlow determine the priority fee automatically (prioritizationFeeLamports: auto)
+computeUnitPriceMicroLamports: 0
+
+# Let DFlow simulate the transaction to determine the compute unit limit
+dynamicComputeUnitLimit: true

@@ -104,6 +104,18 @@ configurations:
     configurationPath: connectors/pancakeswap-sol.yml
     schemaPath: pancakeswap-sol-schema.json
 
+  $namespace dflow:
+    configurationPath: connectors/dflow.yml
+    schemaPath: dflow-schema.json
+
+  $namespace okx:
+    configurationPath: connectors/okx.yml
+    schemaPath: okx-schema.json
+
+  $namespace titan:
+    configurationPath: connectors/titan.yml
+    schemaPath: titan-schema.json
+
   # API Keys (centralized)
   $namespace apiKeys:
     configurationPath: apiKeys.yml
