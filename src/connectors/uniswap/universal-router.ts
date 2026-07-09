@@ -4,17 +4,8 @@ import { TradeType, Percent, Currency, CurrencyAmount, Token } from '@uniswap/sd
 import { SwapRouter, SwapOptions } from '@uniswap/universal-router-sdk';
 import { Pair as V2Pair, Route as V2Route, Trade as V2Trade, computePairAddress } from '@uniswap/v2-sdk';
 import IUniswapV3Pool from '@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json';
-import {
-  Pool as V3Pool,
-  Route as V3Route,
-  Trade as V3Trade,
-  FeeAmount,
-  computePoolAddress,
-  FACTORY_ADDRESS,
-  nearestUsableTick,
-  TickMath,
-  TICK_SPACINGS,
-} from '@uniswap/v3-sdk';
+import QuoterV2 from '@uniswap/v3-periphery/artifacts/contracts/lens/QuoterV2.sol/QuoterV2.json';
+import { Pool as V3Pool, Route as V3Route, FeeAmount, computePoolAddress } from '@uniswap/v3-sdk';
 import { BigNumber, Contract } from 'ethers';
 
 import { Ethereum } from '../../chains/ethereum/ethereum';
@@ -98,15 +89,15 @@ export class UniversalRouterService {
     if (protocols.includes(Protocol.V3)) {
       logger.info(`[UniversalRouter] Searching for V3 routes...`);
       try {
-        const v3Trade = await this.findV3Route(tokenIn, tokenOut, amount, tradeType);
-        if (v3Trade) {
+        const v3Quote = await this.findV3Route(tokenIn, tokenOut, amount, tradeType);
+        if (v3Quote) {
           logger.info(
-            `[UniversalRouter] Found V3 route: ${v3Trade.inputAmount.toExact()} -> ${v3Trade.outputAmount.toExact()}`,
+            `[UniversalRouter] Found V3 route: ${v3Quote.inputAmount.toExact()} -> ${v3Quote.outputAmount.toExact()}`,
           );
           routes.push({
-            routev3: v3Trade.route,
-            inputAmount: v3Trade.inputAmount,
-            outputAmount: v3Trade.outputAmount,
+            routev3: v3Quote.route,
+            inputAmount: v3Quote.inputAmount,
+            outputAmount: v3Quote.outputAmount,
           });
         } else {
           logger.info(`[UniversalRouter] No V3 route found`);
@@ -143,8 +134,17 @@ export class UniversalRouterService {
     }
 
     logger.info(`[UniversalRouter] Found ${routes.length} route(s), selecting best route`);
-    // Pick the best route (for now, just use the first one)
-    const bestRoute = routes[0];
+    // Pick the best route: highest output for exact-in, lowest input for exact-out
+    const exactIn = tradeType === TradeType.EXACT_INPUT;
+    const bestRoute = routes.reduce((best, candidate) =>
+      (
+        exactIn
+          ? candidate.outputAmount.greaterThan(best.outputAmount)
+          : candidate.inputAmount.lessThan(best.inputAmount)
+      )
+        ? candidate
+        : best,
+    );
 
     // Create RouterTrade based on the best route
     let bestTrade: RouterTrade<Currency, Currency, TradeType>;
@@ -221,15 +221,25 @@ export class UniversalRouterService {
   }
 
   /**
-   * Find V3 route using pool address computation
+   * Find the best V3 route by quoting every fee tier against the on-chain
+   * QuoterV2, so amounts reflect real tick liquidity, and keeping the tier
+   * with the best quoted amount.
    */
   private async findV3Route(
     tokenIn: Token,
     tokenOut: Token,
     amount: CurrencyAmount<Currency>,
     tradeType: TradeType,
-  ): Promise<V3Trade<Currency, Currency, TradeType> | null> {
-    // Try each fee tier
+  ): Promise<{
+    route: V3Route<Currency, Currency>;
+    inputAmount: CurrencyAmount<Currency>;
+    outputAmount: CurrencyAmount<Currency>;
+  } | null> {
+    const exactIn = tradeType === TradeType.EXACT_INPUT;
+    const quoter = new Contract(getUniswapV3QuoterV2ContractAddress(this.network), QuoterV2.abi, this.provider);
+
+    let best: Awaited<ReturnType<UniversalRouterService['findV3Route']>> = null;
+
     for (const fee of V3_FEE_TIERS) {
       try {
         // Compute pool address
@@ -240,49 +250,50 @@ export class UniversalRouterService {
           fee,
         });
 
-        // Get pool contract
-        const poolContract = new Contract(poolAddress, IUniswapV3Pool.abi, this.provider);
-
         // Check if pool exists by querying liquidity
+        const poolContract = new Contract(poolAddress, IUniswapV3Pool.abi, this.provider);
         const liquidity = await poolContract.liquidity();
         if (liquidity.eq(0)) continue;
-
-        // Get slot0 data
         const slot0 = await poolContract.slot0();
-        const sqrtPriceX96 = slot0[0];
-        const tick = slot0[1];
 
-        // Create minimal tick data around current tick
-        const tickSpacing = TICK_SPACINGS[fee];
-        const numSurroundingTicks = 300; // Number of ticks on each side
+        const quoted = exactIn
+          ? (
+              await quoter.callStatic.quoteExactInputSingle({
+                tokenIn: tokenIn.address,
+                tokenOut: tokenOut.address,
+                amountIn: amount.quotient.toString(),
+                fee,
+                sqrtPriceLimitX96: 0,
+              })
+            )[0]
+          : (
+              await quoter.callStatic.quoteExactOutputSingle({
+                tokenIn: tokenIn.address,
+                tokenOut: tokenOut.address,
+                amount: amount.quotient.toString(),
+                fee,
+                sqrtPriceLimitX96: 0,
+              })
+            )[0];
 
-        const minTick = nearestUsableTick(tick - numSurroundingTicks * tickSpacing, tickSpacing);
-        const maxTick = nearestUsableTick(tick + numSurroundingTicks * tickSpacing, tickSpacing);
+        const inputAmount = exactIn ? amount : CurrencyAmount.fromRawAmount(tokenIn, quoted.toString());
+        const outputAmount = exactIn ? CurrencyAmount.fromRawAmount(tokenOut, quoted.toString()) : amount;
 
-        // Create tick data - for simplicity, assume all ticks have liquidity
-        const ticks = [];
-        for (let i = minTick; i <= maxTick; i += tickSpacing) {
-          ticks.push({
-            index: i,
-            liquidityNet: 0,
-            liquidityGross: 1,
-          });
+        const isBetter =
+          !best || (exactIn ? outputAmount.greaterThan(best.outputAmount) : inputAmount.lessThan(best.inputAmount));
+        if (isBetter) {
+          // Pool state is only used for route/path encoding and mid-price,
+          // never for swap simulation - the amounts come from QuoterV2 above
+          const pool = new V3Pool(tokenIn, tokenOut, fee, slot0[0].toString(), liquidity.toString(), slot0[1]);
+          best = { route: new V3Route([pool], tokenIn, tokenOut), inputAmount, outputAmount };
         }
-
-        // Create pool instance with tick data
-        const pool = new V3Pool(tokenIn, tokenOut, fee, sqrtPriceX96.toString(), liquidity.toString(), tick, ticks);
-
-        // Create route and trade
-        const route = new V3Route([pool], tokenIn, tokenOut);
-
-        return tradeType === TradeType.EXACT_INPUT ? V3Trade.exactIn(route, amount) : V3Trade.exactOut(route, amount);
       } catch (error) {
-        // Pool doesn't exist or other error, continue to next fee tier
+        // Pool doesn't exist or the quoter reverted for this tier - try the next one
         continue;
       }
     }
 
-    return null;
+    return best;
   }
 
   /**

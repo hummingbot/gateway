@@ -106,7 +106,7 @@ async function quoteSwap(
     // The AlphaRouter SDK only supports chains hardcoded in @uniswap/smart-order-router;
     // on other networks (e.g. robinhoodchain) quote directly via the Universal Router
     logger.info(`[quoteSwap] AlphaRouter not available for ${network}, using Universal Router quote`);
-    quoteResult = await uniswap.getUniversalRouterQuote(inputToken, outputToken, amount, side, recipient);
+    quoteResult = await uniswap.getUniversalRouterQuote(inputToken, outputToken, amount, side, recipient, slippagePct);
     routePath = quoteResult.routePath;
     estimatedAmountIn = parseFloat(quoteResult.trade.inputAmount.toExact());
     estimatedAmountOut = parseFloat(quoteResult.trade.outputAmount.toExact());
