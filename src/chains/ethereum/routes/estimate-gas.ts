@@ -2,7 +2,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { EstimateGasRequestType, EstimateGasResponse, EstimateGasResponseSchema } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
-import { Ethereum } from '../ethereum';
+import { Ethereum, EIP1559_NETWORKS } from '../ethereum';
 import { EthereumEstimateGasRequest } from '../schemas';
 
 export async function estimateGasEthereum(fastify: FastifyInstance, network: string): Promise<EstimateGasResponse> {
@@ -22,14 +22,7 @@ export async function estimateGasEthereum(fastify: FastifyInstance, network: str
     const totalFeeInEth = totalFeeInGwei / 1e9;
 
     // Check if we have EIP-1559 data cached
-    const isEIP1559Network =
-      network === 'mainnet' ||
-      network === 'polygon' ||
-      network === 'arbitrum' ||
-      network === 'optimism' ||
-      network === 'base' ||
-      network === 'robinhoodchain' ||
-      network === 'robinhoodchain-testnet';
+    const isEIP1559Network = EIP1559_NETWORKS.includes(network);
 
     const response: EstimateGasResponse = {
       feePerComputeUnit: gasPrice,
