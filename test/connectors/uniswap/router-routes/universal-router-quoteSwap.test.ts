@@ -105,6 +105,7 @@ describe('GET /quote-swap', () => {
     mockUniswap = {
       router: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
       getUniswapToken: jest.fn().mockImplementation((tokenInfo) => tokenInfo),
+      isAlphaRouterAvailable: jest.fn().mockReturnValue(true),
       getAlphaRouterQuote: mockGetAlphaRouterQuote,
     };
 
