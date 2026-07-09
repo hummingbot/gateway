@@ -29,8 +29,8 @@ export const getAvailableEthereumNetworks = (): string[] => {
       'avalanche',
       'celo',
       'polygon',
-      'robinhood-chain',
-      'robinhood-chain-testnet',
+      'robinhoodchain',
+      'robinhoodchain-testnet',
       'unichain',
     ];
   }

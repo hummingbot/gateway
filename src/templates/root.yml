@@ -50,12 +50,12 @@ configurations:
     configurationPath: chains/ethereum/polygon.yml
     schemaPath: ethereum-network-schema.json
 
-  $namespace ethereum-robinhood-chain:
-    configurationPath: chains/ethereum/robinhood-chain.yml
+  $namespace ethereum-robinhoodchain:
+    configurationPath: chains/ethereum/robinhoodchain.yml
     schemaPath: ethereum-network-schema.json
 
-  $namespace ethereum-robinhood-chain-testnet:
-    configurationPath: chains/ethereum/robinhood-chain-testnet.yml
+  $namespace ethereum-robinhoodchain-testnet:
+    configurationPath: chains/ethereum/robinhoodchain-testnet.yml
     schemaPath: ethereum-network-schema.json
 
   $namespace ethereum-unichain:

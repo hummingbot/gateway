@@ -184,7 +184,7 @@ export const contractAddresses: NetworkContractAddresses = {
     // Universal Router V2 - Official Uniswap address
     universalRouterV2Address: '0x3315ef7ca28db74abadc6c44570efdf06b04b020',
   },
-  'robinhood-chain': {
+  robinhoodchain: {
     // V2 contracts - Official Uniswap addresses
     // https://developers.uniswap.org/docs/protocols/v2/deployments
     uniswapV2RouterAddress: '0x89e5db8b5aa49aa85ac63f691524311aeb649eba',

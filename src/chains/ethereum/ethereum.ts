@@ -159,8 +159,8 @@ export class Ethereum {
       this.network === 'arbitrum' ||
       this.network === 'optimism' ||
       this.network === 'base' ||
-      this.network === 'robinhood-chain' ||
-      this.network === 'robinhood-chain-testnet' ||
+      this.network === 'robinhoodchain' ||
+      this.network === 'robinhoodchain-testnet' ||
       this.network === 'unichain';
 
     if (supportsEIP1559) {
@@ -324,8 +324,8 @@ export class Ethereum {
       this.network === 'arbitrum' ||
       this.network === 'optimism' ||
       this.network === 'base' ||
-      this.network === 'robinhood-chain' ||
-      this.network === 'robinhood-chain-testnet' ||
+      this.network === 'robinhoodchain' ||
+      this.network === 'robinhoodchain-testnet' ||
       this.network === 'unichain';
 
     if (supportsEIP1559) {
@@ -903,7 +903,7 @@ export class Ethereum {
       symbol: 'WCELO',
       nativeSymbol: 'CELO',
     },
-    'robinhood-chain': {
+    robinhoodchain: {
       address: '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73',
       symbol: 'WETH',
       nativeSymbol: 'ETH',

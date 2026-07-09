@@ -16,7 +16,7 @@ export namespace UniswapConfig {
       'celo',
       'optimism',
       'polygon',
-      'robinhood-chain',
+      'robinhoodchain',
       'unichain',
     ].includes(network),
   );

@@ -28,8 +28,8 @@ export async function estimateGasEthereum(fastify: FastifyInstance, network: str
       network === 'arbitrum' ||
       network === 'optimism' ||
       network === 'base' ||
-      network === 'robinhood-chain' ||
-      network === 'robinhood-chain-testnet';
+      network === 'robinhoodchain' ||
+      network === 'robinhoodchain-testnet';
 
     const response: EstimateGasResponse = {
       feePerComputeUnit: gasPrice,
