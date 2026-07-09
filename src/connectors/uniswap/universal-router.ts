@@ -1,12 +1,7 @@
 import { Provider } from '@ethersproject/providers';
 import { Protocol, Trade as RouterTrade } from '@uniswap/router-sdk';
 import { TradeType, Percent, Currency, CurrencyAmount, Token } from '@uniswap/sdk-core';
-import {
-  SwapRouter,
-  SwapOptions,
-  UNIVERSAL_ROUTER_ADDRESS,
-  UniversalRouterVersion,
-} from '@uniswap/universal-router-sdk';
+import { SwapRouter, SwapOptions } from '@uniswap/universal-router-sdk';
 import { Pair as V2Pair, Route as V2Route, Trade as V2Trade, computePairAddress } from '@uniswap/v2-sdk';
 import IUniswapV3Pool from '@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json';
 import {
@@ -30,6 +25,7 @@ import {
   getUniswapV3FactoryAddress,
   getUniswapV2FactoryAddress,
   getUniswapV3QuoterV2ContractAddress,
+  getUniversalRouterV2Address,
 } from './uniswap.contracts';
 
 // Common fee tiers for V3
@@ -210,7 +206,7 @@ export class UniversalRouterService {
       methodParameters: {
         calldata,
         value,
-        to: UNIVERSAL_ROUTER_ADDRESS(UniversalRouterVersion.V2_0, this.chainId),
+        to: getUniversalRouterV2Address(this.network),
       },
     };
 
@@ -371,7 +367,7 @@ export class UniversalRouterService {
    */
   private async estimateGas(calldata: string, value: string, from: string): Promise<BigNumber> {
     const ethereum = await this.getEthereum();
-    const routerAddress = UNIVERSAL_ROUTER_ADDRESS(UniversalRouterVersion.V2_0, this.chainId);
+    const routerAddress = getUniversalRouterV2Address(this.network);
 
     logger.info(`[UniversalRouter] Estimating gas...`);
     logger.info(`[UniversalRouter] From: ${from}`);

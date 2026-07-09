@@ -158,7 +158,9 @@ export class Ethereum {
       this.network === 'polygon' ||
       this.network === 'arbitrum' ||
       this.network === 'optimism' ||
-      this.network === 'base';
+      this.network === 'base' ||
+      this.network === 'robinhood-chain' ||
+      this.network === 'robinhood-chain-testnet';
 
     if (supportsEIP1559) {
       try {
@@ -320,7 +322,9 @@ export class Ethereum {
       this.network === 'polygon' ||
       this.network === 'arbitrum' ||
       this.network === 'optimism' ||
-      this.network === 'base';
+      this.network === 'base' ||
+      this.network === 'robinhood-chain' ||
+      this.network === 'robinhood-chain-testnet';
 
     if (supportsEIP1559) {
       // Use cached EIP-1559 values from estimateGasPrice if available, not stale, and gasPrice not explicitly provided
@@ -896,6 +900,11 @@ export class Ethereum {
       address: '0x471EcE3750Da237f93B8E339c536989b8978a438',
       symbol: 'WCELO',
       nativeSymbol: 'CELO',
+    },
+    'robinhood-chain': {
+      address: '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH',
     },
   };
 

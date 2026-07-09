@@ -184,6 +184,20 @@ export const contractAddresses: NetworkContractAddresses = {
     // Universal Router V2 - Official Uniswap address
     universalRouterV2Address: '0x3315ef7ca28db74abadc6c44570efdf06b04b020',
   },
+  'robinhood-chain': {
+    // V2 contracts - Official Uniswap addresses
+    // https://developers.uniswap.org/docs/protocols/v2/deployments
+    uniswapV2RouterAddress: '0x89e5db8b5aa49aa85ac63f691524311aeb649eba',
+    uniswapV2FactoryAddress: '0x8bceaa40b9acdfaedf85adf4ff01f5ad6517937f',
+    // V3 contracts - Official Uniswap addresses
+    // https://developers.uniswap.org/docs/protocols/v3/deployments/v3-robinhood-chain-deployments
+    uniswapV3SwapRouter02Address: '0xcaf681a66d020601342297493863e78c959e5cb2',
+    uniswapV3NftManagerAddress: '0x73991a25c818bf1f1128deaab1492d45638de0d3',
+    uniswapV3QuoterV2ContractAddress: '0x33e885ed0ec9bf04ecfb19341582aadcb4c8a9e7',
+    uniswapV3FactoryAddress: '0x1f7d7550b1b028f7571e69a784071f0205fd2efa',
+    // Universal Router V2 - Official Uniswap address
+    universalRouterV2Address: '0x8876789976decbfcbbbe364623c63652db8c0904',
+  },
   worldchain: {
     // V2 contracts - No official Uniswap V2 deployment for Worldchain network
     uniswapV2RouterAddress: null,

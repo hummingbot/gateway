@@ -249,6 +249,13 @@ export class Uniswap {
    * @param slippagePct Optional slippage percentage (defaults to config value)
    * @returns Quote result with split routing information
    */
+  /**
+   * Whether the AlphaRouter (smart order router SDK) supports this network
+   */
+  public isAlphaRouterAvailable(): boolean {
+    return !!this.alphaRouter;
+  }
+
   public async getAlphaRouterQuote(
     inputToken: Token,
     outputToken: Token,
