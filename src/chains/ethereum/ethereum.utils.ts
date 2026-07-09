@@ -31,6 +31,7 @@ export const getAvailableEthereumNetworks = (): string[] => {
       'polygon',
       'robinhood-chain',
       'robinhood-chain-testnet',
+      'unichain',
     ];
   }
 };

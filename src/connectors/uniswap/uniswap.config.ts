@@ -7,9 +7,18 @@ export namespace UniswapConfig {
   // See https://docs.uniswap.org/protocol/reference/deployments
   export const chain = 'ethereum';
   export const networks = getAvailableEthereumNetworks().filter((network) =>
-    ['mainnet', 'arbitrum', 'avalanche', 'base', 'bsc', 'celo', 'optimism', 'polygon', 'robinhood-chain'].includes(
-      network,
-    ),
+    [
+      'mainnet',
+      'arbitrum',
+      'avalanche',
+      'base',
+      'bsc',
+      'celo',
+      'optimism',
+      'polygon',
+      'robinhood-chain',
+      'unichain',
+    ].includes(network),
   );
   export type Network = string;
 

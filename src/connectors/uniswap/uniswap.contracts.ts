@@ -198,6 +198,23 @@ export const contractAddresses: NetworkContractAddresses = {
     // Universal Router V2 - Official Uniswap address
     universalRouterV2Address: '0x8876789976decbfcbbbe364623c63652db8c0904',
   },
+  unichain: {
+    // V2 contracts - Official Uniswap addresses
+    // https://developers.uniswap.org/docs/protocols/v2/deployments
+    uniswapV2RouterAddress: '0x284f11109359a7e1306c3e447ef14d38400063ff',
+    uniswapV2FactoryAddress: '0x1f98400000000000000000000000000000000002',
+    // V3 contracts - Official Uniswap addresses
+    // https://developers.uniswap.org/docs/protocols/v3/deployments
+    uniswapV3SwapRouter02Address: '0x73855d06de49d0fe4a9c42636ba96c62da12ff9c',
+    uniswapV3NftManagerAddress: '0x943e6e07a7e8e791dafc44083e54041d743c46e9',
+    uniswapV3QuoterV2ContractAddress: '0x565ac8c7863d9bb16d07e809ff49fe5cd467634c',
+    uniswapV3FactoryAddress: '0x1f98400000000000000000000000000000000003',
+    // Universal Router V2 - Official Uniswap address
+    universalRouterV2Address: '0xef740bf23acae26f6492b10de645d6b98dc8eaf3',
+    // V4 contracts - Official Uniswap addresses
+    uniswapV4PoolManagerAddress: '0x1f98400000000000000000000000000000000004',
+    uniswapV4StateViewAddress: '0x86e8631a016f9068c3f085faf484ee3f5fdee8f2',
+  },
   worldchain: {
     // V2 contracts - No official Uniswap V2 deployment for Worldchain network
     uniswapV2RouterAddress: null,

@@ -160,7 +160,8 @@ export class Ethereum {
       this.network === 'optimism' ||
       this.network === 'base' ||
       this.network === 'robinhood-chain' ||
-      this.network === 'robinhood-chain-testnet';
+      this.network === 'robinhood-chain-testnet' ||
+      this.network === 'unichain';
 
     if (supportsEIP1559) {
       try {
@@ -324,7 +325,8 @@ export class Ethereum {
       this.network === 'optimism' ||
       this.network === 'base' ||
       this.network === 'robinhood-chain' ||
-      this.network === 'robinhood-chain-testnet';
+      this.network === 'robinhood-chain-testnet' ||
+      this.network === 'unichain';
 
     if (supportsEIP1559) {
       // Use cached EIP-1559 values from estimateGasPrice if available, not stale, and gasPrice not explicitly provided
@@ -903,6 +905,11 @@ export class Ethereum {
     },
     'robinhood-chain': {
       address: '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH',
+    },
+    unichain: {
+      address: '0x4200000000000000000000000000000000000006',
       symbol: 'WETH',
       nativeSymbol: 'ETH',
     },

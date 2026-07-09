@@ -1,7 +1,14 @@
 import { BaseProvider } from '@ethersproject/providers';
 import { Protocol } from '@uniswap/router-sdk';
 import { CurrencyAmount, Percent, Token, TradeType } from '@uniswap/sdk-core';
-import { AlphaRouter, SwapRoute, SwapType } from '@uniswap/smart-order-router';
+import {
+  AlphaRouter,
+  OnChainQuoteProvider,
+  SwapRoute,
+  SwapType,
+  UniswapMulticallProvider,
+  V4_SUPPORTED,
+} from '@uniswap/smart-order-router';
 import { UniversalRouterVersion } from '@uniswap/universal-router-sdk';
 
 import { logger } from '../../services/logger';
@@ -18,6 +25,7 @@ const NETWORK_TO_CHAIN_ID: { [network: string]: number } = {
   bsc: 56,
   avalanche: 43114,
   celo: 42220,
+  unichain: 130,
 };
 
 export interface AlphaRouterQuoteResult {
@@ -39,6 +47,7 @@ export class AlphaRouterService {
   private router: AlphaRouter;
   private chainId: number;
   private network: string;
+  private v4Supported: boolean;
 
   constructor(provider: BaseProvider, network: string) {
     const chainId = NETWORK_TO_CHAIN_ID[network];
@@ -48,15 +57,46 @@ export class AlphaRouterService {
 
     this.chainId = chainId;
     this.network = network;
+    this.v4Supported = (V4_SUPPORTED as number[]).includes(chainId);
 
     // Initialize AlphaRouter with minimal config
     // It will use default providers for pools, quotes, etc.
     this.router = new AlphaRouter({
       chainId: this.chainId,
       provider: provider,
+      onChainQuoteProvider: this.buildOnChainQuoteProvider(provider),
     });
 
-    logger.info(`[AlphaRouter] Initialized for network ${network} (chainId: ${chainId})`);
+    logger.info(
+      `[AlphaRouter] Initialized for network ${network} (chainId: ${chainId}, protocols: V2, V3${this.v4Supported ? ', V4' : ''})`,
+    );
+  }
+
+  /**
+   * The SDK's default quote provider batches up to 80 quoter calls at 1.2M gas
+   * each (~96M gas per multicall), which Unichain's public RPCs reject with
+   * intermittent ProviderGasError. Use smaller batches there; elsewhere return
+   * undefined so the SDK uses its per-chain defaults.
+   */
+  private buildOnChainQuoteProvider(provider: BaseProvider): OnChainQuoteProvider | undefined {
+    if (this.network !== 'unichain') {
+      return undefined;
+    }
+
+    const multicallProvider = new UniswapMulticallProvider(this.chainId, provider, 375000);
+    return new OnChainQuoteProvider(
+      this.chainId,
+      provider,
+      multicallProvider,
+      { retries: 2, minTimeout: 100, maxTimeout: 1000 },
+      () => ({ multicallChunk: 10, gasLimitPerCall: 1200000, quoteMinSuccessRate: 0.1 }),
+      () => ({ gasLimitOverride: 3000000, multicallChunk: 6 }),
+      () => ({ gasLimitOverride: 3000000, multicallChunk: 6 }),
+      () => ({
+        baseBlockOffset: -10,
+        rollback: { enabled: true, attemptsBeforeRollback: 1, rollbackBlockOffset: -10 },
+      }),
+    );
   }
 
   /**
@@ -101,8 +141,9 @@ export class AlphaRouterService {
         recipient: options.recipient,
       },
       {
-        // Exclude V4 protocol - not all chains have V4 pool addresses configured
-        protocols: [Protocol.V2, Protocol.V3],
+        // Include V4 only on chains where the SDK has V4 contract addresses;
+        // on other chains the V4 quoter lookup would throw
+        protocols: this.v4Supported ? [Protocol.V2, Protocol.V3, Protocol.V4] : [Protocol.V2, Protocol.V3],
       },
     );
 
