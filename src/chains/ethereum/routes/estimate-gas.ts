@@ -33,13 +33,13 @@ export async function estimateGasEthereum(fastify: FastifyInstance, network: str
       timestamp: Date.now(),
     };
 
-    // Add EIP-1559 details if available
-    if (isEIP1559Network && (ethereum as any).constructor.lastGasPriceEstimate?.isEIP1559) {
-      const cached = (ethereum as any).constructor.lastGasPriceEstimate;
+    // Add EIP-1559 details if available (cache was populated by estimateGasPrice above)
+    const cached = ethereum.getCachedGasPriceEstimate();
+    if (isEIP1559Network && cached?.isEIP1559) {
       response.gasType = 'eip1559';
       response.maxFeePerGas = cached.maxFeePerGas;
       response.maxPriorityFeePerGas = cached.maxPriorityFeePerGas;
-    } else if (!isEIP1559Network) {
+    } else {
       response.gasType = 'legacy';
     }
 

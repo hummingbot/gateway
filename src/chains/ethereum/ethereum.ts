@@ -70,6 +70,14 @@ export class Ethereum {
   private static GAS_PRICE_CACHE_MS = 10000; // 10 second cache
   private _transactionExecutionTimeoutMs: number;
 
+  /**
+   * Returns the cached gas price estimate for this instance's network,
+   * populated by estimateGasPrice(). Undefined if no estimate has been made.
+   */
+  public getCachedGasPriceEstimate() {
+    return Ethereum.lastGasPriceEstimate[this.network];
+  }
+
   // For backward compatibility
   public get chain(): string {
     return this.network;
