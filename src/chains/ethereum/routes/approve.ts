@@ -7,6 +7,7 @@ import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
 import { EthereumLedger } from '../ethereum-ledger';
+import { getEthereumChainConfig } from '../ethereum.config';
 import { ApproveRequestSchema, ApproveResponseSchema, ApproveRequestType, ApproveResponseType } from '../schemas';
 
 // Default gas limit for approve operations
@@ -14,6 +15,22 @@ const APPROVE_GAS_LIMIT = 100000;
 
 // Permit2 address is constant across all chains
 const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
+
+// Permit2 expirations are uint48 timestamps
+const MAX_UINT48 = 281474976710655;
+
+/**
+ * Expiration timestamp for Permit2 grants. Defaults to never (max uint48) so
+ * bots approve once, matching plain ERC20 approvals on other connectors;
+ * override with ethereum.permit2ExpirationSeconds.
+ */
+export function getPermit2Expiration(): number {
+  const expirationSeconds = getEthereumChainConfig().permit2ExpirationSeconds;
+  if (!expirationSeconds) {
+    return MAX_UINT48;
+  }
+  return Math.min(Math.floor(Date.now() / 1000) + expirationSeconds, MAX_UINT48);
+}
 
 export async function approveEthereumToken(
   fastify: FastifyInstance,
@@ -245,8 +262,7 @@ export async function approveEthereumToken(
         'function approve(address token, address spender, uint160 amount, uint48 expiration) external',
       ];
 
-      // Calculate expiration (48 hours from now)
-      const expiration = Math.floor(Date.now() / 1000) + 48 * 60 * 60;
+      const expiration = getPermit2Expiration();
 
       // Convert amount to uint160 (Permit2 uses uint160 for amounts)
       // Max uint160 is 2^160 - 1, which is smaller than uint256

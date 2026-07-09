@@ -22,6 +22,11 @@
       "enum": ["url", "infura", "chainstack"],
       "default": "url",
       "description": "RPC provider to use: 'url' for standard nodeURL from network config, 'infura' for Infura service, or 'chainstack' for Chainstack Platform API auto-discovery"
+    },
+    "permit2ExpirationSeconds": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "How long Permit2 allowances granted via /approve remain valid, in seconds. If not set, allowances never expire."
     }
   },
   "required": ["defaultNetwork", "defaultWallet"],

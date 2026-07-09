@@ -9,3 +9,8 @@ defaultNetworks:
 
 # RPC provider: 'url' uses nodeURL from network config, or specify a provider name (e.g., 'infura')
 rpcProvider: url
+
+# Optional: How long Permit2 allowances granted via /approve remain valid, in seconds
+# (used by connectors that swap through the Uniswap Universal Router).
+# If not set, allowances never expire - matching plain ERC20 approvals on other connectors.
+# permit2ExpirationSeconds: 2592000
