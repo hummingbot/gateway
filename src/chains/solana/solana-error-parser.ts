@@ -445,24 +445,26 @@ export function parseSolanaError(errorMessage: string): ParsedSolanaError {
         rawError: errorMessage,
       };
     }
-    // Solana runtime realloc limits are stricter for CPI (inner) instructions. Operations
-    // that grow an account past that limit during init (e.g. Meteora DLMM position
-    // creation) work top-level but cannot run wrapped inside the Swig `sign` instruction.
-    if (errorMessage.includes('Failed to reallocate account data')) {
-      return {
-        type: 'INSTRUCTION_ERROR',
-        program: programName,
-        errorCode: code,
-        errorCodeHex: hex,
-        instructionIndex,
-        message:
-          'An inner instruction tried to grow an account beyond Solana’s CPI realloc limit. Account ' +
-          'initializations that allocate large state (e.g. Meteora DLMM position creation) work when sent ' +
-          'top-level but cannot run wrapped inside the Swig `sign` instruction. Use a narrower price range ' +
-          '(fewer bins) or manage this position with a local wallet.',
-        rawError: errorMessage,
-      };
-    }
+  }
+
+  // Solana caps account data growth via CPI at 10,240 bytes, for every wallet type — this
+  // is NOT specific to wrapped (Swig) transactions; programs allocate accounts through the
+  // system program via CPI even in top-level instructions. The common trigger is a Meteora
+  // DLMM position whose price range spans too many bins (~112 bytes/bin; the program caps
+  // positions at 69 bins anyway).
+  if (errorMessage.includes('Failed to reallocate account data')) {
+    return {
+      type: 'INSTRUCTION_ERROR',
+      program: programName,
+      errorCode: code,
+      errorCodeHex: hex,
+      instructionIndex,
+      message:
+        'An instruction tried to grow an account beyond Solana’s 10,240-byte allocation limit. If this is a ' +
+        'Meteora DLMM position, the price range spans too many bins — a position holds at most 69 bins, so ' +
+        'narrow the range or open multiple positions to cover it.',
+      rawError: errorMessage,
+    };
   }
 
   // Try program-specific error code lookup

@@ -190,12 +190,16 @@ Swig program.
 
 - **Jupiter** needs a token-cap-only role (no program allowlist) — see the exception note
   under Program restrictions.
-- **Meteora DLMM position creation** (`/connectors/meteora/clmm/open-position`) cannot run
-  through a Swig wallet: DLMM initializes the position account by growing it past Solana's
-  CPI realloc limit, which the runtime only permits for top-level instructions — wrapped
-  inside the Swig `sign` instruction it fails with `Failed to reallocate account data`.
-  Swaps and liquidity operations on existing positions are unaffected. Narrower positions
-  (fewer bins) may fit under the limit; otherwise manage DLMM positions with a local wallet.
+- **Position rent drains the SOL cap.** Opening a position pays rent from the wallet
+  (a Meteora DLMM position is ~8 KB ≈ 0.057 SOL; Orca/Raydium positions are smaller), and
+  every lamport leaving the wallet debits the one-time SOL cap. Closing a position refunds
+  the rent to the wallet but does **not** restore the cap — an automated open/close
+  rebalancing loop therefore consumes SOL cap on every cycle and needs periodic owner-signed
+  top-ups (`pnpm swig:add-token`).
+- Meteora DLMM positions hold at most **69 bins** regardless of wallet type (a program
+  limit, not a Swig one — wider ranges fail with `InvalidPositionWidth` or
+  `Failed to reallocate account data`). Gateway validates this on
+  `/connectors/meteora/clmm/open-position` and returns the max price range for the pool.
 
 ## Pointers
 

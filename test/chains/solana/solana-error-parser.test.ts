@@ -380,7 +380,7 @@ describe('Solana Error Parser', () => {
         expect(result.message).toContain('PermissionDeniedSessionExpired');
       });
 
-      it('should explain the CPI realloc limit when account growth fails inside a Swig wrap', () => {
+      it('should explain the allocation limit and bin cap on realloc failures (swig-wrapped)', () => {
         const errorMessage = [
           'Program swigypWHEksbC64pWKwah1WTeh9JXwx8H1rJHLdbQMB invoke [1]',
           'Program LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo invoke [2]',
@@ -391,8 +391,20 @@ describe('Solana Error Parser', () => {
         const result = parseSolanaError(errorMessage);
 
         expect(result.type).toBe('INSTRUCTION_ERROR');
-        expect(result.message).toMatch(/realloc limit/);
-        expect(result.message).toMatch(/local wallet|fewer bins/);
+        expect(result.message).toMatch(/10,240-byte allocation limit/);
+        expect(result.message).toMatch(/at most 69 bins/);
+      });
+
+      it('should explain realloc failures for plain (non-Swig) transactions too', () => {
+        const errorMessage = [
+          'Program LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo invoke [1]',
+          'Account data size realloc limited to 10240 in inner instructions',
+          'Program LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo failed: Failed to reallocate account data',
+        ].join('\n');
+        const result = parseSolanaError(errorMessage);
+
+        expect(result.type).toBe('INSTRUCTION_ERROR');
+        expect(result.message).toMatch(/at most 69 bins/);
       });
     });
   });

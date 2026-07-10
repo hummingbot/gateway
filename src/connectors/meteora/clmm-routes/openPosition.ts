@@ -111,6 +111,22 @@ export async function openPosition(
   const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true);
   const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false);
 
+  // A DLMM position holds at most 69 bins (program error 0x1798/6040 beyond that; ranges
+  // past ~130 bins fail even earlier with InvalidRealloc because the position account
+  // would exceed Solana's 10,240-byte CPI allocation limit). Validate here so users get
+  // the actual constraint instead of a cryptic on-chain error.
+  const MAX_POSITION_BIN_WIDTH = 69;
+  const positionWidth = maxBinId - minBinId + 1;
+  if (positionWidth > MAX_POSITION_BIN_WIDTH) {
+    const binStepPct = dlmmPool.lbPair.binStep / 100;
+    const maxRangePct = ((Math.pow(1 + binStepPct / 100, MAX_POSITION_BIN_WIDTH) - 1) * 100).toFixed(1);
+    throw httpErrors.badRequest(
+      `Price range ${lowerPrice}-${upperPrice} spans ${positionWidth} bins, but a Meteora DLMM position holds at ` +
+        `most ${MAX_POSITION_BIN_WIDTH} bins. At this pool's ${binStepPct}% bin step that is ~${maxRangePct}% ` +
+        `between lower and upper price. Narrow the range, or open multiple positions to cover it.`,
+    );
+  }
+
   // Don't add SOL rent to the liquidity amounts - rent is separate
   const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount || 0), dlmmPool.tokenX.mint.decimals));
   const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(quoteTokenAmount || 0), dlmmPool.tokenY.mint.decimals));
