@@ -19,8 +19,17 @@ import { updateDefaultWallet } from '../../src/config/utils';
 import { ConfigManagerCertPassphrase } from '../../src/services/config-manager-cert-passphrase';
 import { addSwigWalletRoute } from '../../src/wallet/routes/addSwigWallet';
 import { removeSwigWalletRoute } from '../../src/wallet/routes/removeSwigWallet';
+import { setDefaultRoute } from '../../src/wallet/routes/setDefault';
 import { getSwigService } from '../../src/wallet/swig';
-import { getSwigWallets, saveSwigWallets, getAllWalletAddressesForChain } from '../../src/wallet/utils';
+import {
+  getSwigWallets,
+  saveSwigWallets,
+  getAllWalletAddressesForChain,
+  validateChainName,
+  getSafeWalletFilePath,
+  isHardwareWallet,
+  isSwigWallet,
+} from '../../src/wallet/utils';
 
 const PASSPHRASE = 'correct-horse';
 const ACCOUNT = Keypair.generate().publicKey.toBase58();
@@ -39,6 +48,7 @@ describe('Swig wallet routes', () => {
     await app.register(sensible);
     await app.register(addSwigWalletRoute);
     await app.register(removeSwigWalletRoute);
+    await app.register(setDefaultRoute);
 
     (ConfigManagerCertPassphrase.readPassphrase as jest.Mock).mockReturnValue(PASSPHRASE);
     (Solana.getInstance as jest.Mock).mockResolvedValue({ connection: {} });
@@ -56,6 +66,10 @@ describe('Swig wallet routes', () => {
     (saveSwigWallets as jest.Mock).mockResolvedValue(undefined);
     (getAllWalletAddressesForChain as jest.Mock).mockResolvedValue([DELEGATE]);
     (updateDefaultWallet as jest.Mock).mockResolvedValue(undefined);
+    (validateChainName as jest.Mock).mockReturnValue(true);
+    (getSafeWalletFilePath as jest.Mock).mockReturnValue('/tmp/does-not-exist/wallet.json');
+    (isHardwareWallet as jest.Mock).mockResolvedValue(false);
+    (isSwigWallet as jest.Mock).mockResolvedValue(false);
   });
 
   afterEach(async () => {
@@ -154,6 +168,32 @@ describe('Swig wallet routes', () => {
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.warnings.some((w: string) => /account \(PDA\) address.*not the root authority/.test(w))).toBe(true);
+    });
+  });
+
+  describe('POST /setDefault', () => {
+    it('accepts a registered Swig wallet (no keystore file on disk)', async () => {
+      (isSwigWallet as jest.Mock).mockResolvedValue(true);
+
+      const res = await app.inject({ method: 'POST', url: '/setDefault', body: { chain: 'solana', address: WALLET } });
+
+      expect(res.statusCode).toBe(200);
+      expect(updateDefaultWallet).toHaveBeenCalledWith(expect.anything(), 'solana', WALLET);
+    });
+
+    it('accepts a registered hardware wallet (no keystore file on disk)', async () => {
+      (isHardwareWallet as jest.Mock).mockResolvedValue(true);
+
+      const res = await app.inject({ method: 'POST', url: '/setDefault', body: { chain: 'solana', address: WALLET } });
+
+      expect(res.statusCode).toBe(200);
+    });
+
+    it('still rejects an address in no registry with 404', async () => {
+      const res = await app.inject({ method: 'POST', url: '/setDefault', body: { chain: 'solana', address: WALLET } });
+
+      expect(res.statusCode).toBe(404);
+      expect(updateDefaultWallet).not.toHaveBeenCalled();
     });
   });
 

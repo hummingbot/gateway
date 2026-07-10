@@ -82,9 +82,38 @@ describe('Solana.sendAndConfirmTransactionForWallet', () => {
     expect(rebuildAndSignSwigTransaction).toHaveBeenCalledTimes(1);
     const [, addrArg, opts] = rebuildAndSignSwigTransaction.mock.calls[0] as any[];
     expect(addrArg).toBe(WALLET);
-    expect(opts.extraSigners).toBe(extra);
+    expect(opts.extraSigners).toEqual(extra);
     // 0.00002 SOL/CU * 1e6 = 20 micro-lamports
     expect(opts.priorityFeeMicroLamports).toBe(20);
+  });
+
+  it('drops extra signers that carry the wallet pubkey (SDK dummy owner signers)', async () => {
+    // Raydium's TxBuilder appends `owner.signer` to the signers it returns. For non-local
+    // wallets that is a dummy keypair whose publicKey getter returns the wallet's address;
+    // signing with it post-wrap throws "Cannot sign with non signer key <wallet>".
+    const rebuildAndSignSwigTransaction = jest.fn(async () => ({ serialize: () => new Uint8Array([1]) }));
+    const fakeThis = {
+      isSwigWallet: jest.fn(async () => true),
+      rebuildAndSignSwigTransaction,
+      simulateWithErrorHandling: jest.fn(),
+      _sendAndConfirmRawTransaction: jest.fn(async () => ({
+        confirmed: true,
+        signature: 'sig',
+        txData: { meta: { fee: 5000 } },
+      })),
+      getFee: jest.fn(() => 0.000005),
+      estimateGasPrice: jest.fn(async () => 0.00001),
+      config: { confirmRetryCount: 3 },
+    };
+
+    const dummyOwner = Keypair.generate();
+    Object.defineProperty(dummyOwner, 'publicKey', { get: () => new PublicKey(WALLET), configurable: true });
+    const nftMint = Keypair.generate();
+
+    await chokepoint.call(fakeThis, legacyTx(), WALLET, [dummyOwner, nftMint], 0.00001);
+
+    const [, , opts] = rebuildAndSignSwigTransaction.mock.calls[0] as any[];
+    expect(opts.extraSigners).toEqual([nftMint]);
   });
 
   it('defaults a missing fee payer to the wallet before simulating a legacy tx (regression)', async () => {

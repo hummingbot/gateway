@@ -357,6 +357,43 @@ describe('Solana Error Parser', () => {
 
         expect(result.type).not.toBe('SWIG_PERMISSION_DENIED');
       });
+
+      it('should explain a Swig spend-cap exhaustion (0xbc3) with top-up guidance', () => {
+        const errorMessage = [
+          'Program 675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8 success',
+          'Program swigypWHEksbC64pWKwah1WTeh9JXwx8H1rJHLdbQMB failed: custom program error: 0xbc3',
+        ].join('\n');
+        const result = parseSolanaError(errorMessage);
+
+        expect(result.type).toBe('SWIG_PERMISSION_DENIED');
+        expect(result.errorCode).toBe(3011);
+        expect(result.message).toMatch(/ONE-TIME budgets|swig:show/);
+        expect(result.message).toMatch(/swig:add-token/);
+      });
+
+      it('should fall back to the Swig enum name for unmapped Swig codes', () => {
+        const errorMessage = `Program swigypWHEksbC64pWKwah1WTeh9JXwx8H1rJHLdbQMB failed: custom program error: 0xbc6`;
+        const result = parseSolanaError(errorMessage);
+
+        expect(result.type).toBe('SWIG_PERMISSION_DENIED');
+        expect(result.errorCode).toBe(3014);
+        expect(result.message).toContain('PermissionDeniedSessionExpired');
+      });
+
+      it('should explain the CPI realloc limit when account growth fails inside a Swig wrap', () => {
+        const errorMessage = [
+          'Program swigypWHEksbC64pWKwah1WTeh9JXwx8H1rJHLdbQMB invoke [1]',
+          'Program LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo invoke [2]',
+          'Account data size realloc limited to 10240 in inner instructions',
+          'Program LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo failed: Failed to reallocate account data',
+          'Program swigypWHEksbC64pWKwah1WTeh9JXwx8H1rJHLdbQMB failed: Failed to reallocate account data',
+        ].join('\n');
+        const result = parseSolanaError(errorMessage);
+
+        expect(result.type).toBe('INSTRUCTION_ERROR');
+        expect(result.message).toMatch(/realloc limit/);
+        expect(result.message).toMatch(/local wallet|fewer bins/);
+      });
     });
   });
 

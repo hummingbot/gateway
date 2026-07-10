@@ -129,6 +129,14 @@ to that cap and no further — it exists so swaps can pay ATA rent and wrap SOL,
 capital. The caps bound the amount, **not the destination** (pinning the destination would
 break swaps, which send to a pool vault — see above).
 
+> **Caps are one-time budgets, not per-transaction limits.** Every successful transaction
+> permanently decrements the remaining allowance (the Swig program's fixed `SolLimit` /
+> `TokenLimit` actions are non-replenishing), and **rent paid for accounts the wallet creates
+> (ATAs, position accounts, position NFT mints) debits the SOL cap too** — position management
+> therefore consumes noticeably more SOL cap than swapping. When a cap runs dry the Swig
+> program rejects the sign with `0xbc3` (`PermissionDeniedInsufficientBalance`). Watch
+> remaining allowances with `pnpm swig:show` and top up with `pnpm swig:add-token`.
+
 To restrict Gateway to, say, **USDM1 only**, give the delegate role a single `tokenLimit` for
 the USDM1 mint and nothing else: every other mint is then unspendable, and SOL only to the
 small rent/wrap cap.
@@ -177,6 +185,17 @@ It prints the JSON body for `POST /wallet/add-swig`. The **delegate** must hold 
 to pay fees, and the **Swig wallet** must hold the input token (within its cap) for a swap to
 land. A delegate with no SOL fails simulation at fee-payer resolution before reaching the
 Swig program.
+
+## Known limitations
+
+- **Jupiter** needs a token-cap-only role (no program allowlist) — see the exception note
+  under Program restrictions.
+- **Meteora DLMM position creation** (`/connectors/meteora/clmm/open-position`) cannot run
+  through a Swig wallet: DLMM initializes the position account by growing it past Solana's
+  CPI realloc limit, which the runtime only permits for top-level instructions — wrapped
+  inside the Swig `sign` instruction it fails with `Failed to reallocate account data`.
+  Swaps and liquidity operations on existing positions are unaffected. Narrower positions
+  (fewer bins) may fit under the limit; otherwise manage DLMM positions with a local wallet.
 
 ## Pointers
 

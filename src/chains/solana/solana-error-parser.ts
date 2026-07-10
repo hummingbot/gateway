@@ -40,17 +40,49 @@ export const PROGRAM_IDS = {
 } as const;
 
 /**
- * Swig program error 3006 (0xbbe): PermissionDeniedMissingPermission — the delegate
- * role lacks a permission the wrapped instructions need. Matched by program id + code
- * (not via the generic tables) because 3006 collides with unrelated Anchor error codes.
+ * Swig program errors (SwigAuthenticateError enum in anagrambuild/swig-wallet
+ * state/src/lib.rs, discriminants from 3000). Matched by program id + code — not via the
+ * generic tables — because the 3000 range collides with unrelated Anchor error codes.
+ * The two codes hit in practice get actionable messages; the rest resolve to their
+ * enum name so users are not left with a bare hex code.
  */
-const SWIG_PERMISSION_DENIED_CODE = 3006;
-const SWIG_PERMISSION_DENIED_MESSAGE =
-  'Swig role permission denied (0xbbe): the delegate role is missing a permission this transaction needs — ' +
-  'a program not on its allowlist (every program the wrapped instructions invoke must be allowed), an uncapped ' +
-  'token mint, or a missing/exhausted SOL cap. Inspect the live policy with `pnpm swig:show`; grant venues with ' +
-  '`pnpm swig:allow-program` and caps with `pnpm swig:add-token`. Jupiter cannot run under a program allowlist — ' +
-  'it routes through arbitrary programs and needs a token-cap-only role.';
+const SWIG_ERROR_MESSAGES: Record<number, string> = {
+  3005: 'Swig permission denied (0xbbd): the delegate role may not perform this action.',
+  3006:
+    'Swig role permission denied (0xbbe): the delegate role is missing a permission this transaction needs — ' +
+    'a program not on its allowlist (every program the wrapped instructions invoke must be allowed), an uncapped ' +
+    'token mint, or a missing/exhausted SOL cap. Inspect the live policy with `pnpm swig:show`; grant venues with ' +
+    '`pnpm swig:allow-program` and caps with `pnpm swig:add-token`. Jupiter cannot run under a program allowlist — ' +
+    'it routes through arbitrary programs and needs a token-cap-only role.',
+  3008:
+    'Swig permission denied (0xbc0): a token account touched by this transaction has an active delegate or ' +
+    'close authority, which the Swig program refuses to spend through.',
+  3011:
+    'Swig spend cap exceeded (0xbc3, PermissionDeniedInsufficientBalance): a SOL or token cap on the delegate ' +
+    'role has less remaining allowance than this transaction spends. Caps are ONE-TIME budgets, permanently ' +
+    'decremented by every successful transaction — and rent paid for newly created accounts (ATAs, position ' +
+    'accounts, NFT mints) also debits the SOL cap, so position management costs more SOL cap than a swap. ' +
+    'Check remaining allowances with `pnpm swig:show`, then top up with `pnpm swig:add-token` (works for both ' +
+    'per-mint caps and SOL headroom; one owner approval).',
+  3023: 'Swig permission denied (0xbcf): a token account spent by this transaction is not owned by the Swig wallet.',
+};
+const SWIG_ERROR_NAMES: Record<number, string> = {
+  3000: 'InvalidAuthority',
+  3001: 'InvalidAuthorityPayload',
+  3002: 'InvalidDataPayload',
+  3005: 'PermissionDenied',
+  3006: 'PermissionDeniedMissingPermission',
+  3007: 'PermissionDeniedTokenAccountPermissionFailure',
+  3008: 'PermissionDeniedTokenAccountDelegatePresent',
+  3009: 'PermissionDeniedTokenAccountNotInitialized',
+  3010: 'PermissionDeniedToManageAuthority',
+  3011: 'PermissionDeniedInsufficientBalance',
+  3014: 'PermissionDeniedSessionExpired',
+  3020: 'PermissionDeniedStakeAccountInvalidState',
+  3023: 'PermissionDeniedTokenAccountAuthorityNotSwig',
+};
+const SWIG_ERROR_MIN = 3000;
+const SWIG_ERROR_MAX = 3039;
 
 /**
  * Program-specific error code mappings
@@ -392,19 +424,45 @@ export function parseSolanaError(errorMessage: string): ParsedSolanaError {
   const programName = getProgramName(programId);
   const { index: instructionIndex, variant: instructionVariant } = extractInstructionError(errorMessage);
 
-  // Swig policy rejection. Checked before the table lookups because the first program in
+  // Swig policy rejections. Checked before the table lookups because the first program in
   // the logs is often ComputeBudget (top-level in a wrapped tx), which would misattribute
-  // the error; the Swig program id appearing anywhere plus code 3006 is unambiguous.
-  if (code === SWIG_PERMISSION_DENIED_CODE && errorMessage.includes(PROGRAM_IDS.SWIG)) {
-    return {
-      type: 'SWIG_PERMISSION_DENIED',
-      program: 'Swig',
-      errorCode: code,
-      errorCodeHex: hex,
-      instructionIndex,
-      message: SWIG_PERMISSION_DENIED_MESSAGE,
-      rawError: errorMessage,
-    };
+  // the error; the Swig program id appearing anywhere plus a code in the Swig enum range
+  // is unambiguous.
+  if (errorMessage.includes(PROGRAM_IDS.SWIG)) {
+    if (code !== null && code >= SWIG_ERROR_MIN && code <= SWIG_ERROR_MAX) {
+      const name = SWIG_ERROR_NAMES[code];
+      const message =
+        SWIG_ERROR_MESSAGES[code] ??
+        `Swig program rejected the transaction (${hex}${name ? `, ${name}` : ''}). ` +
+          'Inspect the wallet policy with `pnpm swig:show`.';
+      return {
+        type: 'SWIG_PERMISSION_DENIED',
+        program: 'Swig',
+        errorCode: code,
+        errorCodeHex: hex,
+        instructionIndex,
+        message,
+        rawError: errorMessage,
+      };
+    }
+    // Solana runtime realloc limits are stricter for CPI (inner) instructions. Operations
+    // that grow an account past that limit during init (e.g. Meteora DLMM position
+    // creation) work top-level but cannot run wrapped inside the Swig `sign` instruction.
+    if (errorMessage.includes('Failed to reallocate account data')) {
+      return {
+        type: 'INSTRUCTION_ERROR',
+        program: programName,
+        errorCode: code,
+        errorCodeHex: hex,
+        instructionIndex,
+        message:
+          'An inner instruction tried to grow an account beyond Solana’s CPI realloc limit. Account ' +
+          'initializations that allocate large state (e.g. Meteora DLMM position creation) work when sent ' +
+          'top-level but cannot run wrapped inside the Swig `sign` instruction. Use a narrower price range ' +
+          '(fewer bins) or manage this position with a local wallet.',
+        rawError: errorMessage,
+      };
+    }
   }
 
   // Try program-specific error code lookup

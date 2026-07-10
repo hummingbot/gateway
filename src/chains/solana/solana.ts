@@ -1488,6 +1488,15 @@ export class Solana {
     extraSigners: Keypair[] = [],
     priorityFeePerCU?: number,
   ): Promise<{ signature: string; fee: number }> {
+    // Extra signers are for EPHEMERAL keypairs (position NFT mints, new accounts); the
+    // wallet's own signature is this method's job, per wallet type. Some SDK builders
+    // (Raydium's TxBuilder) append an owner "signer" — for hardware/Swig wallets that is a
+    // dummy keypair carrying the wallet's pubkey but a random secret key: signing with it
+    // corrupts the wallet's signature slot, and post-wrap Swig messages no longer list the
+    // wallet as a signer at all, so web3 throws "Cannot sign with non signer key". Drop it.
+    const walletPk = new PublicKey(address);
+    extraSigners = extraSigners.filter((s) => !s.publicKey.equals(walletPk));
+
     // Swig wallets are PDAs with no key: rebuild + wrap the transaction, then broadcast.
     if (await this.isSwigWallet(address)) {
       const priorityFee = priorityFeePerCU ?? (await this.estimateGasPrice());
