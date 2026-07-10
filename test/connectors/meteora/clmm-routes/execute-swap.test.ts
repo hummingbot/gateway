@@ -271,3 +271,51 @@ describe('POST /execute-swap', () => {
     expect(JSON.parse(response.body)).toHaveProperty('error');
   });
 });
+
+describe('fixSwapBitmapExtensionMeta (gateway#639)', () => {
+  const DLMM_PROGRAM = new PublicKey('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo');
+  const LB_PAIR = new PublicKey('5rCf1DM8LjKTw4YqhnoLcngyZYeNnQqztScTogYHAS6');
+  const EXTENSION = new PublicKey('DArpuuqJxNLRGQ8xq5ebZbobyjxSWWsPq8MqSZ2fUZLE');
+
+  const dlmmIx = (bitmapKey: PublicKey) => ({
+    programId: DLMM_PROGRAM,
+    keys: [
+      { pubkey: LB_PAIR, isSigner: false, isWritable: true },
+      { pubkey: bitmapKey, isSigner: false, isWritable: false },
+    ],
+  });
+
+  it('promotes a real bitmap-extension account to writable (SELL/swap2 path)', async () => {
+    const { fixSwapBitmapExtensionMeta } = await import('../../../../src/connectors/meteora/clmm-routes/executeSwap');
+    const tx = { instructions: [dlmmIx(EXTENSION)] } as any;
+
+    fixSwapBitmapExtensionMeta(tx);
+
+    expect(tx.instructions[0].keys[1].isWritable).toBe(true);
+  });
+
+  it('leaves the program-id "None" placeholder read-only', async () => {
+    const { fixSwapBitmapExtensionMeta } = await import('../../../../src/connectors/meteora/clmm-routes/executeSwap');
+    const tx = { instructions: [dlmmIx(DLMM_PROGRAM)] } as any;
+
+    fixSwapBitmapExtensionMeta(tx);
+
+    expect(tx.instructions[0].keys[1].isWritable).toBe(false);
+  });
+
+  it('ignores non-DLMM instructions (ATA create, wrap SOL)', async () => {
+    const { fixSwapBitmapExtensionMeta } = await import('../../../../src/connectors/meteora/clmm-routes/executeSwap');
+    const otherIx = {
+      programId: new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'),
+      keys: [
+        { pubkey: LB_PAIR, isSigner: false, isWritable: false },
+        { pubkey: EXTENSION, isSigner: false, isWritable: false },
+      ],
+    };
+    const tx = { instructions: [otherIx] } as any;
+
+    fixSwapBitmapExtensionMeta(tx);
+
+    expect(tx.instructions[0].keys[1].isWritable).toBe(false);
+  });
+});

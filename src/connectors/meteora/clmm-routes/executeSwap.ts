@@ -16,13 +16,15 @@ import { getRawSwapQuote } from './quoteSwap';
 const DLMM_PROGRAM_ID = new PublicKey('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo');
 
 /**
- * DLMM SDK 1.7.5 marks the optional binArrayBitmapExtension account (index 1 of
- * swapExactOut/SwapExactOut2) read-only, but the deployed program declares it `mut` — so on
- * any pool that HAS a bitmap extension the swap fails on-chain with ConstraintMut (0x7d0).
- * Promote it to writable. When the pool has no extension the SDK passes the DLMM program id
- * as a placeholder, which must stay read-only.
+ * DLMM SDK 1.7.5 marks the optional binArrayBitmapExtension account (index 1 of EVERY
+ * swap-family instruction: swap/swap2, swapExactOut/2, swapWithPriceImpact/2) read-only,
+ * but the deployed program declares it `mut` — so on any pool that HAS a bitmap extension
+ * the swap fails on-chain with ConstraintMut (0x7d0, hummingbot/gateway#639). Promote it
+ * to writable. When the pool has no extension the SDK passes the DLMM program id as a
+ * placeholder, which must stay read-only. The liquidity instructions are unaffected
+ * (their IDL entries already say writable).
  */
-function fixExactOutBitmapExtensionMeta<T extends { instructions?: { programId: PublicKey; keys: any[] }[] }>(
+export function fixSwapBitmapExtensionMeta<T extends { instructions?: { programId: PublicKey; keys: any[] }[] }>(
   tx: T,
 ): T {
   for (const ix of tx.instructions ?? []) {
@@ -59,19 +61,17 @@ export async function executeSwap(
 
   logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
 
-  const swapTx =
+  const swapTx = fixSwapBitmapExtensionMeta(
     side === 'BUY'
-      ? fixExactOutBitmapExtensionMeta(
-          await dlmmPool.swapExactOut({
-            inToken: new PublicKey(inputToken.address),
-            outToken: new PublicKey(outputToken.address),
-            outAmount: (swapQuote as SwapQuoteExactOut).outAmount,
-            maxInAmount: (swapQuote as SwapQuoteExactOut).maxInAmount,
-            lbPair: dlmmPool.pubkey,
-            user: walletPublicKey,
-            binArraysPubkey: (swapQuote as SwapQuoteExactOut).binArraysPubkey,
-          }),
-        )
+      ? await dlmmPool.swapExactOut({
+          inToken: new PublicKey(inputToken.address),
+          outToken: new PublicKey(outputToken.address),
+          outAmount: (swapQuote as SwapQuoteExactOut).outAmount,
+          maxInAmount: (swapQuote as SwapQuoteExactOut).maxInAmount,
+          lbPair: dlmmPool.pubkey,
+          user: walletPublicKey,
+          binArraysPubkey: (swapQuote as SwapQuoteExactOut).binArraysPubkey,
+        })
       : await dlmmPool.swap({
           inToken: new PublicKey(inputToken.address),
           outToken: new PublicKey(outputToken.address),
@@ -80,7 +80,8 @@ export async function executeSwap(
           lbPair: dlmmPool.pubkey,
           user: walletPublicKey,
           binArraysPubkey: (swapQuote as SwapQuote).binArraysPubkey,
-        });
+        }),
+  );
 
   // Sign + send via the wallet-type-aware chokepoint (handles local/hardware/Swig and
   // simulates the non-Swig path internally).
