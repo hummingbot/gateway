@@ -334,6 +334,30 @@ describe('Solana Error Parser', () => {
         expect(result.errorCode).toBe(6001);
       });
     });
+
+    describe('Swig policy errors', () => {
+      it('should detect a Swig permission denial (0xbbe) even when ComputeBudget appears first in the logs', () => {
+        const errorMessage = [
+          '{"InstructionError":[1,{"Custom":3006}]}',
+          'Program ComputeBudget111111111111111111111111111111 invoke [1]',
+          'Program swigypWHEksbC64pWKwah1WTeh9JXwx8H1rJHLdbQMB invoke [1]',
+          'Program swigypWHEksbC64pWKwah1WTeh9JXwx8H1rJHLdbQMB failed: custom program error: 0xbbe',
+        ].join('\n');
+        const result = parseSolanaError(errorMessage);
+
+        expect(result.type).toBe('SWIG_PERMISSION_DENIED');
+        expect(result.program).toBe('Swig');
+        expect(result.errorCode).toBe(3006);
+        expect(result.message).toMatch(/allowlist|token-cap-only/);
+      });
+
+      it('should NOT classify a non-Swig 3006 error as a Swig denial', () => {
+        const errorMessage = `Program JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4 failed: custom program error: 0xbbe`;
+        const result = parseSolanaError(errorMessage);
+
+        expect(result.type).not.toBe('SWIG_PERMISSION_DENIED');
+      });
+    });
   });
 
   describe('isSlippageError', () => {

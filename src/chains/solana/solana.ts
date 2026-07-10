@@ -1434,6 +1434,31 @@ export class Solana {
   }
 
   /**
+   * If a broadcast transaction landed on-chain but failed, throw the parsed program error;
+   * return silently when the transaction is missing or succeeded so the caller can apply
+   * its own confirmation handling. The confirmation helpers report a landed-and-failed
+   * transaction as unconfirmed, which callers would otherwise misreport as a timeout.
+   */
+  private async throwIfLandedWithError(signature: string): Promise<void> {
+    if (!signature) return;
+    let txData: any = null;
+    try {
+      txData = await this.connection.getTransaction(signature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      });
+    } catch {
+      return;
+    }
+    if (!txData?.meta?.err) return;
+    const { simulationFailed } = await import('../../services/error-handler');
+    const { parseSolanaError } = await import('./solana-error-parser');
+    const logs: string[] = txData.meta.logMessages ?? [];
+    const parsed = parseSolanaError([JSON.stringify(txData.meta.err), ...logs].join('\n'));
+    throw simulationFailed(`Transaction ${signature} landed on-chain but failed: ${parsed.message}`);
+  }
+
+  /**
    * Resolve the Swig delegate signer for a registered wallet. The custody backend is
    * pluggable (see wallet/swig/delegate-signer.ts): `local` decrypts the delegate key from
    * the keystore and signs in-process; `kms` would sign through a cloud KMS/HSM without the
@@ -1470,12 +1495,20 @@ export class Solana {
         extraSigners,
         priorityFeeMicroLamports: Math.floor(priorityFee * 1_000_000),
       });
+      // Simulate the WRAPPED transaction, not the connector-built one: Swig policy
+      // rejections (0xbbe — unlisted program, missing token/SOL cap) only exist after the
+      // wrap, and the broadcast below skips preflight — without this, every policy failure
+      // surfaces as an opaque confirmation timeout.
+      await this.simulateWithErrorHandling(signedTx);
       const { confirmed, signature, txData } = await this._sendAndConfirmRawTransaction(signedTx.serialize());
       if (confirmed && txData) {
         const actualFee = this.getFee(txData);
         logger.info(`Swig transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
         return { signature, fee: actualFee };
       }
+      // Not confirmed can also mean landed-and-failed (skipPreflight send): report the
+      // on-chain program error rather than a misleading timeout.
+      await this.throwIfLandedWithError(signature);
       throw httpErrors.transactionTimeout(
         `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
       );
@@ -2187,6 +2220,7 @@ export class Solana {
         case 'PRICE_LIMIT_OVERFLOW':
         case 'ACCOUNT_NOT_FOUND':
         case 'MATH_OVERFLOW':
+        case 'SWIG_PERMISSION_DENIED':
           logger.error('Transaction simulation failed:', simulationError);
           throw simulationFailed(buildDetail(parsedError.message));
 

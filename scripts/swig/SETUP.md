@@ -207,12 +207,17 @@ curl -s -X POST http://localhost:15888/wallet/add-swig \
   -d '{
     "network": "mainnet-beta",
     "accountAddress": "<Swig account (PDA)>",
-    "ownerAddress": "<owner address>",
+    "ownerAddress": "<Owner (root) address>",
     "delegateAddress": "<delegate address>",
     "id": "<base58 id>",
     "passphrase": "<your gateway passphrase>"
   }'
 ```
+
+`ownerAddress` is the **Owner (root)** authority — the key that created the wallet (your
+Ledger or keystore owner), **not** the "Swig wallet address" you fund and trade with. Passing
+the wrong one still registers (the funds-owner is re-derived from chain state) but returns a
+"No root role found" warning.
 
 Gateway verifies the delegate role exists on-chain and stores the mapping. A 200 with
 `"Swig wallet registered successfully"` means you're set.

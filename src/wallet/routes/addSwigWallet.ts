@@ -128,19 +128,34 @@ export const addSwigWalletRoute: FastifyPluginAsync = async (fastify) => {
         throw fastify.httpErrors.badRequest(error.message);
       }
 
-      const warnings: string[] = [];
-      // The owner role should exist too (sanity check on the provided owner address).
-      try {
-        swigService.requireRole(swig, ownerPk, 'owner/root');
-      } catch {
-        warnings.push(
-          `No root role found for the provided ownerAddress ${ownerAddress}; verify it matches the key that created the wallet.`,
-        );
-      }
-
       // Derive the funds-owner address from chain state (do not trust client input for it).
       const walletPk = await swigService.getWalletAddress(swig);
       const address = walletPk.toBase58();
+
+      const warnings: string[] = [];
+      // The owner role should exist too (sanity check on the provided owner address). The
+      // most common mistake is passing one of the wallet's OTHER addresses here, so name
+      // the specific mix-up when we can detect it.
+      try {
+        swigService.requireRole(swig, ownerPk, 'owner/root');
+      } catch {
+        const ownerHint =
+          'ownerAddress must be the owner/root authority key that created the wallet ' +
+          '(printed as "Owner (root)" by pnpm swig:create).';
+        if (ownerPk.equals(walletPk)) {
+          warnings.push(
+            `ownerAddress ${ownerAddress} is the Swig wallet (funds-owner) address, not the root authority. ${ownerHint}`,
+          );
+        } else if (ownerPk.equals(accountPk)) {
+          warnings.push(
+            `ownerAddress ${ownerAddress} is the Swig account (PDA) address, not the root authority. ${ownerHint}`,
+          );
+        } else {
+          warnings.push(
+            `No root role found for the provided ownerAddress ${ownerAddress}; verify it matches the key that created the wallet.`,
+          );
+        }
+      }
 
       // For a local-keystore delegate, Gateway can only sign if the delegate key is on disk.
       // For a KMS delegate the key lives in the KMS, so no local key file is expected.

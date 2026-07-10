@@ -114,6 +114,47 @@ describe('Swig wallet routes', () => {
       expect(res.statusCode).toBe(400);
       expect(JSON.parse(res.body).message).toMatch(/already registered/);
     });
+
+    it('still registers but warns generically when the owner root role is missing', async () => {
+      requireRole.mockImplementation((_swig: unknown, _pk: unknown, label: string) => {
+        if (label === 'owner/root') throw new Error('No owner/root role found on Swig for signer X');
+        return { id: 1 };
+      });
+
+      const res = await app.inject({ method: 'POST', url: '/add-swig', body: addBody() });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.warnings).toHaveLength(1);
+      expect(body.warnings[0]).toMatch(/No root role found for the provided ownerAddress/);
+      expect(saveSwigWallets).toHaveBeenCalledTimes(1);
+    });
+
+    it('names the mix-up when the funds-owner (wallet) address is passed as ownerAddress', async () => {
+      requireRole.mockImplementation((_swig: unknown, _pk: unknown, label: string) => {
+        if (label === 'owner/root') throw new Error('No owner/root role found on Swig for signer X');
+        return { id: 1 };
+      });
+
+      const res = await app.inject({ method: 'POST', url: '/add-swig', body: addBody({ ownerAddress: WALLET }) });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.warnings.some((w: string) => /funds-owner.*not the root authority/.test(w))).toBe(true);
+    });
+
+    it('names the mix-up when the Swig account PDA is passed as ownerAddress', async () => {
+      requireRole.mockImplementation((_swig: unknown, _pk: unknown, label: string) => {
+        if (label === 'owner/root') throw new Error('No owner/root role found on Swig for signer X');
+        return { id: 1 };
+      });
+
+      const res = await app.inject({ method: 'POST', url: '/add-swig', body: addBody({ ownerAddress: ACCOUNT }) });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.warnings.some((w: string) => /account \(PDA\) address.*not the root authority/.test(w))).toBe(true);
+    });
   });
 
   describe('DELETE /remove-swig', () => {

@@ -101,7 +101,10 @@ export const BASE_TOKEN_PROGRAMS = [
 // Jupiter wallet stays token-cap-only (no program allowlist can cover it).
 export const VENUE_PROGRAMS: Record<string, string[]> = {
   orca: ['whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc'], // Orca Whirlpools
-  meteora: ['LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo'], // Meteora DLMM
+  meteora: [
+    'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo', // Meteora DLMM
+    'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr', // SPL Memo — DLMM `swap2` CPIs it; log-only, moves no funds
+  ],
   'raydium-amm': ['675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8'], // Raydium AMM v4
   'raydium-clmm': ['CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK'], // Raydium CLMM
 };

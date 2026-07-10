@@ -51,8 +51,9 @@ function versionedTx(): VersionedTransaction {
 }
 
 describe('Solana.sendAndConfirmTransactionForWallet', () => {
-  it('routes Swig wallets through rebuildAndSignSwigTransaction and skips the simulate', async () => {
-    const rebuildAndSignSwigTransaction = jest.fn(async () => ({ serialize: () => new Uint8Array([1, 2, 3]) }));
+  it('routes Swig wallets through rebuildAndSignSwigTransaction and simulates the WRAPPED tx', async () => {
+    const wrappedTx = { serialize: () => new Uint8Array([1, 2, 3]) };
+    const rebuildAndSignSwigTransaction = jest.fn(async () => wrappedTx);
     const simulateWithErrorHandling = jest.fn();
     const _sendAndConfirmRawTransaction = jest.fn(async () => ({
       confirmed: true,
@@ -74,8 +75,10 @@ describe('Solana.sendAndConfirmTransactionForWallet', () => {
     const result = await chokepoint.call(fakeThis, tx, WALLET, extra, 0.00002);
 
     expect(result).toEqual({ signature: 'swig-sig', fee: 0.000005 });
-    // Swig path must NOT pre-flight simulate (the unsigned PDA tx is only executable post-wrap).
-    expect(simulateWithErrorHandling).not.toHaveBeenCalled();
+    // The simulate must run against the wrapped/signed tx, never the connector-built one:
+    // Swig policy failures (0xbbe) only exist post-wrap, and the unsigned PDA tx cannot run.
+    expect(simulateWithErrorHandling).toHaveBeenCalledTimes(1);
+    expect(simulateWithErrorHandling).toHaveBeenCalledWith(wrappedTx);
     expect(rebuildAndSignSwigTransaction).toHaveBeenCalledTimes(1);
     const [, addrArg, opts] = rebuildAndSignSwigTransaction.mock.calls[0] as any[];
     expect(addrArg).toBe(WALLET);
@@ -133,7 +136,9 @@ describe('Solana.sendAndConfirmTransactionForWallet', () => {
     const fakeThis = {
       isSwigWallet: jest.fn(async () => true),
       rebuildAndSignSwigTransaction: jest.fn(async () => ({ serialize: () => new Uint8Array([1]) })),
+      simulateWithErrorHandling: jest.fn(),
       _sendAndConfirmRawTransaction: jest.fn(async () => ({ confirmed: false, signature: '', txData: null })),
+      throwIfLandedWithError: jest.fn(async () => undefined),
       getFee: jest.fn(),
       estimateGasPrice: jest.fn(async () => 0.00001),
       config: { confirmRetryCount: 4 },
@@ -141,6 +146,38 @@ describe('Solana.sendAndConfirmTransactionForWallet', () => {
 
     await expect(chokepoint.call(fakeThis, legacyTx(), WALLET, [], 0.00001)).rejects.toThrow(
       /confirm after 4 attempts/,
+    );
+  });
+
+  it('surfaces the on-chain program error when a Swig tx lands but fails (not a timeout)', async () => {
+    const throwIfLandedWithError = (Solana.prototype as any).throwIfLandedWithError as (
+      this: unknown,
+      signature: string,
+    ) => Promise<void>;
+    const fakeThis = {
+      isSwigWallet: jest.fn(async () => true),
+      rebuildAndSignSwigTransaction: jest.fn(async () => ({ serialize: () => new Uint8Array([1]) })),
+      simulateWithErrorHandling: jest.fn(),
+      _sendAndConfirmRawTransaction: jest.fn(async () => ({ confirmed: false, signature: 'landed-sig', txData: null })),
+      throwIfLandedWithError,
+      getFee: jest.fn(),
+      estimateGasPrice: jest.fn(async () => 0.00001),
+      config: { confirmRetryCount: 4 },
+      connection: {
+        getTransaction: jest.fn(async () => ({
+          meta: {
+            err: { InstructionError: [1, { Custom: 3006 }] },
+            logMessages: [
+              'Program swigypWHEksbC64pWKwah1WTeh9JXwx8H1rJHLdbQMB invoke [1]',
+              'Program swigypWHEksbC64pWKwah1WTeh9JXwx8H1rJHLdbQMB failed: custom program error: 0xbbe',
+            ],
+          },
+        })),
+      },
+    };
+
+    await expect(chokepoint.call(fakeThis, legacyTx(), WALLET, [], 0.00001)).rejects.toThrow(
+      /landed on-chain but failed: Swig role permission denied/,
     );
   });
 });

@@ -13,6 +13,7 @@ export type SolanaErrorType =
   | 'ACCOUNT_NOT_FOUND'
   | 'MATH_OVERFLOW'
   | 'INSTRUCTION_ERROR'
+  | 'SWIG_PERMISSION_DENIED'
   | 'UNKNOWN';
 
 export interface ParsedSolanaError {
@@ -35,7 +36,21 @@ export const PROGRAM_IDS = {
   RAYDIUM_CLMM: 'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK',
   RAYDIUM_AMM: '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8',
   ORCA_WHIRLPOOL: 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc',
+  SWIG: 'swigypWHEksbC64pWKwah1WTeh9JXwx8H1rJHLdbQMB',
 } as const;
+
+/**
+ * Swig program error 3006 (0xbbe): PermissionDeniedMissingPermission — the delegate
+ * role lacks a permission the wrapped instructions need. Matched by program id + code
+ * (not via the generic tables) because 3006 collides with unrelated Anchor error codes.
+ */
+const SWIG_PERMISSION_DENIED_CODE = 3006;
+const SWIG_PERMISSION_DENIED_MESSAGE =
+  'Swig role permission denied (0xbbe): the delegate role is missing a permission this transaction needs — ' +
+  'a program not on its allowlist (every program the wrapped instructions invoke must be allowed), an uncapped ' +
+  'token mint, or a missing/exhausted SOL cap. Inspect the live policy with `pnpm swig:show`; grant venues with ' +
+  '`pnpm swig:allow-program` and caps with `pnpm swig:add-token`. Jupiter cannot run under a program allowlist — ' +
+  'it routes through arbitrary programs and needs a token-cap-only role.';
 
 /**
  * Program-specific error code mappings
@@ -362,6 +377,7 @@ function getProgramName(programId: string | null): string {
     [PROGRAM_IDS.RAYDIUM_CLMM]: 'Raydium CLMM',
     [PROGRAM_IDS.RAYDIUM_AMM]: 'Raydium AMM',
     [PROGRAM_IDS.ORCA_WHIRLPOOL]: 'Orca Whirlpool',
+    [PROGRAM_IDS.SWIG]: 'Swig',
   };
 
   return names[programId] || programId.slice(0, 8) + '...';
@@ -375,6 +391,21 @@ export function parseSolanaError(errorMessage: string): ParsedSolanaError {
   const programId = extractProgramId(errorMessage);
   const programName = getProgramName(programId);
   const { index: instructionIndex, variant: instructionVariant } = extractInstructionError(errorMessage);
+
+  // Swig policy rejection. Checked before the table lookups because the first program in
+  // the logs is often ComputeBudget (top-level in a wrapped tx), which would misattribute
+  // the error; the Swig program id appearing anywhere plus code 3006 is unambiguous.
+  if (code === SWIG_PERMISSION_DENIED_CODE && errorMessage.includes(PROGRAM_IDS.SWIG)) {
+    return {
+      type: 'SWIG_PERMISSION_DENIED',
+      program: 'Swig',
+      errorCode: code,
+      errorCodeHex: hex,
+      instructionIndex,
+      message: SWIG_PERMISSION_DENIED_MESSAGE,
+      rawError: errorMessage,
+    };
+  }
 
   // Try program-specific error code lookup
   if (programId && code !== null && PROGRAM_ERROR_CODES[programId]) {
@@ -485,6 +516,8 @@ export function getUserFriendlyErrorMessage(errorMessage: string): string {
       return `Transaction failed: ${parsed.message} Try reducing the amount or adjusting parameters.`;
     case 'INSTRUCTION_ERROR':
       return `Transaction simulation failed: ${parsed.message}`;
+    case 'SWIG_PERMISSION_DENIED':
+      return `Swig policy rejected the transaction: ${parsed.message}`;
     default:
       return `Transaction failed. ${parsed.errorCodeHex ? `Error code: ${parsed.errorCodeHex}` : 'Unknown error.'}`;
   }

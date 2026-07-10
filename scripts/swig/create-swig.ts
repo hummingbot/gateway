@@ -169,7 +169,8 @@ async function main(): Promise<void> {
 
   banner('Done — next: grant, fund, register');
   console.log('Swig wallet + bounded delegate created. Save these:');
-  console.log(`  Funds owner address:  ${walletPk.toBase58()}   <- fund + trade with this`);
+  console.log(`  Owner (root):         ${owner.publicKey.toBase58()}   <- ownerAddress for /wallet/add-swig`);
+  console.log(`  Swig wallet address:  ${walletPk.toBase58()}   <- fund + trade with this (funds owner)`);
   console.log(`  Swig account (PDA):   ${accountAddress.toBase58()}`);
   console.log(`  Delegate (Gateway signs): ${delegateAddress}`);
   console.log(`  Swig id (base58):     ${bs58.encode(id)}       <- needed for /wallet/add-swig`);
