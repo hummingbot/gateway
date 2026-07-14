@@ -574,6 +574,20 @@ export async function handleWsolAta(
       throw new Error('Solana instance required for unwrap mode');
     }
 
+    // The Swig program snapshots every wallet token account that exists when the wrapped
+    // transaction starts and re-hashes it afterwards — closing a snapshotted account
+    // crashes the on-chain program (SBF panic on the now-empty data). A WSOL ATA created
+    // earlier in this same transaction is not snapshotted and closes fine, but one that
+    // already existed must be left open: skip the unwrap and leave the SOL wrapped (it is
+    // spent as WSOL by later operations, or unwrapped by the root owner).
+    if (ataInfo && (await solana.isSwigWallet(client.getContext().wallet.publicKey.toBase58()))) {
+      logger.warn(
+        'Skipping WSOL unwrap for Swig wallet: the WSOL token account pre-exists and closing it inside a ' +
+          'Swig-wrapped transaction crashes the Swig program. SOL received stays wrapped as WSOL.',
+      );
+      return;
+    }
+
     logger.info('Unwrapping WSOL: closing WSOL ATA to return SOL to wallet');
     const unwrapInstruction = solana.unwrapSOL(client.getContext().wallet.publicKey, tokenProgram);
     builder.addInstruction({

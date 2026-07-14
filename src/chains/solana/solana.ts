@@ -45,7 +45,7 @@ import { createRateLimitAwareSolanaConnection } from '../../rpc/rpc-connection-i
 import { RPCProvider } from '../../rpc/rpc-provider-base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { httpErrors } from '../../services/error-handler';
+import { httpErrors, HttpError } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
 import { encryptSecret, decryptSecret, isLegacyKeystore } from '../../services/secure-keystore';
 import { TokenService } from '../../services/token-service';
@@ -1408,8 +1408,21 @@ export class Solana {
       return { signature, fee: actualFee };
     }
 
-    throw httpErrors.transactionTimeout(
-      `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
+    await this.throwIfLandedWithError(signature);
+    throw this.confirmationTimeoutError(signature);
+  }
+
+  /**
+   * The 504 raised when a broadcast transaction was not seen on-chain before its blockhash
+   * expired. Includes the signature so the caller can reconcile: the send raced the
+   * confirmation window, and in rare cases the transaction may still show up.
+   */
+  private confirmationTimeoutError(signature: string): HttpError {
+    return httpErrors.transactionTimeout(
+      signature
+        ? `Transaction ${signature} was not confirmed before its blockhash expired. It most likely did not ` +
+            'land — verify the signature on-chain before retrying.'
+        : 'Transaction failed to send',
     );
   }
 
@@ -1518,9 +1531,7 @@ export class Solana {
       // Not confirmed can also mean landed-and-failed (skipPreflight send): report the
       // on-chain program error rather than a misleading timeout.
       await this.throwIfLandedWithError(signature);
-      throw httpErrors.transactionTimeout(
-        `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
-      );
+      throw this.confirmationTimeoutError(signature);
     }
 
     // A connector may hand us a legacy transaction with no fee payer (it builds with the
@@ -1599,9 +1610,8 @@ export class Solana {
       logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
       return { signature, fee: actualFee };
     }
-    throw httpErrors.transactionTimeout(
-      `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
-    );
+    await this.throwIfLandedWithError(signature);
+    throw this.confirmationTimeoutError(signature);
   }
 
   private async prepareTx(
@@ -1851,8 +1861,10 @@ export class Solana {
           }
           return { confirmed: !failed, txData };
         }
-        // Transaction not found on-chain yet - return as pending
-        return { confirmed: false, txData: null };
+        // Not found on-chain yet — it can still land until the blockhash expires, so fall
+        // back to polling (returning null hands over to _confirmViaPolling) instead of
+        // prematurely reporting a timeout.
+        return null;
       }
     } catch (wsError: any) {
       logger.warn(`WebSocket monitoring failed: ${wsError.message}, falling back to polling`);
@@ -1869,9 +1881,16 @@ export class Solana {
   ): Promise<{ confirmed: boolean; txData: any }> {
     logger.info(`🚀 Sent transaction ${signature}, polling for confirmation...`);
 
+    // A sent transaction can land in any block until its blockhash expires
+    // (lastValidBlockHeight, ~60-90s), so poll for that whole window — giving up after a
+    // fixed attempt count misreports slow-but-successful sends (e.g. minimum-priority-fee
+    // transactions) as timeouts. confirmRetryCount acts as a minimum number of polls and
+    // MAX_POLL_ATTEMPTS is a hard safety cap in case getBlockHeight itself misbehaves.
+    const MAX_POLL_ATTEMPTS = Math.max(this.config.confirmRetryCount, 150);
     let attempts = 0;
+    let sawExpiredBlockhash = false;
 
-    while (attempts < this.config.confirmRetryCount) {
+    while (attempts < MAX_POLL_ATTEMPTS) {
       attempts++;
 
       try {
@@ -1896,10 +1915,14 @@ export class Solana {
           }
         }
 
-        // Check if blockhash has expired
         const currentBlockHeight = await this.connection.getBlockHeight();
-        if (currentBlockHeight > lastValidBlockHeight) {
-          logger.warn(`Blockhash expired for transaction ${signature}, transaction may have failed`);
+        if (currentBlockHeight > lastValidBlockHeight && attempts >= this.config.confirmRetryCount) {
+          // Blockhash expired: the transaction can no longer be included in a new block.
+          // Grant one grace poll for the race where it landed in the final valid block,
+          // then stop.
+          if (sawExpiredBlockhash) break;
+          sawExpiredBlockhash = true;
+          logger.warn(`Blockhash expired for transaction ${signature}; doing a final status check`);
         }
 
         await new Promise((resolve) => setTimeout(resolve, this.config.confirmRetryInterval * 1000));
@@ -1913,7 +1936,20 @@ export class Solana {
       }
     }
 
-    logger.warn(`❌ Transaction ${signature} not confirmed after ${attempts} attempts`);
+    // Authoritative final check: the signature-status cache can lag or miss; look the
+    // transaction up directly before reporting it unconfirmed.
+    const txData = await this._fetchTransactionWithRetry(signature, 2, 500);
+    if (txData) {
+      const failed = txData.meta?.err != null;
+      if (failed) {
+        logger.error(`❌ Transaction ${signature} landed on-chain but failed (found in final check)`);
+      } else {
+        logger.info(`✅ Transaction ${signature} confirmed on-chain (found in final check)`);
+      }
+      return { confirmed: !failed, txData };
+    }
+
+    logger.warn(`❌ Transaction ${signature} not confirmed after ${attempts} attempts (blockhash expired)`);
     return { confirmed: false, txData: null };
   }
 

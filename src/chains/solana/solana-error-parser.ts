@@ -429,6 +429,35 @@ export function parseSolanaError(errorMessage: string): ParsedSolanaError {
   // the error; the Swig program id appearing anywhere plus a code in the Swig enum range
   // is unambiguous.
   if (errorMessage.includes(PROGRAM_IDS.SWIG)) {
+    // Swig program SBF panics. The deployed program's post-CPI integrity check re-hashes
+    // every writable wallet token account that existed when the transaction started
+    // (hash_except over the data, excluding the balance field at bytes 64..72); if the
+    // wrapped instructions CLOSED that account its data is empty and the hash panics with
+    // "range end index 64 out of range for slice of length 0" instead of returning an
+    // error. Orca/Raydium CLMM close-position always trips this: the close instruction
+    // closes the position's NFT token account. Upstream swig-wallet program bug.
+    if (errorMessage.includes('SBF program panicked') || errorMessage.includes('panicked at')) {
+      const isClosedAccountHashPanic = /range end index \d+ out of range for slice of length 0/.test(errorMessage);
+      return {
+        type: 'SWIG_PERMISSION_DENIED',
+        program: 'Swig',
+        errorCode: null,
+        errorCodeHex: null,
+        instructionIndex,
+        message: isClosedAccountHashPanic
+          ? 'Swig program limitation: this transaction closes a token account the wallet already owned when the ' +
+            'transaction started (e.g. a CLMM position NFT account or an existing wrapped-SOL account), and the ' +
+            'deployed Swig program crashes re-verifying the closed account instead of returning an error. ' +
+            'Closing an Orca or Raydium CLMM position with a bounded Swig delegate is blocked by this: the close ' +
+            'instruction always closes the position’s NFT token account. Withdraw the funds first with ' +
+            'remove-liquidity and collect-fees (those leave the accounts open and work normally); the emptied ' +
+            'position can then only be closed by the root owner authority. This is an upstream swig-wallet ' +
+            'program bug, not a Gateway or wallet-policy restriction.'
+          : 'A program crashed (SBF panic) while this Swig-wrapped transaction executed. Check the program logs ' +
+            'for the panic message and which program raised it.',
+        rawError: errorMessage,
+      };
+    }
     if (code !== null && code >= SWIG_ERROR_MIN && code <= SWIG_ERROR_MAX) {
       const name = SWIG_ERROR_NAMES[code];
       const message =

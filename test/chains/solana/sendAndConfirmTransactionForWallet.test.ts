@@ -166,15 +166,16 @@ describe('Solana.sendAndConfirmTransactionForWallet', () => {
       isSwigWallet: jest.fn(async () => true),
       rebuildAndSignSwigTransaction: jest.fn(async () => ({ serialize: () => new Uint8Array([1]) })),
       simulateWithErrorHandling: jest.fn(),
-      _sendAndConfirmRawTransaction: jest.fn(async () => ({ confirmed: false, signature: '', txData: null })),
+      _sendAndConfirmRawTransaction: jest.fn(async () => ({ confirmed: false, signature: 'swig-sig', txData: null })),
       throwIfLandedWithError: jest.fn(async () => undefined),
+      confirmationTimeoutError: (Solana.prototype as any).confirmationTimeoutError,
       getFee: jest.fn(),
       estimateGasPrice: jest.fn(async () => 0.00001),
       config: { confirmRetryCount: 4 },
     };
 
     await expect(chokepoint.call(fakeThis, legacyTx(), WALLET, [], 0.00001)).rejects.toThrow(
-      /confirm after 4 attempts/,
+      /swig-sig was not confirmed before its blockhash expired/,
     );
   });
 
@@ -247,5 +248,67 @@ describe('Solana.getSwigDelegateSigner', () => {
     await expect(
       resolveDelegate.call(fakeThis, { address: WALLET, delegateAddress: WALLET, delegateSigner: 'vault' }),
     ).rejects.toThrow(/Unknown Swig delegate signer type/);
+  });
+});
+
+describe('Solana._confirmViaPolling', () => {
+  const confirmViaPolling = (Solana.prototype as any)._confirmViaPolling as (
+    this: unknown,
+    signature: string,
+    lastValidBlockHeight: number,
+  ) => Promise<{ confirmed: boolean; txData: any }>;
+
+  it('keeps polling past confirmRetryCount while the blockhash is still valid', async () => {
+    // QA scenario: minimum-priority-fee tx confirms AFTER the old fixed attempt window.
+    let statusCalls = 0;
+    const fakeThis = {
+      config: { confirmRetryCount: 2, confirmRetryInterval: 0.001 },
+      connection: {
+        getSignatureStatuses: jest.fn(async () => {
+          statusCalls++;
+          return statusCalls < 5 ? { value: [null] } : { value: [{ err: null, confirmationStatus: 'confirmed' }] };
+        }),
+        getBlockHeight: jest.fn(async () => 100), // blockhash never expires during the test
+      },
+      _fetchTransactionWithRetry: jest.fn(async () => ({ meta: { err: null } })),
+    };
+
+    const result = await confirmViaPolling.call(fakeThis, 'sig', 200);
+
+    expect(result.confirmed).toBe(true);
+    expect(statusCalls).toBeGreaterThan(2); // old behavior gave up at confirmRetryCount
+  });
+
+  it('does a final on-chain lookup before reporting a timeout, and trusts it', async () => {
+    // The signature-status cache can miss a landed tx; the final getTransaction check
+    // must rescue it instead of reporting a 504 for a confirmed transaction.
+    const fakeThis = {
+      config: { confirmRetryCount: 1, confirmRetryInterval: 0.001 },
+      connection: {
+        getSignatureStatuses: jest.fn(async () => ({ value: [null] })),
+        getBlockHeight: jest.fn(async () => 300), // blockhash already expired
+      },
+      _fetchTransactionWithRetry: jest.fn(async () => ({ meta: { err: null } })),
+    };
+
+    const result = await confirmViaPolling.call(fakeThis, 'sig', 200);
+
+    expect(result.confirmed).toBe(true);
+    expect(fakeThis._fetchTransactionWithRetry).toHaveBeenCalled();
+  });
+
+  it('reports unconfirmed when the blockhash expires and the tx is nowhere on-chain', async () => {
+    const fakeThis = {
+      config: { confirmRetryCount: 1, confirmRetryInterval: 0.001 },
+      connection: {
+        getSignatureStatuses: jest.fn(async () => ({ value: [null] })),
+        getBlockHeight: jest.fn(async () => 300),
+      },
+      _fetchTransactionWithRetry: jest.fn(async () => null),
+    };
+
+    const result = await confirmViaPolling.call(fakeThis, 'sig', 200);
+
+    expect(result).toEqual({ confirmed: false, txData: null });
   });
 });

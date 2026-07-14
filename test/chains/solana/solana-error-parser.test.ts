@@ -380,6 +380,38 @@ describe('Solana Error Parser', () => {
         expect(result.message).toContain('PermissionDeniedSessionExpired');
       });
 
+      it('should explain the Swig closed-token-account hash panic (CLMM close-position)', () => {
+        // Exact shape QA hit closing an Orca position with a Swig wallet: the Swig
+        // program's post-CPI integrity re-hash panics on the closed (empty) position
+        // NFT token account.
+        const errorMessage = [
+          'Program log: panicked at program/src/util/mod.rs:443:48:',
+          'range end index 64 out of range for slice of length 0',
+          'Program swigypWHEksbC64pWKwah1WTeh9JXwx8H1rJHLdbQMB consumed 91807 of 599700 compute units',
+          'Program swigypWHEksbC64pWKwah1WTeh9JXwx8H1rJHLdbQMB failed: SBF program panicked',
+        ].join('\n');
+        const result = parseSolanaError(errorMessage);
+
+        expect(result.type).toBe('SWIG_PERMISSION_DENIED');
+        expect(result.program).toBe('Swig');
+        expect(result.message).toMatch(/closes a token account the wallet already owned/);
+        expect(result.message).toMatch(/remove-liquidity and collect-fees/);
+        expect(result.message).toMatch(/upstream swig-wallet program bug/);
+      });
+
+      it('should report other SBF panics inside a Swig wrap without misattributing them', () => {
+        const errorMessage = [
+          'Program log: panicked at some/other/program.rs:10:1:',
+          'attempt to subtract with overflow',
+          'Program swigypWHEksbC64pWKwah1WTeh9JXwx8H1rJHLdbQMB failed: SBF program panicked',
+        ].join('\n');
+        const result = parseSolanaError(errorMessage);
+
+        expect(result.type).toBe('SWIG_PERMISSION_DENIED');
+        expect(result.message).toMatch(/SBF panic/);
+        expect(result.message).not.toMatch(/closes a token account/);
+      });
+
       it('should explain the allocation limit and bin cap on realloc failures (swig-wrapped)', () => {
         const errorMessage = [
           'Program swigypWHEksbC64pWKwah1WTeh9JXwx8H1rJHLdbQMB invoke [1]',

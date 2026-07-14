@@ -200,6 +200,30 @@ Swig program.
   limit, not a Swig one — wider ranges fail with `InvalidPositionWidth` or
   `Failed to reallocate account data`). Gateway validates this on
   `/connectors/meteora/clmm/open-position` and returns the max price range for the pool.
+- **Closing an Orca or Raydium CLMM position is blocked by a Swig program bug.** The
+  deployed Swig program snapshots every wallet token account that exists when a wrapped
+  transaction starts and re-hashes it after the inner instructions run; an account CLOSED
+  by those instructions has empty data and the re-hash **panics** (`range end index 64 out
+  of range for slice of length 0`) instead of returning an error. The Orca/Raydium
+  close-position instruction always closes the position's NFT token account, so a bounded
+  delegate cannot close those positions. Funds are never stuck: `remove-liquidity` and
+  `collect-fees` leave the accounts open and work normally, so withdraw everything first —
+  only the position rent stays locked until the **root owner** closes the emptied position
+  (roles with the `All` permission skip the snapshot verification entirely). Meteora DLMM
+  close-position is unaffected (its position account is program-owned, not a token
+  account). Upstream bug in `anagrambuild/swig-wallet` (`hash_except`, sign_v2 post-CPI
+  verification).
+- **Received native SOL can stay wrapped (WSOL).** For the same snapshot reason, Gateway
+  skips the usual "close the WSOL account to unwrap" step for a Swig wallet whose WSOL
+  token account already existed before the transaction (a WSOL account created inside the
+  same transaction is not snapshotted and closes fine). The balance is still spendable as
+  WSOL; the root owner can unwrap it. Connectors whose SDKs build their own WSOL cleanup
+  (Meteora, Raydium) only close in-transaction ephemeral accounts, which is safe.
+- **DEX web UIs don't show Swig positions.** Meteora/Orca UIs list positions owned by the
+  *connected browser wallet*; Swig positions belong to the wallet's funds-owner address (a
+  PDA no browser wallet controls). Query them through Gateway
+  (`/connectors/{dex}/clmm/positions-owned?walletAddress=<funds-owner>`) or look the
+  funds-owner address up on an explorer.
 
 ## Pointers
 
