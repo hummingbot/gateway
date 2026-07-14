@@ -257,8 +257,20 @@ export class Solana {
         // Validate if it's a valid public key
         const mintPubkey = new PublicKey(addressOrSymbol);
 
-        // Fetch mint info to get decimals
-        const mintInfo = await getMint(this.connection, mintPubkey);
+        // Determine the owning token program: getMint defaults to the legacy
+        // TOKEN_PROGRAM_ID and throws on a Token-2022 mint, which is what most
+        // modern pump.fun memecoins use. Read the account owner first so we
+        // pass the correct programId — otherwise Token-2022 mints resolve to
+        // null here and the swap fails with "Token not found" before the
+        // aggregator (which routes them fine) is ever called.
+        const accountInfo = await this.connection.getAccountInfo(mintPubkey);
+        if (!accountInfo) {
+          return null;
+        }
+        const programId = accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID) ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID;
+
+        // Fetch mint info to get decimals, using the correct token program
+        const mintInfo = await getMint(this.connection, mintPubkey, undefined, programId);
 
         // Create a basic token object with fetched decimals
         token = {
