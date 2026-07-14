@@ -121,7 +121,7 @@ async function getSolanaQuoteSwap(
     let poolAddress: string | undefined;
     if (connectorType === 'amm' || connectorType === 'clmm') {
       const poolService = PoolService.getInstance();
-      const pool = await poolService.getPool(connectorName, network, connectorType, baseToken, quoteToken);
+      const pool = await poolService.getPool('solana', network, connectorType, baseToken, quoteToken, connectorName);
 
       if (!pool) {
         throw httpErrors.notFound(
@@ -196,7 +196,7 @@ async function getEthereumQuoteSwap(
     let poolAddress: string | undefined;
     if (connectorType === 'amm' || connectorType === 'clmm') {
       const poolService = PoolService.getInstance();
-      const pool = await poolService.getPool(connectorName, network, connectorType, baseToken, quoteToken);
+      const pool = await poolService.getPool('ethereum', network, connectorType, baseToken, quoteToken, connectorName);
 
       if (!pool) {
         throw httpErrors.notFound(
