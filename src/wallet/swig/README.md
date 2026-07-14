@@ -212,7 +212,8 @@ Swig program.
   (roles with the `All` permission skip the snapshot verification entirely). Meteora DLMM
   close-position is unaffected (its position account is program-owned, not a token
   account). Upstream bug in `anagrambuild/swig-wallet` (`hash_except`, sign_v2 post-CPI
-  verification).
+  verification) — reported as
+  [anagrambuild/swig-wallet#185](https://github.com/anagrambuild/swig-wallet/issues/185).
 - **Received native SOL can stay wrapped (WSOL).** For the same snapshot reason, Gateway
   skips the usual "close the WSOL account to unwrap" step for a Swig wallet whose WSOL
   token account already existed before the transaction (a WSOL account created inside the
