@@ -1,3 +1,4 @@
+import { createCloseAccountInstruction } from '@solana/spl-token';
 import {
   AddressLookupTableAccount,
   ComputeBudgetProgram,
@@ -21,7 +22,9 @@ const BLOCKHASH = 'EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N';
 describe('SwigSolanaSigner.rebuildAndSign', () => {
   const delegate = Keypair.generate();
   const account = Keypair.generate().publicKey;
+  const walletAddress = Keypair.generate().publicKey;
   let wrapInstructions: jest.Mock;
+  let getAccountInfo: jest.Mock;
   let connection: Connection;
 
   beforeEach(() => {
@@ -31,10 +34,14 @@ describe('SwigSolanaSigner.rebuildAndSign', () => {
     wrapInstructions = jest.fn(async (_swig: unknown, _pk: PublicKey, inner: unknown[]) => inner);
     (getSwigService as jest.Mock).mockReturnValue({
       fetchSwig: jest.fn(async () => ({})),
+      getWalletAddress: jest.fn(async () => walletAddress),
       wrapInstructions,
     });
+    // Default: no account pre-exists, so no CloseAccount cleanup gets dropped.
+    getAccountInfo = jest.fn(async () => null);
     connection = {
       getLatestBlockhash: jest.fn(async () => ({ blockhash: BLOCKHASH, lastValidBlockHeight: 1 })),
+      getAccountInfo,
     } as unknown as Connection;
   });
 
@@ -64,6 +71,63 @@ describe('SwigSolanaSigner.rebuildAndSign', () => {
     tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }));
     const signer = new SwigSolanaSigner(connection, account, new LocalKeystoreDelegateSigner(delegate));
     await expect(signer.rebuildAndSign(tx)).rejects.toThrow('no instructions to wrap');
+  });
+
+  describe('CloseAccount cleanup of pre-existing wallet token accounts (swig-wallet#185)', () => {
+    // Closing a token account the wallet already owned when the transaction starts panics
+    // the deployed Swig program. SDK-built cleanup (e.g. Jupiter's WSOL unwrap) must be
+    // dropped when the account pre-exists, and kept when it is created in-transaction.
+    const ata = Keypair.generate().publicKey;
+
+    const txWithClose = (authority: PublicKey) => {
+      const tx = new Transaction();
+      tx.add(SystemProgram.transfer({ fromPubkey: walletAddress, toPubkey: walletAddress, lamports: 1 }));
+      tx.add(createCloseAccountInstruction(ata, walletAddress, authority));
+      return tx;
+    };
+
+    it('drops the close when the account pre-exists and the wallet is the authority', async () => {
+      getAccountInfo.mockResolvedValue({ lamports: 2_039_280 });
+      const signer = new SwigSolanaSigner(connection, account, new LocalKeystoreDelegateSigner(delegate));
+
+      await signer.rebuildAndSign(txWithClose(walletAddress));
+
+      const wrappedInner = wrapInstructions.mock.calls[0][2];
+      expect(wrappedInner).toHaveLength(1); // only the transfer survived
+      expect(wrappedInner[0].programId.equals(SystemProgram.programId)).toBe(true);
+      expect(getAccountInfo).toHaveBeenCalledWith(ata);
+    });
+
+    it('keeps the close when the account does not exist yet (created in-transaction)', async () => {
+      getAccountInfo.mockResolvedValue(null);
+      const signer = new SwigSolanaSigner(connection, account, new LocalKeystoreDelegateSigner(delegate));
+
+      await signer.rebuildAndSign(txWithClose(walletAddress));
+
+      const wrappedInner = wrapInstructions.mock.calls[0][2];
+      expect(wrappedInner).toHaveLength(2);
+    });
+
+    it('keeps the close when the authority is not the wallet (not snapshotted as a wallet account)', async () => {
+      getAccountInfo.mockResolvedValue({ lamports: 2_039_280 });
+      const otherAuthority = Keypair.generate().publicKey;
+      const signer = new SwigSolanaSigner(connection, account, new LocalKeystoreDelegateSigner(delegate));
+
+      await signer.rebuildAndSign(txWithClose(otherAuthority));
+
+      const wrappedInner = wrapInstructions.mock.calls[0][2];
+      expect(wrappedInner).toHaveLength(2);
+      expect(getAccountInfo).not.toHaveBeenCalled();
+    });
+
+    it('throws a root-owner hint when the transaction ONLY closes pre-existing wallet accounts', async () => {
+      getAccountInfo.mockResolvedValue({ lamports: 2_039_280 });
+      const tx = new Transaction();
+      tx.add(createCloseAccountInstruction(ata, walletAddress, walletAddress));
+      const signer = new SwigSolanaSigner(connection, account, new LocalKeystoreDelegateSigner(delegate));
+
+      await expect(signer.rebuildAndSign(tx)).rejects.toThrow(/root owner authority/);
+    });
   });
 
   it('injects compute-budget ixs (limit + price) when the tx has none', async () => {

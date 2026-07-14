@@ -83,8 +83,11 @@ describe('SwigService', () => {
 
     // buildDelegateActions is private; exercise it directly to prove the on-chain role a
     // fresh provisioning would create actually permits the intended programs/mints.
-    const buildActions = (allowedProgramIds: string[], tokenLimits: { mint: string; amount: bigint }[]) =>
-      (service as any).buildDelegateActions({ allowedProgramIds, tokenLimits });
+    const buildActions = (
+      allowedProgramIds: string[],
+      tokenLimits: { mint: string; amount: bigint }[],
+      allowAllPrograms = false,
+    ) => (service as any).buildDelegateActions({ allowedProgramIds, allowAllPrograms, tokenLimits });
 
     it('permits Orca AND Meteora (the re-provisioned multi-venue allowlist), denies others', () => {
       const actions: any = buildActions([ORCA, METEORA, SPL_TOKEN, ATA], [{ mint: USDC, amount: 1_000_000n }]);
@@ -102,6 +105,21 @@ describe('SwigService', () => {
 
     it('rejects a role with no allowed programs', () => {
       expect(() => buildActions([], [{ mint: USDC, amount: 1n }])).toThrow(/at least one allowed program/);
+    });
+
+    it('builds a token-cap-only role (programAll) that any program may serve, still bounded by caps', () => {
+      // The Jupiter role: no allowlist — an aggregator routes through arbitrary programs —
+      // with the blast radius bounded exclusively by the per-mint/SOL caps.
+      const actions: any = buildActions([], [{ mint: USDC, amount: 1_000_000n }], true);
+
+      expect(actions.canUseProgram(new PublicKey(ORCA))).toBe(true);
+      expect(actions.canUseProgram(new PublicKey(RAYDIUM_CLMM))).toBe(true);
+      expect(actions.canSpendToken(new PublicKey(USDC))).toBe(true);
+      expect(actions.tokenSpendLimit(new PublicKey(USDC))).toBe(1_000_000n);
+    });
+
+    it('rejects mixing allowAllPrograms with an explicit allowlist', () => {
+      expect(() => buildActions([ORCA], [], true)).toThrow(/mutually exclusive/);
     });
   });
 });

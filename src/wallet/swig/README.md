@@ -116,7 +116,9 @@ programs:
 
 > **Jupiter is the exception.** The aggregator routes through *many* programs that vary per
 > quote, so a program-restricted role will block it. A Swig wallet used with Jupiter needs a
-> **token-cap-only role** (`allowedProgramIds` broad / unrestricted, `tokenLimits` set). The
+> **token-cap-only role** — provision one with
+> `GATEWAY_SWIG_PROGRAM_ALL=1 pnpm swig:add-delegate` (grants `ProgramAll` instead of an
+> allowlist), skip `swig:allow-program`, and grant spendable mints with `swig:add-token`. The
 > per-mint caps still bound the blast radius — an attacker can only move the enabled mints, up
 > to their caps, even though the program set is open.
 
@@ -214,12 +216,13 @@ Swig program.
   account). Upstream bug in `anagrambuild/swig-wallet` (`hash_except`, sign_v2 post-CPI
   verification) — reported as
   [anagrambuild/swig-wallet#185](https://github.com/anagrambuild/swig-wallet/issues/185).
-- **Received native SOL can stay wrapped (WSOL).** For the same snapshot reason, Gateway
-  skips the usual "close the WSOL account to unwrap" step for a Swig wallet whose WSOL
-  token account already existed before the transaction (a WSOL account created inside the
-  same transaction is not snapshotted and closes fine). The balance is still spendable as
-  WSOL; the root owner can unwrap it. Connectors whose SDKs build their own WSOL cleanup
-  (Meteora, Raydium) only close in-transaction ephemeral accounts, which is safe.
+- **Received native SOL can stay wrapped (WSOL).** For the same snapshot reason, the Swig
+  signer drops any top-level `CloseAccount` cleanup instruction (Jupiter's built-in unwrap,
+  Orca's unwrap step, other SDK cleanup) that targets a token account the wallet already
+  owned before the transaction — a WSOL account created inside the same transaction is not
+  snapshotted and still closes fine. The balance is still spendable as WSOL; the root owner
+  can unwrap it. Closes performed *inside* another program's CPI (a CLMM close-position)
+  cannot be dropped and keep failing with the clear error above.
 - **DEX web UIs don't show Swig positions.** Meteora/Orca UIs list positions owned by the
   *connected browser wallet*; Swig positions belong to the wallet's funds-owner address (a
   PDA no browser wallet controls). Query them through Gateway

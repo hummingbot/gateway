@@ -36,6 +36,14 @@ export interface SwigRoleRestrictions {
    * wrapped instructions touch must be listed here, or the Swig program rejects the sign.
    */
   allowedProgramIds: string[];
+  /**
+   * Grant ProgramAll (any program) instead of a per-program allowlist — the
+   * "token-cap-only" role an aggregator like Jupiter needs, since it routes through
+   * arbitrary programs that vary per quote. The blast radius stays bounded by the
+   * token/SOL caps: without a cap for a mint the delegate cannot spend it at all.
+   * Mutually exclusive with allowedProgramIds.
+   */
+  allowAllPrograms?: boolean;
   /** Per-mint one-time spend caps enforced on-chain across CPIs. */
   tokenLimits: SwigTokenLimit[];
   /**
@@ -83,10 +91,16 @@ export class SwigService {
    */
   private buildDelegateActions(restrictions: SwigRoleRestrictions): Actions {
     const { Actions } = this.getSdk();
-    if (restrictions.allowedProgramIds.length === 0) {
-      throw new Error('Swig delegate role requires at least one allowed program id');
+    if (restrictions.allowAllPrograms && restrictions.allowedProgramIds.length > 0) {
+      throw new Error('allowAllPrograms and allowedProgramIds are mutually exclusive');
+    }
+    if (!restrictions.allowAllPrograms && restrictions.allowedProgramIds.length === 0) {
+      throw new Error('Swig delegate role requires at least one allowed program id (or allowAllPrograms)');
     }
     let builder = Actions.set();
+    if (restrictions.allowAllPrograms) {
+      builder = builder.programAll();
+    }
     for (const programId of restrictions.allowedProgramIds) {
       builder = builder.programLimit({ programId });
     }

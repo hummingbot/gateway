@@ -126,7 +126,9 @@ export function resolveVenuePrograms(venuesRaw: string | undefined, programIdsRa
     if (venue === 'jupiter') {
       throw new Error(
         'Jupiter has no program allowlist preset: an aggregator routes through arbitrary programs, ' +
-          'so a Jupiter wallet must stay token-cap-only (skip allow-program; rely on swig:add-token caps).',
+          'so a Jupiter wallet needs a token-cap-only role — create one with ' +
+          'GATEWAY_SWIG_PROGRAM_ALL=1 pnpm swig:add-delegate, skip allow-program, and bound it ' +
+          'with swig:add-token caps.',
       );
     }
     const programs = VENUE_PROGRAMS[venue];
@@ -373,6 +375,7 @@ export async function buildFreshDelegateRole(
   accountAddress: PublicKey,
   ownerPublicKey: PublicKey,
   solLimitLamports: bigint,
+  allowAllPrograms = false,
 ): Promise<{ delegateAddress: string; instructions: TransactionInstruction[] }> {
   const delegateAddress = await generateAndSaveDelegate();
   const instructions = await getSwigService().buildAddDelegateInstructions(
@@ -380,9 +383,23 @@ export async function buildFreshDelegateRole(
     accountAddress,
     ownerPublicKey,
     new PublicKey(delegateAddress),
-    { allowedProgramIds: BASE_TOKEN_PROGRAMS, tokenLimits: [], solLimitLamports },
+    allowAllPrograms
+      ? // Token-cap-only role (aggregators like Jupiter): any program, blast radius
+        // bounded exclusively by the SOL cap and the per-mint caps added later.
+        { allowedProgramIds: [], allowAllPrograms: true, tokenLimits: [], solLimitLamports }
+      : { allowedProgramIds: BASE_TOKEN_PROGRAMS, tokenLimits: [], solLimitLamports },
   );
   return { delegateAddress, instructions };
+}
+
+/**
+ * GATEWAY_SWIG_PROGRAM_ALL=1 provisions a token-cap-only delegate (ProgramAll instead of a
+ * program allowlist) — required for Jupiter, which routes through arbitrary programs.
+ * Skip swig:allow-program for such a role; bound it with swig:add-token caps only.
+ */
+export function resolveProgramAllFlag(): boolean {
+  const raw = (process.env.GATEWAY_SWIG_PROGRAM_ALL || '').trim().toLowerCase();
+  return raw === '1' || raw === 'true' || raw === 'yes';
 }
 
 /**

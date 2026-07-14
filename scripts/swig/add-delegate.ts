@@ -9,12 +9,18 @@
  * spendable mints. The delegate can do nothing until you grant them with swig:allow-program
  * and swig:add-token. One owner (Ledger) approval.
  *
+ * GATEWAY_SWIG_PROGRAM_ALL=1 provisions a TOKEN-CAP-ONLY role instead (ProgramAll, no
+ * program allowlist) — required for Jupiter, which routes through arbitrary programs per
+ * quote. Such a role is bounded exclusively by its SOL cap and per-mint caps: skip
+ * swig:allow-program and grant spendable mints with swig:add-token.
+ *
  * Usage:
  *   GATEWAY_PASSPHRASE=<pass> \
  *   GATEWAY_SWIG_OWNER_ADDRESS=<owner pubkey> \
  *   GATEWAY_SWIG_ACCOUNT=<Swig PDA from swig:create> \
  *   [GATEWAY_SWIG_RPC_URL=<rpc url>] \   # optional — defaults to the network nodeURL in conf/
  *   [GATEWAY_SWIG_SOL_LIMIT=0.1] \
+ *   [GATEWAY_SWIG_PROGRAM_ALL=1] \       # token-cap-only role (Jupiter)
  *     pnpm swig:add-delegate
  */
 
@@ -26,6 +32,7 @@ import {
   loadOwnerSigner,
   requireSwigAccount,
   resolveDelegateSolLimit,
+  resolveProgramAllFlag,
 } from './lib';
 
 async function main(): Promise<void> {
@@ -39,6 +46,7 @@ async function main(): Promise<void> {
   const accountAddress = requireSwigAccount();
   const owner = await loadOwnerSigner();
   const solLimitLamports = resolveDelegateSolLimit();
+  const allowAllPrograms = resolveProgramAllFlag();
 
   console.log('Generating a fresh delegate keypair (encrypted into conf/wallets/solana/, never printed) ...');
   const { delegateAddress, instructions } = await buildFreshDelegateRole(
@@ -46,11 +54,18 @@ async function main(): Promise<void> {
     accountAddress,
     owner.publicKey,
     solLimitLamports,
+    allowAllPrograms,
   );
   console.log(`✓ Delegate created: ${delegateAddress}`);
 
   console.log('\nThe owner will now sign ONE transaction: add the delegate role with the');
-  console.log('baseline policy (token + System programs + SOL cap — no venues, no spendable mints yet).');
+  if (allowAllPrograms) {
+    console.log('TOKEN-CAP-ONLY policy (any program + SOL cap — no spendable mints yet). This is the');
+    console.log('role an aggregator like Jupiter needs; skip swig:allow-program and bound it with');
+    console.log('swig:add-token caps only.');
+  } else {
+    console.log('baseline policy (token + System programs + SOL cap — no venues, no spendable mints yet).');
+  }
   let sig: string;
   try {
     sig = await owner.signAndSend(connection, new Transaction().add(...instructions));
@@ -65,7 +80,9 @@ async function main(): Promise<void> {
 
   console.log('\nPersist the delegate and grant what it may do (each is one owner approval):');
   console.log(`  echo 'GATEWAY_SWIG_DELEGATE_ADDRESS=${delegateAddress}' >> conf/swig.env`);
-  console.log('  GATEWAY_SWIG_VENUES=orca,meteora pnpm swig:allow-program');
+  if (!allowAllPrograms) {
+    console.log('  GATEWAY_SWIG_VENUES=orca,meteora pnpm swig:allow-program');
+  }
   console.log('  GATEWAY_SWIG_TOKEN_LIMITS=<mint>:<amount> pnpm swig:add-token');
 }
 

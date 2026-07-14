@@ -53,7 +53,8 @@ const SWIG_ERROR_MESSAGES: Record<number, string> = {
     'a program not on its allowlist (every program the wrapped instructions invoke must be allowed), an uncapped ' +
     'token mint, or a missing/exhausted SOL cap. Inspect the live policy with `pnpm swig:show`; grant venues with ' +
     '`pnpm swig:allow-program` and caps with `pnpm swig:add-token`. Jupiter cannot run under a program allowlist — ' +
-    'it routes through arbitrary programs and needs a token-cap-only role.',
+    'it routes through arbitrary programs and needs a token-cap-only role ' +
+    '(`GATEWAY_SWIG_PROGRAM_ALL=1 pnpm swig:add-delegate`, then `swig:add-token` caps only).',
   3008:
     'Swig permission denied (0xbc0): a token account touched by this transaction has an active delegate or ' +
     'close authority, which the Swig program refuses to spend through.',
