@@ -193,7 +193,7 @@ describe('GET /quote-swap', () => {
     expect(JSON.parse(response.body)).toHaveProperty('error');
   });
 
-  it('should return 400 with Jupiter error message when ExactOut fails for BUY side', async () => {
+  it('should return 400 when both ExactOut and the ExactIn fallback fail for BUY side', async () => {
     const mockSolanaInstance = {
       getToken: jest.fn().mockResolvedValueOnce(mockSOL).mockResolvedValueOnce(mockUSDC),
     };
@@ -223,15 +223,16 @@ describe('GET /quote-swap', () => {
     expect(body.message).toContain('No route found for');
     expect(body.message).toContain('SOL');
     expect(body.message).toContain('USDC');
-    expect(body.message).toContain('ExactOut');
+    expect(body.message).toContain('ExactOut, ExactIn fallback failed');
     // Should include Jupiter's original error message
     expect(body.message).toContain('No route found for this token pair');
 
-    // Verify that getQuote was only called once (ExactOut attempt)
-    expect(mockJupiterInstance.getQuote).toHaveBeenCalledTimes(1);
+    // ExactOut attempt, then the reverse ExactIn probe of the fallback (which also fails)
+    expect(mockJupiterInstance.getQuote).toHaveBeenCalledTimes(2);
 
-    // Call should be ExactOut
-    expect(mockJupiterInstance.getQuote).toHaveBeenCalledWith(
+    // First call is the ExactOut attempt
+    expect(mockJupiterInstance.getQuote).toHaveBeenNthCalledWith(
+      1,
       mockUSDC.address,
       mockSOL.address,
       0.1,
@@ -239,6 +240,17 @@ describe('GET /quote-swap', () => {
       false,
       true,
       'ExactOut',
+    );
+    // Second call is the reverse (base -> quote) ExactIn pricing probe
+    expect(mockJupiterInstance.getQuote).toHaveBeenNthCalledWith(
+      2,
+      mockSOL.address,
+      mockUSDC.address,
+      0.1,
+      0.5,
+      false,
+      true,
+      'ExactIn',
     );
   });
 });
