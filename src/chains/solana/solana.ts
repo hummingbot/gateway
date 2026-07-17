@@ -45,14 +45,17 @@ import { createRateLimitAwareSolanaConnection } from '../../rpc/rpc-connection-i
 import { RPCProvider } from '../../rpc/rpc-provider-base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { httpErrors } from '../../services/error-handler';
+import { httpErrors, HttpError } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
 import { encryptSecret, decryptSecret, isLegacyKeystore } from '../../services/secure-keystore';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
+import { SolanaLedger } from './solana-ledger';
 import { PriorityFeeResult, SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
+
+export type SolanaWalletType = 'local' | 'hardware';
 
 // Constants used for fee calculations
 export const BASE_FEE = 5000;
@@ -368,6 +371,52 @@ export class Solana {
     } catch (error) {
       logger.error(`Error checking hardware wallet status: ${error.message}`);
       return false;
+    }
+  }
+
+  /**
+   * Resolve the wallet type for an address: hardware (Ledger) or local (encrypted keypair).
+   */
+  async getWalletType(address: string): Promise<SolanaWalletType> {
+    if (await this.isHardwareWallet(address)) {
+      return 'hardware';
+    }
+    return 'local';
+  }
+
+  /**
+   * Prepare a wallet for transaction building: a Keypair for local wallets, or the
+   * PublicKey for hardware wallets (which sign externally).
+   */
+  async prepareWallet(address: string): Promise<{ wallet: Keypair | PublicKey; walletType: SolanaWalletType }> {
+    const walletType = await this.getWalletType(address);
+    const wallet = walletType === 'local' ? await this.getWallet(address) : await this.getPublicKey(address);
+    return { wallet, walletType };
+  }
+
+  /**
+   * Sign a transaction with the signing method matching the wallet type.
+   */
+  async signTransactionByType<T extends Transaction | VersionedTransaction>(
+    transaction: T,
+    address: string,
+    walletType: SolanaWalletType,
+    wallet: Keypair | PublicKey,
+  ): Promise<T> {
+    switch (walletType) {
+      case 'hardware': {
+        logger.info(`Hardware wallet detected for ${address}. Signing transaction with Ledger.`);
+        const ledger = new SolanaLedger();
+        return (await ledger.signTransaction(address, transaction)) as T;
+      }
+      default: {
+        if (transaction instanceof VersionedTransaction) {
+          transaction.sign([wallet as Keypair]);
+        } else {
+          (transaction as Transaction).sign(wallet as Keypair);
+        }
+        return transaction;
+      }
     }
   }
 
@@ -1340,9 +1389,140 @@ export class Solana {
       return { signature, fee: actualFee };
     }
 
-    throw httpErrors.transactionTimeout(
-      `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
+    await this.throwIfLandedWithError(signature);
+    throw this.confirmationTimeoutError(signature);
+  }
+
+  /**
+   * The 504 raised when a broadcast transaction was not seen on-chain before its blockhash
+   * expired. Includes the signature so the caller can reconcile: the send raced the
+   * confirmation window, and in rare cases the transaction may still show up.
+   */
+  private confirmationTimeoutError(signature: string): HttpError {
+    return httpErrors.transactionTimeout(
+      signature
+        ? `Transaction ${signature} was not confirmed before its blockhash expired. It most likely did not ` +
+            'land — verify the signature on-chain before retrying.'
+        : 'Transaction failed to send',
     );
+  }
+
+  /**
+   * If a broadcast transaction landed on-chain but failed, throw the parsed program error;
+   * return silently when the transaction is missing or succeeded so the caller can apply
+   * its own confirmation handling. The confirmation helpers report a landed-and-failed
+   * transaction as unconfirmed, which callers would otherwise misreport as a timeout.
+   */
+  private async throwIfLandedWithError(signature: string): Promise<void> {
+    if (!signature) return;
+    let txData: any = null;
+    try {
+      txData = await this.connection.getTransaction(signature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      });
+    } catch {
+      return;
+    }
+    if (!txData?.meta?.err) return;
+    const { simulationFailed } = await import('../../services/error-handler');
+    const { parseSolanaError } = await import('./solana-error-parser');
+    const logs: string[] = txData.meta.logMessages ?? [];
+    const parsed = parseSolanaError([JSON.stringify(txData.meta.err), ...logs].join('\n'));
+    throw simulationFailed(`Transaction ${signature} landed on-chain but failed: ${parsed.message}`);
+  }
+
+  public async sendAndConfirmTransactionForWallet(
+    tx: Transaction | VersionedTransaction,
+    address: string,
+    extraSigners: Keypair[] = [],
+    priorityFeePerCU?: number,
+  ): Promise<{ signature: string; fee: number }> {
+    // Extra signers are for EPHEMERAL keypairs (position NFT mints, new accounts); the
+    // wallet's own signature is this method's job, per wallet type. Some SDK builders
+    // (Raydium's TxBuilder) append an owner "signer" — for hardware wallets that is a
+    // dummy keypair carrying the wallet's pubkey but a random secret key: signing with it
+    // corrupts the wallet's signature slot. Drop it.
+    const walletPk = new PublicKey(address);
+    extraSigners = extraSigners.filter((s) => !s.publicKey.equals(walletPk));
+
+    // A connector may hand us a legacy transaction with no fee payer (it builds with the
+    // wallet's public key as token authority and leaves the fee payer for us). Resolve it to
+    // the wallet now, otherwise compiling the message for simulation throws "Transaction fee
+    // payer required". The per-type signing below pays from this same address.
+    if (!(tx instanceof VersionedTransaction) && !tx.feePayer) {
+      tx.feePayer = new PublicKey(address);
+    }
+
+    // Pre-flight simulate here (once, for every connector) so callers get a clear error
+    // instead of a failed on-chain send; this is why connectors no longer simulate
+    // themselves.
+    await this.simulateWithErrorHandling(tx);
+
+    const { wallet, walletType } = await this.prepareWallet(address);
+
+    // Local wallets sign in-process: reuse the standard path (keypair + extras).
+    if (walletType === 'local') {
+      return this.sendAndConfirmTransaction(tx, [wallet as Keypair, ...extraSigners], priorityFeePerCU);
+    }
+
+    // External wallets (hardware/Ledger): add the compute budget and sign any extra
+    // keypairs, then sign the fee payer externally.
+    const currentPriorityFee = priorityFeePerCU ?? (await this.estimateGasPrice());
+    let computeUnitsToUse: number;
+    try {
+      const sim =
+        tx instanceof VersionedTransaction
+          ? await this.connection.simulateTransaction(tx, { replaceRecentBlockhash: true, sigVerify: false })
+          : await this.connection.simulateTransaction(tx);
+      computeUnitsToUse = sim.value.unitsConsumed
+        ? Math.ceil(sim.value.unitsConsumed * 1.1)
+        : this.config.defaultComputeUnits;
+    } catch (error) {
+      logger.warn(`Failed to simulate for compute units: ${(error as Error).message}, using default`);
+      computeUnitsToUse = this.config.defaultComputeUnits;
+    }
+
+    let prepared: Transaction | VersionedTransaction;
+    if (tx instanceof VersionedTransaction) {
+      // Adds compute budget and signs the extra keypairs; the fee-payer slot is left
+      // empty for the external signer.
+      prepared = await this.prepareVersionedTx(tx, currentPriorityFee, computeUnitsToUse, extraSigners);
+    } else {
+      const priorityFeeMicroLamports = Math.floor(currentPriorityFee * 1_000_000);
+      tx.feePayer = wallet as PublicKey;
+      tx.instructions = [
+        ...tx.instructions.filter((inst) => !inst.programId.equals(ComputeBudgetProgram.programId)),
+        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFeeMicroLamports }),
+        ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnitsToUse }),
+      ];
+      const {
+        value: { lastValidBlockHeight, blockhash },
+      } = await this.connection.getLatestBlockhashAndContext('confirmed');
+      tx.lastValidBlockHeight = lastValidBlockHeight;
+      tx.recentBlockhash = blockhash;
+      if (extraSigners.length) tx.partialSign(...extraSigners);
+      prepared = tx;
+    }
+
+    const signedTx = await this.signTransactionByType(prepared, address, walletType, wallet);
+    // Re-apply extra signatures in case the external signer did not preserve them.
+    if (extraSigners.length) {
+      if (signedTx instanceof VersionedTransaction) {
+        signedTx.sign([...extraSigners]);
+      } else {
+        (signedTx as Transaction).partialSign(...extraSigners);
+      }
+    }
+
+    const { confirmed, signature, txData } = await this._sendAndConfirmRawTransaction(signedTx.serialize());
+    if (confirmed && txData) {
+      const actualFee = this.getFee(txData);
+      logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
+      return { signature, fee: actualFee };
+    }
+    await this.throwIfLandedWithError(signature);
+    throw this.confirmationTimeoutError(signature);
   }
 
   private async prepareTx(
@@ -1501,7 +1681,6 @@ export class Solana {
 
     modifiedTx.signatures = originalSignatures;
     modifiedTx.sign([..._signers]);
-    console.log('modifiedTx:', modifiedTx);
 
     return modifiedTx;
   }
@@ -1593,8 +1772,10 @@ export class Solana {
           }
           return { confirmed: !failed, txData };
         }
-        // Transaction not found on-chain yet - return as pending
-        return { confirmed: false, txData: null };
+        // Not found on-chain yet — it can still land until the blockhash expires, so fall
+        // back to polling (returning null hands over to _confirmViaPolling) instead of
+        // prematurely reporting a timeout.
+        return null;
       }
     } catch (wsError: any) {
       logger.warn(`WebSocket monitoring failed: ${wsError.message}, falling back to polling`);
@@ -1611,9 +1792,16 @@ export class Solana {
   ): Promise<{ confirmed: boolean; txData: any }> {
     logger.info(`🚀 Sent transaction ${signature}, polling for confirmation...`);
 
+    // A sent transaction can land in any block until its blockhash expires
+    // (lastValidBlockHeight, ~60-90s), so poll for that whole window — giving up after a
+    // fixed attempt count misreports slow-but-successful sends (e.g. minimum-priority-fee
+    // transactions) as timeouts. confirmRetryCount acts as a minimum number of polls and
+    // MAX_POLL_ATTEMPTS is a hard safety cap in case getBlockHeight itself misbehaves.
+    const MAX_POLL_ATTEMPTS = Math.max(this.config.confirmRetryCount, 150);
     let attempts = 0;
+    let sawExpiredBlockhash = false;
 
-    while (attempts < this.config.confirmRetryCount) {
+    while (attempts < MAX_POLL_ATTEMPTS) {
       attempts++;
 
       try {
@@ -1638,10 +1826,14 @@ export class Solana {
           }
         }
 
-        // Check if blockhash has expired
         const currentBlockHeight = await this.connection.getBlockHeight();
-        if (currentBlockHeight > lastValidBlockHeight) {
-          logger.warn(`Blockhash expired for transaction ${signature}, transaction may have failed`);
+        if (currentBlockHeight > lastValidBlockHeight && attempts >= this.config.confirmRetryCount) {
+          // Blockhash expired: the transaction can no longer be included in a new block.
+          // Grant one grace poll for the race where it landed in the final valid block,
+          // then stop.
+          if (sawExpiredBlockhash) break;
+          sawExpiredBlockhash = true;
+          logger.warn(`Blockhash expired for transaction ${signature}; doing a final status check`);
         }
 
         await new Promise((resolve) => setTimeout(resolve, this.config.confirmRetryInterval * 1000));
@@ -1655,7 +1847,20 @@ export class Solana {
       }
     }
 
-    logger.warn(`❌ Transaction ${signature} not confirmed after ${attempts} attempts`);
+    // Authoritative final check: the signature-status cache can lag or miss; look the
+    // transaction up directly before reporting it unconfirmed.
+    const txData = await this._fetchTransactionWithRetry(signature, 2, 500);
+    if (txData) {
+      const failed = txData.meta?.err != null;
+      if (failed) {
+        logger.error(`❌ Transaction ${signature} landed on-chain but failed (found in final check)`);
+      } else {
+        logger.info(`✅ Transaction ${signature} confirmed on-chain (found in final check)`);
+      }
+      return { confirmed: !failed, txData };
+    }
+
+    logger.warn(`❌ Transaction ${signature} not confirmed after ${attempts} attempts (blockhash expired)`);
     return { confirmed: false, txData: null };
   }
 
