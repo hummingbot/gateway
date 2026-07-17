@@ -95,6 +95,67 @@ describe('Solana.sendAndConfirmTransactionForWallet', () => {
     expect(result).toEqual({ signature: 'local-sig', fee: 0.0001 });
   });
 
+  it('signs via signTransactionByType for hardware wallets and re-applies extra signers', async () => {
+    // The hardware wallet is represented by a keypair so the test can produce a
+    // verifiable signature; in production the Ledger signs this slot.
+    const walletKeypair = Keypair.generate();
+    const walletAddress = walletKeypair.publicKey.toBase58();
+    const nftMint = Keypair.generate();
+
+    const signTransactionByType = jest.fn(async (tx: Transaction, _address?: string, _walletType?: string) => {
+      tx.partialSign(walletKeypair);
+      return tx;
+    });
+    const _sendAndConfirmRawTransaction = jest.fn(async () => ({
+      confirmed: true,
+      signature: 'hw-sig',
+      txData: { meta: { fee: 5000 } },
+    }));
+    const fakeThis = {
+      simulateWithErrorHandling: jest.fn(),
+      prepareWallet: jest.fn(async () => ({ wallet: walletKeypair.publicKey, walletType: 'hardware' })),
+      signTransactionByType,
+      _sendAndConfirmRawTransaction,
+      getFee: jest.fn(() => 0.000005),
+      estimateGasPrice: jest.fn(async () => 0.00001),
+      config: { confirmRetryCount: 3, defaultComputeUnits: 200000 },
+      connection: {
+        simulateTransaction: jest.fn(async () => ({ value: { unitsConsumed: 100000 } })),
+        getLatestBlockhashAndContext: jest.fn(async () => ({
+          value: { lastValidBlockHeight: 100, blockhash: BLOCKHASH },
+        })),
+      },
+    };
+
+    // Like a real openPosition tx: the ephemeral mint account is itself a required signer.
+    const tx = new Transaction();
+    tx.add(
+      SystemProgram.createAccount({
+        fromPubkey: walletKeypair.publicKey,
+        newAccountPubkey: nftMint.publicKey,
+        lamports: 1,
+        space: 82,
+        programId: SystemProgram.programId,
+      }),
+    );
+
+    const result = await chokepoint.call(fakeThis, tx, walletAddress, [nftMint], 0.00001);
+
+    expect(result).toEqual({ signature: 'hw-sig', fee: 0.000005 });
+    // Signed through the wallet-type-specific signer, not a local keypair path.
+    expect(signTransactionByType).toHaveBeenCalledTimes(1);
+    expect(signTransactionByType.mock.calls[0][2]).toBe('hardware');
+    // The prepared tx got Gateway's compute budget instructions before signing.
+    const preparedTx = signTransactionByType.mock.calls[0][0] as Transaction;
+    const cbCount = preparedTx.instructions.filter((ix) => ix.programId.toBase58().startsWith('ComputeBudget')).length;
+    expect(cbCount).toBe(2); // CU price + CU limit
+    // Both the wallet and the ephemeral extra signer ended up signed.
+    const signedPubkeys = preparedTx.signatures.filter((s) => s.signature !== null).map((s) => s.publicKey.toBase58());
+    expect(signedPubkeys).toContain(walletKeypair.publicKey.toBase58());
+    expect(signedPubkeys).toContain(nftMint.publicKey.toBase58());
+    expect(_sendAndConfirmRawTransaction).toHaveBeenCalledTimes(1);
+  });
+
   it('does not touch the fee payer of a versioned tx (it is baked into the message)', async () => {
     const simulateWithErrorHandling = jest.fn();
     const sendAndConfirmTransaction = jest.fn(async () => ({ signature: 'v0-sig', fee: 0.0002 }));
