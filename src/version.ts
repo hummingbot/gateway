@@ -1,3 +1,3 @@
 // Gateway version constant
 // Change this version for each release
-export const GATEWAY_VERSION = '2.15.1';
+export const GATEWAY_VERSION = '2.16.0';
