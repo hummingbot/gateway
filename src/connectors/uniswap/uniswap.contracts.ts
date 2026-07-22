@@ -10,6 +10,8 @@
  * - Universal Router: https://github.com/Uniswap/universal-router/tree/main/deploy-addresses
  */
 
+import { UNIVERSAL_ROUTER_ADDRESS, UniversalRouterVersion } from '@uniswap/universal-router-sdk';
+
 export interface UniswapContractAddresses {
   // V2 contracts
   uniswapV2RouterAddress: string;
@@ -279,6 +281,36 @@ export function getUniversalRouterV2Address(network: string): string {
   }
 
   return address;
+}
+
+/**
+ * Resolve which Universal Router version the configured router address implements.
+ *
+ * The SDK encodes calldata differently per version, and a mismatch makes the router
+ * revert while decoding (SliceOutOfBounds). Rather than assume a version, we look the
+ * configured address up in the SDK's own deployment map: Robinhood Chain only has
+ * 2.1.1, Celo only has 1.2, and most chains are on 2.0.
+ */
+export function getUniversalRouterVersion(network: string, chainId: number): UniversalRouterVersion {
+  const address = getUniversalRouterV2Address(network).toLowerCase();
+
+  for (const version of Object.values(UniversalRouterVersion)) {
+    let deployed: string;
+    try {
+      deployed = UNIVERSAL_ROUTER_ADDRESS(version, chainId);
+    } catch {
+      continue; // version not deployed on this chain
+    }
+    if (deployed.toLowerCase() === address) {
+      return version;
+    }
+  }
+
+  throw new Error(
+    `Universal Router address ${address} for network ${network} (chainId ${chainId}) does not match any ` +
+      `deployment known to @uniswap/universal-router-sdk. Update the address in uniswap.contracts.ts, ` +
+      `as swap calldata cannot be encoded correctly without knowing the router version.`,
+  );
 }
 
 export function getUniswapV3NftManagerAddress(network: string): string {

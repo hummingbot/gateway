@@ -4,6 +4,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
 import { getEthereumChainConfig } from '../../../chains/ethereum/ethereum.config';
+import { MAX_UINT48 } from '../../../chains/ethereum/routes/approve';
 import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -68,22 +69,24 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
       universalRouterAddress,
     );
 
-    // Check if the Permit2 allowance is expired
+    // Check if the Permit2 allowance is expired. uint48 fits in a JS number.
+    const expirationSeconds = Number(expiration);
     const currentTime = Math.floor(Date.now() / 1000);
-    const isExpired = expiration > 0 && expiration < currentTime;
+    const isExpired = expirationSeconds > 0 && expirationSeconds < currentTime;
 
     // Log expiration details for debugging
     logger.info(
-      `Permit2 allowance details: amount=${permit2Amount.toString()}, expiration=${expiration}, nonce=${nonce}`,
+      `Permit2 allowance details: amount=${permit2Amount.toString()}, expiration=${expirationSeconds}, nonce=${nonce}`,
     );
-    if (expiration > 0) {
-      const expirationDate = new Date(expiration * 1000);
-      const timeUntilExpiration = expiration - currentTime;
-      logger.info(
-        `Expiration: ${expirationDate.toISOString()} (${timeUntilExpiration > 0 ? `${Math.floor(timeUntilExpiration / 60)} minutes remaining` : 'EXPIRED'})`,
-      );
-    } else {
+    if (expirationSeconds === 0) {
       logger.info('Expiration: Never (expiration = 0)');
+    } else if (expirationSeconds >= MAX_UINT48) {
+      logger.info('Expiration: Never (expiration = max uint48)');
+    } else {
+      const timeUntilExpiration = expirationSeconds - currentTime;
+      logger.info(
+        `Expiration: ${new Date(expirationSeconds * 1000).toISOString()} (${timeUntilExpiration > 0 ? `${Math.floor(timeUntilExpiration / 60)} minutes remaining` : 'EXPIRED'})`,
+      );
     }
 
     if (isExpired || BigNumber.from(permit2Amount).lt(requiredAllowance)) {
@@ -91,10 +94,9 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
       const currentPermit2Allowance = utils.formatUnits(permit2Amount, inputToken.decimals);
 
       if (isExpired) {
-        const expirationDate = new Date(expiration * 1000);
         throw httpErrors.badRequest(
           `Permit2 allowance for ${inputToken.symbol} to Universal Router has expired. ` +
-            `Expired at: ${expirationDate.toISOString()}. ` +
+            `Expired at: ${new Date(expirationSeconds * 1000).toISOString()}. ` +
             `Please approve ${inputToken.symbol} again using spender: "uniswap/router"`,
         );
       } else {

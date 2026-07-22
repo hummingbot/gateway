@@ -17,6 +17,7 @@ import {
   getUniswapV2FactoryAddress,
   getUniswapV3QuoterV2ContractAddress,
   getUniversalRouterV2Address,
+  getUniversalRouterVersion,
 } from './uniswap.contracts';
 
 // Common fee tiers for V3
@@ -167,11 +168,17 @@ export class UniversalRouterService {
       });
     }
 
-    // Build the Universal Router swap
+    // Build the Universal Router swap. urVersion must match the deployed router,
+    // otherwise it reverts while decoding the calldata (SliceOutOfBounds).
+    const urVersion = getUniversalRouterVersion(this.network, this.chainId);
+    logger.info(`[UniversalRouter] Encoding for Universal Router v${urVersion} (chainId ${this.chainId})`);
+
     const swapOptions: SwapOptions = {
       slippageTolerance: options.slippageTolerance,
       deadlineOrPreviousBlockhash: options.deadline,
       recipient: options.recipient,
+      urVersion,
+      chainId: this.chainId,
     };
 
     logger.info(`[UniversalRouter] Building swap parameters...`);

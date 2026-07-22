@@ -4,6 +4,7 @@ import { CurrencyAmount, Percent, Token, TradeType } from '@uniswap/sdk-core';
 import {
   AlphaRouter,
   OnChainQuoteProvider,
+  SwapOptions as SorSwapOptions,
   SwapRoute,
   SwapType,
   UniswapMulticallProvider,
@@ -12,6 +13,10 @@ import {
 import { UniversalRouterVersion } from '@uniswap/universal-router-sdk';
 
 import { logger } from '../../services/logger';
+
+// smart-order-router bundles its own universal-router-sdk copy, so its UniversalRouterVersion
+// is nominally distinct from ours. Derive the exact type it expects instead of casting to any.
+type SorUniversalRouterVersion = Extract<SorSwapOptions, { type: SwapType.UNIVERSAL_ROUTER }>['version'];
 
 // Chain IDs as numbers (matching @uniswap/sdk-core ChainId enum values)
 const NETWORK_TO_CHAIN_ID: { [network: string]: number } = {
@@ -135,7 +140,12 @@ export class AlphaRouterService {
       tradeType,
       {
         type: SwapType.UNIVERSAL_ROUTER,
-        version: UniversalRouterVersion.V2_0,
+        // smart-order-router bundles its own (older) universal-router-sdk, so its enum is a
+        // distinct type from ours even though both are string enums with the same values.
+        // V2_0 is correct here: every chain the AlphaRouter supports has a 2.0 deployment,
+        // and the bundled SDK can only encode 1.2 and 2.0. Chains needing a newer router
+        // (e.g. Robinhood Chain 2.1.1) fall through to UniversalRouterService instead.
+        version: UniversalRouterVersion.V2_0 as unknown as SorUniversalRouterVersion,
         slippageTolerance: options.slippageTolerance,
         deadlineOrPreviousBlockhash: options.deadline,
         recipient: options.recipient,
