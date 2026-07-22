@@ -201,6 +201,9 @@ export async function getEthereumAllowances(
     if (error.statusCode === 400) {
       throw error; // Rethrow badRequest errors
     }
+    if (error.statusCode === 429) {
+      throw error;
+    }
     throw fastify.httpErrors.internalServerError(`Failed to get allowances: ${error.message}`);
   }
 }

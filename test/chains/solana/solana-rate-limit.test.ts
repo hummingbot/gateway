@@ -1,13 +1,24 @@
 import { Connection, PublicKey } from '@solana/web3.js';
+import { providers } from 'ethers';
 
-import { createRateLimitAwareSolanaConnection } from '../../../src/rpc/rpc-connection-interceptor';
+import {
+  createRateLimitAwareEthereumProvider,
+  createRateLimitAwareSolanaConnection,
+} from '../../../src/rpc/rpc-connection-interceptor';
 
 describe('Solana Rate Limit Interceptor', () => {
   let mockConnection: jest.Mocked<Connection>;
   let wrappedConnection: Connection;
+  let setTimeoutSpy: jest.SpyInstance;
+  let randomSpy: jest.SpyInstance | undefined;
   const testRpcUrl = 'https://api.mainnet-beta.solana.com';
 
   beforeEach(() => {
+    setTimeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
+      callback();
+      return 0 as any;
+    });
+
     // Create a mock Connection
     mockConnection = {
       getBalance: jest.fn(),
@@ -20,6 +31,12 @@ describe('Solana Rate Limit Interceptor', () => {
     } as any;
 
     wrappedConnection = createRateLimitAwareSolanaConnection(mockConnection, testRpcUrl);
+  });
+
+  afterEach(() => {
+    randomSpy?.mockRestore();
+    randomSpy = undefined;
+    setTimeoutSpy.mockRestore();
   });
 
   describe('429 Error Detection', () => {
@@ -185,9 +202,43 @@ describe('Solana Rate Limit Interceptor', () => {
       ).rejects.toMatchObject({
         statusCode: 429,
       });
+      expect(mockConnection.getTransaction).toHaveBeenCalledTimes(4);
     });
 
-    it('should intercept sendRawTransaction', async () => {
+    it('should use growing exponential retry delays', async () => {
+      randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+      const error429 = new Error('Too many requests');
+      (error429 as any).statusCode = 429;
+
+      mockConnection.getTransaction.mockRejectedValue(error429);
+
+      await expect(wrappedConnection.getTransaction('signature123')).rejects.toMatchObject({ statusCode: 429 });
+      expect(setTimeoutSpy.mock.calls.map((call) => call[1])).toEqual([500, 1000, 2000]);
+    });
+
+    it('should keep jitter within 20 percent of the retry delay', async () => {
+      randomSpy = jest.spyOn(Math, 'random').mockReturnValueOnce(0).mockReturnValueOnce(1).mockReturnValueOnce(0.5);
+      const error429 = new Error('Too many requests');
+      (error429 as any).statusCode = 429;
+
+      mockConnection.getTransaction.mockRejectedValue(error429);
+
+      await expect(wrappedConnection.getTransaction('signature123')).rejects.toMatchObject({ statusCode: 429 });
+      expect(setTimeoutSpy.mock.calls.map((call) => call[1])).toEqual([400, 1200, 2000]);
+    });
+
+    it('should retry getTransaction and return successful response', async () => {
+      const error429 = new Error('Too many requests');
+      (error429 as any).statusCode = 429;
+      const txData = { meta: { fee: 123 } } as any;
+
+      mockConnection.getTransaction.mockRejectedValueOnce(error429).mockResolvedValueOnce(txData);
+
+      await expect(wrappedConnection.getTransaction('signature123')).resolves.toBe(txData);
+      expect(mockConnection.getTransaction).toHaveBeenCalledTimes(2);
+    });
+
+    it('should not retry sendRawTransaction', async () => {
       const error429 = new Error('Too many requests');
       (error429 as any).statusCode = 429;
 
@@ -196,6 +247,7 @@ describe('Solana Rate Limit Interceptor', () => {
       await expect(wrappedConnection.sendRawTransaction(Buffer.from([]))).rejects.toMatchObject({
         statusCode: 429,
       });
+      expect(mockConnection.sendRawTransaction).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -214,5 +266,99 @@ describe('Solana Rate Limit Interceptor', () => {
 
       expect(result).toBe(1000000000);
     });
+  });
+});
+
+describe('Ethereum Rate Limit Interceptor', () => {
+  let mockProvider: jest.Mocked<providers.BaseProvider>;
+  let wrappedProvider: providers.BaseProvider;
+  let setTimeoutSpy: jest.SpyInstance;
+  const testRpcUrl = 'https://eth.llamarpc.com';
+
+  beforeEach(() => {
+    setTimeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
+      callback();
+      return 0 as any;
+    });
+
+    mockProvider = {
+      call: jest.fn(),
+      getBalance: jest.fn(),
+      sendTransaction: jest.fn(),
+    } as any;
+
+    wrappedProvider = createRateLimitAwareEthereumProvider(mockProvider, testRpcUrl);
+  });
+
+  afterEach(() => {
+    setTimeoutSpy.mockRestore();
+  });
+
+  // Ethereum reads are retried here. The provider is built with throttleLimit: 1
+  // (see ethereum.ts) so ethers doesn't retry 429s itself — this Proxy is the
+  // single retry layer, and it also covers 429s returned as a JSON-RPC error body.
+  it('should retry getBalance and return successful response', async () => {
+    const error429 = new Error('Too many requests');
+    (error429 as any).statusCode = 429;
+
+    mockProvider.getBalance.mockRejectedValueOnce(error429).mockResolvedValueOnce(123 as any);
+
+    await expect(wrappedProvider.getBalance('0x0000000000000000000000000000000000000000')).resolves.toBe(123);
+    expect(mockProvider.getBalance).toHaveBeenCalledTimes(2);
+  });
+
+  it('should retry getBalance up to 4 attempts then throw a normalized 429', async () => {
+    const error429 = new Error('Too many requests');
+    (error429 as any).statusCode = 429;
+
+    mockProvider.getBalance.mockRejectedValue(error429);
+
+    await expect(wrappedProvider.getBalance('0x0000000000000000000000000000000000000000')).rejects.toMatchObject({
+      statusCode: 429,
+      name: 'TooManyRequestsError',
+    });
+    expect(mockProvider.getBalance).toHaveBeenCalledTimes(4);
+  });
+
+  it('should retry call and return successful response', async () => {
+    const error429 = new Error('Too many requests');
+    (error429 as any).statusCode = 429;
+
+    mockProvider.call.mockRejectedValueOnce(error429).mockResolvedValueOnce('0x01');
+
+    await expect(wrappedProvider.call({ to: '0x0000000000000000000000000000000000000000' })).resolves.toBe('0x01');
+    expect(mockProvider.call).toHaveBeenCalledTimes(2);
+  });
+
+  it('should detect 429 returned as a JSON-RPC error body and retry', async () => {
+    const bodyError = new Error(
+      'processing response error: {"jsonrpc":"2.0","error":{"code": 429, "message":"Too many requests"}}',
+    );
+
+    mockProvider.call.mockRejectedValueOnce(bodyError).mockResolvedValueOnce('0x01');
+
+    await expect(wrappedProvider.call({ to: '0x0000000000000000000000000000000000000000' })).resolves.toBe('0x01');
+    expect(mockProvider.call).toHaveBeenCalledTimes(2);
+  });
+
+  it('should pass through non-429 errors unchanged', async () => {
+    mockProvider.getBalance.mockRejectedValue(new Error('Network connection failed'));
+
+    await expect(wrappedProvider.getBalance('0x0000000000000000000000000000000000000000')).rejects.toThrow(
+      'Network connection failed',
+    );
+  });
+
+  it('should not retry sendTransaction', async () => {
+    const error429 = new Error('Too many requests');
+    (error429 as any).statusCode = 429;
+
+    mockProvider.sendTransaction.mockRejectedValue(error429);
+
+    await expect(wrappedProvider.sendTransaction('0x')).rejects.toMatchObject({
+      statusCode: 429,
+      name: 'TooManyRequestsError',
+    });
+    expect(mockProvider.sendTransaction).toHaveBeenCalledTimes(1);
   });
 });

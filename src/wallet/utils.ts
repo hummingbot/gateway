@@ -131,7 +131,10 @@ export async function addWallet(fastify: FastifyInstance, req: AddWalletRequest)
 
   // Sanitize address for filename
   const safeAddress = sanitizePathComponent(address);
-  await fse.writeFile(`${path}/${safeAddress}.json`, encryptedPrivateKey);
+  // Write the encrypted key file owner-readable only (hummingbot/gateway#652).
+  const walletFilePath = `${path}/${safeAddress}.json`;
+  await fse.writeFile(walletFilePath, encryptedPrivateKey, { mode: 0o600 });
+  await fse.chmod(walletFilePath, 0o600);
 
   // Update default wallet if requested
   if (req.setDefault) {
