@@ -64,6 +64,14 @@ export async function quoteSwap(
   } catch (error) {
     const errorMessage = error?.message || String(error);
 
+    // Throttling is not a routing failure. Propagate the 429 as-is instead of
+    // relabelling it NO_ROUTE_FOUND (which reads as "this token is untradable"
+    // and has caused callers to blacklist perfectly good pools). Also skip the
+    // ExactIn fallback below - it would just burn another rate-limited request.
+    if (error?.code === 'RATE_LIMITED' || error?.statusCode === 429) {
+      throw error;
+    }
+
     // A BUY is quoted as ExactOut (exact base-token output). Many thin tokens
     // (e.g. pump.fun launches) have no ExactOut route on Jupiter even though
     // ExactIn routes fine. Approximate via a sell-leg ExactIn quote (shared router
