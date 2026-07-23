@@ -5,8 +5,10 @@ import { FastifyPluginAsync } from 'fastify';
 import { getEthereumNetworkConfig } from '../../chains/ethereum/ethereum.config';
 import { getSolanaNetworkConfig } from '../../chains/solana/solana.config';
 import { quoteSwap as zeroXRouterQuoteSwap } from '../../connectors/0x/router-routes/quoteSwap';
+import { quoteSwap as dflowRouterQuoteSwap } from '../../connectors/dflow/router-routes/quoteSwap';
 import { quoteSwap as jupiterRouterQuoteSwap } from '../../connectors/jupiter/router-routes/quoteSwap';
 import { quoteSwap as meteoraClmmQuoteSwap } from '../../connectors/meteora/clmm-routes/quoteSwap';
+import { quoteSwap as okxRouterQuoteSwap } from '../../connectors/okx/router-routes/quoteSwap';
 import { quoteSwap as orcaClmmQuoteSwap } from '../../connectors/orca/clmm-routes/quoteSwap';
 import { quoteSwap as pancakeswapAmmQuoteSwap } from '../../connectors/pancakeswap/amm-routes/quoteSwap';
 import { quoteSwap as pancakeswapClmmQuoteSwap } from '../../connectors/pancakeswap/clmm-routes/quoteSwap';
@@ -14,6 +16,7 @@ import { quoteSwap as pancakeswapRouterQuoteSwap } from '../../connectors/pancak
 import { quoteSwap as pancakeswapSolClmmQuoteSwap } from '../../connectors/pancakeswap-sol/clmm-routes/quoteSwap';
 import { quoteSwap as raydiumAmmQuoteSwap } from '../../connectors/raydium/amm-routes/quoteSwap';
 import { quoteSwap as raydiumClmmQuoteSwap } from '../../connectors/raydium/clmm-routes/quoteSwap';
+import { quoteSwap as titanRouterQuoteSwap } from '../../connectors/titan/router-routes/quoteSwap';
 
 // Ethereum connector imports
 import { quoteSwap as uniswapAmmQuoteSwap } from '../../connectors/uniswap/amm-routes/quoteSwap';
@@ -40,7 +43,7 @@ const UnifiedQuoteSwapRequestSchema = Type.Object({
     Type.String({
       description:
         "Connector to use in format: connector/type (e.g., jupiter/router, raydium/amm, uniswap/clmm). If not provided, uses network's configured swapProvider",
-      default: 'jupiter/router',
+      examples: ['jupiter/router'],
     }),
   ),
   baseToken: Type.String({
@@ -121,7 +124,7 @@ async function getSolanaQuoteSwap(
     let poolAddress: string | undefined;
     if (connectorType === 'amm' || connectorType === 'clmm') {
       const poolService = PoolService.getInstance();
-      const pool = await poolService.getPool(connectorName, network, connectorType, baseToken, quoteToken);
+      const pool = await poolService.getPool('solana', network, connectorType, baseToken, quoteToken, connectorName);
 
       if (!pool) {
         throw httpErrors.notFound(
@@ -147,6 +150,12 @@ async function getSolanaQuoteSwap(
         undefined, // onlyDirectRoutes
         undefined, // restrictIntermediateTokens
       );
+    } else if (providerKey === 'dflow/router') {
+      return await dflowRouterQuoteSwap(network, baseToken, quoteToken, amount, side, slippagePct);
+    } else if (providerKey === 'okx/router') {
+      return await okxRouterQuoteSwap(network, baseToken, quoteToken, amount, side, slippagePct);
+    } else if (providerKey === 'titan/router') {
+      return await titanRouterQuoteSwap(network, baseToken, quoteToken, amount, side, slippagePct);
     } else if (providerKey === 'raydium/amm') {
       return await raydiumAmmQuoteSwap(network, poolAddress!, baseToken, quoteToken, amount, side, slippagePct);
     } else if (providerKey === 'raydium/clmm') {
@@ -196,7 +205,7 @@ async function getEthereumQuoteSwap(
     let poolAddress: string | undefined;
     if (connectorType === 'amm' || connectorType === 'clmm') {
       const poolService = PoolService.getInstance();
-      const pool = await poolService.getPool(connectorName, network, connectorType, baseToken, quoteToken);
+      const pool = await poolService.getPool('ethereum', network, connectorType, baseToken, quoteToken, connectorName);
 
       if (!pool) {
         throw httpErrors.notFound(

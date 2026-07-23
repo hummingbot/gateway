@@ -1,20 +1,11 @@
-import { swapInstructions, setWhirlpoolsConfig } from '@orca-so/whirlpools';
+import { swapInstructions, setWhirlpoolsConfig, setNativeMintWrappingStrategy } from '@orca-so/whirlpools';
 import { fetchWhirlpool } from '@orca-so/whirlpools-client';
-import {
-  address,
-  appendTransactionMessageInstructions,
-  createKeyPairSignerFromBytes,
-  createTransactionMessage,
-  getBase64EncodedWireTransaction,
-  pipe,
-  setTransactionMessageFeePayerSigner,
-  setTransactionMessageLifetimeUsingBlockhash,
-  signTransactionMessageWithSigners,
-  type Instruction,
-} from '@solana/kit';
+import { address, createNoopSigner, type Instruction } from '@solana/kit';
+import { PublicKey, Transaction } from '@solana/web3.js';
 import { fetchAllMint } from '@solana-program/token-2022';
 import { FastifyPluginAsync } from 'fastify';
 
+import { kitInstructionToWeb3 } from '../../../chains/solana/kit-instructions';
 import { Solana } from '../../../chains/solana/solana';
 import { getSolanaChainConfig } from '../../../chains/solana/solana.config';
 import { ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/clmm-schema';
@@ -24,21 +15,6 @@ import { Orca } from '../orca';
 import { OrcaClmmExecuteSwapRequest, OrcaClmmExecuteSwapRequestType } from '../schemas';
 
 const COMPUTE_BUDGET_PROGRAM_ID = address('ComputeBudget111111111111111111111111111111');
-const COMPUTE_UNIT_LIMIT = 600_000;
-
-function setComputeUnitLimitIx(units: number): Instruction {
-  const data = new Uint8Array(5);
-  data[0] = 2;
-  new DataView(data.buffer).setUint32(1, units, true);
-  return { accounts: [], programAddress: COMPUTE_BUDGET_PROGRAM_ID, data };
-}
-
-function setComputeUnitPriceIx(microLamportsPerCU: bigint): Instruction {
-  const data = new Uint8Array(9);
-  data[0] = 3;
-  new DataView(data.buffer).setBigUint64(1, microLamportsPerCU, true);
-  return { accounts: [], programAddress: COMPUTE_BUDGET_PROGRAM_ID, data };
-}
 
 export async function executeSwap(
   network: string,
@@ -62,6 +38,10 @@ export async function executeSwap(
   }
 
   await setWhirlpoolsConfig(network === 'mainnet-beta' ? 'solanaMainnet' : 'solanaDevnet');
+  // Wrap native SOL via the wallet's deterministic ATA rather than an ephemeral keypair:
+  // this avoids an extra co-signer (so hardware wallets can sign alone) and lets a wallet
+  // policy allowlist the wSOL account. Must be set before swapInstructions().
+  setNativeMintWrappingStrategy('ata');
 
   // Fetch pool to determine canonical token A/B ordering and decimals
   const whirlpoolAddress = address(poolAddress);
@@ -82,7 +62,10 @@ export async function executeSwap(
   const outputDecimals = inputIsA ? mintB.data.decimals : mintA.data.decimals;
 
   const slippageBps = Math.round(slippagePct * 100);
-  const signer = await createKeyPairSignerFromBytes((await solana.getWallet(walletAddress)).secretKey);
+
+  // Build the swap with a no-op fee-payer signer carrying just the wallet's public key —
+  // signing is external (sendAndConfirmTransactionForWallet handles local/hardware).
+  const signer = createNoopSigner(address(walletAddress));
 
   // Build the swap instructions via the v4 SDK — it resolves tick arrays, the
   // oracle (adaptive-fee pools), Token-2022 transfer fees and native-SOL
@@ -112,61 +95,23 @@ export async function executeSwap(
       `(pool ${poolAddress}, ${side})`,
   );
 
-  // Prepend compute-budget instructions; drop any the SDK may have included.
-  const priorityFeePerCU = await solana.estimateGasPrice();
-  const microLamportsPerCU = BigInt(Math.max(1, Math.ceil(priorityFeePerCU * 1_000_000)));
-  const allInstructions: Instruction[] = [
-    setComputeUnitLimitIx(COMPUTE_UNIT_LIMIT),
-    setComputeUnitPriceIx(microLamportsPerCU),
-    ...(swapInstrs as Instruction[]).filter((ix) => ix.programAddress !== COMPUTE_BUDGET_PROGRAM_ID),
-  ];
+  // Convert the kit instructions to web3.js and sign/send via the wallet-type-aware
+  // chokepoint. Compute-budget instructions are dropped here; the chokepoint re-adds them.
+  const innerInstructions = (swapInstrs as Instruction[])
+    .filter((ix) => ix.programAddress !== COMPUTE_BUDGET_PROGRAM_ID)
+    .map(kitInstructionToWeb3);
+  const tx = new Transaction();
+  tx.add(...innerInstructions);
+  // This route hand-builds a legacy transaction; set the fee payer to the wallet so the
+  // chokepoint's pre-flight simulate can compile the message (the chokepoint signs/pays
+  // from this same address for every wallet type).
+  tx.feePayer = new PublicKey(walletAddress);
 
-  const { value: latestBlockhash } = await rpc.getLatestBlockhash().send();
-
-  const txMessage = pipe(
-    createTransactionMessage({ version: 0 }),
-    (msg) => setTransactionMessageFeePayerSigner(signer, msg),
-    (msg) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, msg),
-    (msg) => appendTransactionMessageInstructions(allInstructions, msg),
-  );
-
-  const signedTx = await signTransactionMessageWithSigners(txMessage);
-  const wireBytes = Buffer.from(getBase64EncodedWireTransaction(signedTx), 'base64');
-
-  const signature = await solana.connection.sendRawTransaction(wireBytes, {
-    skipPreflight: false,
-    preflightCommitment: 'processed',
-  });
-
-  await solana.connection.confirmTransaction(
-    {
-      signature,
-      blockhash: latestBlockhash.blockhash,
-      lastValidBlockHeight: Number(latestBlockhash.lastValidBlockHeight),
-    },
-    'confirmed',
-  );
-
-  // Network fee from the confirmed transaction. getTransaction can briefly lag
-  // behind confirmation, so retry a few times before giving up.
-  let feeLamports = 0;
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const confirmedTx = await solana.connection.getTransaction(signature, {
-      commitment: 'confirmed',
-      maxSupportedTransactionVersion: 0,
-    });
-    if (confirmedTx?.meta?.fee != null) {
-      feeLamports = confirmedTx.meta.fee;
-      break;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 800));
-  }
-  const fee = feeLamports / 1e9;
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(tx, walletAddress);
+  logger.info(`Orca swap executed: ${signature} (fee ${fee} SOL)`);
 
   const baseTokenBalanceChange = isBuyingSide ? amountOut : -amountIn;
   const quoteTokenBalanceChange = isBuyingSide ? -amountIn : amountOut;
-
-  logger.info(`Orca swap executed: ${signature} (fee ${fee} SOL)`);
 
   return {
     signature,

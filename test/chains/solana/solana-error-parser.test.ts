@@ -334,6 +334,21 @@ describe('Solana Error Parser', () => {
         expect(result.errorCode).toBe(6001);
       });
     });
+
+    describe('Account realloc failures', () => {
+      it('should explain the allocation limit and bin cap on realloc failures', () => {
+        const errorMessage = [
+          'Program LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo invoke [1]',
+          'Account data size realloc limited to 10240 in inner instructions',
+          'Program LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo failed: Failed to reallocate account data',
+        ].join('\n');
+        const result = parseSolanaError(errorMessage);
+
+        expect(result.type).toBe('INSTRUCTION_ERROR');
+        expect(result.message).toMatch(/10,240-byte allocation limit/);
+        expect(result.message).toMatch(/at most 69 bins/);
+      });
+    });
   });
 
   describe('isSlippageError', () => {

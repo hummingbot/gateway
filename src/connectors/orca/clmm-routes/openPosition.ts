@@ -114,13 +114,13 @@ async function addLiquidityInstructions(
   const tokenOwnerAccountA = getAssociatedTokenAddressSync(
     whirlpool.getTokenAInfo().address,
     client.getContext().wallet.publicKey,
-    undefined,
+    false,
     mintA.tokenProgram,
   );
   const tokenOwnerAccountB = getAssociatedTokenAddressSync(
     whirlpool.getTokenBInfo().address,
     client.getContext().wallet.publicKey,
-    undefined,
+    false,
     mintB.tokenProgram,
   );
 
@@ -143,7 +143,7 @@ async function addLiquidityInstructions(
       positionTokenAccount: getAssociatedTokenAddressSync(
         positionMintKeypair.publicKey,
         client.getContext().wallet.publicKey,
-        undefined,
+        false,
         TOKEN_2022_PROGRAM_ID,
       ),
       tokenMintA: whirlpool.getTokenAInfo().address,
@@ -183,7 +183,9 @@ export async function openPosition(
 
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
-  const wallet = await solana.getWallet(address);
+  // Build with the wallet's public key as authority — works for every wallet type
+  // (local, hardware). Signing/sending is delegated to
+  // sendAndConfirmTransactionForWallet, which knows how to sign for each type.
   const client = await orca.getWhirlpoolClientForWallet(address);
   const whirlpoolPubkey = new PublicKey(poolAddress);
 
@@ -318,13 +320,13 @@ export async function openPosition(
     const tokenOwnerAccountA = getAssociatedTokenAddressSync(
       whirlpool.getTokenAInfo().address,
       client.getContext().wallet.publicKey,
-      undefined,
+      false,
       mintA.tokenProgram,
     );
     const tokenOwnerAccountB = getAssociatedTokenAddressSync(
       whirlpool.getTokenBInfo().address,
       client.getContext().wallet.publicKey,
-      undefined,
+      false,
       mintB.tokenProgram,
     );
 
@@ -392,7 +394,7 @@ export async function openPosition(
       positionTokenAccount: getAssociatedTokenAddressSync(
         positionMintKeypair.publicKey,
         client.getContext().wallet.publicKey,
-        undefined,
+        false,
         TOKEN_2022_PROGRAM_ID,
       ),
       withTokenMetadataExtension: true,
@@ -424,13 +426,13 @@ export async function openPosition(
     const tokenOwnerAccountA = getAssociatedTokenAddressSync(
       whirlpool.getTokenAInfo().address,
       client.getContext().wallet.publicKey,
-      undefined,
+      false,
       mintA.tokenProgram,
     );
     const tokenOwnerAccountB = getAssociatedTokenAddressSync(
       whirlpool.getTokenBInfo().address,
       client.getContext().wallet.publicKey,
-      undefined,
+      false,
       mintB.tokenProgram,
     );
 
@@ -456,11 +458,11 @@ export async function openPosition(
     );
   }
 
-  // Build, simulate, and send transaction
+  // Build and send transaction via the wallet-type-aware chokepoint (handles
+  // local/hardware and simulates internally). The freshly
+  // generated position mint must co-sign, so it is passed as an extra signer.
   const txPayload = await builder.build();
-  await solana.simulateWithErrorHandling(txPayload.transaction);
-  const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [
-    wallet,
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(txPayload.transaction, address, [
     positionMintKeypair,
   ]);
 
@@ -484,7 +486,7 @@ export async function openPosition(
     const positionTokenAccount = getAssociatedTokenAddressSync(
       positionMintKeypair.publicKey,
       client.getContext().wallet.publicKey,
-      undefined,
+      false,
       TOKEN_2022_PROGRAM_ID,
     );
     const rentAccounts: PublicKey[] = [

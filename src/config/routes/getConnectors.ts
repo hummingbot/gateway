@@ -4,11 +4,14 @@ import { FastifyPluginAsync } from 'fastify';
 import { PancakeswapConfig } from '#src/connectors/pancakeswap/pancakeswap.config';
 
 import { ZeroXConfig } from '../../connectors/0x/0x.config';
+import { DFlowConfig } from '../../connectors/dflow/dflow.config';
 import { JupiterConfig } from '../../connectors/jupiter/jupiter.config';
 import { MeteoraConfig } from '../../connectors/meteora/meteora.config';
+import { OkxConfig } from '../../connectors/okx/okx.config';
 import { OrcaConfig } from '../../connectors/orca/orca.config';
 import { PancakeswapSolConfig } from '../../connectors/pancakeswap-sol/pancakeswap-sol.config';
 import { RaydiumConfig } from '../../connectors/raydium/raydium.config';
+import { TitanConfig } from '../../connectors/titan/titan.config';
 import { UniswapConfig } from '../../connectors/uniswap/uniswap.config';
 import { logger } from '../../services/logger';
 
@@ -76,6 +79,24 @@ export const connectorsConfig = [
     trading_types: [...OrcaConfig.tradingTypes],
     chain: OrcaConfig.chain,
     networks: [...OrcaConfig.networks],
+  },
+  {
+    name: 'dflow',
+    trading_types: [...DFlowConfig.tradingTypes],
+    chain: DFlowConfig.chain,
+    networks: [...DFlowConfig.networks],
+  },
+  {
+    name: 'okx',
+    trading_types: [...OkxConfig.tradingTypes],
+    chain: OkxConfig.chain,
+    networks: [...OkxConfig.networks],
+  },
+  {
+    name: 'titan',
+    trading_types: [...TitanConfig.tradingTypes],
+    chain: TitanConfig.chain,
+    networks: [...TitanConfig.networks],
   },
 ];
 

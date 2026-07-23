@@ -376,6 +376,25 @@ export function parseSolanaError(errorMessage: string): ParsedSolanaError {
   const programName = getProgramName(programId);
   const { index: instructionIndex, variant: instructionVariant } = extractInstructionError(errorMessage);
 
+  // Solana caps account data growth via CPI at 10,240 bytes; programs allocate accounts
+  // through the system program via CPI even in top-level instructions. The common trigger
+  // is a Meteora DLMM position whose price range spans too many bins (~112 bytes/bin; the
+  // program caps positions at 69 bins anyway).
+  if (errorMessage.includes('Failed to reallocate account data')) {
+    return {
+      type: 'INSTRUCTION_ERROR',
+      program: programName,
+      errorCode: code,
+      errorCodeHex: hex,
+      instructionIndex,
+      message:
+        'An instruction tried to grow an account beyond Solana’s 10,240-byte allocation limit. If this is a ' +
+        'Meteora DLMM position, the price range spans too many bins — a position holds at most 69 bins, so ' +
+        'narrow the range or open multiple positions to cover it.',
+      rawError: errorMessage,
+    };
+  }
+
   // Try program-specific error code lookup
   if (programId && code !== null && PROGRAM_ERROR_CODES[programId]) {
     const errorInfo = PROGRAM_ERROR_CODES[programId][code];

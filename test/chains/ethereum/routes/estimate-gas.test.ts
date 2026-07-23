@@ -6,8 +6,13 @@ import '../../../mocks/app-mocks';
 import { gatewayApp } from '../../../../src/app';
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 
-// Mock the Ethereum class
-jest.mock('../../../../src/chains/ethereum/ethereum');
+// Mock the Ethereum class, but keep the real EIP1559_NETWORKS constant
+// (automocking would replace the array and break the route's network gate)
+jest.mock('../../../../src/chains/ethereum/ethereum', () => {
+  const mocked = jest.createMockFromModule('../../../../src/chains/ethereum/ethereum') as any;
+  const actual = jest.requireActual('../../../../src/chains/ethereum/ethereum');
+  return { ...mocked, EIP1559_NETWORKS: actual.EIP1559_NETWORKS };
+});
 
 const mockEthereum = Ethereum as jest.Mocked<typeof Ethereum>;
 
@@ -30,6 +35,7 @@ describe('Ethereum Estimate Gas Route', () => {
   describe('GET /chains/ethereum/estimate-gas', () => {
     const mockInstance = {
       estimateGasPrice: jest.fn(),
+      getCachedGasPriceEstimate: jest.fn(),
       nativeTokenSymbol: 'ETH',
       baseFee: null,
       baseFeeMultiplier: 1.2,
@@ -146,6 +152,75 @@ describe('Ethereum Estimate Gas Route', () => {
       expect(typeof data.fee).toBe('number');
       expect(typeof data.timestamp).toBe('number');
       expect(data.timestamp).toBeGreaterThan(Date.now() - 5000); // Recent timestamp
+    });
+
+    it('should return eip1559 gas details for EIP-1559 networks with a cached estimate', async () => {
+      const networks = ['mainnet', 'unichain', 'robinhoodchain', 'robinhoodchain-testnet'];
+
+      for (const network of networks) {
+        jest.clearAllMocks();
+        mockInstance.estimateGasPrice.mockResolvedValue(10.0);
+        mockInstance.getCachedGasPriceEstimate.mockReturnValue({
+          timestamp: Date.now(),
+          gasPrice: 10.0,
+          maxFeePerGas: 12.5,
+          maxPriorityFeePerGas: 0.5,
+          isEIP1559: true,
+        });
+        mockEthereum.getInstance.mockResolvedValue(mockInstance as any);
+
+        const response = await fastify.inject({
+          method: 'GET',
+          url: `/chains/ethereum/estimate-gas?network=${network}`,
+        });
+
+        expect(response.statusCode).toBe(200);
+        const data = JSON.parse(response.body);
+
+        expect({ network, gasType: data.gasType }).toEqual({ network, gasType: 'eip1559' });
+        expect(data.maxFeePerGas).toBe(12.5);
+        expect(data.maxPriorityFeePerGas).toBe(0.5);
+      }
+    });
+
+    it('should return legacy gas type for non-EIP-1559 networks', async () => {
+      mockInstance.estimateGasPrice.mockResolvedValue(3.0);
+      mockInstance.getCachedGasPriceEstimate.mockReturnValue({
+        timestamp: Date.now(),
+        gasPrice: 3.0,
+        isEIP1559: false,
+      });
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/chains/ethereum/estimate-gas?network=bsc',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const data = JSON.parse(response.body);
+
+      expect(data.gasType).toBe('legacy');
+      expect(data.maxFeePerGas).toBeUndefined();
+      expect(data.maxPriorityFeePerGas).toBeUndefined();
+    });
+
+    it('should fall back to legacy gas type when an EIP-1559 network estimate is not EIP-1559', async () => {
+      mockInstance.estimateGasPrice.mockResolvedValue(10.0);
+      mockInstance.getCachedGasPriceEstimate.mockReturnValue({
+        timestamp: Date.now(),
+        gasPrice: 10.0,
+        isEIP1559: false,
+      });
+
+      const response = await fastify.inject({
+        method: 'GET',
+        url: '/chains/ethereum/estimate-gas?network=unichain',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const data = JSON.parse(response.body);
+
+      expect(data.gasType).toBe('legacy');
     });
 
     it('should handle missing network parameter by using default', async () => {

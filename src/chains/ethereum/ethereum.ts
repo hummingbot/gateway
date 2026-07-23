@@ -29,6 +29,18 @@ export interface TokenInfo {
 export type NewBlockHandler = (bn: number) => void;
 export type NewDebugMsgHandler = (msg: any) => void;
 
+// Networks that support EIP-1559 (type 2) transactions
+export const EIP1559_NETWORKS = [
+  'mainnet',
+  'polygon',
+  'arbitrum',
+  'optimism',
+  'base',
+  'robinhoodchain',
+  'robinhoodchain-testnet',
+  'unichain',
+];
+
 export class Ethereum {
   private static _instances: { [name: string]: Ethereum };
   public provider: providers.StaticJsonRpcProvider;
@@ -57,6 +69,14 @@ export class Ethereum {
   } = {};
   private static GAS_PRICE_CACHE_MS = 10000; // 10 second cache
   private _transactionExecutionTimeoutMs: number;
+
+  /**
+   * Returns the cached gas price estimate for this instance's network,
+   * populated by estimateGasPrice(). Undefined if no estimate has been made.
+   */
+  public getCachedGasPriceEstimate() {
+    return Ethereum.lastGasPriceEstimate[this.network];
+  }
 
   // For backward compatibility
   public get chain(): string {
@@ -153,12 +173,7 @@ export class Ethereum {
     }
 
     // Check if the network supports EIP-1559
-    const supportsEIP1559 =
-      this.network === 'mainnet' ||
-      this.network === 'polygon' ||
-      this.network === 'arbitrum' ||
-      this.network === 'optimism' ||
-      this.network === 'base';
+    const supportsEIP1559 = EIP1559_NETWORKS.includes(this.network);
 
     if (supportsEIP1559) {
       try {
@@ -315,12 +330,7 @@ export class Ethereum {
     gasOptions.gasLimit = gasLimit ?? DEFAULT_GAS_LIMIT;
 
     // Check if the network supports EIP-1559
-    const supportsEIP1559 =
-      this.network === 'mainnet' ||
-      this.network === 'polygon' ||
-      this.network === 'arbitrum' ||
-      this.network === 'optimism' ||
-      this.network === 'base';
+    const supportsEIP1559 = EIP1559_NETWORKS.includes(this.network);
 
     if (supportsEIP1559) {
       // Use cached EIP-1559 values from estimateGasPrice if available, not stale, and gasPrice not explicitly provided
@@ -896,6 +906,16 @@ export class Ethereum {
       address: '0x471EcE3750Da237f93B8E339c536989b8978a438',
       symbol: 'WCELO',
       nativeSymbol: 'CELO',
+    },
+    robinhoodchain: {
+      address: '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH',
+    },
+    unichain: {
+      address: '0x4200000000000000000000000000000000000006',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH',
     },
   };
 

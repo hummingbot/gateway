@@ -1,3 +1,4 @@
+import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
@@ -21,11 +22,10 @@ export async function collectFees(
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
 
-  // Prepare wallet and check if it's hardware
-  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
-
-  // Set the owner for SDK operations
-  await raydium.setOwner(wallet);
+  // Set the SDK owner to the wallet's public key — works for every wallet type (local,
+  // hardware). The actual liquidity removal (and signing/sending) is delegated to
+  // removeLiquidity below.
+  await raydium.setOwner(new PublicKey(walletAddress));
 
   const position = await raydium.getClmmPosition(positionAddress);
   if (!position) {

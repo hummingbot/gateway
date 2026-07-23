@@ -67,8 +67,20 @@ export class Orca {
 
   async getWhirlpoolContextForWallet(walletAddress: string): Promise<WhirlpoolContext> {
     if (!this.whirlpoolContextMap[walletAddress]) {
-      const walletKeypair = await this.solana.getWallet(walletAddress);
-      const wallet = new Wallet(walletKeypair);
+      // The Whirlpool client only reads `wallet.publicKey` while building instructions; it
+      // never signs here. Signing happens externally via sendAndConfirmTransactionForWallet
+      // (local keypair / Ledger), so a read-only wallet carrying just the
+      // public key is sufficient for every wallet type — no key load, no wallet-type branch.
+      const publicKey = await this.solana.getPublicKey(walletAddress);
+      const wallet = {
+        publicKey,
+        signTransaction: async () => {
+          throw new Error('Read-only wallet cannot sign; transactions are signed externally');
+        },
+        signAllTransactions: async () => {
+          throw new Error('Read-only wallet cannot sign; transactions are signed externally');
+        },
+      } as unknown as Wallet;
       const provider = new AnchorProvider(this.solana.connection, wallet, {
         commitment: 'processed',
       });

@@ -3,6 +3,7 @@ import { VersionedTransaction } from '@solana/web3.js';
 
 import { Solana } from '../../chains/solana/solana';
 import { getSolanaNetworkConfig } from '../../chains/solana/solana.config';
+import { httpErrors } from '../../services/error-handler';
 import { createHttpClient, HttpClient, HttpClientError } from '../../services/http-client';
 import { logger } from '../../services/logger';
 
@@ -13,6 +14,27 @@ import { JupiterConfig } from './jupiter.config';
 // Users should migrate to api.jup.ag with an API key (free tier available at https://portal.jup.ag)
 const JUPITER_API_BASE_LITE = 'https://lite-api.jup.ag';
 const JUPITER_API_BASE = 'https://api.jup.ag';
+
+// Retry policy for upstream throttling (HTTP 429).
+// See https://developers.jup.ag/docs/ultra/rate-limit — the keyless lite tier is
+// far tighter than a portal key, so it gets a longer base backoff.
+const RATE_LIMIT_MAX_ATTEMPTS = 4;
+const RATE_LIMIT_BASE_DELAY_MS_WITH_KEY = 1_000;
+const RATE_LIMIT_BASE_DELAY_MS_KEYLESS = 5_000;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Detect an upstream rate limit. Jupiter returns 429, but historically the body
+ * has been plain text ("Rate limit exceeded") even under an application/json
+ * content-type, so match defensively on the body as well as the status.
+ */
+function isRateLimitError(error: unknown): boolean {
+  if (!(error instanceof HttpClientError)) return false;
+  if (error.isRateLimit) return true;
+  const body = typeof error.data === 'string' ? error.data : '';
+  return /rate limit/i.test(body) || /rate limit/i.test(error.message);
+}
 
 // Type definitions for Jupiter API responses
 interface QuoteResponse {
@@ -38,6 +60,7 @@ export class Jupiter {
   private solana: Solana;
   public config: JupiterConfig.RootConfig;
   private httpClient: HttpClient;
+  private hasApiKey: boolean;
 
   private constructor() {
     this.config = JupiterConfig.config;
@@ -50,8 +73,10 @@ export class Jupiter {
 
     let baseURL: string;
 
+    this.hasApiKey = Boolean(this.config.apiKey && this.config.apiKey.length > 0);
+
     // Use api.jup.ag with API key, or lite-api.jup.ag without (deprecated Dec 31, 2025)
-    if (this.config.apiKey && this.config.apiKey.length > 0) {
+    if (this.hasApiKey) {
       headers['x-api-key'] = this.config.apiKey;
       baseURL = JUPITER_API_BASE;
       logger.info('Using Jupiter API with key');
@@ -99,6 +124,42 @@ export class Jupiter {
     } catch (error) {
       logger.error('Failed to initialize Jupiter:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Run an upstream Jupiter call, retrying with exponential backoff while the API
+   * is throttling us. Honors Retry-After when Jupiter sends it.
+   *
+   * A rate limit that survives every attempt is rethrown as a 429 RATE_LIMITED
+   * error so callers never mistake throttling for an unroutable/untradable token.
+   */
+  private async withRateLimitRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+    const baseDelay = this.hasApiKey ? RATE_LIMIT_BASE_DELAY_MS_WITH_KEY : RATE_LIMIT_BASE_DELAY_MS_KEYLESS;
+
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        if (!isRateLimitError(error)) throw error;
+
+        if (attempt >= RATE_LIMIT_MAX_ATTEMPTS) {
+          const tier = this.hasApiKey
+            ? 'api.jup.ag (keyed)'
+            : 'lite-api.jup.ag (keyless — add jupiter.apiKey from https://portal.jup.ag for higher limits)';
+          throw httpErrors.rateLimited(
+            `Jupiter rate limit hit on ${label} after ${RATE_LIMIT_MAX_ATTEMPTS} attempts via ${tier}. ` +
+              `The route is fine — slow down and retry.`,
+          );
+        }
+
+        const retryAfter = error instanceof HttpClientError ? error.retryAfterSeconds : undefined;
+        const delay = retryAfter !== undefined ? retryAfter * 1000 : baseDelay * 2 ** (attempt - 1);
+        logger.warn(
+          `Jupiter rate limited on ${label} (attempt ${attempt}/${RATE_LIMIT_MAX_ATTEMPTS}); retrying in ${delay}ms`,
+        );
+        await sleep(delay);
+      }
     }
   }
 
@@ -154,7 +215,9 @@ export class Jupiter {
     logger.debug(`Getting Jupiter quote for ${inputToken.symbol} to ${outputToken.symbol} with params:`, params);
 
     try {
-      const response = await this.httpClient.get<QuoteResponse>('/swap/v1/quote', { params });
+      const response = await this.withRateLimitRetry('quote', () =>
+        this.httpClient.get<QuoteResponse>('/swap/v1/quote', { params }),
+      );
       const quote = response.data;
 
       if (!quote) {
@@ -165,6 +228,11 @@ export class Jupiter {
       logger.debug('Got Jupiter quote:', quote);
       return quote;
     } catch (error) {
+      // A rate limit is not a routing failure - let it through untouched so the
+      // caller reports throttling rather than "no route found".
+      if (error instanceof Error && (error as any).code === 'RATE_LIMITED') {
+        throw error;
+      }
       if (error instanceof HttpClientError) {
         logger.error('Jupiter API error:', error.message);
         if (error.response?.data) {
@@ -237,7 +305,9 @@ export class Jupiter {
           },
         };
 
-        const response = await this.httpClient.post<SwapResponse>('/swap/v1/swap', swapRequest);
+        const response = await this.withRateLimitRetry('swap', () =>
+          this.httpClient.post<SwapResponse>('/swap/v1/swap', swapRequest),
+        );
         swapObj = response.data;
         break; // Success, exit the retry loop
       } catch (error) {
@@ -316,7 +386,9 @@ export class Jupiter {
           },
         };
 
-        const response = await this.httpClient.post<SwapResponse>('/swap/v1/swap', swapRequest);
+        const response = await this.withRateLimitRetry('swap', () =>
+          this.httpClient.post<SwapResponse>('/swap/v1/swap', swapRequest),
+        );
         swapObj = response.data;
         break; // Success, exit the retry loop
       } catch (error) {
