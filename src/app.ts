@@ -17,12 +17,15 @@ import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
 import { solanaRoutes } from './chains/solana/solana.routes';
 import { configRoutes } from './config/config.routes';
 import { register0xRoutes } from './connectors/0x/0x.routes';
+import { dflowRoutes } from './connectors/dflow/dflow.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
+import { okxRoutes } from './connectors/okx/okx.routes';
 import { orcaRoutes } from './connectors/orca/orca.routes';
 import { pancakeswapRoutes } from './connectors/pancakeswap/pancakeswap.routes';
 import { pancakeswapSolRoutes } from './connectors/pancakeswap-sol/pancakeswap-sol.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
+import { titanRoutes } from './connectors/titan/titan.routes';
 import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { getHttpsOptions } from './https';
 import { rootPath } from './paths';
@@ -118,6 +121,18 @@ const swaggerOptions = {
       {
         name: '/connector/pancakeswap',
         description: 'PancakeSwap EVM connector endpoints',
+      },
+      {
+        name: '/connector/dflow',
+        description: 'DFlow connector endpoints',
+      },
+      {
+        name: '/connector/okx',
+        description: 'OKX DEX aggregator connector endpoints',
+      },
+      {
+        name: '/connector/titan',
+        description: 'Titan connector endpoints',
       },
     ],
     components: {
@@ -290,6 +305,21 @@ const configureGatewayServer = () => {
     // Jupiter routes
     app.register(jupiterRoutes.router, {
       prefix: '/connectors/jupiter/router',
+    });
+
+    // DFlow routes
+    app.register(dflowRoutes.router, {
+      prefix: '/connectors/dflow/router',
+    });
+
+    // OKX DEX aggregator routes
+    app.register(okxRoutes.router, {
+      prefix: '/connectors/okx/router',
+    });
+
+    // Titan routes
+    app.register(titanRoutes.router, {
+      prefix: '/connectors/titan/router',
     });
 
     // Meteora routes

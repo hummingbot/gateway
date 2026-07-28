@@ -1,0 +1,11 @@
+# Default slippage percentage for swaps (as a decimal, e.g., 1 = 1%)
+slippagePct: 1
+
+# Titan DART API key (optional)
+# Without a key, the public endpoint is used (limited to 1 request/second per IP).
+# An API key is recommended for bots; apply at https://titan.exchange
+apiKey: ''
+
+# Compute unit price in micro-lamports for priority fees
+# 0 = use the Titan DART default (10,000 micro-lamports)
+computeUnitPrice: 0

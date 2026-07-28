@@ -7,8 +7,9 @@ import { Ethereum } from '../ethereum';
 import { EthereumLedger } from '../ethereum-ledger';
 import { WrapRequestSchema, WrapResponseSchema, WrapRequestType, WrapResponseType } from '../schemas';
 
-// Default gas limit for wrap operations
-const WRAP_GAS_LIMIT = 50000;
+// Gas limit for wrap operations. Plain WETH9 deposit() costs ~27k, but networks
+// fronting WETH with a proxy (e.g. robinhoodchain) need appreciably more.
+const WRAP_GAS_LIMIT = 100000;
 
 // WETH ABI for wrap/unwrap operations
 const WETH9ABI = [

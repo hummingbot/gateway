@@ -18,10 +18,13 @@ export async function closePosition(
   try {
     const solana = await Solana.getInstance(network);
     const meteora = await Meteora.getInstance(network);
-    const wallet = await solana.getWallet(walletAddress);
+    // Build with the wallet's public key as authority — works for every wallet type
+    // (local, hardware). Signing/sending is delegated to
+    // sendAndConfirmTransactionForWallet, which knows how to sign for each type.
+    const walletPublicKey = new PublicKey(walletAddress);
 
     // Get position and pool info
-    const positionResult = await meteora.getRawPosition(positionAddress, wallet.publicKey);
+    const positionResult = await meteora.getRawPosition(positionAddress, walletPublicKey);
 
     if (!positionResult || !positionResult.position) {
       throw httpErrors.notFound(`Position not found: ${positionAddress}. Please provide a valid position address`);
@@ -35,7 +38,7 @@ export async function closePosition(
     const tokenYSymbol = tokenY?.symbol || 'UNKNOWN';
 
     // Get position info to track fees separately
-    const positionInfo = await meteora.getPositionInfo(positionAddress, wallet.publicKey);
+    const positionInfo = await meteora.getPositionInfo(positionAddress, walletPublicKey);
     const baseFeeAmount = positionInfo.baseFeeAmount;
     const quoteFeeAmount = positionInfo.quoteFeeAmount;
 
@@ -49,7 +52,7 @@ export async function closePosition(
 
     const removeLiquidityTxs = await dlmmPool.removeLiquidity({
       position: position.publicKey,
-      user: wallet.publicKey,
+      user: walletPublicKey,
       fromBinId,
       toBinId,
       bps: bps,
@@ -69,15 +72,11 @@ export async function closePosition(
       }
 
       // Set fee payer for simulation
-      tx.feePayer = wallet.publicKey;
+      tx.feePayer = walletPublicKey;
 
-      // Simulate with error handling
-      await solana.simulateWithErrorHandling(tx);
-
-      logger.info('Transaction simulated successfully, sending to network...');
-
-      // Send and confirm transaction
-      const result = await solana.sendAndConfirmTransaction(tx, [wallet]);
+      // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and
+      // simulates internally).
+      const result = await solana.sendAndConfirmTransactionForWallet(tx, walletAddress);
       totalFee += result.fee;
       lastSignature = result.signature;
     }
@@ -109,7 +108,7 @@ export async function closePosition(
       }
 
       // Track wallet's balance changes for the tokens
-      const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+      const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletPublicKey.toBase58(), [
         dlmmPool.tokenX.publicKey.toBase58(),
         dlmmPool.tokenY.publicKey.toBase58(),
       ]);

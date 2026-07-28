@@ -67,6 +67,7 @@ describe('Orca', () => {
       connection: mockConnection,
       network: 'mainnet-beta',
       getWallet: jest.fn().mockResolvedValue(mockWallet),
+      getPublicKey: jest.fn().mockImplementation((a) => Promise.resolve(new (require('@solana/web3.js').PublicKey)(a))),
     };
 
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);

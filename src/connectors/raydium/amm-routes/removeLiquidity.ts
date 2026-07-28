@@ -93,13 +93,11 @@ async function createRemoveLiquidityTransaction(
  */
 async function calculateLpAmountToRemove(
   solana: Solana,
-  wallet: any,
   _ammPoolInfo: any,
   poolInfo: any,
   poolAddress: string,
   percentageToRemove: number,
   walletAddress: string,
-  isHardwareWallet: boolean,
 ): Promise<BN> {
   let lpMint: string;
 
@@ -110,8 +108,8 @@ async function calculateLpAmountToRemove(
     throw new Error(`Could not find LP mint for pool ${poolAddress}`);
   }
 
-  // Get user's LP token account
-  const walletPublicKey = isHardwareWallet ? await solana.getPublicKey(walletAddress) : (wallet as any).publicKey;
+  // Get user's LP token account, owned by the wallet's public key (works for every wallet type).
+  const walletPublicKey = new PublicKey(walletAddress);
   const lpTokenAccounts = await solana.connection.getTokenAccountsByOwner(walletPublicKey, {
     mint: new PublicKey(lpMint),
   });
@@ -143,8 +141,10 @@ async function removeLiquidity(
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
 
-  // Prepare wallet and check if it's hardware
-  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
+  // Set the SDK owner to the wallet's public key — works for every wallet type (local,
+  // hardware). The tx is built unsigned; signing/sending is delegated to
+  // sendAndConfirmTransactionForWallet, which signs for the wallet's type.
+  await raydium.setOwner(new PublicKey(walletAddress));
 
   const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
   const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddress);
@@ -156,13 +156,11 @@ async function removeLiquidity(
   // Calculate LP amount to remove
   const lpAmountToRemove = await calculateLpAmountToRemove(
     solana,
-    wallet,
     ammPoolInfo,
     poolInfo,
     poolAddress,
     percentageToRemove,
     walletAddress,
-    isHardwareWallet,
   );
 
   logger.info(`Removing ${percentageToRemove.toFixed(4)}% liquidity from pool ${poolAddress}...`);
@@ -186,32 +184,15 @@ async function removeLiquidity(
     },
   );
 
-  // Sign transaction using helper
-  let signedTransaction: VersionedTransaction | Transaction;
-  if (transaction instanceof VersionedTransaction) {
-    signedTransaction = (await raydium.signTransaction(
-      transaction,
-      walletAddress,
-      isHardwareWallet,
-      wallet,
-    )) as VersionedTransaction;
-  } else {
-    const txAsTransaction = transaction as Transaction;
-    const { blockhash, lastValidBlockHeight } = await solana.connection.getLatestBlockhash();
-    txAsTransaction.recentBlockhash = blockhash;
-    txAsTransaction.lastValidBlockHeight = lastValidBlockHeight;
-    txAsTransaction.feePayer = isHardwareWallet ? await solana.getPublicKey(walletAddress) : (wallet as any).publicKey;
-    signedTransaction = (await raydium.signTransaction(
-      txAsTransaction,
-      walletAddress,
-      isHardwareWallet,
-      wallet,
-    )) as Transaction;
-  }
+  // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and
+  // simulates internally).
+  const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
+  const txData = await solana.connection.getTransaction(signature, {
+    commitment: 'confirmed',
+    maxSupportedTransactionVersion: 0,
+  });
+  const confirmed = txData !== null;
 
-  await solana.simulateWithErrorHandling(signedTransaction);
-
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(signedTransaction);
   if (confirmed && txData) {
     const tokenAInfo = await solana.getToken(poolInfo.mintA.address);
     const tokenBInfo = await solana.getToken(poolInfo.mintB.address);

@@ -58,7 +58,7 @@ describe('HttpClient', () => {
         status: 200,
         statusText: 'OK',
         headers: new Headers({ 'content-type': 'application/json' }),
-        json: jest.fn().mockResolvedValue({ data: 'test' }),
+        text: jest.fn().mockResolvedValue(JSON.stringify({ data: 'test' })),
       };
       mockFetch.mockResolvedValue(mockResponse);
 
@@ -85,7 +85,7 @@ describe('HttpClient', () => {
         status: 201,
         statusText: 'Created',
         headers: new Headers({ 'content-type': 'application/json' }),
-        json: jest.fn().mockResolvedValue({ id: 1 }),
+        text: jest.fn().mockResolvedValue(JSON.stringify({ id: 1 })),
       };
       mockFetch.mockResolvedValue(mockResponse);
 
@@ -110,7 +110,7 @@ describe('HttpClient', () => {
         status: 404,
         statusText: 'Not Found',
         headers: new Headers({ 'content-type': 'application/json' }),
-        json: jest.fn().mockResolvedValue({ error: 'Not found' }),
+        text: jest.fn().mockResolvedValue(JSON.stringify({ error: 'Not found' })),
       };
       mockFetch.mockResolvedValue(mockResponse);
 
@@ -119,6 +119,30 @@ describe('HttpClient', () => {
         status: 404,
         data: { error: 'Not found' },
       });
+    });
+
+    it('should preserve the status for a non-JSON body served as application/json', async () => {
+      // Jupiter answers a throttled request with a plain-text "Rate limit
+      // exceeded" body under an application/json content-type. Parsing that as
+      // JSON throws, and the SyntaxError used to escape as an opaque network
+      // error - callers saw `Unexpected token 'R', "Rate limit"... is not valid
+      // JSON` with no status, and read it as an unroutable token.
+      const mockResponse = {
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+        headers: new Headers({ 'content-type': 'application/json', 'retry-after': '3' }),
+        text: jest.fn().mockResolvedValue('Rate limit exceeded'),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const error = await client.get('/quote').catch((e) => e);
+
+      expect(error).toBeInstanceOf(HttpClientError);
+      expect(error.status).toBe(429);
+      expect(error.data).toBe('Rate limit exceeded');
+      expect(error.isRateLimit).toBe(true);
+      expect(error.retryAfterSeconds).toBe(3);
     });
 
     it('should handle timeout', async () => {
@@ -174,7 +198,7 @@ describe('HttpClient', () => {
         status: 200,
         statusText: 'OK',
         headers: new Headers({ 'content-type': 'application/json' }),
-        json: jest.fn().mockResolvedValue({ data: 'test' }),
+        text: jest.fn().mockResolvedValue(JSON.stringify({ data: 'test' })),
       };
       mockFetch.mockResolvedValue(mockResponse);
 
@@ -191,7 +215,7 @@ describe('HttpClient', () => {
         status: 201,
         statusText: 'Created',
         headers: new Headers({ 'content-type': 'application/json' }),
-        json: jest.fn().mockResolvedValue({ id: 1 }),
+        text: jest.fn().mockResolvedValue(JSON.stringify({ id: 1 })),
       };
       mockFetch.mockResolvedValue(mockResponse);
 

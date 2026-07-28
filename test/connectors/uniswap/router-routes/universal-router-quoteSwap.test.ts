@@ -105,6 +105,7 @@ describe('GET /quote-swap', () => {
     mockUniswap = {
       router: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45',
       getUniswapToken: jest.fn().mockImplementation((tokenInfo) => tokenInfo),
+      isAlphaRouterAvailable: jest.fn().mockReturnValue(true),
       getAlphaRouterQuote: mockGetAlphaRouterQuote,
     };
 
@@ -495,6 +496,85 @@ describe('GET /quote-swap', () => {
       expect(body).toHaveProperty('price', 1);
       expect(body).toHaveProperty('amountIn', 1);
       expect(body).toHaveProperty('amountOut', 1);
+    });
+  });
+
+  describe('Universal Router fallback (AlphaRouter unavailable)', () => {
+    const mockGetUniversalRouterQuote = jest.fn();
+
+    beforeEach(() => {
+      mockUniswap.isAlphaRouterAvailable.mockReturnValue(false);
+      mockUniswap.getUniversalRouterQuote = mockGetUniversalRouterQuote;
+      mockGetUniversalRouterQuote.mockResolvedValue({
+        routePath: '100% via WETH -> USDC',
+        trade: {
+          inputAmount: { toExact: () => '1' },
+          outputAmount: { toExact: () => '3000' },
+        },
+        priceImpact: 0.5,
+        methodParameters: {
+          calldata: '0xabcdef',
+          value: '0x0',
+          to: '0x8876789976decbfcbbbe364623c63652db8c0904',
+        },
+      });
+    });
+
+    it('should quote via the Universal Router and not the AlphaRouter', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'WETH',
+          quoteToken: 'USDC',
+          amount: '1',
+          side: 'SELL',
+          slippagePct: '1',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      expect(mockGetAlphaRouterQuote).not.toHaveBeenCalled();
+      expect(mockGetUniversalRouterQuote).toHaveBeenCalled();
+      expect(body).toHaveProperty('routePath', '100% via WETH -> USDC');
+      expect(body).toHaveProperty('amountIn', 1);
+      expect(body).toHaveProperty('amountOut', 3000);
+      expect(body).toHaveProperty('priceImpactPct', 0.5);
+    });
+
+    it('should pass the requested slippagePct through to the Universal Router quote', async () => {
+      const response = await server.inject({
+        method: 'GET',
+        url: '/quote-swap',
+        query: {
+          network: 'mainnet',
+          walletAddress: '0x0000000000000000000000000000000000000001',
+          baseToken: 'WETH',
+          quoteToken: 'USDC',
+          amount: '1',
+          side: 'SELL',
+          slippagePct: '5',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      // The calldata's embedded min-out must be built from the same slippage
+      // the response advertises, so the requested value has to reach the quote
+      expect(mockGetUniversalRouterQuote).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        1,
+        'SELL',
+        '0x0000000000000000000000000000000000000001',
+        5,
+      );
+      expect(body.minAmountOut).toBeCloseTo(3000 * 0.95, 6);
     });
   });
 });
