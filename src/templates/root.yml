@@ -62,6 +62,14 @@ configurations:
     configurationPath: chains/ethereum/unichain.yml
     schemaPath: ethereum-network-schema.json
 
+  $namespace ethereum-hyperevm:
+    configurationPath: chains/ethereum/hyperevm.yml
+    schemaPath: ethereum-network-schema.json
+
+  $namespace ethereum-monad:
+    configurationPath: chains/ethereum/monad.yml
+    schemaPath: ethereum-network-schema.json
+
   # Solana networks
   $namespace solana-mainnet-beta:
     configurationPath: chains/solana/mainnet-beta.yml
@@ -95,6 +103,10 @@ configurations:
   $namespace 0x:
     configurationPath: connectors/0x.yml
     schemaPath: 0x-schema.json
+
+  $namespace fibrous:
+    configurationPath: connectors/fibrous.yml
+    schemaPath: fibrous-schema.json
 
   $namespace pancakeswap:
     configurationPath: connectors/pancakeswap.yml

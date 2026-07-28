@@ -18,7 +18,7 @@ Gateway can be accessed through:
 - **Hummingbot Client**: For automated trading strategies, use the [Hummingbot repository](https://github.com/hummingbot/hummingbot)
 
 ### Key Features
-- **Standardized REST API**: Consistent endpoints for interacting with blockchains (Ethereum, Solana) and DEXs (Uniswap, Jupiter, Raydium, Meteora, PancakeSwap, 0x)
+- **Standardized REST API**: Consistent endpoints for interacting with blockchains (Ethereum, Solana) and DEXs (Uniswap, Jupiter, Raydium, Meteora, PancakeSwap, 0x, Fibrous)
 - **Three Trading Types**: Router (DEX aggregators), AMM (V2-style pools), and CLMM (V3-style concentrated liquidity)
 - **Modular Architecture**: Clear separation of concerns with distinct modules for chains, connectors, configuration, and wallet management
 - **TypeScript-based**: Leverages the TypeScript ecosystem and popular libraries like Fastify, Ethers.js, and Solana/web3.js
@@ -46,6 +46,8 @@ Gateway may be used alongside the main [Hummingbot client](https://github.com/hu
 - Base
 - BSC (Binance Smart Chain)
 - Celo
+- HyperEVM
+- Monad
 - Optimism
 - Polygon
 - Sepolia (testnet)
@@ -83,6 +85,7 @@ Both RPC providers maintain full backward compatibility - networks default to st
 | PancakeSwap | Ethereum/EVM | ✅ | ✅ | ✅ | Multi-chain DEX with V2 AMM, V3 CLMM, and Smart Router |
 | Uniswap | Ethereum/EVM | ✅ | ✅ | ✅ | Complete V2 AMM, V3 CLMM, and Smart Order Router |
 | 0x | Ethereum/EVM | ✅ | ❌ | ❌ | DEX aggregator with professional market making features |
+| Fibrous | Ethereum/EVM | ✅ | ❌ | ❌ | DEX aggregator for Base, HyperEVM and Monad |
 
 #### Trading Types Explained:
 - **Router**: DEX aggregators that find optimal swap routes across multiple liquidity sources

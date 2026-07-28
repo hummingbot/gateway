@@ -1,0 +1,44 @@
+[
+  {
+    "chainId": 999,
+    "name": "Wrapped HYPE",
+    "symbol": "WHYPE",
+    "address": "0x5555555555555555555555555555555555555555",
+    "decimals": 18
+  },
+  {
+    "chainId": 999,
+    "name": "USDC",
+    "symbol": "USDC",
+    "address": "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
+    "decimals": 6
+  },
+  {
+    "chainId": 999,
+    "name": "USDeOFT",
+    "symbol": "USDe",
+    "address": "0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34",
+    "decimals": 18
+  },
+  {
+    "chainId": 999,
+    "name": "Unit Bitcoin",
+    "symbol": "UBTC",
+    "address": "0x9FDBdA0A5e284c32744D2f17Ee5c74B284993463",
+    "decimals": 8
+  },
+  {
+    "chainId": 999,
+    "name": "Unit Ethereum",
+    "symbol": "UETH",
+    "address": "0xBe6727B535545C67d5cAa73dEa54865B92CF7907",
+    "decimals": 18
+  },
+  {
+    "chainId": 999,
+    "name": "Staked HYPE",
+    "symbol": "stHYPE",
+    "address": "0xfFaa4a3D97fE9107Cef8a3F48c069F577Ff76cC1",
+    "decimals": 18
+  }
+]

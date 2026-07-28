@@ -6,6 +6,7 @@ import { getEthereumChainConfig, getEthereumNetworkConfig } from '../../chains/e
 import { getSolanaChainConfig, getSolanaNetworkConfig } from '../../chains/solana/solana.config';
 import { executeSwap as zeroXRouterExecuteSwap } from '../../connectors/0x/router-routes/executeSwap';
 import { executeSwap as dflowRouterExecuteSwap } from '../../connectors/dflow/router-routes/executeSwap';
+import { executeSwap as fibrousRouterExecuteSwap } from '../../connectors/fibrous/router-routes/executeSwap';
 import { executeSwap as jupiterRouterExecuteSwap } from '../../connectors/jupiter/router-routes/executeSwap';
 import { executeSwap as meteoraClmmExecuteSwap } from '../../connectors/meteora/clmm-routes/executeSwap';
 import { executeSwap as okxRouterExecuteSwap } from '../../connectors/okx/router-routes/executeSwap';
@@ -304,6 +305,8 @@ async function executeEthereumSwap(
       return await pancakeswapClmmExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
     } else if (providerKey === '0x/router') {
       return await zeroXRouterExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
+    } else if (providerKey === 'fibrous/router') {
+      return await fibrousRouterExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
     }
 
     throw httpErrors.badRequest(`Unsupported swap provider: ${swapProvider}`);

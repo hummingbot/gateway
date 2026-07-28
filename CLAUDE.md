@@ -77,6 +77,7 @@ This file provides guidance to AI coding assistants when working with code in th
     - `raydium/`: Contains both `amm-routes/` and `clmm-routes/`
     - `uniswap/`: Contains `router-routes/`, `amm-routes/`, and `clmm-routes/`
     - `0x/router-routes/`: 0x aggregator routes
+    - `fibrous/router-routes/`: Fibrous aggregator routes
   - `services/`: Core services and utilities
     - `config-manager-v2.ts`: Configuration management
     - `logger.ts`: Logging service
@@ -200,6 +201,8 @@ Gateway supports optimized RPC providers for enhanced performance:
 - Base
 - BSC (Binance Smart Chain)
 - Celo
+- HyperEVM
+- Monad
 - Optimism
 - Polygon
 - Sepolia (testnet)
@@ -214,6 +217,7 @@ Gateway supports optimized RPC providers for enhanced performance:
 - **Raydium** (Solana): Standard AMM and CLMM operations
 - **Uniswap** (Ethereum/EVM): V2 AMM, V3 CLMM, and V3 Smart Order Router swaps
 - **0x** (Ethereum/EVM): Router-based swaps via DEX aggregator
+- **Fibrous** (Ethereum/EVM): Router-based swaps via DEX aggregator (Base, HyperEVM, Monad)
 
 ### Supported DEX Protocols
 
@@ -224,6 +228,7 @@ Gateway supports optimized RPC providers for enhanced performance:
 | Raydium | Solana | ❌ | ✅ | ✅ |
 | Uniswap | Ethereum/EVM | ✅ | ✅ | ✅ |
 | 0x | Ethereum/EVM | ✅ | ❌ | ❌ |
+| Fibrous | Ethereum/EVM | ✅ | ❌ | ❌ |
 
 ## Environment Variables
 - `GATEWAY_PASSPHRASE`: Set passphrase for wallet encryption

@@ -5,6 +5,7 @@ import { PancakeswapConfig } from '#src/connectors/pancakeswap/pancakeswap.confi
 
 import { ZeroXConfig } from '../../connectors/0x/0x.config';
 import { DFlowConfig } from '../../connectors/dflow/dflow.config';
+import { FibrousConfig } from '../../connectors/fibrous/fibrous.config';
 import { JupiterConfig } from '../../connectors/jupiter/jupiter.config';
 import { MeteoraConfig } from '../../connectors/meteora/meteora.config';
 import { OkxConfig } from '../../connectors/okx/okx.config';
@@ -61,6 +62,12 @@ export const connectorsConfig = [
     trading_types: [...ZeroXConfig.tradingTypes],
     chain: ZeroXConfig.chain,
     networks: [...ZeroXConfig.networks],
+  },
+  {
+    name: 'fibrous',
+    trading_types: [...FibrousConfig.tradingTypes],
+    chain: FibrousConfig.chain,
+    networks: [...FibrousConfig.networks],
   },
   {
     name: 'pancakeswap',

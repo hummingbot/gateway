@@ -6,6 +6,7 @@ import { getEthereumNetworkConfig } from '../../chains/ethereum/ethereum.config'
 import { getSolanaNetworkConfig } from '../../chains/solana/solana.config';
 import { quoteSwap as zeroXRouterQuoteSwap } from '../../connectors/0x/router-routes/quoteSwap';
 import { quoteSwap as dflowRouterQuoteSwap } from '../../connectors/dflow/router-routes/quoteSwap';
+import { quoteSwap as fibrousRouterQuoteSwap } from '../../connectors/fibrous/router-routes/quoteSwap';
 import { quoteSwap as jupiterRouterQuoteSwap } from '../../connectors/jupiter/router-routes/quoteSwap';
 import { quoteSwap as meteoraClmmQuoteSwap } from '../../connectors/meteora/clmm-routes/quoteSwap';
 import { quoteSwap as okxRouterQuoteSwap } from '../../connectors/okx/router-routes/quoteSwap';
@@ -234,6 +235,8 @@ async function getEthereumQuoteSwap(
       return await pancakeswapClmmQuoteSwap(network, poolAddress!, baseToken, quoteToken, amount, side, slippagePct);
     } else if (providerKey === '0x/router') {
       return await zeroXRouterQuoteSwap(network, baseToken, quoteToken, amount, side, slippagePct || 1);
+    } else if (providerKey === 'fibrous/router') {
+      return await fibrousRouterQuoteSwap(network, baseToken, quoteToken, amount, side, slippagePct);
     }
 
     throw httpErrors.badRequest(`Unsupported swap provider: ${swapProvider}`);

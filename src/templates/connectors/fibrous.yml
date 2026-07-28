@@ -1,0 +1,10 @@
+# Configuration for Fibrous DEX Aggregator
+
+# Allowed slippage for swap transactions (as a percentage)
+# Default: 1 (1%)
+slippagePct: 1
+
+# API key for the Fibrous API (optional)
+# Unlocks integrator features and higher rate limits.
+# Get your API key from https://portal.fibrous.finance
+apiKey: ''

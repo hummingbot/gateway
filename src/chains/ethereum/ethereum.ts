@@ -39,6 +39,8 @@ export const EIP1559_NETWORKS = [
   'robinhoodchain',
   'robinhoodchain-testnet',
   'unichain',
+  'hyperevm',
+  'monad',
 ];
 
 export class Ethereum {
@@ -916,6 +918,16 @@ export class Ethereum {
       address: '0x4200000000000000000000000000000000000006',
       symbol: 'WETH',
       nativeSymbol: 'ETH',
+    },
+    hyperevm: {
+      address: '0x5555555555555555555555555555555555555555',
+      symbol: 'WHYPE',
+      nativeSymbol: 'HYPE',
+    },
+    monad: {
+      address: '0x3bD359C1119dA7dA1D913D1c4d2b7C461115433a',
+      symbol: 'WMON',
+      nativeSymbol: 'MON',
     },
   };
 
