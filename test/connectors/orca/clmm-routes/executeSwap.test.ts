@@ -52,6 +52,7 @@ jest.mock('@solana/spl-token', () => ({
 jest.mock('@orca-so/whirlpools', () => ({
   swapInstructions: jest.fn(),
   setWhirlpoolsConfig: jest.fn().mockResolvedValue(undefined),
+  setNativeMintWrappingStrategy: jest.fn(),
 }));
 jest.mock('@orca-so/whirlpools-client', () => ({
   fetchWhirlpool: jest.fn(),
@@ -331,22 +332,21 @@ describe('POST /execute-swap', () => {
     // Any valid base58-encoded 32 bytes works as a blockhash for offline signing
     const mockBlockhash = Keypair.generate().publicKey.toBase58();
     let mockConnection: any;
+    let mockSendForWallet: jest.Mock;
 
     beforeEach(() => {
       (swapInstructions as jest.Mock).mockClear();
       mockConnection = {
-        sendRawTransaction: jest.fn().mockResolvedValue('mock-signature'),
-        confirmTransaction: jest.fn().mockResolvedValue({ value: { err: null } }),
         getTransaction: jest.fn().mockResolvedValue({ meta: { fee: 5000 } }),
       };
+      mockSendForWallet = jest.fn().mockResolvedValue({ signature: 'mock-signature', fee: 0.000005 });
       (Solana.getInstance as jest.Mock).mockResolvedValue({
         getToken: jest.fn().mockImplementation((symbol: string) => {
           if (symbol === 'SOL' || symbol === mockBaseTokenInfo.address) return mockBaseTokenInfo;
           if (symbol === 'USDC' || symbol === mockQuoteTokenInfo.address) return mockQuoteTokenInfo;
           return null;
         }),
-        getWallet: jest.fn().mockResolvedValue(mockWallet),
-        estimateGasPrice: jest.fn().mockResolvedValue(0.0001),
+        sendAndConfirmTransactionForWallet: mockSendForWallet,
         connection: mockConnection,
       });
       (Orca.getInstance as jest.Mock).mockResolvedValue({
@@ -367,7 +367,9 @@ describe('POST /execute-swap', () => {
 
     it('executes a SELL as exact-in of the base token and reports balance changes', async () => {
       (swapInstructions as jest.Mock).mockResolvedValue({
-        instructions: [],
+        instructions: [
+          { programAddress: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', accounts: [], data: new Uint8Array([1]) },
+        ],
         quote: {
           tokenIn: 1_000_000_000n, // 1 SOL in
           tokenEstOut: 63_900_000n, // 63.9 USDC out
@@ -403,12 +405,14 @@ describe('POST /execute-swap', () => {
       const [, params, , slippageBps] = (swapInstructions as jest.Mock).mock.calls[0];
       expect(params).toEqual({ inputAmount: 1_000_000_000n, mint: mockBaseTokenInfo.address });
       expect(slippageBps).toBe(100);
-      expect(mockConnection.sendRawTransaction).toHaveBeenCalledTimes(1);
+      expect(mockSendForWallet).toHaveBeenCalledTimes(1);
     });
 
     it('executes a BUY as exact-out of the base token and reports balance changes', async () => {
       (swapInstructions as jest.Mock).mockResolvedValue({
-        instructions: [],
+        instructions: [
+          { programAddress: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', accounts: [], data: new Uint8Array([1]) },
+        ],
         quote: {
           tokenEstIn: 64_100_000n, // 64.1 USDC in
           tokenOut: 1_000_000_000n, // 1 SOL out

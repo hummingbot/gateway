@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "slippagePct": {
+      "type": "number",
+      "description": "Default slippage percentage for swaps (e.g., 1 = 1%)"
+    },
+    "apiKey": {
+      "type": "string",
+      "description": "OKX DEX API key (https://web3.okx.com/build/dev-portal)"
+    },
+    "secretKey": {
+      "type": "string",
+      "description": "OKX DEX API secret key used to sign requests"
+    },
+    "passphrase": {
+      "type": "string",
+      "description": "OKX DEX API passphrase"
+    },
+    "computeUnitPrice": {
+      "type": "number",
+      "description": "Compute unit price in micro-lamports for Solana priority fees; 0 = automatic"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["slippagePct", "computeUnitPrice"]
+}

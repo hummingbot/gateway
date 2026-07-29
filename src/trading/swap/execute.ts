@@ -5,8 +5,10 @@ import { FastifyPluginAsync } from 'fastify';
 import { getEthereumChainConfig, getEthereumNetworkConfig } from '../../chains/ethereum/ethereum.config';
 import { getSolanaChainConfig, getSolanaNetworkConfig } from '../../chains/solana/solana.config';
 import { executeSwap as zeroXRouterExecuteSwap } from '../../connectors/0x/router-routes/executeSwap';
+import { executeSwap as dflowRouterExecuteSwap } from '../../connectors/dflow/router-routes/executeSwap';
 import { executeSwap as jupiterRouterExecuteSwap } from '../../connectors/jupiter/router-routes/executeSwap';
 import { executeSwap as meteoraClmmExecuteSwap } from '../../connectors/meteora/clmm-routes/executeSwap';
+import { executeSwap as okxRouterExecuteSwap } from '../../connectors/okx/router-routes/executeSwap';
 import { executeSwap as orcaClmmExecuteSwap } from '../../connectors/orca/clmm-routes/executeSwap';
 import { executeSwap as pancakeswapAmmExecuteSwap } from '../../connectors/pancakeswap/amm-routes/executeSwap';
 import { executeSwap as pancakeswapClmmExecuteSwap } from '../../connectors/pancakeswap/clmm-routes/executeSwap';
@@ -14,6 +16,7 @@ import { executeSwap as pancakeswapRouterExecuteSwap } from '../../connectors/pa
 import { executeSwap as pancakeswapSolClmmExecuteSwap } from '../../connectors/pancakeswap-sol/clmm-routes/executeSwap';
 import { executeSwap as raydiumAmmExecuteSwap } from '../../connectors/raydium/amm-routes/executeSwap';
 import { executeSwap as raydiumClmmExecuteSwap } from '../../connectors/raydium/clmm-routes/executeSwap';
+import { executeSwap as titanRouterExecuteSwap } from '../../connectors/titan/router-routes/executeSwap';
 
 // Ethereum connector imports
 import { executeSwap as uniswapAmmExecuteSwap } from '../../connectors/uniswap/amm-routes/executeSwap';
@@ -54,7 +57,7 @@ const UnifiedExecuteSwapRequestSchema = Type.Object({
     Type.String({
       description:
         "Connector to use in format: connector/type (e.g., jupiter/router, raydium/amm, uniswap/clmm). If not provided, uses network's configured swapProvider",
-      default: 'jupiter/router',
+      examples: ['jupiter/router'],
     }),
   ),
   baseToken: Type.String({
@@ -136,7 +139,7 @@ async function executeSolanaSwap(
     let poolAddress: string | undefined;
     if (connectorType === 'amm' || connectorType === 'clmm') {
       const poolService = PoolService.getInstance();
-      const pool = await poolService.getPool(connectorName, network, connectorType, baseToken, quoteToken);
+      const pool = await poolService.getPool('solana', network, connectorType, baseToken, quoteToken, connectorName);
 
       if (!pool) {
         throw httpErrors.notFound(
@@ -163,6 +166,12 @@ async function executeSolanaSwap(
         undefined, // priorityLevel
         undefined, // maxLamports
       );
+    } else if (providerKey === 'dflow/router') {
+      return await dflowRouterExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
+    } else if (providerKey === 'okx/router') {
+      return await okxRouterExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
+    } else if (providerKey === 'titan/router') {
+      return await titanRouterExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
     } else if (providerKey === 'raydium/amm') {
       return await raydiumAmmExecuteSwap(
         network,
@@ -258,7 +267,7 @@ async function executeEthereumSwap(
     let poolAddress: string | undefined;
     if (connectorType === 'amm' || connectorType === 'clmm') {
       const poolService = PoolService.getInstance();
-      const pool = await poolService.getPool(connectorName, network, connectorType, baseToken, quoteToken);
+      const pool = await poolService.getPool('ethereum', network, connectorType, baseToken, quoteToken, connectorName);
 
       if (!pool) {
         throw httpErrors.notFound(

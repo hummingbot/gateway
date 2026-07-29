@@ -20,7 +20,10 @@ export async function collectFees(
 ): Promise<CollectFeesResponseType> {
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
-  const wallet = await solana.getWallet(address);
+  // Build with the wallet's public key as authority — works for every wallet type
+  // (local, hardware). Signing/sending is delegated to
+  // sendAndConfirmTransactionForWallet, which knows how to sign for each type.
+  const walletPublicKey = new PublicKey(address);
   const client = await orca.getWhirlpoolClientForWallet(address);
   const positionPubkey = new PublicKey(positionAddress);
 
@@ -74,13 +77,13 @@ export async function collectFees(
   const tokenOwnerAccountA = getAssociatedTokenAddressSync(
     whirlpool.getTokenAInfo().address,
     client.getContext().wallet.publicKey,
-    undefined,
+    false,
     mintA.tokenProgram,
   );
   const tokenOwnerAccountB = getAssociatedTokenAddressSync(
     whirlpool.getTokenBInfo().address,
     client.getContext().wallet.publicKey,
-    undefined,
+    false,
     mintB.tokenProgram,
   );
 
@@ -124,7 +127,7 @@ export async function collectFees(
       positionTokenAccount: getAssociatedTokenAddressSync(
         position.getData().positionMint,
         client.getContext().wallet.publicKey,
-        undefined,
+        false,
         positionMint.tokenProgram,
       ),
       tokenOwnerAccountA,
@@ -174,13 +177,11 @@ export async function collectFees(
     solana,
   );
 
-  // Build and simulate transaction
+  // Build and send transaction via the wallet-type-aware chokepoint (handles
+  // local/hardware and simulates internally).
   const txPayload = await builder.build();
   const transaction = txPayload.transaction;
-  await solana.simulateWithErrorHandling(transaction);
-
-  // Send and confirm transaction
-  const { signature, fee } = await solana.sendAndConfirmTransaction(transaction, [wallet]);
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(transaction, address);
 
   // Extract collected fees from balance changes
   const tokenAAddress = whirlpool.getTokenAInfo().address.toString();
@@ -188,11 +189,10 @@ export async function collectFees(
   const tokenA = await solana.getToken(tokenAAddress);
   const tokenB = await solana.getToken(tokenBAddress);
 
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-    signature,
-    client.getContext().wallet.publicKey.toString(),
-    [tokenAAddress, tokenBAddress],
-  );
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletPublicKey.toBase58(), [
+    tokenAAddress,
+    tokenBAddress,
+  ]);
 
   logger.info(
     `Fees collected: ${Math.abs(balanceChanges[0]).toFixed(6)} ${tokenA?.symbol || 'tokenA'}, ${Math.abs(balanceChanges[1]).toFixed(6)} ${tokenB?.symbol || 'tokenB'}`,

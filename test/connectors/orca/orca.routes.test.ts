@@ -66,30 +66,25 @@ describe('Orca Routes Structure', () => {
 
   describe('Route Registration', () => {
     it('should register Orca CLMM routes at /connectors/orca/clmm', async () => {
-      const routes = fastify.printRoutes();
+      // printRoutes compresses shared prefixes (okx/orca), so probe the routes directly:
+      // a registered route responds with validation/handler errors, an absent one with 404
+      const clmmRoute = await fastify.inject({ method: 'GET', url: '/connectors/orca/clmm/pool-info' });
+      expect(clmmRoute.statusCode).not.toBe(404);
 
-      // Check that Orca CLMM routes are registered
-      expect(routes).toContain('orca/clmm/');
+      // Check that AMM and router routes are NOT registered
+      const ammRoute = await fastify.inject({ method: 'GET', url: '/connectors/orca/amm/pool-info' });
+      expect(ammRoute.statusCode).toBe(404);
 
-      // Check that swap routes are NOT directly under /swap
-      expect(routes).not.toContain('orca/swap/');
-
-      // Check that AMM routes are NOT registered
-      expect(routes).not.toContain('orca/amm/');
-
-      // Check that router routes are NOT registered
-      expect(routes).not.toContain('orca/router/');
+      const routerRoute = await fastify.inject({ method: 'GET', url: '/connectors/orca/router/quote-swap' });
+      expect(routerRoute.statusCode).toBe(404);
     });
 
     it('should have key CLMM endpoints', async () => {
-      const routes = fastify.printRoutes();
+      const quoteSwap = await fastify.inject({ method: 'GET', url: '/connectors/orca/clmm/quote-swap' });
+      expect(quoteSwap.statusCode).not.toBe(404);
 
-      // Check for key swap endpoints
-      expect(routes).toContain('orca/clmm/');
-
-      // Verify some core endpoints exist (routes may be named differently)
-      // Just verify orca routes are registered
-      expect(routes.includes('orca')).toBe(true);
+      const executeSwap = await fastify.inject({ method: 'POST', url: '/connectors/orca/clmm/execute-swap' });
+      expect(executeSwap.statusCode).not.toBe(404);
     });
   });
 });

@@ -14,7 +14,18 @@
     },
     "swapProvider": {
       "type": "string",
-      "description": "Default swap router provider for this network (format: connector/type, e.g., jupiter/router)",
+      "description": "Default swap provider used by the unified /trading/swap routes when no connector is specified (format: connector/type)",
+      "enum": [
+        "jupiter/router",
+        "dflow/router",
+        "okx/router",
+        "titan/router",
+        "raydium/amm",
+        "raydium/clmm",
+        "meteora/clmm",
+        "orca/clmm",
+        "pancakeswap-sol/clmm"
+      ],
       "default": "jupiter/router"
     },
     "defaultComputeUnits": { "type": "number" },

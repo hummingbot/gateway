@@ -33,6 +33,13 @@ export const QuoteSwapRequest = Type.Object(
         description: 'Maximum acceptable slippage percentage',
       }),
     ),
+    approximateIfNoExactOut: Type.Optional(
+      Type.Boolean({
+        description:
+          'For BUY orders on routers without ExactOut support: approximate the required input via a sell-leg quote and return an ExactIn quote flagged as an approximation. If false, such BUY requests fail with a clear error.',
+        default: true,
+      }),
+    ),
   },
   { $id: 'QuoteSwapRequest' },
 );
@@ -67,6 +74,12 @@ export const QuoteSwapResponse = Type.Object(
     maxAmountIn: Type.Number({
       description: 'Maximum amount of tokenIn that will be spent',
     }),
+    approximation: Type.Optional(
+      Type.Boolean({
+        description:
+          'True when a BUY was approximated via a sell-leg ExactIn quote because the router does not support ExactOut; amountOut is an estimate rather than exact',
+      }),
+    ),
   },
   { $id: 'QuoteSwapResponse' },
 );
@@ -123,6 +136,13 @@ export const ExecuteSwapRequest = Type.Object(
         minimum: 0,
         maximum: 100,
         description: 'Maximum acceptable slippage percentage',
+      }),
+    ),
+    approximateIfNoExactOut: Type.Optional(
+      Type.Boolean({
+        description:
+          'For BUY orders on routers without ExactOut support: approximate the required input via a sell-leg quote and execute an ExactIn swap. If false, such BUY requests fail with a clear error.',
+        default: true,
       }),
     ),
   },

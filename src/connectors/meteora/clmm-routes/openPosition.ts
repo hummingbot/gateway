@@ -46,7 +46,10 @@ export async function openPosition(
     throw httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
   }
 
-  const wallet = await solana.getWallet(walletAddress);
+  // Build with the wallet's public key as authority — works for every wallet type
+  // (local, hardware). Signing/sending is delegated to
+  // sendAndConfirmTransactionForWallet, which knows how to sign for each type.
+  const walletPublicKey = new PublicKey(walletAddress);
   const newImbalancePosition = new Keypair();
 
   let dlmmPool;
@@ -108,6 +111,22 @@ export async function openPosition(
   const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true);
   const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false);
 
+  // A DLMM position holds at most 69 bins (program error 0x1798/6040 beyond that; ranges
+  // past ~130 bins fail even earlier with InvalidRealloc because the position account
+  // would exceed Solana's 10,240-byte CPI allocation limit). Validate here so users get
+  // the actual constraint instead of a cryptic on-chain error.
+  const MAX_POSITION_BIN_WIDTH = 69;
+  const positionWidth = maxBinId - minBinId + 1;
+  if (positionWidth > MAX_POSITION_BIN_WIDTH) {
+    const binStepPct = dlmmPool.lbPair.binStep / 100;
+    const maxRangePct = ((Math.pow(1 + binStepPct / 100, MAX_POSITION_BIN_WIDTH) - 1) * 100).toFixed(1);
+    throw httpErrors.badRequest(
+      `Price range ${lowerPrice}-${upperPrice} spans ${positionWidth} bins, but a Meteora DLMM position holds at ` +
+        `most ${MAX_POSITION_BIN_WIDTH} bins. At this pool's ${binStepPct}% bin step that is ~${maxRangePct}% ` +
+        `between lower and upper price. Narrow the range, or open multiple positions to cover it.`,
+    );
+  }
+
   // Don't add SOL rent to the liquidity amounts - rent is separate
   const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount || 0), dlmmPool.tokenX.mint.decimals));
   const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(quoteTokenAmount || 0), dlmmPool.tokenY.mint.decimals));
@@ -118,7 +137,7 @@ export async function openPosition(
 
   const createPositionTx = await dlmmPool.initializePositionAndAddLiquidityByStrategy({
     positionPubKey: newImbalancePosition.publicKey,
-    user: wallet.publicKey,
+    user: walletPublicKey,
     totalXAmount,
     totalYAmount,
     strategy: {
@@ -145,17 +164,12 @@ export async function openPosition(
   logger.info(`Transaction details: ${createPositionTx.instructions.length} instructions`);
 
   // Set the fee payer for simulation
-  createPositionTx.feePayer = wallet.publicKey;
+  createPositionTx.feePayer = walletPublicKey;
 
-  // Simulate with error handling (no signing needed for simulation)
-  await solana.simulateWithErrorHandling(createPositionTx);
-
-  logger.info('Transaction simulated successfully, sending to network...');
-
-  // Send and confirm the ORIGINAL unsigned transaction
-  // sendAndConfirmTransaction will handle the signing and auto-simulate for optimal compute units
-  const { signature, fee: txFee } = await solana.sendAndConfirmTransaction(createPositionTx, [
-    wallet,
+  // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and
+  // simulates internally). The newly generated position keypair is passed
+  // as an extra signer.
+  const { signature, fee: txFee } = await solana.sendAndConfirmTransactionForWallet(createPositionTx, walletAddress, [
     newImbalancePosition,
   ]);
 
@@ -182,7 +196,7 @@ export async function openPosition(
     }
 
     // Track wallet's balance changes for the tokens
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletPublicKey.toBase58(), [
       dlmmPool.tokenX.publicKey.toBase58(),
       dlmmPool.tokenY.publicKey.toBase58(),
     ]);

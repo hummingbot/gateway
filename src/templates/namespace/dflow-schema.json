@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "slippagePct": {
+      "type": "number",
+      "description": "Default slippage percentage for swaps (e.g., 1 = 1%)"
+    },
+    "apiKey": {
+      "type": "string",
+      "description": "DFlow API key (https://pond.dflow.net/build/api-key)"
+    },
+    "computeUnitPriceMicroLamports": {
+      "type": "number",
+      "description": "Compute unit price in micro-lamports; 0 = automatic priority fee"
+    },
+    "dynamicComputeUnitLimit": {
+      "type": "boolean",
+      "description": "Let DFlow simulate to determine the compute unit limit"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["slippagePct", "computeUnitPriceMicroLamports", "dynamicComputeUnitLimit"]
+}

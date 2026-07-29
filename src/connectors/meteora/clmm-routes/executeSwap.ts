@@ -8,11 +8,32 @@ import { ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/c
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
-import { Meteora } from '../meteora';
 import { MeteoraConfig } from '../meteora.config';
 import { MeteoraClmmExecuteSwapRequest, MeteoraClmmExecuteSwapRequestType } from '../schemas';
 
 import { getRawSwapQuote } from './quoteSwap';
+
+const DLMM_PROGRAM_ID = new PublicKey('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo');
+
+/**
+ * DLMM SDK 1.7.5 marks the optional binArrayBitmapExtension account (index 1 of EVERY
+ * swap-family instruction: swap/swap2, swapExactOut/2, swapWithPriceImpact/2) read-only,
+ * but the deployed program declares it `mut` — so on any pool that HAS a bitmap extension
+ * the swap fails on-chain with ConstraintMut (0x7d0, hummingbot/gateway#639). Promote it
+ * to writable. When the pool has no extension the SDK passes the DLMM program id as a
+ * placeholder, which must stay read-only. The liquidity instructions are unaffected
+ * (their IDL entries already say writable).
+ */
+export function fixSwapBitmapExtensionMeta<T extends { instructions?: { programId: PublicKey; keys: any[] }[] }>(
+  tx: T,
+): T {
+  for (const ix of tx.instructions ?? []) {
+    if (ix.programId?.equals?.(DLMM_PROGRAM_ID) && ix.keys?.length > 1 && !ix.keys[1].pubkey.equals(DLMM_PROGRAM_ID)) {
+      ix.keys[1].isWritable = true;
+    }
+  }
+  return tx;
+}
 
 export async function executeSwap(
   network: string,
@@ -25,7 +46,10 @@ export async function executeSwap(
   slippagePct: number = MeteoraConfig.config.slippagePct,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
-  const wallet = await solana.getWallet(address);
+  // Build with the wallet's public key as token authority — works for every wallet type
+  // (local, hardware). Signing/sending is delegated to
+  // sendAndConfirmTransactionForWallet, which knows how to sign for each type.
+  const walletPublicKey = new PublicKey(address);
 
   const {
     inputToken,
@@ -37,7 +61,7 @@ export async function executeSwap(
 
   logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
 
-  const swapTx =
+  const swapTx = fixSwapBitmapExtensionMeta(
     side === 'BUY'
       ? await dlmmPool.swapExactOut({
           inToken: new PublicKey(inputToken.address),
@@ -45,7 +69,7 @@ export async function executeSwap(
           outAmount: (swapQuote as SwapQuoteExactOut).outAmount,
           maxInAmount: (swapQuote as SwapQuoteExactOut).maxInAmount,
           lbPair: dlmmPool.pubkey,
-          user: wallet.publicKey,
+          user: walletPublicKey,
           binArraysPubkey: (swapQuote as SwapQuoteExactOut).binArraysPubkey,
         })
       : await dlmmPool.swap({
@@ -54,17 +78,14 @@ export async function executeSwap(
           inAmount: swapAmount,
           minOutAmount: (swapQuote as SwapQuote).minOutAmount,
           lbPair: dlmmPool.pubkey,
-          user: wallet.publicKey,
+          user: walletPublicKey,
           binArraysPubkey: (swapQuote as SwapQuote).binArraysPubkey,
-        });
+        }),
+  );
 
-  // Simulate transaction with proper error handling (before signing)
-  await solana.simulateWithErrorHandling(swapTx);
-
-  logger.info('Transaction simulated successfully, sending to network...');
-
-  // Send and confirm transaction using sendAndConfirmTransaction which handles signing
-  const { signature, fee } = await solana.sendAndConfirmTransaction(swapTx, [wallet]);
+  // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and
+  // simulates internally).
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(swapTx, address);
 
   logger.info(`Transaction sent with signature: ${signature}`);
 
@@ -81,7 +102,7 @@ export async function executeSwap(
     // Extract fee from the response
     const txFee = fee;
     // Transaction confirmed, extract balance changes
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, wallet.publicKey.toBase58(), [
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletPublicKey.toBase58(), [
       inputToken.address,
       outputToken.address,
     ]);

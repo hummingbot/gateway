@@ -1,0 +1,12 @@
+# Default slippage percentage for swaps (as a decimal, e.g., 1 = 1%)
+slippagePct: 1
+
+# OKX DEX aggregator API credentials (all three required)
+# Create them at https://web3.okx.com/build/dev-portal
+apiKey: ''
+secretKey: ''
+passphrase: ''
+
+# Compute unit price in micro-lamports for Solana priority fees
+# 0 = let OKX determine the priority fee automatically
+computeUnitPrice: 0
