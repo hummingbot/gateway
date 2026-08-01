@@ -1,0 +1,202 @@
+{
+  "version": "0.6.0",
+  "name": "futarchy",
+  "instructions": [
+    {
+      "name": "spotSwap",
+      "accounts": [
+        { "name": "dao", "isMut": true, "isSigner": false },
+        { "name": "trader", "isMut": true, "isSigner": true },
+        { "name": "baseMint", "isMut": false, "isSigner": false },
+        { "name": "quoteMint", "isMut": false, "isSigner": false },
+        { "name": "ammBaseVault", "isMut": true, "isSigner": false },
+        { "name": "ammQuoteVault", "isMut": true, "isSigner": false },
+        { "name": "traderBaseAccount", "isMut": true, "isSigner": false },
+        { "name": "traderQuoteAccount", "isMut": true, "isSigner": false },
+        { "name": "protocolFeeBaseVault", "isMut": true, "isSigner": false },
+        { "name": "protocolFeeQuoteVault", "isMut": true, "isSigner": false },
+        { "name": "tokenProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "swapType", "type": { "defined": "SwapType" } },
+        { "name": "inputAmount", "type": "u64" },
+        { "name": "minOutputAmount", "type": "u64" }
+      ]
+    },
+    {
+      "name": "conditionalSwap",
+      "accounts": [
+        { "name": "dao", "isMut": true, "isSigner": false },
+        { "name": "proposal", "isMut": true, "isSigner": false },
+        { "name": "trader", "isMut": true, "isSigner": true },
+        { "name": "conditionalInputMint", "isMut": false, "isSigner": false },
+        { "name": "conditionalOutputMint", "isMut": false, "isSigner": false },
+        { "name": "conditionalInputVault", "isMut": true, "isSigner": false },
+        { "name": "conditionalOutputVault", "isMut": true, "isSigner": false },
+        { "name": "traderInputAccount", "isMut": true, "isSigner": false },
+        { "name": "traderOutputAccount", "isMut": true, "isSigner": false },
+        { "name": "tokenProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "market", "type": { "defined": "Market" } },
+        { "name": "swapType", "type": { "defined": "SwapType" } },
+        { "name": "inputAmount", "type": "u64" },
+        { "name": "minOutputAmount", "type": "u64" }
+      ]
+    },
+    {
+      "name": "provideLiquidity",
+      "accounts": [
+        { "name": "dao", "isMut": true, "isSigner": false },
+        { "name": "liquidityProvider", "isMut": true, "isSigner": true },
+        { "name": "ammPosition", "isMut": true, "isSigner": false },
+        { "name": "baseMint", "isMut": false, "isSigner": false },
+        { "name": "quoteMint", "isMut": false, "isSigner": false },
+        { "name": "ammBaseVault", "isMut": true, "isSigner": false },
+        { "name": "ammQuoteVault", "isMut": true, "isSigner": false },
+        { "name": "lpBaseAccount", "isMut": true, "isSigner": false },
+        { "name": "lpQuoteAccount", "isMut": true, "isSigner": false },
+        { "name": "tokenProgram", "isMut": false, "isSigner": false },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "quoteAmount", "type": "u64" },
+        { "name": "maxBaseAmount", "type": "u64" },
+        { "name": "minLiquidity", "type": "u64" }
+      ]
+    },
+    {
+      "name": "withdrawLiquidity",
+      "accounts": [
+        { "name": "dao", "isMut": true, "isSigner": false },
+        { "name": "liquidityProvider", "isMut": true, "isSigner": true },
+        { "name": "ammPosition", "isMut": true, "isSigner": false },
+        { "name": "baseMint", "isMut": false, "isSigner": false },
+        { "name": "quoteMint", "isMut": false, "isSigner": false },
+        { "name": "ammBaseVault", "isMut": true, "isSigner": false },
+        { "name": "ammQuoteVault", "isMut": true, "isSigner": false },
+        { "name": "lpBaseAccount", "isMut": true, "isSigner": false },
+        { "name": "lpQuoteAccount", "isMut": true, "isSigner": false },
+        { "name": "tokenProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "liquidityAmount", "type": "u64" },
+        { "name": "minBaseAmount", "type": "u64" },
+        { "name": "minQuoteAmount", "type": "u64" }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Dao",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "treasuryPdaBump", "type": "u8" },
+          { "name": "protocolFeeBps", "type": "u16" },
+          { "name": "lpFeeBps", "type": "u16" },
+          { "name": "baseMint", "type": "publicKey" },
+          { "name": "quoteMint", "type": "publicKey" },
+          { "name": "ammBaseVault", "type": "publicKey" },
+          { "name": "ammQuoteVault", "type": "publicKey" },
+          { "name": "protocolFeeBaseVault", "type": "publicKey" },
+          { "name": "protocolFeeQuoteVault", "type": "publicKey" },
+          { "name": "totalLiquidity", "type": "u64" },
+          { "name": "amm", "type": { "defined": "Amm" } }
+        ]
+      }
+    },
+    {
+      "name": "Proposal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "number", "type": "u64" },
+          { "name": "state", "type": { "defined": "ProposalState" } },
+          { "name": "launchedAt", "type": "i64" },
+          { "name": "tradingEndSlot", "type": "u64" }
+        ]
+      }
+    },
+    {
+      "name": "AmmPosition",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "authority", "type": "publicKey" },
+          { "name": "liquidity", "type": "u64" }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "SwapType",
+      "type": {
+        "kind": "enum",
+        "variants": [{ "name": "Buy" }, { "name": "Sell" }]
+      }
+    },
+    {
+      "name": "Market",
+      "type": {
+        "kind": "enum",
+        "variants": [{ "name": "Pass" }, { "name": "Fail" }, { "name": "Spot" }]
+      }
+    },
+    {
+      "name": "ProposalState",
+      "type": {
+        "kind": "enum",
+        "variants": [{ "name": "Pending" }, { "name": "Passed" }, { "name": "Failed" }]
+      }
+    },
+    {
+      "name": "PoolState",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Spot",
+            "fields": [{ "name": "pool", "type": { "defined": "Pool" } }]
+          },
+          {
+            "name": "Futarchy",
+            "fields": [
+              { "name": "spot", "type": { "defined": "Pool" } },
+              { "name": "pass", "type": { "defined": "Pool" } },
+              { "name": "fail", "type": { "defined": "Pool" } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Pool",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "baseReserves", "type": "u64" },
+          { "name": "quoteReserves", "type": "u64" }
+        ]
+      }
+    },
+    {
+      "name": "Amm",
+      "type": {
+        "kind": "struct",
+        "fields": [{ "name": "state", "type": { "defined": "PoolState" } }]
+      }
+    }
+  ],
+  "errors": [
+    { "code": 6000, "name": "ProposalNotActive", "msg": "Proposal is not in an active trading state" },
+    { "code": 6001, "name": "SwapSlippageExceeded", "msg": "Swap output is less than minimum expected" },
+    { "code": 6002, "name": "PoolNotInSpotState", "msg": "Pool must be in Spot state for this operation" },
+    { "code": 6003, "name": "InsufficientBalance", "msg": "Insufficient token balance" },
+    { "code": 6004, "name": "InvalidMarket", "msg": "Invalid market selection" }
+  ],
+  "metadata": {
+    "address": "FUTARELBfJfQ8RDGhg1wdhddq1odMAJUePHFuBYfUxKq"
+  }
+}

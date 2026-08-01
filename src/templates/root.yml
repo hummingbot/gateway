@@ -108,6 +108,10 @@ configurations:
     configurationPath: connectors/dflow.yml
     schemaPath: dflow-schema.json
 
+  $namespace metadao:
+    configurationPath: connectors/metadao.yml
+    schemaPath: metadao-schema.json
+
   $namespace okx:
     configurationPath: connectors/okx.yml
     schemaPath: okx-schema.json

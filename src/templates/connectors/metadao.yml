@@ -1,0 +1,9 @@
+# MetaDAO Connector Configuration
+# Futarchy program ID
+programId: 'FUTARELBfJfQ8RDGhg1wdhddq1odMAJUePHFuBYfUxKq'
+
+# Conditional vault program ID
+conditionalVaultProgramId: 'VLTX1ishMBbcX3rdBWGssxawAo1Q2X2qxYFYqiGodVg'
+
+# Default slippage percentage for swaps (e.g., 0.5 = 0.5%)
+defaultSlippagePct: 0.5

@@ -19,6 +19,7 @@ import { configRoutes } from './config/config.routes';
 import { register0xRoutes } from './connectors/0x/0x.routes';
 import { dflowRoutes } from './connectors/dflow/dflow.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
+import { metadaoRoutes } from './connectors/metadao/metadao.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { okxRoutes } from './connectors/okx/okx.routes';
 import { orcaRoutes } from './connectors/orca/orca.routes';
@@ -96,6 +97,10 @@ const swaggerOptions = {
       {
         name: '/connector/jupiter',
         description: 'Jupiter connector endpoints',
+      },
+      {
+        name: '/connector/metadao',
+        description: 'MetaDAO Futarchy connector endpoints (experimental)',
       },
       {
         name: '/connector/meteora',
@@ -311,6 +316,9 @@ const configureGatewayServer = () => {
     app.register(dflowRoutes.router, {
       prefix: '/connectors/dflow/router',
     });
+
+    // MetaDAO routes (experimental)
+    app.register(metadaoRoutes.futarchy, { prefix: '/connectors/metadao/futarchy' });
 
     // OKX DEX aggregator routes
     app.register(okxRoutes.router, {
