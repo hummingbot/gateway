@@ -9,6 +9,7 @@ export const ErrorCode = {
   INVALID_PARAMS: 'INVALID_PARAMS', // Non-retryable - bad request params
   SLIPPAGE_EXCEEDED: 'SLIPPAGE_EXCEEDED', // Non-retryable - price moved too much
   NO_ROUTE_FOUND: 'NO_ROUTE_FOUND', // Can retry with flipped direction (ExactIn vs ExactOut)
+  RATE_LIMITED: 'RATE_LIMITED', // Retryable after a delay - upstream API throttled us
 } as const;
 
 export type ErrorCodeType = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -99,6 +100,10 @@ export function noRouteFound(message: string): HttpError {
   return new HttpError(400, message, ErrorCode.NO_ROUTE_FOUND);
 }
 
+export function rateLimited(message: string): HttpError {
+  return new HttpError(429, message, ErrorCode.RATE_LIMITED);
+}
+
 /**
  * HTTP errors object - drop-in replacement for fastify.httpErrors
  */
@@ -113,5 +118,6 @@ export const httpErrors = {
   insufficientBalance,
   slippageExceeded,
   noRouteFound,
+  rateLimited,
   createError: (statusCode: number, message: string) => new HttpError(statusCode, message),
 };

@@ -250,11 +250,16 @@ export class ChainstackService extends RPCProvider {
     };
 
     if (this.networkInfo.chain === 'ethereum') {
+      // throttleLimit: 1 disables ethers' built-in 429 retry so the interceptor
+      // is the single retry layer.
       this.ethereumProvider = createRateLimitAwareEthereumProvider(
-        new providers.StaticJsonRpcProvider(this.selectedNode.https_endpoint, {
-          name: mapping.network,
-          chainId: this.networkInfo.chainId,
-        }),
+        new providers.StaticJsonRpcProvider(
+          { url: this.selectedNode.https_endpoint, throttleLimit: 1 },
+          {
+            name: mapping.network,
+            chainId: this.networkInfo.chainId,
+          },
+        ),
         this.selectedNode.https_endpoint,
       );
     }

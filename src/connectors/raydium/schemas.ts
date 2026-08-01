@@ -264,7 +264,18 @@ export const RaydiumClmmGetPoolInfoRequest = Type.Object({
     description: 'Raydium CLMM pool address',
     examples: [CLMM_POOL_ADDRESS_EXAMPLE],
   }),
+  binCount: Type.Optional(
+    Type.Integer({
+      description:
+        'If > 0, include a `bins` array (per-tickSpacing token amounts around the current tick), ' +
+        'mirroring Meteora pool-info.bins[]. Default 0 — pool-info skips the extra tick-array fetch.',
+      default: 0,
+      minimum: 0,
+      maximum: 401,
+    }),
+  ),
 });
+export type RaydiumClmmGetPoolInfoRequestType = Static<typeof RaydiumClmmGetPoolInfoRequest>;
 
 export const RaydiumClmmGetPositionInfoRequest = Type.Object({
   network: Type.Optional(

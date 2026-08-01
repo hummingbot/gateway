@@ -81,24 +81,44 @@ async function quoteSwap(
 
   logger.debug(`[quoteSwap] Input: ${inputToken.symbol}, Output: ${outputToken.symbol}, Exact in: ${exactIn}`);
 
-  // Get quote from AlphaRouter (smart order router with split routing)
   // Use a placeholder address for quotes when no wallet is provided
   const recipient = walletAddress || '0x0000000000000000000000000000000000000001';
-  const quoteResult = await uniswap.getAlphaRouterQuote(inputToken, outputToken, amount, side, recipient, slippagePct);
+
+  // Normalized quote data (populated from AlphaRouter or Universal Router below)
+  let routePath: string;
+  let estimatedAmountIn: number;
+  let estimatedAmountOut: number;
+  let priceImpactPct: number;
+  let trade: any;
+  let methodParameters: { calldata: string; value: string; to: string } | undefined;
+  let quoteResult: any;
+
+  if (uniswap.isAlphaRouterAvailable()) {
+    // Get quote from AlphaRouter (smart order router with split routing)
+    quoteResult = await uniswap.getAlphaRouterQuote(inputToken, outputToken, amount, side, recipient, slippagePct);
+    routePath = quoteResult.routeString;
+    estimatedAmountIn = parseFloat(quoteResult.inputAmount);
+    estimatedAmountOut = parseFloat(quoteResult.outputAmount);
+    priceImpactPct = quoteResult.priceImpact;
+    trade = quoteResult.route.trade; // Extract trade from SwapRoute for executeQuote compatibility
+    methodParameters = quoteResult.methodParameters;
+  } else {
+    // The AlphaRouter SDK only supports chains hardcoded in @uniswap/smart-order-router;
+    // on other networks (e.g. robinhoodchain) quote directly via the Universal Router
+    logger.info(`[quoteSwap] AlphaRouter not available for ${network}, using Universal Router quote`);
+    quoteResult = await uniswap.getUniversalRouterQuote(inputToken, outputToken, amount, side, recipient, slippagePct);
+    routePath = quoteResult.routePath;
+    estimatedAmountIn = parseFloat(quoteResult.trade.inputAmount.toExact());
+    estimatedAmountOut = parseFloat(quoteResult.trade.outputAmount.toExact());
+    priceImpactPct = quoteResult.priceImpact;
+    trade = quoteResult.trade;
+    methodParameters = quoteResult.methodParameters;
+  }
 
   // Generate unique quote ID
   const quoteId = uuidv4();
 
-  // Extract route information from AlphaRouter result
-  const routePath = quoteResult.routeString;
-
-  // Get amounts from AlphaRouter result
-  const estimatedAmountIn = parseFloat(quoteResult.inputAmount);
-  const estimatedAmountOut = parseFloat(quoteResult.outputAmount);
-
-  logger.debug(
-    `[quoteSwap] Quote ${quoteId}: ${estimatedAmountIn} -> ${estimatedAmountOut}, gas: ${quoteResult.gasEstimate}`,
-  );
+  logger.debug(`[quoteSwap] Quote ${quoteId}: ${estimatedAmountIn} -> ${estimatedAmountOut}`);
 
   const minAmountOut = side === 'SELL' ? estimatedAmountOut * (1 - slippagePct / 100) : estimatedAmountOut;
   const maxAmountIn = side === 'BUY' ? estimatedAmountIn * (1 + slippagePct / 100) : estimatedAmountIn;
@@ -116,8 +136,8 @@ async function quoteSwap(
   const cachedQuote = {
     quote: {
       ...quoteResult,
-      trade: quoteResult.route.trade, // Extract trade from SwapRoute for executeQuote compatibility
-      methodParameters: quoteResult.methodParameters,
+      trade,
+      methodParameters,
     },
     request: {
       network,
@@ -137,11 +157,9 @@ async function quoteSwap(
   logger.info(
     `[quoteSwap] Quote ${quoteId}: ${estimatedAmountIn} ${inputToken.symbol} -> ${estimatedAmountOut} ${outputToken.symbol}`,
   );
-  logger.debug(`[quoteSwap] Method parameters available: ${!!quoteResult.methodParameters}`);
-  if (quoteResult.methodParameters) {
-    logger.debug(
-      `[quoteSwap] Calldata length: ${quoteResult.methodParameters.calldata.length}, To: ${quoteResult.methodParameters.to}`,
-    );
+  logger.debug(`[quoteSwap] Method parameters available: ${!!methodParameters}`);
+  if (methodParameters) {
+    logger.debug(`[quoteSwap] Calldata length: ${methodParameters.calldata.length}, To: ${methodParameters.to}`);
   }
 
   return {
@@ -152,7 +170,7 @@ async function quoteSwap(
     amountIn: estimatedAmountIn,
     amountOut: estimatedAmountOut,
     price,
-    priceImpactPct: quoteResult.priceImpact,
+    priceImpactPct,
     minAmountOut,
     maxAmountIn,
     // Uniswap-specific fields

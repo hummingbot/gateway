@@ -425,7 +425,20 @@ export const OrcaClmmGetPoolInfoRequest = Type.Object({
     description: 'Orca CLMM pool address',
     examples: [CLMM_POOL_ADDRESS_EXAMPLE],
   }),
+  // binCount inherited from base GetPoolInfoRequest semantics — declared
+  // explicitly here so the Orca network enum override stays a flat schema.
+  binCount: Type.Optional(
+    Type.Integer({
+      description:
+        'If > 0, include a `bins` array (per-tickSpacing token amounts around the current tick). ' +
+        'Default 0 — pool-info skips the extra getProgramAccounts call.',
+      default: 0,
+      minimum: 0,
+      maximum: 401,
+    }),
+  ),
 });
+export type OrcaClmmGetPoolInfoRequestType = Static<typeof OrcaClmmGetPoolInfoRequest>;
 
 // Orca CLMM Get Position Info Request
 export const OrcaClmmGetPositionInfoRequest = Type.Object({

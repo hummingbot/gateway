@@ -99,9 +99,7 @@ describe('POST /open-position', () => {
 
     // Mock Solana.getInstance
     const mockSolana = {
-      getWallet: jest.fn().mockResolvedValue(mockWallet),
-      simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
-      sendAndConfirmTransaction: jest.fn().mockResolvedValue({
+      sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({
         signature: 'test-signature',
         fee: 0.000005,
       }),
@@ -312,8 +310,7 @@ describe('POST /open-position', () => {
   describe('error handling', () => {
     it('should return 500 when position opening fails', async () => {
       const mockSolana = {
-        getWallet: jest.fn().mockResolvedValue(mockWallet),
-        simulateWithErrorHandling: jest.fn().mockRejectedValue(new Error('Simulation failed')),
+        sendAndConfirmTransactionForWallet: jest.fn().mockRejectedValue(new Error('Send failed')),
       };
       (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
 

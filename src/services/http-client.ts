@@ -36,6 +36,7 @@ export class HttpClientError extends Error {
   public statusText?: string;
   public data?: any;
   public code?: string;
+  public headers?: Headers;
 
   constructor(
     message: string,
@@ -44,6 +45,7 @@ export class HttpClientError extends Error {
       statusText?: string;
       data?: any;
       code?: string;
+      headers?: Headers;
     },
   ) {
     super(message);
@@ -52,6 +54,25 @@ export class HttpClientError extends Error {
     this.statusText = options?.statusText;
     this.data = options?.data;
     this.code = options?.code;
+    this.headers = options?.headers;
+  }
+
+  /**
+   * Whether the upstream API throttled this request.
+   */
+  get isRateLimit(): boolean {
+    return this.status === 429;
+  }
+
+  /**
+   * Seconds to wait before retrying, from the Retry-After header. Undefined if
+   * the upstream did not say.
+   */
+  get retryAfterSeconds(): number | undefined {
+    const raw = this.headers?.get('retry-after');
+    if (!raw) return undefined;
+    const seconds = Number(raw);
+    return Number.isFinite(seconds) ? seconds : undefined;
   }
 
   /**
@@ -142,19 +163,19 @@ export class HttpClient {
         logger.debug(`HTTP Response: ${response.status}`);
       }
 
-      // Parse response body
-      const contentType = response.headers.get('content-type');
+      // Parse response body.
+      // Always read as text first, then attempt JSON. Calling response.json()
+      // directly makes a non-JSON body (e.g. a plain-text "Rate limit exceeded"
+      // served with an application/json content-type) throw a SyntaxError that
+      // escapes to the network-error branch below, discarding the HTTP status.
+      // That is how upstream 429s used to reach callers as an opaque
+      // `Unexpected token 'R', "Rate limit"... is not valid JSON`.
+      const text = await response.text();
       let data: any;
-      if (contentType?.includes('application/json')) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
-        // Try to parse as JSON anyway (some APIs don't set content-type correctly)
-        try {
-          data = JSON.parse(text);
-        } catch {
-          data = text;
-        }
+      try {
+        data = text.length > 0 ? JSON.parse(text) : undefined;
+      } catch {
+        data = text;
       }
 
       // Throw error for non-2xx status codes (matching axios behavior)
@@ -163,6 +184,7 @@ export class HttpClient {
           status: response.status,
           statusText: response.statusText,
           data,
+          headers: response.headers,
         });
       }
 

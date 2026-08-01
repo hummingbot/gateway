@@ -1,15 +1,23 @@
+import { Contract as EthersProjectContract } from '@ethersproject/contracts';
+import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { FeeAmount } from '@uniswap/v3-sdk';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import JSBI from 'jsbi';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { GetPoolInfoRequestType, PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
+import { PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
-import { UniswapClmmGetPoolInfoRequest } from '../schemas';
+import { UniswapClmmGetPoolInfoRequest, UniswapClmmGetPoolInfoRequestType } from '../schemas';
 import { Uniswap } from '../uniswap';
-import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
+import { computeUniswapBinDistribution, formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
-export async function getPoolInfo(fastify: FastifyInstance, network: string, poolAddress: string): Promise<PoolInfo> {
+export async function getPoolInfo(
+  fastify: FastifyInstance,
+  network: string,
+  poolAddress: string,
+  binCount: number = 0,
+): Promise<PoolInfo> {
   const uniswap = await Uniswap.getInstance(network);
 
   if (!poolAddress) {
@@ -75,7 +83,7 @@ export async function getPoolInfo(fastify: FastifyInstance, network: string, poo
   // Get active tick/bin
   const activeBinId = pool.tickCurrent;
 
-  return {
+  const result: PoolInfo = {
     address: poolAddress,
     baseTokenAddress: baseTokenObj.address,
     quoteTokenAddress: quoteTokenObj.address,
@@ -86,11 +94,34 @@ export async function getPoolInfo(fastify: FastifyInstance, network: string, poo
     quoteTokenAmount: quoteTokenAmount,
     activeBinId: activeBinId,
   };
+
+  // Optionally include the per-bin distribution around the current tick.
+  // Fires N parallel pool.ticks(tick) reads — only when binCount > 0 so the
+  // default pool-info latency is unaffected.
+  if (binCount > 0) {
+    // Direct V3 Pool ABI contract — ethereum.getContract() returns an ERC20-typed
+    // contract which wouldn't expose ticks(). Use the same ABI the rest of the
+    // connector uses for V3 pool reads.
+    const poolContract = new EthersProjectContract(poolAddress, IUniswapV3PoolABI, ethereum.provider);
+    result.bins = await computeUniswapBinDistribution({
+      poolContract,
+      tickSpacing,
+      currentTick: activeBinId,
+      currentSqrtPriceX96: JSBI.BigInt(sqrtPriceX96.toString()),
+      activeLiquidity: JSBI.BigInt(pool.liquidity.toString()),
+      decimals0: token0.decimals,
+      decimals1: token1.decimals,
+      isBaseToken0,
+      binCount,
+    });
+  }
+
+  return result;
 }
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetPoolInfoRequestType;
+    Querystring: UniswapClmmGetPoolInfoRequestType;
     Reply: Record<string, any>;
   }>(
     '/pool-info',
@@ -106,9 +137,8 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request): Promise<PoolInfo> => {
       try {
-        const { poolAddress } = request.query;
-        const network = request.query.network;
-        return await getPoolInfo(fastify, network, poolAddress);
+        const { poolAddress, binCount = 0, network } = request.query;
+        return await getPoolInfo(fastify, network, poolAddress, binCount);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

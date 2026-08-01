@@ -1,15 +1,17 @@
 import { TransactionBuilder } from '@orca-so/common-sdk';
-import { fetchAllTickArray, fetchOracle, fetchWhirlpool, getTickArrayAddress } from '@orca-so/whirlpools-client';
+import { swapInstructions, setWhirlpoolsConfig } from '@orca-so/whirlpools';
+import { fetchWhirlpool, fetchAllPositionWithFilter, positionWhirlpoolFilter } from '@orca-so/whirlpools-client';
 import {
   IncreaseLiquidityQuote,
   TransferFee,
-  getTickArrayStartTickIndex,
   increaseLiquidityQuoteA,
   increaseLiquidityQuoteB,
-  isInitializedWithAdaptiveFee,
   priceToTickIndex,
   sqrtPriceToPrice,
-  swapQuoteByInputToken,
+  tickIndexToPrice,
+  tickIndexToSqrtPrice,
+  tryGetAmountDeltaA,
+  tryGetAmountDeltaB,
 } from '@orca-so/whirlpools-core';
 import {
   ORCA_WHIRLPOOL_PROGRAM_ID,
@@ -358,96 +360,63 @@ export interface OrcaSwapQuote {
 export async function getOrcaSwapQuote(
   rpc: Rpc<GetAccountInfoApi & GetMultipleAccountsApi & GetEpochInfoApi>,
   poolAddress: string,
-  inputTokenMint: string,
-  outputTokenMint: string,
+  baseTokenMint: string,
+  quoteTokenMint: string,
   amount: number,
+  side: 'BUY' | 'SELL',
   slippagePct: number = 1,
+  network: string = 'mainnet-beta',
 ): Promise<OrcaSwapQuote> {
-  const currentEpoch = await rpc.getEpochInfo().send();
+  await setWhirlpoolsConfig(network === 'mainnet-beta' ? 'solanaMainnet' : 'solanaDevnet');
+
   const whirlpoolAddress = address(poolAddress);
   const whirlpool = await fetchWhirlpool(rpc, whirlpoolAddress);
-
   if (!whirlpool.data) {
     throw new Error(`Whirlpool not found: ${poolAddress}`);
   }
 
-  const isAdaptiveFee = isInitializedWithAdaptiveFee(whirlpool.data);
   const [mintA, mintB] = await fetchAllMint(rpc, [whirlpool.data.tokenMintA, whirlpool.data.tokenMintB]);
+  const tokenAMint = whirlpool.data.tokenMintA.toString();
 
-  // Determine if we're swapping A->B or B->A
-  const aToB = inputTokenMint === whirlpool.data.tokenMintA;
-  const inputMint = aToB ? mintA : mintB;
-  const outputMint = aToB ? mintB : mintA;
+  // BUY  -> buy `amount` of base token (exact output, input = quote token)
+  // SELL -> sell `amount` of base token (exact input, input = base token)
+  const isBuy = side === 'BUY';
+  const inputTokenMint = isBuy ? quoteTokenMint : baseTokenMint;
+  const outputTokenMint = isBuy ? baseTokenMint : quoteTokenMint;
+  const inputIsA = inputTokenMint === tokenAMint;
+  const inputDecimals = inputIsA ? mintA.data.decimals : mintB.data.decimals;
+  const outputDecimals = inputIsA ? mintB.data.decimals : mintA.data.decimals;
+  const slippageBps = Math.round(slippagePct * 100);
 
-  // Fetch tick arrays needed for swap calculation
-  const tickSpacing = whirlpool.data.tickSpacing;
-  const currentTickIndex = whirlpool.data.tickCurrentIndex;
+  // The v4 SDK resolves tick arrays, the oracle and Token-2022 transfer fees
+  // internally. Unlike the legacy whirlpools-core swapQuoteByInputToken/
+  // swapQuoteByOutputToken, it correctly quotes adaptive-fee whirlpools
+  // (fee tier index >= 1024, e.g. CASH/USDC) — the legacy WASM path panics
+  // with `unreachable` on those pools even when the oracle is supplied.
+  const swapParams = isBuy
+    ? { outputAmount: BigInt(Math.floor(amount * Math.pow(10, outputDecimals))), mint: address(outputTokenMint) }
+    : { inputAmount: BigInt(Math.floor(amount * Math.pow(10, inputDecimals))), mint: address(inputTokenMint) };
+  const { quote } = await swapInstructions(rpc as any, swapParams as any, whirlpoolAddress, slippageBps);
 
-  // Get the starting tick array index
-  const startTickIndex = getTickArrayStartTickIndex(currentTickIndex, tickSpacing);
+  const estimatedAmountIn = isBuy ? (quote as any).tokenEstIn : (quote as any).tokenIn;
+  const estimatedAmountOut = isBuy ? (quote as any).tokenOut : (quote as any).tokenEstOut;
 
-  // Fetch multiple tick arrays (we need at least 3 for most swaps)
-  const tickArrayAddresses = [];
-  for (let i = -1; i <= 1; i++) {
-    const tickArrayAddress = await getTickArrayAddress(whirlpoolAddress, startTickIndex + i * tickSpacing * 88);
-    tickArrayAddresses.push(tickArrayAddress[0]);
-  }
+  const inputAmount = Number(estimatedAmountIn) / Math.pow(10, inputDecimals);
+  const outputAmount = Number(estimatedAmountOut) / Math.pow(10, outputDecimals);
+  const minOutputAmount = isBuy ? outputAmount : Number((quote as any).tokenMinOut) / Math.pow(10, outputDecimals);
+  const maxInputAmount = isBuy ? Number((quote as any).tokenMaxIn) / Math.pow(10, inputDecimals) : inputAmount;
 
-  const tickArrays = await fetchAllTickArray(rpc, tickArrayAddresses);
+  // Price is always expressed in quote-per-base units, independent of side.
+  const baseAmount = isBuy ? outputAmount : inputAmount;
+  const quoteAmount = isBuy ? inputAmount : outputAmount;
+  const executionPrice = baseAmount > 0 ? quoteAmount / baseAmount : 0;
 
-  // Convert amount to lamports/token units
-  const decimalsToUse = inputMint.data.decimals;
-  const amountBigInt = BigInt(Math.floor(amount * Math.pow(10, decimalsToUse)));
-
-  // Get transfer fees
-  const inputTransferFee = getCurrentTransferFee(inputMint, currentEpoch.epoch);
-  const outputTransferFee = getCurrentTransferFee(outputMint, currentEpoch.epoch);
-
-  // Get oracle only if isAdaptiveFee is true
-  let oracle = { data: null };
-  if (isAdaptiveFee) {
-    oracle = await fetchOracle(rpc, whirlpool.address);
-    if (!oracle.data) {
-      throw new Error(`Oracle not found: ${whirlpool.address}`);
-    }
-  } else {
-    // If not adaptive fee, supply dummy oracle structure as expected later
-    oracle.data = null;
-  }
-
-  // Get timestamp in big int
-  const timestamp = BigInt(Math.floor(Date.now() / 1000));
-
-  // Get swap quote
-  const quote = swapQuoteByInputToken(
-    amountBigInt,
-    aToB,
-    slippagePct * 100, // Convert to basis points (1% = 100)
-    whirlpool.data,
-    oracle.data,
-    tickArrays.map((ta) => ta.data),
-    timestamp,
-    inputTransferFee,
-    outputTransferFee,
-  );
-  const estimatedAmountIn = quote.tokenIn;
-  const estimatedAmountOut = quote.tokenEstOut;
-
-  // Convert bigints to human-readable numbers
-  const inputAmount = Number(estimatedAmountIn) / Math.pow(10, inputMint.data.decimals);
-  const outputAmount = Number(estimatedAmountOut) / Math.pow(10, outputMint.data.decimals);
-
-  // Apply slippage for min/max amounts
-  const minOutputAmount = outputAmount * (1 - slippagePct / 100);
-  const maxInputAmount = inputAmount * (1 + slippagePct / 100);
-
-  // Calculate price and price impact
+  // Spot price in the same quote/base convention. sqrtPriceToPrice returns
+  // tokenB per tokenA, so we invert when base is tokenB.
   const currentPrice = sqrtPriceToPrice(whirlpool.data.sqrtPrice, mintA.data.decimals, mintB.data.decimals);
-  const executionPrice = outputAmount / inputAmount;
-
-  const priceImpactPct = aToB
-    ? Math.abs((executionPrice - currentPrice) / currentPrice) * 100
-    : Math.abs((1 / executionPrice - 1 / currentPrice) / (1 / currentPrice)) * 100;
+  const baseIsA = baseTokenMint === tokenAMint;
+  const spotRate = baseIsA ? currentPrice : 1 / currentPrice;
+  const priceImpactPct = spotRate > 0 ? Math.abs((spotRate - executionPrice) / spotRate) * 100 : 0;
 
   return {
     inputToken: inputTokenMint,
@@ -701,4 +670,81 @@ export function getTickArrayPubkeys(
       ORCA_WHIRLPOOL_PROGRAM_ID,
     ).publicKey,
   };
+}
+
+/**
+ * Per-bin liquidity distribution around the current tick for a whirlpool.
+ *
+ * For each tick-spacing-wide bin in the window:
+ *  1. Sum the L of every open Position whose range overlaps the bin (one
+ *     `fetchAllPositionWithFilter` + `positionWhirlpoolFilter` call covers
+ *     all positions in the pool — a single getProgramAccounts under the hood).
+ *  2. Convert that L to token amounts via V3 sqrt-price math
+ *     (`tryGetAmountDeltaA`/`tryGetAmountDeltaB`), splitting at the current
+ *     sqrtPrice when the bin contains the active tick.
+ *
+ * Output shape mirrors Meteora's `pool-info.bins[]`:
+ *   { binId, price, baseTokenAmount, quoteTokenAmount }
+ */
+export interface OrcaBinDistributionEntry {
+  binId: number;
+  price: number;
+  baseTokenAmount: number;
+  quoteTokenAmount: number;
+}
+
+export async function computeOrcaBinDistribution(args: {
+  rpc: Parameters<typeof fetchAllPositionWithFilter>[0];
+  poolAddress: string;
+  tickSpacing: number;
+  currentTickIndex: number;
+  currentSqrtPrice: bigint;
+  decimalsA: number;
+  decimalsB: number;
+  binCount: number;
+}): Promise<OrcaBinDistributionEntry[]> {
+  const { rpc, poolAddress, tickSpacing, currentTickIndex, currentSqrtPrice, decimalsA, decimalsB, binCount } = args;
+  if (binCount <= 0) return [];
+
+  const positionAccounts = await fetchAllPositionWithFilter(rpc, positionWhirlpoolFilter(address(poolAddress)));
+
+  const halfBins = Math.floor(binCount / 2);
+  const snappedCurrent = Math.floor(currentTickIndex / tickSpacing) * tickSpacing;
+  const firstBinStart = snappedCurrent - halfBins * tickSpacing;
+  const scaleA = 10 ** decimalsA;
+  const scaleB = 10 ** decimalsB;
+
+  const bins: OrcaBinDistributionEntry[] = [];
+  for (let i = 0; i < binCount; i++) {
+    const tickStart = firstBinStart + i * tickSpacing;
+    const tickEnd = tickStart + tickSpacing;
+    let binL = 0n;
+    for (const account of positionAccounts) {
+      const p = account.data;
+      if (p.tickLowerIndex < tickEnd && p.tickUpperIndex > tickStart) {
+        binL += p.liquidity;
+      }
+    }
+    let rawA = 0n;
+    let rawB = 0n;
+    if (binL > 0n) {
+      const sqrtA = tickIndexToSqrtPrice(tickStart);
+      const sqrtB = tickIndexToSqrtPrice(tickEnd);
+      if (currentTickIndex >= tickEnd) {
+        rawB = tryGetAmountDeltaB(sqrtA, sqrtB, binL, false);
+      } else if (currentTickIndex < tickStart) {
+        rawA = tryGetAmountDeltaA(sqrtA, sqrtB, binL, false);
+      } else {
+        rawA = tryGetAmountDeltaA(currentSqrtPrice, sqrtB, binL, false);
+        rawB = tryGetAmountDeltaB(sqrtA, currentSqrtPrice, binL, false);
+      }
+    }
+    bins.push({
+      binId: tickStart,
+      price: tickIndexToPrice(tickStart, decimalsA, decimalsB),
+      baseTokenAmount: Number(rawA) / scaleA,
+      quoteTokenAmount: Number(rawB) / scaleB,
+    });
+  }
+  return bins;
 }

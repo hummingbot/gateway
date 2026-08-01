@@ -10,6 +10,8 @@
  * - Universal Router: https://github.com/Uniswap/universal-router/tree/main/deploy-addresses
  */
 
+import { UNIVERSAL_ROUTER_ADDRESS, UniversalRouterVersion } from '@uniswap/universal-router-sdk';
+
 export interface UniswapContractAddresses {
   // V2 contracts
   uniswapV2RouterAddress: string;
@@ -184,6 +186,37 @@ export const contractAddresses: NetworkContractAddresses = {
     // Universal Router V2 - Official Uniswap address
     universalRouterV2Address: '0x3315ef7ca28db74abadc6c44570efdf06b04b020',
   },
+  robinhoodchain: {
+    // V2 contracts - Official Uniswap addresses
+    // https://developers.uniswap.org/docs/protocols/v2/deployments
+    uniswapV2RouterAddress: '0x89e5db8b5aa49aa85ac63f691524311aeb649eba',
+    uniswapV2FactoryAddress: '0x8bceaa40b9acdfaedf85adf4ff01f5ad6517937f',
+    // V3 contracts - Official Uniswap addresses
+    // https://developers.uniswap.org/docs/protocols/v3/deployments/v3-robinhood-chain-deployments
+    uniswapV3SwapRouter02Address: '0xcaf681a66d020601342297493863e78c959e5cb2',
+    uniswapV3NftManagerAddress: '0x73991a25c818bf1f1128deaab1492d45638de0d3',
+    uniswapV3QuoterV2ContractAddress: '0x33e885ed0ec9bf04ecfb19341582aadcb4c8a9e7',
+    uniswapV3FactoryAddress: '0x1f7d7550b1b028f7571e69a784071f0205fd2efa',
+    // Universal Router V2 - Official Uniswap address
+    universalRouterV2Address: '0x8876789976decbfcbbbe364623c63652db8c0904',
+  },
+  unichain: {
+    // V2 contracts - Official Uniswap addresses
+    // https://developers.uniswap.org/docs/protocols/v2/deployments
+    uniswapV2RouterAddress: '0x284f11109359a7e1306c3e447ef14d38400063ff',
+    uniswapV2FactoryAddress: '0x1f98400000000000000000000000000000000002',
+    // V3 contracts - Official Uniswap addresses
+    // https://developers.uniswap.org/docs/protocols/v3/deployments
+    uniswapV3SwapRouter02Address: '0x73855d06de49d0fe4a9c42636ba96c62da12ff9c',
+    uniswapV3NftManagerAddress: '0x943e6e07a7e8e791dafc44083e54041d743c46e9',
+    uniswapV3QuoterV2ContractAddress: '0x565ac8c7863d9bb16d07e809ff49fe5cd467634c',
+    uniswapV3FactoryAddress: '0x1f98400000000000000000000000000000000003',
+    // Universal Router V2 - Official Uniswap address
+    universalRouterV2Address: '0xef740bf23acae26f6492b10de645d6b98dc8eaf3',
+    // V4 contracts - Official Uniswap addresses
+    uniswapV4PoolManagerAddress: '0x1f98400000000000000000000000000000000004',
+    uniswapV4StateViewAddress: '0x86e8631a016f9068c3f085faf484ee3f5fdee8f2',
+  },
   worldchain: {
     // V2 contracts - No official Uniswap V2 deployment for Worldchain network
     uniswapV2RouterAddress: null,
@@ -248,6 +281,36 @@ export function getUniversalRouterV2Address(network: string): string {
   }
 
   return address;
+}
+
+/**
+ * Resolve which Universal Router version the configured router address implements.
+ *
+ * The SDK encodes calldata differently per version, and a mismatch makes the router
+ * revert while decoding (SliceOutOfBounds). Rather than assume a version, we look the
+ * configured address up in the SDK's own deployment map: Robinhood Chain only has
+ * 2.1.1, Celo only has 1.2, and most chains are on 2.0.
+ */
+export function getUniversalRouterVersion(network: string, chainId: number): UniversalRouterVersion {
+  const address = getUniversalRouterV2Address(network).toLowerCase();
+
+  for (const version of Object.values(UniversalRouterVersion)) {
+    let deployed: string;
+    try {
+      deployed = UNIVERSAL_ROUTER_ADDRESS(version, chainId);
+    } catch {
+      continue; // version not deployed on this chain
+    }
+    if (deployed.toLowerCase() === address) {
+      return version;
+    }
+  }
+
+  throw new Error(
+    `Universal Router address ${address} for network ${network} (chainId ${chainId}) does not match any ` +
+      `deployment known to @uniswap/universal-router-sdk. Update the address in uniswap.contracts.ts, ` +
+      `as swap calldata cannot be encoded correctly without knowing the router version.`,
+  );
 }
 
 export function getUniswapV3NftManagerAddress(network: string): string {

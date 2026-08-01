@@ -17,6 +17,16 @@ jest.mock('@orca-so/whirlpools-sdk', () => ({
   },
 }));
 
+// Stub the bin-distribution helper so we can assert it's called only when
+// binCount > 0, and so the test doesn't hit the network for getProgramAccounts.
+jest.mock('../../../../src/connectors/orca/orca.utils', () => {
+  const actual = jest.requireActual('../../../../src/connectors/orca/orca.utils');
+  return {
+    ...actual,
+    computeOrcaBinDistribution: jest.fn(),
+  };
+});
+
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
@@ -225,6 +235,78 @@ describe('GET /pool-info', () => {
     });
 
     expect(response.statusCode).toBe(503);
+  });
+
+  describe('binCount param', () => {
+    const sampleBins = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({
+        binId: -28800 + i,
+        price: 200 + i * 0.01,
+        baseTokenAmount: i < 5 ? 0 : 100,
+        quoteTokenAmount: i < 5 ? 100 : 0,
+      }));
+
+    it('omits bins[] when binCount is not provided', async () => {
+      const { computeOrcaBinDistribution } = await import('../../../../src/connectors/orca/orca.utils');
+      const response = await app.inject({
+        method: 'GET',
+        url: '/pool-info',
+        query: { network: 'mainnet-beta', poolAddress: mockPoolAddress },
+      });
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.bins).toBeUndefined();
+      expect(computeOrcaBinDistribution).not.toHaveBeenCalled();
+    });
+
+    it('omits bins[] when binCount=0', async () => {
+      const { computeOrcaBinDistribution } = await import('../../../../src/connectors/orca/orca.utils');
+      const response = await app.inject({
+        method: 'GET',
+        url: '/pool-info',
+        query: { network: 'mainnet-beta', poolAddress: mockPoolAddress, binCount: 0 },
+      });
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.bins).toBeUndefined();
+      expect(computeOrcaBinDistribution).not.toHaveBeenCalled();
+    });
+
+    it('returns bins[] of length N when binCount=N', async () => {
+      const { computeOrcaBinDistribution } = await import('../../../../src/connectors/orca/orca.utils');
+      (computeOrcaBinDistribution as jest.Mock).mockResolvedValueOnce(sampleBins(11));
+      const response = await app.inject({
+        method: 'GET',
+        url: '/pool-info',
+        query: { network: 'mainnet-beta', poolAddress: mockPoolAddress, binCount: 11 },
+      });
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(Array.isArray(body.bins)).toBe(true);
+      expect(body.bins).toHaveLength(11);
+      expect(body.bins[0]).toEqual(
+        expect.objectContaining({
+          binId: expect.any(Number),
+          price: expect.any(Number),
+          baseTokenAmount: expect.any(Number),
+          quoteTokenAmount: expect.any(Number),
+        }),
+      );
+      expect(computeOrcaBinDistribution).toHaveBeenCalledTimes(1);
+      const call = (computeOrcaBinDistribution as jest.Mock).mock.calls[0][0];
+      expect(call.binCount).toBe(11);
+      expect(call.tickSpacing).toBe(mockWhirlpool.tickSpacing);
+      expect(call.currentTickIndex).toBe(mockWhirlpool.tickCurrentIndex);
+    });
+
+    it('rejects binCount above the schema max', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/pool-info',
+        query: { network: 'mainnet-beta', poolAddress: mockPoolAddress, binCount: 999 },
+      });
+      expect(response.statusCode).toBe(400);
+    });
   });
 
   it('should handle Token2022 tokens like PYUSD', async () => {

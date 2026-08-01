@@ -29,6 +29,18 @@ export interface TokenInfo {
 export type NewBlockHandler = (bn: number) => void;
 export type NewDebugMsgHandler = (msg: any) => void;
 
+// Networks that support EIP-1559 (type 2) transactions
+export const EIP1559_NETWORKS = [
+  'mainnet',
+  'polygon',
+  'arbitrum',
+  'optimism',
+  'base',
+  'robinhoodchain',
+  'robinhoodchain-testnet',
+  'unichain',
+];
+
 export class Ethereum {
   private static _instances: { [name: string]: Ethereum };
   public provider: providers.StaticJsonRpcProvider;
@@ -57,6 +69,14 @@ export class Ethereum {
   } = {};
   private static GAS_PRICE_CACHE_MS = 10000; // 10 second cache
   private _transactionExecutionTimeoutMs: number;
+
+  /**
+   * Returns the cached gas price estimate for this instance's network,
+   * populated by estimateGasPrice(). Undefined if no estimate has been made.
+   */
+  public getCachedGasPriceEstimate() {
+    return Ethereum.lastGasPriceEstimate[this.network];
+  }
 
   // For backward compatibility
   public get chain(): string {
@@ -100,9 +120,10 @@ export class Ethereum {
     } else if (rpcProvider === 'chainstack') {
       this.initializeChainstackProvider();
     } else {
-      // Default: use nodeURL with rate limit detection
+      // Default: use nodeURL with rate limit detection. throttleLimit: 1 disables
+      // ethers' built-in 429 retry so the interceptor is the single retry layer.
       this.provider = createRateLimitAwareEthereumProvider(
-        new providers.StaticJsonRpcProvider(this.rpcUrl),
+        new providers.StaticJsonRpcProvider({ url: this.rpcUrl, throttleLimit: 1 }),
         this.rpcUrl,
       );
     }
@@ -152,12 +173,7 @@ export class Ethereum {
     }
 
     // Check if the network supports EIP-1559
-    const supportsEIP1559 =
-      this.network === 'mainnet' ||
-      this.network === 'polygon' ||
-      this.network === 'arbitrum' ||
-      this.network === 'optimism' ||
-      this.network === 'base';
+    const supportsEIP1559 = EIP1559_NETWORKS.includes(this.network);
 
     if (supportsEIP1559) {
       try {
@@ -314,12 +330,7 @@ export class Ethereum {
     gasOptions.gasLimit = gasLimit ?? DEFAULT_GAS_LIMIT;
 
     // Check if the network supports EIP-1559
-    const supportsEIP1559 =
-      this.network === 'mainnet' ||
-      this.network === 'polygon' ||
-      this.network === 'arbitrum' ||
-      this.network === 'optimism' ||
-      this.network === 'base';
+    const supportsEIP1559 = EIP1559_NETWORKS.includes(this.network);
 
     if (supportsEIP1559) {
       // Use cached EIP-1559 values from estimateGasPrice if available, not stale, and gasPrice not explicitly provided
@@ -418,7 +429,7 @@ export class Ethereum {
         logger.warn(`⚠️ Infura provider selected but no valid API key configured`);
         logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
         this.provider = createRateLimitAwareEthereumProvider(
-          new providers.StaticJsonRpcProvider(this.rpcUrl),
+          new providers.StaticJsonRpcProvider({ url: this.rpcUrl, throttleLimit: 1 }),
           this.rpcUrl,
         );
         return;
@@ -439,7 +450,7 @@ export class Ethereum {
       logger.warn(`Failed to initialize Infura provider: ${error.message}`);
       logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
       this.provider = createRateLimitAwareEthereumProvider(
-        new providers.StaticJsonRpcProvider(this.rpcUrl),
+        new providers.StaticJsonRpcProvider({ url: this.rpcUrl, throttleLimit: 1 }),
         this.rpcUrl,
       );
     }
@@ -454,7 +465,10 @@ export class Ethereum {
    */
   private initializeChainstackProvider(): void {
     // Placeholder provider — swapped to the Chainstack URL in init() after discovery.
-    this.provider = createRateLimitAwareEthereumProvider(new providers.StaticJsonRpcProvider(this.rpcUrl), this.rpcUrl);
+    this.provider = createRateLimitAwareEthereumProvider(
+      new providers.StaticJsonRpcProvider({ url: this.rpcUrl, throttleLimit: 1 }),
+      this.rpcUrl,
+    );
 
     try {
       const configManager = ConfigManagerV2.getInstance();
@@ -893,6 +907,16 @@ export class Ethereum {
       symbol: 'WCELO',
       nativeSymbol: 'CELO',
     },
+    robinhoodchain: {
+      address: '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH',
+    },
+    unichain: {
+      address: '0x4200000000000000000000000000000000000006',
+      symbol: 'WETH',
+      nativeSymbol: 'ETH',
+    },
   };
 
   /**
@@ -957,7 +981,8 @@ export class Ethereum {
   }
 
   public async handleTransactionExecution(tx: TransactionResponse): Promise<providers.TransactionReceipt | null> {
-    return await Promise.race([
+    // Race the standard confirmation wait against the configured timeout.
+    const raced = await Promise.race([
       tx.wait(1).then((receipt) => {
         // Transaction confirmed (status: 1) or failed/reverted (status: 0)
         logger.info(
@@ -965,17 +990,40 @@ export class Ethereum {
         );
         return receipt;
       }),
-      new Promise<null>((resolve) =>
-        setTimeout(() => {
-          // Timeout reached, transaction is still pending
-          // Return null to indicate pending - the caller should check for null
-          // Note: Do NOT return a fake receipt with status: 0, because in Ethereum
-          // receipt.status === 0 means "reverted/failed", not "pending"
-          logger.warn(`Transaction ${tx.hash} is still pending after timeout`);
-          resolve(null);
-        }, this._transactionExecutionTimeoutMs),
-      ),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), this._transactionExecutionTimeoutMs)),
     ]);
+    if (raced) {
+      return raced;
+    }
+
+    // Timed out — the transaction is broadcast but not yet confirmed. Ethereum
+    // blocks are ~12s, so a healthy tx can still need a few more blocks. Poll
+    // the receipt over an extended window before concluding it is genuinely
+    // pending; this avoids reporting a confirmed tx as a failure.
+    // Note: Do NOT return a fake receipt with status: 0 — in Ethereum
+    // receipt.status === 0 means "reverted/failed", not "pending".
+    const extraWindowMs = 90_000;
+    const pollIntervalMs = 5_000;
+    logger.warn(
+      `Transaction ${tx.hash} not confirmed within ${this._transactionExecutionTimeoutMs}ms — ` +
+        `polling for receipt up to a further ${extraWindowMs}ms`,
+    );
+    const deadline = Date.now() + extraWindowMs;
+    while (Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+      const receipt = await this.getTransactionReceipt(tx.hash);
+      if (receipt) {
+        logger.info(
+          `Transaction ${tx.hash} ${receipt.status === 1 ? 'confirmed' : 'failed'} ` +
+            `in block ${receipt.blockNumber} (after extended poll)`,
+        );
+        return receipt;
+      }
+    }
+
+    // Genuinely still pending — caller must handle null.
+    logger.warn(`Transaction ${tx.hash} still pending after extended poll`);
+    return null;
   }
 
   /**
@@ -1156,6 +1204,9 @@ export class Ethereum {
           logger.debug(`Found non-zero balance for ${token.symbol}: ${balanceNum}`);
         }
       } catch (err) {
+        if ((err as any).statusCode === 429) {
+          throw err;
+        }
         logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
       }
     }
@@ -1188,6 +1239,9 @@ export class Ethereum {
 
             balances[token.symbol] = parseFloat(tokenValueToString(balance));
           } catch (err) {
+            if ((err as any).statusCode === 429) {
+              throw err;
+            }
             logger.warn(`Error getting balance for ${token.symbol}: ${err.message}`);
             balances[token.symbol] = 0;
           }

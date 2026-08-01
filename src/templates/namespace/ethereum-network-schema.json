@@ -11,7 +11,16 @@
     },
     "swapProvider": {
       "type": "string",
-      "description": "Default swap router provider for this network (format: connector/type, e.g., uniswap/router)",
+      "description": "Default swap provider used by the unified /trading/swap routes when no connector is specified (format: connector/type)",
+      "enum": [
+        "uniswap/router",
+        "0x/router",
+        "pancakeswap/router",
+        "uniswap/amm",
+        "uniswap/clmm",
+        "pancakeswap/amm",
+        "pancakeswap/clmm"
+      ],
       "default": "uniswap/router"
     },
     "transactionExecutionTimeoutMs": {

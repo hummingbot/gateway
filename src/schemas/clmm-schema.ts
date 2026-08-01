@@ -83,7 +83,10 @@ export const BinLiquiditySchema = Type.Object(
 );
 export type BinLiquidity = Static<typeof BinLiquiditySchema>;
 
-// Base PoolInfo without Meteora-specific fields
+// Base PoolInfo — every CLMM connector returns at least these fields. `bins`
+// is the per-tick liquidity distribution around the active tick (matching
+// Meteora's `pool-info.bins[]` shape); it's only populated when the request
+// includes binCount > 0.
 export const PoolInfoSchema = Type.Object(
   {
     address: Type.String(),
@@ -95,12 +98,14 @@ export const PoolInfoSchema = Type.Object(
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
     activeBinId: Type.Number(),
+    bins: Type.Optional(Type.Array(BinLiquiditySchema)),
   },
   { $id: 'PoolInfo' },
 );
 export type PoolInfo = Static<typeof PoolInfoSchema>;
 
-// Meteora-specific extension
+// Meteora-specific extension. `bins` lives on the base now; only the
+// Meteora-specific fields (dynamic fee, bin id bounds) are added here.
 export const MeteoraPoolInfoSchema = Type.Composite(
   [
     PoolInfoSchema,
@@ -108,7 +113,6 @@ export const MeteoraPoolInfoSchema = Type.Composite(
       dynamicFeePct: Type.Number(),
       minBinId: Type.Number(),
       maxBinId: Type.Number(),
-      bins: Type.Optional(Type.Array(BinLiquiditySchema)),
     }),
   ],
   { $id: 'MeteoraPoolInfo' },
@@ -119,6 +123,16 @@ export const GetPoolInfoRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
     poolAddress: Type.String(),
+    binCount: Type.Optional(
+      Type.Integer({
+        description:
+          'If > 0, include a `bins` array in the response (per-tickSpacing token amounts around ' +
+          'the active tick, mirroring Meteora pool-info.bins[]). Default 0 = skip the bin fetch.',
+        default: 0,
+        minimum: 0,
+        maximum: 401,
+      }),
+    ),
   },
   { $id: 'GetPoolInfoRequest' },
 );
