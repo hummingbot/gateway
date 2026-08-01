@@ -26,11 +26,42 @@ const LP_LIQUIDITY_SCALE_DECIMALS = 9;
 const TWAP_ORACLE_SIZE = 100;
 
 // Pool state types matching on-chain structure
+export interface TwapOracleData {
+  aggregator: BN;
+  lastUpdatedTimestamp: BN;
+  createdAtTimestamp: BN;
+  lastPrice: BN;
+  lastObservation: BN;
+  maxObservationChangePerUpdate: BN;
+  initialObservation: BN;
+  startDelaySeconds: number;
+}
+
 interface Pool {
   baseReserves: BN;
   quoteReserves: BN;
   baseProtocolFees: BN;
   quoteProtocolFees: BN;
+  twap?: TwapOracleData;
+}
+
+export interface TwapMetrics {
+  windowOpen: boolean;
+  twapStartsAt: number;
+  twapEndsAt: number;
+  elapsedSeconds: number;
+  passTwapObs: number;
+  failTwapObs: number;
+  passLastObs: number;
+  failLastObs: number;
+  passLastUpdated: number;
+  failLastUpdated: number;
+  marginPct: number;
+  thresholdPct: number;
+  marginVsThresholdPct: number;
+  attackerWinning: boolean;
+  lastObsMarginPct: number;
+  lastObsMarginVsThresholdPct: number;
 }
 
 interface PoolStateFutarchy {
@@ -53,6 +84,7 @@ interface DaoAccount {
   protocolFeeBaseVault: PublicKey;
   protocolFeeQuoteVault: PublicKey;
   totalLiquidity: BN;
+  passThresholdBps: number;
   amm: {
     state: PoolState;
   };
@@ -76,6 +108,7 @@ interface ProposalAccount {
   passQuoteMint: PublicKey;
   failBaseMint: PublicKey;
   failQuoteMint: PublicKey;
+  isTeamSponsored: boolean;
 }
 
 interface AmmPositionAccount {
@@ -429,6 +462,10 @@ export class MetaDao {
     offset += 32;
 
     const daoQuoteMint = new PublicKey(data.slice(offset, offset + 32));
+    offset += 32;
+
+    offset += 4; // proposal_count (u32)
+    const passThresholdBps = data.readUInt16LE(offset);
 
     return {
       treasuryPdaBump,
@@ -441,11 +478,25 @@ export class MetaDao {
       protocolFeeBaseVault: ammBaseVault,
       protocolFeeQuoteVault: ammQuoteVault,
       totalLiquidity,
+      passThresholdBps,
       amm: { state: ammState },
     };
   }
 
   private parsePool(data: Buffer, offset: number): { pool: Pool; nextOffset: number } {
+    // TwapOracle (100 bytes): aggregator u128, lastUpdatedTimestamp i64,
+    // createdAtTimestamp i64, lastPrice u128, lastObservation u128,
+    // maxObservationChangePerUpdate u128, initialObservation u128, startDelaySeconds u32
+    const twap: TwapOracleData = {
+      aggregator: this.readU128(data, offset),
+      lastUpdatedTimestamp: new BN(data.slice(offset + 16, offset + 24), 'le'),
+      createdAtTimestamp: new BN(data.slice(offset + 24, offset + 32), 'le'),
+      lastPrice: this.readU128(data, offset + 32),
+      lastObservation: this.readU128(data, offset + 48),
+      maxObservationChangePerUpdate: this.readU128(data, offset + 64),
+      initialObservation: this.readU128(data, offset + 80),
+      startDelaySeconds: data.readUInt32LE(offset + 96),
+    };
     offset += TWAP_ORACLE_SIZE;
 
     const quoteReserves = this.readU64(data, offset);
@@ -466,6 +517,7 @@ export class MetaDao {
         quoteReserves,
         baseProtocolFees,
         quoteProtocolFees,
+        twap,
       },
       nextOffset: offset,
     };
@@ -552,6 +604,9 @@ export class MetaDao {
     offset += 32;
 
     const failQuoteMint = new PublicKey(data.slice(offset, offset + 32));
+    offset += 32;
+
+    const isTeamSponsored = data.readUInt8(offset) === 1;
 
     const tradingEndSlot = launchedAt.add(durationInSeconds);
 
@@ -568,6 +623,7 @@ export class MetaDao {
       passQuoteMint,
       failBaseMint,
       failQuoteMint,
+      isTeamSponsored,
     };
   }
 
@@ -611,6 +667,9 @@ export class MetaDao {
       price: number;
     };
     impliedProbability: number;
+    passThresholdBps: number;
+    isTeamSponsored: boolean;
+    twap?: TwapMetrics;
     passMarketCap?: number;
     failMarketCap?: number;
   }> {
@@ -640,14 +699,21 @@ export class MetaDao {
     };
 
     // Get pool reserves
-    let passPool = {
+    interface PoolInfoOut {
+      baseReserves: number;
+      quoteReserves: number;
+      baseReservesRaw: string;
+      quoteReservesRaw: string;
+      price: number;
+    }
+    let passPool: PoolInfoOut = {
       baseReserves: 0,
       quoteReserves: 0,
       baseReservesRaw: '0',
       quoteReservesRaw: '0',
       price: 0,
     };
-    let failPool = {
+    let failPool: PoolInfoOut = {
       baseReserves: 0,
       quoteReserves: 0,
       baseReservesRaw: '0',
@@ -686,6 +752,13 @@ export class MetaDao {
     const impliedProbability =
       passPool.price + failPool.price > 0 ? (passPool.price / (passPool.price + failPool.price)) * 100 : 50;
 
+    const twap = this.computeTwapMetrics(
+      passPoolData?.twap,
+      failPoolData?.twap,
+      daoAccount.passThresholdBps,
+      proposalAccount.tradingEndSlot.toNumber(),
+    );
+
     return {
       proposal: proposalAddress,
       dao: resolvedDaoAddress,
@@ -701,68 +774,134 @@ export class MetaDao {
       passPool,
       failPool,
       impliedProbability,
+      passThresholdBps: daoAccount.passThresholdBps,
+      isTeamSponsored: proposalAccount.isTeamSponsored,
+      twap,
       passMarketCap: passPool.baseReserves * passPool.price,
       failMarketCap: failPool.baseReserves * failPool.price,
     };
   }
 
   /**
-   * Derive all proposal-related PDAs for conditional tokens
+   * Derive the decision-relevant TWAP signal from the two pool oracles.
+   * The proposal passes iff pass_twap >= fail_twap * (1 + passThresholdBps/10000),
+   * so the realized margin vs threshold tells a defender whether the attacker is
+   * currently winning — the trigger for a reactive (rather than always-on) defense.
+   *
+   * Observation units cancel in the pass/fail ratio, so the margin is robust to
+   * the oracle's internal fixed-point scale.
    */
-  async getProposalPdas(_daoAddress: string, proposalAddress: string): Promise<ProposalPdas> {
-    const proposal = new PublicKey(proposalAddress);
-    const conditionalVaultProgram = new PublicKey(this.config.conditionalVaultProgramId);
-    const futarchyProgram = new PublicKey(this.config.programId);
+  private computeTwapMetrics(
+    passTwap: TwapOracleData | undefined,
+    failTwap: TwapOracleData | undefined,
+    passThresholdBps: number,
+    twapEndsAt: number,
+  ): TwapMetrics | undefined {
+    if (!passTwap || !failTwap) return undefined;
 
-    // Derive question PDA
-    const [question] = PublicKey.findProgramAddressSync(
-      [Buffer.from('question'), proposal.toBuffer()],
-      futarchyProgram,
-    );
+    // The oracle only accumulates after its start delay, so the realized TWAP
+    // is aggregator / (lastUpdated - twapStartsAt), NOT / (lastUpdated - created).
+    // Dividing by full pool age would understate the average by the delay.
+    const passStart = passTwap.createdAtTimestamp.toNumber() + passTwap.startDelaySeconds;
+    const failStart = failTwap.createdAtTimestamp.toNumber() + failTwap.startDelaySeconds;
+    const twapStartsAt = passStart;
+    const passDt = passTwap.lastUpdatedTimestamp.toNumber() - passStart;
+    const failDt = failTwap.lastUpdatedTimestamp.toNumber() - failStart;
 
-    // Derive base vault PDA
-    const [baseVault] = PublicKey.findProgramAddressSync(
-      [Buffer.from('conditional_vault'), question.toBuffer(), Buffer.from([0])],
-      conditionalVaultProgram,
-    );
+    const thresholdPct = passThresholdBps / 100;
 
-    // Derive quote vault PDA
-    const [quoteVault] = PublicKey.findProgramAddressSync(
-      [Buffer.from('conditional_vault'), question.toBuffer(), Buffer.from([1])],
-      conditionalVaultProgram,
-    );
+    // Instantaneous margin from the current resting observations (the sampled
+    // price the attacker is pushing) — meaningful even before the window opens.
+    const passLastObs = Number(passTwap.lastObservation.toString());
+    const failLastObs = Number(failTwap.lastObservation.toString());
+    const lastObsMarginPct = failLastObs > 0 ? (passLastObs / failLastObs - 1) * 100 : 0;
+    const lastObsMarginVsThresholdPct = lastObsMarginPct - thresholdPct;
 
-    // Derive conditional token mints
-    // Pass = outcome index 0, Fail = outcome index 1
-    const [passBaseMint] = PublicKey.findProgramAddressSync(
-      [Buffer.from('conditional_mint'), baseVault.toBuffer(), Buffer.from([0])],
-      conditionalVaultProgram,
-    );
+    // No accumulation yet → window not meaningfully open
+    if (passDt <= 0 || failDt <= 0 || passTwap.aggregator.isZero() || failTwap.aggregator.isZero()) {
+      return {
+        windowOpen: false,
+        twapStartsAt,
+        twapEndsAt,
+        elapsedSeconds: Math.max(0, passDt),
+        passTwapObs: 0,
+        failTwapObs: 0,
+        passLastObs,
+        failLastObs,
+        passLastUpdated: passTwap.lastUpdatedTimestamp.toNumber(),
+        failLastUpdated: failTwap.lastUpdatedTimestamp.toNumber(),
+        marginPct: 0,
+        thresholdPct,
+        marginVsThresholdPct: -thresholdPct,
+        attackerWinning: false,
+        lastObsMarginPct,
+        lastObsMarginVsThresholdPct,
+      };
+    }
 
-    const [failBaseMint] = PublicKey.findProgramAddressSync(
-      [Buffer.from('conditional_mint'), baseVault.toBuffer(), Buffer.from([1])],
-      conditionalVaultProgram,
-    );
+    // Realized TWAP so far = aggregator / accumulation_seconds, per oracle.
+    // Observation scale is ~1e12, so aggregator ~ 1e12 * elapsed can reach ~1e17;
+    // dividing by dt first keeps the result near 1e12 (under 2^53), so
+    // toNumber() is safe.
+    const passDtBN = new BN(passDt);
+    const failDtBN = new BN(failDt);
+    const passTwapObs = passTwap.aggregator.div(passDtBN).toNumber();
+    const failTwapObs = failTwap.aggregator.div(failDtBN).toNumber();
 
-    const [passQuoteMint] = PublicKey.findProgramAddressSync(
-      [Buffer.from('conditional_mint'), quoteVault.toBuffer(), Buffer.from([0])],
-      conditionalVaultProgram,
-    );
-
-    const [failQuoteMint] = PublicKey.findProgramAddressSync(
-      [Buffer.from('conditional_mint'), quoteVault.toBuffer(), Buffer.from([1])],
-      conditionalVaultProgram,
-    );
+    // Compute the pass/fail ratio in BN with 1e9 precision to avoid both the
+    // overflow above and float error from dividing two ~1e12 integers.
+    const RATIO_SCALE = new BN(1_000_000_000);
+    const ratioNum = passTwap.aggregator.mul(failDtBN).mul(RATIO_SCALE);
+    const ratioDen = failTwap.aggregator.mul(passDtBN);
+    const ratio = ratioDen.isZero() ? 0 : ratioNum.div(ratioDen).toNumber() / 1_000_000_000;
+    const marginPct = (ratio - 1) * 100;
+    const marginVsThresholdPct = marginPct - thresholdPct;
 
     return {
-      question,
-      baseVault,
-      quoteVault,
-      passBaseMint,
-      passQuoteMint,
-      failBaseMint,
-      failQuoteMint,
+      windowOpen: true,
+      twapStartsAt,
+      twapEndsAt,
+      elapsedSeconds: passDt,
+      passTwapObs,
+      failTwapObs,
+      passLastObs,
+      failLastObs,
+      passLastUpdated: passTwap.lastUpdatedTimestamp.toNumber(),
+      failLastUpdated: failTwap.lastUpdatedTimestamp.toNumber(),
+      marginPct,
+      thresholdPct,
+      marginVsThresholdPct,
+      attackerWinning: marginVsThresholdPct >= 0,
+      lastObsMarginPct,
+      lastObsMarginVsThresholdPct,
     };
+  }
+
+  /**
+   * Get all proposal-related PDAs for conditional tokens.
+   * Read from the on-chain proposal account, which stores the authoritative
+   * question, vault, and conditional mint addresses.
+   */
+  async getProposalPdas(_daoAddress: string, proposalAddress: string): Promise<ProposalPdas> {
+    const proposalAccount = await this.getProposal(proposalAddress);
+
+    return {
+      question: proposalAccount.question,
+      baseVault: proposalAccount.baseVault,
+      quoteVault: proposalAccount.quoteVault,
+      passBaseMint: proposalAccount.passBaseMint,
+      passQuoteMint: proposalAccount.passQuoteMint,
+      failBaseMint: proposalAccount.failBaseMint,
+      failQuoteMint: proposalAccount.failQuoteMint,
+    };
+  }
+
+  /**
+   * Event authority PDA (Anchor `emit_cpi!`) for a program.
+   */
+  private getEventAuthority(programId: PublicKey): PublicKey {
+    const [eventAuthority] = PublicKey.findProgramAddressSync([Buffer.from('__event_authority')], programId);
+    return eventAuthority;
   }
 
   // ============================================================================
@@ -975,7 +1114,9 @@ export class MetaDao {
     inputAmount: BN;
     minOutputAmount: BN;
   }): Promise<TransactionInstruction> {
+    const daoAccount = await this.getDao(params.dao.toString());
     const pdas = await this.getProposalPdas(params.dao.toString(), params.proposal.toString());
+    const conditionalVaultProgram = new PublicKey(this.config.conditionalVaultProgramId);
 
     // Determine input/output mints based on market and swap type
     let inputMint: PublicKey;
@@ -999,22 +1140,13 @@ export class MetaDao {
       }
     }
 
-    // Get trader's conditional token accounts
-    const traderInputAccount = getAssociatedTokenAddressSync(inputMint, params.trader);
-    const traderOutputAccount = getAssociatedTokenAddressSync(outputMint, params.trader);
+    const traderInputAccount = getAssociatedTokenAddressSync(inputMint, params.trader, true);
+    const traderOutputAccount = getAssociatedTokenAddressSync(outputMint, params.trader, true);
 
-    // Get conditional vaults - use base vault for base tokens, quote vault for quote tokens
-    // For BUY: input is quote conditional → quoteVault, output is base conditional → baseVault
-    // For SELL: input is base conditional → baseVault, output is quote conditional → quoteVault
-    const inputVault = params.swapType === 'buy' ? pdas.quoteVault : pdas.baseVault;
-    const outputVault = params.swapType === 'buy' ? pdas.baseVault : pdas.quoteVault;
-
-    const conditionalInputVault = getAssociatedTokenAddressSync(inputMint, inputVault, true);
-    const conditionalOutputVault = getAssociatedTokenAddressSync(outputMint, outputVault, true);
-
-    // Build instruction data: discriminator + market + swapType + inputAmount + minOutputAmount
+    // Instruction data: discriminator + ConditionalSwapParams { market, swapType, inputAmount, minOutputAmount }
+    // Market enum: Spot = 0, Pass = 1, Fail = 2. SwapType enum: Buy = 0, Sell = 1.
     const discriminator = new Uint8Array([0xc2, 0x88, 0xdc, 0x59, 0xf2, 0xa9, 0x82, 0x9d]);
-    const marketData = new Uint8Array([params.market === 'pass' ? 0 : 1]);
+    const marketData = new Uint8Array([params.market === 'pass' ? 1 : 2]);
     const swapTypeData = new Uint8Array([params.swapType === 'buy' ? 0 : 1]);
     const inputAmountData = new Uint8Array(params.inputAmount.toArrayLike(Buffer, 'le', 8));
     const minOutputAmountData = new Uint8Array(params.minOutputAmount.toArrayLike(Buffer, 'le', 8));
@@ -1027,17 +1159,57 @@ export class MetaDao {
       ...minOutputAmountData,
     ]);
 
+    // Account order must match the deployed futarchy program's conditionalSwap instruction
     const keys = [
       { pubkey: params.dao, isSigner: false, isWritable: true },
-      { pubkey: params.proposal, isSigner: false, isWritable: true },
-      { pubkey: params.trader, isSigner: true, isWritable: true },
-      { pubkey: inputMint, isSigner: false, isWritable: false },
-      { pubkey: outputMint, isSigner: false, isWritable: false },
-      { pubkey: conditionalInputVault, isSigner: false, isWritable: true },
-      { pubkey: conditionalOutputVault, isSigner: false, isWritable: true },
+      {
+        pubkey: getAssociatedTokenAddressSync(daoAccount.baseMint, params.dao, true),
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: getAssociatedTokenAddressSync(daoAccount.quoteMint, params.dao, true),
+        isSigner: false,
+        isWritable: true,
+      },
+      { pubkey: params.proposal, isSigner: false, isWritable: false },
+      { pubkey: getAssociatedTokenAddressSync(pdas.passBaseMint, params.dao, true), isSigner: false, isWritable: true },
+      {
+        pubkey: getAssociatedTokenAddressSync(pdas.passQuoteMint, params.dao, true),
+        isSigner: false,
+        isWritable: true,
+      },
+      { pubkey: getAssociatedTokenAddressSync(pdas.failBaseMint, params.dao, true), isSigner: false, isWritable: true },
+      {
+        pubkey: getAssociatedTokenAddressSync(pdas.failQuoteMint, params.dao, true),
+        isSigner: false,
+        isWritable: true,
+      },
+      { pubkey: params.trader, isSigner: true, isWritable: false },
       { pubkey: traderInputAccount, isSigner: false, isWritable: true },
       { pubkey: traderOutputAccount, isSigner: false, isWritable: true },
+      { pubkey: pdas.baseVault, isSigner: false, isWritable: true },
+      {
+        pubkey: getAssociatedTokenAddressSync(daoAccount.baseMint, pdas.baseVault, true),
+        isSigner: false,
+        isWritable: true,
+      },
+      { pubkey: pdas.quoteVault, isSigner: false, isWritable: true },
+      {
+        pubkey: getAssociatedTokenAddressSync(daoAccount.quoteMint, pdas.quoteVault, true),
+        isSigner: false,
+        isWritable: true,
+      },
+      { pubkey: pdas.passBaseMint, isSigner: false, isWritable: true },
+      { pubkey: pdas.failBaseMint, isSigner: false, isWritable: true },
+      { pubkey: pdas.passQuoteMint, isSigner: false, isWritable: true },
+      { pubkey: pdas.failQuoteMint, isSigner: false, isWritable: true },
+      { pubkey: conditionalVaultProgram, isSigner: false, isWritable: false },
+      { pubkey: this.getEventAuthority(conditionalVaultProgram), isSigner: false, isWritable: false },
+      { pubkey: pdas.question, isSigner: false, isWritable: false },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: this.getEventAuthority(this.programId), isSigner: false, isWritable: false },
+      { pubkey: this.programId, isSigner: false, isWritable: false },
     ];
 
     return new TransactionInstruction({
@@ -1045,6 +1217,66 @@ export class MetaDao {
       programId: this.programId,
       data,
     });
+  }
+
+  /**
+   * Build a conditional-vault splitTokens instruction: deposit `amount` of the
+   * underlying (base or quote) and mint equal amounts of the pass and fail
+   * conditional tokens. Returns the ATA-creation preInstructions plus the split
+   * instruction itself.
+   */
+  async buildSplitTokensIxs(params: {
+    dao: PublicKey;
+    proposal: PublicKey;
+    user: PublicKey;
+    asset: 'base' | 'quote';
+    amount: BN;
+  }): Promise<TransactionInstruction[]> {
+    const daoAccount = await this.getDao(params.dao.toString());
+    const pdas = await this.getProposalPdas(params.dao.toString(), params.proposal.toString());
+    const conditionalVaultProgram = new PublicKey(this.config.conditionalVaultProgramId);
+
+    const underlyingMint = params.asset === 'base' ? daoAccount.baseMint : daoAccount.quoteMint;
+    const vault = params.asset === 'base' ? pdas.baseVault : pdas.quoteVault;
+    // Conditional mints in outcome-index order: index 0 = fail, index 1 = pass
+    const conditionalMints =
+      params.asset === 'base' ? [pdas.failBaseMint, pdas.passBaseMint] : [pdas.failQuoteMint, pdas.passQuoteMint];
+
+    const userConditionalAccounts = conditionalMints.map((mint) =>
+      getAssociatedTokenAddressSync(mint, params.user, true),
+    );
+
+    // Idempotently create the user's conditional token ATAs
+    const preInstructions = conditionalMints.map((mint, i) =>
+      createAssociatedTokenAccountIdempotentInstruction(params.user, userConditionalAccounts[i], params.user, mint),
+    );
+
+    // Instruction data: discriminator + amount (u64)
+    const discriminator = new Uint8Array([0x4f, 0xc3, 0x74, 0x00, 0x8c, 0xb0, 0x49, 0xb3]);
+    const amountData = new Uint8Array(params.amount.toArrayLike(Buffer, 'le', 8));
+    const data = Buffer.from([...discriminator, ...amountData]);
+
+    const keys = [
+      { pubkey: pdas.question, isSigner: false, isWritable: false },
+      { pubkey: vault, isSigner: false, isWritable: true },
+      { pubkey: getAssociatedTokenAddressSync(underlyingMint, vault, true), isSigner: false, isWritable: true },
+      { pubkey: params.user, isSigner: true, isWritable: false },
+      { pubkey: getAssociatedTokenAddressSync(underlyingMint, params.user, true), isSigner: false, isWritable: true },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: this.getEventAuthority(conditionalVaultProgram), isSigner: false, isWritable: false },
+      { pubkey: conditionalVaultProgram, isSigner: false, isWritable: false },
+      // Remaining accounts: conditional mints then user conditional ATAs, all writable
+      ...conditionalMints.map((mint) => ({ pubkey: mint, isSigner: false, isWritable: true })),
+      ...userConditionalAccounts.map((ata) => ({ pubkey: ata, isSigner: false, isWritable: true })),
+    ];
+
+    const splitIx = new TransactionInstruction({
+      keys,
+      programId: conditionalVaultProgram,
+      data,
+    });
+
+    return [...preInstructions, splitIx];
   }
 
   async buildProvideLiquidityIx(params: {

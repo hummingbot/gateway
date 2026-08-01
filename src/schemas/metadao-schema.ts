@@ -263,6 +263,39 @@ export const MetaDaoExecuteConditionalSwapResponse = Type.Object(
 );
 export type MetaDaoExecuteConditionalSwapResponseType = Static<typeof MetaDaoExecuteConditionalSwapResponse>;
 
+export const MetaDaoSplitTokensRequest = Type.Object(
+  {
+    network: Type.Optional(Type.String({ default: solanaChainConfig.defaultNetwork })),
+    walletAddress: Type.Optional(Type.String({ description: 'Wallet address (uses default wallet if not provided)' })),
+    dao: Type.String(),
+    proposal: Type.String(),
+    asset: Type.Union([Type.Literal('base'), Type.Literal('quote')], {
+      description: 'Which underlying to split: base token or quote token',
+    }),
+    amount: Type.Number({ description: 'Amount of underlying token to split into pass + fail tokens', minimum: 0 }),
+  },
+  { $id: 'MetaDaoSplitTokensRequest' },
+);
+export type MetaDaoSplitTokensRequestType = Static<typeof MetaDaoSplitTokensRequest>;
+
+export const MetaDaoSplitTokensResponse = Type.Object(
+  {
+    signature: Type.String(),
+    status: Type.Number({ enum: [-1, 0, 1] }),
+    data: Type.Optional(
+      Type.Object({
+        asset: Type.String(),
+        underlyingMint: Type.String(),
+        passMint: Type.String(),
+        failMint: Type.String(),
+        amount: Type.Number(),
+      }),
+    ),
+  },
+  { $id: 'MetaDaoSplitTokensResponse' },
+);
+export type MetaDaoSplitTokensResponseType = Static<typeof MetaDaoSplitTokensResponse>;
+
 // ============================================================================
 // Liquidity Types
 // ============================================================================
@@ -604,6 +637,34 @@ export const MetaDaoProposalInfoResponse = Type.Object(
 
     // Derived metrics
     impliedProbability: Type.Number({ description: 'Probability proposal passes (0-100%)' }),
+    passThresholdBps: Type.Number({ description: 'Pass TWAP must exceed fail TWAP by this many bps to pass' }),
+    isTeamSponsored: Type.Boolean(),
+
+    // TWAP oracle state — the decision-relevant signal for a reactive defense.
+    // The proposal passes iff passTwap >= failTwap * (1 + passThresholdBps/10000).
+    twap: Type.Optional(
+      Type.Object({
+        windowOpen: Type.Boolean({ description: 'Whether the TWAP window has started accumulating' }),
+        twapStartsAt: Type.Number({ description: 'Unix ts when observations begin (created + startDelaySeconds)' }),
+        twapEndsAt: Type.Number({ description: 'Unix ts when the TWAP window closes (proposal trading end)' }),
+        elapsedSeconds: Type.Number({ description: 'Seconds of TWAP accumulation so far' }),
+        passTwapObs: Type.Number({ description: 'Realized pass TWAP so far (oracle units)' }),
+        failTwapObs: Type.Number({ description: 'Realized fail TWAP so far (oracle units)' }),
+        passLastObs: Type.Number({ description: 'Current pass resting observation (oracle units)' }),
+        failLastObs: Type.Number({ description: 'Current fail resting observation (oracle units)' }),
+        passLastUpdated: Type.Number({ description: 'Unix ts of last pass observation' }),
+        failLastUpdated: Type.Number({ description: 'Unix ts of last fail observation' }),
+        marginPct: Type.Number({ description: 'realized (passTwap/failTwap - 1) * 100' }),
+        thresholdPct: Type.Number({ description: 'passThresholdBps / 100' }),
+        marginVsThresholdPct: Type.Number({ description: 'marginPct - thresholdPct; > 0 means currently passing' }),
+        attackerWinning: Type.Boolean({ description: 'Whether the realized TWAP currently clears the pass threshold' }),
+        lastObsMarginPct: Type.Number({ description: 'Instantaneous (passLastObs/failLastObs - 1) * 100' }),
+        lastObsMarginVsThresholdPct: Type.Number({
+          description: 'lastObsMarginPct - thresholdPct; the live sampled-price signal',
+        }),
+      }),
+    ),
+
     passMarketCap: Type.Optional(Type.Number({ description: 'Pass market cap in quote tokens' })),
     failMarketCap: Type.Optional(Type.Number({ description: 'Fail market cap in quote tokens' })),
   },

@@ -56,6 +56,9 @@ export const proposalInfoRoute: FastifyPluginAsync = async (fastify) => {
           passPool: info.passPool,
           failPool: info.failPool,
           impliedProbability: info.impliedProbability,
+          passThresholdBps: info.passThresholdBps,
+          isTeamSponsored: info.isTeamSponsored,
+          twap: info.twap,
           passMarketCap: info.passMarketCap,
           failMarketCap: info.failMarketCap,
         };

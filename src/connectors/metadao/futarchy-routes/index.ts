@@ -13,6 +13,7 @@ import { quoteConditionalSwapRoute } from './quoteConditionalSwap';
 import { quoteLiquidityRoute } from './quoteLiquidity';
 import { quoteSwapRoute } from './quoteSwap';
 import { removeLiquidityRoute } from './removeLiquidity';
+import { splitTokensRoute } from './splitTokens';
 
 export const metadaoFutarchyRoutes: FastifyPluginAsync = async (fastify) => {
   // DAO and Pool Discovery
@@ -37,6 +38,9 @@ export const metadaoFutarchyRoutes: FastifyPluginAsync = async (fastify) => {
   // Conditional swap
   await fastify.register(quoteConditionalSwapRoute);
   await fastify.register(executeConditionalSwapRoute);
+
+  // Conditional vault split
+  await fastify.register(splitTokensRoute);
 
   // Balance
   await fastify.register(balanceRoute);
