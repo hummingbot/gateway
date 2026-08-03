@@ -51,11 +51,12 @@ export async function deploy(
   const board = await ore.getBoardAccount();
   const currentRoundId = board.roundId;
 
-  // Check if miner needs to checkpoint first
+  // Check if the miner has an UNSETTLED past round that must be checkpointed first.
+  // A round is settled once checkpointId catches up to roundId; a stale settled roundId
+  // (checkpointId == roundId) needs nothing even if it is far behind the current round.
   const miner = await ore.getMinerAccount(walletAddress);
-  if (miner && miner.roundId < currentRoundId) {
-    // Miner has pending rewards from a previous round - checkpoint first
-    logger.info(`Miner needs checkpoint for round ${miner.roundId}, running checkpoint first...`);
+  if (miner && miner.checkpointId < miner.roundId && miner.roundId < currentRoundId) {
+    logger.info(`Miner has an unsettled round ${miner.roundId}, running checkpoint first...`);
     await checkpoint(network, walletAddress, miner.roundId.toString());
   }
 
