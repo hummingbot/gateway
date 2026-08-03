@@ -18,7 +18,7 @@ export const accountInfoRoute: FastifyPluginAsync = async (fastify) => {
     '/account-info',
     {
       schema: {
-        description: 'Get ORE account information (miner + stake) for a wallet',
+        description: 'Get ORE miner account information for a wallet',
         tags: ['/connector/ore'],
         querystring: OreAccountInfoRequest,
         response: {

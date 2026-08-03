@@ -1,13 +1,16 @@
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { PublicKey, TransactionInstruction, SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY } from '@solana/web3.js';
+import { PublicKey, TransactionInstruction, SystemProgram } from '@solana/web3.js';
 
 import { OreConfig } from './ore.config';
 
 /**
- * Instruction builders for ORE program.
- * ORE uses Steel framework with single u8 discriminators (NOT Anchor 8-byte discriminators).
- * Instruction data format: [discriminator (1 byte)] [args...]
- * All integers are little-endian.
+ * Instruction builders for the ORE program.
+ * ORE uses the Steel framework with single-byte discriminators (NOT Anchor 8-byte discriminators).
+ * Instruction data format: [discriminator (1 byte)] [args...] with all integers little-endian.
+ *
+ * Account layouts and discriminators are taken from the ORE `api` crate
+ * (regolith-labs/ore: `api/src/sdk.rs`, `api/src/instruction.rs`) and were verified against
+ * live mainnet transactions of the deployed program (oreV3EG1i9BEgiAJ8b177Z2S2rMarzak4NMv1kULvWv).
  */
 
 // ============================================================================
@@ -15,8 +18,8 @@ import { OreConfig } from './ore.config';
 // ============================================================================
 
 /**
- * Build deploy instruction data
- * Args: amount (u64), squares (u32)
+ * Build deploy instruction data.
+ * Args: amount (u64), squares bitmask (u32)  →  Deploy { amount: [u8;8], squares: [u8;4] }
  */
 function buildDeployData(amountLamports: bigint, squaresBitmask: number): Buffer {
   const buffer = Buffer.alloc(1 + 8 + 4);
@@ -26,20 +29,14 @@ function buildDeployData(amountLamports: bigint, squaresBitmask: number): Buffer
   return buffer;
 }
 
-/**
- * Build checkpoint instruction data
- * Args: none
- */
+/** Build checkpoint instruction data. Args: none. */
 function buildCheckpointData(): Buffer {
   const buffer = Buffer.alloc(1);
   buffer.writeUInt8(OreConfig.DISCRIMINATORS.checkpoint, 0);
   return buffer;
 }
 
-/**
- * Build claimSol instruction data
- * Args: none
- */
+/** Build claimSol instruction data. Args: none. */
 function buildClaimSolData(): Buffer {
   const buffer = Buffer.alloc(1);
   buffer.writeUInt8(OreConfig.DISCRIMINATORS.claimSol, 0);
@@ -47,45 +44,14 @@ function buildClaimSolData(): Buffer {
 }
 
 /**
- * Build claimOre instruction data
- * Args: none
+ * Build claimOre instruction data.
+ * Args: bps (u64)  →  ClaimORE { bps: [u8;8] }. bps is the portion to claim in basis points
+ * (10000 = 100%), clamped on-chain to <= 10000.
  */
-function buildClaimOreData(): Buffer {
-  const buffer = Buffer.alloc(1);
+function buildClaimOreData(bps: bigint): Buffer {
+  const buffer = Buffer.alloc(1 + 8);
   buffer.writeUInt8(OreConfig.DISCRIMINATORS.claimOre, 0);
-  return buffer;
-}
-
-/**
- * Build deposit (stake) instruction data
- * Args: amount (u64)
- */
-function buildDepositData(amount: bigint): Buffer {
-  const buffer = Buffer.alloc(1 + 8);
-  buffer.writeUInt8(OreConfig.DISCRIMINATORS.deposit, 0);
-  buffer.writeBigUInt64LE(amount, 1);
-  return buffer;
-}
-
-/**
- * Build withdraw (unstake) instruction data
- * Args: amount (u64)
- */
-function buildWithdrawData(amount: bigint): Buffer {
-  const buffer = Buffer.alloc(1 + 8);
-  buffer.writeUInt8(OreConfig.DISCRIMINATORS.withdraw, 0);
-  buffer.writeBigUInt64LE(amount, 1);
-  return buffer;
-}
-
-/**
- * Build claimYield instruction data
- * Args: amount (u64)
- */
-function buildClaimYieldData(amount: bigint): Buffer {
-  const buffer = Buffer.alloc(1 + 8);
-  buffer.writeUInt8(OreConfig.DISCRIMINATORS.claimYield, 0);
-  buffer.writeBigUInt64LE(amount, 1);
+  buffer.writeBigUInt64LE(bps, 1);
   return buffer;
 }
 
@@ -94,33 +60,38 @@ function buildClaimYieldData(amount: bigint): Buffer {
 // ============================================================================
 
 /**
- * Create deploy instruction
+ * Create deploy instruction.
  * Deploys SOL to selected squares for the current round.
+ * Account layout (12): ORE `sdk::deploy`.
  */
 export function createDeployInstruction(
   signer: PublicKey,
   amountLamports: bigint,
   squaresBitmask: number,
   currentRoundId: bigint,
-  entropyVarAddress: PublicKey,
 ): TransactionInstruction {
-  const [automation] = OreConfig.getAutomationPDA(signer);
+  // For a user-signed deploy the signer is also the miner authority.
+  const authority = signer;
+  const [automation] = OreConfig.getAutomationPDA(authority);
   const [board] = OreConfig.getBoardPDA();
   const [config] = OreConfig.getConfigPDA();
-  const [miner] = OreConfig.getMinerPDA(signer);
+  const [miner] = OreConfig.getMinerPDA(authority);
   const [round] = OreConfig.getRoundPDA(currentRoundId);
+  const [treasury] = OreConfig.getTreasuryPDA();
 
   const keys = [
     { pubkey: signer, isSigner: true, isWritable: true },
-    { pubkey: signer, isSigner: false, isWritable: false }, // authority (read-only)
+    { pubkey: authority, isSigner: false, isWritable: true },
     { pubkey: automation, isSigner: false, isWritable: true },
     { pubkey: board, isSigner: false, isWritable: true },
     { pubkey: config, isSigner: false, isWritable: true },
     { pubkey: miner, isSigner: false, isWritable: true },
     { pubkey: round, isSigner: false, isWritable: true },
+    { pubkey: treasury, isSigner: false, isWritable: true },
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     { pubkey: OreConfig.ORE_PROGRAM_ID, isSigner: false, isWritable: false },
-    { pubkey: entropyVarAddress, isSigner: false, isWritable: true },
+    // Entropy accounts.
+    { pubkey: OreConfig.ENTROPY_VAR_ADDRESS, isSigner: false, isWritable: true },
     { pubkey: OreConfig.ENTROPY_PROGRAM_ID, isSigner: false, isWritable: false },
   ];
 
@@ -132,18 +103,23 @@ export function createDeployInstruction(
 }
 
 /**
- * Create checkpoint instruction
+ * Create checkpoint instruction.
  * Settles miner rewards for a completed round.
+ * Account layout (8): ORE `sdk::checkpoint`.
  */
 export function createCheckpointInstruction(signer: PublicKey, completedRoundId: bigint): TransactionInstruction {
+  const authority = signer;
+  const [automation] = OreConfig.getAutomationPDA(authority);
   const [board] = OreConfig.getBoardPDA();
-  const [miner] = OreConfig.getMinerPDA(signer);
+  const [miner] = OreConfig.getMinerPDA(authority);
   const [round] = OreConfig.getRoundPDA(completedRoundId);
   const [treasury] = OreConfig.getTreasuryPDA();
 
   const keys = [
     { pubkey: signer, isSigner: true, isWritable: true },
-    { pubkey: board, isSigner: false, isWritable: false },
+    { pubkey: authority, isSigner: false, isWritable: true },
+    { pubkey: automation, isSigner: false, isWritable: true },
+    { pubkey: board, isSigner: false, isWritable: true },
     { pubkey: miner, isSigner: false, isWritable: true },
     { pubkey: round, isSigner: false, isWritable: true },
     { pubkey: treasury, isSigner: false, isWritable: true },
@@ -158,16 +134,20 @@ export function createCheckpointInstruction(signer: PublicKey, completedRoundId:
 }
 
 /**
- * Create claimSol instruction
+ * Create claimSol instruction.
  * Claims SOL rewards from the miner account.
+ * Account layout (5): ORE `sdk::claim_sol`.
  */
 export function createClaimSolInstruction(signer: PublicKey): TransactionInstruction {
+  const [board] = OreConfig.getBoardPDA();
   const [miner] = OreConfig.getMinerPDA(signer);
 
   const keys = [
     { pubkey: signer, isSigner: true, isWritable: true },
+    { pubkey: board, isSigner: false, isWritable: true },
     { pubkey: miner, isSigner: false, isWritable: true },
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    { pubkey: OreConfig.ORE_PROGRAM_ID, isSigner: false, isWritable: false },
   ];
 
   return new TransactionInstruction({
@@ -178,133 +158,36 @@ export function createClaimSolInstruction(signer: PublicKey): TransactionInstruc
 }
 
 /**
- * Create claimOre instruction
- * Claims ORE token rewards from the treasury vault.
+ * Create claimOre instruction.
+ * Claims a portion (bps of 10000) of the miner's ORE rewards from the treasury vault.
+ * Account layout (11): ORE `sdk::claim_ore`.
  */
-export function createClaimOreInstruction(signer: PublicKey): TransactionInstruction {
+export function createClaimOreInstruction(signer: PublicKey, bps: bigint): TransactionInstruction {
+  const [board] = OreConfig.getBoardPDA();
   const [miner] = OreConfig.getMinerPDA(signer);
   const [treasury] = OreConfig.getTreasuryPDA();
 
-  // Get treasury's ORE token account
+  // Treasury's ORE token account (source) and signer's ORE token account (recipient).
   const treasuryTokens = getAssociatedTokenAddressSync(OreConfig.ORE_TOKEN_MINT, treasury, true);
-
-  // Get signer's ORE token account (recipient)
   const recipient = getAssociatedTokenAddressSync(OreConfig.ORE_TOKEN_MINT, signer);
 
   const keys = [
     { pubkey: signer, isSigner: true, isWritable: true },
+    { pubkey: board, isSigner: false, isWritable: true },
     { pubkey: miner, isSigner: false, isWritable: true },
-    { pubkey: OreConfig.ORE_TOKEN_MINT, isSigner: false, isWritable: false },
+    { pubkey: OreConfig.ORE_TOKEN_MINT, isSigner: false, isWritable: true },
     { pubkey: recipient, isSigner: false, isWritable: true },
     { pubkey: treasury, isSigner: false, isWritable: true },
     { pubkey: treasuryTokens, isSigner: false, isWritable: true },
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    { pubkey: OreConfig.ORE_PROGRAM_ID, isSigner: false, isWritable: false },
   ];
 
   return new TransactionInstruction({
     keys,
     programId: OreConfig.ORE_PROGRAM_ID,
-    data: buildClaimOreData(),
-  });
-}
-
-/**
- * Create deposit (stake) instruction
- * Deposits ORE into a staking account.
- */
-export function createDepositInstruction(signer: PublicKey, amount: bigint): TransactionInstruction {
-  const [stake] = OreConfig.getStakePDA(signer);
-  const [treasury] = OreConfig.getTreasuryPDA();
-
-  // Get signer's ORE token account (sender)
-  const sender = getAssociatedTokenAddressSync(OreConfig.ORE_TOKEN_MINT, signer);
-
-  // Get stake's ORE token account
-  const stakeTokens = getAssociatedTokenAddressSync(OreConfig.ORE_TOKEN_MINT, stake, true);
-
-  const keys = [
-    { pubkey: signer, isSigner: true, isWritable: true },
-    { pubkey: OreConfig.ORE_TOKEN_MINT, isSigner: false, isWritable: false },
-    { pubkey: sender, isSigner: false, isWritable: true },
-    { pubkey: stake, isSigner: false, isWritable: true },
-    { pubkey: stakeTokens, isSigner: false, isWritable: true },
-    { pubkey: treasury, isSigner: false, isWritable: true },
-    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-    { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-  ];
-
-  return new TransactionInstruction({
-    keys,
-    programId: OreConfig.ORE_PROGRAM_ID,
-    data: buildDepositData(amount),
-  });
-}
-
-/**
- * Create withdraw (unstake) instruction
- * Withdraws ORE from a staking account.
- */
-export function createWithdrawInstruction(signer: PublicKey, amount: bigint): TransactionInstruction {
-  const [stake] = OreConfig.getStakePDA(signer);
-  const [treasury] = OreConfig.getTreasuryPDA();
-
-  // Get signer's ORE token account (recipient)
-  const recipient = getAssociatedTokenAddressSync(OreConfig.ORE_TOKEN_MINT, signer);
-
-  // Get stake's ORE token account
-  const stakeTokens = getAssociatedTokenAddressSync(OreConfig.ORE_TOKEN_MINT, stake, true);
-
-  const keys = [
-    { pubkey: signer, isSigner: true, isWritable: true },
-    { pubkey: OreConfig.ORE_TOKEN_MINT, isSigner: false, isWritable: false },
-    { pubkey: recipient, isSigner: false, isWritable: true },
-    { pubkey: stake, isSigner: false, isWritable: true },
-    { pubkey: stakeTokens, isSigner: false, isWritable: true },
-    { pubkey: treasury, isSigner: false, isWritable: true },
-    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-    { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-  ];
-
-  return new TransactionInstruction({
-    keys,
-    programId: OreConfig.ORE_PROGRAM_ID,
-    data: buildWithdrawData(amount),
-  });
-}
-
-/**
- * Create claimYield instruction
- * Claims accrued staking rewards.
- */
-export function createClaimYieldInstruction(signer: PublicKey, amount: bigint): TransactionInstruction {
-  const [stake] = OreConfig.getStakePDA(signer);
-  const [treasury] = OreConfig.getTreasuryPDA();
-
-  // Get signer's ORE token account (recipient)
-  const recipient = getAssociatedTokenAddressSync(OreConfig.ORE_TOKEN_MINT, signer);
-
-  // Get treasury's ORE token account
-  const treasuryTokens = getAssociatedTokenAddressSync(OreConfig.ORE_TOKEN_MINT, treasury, true);
-
-  const keys = [
-    { pubkey: signer, isSigner: true, isWritable: true },
-    { pubkey: OreConfig.ORE_TOKEN_MINT, isSigner: false, isWritable: false },
-    { pubkey: recipient, isSigner: false, isWritable: true },
-    { pubkey: stake, isSigner: false, isWritable: true },
-    { pubkey: treasury, isSigner: false, isWritable: true },
-    { pubkey: treasuryTokens, isSigner: false, isWritable: true },
-    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-    { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-  ];
-
-  return new TransactionInstruction({
-    keys,
-    programId: OreConfig.ORE_PROGRAM_ID,
-    data: buildClaimYieldData(amount),
+    data: buildClaimOreData(bps),
   });
 }

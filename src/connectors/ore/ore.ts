@@ -8,18 +8,13 @@ import { logger } from '../../services/logger';
 import { OreConfig } from './ore.config';
 import {
   parseBoardAccount,
-  parseConfigAccount,
   parseMinerAccount,
   parseRoundAccount,
-  parseStakeAccount,
   parseTreasuryAccount,
   BoardAccount,
-  ConfigAccount,
   MinerAccount,
   RoundAccount,
-  StakeAccount,
   TreasuryAccount,
-  bytesToHex,
 } from './ore.parser';
 import { OreAccountInfoResponseType, OreBoardInfoResponseType, OreSystemInfoResponseType } from './schemas';
 
@@ -75,18 +70,6 @@ export class Ore {
     return parseBoardAccount(accountInfo.data as Buffer);
   }
 
-  /** Fetch Config account (singleton) */
-  async getConfigAccount(): Promise<ConfigAccount> {
-    const [configPDA] = OreConfig.getConfigPDA();
-    const accountInfo = await this.solana.connection.getAccountInfo(configPDA, 'confirmed');
-
-    if (!accountInfo) {
-      throw httpErrors.notFound('Config account not found');
-    }
-
-    return parseConfigAccount(accountInfo.data as Buffer);
-  }
-
   /** Fetch Treasury account (singleton) */
   async getTreasuryAccount(): Promise<TreasuryAccount> {
     const [treasuryPDA] = OreConfig.getTreasuryPDA();
@@ -128,25 +111,6 @@ export class Ore {
     }
 
     return parseMinerAccount(accountInfo.data as Buffer);
-  }
-
-  /** Fetch Stake account for a wallet */
-  async getStakeAccount(walletAddress: string): Promise<StakeAccount | null> {
-    let walletPubkey: PublicKey;
-    try {
-      walletPubkey = new PublicKey(walletAddress);
-    } catch {
-      throw httpErrors.badRequest(`Invalid wallet address: ${walletAddress}`);
-    }
-
-    const [stakePDA] = OreConfig.getStakePDA(walletPubkey);
-    const accountInfo = await this.solana.connection.getAccountInfo(stakePDA, 'confirmed');
-
-    if (!accountInfo) {
-      return null; // Stake account doesn't exist yet
-    }
-
-    return parseStakeAccount(accountInfo.data as Buffer);
   }
 
   // ============================================================================
@@ -227,13 +191,12 @@ export class Ore {
     };
   }
 
-  /** Get combined account info (miner + stake) for a wallet */
+  /** Get miner account info for a wallet */
   async getAccountInfo(walletAddress: string, roundId?: number): Promise<OreAccountInfoResponseType> {
     const walletPubkey = new PublicKey(walletAddress);
 
-    // Fetch both miner and stake accounts (they may or may not exist)
+    // Fetch the miner account (may not exist yet)
     const miner = await this.getMinerAccount(walletAddress);
-    const stake = await this.getStakeAccount(walletAddress);
 
     // Get current round from board if no roundId specified
     const board = await this.getBoardAccount();
@@ -248,14 +211,12 @@ export class Ore {
     }
 
     const [minerPDA] = OreConfig.getMinerPDA(walletPubkey);
-    const [stakePDA] = OreConfig.getStakePDA(walletPubkey);
 
     const ORE_DECIMALS = 11;
 
     return {
-      // Account addresses
+      // Account address
       mineAddress: miner ? minerPDA.toBase58() : null,
-      stakeAddress: stake ? stakePDA.toBase58() : null,
       // Mine info
       lastRound: miner ? Number(miner.roundId) : null,
       checkedRound: miner ? Number(miner.checkpointId) : null,
@@ -268,10 +229,6 @@ export class Ore {
       lifetimeRewardsSol: miner ? Number(miner.lifetimeRewardsSol) / 1_000_000_000 : 0,
       lifetimeRewardsOre: miner ? Number(miner.lifetimeRewardsOre) / 10 ** ORE_DECIMALS : 0,
       lifetimeDeployed: miner ? Number(miner.lifetimeDeployed) / 1_000_000_000 : 0,
-      // Stake info
-      stakedOre: stake ? Number(stake.balance) / 10 ** ORE_DECIMALS : 0,
-      stakeRewardsOre: stake ? Number(stake.rewards) / 10 ** ORE_DECIMALS : 0,
-      lifetimeStakeRewardsOre: stake ? Number(stake.lifetimeRewards) / 10 ** ORE_DECIMALS : 0,
     };
   }
 
@@ -297,12 +254,10 @@ export class Ore {
 
     return {
       treasuryAddress: treasuryPDA.toBase58(),
-      treasuryBalanceSol: Number(treasury.balance) / 1_000_000_000,
       maxSupplyOre: MAX_SUPPLY_ORE,
       circulatingSupplyOre,
       buriedOre,
       totalRefinedOre,
-      totalStakedOre: Number(treasury.totalStaked) / 10 ** ORE_DECIMALS,
       totalUnclaimedOre: Number(treasury.totalUnclaimed) / 10 ** ORE_DECIMALS,
       motherlodeOre: Number(treasury.motherlode) / 10 ** ORE_DECIMALS,
     };

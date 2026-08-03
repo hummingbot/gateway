@@ -59,21 +59,12 @@ export async function deploy(
     await checkpoint(network, walletAddress, miner.roundId.toString());
   }
 
-  // Get config for entropy var address
-  const config = await ore.getConfigAccount();
-
   // Convert SOL to lamports
   const amountLamports = BigInt(Math.floor(amountSol * LAMPORTS_PER_SOL));
 
   // Create deploy instruction
   const signerPubkey = isHardwareWallet ? (wallet as PublicKey) : (wallet as any).publicKey;
-  const deployIx = createDeployInstruction(
-    signerPubkey,
-    amountLamports,
-    squaresBitmask,
-    currentRoundId,
-    config.varAddress,
-  );
+  const deployIx = createDeployInstruction(signerPubkey, amountLamports, squaresBitmask, currentRoundId);
 
   // Build transaction
   const solana = ore.solana;

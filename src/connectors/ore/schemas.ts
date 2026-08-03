@@ -44,11 +44,10 @@ export const OreBoardInfoResponse = Type.Object({
 
 export type OreBoardInfoResponseType = Static<typeof OreBoardInfoResponse>;
 
-// Account Info Response (miner + stake combined)
+// Account Info Response (miner)
 export const OreAccountInfoResponse = Type.Object({
-  // Account addresses
+  // Account address
   mineAddress: Type.Union([Type.String(), Type.Null()], { description: 'Mine PDA address (null if not created)' }),
-  stakeAddress: Type.Union([Type.String(), Type.Null()], { description: 'Stake PDA address (null if not created)' }),
   // Mine info
   lastRound: Type.Union([Type.Number(), Type.Null()], {
     description: 'Last round the miner deployed to (null if never mined)',
@@ -67,10 +66,6 @@ export const OreAccountInfoResponse = Type.Object({
   lifetimeRewardsSol: Type.Number({ description: 'Lifetime SOL rewards' }),
   lifetimeRewardsOre: Type.Number({ description: 'Lifetime ORE rewards' }),
   lifetimeDeployed: Type.Number({ description: 'Lifetime SOL deployed' }),
-  // Stake info
-  stakedOre: Type.Number({ description: 'Staked ORE balance' }),
-  stakeRewardsOre: Type.Number({ description: 'Claimable staking rewards' }),
-  lifetimeStakeRewardsOre: Type.Number({ description: 'Lifetime staking rewards' }),
 });
 
 export type OreAccountInfoResponseType = Static<typeof OreAccountInfoResponse>;
@@ -78,12 +73,10 @@ export type OreAccountInfoResponseType = Static<typeof OreAccountInfoResponse>;
 // System Info Response (treasury + config combined)
 export const OreSystemInfoResponse = Type.Object({
   treasuryAddress: Type.String({ description: 'Treasury PDA address' }),
-  treasuryBalanceSol: Type.Number({ description: 'Treasury balance in SOL' }),
   maxSupplyOre: Type.Number({ description: 'Maximum ORE supply (5 million)' }),
   circulatingSupplyOre: Type.Number({ description: 'Circulating ORE supply (from token mint)' }),
   buriedOre: Type.Number({ description: 'Buried (burned) ORE' }),
   totalRefinedOre: Type.Number({ description: 'Total refined ORE' }),
-  totalStakedOre: Type.Number({ description: 'Total staked ORE' }),
   totalUnclaimedOre: Type.Number({ description: 'Total unclaimed ORE rewards' }),
   motherlodeOre: Type.Number({ description: 'Motherlode prize pool in ORE' }),
 });
@@ -262,80 +255,3 @@ export const OreClaimOreRequest = Type.Object({
 });
 
 export type OreClaimOreRequestType = Static<typeof OreClaimOreRequest>;
-
-// ============================================================================
-// Request Schemas - POST Staking Routes
-// ============================================================================
-
-// Stake Request
-export const OreStakeRequest = Type.Object({
-  network: Type.Optional(
-    Type.String({
-      description: 'Solana network to use',
-      default: solanaChainConfig.defaultNetwork,
-      enum: [...OreConfig.networks],
-    }),
-  ),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address',
-      default: solanaChainConfig.defaultWallet,
-    }),
-  ),
-  amount: Type.Number({
-    description: 'Amount of ORE to stake',
-    minimum: 0,
-    examples: [100],
-  }),
-});
-
-export type OreStakeRequestType = Static<typeof OreStakeRequest>;
-
-// Unstake Request
-export const OreUnstakeRequest = Type.Object({
-  network: Type.Optional(
-    Type.String({
-      description: 'Solana network to use',
-      default: solanaChainConfig.defaultNetwork,
-      enum: [...OreConfig.networks],
-    }),
-  ),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address',
-      default: solanaChainConfig.defaultWallet,
-    }),
-  ),
-  amount: Type.Number({
-    description: 'Amount of ORE to unstake',
-    minimum: 0,
-    examples: [100],
-  }),
-});
-
-export type OreUnstakeRequestType = Static<typeof OreUnstakeRequest>;
-
-// Claim Stake Rewards Request
-export const OreClaimStakeRequest = Type.Object({
-  network: Type.Optional(
-    Type.String({
-      description: 'Solana network to use',
-      default: solanaChainConfig.defaultNetwork,
-      enum: [...OreConfig.networks],
-    }),
-  ),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address',
-      default: solanaChainConfig.defaultWallet,
-    }),
-  ),
-  amount: Type.Optional(
-    Type.Number({
-      description: 'Amount of yield to claim (defaults to all available)',
-      minimum: 0,
-    }),
-  ),
-});
-
-export type OreClaimStakeRequestType = Static<typeof OreClaimStakeRequest>;

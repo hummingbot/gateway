@@ -85,7 +85,6 @@ export async function checkpoint(
   const deployedSquares: number[] = [];
   let totalDeployedLamports = 0n;
   let deployedToWinningSquare = false;
-  let deployedToWinningSquareLamports = 0n;
 
   for (let i = 0; i < 25; i++) {
     if (miner.deployed[i] > 0n) {
@@ -93,7 +92,6 @@ export async function checkpoint(
       totalDeployedLamports += miner.deployed[i];
       if (i === winningSquareIndex) {
         deployedToWinningSquare = true;
-        deployedToWinningSquareLamports = miner.deployed[i];
       }
     }
   }

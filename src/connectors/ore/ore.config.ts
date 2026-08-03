@@ -8,12 +8,19 @@ export namespace OreConfig {
   export const ORE_TOKEN_MINT = new PublicKey('oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp');
   export const ENTROPY_PROGRAM_ID = new PublicKey('3jSkUuYBoJzQPMEzTvkDFXCZUBksPamrVhrnHR9igu2X');
 
+  // The entropy `var` account for the board, i.e. entropy_api::state::var_pda(board, 0).
+  // This is a fixed protocol constant (see ORE `api/src/consts.rs` VAR_ADDRESS) and is the
+  // account the on-chain `deploy` instruction requires. Verified against live mainnet txs.
+  export const ENTROPY_VAR_ADDRESS = new PublicKey('BWCaDY96Xe4WkFq1M7UiCCRcChsJ3p51L5KrGzhxgm2E');
+
   // Token program IDs
   export const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
   export const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
   export const SYSTEM_PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
 
-  // Instruction discriminators (single u8 values for Steel framework)
+  // Instruction discriminators (single u8 values for Steel framework).
+  // Source of truth: ORE `api/src/instruction.rs` (OreInstruction enum). Staking
+  // instructions are NOT here — staking is a separate program (regolith-labs/ore-stake).
   export const DISCRIMINATORS = {
     automate: 0,
     checkpoint: 2,
@@ -23,25 +30,21 @@ export namespace OreConfig {
     deploy: 6,
     log: 8,
     reset: 9,
-    deposit: 10,
-    withdraw: 11,
-    claimYield: 12,
-    bury: 13,
+    buyback: 13,
     wrap: 14,
     setAdmin: 15,
-    setFeeCollector: 16,
-    newVar: 17,
-    setBuffer: 18,
+    newVar: 19,
+    bury: 24,
+    liq: 25,
   } as const;
 
-  // Account discriminators (first 8 bytes)
+  // Account discriminators (first 8 bytes). Source: ORE `api/src/state/mod.rs` (OreAccount enum).
   export const ACCOUNT_DISCRIMINATORS = {
     Automation: [100, 0, 0, 0, 0, 0, 0, 0],
     Config: [101, 0, 0, 0, 0, 0, 0, 0],
     Miner: [103, 0, 0, 0, 0, 0, 0, 0],
     Treasury: [104, 0, 0, 0, 0, 0, 0, 0],
     Board: [105, 0, 0, 0, 0, 0, 0, 0],
-    Stake: [108, 0, 0, 0, 0, 0, 0, 0],
     Round: [109, 0, 0, 0, 0, 0, 0, 0],
   } as const;
 
@@ -52,7 +55,6 @@ export namespace OreConfig {
     config: 'config',
     miner: 'miner',
     round: 'round',
-    stake: 'stake',
     treasury: 'treasury',
   } as const;
 
@@ -92,10 +94,6 @@ export namespace OreConfig {
 
   export function getMinerPDA(authority: PublicKey): [PublicKey, number] {
     return PublicKey.findProgramAddressSync([Buffer.from(PDA_SEEDS.miner), authority.toBuffer()], ORE_PROGRAM_ID);
-  }
-
-  export function getStakePDA(authority: PublicKey): [PublicKey, number] {
-    return PublicKey.findProgramAddressSync([Buffer.from(PDA_SEEDS.stake), authority.toBuffer()], ORE_PROGRAM_ID);
   }
 
   export function getAutomationPDA(authority: PublicKey): [PublicKey, number] {

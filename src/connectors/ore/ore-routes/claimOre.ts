@@ -34,9 +34,9 @@ export async function claimOre(network: string, walletAddress: string): Promise<
     throw httpErrors.badRequest('No ORE rewards available to claim');
   }
 
-  // Create claim ORE instruction
+  // Create claim ORE instruction (claim 100% = 10000 bps).
   const signerPubkey = isHardwareWallet ? (wallet as PublicKey) : (wallet as any).publicKey;
-  const claimOreIx = createClaimOreInstruction(signerPubkey);
+  const claimOreIx = createClaimOreInstruction(signerPubkey, 10000n);
 
   // Build transaction
   const solana = ore.solana;
