@@ -10,6 +10,50 @@ import { logger } from '../../services/logger';
 
 import { MeteoraConfig } from './meteora.config';
 
+/** Pool data from Meteora API */
+export interface MeteoraApiPool {
+  address: string;
+  name: string;
+  token_x: {
+    address: string;
+    symbol: string;
+    name: string;
+    decimals: number;
+    is_verified: boolean;
+    price?: number;
+  };
+  token_y: {
+    address: string;
+    symbol: string;
+    name: string;
+    decimals: number;
+    is_verified: boolean;
+    price?: number;
+  };
+  reserve_x: string;
+  reserve_y: string;
+  token_x_amount: number;
+  token_y_amount: number;
+  pool_config: {
+    bin_step: number;
+    base_fee_pct: number;
+    max_fee_pct: number;
+    protocol_fee_pct: number;
+  };
+  dynamic_fee_pct: number;
+  tvl: number;
+  current_price: number;
+  apr: number;
+  apy: number;
+  has_farm: boolean;
+  farm_apr: number;
+  farm_apy: number;
+  volume: { '30m'?: number; '1h'?: number; '24h'?: number };
+  fees: { '30m'?: number; '1h'?: number; '24h'?: number };
+  is_blacklisted: boolean;
+  tags?: string[];
+}
+
 export class Meteora {
   private static _instances: { [name: string]: Meteora };
   // Recommended maximum bins per position (aligns with SDK's DEFAULT_BIN_PER_POSITION)
@@ -91,7 +135,7 @@ export class Meteora {
     tokenMintA?: string,
     tokenMintB?: string,
   ): Promise<{ publicKey: PublicKey; account: LbPair }[]> {
-    const timeoutMs = 10000;
+    const timeoutMs = 60000; // Increased to 60s - fetching all pools from blockchain is slow
     try {
       logger.info('Fetching Meteora pools...');
       const lbPairsPromise = DLMM.getLbPairs(this.solana.connection, {
@@ -133,6 +177,67 @@ export class Meteora {
     } catch (error) {
       logger.error('Failed to fetch Meteora pools:', error);
       return []; // Return empty array instead of throwing
+    }
+  }
+
+  /** Fetches pools from Meteora API (fast, paginated) */
+  async fetchPoolsFromApi(
+    options: {
+      page?: number;
+      limit?: number;
+      query?: string;
+      sortBy?: string;
+      includeUnverified?: boolean;
+    } = {},
+  ): Promise<{
+    pools: MeteoraApiPool[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    const { page = 0, limit = 50, query, sortBy = 'volume_24h:desc', includeUnverified = true } = options;
+
+    try {
+      const url = new URL('https://dlmm.datapi.meteora.ag/pools');
+      url.searchParams.set('page', String(page + 1)); // API uses 1-based pagination
+      url.searchParams.set('page_size', String(Math.min(limit, 1000)));
+
+      if (query) {
+        url.searchParams.set('query', query);
+      }
+      if (sortBy) {
+        url.searchParams.set('sort_by', sortBy);
+      }
+
+      // Filter out blacklisted pools
+      const filters = ['is_blacklisted=false'];
+      if (!includeUnverified) {
+        filters.push('token_x.is_verified=true');
+        filters.push('token_y.is_verified=true');
+      }
+      url.searchParams.set('filter_by', filters.join(' && '));
+
+      logger.info(`Fetching Meteora pools from API: ${url.toString()}`);
+
+      const response = await fetch(url.toString(), {
+        headers: { accept: 'application/json' },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Meteora API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      return {
+        pools: data.data || [],
+        total: data.total || 0,
+        page: data.current_page || 1,
+        pageSize: data.page_size || limit,
+      };
+    } catch (error) {
+      logger.error('Failed to fetch pools from Meteora API:', error);
+      throw error;
     }
   }
 

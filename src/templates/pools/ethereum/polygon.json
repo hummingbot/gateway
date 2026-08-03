@@ -1,0 +1,13 @@
+[
+  {
+    "connector": "uniswap",
+    "type": "clmm",
+    "network": "polygon",
+    "baseSymbol": "WETH",
+    "quoteSymbol": "USDC",
+    "address": "0x45dda9cb7c25131df268515131f647d726f50608",
+    "baseTokenAddress": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+    "quoteTokenAddress": "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
+    "feePct": 0.05
+  }
+]

@@ -14,10 +14,9 @@ import {
   AmmV4Keys,
   AmmV5Keys,
 } from '@raydium-io/raydium-sdk-v2';
-import { Keypair, PublicKey, VersionedTransaction, Transaction } from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../chains/solana/solana';
-import { SolanaLedger } from '../../chains/solana/solana-ledger';
 import { PoolInfo as AmmPoolInfo } from '../../schemas/amm-schema';
 import { PoolInfo as ClmmPoolInfo, PositionInfo } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
@@ -408,29 +407,5 @@ export class Raydium {
     await this.setOwner(wallet);
 
     return { wallet, isHardwareWallet };
-  }
-
-  /**
-   * Helper function to sign transaction with hardware or regular wallet
-   */
-  public async signTransaction(
-    transaction: VersionedTransaction | Transaction,
-    walletAddress: string,
-    isHardwareWallet: boolean,
-    wallet: Keypair | PublicKey,
-  ): Promise<VersionedTransaction | Transaction> {
-    if (isHardwareWallet) {
-      logger.info(`Hardware wallet detected for ${walletAddress}. Signing transaction with Ledger.`);
-      const ledger = new SolanaLedger();
-      return await ledger.signTransaction(walletAddress, transaction);
-    } else {
-      // Regular wallet - sign normally
-      if (transaction instanceof VersionedTransaction) {
-        transaction.sign([wallet as Keypair]);
-      } else {
-        (transaction as Transaction).sign(wallet as Keypair);
-      }
-      return transaction;
-    }
   }
 }

@@ -193,6 +193,7 @@ export class Uniswap {
    * @param amount The amount to swap
    * @param side The trade direction (BUY or SELL)
    * @param walletAddress The recipient wallet address
+   * @param slippagePct Optional slippage percentage (defaults to config value)
    * @returns Quote result from Universal Router
    */
   public async getUniversalRouterQuote(
@@ -201,6 +202,7 @@ export class Uniswap {
     amount: number,
     side: 'BUY' | 'SELL',
     walletAddress?: string,
+    slippagePct?: number,
   ): Promise<any> {
     // Determine input/output based on side
     const exactIn = side === 'SELL';
@@ -214,8 +216,9 @@ export class Uniswap {
     // Use default protocols (V2 and V3)
     const protocolsToUse = [Protocol.V2, Protocol.V3]; // V4 requires different approach
 
-    // Get slippage from config
-    const slippageTolerance = new Percent(Math.floor(this.config.slippagePct * 100), 10000);
+    // Use provided slippage or fall back to config
+    const slippage = slippagePct ?? this.config.slippagePct;
+    const slippageTolerance = new Percent(Math.floor(slippage * 100), 10000);
 
     // Get quote from Universal Router
     // Use a placeholder address for quotes when no wallet is provided
@@ -249,6 +252,13 @@ export class Uniswap {
    * @param slippagePct Optional slippage percentage (defaults to config value)
    * @returns Quote result with split routing information
    */
+  /**
+   * Whether the AlphaRouter (smart order router SDK) supports this network
+   */
+  public isAlphaRouterAvailable(): boolean {
+    return !!this.alphaRouter;
+  }
+
   public async getAlphaRouterQuote(
     inputToken: Token,
     outputToken: Token,
@@ -472,11 +482,12 @@ export class Uniswap {
       const poolService = PoolService.getInstance();
 
       const pool = await poolService.getPool(
-        'uniswap',
+        'ethereum',
         this.networkName,
         poolType,
         baseTokenInfo.symbol,
         quoteTokenInfo.symbol,
+        'uniswap',
       );
 
       if (!pool) {

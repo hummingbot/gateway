@@ -1,3 +1,4 @@
+import sensible from '@fastify/sensible';
 import { FastifyPluginAsync } from 'fastify';
 
 import { poolsRoute } from './clmm/pools';
@@ -15,12 +16,16 @@ import {
 } from './trading-clmm-routes';
 
 export const tradingSwapRoutes: FastifyPluginAsync = async (fastify) => {
+  await fastify.register(sensible);
+
   // Register swap routes
   fastify.register(quoteSwapRoute);
   fastify.register(executeSwapRoute);
 };
 
 export const tradingClmmRoutes: FastifyPluginAsync = async (fastify) => {
+  await fastify.register(sensible);
+
   // Register CLMM query routes
   fastify.register(poolsRoute);
   fastify.register(positionsRoute);

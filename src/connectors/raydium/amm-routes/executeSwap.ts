@@ -1,4 +1,4 @@
-import { VersionedTransaction } from '@solana/web3.js';
+import { PublicKey, VersionedTransaction } from '@solana/web3.js';
 import BN from 'bn.js';
 import { FastifyPluginAsync } from 'fastify';
 
@@ -26,8 +26,10 @@ export async function executeSwap(
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
 
-  // Prepare wallet and check if it's hardware
-  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
+  // Set the SDK owner to the wallet's public key — works for every wallet type (local,
+  // hardware). The tx is built unsigned; signing/sending is delegated to
+  // sendAndConfirmTransactionForWallet, which signs for the wallet's type.
+  await raydium.setOwner(new PublicKey(walletAddress));
 
   // Get pool info from address
   const poolInfo = await raydium.getAmmPoolInfo(poolAddress);
@@ -140,23 +142,18 @@ export async function executeSwap(
     throw new Error(`Unsupported pool type: ${poolInfo.poolType}`);
   }
 
-  // Sign transaction using helper
-  transaction = (await raydium.signTransaction(
-    transaction,
-    walletAddress,
-    isHardwareWallet,
-    wallet,
-  )) as VersionedTransaction;
-
-  // Simulate transaction with proper error handling
-  await solana.simulateWithErrorHandling(transaction as VersionedTransaction);
-
-  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
+  // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and
+  // simulates internally).
+  const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
+  const txData = await solana.connection.getTransaction(signature, {
+    commitment: 'confirmed',
+    maxSupportedTransactionVersion: 0,
+  });
 
   // Handle confirmation status
   const result = await solana.handleConfirmation(
     signature,
-    confirmed,
+    txData !== null,
     txData,
     inputToken.address,
     outputToken.address,

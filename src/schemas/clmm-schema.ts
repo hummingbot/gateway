@@ -4,15 +4,63 @@ import { TransactionStatus } from './chain-schema';
 
 export const FetchPoolsRequest = Type.Object(
   {
-    network: Type.Optional(Type.String()), // Network
-    limit: Type.Optional(Type.Number({ minimum: 1 })), // Maximum number of pools to return
-    tokenA: Type.Optional(Type.String()), // First token symbol or address
-    tokenB: Type.Optional(Type.String()), // Second token symbol or address
+    network: Type.Optional(Type.String({ description: 'Network to use' })),
+    limit: Type.Optional(
+      Type.Number({
+        minimum: 1,
+        maximum: 100,
+        default: 50,
+        description: 'Maximum number of pools to return',
+      }),
+    ),
+    query: Type.Optional(
+      Type.String({
+        description: 'Search query to match pools by name, tokens, or address',
+      }),
+    ),
+    sortBy: Type.Optional(
+      Type.String({
+        description: 'Sort by field (connector-specific)',
+      }),
+    ),
   },
   { $id: 'FetchPoolsRequest' },
 );
 
 export type FetchPoolsRequestType = Static<typeof FetchPoolsRequest>;
+
+// Standardized pool list item schema for fetch-pools response
+export const PoolListItemSchema = Type.Object(
+  {
+    address: Type.String({ description: 'Pool address' }),
+    name: Type.String({ description: 'Pool name (e.g., SOL-USDC)' }),
+    baseTokenAddress: Type.String({ description: 'Base token address' }),
+    baseTokenSymbol: Type.String({ description: 'Base token symbol' }),
+    quoteTokenAddress: Type.String({ description: 'Quote token address' }),
+    quoteTokenSymbol: Type.String({ description: 'Quote token symbol' }),
+    binStep: Type.Number({ description: 'Bin step / tick spacing' }),
+    baseFee: Type.Number({ description: 'Base fee percentage' }),
+    price: Type.Number({ description: 'Current price' }),
+    tvl: Type.Number({ description: 'Total value locked in USD' }),
+    apr: Type.Optional(Type.Number({ description: 'Annual percentage rate' })),
+    apy: Type.Optional(Type.Number({ description: 'Annual percentage yield' })),
+    volume24h: Type.Optional(Type.Number({ description: '24-hour trading volume' })),
+    fees24h: Type.Optional(Type.Number({ description: '24-hour fees collected' })),
+  },
+  { $id: 'PoolListItem' },
+);
+export type PoolListItem = Static<typeof PoolListItemSchema>;
+
+export const FetchPoolsResponse = Type.Object(
+  {
+    pools: Type.Array(PoolListItemSchema),
+    total: Type.Number({ description: 'Total number of matching pools' }),
+    page: Type.Number({ description: 'Current page number' }),
+    pageSize: Type.Number({ description: 'Number of pools per page' }),
+  },
+  { $id: 'FetchPoolsResponse' },
+);
+export type FetchPoolsResponseType = Static<typeof FetchPoolsResponse>;
 
 export const GetPositionsOwnedRequest = Type.Object(
   {
@@ -35,7 +83,10 @@ export const BinLiquiditySchema = Type.Object(
 );
 export type BinLiquidity = Static<typeof BinLiquiditySchema>;
 
-// Base PoolInfo without Meteora-specific fields
+// Base PoolInfo — every CLMM connector returns at least these fields. `bins`
+// is the per-tick liquidity distribution around the active tick (matching
+// Meteora's `pool-info.bins[]` shape); it's only populated when the request
+// includes binCount > 0.
 export const PoolInfoSchema = Type.Object(
   {
     address: Type.String(),
@@ -47,12 +98,14 @@ export const PoolInfoSchema = Type.Object(
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
     activeBinId: Type.Number(),
+    bins: Type.Optional(Type.Array(BinLiquiditySchema)),
   },
   { $id: 'PoolInfo' },
 );
 export type PoolInfo = Static<typeof PoolInfoSchema>;
 
-// Meteora-specific extension
+// Meteora-specific extension. `bins` lives on the base now; only the
+// Meteora-specific fields (dynamic fee, bin id bounds) are added here.
 export const MeteoraPoolInfoSchema = Type.Composite(
   [
     PoolInfoSchema,
@@ -60,7 +113,6 @@ export const MeteoraPoolInfoSchema = Type.Composite(
       dynamicFeePct: Type.Number(),
       minBinId: Type.Number(),
       maxBinId: Type.Number(),
-      bins: Type.Optional(Type.Array(BinLiquiditySchema)),
     }),
   ],
   { $id: 'MeteoraPoolInfo' },
@@ -71,6 +123,16 @@ export const GetPoolInfoRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
     poolAddress: Type.String(),
+    binCount: Type.Optional(
+      Type.Integer({
+        description:
+          'If > 0, include a `bins` array in the response (per-tickSpacing token amounts around ' +
+          'the active tick, mirroring Meteora pool-info.bins[]). Default 0 = skip the bin fetch.',
+        default: 0,
+        minimum: 0,
+        maximum: 401,
+      }),
+    ),
   },
   { $id: 'GetPoolInfoRequest' },
 );

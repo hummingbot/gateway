@@ -28,17 +28,16 @@ export async function getRawSwapQuote(
     throw httpErrors.badRequest(`Token not found: ${!baseTokenInfo ? baseTokenSymbol : quoteTokenSymbol}`);
   }
 
-  // Determine input/output tokens based on side
-  const [inputToken, outputToken] = side === 'BUY' ? [quoteTokenInfo, baseTokenInfo] : [baseTokenInfo, quoteTokenInfo];
-
-  // Get swap quote using helper
+  // Get swap quote using helper (BUY = exact output of base, SELL = exact input of base)
   const quote = await getOrcaSwapQuote(
     orca.solanaKitRpc,
     poolAddress,
-    inputToken.address,
-    outputToken.address,
+    baseTokenInfo.address,
+    quoteTokenInfo.address,
     amount,
+    side,
     slippagePct,
+    network,
   );
 
   return quote;

@@ -59,6 +59,13 @@ export const JupiterQuoteSwapRequest = Type.Object({
       default: JupiterConfig.config.onlyDirectRoutes,
     }),
   ),
+  approximateIfNoExactOut: Type.Optional(
+    Type.Boolean({
+      description:
+        'For BUY orders when the pair has no ExactOut route: approximate via a sell-leg ExactIn quote instead of failing',
+      default: true,
+    }),
+  ),
 });
 
 // Jupiter-specific quote-swap response (superset of base QuoteSwapResponse)
@@ -226,6 +233,13 @@ export const JupiterExecuteSwapRequest = Type.Object({
     Type.Boolean({
       description: 'Restrict routing to only go through 1 market',
       default: JupiterConfig.config.onlyDirectRoutes,
+    }),
+  ),
+  approximateIfNoExactOut: Type.Optional(
+    Type.Boolean({
+      description:
+        'For BUY orders when the pair has no ExactOut route: approximate via a sell-leg ExactIn quote instead of failing',
+      default: true,
     }),
   ),
   priorityLevel: Type.Optional(

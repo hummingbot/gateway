@@ -8,9 +8,8 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
   fastify.delete<{
     Params: { address: string };
     Querystring: {
-      connector: string;
+      chain: string;
       network: string;
-      type: string;
     };
   }>(
     '/:address',
@@ -29,17 +28,13 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
           required: ['address'],
         },
         querystring: Type.Object({
-          connector: Type.String({
-            description: 'Connector (raydium, meteora, uniswap, orca)',
-            examples: ['raydium', 'meteora', 'uniswap', 'orca'],
+          chain: Type.String({
+            description: 'Blockchain chain (solana, ethereum)',
+            examples: ['solana', 'ethereum'],
           }),
           network: Type.String({
             description: 'Network name (mainnet, mainnet-beta, etc)',
             examples: ['mainnet', 'mainnet-beta'],
-          }),
-          type: Type.String({
-            description: 'Pool type',
-            examples: ['amm', 'clmm'],
           }),
         }),
         response: {
@@ -55,14 +50,14 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { address } = request.params;
-      const { connector, network, type } = request.query;
+      const { chain, network } = request.query;
       const poolService = PoolService.getInstance();
 
       try {
-        await poolService.removePool(connector, network, type as 'amm' | 'clmm', address);
+        await poolService.removePool(chain, network, address);
 
         return {
-          message: `Pool with address ${address} removed successfully from ${connector} ${type} on ${network}`,
+          message: `Pool with address ${address} removed successfully from ${chain}/${network}`,
         };
       } catch (error) {
         if (error.message.includes('not found')) {

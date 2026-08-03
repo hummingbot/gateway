@@ -65,14 +65,18 @@ const UnifiedAddLiquidityRequest = Type.Object({
     description: 'Position address',
     examples: ['<sample-position-address>'],
   }),
-  baseTokenAmount: Type.Number({
-    description: 'Amount of base token to deposit',
-    examples: [BASE_TOKEN_AMOUNT],
-  }),
-  quoteTokenAmount: Type.Number({
-    description: 'Amount of quote token to deposit',
-    examples: [QUOTE_TOKEN_AMOUNT],
-  }),
+  baseTokenAmount: Type.Optional(
+    Type.Number({
+      description: 'Amount of base token to deposit (omit for single-sided quote deposit)',
+      examples: [BASE_TOKEN_AMOUNT],
+    }),
+  ),
+  quoteTokenAmount: Type.Optional(
+    Type.Number({
+      description: 'Amount of quote token to deposit (omit for single-sided base deposit)',
+      examples: [QUOTE_TOKEN_AMOUNT],
+    }),
+  ),
   slippagePct: Type.Optional(
     Type.Number({
       minimum: 0,
@@ -117,6 +121,13 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         // Parse chain and network from chainNetwork parameter
         const { network } = parseChainNetwork(chainNetwork);
 
+        // Single-sided deposits are valid; the omitted side deposits 0.
+        const baseAmount = baseTokenAmount ?? 0;
+        const quoteAmount = quoteTokenAmount ?? 0;
+        if (baseAmount <= 0 && quoteAmount <= 0) {
+          throw httpErrors.badRequest('At least one of baseTokenAmount or quoteTokenAmount must be greater than 0');
+        }
+
         // Route to appropriate connector
         switch (connector) {
           case 'uniswap':
@@ -124,8 +135,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
               network,
               walletAddress,
               positionAddress,
-              baseTokenAmount,
-              quoteTokenAmount,
+              baseAmount,
+              quoteAmount,
               slippagePct,
             );
 
@@ -134,8 +145,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
               network,
               walletAddress,
               positionAddress,
-              baseTokenAmount,
-              quoteTokenAmount,
+              baseAmount,
+              quoteAmount,
               slippagePct,
             );
 
@@ -144,8 +155,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
               network,
               walletAddress,
               positionAddress,
-              baseTokenAmount,
-              quoteTokenAmount,
+              baseAmount,
+              quoteAmount,
               slippagePct,
             );
 
@@ -154,8 +165,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
               network,
               walletAddress,
               positionAddress,
-              baseTokenAmount,
-              quoteTokenAmount,
+              baseAmount,
+              quoteAmount,
               slippagePct,
             );
 
@@ -164,8 +175,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
               network,
               walletAddress,
               positionAddress,
-              baseTokenAmount,
-              quoteTokenAmount,
+              baseAmount,
+              quoteAmount,
               slippagePct,
             );
 
@@ -174,8 +185,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
               network,
               walletAddress,
               positionAddress,
-              baseTokenAmount,
-              quoteTokenAmount,
+              baseAmount,
+              quoteAmount,
               slippagePct,
             );
 

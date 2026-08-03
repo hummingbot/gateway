@@ -10,7 +10,7 @@ import {
   SetDefaultWalletRequestSchema,
   SetDefaultWalletResponseSchema,
 } from '../schemas';
-import { validateChainName, getSafeWalletFilePath } from '../utils';
+import { validateChainName, getSafeWalletFilePath, isHardwareWallet } from '../utils';
 
 export const setDefaultRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{ Body: SetDefaultWalletRequest; Reply: SetDefaultWalletResponse }>(
@@ -61,11 +61,12 @@ export const setDefaultRoute: FastifyPluginAsync = async (fastify) => {
         throw fastify.httpErrors.badRequest(`Invalid address for ${chain}: ${address}`);
       }
 
-      // Check if wallet exists by trying to get the safe file path
+      // The wallet may live in either registry: encrypted keystore file (local) or the
+      // hardware-wallet registry.
       try {
         const walletPath = getSafeWalletFilePath(chain, validatedAddress);
         const fs = await import('fs-extra');
-        const exists = await fs.pathExists(walletPath);
+        const exists = (await fs.pathExists(walletPath)) || (await isHardwareWallet(chain, validatedAddress));
 
         if (!exists) {
           throw fastify.httpErrors.notFound(

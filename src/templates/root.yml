@@ -50,6 +50,18 @@ configurations:
     configurationPath: chains/ethereum/polygon.yml
     schemaPath: ethereum-network-schema.json
 
+  $namespace ethereum-robinhoodchain:
+    configurationPath: chains/ethereum/robinhoodchain.yml
+    schemaPath: ethereum-network-schema.json
+
+  $namespace ethereum-robinhoodchain-testnet:
+    configurationPath: chains/ethereum/robinhoodchain-testnet.yml
+    schemaPath: ethereum-network-schema.json
+
+  $namespace ethereum-unichain:
+    configurationPath: chains/ethereum/unichain.yml
+    schemaPath: ethereum-network-schema.json
+
   # Solana networks
   $namespace solana-mainnet-beta:
     configurationPath: chains/solana/mainnet-beta.yml
@@ -95,6 +107,18 @@ configurations:
   $namespace ore:
     configurationPath: connectors/ore.yml
     schemaPath: ore-schema.json
+
+  $namespace dflow:
+    configurationPath: connectors/dflow.yml
+    schemaPath: dflow-schema.json
+
+  $namespace okx:
+    configurationPath: connectors/okx.yml
+    schemaPath: okx-schema.json
+
+  $namespace titan:
+    configurationPath: connectors/titan.yml
+    schemaPath: titan-schema.json
 
   # API Keys (centralized)
   $namespace apiKeys:

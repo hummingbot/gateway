@@ -1,32 +1,24 @@
-import { Percentage, TransactionBuilder } from '@orca-so/common-sdk';
-import {
-  ORCA_WHIRLPOOL_PROGRAM_ID,
-  PDAUtil,
-  WhirlpoolIx,
-  swapQuoteByInputToken,
-  swapQuoteByOutputToken,
-  IGNORE_CACHE,
-  SwapQuote,
-  TokenExtensionUtil,
-} from '@orca-so/whirlpools-sdk';
-import { getAssociatedTokenAddressSync } from '@solana/spl-token';
-import { PublicKey } from '@solana/web3.js';
-import BN from 'bn.js';
-import { Decimal } from 'decimal.js';
+import { swapInstructions, setWhirlpoolsConfig, setNativeMintWrappingStrategy } from '@orca-so/whirlpools';
+import { fetchWhirlpool } from '@orca-so/whirlpools-client';
+import { address, createNoopSigner, type Instruction } from '@solana/kit';
+import { PublicKey, Transaction } from '@solana/web3.js';
+import { fetchAllMint } from '@solana-program/token-2022';
 import { FastifyPluginAsync } from 'fastify';
 
+import { kitInstructionToWeb3 } from '../../../chains/solana/kit-instructions';
 import { Solana } from '../../../chains/solana/solana';
 import { getSolanaChainConfig } from '../../../chains/solana/solana.config';
 import { ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
-import { handleWsolAta } from '../orca.utils';
 import { OrcaClmmExecuteSwapRequest, OrcaClmmExecuteSwapRequestType } from '../schemas';
+
+const COMPUTE_BUDGET_PROGRAM_ID = address('ComputeBudget111111111111111111111111111111');
 
 export async function executeSwap(
   network: string,
-  address: string,
+  walletAddress: string,
   baseTokenIdentifier: string,
   quoteTokenIdentifier: string,
   amount: number,
@@ -36,223 +28,90 @@ export async function executeSwap(
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
-  const wallet = await solana.getWallet(address);
-  const client = await orca.getWhirlpoolClientForWallet(address);
-  const whirlpoolPubkey = new PublicKey(poolAddress);
-  const whirlpool = await client.getPool(whirlpoolPubkey, IGNORE_CACHE);
+  const rpc = orca.solanaKitRpc;
 
-  await whirlpool.refreshData();
-
-  // Get token info
+  // Resolve token metadata
   const baseTokenInfo = await solana.getToken(baseTokenIdentifier);
   const quoteTokenInfo = await solana.getToken(quoteTokenIdentifier);
-
   if (!baseTokenInfo || !quoteTokenInfo) {
     throw httpErrors.badRequest(`Token not found: ${!baseTokenInfo ? baseTokenIdentifier : quoteTokenIdentifier}`);
   }
 
-  // Fetch token mint info
-  const mintA = await client.getFetcher().getMintInfo(whirlpool.getTokenAInfo().address);
-  const mintB = await client.getFetcher().getMintInfo(whirlpool.getTokenBInfo().address);
-  if (!mintA || !mintB) {
-    throw httpErrors.notFound('Token mint not found');
-  }
+  await setWhirlpoolsConfig(network === 'mainnet-beta' ? 'solanaMainnet' : 'solanaDevnet');
+  // Wrap native SOL via the wallet's deterministic ATA rather than an ephemeral keypair:
+  // this avoids an extra co-signer (so hardware wallets can sign alone) and lets a wallet
+  // policy allowlist the wSOL account. Must be set before swapInstructions().
+  setNativeMintWrappingStrategy('ata');
 
-  // Determine swap direction
-  // side = BUY means buying `amount` of base token (quote -> base)
-  // side = SELL means selling `amount` of base token (base -> quote)
+  // Fetch pool to determine canonical token A/B ordering and decimals
+  const whirlpoolAddress = address(poolAddress);
+  const whirlpool = await fetchWhirlpool(rpc, whirlpoolAddress);
+  if (!whirlpool.data) {
+    throw httpErrors.notFound(`Whirlpool not found: ${poolAddress}`);
+  }
+  const tokenAMint = whirlpool.data.tokenMintA.toString();
+  const [mintA, mintB] = await fetchAllMint(rpc, [whirlpool.data.tokenMintA, whirlpool.data.tokenMintB]);
+
+  // side = BUY  -> buy `amount` of base token  (input = quote, exact output)
+  // side = SELL -> sell `amount` of base token (input = base,  exact input)
   const isBuyingSide = side === 'BUY';
+  const inputTokenInfo = isBuyingSide ? quoteTokenInfo : baseTokenInfo;
+  const outputTokenInfo = isBuyingSide ? baseTokenInfo : quoteTokenInfo;
+  const inputIsA = inputTokenInfo.address === tokenAMint;
+  const inputDecimals = inputIsA ? mintA.data.decimals : mintB.data.decimals;
+  const outputDecimals = inputIsA ? mintB.data.decimals : mintA.data.decimals;
 
-  // For BUY: amount = desired base token (output), need to calculate quote input
-  // For SELL: amount = base token to sell (input), calculate quote output
-  const { inputTokenInfo, outputTokenInfo, inputTokenMint, outputTokenMint } = isBuyingSide
+  const slippageBps = Math.round(slippagePct * 100);
+
+  // Build the swap with a no-op fee-payer signer carrying just the wallet's public key —
+  // signing is external (sendAndConfirmTransactionForWallet handles local/hardware).
+  const signer = createNoopSigner(address(walletAddress));
+
+  // Build the swap instructions via the v4 SDK — it resolves tick arrays, the
+  // oracle (adaptive-fee pools), Token-2022 transfer fees and native-SOL
+  // wrapping internally.
+  const swapParams = isBuyingSide
     ? {
-        // BUY: amount is output (base), input is quote
-        outputTokenInfo: baseTokenInfo,
-        inputTokenInfo: quoteTokenInfo,
-        outputTokenMint: baseTokenInfo.address,
-        inputTokenMint: quoteTokenInfo.address,
+        outputAmount: BigInt(Math.floor(amount * Math.pow(10, outputDecimals))),
+        mint: address(outputTokenInfo.address),
       }
-    : {
-        // SELL: amount is input (base), output is quote
-        inputTokenInfo: baseTokenInfo,
-        outputTokenInfo: quoteTokenInfo,
-        inputTokenMint: baseTokenInfo.address,
-        outputTokenMint: quoteTokenInfo.address,
-      };
+    : { inputAmount: BigInt(Math.floor(amount * Math.pow(10, inputDecimals))), mint: address(inputTokenInfo.address) };
 
-  // Determine if we're swapping A->B or B->A based on input token
-  const isInputTokenA = inputTokenMint === whirlpool.getTokenAInfo().address.toString();
-  const aToB = isInputTokenA;
+  const { instructions: swapInstrs, quote } = await swapInstructions(
+    rpc as any,
+    swapParams as any,
+    whirlpoolAddress,
+    slippageBps,
+    signer,
+  );
 
-  // Convert amount to BN with proper decimals
-  const inputDecimals = isInputTokenA ? mintA.decimals : mintB.decimals;
-  const outputDecimals = isInputTokenA ? mintB.decimals : mintA.decimals;
-
-  // Get swap quote based on side
-  let quote: SwapQuote;
-  if (isBuyingSide) {
-    // BUY: quote by output token (how much base we want to receive)
-    const outputAmountBN = new BN(Math.floor(amount * Math.pow(10, outputDecimals)));
-    quote = await swapQuoteByOutputToken(
-      whirlpool,
-      outputTokenMint,
-      outputAmountBN,
-      Percentage.fromDecimal(new Decimal(slippagePct)),
-      ORCA_WHIRLPOOL_PROGRAM_ID,
-      client.getFetcher(),
-      IGNORE_CACHE,
-    );
-  } else {
-    // SELL: quote by input token (how much base we're selling)
-    const inputAmountBN = new BN(Math.floor(amount * Math.pow(10, inputDecimals)));
-    quote = await swapQuoteByInputToken(
-      whirlpool,
-      inputTokenMint,
-      inputAmountBN,
-      Percentage.fromDecimal(new Decimal(slippagePct)),
-      ORCA_WHIRLPOOL_PROGRAM_ID,
-      client.getFetcher(),
-      IGNORE_CACHE,
-    );
-  }
+  const estimatedAmountIn = isBuyingSide ? (quote as any).tokenEstIn : (quote as any).tokenIn;
+  const estimatedAmountOut = isBuyingSide ? (quote as any).tokenOut : (quote as any).tokenEstOut;
+  const amountIn = Number(estimatedAmountIn) / Math.pow(10, inputDecimals);
+  const amountOut = Number(estimatedAmountOut) / Math.pow(10, outputDecimals);
 
   logger.info(
-    `Swap quote: ${Number(quote.estimatedAmountIn) / Math.pow(10, inputDecimals)} ${inputTokenInfo.symbol} -> ${Number(quote.estimatedAmountOut) / Math.pow(10, outputDecimals)} ${outputTokenInfo.symbol}`,
+    `Orca swap: ${amountIn} ${inputTokenInfo.symbol} -> ${amountOut} ${outputTokenInfo.symbol} ` +
+      `(pool ${poolAddress}, ${side})`,
   );
 
-  // Build transaction
-  const builder = new TransactionBuilder(client.getContext().connection, client.getContext().wallet);
+  // Convert the kit instructions to web3.js and sign/send via the wallet-type-aware
+  // chokepoint. Compute-budget instructions are dropped here; the chokepoint re-adds them.
+  const innerInstructions = (swapInstrs as Instruction[])
+    .filter((ix) => ix.programAddress !== COMPUTE_BUDGET_PROGRAM_ID)
+    .map(kitInstructionToWeb3);
+  const tx = new Transaction();
+  tx.add(...innerInstructions);
+  // This route hand-builds a legacy transaction; set the fee payer to the wallet so the
+  // chokepoint's pre-flight simulate can compile the message (the chokepoint signs/pays
+  // from this same address for every wallet type).
+  tx.feePayer = new PublicKey(walletAddress);
 
-  // Get token accounts
-  const tokenOwnerAccountA = getAssociatedTokenAddressSync(
-    whirlpool.getTokenAInfo().address,
-    client.getContext().wallet.publicKey,
-    undefined,
-    mintA.tokenProgram,
-  );
-  const tokenOwnerAccountB = getAssociatedTokenAddressSync(
-    whirlpool.getTokenBInfo().address,
-    client.getContext().wallet.publicKey,
-    undefined,
-    mintB.tokenProgram,
-  );
-
-  // Handle WSOL wrapping for input token
-  // If selling WSOL: check existing balance and only wrap the deficit
-  // If buying with WSOL: wrap the needed amount with buffer
-  if (aToB) {
-    // Swapping A -> B (input is tokenA)
-    await handleWsolAta(
-      builder,
-      client,
-      whirlpool.getTokenAInfo().address,
-      tokenOwnerAccountA,
-      mintA.tokenProgram,
-      'wrap',
-      quote.estimatedAmountIn, // handleWsolAta will check existing balance and only wrap deficit
-      solana,
-    );
-    // Create ATA for output token if needed
-    await handleWsolAta(
-      builder,
-      client,
-      whirlpool.getTokenBInfo().address,
-      tokenOwnerAccountB,
-      mintB.tokenProgram,
-      'receive',
-    );
-  } else {
-    // Swapping B -> A (input is tokenB)
-    // Create ATA for output token if needed
-    await handleWsolAta(
-      builder,
-      client,
-      whirlpool.getTokenAInfo().address,
-      tokenOwnerAccountA,
-      mintA.tokenProgram,
-      'receive',
-    );
-    await handleWsolAta(
-      builder,
-      client,
-      whirlpool.getTokenBInfo().address,
-      tokenOwnerAccountB,
-      mintB.tokenProgram,
-      'wrap',
-      quote.estimatedAmountIn, // handleWsolAta will check existing balance and only wrap deficit
-      solana,
-    );
-  }
-
-  // Get oracle PDA
-  const oraclePda = PDAUtil.getOracle(ORCA_WHIRLPOOL_PROGRAM_ID, whirlpoolPubkey);
-
-  // Add swap V2 instruction (supports Token-2022 tokens)
-  builder.addInstruction(
-    WhirlpoolIx.swapV2Ix(client.getContext().program, {
-      ...quote,
-      whirlpool: whirlpoolPubkey,
-      tokenAuthority: client.getContext().wallet.publicKey,
-      tokenMintA: whirlpool.getTokenAInfo().address,
-      tokenMintB: whirlpool.getTokenBInfo().address,
-      tokenOwnerAccountA,
-      tokenVaultA: whirlpool.getTokenVaultAInfo().address,
-      tokenOwnerAccountB,
-      tokenVaultB: whirlpool.getTokenVaultBInfo().address,
-      tokenProgramA: mintA.tokenProgram,
-      tokenProgramB: mintB.tokenProgram,
-      tokenTransferHookAccountsA: await TokenExtensionUtil.getExtraAccountMetasForTransferHook(
-        client.getContext().connection,
-        mintA,
-        tokenOwnerAccountA,
-        whirlpool.getTokenVaultAInfo().address,
-        client.getContext().wallet.publicKey,
-      ),
-      tokenTransferHookAccountsB: await TokenExtensionUtil.getExtraAccountMetasForTransferHook(
-        client.getContext().connection,
-        mintB,
-        tokenOwnerAccountB,
-        whirlpool.getTokenVaultBInfo().address,
-        client.getContext().wallet.publicKey,
-      ),
-      oracle: oraclePda.publicKey,
-    }),
-  );
-
-  // Auto-unwrap WSOL output token to native SOL
-  // Only unwrap the OUTPUT token (not the input which may have just been wrapped)
-  logger.info('Auto-unwrapping WSOL output (if any) back to native SOL');
-  const swapOutputMint = aToB ? whirlpool.getTokenBInfo().address : whirlpool.getTokenAInfo().address;
-  const swapOutputAccount = aToB ? tokenOwnerAccountB : tokenOwnerAccountA;
-  const swapOutputProgram = aToB ? mintB.tokenProgram : mintA.tokenProgram;
-
-  await handleWsolAta(
-    builder,
-    client,
-    swapOutputMint,
-    swapOutputAccount,
-    swapOutputProgram,
-    'unwrap',
-    undefined,
-    solana,
-  );
-
-  // Build, simulate, and send transaction
-  const txPayload = await builder.build();
-  await solana.simulateWithErrorHandling(txPayload.transaction);
-  const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [wallet]);
-
-  // Calculate balance changes based on side
-  const amountIn = Number(quote.estimatedAmountIn) / Math.pow(10, inputDecimals);
-  const amountOut = Number(quote.estimatedAmountOut) / Math.pow(10, outputDecimals);
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(tx, walletAddress);
+  logger.info(`Orca swap executed: ${signature} (fee ${fee} SOL)`);
 
   const baseTokenBalanceChange = isBuyingSide ? amountOut : -amountIn;
   const quoteTokenBalanceChange = isBuyingSide ? -amountIn : amountOut;
-
-  logger.info(
-    `Swap executed: ${amountIn} ${inputTokenInfo.symbol} -> ${amountOut} ${outputTokenInfo.symbol}, fee: ${fee}`,
-  );
 
   return {
     signature,
@@ -339,7 +198,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         );
       } catch (e: any) {
         logger.error('Error executing swap:', e.message || e);
-        logger.error('Full error:', JSON.stringify(e, null, 2));
 
         if (e.statusCode) {
           // If it's already an HTTP error, throw it properly

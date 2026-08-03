@@ -2,7 +2,6 @@ import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
 import { TopPoolInfo } from '../../services/coingecko-service';
-import { extractRawPoolData, toPoolGeckoData } from '../../services/gecko-types';
 import { handlePoolError } from '../pool-error-handler';
 import { findPools } from '../pool-finder';
 import { fetchDetailedPoolInfo } from '../pool-lookup-helper';
@@ -17,14 +16,10 @@ import { Pool } from '../types';
 
 /**
  * Transform TopPoolInfo from CoinGecko to PoolInfo format
- * Uses typed transformation helper to ensure consistent geckoData format
  */
 function transformToPoolInfo(topPoolInfo: TopPoolInfo): Pool {
-  // Extract and transform geckoData using typed helpers
-  const rawPoolData = extractRawPoolData(topPoolInfo);
-  const geckoData = toPoolGeckoData(rawPoolData);
-
   return {
+    connector: topPoolInfo.connector || '', // Will be filled from connector mapping
     type: topPoolInfo.type as 'amm' | 'clmm',
     network: '', // Will be filled from chainNetwork
     baseSymbol: topPoolInfo.baseTokenSymbol,
@@ -33,7 +28,6 @@ function transformToPoolInfo(topPoolInfo: TopPoolInfo): Pool {
     quoteTokenAddress: topPoolInfo.quoteTokenAddress,
     feePct: topPoolInfo.feePct ?? 0, // Use fee from pool name if available
     address: topPoolInfo.poolAddress,
-    geckoData,
   };
 }
 
@@ -76,7 +70,6 @@ export const findPoolsRoute: FastifyPluginAsync = async (fastify) => {
         // Fetch detailed pool information using shared helper
         const { pool } = await fetchDetailedPoolInfo(chainNetwork, address);
 
-        // Return pool data in PoolInfo format with geckoData
         return pool;
       } catch (error: any) {
         handlePoolError(fastify, error, `Failed to get pool info for ${address}`);

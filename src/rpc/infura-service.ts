@@ -33,7 +33,7 @@ export class InfuraService extends RPCProvider {
   /**
    * Get the Infura HTTP RPC URL for the current network
    */
-  public getHttpUrl(): string {
+  public override getHttpUrl(): string {
     const network = this.getInfuraNetworkName();
     return `https://${network}.infura.io/v3/${this.config.apiKey}`;
   }
@@ -52,12 +52,16 @@ export class InfuraService extends RPCProvider {
   private initializeHttpProvider(): void {
     const httpUrl = this.getHttpUrl();
 
-    // Initialize HTTP provider with rate limit detection
+    // Initialize HTTP provider with rate limit detection. throttleLimit: 1 disables
+    // ethers' built-in 429 retry so the interceptor is the single retry layer.
     this.provider = createRateLimitAwareEthereumProvider(
-      new providers.JsonRpcProvider(httpUrl, {
-        name: this.getInfuraNetworkName(),
-        chainId: this.networkInfo.chainId,
-      }),
+      new providers.JsonRpcProvider(
+        { url: httpUrl, throttleLimit: 1 },
+        {
+          name: this.getInfuraNetworkName(),
+          chainId: this.networkInfo.chainId,
+        },
+      ),
       httpUrl,
     );
   }

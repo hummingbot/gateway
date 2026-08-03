@@ -5,7 +5,6 @@ import {
   ReturnTypeComputeAmountOutBaseOut,
 } from '@raydium-io/raydium-sdk-v2';
 import { PublicKey } from '@solana/web3.js';
-import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync } from 'fastify';
 
@@ -23,28 +22,6 @@ import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
 import { RaydiumClmmQuoteSwapRequest } from '../schemas';
-
-/**
- * Helper function to convert amount for buy orders in Raydium CLMM
- * This handles the special case where we need to invert the amount due to SDK limitations
- * @param order_amount The order amount
- * @param inputTokenDecimals The decimals of the input token
- * @param outputTokenDecimals The decimals of the output token
- * @param amountToConvert The BN raw amount to convert (e.g. amountIn or maxAmountIn) from the SDK
- * @returns The converted amount
- */
-export function convertAmountIn(
-  order_amount: number,
-  inputTokenDecimals: number,
-  outputTokenDecimals: number,
-  amountIn: BN,
-): number {
-  const inputDecimals =
-    Math.log10(order_amount) * 2 +
-    Math.max(inputTokenDecimals, outputTokenDecimals) +
-    Math.abs(inputTokenDecimals - outputTokenDecimals);
-  return 1 / (amountIn.toNumber() / 10 ** inputDecimals);
-}
 
 export async function getSwapQuote(
   network: string,
@@ -85,10 +62,9 @@ export async function getSwapQuote(
     connection: solana.connection,
     poolKeys: [clmmPoolInfo],
   });
-  const effectiveSlippage = new BN(slippagePct / 100);
-
-  // Convert BN to number for slippage
-  const effectiveSlippageNumber = effectiveSlippage.toNumber();
+  // The SDK expects slippage as a fractional number (e.g. 0.02 for 2%).
+  // Do NOT wrap in BN — new BN(0.02) truncates to 0, disabling slippage.
+  const effectiveSlippageNumber = slippagePct / 100;
 
   // AmountOut = swapQuote, AmountOutBaseOut = swapQuoteExactOut
   const response: ReturnTypeComputeAmountOutFormat | ReturnTypeComputeAmountOutBaseOut =
@@ -98,7 +74,11 @@ export async function getSwapQuote(
           tickArrayCache: tickCache[poolAddress],
           amountOut: amount_bn,
           epochInfo: await raydium.raydiumSDK.fetchEpochInfo(),
-          baseMint: new PublicKey(poolInfo['mintB'].address),
+          // baseMint denominates amountOut and the returned amountIn is in the
+          // OTHER token. For a BUY we want `amount` of the output token, so
+          // baseMint must be the output token; amountIn then comes back in the
+          // input token's units directly (no inversion needed).
+          baseMint: new PublicKey(outputToken.address),
           slippage: effectiveSlippageNumber,
         })
       : await PoolUtils.computeAmountOutFormat({
@@ -194,24 +174,18 @@ async function formatSwapQuote(
 
   if (side === 'BUY') {
     const exactOutResponse = response as ReturnTypeComputeAmountOutBaseOut;
+    // With baseMint = output token, the SDK returns amountIn / maxAmountIn in the
+    // input token's raw units. maxAmountIn already includes slippage.
     const estimatedAmountOut = exactOutResponse.realAmountOut.amount.toNumber() / 10 ** outputToken.decimals;
-    const estimatedAmountIn = convertAmountIn(
-      amount,
-      inputToken.decimals,
-      outputToken.decimals,
-      exactOutResponse.amountIn.amount,
-    );
-    const maxAmountIn = convertAmountIn(
-      amount,
-      inputToken.decimals,
-      outputToken.decimals,
-      exactOutResponse.maxAmountIn.amount,
-    );
+    const estimatedAmountIn = exactOutResponse.amountIn.amount.toNumber() / 10 ** inputToken.decimals;
+    const maxAmountIn = exactOutResponse.maxAmountIn.amount.toNumber() / 10 ** inputToken.decimals;
 
     const price = estimatedAmountOut > 0 ? estimatedAmountIn / estimatedAmountOut : 0;
 
-    // Calculate price impact percentage - ensure it's a valid number
-    const priceImpactRaw = exactOutResponse.priceImpact ? Number(exactOutResponse.priceImpact) * 100 : 0;
+    // priceImpact is a Raydium SDK Percent object. Number(Percent) is NaN
+    // ([object Object]), and toSignificant() already returns the value as a
+    // percentage (e.g. 0.0326 means 0.0326%), so it must not be multiplied by 100.
+    const priceImpactRaw = exactOutResponse.priceImpact ? Number(exactOutResponse.priceImpact.toSignificant(8)) : 0;
     const priceImpactPct = isNaN(priceImpactRaw) || !isFinite(priceImpactRaw) ? 0 : priceImpactRaw;
 
     // Determine token addresses for computed fields
@@ -247,8 +221,10 @@ async function formatSwapQuote(
 
     const price = estimatedAmountIn > 0 ? estimatedAmountOut / estimatedAmountIn : 0;
 
-    // Calculate price impact percentage - ensure it's a valid number
-    const priceImpactRaw = exactInResponse.priceImpact ? Number(exactInResponse.priceImpact) * 100 : 0;
+    // priceImpact is a Raydium SDK Percent object. Number(Percent) is NaN
+    // ([object Object]), and toSignificant() already returns the value as a
+    // percentage (e.g. 0.0326 means 0.0326%), so it must not be multiplied by 100.
+    const priceImpactRaw = exactInResponse.priceImpact ? Number(exactInResponse.priceImpact.toSignificant(8)) : 0;
     const priceImpactPct = isNaN(priceImpactRaw) || !isFinite(priceImpactRaw) ? 0 : priceImpactRaw;
 
     // Determine token addresses for computed fields

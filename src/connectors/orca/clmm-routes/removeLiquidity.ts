@@ -33,7 +33,10 @@ export async function removeLiquidity(
 
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
-  const wallet = await solana.getWallet(address);
+  // Build with the wallet's public key as authority — works for every wallet type
+  // (local, hardware). Signing/sending is delegated to
+  // sendAndConfirmTransactionForWallet, which knows how to sign for each type.
+  const walletPublicKey = new PublicKey(address);
   const client = await orca.getWhirlpoolClientForWallet(address);
   const positionPubkey = new PublicKey(positionAddress);
 
@@ -96,13 +99,13 @@ export async function removeLiquidity(
   const tokenOwnerAccountA = getAssociatedTokenAddressSync(
     whirlpool.getTokenAInfo().address,
     client.getContext().wallet.publicKey,
-    undefined,
+    false,
     mintA.tokenProgram,
   );
   const tokenOwnerAccountB = getAssociatedTokenAddressSync(
     whirlpool.getTokenBInfo().address,
     client.getContext().wallet.publicKey,
-    undefined,
+    false,
     mintB.tokenProgram,
   );
 
@@ -137,7 +140,7 @@ export async function removeLiquidity(
       positionTokenAccount: getAssociatedTokenAddressSync(
         position.getData().positionMint,
         client.getContext().wallet.publicKey,
-        undefined,
+        false,
         positionMint.tokenProgram,
       ),
       tickArrayLower: lower,
@@ -189,10 +192,10 @@ export async function removeLiquidity(
     solana,
   );
 
-  // Build, simulate, and send transaction
+  // Build and send transaction via the wallet-type-aware chokepoint (handles
+  // local/hardware and simulates internally).
   const txPayload = await builder.build();
-  await solana.simulateWithErrorHandling(txPayload.transaction);
-  const { signature, fee } = await solana.sendAndConfirmTransaction(txPayload.transaction, [wallet]);
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(txPayload.transaction, address);
 
   // Extract removed amounts from balance changes
   const tokenAAddress = whirlpool.getTokenAInfo().address.toString();
@@ -200,11 +203,10 @@ export async function removeLiquidity(
   const tokenA = await solana.getToken(tokenAAddress);
   const tokenB = await solana.getToken(tokenBAddress);
 
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(
-    signature,
-    client.getContext().wallet.publicKey.toString(),
-    [tokenAAddress, tokenBAddress],
-  );
+  const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletPublicKey.toBase58(), [
+    tokenAAddress,
+    tokenBAddress,
+  ]);
 
   logger.info(
     `Liquidity removed: ${Math.abs(balanceChanges[0]).toFixed(6)} ${tokenA?.symbol || 'tokenA'}, ${Math.abs(balanceChanges[1]).toFixed(6)} ${tokenB?.symbol || 'tokenB'}`,

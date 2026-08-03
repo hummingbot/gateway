@@ -44,6 +44,7 @@ describe('PoolService', () => {
   describe('validatePool', () => {
     it('should validate Solana pool with new fields', async () => {
       const pool: Pool = {
+        connector: 'raydium',
         type: 'amm',
         baseSymbol: 'SOL',
         quoteSymbol: 'USDC',
@@ -54,11 +55,12 @@ describe('PoolService', () => {
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       };
 
-      await expect(poolService.validatePool('raydium', pool)).resolves.not.toThrow();
+      await expect(poolService.validatePool('solana', pool)).resolves.not.toThrow();
     });
 
     it('should reject invalid address', async () => {
       const pool: Pool = {
+        connector: 'raydium',
         type: 'amm',
         baseSymbol: 'SOL',
         quoteSymbol: 'USDC',
@@ -69,11 +71,12 @@ describe('PoolService', () => {
         address: 'invalid-address',
       };
 
-      await expect(poolService.validatePool('raydium', pool)).rejects.toThrow('Invalid Solana address');
+      await expect(poolService.validatePool('solana', pool)).rejects.toThrow('Invalid Solana address');
     });
 
     it('should reject pool without token addresses', async () => {
       const pool: any = {
+        connector: 'raydium',
         type: 'amm',
         baseSymbol: 'SOL',
         quoteSymbol: 'USDC',
@@ -81,11 +84,12 @@ describe('PoolService', () => {
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       };
 
-      await expect(poolService.validatePool('raydium', pool)).rejects.toThrow('Base token address is required');
+      await expect(poolService.validatePool('solana', pool)).rejects.toThrow('Base token address is required');
     });
 
     it('should reject pool without fee percentage', async () => {
       const pool: any = {
+        connector: 'raydium',
         type: 'amm',
         baseSymbol: 'SOL',
         quoteSymbol: 'USDC',
@@ -95,7 +99,54 @@ describe('PoolService', () => {
         address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
       };
 
-      await expect(poolService.validatePool('raydium', pool)).rejects.toThrow('Fee percentage is required');
+      await expect(poolService.validatePool('solana', pool)).rejects.toThrow('Fee percentage is required');
+    });
+
+    it('should reject pool without connector', async () => {
+      const pool: any = {
+        type: 'amm',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        baseTokenAddress: 'So11111111111111111111111111111111111111112',
+        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        feePct: 0.25,
+        network: 'mainnet-beta',
+        address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+      };
+
+      await expect(poolService.validatePool('solana', pool)).rejects.toThrow('Connector is required');
+    });
+
+    it('should reject unsupported chain', async () => {
+      const pool: Pool = {
+        connector: 'raydium',
+        type: 'amm',
+        baseSymbol: 'SOL',
+        quoteSymbol: 'USDC',
+        baseTokenAddress: 'So11111111111111111111111111111111111111112',
+        quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        feePct: 0.25,
+        network: 'mainnet-beta',
+        address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+      };
+
+      await expect(poolService.validatePool('invalid-chain', pool)).rejects.toThrow('Unsupported chain');
+    });
+  });
+
+  describe('getChainForConnector', () => {
+    it('should return correct chain for solana connector', () => {
+      expect(poolService.getChainForConnector('raydium')).toBe('solana');
+      expect(poolService.getChainForConnector('meteora')).toBe('solana');
+    });
+
+    it('should return correct chain for ethereum connector', () => {
+      expect(poolService.getChainForConnector('uniswap')).toBe('ethereum');
+      expect(poolService.getChainForConnector('pancakeswap')).toBe('ethereum');
+    });
+
+    it('should throw for unknown connector', () => {
+      expect(() => poolService.getChainForConnector('unknown')).toThrow('Unknown connector');
     });
   });
 });

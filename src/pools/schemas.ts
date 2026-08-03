@@ -4,14 +4,18 @@ import { ConfigManagerV2 } from '../services/config-manager-v2';
 
 // Pool list request
 export const PoolListRequestSchema = Type.Object({
-  connector: Type.String({
-    description: 'Connector (raydium, meteora, uniswap, orca)',
-    examples: ['raydium', 'meteora', 'uniswap', 'orca'],
+  chain: Type.String({
+    description: 'Blockchain chain (solana, ethereum)',
+    examples: ['solana', 'ethereum'],
   }),
-  network: Type.Optional(
+  network: Type.String({
+    description: 'Network name (mainnet-beta, mainnet, base, etc)',
+    examples: ['mainnet-beta', 'mainnet', 'base', 'arbitrum'],
+  }),
+  connector: Type.Optional(
     Type.String({
-      description: 'Optional: filter by network (mainnet, mainnet-beta, etc)',
-      examples: ['mainnet', 'mainnet-beta', 'base'],
+      description: 'Optional: filter by connector (raydium, meteora, uniswap, orca)',
+      examples: ['raydium', 'meteora', 'uniswap', 'orca'],
     }),
   ),
   type: Type.Optional(
@@ -30,6 +34,10 @@ export const PoolListRequestSchema = Type.Object({
 
 // Pool template (core data stored in templates)
 export const PoolTemplateSchema = Type.Object({
+  connector: Type.String({
+    description: 'Connector name (raydium, uniswap, orca, etc)',
+    examples: ['raydium', 'uniswap', 'orca', 'meteora', 'pancakeswap'],
+  }),
   type: Type.String({
     description: 'Pool type',
     examples: ['clmm', 'amm'],
@@ -46,11 +54,15 @@ export const PoolTemplateSchema = Type.Object({
 
 export type PoolTemplate = typeof PoolTemplateSchema.static;
 
-// Pool list response (includes template data, no geckoData)
+// Pool list response
 export const PoolListResponseSchema = Type.Array(PoolTemplateSchema);
 
 // Add pool request
 export const PoolAddRequestSchema = Type.Object({
+  chain: Type.String({
+    description: 'Blockchain chain (solana, ethereum)',
+    examples: ['solana', 'ethereum'],
+  }),
   connector: Type.String({
     description: 'Connector (raydium, meteora, uniswap, orca)',
     examples: ['raydium', 'meteora', 'uniswap', 'orca'],
@@ -68,14 +80,18 @@ export const PoolAddRequestSchema = Type.Object({
   address: Type.String({
     description: 'Pool contract address',
   }),
-  baseSymbol: Type.String({
-    description: 'Base token symbol',
-    examples: ['SOL', 'ETH'],
-  }),
-  quoteSymbol: Type.String({
-    description: 'Quote token symbol',
-    examples: ['USDC', 'USDT'],
-  }),
+  baseSymbol: Type.Optional(
+    Type.String({
+      description: 'Base token symbol (optional - fetched automatically if not provided)',
+      examples: ['SOL', 'ETH'],
+    }),
+  ),
+  quoteSymbol: Type.Optional(
+    Type.String({
+      description: 'Quote token symbol (optional - fetched automatically if not provided)',
+      examples: ['USDC', 'USDT'],
+    }),
+  ),
   baseTokenAddress: Type.String({
     description: 'Base token contract address',
     examples: ['So11111111111111111111111111111111111111112'],
@@ -96,9 +112,9 @@ export const PoolAddRequestSchema = Type.Object({
 
 // Get pool request
 export const GetPoolRequestSchema = Type.Object({
-  connector: Type.String({
-    description: 'Connector (raydium, meteora, uniswap, orca)',
-    examples: ['raydium', 'meteora', 'uniswap', 'orca'],
+  chain: Type.String({
+    description: 'Blockchain chain (solana, ethereum)',
+    examples: ['solana', 'ethereum'],
   }),
   network: Type.String({
     description: 'Network name (mainnet, mainnet-beta, etc)',
@@ -110,6 +126,12 @@ export const GetPoolRequestSchema = Type.Object({
     examples: ['amm', 'clmm'],
     enum: ['amm', 'clmm'],
   }),
+  connector: Type.Optional(
+    Type.String({
+      description: 'Optional: filter by connector (raydium, meteora, uniswap, orca)',
+      examples: ['raydium', 'meteora', 'uniswap', 'orca'],
+    }),
+  ),
 });
 
 // Success response
@@ -117,45 +139,8 @@ export const PoolSuccessResponseSchema = Type.Object({
   message: Type.String(),
 });
 
-// Optional CoinGecko data for pools
-export const PoolGeckoDataSchema = Type.Object({
-  volumeUsd24h: Type.String({
-    description: '24-hour trading volume in USD',
-  }),
-  liquidityUsd: Type.String({
-    description: 'Total liquidity in USD',
-  }),
-  priceNative: Type.String({
-    description: 'Base token price in quote token',
-  }),
-  priceUsd: Type.String({
-    description: 'Base token price in USD',
-  }),
-  buys24h: Type.Number({
-    description: 'Number of buy transactions in 24h',
-  }),
-  sells24h: Type.Number({
-    description: 'Number of sell transactions in 24h',
-  }),
-  apr: Type.Optional(
-    Type.Number({
-      description: 'Annual percentage rate',
-    }),
-  ),
-  timestamp: Type.Number({
-    description: 'Unix timestamp (ms) when data was fetched',
-  }),
-});
-
-export type PoolGeckoData = typeof PoolGeckoDataSchema.static;
-
-// Pool info with optional CoinGecko data (returned by /pools/find)
-export const PoolInfoSchema = Type.Composite([
-  PoolTemplateSchema,
-  Type.Object({
-    geckoData: Type.Optional(PoolGeckoDataSchema),
-  }),
-]);
+// Pool info (returned by /pools/find and /pools/save)
+export const PoolInfoSchema = PoolTemplateSchema;
 
 export type PoolInfo = typeof PoolInfoSchema.static;
 

@@ -15,6 +15,10 @@ const APPROVE_GAS_LIMIT = 100000;
 // Permit2 address is constant across all chains
 const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
 
+// Permit2 expirations are uint48 timestamps. Max uint48 means "never expires",
+// so bots approve once, matching plain ERC20 approvals on other connectors.
+export const MAX_UINT48 = 281474976710655;
+
 export async function approveEthereumToken(
   fastify: FastifyInstance,
   network: string,
@@ -205,7 +209,7 @@ export async function approveEthereumToken(
         // Wait for the transaction to be mined with timeout (60 seconds for approvals)
         const receipt = await ethereum.handleTransactionExecution(tx);
 
-        if (receipt.status === -1) {
+        if (!receipt || receipt.status === -1) {
           throw new Error('Transaction timed out or failed to get receipt');
         }
 
@@ -245,8 +249,7 @@ export async function approveEthereumToken(
         'function approve(address token, address spender, uint160 amount, uint48 expiration) external',
       ];
 
-      // Calculate expiration (48 hours from now)
-      const expiration = Math.floor(Date.now() / 1000) + 48 * 60 * 60;
+      const expiration = MAX_UINT48;
 
       // Convert amount to uint160 (Permit2 uses uint160 for amounts)
       // Max uint160 is 2^160 - 1, which is smaller than uint256

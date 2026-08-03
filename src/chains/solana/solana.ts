@@ -1,5 +1,3 @@
-import crypto from 'crypto';
-
 import {
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
@@ -14,6 +12,7 @@ import {
 import { TokenInfo } from '@solana/spl-token-registry';
 import {
   Connection,
+  ConnectionConfig,
   Keypair,
   PublicKey,
   ComputeBudgetProgram,
@@ -32,18 +31,31 @@ import fse from 'fs-extra';
 // TODO: Replace with Fastify httpErrors
 const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
 
+// Shared Connection config. disableRetryOnRateLimit turns off web3.js' built-in
+// 429 retry so the rate-limit interceptor is the single retry layer (mirrors
+// throttleLimit: 1 on the Ethereum provider) — avoids compounding retries.
+const SOLANA_CONNECTION_CONFIG: ConnectionConfig = {
+  commitment: 'confirmed',
+  disableRetryOnRateLimit: true,
+};
+
+import { ChainstackService } from '../../rpc/chainstack-service';
 import { HeliusService } from '../../rpc/helius-service';
 import { createRateLimitAwareSolanaConnection } from '../../rpc/rpc-connection-interceptor';
 import { RPCProvider } from '../../rpc/rpc-provider-base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
-import { httpErrors } from '../../services/error-handler';
+import { httpErrors, HttpError } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
+import { encryptSecret, decryptSecret, isLegacyKeystore } from '../../services/secure-keystore';
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
+import { SolanaLedger } from './solana-ledger';
 import { PriorityFeeResult, SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
+
+export type SolanaWalletType = 'local' | 'hardware';
 
 // Constants used for fee calculations
 export const BASE_FEE = 5000;
@@ -83,14 +95,49 @@ export class Solana {
     // Initialize RPC connection based on provider
     if (rpcProvider === 'helius') {
       this.initializeHeliusProvider();
+    } else if (rpcProvider === 'chainstack') {
+      this.initializeChainstackProvider();
     } else {
       // Default: use nodeURL
       this.connection = createRateLimitAwareSolanaConnection(
-        new Connection(this.config.nodeURL, {
-          commitment: 'confirmed',
-        }),
+        new Connection(this.config.nodeURL, SOLANA_CONNECTION_CONFIG),
         this.config.nodeURL,
       );
+    }
+  }
+
+  /**
+   * Initialize Chainstack RPC provider
+   *
+   * Chainstack discovery runs in the async init() after construction; we
+   * pre-seed `this.connection` with nodeURL and, on success, swap it to the
+   * discovered Chainstack endpoint once the Platform API returns the node.
+   */
+  private initializeChainstackProvider() {
+    // Placeholder connection — swapped to the Chainstack URL in init() after discovery.
+    this.connection = createRateLimitAwareSolanaConnection(
+      new Connection(this.config.nodeURL, SOLANA_CONNECTION_CONFIG),
+      this.config.nodeURL,
+    );
+
+    try {
+      const configManager = ConfigManagerV2.getInstance();
+      const apiKey = configManager.get('apiKeys.chainstack') || '';
+
+      if (!apiKey || apiKey.trim() === '' || apiKey.includes('YOUR_')) {
+        logger.warn(`⚠️ Chainstack provider selected but no valid API key configured`);
+        logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.config.nodeURL)}`);
+        return;
+      }
+
+      this.rpcProviderService = new ChainstackService(
+        { apiKey },
+        { chain: 'solana', network: this.network, chainId: this.config.chainID },
+      );
+
+      logger.info(`✅ Chainstack API key configured (length: ${apiKey.length} chars)`);
+    } catch (error: any) {
+      logger.warn(`Failed to initialize Chainstack provider: ${error.message}, falling back to standard RPC`);
     }
   }
 
@@ -108,9 +155,7 @@ export class Solana {
         logger.warn(`⚠️ Helius provider selected but no valid API key configured`);
         logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.config.nodeURL)}`);
         this.connection = createRateLimitAwareSolanaConnection(
-          new Connection(this.config.nodeURL, {
-            commitment: 'confirmed',
-          }),
+          new Connection(this.config.nodeURL, SOLANA_CONNECTION_CONFIG),
           this.config.nodeURL,
         );
         return;
@@ -127,19 +172,12 @@ export class Solana {
       logger.info(`Initializing Solana connector for network: ${this.network}, RPC URL: ${redactUrl(rpcUrl)}`);
       logger.info(`✅ Helius API key configured (length: ${apiKey.length} chars)`);
 
-      this.connection = createRateLimitAwareSolanaConnection(
-        new Connection(rpcUrl, {
-          commitment: 'confirmed',
-        }),
-        rpcUrl,
-      );
+      this.connection = createRateLimitAwareSolanaConnection(new Connection(rpcUrl, SOLANA_CONNECTION_CONFIG), rpcUrl);
     } catch (error: any) {
       // If Helius config not found (e.g., in tests), fallback to standard RPC
       logger.warn(`Failed to initialize Helius provider: ${error.message}, falling back to standard RPC`);
       this.connection = createRateLimitAwareSolanaConnection(
-        new Connection(this.config.nodeURL, {
-          commitment: 'confirmed',
-        }),
+        new Connection(this.config.nodeURL, SOLANA_CONNECTION_CONFIG),
         this.config.nodeURL,
       );
     }
@@ -161,9 +199,28 @@ export class Solana {
 
   private async init(): Promise<void> {
     try {
-      // Initialize RPC provider service if configured
+      // Initialize RPC provider service if configured. Some providers
+      // (Chainstack) only know their HTTP URL after initialize() resolves
+      // discovery; others (Helius) return it eagerly. Treat both uniformly:
+      // if getHttpUrl() yields a URL, swap the connection to it.
       if (this.rpcProviderService) {
-        await this.rpcProviderService.initialize();
+        try {
+          await this.rpcProviderService.initialize();
+
+          const rpcUrl = this.rpcProviderService.getHttpUrl();
+          if (rpcUrl) {
+            logger.info(`Using ${this.rpcProviderService.getProviderName()} RPC URL: ${redactUrl(rpcUrl)}`);
+            this.connection = createRateLimitAwareSolanaConnection(
+              new Connection(rpcUrl, SOLANA_CONNECTION_CONFIG),
+              rpcUrl,
+            );
+          }
+        } catch (providerError: any) {
+          logger.warn(
+            `${this.rpcProviderService.getProviderName()} initialize failed: ${providerError.message}, using nodeURL fallback`,
+          );
+          this.rpcProviderService = undefined;
+        }
       }
     } catch (e) {
       logger.error(`Failed to initialize ${this.network}: ${e}`);
@@ -203,8 +260,20 @@ export class Solana {
         // Validate if it's a valid public key
         const mintPubkey = new PublicKey(addressOrSymbol);
 
-        // Fetch mint info to get decimals
-        const mintInfo = await getMint(this.connection, mintPubkey);
+        // Determine the owning token program: getMint defaults to the legacy
+        // TOKEN_PROGRAM_ID and throws on a Token-2022 mint, which is what most
+        // modern pump.fun memecoins use. Read the account owner first so we
+        // pass the correct programId — otherwise Token-2022 mints resolve to
+        // null here and the swap fails with "Token not found" before the
+        // aggregator (which routes them fine) is ever called.
+        const accountInfo = await this.connection.getAccountInfo(mintPubkey);
+        if (!accountInfo) {
+          return null;
+        }
+        const programId = accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID) ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID;
+
+        // Fetch mint info to get decimals, using the correct token program
+        const mintInfo = await getMint(this.connection, mintPubkey, undefined, programId);
 
         // Create a basic token object with fetched decimals
         token = {
@@ -268,6 +337,19 @@ export class Solana {
       }
       const decrypted = await this.decrypt(encryptedPrivateKey, walletKey);
 
+      // Migrate legacy (PBKDF2-5000 + AES-256-CTR) key files to the hardened format on
+      // unlock, and tighten file permissions to owner-only (hummingbot/gateway#652).
+      if (isLegacyKeystore(encryptedPrivateKey)) {
+        try {
+          const upgraded = await this.encrypt(decrypted, walletKey);
+          await fse.writeFile(safeWalletPath, upgraded, { mode: 0o600 });
+          await fse.chmod(safeWalletPath, 0o600);
+          logger.info(`Upgraded keystore for ${validatedAddress} to the hardened format (scrypt + AES-256-GCM)`);
+        } catch (migrateError) {
+          logger.warn(`Failed to upgrade keystore for ${validatedAddress}: ${(migrateError as Error).message}`);
+        }
+      }
+
       return Keypair.fromSecretKey(new Uint8Array(bs58.decode(decrypted)));
     } catch (error) {
       if (error.message.includes('Invalid Solana address')) {
@@ -293,6 +375,52 @@ export class Solana {
   }
 
   /**
+   * Resolve the wallet type for an address: hardware (Ledger) or local (encrypted keypair).
+   */
+  async getWalletType(address: string): Promise<SolanaWalletType> {
+    if (await this.isHardwareWallet(address)) {
+      return 'hardware';
+    }
+    return 'local';
+  }
+
+  /**
+   * Prepare a wallet for transaction building: a Keypair for local wallets, or the
+   * PublicKey for hardware wallets (which sign externally).
+   */
+  async prepareWallet(address: string): Promise<{ wallet: Keypair | PublicKey; walletType: SolanaWalletType }> {
+    const walletType = await this.getWalletType(address);
+    const wallet = walletType === 'local' ? await this.getWallet(address) : await this.getPublicKey(address);
+    return { wallet, walletType };
+  }
+
+  /**
+   * Sign a transaction with the signing method matching the wallet type.
+   */
+  async signTransactionByType<T extends Transaction | VersionedTransaction>(
+    transaction: T,
+    address: string,
+    walletType: SolanaWalletType,
+    wallet: Keypair | PublicKey,
+  ): Promise<T> {
+    switch (walletType) {
+      case 'hardware': {
+        logger.info(`Hardware wallet detected for ${address}. Signing transaction with Ledger.`);
+        const ledger = new SolanaLedger();
+        return (await ledger.signTransaction(address, transaction)) as T;
+      }
+      default: {
+        if (transaction instanceof VersionedTransaction) {
+          transaction.sign([wallet as Keypair]);
+        } else {
+          (transaction as Transaction).sign(wallet as Keypair);
+        }
+        return transaction;
+      }
+    }
+  }
+
+  /**
    * Get the RPC provider service if initialized
    */
   public getRpcProviderService(): RPCProvider | null {
@@ -311,47 +439,20 @@ export class Solana {
     }
   }
 
+  /**
+   * Encrypt a wallet secret for at-rest storage using the hardened keystore format
+   * (scrypt + AES-256-GCM). See services/secure-keystore.ts and hummingbot/gateway#652.
+   */
   async encrypt(secret: string, password: string): Promise<string> {
-    const algorithm = 'aes-256-ctr';
-    const iv = crypto.randomBytes(16);
-    const salt = crypto.randomBytes(32);
-    const key = crypto.pbkdf2Sync(password, new Uint8Array(salt), 5000, 32, 'sha512');
-    const cipher = crypto.createCipheriv(algorithm, new Uint8Array(key), new Uint8Array(iv));
-
-    const encryptedBuffers = [
-      new Uint8Array(cipher.update(new Uint8Array(Buffer.from(secret)))),
-      new Uint8Array(cipher.final()),
-    ];
-    const encrypted = Buffer.concat(encryptedBuffers);
-
-    const ivJSON = iv.toJSON();
-    const saltJSON = salt.toJSON();
-    const encryptedJSON = encrypted.toJSON();
-
-    return JSON.stringify({
-      algorithm,
-      iv: ivJSON,
-      salt: saltJSON,
-      encrypted: encryptedJSON,
-    });
+    return encryptSecret(secret, password);
   }
 
+  /**
+   * Decrypt a wallet secret. Reads both the hardened format and the legacy
+   * (PBKDF2-5000 + AES-256-CTR) format so existing wallets keep working.
+   */
   async decrypt(encryptedSecret: string, password: string): Promise<string> {
-    const hash = JSON.parse(encryptedSecret);
-    const salt = new Uint8Array(Buffer.from(hash.salt, 'utf8'));
-    const iv = new Uint8Array(Buffer.from(hash.iv, 'utf8'));
-
-    const key = crypto.pbkdf2Sync(password, salt, 5000, 32, 'sha512');
-
-    const decipher = crypto.createDecipheriv(hash.algorithm, new Uint8Array(key), iv);
-
-    const decryptedBuffers = [
-      new Uint8Array(decipher.update(new Uint8Array(Buffer.from(hash.encrypted, 'hex')))),
-      new Uint8Array(decipher.final()),
-    ];
-    const decrypted = Buffer.concat(decryptedBuffers);
-
-    return decrypted.toString();
+    return decryptSecret(encryptedSecret, password);
   }
 
   /**
@@ -1288,9 +1389,150 @@ export class Solana {
       return { signature, fee: actualFee };
     }
 
-    throw httpErrors.transactionTimeout(
-      `Transaction failed to confirm after ${this.config.confirmRetryCount} attempts`,
+    await this.throwIfLandedWithError(signature);
+    throw this.confirmationTimeoutError(signature);
+  }
+
+  /**
+   * The 504 raised when a broadcast transaction was not seen on-chain before its blockhash
+   * expired. Includes the signature so the caller can reconcile: the send raced the
+   * confirmation window, and in rare cases the transaction may still show up.
+   */
+  private confirmationTimeoutError(signature: string): HttpError {
+    return httpErrors.transactionTimeout(
+      signature
+        ? `Transaction ${signature} was not confirmed before its blockhash expired. It most likely did not ` +
+            'land — verify the signature on-chain before retrying.'
+        : 'Transaction failed to send',
     );
+  }
+
+  /**
+   * If a broadcast transaction landed on-chain but failed, throw the parsed program error;
+   * return silently when the transaction is missing or succeeded so the caller can apply
+   * its own confirmation handling. The confirmation helpers report a landed-and-failed
+   * transaction as unconfirmed, which callers would otherwise misreport as a timeout.
+   */
+  private async throwIfLandedWithError(signature: string): Promise<void> {
+    if (!signature) return;
+    let txData: any = null;
+    try {
+      txData = await this.connection.getTransaction(signature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      });
+    } catch {
+      return;
+    }
+    if (!txData?.meta?.err) return;
+    const { simulationFailed } = await import('../../services/error-handler');
+    const { parseSolanaError } = await import('./solana-error-parser');
+    const logs: string[] = txData.meta.logMessages ?? [];
+    const parsed = parseSolanaError([JSON.stringify(txData.meta.err), ...logs].join('\n'));
+    throw simulationFailed(`Transaction ${signature} landed on-chain but failed: ${parsed.message}`);
+  }
+
+  public async sendAndConfirmTransactionForWallet(
+    tx: Transaction | VersionedTransaction,
+    address: string,
+    extraSigners: Keypair[] = [],
+    priorityFeePerCU?: number,
+  ): Promise<{ signature: string; fee: number }> {
+    // Extra signers are for EPHEMERAL keypairs (position NFT mints, new accounts); the
+    // wallet's own signature is this method's job, per wallet type. Some SDK builders
+    // (Raydium's TxBuilder) append an owner "signer" — for hardware wallets that is a
+    // dummy keypair carrying the wallet's pubkey but a random secret key: signing with it
+    // corrupts the wallet's signature slot. Drop it.
+    const walletPk = new PublicKey(address);
+    extraSigners = extraSigners.filter((s) => !s.publicKey.equals(walletPk));
+
+    // A connector may hand us a legacy transaction with no fee payer (it builds with the
+    // wallet's public key as token authority and leaves the fee payer for us). Resolve it to
+    // the wallet now, otherwise compiling the message for simulation throws "Transaction fee
+    // payer required". The per-type signing below pays from this same address.
+    if (!(tx instanceof VersionedTransaction) && !tx.feePayer) {
+      tx.feePayer = new PublicKey(address);
+    }
+
+    // Pre-flight simulate here (once, for every connector) so callers get a clear error
+    // instead of a failed on-chain send; this is why connectors no longer simulate
+    // themselves.
+    await this.simulateWithErrorHandling(tx);
+
+    const { wallet, walletType } = await this.prepareWallet(address);
+
+    // Local wallets sign in-process: reuse the standard path (keypair + extras).
+    if (walletType === 'local') {
+      return this.sendAndConfirmTransaction(tx, [wallet as Keypair, ...extraSigners], priorityFeePerCU);
+    }
+
+    // External wallets (hardware/Ledger): add the compute budget and sign any extra
+    // keypairs, then sign the fee payer externally.
+    const currentPriorityFee = priorityFeePerCU ?? (await this.estimateGasPrice());
+    let computeUnitsToUse: number;
+    try {
+      const sim =
+        tx instanceof VersionedTransaction
+          ? await this.connection.simulateTransaction(tx, { replaceRecentBlockhash: true, sigVerify: false })
+          : await this.connection.simulateTransaction(tx);
+      computeUnitsToUse = sim.value.unitsConsumed
+        ? Math.ceil(sim.value.unitsConsumed * 1.1)
+        : this.config.defaultComputeUnits;
+    } catch (error) {
+      logger.warn(`Failed to simulate for compute units: ${(error as Error).message}, using default`);
+      computeUnitsToUse = this.config.defaultComputeUnits;
+    }
+
+    let prepared: Transaction | VersionedTransaction;
+    if (tx instanceof VersionedTransaction) {
+      // Adds compute budget and signs the extra keypairs; the fee-payer slot is left
+      // empty for the external signer.
+      prepared = await this.prepareVersionedTx(tx, currentPriorityFee, computeUnitsToUse, extraSigners);
+    } else {
+      const priorityFeeMicroLamports = Math.floor(currentPriorityFee * 1_000_000);
+      tx.feePayer = wallet as PublicKey;
+      tx.instructions = [
+        ...tx.instructions.filter((inst) => !Solana.isReplacedComputeBudgetInstruction(inst.programId, inst.data)),
+        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFeeMicroLamports }),
+        ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnitsToUse }),
+      ];
+      const {
+        value: { lastValidBlockHeight, blockhash },
+      } = await this.connection.getLatestBlockhashAndContext('confirmed');
+      tx.lastValidBlockHeight = lastValidBlockHeight;
+      tx.recentBlockhash = blockhash;
+      if (extraSigners.length) tx.partialSign(...extraSigners);
+      prepared = tx;
+    }
+
+    const signedTx = await this.signTransactionByType(prepared, address, walletType, wallet);
+    // Re-apply extra signatures in case the external signer did not preserve them.
+    if (extraSigners.length) {
+      if (signedTx instanceof VersionedTransaction) {
+        signedTx.sign([...extraSigners]);
+      } else {
+        (signedTx as Transaction).partialSign(...extraSigners);
+      }
+    }
+
+    const { confirmed, signature, txData } = await this._sendAndConfirmRawTransaction(signedTx.serialize());
+    if (confirmed && txData) {
+      const actualFee = this.getFee(txData);
+      logger.info(`Transaction ${signature} confirmed with total fee: ${actualFee.toFixed(6)} SOL`);
+      return { signature, fee: actualFee };
+    }
+    await this.throwIfLandedWithError(signature);
+    throw this.confirmationTimeoutError(signature);
+  }
+
+  /**
+   * True for ComputeBudget instructions Gateway manages itself (SetComputeUnitLimit,
+   * SetComputeUnitPrice — discriminators 2 and 3). Other ComputeBudget instruction types
+   * (e.g. RequestHeapFrame, SetLoadedAccountsDataSizeLimit) must be preserved: some
+   * aggregator programs (Titan) require a larger heap frame and crash without it.
+   */
+  private static isReplacedComputeBudgetInstruction(programId: PublicKey, data: Uint8Array | Buffer): boolean {
+    return programId.equals(ComputeBudgetProgram.programId) && (data[0] === 2 || data[0] === 3);
   }
 
   private async prepareTx(
@@ -1304,9 +1546,10 @@ export class Solana {
       microLamports: priorityFeeMicroLamports,
     });
 
-    // Remove any existing priority fee instructions and add the new one
+    // Remove any existing CU-price/limit instructions (preserving other ComputeBudget
+    // types like RequestHeapFrame) and add the new one
     tx.instructions = [
-      ...tx.instructions.filter((inst) => !inst.programId.equals(ComputeBudgetProgram.programId)),
+      ...tx.instructions.filter((inst) => !Solana.isReplacedComputeBudgetInstruction(inst.programId, inst.data)),
       priorityFeeInstruction,
     ];
 
@@ -1390,9 +1633,11 @@ export class Solana {
         }),
       );
     } else {
-      // Remove compute budget instructions from original instructions
+      // Remove existing CU-price/limit instructions, preserving other ComputeBudget
+      // instruction types (e.g. RequestHeapFrame, which some aggregator programs require)
       const nonComputeBudgetInstructions = originalMessage.compiledInstructions.filter(
-        (ix) => !originalMessage.staticAccountKeys[ix.programIdIndex].equals(ComputeBudgetProgram.programId),
+        (ix) =>
+          !Solana.isReplacedComputeBudgetInstruction(originalMessage.staticAccountKeys[ix.programIdIndex], ix.data),
       );
 
       // Create modified instructions
@@ -1449,7 +1694,6 @@ export class Solana {
 
     modifiedTx.signatures = originalSignatures;
     modifiedTx.sign([..._signers]);
-    console.log('modifiedTx:', modifiedTx);
 
     return modifiedTx;
   }
@@ -1541,8 +1785,10 @@ export class Solana {
           }
           return { confirmed: !failed, txData };
         }
-        // Transaction not found on-chain yet - return as pending
-        return { confirmed: false, txData: null };
+        // Not found on-chain yet — it can still land until the blockhash expires, so fall
+        // back to polling (returning null hands over to _confirmViaPolling) instead of
+        // prematurely reporting a timeout.
+        return null;
       }
     } catch (wsError: any) {
       logger.warn(`WebSocket monitoring failed: ${wsError.message}, falling back to polling`);
@@ -1559,9 +1805,16 @@ export class Solana {
   ): Promise<{ confirmed: boolean; txData: any }> {
     logger.info(`🚀 Sent transaction ${signature}, polling for confirmation...`);
 
+    // A sent transaction can land in any block until its blockhash expires
+    // (lastValidBlockHeight, ~60-90s), so poll for that whole window — giving up after a
+    // fixed attempt count misreports slow-but-successful sends (e.g. minimum-priority-fee
+    // transactions) as timeouts. confirmRetryCount acts as a minimum number of polls and
+    // MAX_POLL_ATTEMPTS is a hard safety cap in case getBlockHeight itself misbehaves.
+    const MAX_POLL_ATTEMPTS = Math.max(this.config.confirmRetryCount, 150);
     let attempts = 0;
+    let sawExpiredBlockhash = false;
 
-    while (attempts < this.config.confirmRetryCount) {
+    while (attempts < MAX_POLL_ATTEMPTS) {
       attempts++;
 
       try {
@@ -1586,10 +1839,14 @@ export class Solana {
           }
         }
 
-        // Check if blockhash has expired
         const currentBlockHeight = await this.connection.getBlockHeight();
-        if (currentBlockHeight > lastValidBlockHeight) {
-          logger.warn(`Blockhash expired for transaction ${signature}, transaction may have failed`);
+        if (currentBlockHeight > lastValidBlockHeight && attempts >= this.config.confirmRetryCount) {
+          // Blockhash expired: the transaction can no longer be included in a new block.
+          // Grant one grace poll for the race where it landed in the final valid block,
+          // then stop.
+          if (sawExpiredBlockhash) break;
+          sawExpiredBlockhash = true;
+          logger.warn(`Blockhash expired for transaction ${signature}; doing a final status check`);
         }
 
         await new Promise((resolve) => setTimeout(resolve, this.config.confirmRetryInterval * 1000));
@@ -1603,7 +1860,20 @@ export class Solana {
       }
     }
 
-    logger.warn(`❌ Transaction ${signature} not confirmed after ${attempts} attempts`);
+    // Authoritative final check: the signature-status cache can lag or miss; look the
+    // transaction up directly before reporting it unconfirmed.
+    const txData = await this._fetchTransactionWithRetry(signature, 2, 500);
+    if (txData) {
+      const failed = txData.meta?.err != null;
+      if (failed) {
+        logger.error(`❌ Transaction ${signature} landed on-chain but failed (found in final check)`);
+      } else {
+        logger.info(`✅ Transaction ${signature} confirmed on-chain (found in final check)`);
+      }
+      return { confirmed: !failed, txData };
+    }
+
+    logger.warn(`❌ Transaction ${signature} not confirmed after ${attempts} attempts (blockhash expired)`);
     return { confirmed: false, txData: null };
   }
 
@@ -1886,10 +2156,25 @@ export class Solana {
 
       // Import error helpers and parser
       const { simulationFailed, insufficientBalance, slippageExceeded } = await import('../../services/error-handler');
-      const { parseSolanaError } = await import('./solana-error-parser');
+      const { parseSolanaError, extractProgramLogs } = await import('./solana-error-parser');
 
       // Parse the error using the utility
       const parsedError = parseSolanaError(errorMessage);
+
+      // Compose a detailed message including the failing instruction index and
+      // program logs, so callers can diagnose failures without digging through
+      // Gateway server logs.
+      const buildDetail = (base: string): string => {
+        const parts = [base];
+        if (parsedError.instructionIndex !== null) {
+          parts.push(`Failing instruction index: ${parsedError.instructionIndex}.`);
+        }
+        const logs = extractProgramLogs(errorMessage);
+        if (logs.length > 0) {
+          parts.push(`Program logs:\n${logs.join('\n')}`);
+        }
+        return parts.join('\n');
+      };
 
       // Throw appropriate error based on parsed type
       switch (parsedError.type) {
@@ -1899,19 +2184,23 @@ export class Solana {
         case 'INSUFFICIENT_BALANCE':
           throw insufficientBalance(parsedError.message);
 
+        case 'INSTRUCTION_ERROR':
         case 'INVALID_POSITION':
         case 'PRICE_LIMIT_OVERFLOW':
         case 'ACCOUNT_NOT_FOUND':
         case 'MATH_OVERFLOW':
-          throw simulationFailed(parsedError.message);
+          logger.error('Transaction simulation failed:', simulationError);
+          throw simulationFailed(buildDetail(parsedError.message));
 
         default:
           // Generic simulation failure
           logger.error('Transaction simulation failed:', simulationError);
           throw simulationFailed(
-            parsedError.errorCodeHex
-              ? `Transaction simulation failed. Error code: ${parsedError.errorCodeHex}.`
-              : 'Transaction simulation failed.',
+            buildDetail(
+              parsedError.errorCodeHex
+                ? `Transaction simulation failed. Error code: ${parsedError.errorCodeHex}.`
+                : 'Transaction simulation failed.',
+            ),
           );
       }
     }

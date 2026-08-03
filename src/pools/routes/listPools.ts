@@ -9,7 +9,7 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
     '/',
     {
       schema: {
-        description: 'List all pools for a connector, optionally filtered by network, type, or search term',
+        description: 'List all pools for a chain/network, optionally filtered by connector, type, or search term',
         tags: ['/pools'],
         querystring: PoolListRequestSchema,
         response: {
@@ -18,11 +18,11 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { connector, network, type, search } = request.query;
+      const { chain, network, connector, type, search } = request.query;
       const poolService = PoolService.getInstance();
 
       try {
-        const pools = await poolService.listPools(connector, network, type, search);
+        const pools = await poolService.listPools(chain, network, connector, type, search);
         return pools;
       } catch (error) {
         throw fastify.httpErrors.badRequest(error.message);

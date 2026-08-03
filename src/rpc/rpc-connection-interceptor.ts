@@ -8,6 +8,14 @@ import { providers } from 'ethers';
 
 import { logger } from '../services/logger';
 
+// Read RPC retry policy, applied to both chains. This Proxy is the single
+// retry layer: ethers and web3.js built-in 429 retries are disabled, so use
+// bounded exponential backoff with jitter. Writes are never retried.
+const READ_RETRY_ATTEMPTS = 3;
+const READ_RETRY_BASE_DELAY_MS = 500;
+const READ_RETRY_MAX_DELAY_MS = 5000;
+const READ_RETRY_JITTER = 0.2;
+
 /**
  * Redact sensitive parts of RPC URL (API keys, tokens)
  */
@@ -39,6 +47,20 @@ function is429Error(error: any): boolean {
   );
 }
 
+function isRetryableReadMethod(prop: string | symbol): boolean {
+  return typeof prop === 'string' && (prop.startsWith('get') || prop === 'call');
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getReadRetryDelayMs(attempt: number): number {
+  const delay = Math.min(READ_RETRY_BASE_DELAY_MS * 2 ** attempt, READ_RETRY_MAX_DELAY_MS);
+  const jitter = delay * READ_RETRY_JITTER * (Math.random() * 2 - 1);
+  return Math.round(delay + jitter);
+}
+
 /**
  * Create error message based on chain type
  */
@@ -57,6 +79,13 @@ function createRateLimitErrorMessage(rpcUrl: string, chainType: 'solana' | 'ethe
       `To fix: Add an RPC provider API key to conf/apiKeys.yml and set 'rpcProvider' in conf/chains/ethereum.yml`
     );
   }
+}
+
+function createRateLimitError(rpcUrl: string, chainType: 'solana' | 'ethereum'): Error {
+  const rateLimitError: any = new Error(createRateLimitErrorMessage(rpcUrl, chainType));
+  rateLimitError.statusCode = 429;
+  rateLimitError.name = 'TooManyRequestsError';
+  return rateLimitError;
 }
 
 /**
@@ -78,22 +107,32 @@ export function createRateLimitAwareSolanaConnection(connection: Connection, rpc
 
       // Return wrapped async function that catches 429 errors
       return async function (this: Connection, ...args: any[]) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-          return await (value as (...args: any[]) => any).apply(target, args);
-        } catch (error: any) {
-          if (is429Error(error)) {
+        const maxAttempts = isRetryableReadMethod(prop) ? READ_RETRY_ATTEMPTS + 1 : 1;
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+            return await (value as (...args: any[]) => any).apply(target, args);
+          } catch (error: any) {
+            if (!is429Error(error)) {
+              throw error;
+            }
+
             const redactedUrl = redactUrl(rpcUrl);
+            if (attempt < maxAttempts - 1) {
+              const delayMs = getReadRetryDelayMs(attempt);
+              logger.warn(
+                `Solana RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}. ` +
+                  `Retrying in ${delayMs}ms (${attempt + 1}/${READ_RETRY_ATTEMPTS})`,
+              );
+              await sleep(delayMs);
+              continue;
+            }
+
             logger.error(`⚠️  Solana RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}`);
             logger.error(`Original error: ${error.message}`);
-
-            // Create error with statusCode property that Fastify's error handler recognizes
-            const rateLimitError: any = new Error(createRateLimitErrorMessage(rpcUrl, 'solana'));
-            rateLimitError.statusCode = 429;
-            rateLimitError.name = 'TooManyRequestsError';
-            throw rateLimitError;
+            throw createRateLimitError(rpcUrl, 'solana');
           }
-          throw error;
         }
       };
     },
@@ -117,24 +156,38 @@ export function createRateLimitAwareEthereumProvider<T extends providers.BasePro
         return value;
       }
 
-      // Return wrapped async function that catches 429 errors
+      // Return wrapped async function that retries read 429s, then normalizes.
+      // This is the single retry layer for Ethereum reads: the underlying provider
+      // is constructed with throttleLimit: 1 so ethers does NOT retry 429s itself,
+      // avoiding a compounding retry. This also covers rate limits returned as a
+      // JSON-RPC error body (HTTP 200), which ethers' own throttle would ignore.
       return async function (this: T, ...args: any[]) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-          return await (value as (...args: any[]) => any).apply(target, args);
-        } catch (error: any) {
-          if (is429Error(error)) {
+        const maxAttempts = isRetryableReadMethod(prop) ? READ_RETRY_ATTEMPTS + 1 : 1;
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+            return await (value as (...args: any[]) => any).apply(target, args);
+          } catch (error: any) {
+            if (!is429Error(error)) {
+              throw error;
+            }
+
             const redactedUrl = redactUrl(rpcUrl);
+            if (attempt < maxAttempts - 1) {
+              const delayMs = getReadRetryDelayMs(attempt);
+              logger.warn(
+                `Ethereum RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}. ` +
+                  `Retrying in ${delayMs}ms (${attempt + 1}/${READ_RETRY_ATTEMPTS})`,
+              );
+              await sleep(delayMs);
+              continue;
+            }
+
             logger.error(`⚠️  Ethereum RPC rate limit exceeded: ${redactedUrl}, method: ${String(prop)}`);
             logger.error(`Original error: ${error.message}`);
-
-            // Create error with statusCode property that Fastify's error handler recognizes
-            const rateLimitError: any = new Error(createRateLimitErrorMessage(rpcUrl, 'ethereum'));
-            rateLimitError.statusCode = 429;
-            rateLimitError.name = 'TooManyRequestsError';
-            throw rateLimitError;
+            throw createRateLimitError(rpcUrl, 'ethereum');
           }
-          throw error;
         }
       };
     },

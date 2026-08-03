@@ -1,0 +1,24 @@
+[
+  {
+    "connector": "pancakeswap",
+    "type": "clmm",
+    "network": "bsc",
+    "baseSymbol": "USDT",
+    "quoteSymbol": "WBNB",
+    "baseTokenAddress": "0x55d398326f99059fF775485246999027B3197955",
+    "quoteTokenAddress": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+    "feePct": 0.01,
+    "address": "0x172fcd41e0913e95784454622d1c3724f546f849"
+  },
+  {
+    "connector": "pancakeswap",
+    "type": "clmm",
+    "network": "bsc",
+    "baseSymbol": "CAKE",
+    "quoteSymbol": "USDT",
+    "baseTokenAddress": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
+    "quoteTokenAddress": "0x55d398326f99059fF775485246999027B3197955",
+    "feePct": 0.25,
+    "address": "0x7f51c8aaa6b0599abd16674e2b17fec7a9f674a1"
+  }
+]
