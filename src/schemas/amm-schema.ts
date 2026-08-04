@@ -102,6 +102,44 @@ export const RemoveLiquidityResponse = Type.Object(
 );
 export type RemoveLiquidityResponseType = Static<typeof RemoveLiquidityResponse>;
 
+// ========================================
+// Pool Creation Types
+// ========================================
+
+export const CreatePoolRequest = Type.Object(
+  {
+    network: Type.Optional(Type.String()),
+    walletAddress: Type.Optional(Type.String()),
+    baseToken: Type.String({ description: 'Base token symbol or address (becomes the pool base)' }),
+    quoteToken: Type.String({ description: 'Quote token symbol or address (becomes the pool quote)' }),
+    baseTokenAmount: Type.Number({ description: 'Amount of base token to seed the pool with' }),
+    quoteTokenAmount: Type.Number({
+      description: 'Amount of quote token to seed the pool with. The base:quote ratio sets the initial price.',
+    }),
+  },
+  { $id: 'CreatePoolRequest' },
+);
+export type CreatePoolRequestType = Static<typeof CreatePoolRequest>;
+
+export const CreatePoolResponse = Type.Object(
+  {
+    signature: Type.String(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+    poolAddress: Type.String({ description: 'Address of the newly created pool' }),
+
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object({
+        fee: Type.Number(),
+        baseTokenAmountAdded: Type.Number(),
+        quoteTokenAmountAdded: Type.Number(),
+      }),
+    ),
+  },
+  { $id: 'CreatePoolResponse' },
+);
+export type CreatePoolResponseType = Static<typeof CreatePoolResponse>;
+
 export const PositionInfoSchema = Type.Object(
   {
     poolAddress: Type.String(),
