@@ -33,14 +33,46 @@ async function getMintProgram(solana: Solana, mint: PublicKey): Promise<PublicKe
   throw httpErrors.badRequest(`Mint ${mint.toBase58()} is not an SPL token mint`);
 }
 
+/**
+ * Fetches the current market price (quote per base) from the unified swap router so a new pool
+ * can be seeded on-market instead of at an arbitrary ratio. Seeding off-market invites arbitrage
+ * bots to instantly rebalance the pool (see docs/connectors/meteora-damm-v2.md). Uses a SELL quote
+ * of the base token via the network's configured swap provider (Jupiter aggregates existing venues);
+ * throws a clear error if no market route exists.
+ */
+async function fetchMarketPrice(
+  network: string,
+  baseToken: string,
+  quoteToken: string,
+  amount: number,
+): Promise<number> {
+  const { getUnifiedQuoteSwap } = await import('../../../trading/swap/quote');
+  let quote: any;
+  try {
+    quote = await getUnifiedQuoteSwap(`solana-${network}`, baseToken, quoteToken, amount, 'SELL');
+  } catch (e: any) {
+    throw httpErrors.badRequest(
+      `Could not fetch a market price for ${baseToken}/${quoteToken} to seed the pool (${e.message}). ` +
+        'Pass initialPrice or quoteTokenAmount explicitly.',
+    );
+  }
+  if (!quote || !quote.amountIn || !quote.amountOut) {
+    throw httpErrors.badRequest(
+      `No market route found for ${baseToken}/${quoteToken}. Pass initialPrice or quoteTokenAmount explicitly.`,
+    );
+  }
+  return quote.amountOut / quote.amountIn; // quote token per base token
+}
+
 export async function createPool(
   network: string,
   walletAddress: string,
   baseToken: string,
   quoteToken: string,
   baseTokenAmount: number,
-  quoteTokenAmount: number,
+  quoteTokenAmount?: number,
   configAddress?: string,
+  initialPrice?: number,
 ): Promise<CreatePoolResponseType> {
   if (!configAddress) {
     throw httpErrors.badRequest(
@@ -88,10 +120,40 @@ export async function createPool(
     getTokenDecimals(solana.connection, tokenBMint, tokenBProgram),
   ]);
 
+  if (baseTokenAmount <= 0) {
+    throw httpErrors.badRequest('baseTokenAmount must be greater than zero');
+  }
+
+  // Resolve the seed price (quote per base). Priority:
+  //   1) explicit initialPrice
+  //   2) explicit quoteTokenAmount (the base:quote ratio sets the price)
+  //   3) live market price from the unified swap router — so the pool opens on-market and is not
+  //      immediately arbitraged/sniped (see docs/connectors/meteora-damm-v2.md).
+  let seedPrice: number;
+  let seedSource: string;
+  if (initialPrice !== undefined) {
+    if (initialPrice <= 0) throw httpErrors.badRequest('initialPrice must be greater than zero');
+    seedPrice = initialPrice;
+    seedSource = 'initialPrice';
+  } else if (quoteTokenAmount !== undefined) {
+    if (quoteTokenAmount <= 0) throw httpErrors.badRequest('quoteTokenAmount must be greater than zero');
+    seedPrice = quoteTokenAmount / baseTokenAmount;
+    seedSource = 'quoteTokenAmount ratio';
+  } else {
+    seedPrice = await fetchMarketPrice(network, baseToken, quoteToken, baseTokenAmount);
+    seedSource = 'market (unified swap router)';
+  }
+
+  const effectiveQuoteAmount = baseTokenAmount * seedPrice;
+  logger.info(
+    `Seeding pool at ${seedPrice} ${quoteToken}/${baseToken} [${seedSource}]: ` +
+      `${baseTokenAmount} base + ${effectiveQuoteAmount} quote`,
+  );
+
   const tokenAAmount = new BN(new Decimal(baseTokenAmount).mul(new Decimal(10).pow(tokenADecimal)).toFixed(0));
-  const tokenBAmount = new BN(new Decimal(quoteTokenAmount).mul(new Decimal(10).pow(tokenBDecimal)).toFixed(0));
+  const tokenBAmount = new BN(new Decimal(effectiveQuoteAmount).mul(new Decimal(10).pow(tokenBDecimal)).toFixed(0));
   if (tokenAAmount.isZero() || tokenBAmount.isZero()) {
-    throw httpErrors.badRequest('Both baseTokenAmount and quoteTokenAmount must be greater than zero');
+    throw httpErrors.badRequest('Computed token amounts are zero — increase baseTokenAmount');
   }
 
   // The deposit ratio sets the initial price; liquidity spans the full price range.
@@ -139,6 +201,7 @@ export async function createPool(
       signature,
       status: 1, // CONFIRMED
       poolAddress: pool.toBase58(),
+      price: seedPrice,
       data: {
         fee: txData.meta.fee / 1e9,
         baseTokenAmountAdded: Math.abs(balanceChanges[0]),
@@ -146,7 +209,7 @@ export async function createPool(
       },
     };
   }
-  return { signature, status: 0, poolAddress: pool.toBase58() }; // PENDING
+  return { signature, status: 0, poolAddress: pool.toBase58(), price: seedPrice }; // PENDING
 }
 
 export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
@@ -167,8 +230,16 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, baseToken, quoteToken, baseTokenAmount, quoteTokenAmount, configAddress } =
-          request.body;
+        const {
+          network,
+          walletAddress,
+          baseToken,
+          quoteToken,
+          baseTokenAmount,
+          quoteTokenAmount,
+          configAddress,
+          initialPrice,
+        } = request.body;
         return await createPool(
           network,
           walletAddress,
@@ -177,6 +248,7 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           configAddress,
+          initialPrice,
         );
       } catch (e) {
         logger.error(e);

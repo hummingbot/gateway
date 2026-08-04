@@ -63,18 +63,33 @@ price bounds. There are hundreds of permissionless static configs, and **many ar
 configs whose base fee starts at ~99% and decays** (fee schedulers/rate limiters). Auto-selecting
 one blindly could create a pool with a punitive fee.
 
-- **`create-pool`** therefore **requires an explicit `configAddress`**. The deposit ratio
-  (`baseTokenAmount : quoteTokenAmount`) sets the initial price via
-  `preparePoolCreationParams`; liquidity spans the full range. Token order is base → token A,
-  quote → token B. The new pool address is derived deterministically
-  (`derivePoolAddress(config, tokenAMint, tokenBMint)`) and returned.
+- **`create-pool`** therefore **requires an explicit `configAddress`**. Token order is base →
+  token A, quote → token B. The new pool address is derived deterministically
+  (`derivePoolAddress(config, tokenAMint, tokenBMint)`) and returned along with the seed `price`.
 - Discover configs with the SDK (`cpAmm.getAllConfigs()` / `getStaticConfigs()`) or the Meteora
   app, and pass one whose fee/`collectFeeMode` you want.
 
-  **Proposed enhancement:** a safe auto-select that decodes each static config's base fee, keeps
-  only **static-fee** configs (fee scheduler `numberOfPeriod === 0`) with `collectFeeMode = BothToken`,
-  and picks the one matching a requested `feePct` (or the lowest). This needs per-config fee decoding
-  (`fetchPoolFees` / the pod-aligned fee decoders) and is intentionally left out of the basics.
+#### Initial price: seed on-market to avoid getting sniped
+A new pool's price is set by its seed ratio. If you open it **off-market**, arbitrage/MEV bots
+rebalance it to the true price within the same slot — you effectively subsidise them. `create-pool`
+resolves the seed price in this priority order:
+
+1. **`initialPrice`** (quote per base) if provided — `quoteTokenAmount = baseTokenAmount × initialPrice`.
+2. **`quoteTokenAmount`** if provided — the `baseTokenAmount : quoteTokenAmount` ratio sets the price.
+3. **Otherwise, the current market price is fetched** from the unified swap router
+   (`/trading/swap/quote`, i.e. the network's configured `swapProvider` — Jupiter on Solana, which
+   aggregates existing venues) via a SELL quote of the base token, and the pool is seeded there.
+
+Only `baseTokenAmount` is required; the quote side is derived. If the base token has **no existing
+market** (nothing for the router to price against), the fetch fails with a clear error asking you to
+pass `initialPrice` or `quoteTokenAmount` — Gateway never guesses a price. The seed price used is
+returned as `price` in the response.
+
+  **Proposed enhancement:** a safe config auto-select that decodes each static config's base fee,
+  keeps only **static-fee** configs (fee scheduler `numberOfPeriod === 0`) with
+  `collectFeeMode = BothToken`, and picks the one matching a requested `feePct` (or the lowest). This
+  needs per-config fee decoding (`fetchPoolFees` / the pod-aligned fee decoders) and is left out of
+  the basics.
 
 ### 4. Fee model: base (cliff) fee + optional dynamic fee
 The fee reported by `pool-info` is the pool's **base (cliff) fee** (`fetchPoolFees(...).cliffFeeNumerator`

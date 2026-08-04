@@ -751,15 +751,26 @@ export const MeteoraAmmCreatePoolRequest = Type.Object({
     description: 'Amount of base token to seed the pool with',
     examples: [BASE_TOKEN_AMOUNT],
   }),
-  quoteTokenAmount: Type.Number({
-    description: 'Amount of quote token to seed the pool with. The base:quote ratio sets the initial price.',
-    examples: [QUOTE_TOKEN_AMOUNT],
-  }),
+  quoteTokenAmount: Type.Optional(
+    Type.Number({
+      description:
+        'Amount of quote token to seed with. If provided, the base:quote ratio sets the initial price. ' +
+        'If omitted (and no initialPrice), the current market price is fetched from the swap router.',
+      examples: [QUOTE_TOKEN_AMOUNT],
+    }),
+  ),
+  initialPrice: Type.Optional(
+    Type.Number({
+      description:
+        'Initial price as quote per base (e.g. SOL per UMBRA). Overrides quoteTokenAmount. ' +
+        'If both are omitted, the pool is seeded at the current market price so it is not immediately arbitraged.',
+    }),
+  ),
   configAddress: Type.Optional(
     Type.String({
       description:
-        'DAMM v2 config account that defines the fee tier and pool parameters. ' +
-        'If omitted, the lowest-fee static config is used (see the connector doc).',
+        'DAMM v2 config account that defines the fee tier and pool parameters. Required — many permissionless ' +
+        'configs are launch configs with very high starting fees, so Gateway does not auto-select one.',
     }),
   ),
 });

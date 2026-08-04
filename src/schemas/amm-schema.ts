@@ -113,9 +113,20 @@ export const CreatePoolRequest = Type.Object(
     baseToken: Type.String({ description: 'Base token symbol or address (becomes the pool base)' }),
     quoteToken: Type.String({ description: 'Quote token symbol or address (becomes the pool quote)' }),
     baseTokenAmount: Type.Number({ description: 'Amount of base token to seed the pool with' }),
-    quoteTokenAmount: Type.Number({
-      description: 'Amount of quote token to seed the pool with. The base:quote ratio sets the initial price.',
-    }),
+    quoteTokenAmount: Type.Optional(
+      Type.Number({
+        description:
+          'Amount of quote token to seed with. If provided, the base:quote ratio sets the initial price. ' +
+          'If omitted (and no initialPrice), the price is fetched from the market.',
+      }),
+    ),
+    initialPrice: Type.Optional(
+      Type.Number({
+        description:
+          'Initial price as quote per base. Overrides quoteTokenAmount. If both are omitted, the current ' +
+          'market price is fetched from the unified swap router so the pool opens on-market.',
+      }),
+    ),
   },
   { $id: 'CreatePoolRequest' },
 );
@@ -126,6 +137,7 @@ export const CreatePoolResponse = Type.Object(
     signature: Type.String(),
     status: Type.Number({ description: 'TransactionStatus enum value' }),
     poolAddress: Type.String({ description: 'Address of the newly created pool' }),
+    price: Type.Optional(Type.Number({ description: 'Initial price the pool was seeded at (quote per base)' })),
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
