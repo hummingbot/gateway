@@ -2,6 +2,7 @@ import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
 import { getPositionInfo as meteoraGetPositionInfo } from '../../connectors/meteora/amm-routes/positionInfo';
+import { getPositionInfo as pancakeswapGetPositionInfo } from '../../connectors/pancakeswap/amm-routes/positionInfo';
 import { getPositionInfo as raydiumGetPositionInfo } from '../../connectors/raydium/amm-routes/positionInfo';
 import { getPositionInfo as uniswapGetPositionInfo } from '../../connectors/uniswap/amm-routes/positionInfo';
 import { PositionInfo, PositionInfoSchema } from '../../schemas/amm-schema';
@@ -45,6 +46,8 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
             return await raydiumGetPositionInfo(network, poolAddress, walletAddress);
           case 'uniswap':
             return await uniswapGetPositionInfo(network, poolAddress, walletAddress);
+          case 'pancakeswap':
+            return await pancakeswapGetPositionInfo(network, poolAddress, walletAddress);
           default:
             throw httpErrors.badRequest(
               `Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`,

@@ -229,7 +229,7 @@ async function getEthereumQuoteSwap(
     } else if (providerKey === 'pancakeswap/router') {
       return await pancakeswapRouterQuoteSwap(network, undefined, baseToken, quoteToken, amount, side, slippagePct);
     } else if (providerKey === 'pancakeswap/amm') {
-      return await pancakeswapAmmQuoteSwap(network, poolAddress!, baseToken, quoteToken, amount, side, slippagePct);
+      return await pancakeswapAmmQuoteSwap(network, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'pancakeswap/clmm') {
       return await pancakeswapClmmQuoteSwap(network, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === '0x/router') {

@@ -2,6 +2,7 @@ import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
 import { executeSwap as meteoraExecuteSwap } from '../../connectors/meteora/amm-routes/executeSwap';
+import { executeSwap as pancakeswapExecuteSwap } from '../../connectors/pancakeswap/amm-routes/executeSwap';
 import { executeSwap as raydiumExecuteSwap } from '../../connectors/raydium/amm-routes/executeSwap';
 import { executeSwap as uniswapExecuteSwap } from '../../connectors/uniswap/amm-routes/executeSwap';
 import { ExecuteSwapResponse, ExecuteSwapResponseType } from '../../schemas/amm-schema';
@@ -51,6 +52,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
             return await raydiumExecuteSwap(network, walletAddress, poolAddress, baseToken, s, amount, slippagePct);
           case 'uniswap':
             return await uniswapExecuteSwap(network, walletAddress, poolAddress, baseToken, s, amount, slippagePct);
+          case 'pancakeswap':
+            return await pancakeswapExecuteSwap(network, walletAddress, poolAddress, baseToken, s, amount, slippagePct);
           default:
             throw httpErrors.badRequest(
               `Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`,

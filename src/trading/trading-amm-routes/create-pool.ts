@@ -4,6 +4,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
 import { getSolanaChainConfig } from '../../chains/solana/solana.config';
 import { createPool as meteoraCreatePool } from '../../connectors/meteora/amm-routes/createPool';
+import { createPool as pancakeswapCreatePool } from '../../connectors/pancakeswap/amm-routes/createPool';
 import { createPool as raydiumCreatePool } from '../../connectors/raydium/amm-routes/createPool';
 import { createPool as uniswapCreatePool } from '../../connectors/uniswap/amm-routes/createPool';
 import { CreatePoolResponse, CreatePoolResponseType } from '../../schemas/amm-schema';
@@ -149,6 +150,20 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
 
           case 'uniswap':
             return await uniswapCreatePool(
+              network,
+              walletAddress,
+              baseToken,
+              quoteToken,
+              baseTokenAmount,
+              quoteTokenAmount,
+              initialPrice,
+              gasPrice,
+              maxGas,
+              slippagePct,
+            );
+
+          case 'pancakeswap':
+            return await pancakeswapCreatePool(
               network,
               walletAddress,
               baseToken,

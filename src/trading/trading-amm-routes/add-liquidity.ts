@@ -2,6 +2,7 @@ import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
 import { addLiquidity as meteoraAddLiquidity } from '../../connectors/meteora/amm-routes/addLiquidity';
+import { addLiquidity as pancakeswapAddLiquidity } from '../../connectors/pancakeswap/amm-routes/addLiquidity';
 import { addLiquidity as raydiumAddLiquidity } from '../../connectors/raydium/amm-routes/addLiquidity';
 import { addLiquidity as uniswapAddLiquidity } from '../../connectors/uniswap/amm-routes/addLiquidity';
 import { AddLiquidityResponse, AddLiquidityResponseType } from '../../schemas/amm-schema';
@@ -63,6 +64,15 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             );
           case 'uniswap':
             return await uniswapAddLiquidity(
+              network,
+              walletAddress,
+              poolAddress,
+              baseTokenAmount,
+              quoteTokenAmount,
+              slippagePct,
+            );
+          case 'pancakeswap':
+            return await pancakeswapAddLiquidity(
               network,
               walletAddress,
               poolAddress,

@@ -2,7 +2,7 @@ import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
 import { getSolanaChainConfig } from '../../chains/solana/solana.config';
 
 /** AMM connectors that back the unified /trading/amm routes. */
-export const AMM_CONNECTORS = ['meteora', 'raydium', 'uniswap'];
+export const AMM_CONNECTORS = ['meteora', 'raydium', 'uniswap', 'pancakeswap'];
 
 /** Parse a chain-network string (e.g. "solana-mainnet-beta") into its chain and network parts. */
 export function parseChainNetwork(chainNetwork: string): { chain: string; network: string } {

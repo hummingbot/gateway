@@ -262,7 +262,15 @@ async function executeEthereumSwap(
         slippagePct,
       );
     } else if (providerKey === 'pancakeswap/amm') {
-      return await pancakeswapAmmExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
+      return await pancakeswapAmmExecuteSwap(
+        network,
+        walletAddress,
+        poolAddress!,
+        baseToken,
+        side,
+        amount,
+        slippagePct,
+      );
     } else if (providerKey === 'pancakeswap/clmm') {
       return await pancakeswapClmmExecuteSwap(
         network,

@@ -4,6 +4,9 @@ import { FastifyPluginAsync } from 'fastify';
 import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
 import { getSolanaChainConfig } from '../../chains/solana/solana.config';
 import { createPool as meteoraCreatePool } from '../../connectors/meteora/clmm-routes/createPool';
+import { createPool as orcaCreatePool } from '../../connectors/orca/clmm-routes/createPool';
+import { createPool as pancakeswapCreatePool } from '../../connectors/pancakeswap/clmm-routes/createPool';
+import { createPool as pancakeswapSolCreatePool } from '../../connectors/pancakeswap-sol/clmm-routes/createPool';
 import { createPool as raydiumCreatePool } from '../../connectors/raydium/clmm-routes/createPool';
 import { createPool as uniswapCreatePool } from '../../connectors/uniswap/clmm-routes/createPool';
 import { CreatePoolResponse, CreatePoolResponseType } from '../../schemas/amm-schema';
@@ -33,7 +36,7 @@ function parseChainNetwork(chainNetwork: string): { chain: string; network: stri
 // Per-connector extras are optional and consumed only by their owning connector.
 const UnifiedClmmCreatePoolRequest = Type.Object({
   connector: Type.String({
-    description: 'CLMM connector name (meteora, raydium, uniswap)',
+    description: 'CLMM connector name (meteora, raydium, uniswap, orca, pancakeswap, pancakeswap-sol)',
     default: 'meteora',
     examples: ['meteora'],
   }),
@@ -56,9 +59,15 @@ const UnifiedClmmCreatePoolRequest = Type.Object({
   binStep: Type.Optional(Type.Number({ description: 'Meteora DLMM bin step (bps)' })),
   feeBps: Type.Optional(Type.Number({ description: 'Meteora DLMM base fee (bps)' })),
   ammConfigIndex: Type.Optional(Type.Number({ description: 'Raydium CLMM AMM config index (fee tier)' })),
-  fee: Type.Optional(Type.Number({ description: 'Uniswap V3 fee tier (100 | 500 | 3000 | 10000)' })),
-  gasPrice: Type.Optional(Type.Number({ description: 'Uniswap (EVM) gas price in gwei' })),
-  maxGas: Type.Optional(Type.Number({ description: 'Uniswap (EVM) max gas limit' })),
+  fee: Type.Optional(
+    Type.Number({
+      description: 'V3 fee tier — Uniswap (100 | 500 | 3000 | 10000) or PancakeSwap (100 | 500 | 2500 | 10000)',
+    }),
+  ),
+  tickSpacing: Type.Optional(Type.Number({ description: 'Orca Whirlpool tick spacing (fee tier)' })),
+  ammConfig: Type.Optional(Type.String({ description: 'pancakeswap-sol CLMM amm_config account address (required)' })),
+  gasPrice: Type.Optional(Type.Number({ description: 'EVM gas price in gwei (uniswap/pancakeswap)' })),
+  maxGas: Type.Optional(Type.Number({ description: 'EVM max gas limit (uniswap/pancakeswap)' })),
 });
 
 export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
@@ -89,6 +98,8 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
           feeBps,
           ammConfigIndex,
           fee,
+          tickSpacing,
+          ammConfig,
           gasPrice,
           maxGas,
         } = request.body;
@@ -118,6 +129,28 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
               fee,
               gasPrice,
               maxGas,
+            );
+          case 'orca':
+            return await orcaCreatePool(network, walletAddress, baseToken, quoteToken, initialPrice, tickSpacing);
+          case 'pancakeswap':
+            return await pancakeswapCreatePool(
+              network,
+              walletAddress,
+              baseToken,
+              quoteToken,
+              initialPrice,
+              fee,
+              gasPrice,
+              maxGas,
+            );
+          case 'pancakeswap-sol':
+            return await pancakeswapSolCreatePool(
+              network,
+              walletAddress,
+              baseToken,
+              quoteToken,
+              initialPrice,
+              ammConfig,
             );
           default:
             throw httpErrors.badRequest(`Unsupported CLMM connector: ${connector}`);

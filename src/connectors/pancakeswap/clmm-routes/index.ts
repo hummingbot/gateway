@@ -3,6 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 import addLiquidityRoute from './addLiquidity';
 import closePositionRoute from './closePosition';
 import collectFeesRoute from './collectFees';
+import createPoolRoute from './createPool';
 import executeSwapRoute from './executeSwap';
 import openPositionRoute from './openPosition';
 import poolInfoRoute from './poolInfo';
@@ -24,6 +25,7 @@ export const pancakeswapClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(removeLiquidityRoute);
   await fastify.register(collectFeesRoute);
   await fastify.register(closePositionRoute);
+  await fastify.register(createPoolRoute);
 };
 
 export default pancakeswapClmmRoutes;

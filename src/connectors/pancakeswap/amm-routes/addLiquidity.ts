@@ -7,6 +7,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { wrapEthereum } from '../../../chains/ethereum/routes/wrap';
 import { AddLiquidityResponseType, AddLiquidityResponse } from '../../../schemas/amm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
 import { PancakeswapConfig } from '../pancakeswap.config';
@@ -19,7 +20,7 @@ import { getPancakeswapAmmLiquidityQuote } from './quoteLiquidity';
 // Default gas limit for AMM add liquidity operations
 const AMM_ADD_LIQUIDITY_GAS_LIMIT = 500000;
 
-async function addLiquidity(
+async function addLiquidityInternal(
   fastify: any,
   network: string,
   walletAddress: string,
@@ -279,6 +280,37 @@ async function addLiquidity(
   };
 }
 
+/**
+ * Standard AMM add-liquidity entry point (network-based) — consumed by the unified /trading/amm
+ * dispatcher. Base/quote tokens are derived from the pool; gasPrice/maxGas are optional EVM extras.
+ */
+export async function addLiquidity(
+  network: string,
+  walletAddress: string,
+  poolAddress: string,
+  baseTokenAmount: number,
+  quoteTokenAmount: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
+  gasPrice?: string,
+  maxGas?: number,
+): Promise<AddLiquidityResponseType> {
+  const poolInfo = await getPancakeswapPoolInfo(poolAddress, network, 'amm');
+  if (!poolInfo) throw httpErrors.notFound(`Pool not found: ${poolAddress}`);
+  return await addLiquidityInternal(
+    { httpErrors },
+    network,
+    walletAddress,
+    poolAddress,
+    poolInfo.baseTokenAddress,
+    poolInfo.quoteTokenAddress,
+    baseTokenAmount,
+    quoteTokenAmount,
+    slippagePct,
+    gasPrice,
+    maxGas,
+  );
+}
+
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
 
@@ -327,22 +359,10 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
-        // Get pool information to determine tokens
-        const poolInfo = await getPancakeswapPoolInfo(poolAddress, networkToUse, 'amm');
-        if (!poolInfo) {
-          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
-        }
-
-        const baseToken = poolInfo.baseTokenAddress;
-        const quoteToken = poolInfo.quoteTokenAddress;
-
         return await addLiquidity(
-          fastify,
           networkToUse,
           walletAddress,
           poolAddress,
-          baseToken,
-          quoteToken,
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
