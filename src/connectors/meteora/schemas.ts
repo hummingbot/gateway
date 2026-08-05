@@ -501,6 +501,46 @@ export const MeteoraClmmQuotePositionRequest = Type.Object({
   ),
 });
 
+// Meteora CLMM Create Pool Request
+export const MeteoraClmmCreatePoolRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...MeteoraConfig.networks],
+    }),
+  ),
+  walletAddress: Type.Optional(
+    Type.String({
+      description: 'Solana wallet address that will create the pool',
+      default: solanaChainConfig.defaultWallet,
+      examples: [solanaChainConfig.defaultWallet],
+    }),
+  ),
+  baseToken: Type.String({
+    description: 'Base token symbol or address',
+    examples: [BASE_TOKEN],
+  }),
+  quoteToken: Type.String({
+    description: 'Quote token symbol or address',
+    examples: [QUOTE_TOKEN],
+  }),
+  initialPrice: Type.Number({
+    description: 'Initial price as quote per base (e.g. USDC per SOL). Encodes the pool active bin.',
+    examples: [UPPER_PRICE_BOUND],
+  }),
+  binStep: Type.Number({
+    description:
+      'Bin step in basis points (e.g. 1, 2, 4, 5, 10, 20, 25, 50, 100). Sets pool granularity; ' +
+      'cannot be changed after creation.',
+    examples: [20],
+  }),
+  feeBps: Type.Number({
+    description: 'Base swap fee in basis points (e.g. 20 = 0.20%). Must be compatible with binStep.',
+    examples: [20],
+  }),
+});
+
 // ========================================
 // DAMM v2 (AMM) Request Schemas
 // ========================================

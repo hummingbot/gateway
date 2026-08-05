@@ -23,6 +23,7 @@ import {
   removeLiquidityRoute,
   collectFeesRoute,
   closePositionRoute,
+  createPoolRoute as clmmCreatePoolRoute,
 } from './trading-clmm-routes';
 
 export const tradingSwapRoutes: FastifyPluginAsync = async (fastify) => {
@@ -48,6 +49,7 @@ export const tradingClmmRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(removeLiquidityRoute);
   fastify.register(collectFeesRoute);
   fastify.register(closePositionRoute);
+  fastify.register(clmmCreatePoolRoute);
 };
 
 export const tradingAmmRoutes: FastifyPluginAsync = async (fastify) => {

@@ -271,6 +271,54 @@ export const UniswapAmmCreatePoolRequest = Type.Object({
   ),
 });
 
+// Uniswap CLMM Create Pool Request (Uniswap V3)
+export const UniswapClmmCreatePoolRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'The EVM network to use',
+      default: ethereumChainConfig.defaultNetwork,
+      enum: [...UniswapConfig.networks],
+    }),
+  ),
+  walletAddress: Type.Optional(
+    Type.String({
+      description: 'Wallet address that will create and initialize the pool',
+      default: ethereumChainConfig.defaultWallet,
+    }),
+  ),
+  baseToken: Type.String({
+    description: 'Base token symbol or address (becomes the pool base)',
+    examples: [BASE_TOKEN],
+  }),
+  quoteToken: Type.String({
+    description: 'Quote token symbol or address (becomes the pool quote)',
+    examples: [QUOTE_TOKEN],
+  }),
+  fee: Type.Number({
+    description: 'Fee tier in hundredths of a bip: 100 (0.01%), 500 (0.05%), 3000 (0.30%), or 10000 (1.00%)',
+    enum: [100, 500, 3000, 10000],
+    examples: [3000],
+  }),
+  initialPrice: Type.Optional(
+    Type.Number({
+      description:
+        'Initial price as quote per base. If omitted, the current market price is fetched from the ' +
+        'unified swap router so the pool opens on-market and is not immediately arbitraged.',
+    }),
+  ),
+  gasPrice: Type.Optional(
+    Type.String({
+      description: 'Gas price in wei for the transaction',
+    }),
+  ),
+  maxGas: Type.Optional(
+    Type.Number({
+      description: 'Maximum gas limit for the transaction',
+      examples: [600000],
+    }),
+  ),
+});
+
 // Uniswap AMM Remove Liquidity Request
 export const UniswapAmmRemoveLiquidityRequest = Type.Object({
   network: Type.Optional(

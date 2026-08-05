@@ -505,6 +505,47 @@ export const RaydiumClmmOpenPositionRequest = Type.Object({
   ),
 });
 
+export const RaydiumClmmCreatePoolRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...RaydiumConfig.networks],
+    }),
+  ),
+  walletAddress: Type.Optional(
+    Type.String({
+      description: 'Solana wallet address that will create and initialize the pool',
+      default: solanaChainConfig.defaultWallet,
+    }),
+  ),
+  baseToken: Type.String({
+    description: 'Base token symbol or address (becomes the pool base)',
+    examples: [BASE_TOKEN],
+  }),
+  quoteToken: Type.String({
+    description: 'Quote token symbol or address (becomes the pool quote)',
+    examples: [QUOTE_TOKEN],
+  }),
+  initialPrice: Type.Optional(
+    Type.Number({
+      description:
+        'Initial price as quote per base. If omitted, the current market price is fetched from the ' +
+        'unified swap router so the pool opens on-market. No position is opened; only the pool is created.',
+      examples: [QUOTE_TOKEN_AMOUNT / BASE_TOKEN_AMOUNT],
+    }),
+  ),
+  ammConfigIndex: Type.Optional(
+    Type.Integer({
+      description:
+        'Index into the CLMM amm-config list returned by the Raydium API (getClmmConfigs). ' +
+        'Each config carries a fee tier and tickSpacing. Default 0 selects the first/lowest tier.',
+      default: 0,
+      minimum: 0,
+    }),
+  ),
+});
+
 export const RaydiumClmmAddLiquidityRequest = Type.Object({
   network: Type.Optional(
     Type.String({
