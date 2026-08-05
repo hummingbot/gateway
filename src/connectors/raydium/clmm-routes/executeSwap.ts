@@ -11,16 +11,15 @@ import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
 import { RaydiumClmmExecuteSwapRequest, RaydiumClmmExecuteSwapRequestType } from '../schemas';
 
-import { getSwapQuote } from './quoteSwap';
+import { getSwapQuote, resolveCounterToken } from './quoteSwap';
 
 export async function executeSwap(
   network: string,
   walletAddress: string,
-  baseToken: string,
-  quoteToken: string,
-  amount: number,
-  side: 'BUY' | 'SELL',
   poolAddress: string,
+  baseToken: string,
+  side: 'BUY' | 'SELL',
+  amount: number,
   slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
@@ -30,6 +29,9 @@ export async function executeSwap(
   // hardware). The tx is built unsigned; signing/sending is delegated to
   // sendAndConfirmTransactionForWallet, which signs for the wallet's type.
   await raydium.setOwner(new PublicKey(walletAddress));
+
+  // Standardized: quote token is derived from the pool given poolAddress + baseToken.
+  const quoteToken = await resolveCounterToken(network, poolAddress, baseToken);
 
   // Get pool info from address
   const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(poolAddress);
@@ -235,11 +237,10 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         return await executeSwap(
           networkToUse,
           walletAddress,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
           poolAddressToUse,
+          baseToken,
+          side as 'BUY' | 'SELL',
+          amount,
           slippagePct,
         );
       } catch (e) {

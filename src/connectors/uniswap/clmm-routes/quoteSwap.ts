@@ -389,15 +389,34 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
 export default quoteSwapRoute;
 
-// Export quoteSwap wrapper for chain-level routes
+/**
+ * Resolves the counter ("quote") token for a Uniswap V3 pool given the base token. The standardized
+ * swap wrappers take poolAddress + baseToken and derive the other side from the pool, so callers no
+ * longer pass quoteToken.
+ */
+export async function resolveCounterToken(network: string, poolAddress: string, baseToken: string): Promise<string> {
+  const poolInfo = await getUniswapPoolInfo(poolAddress, network, 'clmm');
+  if (!poolInfo) throw httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
+  const uniswap = await Uniswap.getInstance(network);
+  const resolved = await uniswap.getToken(baseToken);
+  const baseAddr = resolved ? resolved.address : baseToken;
+  if (baseAddr === poolInfo.baseTokenAddress) return poolInfo.quoteTokenAddress;
+  if (baseAddr === poolInfo.quoteTokenAddress) return poolInfo.baseTokenAddress;
+  throw httpErrors.badRequest(`Token ${baseToken} is not part of pool ${poolAddress}`);
+}
+
+/**
+ * Standard CLMM quote-swap entry point (network-based) — consumed by the unified swap router.
+ * Requires poolAddress; the quote token is derived from the pool.
+ */
 export async function quoteSwap(
   network: string,
   poolAddress: string,
   baseToken: string,
-  quoteToken: string,
-  amount: number,
   side: 'BUY' | 'SELL',
+  amount: number,
   slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
+  const quoteToken = await resolveCounterToken(network, poolAddress, baseToken);
   return await formatSwapQuote(network, poolAddress, baseToken, quoteToken, amount, side, slippagePct);
 }
