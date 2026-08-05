@@ -4,7 +4,12 @@ import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync } from 'fastify';
 
-import { GetPositionInfoRequestType, PositionInfo, PositionInfoSchema } from '../../../schemas/amm-schema';
+import {
+  GetPositionInfoRequestType,
+  PositionInfo,
+  PositionInfoSchema,
+  PositionDetail,
+} from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { MeteoraDamm } from '../meteora-damm';
@@ -12,7 +17,9 @@ import { MeteoraAmmGetPositionInfoRequest } from '../schemas';
 
 /**
  * Standard AMM position-info entry point (network-based) — consumed by the unified /trading/amm
- * dispatcher. DAMM v2 positions are NFTs; amounts are summed across the wallet's positions in the pool.
+ * dispatcher. DAMM v2 positions are NFTs; a wallet may hold several per pool. The top-level amounts
+ * are the aggregate; `positions[]` breaks them out per NFT so callers can target a specific position
+ * (pass its `positionAddress` to remove-liquidity / add-liquidity).
  */
 export async function getPositionInfo(
   network: string,
@@ -32,10 +39,13 @@ export async function getPositionInfo(
 
   const positions = await meteoraDamm.getUserPositions(poolAddress, walletAddress);
 
+  const toUi = (raw: BN, decimals: number) => new Decimal(raw.toString()).div(new Decimal(10).pow(decimals)).toNumber();
+
   let totalLiquidity = new BN(0);
   let baseRaw = new BN(0);
   let quoteRaw = new BN(0);
-  for (const { positionState } of positions) {
+  const breakdown: PositionDetail[] = [];
+  for (const { position, positionState } of positions) {
     const liquidity = positionState.unlockedLiquidity;
     if (liquidity.isZero()) continue;
     totalLiquidity = totalLiquidity.add(liquidity);
@@ -51,9 +61,13 @@ export async function getPositionInfo(
     });
     baseRaw = baseRaw.add(wq.outAmountA);
     quoteRaw = quoteRaw.add(wq.outAmountB);
+    breakdown.push({
+      positionAddress: position.toBase58(),
+      lpTokenAmount: Number(q64ToDecimal(liquidity).toString()),
+      baseTokenAmount: toUi(wq.outAmountA, tokenADecimal),
+      quoteTokenAmount: toUi(wq.outAmountB, tokenBDecimal),
+    });
   }
-
-  const toUi = (raw: BN, decimals: number) => new Decimal(raw.toString()).div(new Decimal(10).pow(decimals)).toNumber();
 
   return {
     poolAddress,
@@ -65,6 +79,7 @@ export async function getPositionInfo(
     baseTokenAmount: toUi(baseRaw, tokenADecimal),
     quoteTokenAmount: toUi(quoteRaw, tokenBDecimal),
     price,
+    positions: breakdown,
   };
 }
 

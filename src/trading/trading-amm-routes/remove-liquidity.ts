@@ -19,6 +19,13 @@ const UnifiedAmmRemoveLiquidityRequest = Type.Object({
   }),
   walletAddress: Type.String({ description: 'Wallet address', default: defaultWallet }),
   poolAddress: Type.String({ description: 'Pool contract address' }),
+  positionAddress: Type.Optional(
+    Type.String({
+      description:
+        'Required for meteora (DAMM v2 positions are NFTs): the specific position to remove from. ' +
+        'List positions with position-info or positions-owned. Ignored by fungible-LP AMMs.',
+    }),
+  ),
   percentageToRemove: Type.Number({ minimum: 0, maximum: 100, description: 'Percentage of liquidity to remove' }),
   slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
 });
@@ -39,11 +46,32 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { connector, chainNetwork, walletAddress, poolAddress, percentageToRemove, slippagePct } = request.body;
+        const {
+          connector,
+          chainNetwork,
+          walletAddress,
+          poolAddress,
+          positionAddress,
+          percentageToRemove,
+          slippagePct,
+        } = request.body;
         const { network } = parseChainNetwork(chainNetwork);
         switch (connector) {
           case 'meteora':
-            return await meteoraRemoveLiquidity(network, walletAddress, poolAddress, percentageToRemove, slippagePct);
+            if (!positionAddress) {
+              throw httpErrors.badRequest(
+                'positionAddress is required for meteora: DAMM v2 positions are NFTs and a wallet may hold ' +
+                  'several per pool. List them with position-info or positions-owned.',
+              );
+            }
+            return await meteoraRemoveLiquidity(
+              network,
+              walletAddress,
+              poolAddress,
+              positionAddress,
+              percentageToRemove,
+              slippagePct,
+            );
           case 'raydium':
             return await raydiumRemoveLiquidity(network, walletAddress, poolAddress, percentageToRemove, slippagePct);
           case 'uniswap':

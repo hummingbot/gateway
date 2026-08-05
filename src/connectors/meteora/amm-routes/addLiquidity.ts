@@ -18,6 +18,7 @@ export async function addLiquidity(
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct: number = MeteoraConfig.config.slippagePct,
+  positionAddress?: string,
 ): Promise<AddLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const meteoraDamm = await MeteoraDamm.getInstance(network);
@@ -32,10 +33,6 @@ export async function addLiquidity(
 
   const owner = new PublicKey(walletAddress);
   const pool = new PublicKey(poolAddress);
-
-  // DAMM v2 positions are NFTs. Add to the wallet's largest existing position in this pool, or
-  // create a new position NFT if the wallet has none.
-  const existing = await meteoraDamm.getUserPositions(poolAddress, walletAddress);
 
   let transaction: Transaction;
   const extraSigners: Keypair[] = [];
@@ -52,8 +49,18 @@ export async function addLiquidity(
     tokenBProgram,
   };
 
-  if (existing.length > 0) {
-    const target = existing[0];
+  // DAMM v2 positions are NFTs; a wallet may hold several per pool. If a position address is given,
+  // add to that specific position (owner-filtered lookup also proves ownership + pool membership).
+  // If omitted, open a NEW position NFT — we never silently pick an existing one.
+  if (positionAddress) {
+    const existing = await meteoraDamm.getUserPositions(poolAddress, walletAddress);
+    const target = existing.find((p) => p.position.toBase58() === positionAddress);
+    if (!target) {
+      throw httpErrors.notFound(
+        `Position ${positionAddress} not found for wallet in pool ${poolAddress}. ` +
+          'List the wallet positions with position-info, or omit positionAddress to open a new position.',
+      );
+    }
     logger.info(`Adding liquidity to existing DAMM v2 position ${target.position.toBase58()} in pool ${poolAddress}`);
     transaction = await meteoraDamm.cpAmm.addLiquidity({
       owner,
@@ -108,7 +115,9 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     '/add-liquidity',
     {
       schema: {
-        description: 'Add liquidity to a Meteora DAMM v2 pool (opens a position NFT if the wallet has none)',
+        description:
+          'Add liquidity to a Meteora DAMM v2 pool. Provide positionAddress to add to a specific ' +
+          'position (NFT); omit it to open a new position.',
         tags: ['/connector/meteora'],
         body: MeteoraAmmAddLiquidityRequest,
         response: {
@@ -118,7 +127,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.body;
+        const { network, walletAddress, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct, positionAddress } =
+          request.body;
         const effectiveSlippage = slippagePct ?? MeteoraConfig.config.slippagePct;
         return await addLiquidity(
           network,
@@ -127,6 +137,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           effectiveSlippage,
+          positionAddress,
         );
       } catch (e) {
         logger.error(e);

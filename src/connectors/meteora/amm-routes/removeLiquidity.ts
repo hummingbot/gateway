@@ -19,6 +19,7 @@ export async function removeLiquidity(
   network: string,
   walletAddress: string,
   poolAddress: string,
+  positionAddress: string,
   percentageToRemove: number,
   slippagePct: number = MeteoraConfig.config.slippagePct,
 ): Promise<RemoveLiquidityResponseType> {
@@ -32,12 +33,17 @@ export async function removeLiquidity(
   const poolState = await meteoraDamm.getPoolState(poolAddress);
   const { tokenAProgram, tokenBProgram } = meteoraDamm.getTokenPrograms(poolState);
 
-  // DAMM v2 positions are NFTs; operate on the wallet's largest position in this pool.
+  // DAMM v2 positions are NFTs; a wallet may hold several per pool. Operate on the specific
+  // position the caller named. getUserPositions is owner-filtered, so finding it here also proves
+  // the wallet owns it and that it belongs to this pool (list them with position-info).
   const positions = await meteoraDamm.getUserPositions(poolAddress, walletAddress);
-  if (positions.length === 0) {
-    throw httpErrors.notFound(`No DAMM v2 position found for wallet in pool ${poolAddress}`);
+  const target = positions.find((p) => p.position.toBase58() === positionAddress);
+  if (!target) {
+    throw httpErrors.notFound(
+      `Position ${positionAddress} not found for wallet in pool ${poolAddress}. ` +
+        'List the wallet positions with position-info.',
+    );
   }
-  const target = positions[0];
   const unlocked = target.positionState.unlockedLiquidity;
   if (unlocked.isZero()) {
     throw httpErrors.badRequest('Position has no unlocked liquidity to remove');
@@ -121,7 +127,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     '/remove-liquidity',
     {
       schema: {
-        description: 'Remove liquidity from the wallet position in a Meteora DAMM v2 pool',
+        description: 'Remove liquidity from a specific position (NFT) in a Meteora DAMM v2 pool',
         tags: ['/connector/meteora'],
         body: MeteoraAmmRemoveLiquidityRequest,
         response: {
@@ -131,11 +137,12 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, poolAddress, percentageToRemove } = request.body;
+        const { network, walletAddress, poolAddress, positionAddress, percentageToRemove } = request.body;
         return await removeLiquidity(
           network,
           walletAddress,
           poolAddress,
+          positionAddress,
           percentageToRemove,
           MeteoraConfig.config.slippagePct,
         );

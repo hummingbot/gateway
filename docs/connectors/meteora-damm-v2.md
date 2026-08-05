@@ -10,12 +10,13 @@ the Raydium AMM connector:
 | Endpoint | Method | Notes |
 |---|---|---|
 | `/connectors/meteora/amm/pool-info` | GET | Pool reserves, price, base (cliff) fee % |
-| `/connectors/meteora/amm/position-info` | GET | Wallet's aggregated liquidity in a pool |
+| `/connectors/meteora/amm/position-info` | GET | Wallet's aggregate liquidity in a pool + per-position `positions[]` breakdown |
+| `/connectors/meteora/amm/positions-owned` | GET | All of the wallet's DAMM v2 positions across pools |
 | `/connectors/meteora/amm/quote-swap` | GET | Exact-in (SELL) / exact-out (BUY) quote |
 | `/connectors/meteora/amm/execute-swap` | POST | Swap |
 | `/connectors/meteora/amm/quote-liquidity` | GET | Two-sided deposit quote |
-| `/connectors/meteora/amm/add-liquidity` | POST | Add to (or open) a position |
-| `/connectors/meteora/amm/remove-liquidity` | POST | Remove a % of position liquidity |
+| `/connectors/meteora/amm/add-liquidity` | POST | Add to a specific position (`positionAddress`) or open a new one |
+| `/connectors/meteora/amm/remove-liquidity` | POST | Remove a % from a specific position (`positionAddress` **required**) |
 | `/connectors/meteora/amm/create-pool` | POST | Create + seed a new pool |
 
 The implementation deliberately keeps to "the basics" so it fits the shared AMM schema. This
@@ -33,21 +34,34 @@ exactly one position per (wallet, pool). DAMM v2 instead mints a **position NFT*
 and a wallet can hold **several positions in the same pool**. Liquidity, fees, and vesting all
 live on the position account (`PositionState`), keyed by the NFT.
 
-- **`add-liquidity`** — if the wallet already holds a position in the pool, liquidity is added to
-  its **largest** position; otherwise a new position NFT is minted
-  (`createPositionAndAddLiquidity`). Minting requires the NFT mint keypair to co-sign; Gateway's
-  Solana send path already supports ephemeral extra signers, so the keypair is generated in the
-  route and passed through.
-- **`remove-liquidity`** — operates on the wallet's **largest** position and removes the requested
-  percentage of its *unlocked* liquidity (100% removes the exact unlocked amount).
-- **`position-info`** — there is no LP token balance to report, so amounts are **summed across all
-  of the wallet's positions** in the pool (via `getWithdrawQuote` on each). `lpTokenAmount` is
-  reported as the aggregate position liquidity (the Q64 liquidity value converted to a decimal),
-  clearly *not* an SPL token balance.
+Because positions are individually addressable and can differ arbitrarily in size, lock state, and
+accrued fees, the AMM routes are **position-addressed** (mirroring the CLMM interface) rather than
+silently defaulting to the largest position:
 
-  **Proposed enhancement:** add position-addressed routes (`positions-owned`, and
-  `position`/`add`/`remove` that take a `positionAddress`), mirroring the CLMM interface, so callers
-  can manage multiple positions per pool precisely instead of always defaulting to the largest.
+- **`position-info`** — there is no LP token balance to report, so the top-level amounts are the
+  **aggregate** summed across all of the wallet's positions in the pool (via `getWithdrawQuote` on
+  each), and `positions[]` breaks that out **per NFT** (`positionAddress`, `lpTokenAmount`, base/quote
+  amounts). `lpTokenAmount` is the Q64 liquidity value converted to a decimal — clearly *not* an SPL
+  token balance. `positions[]` is the discovery mechanism: read it to get the addresses to pass to
+  add/remove.
+- **`positions-owned`** — lists **all** of the wallet's DAMM v2 positions across every pool
+  (`getPositionsByUser`, grouped by pool), each entry being that pool's `position-info`. Use it to
+  discover holdings without enumerating pool addresses.
+- **`remove-liquidity`** — requires a **`positionAddress`** and removes the requested percentage of
+  *that position's* unlocked liquidity (100% removes the exact unlocked amount). Requiring the
+  address avoids silently draining only the largest position when several exist — so "remove 100%"
+  means what the caller expects. The lookup goes through the owner-filtered `getUserPositions`, which
+  also proves the wallet owns the position and that it belongs to the pool.
+- **`add-liquidity`** — if a **`positionAddress`** is given, liquidity is added to that specific
+  position; if omitted, a **new** position NFT is minted (`createPositionAndAddLiquidity`) — we never
+  silently pick an existing one. Minting requires the NFT mint keypair to co-sign; Gateway's Solana
+  send path already supports ephemeral extra signers, so the keypair is generated in the route and
+  passed through.
+
+The unified `/trading/amm/*` routes carry the same `positionAddress` field (required for meteora on
+remove, optional on add) and expose `positions-owned`; fungible-LP AMMs (Raydium CPMM, Uniswap V2,
+Pancakeswap V2) ignore `positionAddress` and reject `positions-owned` with a clear error, since a
+fungible LP balance has no enumerable positions.
 
 ### 2. sqrt-price / concentrated-liquidity accounting
 DAMM v2 uses Uniswap-v3-style `sqrtPrice` (Q64) math with `sqrtMinPrice`/`sqrtMaxPrice` bounds,

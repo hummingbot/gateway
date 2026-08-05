@@ -11,6 +11,7 @@ import {
   createPoolRoute,
   poolInfoRoute as ammPoolInfoRoute,
   positionInfoRoute as ammPositionInfoRoute,
+  positionsOwnedRoute as ammPositionsOwnedRoute,
   quoteSwapRoute as ammQuoteSwapRoute,
   executeSwapRoute as ammExecuteSwapRoute,
   quoteLiquidityRoute as ammQuoteLiquidityRoute,
@@ -58,6 +59,7 @@ export const tradingAmmRoutes: FastifyPluginAsync = async (fastify) => {
   // Register AMM query routes (unified cross-connector)
   fastify.register(ammPoolInfoRoute);
   fastify.register(ammPositionInfoRoute);
+  fastify.register(ammPositionsOwnedRoute);
   fastify.register(ammQuoteSwapRoute);
   fastify.register(ammQuoteLiquidityRoute);
 

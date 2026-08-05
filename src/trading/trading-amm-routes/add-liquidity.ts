@@ -21,6 +21,13 @@ const UnifiedAmmAddLiquidityRequest = Type.Object({
   poolAddress: Type.String({ description: 'Pool contract address' }),
   baseTokenAmount: Type.Number({ description: 'Amount of base token to add' }),
   quoteTokenAmount: Type.Number({ description: 'Amount of quote token to add' }),
+  positionAddress: Type.Optional(
+    Type.String({
+      description:
+        'meteora only (DAMM v2 positions are NFTs): add to this specific position. Omit to open a new ' +
+        'position. Ignored by fungible-LP AMMs.',
+    }),
+  ),
   slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
 });
 
@@ -40,8 +47,16 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { connector, chainNetwork, walletAddress, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } =
-          request.body;
+        const {
+          connector,
+          chainNetwork,
+          walletAddress,
+          poolAddress,
+          baseTokenAmount,
+          quoteTokenAmount,
+          positionAddress,
+          slippagePct,
+        } = request.body;
         const { network } = parseChainNetwork(chainNetwork);
         switch (connector) {
           case 'meteora':
@@ -52,6 +67,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
               baseTokenAmount,
               quoteTokenAmount,
               slippagePct,
+              positionAddress,
             );
           case 'raydium':
             return await raydiumAddLiquidity(

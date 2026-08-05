@@ -152,6 +152,20 @@ export const CreatePoolResponse = Type.Object(
 );
 export type CreatePoolResponseType = Static<typeof CreatePoolResponse>;
 
+// Per-position breakdown entry. Non-fungible-LP AMMs (e.g. Meteora DAMM v2) let a wallet hold
+// several NFT positions in one pool; each is individually addressable. Fungible-LP AMMs (Raydium
+// CPMM, Uniswap V2) have a single position per wallet and omit this array.
+export const PositionDetailSchema = Type.Object(
+  {
+    positionAddress: Type.String({ description: 'Address of the individual position (NFT position account)' }),
+    lpTokenAmount: Type.Number({ description: 'Liquidity held by this position (LP units)' }),
+    baseTokenAmount: Type.Number(),
+    quoteTokenAmount: Type.Number(),
+  },
+  { $id: 'PositionDetail' },
+);
+export type PositionDetail = Static<typeof PositionDetailSchema>;
+
 export const PositionInfoSchema = Type.Object(
   {
     poolAddress: Type.String(),
@@ -162,6 +176,10 @@ export const PositionInfoSchema = Type.Object(
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
     price: Type.Number(),
+    // Per-position breakdown for non-fungible-LP AMMs. When a wallet holds multiple positions in a
+    // pool, the top-level amounts are the aggregate and each entry here is individually addressable
+    // (pass its positionAddress to remove-liquidity / add-liquidity). Omitted for fungible-LP AMMs.
+    positions: Type.Optional(Type.Array(PositionDetailSchema)),
   },
   { $id: 'PositionInfo' },
 );

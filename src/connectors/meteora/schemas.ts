@@ -728,6 +728,13 @@ export const MeteoraAmmAddLiquidityRequest = Type.Object({
     description: 'Amount of quote token to add',
     examples: [QUOTE_TOKEN_AMOUNT],
   }),
+  positionAddress: Type.Optional(
+    Type.String({
+      description:
+        'DAMM v2 positions are NFTs; a wallet may hold several per pool. Provide a position address ' +
+        '(from position-info) to add to that specific position; omit to open a NEW position NFT.',
+    }),
+  ),
   slippagePct: Type.Optional(
     Type.Number({
       minimum: 0,
@@ -757,13 +764,34 @@ export const MeteoraAmmRemoveLiquidityRequest = Type.Object({
     description: 'Meteora DAMM v2 pool address',
     examples: [DAMM_V2_POOL_ADDRESS_EXAMPLE],
   }),
+  positionAddress: Type.String({
+    description:
+      'Address of the specific DAMM v2 position (NFT) to remove from. Required — a wallet may hold ' +
+      'several positions per pool; list them with position-info. This avoids silently draining only ' +
+      'the largest position when several exist.',
+  }),
   percentageToRemove: Type.Number({
     minimum: 0,
     maximum: 100,
-    description: 'Percentage of the wallet position liquidity to remove',
+    description: 'Percentage of this position’s liquidity to remove',
     examples: [100],
   }),
 });
+
+export const MeteoraAmmGetPositionsOwnedRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...MeteoraConfig.networks],
+    }),
+  ),
+  walletAddress: Type.String({
+    description: 'Solana wallet address to list DAMM v2 positions for',
+    examples: [solanaChainConfig.defaultWallet],
+  }),
+});
+export type MeteoraAmmGetPositionsOwnedRequestType = Static<typeof MeteoraAmmGetPositionsOwnedRequest>;
 
 export const MeteoraAmmCreatePoolRequest = Type.Object({
   network: Type.Optional(
