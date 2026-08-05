@@ -1,0 +1,44 @@
+[
+  {
+    "chainId": 143,
+    "name": "Wrapped MON",
+    "symbol": "WMON",
+    "address": "0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A",
+    "decimals": 18
+  },
+  {
+    "chainId": 143,
+    "name": "USDC",
+    "symbol": "USDC",
+    "address": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
+    "decimals": 6
+  },
+  {
+    "chainId": 143,
+    "name": "USDT0",
+    "symbol": "USDT0",
+    "address": "0xe7cd86e13AC4309349F30B3435a9d337750fC82D",
+    "decimals": 6
+  },
+  {
+    "chainId": 143,
+    "name": "Wrapped Ether",
+    "symbol": "WETH",
+    "address": "0xEE8c0E9f1BFFb4Eb878d8f15f368A02a35481242",
+    "decimals": 18
+  },
+  {
+    "chainId": 143,
+    "name": "Wrapped BTC",
+    "symbol": "WBTC",
+    "address": "0x0555E30da8f98308EdB960aa94C0Db47230d2B9c",
+    "decimals": 8
+  },
+  {
+    "chainId": 143,
+    "name": "ShMonad",
+    "symbol": "shMON",
+    "address": "0x1B68626dCa36c7fE922fD2d55E4f631d962dE19c",
+    "decimals": 18
+  }
+]

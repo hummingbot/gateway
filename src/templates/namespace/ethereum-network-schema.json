@@ -15,6 +15,7 @@
       "enum": [
         "uniswap/router",
         "0x/router",
+        "fibrous/router",
         "pancakeswap/router",
         "uniswap/amm",
         "uniswap/clmm",

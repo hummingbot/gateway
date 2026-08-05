@@ -18,6 +18,7 @@ import { solanaRoutes } from './chains/solana/solana.routes';
 import { configRoutes } from './config/config.routes';
 import { register0xRoutes } from './connectors/0x/0x.routes';
 import { dflowRoutes } from './connectors/dflow/dflow.routes';
+import { registerFibrousRoutes } from './connectors/fibrous/fibrous.routes';
 import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { okxRoutes } from './connectors/okx/okx.routes';
@@ -114,6 +115,10 @@ const swaggerOptions = {
         description: 'Uniswap connector endpoints',
       },
       { name: '/connector/0x', description: '0x connector endpoints' },
+      {
+        name: '/connector/fibrous',
+        description: 'Fibrous connector endpoints',
+      },
       {
         name: '/connector/pancakeswap-sol',
         description: 'PancakeSwap Solana connector endpoints',
@@ -341,6 +346,9 @@ const configureGatewayServer = () => {
 
     // 0x routes
     app.register(register0xRoutes);
+
+    // Fibrous routes
+    app.register(registerFibrousRoutes);
 
     // Pancakeswap routes
     app.register(pancakeswapRoutes.router, {
