@@ -7,6 +7,7 @@ import { positionsOwnedRoute } from './clmm/positions-owned';
 import { quotePositionRoute } from './clmm/quote-position';
 import { executeSwapRoute } from './swap/execute';
 import { quoteSwapRoute } from './swap/quote';
+import { createPoolRoute } from './trading-amm-routes';
 import {
   openPositionRoute,
   addLiquidityRoute,
@@ -38,6 +39,13 @@ export const tradingClmmRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(removeLiquidityRoute);
   fastify.register(collectFeesRoute);
   fastify.register(closePositionRoute);
+};
+
+export const tradingAmmRoutes: FastifyPluginAsync = async (fastify) => {
+  await fastify.register(sensible);
+
+  // Register AMM transaction routes (unified cross-connector)
+  fastify.register(createPoolRoute);
 };
 
 // Legacy export for backward compatibility

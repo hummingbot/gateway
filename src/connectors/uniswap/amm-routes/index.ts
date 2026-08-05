@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 
 import addLiquidityRoute from './addLiquidity';
+import createPoolRoute from './createPool';
 import executeSwapRoute from './executeSwap';
 import poolInfoRoute from './poolInfo';
 import positionInfoRoute from './positionInfo';
@@ -15,6 +16,7 @@ export const uniswapAmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(quoteLiquidityRoute);
   await fastify.register(executeSwapRoute);
   await fastify.register(addLiquidityRoute);
+  await fastify.register(createPoolRoute);
   await fastify.register(removeLiquidityRoute);
 };
 

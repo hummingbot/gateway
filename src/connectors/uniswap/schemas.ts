@@ -210,6 +210,67 @@ export const UniswapAmmAddLiquidityRequest = Type.Object({
   ),
 });
 
+// Uniswap AMM Create Pool Request
+export const UniswapAmmCreatePoolRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'The EVM network to use',
+      default: ethereumChainConfig.defaultNetwork,
+      enum: [...UniswapConfig.networks],
+    }),
+  ),
+  walletAddress: Type.Optional(
+    Type.String({
+      description: 'Wallet address that will create and seed the pool',
+      default: ethereumChainConfig.defaultWallet,
+    }),
+  ),
+  baseToken: Type.String({
+    description: 'Base token symbol or address (becomes the pool base)',
+    examples: [BASE_TOKEN],
+  }),
+  quoteToken: Type.String({
+    description: 'Quote token symbol or address (becomes the pool quote)',
+    examples: [QUOTE_TOKEN],
+  }),
+  baseTokenAmount: Type.Number({
+    description: 'Amount of base token to seed the pool with',
+  }),
+  quoteTokenAmount: Type.Optional(
+    Type.Number({
+      description:
+        'Amount of quote token to seed with. If provided, the base:quote ratio sets the initial price. ' +
+        'If omitted (and no initialPrice), the current market price is fetched from the unified swap router.',
+    }),
+  ),
+  initialPrice: Type.Optional(
+    Type.Number({
+      description:
+        'Initial price as quote per base. Overrides quoteTokenAmount. If both are omitted, the pool is ' +
+        'seeded at the current market price so it is not immediately arbitraged.',
+    }),
+  ),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: UniswapConfig.config.slippagePct,
+    }),
+  ),
+  gasPrice: Type.Optional(
+    Type.String({
+      description: 'Gas price in wei for the transaction',
+    }),
+  ),
+  maxGas: Type.Optional(
+    Type.Number({
+      description: 'Maximum gas limit for the transaction',
+      examples: [300000],
+    }),
+  ),
+});
+
 // Uniswap AMM Remove Liquidity Request
 export const UniswapAmmRemoveLiquidityRequest = Type.Object({
   network: Type.Optional(
