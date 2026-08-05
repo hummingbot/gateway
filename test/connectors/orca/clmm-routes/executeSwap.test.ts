@@ -355,6 +355,11 @@ describe('POST /execute-swap', () => {
             send: jest.fn().mockResolvedValue({ value: { blockhash: mockBlockhash, lastValidBlockHeight: 12345n } }),
           }),
         },
+        // resolveCounterToken (standardized wrapper) derives the counter token from the pool.
+        getWhirlpool: jest.fn().mockResolvedValue({
+          tokenMintA: mockBaseTokenInfo.address,
+          tokenMintB: mockQuoteTokenInfo.address,
+        }),
       });
       (fetchWhirlpool as jest.Mock).mockResolvedValue({
         data: { tokenMintA: mockBaseTokenInfo.address, tokenMintB: mockQuoteTokenInfo.address },

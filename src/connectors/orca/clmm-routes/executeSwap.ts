@@ -14,21 +14,25 @@ import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
 import { OrcaClmmExecuteSwapRequest, OrcaClmmExecuteSwapRequestType } from '../schemas';
 
+import { resolveCounterToken } from './quoteSwap';
+
 const COMPUTE_BUDGET_PROGRAM_ID = address('ComputeBudget111111111111111111111111111111');
 
 export async function executeSwap(
   network: string,
   walletAddress: string,
-  baseTokenIdentifier: string,
-  quoteTokenIdentifier: string,
-  amount: number,
-  side: 'BUY' | 'SELL',
   poolAddress: string,
+  baseTokenIdentifier: string,
+  side: 'BUY' | 'SELL',
+  amount: number,
   slippagePct: number = 1,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
   const rpc = orca.solanaKitRpc;
+
+  // Standardized: quote token is derived from the pool given poolAddress + baseToken.
+  const quoteTokenIdentifier = await resolveCounterToken(network, poolAddress, baseTokenIdentifier);
 
   // Resolve token metadata
   const baseTokenInfo = await solana.getToken(baseTokenIdentifier);
@@ -189,11 +193,10 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         return await executeSwap(
           networkUsed,
           walletAddressUsed,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
           poolAddressUsed,
+          baseToken,
+          side as 'BUY' | 'SELL',
+          amount,
           slippagePct,
         );
       } catch (e: any) {

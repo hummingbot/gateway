@@ -163,9 +163,9 @@ async function getSolanaQuoteSwap(
     } else if (providerKey === 'meteora/clmm') {
       return await meteoraClmmQuoteSwap(network, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'pancakeswap-sol/clmm') {
-      return await pancakeswapSolClmmQuoteSwap(network, baseToken, quoteToken, amount, side, poolAddress, slippagePct);
+      return await pancakeswapSolClmmQuoteSwap(network, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'orca/clmm') {
-      return await orcaClmmQuoteSwap(network, baseToken, quoteToken, amount, side, poolAddress!, slippagePct);
+      return await orcaClmmQuoteSwap(network, poolAddress!, baseToken, side, amount, slippagePct);
     }
 
     throw httpErrors.badRequest(`Unsupported swap provider: ${swapProvider}`);
@@ -231,7 +231,7 @@ async function getEthereumQuoteSwap(
     } else if (providerKey === 'pancakeswap/amm') {
       return await pancakeswapAmmQuoteSwap(network, poolAddress!, baseToken, quoteToken, amount, side, slippagePct);
     } else if (providerKey === 'pancakeswap/clmm') {
-      return await pancakeswapClmmQuoteSwap(network, poolAddress!, baseToken, quoteToken, amount, side, slippagePct);
+      return await pancakeswapClmmQuoteSwap(network, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === '0x/router') {
       return await zeroXRouterQuoteSwap(network, baseToken, quoteToken, amount, side, slippagePct || 1);
     }

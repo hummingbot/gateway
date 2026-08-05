@@ -182,24 +182,14 @@ async function executeSolanaSwap(
       return await pancakeswapSolClmmExecuteSwap(
         network,
         walletAddress,
+        poolAddress!,
         baseToken,
-        quoteToken,
-        amount,
         side,
-        poolAddress,
+        amount,
         slippagePct,
       );
     } else if (providerKey === 'orca/clmm') {
-      return await orcaClmmExecuteSwap(
-        network,
-        walletAddress,
-        baseToken,
-        quoteToken,
-        amount,
-        side,
-        poolAddress!,
-        slippagePct,
-      );
+      return await orcaClmmExecuteSwap(network, walletAddress, poolAddress!, baseToken, side, amount, slippagePct);
     }
 
     throw httpErrors.badRequest(`Unsupported swap provider: ${swapProvider}`);
@@ -274,7 +264,15 @@ async function executeEthereumSwap(
     } else if (providerKey === 'pancakeswap/amm') {
       return await pancakeswapAmmExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
     } else if (providerKey === 'pancakeswap/clmm') {
-      return await pancakeswapClmmExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
+      return await pancakeswapClmmExecuteSwap(
+        network,
+        walletAddress,
+        poolAddress!,
+        baseToken,
+        side,
+        amount,
+        slippagePct,
+      );
     } else if (providerKey === '0x/router') {
       return await zeroXRouterExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
     }
