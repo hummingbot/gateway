@@ -11,7 +11,7 @@ import { Static } from '@sinclair/typebox';
 import { VersionedTransaction, Transaction, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import {
@@ -19,6 +19,7 @@ import {
   AddLiquidityResponseType,
   QuoteLiquidityResponseType,
 } from '../../../schemas/amm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
@@ -104,8 +105,7 @@ async function createAddLiquidityTransaction(
   throw new Error(`Unsupported pool type: ${ammPoolInfo.poolType}`);
 }
 
-async function addLiquidity(
-  _fastify: FastifyInstance,
+export async function addLiquidity(
   network: string,
   walletAddress: string,
   poolAddress: string,
@@ -123,18 +123,17 @@ async function addLiquidity(
 
   const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
   if (!ammPoolInfo) {
-    throw _fastify.httpErrors.notFound(`Pool not found for address: ${poolAddress}`);
+    throw httpErrors.notFound(`Pool not found for address: ${poolAddress}`);
   }
 
   // Get pool info and keys since they're no longer in quoteLiquidity response
   const poolResponse = await raydium.getPoolfromAPI(poolAddress);
   if (!poolResponse) {
-    throw _fastify.httpErrors.notFound(`Pool not found for address: ${poolAddress}`);
+    throw httpErrors.notFound(`Pool not found for address: ${poolAddress}`);
   }
   const [poolInfo, poolKeys] = poolResponse;
 
   const quoteResponse = (await quoteLiquidity(
-    _fastify,
     network,
     poolAddress,
     baseTokenAmount,
@@ -245,15 +244,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { network, walletAddress, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.body;
 
-        return await addLiquidity(
-          fastify,
-          network,
-          walletAddress,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
+        return await addLiquidity(network, walletAddress, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) throw e;

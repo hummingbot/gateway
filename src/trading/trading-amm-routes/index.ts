@@ -1,1 +1,8 @@
 export { createPoolRoute } from './create-pool';
+export { poolInfoRoute } from './pool-info';
+export { positionInfoRoute } from './position-info';
+export { quoteSwapRoute } from './quote-swap';
+export { executeSwapRoute } from './execute-swap';
+export { quoteLiquidityRoute } from './quote-liquidity';
+export { addLiquidityRoute } from './add-liquidity';
+export { removeLiquidityRoute } from './remove-liquidity';

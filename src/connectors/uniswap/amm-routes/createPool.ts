@@ -7,6 +7,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum, TokenInfo } from '../../../chains/ethereum/ethereum';
 import { CreatePoolResponse, CreatePoolResponseType } from '../../../schemas/amm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { UniswapAmmCreatePoolRequest } from '../schemas';
 import { UniswapConfig } from '../uniswap.config';
@@ -34,7 +35,7 @@ async function resolveToken(ethereum: Ethereum, tokenOrAddress: string): Promise
   const lookup = isEthInput ? 'WETH' : tokenOrAddress;
   const token = await ethereum.getToken(lookup);
   if (!token) {
-    throw new Error(`Token not found: ${tokenOrAddress}`);
+    throw httpErrors.badRequest(`Token not found: ${tokenOrAddress}`);
   }
   const isEth = isEthInput || token.symbol.toUpperCase() === 'WETH';
   return { token, isEth };
@@ -58,13 +59,13 @@ async function fetchMarketPrice(
   try {
     quote = await getUnifiedQuoteSwap(`ethereum-${network}`, baseToken, quoteToken, amount, 'SELL');
   } catch (e: any) {
-    throw new Error(
+    throw httpErrors.badRequest(
       `Could not fetch a market price for ${baseToken}/${quoteToken} to seed the pool (${e.message}). ` +
         'Pass initialPrice or quoteTokenAmount explicitly.',
     );
   }
   if (!quote || !quote.amountIn || !quote.amountOut) {
-    throw new Error(
+    throw httpErrors.badRequest(
       `No market route found for ${baseToken}/${quoteToken}. Pass initialPrice or quoteTokenAmount explicitly.`,
     );
   }
@@ -84,24 +85,24 @@ export async function createPool(
   slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<CreatePoolResponseType> {
   if (baseTokenAmount <= 0) {
-    throw new Error('baseTokenAmount must be greater than zero');
+    throw httpErrors.badRequest('baseTokenAmount must be greater than zero');
   }
 
   const ethereum = await Ethereum.getInstance(network);
 
   const wallet = await ethereum.getWallet(walletAddress);
   if (!wallet) {
-    throw new Error('Wallet not found');
+    throw httpErrors.badRequest('Wallet not found');
   }
 
   const { token: baseTokenInfo, isEth: baseIsEth } = await resolveToken(ethereum, baseToken);
   const { token: quoteTokenInfo, isEth: quoteIsEth } = await resolveToken(ethereum, quoteToken);
 
   if (baseTokenInfo.address.toLowerCase() === quoteTokenInfo.address.toLowerCase()) {
-    throw new Error('baseToken and quoteToken must be different');
+    throw httpErrors.badRequest('baseToken and quoteToken must be different');
   }
   if (baseIsEth && quoteIsEth) {
-    throw new Error('Only one side of the pair can be ETH/WETH');
+    throw httpErrors.badRequest('Only one side of the pair can be ETH/WETH');
   }
 
   // Resolve the seed price (quote per base). Priority:
@@ -112,11 +113,11 @@ export async function createPool(
   let seedPrice: number;
   let seedSource: string;
   if (initialPrice !== undefined) {
-    if (initialPrice <= 0) throw new Error('initialPrice must be greater than zero');
+    if (initialPrice <= 0) throw httpErrors.badRequest('initialPrice must be greater than zero');
     seedPrice = initialPrice;
     seedSource = 'initialPrice';
   } else if (quoteTokenAmount !== undefined) {
-    if (quoteTokenAmount <= 0) throw new Error('quoteTokenAmount must be greater than zero');
+    if (quoteTokenAmount <= 0) throw httpErrors.badRequest('quoteTokenAmount must be greater than zero');
     seedPrice = quoteTokenAmount / baseTokenAmount;
     seedSource = 'quoteTokenAmount ratio';
   } else {
@@ -140,7 +141,7 @@ export async function createPool(
     quoteTokenInfo.decimals,
   );
   if (rawBaseAmount.isZero() || rawQuoteAmount.isZero()) {
-    throw new Error('Computed token amounts are zero — increase baseTokenAmount');
+    throw httpErrors.badRequest('Computed token amounts are zero — increase baseTokenAmount');
   }
 
   // Slippage-adjusted minimums (min amounts accepted into the pair). A brand-new pair has no reserves,

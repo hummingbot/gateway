@@ -157,7 +157,7 @@ async function getSolanaQuoteSwap(
     } else if (providerKey === 'titan/router') {
       return await titanRouterQuoteSwap(network, baseToken, quoteToken, amount, side, slippagePct);
     } else if (providerKey === 'raydium/amm') {
-      return await raydiumAmmQuoteSwap(network, poolAddress!, baseToken, quoteToken, amount, side, slippagePct);
+      return await raydiumAmmQuoteSwap(network, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'raydium/clmm') {
       return await raydiumClmmQuoteSwap(network, poolAddress!, baseToken, quoteToken, amount, side, slippagePct);
     } else if (providerKey === 'meteora/clmm') {
@@ -223,7 +223,7 @@ async function getEthereumQuoteSwap(
     if (providerKey === 'uniswap/router') {
       return await uniswapRouterQuoteSwap(network, undefined, baseToken, quoteToken, amount, side, slippagePct || 1);
     } else if (providerKey === 'uniswap/amm') {
-      return await uniswapAmmQuoteSwap(network, poolAddress!, baseToken, quoteToken, amount, side, slippagePct);
+      return await uniswapAmmQuoteSwap(network, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'uniswap/clmm') {
       return await uniswapClmmQuoteSwap(network, poolAddress!, baseToken, quoteToken, amount, side, slippagePct);
     } else if (providerKey === 'pancakeswap/router') {

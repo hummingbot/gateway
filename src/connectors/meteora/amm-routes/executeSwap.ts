@@ -19,7 +19,7 @@ export async function executeSwap(
   baseToken: string,
   side: 'BUY' | 'SELL',
   amount: number,
-  slippagePct: number,
+  slippagePct: number = MeteoraConfig.config.slippagePct,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const meteoraDamm = await MeteoraDamm.getInstance(network);

@@ -154,6 +154,35 @@ export async function getRawSwapQuote(
   return result;
 }
 
+/**
+ * Standard AMM quote-swap entry point (network-based) — consumed by the unified /trading/amm
+ * dispatcher. Wraps getRawSwapQuote and shapes it into the shared QuoteSwapResponse.
+ */
+export async function quoteSwap(
+  network: string,
+  poolAddress: string,
+  baseToken: string,
+  side: 'BUY' | 'SELL',
+  amount: number,
+  slippagePct?: number,
+): Promise<QuoteSwapResponseType> {
+  const meteoraDamm = await MeteoraDamm.getInstance(network);
+  const effectiveSlippage = slippagePct ?? MeteoraConfig.config.slippagePct;
+  const quote = await getRawSwapQuote(meteoraDamm, poolAddress, baseToken, side, amount, effectiveSlippage);
+  return {
+    poolAddress,
+    tokenIn: quote.inputMint.toBase58(),
+    tokenOut: quote.outputMint.toBase58(),
+    amountIn: quote.amountIn,
+    amountOut: quote.amountOut,
+    price: quote.price,
+    slippagePct: effectiveSlippage,
+    minAmountOut: quote.minAmountOut,
+    maxAmountIn: quote.maxAmountIn,
+    priceImpactPct: quote.priceImpactPct,
+  };
+}
+
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: typeof MeteoraAmmQuoteSwapRequest.static;
@@ -173,30 +202,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     async (request): Promise<QuoteSwapResponseType> => {
       try {
         const { network, poolAddress, baseToken, amount, side, slippagePct } = request.query;
-        const meteoraDamm = await MeteoraDamm.getInstance(network);
-        const effectiveSlippage = slippagePct ?? MeteoraConfig.config.slippagePct;
-
-        const quote = await getRawSwapQuote(
-          meteoraDamm,
-          poolAddress,
-          baseToken,
-          side as 'BUY' | 'SELL',
-          amount,
-          effectiveSlippage,
-        );
-
-        return {
-          poolAddress,
-          tokenIn: quote.inputMint.toBase58(),
-          tokenOut: quote.outputMint.toBase58(),
-          amountIn: quote.amountIn,
-          amountOut: quote.amountOut,
-          price: quote.price,
-          slippagePct: effectiveSlippage,
-          minAmountOut: quote.minAmountOut,
-          maxAmountIn: quote.maxAmountIn,
-          priceImpactPct: quote.priceImpactPct,
-        };
+        return await quoteSwap(network, poolAddress, baseToken, side as 'BUY' | 'SELL', amount, slippagePct);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) throw e;

@@ -20,7 +20,7 @@ export async function removeLiquidity(
   walletAddress: string,
   poolAddress: string,
   percentageToRemove: number,
-  slippagePct: number,
+  slippagePct: number = MeteoraConfig.config.slippagePct,
 ): Promise<RemoveLiquidityResponseType> {
   if (percentageToRemove <= 0 || percentageToRemove > 100) {
     throw httpErrors.badRequest('percentageToRemove must be between 0 and 100');

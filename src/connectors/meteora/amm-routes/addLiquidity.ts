@@ -17,7 +17,7 @@ export async function addLiquidity(
   poolAddress: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
-  slippagePct: number,
+  slippagePct: number = MeteoraConfig.config.slippagePct,
 ): Promise<AddLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const meteoraDamm = await MeteoraDamm.getInstance(network);

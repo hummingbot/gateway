@@ -105,6 +105,30 @@ export async function getLiquidityQuote(
   };
 }
 
+/**
+ * Standard AMM quote-liquidity entry point (network-based) — consumed by the unified /trading/amm
+ * dispatcher. Wraps getLiquidityQuote and shapes it into the shared QuoteLiquidityResponse.
+ */
+export async function quoteLiquidity(
+  network: string,
+  poolAddress: string,
+  baseTokenAmount: number,
+  quoteTokenAmount: number,
+  slippagePct?: number,
+): Promise<QuoteLiquidityResponseType> {
+  const meteoraDamm = await MeteoraDamm.getInstance(network);
+  const poolState = await meteoraDamm.getPoolState(poolAddress);
+  const effectiveSlippage = slippagePct ?? MeteoraConfig.config.slippagePct;
+  const quote = await getLiquidityQuote(meteoraDamm, poolState, baseTokenAmount, quoteTokenAmount, effectiveSlippage);
+  return {
+    baseLimited: quote.baseLimited,
+    baseTokenAmount: quote.baseTokenAmount,
+    quoteTokenAmount: quote.quoteTokenAmount,
+    baseTokenAmountMax: quote.baseTokenAmountMax,
+    quoteTokenAmountMax: quote.quoteTokenAmountMax,
+  };
+}
+
 export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: QuoteLiquidityRequestType;
@@ -124,25 +148,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     async (request): Promise<QuoteLiquidityResponseType> => {
       try {
         const { network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.query;
-        const meteoraDamm = await MeteoraDamm.getInstance(network);
-        const poolState = await meteoraDamm.getPoolState(poolAddress);
-        const effectiveSlippage = slippagePct ?? MeteoraConfig.config.slippagePct;
-
-        const quote = await getLiquidityQuote(
-          meteoraDamm,
-          poolState,
-          baseTokenAmount,
-          quoteTokenAmount,
-          effectiveSlippage,
-        );
-
-        return {
-          baseLimited: quote.baseLimited,
-          baseTokenAmount: quote.baseTokenAmount,
-          quoteTokenAmount: quote.quoteTokenAmount,
-          baseTokenAmountMax: quote.baseTokenAmountMax,
-          quoteTokenAmountMax: quote.quoteTokenAmountMax,
-        };
+        return await quoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) throw e;

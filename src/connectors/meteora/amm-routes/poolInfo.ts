@@ -5,6 +5,12 @@ import { logger } from '../../../services/logger';
 import { MeteoraDamm } from '../meteora-damm';
 import { MeteoraAmmGetPoolInfoRequest } from '../schemas';
 
+/** Standard AMM pool-info entry point (network-based) — consumed by the unified /trading/amm dispatcher. */
+export async function getPoolInfo(network: string, poolAddress: string): Promise<PoolInfo> {
+  const meteoraDamm = await MeteoraDamm.getInstance(network);
+  return await meteoraDamm.getPoolInfo(poolAddress);
+}
+
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: GetPoolInfoRequestType;
@@ -24,8 +30,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     async (request): Promise<PoolInfo> => {
       try {
         const { poolAddress, network } = request.query;
-        const meteoraDamm = await MeteoraDamm.getInstance(network);
-        return await meteoraDamm.getPoolInfo(poolAddress);
+        return await getPoolInfo(network, poolAddress);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) throw e;
