@@ -34,22 +34,31 @@ async function getMintProgram(solana: Solana, mint: PublicKey): Promise<PublicKe
 }
 
 /**
+ * Fraction of the seed amount used to probe the market price. Quoting the full seed amount would
+ * return the average execution price of that trade (including price impact and routing fees),
+ * which for large seeds sits below the marginal market price and would open the pool off-market.
+ * A small probe keeps the quote close to the marginal price.
+ */
+const MARKET_PRICE_PROBE_FRACTION = 0.01;
+
+/**
  * Fetches the current market price (quote per base) from the unified swap router so a new pool
  * can be seeded on-market instead of at an arbitrary ratio. Seeding off-market invites arbitrage
  * bots to instantly rebalance the pool (see docs/connectors/meteora-damm-v2.md). Uses a SELL quote
- * of the base token via the network's configured swap provider (Jupiter aggregates existing venues);
- * throws a clear error if no market route exists.
+ * for a small probe fraction of the seed amount via the network's configured swap provider
+ * (Jupiter aggregates existing venues); throws a clear error if no market route exists.
  */
 async function fetchMarketPrice(
   network: string,
   baseToken: string,
   quoteToken: string,
-  amount: number,
+  seedAmount: number,
 ): Promise<number> {
+  const probeAmount = seedAmount * MARKET_PRICE_PROBE_FRACTION;
   const { getUnifiedQuoteSwap } = await import('../../../trading/swap/quote');
   let quote: any;
   try {
-    quote = await getUnifiedQuoteSwap(`solana-${network}`, baseToken, quoteToken, amount, 'SELL');
+    quote = await getUnifiedQuoteSwap(`solana-${network}`, baseToken, quoteToken, probeAmount, 'SELL');
   } catch (e: any) {
     throw httpErrors.badRequest(
       `Could not fetch a market price for ${baseToken}/${quoteToken} to seed the pool (${e.message}). ` +

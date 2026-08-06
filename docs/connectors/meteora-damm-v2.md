@@ -92,7 +92,10 @@ resolves the seed price in this priority order:
 2. **`quoteTokenAmount`** if provided — the `baseTokenAmount : quoteTokenAmount` ratio sets the price.
 3. **Otherwise, the current market price is fetched** from the unified swap router
    (`/trading/swap/quote`, i.e. the network's configured `swapProvider` — Jupiter on Solana, which
-   aggregates existing venues) via a SELL quote of the base token, and the pool is seeded there.
+   aggregates existing venues) via a SELL quote of a small probe (1% of `baseTokenAmount`), and the
+   pool is seeded there. The probe is kept small so the quote approximates the marginal market
+   price; quoting the full seed amount would bake its own price impact into the seed price and
+   open the pool below market.
 
 Only `baseTokenAmount` is required; the quote side is derived. If the base token has **no existing
 market** (nothing for the router to price against), the fetch fails with a clear error asking you to
