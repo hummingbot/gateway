@@ -1,4 +1,4 @@
-import { PriceMath } from '@orca-so/whirlpools-sdk';
+import { sqrtPriceToPrice } from '@orca-so/whirlpools-core';
 import { PublicKey } from '@solana/web3.js';
 import { fetchAllMint } from '@solana-program/token-2022';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
@@ -47,7 +47,7 @@ export async function getPoolInfo(
   const [mintA, mintB] = await fetchAllMint(orca.solanaKitRpc, [whirlpool.tokenMintA, whirlpool.tokenMintB]);
 
   // Calculate price from on-chain sqrtPrice (real-time)
-  const price = PriceMath.sqrtPriceX64ToPrice(whirlpool.sqrtPrice, mintA.data.decimals, mintB.data.decimals);
+  const price = sqrtPriceToPrice(whirlpool.sqrtPrice, mintA.data.decimals, mintB.data.decimals);
 
   // Fetch vault balances for token amounts
   const [vaultA, vaultB] = await Promise.all([
@@ -68,7 +68,7 @@ export async function getPoolInfo(
     quoteTokenAddress: whirlpool.tokenMintB.toString(),
     binStep: whirlpool.tickSpacing,
     feePct,
-    price: price.toNumber(), // Real-time from on-chain sqrtPrice
+    price, // Real-time from on-chain sqrtPrice
     baseTokenAmount: Number(vaultA.value.amount) / Math.pow(10, mintA.data.decimals),
     quoteTokenAmount: Number(vaultB.value.amount) / Math.pow(10, mintB.data.decimals),
     activeBinId: whirlpool.tickCurrentIndex, // Real-time from on-chain
@@ -94,6 +94,7 @@ export async function getPoolInfo(
       decimalsA: mintA.data.decimals,
       decimalsB: mintB.data.decimals,
       binCount,
+      programAddress: orca.deployment.programId,
     });
   }
 

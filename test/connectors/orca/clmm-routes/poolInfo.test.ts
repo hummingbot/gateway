@@ -1,5 +1,3 @@
-import BN from 'bn.js';
-
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Orca } from '../../../../src/connectors/orca/orca';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
@@ -9,12 +7,8 @@ jest.mock('../../../../src/chains/solana/solana');
 jest.mock('@solana-program/token-2022', () => ({
   fetchAllMint: jest.fn(),
 }));
-jest.mock('@orca-so/whirlpools-sdk', () => ({
-  PriceMath: {
-    sqrtPriceX64ToPrice: jest.fn().mockReturnValue({
-      toNumber: () => 200.5,
-    }),
-  },
+jest.mock('@orca-so/whirlpools-core', () => ({
+  sqrtPriceToPrice: jest.fn().mockReturnValue(200.5),
 }));
 
 // Stub the bin-distribution helper so we can assert it's called only when
@@ -48,8 +42,8 @@ const mockWhirlpool = {
   feeRate: 400, // 0.04%
   protocolFeeRate: 100, // 0.01%
   tickCurrentIndex: -28800,
-  liquidity: new BN('1000000000'),
-  sqrtPrice: new BN('123456789'),
+  liquidity: 1000000000n,
+  sqrtPrice: 123456789n,
 };
 
 // Mock API pool info (for analytics fields)
@@ -91,6 +85,7 @@ describe('GET /pool-info', () => {
       getWhirlpool: jest.fn().mockResolvedValue(mockWhirlpool),
       getPoolInfo: jest.fn().mockResolvedValue(mockApiPoolInfo),
       solanaKitRpc: {}, // Mock RPC
+      deployment: { programId: 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc' },
     };
     (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
 
@@ -325,8 +320,8 @@ describe('GET /pool-info', () => {
       feeRate: 100, // 0.01%
       protocolFeeRate: 1300, // 0.13%
       tickCurrentIndex: 0,
-      liquidity: new BN('43569222763129181'),
-      sqrtPrice: new BN('18447148653206777165'),
+      liquidity: 43569222763129181n,
+      sqrtPrice: 18447148653206777165n,
     };
 
     const mockPyusdApiPoolInfo = {
@@ -350,6 +345,7 @@ describe('GET /pool-info', () => {
       getWhirlpool: jest.fn().mockResolvedValue(mockPyusdWhirlpool),
       getPoolInfo: jest.fn().mockResolvedValue(mockPyusdApiPoolInfo),
       solanaKitRpc: {},
+      deployment: { programId: 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc' },
     };
     (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
 
