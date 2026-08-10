@@ -45,7 +45,7 @@ import { logger } from './services/logger';
 import { quoteCache } from './services/quote-cache';
 import { displayChainConfigurations } from './services/startup-banner';
 import { tokensRoutes } from './tokens/tokens.routes';
-import { tradingRoutes, tradingClmmRoutes } from './trading/trading.routes';
+import { tradingRoutes, tradingClmmRoutes, tradingAmmRoutes } from './trading/trading.routes';
 import { GATEWAY_VERSION } from './version';
 import { walletRoutes } from './wallet/wallet.routes';
 
@@ -81,6 +81,7 @@ const swaggerOptions = {
       { name: '/pools', description: 'Pool management endpoints' },
       { name: '/trading/swap', description: 'Unified cross-chain swap endpoints' },
       { name: '/trading/clmm', description: 'Unified cross-chain CLMM (Concentrated Liquidity) endpoints' },
+      { name: '/trading/amm', description: 'Unified cross-connector AMM endpoints (pool creation)' },
 
       // Chains
       {
@@ -296,6 +297,9 @@ const configureGatewayServer = () => {
     // Register trading CLMM routes (unified cross-chain concentrated liquidity)
     app.register(tradingClmmRoutes, { prefix: '/trading/clmm' });
 
+    // Register trading AMM routes (unified cross-connector AMM: pool creation)
+    app.register(tradingAmmRoutes, { prefix: '/trading/amm' });
+
     // Register chain routes
     app.register(solanaRoutes, { prefix: '/chains/solana' });
     app.register(ethereumRoutes, { prefix: '/chains/ethereum' });
@@ -324,6 +328,7 @@ const configureGatewayServer = () => {
 
     // Meteora routes
     app.register(meteoraRoutes.clmm, { prefix: '/connectors/meteora/clmm' });
+    app.register(meteoraRoutes.amm, { prefix: '/connectors/meteora/amm' });
 
     // // Orca routes
     app.register(orcaRoutes.clmm, { prefix: '/connectors/orca/clmm' });

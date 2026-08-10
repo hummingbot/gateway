@@ -173,60 +173,23 @@ async function executeSolanaSwap(
     } else if (providerKey === 'titan/router') {
       return await titanRouterExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
     } else if (providerKey === 'raydium/amm') {
-      return await raydiumAmmExecuteSwap(
-        network,
-        walletAddress,
-        baseToken,
-        quoteToken,
-        amount,
-        side,
-        poolAddress!,
-        slippagePct,
-      );
+      return await raydiumAmmExecuteSwap(network, walletAddress, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'raydium/clmm') {
-      return await raydiumClmmExecuteSwap(
-        network,
-        walletAddress,
-        baseToken,
-        quoteToken,
-        amount,
-        side,
-        poolAddress!,
-        slippagePct,
-      );
+      return await raydiumClmmExecuteSwap(network, walletAddress, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'meteora/clmm') {
-      return await meteoraClmmExecuteSwap(
-        network,
-        walletAddress,
-        baseToken,
-        quoteToken,
-        amount,
-        side,
-        poolAddress!,
-        slippagePct,
-      );
+      return await meteoraClmmExecuteSwap(network, walletAddress, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'pancakeswap-sol/clmm') {
       return await pancakeswapSolClmmExecuteSwap(
         network,
         walletAddress,
+        poolAddress!,
         baseToken,
-        quoteToken,
-        amount,
         side,
-        poolAddress,
+        amount,
         slippagePct,
       );
     } else if (providerKey === 'orca/clmm') {
-      return await orcaClmmExecuteSwap(
-        network,
-        walletAddress,
-        baseToken,
-        quoteToken,
-        amount,
-        side,
-        poolAddress!,
-        slippagePct,
-      );
+      return await orcaClmmExecuteSwap(network, walletAddress, poolAddress!, baseToken, side, amount, slippagePct);
     }
 
     throw httpErrors.badRequest(`Unsupported swap provider: ${swapProvider}`);
@@ -285,9 +248,9 @@ async function executeEthereumSwap(
     if (providerKey === 'uniswap/router') {
       return await uniswapRouterExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
     } else if (providerKey === 'uniswap/amm') {
-      return await uniswapAmmExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
+      return await uniswapAmmExecuteSwap(network, walletAddress, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'uniswap/clmm') {
-      return await uniswapClmmExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
+      return await uniswapClmmExecuteSwap(network, walletAddress, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'pancakeswap/router') {
       return await pancakeswapRouterExecuteSwap(
         walletAddress,
@@ -299,9 +262,25 @@ async function executeEthereumSwap(
         slippagePct,
       );
     } else if (providerKey === 'pancakeswap/amm') {
-      return await pancakeswapAmmExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
+      return await pancakeswapAmmExecuteSwap(
+        network,
+        walletAddress,
+        poolAddress!,
+        baseToken,
+        side,
+        amount,
+        slippagePct,
+      );
     } else if (providerKey === 'pancakeswap/clmm') {
-      return await pancakeswapClmmExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
+      return await pancakeswapClmmExecuteSwap(
+        network,
+        walletAddress,
+        poolAddress!,
+        baseToken,
+        side,
+        amount,
+        slippagePct,
+      );
     } else if (providerKey === '0x/router') {
       return await zeroXRouterExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
     }

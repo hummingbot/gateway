@@ -156,15 +156,37 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
 export default quoteSwapRoute;
 
-// Export quoteSwap wrapper for unified trading routes
+/**
+ * Resolves the counter ("quote") token for an Orca whirlpool given the base token. The standardized
+ * swap wrappers take poolAddress + baseToken and derive the other side from the pool
+ * (tokenMintA/tokenMintB), so callers no longer pass quoteToken.
+ */
+export async function resolveCounterToken(network: string, poolAddress: string, baseToken: string): Promise<string> {
+  const solana = await Solana.getInstance(network);
+  const orca = await Orca.getInstance(network);
+  const whirlpool = await orca.getWhirlpool(poolAddress);
+  if (!whirlpool) throw httpErrors.notFound(`Pool not found: ${poolAddress}`);
+  const mintA = whirlpool.tokenMintA.toString();
+  const mintB = whirlpool.tokenMintB.toString();
+  const resolved = await solana.getToken(baseToken);
+  const baseAddr = resolved ? resolved.address : baseToken;
+  if (baseAddr === mintA) return mintB;
+  if (baseAddr === mintB) return mintA;
+  throw httpErrors.badRequest(`Token ${baseToken} is not part of pool ${poolAddress}`);
+}
+
+/**
+ * Standard CLMM quote-swap entry point (network-based) — consumed by the unified swap router.
+ * Requires poolAddress; the quote token is derived from the pool.
+ */
 export async function quoteSwap(
   network: string,
-  baseToken: string,
-  quoteToken: string,
-  amount: number,
-  side: 'BUY' | 'SELL',
   poolAddress: string,
+  baseToken: string,
+  side: 'BUY' | 'SELL',
+  amount: number,
   slippagePct?: number,
 ): Promise<QuoteSwapResponseType> {
+  const quoteToken = await resolveCounterToken(network, poolAddress, baseToken);
   return await formatSwapQuote(network, baseToken, quoteToken, amount, side, poolAddress, slippagePct);
 }

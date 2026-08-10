@@ -500,3 +500,345 @@ export const MeteoraClmmQuotePositionRequest = Type.Object({
     }),
   ),
 });
+
+// Meteora CLMM Create Pool Request
+export const MeteoraClmmCreatePoolRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...MeteoraConfig.networks],
+    }),
+  ),
+  walletAddress: Type.Optional(
+    Type.String({
+      description: 'Solana wallet address that will create the pool',
+      default: solanaChainConfig.defaultWallet,
+      examples: [solanaChainConfig.defaultWallet],
+    }),
+  ),
+  baseToken: Type.String({
+    description: 'Base token symbol or address',
+    examples: [BASE_TOKEN],
+  }),
+  quoteToken: Type.String({
+    description: 'Quote token symbol or address',
+    examples: [QUOTE_TOKEN],
+  }),
+  initialPrice: Type.Number({
+    description: 'Initial price as quote per base (e.g. USDC per SOL). Encodes the pool active bin.',
+    examples: [UPPER_PRICE_BOUND],
+  }),
+  binStep: Type.Number({
+    description:
+      'Bin step in basis points (e.g. 1, 2, 4, 5, 10, 20, 25, 50, 100). Sets pool granularity; ' +
+      'cannot be changed after creation.',
+    examples: [20],
+  }),
+  feeBps: Type.Number({
+    description: 'Base swap fee in basis points (e.g. 20 = 0.20%). Must be compatible with binStep.',
+    examples: [20],
+  }),
+});
+
+// ========================================
+// DAMM v2 (AMM) Request Schemas
+// ========================================
+
+const DAMM_V2_POOL_ADDRESS_EXAMPLE = 'FH6mP2MUobhDnLERp9z5yv5t2zMUA9WDNXPixpbvYKMv';
+
+export const MeteoraAmmGetPoolInfoRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...MeteoraConfig.networks],
+    }),
+  ),
+  poolAddress: Type.String({
+    description: 'Meteora DAMM v2 pool address',
+    examples: [DAMM_V2_POOL_ADDRESS_EXAMPLE],
+  }),
+});
+
+export const MeteoraAmmGetPositionInfoRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...MeteoraConfig.networks],
+    }),
+  ),
+  poolAddress: Type.String({
+    description: 'Meteora DAMM v2 pool address',
+    examples: [DAMM_V2_POOL_ADDRESS_EXAMPLE],
+  }),
+  walletAddress: Type.Optional(
+    Type.String({
+      description: 'Solana wallet address',
+      default: solanaChainConfig.defaultWallet,
+    }),
+  ),
+});
+
+export const MeteoraAmmQuoteSwapRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...MeteoraConfig.networks],
+    }),
+  ),
+  poolAddress: Type.String({
+    description: 'Meteora DAMM v2 pool address',
+    examples: [DAMM_V2_POOL_ADDRESS_EXAMPLE],
+  }),
+  baseToken: Type.String({
+    description: 'Token to determine swap direction',
+    examples: [BASE_TOKEN],
+  }),
+  quoteToken: Type.Optional(
+    Type.String({
+      description: 'The other token in the pair (optional - resolved from the pool if omitted)',
+      examples: [QUOTE_TOKEN],
+    }),
+  ),
+  amount: Type.Number({
+    description: 'Amount to swap (denominated in the base token)',
+    examples: [SWAP_AMOUNT],
+  }),
+  side: Type.String({
+    description: 'Trade direction',
+    enum: ['BUY', 'SELL'],
+    default: 'SELL',
+  }),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: MeteoraConfig.config.slippagePct,
+      examples: [MeteoraConfig.config.slippagePct],
+    }),
+  ),
+});
+
+export const MeteoraAmmExecuteSwapRequest = Type.Object({
+  walletAddress: Type.Optional(
+    Type.String({
+      description: 'Solana wallet address that will execute the swap',
+      default: solanaChainConfig.defaultWallet,
+    }),
+  ),
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...MeteoraConfig.networks],
+    }),
+  ),
+  poolAddress: Type.String({
+    description: 'Meteora DAMM v2 pool address',
+    examples: [DAMM_V2_POOL_ADDRESS_EXAMPLE],
+  }),
+  baseToken: Type.String({
+    description: 'Base token symbol or address',
+    examples: [BASE_TOKEN],
+  }),
+  quoteToken: Type.Optional(
+    Type.String({
+      description: 'The other token in the pair (optional - resolved from the pool if omitted)',
+      examples: [QUOTE_TOKEN],
+    }),
+  ),
+  amount: Type.Number({
+    description: 'Amount to swap (denominated in the base token)',
+    examples: [SWAP_AMOUNT],
+  }),
+  side: Type.String({
+    description: 'Trade direction',
+    enum: ['BUY', 'SELL'],
+    default: 'SELL',
+  }),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: MeteoraConfig.config.slippagePct,
+      examples: [MeteoraConfig.config.slippagePct],
+    }),
+  ),
+});
+
+export const MeteoraAmmQuoteLiquidityRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...MeteoraConfig.networks],
+    }),
+  ),
+  poolAddress: Type.String({
+    description: 'Meteora DAMM v2 pool address',
+    examples: [DAMM_V2_POOL_ADDRESS_EXAMPLE],
+  }),
+  baseTokenAmount: Type.Number({
+    description: 'Amount of base token to add',
+    examples: [BASE_TOKEN_AMOUNT],
+  }),
+  quoteTokenAmount: Type.Number({
+    description: 'Amount of quote token to add',
+    examples: [QUOTE_TOKEN_AMOUNT],
+  }),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: MeteoraConfig.config.slippagePct,
+      examples: [MeteoraConfig.config.slippagePct],
+    }),
+  ),
+});
+
+export const MeteoraAmmAddLiquidityRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...MeteoraConfig.networks],
+    }),
+  ),
+  walletAddress: Type.Optional(
+    Type.String({
+      description: 'Solana wallet address',
+      default: solanaChainConfig.defaultWallet,
+    }),
+  ),
+  poolAddress: Type.String({
+    description: 'Meteora DAMM v2 pool address',
+    examples: [DAMM_V2_POOL_ADDRESS_EXAMPLE],
+  }),
+  baseTokenAmount: Type.Number({
+    description: 'Amount of base token to add',
+    examples: [BASE_TOKEN_AMOUNT],
+  }),
+  quoteTokenAmount: Type.Number({
+    description: 'Amount of quote token to add',
+    examples: [QUOTE_TOKEN_AMOUNT],
+  }),
+  positionAddress: Type.Optional(
+    Type.String({
+      description:
+        'DAMM v2 positions are NFTs; a wallet may hold several per pool. Provide a position address ' +
+        '(from position-info) to add to that specific position; omit to open a NEW position NFT.',
+    }),
+  ),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: MeteoraConfig.config.slippagePct,
+      examples: [MeteoraConfig.config.slippagePct],
+    }),
+  ),
+});
+
+export const MeteoraAmmRemoveLiquidityRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...MeteoraConfig.networks],
+    }),
+  ),
+  walletAddress: Type.Optional(
+    Type.String({
+      description: 'Solana wallet address',
+      default: solanaChainConfig.defaultWallet,
+    }),
+  ),
+  poolAddress: Type.String({
+    description: 'Meteora DAMM v2 pool address',
+    examples: [DAMM_V2_POOL_ADDRESS_EXAMPLE],
+  }),
+  positionAddress: Type.String({
+    description:
+      'Address of the specific DAMM v2 position (NFT) to remove from. Required — a wallet may hold ' +
+      'several positions per pool; list them with position-info. This avoids silently draining only ' +
+      'the largest position when several exist.',
+  }),
+  percentageToRemove: Type.Number({
+    minimum: 0,
+    maximum: 100,
+    description: 'Percentage of this position’s liquidity to remove',
+    examples: [100],
+  }),
+});
+
+export const MeteoraAmmGetPositionsOwnedRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...MeteoraConfig.networks],
+    }),
+  ),
+  walletAddress: Type.String({
+    description: 'Solana wallet address to list DAMM v2 positions for',
+    examples: [solanaChainConfig.defaultWallet],
+  }),
+});
+export type MeteoraAmmGetPositionsOwnedRequestType = Static<typeof MeteoraAmmGetPositionsOwnedRequest>;
+
+export const MeteoraAmmCreatePoolRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...MeteoraConfig.networks],
+    }),
+  ),
+  walletAddress: Type.Optional(
+    Type.String({
+      description: 'Solana wallet address that will create and seed the pool',
+      default: solanaChainConfig.defaultWallet,
+    }),
+  ),
+  baseToken: Type.String({
+    description: 'Base token symbol or address (becomes pool token A)',
+    examples: [BASE_TOKEN],
+  }),
+  quoteToken: Type.String({
+    description: 'Quote token symbol or address (becomes pool token B)',
+    examples: [QUOTE_TOKEN],
+  }),
+  baseTokenAmount: Type.Number({
+    description: 'Amount of base token to seed the pool with',
+    examples: [BASE_TOKEN_AMOUNT],
+  }),
+  quoteTokenAmount: Type.Optional(
+    Type.Number({
+      description:
+        'Amount of quote token to seed with. If provided, the base:quote ratio sets the initial price. ' +
+        'If omitted (and no initialPrice), the current market price is fetched from the swap router.',
+      examples: [QUOTE_TOKEN_AMOUNT],
+    }),
+  ),
+  initialPrice: Type.Optional(
+    Type.Number({
+      description:
+        'Initial price as quote per base (e.g. SOL per UMBRA). Overrides quoteTokenAmount. ' +
+        'If both are omitted, the pool is seeded at the current market price so it is not immediately arbitraged.',
+    }),
+  ),
+  configAddress: Type.Optional(
+    Type.String({
+      description:
+        'DAMM v2 config account that defines the fee tier and pool parameters. Required — many permissionless ' +
+        'configs are launch configs with very high starting fees, so Gateway does not auto-select one.',
+    }),
+  ),
+});

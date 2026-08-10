@@ -23,7 +23,7 @@ import { PancakeswapSolClmmQuoteSwapRequest, PancakeswapSolClmmQuoteSwapRequestT
  *
  * For highest precision, this should be replaced with full tick array calculation.
  */
-export async function quoteSwap(
+export async function getRawSwapQuote(
   network: string,
   baseTokenSymbol: string,
   quoteTokenSymbol: string,
@@ -171,7 +171,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
         } = request.query;
 
-        return await quoteSwap(
+        return await getRawSwapQuote(
           network,
           baseToken,
           quoteToken,
@@ -195,3 +195,36 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 };
 
 export default quoteSwapRoute;
+
+/**
+ * Resolves the counter ("quote") token for a PancakeSwap Solana CLMM pool given the base token. The
+ * standardized swap wrappers take poolAddress + baseToken and derive the other side from the pool,
+ * so callers no longer pass quoteToken.
+ */
+export async function resolveCounterToken(network: string, poolAddress: string, baseToken: string): Promise<string> {
+  const solana = await Solana.getInstance(network);
+  const pancakeswapSol = await PancakeswapSol.getInstance(network);
+  const poolInfo = await pancakeswapSol.getClmmPoolInfo(poolAddress);
+  if (!poolInfo) throw httpErrors.notFound(`Pool not found: ${poolAddress}`);
+  const resolved = await solana.getToken(baseToken);
+  const baseAddr = resolved ? resolved.address : baseToken;
+  if (baseAddr === poolInfo.baseTokenAddress) return poolInfo.quoteTokenAddress;
+  if (baseAddr === poolInfo.quoteTokenAddress) return poolInfo.baseTokenAddress;
+  throw httpErrors.badRequest(`Token ${baseToken} is not part of pool ${poolAddress}`);
+}
+
+/**
+ * Standard CLMM quote-swap entry point (network-based) — consumed by the unified swap router.
+ * Requires poolAddress; the quote token is derived from the pool.
+ */
+export async function quoteSwap(
+  network: string,
+  poolAddress: string,
+  baseToken: string,
+  side: 'BUY' | 'SELL',
+  amount: number,
+  slippagePct: number = PancakeswapSolConfig.config.slippagePct,
+): Promise<QuoteSwapResponseType> {
+  const quoteToken = await resolveCounterToken(network, poolAddress, baseToken);
+  return await getRawSwapQuote(network, baseToken, quoteToken, amount, side, poolAddress, slippagePct);
+}

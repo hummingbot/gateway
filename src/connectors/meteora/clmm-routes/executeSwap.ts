@@ -11,7 +11,7 @@ import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { MeteoraConfig } from '../meteora.config';
 import { MeteoraClmmExecuteSwapRequest, MeteoraClmmExecuteSwapRequestType } from '../schemas';
 
-import { getRawSwapQuote } from './quoteSwap';
+import { resolveCounterToken, getRawSwapQuote } from './quoteSwap';
 
 const DLMM_PROGRAM_ID = new PublicKey('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo');
 
@@ -38,11 +38,10 @@ export function fixSwapBitmapExtensionMeta<T extends { instructions?: { programI
 export async function executeSwap(
   network: string,
   address: string,
-  baseTokenIdentifier: string,
-  quoteTokenIdentifier: string,
-  amount: number,
-  side: 'BUY' | 'SELL',
   poolAddress: string,
+  baseToken: string,
+  side: 'BUY' | 'SELL',
+  amount: number,
   slippagePct: number = MeteoraConfig.config.slippagePct,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
@@ -51,13 +50,16 @@ export async function executeSwap(
   // sendAndConfirmTransactionForWallet, which knows how to sign for each type.
   const walletPublicKey = new PublicKey(address);
 
+  // Standardized: quote token is derived from the pool given poolAddress + baseToken.
+  const quoteToken = await resolveCounterToken(network, poolAddress, baseToken);
+
   const {
     inputToken,
     outputToken,
     swapAmount,
     quote: swapQuote,
     dlmmPool,
-  } = await getRawSwapQuote(network, baseTokenIdentifier, quoteTokenIdentifier, amount, side, poolAddress, slippagePct);
+  } = await getRawSwapQuote(network, baseToken, quoteToken, amount, side, poolAddress, slippagePct);
 
   logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
 
@@ -207,11 +209,10 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         return await executeSwap(
           networkUsed,
           walletAddressUsed,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
           poolAddressUsed,
+          baseToken,
+          side as 'BUY' | 'SELL',
+          amount,
           slippagePct,
         );
       } catch (e: any) {

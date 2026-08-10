@@ -349,15 +349,37 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
 export default quoteSwapRoute;
 
-// Export quoteSwap wrapper for chain-level routes
+/**
+ * Resolves the counter ("quote") token for a Raydium CLMM pool given the base token. The
+ * standardized swap wrappers take poolAddress + baseToken and derive the other side from the pool
+ * (mintA/mintB), so callers no longer pass quoteToken.
+ */
+export async function resolveCounterToken(network: string, poolAddress: string, baseToken: string): Promise<string> {
+  const solana = await Solana.getInstance(network);
+  const raydium = await Raydium.getInstance(network);
+  const [poolInfo] = await raydium.getClmmPoolfromAPI(poolAddress);
+  if (!poolInfo) throw httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
+  const mintA = poolInfo.mintA.address;
+  const mintB = poolInfo.mintB.address;
+  const resolved = await solana.getToken(baseToken);
+  const baseAddr = resolved ? resolved.address : baseToken;
+  if (baseAddr === mintA) return mintB;
+  if (baseAddr === mintB) return mintA;
+  throw httpErrors.badRequest(`Token ${baseToken} is not part of pool ${poolAddress}`);
+}
+
+/**
+ * Standard CLMM quote-swap entry point (network-based) — consumed by the unified swap router.
+ * Requires poolAddress; the quote token is derived from the pool.
+ */
 export async function quoteSwap(
   network: string,
   poolAddress: string,
   baseToken: string,
-  quoteToken: string,
-  amount: number,
   side: 'BUY' | 'SELL',
+  amount: number,
   slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
+  const quoteToken = await resolveCounterToken(network, poolAddress, baseToken);
   return await formatSwapQuote(network, baseToken, quoteToken, amount, side, poolAddress, slippagePct);
 }
