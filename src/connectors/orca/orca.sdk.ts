@@ -24,9 +24,9 @@ export const buildOrcaTransaction = (instructions: readonly Instruction[], walle
 
 /**
  * Replace account addresses in Kit instructions without changing their roles or
- * encoded instruction data. Orca's high-level open builder generates a position
- * signer internally but returns only its address; Gateway instead needs the
- * matching Web3.js Keypair so the existing Solana layer can co-sign.
+ * encoded instruction data. Orca's high-level builders generate ephemeral
+ * signers internally but return only their addresses; Gateway instead needs
+ * matching Web3.js Keypairs so the existing Solana layer can co-sign.
  */
 export const replaceOrcaInstructionAccounts = (
   instructions: readonly Instruction[],

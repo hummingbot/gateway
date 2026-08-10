@@ -1,7 +1,7 @@
-import { ORCA_WHIRLPOOL_PROGRAM_ID, ORCA_WHIRLPOOLS_CONFIG, PoolUtil, PriceMath } from '@orca-so/whirlpools-sdk';
+import { createConcentratedLiquidityPoolInstructions, orderMints } from '@orca-so/whirlpools';
 import { Static } from '@sinclair/typebox';
+import { address, type Instruction } from '@solana/kit';
 import { Keypair, PublicKey } from '@solana/web3.js';
-import { Decimal } from 'decimal.js';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
@@ -10,6 +10,7 @@ import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Orca } from '../orca';
+import { buildOrcaTransaction, createOrcaAuthority, replaceOrcaInstructionAccounts } from '../orca.sdk';
 import { OrcaClmmCreatePoolRequest } from '../schemas';
 
 /** Resolves a token symbol or mint address to a PublicKey. */
@@ -56,33 +57,19 @@ export async function createPool(
   tickSpacing?: number,
 ): Promise<CreatePoolResponseType> {
   // tickSpacing selects the fee tier; a FeeTier account for the config+tickSpacing must exist
-  // on-chain. Validate it up front so bad input fails fast with a clear 400.
+  // on-chain. Validate the input shape before asking the SDK to build the transaction.
   if (tickSpacing === undefined || !Number.isInteger(tickSpacing) || tickSpacing <= 0) {
     throw httpErrors.badRequest('tickSpacing must be a positive integer');
   }
 
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
-  // Build with the wallet's public key as authority — signing/sending is delegated to
-  // sendAndConfirmTransactionForWallet, which knows how to sign for each wallet type.
-  const client = await orca.getWhirlpoolClientForWallet(walletAddress);
-  const funder = client.getContext().wallet.publicKey;
 
   const baseMint = await resolveMint(solana, baseToken);
   const quoteMint = await resolveMint(solana, quoteToken);
   if (baseMint.equals(quoteMint)) {
     throw httpErrors.badRequest('baseToken and quoteToken must be different');
   }
-
-  // Fetch decimals dynamically from on-chain mint info (handles Token and Token-2022).
-  const [baseMintInfo, quoteMintInfo] = await Promise.all([
-    client.getFetcher().getMintInfo(baseMint),
-    client.getFetcher().getMintInfo(quoteMint),
-  ]);
-  if (!baseMintInfo) throw httpErrors.badRequest(`Mint account not found: ${baseMint.toBase58()}`);
-  if (!quoteMintInfo) throw httpErrors.badRequest(`Mint account not found: ${quoteMint.toBase58()}`);
-  const baseDecimals = baseMintInfo.decimals;
-  const quoteDecimals = quoteMintInfo.decimals;
 
   // Resolve the seed price (quote per base). Priority:
   //   1) explicit initialPrice
@@ -99,52 +86,63 @@ export async function createPool(
   }
   logger.info(`Initializing Orca CLMM pool at ${seedPrice} ${quoteToken}/${baseToken} [${seedSource}]`);
 
-  // Whirlpools require canonical mint ordering (tokenA < tokenB by byte-compared pubkey), and
-  // client.createPool ASSERTS the order rather than sorting — so we sort here. PriceMath expects
-  // price expressed as tokenB-per-tokenA. Our seedPrice is quote-per-base, so:
+  // Whirlpools require canonical mint ordering (tokenA < tokenB by byte-compared pubkey), and the
+  // current builder asserts the order rather than sorting. It expects the initial price expressed
+  // as tokenB-per-tokenA. Our seedPrice is quote-per-base, so:
   //   - base sorts as tokenA (base < quote): price stays quote-per-base = seedPrice.
-  //   - base sorts as tokenB (quote < base): price becomes base-per-quote = 1/seedPrice,
-  //     and the decimals A/B swap with the tokens.
+  //   - base sorts as tokenB (quote < base): price becomes base-per-quote = 1/seedPrice.
   // The reported `price` (seedPrice) stays quote-per-base regardless of the on-chain sort.
-  const [orderedA] = PoolUtil.orderMints(baseMint, quoteMint);
-  const mintA = new PublicKey(orderedA.toString());
-  const baseIsA = mintA.equals(baseMint);
-  const mintB = baseIsA ? quoteMint : baseMint;
-  const decimalsA = baseIsA ? baseDecimals : quoteDecimals;
-  const decimalsB = baseIsA ? quoteDecimals : baseDecimals;
+  const baseMintAddress = address(baseMint.toBase58());
+  const quoteMintAddress = address(quoteMint.toBase58());
+  const [mintA, mintB] = orderMints(baseMintAddress, quoteMintAddress);
+  const baseIsA = mintA === baseMintAddress;
   const priceAB = baseIsA ? seedPrice : 1 / seedPrice;
 
-  const initialTick = PriceMath.priceToInitializableTickIndex(new Decimal(priceAB), decimalsA, decimalsB, tickSpacing);
-
   logger.info(
-    `Orca createPool: config=${ORCA_WHIRLPOOLS_CONFIG.toBase58()}, program=${ORCA_WHIRLPOOL_PROGRAM_ID.toBase58()}, ` +
-      `tokenMintA=${mintA.toBase58()}, tokenMintB=${mintB.toBase58()}, tickSpacing=${tickSpacing}, initialTick=${initialTick}`,
+    `Orca createPool: config=${orca.deployment.configAddress}, program=${orca.deployment.programId}, ` +
+      `tokenMintA=${mintA}, tokenMintB=${mintB}, tickSpacing=${tickSpacing}, initialPrice=${priceAB}`,
   );
 
-  const { poolKey, tx } = await client.createPool(
-    ORCA_WHIRLPOOLS_CONFIG,
-    mintA,
-    mintB,
-    tickSpacing,
-    initialTick,
-    funder,
-  );
-  const poolAddress = poolKey.toBase58();
+  const result = await createConcentratedLiquidityPoolInstructions(orca.solanaKitRpc, mintA, mintB, tickSpacing, {
+    initialPrice: priceAB,
+    funder: createOrcaAuthority(walletAddress),
+    whirlpoolDeployment: orca.deployment,
+  });
+  const poolAddress = result.poolAddress.toString();
 
-  // Pre-check: refuse to re-initialize an existing pool. createPool only builds the tx (no send),
-  // so we can derive the pool address and check for an existing account before sending.
-  const existing = await solana.connection.getAccountInfo(poolKey);
+  // Refuse to re-initialize an existing pool. The SDK call above only builds instructions, so this
+  // check still happens before anything is signed or sent.
+  const existing = await solana.connection.getAccountInfo(new PublicKey(poolAddress));
   if (existing) {
     throw httpErrors.badRequest(`Pool already exists for this token pair and tickSpacing: ${poolAddress}`);
   }
 
   logger.info(`Creating Orca CLMM pool ${poolAddress} (${baseToken}/${quoteToken})`);
 
-  // createPool generates the two token-vault keypairs internally; they are returned on the built
-  // transaction's `signers` and must co-sign. Pass them as extra signers.
-  const built = await tx.build();
-  const extraSigners = (built.signers as Keypair[]) ?? [];
-  const { signature } = await solana.sendAndConfirmTransactionForWallet(built.transaction, walletAddress, extraSigners);
+  // The Kit builder generates two internal vault signers. Gateway sends Web3.js transactions, so
+  // replace those generated addresses with Web3.js keypairs that can be passed through its signing
+  // layer. The wallet signer is intentionally retained as the external/local wallet authority.
+  const generatedSignerAddresses = Array.from(
+    new Set(
+      result.instructions.flatMap((instruction: Instruction) =>
+        (instruction.accounts ?? [])
+          .filter((account) => 'signer' in account && account.address !== walletAddress)
+          .map((account) => account.address.toString()),
+      ),
+    ),
+  );
+  if (generatedSignerAddresses.length !== 2) {
+    throw new Error(`Expected two Orca token-vault signers, found ${generatedSignerAddresses.length}`);
+  }
+  const extraSigners = generatedSignerAddresses.map(() => Keypair.generate());
+  const instructions = replaceOrcaInstructionAccounts(
+    result.instructions,
+    new Map(
+      generatedSignerAddresses.map((signerAddress, index) => [signerAddress, extraSigners[index].publicKey.toBase58()]),
+    ),
+  );
+  const transaction = buildOrcaTransaction(instructions, walletAddress);
+  const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress, extraSigners);
 
   const txData = await solana.connection.getTransaction(signature, {
     commitment: 'confirmed',
