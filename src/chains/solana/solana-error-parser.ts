@@ -90,8 +90,12 @@ const PROGRAM_ERROR_CODES: Record<string, Record<number, { type: SolanaErrorType
     },
   },
 
-  // Orca Whirlpool error codes (same as Raydium CLMM since they share similar design)
+  // Orca Whirlpool error codes
   [PROGRAM_IDS.ORCA_WHIRLPOOL]: {
+    6018: {
+      type: 'SLIPPAGE_EXCEEDED',
+      message: 'Did not meet the minimum token amount for the liquidity withdrawal.',
+    },
     6029: {
       type: 'SLIPPAGE_EXCEEDED',
       message: 'Price slippage check failed.',

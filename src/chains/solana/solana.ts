@@ -51,6 +51,7 @@ import { encryptSecret, decryptSecret, isLegacyKeystore } from '../../services/s
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
+import { parseSolanaError } from './solana-error-parser';
 import { SolanaLedger } from './solana-ledger';
 import { PriorityFeeResult, SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
@@ -1325,6 +1326,30 @@ export class Solana {
     return totalFee;
   }
 
+  private static throwIfSimulationReturnedError(simulationResult: { err: unknown; logs?: string[] | null }): void {
+    if (!simulationResult.err) return;
+
+    const logs = simulationResult.logs ?? [];
+    const errorMessage = `${SIMULATION_ERROR_MESSAGE}\nError: ${JSON.stringify(simulationResult.err)}\nProgram Logs: ${logs.join('\n')}`;
+    const parsedError = parseSolanaError(errorMessage);
+    const detail = [
+      parsedError.message,
+      parsedError.instructionIndex !== null ? `Failing instruction index: ${parsedError.instructionIndex}.` : '',
+      logs.length > 0 ? `Program logs:\n${logs.slice(-12).join('\n')}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    logger.error(errorMessage);
+    if (parsedError.type === 'SLIPPAGE_EXCEEDED') {
+      throw httpErrors.slippageExceeded(detail);
+    }
+    if (parsedError.type === 'INSUFFICIENT_BALANCE') {
+      throw httpErrors.insufficientBalance(detail);
+    }
+    throw httpErrors.simulationFailed(detail);
+  }
+
   public async sendAndConfirmTransaction(
     tx: Transaction | VersionedTransaction,
     signers: Signer[] = [],
@@ -1334,10 +1359,9 @@ export class Solana {
     const currentPriorityFee = priorityFeePerCU ?? (await this.estimateGasPrice());
 
     // Always simulate transaction to get actual compute units
-    let computeUnitsToUse: number;
+    let computeUnitsToUse = this.config.defaultComputeUnits;
+    let simulationResult: { err: unknown; logs?: string[] | null; unitsConsumed?: number } | undefined;
     try {
-      let simulationResult;
-
       if (tx instanceof Transaction) {
         // For regular transactions, simulate with the Transaction object
         const result = await this.connection.simulateTransaction(tx);
@@ -1350,7 +1374,12 @@ export class Solana {
         });
         simulationResult = result.value;
       }
+    } catch (error) {
+      logger.warn(`Failed to simulate for compute units: ${error.message}, using default`);
+    }
 
+    if (simulationResult) {
+      Solana.throwIfSimulationReturnedError(simulationResult);
       if (simulationResult.unitsConsumed) {
         // Add 10% margin for safety
         computeUnitsToUse = Math.ceil(simulationResult.unitsConsumed * 1.1);
@@ -1358,13 +1387,8 @@ export class Solana {
           `Simulation consumed ${simulationResult.unitsConsumed} units, using ${computeUnitsToUse} with 10% margin`,
         );
       } else {
-        // Fallback to default if simulation doesn't return units
-        computeUnitsToUse = this.config.defaultComputeUnits;
         logger.warn('Simulation did not return units consumed, using default');
       }
-    } catch (error) {
-      logger.warn(`Failed to simulate for compute units: ${error.message}, using default`);
-      computeUnitsToUse = this.config.defaultComputeUnits;
     }
 
     const basePriorityFeeLamports = currentPriorityFee * computeUnitsToUse;
@@ -1469,18 +1493,22 @@ export class Solana {
     // External wallets (hardware/Ledger): add the compute budget and sign any extra
     // keypairs, then sign the fee payer externally.
     const currentPriorityFee = priorityFeePerCU ?? (await this.estimateGasPrice());
-    let computeUnitsToUse: number;
+    let computeUnitsToUse = this.config.defaultComputeUnits;
+    let simulationResult: { err: unknown; logs?: string[] | null; unitsConsumed?: number } | undefined;
     try {
       const sim =
         tx instanceof VersionedTransaction
           ? await this.connection.simulateTransaction(tx, { replaceRecentBlockhash: true, sigVerify: false })
           : await this.connection.simulateTransaction(tx);
-      computeUnitsToUse = sim.value.unitsConsumed
-        ? Math.ceil(sim.value.unitsConsumed * 1.1)
-        : this.config.defaultComputeUnits;
+      simulationResult = sim.value;
     } catch (error) {
       logger.warn(`Failed to simulate for compute units: ${(error as Error).message}, using default`);
-      computeUnitsToUse = this.config.defaultComputeUnits;
+    }
+    if (simulationResult) {
+      Solana.throwIfSimulationReturnedError(simulationResult);
+      computeUnitsToUse = simulationResult.unitsConsumed
+        ? Math.ceil(simulationResult.unitsConsumed * 1.1)
+        : this.config.defaultComputeUnits;
     }
 
     let prepared: Transaction | VersionedTransaction;

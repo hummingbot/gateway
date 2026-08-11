@@ -110,6 +110,16 @@ describe('Solana Error Parser', () => {
     });
 
     describe('Orca Whirlpool errors', () => {
+      it('should parse Orca token minimum error 6018 as slippage, not math overflow', () => {
+        const errorMessage = `Program whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc failed: custom program error: 0x1782`;
+        const result = parseSolanaError(errorMessage);
+
+        expect(result.type).toBe('SLIPPAGE_EXCEEDED');
+        expect(result.program).toBe('Orca Whirlpool');
+        expect(result.errorCode).toBe(6018);
+        expect(result.message).toContain('minimum token amount');
+      });
+
       it('should parse Orca slippage error via program ID string match', () => {
         const errorMessage = `Program whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc failed: custom program error: 0x178d`;
         const result = parseSolanaError(errorMessage);

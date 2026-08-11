@@ -16,6 +16,17 @@ import { buildOrcaTransaction, createOrcaAuthority } from '../orca.sdk';
 import { extractInnerTransferAmounts } from '../orca.utils';
 import { OrcaClmmClosePositionRequest } from '../schemas';
 
+const MAX_CLOSE_ATTEMPTS = 3;
+type ExistingPositionAccount = Extract<Awaited<ReturnType<typeof fetchMaybePosition>>, { exists: true }>;
+
+const extractTransactionSignature = (error: unknown): string | null => {
+  const explicitSignature = (error as { transactionSignature?: unknown })?.transactionSignature;
+  if (typeof explicitSignature === 'string') return explicitSignature;
+
+  const message = error instanceof Error ? error.message : String(error);
+  return message.match(/\bTransaction ([1-9A-HJ-NP-Za-km-z]{64,88})\b/)?.[1] ?? null;
+};
+
 export async function closePosition(
   network: string,
   walletAddress: string,
@@ -25,39 +36,116 @@ export async function closePosition(
   const orca = await Orca.getInstance(network);
   const positionPubkey = new PublicKey(positionAddress);
 
-  const position = await fetchMaybePosition(orca.solanaKitRpc, address(positionAddress));
-  if (!position.exists) {
+  const initialPosition = await fetchMaybePosition(orca.solanaKitRpc, address(positionAddress));
+  if (!initialPosition.exists) {
     throw httpErrors.notFound(`Position not found: ${positionAddress}`);
   }
-  const [whirlpool, positionMint] = await Promise.all([
-    fetchWhirlpool(orca.solanaKitRpc, position.data.whirlpool),
-    fetchMint(orca.solanaKitRpc, position.data.positionMint),
-  ]);
+  let position: ExistingPositionAccount = initialPosition;
 
-  const hasLiquidity = position.data.liquidity > 0n;
+  let whirlpool: any;
+  let positionMint: any;
+  let hasLiquidity = false;
+  let signature = '';
+  let fee = 0;
+  let reconciledTxData: any = null;
+
+  for (let attempt = 1; attempt <= MAX_CLOSE_ATTEMPTS; attempt++) {
+    try {
+      [whirlpool, positionMint] = await Promise.all([
+        fetchWhirlpool(orca.solanaKitRpc, position.data.whirlpool),
+        fetchMint(orca.solanaKitRpc, position.data.positionMint),
+      ]);
+      hasLiquidity = position.data.liquidity > 0n;
+
+      // Rebuild on every attempt so the quote, token minimums, and blockhash are
+      // based on current state rather than resending a stale serialized transaction.
+      const closeResult = await closePositionInstructions(orca.solanaKitRpc, position.data.positionMint, {
+        authority: createOrcaAuthority(walletAddress),
+        slippageToleranceBps: Math.round(orca.config.slippagePct * 100),
+        whirlpoolDeployment: orca.deployment,
+      });
+      const rewardCount = closeResult.rewardsQuote.rewards.filter((reward) => reward.rewardsOwed > 0n).length;
+      logger.info(
+        `Built Orca close transaction (attempt ${attempt}/${MAX_CLOSE_ATTEMPTS}) with ` +
+          `${rewardCount} reward collection instruction(s)`,
+      );
+
+      const transaction = buildOrcaTransaction(closeResult.instructions, walletAddress);
+      ({ signature, fee } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress));
+      break;
+    } catch (error) {
+      let refreshedPosition;
+      try {
+        refreshedPosition = await fetchMaybePosition(orca.solanaKitRpc, address(positionAddress));
+      } catch (verificationError) {
+        logger.warn(
+          `Could not verify Orca position ${positionAddress} after close attempt ${attempt}: ` +
+            `${(verificationError as Error).message}`,
+        );
+      }
+
+      if (refreshedPosition && !refreshedPosition.exists) {
+        const attemptedSignature = signature || extractTransactionSignature(error);
+        if (!attemptedSignature) {
+          logger.warn(`Orca position ${positionAddress} is closed, but its transaction signature is unavailable`);
+          throw error;
+        }
+
+        try {
+          reconciledTxData = await solana.connection.getTransaction(attemptedSignature, {
+            commitment: 'confirmed',
+            maxSupportedTransactionVersion: 0,
+          });
+        } catch (reconciliationError) {
+          logger.warn(
+            `Could not fetch reconciled Orca close transaction ${attemptedSignature}: ` +
+              `${(reconciliationError as Error).message}`,
+          );
+        }
+
+        if (reconciledTxData?.meta?.err) {
+          // This attempt did not close the position; do not report its failed
+          // signature as successful if another actor closed it concurrently.
+          throw error;
+        }
+
+        signature = attemptedSignature;
+        fee = Number(reconciledTxData?.meta?.fee ?? 0) / 1e9;
+        logger.info(`Orca position ${positionAddress} is already closed; reconciled transaction ${signature}`);
+        break;
+      }
+
+      if (attempt === MAX_CLOSE_ATTEMPTS) {
+        throw error;
+      }
+
+      if (refreshedPosition?.exists) {
+        position = refreshedPosition;
+      }
+      logger.warn(
+        `Orca close attempt ${attempt}/${MAX_CLOSE_ATTEMPTS} failed for ${positionAddress}; ` +
+          'rebuilding and retrying immediately',
+      );
+    }
+  }
+
   let baseTokenAmountRemoved = 0;
   let quoteTokenAmountRemoved = 0;
   let baseFeeAmountCollected = 0;
   let quoteFeeAmountCollected = 0;
-
-  // Orca v8 builds the complete close flow: liquidity removal, token fees,
-  // every non-zero reward, the correct classic/Token-2022 close instruction,
-  // and destination account setup/cleanup. Gateway remains the only signer.
-  const closeResult = await closePositionInstructions(orca.solanaKitRpc, position.data.positionMint, {
-    authority: createOrcaAuthority(walletAddress),
-    slippageToleranceBps: Math.round(orca.config.slippagePct * 100),
-    whirlpoolDeployment: orca.deployment,
-  });
-  const rewardCount = closeResult.rewardsQuote.rewards.filter((reward) => reward.rewardsOwed > 0n).length;
-  logger.info(`Built Orca close transaction with ${rewardCount} reward collection instruction(s)`);
-
-  const transaction = buildOrcaTransaction(closeResult.instructions, walletAddress);
-  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
-
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  let txData = reconciledTxData;
+  if (!txData) {
+    try {
+      txData = await solana.connection.getTransaction(signature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0,
+      });
+    } catch (error) {
+      // The close is already confirmed by the shared send path. Transaction
+      // details only enrich the response and must not cause another close.
+      logger.warn(`Could not fetch Orca close transaction ${signature}: ${(error as Error).message}`);
+    }
+  }
   let positionRentRefunded = 0;
 
   if (txData) {

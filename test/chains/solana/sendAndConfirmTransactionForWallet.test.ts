@@ -45,6 +45,39 @@ function versionedTx(): VersionedTransaction {
   return new VersionedTransaction(message);
 }
 
+describe('Solana.sendAndConfirmTransaction compute simulation', () => {
+  const sendAndConfirm = (Solana.prototype as any).sendAndConfirmTransaction as (
+    this: unknown,
+    tx: Transaction,
+  ) => Promise<{ signature: string; fee: number }>;
+
+  it('does not broadcast when the compute-estimation simulation returned an error', async () => {
+    const _sendAndConfirmRawTransaction = jest.fn();
+    const fakeThis = {
+      config: { defaultComputeUnits: 200000 },
+      estimateGasPrice: jest.fn(async () => 0.1),
+      connection: {
+        simulateTransaction: jest.fn(async () => ({
+          value: {
+            err: { InstructionError: [0, { Custom: 6018 }] },
+            unitsConsumed: 10385,
+            logs: [
+              'Program whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc invoke [1]',
+              'Program whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc failed: custom program error: 0x1782',
+            ],
+          },
+        })),
+      },
+      _sendAndConfirmRawTransaction,
+    };
+
+    await expect(sendAndConfirm.call(fakeThis, legacyTx())).rejects.toMatchObject({
+      code: 'SLIPPAGE_EXCEEDED',
+    });
+    expect(_sendAndConfirmRawTransaction).not.toHaveBeenCalled();
+  });
+});
+
 describe('Solana.sendAndConfirmTransactionForWallet', () => {
   it('drops extra signers that carry the wallet pubkey (SDK dummy owner signers)', async () => {
     // Raydium's TxBuilder appends `owner.signer` to the signers it returns. For non-local
