@@ -13,6 +13,7 @@ import { getPancakeswapV2RouterAddress, IPancakeswapV2Router02ABI } from '../pan
 import { formatTokenAmount } from '../pancakeswap.utils';
 import { PancakeswapAmmExecuteSwapRequest } from '../schemas';
 
+import { resolveSwapPair } from './poolTokens';
 import { getPancakeswapAmmQuote } from './quoteSwap';
 
 // Default gas limit for AMM swap operations
@@ -330,7 +331,21 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-// Export executeSwap alias for uniform chain route imports
-export { executeAmmSwap as executeSwap };
+/**
+ * Standard AMM execute-swap entry point (network-based) — consumed by the unified /trading/amm
+ * dispatcher. The quote token is derived from the pool; `amount` is denominated in the base token.
+ */
+export async function executeSwap(
+  network: string,
+  walletAddress: string,
+  poolAddress: string,
+  baseToken: string,
+  side: 'BUY' | 'SELL',
+  amount: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
+): Promise<SwapExecuteResponseType> {
+  const { baseAddress, quoteAddress } = await resolveSwapPair(network, poolAddress, baseToken);
+  return await executeAmmSwap(walletAddress, network, baseAddress, quoteAddress, amount, side, slippagePct);
+}
 
 export default executeSwapRoute;

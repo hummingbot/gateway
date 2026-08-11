@@ -102,6 +102,70 @@ export const RemoveLiquidityResponse = Type.Object(
 );
 export type RemoveLiquidityResponseType = Static<typeof RemoveLiquidityResponse>;
 
+// ========================================
+// Pool Creation Types
+// ========================================
+
+export const CreatePoolRequest = Type.Object(
+  {
+    network: Type.Optional(Type.String()),
+    walletAddress: Type.Optional(Type.String()),
+    baseToken: Type.String({ description: 'Base token symbol or address (becomes the pool base)' }),
+    quoteToken: Type.String({ description: 'Quote token symbol or address (becomes the pool quote)' }),
+    baseTokenAmount: Type.Number({ description: 'Amount of base token to seed the pool with' }),
+    quoteTokenAmount: Type.Optional(
+      Type.Number({
+        description:
+          'Amount of quote token to seed with. If provided, the base:quote ratio sets the initial price. ' +
+          'If omitted (and no initialPrice), the price is fetched from the market.',
+      }),
+    ),
+    initialPrice: Type.Optional(
+      Type.Number({
+        description:
+          'Initial price as quote per base. Overrides quoteTokenAmount. If both are omitted, the current ' +
+          'market price is fetched from the unified swap router so the pool opens on-market.',
+      }),
+    ),
+  },
+  { $id: 'CreatePoolRequest' },
+);
+export type CreatePoolRequestType = Static<typeof CreatePoolRequest>;
+
+export const CreatePoolResponse = Type.Object(
+  {
+    signature: Type.String(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+    poolAddress: Type.String({ description: 'Address of the newly created pool' }),
+    price: Type.Optional(Type.Number({ description: 'Initial price the pool was seeded at (quote per base)' })),
+
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object({
+        fee: Type.Number(),
+        baseTokenAmountAdded: Type.Number(),
+        quoteTokenAmountAdded: Type.Number(),
+      }),
+    ),
+  },
+  { $id: 'CreatePoolResponse' },
+);
+export type CreatePoolResponseType = Static<typeof CreatePoolResponse>;
+
+// Per-position breakdown entry. Non-fungible-LP AMMs (e.g. Meteora DAMM v2) let a wallet hold
+// several NFT positions in one pool; each is individually addressable. Fungible-LP AMMs (Raydium
+// CPMM, Uniswap V2) have a single position per wallet and omit this array.
+export const PositionDetailSchema = Type.Object(
+  {
+    positionAddress: Type.String({ description: 'Address of the individual position (NFT position account)' }),
+    lpTokenAmount: Type.Number({ description: 'Liquidity held by this position (LP units)' }),
+    baseTokenAmount: Type.Number(),
+    quoteTokenAmount: Type.Number(),
+  },
+  { $id: 'PositionDetail' },
+);
+export type PositionDetail = Static<typeof PositionDetailSchema>;
+
 export const PositionInfoSchema = Type.Object(
   {
     poolAddress: Type.String(),
@@ -112,6 +176,10 @@ export const PositionInfoSchema = Type.Object(
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
     price: Type.Number(),
+    // Per-position breakdown for non-fungible-LP AMMs. When a wallet holds multiple positions in a
+    // pool, the top-level amounts are the aggregate and each entry here is individually addressable
+    // (pass its positionAddress to remove-liquidity / add-liquidity). Omitted for fungible-LP AMMs.
+    positions: Type.Optional(Type.Array(PositionDetailSchema)),
   },
   { $id: 'PositionInfo' },
 );

@@ -1,7 +1,7 @@
-import { TransactionBuilder } from '@orca-so/common-sdk';
-import { WhirlpoolIx, TokenExtensionUtil, IGNORE_CACHE } from '@orca-so/whirlpools-sdk';
+import { harvestPositionInstructions } from '@orca-so/whirlpools';
+import { fetchPosition, fetchWhirlpool } from '@orca-so/whirlpools-client';
 import { Static } from '@sinclair/typebox';
-import { getAssociatedTokenAddressSync } from '@solana/spl-token';
+import { address } from '@solana/kit';
 import { PublicKey } from '@solana/web3.js';
 import { FastifyPluginAsync } from 'fastify';
 
@@ -10,197 +10,48 @@ import { CollectFeesResponse, CollectFeesResponseType } from '../../../schemas/c
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
-import { getTickArrayPubkeys, handleWsolAta } from '../orca.utils';
+import { buildOrcaTransaction, createOrcaAuthority } from '../orca.sdk';
 import { OrcaClmmCollectFeesRequest } from '../schemas';
 
 export async function collectFees(
   network: string,
-  address: string,
+  walletAddress: string,
   positionAddress: string,
 ): Promise<CollectFeesResponseType> {
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
-  // Build with the wallet's public key as authority — works for every wallet type
-  // (local, hardware). Signing/sending is delegated to
-  // sendAndConfirmTransactionForWallet, which knows how to sign for each type.
-  const walletPublicKey = new PublicKey(address);
-  const client = await orca.getWhirlpoolClientForWallet(address);
-  const positionPubkey = new PublicKey(positionAddress);
+  const walletPublicKey = new PublicKey(walletAddress);
+  const position = await fetchPosition(orca.solanaKitRpc, address(positionAddress));
+  const whirlpool = await fetchWhirlpool(orca.solanaKitRpc, position.data.whirlpool);
 
-  // Fetch position data
-  const position = await client.getPosition(positionPubkey);
-  if (!position) {
-    throw httpErrors.notFound(`Position not found: ${positionAddress}`);
-  }
+  // Harvesting is the current SDK's complete collection flow. It updates the
+  // position and collects token fees plus every non-zero reward.
+  const result = await harvestPositionInstructions(orca.solanaKitRpc, position.data.positionMint, {
+    authority: createOrcaAuthority(walletAddress),
+    whirlpoolDeployment: orca.deployment,
+  });
+  const rewardCount = result.rewardsQuote.rewards.filter((reward) => reward.rewardsOwed > 0n).length;
+  logger.info(`Built Orca fee harvest with ${rewardCount} reward collection instruction(s)`);
 
-  await position.refreshData();
-
-  // Fetch position mint info
-  const positionMint = await client.getFetcher().getMintInfo(position.getData().positionMint);
-  if (!positionMint) {
-    throw httpErrors.notFound(`Position mint not found: ${position.getData().positionMint.toString()}`);
-  }
-
-  // Fetch whirlpool data
-  const whirlpoolPubkey = position.getData().whirlpool;
-  const whirlpool = await client.getPool(whirlpoolPubkey, IGNORE_CACHE);
-  if (!whirlpool) {
-    throw httpErrors.notFound(`Whirlpool not found: ${whirlpoolPubkey.toString()}`);
-  }
-
-  await whirlpool.refreshData();
-
-  // Fetch token mint info
-  const mintA = await client.getFetcher().getMintInfo(whirlpool.getTokenAInfo().address);
-  const mintB = await client.getFetcher().getMintInfo(whirlpool.getTokenBInfo().address);
-  if (!mintA || !mintB) {
-    throw httpErrors.notFound('Token mint not found');
-  }
-
-  // Fetch tick arrays
-  const { lower: lowerTickArrayPubkey, upper: upperTickArrayPubkey } = getTickArrayPubkeys(
-    position.getData(),
-    whirlpool.getData(),
-    whirlpoolPubkey,
-  );
-
-  const lowerTickArray = await client.getFetcher().getTickArray(lowerTickArrayPubkey);
-  const upperTickArray = await client.getFetcher().getTickArray(upperTickArrayPubkey);
-  if (!lowerTickArray || !upperTickArray) {
-    throw httpErrors.notFound('Tick array not found');
-  }
-
-  // Build transaction
-  const builder = new TransactionBuilder(client.getContext().connection, client.getContext().wallet);
-
-  // Get token owner accounts (ATAs)
-  const tokenOwnerAccountA = getAssociatedTokenAddressSync(
-    whirlpool.getTokenAInfo().address,
-    client.getContext().wallet.publicKey,
-    false,
-    mintA.tokenProgram,
-  );
-  const tokenOwnerAccountB = getAssociatedTokenAddressSync(
-    whirlpool.getTokenBInfo().address,
-    client.getContext().wallet.publicKey,
-    false,
-    mintB.tokenProgram,
-  );
-
-  // Handle WSOL ATAs for receiving collected fees
-  await handleWsolAta(
-    builder,
-    client,
-    whirlpool.getTokenAInfo().address,
-    tokenOwnerAccountA,
-    mintA.tokenProgram,
-    'receive',
-  );
-  await handleWsolAta(
-    builder,
-    client,
-    whirlpool.getTokenBInfo().address,
-    tokenOwnerAccountB,
-    mintB.tokenProgram,
-    'receive',
-  );
-
-  // Add updateFeesAndRewardsIx if position has liquidity
-  if (position.getData().liquidity.gtn(0)) {
-    builder.addInstruction(
-      WhirlpoolIx.updateFeesAndRewardsIx(client.getContext().program, {
-        position: positionPubkey,
-        tickArrayLower: lowerTickArrayPubkey,
-        tickArrayUpper: upperTickArrayPubkey,
-        whirlpool: whirlpoolPubkey,
-      }),
-    );
-  }
-
-  // Add collectFeesV2Ix
-  builder.addInstruction(
-    WhirlpoolIx.collectFeesV2Ix(client.getContext().program, {
-      position: positionPubkey,
-      positionAuthority: client.getContext().wallet.publicKey,
-      tokenMintA: whirlpool.getTokenAInfo().address,
-      tokenMintB: whirlpool.getTokenBInfo().address,
-      positionTokenAccount: getAssociatedTokenAddressSync(
-        position.getData().positionMint,
-        client.getContext().wallet.publicKey,
-        false,
-        positionMint.tokenProgram,
-      ),
-      tokenOwnerAccountA,
-      tokenOwnerAccountB,
-      tokenProgramA: mintA.tokenProgram,
-      tokenProgramB: mintB.tokenProgram,
-      tokenVaultA: whirlpool.getTokenVaultAInfo().address,
-      tokenVaultB: whirlpool.getTokenVaultBInfo().address,
-      whirlpool: whirlpoolPubkey,
-      tokenTransferHookAccountsA: await TokenExtensionUtil.getExtraAccountMetasForTransferHook(
-        client.getContext().provider.connection,
-        mintA,
-        tokenOwnerAccountA,
-        whirlpool.getTokenVaultAInfo().address,
-        client.getContext().wallet.publicKey,
-      ),
-      tokenTransferHookAccountsB: await TokenExtensionUtil.getExtraAccountMetasForTransferHook(
-        client.getContext().provider.connection,
-        mintB,
-        tokenOwnerAccountB,
-        whirlpool.getTokenVaultBInfo().address,
-        client.getContext().wallet.publicKey,
-      ),
-    }),
-  );
-
-  // Auto-unwrap WSOL fees to native SOL
-  logger.info('Auto-unwrapping WSOL fees (if any) back to native SOL');
-  await handleWsolAta(
-    builder,
-    client,
-    whirlpool.getTokenAInfo().address,
-    tokenOwnerAccountA,
-    mintA.tokenProgram,
-    'unwrap',
-    undefined,
-    solana,
-  );
-  await handleWsolAta(
-    builder,
-    client,
-    whirlpool.getTokenBInfo().address,
-    tokenOwnerAccountB,
-    mintB.tokenProgram,
-    'unwrap',
-    undefined,
-    solana,
-  );
-
-  // Build and send transaction via the wallet-type-aware chokepoint (handles
-  // local/hardware and simulates internally).
-  const txPayload = await builder.build();
-  const transaction = txPayload.transaction;
-  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(transaction, address);
-
-  // Extract collected fees from balance changes
-  const tokenAAddress = whirlpool.getTokenAInfo().address.toString();
-  const tokenBAddress = whirlpool.getTokenBInfo().address.toString();
-  const tokenA = await solana.getToken(tokenAAddress);
-  const tokenB = await solana.getToken(tokenBAddress);
-
-  const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletPublicKey.toBase58(), [
-    tokenAAddress,
-    tokenBAddress,
+  const transaction = buildOrcaTransaction(result.instructions, walletAddress);
+  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
+  const tokenAAddress = whirlpool.data.tokenMintA.toString();
+  const tokenBAddress = whirlpool.data.tokenMintB.toString();
+  const [tokenA, tokenB, balanceResult] = await Promise.all([
+    solana.getToken(tokenAAddress),
+    solana.getToken(tokenBAddress),
+    solana.extractBalanceChangesAndFee(signature, walletPublicKey.toBase58(), [tokenAAddress, tokenBAddress]),
   ]);
+  const { balanceChanges } = balanceResult;
 
   logger.info(
-    `Fees collected: ${Math.abs(balanceChanges[0]).toFixed(6)} ${tokenA?.symbol || 'tokenA'}, ${Math.abs(balanceChanges[1]).toFixed(6)} ${tokenB?.symbol || 'tokenB'}`,
+    `Fees collected: ${Math.abs(balanceChanges[0]).toFixed(6)} ${tokenA?.symbol || 'tokenA'}, ` +
+      `${Math.abs(balanceChanges[1]).toFixed(6)} ${tokenB?.symbol || 'tokenB'}`,
   );
 
   return {
     signature,
-    status: 1, // CONFIRMED
+    status: 1,
     data: {
       fee,
       baseFeeAmountCollected: Math.abs(balanceChanges[0]),
@@ -217,23 +68,19 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
     '/collect-fees',
     {
       schema: {
-        description: 'Collect fees from an Orca position',
+        description: 'Collect fees and rewards from an Orca position',
         tags: ['/connector/orca'],
         body: OrcaClmmCollectFeesRequest,
-        response: {
-          200: CollectFeesResponse,
-        },
+        response: { 200: CollectFeesResponse },
       },
     },
     async (request) => {
       try {
-        const { walletAddress, positionAddress } = request.body;
-        const network = request.body.network;
-
+        const { walletAddress, positionAddress, network } = request.body;
         return await collectFees(network, walletAddress, positionAddress);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
+      } catch (error) {
+        logger.error(error);
+        if (error.statusCode) throw error;
         throw httpErrors.internalServerError('Internal server error');
       }
     },

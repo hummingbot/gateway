@@ -20,16 +20,26 @@ import { PancakeswapSolClmmExecuteSwapRequest, PancakeswapSolClmmExecuteSwapRequ
 export async function executeSwap(
   network: string,
   walletAddress: string,
+  poolAddress: string,
   baseTokenSymbol: string,
-  quoteTokenSymbol: string,
-  amount: number,
   side: 'BUY' | 'SELL',
-  poolAddress?: string,
+  amount: number,
   slippagePct?: number,
 ): Promise<ExecuteSwapResponseType> {
+  // Standardized: quote token is derived from the pool given poolAddress + baseToken.
+  const { getRawSwapQuote, resolveCounterToken } = await import('./quoteSwap');
+  const quoteTokenSymbol = await resolveCounterToken(network, poolAddress, baseTokenSymbol);
+
   // Get quote first - this contains all the slippage calculations and pool lookup
-  const { quoteSwap } = await import('./quoteSwap');
-  const quote = await quoteSwap(network, baseTokenSymbol, quoteTokenSymbol, amount, side, poolAddress, slippagePct);
+  const quote = await getRawSwapQuote(
+    network,
+    baseTokenSymbol,
+    quoteTokenSymbol,
+    amount,
+    side,
+    poolAddress,
+    slippagePct,
+  );
 
   const solana = await Solana.getInstance(network);
   const pancakeswapSol = await PancakeswapSol.getInstance(network);
@@ -207,14 +217,37 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
         } = request.body;
 
+        // executeSwap is standardized to require poolAddress; resolve it from the pair when absent.
+        let poolAddressToUse = poolAddress;
+        if (!poolAddressToUse) {
+          const solana = await Solana.getInstance(network);
+          const baseTokenInfo = await solana.getToken(baseToken);
+          const quoteTokenInfo = await solana.getToken(quoteToken);
+          if (!baseTokenInfo || !quoteTokenInfo) {
+            throw httpErrors.badRequest(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
+          }
+          const { PoolService } = await import('../../../services/pool-service');
+          const poolService = PoolService.getInstance();
+          const pool = await poolService.getPool(
+            'pancakeswap-sol',
+            network,
+            'clmm',
+            baseTokenInfo.symbol,
+            quoteTokenInfo.symbol,
+          );
+          if (!pool) {
+            throw httpErrors.notFound(`No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol}`);
+          }
+          poolAddressToUse = pool.address;
+        }
+
         return await executeSwap(
           network,
           walletAddress!,
+          poolAddressToUse,
           baseToken,
-          quoteToken,
-          amount,
           side as 'BUY' | 'SELL',
-          poolAddress,
+          amount,
           slippagePct,
         );
       } catch (e: any) {

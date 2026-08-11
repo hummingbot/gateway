@@ -16,11 +16,10 @@ import { getRawSwapQuote } from './quoteSwap';
 export async function executeSwap(
   network: string,
   walletAddress: string,
-  baseToken: string,
-  quoteToken: string,
-  amount: number,
-  side: 'BUY' | 'SELL',
   poolAddress: string,
+  baseToken: string,
+  side: 'BUY' | 'SELL',
+  amount: number,
   slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
@@ -35,6 +34,18 @@ export async function executeSwap(
   const poolInfo = await raydium.getAmmPoolInfo(poolAddress);
   if (!poolInfo) {
     throw httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
+  }
+
+  // Derive the counter ("quote") token from the pool given the requested base token.
+  const baseTokenInfo = await solana.getToken(baseToken);
+  const resolvedBaseAddress = baseTokenInfo ? baseTokenInfo.address : baseToken;
+  let quoteToken: string;
+  if (resolvedBaseAddress === poolInfo.baseTokenAddress) {
+    quoteToken = poolInfo.quoteTokenAddress;
+  } else if (resolvedBaseAddress === poolInfo.quoteTokenAddress) {
+    quoteToken = poolInfo.baseTokenAddress;
+  } else {
+    throw httpErrors.badRequest(`Base token ${baseToken} is not in pool ${poolAddress}`);
   }
 
   // Use configured slippage if not provided
@@ -244,11 +255,10 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         return await executeSwap(
           networkToUse,
           walletAddress,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
           poolAddressToUse,
+          baseToken,
+          side as 'BUY' | 'SELL',
+          amount,
           slippagePct,
         );
       } catch (e) {

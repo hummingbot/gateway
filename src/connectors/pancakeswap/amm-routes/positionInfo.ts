@@ -9,10 +9,72 @@ import {
   PositionInfo,
   PositionInfoSchema,
 } from '../../../schemas/amm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
 import { IPancakeswapV2PairABI } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
+
+/**
+ * Standard AMM position-info entry point (network-based) — consumed by the unified /trading/amm
+ * dispatcher. V2 positions are fungible LP tokens; base/quote follow the pair's token0/token1.
+ */
+export async function getPositionInfo(
+  network: string,
+  poolAddress: string,
+  walletAddress: string,
+): Promise<PositionInfo> {
+  if (!poolAddress) throw httpErrors.badRequest('Pool address is required');
+
+  const pancakeswap = await Pancakeswap.getInstance(network);
+  const ethereum = await Ethereum.getInstance(network);
+
+  const pairContract = new Contract(poolAddress, IPancakeswapV2PairABI.abi, ethereum.provider);
+  const lpBalance = await pairContract.balanceOf(walletAddress);
+  const [token0, token1] = await Promise.all([pairContract.token0(), pairContract.token1()]);
+
+  const baseTokenObj = await pancakeswap.getToken(token0);
+  const quoteTokenObj = await pancakeswap.getToken(token1);
+  if (!baseTokenObj || !quoteTokenObj) {
+    throw httpErrors.badRequest('Token information not found for pool');
+  }
+
+  if (lpBalance.isZero()) {
+    return {
+      poolAddress,
+      walletAddress,
+      baseTokenAddress: baseTokenObj.address,
+      quoteTokenAddress: quoteTokenObj.address,
+      lpTokenAmount: 0,
+      baseTokenAmount: 0,
+      quoteTokenAmount: 0,
+      price: 0,
+    };
+  }
+
+  const [totalSupply, reserves] = await Promise.all([pairContract.totalSupply(), pairContract.getReserves()]);
+  const token0IsBase = token0.toLowerCase() === baseTokenObj.address.toLowerCase();
+  const baseTokenReserve = token0IsBase ? reserves[0] : reserves[1];
+  const quoteTokenReserve = token0IsBase ? reserves[1] : reserves[0];
+
+  const userBaseTokenAmount = baseTokenReserve.mul(lpBalance).div(totalSupply);
+  const userQuoteTokenAmount = quoteTokenReserve.mul(lpBalance).div(totalSupply);
+
+  const baseTokenAmountFloat = formatTokenAmount(baseTokenReserve.toString(), baseTokenObj.decimals);
+  const quoteTokenAmountFloat = formatTokenAmount(quoteTokenReserve.toString(), quoteTokenObj.decimals);
+  const price = baseTokenAmountFloat > 0 ? quoteTokenAmountFloat / baseTokenAmountFloat : 0;
+
+  return {
+    poolAddress,
+    walletAddress,
+    baseTokenAddress: baseTokenObj.address,
+    quoteTokenAddress: quoteTokenObj.address,
+    lpTokenAmount: formatTokenAmount(lpBalance.toString(), 18),
+    baseTokenAmount: formatTokenAmount(userBaseTokenAmount.toString(), baseTokenObj.decimals),
+    quoteTokenAmount: formatTokenAmount(userQuoteTokenAmount.toString(), quoteTokenObj.decimals),
+    price,
+  };
+}
 
 export async function checkLPAllowance(
   ethereum: any,

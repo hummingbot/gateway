@@ -6,8 +6,10 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { RemoveLiquidityResponseType, RemoveLiquidityResponse } from '../../../schemas/amm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
+import { PancakeswapConfig } from '../pancakeswap.config';
 import {
   getPancakeswapV2RouterAddress,
   IPancakeswapV2Router02ABI,
@@ -20,6 +22,125 @@ import { checkLPAllowance } from './positionInfo';
 
 // Default gas limit for AMM remove liquidity operations
 const AMM_REMOVE_LIQUIDITY_GAS_LIMIT = 400000;
+
+/**
+ * Standard AMM remove-liquidity entry point (network-based) — consumed by the unified /trading/amm
+ * dispatcher. Removes `percentageToRemove` of the wallet's LP position; base/quote follow the pair.
+ */
+export async function removeLiquidity(
+  network: string,
+  walletAddress: string,
+  poolAddress: string,
+  percentageToRemove: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
+  gasPrice?: string,
+  maxGas?: number,
+): Promise<RemoveLiquidityResponseType> {
+  if (!poolAddress || !percentageToRemove) throw httpErrors.badRequest('Missing required parameters');
+  if (percentageToRemove <= 0 || percentageToRemove > 100) {
+    throw httpErrors.badRequest('Percentage to remove must be between 0 and 100');
+  }
+
+  const pancakeswap = await Pancakeswap.getInstance(network);
+  const ethereum = await Ethereum.getInstance(network);
+
+  const poolInfo = await getPancakeswapPoolInfo(poolAddress, network, 'amm');
+  if (!poolInfo) throw httpErrors.notFound(`Pool not found: ${poolAddress}`);
+
+  const baseTokenObj = await pancakeswap.getToken(poolInfo.baseTokenAddress);
+  const quoteTokenObj = await pancakeswap.getToken(poolInfo.quoteTokenAddress);
+  if (!baseTokenObj || !quoteTokenObj) throw httpErrors.badRequest('Token information not found for pool');
+
+  const wallet = await ethereum.getWallet(walletAddress);
+  if (!wallet) throw httpErrors.badRequest('Wallet not found');
+
+  const pairContract = new Contract(poolAddress, IPancakeswapV2PairABI.abi, wallet);
+  const lpBalance = await pairContract.balanceOf(walletAddress);
+  if (lpBalance.eq(0)) throw httpErrors.badRequest('No liquidity position found for this pool');
+
+  const [token0, token1, totalSupply, reserves] = await Promise.all([
+    pairContract.token0(),
+    pairContract.token1(),
+    pairContract.totalSupply(),
+    pairContract.getReserves(),
+  ]);
+
+  const token0IsBase = token0.toLowerCase() === baseTokenObj.address.toLowerCase();
+
+  const liquidityToRemove = lpBalance.mul(Math.floor(percentageToRemove * 100)).div(10000);
+  const baseTokenReserve = token0IsBase ? reserves[0] : reserves[1];
+  const quoteTokenReserve = token0IsBase ? reserves[1] : reserves[0];
+
+  const expectedBaseTokenAmount = baseTokenReserve.mul(liquidityToRemove).div(totalSupply);
+  const expectedQuoteTokenAmount = quoteTokenReserve.mul(liquidityToRemove).div(totalSupply);
+
+  const routerAddress = getPancakeswapV2RouterAddress(network);
+  const router = new Contract(routerAddress, IPancakeswapV2Router02ABI.abi, wallet);
+
+  const slippageTolerance = new Percent(Math.floor(slippagePct * 100), 10000);
+  const slippageMultiplier = new Percent(1).subtract(slippageTolerance);
+  const baseTokenMinAmount = expectedBaseTokenAmount
+    .mul(slippageMultiplier.numerator.toString())
+    .div(slippageMultiplier.denominator.toString());
+  const quoteTokenMinAmount = expectedQuoteTokenAmount
+    .mul(slippageMultiplier.numerator.toString())
+    .div(slippageMultiplier.denominator.toString());
+
+  await checkLPAllowance(ethereum, wallet, poolAddress, routerAddress, liquidityToRemove);
+
+  const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
+  const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
+  const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_REMOVE_LIQUIDITY_GAS_LIMIT);
+
+  let tx;
+  if (baseTokenObj.symbol === 'WETH') {
+    tx = await router.removeLiquidityETH(
+      token0IsBase ? token1 : token0,
+      liquidityToRemove,
+      token0IsBase ? quoteTokenMinAmount : baseTokenMinAmount,
+      token0IsBase ? baseTokenMinAmount : quoteTokenMinAmount,
+      walletAddress,
+      deadline,
+      gasOptions,
+    );
+  } else if (quoteTokenObj.symbol === 'WETH') {
+    tx = await router.removeLiquidityETH(
+      token0IsBase ? token0 : token1,
+      liquidityToRemove,
+      token0IsBase ? baseTokenMinAmount : quoteTokenMinAmount,
+      token0IsBase ? quoteTokenMinAmount : baseTokenMinAmount,
+      walletAddress,
+      deadline,
+      gasOptions,
+    );
+  } else {
+    tx = await router.removeLiquidity(
+      token0,
+      token1,
+      liquidityToRemove,
+      token0IsBase ? baseTokenMinAmount : quoteTokenMinAmount,
+      token0IsBase ? quoteTokenMinAmount : baseTokenMinAmount,
+      walletAddress,
+      deadline,
+      gasOptions,
+    );
+  }
+
+  const receipt = await ethereum.handleTransactionExecution(tx);
+  const baseTokenAmountRemoved = formatTokenAmount(expectedBaseTokenAmount.toString(), baseTokenObj.decimals);
+  const quoteTokenAmountRemoved = formatTokenAmount(expectedQuoteTokenAmount.toString(), quoteTokenObj.decimals);
+  const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
+
+  return {
+    signature: receipt.transactionHash,
+    status: receipt.status,
+    data: {
+      fee: gasFee,
+      baseTokenAmountRemoved,
+      quoteTokenAmountRemoved,
+    },
+  };
+}
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   await fastify.register(require('@fastify/sensible'));
@@ -50,183 +171,32 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           maxGas,
         } = request.body;
 
-        const networkToUse = network;
-
-        // Validate essential parameters
-        if (!poolAddress || !percentageToRemove) {
-          throw fastify.httpErrors.badRequest('Missing required parameters');
-        }
-
-        if (percentageToRemove <= 0 || percentageToRemove > 100) {
-          throw fastify.httpErrors.badRequest('Percentage to remove must be between 0 and 100');
-        }
-
-        // Get Pancakeswap and Ethereum instances
-        const pancakeswap = await Pancakeswap.getInstance(networkToUse);
-        const ethereum = await Ethereum.getInstance(networkToUse);
-
-        // Get wallet address - either from request or first available
         let walletAddress = requestedWalletAddress;
         if (!walletAddress) {
-          walletAddress = await pancakeswap.getFirstWalletAddress();
+          walletAddress = await Ethereum.getFirstWalletAddress();
           if (!walletAddress) {
             throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
           }
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
-        // Resolve tokens
-        // Get pool information to determine tokens
-        const poolInfo = await getPancakeswapPoolInfo(poolAddress, networkToUse, 'amm');
-        if (!poolInfo) {
-          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
-        }
-
-        const baseTokenObj = await pancakeswap.getToken(poolInfo.baseTokenAddress);
-        const quoteTokenObj = await pancakeswap.getToken(poolInfo.quoteTokenAddress);
-
-        if (!baseTokenObj || !quoteTokenObj) {
-          throw fastify.httpErrors.badRequest('Token information not found for pool');
-        }
-
-        // Get the wallet
-        const wallet = await ethereum.getWallet(walletAddress);
-        if (!wallet) {
-          throw fastify.httpErrors.badRequest('Wallet not found');
-        }
-
-        // Check if the user has LP tokens for this pool
-        const pairContract = new Contract(poolAddress, IPancakeswapV2PairABI.abi, wallet);
-
-        const lpBalance = await pairContract.balanceOf(walletAddress);
-        if (lpBalance.eq(0)) {
-          throw fastify.httpErrors.badRequest(`No liquidity position found for this pool`);
-        }
-
-        // Get the total supply and reserves
-        const [token0, token1, totalSupply, reserves] = await Promise.all([
-          pairContract.token0(),
-          pairContract.token1(),
-          pairContract.totalSupply(),
-          pairContract.getReserves(),
-        ]);
-
-        const token0IsBase = token0.toLowerCase() === baseTokenObj.address.toLowerCase();
-
-        // Calculate expected amounts
-        const liquidityToRemove = lpBalance.mul(Math.floor(percentageToRemove * 100)).div(10000);
-        const baseTokenReserve = token0IsBase ? reserves[0] : reserves[1];
-        const quoteTokenReserve = token0IsBase ? reserves[1] : reserves[0];
-
-        const expectedBaseTokenAmount = baseTokenReserve.mul(liquidityToRemove).div(totalSupply);
-        const expectedQuoteTokenAmount = quoteTokenReserve.mul(liquidityToRemove).div(totalSupply);
-
-        // Get the router contract with signer
-        const routerAddress = getPancakeswapV2RouterAddress(networkToUse);
-        const router = new Contract(routerAddress, IPancakeswapV2Router02ABI.abi, wallet);
-
-        // Calculate slippage-adjusted amounts (0.5% slippage by default)
-        const slippageTolerance = new Percent(5, 1000); // 0.5%
-        const slippageMultiplier = new Percent(1).subtract(slippageTolerance);
-
-        const baseTokenMinAmount = expectedBaseTokenAmount
-          .mul(slippageMultiplier.numerator.toString())
-          .div(slippageMultiplier.denominator.toString());
-
-        const quoteTokenMinAmount = expectedQuoteTokenAmount
-          .mul(slippageMultiplier.numerator.toString())
-          .div(slippageMultiplier.denominator.toString());
-
-        // Check LP token allowance
-        try {
-          await checkLPAllowance(ethereum, wallet, poolAddress, routerAddress, liquidityToRemove);
-        } catch (error: any) {
-          throw fastify.httpErrors.badRequest(error.message);
-        }
-
-        // Prepare the transaction parameters
-        const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
-
-        let tx;
-
-        // Prepare gas options
-        // Convert gasPrice from wei to gwei if provided
-        const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-        const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_REMOVE_LIQUIDITY_GAS_LIMIT);
-
-        // Check if one of the tokens is WETH
-        if (baseTokenObj.symbol === 'WETH') {
-          // Remove liquidity WETH + Token
-          tx = await router.removeLiquidityETH(
-            token0IsBase ? token1 : token0, // The non-WETH token
-            liquidityToRemove,
-            token0IsBase ? quoteTokenMinAmount : baseTokenMinAmount, // Min amount of the token
-            token0IsBase ? baseTokenMinAmount : quoteTokenMinAmount, // Min amount of WETH
-            walletAddress,
-            deadline,
-            gasOptions,
-          );
-        } else if (quoteTokenObj.symbol === 'WETH') {
-          // Remove liquidity Token + WETH
-          tx = await router.removeLiquidityETH(
-            token0IsBase ? token0 : token1, // The non-WETH token
-            liquidityToRemove,
-            token0IsBase ? baseTokenMinAmount : quoteTokenMinAmount, // Min amount of the token
-            token0IsBase ? quoteTokenMinAmount : baseTokenMinAmount, // Min amount of WETH
-            walletAddress,
-            deadline,
-            gasOptions,
-          );
-        } else {
-          // Remove liquidity Token + Token
-          tx = await router.removeLiquidity(
-            token0,
-            token1,
-            liquidityToRemove,
-            token0IsBase ? baseTokenMinAmount : quoteTokenMinAmount, // Min amount of token0
-            token0IsBase ? quoteTokenMinAmount : baseTokenMinAmount, // Min amount of token1
-            walletAddress,
-            deadline,
-            gasOptions,
-          );
-        }
-
-        // Wait for transaction confirmation
-        const receipt = await ethereum.handleTransactionExecution(tx);
-
-        // Format amounts for response
-        const baseTokenAmountRemoved = formatTokenAmount(expectedBaseTokenAmount.toString(), baseTokenObj.decimals);
-
-        const quoteTokenAmountRemoved = formatTokenAmount(expectedQuoteTokenAmount.toString(), quoteTokenObj.decimals);
-
-        // Calculate gas fee
-        const gasFee = formatTokenAmount(
-          receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(),
-          18, // ETH has 18 decimals
+        return await removeLiquidity(
+          network,
+          walletAddress,
+          poolAddress,
+          percentageToRemove,
+          undefined,
+          gasPrice,
+          maxGas,
         );
-
-        return {
-          signature: receipt.transactionHash,
-          status: receipt.status,
-          data: {
-            fee: gasFee,
-            baseTokenAmountRemoved,
-            quoteTokenAmountRemoved,
-          },
-        };
       } catch (e) {
         logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-
-        // Handle insufficient funds errors
+        if (e.statusCode) throw e;
         if (e.code === 'INSUFFICIENT_FUNDS' || (e.message && e.message.includes('insufficient funds'))) {
           throw fastify.httpErrors.badRequest(
             'Insufficient ETH balance to pay for gas fees. Please add more ETH to your wallet.',
           );
         }
-
         throw fastify.httpErrors.internalServerError('Failed to remove liquidity');
       }
     },

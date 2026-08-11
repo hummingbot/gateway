@@ -1,391 +1,165 @@
-import { Keypair } from '@solana/web3.js';
-
-import { Solana } from '../../../../src/chains/solana/solana';
-import { Orca } from '../../../../src/connectors/orca/orca';
-import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
+import { Keypair, Transaction } from '@solana/web3.js';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/orca/orca');
-jest.mock('@orca-so/whirlpools-sdk', () => ({
-  PDAUtil: {
-    getPosition: jest.fn().mockReturnValue({ publicKey: 'position-pda' }),
-    getTickArrayFromTickIndex: jest.fn().mockReturnValue({ publicKey: 'tick-array-pda' }),
-  },
-  TickUtil: {
-    getStartTickIndex: jest.fn().mockReturnValue(0),
-    getInitializableTickIndex: jest.fn((tick: number) => tick),
-  },
-  PriceMath: {
-    priceToTickIndex: jest.fn().mockReturnValue(-28800),
-  },
-  WhirlpoolIx: {
-    openPositionWithTokenExtensionsIx: jest.fn().mockReturnValue({
-      instructions: [],
-      cleanupInstructions: [],
-      signers: [],
-    }),
-    increaseLiquidityV2Ix: jest.fn().mockReturnValue({
-      instructions: [],
-      cleanupInstructions: [],
-      signers: [],
-    }),
-    initDynamicTickArrayIx: jest.fn().mockReturnValue({
-      instructions: [],
-      cleanupInstructions: [],
-      signers: [],
-    }),
-  },
-  increaseLiquidityQuoteByInputTokenWithParams: jest.fn().mockReturnValue({
-    tokenMaxA: BigInt(1100000000),
-    tokenMaxB: BigInt(210000000),
-    liquidityAmount: BigInt(1000000),
-  }),
-  TokenExtensionUtil: {
-    isV2IxRequiredPool: jest.fn().mockReturnValue(false),
-    buildTokenExtensionContext: jest.fn().mockResolvedValue({}),
-  },
-  ORCA_WHIRLPOOL_PROGRAM_ID: 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc',
-  IGNORE_CACHE: true,
-}));
-jest.mock('@orca-so/common-sdk', () => ({
-  Percentage: {
-    fromDecimal: jest.fn().mockReturnValue(1),
-  },
-  TransactionBuilder: jest.fn().mockImplementation(() => ({
-    addInstruction: jest.fn(),
-    build: jest.fn().mockResolvedValue({ transaction: {} }),
-  })),
-}));
 jest.mock('../../../../src/connectors/orca/orca.utils', () => ({
-  handleWsolAta: jest.fn().mockResolvedValue(undefined),
-  getTickArrayPubkeys: jest.fn().mockReturnValue({
-    lower: 'lower-tick-array',
-    upper: 'upper-tick-array',
-  }),
+  extractInnerTransferAmounts: jest.fn(),
+}));
+jest.mock('@orca-so/whirlpools', () => ({
+  openPositionInstructionsWithTickBounds: jest.fn(),
+}));
+jest.mock('@orca-so/whirlpools-client', () => ({
+  fetchAllMaybeTickArray: jest.fn(),
+  fetchWhirlpool: jest.fn(),
+  getInitializeDynamicTickArrayInstruction: jest.fn(),
+  getOpenPositionWithTokenExtensionsInstruction: jest.fn(),
+  getPositionAddress: jest.fn(),
+  getTickArrayAddress: jest.fn(),
+}));
+jest.mock('@orca-so/whirlpools-core', () => ({
+  getInitializableTickIndex: jest.fn((tick: number) => tick),
+  getTickArrayStartTickIndex: jest.fn((tick: number) => tick),
+  increaseLiquidityQuoteA: jest.fn(),
+  increaseLiquidityQuoteB: jest.fn(),
+  priceToTickIndex: jest.fn((price: number) => Math.round(price)),
+}));
+jest.mock('@solana-program/token-2022', () => ({
+  fetchAllMint: jest.fn(),
 }));
 
-const buildApp = async () => {
-  const server = fastifyWithTypeProvider();
-  await server.register(require('@fastify/sensible'));
-  const { openPositionRoute } = await import('../../../../src/connectors/orca/clmm-routes/openPosition');
-  await server.register(openPositionRoute);
-  return server;
-};
+import { openPositionInstructionsWithTickBounds } from '@orca-so/whirlpools';
+import {
+  fetchAllMaybeTickArray,
+  fetchWhirlpool,
+  getOpenPositionWithTokenExtensionsInstruction,
+  getPositionAddress,
+  getTickArrayAddress,
+} from '@orca-so/whirlpools-client';
+import { increaseLiquidityQuoteA } from '@orca-so/whirlpools-core';
+import { fetchAllMint } from '@solana-program/token-2022';
 
-const mockPoolAddress = 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE';
-const mockWalletAddress = 'BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF';
-const mockWallet = Keypair.generate();
-const mockPositionMint = Keypair.generate();
+import { Solana } from '../../../../src/chains/solana/solana';
+import { openPosition } from '../../../../src/connectors/orca/clmm-routes/openPosition';
+import { Orca } from '../../../../src/connectors/orca/orca';
 
-const mockWhirlpoolData = {
-  tokenMintA: 'So11111111111111111111111111111111111111112',
-  tokenMintB: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  tokenVaultA: 'vaultA',
-  tokenVaultB: 'vaultB',
-  tickSpacing: 64,
-  sqrtPrice: BigInt('7469508197693302272'),
-};
+const WALLET = 'BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF';
+const POOL = 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE';
+const TOKEN_A = 'So11111111111111111111111111111111111111112';
+const TOKEN_B = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+const PROGRAM = 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc';
 
-const mockMintInfo = {
-  decimals: 9,
-  tokenProgram: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
-};
+describe('openPosition', () => {
+  let sendForWallet: jest.Mock;
+  let positionAddresses: Map<string, string>;
 
-describe('POST /open-position', () => {
-  let app: any;
+  beforeEach(() => {
+    jest.clearAllMocks();
+    positionAddresses = new Map();
+    sendForWallet = jest.fn().mockResolvedValue({ signature: 'open-signature', fee: 0.00001 });
+    (Solana.getInstance as jest.Mock).mockResolvedValue({
+      sendAndConfirmTransactionForWallet: sendForWallet,
+      connection: { getTransaction: jest.fn().mockResolvedValue(null) },
+    });
+    (Orca.getInstance as jest.Mock).mockResolvedValue({
+      solanaKitRpc: { getEpochInfo: jest.fn(() => ({ send: jest.fn().mockResolvedValue({ epoch: 1n }) })) },
+      deployment: { programId: PROGRAM, configAddress: POOL },
+    });
+    (fetchWhirlpool as jest.Mock).mockResolvedValue({
+      address: POOL,
+      data: { tokenMintA: TOKEN_A, tokenMintB: TOKEN_B, tickSpacing: 1, sqrtPrice: 10n },
+    });
+    (fetchAllMint as jest.Mock).mockResolvedValue([
+      { data: { decimals: 9, extensions: { __option: 'None' } } },
+      { data: { decimals: 6, extensions: { __option: 'None' } } },
+    ]);
+    (getPositionAddress as jest.Mock).mockImplementation(async (mint: string) => {
+      if (!positionAddresses.has(mint)) {
+        positionAddresses.set(mint, Keypair.generate().publicKey.toBase58());
+      }
+      return [positionAddresses.get(mint), 255];
+    });
+    (getTickArrayAddress as jest.Mock)
+      .mockResolvedValueOnce([Keypair.generate().publicKey.toBase58(), 1])
+      .mockResolvedValueOnce([Keypair.generate().publicKey.toBase58(), 2]);
+    (fetchAllMaybeTickArray as jest.Mock).mockResolvedValue([{ exists: true }, { exists: true }]);
+  });
 
-  beforeAll(async () => {
-    app = await buildApp();
+  it('substitutes Gateway’s Web3 position signer into Orca v8 open instructions', async () => {
+    const generatedMint = Keypair.generate().publicKey.toBase58();
+    const generatedPosition = Keypair.generate().publicKey.toBase58();
+    positionAddresses.set(generatedMint, generatedPosition);
+    const generatedTokenAccount = getAssociatedTokenAddressSync(
+      new (require('@solana/web3.js').PublicKey)(generatedMint),
+      new (require('@solana/web3.js').PublicKey)(WALLET),
+      false,
+      TOKEN_2022_PROGRAM_ID,
+    ).toBase58();
+    (increaseLiquidityQuoteA as jest.Mock).mockReturnValue({
+      liquidityDelta: 50n,
+      tokenEstA: 900_000_000n,
+      tokenEstB: 40_000_000n,
+      tokenMaxA: 1_000_000_000n,
+      tokenMaxB: 45_000_000n,
+    });
+    (openPositionInstructionsWithTickBounds as jest.Mock).mockResolvedValue({
+      positionMint: generatedMint,
+      instructions: [
+        {
+          programAddress: PROGRAM,
+          accounts: [
+            { address: generatedMint, role: 3 },
+            { address: generatedPosition, role: 1 },
+            { address: generatedTokenAccount, role: 1 },
+          ],
+          data: new Uint8Array([1]),
+        },
+      ],
+    });
 
-    // Mock Solana.getInstance
-    const mockSolana = {
-      sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({
-        signature: 'test-signature',
-        fee: 0.000005,
+    const result = await openPosition('mainnet-beta', WALLET, POOL, 1, 2, 1, undefined, 1);
+    expect(result.data.positionAddress).not.toBe(generatedPosition);
+    expect(sendForWallet).toHaveBeenCalledWith(expect.any(Transaction), WALLET, [expect.any(Keypair)]);
+    const [transaction, , extraSigners] = sendForWallet.mock.calls[0] as [Transaction, string, Keypair[]];
+    const gatewayMint = extraSigners[0].publicKey.toBase58();
+    expect(transaction.instructions[0].keys.some((key) => key.pubkey.toBase58() === gatewayMint && key.isSigner)).toBe(
+      true,
+    );
+    expect(transaction.instructions[0].keys.some((key) => key.pubkey.toBase58() === generatedMint)).toBe(false);
+    expect(openPositionInstructionsWithTickBounds).toHaveBeenCalledWith(
+      expect.any(Object),
+      POOL,
+      { tokenMaxA: 1_000_000_000n, tokenMaxB: 45_000_000n },
+      1,
+      2,
+      expect.objectContaining({ funder: expect.objectContaining({ address: WALLET }) }),
+    );
+  });
+
+  it('uses the latest low-level open instruction for an empty position', async () => {
+    (getOpenPositionWithTokenExtensionsInstruction as jest.Mock).mockImplementation((input) => ({
+      programAddress: PROGRAM,
+      accounts: [{ address: input.positionMint.address, role: 3 }],
+      data: new Uint8Array([2]),
+    }));
+
+    const result = await openPosition('mainnet-beta', WALLET, POOL, 1, 2);
+    expect(result.data.baseTokenAmountAdded).toBe(0);
+    expect(openPositionInstructionsWithTickBounds).not.toHaveBeenCalled();
+    expect(getOpenPositionWithTokenExtensionsInstruction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        owner: WALLET,
+        withTokenMetadataExtension: true,
       }),
-      extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
-        balanceChanges: [-1.0, -200.0],
-        fee: 0.000005,
-      }),
-      connection: {
-        getTransaction: jest.fn().mockResolvedValue({
-          transaction: {
-            message: {
-              getAccountKeys: () => ({
-                staticAccountKeys: [],
-              }),
-            },
-          },
-          meta: {
-            preBalances: [],
-            postBalances: [],
-          },
-        }),
-      },
-    };
-    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
-
-    // Mock Orca.getInstance
-    const mockContext = {
-      wallet: mockWallet,
-      connection: {},
-      fetcher: {
-        getPool: jest.fn().mockResolvedValue(mockWhirlpoolData),
-        getMintInfo: jest.fn().mockResolvedValue(mockMintInfo),
-        getTickArray: jest.fn().mockResolvedValue(null), // No existing tick arrays
-      },
-      program: {},
-    };
-
-    const mockOrca = {
-      getWhirlpoolContextForWallet: jest.fn().mockResolvedValue(mockContext),
-    };
-    (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
+      { programAddress: PROGRAM },
+    );
+    expect(sendForWallet).toHaveBeenCalledWith(expect.any(Transaction), WALLET, [expect.any(Keypair)]);
   });
 
-  afterAll(async () => {
-    await app.close();
-  });
-
-  describe('route accessibility', () => {
-    it('should accept request with base token amount', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/open-position',
-        payload: {
-          network: 'mainnet-beta',
-          walletAddress: mockWalletAddress,
-          poolAddress: mockPoolAddress,
-          lowerPrice: 150,
-          upperPrice: 250,
-          baseTokenAmount: 1.0,
-          slippagePct: 1,
-        },
-      });
-
-      // Route is accessible (full SDK mocking is complex)
-      expect([200, 400, 500]).toContain(response.statusCode);
-    });
-
-    it('should accept request with quote token amount', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/open-position',
-        payload: {
-          network: 'mainnet-beta',
-          walletAddress: mockWalletAddress,
-          poolAddress: mockPoolAddress,
-          lowerPrice: 150,
-          upperPrice: 250,
-          quoteTokenAmount: 200,
-          slippagePct: 1,
-        },
-      });
-
-      // Route is accessible
-      expect([200, 400, 500]).toContain(response.statusCode);
-    });
-
-    it('should accept request with both token amounts', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/open-position',
-        payload: {
-          network: 'mainnet-beta',
-          walletAddress: mockWalletAddress,
-          poolAddress: mockPoolAddress,
-          lowerPrice: 150,
-          upperPrice: 250,
-          baseTokenAmount: 1.0,
-          quoteTokenAmount: 200,
-          slippagePct: 1,
-        },
-      });
-
-      // Route is accessible
-      expect([200, 400, 500]).toContain(response.statusCode);
-    });
-
-    it('should use default values when optional parameters not provided', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/open-position',
-        payload: {
-          poolAddress: mockPoolAddress,
-          lowerPrice: 150,
-          upperPrice: 250,
-          baseTokenAmount: 1.0,
-        },
-      });
-
-      // Route is accessible
-      expect([200, 400, 500]).toContain(response.statusCode);
-    });
-  });
-
-  describe('validation', () => {
-    it('should return 400 when poolAddress is missing', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/open-position',
-        payload: {
-          network: 'mainnet-beta',
-          walletAddress: mockWalletAddress,
-          lowerPrice: 150,
-          upperPrice: 250,
-          baseTokenAmount: 1.0,
-        },
-      });
-
-      expect(response.statusCode).toBe(400);
-    });
-
-    it('should return 400 when lowerPrice is missing', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/open-position',
-        payload: {
-          network: 'mainnet-beta',
-          walletAddress: mockWalletAddress,
-          poolAddress: mockPoolAddress,
-          upperPrice: 250,
-          baseTokenAmount: 1.0,
-        },
-      });
-
-      expect(response.statusCode).toBe(400);
-    });
-
-    it('should return 400 when upperPrice is missing', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/open-position',
-        payload: {
-          network: 'mainnet-beta',
-          walletAddress: mockWalletAddress,
-          poolAddress: mockPoolAddress,
-          lowerPrice: 150,
-          baseTokenAmount: 1.0,
-        },
-      });
-
-      expect(response.statusCode).toBe(400);
-    });
-
-    it('should return error when no token amount is provided', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/open-position',
-        payload: {
-          network: 'mainnet-beta',
-          walletAddress: mockWalletAddress,
-          poolAddress: mockPoolAddress,
-          lowerPrice: 150,
-          upperPrice: 250,
-        },
-      });
-
-      // Should return error (400 or 500)
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
-    });
-
-    it('should return 400 when lowerPrice >= upperPrice', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/open-position',
-        payload: {
-          network: 'mainnet-beta',
-          walletAddress: mockWalletAddress,
-          poolAddress: mockPoolAddress,
-          lowerPrice: 250,
-          upperPrice: 150,
-          baseTokenAmount: 1.0,
-        },
-      });
-
-      expect(response.statusCode).toBe(400);
-    });
-  });
-
-  describe('error handling', () => {
-    it('should return 500 when position opening fails', async () => {
-      const mockSolana = {
-        sendAndConfirmTransactionForWallet: jest.fn().mockRejectedValue(new Error('Send failed')),
-      };
-      (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
-
-      const response = await app.inject({
-        method: 'POST',
-        url: '/open-position',
-        payload: {
-          network: 'mainnet-beta',
-          walletAddress: mockWalletAddress,
-          poolAddress: mockPoolAddress,
-          lowerPrice: 150,
-          upperPrice: 250,
-          baseTokenAmount: 1.0,
-        },
-      });
-
-      expect(response.statusCode).toBe(500);
-    });
-
-    it('should handle Orca context initialization errors', async () => {
-      (Orca.getInstance as jest.Mock).mockRejectedValue(new Error('Orca init failed'));
-
-      const response = await app.inject({
-        method: 'POST',
-        url: '/open-position',
-        payload: {
-          network: 'mainnet-beta',
-          walletAddress: mockWalletAddress,
-          poolAddress: mockPoolAddress,
-          lowerPrice: 150,
-          upperPrice: 250,
-          baseTokenAmount: 1.0,
-        },
-      });
-
-      expect(response.statusCode).toBe(500);
-    });
-  });
-
-  describe('tick array initialization', () => {
-    it('should initialize tick arrays if they do not exist', async () => {
-      const mockContext = {
-        wallet: mockWallet,
-        connection: {},
-        fetcher: {
-          getPool: jest.fn().mockResolvedValue(mockWhirlpoolData),
-          getMintInfo: jest.fn().mockResolvedValue(mockMintInfo),
-          getTickArray: jest.fn().mockResolvedValue(null), // Tick arrays don't exist
-        },
-        program: {},
-      };
-
-      const mockOrca = {
-        getWhirlpoolContextForWallet: jest.fn().mockResolvedValue(mockContext),
-      };
-      (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
-
-      const { WhirlpoolIx } = require('@orca-so/whirlpools-sdk');
-      const initSpy = jest.spyOn(WhirlpoolIx, 'initDynamicTickArrayIx');
-
-      const response = await app.inject({
-        method: 'POST',
-        url: '/open-position',
-        payload: {
-          network: 'mainnet-beta',
-          walletAddress: mockWalletAddress,
-          poolAddress: mockPoolAddress,
-          lowerPrice: 150,
-          upperPrice: 250,
-          baseTokenAmount: 1.0,
-        },
-      });
-
-      // Route is accessible (full SDK mocking is complex)
-      expect([200, 400, 500]).toContain(response.statusCode);
-    });
+  it('rejects an inverted range before touching Orca', async () => {
+    await expect(openPosition('mainnet-beta', WALLET, POOL, 2, 1)).rejects.toThrow(
+      'lowerPrice must be less than upperPrice',
+    );
+    expect(fetchWhirlpool).not.toHaveBeenCalled();
   });
 });

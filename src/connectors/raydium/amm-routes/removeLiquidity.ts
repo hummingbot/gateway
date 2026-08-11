@@ -9,10 +9,11 @@ import { Static } from '@sinclair/typebox';
 import { VersionedTransaction, Transaction, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../../schemas/amm-schema';
+import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
@@ -54,6 +55,7 @@ async function createRemoveLiquidityTransaction(
   poolKeys: any,
   lpAmount: BN,
   computeBudgetConfig: { units: number; microLamports: number },
+  slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<VersionedTransaction | Transaction> {
   if (ammPoolInfo.poolType === 'amm') {
     // Use a small slippage for minimum amounts (1%)
@@ -72,8 +74,7 @@ async function createRemoveLiquidityTransaction(
     });
     return response.transaction;
   } else if (ammPoolInfo.poolType === 'cpmm') {
-    // Use default slippage from config
-    const slippage = new Percent(Math.floor(RaydiumConfig.config.slippagePct * 100), 10000);
+    const slippage = new Percent(Math.floor(slippagePct * 100), 10000);
 
     const response: CPMMWithdrawLiquiditySDKResponse = await raydium.raydiumSDK.cpmm.withdrawLiquidity({
       poolInfo: poolInfo as ApiV3PoolInfoStandardItemCpmm,
@@ -131,12 +132,12 @@ async function calculateLpAmountToRemove(
   return new BN(new Decimal(lpBalance.toString()).mul(percentageToRemove / 100).toFixed(0));
 }
 
-async function removeLiquidity(
-  _fastify: FastifyInstance,
+export async function removeLiquidity(
   network: string,
   walletAddress: string,
   poolAddress: string,
   percentageToRemove: number,
+  slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<RemoveLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const raydium = await Raydium.getInstance(network);
@@ -150,7 +151,7 @@ async function removeLiquidity(
   const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddress);
 
   if (percentageToRemove <= 0 || percentageToRemove > 100) {
-    throw new Error('Invalid percentageToRemove - must be between 0 and 100');
+    throw httpErrors.badRequest('Invalid percentageToRemove - must be between 0 and 100');
   }
 
   // Calculate LP amount to remove
@@ -182,6 +183,7 @@ async function removeLiquidity(
       units: COMPUTE_UNITS,
       microLamports: priorityFeePerCU,
     },
+    slippagePct,
   );
 
   // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and
@@ -248,7 +250,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { network, walletAddress, poolAddress, percentageToRemove } = request.body;
 
-        return await removeLiquidity(fastify, network, walletAddress, poolAddress, percentageToRemove);
+        return await removeLiquidity(network, walletAddress, poolAddress, percentageToRemove);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) throw e;

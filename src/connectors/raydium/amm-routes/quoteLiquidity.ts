@@ -5,7 +5,7 @@ import {
   TokenAmount,
 } from '@raydium-io/raydium-sdk-v2';
 import BN from 'bn.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import {
@@ -54,11 +54,10 @@ function parseCpmmResult(result: CpmmComputePairResult, tokenDecimals: number) {
 }
 
 export async function quoteLiquidity(
-  _fastify: FastifyInstance,
   network: string,
   poolAddress: string,
-  baseTokenAmount?: number,
-  quoteTokenAmount?: number,
+  baseTokenAmount: number,
+  quoteTokenAmount: number,
   slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<QuoteLiquidityResponseType> {
   try {
@@ -235,7 +234,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { network = 'mainnet-beta', poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.query;
 
-        return await quoteLiquidity(fastify, network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
+        return await quoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) throw e;

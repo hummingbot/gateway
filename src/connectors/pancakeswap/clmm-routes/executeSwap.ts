@@ -13,30 +13,27 @@ import { getPancakeswapV3SwapRouter02Address, ISwapRouter02ABI } from '../pancak
 import { formatTokenAmount } from '../pancakeswap.utils';
 import { PancakeswapExecuteSwapRequest } from '../schemas';
 
-import { getPancakeswapClmmQuote } from './quoteSwap';
+import { getPancakeswapClmmQuote, resolveCounterToken } from './quoteSwap';
 
 // Default gas limit for CLMM swap operations
 const CLMM_SWAP_GAS_LIMIT = 350000;
 
 export async function executeClmmSwap(
-  walletAddress: string,
   network: string,
+  walletAddress: string,
+  poolAddress: string,
   baseToken: string,
-  quoteToken: string,
-  amount: number,
   side: 'BUY' | 'SELL',
+  amount: number,
   slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<SwapExecuteResponseType> {
   const ethereum = await Ethereum.getInstance(network);
   await ethereum.init();
 
-  const pancakeswap = await Pancakeswap.getInstance(network);
+  await Pancakeswap.getInstance(network);
 
-  // Find pool address
-  const poolAddress = await pancakeswap.findDefaultPool(baseToken, quoteToken, 'clmm');
-  if (!poolAddress) {
-    throw httpErrors.notFound(`No CLMM pool found for pair ${baseToken}-${quoteToken}`);
-  }
+  // Standardized: quote token is derived from the pool given poolAddress + baseToken.
+  const quoteToken = await resolveCounterToken(network, poolAddress, baseToken);
 
   // Get quote using the shared quote function
   const { quote } = await getPancakeswapClmmQuote(
@@ -347,13 +344,21 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         const { walletAddress, network, baseToken, quoteToken, amount, side, slippagePct } =
           request.body as typeof PancakeswapExecuteSwapRequest._type;
 
+        // This route resolves the pool from the pair (no poolAddress in its request schema);
+        // executeClmmSwap itself is standardized to require poolAddress.
+        const pancakeswap = await Pancakeswap.getInstance(network);
+        const poolAddress = await pancakeswap.findDefaultPool(baseToken, quoteToken, 'clmm');
+        if (!poolAddress) {
+          throw httpErrors.notFound(`No CLMM pool found for pair ${baseToken}-${quoteToken}`);
+        }
+
         return await executeClmmSwap(
-          walletAddress,
           network,
+          walletAddress,
+          poolAddress,
           baseToken,
-          quoteToken,
-          amount,
           side as 'BUY' | 'SELL',
+          amount,
           slippagePct,
         );
       } catch (e) {

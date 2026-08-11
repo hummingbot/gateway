@@ -98,12 +98,13 @@ describe('POST /execute-swap', () => {
   it('should execute a CLMM swap for SELL side', async () => {
     const mockSolanaInstance = {
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      getToken: jest
-        .fn()
-        .mockResolvedValueOnce(mockSOL)
-        .mockResolvedValueOnce(mockUSDC)
-        .mockResolvedValueOnce({ ...mockSOL }) // For balance extraction
-        .mockResolvedValueOnce({ ...mockUSDC }), // For balance extraction
+      // Argument-based (the standardized wrapper derives the counter token, so getToken
+      // is called more than twice — an ordered mock would resolve the wrong tokens).
+      getToken: jest.fn((t: string) => {
+        if (t === 'SOL' || t === mockSOL.address) return Promise.resolve(mockSOL);
+        if (t === 'USDC' || t === mockUSDC.address) return Promise.resolve(mockUSDC);
+        return Promise.resolve(null);
+      }),
       findAssociatedTokenAddress: jest.fn().mockResolvedValue('mock-ata-address'),
       getTxData: jest.fn().mockResolvedValue({
         blockTime: Date.now() / 1000,
@@ -172,12 +173,11 @@ describe('POST /execute-swap', () => {
   it('should execute a CLMM swap for BUY side', async () => {
     const mockSolanaInstance = {
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      getToken: jest
-        .fn()
-        .mockResolvedValueOnce(mockSOL)
-        .mockResolvedValueOnce(mockUSDC)
-        .mockResolvedValueOnce({ ...mockSOL }) // For balance extraction
-        .mockResolvedValueOnce({ ...mockUSDC }), // For balance extraction
+      getToken: jest.fn((t: string) => {
+        if (t === 'SOL' || t === mockSOL.address) return Promise.resolve(mockSOL);
+        if (t === 'USDC' || t === mockUSDC.address) return Promise.resolve(mockUSDC);
+        return Promise.resolve(null);
+      }),
       findAssociatedTokenAddress: jest.fn().mockResolvedValue('mock-ata-address'),
       getTxData: jest.fn().mockResolvedValue({
         blockTime: Date.now() / 1000,
@@ -245,12 +245,17 @@ describe('POST /execute-swap', () => {
     expect(body.data).toHaveProperty('quoteTokenBalanceChange', -15); // USDC negative (spending)
   });
 
-  it('should return 400 if token not found', async () => {
+  it('should return 400 if the base token is not part of the pool', async () => {
     const mockSolanaInstance = {
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      getToken: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(mockUSDC),
+      getToken: jest.fn((t: string) => {
+        if (t === 'USDC' || t === mockUSDC.address) return Promise.resolve(mockUSDC);
+        return Promise.resolve(null); // INVALID resolves to nothing
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
+    const mockMeteoraInstance = { getDlmmPool: jest.fn().mockResolvedValue(mockDlmmPool) };
+    (Meteora.getInstance as jest.Mock).mockResolvedValue(mockMeteoraInstance);
 
     const response = await server.inject({
       method: 'POST',
@@ -267,7 +272,9 @@ describe('POST /execute-swap', () => {
       },
     });
 
-    expect(response.statusCode).toBe(404); // Returns 404 for 'Token not found'
+    // Standardized wrapper derives the counter token from the pool; an unknown base token that
+    // isn't one of the pool's tokens is a bad request (400).
+    expect(response.statusCode).toBe(400);
     expect(JSON.parse(response.body)).toHaveProperty('error');
   });
 });

@@ -131,7 +131,7 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
 
   describe('Quote Swap Route', () => {
     it('should quote SELL swap with exact input', async () => {
-      const quote = await quoteSwap(NETWORK, 'SOL', 'USDC', 0.01, 'SELL', SOL_USDC_POOL);
+      const quote = await quoteSwap(NETWORK, SOL_USDC_POOL, 'SOL', 'SELL', 0.01);
 
       expect(quote).toBeDefined();
       expect(quote.amountOut).toBeGreaterThan(0);
@@ -148,7 +148,7 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
     }, 30000);
 
     it('should quote BUY swap with exact output', async () => {
-      const quote = await quoteSwap(NETWORK, 'SOL', 'USDC', 0.01, 'BUY', SOL_USDC_POOL);
+      const quote = await quoteSwap(NETWORK, SOL_USDC_POOL, 'SOL', 'BUY', 0.01);
 
       expect(quote).toBeDefined();
       expect(quote.amountOut).toBeGreaterThan(0);
@@ -166,21 +166,19 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
     it('should handle different slippage percentages', async () => {
       const quote1 = await quoteSwap(
         NETWORK,
-        'SOL',
-        'USDC',
-        0.01,
-        'SELL',
         SOL_USDC_POOL,
+        'SOL',
+        'SELL',
+        0.01,
         1, // 1% slippage
       );
 
       const quote2 = await quoteSwap(
         NETWORK,
-        'SOL',
-        'USDC',
-        0.01,
-        'SELL',
         SOL_USDC_POOL,
+        'SOL',
+        'SELL',
+        0.01,
         5, // 5% slippage
       );
 
@@ -192,22 +190,17 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
       console.log(`  5% slippage - Min: ${quote2.minAmountOut.toFixed(6)} USDC`);
     }, 30000);
 
-    it('should find pool automatically when not specified', async () => {
-      const quote = await quoteSwap(
-        NETWORK,
-        'SOL',
-        'USDC',
-        0.01,
-        'SELL',
-        undefined, // no pool address
-      );
+    it('should quote against the specified pool', async () => {
+      // The standardized wrapper requires poolAddress; the counter token is derived from the pool
+      // (auto pool discovery from a token pair is now a route-level concern, not the wrapper's).
+      const quote = await quoteSwap(NETWORK, SOL_USDC_POOL, 'SOL', 'SELL', 0.01);
 
       expect(quote).toBeDefined();
-      expect(quote.poolAddress).toBeDefined();
+      expect(quote.poolAddress).toBe(SOL_USDC_POOL);
       expect(quote.amountOut).toBeGreaterThan(0);
 
-      console.log('\n💱 Auto Pool Discovery:');
-      console.log(`  Found pool: ${quote.poolAddress}`);
+      console.log('\n💱 Pool-addressed quote:');
+      console.log(`  Pool: ${quote.poolAddress}`);
     }, 30000);
   });
 
@@ -328,7 +321,8 @@ describe('PancakeSwap Solana - Comprehensive Route Tests', () => {
     }, 30000);
 
     it('should handle invalid token symbols in quote-swap', async () => {
-      await expect(quoteSwap(NETWORK, 'INVALID', 'USDC', 0.01, 'SELL')).rejects.toThrow();
+      // Standardized wrapper: an unknown base token that isn't part of the pool is rejected.
+      await expect(quoteSwap(NETWORK, SOL_USDC_POOL, 'INVALID', 'SELL', 0.01)).rejects.toThrow();
     }, 30000);
 
     it('should handle zero amounts in quote-position', async () => {

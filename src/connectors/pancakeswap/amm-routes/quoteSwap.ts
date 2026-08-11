@@ -16,6 +16,8 @@ import { Pancakeswap } from '../pancakeswap';
 import { PancakeswapConfig } from '../pancakeswap.config';
 import { formatTokenAmount, getPancakeswapPoolInfo } from '../pancakeswap.utils';
 
+import { resolveSwapPair } from './poolTokens';
+
 async function quoteAmmSwap(
   pancakeswap: Pancakeswap,
   poolAddress: string,
@@ -402,15 +404,18 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
 export default quoteSwapRoute;
 
-// Export quoteSwap wrapper for chain-level routes
+/**
+ * Standard AMM quote-swap entry point (network-based) — consumed by the unified /trading/amm
+ * dispatcher. `amount` is denominated in the base token; the quote token is derived from the pool.
+ */
 export async function quoteSwap(
   network: string,
   poolAddress: string,
   baseToken: string,
-  quoteToken: string,
-  amount: number,
   side: 'BUY' | 'SELL',
+  amount: number,
   slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
-  return await formatSwapQuote(network, poolAddress, baseToken, quoteToken, amount, side, slippagePct);
+  const { baseAddress, quoteAddress } = await resolveSwapPair(network, poolAddress, baseToken);
+  return await formatSwapQuote(network, poolAddress, baseAddress, quoteAddress, amount, side, slippagePct);
 }

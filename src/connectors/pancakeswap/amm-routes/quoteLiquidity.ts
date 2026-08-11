@@ -14,6 +14,8 @@ import { Pancakeswap } from '../pancakeswap';
 import { IPancakeswapV2PairABI, getPancakeswapV2RouterAddress } from '../pancakeswap.contracts';
 import { formatTokenAmount, getPancakeswapPoolInfo } from '../pancakeswap.utils';
 
+import { getAmmPoolTokens } from './poolTokens';
+
 export async function getPancakeswapAmmLiquidityQuote(
   network: string,
   poolAddress?: string,
@@ -253,5 +255,35 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
   );
 };
+
+/**
+ * Standard AMM quote-liquidity entry point (network-based) — consumed by the unified /trading/amm
+ * dispatcher. Base/quote follow the pair's token0/token1 orientation.
+ */
+export async function quoteLiquidity(
+  network: string,
+  poolAddress: string,
+  baseTokenAmount: number,
+  quoteTokenAmount: number,
+  slippagePct?: number,
+): Promise<QuoteLiquidityResponseType> {
+  const { base, quote } = await getAmmPoolTokens(network, poolAddress);
+  const q = await getPancakeswapAmmLiquidityQuote(
+    network,
+    poolAddress,
+    base.address,
+    quote.address,
+    baseTokenAmount,
+    quoteTokenAmount,
+    slippagePct,
+  );
+  return {
+    baseLimited: q.baseLimited,
+    baseTokenAmount: q.baseTokenAmount,
+    quoteTokenAmount: q.quoteTokenAmount,
+    baseTokenAmountMax: q.baseTokenAmountMax,
+    quoteTokenAmountMax: q.quoteTokenAmountMax,
+  };
+}
 
 export default quoteLiquidityRoute;
