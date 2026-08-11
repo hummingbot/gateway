@@ -1,9 +1,8 @@
-import { TransactionBuilder } from '@orca-so/common-sdk';
-import { swapInstructions, setWhirlpoolsConfig } from '@orca-so/whirlpools';
-import { fetchWhirlpool, fetchAllPositionWithFilter, positionWhirlpoolFilter } from '@orca-so/whirlpools-client';
+import { swapInstructions } from '@orca-so/whirlpools';
+import { fetchAllPositionWithFilter, fetchWhirlpool, positionWhirlpoolFilter } from '@orca-so/whirlpools-client';
 import {
-  IncreaseLiquidityQuote,
-  TransferFee,
+  getInitializableTickIndex,
+  type IncreaseLiquidityQuote,
   increaseLiquidityQuoteA,
   increaseLiquidityQuoteB,
   priceToTickIndex,
@@ -14,167 +13,25 @@ import {
   tryGetAmountDeltaB,
 } from '@orca-so/whirlpools-core';
 import {
-  ORCA_WHIRLPOOL_PROGRAM_ID,
-  PDAUtil,
-  PriceMath,
-  PoolUtil,
-  TickUtil,
-  collectFeesQuote as collectFeesQuoteLegacy,
-  WhirlpoolClient,
-  WhirlpoolData,
-  IGNORE_CACHE,
-} from '@orca-so/whirlpools-sdk';
-import type {
-  GetAccountInfoApi,
-  GetEpochInfoApi,
-  GetMultipleAccountsApi,
-  Rpc,
-  MaybeAccount,
-  Account,
+  address,
+  createNoopSigner,
+  type Address,
+  type GetAccountInfoApi,
+  type GetEpochInfoApi,
+  type GetMinimumBalanceForRentExemptionApi,
+  type GetMultipleAccountsApi,
+  type Rpc,
 } from '@solana/kit';
-import { address } from '@solana/kit';
-import { NATIVE_MINT, createAssociatedTokenAccountIdempotentInstruction } from '@solana/spl-token';
-import { Connection, PublicKey } from '@solana/web3.js';
-import { fetchAllMint, Mint } from '@solana-program/token-2022';
-import BN from 'bn.js';
+import { Connection } from '@solana/web3.js';
+import { fetchAllMint } from '@solana-program/token-2022';
 
-import { Solana } from '../../chains/solana/solana';
-import { PositionInfo, QuotePositionResponseType } from '../../schemas/clmm-schema';
-import { httpErrors } from '../../services/error-handler';
+import { QuotePositionResponseType } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
 
-/**
- * Extracts detailed position information including fees, token amounts, and pricing.
- * This function fetches all necessary on-chain data and calculates derived values.
- *
- * @param {WhirlpoolClient} client - The Whirlpool client
- * @param {string} positionAddress - The position PDA address
- * @returns {Promise<PositionInfo>} - A promise that resolves to detailed position information.
- */
-export async function getPositionDetails(client: WhirlpoolClient, positionAddress: string): Promise<PositionInfo> {
-  const positionPubkey = new PublicKey(positionAddress);
+import { getCurrentTransferFee } from './orca.position';
+import { getOrcaDeployment } from './orca.sdk';
 
-  // Use legacy SDK's fetcher which handles position PDA addresses directly
-  const position = await client.getPosition(positionPubkey, IGNORE_CACHE);
-  if (!position) {
-    throw httpErrors.notFound(`Position not found or closed: ${positionAddress}`);
-  }
-
-  await position.refreshData();
-
-  const whirlpool = position.getWhirlpoolData();
-  const positionData = position.getData();
-
-  if (!whirlpool) {
-    throw httpErrors.notFound(`Whirlpool not found for position: ${positionAddress}`);
-  }
-
-  const mintA = await client.getFetcher().getMintInfo(whirlpool.tokenMintA);
-  const mintB = await client.getFetcher().getMintInfo(whirlpool.tokenMintB);
-
-  if (!mintA || !mintB) {
-    throw new Error('Failed to fetch mint info');
-  }
-
-  const lowerTickArrayStartIndex = TickUtil.getStartTickIndex(positionData.tickLowerIndex, whirlpool.tickSpacing);
-  const upperTickArrayStartIndex = TickUtil.getStartTickIndex(positionData.tickUpperIndex, whirlpool.tickSpacing);
-
-  const lowerTickArrayPda = PDAUtil.getTickArray(
-    ORCA_WHIRLPOOL_PROGRAM_ID,
-    positionData.whirlpool,
-    lowerTickArrayStartIndex,
-  );
-  const upperTickArrayPda = PDAUtil.getTickArray(
-    ORCA_WHIRLPOOL_PROGRAM_ID,
-    positionData.whirlpool,
-    upperTickArrayStartIndex,
-  );
-
-  const [lowerTickArray, upperTickArray] = await Promise.all([
-    client.getFetcher().getTickArray(lowerTickArrayPda.publicKey),
-    client.getFetcher().getTickArray(upperTickArrayPda.publicKey),
-  ]);
-
-  if (!lowerTickArray || !upperTickArray) {
-    throw new Error('Failed to fetch tick arrays');
-  }
-
-  const lowerTickOffset = (positionData.tickLowerIndex - lowerTickArrayStartIndex) / whirlpool.tickSpacing;
-  const upperTickOffset = (positionData.tickUpperIndex - upperTickArrayStartIndex) / whirlpool.tickSpacing;
-
-  const lowerTick = lowerTickArray.ticks[lowerTickOffset];
-  const upperTick = upperTickArray.ticks[upperTickOffset];
-
-  // Get current epoch for transfer fee calculations
-  const currentEpoch = await client.getContext().connection.getEpochInfo();
-
-  // Calculate fees owed using legacy SDK
-  const feesQuote = collectFeesQuoteLegacy({
-    whirlpool,
-    position: positionData,
-    tickLower: lowerTick,
-    tickUpper: upperTick,
-    tokenExtensionCtx: {
-      tokenMintWithProgramA: mintA,
-      tokenMintWithProgramB: mintB,
-      currentEpoch: currentEpoch.epoch,
-    },
-  });
-
-  // Use legacy SDK utilities for calculations
-  const tokenAmounts = PoolUtil.getTokenAmountsFromLiquidity(
-    positionData.liquidity,
-    whirlpool.sqrtPrice,
-    PriceMath.tickIndexToSqrtPriceX64(positionData.tickLowerIndex),
-    PriceMath.tickIndexToSqrtPriceX64(positionData.tickUpperIndex),
-    false, // round down
-  );
-
-  const price = PriceMath.sqrtPriceX64ToPrice(whirlpool.sqrtPrice, mintA.decimals, mintB.decimals);
-  const lowerPrice = PriceMath.tickIndexToPrice(positionData.tickLowerIndex, mintA.decimals, mintB.decimals);
-  const upperPrice = PriceMath.tickIndexToPrice(positionData.tickUpperIndex, mintA.decimals, mintB.decimals);
-
-  return {
-    address: positionAddress,
-    baseTokenAddress: whirlpool.tokenMintA.toString(),
-    quoteTokenAddress: whirlpool.tokenMintB.toString(),
-    poolAddress: positionData.whirlpool.toString(),
-    baseFeeAmount: Number(feesQuote.feeOwedA.toString()) / Math.pow(10, mintA.decimals),
-    quoteFeeAmount: Number(feesQuote.feeOwedB.toString()) / Math.pow(10, mintB.decimals),
-    lowerPrice: lowerPrice.toNumber(),
-    upperPrice: upperPrice.toNumber(),
-    lowerBinId: positionData.tickLowerIndex,
-    upperBinId: positionData.tickUpperIndex,
-    baseTokenAmount: Number(tokenAmounts.tokenA.toString()) / Math.pow(10, mintA.decimals),
-    quoteTokenAmount: Number(tokenAmounts.tokenB.toString()) / Math.pow(10, mintB.decimals),
-    price: price.toNumber(),
-  };
-}
-
-/**
- * Extracts SPL token transfer amounts from the inner instructions of a confirmed
- * Solana transaction, grouped by the top-level instruction they belong to.
- *
- * This uses `getParsedTransaction` to get pre-decoded SPL token transfer
- * instructions, then filters for inner instructions belonging to the specified
- * program (e.g. ORCA_WHIRLPOOL_PROGRAM_ID). Only groups that contain actual
- * transfers are returned, preserving execution order.
- *
- * For a close-position TX the Whirlpool instructions are:
- *   updateFeesAndRewards (no transfers) → decreaseLiquidity (transfers) → collectFees (transfers) → closePosition (no transfers)
- * So transferGroups[0] = decreaseLiquidity amounts, transferGroups[1] = collectFees amounts.
- *
- * For an open-position TX with liquidity, only increaseLiquidity has transfers,
- * so transferGroups[0] = amounts deposited.
- *
- * @param connection - Solana web3 Connection object
- * @param signature - Transaction signature
- * @param programId - Program ID string to filter top-level instructions by
- * @param tokenMints - Array of token mint addresses; returned amounts are ordered to match this array
- * @param maxRetries - Number of retry attempts if the transaction isn't available yet (default 5)
- * @param retryDelayMs - Delay between retries in milliseconds (default 2000)
- * @returns Object with transferGroups: number[][] — each group is an array of amounts per token mint in human-readable units
- */
+/** Extract token transfers grouped by their parent Whirlpool instruction. */
 export async function extractInnerTransferAmounts(
   connection: Connection,
   signature: string,
@@ -183,7 +40,6 @@ export async function extractInnerTransferAmounts(
   maxRetries: number = 5,
   retryDelayMs: number = 2000,
 ): Promise<{ transferGroups: number[][] }> {
-  // Retry loop — the parsed transaction may not be immediately available after confirmation
   let parsedTx: any = null;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     parsedTx = await connection.getParsedTransaction(signature, {
@@ -202,137 +58,67 @@ export async function extractInnerTransferAmounts(
 
   const innerInstructions = parsedTx.meta?.innerInstructions || [];
   const tokenBalances = [...(parsedTx.meta?.preTokenBalances || []), ...(parsedTx.meta?.postTokenBalances || [])];
-
-  // Build a map from account address → mint address using token balances
   const accountKeys = parsedTx.transaction.message.accountKeys;
   const accountToMint: Record<string, string> = {};
-  for (const tb of tokenBalances) {
-    const accountAddress = accountKeys[tb.accountIndex]?.pubkey?.toString();
-    if (accountAddress && tb.mint) {
-      accountToMint[accountAddress] = tb.mint;
-    }
-  }
-
-  // Build a map from account address → decimals
   const accountToDecimals: Record<string, number> = {};
-  for (const tb of tokenBalances) {
-    const accountAddress = accountKeys[tb.accountIndex]?.pubkey?.toString();
-    if (accountAddress && tb.uiTokenAmount?.decimals !== undefined) {
-      accountToDecimals[accountAddress] = tb.uiTokenAmount.decimals;
-    }
-  }
-
-  // Also build a mint → decimals map for transferChecked
   const mintToDecimals: Record<string, number> = {};
-  for (const tb of tokenBalances) {
-    if (tb.mint && tb.uiTokenAmount?.decimals !== undefined) {
-      mintToDecimals[tb.mint] = tb.uiTokenAmount.decimals;
+
+  for (const tokenBalance of tokenBalances) {
+    const accountAddress = accountKeys[tokenBalance.accountIndex]?.pubkey?.toString();
+    if (accountAddress && tokenBalance.mint) {
+      accountToMint[accountAddress] = tokenBalance.mint;
+    }
+    if (accountAddress && tokenBalance.uiTokenAmount?.decimals !== undefined) {
+      accountToDecimals[accountAddress] = tokenBalance.uiTokenAmount.decimals;
+    }
+    if (tokenBalance.mint && tokenBalance.uiTokenAmount?.decimals !== undefined) {
+      mintToDecimals[tokenBalance.mint] = tokenBalance.uiTokenAmount.decimals;
     }
   }
 
-  // Find top-level instruction indices that match the target programId
-  const topLevelInstructions = parsedTx.transaction.message.instructions;
   const targetIndices: number[] = [];
-  for (let i = 0; i < topLevelInstructions.length; i++) {
-    const ix = topLevelInstructions[i];
-    const ixProgramId = ix.programId?.toString();
-    if (ixProgramId === programId) {
-      targetIndices.push(i);
+  for (let index = 0; index < parsedTx.transaction.message.instructions.length; index++) {
+    if (parsedTx.transaction.message.instructions[index].programId?.toString() === programId) {
+      targetIndices.push(index);
     }
   }
 
   const transferGroups: number[][] = [];
+  for (const targetIndex of targetIndices) {
+    const innerBlock = innerInstructions.find((block: any) => block.index === targetIndex);
+    if (!innerBlock?.instructions) continue;
 
-  for (const targetIdx of targetIndices) {
-    // Find the inner instructions block for this top-level instruction index
-    const innerBlock = innerInstructions.find((block: any) => block.index === targetIdx);
-    if (!innerBlock || !innerBlock.instructions) continue;
-
-    // Accumulate transfer amounts per mint for this instruction group
-    const mintAmounts: Record<string, number> = {};
-    for (const mint of tokenMints) {
-      mintAmounts[mint] = 0;
-    }
-
+    const mintAmounts = Object.fromEntries(tokenMints.map((mint) => [mint, 0])) as Record<string, number>;
     let hasTransfers = false;
-
-    for (const innerIx of innerBlock.instructions) {
-      const parsed = innerIx.parsed;
+    for (const innerInstruction of innerBlock.instructions) {
+      const parsed = innerInstruction.parsed;
       if (!parsed) continue;
 
       let mint: string | undefined;
       let rawAmount: string | undefined;
       let decimals: number | undefined;
-
       if (parsed.type === 'transferChecked' && parsed.info) {
-        // transferChecked includes mint and tokenAmount directly
         mint = parsed.info.mint;
         rawAmount = parsed.info.tokenAmount?.amount;
         decimals = parsed.info.tokenAmount?.decimals;
       } else if (parsed.type === 'transfer' && parsed.info) {
-        // Plain transfer doesn't include mint — resolve from source or destination account
         rawAmount = parsed.info.amount;
-        const source = parsed.info.source;
-        const destination = parsed.info.destination;
-        mint = accountToMint[source] || accountToMint[destination];
-        decimals = accountToDecimals[source] || accountToDecimals[destination];
+        mint = accountToMint[parsed.info.source] || accountToMint[parsed.info.destination];
+        decimals = accountToDecimals[parsed.info.source] ?? accountToDecimals[parsed.info.destination];
       }
 
-      if (!mint || !rawAmount) continue;
-      if (!tokenMints.includes(mint)) continue;
-      if (decimals === undefined) {
-        decimals = mintToDecimals[mint] || 0;
-      }
-
-      const humanAmount = Number(rawAmount) / Math.pow(10, decimals);
-      mintAmounts[mint] += humanAmount;
+      if (!mint || !rawAmount || !tokenMints.includes(mint)) continue;
+      decimals ??= mintToDecimals[mint] || 0;
+      mintAmounts[mint] += Number(rawAmount) / 10 ** decimals;
       hasTransfers = true;
     }
-
     if (hasTransfers) {
-      // Return amounts in the same order as the tokenMints array
-      const group = tokenMints.map((mint) => mintAmounts[mint] || 0);
-      transferGroups.push(group);
+      transferGroups.push(tokenMints.map((mint) => mintAmounts[mint] || 0));
     }
   }
-
   return { transferGroups };
 }
 
-/**
- * Retrieves the current transfer fee configuration for a given token mint based on the current epoch.
- *
- * This function checks the mint's transfer fee configuration and returns the appropriate fee
- * structure (older or newer) depending on the current epoch. If no transfer fee configuration is found,
- * it returns `undefined`.
- *
- * @param {Mint} mint - The mint account of the token, which may include transfer fee extensions.
- * @param {bigint} currentEpoch - The current epoch to determine the applicable transfer fee.
- *
- * @returns {TransferFee | undefined} - The transfer fee configuration for the given mint, or `undefined` if no transfer fee is configured.
- */
-function getCurrentTransferFee(
-  mint: MaybeAccount<Mint> | Account<Mint> | null,
-  currentEpoch: bigint,
-): TransferFee | undefined {
-  if (mint == null || ('exists' in mint && !mint.exists) || mint.data.extensions.__option === 'None') {
-    return undefined;
-  }
-  const feeConfig = mint.data.extensions.value.find((x) => x.__kind === 'TransferFeeConfig');
-  if (feeConfig == null) {
-    return undefined;
-  }
-  const transferFee =
-    currentEpoch >= feeConfig.newerTransferFee.epoch ? feeConfig.newerTransferFee : feeConfig.olderTransferFee;
-  return {
-    feeBps: transferFee.transferFeeBasisPoints,
-    maxFee: transferFee.maximumFee,
-  };
-}
-
-/**
- * Quote information for a swap on Orca
- */
 export interface OrcaSwapQuote {
   inputToken: string;
   outputToken: string;
@@ -346,19 +132,8 @@ export interface OrcaSwapQuote {
   estimatedAmountOut: bigint;
 }
 
-/**
- * Gets a swap quote for an Orca whirlpool using the Orca SDK
- * @param rpc - Solana RPC client
- * @param poolAddress - The whirlpool address
- * @param inputTokenMint - Input token mint address
- * @param outputTokenMint - Output token mint address
- * @param amount - The amount to swap (in token units, not lamports)
- * @param side - 'BUY' for exact output, 'SELL' for exact input
- * @param slippagePct - Slippage tolerance percentage (default 1%)
- * @returns OrcaSwapQuote with quote details
- */
 export async function getOrcaSwapQuote(
-  rpc: Rpc<GetAccountInfoApi & GetMultipleAccountsApi & GetEpochInfoApi>,
+  rpc: Rpc<GetAccountInfoApi & GetMultipleAccountsApi & GetEpochInfoApi & GetMinimumBalanceForRentExemptionApi>,
   poolAddress: string,
   baseTokenMint: string,
   quoteTokenMint: string,
@@ -367,56 +142,54 @@ export async function getOrcaSwapQuote(
   slippagePct: number = 1,
   network: string = 'mainnet-beta',
 ): Promise<OrcaSwapQuote> {
-  await setWhirlpoolsConfig(network === 'mainnet-beta' ? 'solanaMainnet' : 'solanaDevnet');
-
   const whirlpoolAddress = address(poolAddress);
   const whirlpool = await fetchWhirlpool(rpc, whirlpoolAddress);
-  if (!whirlpool.data) {
-    throw new Error(`Whirlpool not found: ${poolAddress}`);
-  }
-
   const [mintA, mintB] = await fetchAllMint(rpc, [whirlpool.data.tokenMintA, whirlpool.data.tokenMintB]);
   const tokenAMint = whirlpool.data.tokenMintA.toString();
-
-  // BUY  -> buy `amount` of base token (exact output, input = quote token)
-  // SELL -> sell `amount` of base token (exact input, input = base token)
   const isBuy = side === 'BUY';
   const inputTokenMint = isBuy ? quoteTokenMint : baseTokenMint;
   const outputTokenMint = isBuy ? baseTokenMint : quoteTokenMint;
   const inputIsA = inputTokenMint === tokenAMint;
   const inputDecimals = inputIsA ? mintA.data.decimals : mintB.data.decimals;
   const outputDecimals = inputIsA ? mintB.data.decimals : mintA.data.decimals;
-  const slippageBps = Math.round(slippagePct * 100);
+  const config = {
+    signer: createNoopSigner(address('11111111111111111111111111111111')),
+    slippageToleranceBps: Math.round(slippagePct * 100),
+    whirlpoolDeployment: getOrcaDeployment(network),
+  };
+  const result = isBuy
+    ? await swapInstructions(
+        rpc,
+        {
+          outputAmount: BigInt(Math.floor(amount * 10 ** outputDecimals)),
+          mint: address(outputTokenMint),
+        },
+        whirlpoolAddress,
+        config,
+      )
+    : await swapInstructions(
+        rpc,
+        {
+          inputAmount: BigInt(Math.floor(amount * 10 ** inputDecimals)),
+          mint: address(inputTokenMint),
+        },
+        whirlpoolAddress,
+        config,
+      );
 
-  // The v4 SDK resolves tick arrays, the oracle and Token-2022 transfer fees
-  // internally. Unlike the legacy whirlpools-core swapQuoteByInputToken/
-  // swapQuoteByOutputToken, it correctly quotes adaptive-fee whirlpools
-  // (fee tier index >= 1024, e.g. CASH/USDC) — the legacy WASM path panics
-  // with `unreachable` on those pools even when the oracle is supplied.
-  const swapParams = isBuy
-    ? { outputAmount: BigInt(Math.floor(amount * Math.pow(10, outputDecimals))), mint: address(outputTokenMint) }
-    : { inputAmount: BigInt(Math.floor(amount * Math.pow(10, inputDecimals))), mint: address(inputTokenMint) };
-  const { quote } = await swapInstructions(rpc as any, swapParams as any, whirlpoolAddress, slippageBps);
-
-  const estimatedAmountIn = isBuy ? (quote as any).tokenEstIn : (quote as any).tokenIn;
-  const estimatedAmountOut = isBuy ? (quote as any).tokenOut : (quote as any).tokenEstOut;
-
-  const inputAmount = Number(estimatedAmountIn) / Math.pow(10, inputDecimals);
-  const outputAmount = Number(estimatedAmountOut) / Math.pow(10, outputDecimals);
-  const minOutputAmount = isBuy ? outputAmount : Number((quote as any).tokenMinOut) / Math.pow(10, outputDecimals);
-  const maxInputAmount = isBuy ? Number((quote as any).tokenMaxIn) / Math.pow(10, inputDecimals) : inputAmount;
-
-  // Price is always expressed in quote-per-base units, independent of side.
+  const estimatedAmountIn = 'tokenMaxIn' in result.quote ? result.quote.tokenEstIn : result.quote.tokenIn;
+  const estimatedAmountOut = 'tokenMaxIn' in result.quote ? result.quote.tokenOut : result.quote.tokenEstOut;
+  const inputAmount = Number(estimatedAmountIn) / 10 ** inputDecimals;
+  const outputAmount = Number(estimatedAmountOut) / 10 ** outputDecimals;
+  const minOutputAmount =
+    'tokenMinOut' in result.quote ? Number(result.quote.tokenMinOut) / 10 ** outputDecimals : outputAmount;
+  const maxInputAmount =
+    'tokenMaxIn' in result.quote ? Number(result.quote.tokenMaxIn) / 10 ** inputDecimals : inputAmount;
   const baseAmount = isBuy ? outputAmount : inputAmount;
   const quoteAmount = isBuy ? inputAmount : outputAmount;
   const executionPrice = baseAmount > 0 ? quoteAmount / baseAmount : 0;
-
-  // Spot price in the same quote/base convention. sqrtPriceToPrice returns
-  // tokenB per tokenA, so we invert when base is tokenB.
   const currentPrice = sqrtPriceToPrice(whirlpool.data.sqrtPrice, mintA.data.decimals, mintB.data.decimals);
-  const baseIsA = baseTokenMint === tokenAMint;
-  const spotRate = baseIsA ? currentPrice : 1 / currentPrice;
-  const priceImpactPct = spotRate > 0 ? Math.abs((spotRate - executionPrice) / spotRate) * 100 : 0;
+  const spotRate = baseTokenMint === tokenAMint ? currentPrice : 1 / currentPrice;
 
   return {
     inputToken: inputTokenMint,
@@ -425,26 +198,13 @@ export async function getOrcaSwapQuote(
     outputAmount,
     minOutputAmount,
     maxInputAmount,
-    priceImpactPct,
+    priceImpactPct: spotRate > 0 ? Math.abs((spotRate - executionPrice) / spotRate) * 100 : 0,
     price: executionPrice,
     estimatedAmountIn,
     estimatedAmountOut,
   };
 }
 
-/**
- * Estimates the token amounts and liquidity required to open a position at the given price range.
- * When both baseTokenAmount and quoteTokenAmount are provided, uses the one that results in less liquidity.
- *
- * @param {SolanaRpc} rpc - The Solana RPC client used to fetch pool data.
- * @param {string} poolAddress - The address of the whirlpool.
- * @param {number} lowerPrice - The lower price of the position range.
- * @param {number} upperPrice - The upper price of the position range.
- * @param {number} [baseTokenAmount] - Optional amount of base token (token A) to deposit.
- * @param {number} [quoteTokenAmount] - Optional amount of quote token (token B) to deposit.
- * @param {number} [slippagePct=1] - Slippage tolerance as a percentage (default 1%).
- * @returns {Promise<QuotePositionResponseType>} - A promise that resolves to the estimated position details.
- */
 export async function quotePosition(
   rpc: Rpc<GetAccountInfoApi & GetMultipleAccountsApi & GetEpochInfoApi>,
   poolAddress: string,
@@ -456,236 +216,70 @@ export async function quotePosition(
 ): Promise<QuotePositionResponseType> {
   const currentEpoch = await rpc.getEpochInfo().send();
   const whirlpool = await fetchWhirlpool(rpc, address(poolAddress));
-
   const [mintA, mintB] = await fetchAllMint(rpc, [whirlpool.data.tokenMintA, whirlpool.data.tokenMintB]);
-
   const slippageToleranceBps = Math.floor(slippagePct * 100);
-
-  // Convert prices to tick indexes
-  const tickLowerIndex = priceToTickIndex(lowerPrice, mintA.data.decimals, mintB.data.decimals);
-  const tickUpperIndex = priceToTickIndex(upperPrice, mintA.data.decimals, mintB.data.decimals);
-
+  const tickLowerIndex = getInitializableTickIndex(
+    priceToTickIndex(lowerPrice, mintA.data.decimals, mintB.data.decimals),
+    whirlpool.data.tickSpacing,
+    false,
+  );
+  const tickUpperIndex = getInitializableTickIndex(
+    priceToTickIndex(upperPrice, mintA.data.decimals, mintB.data.decimals),
+    whirlpool.data.tickSpacing,
+    true,
+  );
   const transferFeeA = getCurrentTransferFee(mintA, currentEpoch.epoch);
   const transferFeeB = getCurrentTransferFee(mintB, currentEpoch.epoch);
-
-  // Convert token amounts to bigint with proper decimals
-  const baseAmountBigInt = baseTokenAmount
-    ? BigInt(Math.floor(baseTokenAmount * Math.pow(10, mintA.data.decimals)))
-    : undefined;
-  const quoteAmountBigInt = quoteTokenAmount
-    ? BigInt(Math.floor(quoteTokenAmount * Math.pow(10, mintB.data.decimals)))
-    : undefined;
-
-  let resBase: IncreaseLiquidityQuote | undefined;
-  let resQuote: IncreaseLiquidityQuote | undefined;
-
-  // Calculate quote based on base token amount
-  if (baseAmountBigInt !== undefined && baseAmountBigInt > 0n) {
-    resBase = increaseLiquidityQuoteA(
-      baseAmountBigInt,
-      slippageToleranceBps,
-      whirlpool.data.sqrtPrice,
-      tickLowerIndex,
-      tickUpperIndex,
-      transferFeeA,
-      transferFeeB,
-    );
-  }
-
-  // Calculate quote based on quote token amount
-  if (quoteAmountBigInt !== undefined && quoteAmountBigInt > 0n) {
-    resQuote = increaseLiquidityQuoteB(
-      quoteAmountBigInt,
-      slippageToleranceBps,
-      whirlpool.data.sqrtPrice,
-      tickLowerIndex,
-      tickUpperIndex,
-      transferFeeA,
-      transferFeeB,
-    );
-  }
+  const baseAmount = baseTokenAmount ? BigInt(Math.floor(baseTokenAmount * 10 ** mintA.data.decimals)) : undefined;
+  const quoteAmount = quoteTokenAmount ? BigInt(Math.floor(quoteTokenAmount * 10 ** mintB.data.decimals)) : undefined;
+  const baseResult =
+    baseAmount && baseAmount > 0n
+      ? increaseLiquidityQuoteA(
+          baseAmount,
+          slippageToleranceBps,
+          whirlpool.data.sqrtPrice,
+          tickLowerIndex,
+          tickUpperIndex,
+          transferFeeA,
+          transferFeeB,
+        )
+      : undefined;
+  const quoteResult =
+    quoteAmount && quoteAmount > 0n
+      ? increaseLiquidityQuoteB(
+          quoteAmount,
+          slippageToleranceBps,
+          whirlpool.data.sqrtPrice,
+          tickLowerIndex,
+          tickUpperIndex,
+          transferFeeA,
+          transferFeeB,
+        )
+      : undefined;
 
   let baseLimited = false;
-  let res: IncreaseLiquidityQuote;
-
-  // Determine which amount to use if both are provided
-  if (resBase && resQuote) {
-    const baseLiquidity = resBase.liquidityDelta;
-    const quoteLiquidity = resQuote.liquidityDelta;
-    baseLimited = Number(baseLiquidity) < Number(quoteLiquidity);
-    res = baseLimited ? resBase : resQuote;
+  let result: IncreaseLiquidityQuote | undefined;
+  if (baseResult && quoteResult) {
+    baseLimited = baseResult.liquidityDelta < quoteResult.liquidityDelta;
+    result = baseLimited ? baseResult : quoteResult;
   } else {
-    // Otherwise use the one that was calculated
-    baseLimited = !!resBase;
-    res = resBase || resQuote;
+    baseLimited = !!baseResult;
+    result = baseResult || quoteResult;
   }
-
-  if (!res) {
+  if (!result) {
     throw new Error('Either baseTokenAmount or quoteTokenAmount must be provided');
   }
 
-  // Convert bigint values to human-readable numbers with proper decimals
   return {
     baseLimited,
-    baseTokenAmount: Number(res.tokenEstA) / Math.pow(10, mintA.data.decimals),
-    quoteTokenAmount: Number(res.tokenEstB) / Math.pow(10, mintB.data.decimals),
-    baseTokenAmountMax: Number(res.tokenMaxA) / Math.pow(10, mintA.data.decimals),
-    quoteTokenAmountMax: Number(res.tokenMaxB) / Math.pow(10, mintB.data.decimals),
-    liquidity: Number(res.liquidityDelta),
+    baseTokenAmount: Number(result.tokenEstA) / 10 ** mintA.data.decimals,
+    quoteTokenAmount: Number(result.tokenEstB) / 10 ** mintB.data.decimals,
+    baseTokenAmountMax: Number(result.tokenMaxA) / 10 ** mintA.data.decimals,
+    quoteTokenAmountMax: Number(result.tokenMaxB) / 10 ** mintB.data.decimals,
+    liquidity: Number(result.liquidityDelta),
   };
 }
 
-/**
- * Adds instructions to handle token ATA creation, WSOL wrapping, and WSOL unwrapping when needed.
- * For receiving tokens (collectFees, removeLiquidity): Creates ATA if it doesn't exist.
- * For sending tokens (addLiquidity): Creates ATA and wraps SOL if token is WSOL.
- * For unwrapping WSOL: Closes WSOL ATA and returns all SOL to wallet.
- *
- * @param {TransactionBuilder} builder - The transaction builder to add instructions to
- * @param {WhirlpoolClient} client - The whirlpool client
- * @param {PublicKey} tokenMint - The token mint address to check
- * @param {PublicKey} tokenOwnerAccount - The ATA address for the token
- * @param {PublicKey} tokenProgram - The token program ID
- * @param {'wrap' | 'receive' | 'unwrap'} mode - 'wrap' for adding liquidity, 'receive' for collecting fees/removing liquidity, 'unwrap' for closing WSOL ATA
- * @param {BN} [amountToWrap] - Required for 'wrap' mode: amount of SOL to wrap in lamports
- * @param {Solana} [solana] - Required for 'unwrap' mode: Solana instance to use unwrapSOL method
- */
-export async function handleWsolAta(
-  builder: TransactionBuilder,
-  client: WhirlpoolClient,
-  tokenMint: PublicKey,
-  tokenOwnerAccount: PublicKey,
-  tokenProgram: PublicKey,
-  mode: 'wrap' | 'receive' | 'unwrap',
-  amountToWrap?: BN,
-  solana?: Solana,
-): Promise<void> {
-  const isWsol = tokenMint.equals(NATIVE_MINT);
-  const ataInfo = await client.getContext().connection.getAccountInfo(tokenOwnerAccount);
-
-  if (mode === 'unwrap') {
-    // For unwrapping WSOL: close WSOL ATA and return all SOL to wallet
-    if (!isWsol) {
-      logger.info('Token is not WSOL, skipping unwrap');
-      return;
-    }
-
-    if (!solana) {
-      throw new Error('Solana instance required for unwrap mode');
-    }
-
-    logger.info('Unwrapping WSOL: closing WSOL ATA to return SOL to wallet');
-    const unwrapInstruction = solana.unwrapSOL(client.getContext().wallet.publicKey, tokenProgram);
-    builder.addInstruction({
-      instructions: [unwrapInstruction],
-      cleanupInstructions: [],
-      signers: [],
-    });
-  } else if (mode === 'receive') {
-    // For receiving tokens: only create ATA if it doesn't exist
-    if (!ataInfo) {
-      logger.info(`${isWsol ? 'WSOL' : 'Token'} ATA doesn't exist, creating it`);
-      builder.addInstruction({
-        instructions: [
-          createAssociatedTokenAccountIdempotentInstruction(
-            client.getContext().wallet.publicKey,
-            tokenOwnerAccount,
-            client.getContext().wallet.publicKey,
-            tokenMint,
-            tokenProgram,
-          ),
-        ],
-        cleanupInstructions: [],
-        signers: [],
-      });
-    }
-  } else if (mode === 'wrap') {
-    // For sending tokens
-    if (isWsol) {
-      // WSOL: check existing balance and only wrap the difference
-      if (!amountToWrap || amountToWrap.lten(0)) {
-        return;
-      }
-
-      if (!solana) {
-        throw new Error('Solana instance required for wrap mode with WSOL');
-      }
-
-      // Use solana.wrapSOL with checkBalance=true to only wrap the difference
-      const wrapInstructions = await solana.wrapSOL(
-        client.getContext().wallet.publicKey,
-        amountToWrap.toNumber(),
-        tokenProgram,
-        true, // checkBalance: only wrap the difference
-      );
-
-      if (wrapInstructions.length > 0) {
-        builder.addInstruction({
-          instructions: wrapInstructions,
-          cleanupInstructions: [],
-          signers: [],
-        });
-      }
-    } else {
-      // Regular token: just create ATA if it doesn't exist
-      if (!ataInfo) {
-        builder.addInstruction({
-          instructions: [
-            createAssociatedTokenAccountIdempotentInstruction(
-              client.getContext().wallet.publicKey,
-              tokenOwnerAccount,
-              client.getContext().wallet.publicKey,
-              tokenMint,
-              tokenProgram,
-            ),
-          ],
-          cleanupInstructions: [],
-          signers: [],
-        });
-      }
-    }
-  }
-}
-
-/**
- * Gets tick array pubkeys for a position's lower and upper tick indices.
- * Helper function to reduce code duplication across CLMM routes.
- */
-export function getTickArrayPubkeys(
-  position: { tickLowerIndex: number; tickUpperIndex: number },
-  whirlpool: WhirlpoolData,
-  whirlpoolPubkey: PublicKey,
-): { lower: PublicKey; upper: PublicKey } {
-  return {
-    lower: PDAUtil.getTickArrayFromTickIndex(
-      position.tickLowerIndex,
-      whirlpool.tickSpacing,
-      whirlpoolPubkey,
-      ORCA_WHIRLPOOL_PROGRAM_ID,
-    ).publicKey,
-    upper: PDAUtil.getTickArrayFromTickIndex(
-      position.tickUpperIndex,
-      whirlpool.tickSpacing,
-      whirlpoolPubkey,
-      ORCA_WHIRLPOOL_PROGRAM_ID,
-    ).publicKey,
-  };
-}
-
-/**
- * Per-bin liquidity distribution around the current tick for a whirlpool.
- *
- * For each tick-spacing-wide bin in the window:
- *  1. Sum the L of every open Position whose range overlaps the bin (one
- *     `fetchAllPositionWithFilter` + `positionWhirlpoolFilter` call covers
- *     all positions in the pool — a single getProgramAccounts under the hood).
- *  2. Convert that L to token amounts via V3 sqrt-price math
- *     (`tryGetAmountDeltaA`/`tryGetAmountDeltaB`), splitting at the current
- *     sqrtPrice when the bin contains the active tick.
- *
- * Output shape mirrors Meteora's `pool-info.bins[]`:
- *   { binId, price, baseTokenAmount, quoteTokenAmount }
- */
 export interface OrcaBinDistributionEntry {
   binId: number;
   price: number;
@@ -702,41 +296,55 @@ export async function computeOrcaBinDistribution(args: {
   decimalsA: number;
   decimalsB: number;
   binCount: number;
+  programAddress?: Address;
 }): Promise<OrcaBinDistributionEntry[]> {
-  const { rpc, poolAddress, tickSpacing, currentTickIndex, currentSqrtPrice, decimalsA, decimalsB, binCount } = args;
+  const {
+    rpc,
+    poolAddress,
+    tickSpacing,
+    currentTickIndex,
+    currentSqrtPrice,
+    decimalsA,
+    decimalsB,
+    binCount,
+    programAddress,
+  } = args;
   if (binCount <= 0) return [];
 
-  const positionAccounts = await fetchAllPositionWithFilter(rpc, positionWhirlpoolFilter(address(poolAddress)));
-
+  const positionAccounts = await fetchAllPositionWithFilter(
+    rpc,
+    [positionWhirlpoolFilter(address(poolAddress))],
+    programAddress,
+  );
   const halfBins = Math.floor(binCount / 2);
   const snappedCurrent = Math.floor(currentTickIndex / tickSpacing) * tickSpacing;
   const firstBinStart = snappedCurrent - halfBins * tickSpacing;
   const scaleA = 10 ** decimalsA;
   const scaleB = 10 ** decimalsB;
-
   const bins: OrcaBinDistributionEntry[] = [];
-  for (let i = 0; i < binCount; i++) {
-    const tickStart = firstBinStart + i * tickSpacing;
+
+  for (let index = 0; index < binCount; index++) {
+    const tickStart = firstBinStart + index * tickSpacing;
     const tickEnd = tickStart + tickSpacing;
-    let binL = 0n;
+    let binLiquidity = 0n;
     for (const account of positionAccounts) {
-      const p = account.data;
-      if (p.tickLowerIndex < tickEnd && p.tickUpperIndex > tickStart) {
-        binL += p.liquidity;
+      if (account.data.tickLowerIndex < tickEnd && account.data.tickUpperIndex > tickStart) {
+        binLiquidity += account.data.liquidity;
       }
     }
+
     let rawA = 0n;
     let rawB = 0n;
-    if (binL > 0n) {
+    if (binLiquidity > 0n) {
       const sqrtA = tickIndexToSqrtPrice(tickStart);
       const sqrtB = tickIndexToSqrtPrice(tickEnd);
       if (currentTickIndex >= tickEnd) {
-        rawB = tryGetAmountDeltaB(sqrtA, sqrtB, binL, false);
+        rawB = tryGetAmountDeltaB(sqrtA, sqrtB, binLiquidity, false);
       } else if (currentTickIndex < tickStart) {
-        rawA = tryGetAmountDeltaA(sqrtA, sqrtB, binL, false);
+        rawA = tryGetAmountDeltaA(sqrtA, sqrtB, binLiquidity, false);
       } else {
-        rawA = tryGetAmountDeltaA(currentSqrtPrice, sqrtB, binL, false);
-        rawB = tryGetAmountDeltaB(sqrtA, currentSqrtPrice, binL, false);
+        rawA = tryGetAmountDeltaA(currentSqrtPrice, sqrtB, binLiquidity, false);
+        rawB = tryGetAmountDeltaB(sqrtA, currentSqrtPrice, binLiquidity, false);
       }
     }
     bins.push({
