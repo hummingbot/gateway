@@ -1,7 +1,5 @@
-import { encodeSqrtRatioX96 } from '@uniswap/v3-sdk';
 import { BigNumber, Contract, utils } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
-import { re } from 'mathjs';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
@@ -96,10 +94,13 @@ export async function executeClmmSwap(
     amountOut: 0,
     amountInMaximum: 0,
     amountOutMinimum: 0,
-    sqrtPriceLimitX96: encodeSqrtRatioX96(
-      quote.trade.executionPrice.numerator,
-      quote.trade.executionPrice.denominator,
-    ).toString(),
+    // No price limit: slippage protection comes from amountOutMinimum /
+    // amountInMaximum (set from the quote below). Encoding the trade's
+    // *average* execution price here makes any swap whose ending price
+    // crosses its own average partial-fill at the limit and revert with
+    // "Too little received" — near-guaranteed on thin pools or any size
+    // with more than ~a tick of impact.
+    sqrtPriceLimitX96: '0',
   };
 
   let receipt;
