@@ -20,16 +20,18 @@ describe('Pancakeswap Routes Structure', () => {
   });
 
   describe('Folder Structure', () => {
-    it('should have router-routes, amm-routes, and clmm-routes folders', () => {
+    it('should have router-routes, amm-routes, clmm-routes, and nft-staking folders', () => {
       const pancakeswapPath = path.join(__dirname, '../../../src/connectors/pancakeswap');
       const routerRoutesPath = path.join(pancakeswapPath, 'router-routes');
       const ammRoutesPath = path.join(pancakeswapPath, 'amm-routes');
       const clmmRoutesPath = path.join(pancakeswapPath, 'clmm-routes');
+      const nftStakingRoutesPath = path.join(pancakeswapPath, 'nft-staking');
       const oldRoutesPath = path.join(pancakeswapPath, 'routes');
 
       expect(fs.existsSync(routerRoutesPath)).toBe(true);
       expect(fs.existsSync(ammRoutesPath)).toBe(true);
       expect(fs.existsSync(clmmRoutesPath)).toBe(true);
+      expect(fs.existsSync(nftStakingRoutesPath)).toBe(true);
       expect(fs.existsSync(oldRoutesPath)).toBe(false);
     });
 
@@ -68,6 +70,32 @@ describe('Pancakeswap Routes Structure', () => {
         url: '/connectors/pancakeswap/clmm/pool-info',
       });
       expect(clmmResponse.statusCode).not.toBe(404);
+
+      // Check MasterChef/NFT staking route
+      const nftStakingResponse = await fastify.inject({
+        method: 'POST',
+        url: '/connectors/pancakeswap/nftStaking/masterchef-knows-pool',
+        payload: {},
+      });
+      expect(nftStakingResponse.statusCode).not.toBe(404);
+    });
+
+    it('should register all MasterChef nftStaking endpoints', async () => {
+      const endpointChecks = [
+        '/connectors/pancakeswap/nftStaking/masterchef-stake',
+        '/connectors/pancakeswap/nftStaking/masterchef-unstake',
+        '/connectors/pancakeswap/nftStaking/masterchef-unstake-and-close',
+        '/connectors/pancakeswap/nftStaking/masterchef-knows-pool',
+      ];
+
+      for (const endpoint of endpointChecks) {
+        const response = await fastify.inject({
+          method: 'POST',
+          url: endpoint,
+          payload: {},
+        });
+        expect(response.statusCode).not.toBe(404);
+      }
     });
   });
 });
