@@ -1,7 +1,5 @@
-import { encodeSqrtRatioX96 } from '@uniswap/v3-sdk';
 import { BigNumber, Contract, utils } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
-import { re } from 'mathjs';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
@@ -14,30 +12,27 @@ import { UniswapConfig } from '../uniswap.config';
 import { getUniswapV3SwapRouter02Address, ISwapRouter02ABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
-import { getUniswapClmmQuote } from './quoteSwap';
+import { getUniswapClmmQuote, resolveCounterToken } from './quoteSwap';
 
 // Default gas limit for CLMM swap operations
 const CLMM_SWAP_GAS_LIMIT = 350000;
 
 export async function executeClmmSwap(
-  walletAddress: string,
   network: string,
+  walletAddress: string,
+  poolAddress: string,
   baseToken: string,
-  quoteToken: string,
-  amount: number,
   side: 'BUY' | 'SELL',
+  amount: number,
   slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<SwapExecuteResponseType> {
   const ethereum = await Ethereum.getInstance(network);
   await ethereum.init();
 
-  const uniswap = await Uniswap.getInstance(network);
+  await Uniswap.getInstance(network);
 
-  // Find pool address
-  const poolAddress = await uniswap.findDefaultPool(baseToken, quoteToken, 'clmm');
-  if (!poolAddress) {
-    throw httpErrors.notFound(`No CLMM pool found for pair ${baseToken}-${quoteToken}`);
-  }
+  // Standardized: quote token is derived from the pool given poolAddress + baseToken.
+  const quoteToken = await resolveCounterToken(network, poolAddress, baseToken);
 
   // Get quote using the shared quote function
   const { quote } = await getUniswapClmmQuote(network, poolAddress, baseToken, quoteToken, amount, side, slippagePct);
@@ -99,10 +94,13 @@ export async function executeClmmSwap(
     amountOut: 0,
     amountInMaximum: 0,
     amountOutMinimum: 0,
-    sqrtPriceLimitX96: encodeSqrtRatioX96(
-      quote.trade.executionPrice.numerator,
-      quote.trade.executionPrice.denominator,
-    ).toString(),
+    // No price limit: slippage protection comes from amountOutMinimum /
+    // amountInMaximum (set from the quote below). Encoding the trade's
+    // *average* execution price here makes any swap whose ending price
+    // crosses its own average partial-fill at the limit and revert with
+    // "Too little received" — near-guaranteed on thin pools or any size
+    // with more than ~a tick of impact.
+    sqrtPriceLimitX96: '0',
   };
 
   let receipt;
@@ -339,13 +337,21 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         const { walletAddress, network, baseToken, quoteToken, amount, side, slippagePct } =
           request.body as typeof UniswapExecuteSwapRequest._type;
 
+        // This route resolves the pool from the pair (no poolAddress in its request schema);
+        // executeClmmSwap itself is standardized to require poolAddress.
+        const uniswap = await Uniswap.getInstance(network);
+        const poolAddress = await uniswap.findDefaultPool(baseToken, quoteToken, 'clmm');
+        if (!poolAddress) {
+          throw httpErrors.notFound(`No CLMM pool found for pair ${baseToken}-${quoteToken}`);
+        }
+
         return await executeClmmSwap(
-          walletAddress,
           network,
+          walletAddress,
+          poolAddress,
           baseToken,
-          quoteToken,
-          amount,
           side as 'BUY' | 'SELL',
+          amount,
           slippagePct,
         );
       } catch (e) {

@@ -3,6 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { addLiquidityRoute } from './addLiquidity';
 import { closePositionRoute } from './closePosition';
 import { collectFeesRoute } from './collectFees';
+import { createPoolRoute } from './createPool';
 import { executeSwapRoute } from './executeSwap';
 import { fetchPoolsRoute } from './fetchPools';
 import { openPositionRoute } from './openPosition';
@@ -15,6 +16,7 @@ import { removeLiquidityRoute } from './removeLiquidity';
 
 export const meteoraClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(fetchPoolsRoute);
+  await fastify.register(createPoolRoute);
   await fastify.register(poolInfoRoute);
   await fastify.register(positionsOwnedRoute);
   await fastify.register(positionInfoRoute);

@@ -544,13 +544,12 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           poolAddressToUse = pool.address;
         }
 
-        const result = await formatSwapQuote(
+        const result = await quoteSwap(
           networkToUse,
           poolAddressToUse,
           baseToken,
-          quoteToken,
-          amount,
           side as 'BUY' | 'SELL',
+          amount,
           slippagePct,
         );
 
@@ -581,15 +580,38 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
 
 export default quoteSwapRoute;
 
-// Export quoteSwap wrapper for chain-level routes
+/**
+ * Standardized network-first swap quote for the Raydium AMM/CPMM connector.
+ * `amount` is denominated in the base token; the counter ("quote") token is derived from the pool.
+ * Imported by the unified /trading/amm dispatcher and by the Fastify route above.
+ */
 export async function quoteSwap(
   network: string,
   poolAddress: string,
   baseToken: string,
-  quoteToken: string,
-  amount: number,
   side: 'BUY' | 'SELL',
+  amount: number,
   slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<QuoteSwapResponseType> {
+  const raydium = await Raydium.getInstance(network);
+  const solana = await Solana.getInstance(network);
+
+  const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
+  if (!ammPoolInfo) {
+    throw httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddress));
+  }
+
+  // Derive the counter ("quote") token from the pool given the requested base token.
+  const baseTokenInfo = await solana.getToken(baseToken);
+  const resolvedBaseAddress = baseTokenInfo ? baseTokenInfo.address : baseToken;
+  let quoteToken: string;
+  if (resolvedBaseAddress === ammPoolInfo.baseTokenAddress) {
+    quoteToken = ammPoolInfo.quoteTokenAddress;
+  } else if (resolvedBaseAddress === ammPoolInfo.quoteTokenAddress) {
+    quoteToken = ammPoolInfo.baseTokenAddress;
+  } else {
+    throw httpErrors.badRequest(`Base token ${baseToken} is not in pool ${poolAddress}`);
+  }
+
   return await formatSwapQuote(network, poolAddress, baseToken, quoteToken, amount, side, slippagePct);
 }

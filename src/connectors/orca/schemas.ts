@@ -240,6 +240,47 @@ export const OrcaClmmOpenPositionRequest = Type.Object({
   ),
 });
 
+// Orca CLMM Create Pool Request
+export const OrcaClmmCreatePoolRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...OrcaConfig.networks],
+    }),
+  ),
+  walletAddress: Type.Optional(
+    Type.String({
+      description: 'Solana wallet address that will create and initialize the pool',
+      default: solanaChainConfig.defaultWallet,
+      examples: [solanaChainConfig.defaultWallet],
+    }),
+  ),
+  baseToken: Type.String({
+    description: 'Base token symbol or address (becomes the pool base)',
+    examples: [BASE_TOKEN],
+  }),
+  quoteToken: Type.String({
+    description: 'Quote token symbol or address (becomes the pool quote)',
+    examples: [QUOTE_TOKEN],
+  }),
+  tickSpacing: Type.Integer({
+    description:
+      'Tick spacing (fee tier) for the new Whirlpool. A FeeTier account for this config+tickSpacing ' +
+      'must already exist on-chain. Common Orca values: 1, 2, 8, 16, 64, 128, 256.',
+    minimum: 1,
+    examples: [64],
+  }),
+  initialPrice: Type.Optional(
+    Type.Number({
+      description:
+        'Initial price as quote per base. If omitted, the current market price is fetched from the ' +
+        'unified swap router so the pool opens on-market. No position is opened; only the pool is created.',
+      examples: [QUOTE_TOKEN_AMOUNT / BASE_TOKEN_AMOUNT],
+    }),
+  ),
+});
+
 // Orca CLMM Add Liquidity Request
 export const OrcaClmmAddLiquidityRequest = Type.Object({
   network: Type.Optional(

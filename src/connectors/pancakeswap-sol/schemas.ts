@@ -87,6 +87,48 @@ export const PancakeswapSolClmmOpenPositionRequest = Type.Object({
 
 export type PancakeswapSolClmmOpenPositionRequestType = Static<typeof PancakeswapSolClmmOpenPositionRequest>;
 
+// CLMM Create Pool Request
+export const PancakeswapSolClmmCreatePoolRequest = Type.Object({
+  network: Type.Optional(
+    Type.String({
+      description: 'Solana network to use',
+      default: solanaChainConfig.defaultNetwork,
+      enum: [...PancakeswapSolConfig.networks],
+    }),
+  ),
+  walletAddress: Type.Optional(
+    Type.String({
+      description: 'Solana wallet address that will create and initialize the pool',
+      default: solanaChainConfig.defaultWallet,
+    }),
+  ),
+  baseToken: Type.String({
+    description: 'Base token symbol or address (becomes the pool base)',
+    examples: [BASE_TOKEN],
+  }),
+  quoteToken: Type.String({
+    description: 'Quote token symbol or address (becomes the pool quote)',
+    examples: [QUOTE_TOKEN],
+  }),
+  initialPrice: Type.Optional(
+    Type.Number({
+      description:
+        'Initial price as quote per base. If omitted, the current market price is fetched from the ' +
+        'unified swap router so the pool opens on-market. No position is opened; only the pool is created.',
+      examples: [QUOTE_TOKEN_AMOUNT / BASE_TOKEN_AMOUNT],
+    }),
+  ),
+  ammConfig: Type.String({
+    description:
+      'Base58 address of an existing on-chain amm_config account for the desired fee tier. ' +
+      'There is no API to enumerate amm_config accounts, so this must be supplied explicitly. ' +
+      'The pool_state PDA is derived from this config plus the (canonically ordered) token mints.',
+    examples: ['E64NGkDLLCdQ2yFNPcavaKptrEgmiQaNykUuLC1Qgwyp'],
+  }),
+});
+
+export type PancakeswapSolClmmCreatePoolRequestType = Static<typeof PancakeswapSolClmmCreatePoolRequest>;
+
 // CLMM Position Info Request
 export const PancakeswapSolClmmGetPositionInfoRequest = Type.Object({
   network: Type.Optional(

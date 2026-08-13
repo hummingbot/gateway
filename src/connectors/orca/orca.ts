@@ -1,12 +1,5 @@
-import { AnchorProvider, Wallet } from '@coral-xyz/anchor';
-import { fetchPositionsForOwner } from '@orca-so/whirlpools';
+import { fetchPositionsForOwner, setNativeMintWrappingStrategy, type WhirlpoolDeployment } from '@orca-so/whirlpools';
 import { fetchWhirlpool, fetchPosition } from '@orca-so/whirlpools-client';
-import {
-  WhirlpoolContext,
-  buildWhirlpoolClient,
-  ORCA_WHIRLPOOL_PROGRAM_ID,
-  WhirlpoolClient,
-} from '@orca-so/whirlpools-sdk';
 import { address, createSolanaRpc, mainnet, devnet } from '@solana/kit';
 import { PublicKey } from '@solana/web3.js';
 
@@ -16,22 +9,21 @@ import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
 import { OrcaConfig } from './orca.config';
-import { getPositionDetails } from './orca.utils';
-import { OrcaPosition, OrcaPoolInfo } from './schemas';
+import { getPositionDetails } from './orca.position';
+import { getOrcaDeployment } from './orca.sdk';
+import { OrcaPoolInfo } from './schemas';
 
 export class Orca {
   private static _instances: { [name: string]: Orca };
   private solana: Solana;
-  protected whirlpoolContextMap: { [key: string]: WhirlpoolContext };
-  protected whirlpoolClientMap: { [key: string]: WhirlpoolClient };
   public config: OrcaConfig.RootConfig;
   public solanaKitRpc: any;
+  public deployment: WhirlpoolDeployment;
 
   private constructor() {
     this.config = OrcaConfig.config;
     this.solana = null; // Initialize as null since we need to await getInstance
-    this.whirlpoolContextMap = {}; // key: wallet address, value: WhirlpoolContext
-    this.whirlpoolClientMap = {}; // key: wallet address, value: WhirlpoolClient
+    this.deployment = getOrcaDeployment('mainnet-beta');
   }
 
   /** Gets singleton instance of Orca */
@@ -51,6 +43,8 @@ export class Orca {
   private async init(network: string) {
     try {
       this.solana = await Solana.getInstance(network);
+      this.deployment = getOrcaDeployment(this.solana.network);
+      setNativeMintWrappingStrategy('ata');
 
       if (this.solana.network === 'mainnet-beta') {
         this.solanaKitRpc = createSolanaRpc(mainnet(this.solana.connection.rpcEndpoint));
@@ -63,38 +57,6 @@ export class Orca {
       logger.error('Failed to initialize Orca:', error);
       throw error;
     }
-  }
-
-  async getWhirlpoolContextForWallet(walletAddress: string): Promise<WhirlpoolContext> {
-    if (!this.whirlpoolContextMap[walletAddress]) {
-      // The Whirlpool client only reads `wallet.publicKey` while building instructions; it
-      // never signs here. Signing happens externally via sendAndConfirmTransactionForWallet
-      // (local keypair / Ledger), so a read-only wallet carrying just the
-      // public key is sufficient for every wallet type — no key load, no wallet-type branch.
-      const publicKey = await this.solana.getPublicKey(walletAddress);
-      const wallet = {
-        publicKey,
-        signTransaction: async () => {
-          throw new Error('Read-only wallet cannot sign; transactions are signed externally');
-        },
-        signAllTransactions: async () => {
-          throw new Error('Read-only wallet cannot sign; transactions are signed externally');
-        },
-      } as unknown as Wallet;
-      const provider = new AnchorProvider(this.solana.connection, wallet, {
-        commitment: 'processed',
-      });
-      this.whirlpoolContextMap[walletAddress] = WhirlpoolContext.withProvider(provider);
-    }
-    return this.whirlpoolContextMap[walletAddress];
-  }
-
-  async getWhirlpoolClientForWallet(walletAddress: string): Promise<WhirlpoolClient> {
-    if (!this.whirlpoolClientMap[walletAddress]) {
-      const context = await this.getWhirlpoolContextForWallet(walletAddress);
-      this.whirlpoolClientMap[walletAddress] = buildWhirlpoolClient(context);
-    }
-    return this.whirlpoolClientMap[walletAddress];
   }
 
   /**
@@ -314,17 +276,15 @@ export class Orca {
 
   /**
    * Gets raw position data for a position address
-   * @param positionAddress The position NFT mint address
+   * @param positionAddress The position PDA address
    * @param _walletAddress The wallet that owns the position (not used in Orca, kept for API compatibility)
    * @returns Position data with pool info
    */
   async getRawPosition(positionAddress: string, _walletAddress: PublicKey) {
     try {
       const rpc = this.solanaKitRpc;
-      const positionMint = address(positionAddress);
-
       // Fetch position account
-      const position = await fetchPosition(rpc, positionMint);
+      const position = await fetchPosition(rpc, address(positionAddress));
 
       if (!position.data) {
         throw new Error(`Position not found: ${positionAddress}`);
@@ -360,16 +320,22 @@ export class Orca {
 
       const positions: PositionInfo[] = [];
 
-      const positionsForOwner: OrcaPosition[] = (await fetchPositionsForOwner(
+      const positionsForOwner = await fetchPositionsForOwner(
         this.solanaKitRpc,
         address(walletAddress),
-      )) as any;
-
-      const client = await this.getWhirlpoolClientForWallet(walletAddress);
+        this.deployment,
+      );
 
       for (const position of positionsForOwner) {
+        if (position.isPositionBundle) {
+          continue;
+        }
         try {
-          const positionDetails = await getPositionDetails(client, address(position.address));
+          const positionDetails = await getPositionDetails(
+            this.solanaKitRpc,
+            position.address.toString(),
+            this.deployment,
+          );
           positions.push(positionDetails);
         } catch (positionError: any) {
           // Skip positions that fail to fetch (e.g., closed positions, invalid data)
@@ -395,7 +361,7 @@ export class Orca {
    * @param walletAddress The wallet that owns the position
    * @returns PositionInfo or null if not found
    */
-  async getPositionInfo(positionAddress: string, walletAddress: string): Promise<PositionInfo | null> {
+  async getPositionInfo(positionAddress: string, _walletAddress: string): Promise<PositionInfo | null> {
     // Validate position address
     try {
       new PublicKey(positionAddress);
@@ -404,8 +370,7 @@ export class Orca {
     }
 
     try {
-      const client = await this.getWhirlpoolClientForWallet(walletAddress);
-      const positionInfo = await getPositionDetails(client, positionAddress);
+      const positionInfo = await getPositionDetails(this.solanaKitRpc, positionAddress, this.deployment);
       return positionInfo;
     } catch (error) {
       logger.error('Error getting position info:', error);
