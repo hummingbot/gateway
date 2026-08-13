@@ -58,7 +58,7 @@ export namespace OreConfig {
     treasury: 'treasury',
   } as const;
 
-  // Supported networks (ORE v3 is only on mainnet-beta)
+  // Supported networks (ORE is only on mainnet-beta)
   export const chain = 'solana';
   export const networks = ['mainnet-beta'] as const;
   export type Network = (typeof networks)[number];

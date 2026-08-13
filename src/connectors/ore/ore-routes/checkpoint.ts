@@ -126,8 +126,12 @@ export async function checkpoint(
   const rewardsSolAfter = minerAfter ? minerAfter.rewardsSol : rewardsSolBefore;
   const rewardsOreAfter = minerAfter ? minerAfter.rewardsOre : rewardsOreBefore;
 
-  // Calculate winnings from this checkpoint
-  const wonSolLamports = rewardsSolAfter - rewardsSolBefore;
+  // Calculate results from this checkpoint. Since the v4 update (parimutuel removed),
+  // rewardsSol is the miner's own deployment returned minus protocol/admin fees, not
+  // SOL won from other miners. Note: if the miner has auto-return or an active
+  // automation, returned SOL is sent directly to the wallet/automation instead of
+  // accruing on the miner account, so returnedSol may read 0 here.
+  const returnedSolLamports = rewardsSolAfter - rewardsSolBefore;
   const wonOreRaw = rewardsOreAfter - rewardsOreBefore;
 
   return {
@@ -137,7 +141,7 @@ export async function checkpoint(
     deployedSquares,
     deployedSol: Number(totalDeployedLamports) / 1_000_000_000,
     won: deployedToWinningSquare,
-    wonSol: Number(wonSolLamports) / 1_000_000_000,
+    returnedSol: Number(returnedSolLamports) / 1_000_000_000,
     wonOre: Number(wonOreRaw) / 10 ** ORE_DECIMALS,
   };
 }

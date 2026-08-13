@@ -36,7 +36,9 @@ export const OreBoardInfoResponse = Type.Object({
   }),
   totalDeployedSol: Type.Number({ description: 'Total SOL deployed this round' }),
   totalVaultedSol: Type.Number({ description: 'Total SOL vaulted this round' }),
-  totalWinningsSol: Type.Number({ description: 'Total SOL winnings this round' }),
+  totalReturnedSol: Type.Number({
+    description: 'Total SOL returned to miners this round (deployments minus protocol/admin fees)',
+  }),
   motherlodeOre: Type.Number({ description: 'Prize pool in ORE' }),
   totalMiners: Type.Number({ description: 'Total number of unique miners' }),
   expiresAt: Type.Number({ description: 'Round expiration timestamp (unix seconds)' }),
@@ -99,7 +101,9 @@ export const OreCheckpointResponse = Type.Object({
   deployedSquares: Type.Array(Type.Number(), { description: 'Squares you deployed to (1-25)' }),
   deployedSol: Type.Number({ description: 'Total SOL you deployed' }),
   won: Type.Boolean({ description: 'Whether you deployed to the winning square' }),
-  wonSol: Type.Number({ description: 'SOL winnings from this round' }),
+  returnedSol: Type.Number({
+    description: 'SOL returned from this round (your deployment minus protocol/admin fees)',
+  }),
   wonOre: Type.Number({ description: 'ORE winnings from this round' }),
 });
 

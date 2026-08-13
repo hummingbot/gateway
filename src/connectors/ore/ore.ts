@@ -184,7 +184,7 @@ export class Ore {
       squares,
       totalDeployedSol: Number(round.totalDeployed) / 1_000_000_000,
       totalVaultedSol: Number(round.totalVaulted) / 1_000_000_000,
-      totalWinningsSol: Number(round.totalWinnings) / 1_000_000_000,
+      totalReturnedSol: Number(round.totalReturnedSol) / 1_000_000_000,
       motherlodeOre: Number(round.motherlode) / 10 ** ORE_DECIMALS,
       totalMiners: Number(round.totalMiners),
       expiresAt: Number(round.expiresAt),

@@ -10,9 +10,25 @@ out of scope here.
 
 ## Program Overview
 
-ORE v3 is a proof-of-work style mining game where participants deploy SOL to a 5x5 grid (25
+ORE is a proof-of-work style mining game where participants deploy SOL to a 5x5 grid (25
 squares). Each round, a winning square is determined by on-chain entropy; participants who
-deployed to that square split the prize pool and earn ORE tokens.
+deployed to that square earn ORE tokens (either split pro-rata or awarded to a single
+"top miner" by weighted lottery, depending on the round's distribution mask).
+
+### v4 payout model (live since 2026-08-12)
+
+The v4 program update **removed parimutuel SOL payouts**: SOL no longer moves from losing
+miners to winning miners. Instead, each miner's deployed SOL is returned minus fees
+(`program/src/checkpoint.rs`):
+
+- **Winning square**: deployment returned minus a 1% admin fee (~99% back), plus ORE rewards.
+- **Losing squares**: deployment returned minus the 1% admin fee and a 10% protocol fee on
+  the remainder (~89% back), no ORE.
+- If a round has no entropy (no RNG), all deployed SOL is refunded in full.
+
+ORE rewards remain variable (per-square rewards, top-miner lottery, motherlode), but the SOL
+cost of mining is now deterministic. The on-chain `Round.total_winnings` field was renamed to
+`total_returned_sol` (same offset/size) to reflect this.
 
 **Key URLs:**
 - App: https://ore.supply/
@@ -38,7 +54,7 @@ Treasury: 45db2FSR4mcXdSVVZbKbwojU6uYDpMyhpEi7cC8nHaWG   (["treasury"])
 
 ## Framework Notes
 
-ORE v3 is built with **Steel** (https://github.com/regolith-labs/steel), NOT Anchor:
+ORE is built with **Steel** (https://github.com/regolith-labs/steel), NOT Anchor:
 
 1. **Instruction discriminators** are single `u8` values (not 8-byte Anchor discriminators).
 2. **Account discriminators** are 8 bytes with a simple numeric pattern, e.g. `[105, 0, 0, 0, 0, 0, 0, 0]`.
@@ -200,8 +216,8 @@ discriminator precedes the struct).
 @656 motherlode: u64
 @664 rent_payer: Pubkey
 @696 rewards: [u64; 25]       # ORE reward per square
-@896 total_vaulted: u64
-@904 total_winnings: u64
+@896 total_vaulted: u64       # SOL collected by the protocol
+@904 total_returned_sol: u64  # SOL returned to miners (pre-v4: total_winnings)
 @912 total_miners: u64
 @920 top_miner: Pubkey        # winner, SPLIT_ADDRESS if split, system if none
 ```

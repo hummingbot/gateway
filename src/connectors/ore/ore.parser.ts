@@ -54,7 +54,7 @@ export interface RoundAccount {
   rentPayer: PublicKey;
   rewards: bigint[]; // 25 u64 values (ORE reward per square)
   totalVaulted: bigint;
-  totalWinnings: bigint;
+  totalReturnedSol: bigint;
   totalMiners: bigint;
   topMiner: PublicKey;
   // Derived (not stored on-chain):
@@ -220,7 +220,7 @@ export function parseRoundAccount(data: Buffer): RoundAccount {
   offset += 200;
   const totalVaulted = readU64LE(data, offset);
   offset += 8;
-  const totalWinnings = readU64LE(data, offset);
+  const totalReturnedSol = readU64LE(data, offset);
   offset += 8;
   const totalMiners = readU64LE(data, offset);
   offset += 8;
@@ -240,7 +240,7 @@ export function parseRoundAccount(data: Buffer): RoundAccount {
     rentPayer,
     rewards,
     totalVaulted,
-    totalWinnings,
+    totalReturnedSol,
     totalMiners,
     topMiner,
     totalDeployed,
