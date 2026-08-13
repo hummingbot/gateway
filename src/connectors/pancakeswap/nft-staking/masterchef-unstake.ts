@@ -9,7 +9,7 @@ const MasterChefUnstakeSchema = Type.Object({
     description: 'The wallet address to receive the unstaked NFT and any accumulated CAKE rewards',
     examples: ['0x742d35Cc6634C0532925a3b844Bc9e7595f42e0E'],
   }),
-  tokenId: Type.Number({ description: 'Token ID of the NFT to unstake' }),
+  tokenId: Type.String({ description: 'Token ID of the NFT to unstake', examples: ['6350589'] }),
 });
 
 type MasterChefUnstakeRequest = Static<typeof MasterChefUnstakeSchema>;

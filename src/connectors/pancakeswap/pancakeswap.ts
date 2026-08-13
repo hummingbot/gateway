@@ -547,6 +547,21 @@ export class Pancakeswap {
   }
 
   /**
+   * Check whether a pool is registered in MasterChef.
+   *
+   * `v3PoolAddressPid` alone is ambiguous for pid=0 because unknown pools also map to 0.
+   * `getLatestPeriodInfo(pool)` reverts for unknown pools, so use it as the registration check.
+   */
+  public async isMasterChefPoolRegistered(poolAddress: string): Promise<boolean> {
+    try {
+      await this.masterChef.getLatestPeriodInfo(poolAddress);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Get MasterChef reward data for a V3 pool, useful for APR estimation.
    */
   public async getPoolMasterchefData(poolAddress: string): Promise<{
@@ -594,7 +609,7 @@ export class Pancakeswap {
    * Stake an NFT in the MasterChef contract using a specific wallet.
    */
   public async stakeNft(
-    tokenId: number,
+    tokenId: string,
     walletAddress: string,
   ): Promise<{
     txHash: string;
@@ -677,9 +692,10 @@ export class Pancakeswap {
       }
 
       const poolId = await this.getV3PoolIdFromMasterChef(v3Pool);
+      const isPoolRegistered = await this.isMasterChefPoolRegistered(v3Pool);
       logger.info(`Pool ID in MasterChef: ${poolId}`);
 
-      if (poolId === 0) {
+      if (!isPoolRegistered) {
         throw new Error(
           `Pool for position ${tokenId} is not registered in MasterChef. ` +
             `Only positions in MasterChef-registered pools can be staked.`,
@@ -844,7 +860,7 @@ export class Pancakeswap {
    * Unstake an NFT from the MasterChef contract and collect accumulated CAKE rewards.
    */
   public async unstakeNft(
-    tokenId: number,
+    tokenId: string,
     walletAddress: string,
   ): Promise<{
     txHash: string;

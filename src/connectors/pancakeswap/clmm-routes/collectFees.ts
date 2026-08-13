@@ -1,7 +1,7 @@
 import { Contract } from '@ethersproject/contracts';
 import { CurrencyAmount } from '@pancakeswap/sdk';
 import { NonfungiblePositionManager } from '@pancakeswap/v3-sdk';
-import { BigNumber, utils } from 'ethers';
+import { BigNumber } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 import { Address } from 'viem';
 
@@ -47,8 +47,6 @@ const NPM_OWNER_OF_ABI = [
   },
 ] as const;
 
-const MASTER_CHEF_COLLECT_SELECTOR = '0xfc6f7865';
-
 async function getWalletTokenBalance(provider: any, tokenAddress: string, walletAddress: string): Promise<BigNumber> {
   const tokenContract = new Contract(tokenAddress, ERC20_BALANCE_OF_ABI, provider);
   return BigNumber.from((await tokenContract.balanceOf(walletAddress)).toString());
@@ -72,18 +70,25 @@ async function collectFeesFromMasterChef(
   const before0 = await getWalletTokenBalance(ethereum.provider, token0.address, walletAddress);
   const before1 = await getWalletTokenBalance(ethereum.provider, token1.address, walletAddress);
 
-  const encodedArgs = utils.defaultAbiCoder.encode(
-    ['uint256', 'address', 'uint128', 'uint128'],
-    [positionAddress, walletAddress, UINT128_MAX, UINT128_MAX],
+  const masterChefContract = new Contract(
+    masterChefAddress,
+    [
+      {
+        inputs: [
+          { internalType: 'uint256', name: '_tokenId', type: 'uint256' },
+          { internalType: 'address', name: '_to', type: 'address' },
+        ],
+        name: 'harvest',
+        outputs: [{ internalType: 'uint256', name: 'reward', type: 'uint256' }],
+        stateMutability: 'nonpayable',
+        type: 'function',
+      },
+    ],
+    wallet,
   );
-  const data = `${MASTER_CHEF_COLLECT_SELECTOR}${encodedArgs.slice(2)}`;
 
   const txParams = await ethereum.prepareGasOptions(undefined, CLMM_COLLECT_FEES_GAS_LIMIT);
-  const tx = await wallet.sendTransaction({
-    to: masterChefAddress,
-    data,
-    ...txParams,
-  });
+  const tx = await masterChefContract.harvest(positionAddress, walletAddress, txParams);
   const receipt = await ethereum.handleTransactionExecution(tx);
 
   const after0 = await getWalletTokenBalance(ethereum.provider, token0.address, walletAddress);

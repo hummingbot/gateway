@@ -14,9 +14,9 @@ const MasterChefUnstakeAndCloseSchema = Type.Object({
     description: 'The wallet address that will sign the transactions. This must be the owner of the position.',
     examples: ['0x742d35Cc6634C0532925a3b844Bc9e7595f42e0E'],
   }),
-  tokenId: Type.Number({
+  tokenId: Type.String({
     description: 'Token ID of the NFT position to unstake and close',
-    examples: [6450873],
+    examples: ['6450873'],
   }),
 });
 
@@ -68,7 +68,7 @@ export default async function masterchefUnstakeAndCloseRoutes(fastify: FastifyIn
             value: {
               network: 'bsc',
               walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f42e0E',
-              tokenId: 6450873,
+              tokenId: '6450873',
             },
           },
         },

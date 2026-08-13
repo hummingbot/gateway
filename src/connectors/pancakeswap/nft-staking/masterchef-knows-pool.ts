@@ -55,7 +55,8 @@ export default async function masterchefKnowsPoolRoute(fastify: FastifyInstance)
       try {
         const pancakeswap = await Pancakeswap.getInstance(network);
         const poolId = await pancakeswap.getV3PoolIdFromMasterChef(poolAddress);
-        reply.status(200).send({ poolId: poolId.toString(), known: poolId !== 0 });
+        const known = await pancakeswap.isMasterChefPoolRegistered(poolAddress);
+        reply.status(200).send({ poolId: poolId.toString(), known });
       } catch (error) {
         fastify.log.error(`Failed to check pool in MasterChef: ${error.message}`);
         reply.status(500).send({ error: `Failed to check pool in MasterChef: ${error.message}` });
