@@ -454,8 +454,11 @@ export async function quotePosition(
 
   if (baseTokenAmount !== undefined && quoteTokenAmount !== undefined) {
     // Both amounts provided - use fromAmounts to calculate optimal position
-    const baseAmountRaw = JSBI.BigInt(Math.floor(baseTokenAmount * Math.pow(10, baseTokenObj.decimals)).toString());
-    const quoteAmountRaw = JSBI.BigInt(Math.floor(quoteTokenAmount * Math.pow(10, quoteTokenObj.decimals)).toString());
+    // Use parseUnits to avoid scientific notation issues with large numbers
+    const baseAmountRaw = JSBI.BigInt(utils.parseUnits(baseTokenAmount.toString(), baseTokenObj.decimals).toString());
+    const quoteAmountRaw = JSBI.BigInt(
+      utils.parseUnits(quoteTokenAmount.toString(), quoteTokenObj.decimals).toString(),
+    );
 
     // Create position from both amounts
     if (isBaseToken0) {
@@ -488,7 +491,8 @@ export async function quotePosition(
     baseLimited = baseRatio <= quoteRatio;
   } else if (baseTokenAmount !== undefined) {
     // Only base amount provided
-    const baseAmountRaw = JSBI.BigInt(Math.floor(baseTokenAmount * Math.pow(10, baseTokenObj.decimals)).toString());
+    // Use parseUnits to avoid scientific notation issues with large numbers
+    const baseAmountRaw = JSBI.BigInt(utils.parseUnits(baseTokenAmount.toString(), baseTokenObj.decimals).toString());
 
     if (isBaseToken0) {
       position = Position.fromAmount0({
@@ -509,7 +513,10 @@ export async function quotePosition(
     baseLimited = true;
   } else if (quoteTokenAmount !== undefined) {
     // Only quote amount provided
-    const quoteAmountRaw = JSBI.BigInt(Math.floor(quoteTokenAmount * Math.pow(10, quoteTokenObj.decimals)).toString());
+    // Use parseUnits to avoid scientific notation issues with large numbers
+    const quoteAmountRaw = JSBI.BigInt(
+      utils.parseUnits(quoteTokenAmount.toString(), quoteTokenObj.decimals).toString(),
+    );
 
     if (isBaseToken0) {
       position = Position.fromAmount1({
