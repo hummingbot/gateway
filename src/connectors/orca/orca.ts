@@ -1,5 +1,5 @@
 import { fetchPositionsForOwner, setNativeMintWrappingStrategy, type WhirlpoolDeployment } from '@orca-so/whirlpools';
-import { fetchWhirlpool, fetchPosition } from '@orca-so/whirlpools-client';
+import { fetchWhirlpool, fetchPosition, fetchMaybePosition } from '@orca-so/whirlpools-client';
 import { address, createSolanaRpc, mainnet, devnet } from '@solana/kit';
 import { PublicKey } from '@solana/web3.js';
 
@@ -369,12 +369,16 @@ export class Orca {
       throw httpErrors.badRequest(`Invalid position address: ${positionAddress}`);
     }
 
-    try {
-      const positionInfo = await getPositionDetails(this.solanaKitRpc, positionAddress, this.deployment);
-      return positionInfo;
-    } catch (error) {
-      logger.error('Error getting position info:', error);
+    // null means "the position account does not exist" — a definitive on-chain
+    // answer that callers (position-info 404, close reconciliation in
+    // Hummingbot's LP executor) treat as "position closed". Anything else must
+    // throw: swallowing a transient RPC failure here serves "position closed"
+    // for a network blip, and an executor acting on that abandons a live,
+    // funded position while reporting success.
+    const maybePosition = await fetchMaybePosition(this.solanaKitRpc, address(positionAddress));
+    if (!maybePosition.exists) {
       return null;
     }
+    return await getPositionDetails(this.solanaKitRpc, positionAddress, this.deployment);
   }
 }

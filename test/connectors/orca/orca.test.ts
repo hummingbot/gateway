@@ -17,6 +17,7 @@ jest.mock('@orca-so/whirlpools', () => ({
 jest.mock('@orca-so/whirlpools-client', () => ({
   fetchWhirlpool: jest.fn(),
   fetchPosition: jest.fn(),
+  fetchMaybePosition: jest.fn(),
 }));
 jest.mock('@solana/kit', () => ({
   address: jest.fn((value: string) => value),
@@ -27,7 +28,7 @@ jest.mock('@solana/kit', () => ({
 }));
 
 import { fetchPositionsForOwner, setNativeMintWrappingStrategy } from '@orca-so/whirlpools';
-import { fetchPosition, fetchWhirlpool } from '@orca-so/whirlpools-client';
+import { fetchMaybePosition, fetchPosition, fetchWhirlpool } from '@orca-so/whirlpools-client';
 
 import { Solana } from '../../../src/chains/solana/solana';
 import { Orca } from '../../../src/connectors/orca/orca';
@@ -148,12 +149,34 @@ describe('Orca', () => {
 
   it('validates and reads a specific position without a wallet-bound SDK client', async () => {
     const info = { address: Keypair.generate().publicKey.toBase58() };
+    (fetchMaybePosition as jest.Mock).mockResolvedValue({ exists: true });
     (getPositionDetails as jest.Mock).mockResolvedValue(info);
     const orca = await Orca.getInstance('mainnet-beta');
     await expect(orca.getPositionInfo(info.address, wallet.publicKey.toBase58())).resolves.toEqual(info);
     await expect(orca.getPositionInfo('invalid', wallet.publicKey.toBase58())).rejects.toThrow(
       'Invalid position address',
     );
+  });
+
+  it('returns null from getPositionInfo only when the account definitively does not exist', async () => {
+    (fetchMaybePosition as jest.Mock).mockResolvedValue({ exists: false });
+    const orca = await Orca.getInstance('mainnet-beta');
+    const positionAddress = Keypair.generate().publicKey.toBase58();
+    await expect(orca.getPositionInfo(positionAddress, wallet.publicKey.toBase58())).resolves.toBeNull();
+    expect(getPositionDetails).not.toHaveBeenCalled();
+  });
+
+  it('propagates transient errors from getPositionInfo instead of reporting the position closed', async () => {
+    // Callers treat null as "position closed"; a swallowed RPC error here would
+    // let an LP executor abandon a live, funded position while reporting success.
+    (fetchMaybePosition as jest.Mock).mockRejectedValue(new Error('429 Too Many Requests'));
+    const orca = await Orca.getInstance('mainnet-beta');
+    const positionAddress = Keypair.generate().publicKey.toBase58();
+    await expect(orca.getPositionInfo(positionAddress, wallet.publicKey.toBase58())).rejects.toThrow('429');
+
+    (fetchMaybePosition as jest.Mock).mockResolvedValue({ exists: true });
+    (getPositionDetails as jest.Mock).mockRejectedValue(new Error('RPC node behind'));
+    await expect(orca.getPositionInfo(positionAddress, wallet.publicKey.toBase58())).rejects.toThrow('RPC node behind');
   });
 
   it('keeps connector configuration public', async () => {
