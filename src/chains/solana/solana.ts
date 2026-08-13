@@ -43,6 +43,7 @@ import { ChainstackService } from '../../rpc/chainstack-service';
 import { HeliusService } from '../../rpc/helius-service';
 import { createRateLimitAwareSolanaConnection } from '../../rpc/rpc-connection-interceptor';
 import { RPCProvider } from '../../rpc/rpc-provider-base';
+import { TransactionStatusCode } from '../../schemas/chain-schema';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { httpErrors, HttpError } from '../../services/error-handler';
@@ -66,13 +67,6 @@ const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
 interface TokenAccount {
   parsedAccount: any;
   value: any;
-}
-
-export enum TransactionResponseStatusCode {
-  NOT_FOUND = -2,
-  FAILED = -1,
-  UNCONFIRMED = 0,
-  CONFIRMED = 1,
 }
 
 export class Solana {
@@ -1177,16 +1171,15 @@ export class Solana {
     });
   }
 
-  // returns a Solana TransactionResponseStatusCode for a txData.
-  public async getTransactionStatusCode(txData: TransactionResponse | null): Promise<TransactionResponseStatusCode> {
+  // returns a Solana TransactionStatusCode for a txData.
+  public async getTransactionStatusCode(txData: TransactionResponse | null): Promise<TransactionStatusCode> {
     let txStatus;
     if (!txData) {
       // tx not yet confirmed by validator
-      txStatus = TransactionResponseStatusCode.UNCONFIRMED;
+      txStatus = TransactionStatusCode.PENDING;
     } else {
       // If txData exists, check if there's an error in the metadata
-      txStatus =
-        txData.meta?.err == null ? TransactionResponseStatusCode.CONFIRMED : TransactionResponseStatusCode.FAILED;
+      txStatus = txData.meta?.err == null ? TransactionStatusCode.CONFIRMED : TransactionStatusCode.FAILED;
     }
     return txStatus;
   }
@@ -1196,20 +1189,20 @@ export class Solana {
   // confirmation and a tx that was dropped, so pollers cannot tell them apart from
   // txData alone. A signature that stays NOT_FOUND after its blockhash expires
   // (~90s) can never land.
-  public async getSignatureStatus(signature: string): Promise<TransactionResponseStatusCode> {
+  public async getSignatureStatus(signature: string): Promise<TransactionStatusCode> {
     const { value } = await this.connection.getSignatureStatuses([signature], {
       searchTransactionHistory: true,
     });
     const status = value[0];
     if (!status) {
-      return TransactionResponseStatusCode.NOT_FOUND;
+      return TransactionStatusCode.NOT_FOUND;
     }
     if (status.err) {
-      return TransactionResponseStatusCode.FAILED;
+      return TransactionStatusCode.FAILED;
     }
     // Seen by the cluster: 'processed', or confirmed/finalized racing ahead of
     // getTransaction visibility — report unconfirmed and let the next poll resolve it.
-    return TransactionResponseStatusCode.UNCONFIRMED;
+    return TransactionStatusCode.PENDING;
   }
 
   // returns the current block number

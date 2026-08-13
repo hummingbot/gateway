@@ -1,7 +1,12 @@
 import { ethers } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { PollRequestType, PollResponseType, PollResponseSchema } from '../../../schemas/chain-schema';
+import {
+  PollRequestType,
+  PollResponseType,
+  PollResponseSchema,
+  TransactionStatusCode,
+} from '../../../schemas/chain-schema';
 import { getConnector } from '../../../services/connection-manager';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
@@ -36,57 +41,25 @@ export async function pollEthereumTransaction(
     const ethereum = await Ethereum.getInstance(network);
 
     const currentBlock = await ethereum.getCurrentBlockNumber();
-    let txData = await ethereum.getTransaction(signature);
+    const txData = await ethereum.getTransaction(signature);
     let txBlock, txReceipt, txStatus;
     if (!txData) {
-      const MAX_RETRIES = 3;
-      const RETRY_DELAY_MS = 1000;
-      let retryCount = 0;
-
-      while (retryCount < MAX_RETRIES) {
-        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-        txData = await ethereum.getTransaction(signature);
-        if (txData) break;
-        retryCount++;
-      }
-
-      if (!txData) {
-        // tx not found after retries
-        logger.info(`Transaction ${signature} not found in mempool or does not exist after ${MAX_RETRIES} retries.`);
-        txBlock = -1;
-        txReceipt = null;
-        txStatus = -1;
-      }
-    }
-
-    if (txData) {
+      // Unknown to the node: never received or dropped. eth_getTransactionByHash
+      // returns mempool transactions, so not-found is distinct from pending.
+      logger.info(`Transaction ${signature} not found in mempool or on-chain.`);
+      txBlock = -1;
+      txReceipt = null;
+      txStatus = TransactionStatusCode.NOT_FOUND;
+    } else {
       txReceipt = await ethereum.getTransactionReceipt(signature);
       if (txReceipt === null) {
-        // tx is in the mempool
+        // In the mempool, awaiting inclusion
         txBlock = -1;
-        txReceipt = null;
-
-        // In stateless approach, we simply check if the transaction is still pending
-        // We use a basic status code of 0 for pending transactions in mempool
-        txStatus = 0;
-
-        // Check if transaction is likely to be processed based on gas price
-        if (txData.gasPrice) {
-          const currentGasPrice = await ethereum.estimateGasPrice();
-          // Convert current gas price from GWEI to wei for comparison
-          const currentGasPriceWei = currentGasPrice * 1e9;
-          // If the transaction's gas price is significantly lower than current gas price,
-          // it might be stuck (status 3), otherwise it's likely to be processed (status 2)
-          if (txData.gasPrice.toNumber() < currentGasPriceWei * 0.8) {
-            txStatus = 3; // Likely stuck
-          } else {
-            txStatus = 2; // Likely to be processed
-          }
-        }
+        txStatus = TransactionStatusCode.PENDING;
       } else {
-        // tx has been processed
         txBlock = txReceipt.blockNumber;
-        txStatus = typeof txReceipt.status === 'number' ? 1 : -1;
+        // Receipt status 0 = reverted, 1 = success (undefined only pre-Byzantium)
+        txStatus = txReceipt.status === 0 ? TransactionStatusCode.FAILED : TransactionStatusCode.CONFIRMED;
 
         // decode logs
         if (connector) {

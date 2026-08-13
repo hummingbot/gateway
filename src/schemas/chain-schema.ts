@@ -94,6 +94,14 @@ export const PollRequestSchema = Type.Object(
 );
 export type PollRequestType = Static<typeof PollRequestSchema>;
 
+// Values reported in PollResponse.txStatus, shared by all chains.
+export enum TransactionStatusCode {
+  NOT_FOUND = -2, // unknown to the chain: never received or dropped
+  FAILED = -1, // landed with an error / reverted
+  PENDING = 0, // seen by the chain, awaiting confirmation
+  CONFIRMED = 1, // landed without error
+}
+
 export const PollResponseSchema = Type.Object(
   {
     currentBlock: Type.Number(),
@@ -101,7 +109,7 @@ export const PollResponseSchema = Type.Object(
     txBlock: Type.Union([Type.Number(), Type.Null()]),
     txStatus: Type.Number({
       description:
-        'Transaction status: 1 = confirmed, 0 = pending, -1 = failed, -2 = not found (unknown to the chain; on Solana this is terminal once the transaction blockhash expires)',
+        'Transaction status: 1 = confirmed, 0 = pending, -1 = failed, -2 = not found (unknown to the chain: never received or dropped; on Solana this is terminal once the transaction blockhash expires)',
     }),
     fee: Type.Union([Type.Number(), Type.Null()]),
     error: Type.Union([Type.String({ description: 'Error info if failed: "TYPE (code): message"' }), Type.Null()]),

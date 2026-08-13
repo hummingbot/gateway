@@ -1,9 +1,14 @@
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { PollRequestType, PollResponseType, PollResponseSchema } from '../../../schemas/chain-schema';
+import {
+  PollRequestType,
+  PollResponseType,
+  PollResponseSchema,
+  TransactionStatusCode,
+} from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
 import { SolanaPollRequest } from '../schemas';
-import { Solana, TransactionResponseStatusCode } from '../solana';
+import { Solana } from '../solana';
 import { parseSolanaError } from '../solana-error-parser';
 
 export async function pollSolanaTransaction(
@@ -24,7 +29,7 @@ export async function pollSolanaTransaction(
         currentBlock,
         signature,
         txBlock: null,
-        txStatus: TransactionResponseStatusCode.NOT_FOUND,
+        txStatus: TransactionStatusCode.NOT_FOUND,
         fee: null,
         error: 'INVALID_INPUT: Invalid transaction signature format',
         txData: null,
@@ -83,7 +88,7 @@ export async function pollSolanaTransaction(
       currentBlock: await solana.getCurrentBlockNumber(),
       signature,
       txBlock: null,
-      txStatus: TransactionResponseStatusCode.UNCONFIRMED,
+      txStatus: TransactionStatusCode.PENDING,
       fee: null,
       error: `Error polling transaction: ${(err as Error).message}`,
       txData: null,
