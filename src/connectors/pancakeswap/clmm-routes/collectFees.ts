@@ -21,6 +21,7 @@ import {
   getPancakeswapV3NftManagerAddress,
 } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
+import PancakeswapV3MasterchefABI from '../PancakeswapV3Masterchef.abi.json';
 
 import { getPositionInfo } from './positionInfo';
 
@@ -34,21 +35,6 @@ const NPM_OWNER_OF_ABI = [
     name: 'ownerOf',
     outputs: [{ internalType: 'address', name: '', type: 'address' }],
     stateMutability: 'view',
-    type: 'function',
-  },
-] as const;
-
-const MASTER_CHEF_STAKED_COLLECT_ABI = [
-  {
-    inputs: [
-      { internalType: 'uint256', name: '_tokenId', type: 'uint256' },
-      { internalType: 'address', name: '_to', type: 'address' },
-      { internalType: 'uint128', name: '_amount0Max', type: 'uint128' },
-      { internalType: 'uint128', name: '_amount1Max', type: 'uint128' },
-    ],
-    name: 'collect',
-    outputs: [],
-    stateMutability: 'nonpayable',
     type: 'function',
   },
 ] as const;
@@ -91,7 +77,7 @@ async function collectFeesFromMasterChef(
 
   logger.info(`Collecting CLMM trading fees for staked NFT ${positionAddress} directly through MasterChef collect()`);
 
-  const masterChefContract = new Contract(masterChefAddress, MASTER_CHEF_STAKED_COLLECT_ABI, wallet);
+  const masterChefContract = new Contract(masterChefAddress, PancakeswapV3MasterchefABI, wallet);
   const txParams = await ethereum.prepareGasOptions(undefined, CLMM_COLLECT_FEES_GAS_LIMIT);
   const tx = await masterChefContract.collect(positionAddress, walletAddress, UINT128_MAX, UINT128_MAX, txParams);
   const receipt = await ethereum.handleTransactionExecution(tx);
