@@ -1,13 +1,23 @@
+import { Contract as EthersProjectContract } from '@ethersproject/contracts';
+import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import JSBI from 'jsbi';
 
+import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { GetPoolInfoRequestType, PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
+import { computeUniswapBinDistribution } from '../../uniswap/uniswap.utils';
 import { Pancakeswap } from '../pancakeswap';
 import { formatTokenAmount, getPancakeswapPoolInfo } from '../pancakeswap.utils';
 import { PancakeswapClmmGetPoolInfoRequest } from '../schemas';
 
-export async function getPoolInfo(fastify: FastifyInstance, network: string, poolAddress: string): Promise<PoolInfo> {
+export async function getPoolInfo(
+  fastify: FastifyInstance,
+  network: string,
+  poolAddress: string,
+  binCount: number = 0,
+): Promise<PoolInfo> {
   const pancakeswap = await Pancakeswap.getInstance(network);
 
   if (!poolAddress) {
@@ -52,7 +62,7 @@ export async function getPoolInfo(fastify: FastifyInstance, network: string, poo
   const tickSpacing = pool.tickSpacing;
   const activeBinId = pool.tickCurrent;
 
-  return {
+  const result: PoolInfo = {
     address: poolAddress,
     baseTokenAddress: baseTokenObj.address,
     quoteTokenAddress: quoteTokenObj.address,
@@ -63,6 +73,24 @@ export async function getPoolInfo(fastify: FastifyInstance, network: string, poo
     quoteTokenAmount: quoteTokenAmount,
     activeBinId: activeBinId,
   };
+
+  if (binCount > 0) {
+    const ethereum = await Ethereum.getInstance(network);
+    const poolContract = new EthersProjectContract(poolAddress, IUniswapV3PoolABI, ethereum.provider);
+    result.bins = await computeUniswapBinDistribution({
+      poolContract,
+      tickSpacing,
+      currentTick: activeBinId,
+      currentSqrtPriceX96: JSBI.BigInt(pool.sqrtRatioX96.toString()),
+      activeLiquidity: JSBI.BigInt(pool.liquidity.toString()),
+      decimals0: token0.decimals,
+      decimals1: token1.decimals,
+      isBaseToken0,
+      binCount,
+    });
+  }
+
+  return result;
 }
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
@@ -83,9 +111,8 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request): Promise<PoolInfo> => {
       try {
-        const { poolAddress } = request.query;
-        const network = request.query.network;
-        return await getPoolInfo(fastify, network, poolAddress);
+        const { poolAddress, binCount = 0, network } = request.query;
+        return await getPoolInfo(fastify, network, poolAddress, binCount);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
