@@ -86,6 +86,10 @@ describe('Pancakeswap Routes Structure', () => {
         '/connectors/pancakeswap/nftStaking/masterchef-unstake',
         '/connectors/pancakeswap/nftStaking/masterchef-unstake-and-close',
         '/connectors/pancakeswap/nftStaking/masterchef-knows-pool',
+        '/connectors/pancakeswap/nft-staking/masterchef-stake',
+        '/connectors/pancakeswap/nft-staking/masterchef-unstake',
+        '/connectors/pancakeswap/nft-staking/masterchef-unstake-and-close',
+        '/connectors/pancakeswap/nft-staking/masterchef-knows-pool',
       ];
 
       for (const endpoint of endpointChecks) {
