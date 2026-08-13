@@ -1,6 +1,10 @@
 # LP Close Retry Architecture
 
-**Origin:** [gateway#678](https://github.com/hummingbot/gateway/issues/678) — an Orca LP close failed with Whirlpool error `6018` (`TokenMinSubceeded`, misreported as `MATH_OVERFLOW`), the LP executor went terminally `FAILED` with the position still open on-chain, and subsequent stop requests returned 404. Fixing it properly required deciding **where retries live** across Gateway, the Hummingbot connector, the LP executor, the controller, and hummingbot-api — and auditing every layer against that model. This document describes the issues found and the architecture that now stands, spanning four repositories (gateway, hummingbot, hummingbot-api, condor).
+**Origin:** [gateway#678](https://github.com/hummingbot/gateway/issues/678) — an Orca LP close failed with Whirlpool error `6018` (`TokenMinSubceeded`, misreported as `MATH_OVERFLOW`), the LP executor went terminally `FAILED` with the position still open on-chain, and subsequent stop requests returned 404. Fixing it properly required deciding **where retries live** across Gateway, the Hummingbot connector, the LP executor, the controller, and hummingbot-api — and auditing every layer against that model.
+
+Auditing those layers turned up defects on the paths the LP flow depends on but that #678 never named: the transaction-status contract the poller reads, and the CLMM pool-info contract the UI and agents read. Both are documented here because they share the same root cause as #678 — a caller could not tell a definitive answer from a transient one, or could not ask for what it needed at all.
+
+This document describes the issues found and the architecture that now stands, spanning five repositories: [gateway#679](https://github.com/hummingbot/gateway/pull/679), [hummingbot#8424](https://github.com/hummingbot/hummingbot/pull/8424), [hummingbot-api#217](https://github.com/hummingbot/hummingbot-api/pull/217), [hummingbot-api-client#25](https://github.com/hummingbot/hummingbot-api-client/pull/25), [condor#204](https://github.com/hummingbot/condor/pull/204).
 
 ---
 
@@ -73,6 +77,16 @@ The #678 investigation and the adversarial review of the fix surfaced the follow
 14. **Stopping a terminal executor returned 404.** The API's completion handler pops the executor from memory within one tick, so every stop against a terminal executor hit the "unknown id" branch — the #678 dead-end. Stop is now DB-aware: any DB-known, not-in-memory executor returns `already_terminated` with its final `close_type`, `position_address`, and `hold_reason`; 404 is reserved for ids the database has never seen.
 15. **Failures were invisible to agents.** The condor tick prompt listed only `RUNNING` executors, so a terminal executor with a live position *vanished from view*. The provider now surfaces orphaned executors with a warning, and `manage_executors` gained `orphaned` and `resolve_orphan` actions.
 16. **Orphans had no durable record or resolution path.** The persisted final state now carries the orphan shape; `GET /executors/positions/orphaned` lists candidates (involuntary holds, legacy `FAILED`-with-position, and `SYSTEM_CLEANUP` LP executors from an API restart — the latter flagged `needs_onchain_reconciliation` since no final state was persisted); `POST /executors/{id}/resolve-orphan` marks a recovered position so it stops surfacing.
+
+### CLMM pool-info
+
+The same audit covered the read path that agents and the dashboard use to see a pool before opening a position.
+
+17. **The bin distribution was unreachable through the unified route.** `GET /trading/clmm/pool-info` — the route hummingbot-api and condor read through — had no `binCount` in its querystring schema and called every connector as `(fastify, network, poolAddress)`, dropping the parameter orca, raydium and uniswap already implemented. Meteora returns its bins unconditionally, so the gap looked like "only Meteora has bins" rather than "nobody can ask". The route now accepts `binCount` and forwards it, and the parameter is threaded through hummingbot-api, the API client (1.5.8) and condor.
+18. **PancakeSwap had no bin support at all.** Added, reusing the V3 tick walk. The two SDKs disagree on numeric type — `@uniswap/v3-sdk` is JSBI-based, `@pancakeswap/v3-sdk` uses native `bigint` — so the walk moved to a shared `clmm-v3-utils` helper that works in `bigint`, with each connector adapting its own SDK rather than one importing the other's math.
+19. **PancakeSwap reported virtual liquidity as token amounts.** Both `baseTokenAmount` and `quoteTokenAmount` came from `pool.liquidity` — V3's active liquidity in sqrt-price space, not a token quantity — scaled by each token's decimals, so the same meaningless figure was reported for both sides. Now ERC20 `balanceOf` on the pool contract, the fix Uniswap already carried.
+20. **Raydium bypassed Gateway entirely.** hummingbot-api's pool-info special-cased Raydium: it skipped Gateway, called `api-v3.raydium.io` directly, and reshaped that response to imitate Gateway's. The transform hardcoded `active_bin_id` to `None`, `bin_step` to `1` and `bins` to `[]`, so Raydium silently returned degraded data and could not answer `binCount` at all. It now takes the same path as every other CLMM connector.
+21. **Two default RPC endpoints were dead.** `eth.llamarpc.com` and `binance.llamarpc.com` answer nothing; Gateway logged "Unable to fetch block number" at startup and every read on those chains failed — which is how a PancakeSwap pool that plainly exists reported "Pool not found". Defaults are now `eth-mainnet.g.alchemy.com/public` and `bsc-dataseed.bnbchain.org`.
 
 ---
 
@@ -188,6 +202,32 @@ Both chains' `/poll` routes share one `TransactionStatusCode` contract; the conn
 | `-2` NOT_FOUND | Unknown to the chain — never received or dropped (Solana: terminal once the blockhash expires; EVM: the mempool is visible via `getTransaction`, so not-found already means dropped) | Transient while the order is younger than 120 s (blockhash validity margin); afterwards each miss counts toward the tracker's lost-order limit → order fails after repeated consecutive misses |
 
 Transient poll errors (RPC failures) report `PENDING`, never `NOT_FOUND` — an unknown outcome is a reason to poll again, not to give up. Note the LP flow's writes do not depend on this poller to progress: the connector's operation calls only return a signature after in-request confirmation. The bound matters for flows that record a hash at submission time, and for the RPC cost of stuck orders.
+
+### 3.6 CLMM pool-info and bins
+
+One route answers for every CLMM connector, and every caller reaches it through the same chain:
+
+```mermaid
+flowchart LR
+    A["condor<br/><i>manage_gateway_clmm(bin_count=N)</i>"] --> B["hummingbot-api-client 1.5.8<br/><i>get_pool_info(bin_count=N)</i>"]
+    B --> C["hummingbot-api<br/><i>GET /gateway/clmm/pool-info?bin_count=N</i>"]
+    C --> D["gateway<br/><i>GET /trading/clmm/pool-info?binCount=N</i>"]
+    D --> E["connector pool-info<br/><i>bins computed only when asked</i>"]
+```
+
+`binCount` is a **request for work, not a formatting flag** — the bins are read from chain state, so the default of `0` exists to keep the common call cheap:
+
+| Connector | Bins | Cost of `binCount = N` |
+|---|---|---|
+| Meteora | Always returned; ignores `binCount` | Already paid — the DLMM pool exposes its bins directly |
+| Orca | On request | Roughly flat: one position fetch, then local math |
+| Raydium | On request | Roughly flat: tick-array fetch, then local math |
+| Uniswap | On request | Linear: `N + 1` parallel `pool.ticks()` eth_calls |
+| PancakeSwap | On request | Linear: `N + 1` parallel `pool.ticks()` eth_calls |
+
+Gateway caps `binCount` at 401. Because the EVM cost scales with `N` while the Solana cost does not, callers that render a depth column should treat the window size as a parameter rather than a constant.
+
+The output shape mirrors Meteora's `bins[]` for every connector — `{ binId, price, baseTokenAmount, quoteTokenAmount }` — and is centred on the active tick: bins below the active price hold only quote, bins above hold only base, and the one bin straddling it holds both.
 
 ---
 
