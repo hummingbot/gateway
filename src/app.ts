@@ -354,7 +354,6 @@ const configureGatewayServer = () => {
     app.register(pancakeswapRoutes.amm, { prefix: '/connectors/pancakeswap/amm' });
     app.register(pancakeswapRoutes.clmm, { prefix: '/connectors/pancakeswap/clmm' });
     app.register(pancakeswapRoutes.nftStaking, { prefix: '/connectors/pancakeswap/nftStaking' });
-    app.register(pancakeswapRoutes.nftStaking, { prefix: '/connectors/pancakeswap/nft-staking' });
 
     // PancakeSwap Solana routes
     app.register(pancakeswapSolRoutes, { prefix: '/connectors/pancakeswap-sol' });
