@@ -3,7 +3,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 import { PollRequestType, PollResponseType, PollResponseSchema } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
 import { SolanaPollRequest } from '../schemas';
-import { Solana } from '../solana';
+import { Solana, TransactionResponseStatusCode } from '../solana';
 import { parseSolanaError } from '../solana-error-parser';
 
 export async function pollSolanaTransaction(
@@ -16,13 +16,15 @@ export async function pollSolanaTransaction(
   try {
     const currentBlock = await solana.getCurrentBlockNumber();
 
-    // Validate transaction signature format
+    // Validate transaction signature format. A malformed signature can never
+    // resolve, so report NOT_FOUND rather than a pending status a poller would
+    // wait on forever.
     if (!signature || typeof signature !== 'string' || !signature.match(/^[A-Za-z0-9]{43,88}$/)) {
       return {
         currentBlock,
         signature,
         txBlock: null,
-        txStatus: 0,
+        txStatus: TransactionResponseStatusCode.NOT_FOUND,
         fee: null,
         error: 'INVALID_INPUT: Invalid transaction signature format',
         txData: null,
@@ -32,11 +34,16 @@ export async function pollSolanaTransaction(
     const txData = await solana.getTransaction(signature);
 
     if (!txData) {
+      // Null txData means either "seen but awaiting confirmation" or "unknown to
+      // the cluster" (dropped, or never received). Only the signature-status
+      // cache separates them: UNCONFIRMED is worth polling again, NOT_FOUND is
+      // terminal once the transaction's blockhash has expired.
+      const txStatus = await solana.getSignatureStatus(signature);
       return {
         currentBlock,
         signature,
         txBlock: null,
-        txStatus: 0,
+        txStatus,
         fee: null,
         error: null,
         txData: null,
@@ -69,14 +76,16 @@ export async function pollSolanaTransaction(
       txData,
     };
   } catch (err) {
+    // Transient failure (RPC error, etc.) — the transaction's fate is unknown, so
+    // report pending rather than NOT_FOUND: the caller should poll again, not give up.
     logger.error(`Error polling transaction ${signature}: ${(err as Error).message}`);
     return {
       currentBlock: await solana.getCurrentBlockNumber(),
       signature,
       txBlock: null,
-      txStatus: 0,
+      txStatus: TransactionResponseStatusCode.UNCONFIRMED,
       fee: null,
-      error: 'Transaction not found or invalid',
+      error: `Error polling transaction: ${(err as Error).message}`,
       txData: null,
     };
   }

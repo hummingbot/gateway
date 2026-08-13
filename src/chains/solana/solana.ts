@@ -68,7 +68,8 @@ interface TokenAccount {
   value: any;
 }
 
-enum TransactionResponseStatusCode {
+export enum TransactionResponseStatusCode {
+  NOT_FOUND = -2,
   FAILED = -1,
   UNCONFIRMED = 0,
   CONFIRMED = 1,
@@ -1188,6 +1189,27 @@ export class Solana {
         txData.meta?.err == null ? TransactionResponseStatusCode.CONFIRMED : TransactionResponseStatusCode.FAILED;
     }
     return txStatus;
+  }
+
+  // Distinguishes a signature the cluster has seen from one it does not know at all.
+  // getTransaction (commitment 'confirmed') returns null for both a tx awaiting
+  // confirmation and a tx that was dropped, so pollers cannot tell them apart from
+  // txData alone. A signature that stays NOT_FOUND after its blockhash expires
+  // (~90s) can never land.
+  public async getSignatureStatus(signature: string): Promise<TransactionResponseStatusCode> {
+    const { value } = await this.connection.getSignatureStatuses([signature], {
+      searchTransactionHistory: true,
+    });
+    const status = value[0];
+    if (!status) {
+      return TransactionResponseStatusCode.NOT_FOUND;
+    }
+    if (status.err) {
+      return TransactionResponseStatusCode.FAILED;
+    }
+    // Seen by the cluster: 'processed', or confirmed/finalized racing ahead of
+    // getTransaction visibility — report unconfirmed and let the next poll resolve it.
+    return TransactionResponseStatusCode.UNCONFIRMED;
   }
 
   // returns the current block number

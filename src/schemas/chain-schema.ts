@@ -99,7 +99,10 @@ export const PollResponseSchema = Type.Object(
     currentBlock: Type.Number(),
     signature: Type.String(),
     txBlock: Type.Union([Type.Number(), Type.Null()]),
-    txStatus: Type.Number({ description: 'Transaction status: 1 = confirmed, 0 = pending, -1 = failed' }),
+    txStatus: Type.Number({
+      description:
+        'Transaction status: 1 = confirmed, 0 = pending, -1 = failed, -2 = not found (unknown to the chain; on Solana this is terminal once the transaction blockhash expires)',
+    }),
     fee: Type.Union([Type.Number(), Type.Null()]),
     error: Type.Union([Type.String({ description: 'Error info if failed: "TYPE (code): message"' }), Type.Null()]),
     txData: Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()]),
