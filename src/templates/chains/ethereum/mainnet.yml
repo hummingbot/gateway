@@ -1,5 +1,5 @@
 chainID: 1
-nodeURL: https://eth.llamarpc.com
+nodeURL: https://eth-mainnet.g.alchemy.com/public
 nativeCurrencySymbol: ETH
 geckoId: eth
 transactionExecutionTimeoutMs: 10000 # Timeout for waiting for transaction execution (in milliseconds)
