@@ -34,6 +34,17 @@ const UnifiedPoolInfoRequestSchema = Type.Object({
     description: 'Pool contract address',
     examples: [CLMM_POOL_ADDRESS_EXAMPLE],
   }),
+  binCount: Type.Optional(
+    Type.Integer({
+      description:
+        'If > 0, include a `bins` array of per-tick liquidity around the active tick. Supported by ' +
+        'orca, raydium, uniswap and pancakeswap; Meteora always returns its bins and ignores this. ' +
+        'Default 0 = skip the bin fetch.',
+      default: 0,
+      minimum: 0,
+      maximum: 401,
+    }),
+  ),
 });
 
 type UnifiedPoolInfoRequest = Static<typeof UnifiedPoolInfoRequestSchema>;
@@ -64,18 +75,20 @@ async function getSolanaPoolInfo(
   connector: string,
   network: string,
   poolAddress: string,
+  binCount: number,
 ): Promise<PoolInfo> {
   logger.info(`[CLMM] Getting pool info from ${connector} on solana/${network}`);
 
   switch (connector) {
     case 'raydium':
-      return await raydiumGetPoolInfo(fastify, network, poolAddress);
+      return await raydiumGetPoolInfo(fastify, network, poolAddress, binCount);
     case 'meteora':
+      // Meteora always returns its bins; it has no binCount parameter.
       return await meteoraGetPoolInfo(fastify, network, poolAddress);
     case 'pancakeswap-sol':
       return await pancakeswapSolGetPoolInfo(fastify, network, poolAddress);
     case 'orca':
-      return await orcaGetPoolInfo(fastify, network, poolAddress);
+      return await orcaGetPoolInfo(fastify, network, poolAddress, binCount);
     default:
       throw fastify.httpErrors.badRequest(`Unsupported Solana CLMM connector: ${connector}`);
   }
@@ -89,14 +102,15 @@ async function getEthereumPoolInfo(
   connector: string,
   network: string,
   poolAddress: string,
+  binCount: number,
 ): Promise<PoolInfo> {
   logger.info(`[CLMM] Getting pool info from ${connector} on ethereum/${network}`);
 
   switch (connector) {
     case 'uniswap':
-      return await uniswapGetPoolInfo(fastify, network, poolAddress);
+      return await uniswapGetPoolInfo(fastify, network, poolAddress, binCount);
     case 'pancakeswap':
-      return await pancakeswapGetPoolInfo(fastify, network, poolAddress);
+      return await pancakeswapGetPoolInfo(fastify, network, poolAddress, binCount);
     default:
       throw fastify.httpErrors.badRequest(`Unsupported Ethereum CLMM connector: ${connector}`);
   }
@@ -110,6 +124,7 @@ export async function getUnifiedPoolInfo(
   connector: string,
   chainNetwork: string,
   poolAddress: string,
+  binCount: number = 0,
 ): Promise<PoolInfo> {
   const { chain, network } = parseChainNetwork(chainNetwork);
 
@@ -117,10 +132,10 @@ export async function getUnifiedPoolInfo(
 
   switch (chain.toLowerCase()) {
     case 'ethereum':
-      return getEthereumPoolInfo(fastify, connector, network, poolAddress);
+      return getEthereumPoolInfo(fastify, connector, network, poolAddress, binCount);
 
     case 'solana':
-      return getSolanaPoolInfo(fastify, connector, network, poolAddress);
+      return getSolanaPoolInfo(fastify, connector, network, poolAddress, binCount);
 
     default:
       throw fastify.httpErrors.badRequest(`Unsupported chain: ${chain}`);
@@ -148,10 +163,10 @@ export const poolsRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request, reply) => {
-      const { connector, chainNetwork, poolAddress } = request.query;
+      const { connector, chainNetwork, poolAddress, binCount = 0 } = request.query;
 
       try {
-        const result = await getUnifiedPoolInfo(fastify, connector, chainNetwork, poolAddress);
+        const result = await getUnifiedPoolInfo(fastify, connector, chainNetwork, poolAddress, binCount);
         return reply.code(200).send(result);
       } catch (error: any) {
         logger.error(`[UnifiedCLMM] Pool info error: ${error.message}`);

@@ -1,13 +1,23 @@
+import { Contract as EthersProjectContract } from '@ethersproject/contracts';
+import { abi as IPancakeV3PoolABI } from '@pancakeswap/v3-core/artifacts/contracts/interfaces/IPancakeV3Pool.sol/IPancakeV3Pool.json';
+import { SqrtPriceMath, TickMath } from '@pancakeswap/v3-sdk';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { GetPoolInfoRequestType, PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
+import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
+import { computeV3BinDistribution } from '../../clmm-v3-utils';
 import { Pancakeswap } from '../pancakeswap';
 import { formatTokenAmount, getPancakeswapPoolInfo } from '../pancakeswap.utils';
-import { PancakeswapClmmGetPoolInfoRequest } from '../schemas';
+import { PancakeswapClmmGetPoolInfoRequest, PancakeswapClmmGetPoolInfoRequestType } from '../schemas';
 
-export async function getPoolInfo(fastify: FastifyInstance, network: string, poolAddress: string): Promise<PoolInfo> {
+export async function getPoolInfo(
+  fastify: FastifyInstance,
+  network: string,
+  poolAddress: string,
+  binCount: number = 0,
+): Promise<PoolInfo> {
   const pancakeswap = await Pancakeswap.getInstance(network);
 
   if (!poolAddress) {
@@ -41,9 +51,18 @@ export async function getPoolInfo(fastify: FastifyInstance, network: string, poo
 
   const price = isBaseToken0 ? parseFloat(price0) : parseFloat(price1);
 
-  const liquidity = pool.liquidity;
-  const token0Amount = formatTokenAmount(liquidity.toString(), token0.decimals);
-  const token1Amount = formatTokenAmount(liquidity.toString(), token1.decimals);
+  // Read the pool contract's actual ERC20 balances. V3's `pool.liquidity` is the
+  // active virtual liquidity in sqrt-price space, not a token amount — using it
+  // reported the same figure for both sides, scaled by each token's decimals.
+  const ethereum = await Ethereum.getInstance(network);
+  const token0Contract = ethereum.getContract(token0.address, ethereum.provider);
+  const token1Contract = ethereum.getContract(token1.address, ethereum.provider);
+  const [token0Balance, token1Balance] = await Promise.all([
+    ethereum.getERC20BalanceByAddress(token0Contract, poolAddress, token0.decimals),
+    ethereum.getERC20BalanceByAddress(token1Contract, poolAddress, token1.decimals),
+  ]);
+  const token0Amount = formatTokenAmount(token0Balance.value.toString(), token0.decimals);
+  const token1Amount = formatTokenAmount(token1Balance.value.toString(), token1.decimals);
 
   const baseTokenAmount = isBaseToken0 ? token0Amount : token1Amount;
   const quoteTokenAmount = isBaseToken0 ? token1Amount : token0Amount;
@@ -52,7 +71,7 @@ export async function getPoolInfo(fastify: FastifyInstance, network: string, poo
   const tickSpacing = pool.tickSpacing;
   const activeBinId = pool.tickCurrent;
 
-  return {
+  const result: PoolInfo = {
     address: poolAddress,
     baseTokenAddress: baseTokenObj.address,
     quoteTokenAddress: quoteTokenObj.address,
@@ -63,11 +82,33 @@ export async function getPoolInfo(fastify: FastifyInstance, network: string, poo
     quoteTokenAmount: quoteTokenAmount,
     activeBinId: activeBinId,
   };
+
+  // Optionally include the per-bin distribution around the current tick.
+  // Fires N parallel pool.ticks(tick) reads — only when binCount > 0 so the
+  // default pool-info latency is unaffected.
+  if (binCount > 0) {
+    const poolContract = new EthersProjectContract(poolAddress, IPancakeV3PoolABI, ethereum.provider);
+    result.bins = await computeV3BinDistribution({
+      poolContract,
+      tickSpacing,
+      currentTick: activeBinId,
+      currentSqrtPriceX96: BigInt(pool.sqrtRatioX96.toString()),
+      activeLiquidity: BigInt(pool.liquidity.toString()),
+      decimals0: token0.decimals,
+      decimals1: token1.decimals,
+      isBaseToken0,
+      binCount,
+      tickMath: TickMath,
+      sqrtPriceMath: SqrtPriceMath,
+    });
+  }
+
+  return result;
 }
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
-    Querystring: GetPoolInfoRequestType;
+    Querystring: PancakeswapClmmGetPoolInfoRequestType;
     Reply: Record<string, any>;
   }>(
     '/pool-info',
@@ -83,9 +124,9 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request): Promise<PoolInfo> => {
       try {
-        const { poolAddress } = request.query;
+        const { poolAddress, binCount = 0 } = request.query;
         const network = request.query.network;
-        return await getPoolInfo(fastify, network, poolAddress);
+        return await getPoolInfo(fastify, network, poolAddress, binCount);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {
