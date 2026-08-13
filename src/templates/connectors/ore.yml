@@ -1,0 +1,12 @@
+# ORE Mining Game Connector Configuration (Experimental)
+# This connector provides access to the ORE v3 mining game on Solana
+
+# Program IDs are hardcoded in the connector
+# ORE Program: oreV3EG1i9BEgiAJ8b177Z2S2rMarzak4NMv1kULvWv
+# ORE Token Mint: oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp
+
+# Default transaction confirmation commitment level
+commitment: confirmed
+
+# Default priority fee in microlamports (optional, 0 = use network default)
+priorityFee: 0

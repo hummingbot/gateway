@@ -22,6 +22,7 @@ import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
 import { meteoraRoutes } from './connectors/meteora/meteora.routes';
 import { okxRoutes } from './connectors/okx/okx.routes';
 import { orcaRoutes } from './connectors/orca/orca.routes';
+import { oreConnectorRoutes } from './connectors/ore/ore.routes';
 import { pancakeswapRoutes } from './connectors/pancakeswap/pancakeswap.routes';
 import { pancakeswapSolRoutes } from './connectors/pancakeswap-sol/pancakeswap-sol.routes';
 import { raydiumRoutes } from './connectors/raydium/raydium.routes';
@@ -122,6 +123,10 @@ const swaggerOptions = {
       {
         name: '/connector/pancakeswap',
         description: 'PancakeSwap EVM connector endpoints',
+      },
+      {
+        name: '/connector/ore',
+        description: 'ORE mining game connector endpoints (experimental)',
       },
       {
         name: '/connector/dflow',
@@ -356,6 +361,9 @@ const configureGatewayServer = () => {
 
     // PancakeSwap Solana routes
     app.register(pancakeswapSolRoutes, { prefix: '/connectors/pancakeswap-sol' });
+
+    // ORE mining game routes (experimental)
+    app.register(oreConnectorRoutes.ore, { prefix: '/connectors/ore/ore' });
   };
 
   // Register routes on main server
