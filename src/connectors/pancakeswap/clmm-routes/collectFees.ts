@@ -27,15 +27,6 @@ import { getPositionInfo } from './positionInfo';
 // Collect on some fee-on-transfer tokens can exceed 200k due transfer hooks.
 const CLMM_COLLECT_FEES_GAS_LIMIT = 500000;
 const UINT128_MAX = BigNumber.from('0xffffffffffffffffffffffffffffffff');
-const ERC20_BALANCE_OF_ABI = [
-  {
-    inputs: [{ internalType: 'address', name: 'account', type: 'address' }],
-    name: 'balanceOf',
-    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-] as const;
 
 const NPM_OWNER_OF_ABI = [
   {
@@ -47,72 +38,47 @@ const NPM_OWNER_OF_ABI = [
   },
 ] as const;
 
-async function getWalletTokenBalance(provider: any, tokenAddress: string, walletAddress: string): Promise<BigNumber> {
-  const tokenContract = new Contract(tokenAddress, ERC20_BALANCE_OF_ABI, provider);
-  return BigNumber.from((await tokenContract.balanceOf(walletAddress)).toString());
-}
-
 async function collectFeesFromMasterChef(
   network: string,
   walletAddress: string,
   positionAddress: string,
-  token0: any,
-  token1: any,
-  isBaseToken0: boolean,
-  ethereum: Ethereum,
 ): Promise<CollectFeesResponseType> {
-  const wallet = await ethereum.getWallet(walletAddress);
-  if (!wallet) {
-    throw httpErrors.badRequest('Wallet not found');
+  const pancakeswap = await Pancakeswap.getInstance(network);
+  let collectResult: CollectFeesResponseType | null = null;
+  let collectError: any = null;
+  let restakeError: any = null;
+
+  logger.info(`Collecting CLMM trading fees for staked NFT ${positionAddress}: unstake -> collect -> restake`);
+  await pancakeswap.unstakeNft(positionAddress, walletAddress);
+
+  try {
+    collectResult = await collectFees(network, walletAddress, positionAddress);
+  } catch (error: any) {
+    collectError = error;
+  } finally {
+    try {
+      await pancakeswap.stakeNft(positionAddress, walletAddress);
+    } catch (error: any) {
+      restakeError = error;
+      logger.error(`Failed to restake NFT ${positionAddress} after fee collection: ${error.message}`, error);
+    }
   }
 
-  const masterChefAddress = getPancakeswapV3MasterchefAddress(network);
-  const before0 = await getWalletTokenBalance(ethereum.provider, token0.address, walletAddress);
-  const before1 = await getWalletTokenBalance(ethereum.provider, token1.address, walletAddress);
+  if (restakeError && collectResult) {
+    throw httpErrors.internalServerError(
+      `Collected trading fees for staked NFT ${positionAddress}, but failed to restake it: ${restakeError.message}`,
+    );
+  }
 
-  const masterChefContract = new Contract(
-    masterChefAddress,
-    [
-      {
-        inputs: [
-          { internalType: 'uint256', name: '_tokenId', type: 'uint256' },
-          { internalType: 'address', name: '_to', type: 'address' },
-        ],
-        name: 'harvest',
-        outputs: [{ internalType: 'uint256', name: 'reward', type: 'uint256' }],
-        stateMutability: 'nonpayable',
-        type: 'function',
-      },
-    ],
-    wallet,
-  );
+  if (collectError) {
+    throw collectError;
+  }
 
-  const txParams = await ethereum.prepareGasOptions(undefined, CLMM_COLLECT_FEES_GAS_LIMIT);
-  const tx = await masterChefContract.harvest(positionAddress, walletAddress, txParams);
-  const receipt = await ethereum.handleTransactionExecution(tx);
+  if (!collectResult) {
+    throw httpErrors.internalServerError(`Failed to collect trading fees for staked NFT ${positionAddress}`);
+  }
 
-  const after0 = await getWalletTokenBalance(ethereum.provider, token0.address, walletAddress);
-  const after1 = await getWalletTokenBalance(ethereum.provider, token1.address, walletAddress);
-
-  const rawCollected0 = after0.gte(before0) ? after0.sub(before0) : BigNumber.from(0);
-  const rawCollected1 = after1.gte(before1) ? after1.sub(before1) : BigNumber.from(0);
-
-  const collectedToken0FeeAmount = formatTokenAmount(rawCollected0.toString(), token0.decimals);
-  const collectedToken1FeeAmount = formatTokenAmount(rawCollected1.toString(), token1.decimals);
-  const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
-
-  const baseFeeAmountCollected = isBaseToken0 ? collectedToken0FeeAmount : collectedToken1FeeAmount;
-  const quoteFeeAmountCollected = isBaseToken0 ? collectedToken1FeeAmount : collectedToken0FeeAmount;
-
-  return {
-    signature: receipt.transactionHash,
-    status: receipt.status,
-    data: {
-      fee: gasFee,
-      baseFeeAmountCollected,
-      quoteFeeAmountCollected,
-    },
-  };
+  return collectResult;
 }
 
 export async function collectFees(
@@ -153,16 +119,7 @@ export async function collectFees(
     (token1.symbol !== 'WETH' && token0.address.toLowerCase() < token1.address.toLowerCase());
 
   if (isStakedInMasterChef) {
-    logger.info(`Collecting fees for staked NFT ${positionAddress} via MasterChef`);
-    return await collectFeesFromMasterChef(
-      network,
-      walletAddress,
-      positionAddress,
-      token0,
-      token1,
-      isBaseToken0,
-      ethereum,
-    );
+    return await collectFeesFromMasterChef(network, walletAddress, positionAddress);
   }
 
   const livePositionInfo = await getPositionInfo({ httpErrors } as any, network, positionAddress);
