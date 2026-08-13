@@ -11,8 +11,8 @@
 | Layer | Question it answers | What it owns |
 |---|---|---|
 | **Gateway** | "Did *this one attempt* land?" | Reads and transport only: RPC 429s, confirmation polling until blockhash expiry, typed error classification, pre-broadcast simulation rejection. Never re-submits a write. |
-| **Connector** (`gateway_base.py`, `gateway.py`) | "Should I ask Gateway for *another attempt*?" | `_execute_with_retry`: re-POSTs the operation (Gateway rebuilds fresh each time). Timeouts retry for every operation; additional error codes are an explicit, per-operation opt-in. |
-| **LP executor** (`lp_executor.py`) | "What does this failure mean for *the position lifecycle*?" | State-machine re-entry with a bounded budget and exponential backoff; reconciliation of already-succeeded outcomes; the terminal close type. |
+| **Connector** (`gateway_base.py`, `gateway.py`) | "Should I ask Gateway for *another attempt*?" | `_execute_with_retry`: transport timeouts only, the same for every operation. What an operation error means is the caller's decision. |
+| **LP executor** (`lp_executor.py`) | "What does this failure mean for *the position lifecycle*?" | **The close retry loop** — state-machine re-entry with a bounded budget and exponential backoff, a fresh position read before every re-submit, and the terminal close type. It passes `max_retries=0` so the connector makes exactly one request per re-entry. |
 | **Controller** (`lp_rebalancer.py`) | "What does this failure mean for *the strategy*?" | Re-creates a fresh executor with freshly computed bounds; halts instead of stacking exposure over an unresolved position. |
 | **hummingbot-api / condor** | "What survives the process, and who is told?" | Durable orphan records, listing and resolution endpoints, agent-facing warnings. |
 
@@ -20,8 +20,8 @@
 flowchart TB
     subgraph HB["Hummingbot — stateful, owns retries"]
         C["Controller: lp_rebalancer<br/><i>strategy: re-create after clean FAILED,<br/>halt over unresolved position</i>"]
-        E["LP executor: lp_executor<br/><i>lifecycle: CLOSING re-entry, max_retries + 1 attempts,<br/>exponential backoff (2ⁿ s, cap 30 s)</i>"]
-        K["Connector: gateway_base / gateway<br/><i>operation: _execute_with_retry —<br/>timeouts always; close opts in to slippage-class errors,<br/>inner budget 3</i>"]
+        E["LP executor: lp_executor<br/><i>lifecycle: CLOSING re-entry — the ONE close retry loop,<br/>max_retries + 1 attempts, exponential backoff (2ⁿ s, cap 30 s),<br/>fresh position read before every re-submit</i>"]
+        K["Connector: gateway_base / gateway<br/><i>operation: _execute_with_retry — transport timeouts only;<br/>close passes max_retries=0: one request per re-entry</i>"]
     end
     subgraph GW["Gateway — stateless, one attempt per request"]
         R["Route: build tx from FRESH on-chain state<br/>quote → simulate → sign → broadcast"]
@@ -52,19 +52,19 @@ The #678 investigation and the adversarial review of the fix surfaced the follow
 2. **Doomed transactions were broadcast anyway.** The compute-estimation simulation's `err` was ignored (only `unitsConsumed` was read), so a transaction guaranteed to fail was signed, broadcast, and paid fees. Both send paths now reject a failed simulation with a typed 400 **before broadcast** — a failed attempt costs nothing.
 3. **Transient read errors served as definitive closure.** `Orca.getPositionInfo` swallowed every error into `null`, which the route surfaced as the position-specific 404 — so an RPC blip inside Gateway read as "position closed". It now returns `null` only for a definitive account-does-not-exist result and rethrows everything else.
 4. **A dropped transaction was indistinguishable from a pending one.** `getTransaction` (commitment `confirmed`) returns null both for a transaction awaiting confirmation and for one the cluster has never seen, and `/poll` reported both as `txStatus 0` (pending) — forever. The poll now consults the signature-status cache (with history search) and reports an unknown signature as **`NOT_FOUND` (-2)**, which is terminal once the transaction's blockhash has expired (~90 s).
-5. **Post-SDK-migration slippage exposure.** The migrated Orca close route quotes withdrawal minimums at the configured `slippagePct` (~1%) rather than the legacy 50% buffer — exactly the condition under which the #678 race is reachable. The guards above are load-bearing, not defense-in-depth.
+5. **The two poll routes spoke different dialects.** Ethereum's poll used raw numbers including `2` ("likely to be processed") and `3` ("likely stuck") that no consumer understood, reported not-found as `-1` (failed) after blocking the request for three in-route 1-second retries, and — via `typeof receipt.status === 'number' ? 1 : -1` — reported **reverted** transactions (receipt status `0`, which is a number) as CONFIRMED, so a reverted swap polled as filled. Both routes now share one `TransactionStatusCode` contract: `NOT_FOUND (-2) / FAILED (-1) / PENDING (0) / CONFIRMED (1)`.
+6. **Post-SDK-migration slippage exposure.** The migrated Orca close route quotes withdrawal minimums at the configured `slippagePct` (~1%) rather than the legacy 50% buffer — exactly the condition under which the #678 race is reachable. The guards above are load-bearing, not defense-in-depth.
 
 ### Hummingbot connector
 
-6. **The retry classifier was operation-blind.** `SLIPPAGE_EXCEEDED`/`SIMULATION_FAILED` were globally non-retryable — correct for a swap (re-submitting the same intent re-fails or double-spends), wrong for a close, where every re-POST rebuilds amounts from fresh state and success consumes the position account (idempotent). `_execute_with_retry` now takes per-operation `retryable_error_codes`; close opts in to `{SLIPPAGE_EXCEEDED, SIMULATION_FAILED, TX_NOT_CONFIRMED}`.
-7. **The landed-but-failed shape had no error code.** A broadcast transaction that failed on-chain raised with no `[code:]` marker at all, so the flagship #678 failure shape was unretryable even with an opt-in. It now raises typed `TX_NOT_CONFIRMED`.
-8. **`get_position_info` swallowed every exception into `None`**, and the executor read `None` as "already closed" → `COMPLETE` — a transient RPC error during close could **abandon a live position while reporting success**. The contract is now: `None` only for a position-specific 404; everything else re-raises. Three coupled requirements: (a) the match is position-specific, because the HTTP client stamps "(Not Found)" on *every* 404 — a missing route after a redeploy read as "position gone"; (b) existence decisions use an **uncached** read (`get_position_info_fresh`) — the 5 s TTL cache stores `None` like any value, so one cached 404 masqueraded as several independent confirmations; (c) external-close detection requires the position to have been **seen on-chain at least once** plus 3 consecutive fresh misses.
-9. **Pending-transaction polling was unbounded.** `update_order_status` polled any in-flight order at 1 s forever; combined with issue 4, a dropped transaction never resolved — the order never failed and burned an RPC call per second until restart. The connector now treats `NOT_FOUND` as transient while the order is younger than `TX_NOT_FOUND_DEADLINE` (120 s, past blockhash validity) and afterwards feeds each miss to the order tracker's existing lost-order machinery, which fails the order after repeated consecutive misses. `PENDING` remains unbounded by design: the chain has seen the transaction, so it can still confirm.
+7. **The connector silently decided what operation errors meant.** `SLIPPAGE_EXCEEDED`/`SIMULATION_FAILED` were classified inside `_execute_with_retry`, one size for all operations — and any attempt to make that operation-aware (an opt-in error set, a per-operation inner budget) produced two nested retry loops with multiplying budgets. The connector now retries **transport timeouts only**, identically for every operation; what an operation error means is the caller's decision, and for close the caller is the executor's single loop (issue 11).
+8. **The landed-but-failed shape had no error code.** A broadcast transaction that failed on-chain raised with no `[code:]` marker at all, so callers could not classify the flagship #678 failure shape. It now raises typed `TX_NOT_CONFIRMED`.
+9. **`get_position_info` swallowed every exception into `None`**, and the executor read `None` as "already closed" → `COMPLETE` — a transient RPC error during close could **abandon a live position while reporting success**. The contract is now: `None` only for a position-specific 404; everything else re-raises. Three coupled requirements: (a) the match is position-specific, because the HTTP client stamps "(Not Found)" on *every* 404 — a missing route after a redeploy read as "position gone"; (b) existence decisions use an **uncached** read (`get_position_info_fresh`) — the 5 s TTL cache stores `None` like any value, so one cached 404 masqueraded as several independent confirmations; (c) external-close detection requires the position to have been **seen on-chain at least once** plus 3 consecutive fresh misses.
+10. **Pending-transaction polling was unbounded.** `update_order_status` polled any in-flight order at 1 s forever; combined with issue 4, a dropped transaction never resolved — the order never failed and burned an RPC call per second until restart. The connector now treats `NOT_FOUND` as transient while the order is younger than `TX_NOT_FOUND_DEADLINE` (120 s, past blockhash validity) and afterwards feeds each miss to the order tracker's existing lost-order machinery, which fails the order after repeated consecutive misses. `PENDING` remains unbounded by design: the chain has seen the transaction, so it can still confirm.
 
 ### LP executor
 
-10. **Close failure was terminal on the first error.** `_handle_close_failure` jumped straight to `FAILED` with the position still open. It now counts the attempt, arms exponential backoff (2ⁿ s, capped 30 s — so a Gateway restart spans a few retries instead of burning the whole budget in seconds), and stays `CLOSING`; the family hook `evaluate_max_retries` decides termination after `max_retries + 1` attempts.
-11. **Retry stacking.** With the executor loop added, the connector's default 10 inner retries would stack into ~O(n²) submissions per close. The connector's inner budget for close is `min(3, max_retries)`; the executor owns the policy.
+11. **Close failure was terminal on the first error.** `_handle_close_failure` jumped straight to `FAILED` with the position still open. It now counts the attempt, arms exponential backoff (2ⁿ s, capped 30 s — so a Gateway restart spans a few retries instead of burning the whole budget in seconds), and stays `CLOSING`; the family hook `evaluate_max_retries` decides termination after `max_retries + 1` attempts. This re-entry is the **only** close retry loop: the executor passes `max_retries=0` so the connector makes one request per attempt, and budgets cannot multiply.
 12. **The wrong terminal close type.** `FAILED` in the executor family means "abnormal end with *no residual exposure*" — everything downstream (hold store, PnL, dashboards) assumes it. Terminating an exhausted close as `FAILED` forced a parallel side-channel at every layer. An exhausted close with the position still on-chain now terminates as an **involuntary `POSITION_HOLD`** with `hold_reason: "close_retries_exhausted"` and a zero-amount marker order carrying the position address — riding the existing hold machinery (DB-recovered on the API path) instead of a bespoke flag. `FAILED` is reserved for exhaustion with nothing left on-chain (e.g. an open rejected at simulation).
 
 ### Controller, hummingbot-api, condor
@@ -106,15 +106,13 @@ sequenceDiagram
             EX->>EX: already closed → COMPLETE
         else position live or read transiently failed
             EX->>CN: close position
-            loop ≤ 3 inner attempts on SLIPPAGE_EXCEEDED / SIMULATION_FAILED / TX_NOT_CONFIRMED
-                CN->>GW: POST close-position
-                GW->>SOL: fetch fresh state → quote → build → simulate
-                alt simulation fails
-                    GW-->>CN: typed 400, pre-broadcast — no fee spent
-                else
-                    GW->>SOL: broadcast + confirm
-                    GW-->>CN: CONFIRMED or typed error
-                end
+            CN->>GW: POST close-position (one request — max_retries=0)
+            GW->>SOL: fetch fresh state → quote → build → simulate
+            alt simulation fails
+                GW-->>CN: typed 400, pre-broadcast — no fee spent
+            else
+                GW->>SOL: broadcast + confirm
+                GW-->>CN: CONFIRMED or typed error
             end
             CN-->>EX: result or typed exception
         end
@@ -180,14 +178,14 @@ Also listed as orphan candidates: legacy `FAILED` executors whose final state ca
 
 ### 3.5 Transaction status polling
 
-Gateway's `/poll` reports one of four statuses; the connector's 1 s poller acts on them:
+Both chains' `/poll` routes share one `TransactionStatusCode` contract; the connector's 1 s poller acts on it:
 
 | `txStatus` | Meaning | Connector behavior |
 |---|---|---|
 | `1` CONFIRMED | Landed without error | Fill the order |
-| `0` PENDING | The chain has seen the transaction | Keep polling — it can still confirm (unbounded by design) |
-| `-1` FAILED | Landed with an error | Fail the order, trigger `TransactionFailure` |
-| `-2` NOT_FOUND | Unknown to the chain — never received or dropped | Transient while the order is younger than 120 s (blockhash validity margin); afterwards each miss counts toward the tracker's lost-order limit → order fails after repeated consecutive misses |
+| `0` PENDING | The chain has seen the transaction (Solana: signature status; EVM: in the mempool) | Keep polling — it can still confirm (unbounded by design) |
+| `-1` FAILED | Landed with an error / reverted | Fail the order, trigger `TransactionFailure` |
+| `-2` NOT_FOUND | Unknown to the chain — never received or dropped (Solana: terminal once the blockhash expires; EVM: the mempool is visible via `getTransaction`, so not-found already means dropped) | Transient while the order is younger than 120 s (blockhash validity margin); afterwards each miss counts toward the tracker's lost-order limit → order fails after repeated consecutive misses |
 
 Transient poll errors (RPC failures) report `PENDING`, never `NOT_FOUND` — an unknown outcome is a reason to poll again, not to give up. Note the LP flow's writes do not depend on this poller to progress: the connector's operation calls only return a signature after in-request confirmation. The bound matters for flows that record a hash at submission time, and for the RPC cost of stuck orders.
 
