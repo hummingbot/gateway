@@ -1,5 +1,5 @@
 import { Contract } from '@ethersproject/contracts';
-import { Position, tickToPrice, computePoolAddress } from '@pancakeswap/v3-sdk';
+import { Position, PositionLibrary, tickToPrice, computePoolAddress } from '@pancakeswap/v3-sdk';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
@@ -17,6 +17,85 @@ import {
   getPancakeswapV3PoolDeployerAddress,
 } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
+
+const POOL_STATE_ABI = [
+  {
+    inputs: [],
+    name: 'slot0',
+    outputs: [
+      { internalType: 'uint160', name: 'sqrtPriceX96', type: 'uint160' },
+      { internalType: 'int24', name: 'tick', type: 'int24' },
+      { internalType: 'uint16', name: 'observationIndex', type: 'uint16' },
+      { internalType: 'uint16', name: 'observationCardinality', type: 'uint16' },
+      { internalType: 'uint16', name: 'observationCardinalityNext', type: 'uint16' },
+      { internalType: 'uint8', name: 'feeProtocol', type: 'uint8' },
+      { internalType: 'bool', name: 'unlocked', type: 'bool' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'feeGrowthGlobal0X128',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'feeGrowthGlobal1X128',
+    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ internalType: 'int24', name: '', type: 'int24' }],
+    name: 'ticks',
+    outputs: [
+      { internalType: 'uint128', name: 'liquidityGross', type: 'uint128' },
+      { internalType: 'int128', name: 'liquidityNet', type: 'int128' },
+      { internalType: 'uint256', name: 'feeGrowthOutside0X128', type: 'uint256' },
+      { internalType: 'uint256', name: 'feeGrowthOutside1X128', type: 'uint256' },
+      { internalType: 'int56', name: 'tickCumulativeOutside', type: 'int56' },
+      { internalType: 'uint160', name: 'secondsPerLiquidityOutsideX128', type: 'uint160' },
+      { internalType: 'uint32', name: 'secondsOutside', type: 'uint32' },
+      { internalType: 'bool', name: 'initialized', type: 'bool' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const;
+
+function getFeeGrowthInside(
+  tickCurrent: number,
+  tickLower: number,
+  tickUpper: number,
+  lowerFeeGrowthOutside0X128: bigint,
+  lowerFeeGrowthOutside1X128: bigint,
+  upperFeeGrowthOutside0X128: bigint,
+  upperFeeGrowthOutside1X128: bigint,
+  feeGrowthGlobal0X128: bigint,
+  feeGrowthGlobal1X128: bigint,
+): [bigint, bigint] {
+  if (tickCurrent < tickLower) {
+    return [
+      lowerFeeGrowthOutside0X128 - upperFeeGrowthOutside0X128,
+      lowerFeeGrowthOutside1X128 - upperFeeGrowthOutside1X128,
+    ];
+  }
+
+  if (tickCurrent < tickUpper) {
+    return [
+      feeGrowthGlobal0X128 - lowerFeeGrowthOutside0X128 - upperFeeGrowthOutside0X128,
+      feeGrowthGlobal1X128 - lowerFeeGrowthOutside1X128 - upperFeeGrowthOutside1X128,
+    ];
+  }
+
+  return [
+    upperFeeGrowthOutside0X128 - lowerFeeGrowthOutside0X128,
+    upperFeeGrowthOutside1X128 - lowerFeeGrowthOutside1X128,
+  ];
+}
 
 export async function getPositionInfo(
   fastify: FastifyInstance,
@@ -44,13 +123,58 @@ export async function getPositionInfo(
   const liquidity = positionDetails.liquidity;
   const fee = positionDetails.fee;
 
-  const feeAmount0 = formatTokenAmount(positionDetails.tokensOwed0.toString(), token0.decimals);
-  const feeAmount1 = formatTokenAmount(positionDetails.tokensOwed1.toString(), token1.decimals);
-
   const pool = await pancakeswap.getV3Pool(token0, token1, fee);
   if (!pool) {
     throw fastify.httpErrors.notFound('Pool not found for position');
   }
+
+  const poolAddress = computePoolAddress({
+    deployerAddress: getPancakeswapV3PoolDeployerAddress(network),
+    tokenA: token0,
+    tokenB: token1,
+    fee,
+  });
+
+  const poolContract = new Contract(poolAddress, POOL_STATE_ABI, ethereum.provider);
+  const slot0 = await poolContract.slot0();
+  const tickCurrent = Number(slot0.tick ?? slot0[1]);
+  const lowerTick = await poolContract.ticks(tickLower);
+  const upperTick = await poolContract.ticks(tickUpper);
+  const feeGrowthGlobal0X128 = BigInt((await poolContract.feeGrowthGlobal0X128()).toString());
+  const feeGrowthGlobal1X128 = BigInt((await poolContract.feeGrowthGlobal1X128()).toString());
+
+  const lowerFeeGrowthOutside0X128 = BigInt((lowerTick.feeGrowthOutside0X128 ?? lowerTick[2]).toString());
+  const lowerFeeGrowthOutside1X128 = BigInt((lowerTick.feeGrowthOutside1X128 ?? lowerTick[3]).toString());
+  const upperFeeGrowthOutside0X128 = BigInt((upperTick.feeGrowthOutside0X128 ?? upperTick[2]).toString());
+  const upperFeeGrowthOutside1X128 = BigInt((upperTick.feeGrowthOutside1X128 ?? upperTick[3]).toString());
+
+  const [feeGrowthInside0X128, feeGrowthInside1X128] = getFeeGrowthInside(
+    tickCurrent,
+    tickLower,
+    tickUpper,
+    lowerFeeGrowthOutside0X128,
+    lowerFeeGrowthOutside1X128,
+    upperFeeGrowthOutside0X128,
+    upperFeeGrowthOutside1X128,
+    feeGrowthGlobal0X128,
+    feeGrowthGlobal1X128,
+  );
+
+  const feeGrowthInside0LastX128 = BigInt(positionDetails.feeGrowthInside0LastX128.toString());
+  const feeGrowthInside1LastX128 = BigInt(positionDetails.feeGrowthInside1LastX128.toString());
+  const liquidityBigInt = BigInt(positionDetails.liquidity.toString());
+  const [deltaOwed0, deltaOwed1] = PositionLibrary.getTokensOwed(
+    feeGrowthInside0LastX128,
+    feeGrowthInside1LastX128,
+    liquidityBigInt,
+    feeGrowthInside0X128,
+    feeGrowthInside1X128,
+  );
+
+  const totalOwed0 = BigInt(positionDetails.tokensOwed0.toString()) + deltaOwed0;
+  const totalOwed1 = BigInt(positionDetails.tokensOwed1.toString()) + deltaOwed1;
+  const feeAmount0 = formatTokenAmount(totalOwed0.toString(), token0.decimals);
+  const feeAmount1 = formatTokenAmount(totalOwed1.toString(), token1.decimals);
 
   const lowerPrice = tickToPrice(token0, token1, tickLower).toSignificant(6);
   const upperPrice = tickToPrice(token0, token1, tickUpper).toSignificant(6);
@@ -79,13 +203,6 @@ export async function getPositionInfo(
     : [token1Amount, token0Amount];
 
   const [baseFeeAmount, quoteFeeAmount] = isBaseToken0 ? [feeAmount0, feeAmount1] : [feeAmount1, feeAmount0];
-
-  const poolAddress = computePoolAddress({
-    deployerAddress: getPancakeswapV3PoolDeployerAddress(network),
-    tokenA: token0,
-    tokenB: token1,
-    fee,
-  });
 
   return {
     address: positionAddress,
