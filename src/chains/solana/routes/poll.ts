@@ -60,10 +60,13 @@ export async function pollSolanaTransaction(
     // Extract fee from transaction
     const fee = txData.meta?.fee ? txData.meta.fee / 1e9 : 0; // Convert lamports to SOL
 
-    // Check for transaction error and parse it
+    // Check for transaction error and parse it. The err object carries the code but
+    // names no program, so parse it together with the program logs — attribution
+    // comes from the "Program X failed: custom program error" line, and without it
+    // every program-specific code (e.g. Orca 6018) falls through to UNKNOWN.
     let error: string | null = null;
     if (txData.meta?.err) {
-      const errorStr = JSON.stringify(txData.meta.err);
+      const errorStr = [JSON.stringify(txData.meta.err), ...(txData.meta.logMessages ?? [])].join('\n');
       const parsed = parseSolanaError(errorStr);
       error = `${parsed.type} (${parsed.errorCodeHex || 'unknown'}): ${parsed.message}`;
       logger.info(`Transaction ${signature} failed: ${error}`);

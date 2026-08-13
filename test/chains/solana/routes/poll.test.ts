@@ -47,6 +47,31 @@ describe('pollSolanaTransaction', () => {
     expect(result.error).toBeNull();
   });
 
+  it('attributes a failed transaction to the program named in the logs', async () => {
+    // meta.err carries the code but no program; without the logs the parser cannot
+    // reach the program's error table and every custom code reports UNKNOWN.
+    mockSolanaInstance.getTransaction.mockResolvedValue({
+      slot: 365794000,
+      meta: {
+        fee: 5000,
+        err: { InstructionError: [0, { Custom: 6018 }] },
+        logMessages: [
+          'Program ComputeBudget111111111111111111111111111111 invoke [1]',
+          'Program ComputeBudget111111111111111111111111111111 success',
+          'Program whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc invoke [1]',
+          'Program whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc failed: custom program error: 0x1782',
+        ],
+      },
+    });
+    mockSolanaInstance.getTransactionStatusCode.mockResolvedValue(TransactionStatusCode.FAILED);
+
+    const result = await pollSolanaTransaction(null as any, 'mainnet-beta', VALID_SIGNATURE);
+
+    expect(result.txStatus).toBe(TransactionStatusCode.FAILED);
+    expect(result.error).toContain('SLIPPAGE_EXCEEDED');
+    expect(result.error).not.toContain('UNKNOWN');
+  });
+
   describe('null txData (not visible at confirmed commitment)', () => {
     beforeEach(() => {
       mockSolanaInstance.getTransaction.mockResolvedValue(null);
