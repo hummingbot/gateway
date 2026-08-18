@@ -357,6 +357,9 @@ describe('Unified Trading CLMM Routes', () => {
           lowerPrice: 1800,
           upperPrice: 2200,
           poolAddress: '0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8',
+          // An otherwise-valid body: amount validation runs before connector
+          // routing, and this test is about the connector rejection.
+          baseTokenAmount: 1,
         },
       });
 

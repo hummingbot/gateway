@@ -144,6 +144,14 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         // Parse chain and network from chainNetwork parameter
         const { network } = parseChainNetwork(chainNetwork);
 
+        // Same contract as add.ts: single-sided opens are valid, but at least one
+        // side must be positive — reject here rather than deep in connector code.
+        const baseAmount = baseTokenAmount ?? 0;
+        const quoteAmount = quoteTokenAmount ?? 0;
+        if (baseAmount <= 0 && quoteAmount <= 0) {
+          throw httpErrors.badRequest('At least one of baseTokenAmount or quoteTokenAmount must be greater than 0');
+        }
+
         // Route to appropriate connector
         switch (connector) {
           case 'uniswap':
