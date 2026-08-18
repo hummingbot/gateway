@@ -31,6 +31,15 @@ export const PancakeswapSolClmmGetPoolInfoRequest = Type.Object({
     description: 'PancakeSwap CLMM pool address',
     examples: [CLMM_POOL_ADDRESS_EXAMPLE],
   }),
+  binCount: Type.Optional(
+    Type.Integer({
+      description:
+        'If > 0, include a `bins` array of per-tick liquidity around the active tick. Default 0 = skip the bin fetch.',
+      default: 0,
+      minimum: 0,
+      maximum: 401,
+    }),
+  ),
 });
 
 export type PancakeswapSolClmmGetPoolInfoRequestType = Static<typeof PancakeswapSolClmmGetPoolInfoRequest>;

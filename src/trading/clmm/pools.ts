@@ -38,7 +38,7 @@ const UnifiedPoolInfoRequestSchema = Type.Object({
     Type.Integer({
       description:
         'If > 0, include a `bins` array of per-tick liquidity around the active tick. Supported by ' +
-        'orca, raydium, uniswap and pancakeswap; Meteora always returns its bins and ignores this. ' +
+        'every connector except Meteora, which always returns its bins and ignores this. ' +
         'Default 0 = skip the bin fetch.',
       default: 0,
       minimum: 0,
@@ -86,7 +86,7 @@ async function getSolanaPoolInfo(
       // Meteora always returns its bins; it has no binCount parameter.
       return await meteoraGetPoolInfo(fastify, network, poolAddress);
     case 'pancakeswap-sol':
-      return await pancakeswapSolGetPoolInfo(fastify, network, poolAddress);
+      return await pancakeswapSolGetPoolInfo(fastify, network, poolAddress, binCount);
     case 'orca':
       return await orcaGetPoolInfo(fastify, network, poolAddress, binCount);
     default:

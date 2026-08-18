@@ -145,8 +145,13 @@ export class PancakeswapSol {
       const tickSpacing = data.readUInt16LE(offset);
       offset += 2;
 
-      // Read liquidity (16 bytes, u128) - not currently used but part of data structure
-      // const liquidity = data.readBigUInt64LE(offset);
+      // Read liquidity (16 bytes, u128) - the active liquidity at the current tick,
+      // needed for the bin distribution walk
+      const liquidityBytes = data.slice(offset, offset + 16);
+      let liquidityValue = BigInt(0);
+      for (let i = 0; i < 16; i++) {
+        liquidityValue += BigInt(liquidityBytes[i]) << BigInt(i * 8);
+      }
       offset += 16;
 
       // Read sqrt_price_x64 (16 bytes, u128)
@@ -260,6 +265,11 @@ export class PancakeswapSol {
       (poolInfo as any)._feeGrowthGlobal0 = feeGrowthGlobal0;
       (poolInfo as any)._feeGrowthGlobal1 = feeGrowthGlobal1;
       (poolInfo as any)._rewardGrowthGlobalX64 = rewardGrowthGlobalX64;
+      // Raw pool state for the bin distribution walk (poolInfo.binStep/activeBinId
+      // carry tickSpacing/tickCurrent already; these carry the rest)
+      (poolInfo as any)._liquidity = liquidityValue;
+      (poolInfo as any)._mintDecimals0 = mintDecimals0;
+      (poolInfo as any)._mintDecimals1 = mintDecimals1;
 
       return poolInfo;
     } catch (error) {
