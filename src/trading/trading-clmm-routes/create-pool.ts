@@ -9,7 +9,11 @@ import { createPool as pancakeswapCreatePool } from '../../connectors/pancakeswa
 import { createPool as pancakeswapSolCreatePool } from '../../connectors/pancakeswap-sol/clmm-routes/createPool';
 import { createPool as raydiumCreatePool } from '../../connectors/raydium/clmm-routes/createPool';
 import { createPool as uniswapCreatePool } from '../../connectors/uniswap/clmm-routes/createPool';
-import { CreatePoolResponse, CreatePoolResponseType } from '../../schemas/amm-schema';
+import {
+  CreatePoolResponse,
+  CreatePoolResponseType,
+  CreatePoolRequest as ClmmCreatePoolRequest,
+} from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
@@ -34,41 +38,25 @@ function parseChainNetwork(chainNetwork: string): { chain: string; network: stri
 // Unified CLMM create-pool. Creates + initializes a pool at an initial price (no position is
 // seeded — concentrated-liquidity positions need a range, opened separately via open-position).
 // Per-connector extras are optional and consumed only by their owning connector.
-const UnifiedClmmCreatePoolRequest = Type.Object({
-  connector: Type.String({
-    description: 'CLMM connector name (meteora, raydium, uniswap, orca, pancakeswap, pancakeswap-sol)',
-    default: 'meteora',
-    examples: ['meteora'],
-  }),
-  chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    default: 'solana-mainnet-beta',
-    examples: ['solana-mainnet-beta'],
-  }),
-  walletAddress: Type.String({ description: 'Wallet address (pool creator + payer)', default: defaultWallet }),
-  baseToken: Type.String({ description: 'Base token symbol or address' }),
-  quoteToken: Type.String({ description: 'Quote token symbol or address' }),
-  initialPrice: Type.Optional(
-    Type.Number({
-      description:
-        'Initial pool price as quote per base. If omitted, the current market price is fetched from the ' +
-        'unified swap router so the pool opens on-market.',
+// Composed from the canonical ClmmCreatePoolRequest (schemas/clmm-schema.ts):
+// the unified route swaps per-connector `network` for connector + chainNetwork
+// and defaults the wallet.
+const UnifiedClmmCreatePoolRequest = Type.Composite([
+  Type.Object({
+    connector: Type.String({
+      description: 'CLMM connector name (meteora, raydium, uniswap, orca, pancakeswap, pancakeswap-sol)',
+      default: 'meteora',
+      examples: ['meteora'],
     }),
-  ),
-  // Connector-specific extras (optional; ignored by connectors that do not use them):
-  binStep: Type.Optional(Type.Number({ description: 'Meteora DLMM bin step (bps)' })),
-  feeBps: Type.Optional(Type.Number({ description: 'Meteora DLMM base fee (bps)' })),
-  ammConfigIndex: Type.Optional(Type.Number({ description: 'Raydium CLMM AMM config index (fee tier)' })),
-  fee: Type.Optional(
-    Type.Number({
-      description: 'V3 fee tier — Uniswap (100 | 500 | 3000 | 10000) or PancakeSwap (100 | 500 | 2500 | 10000)',
+    chainNetwork: Type.String({
+      description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
+      default: 'solana-mainnet-beta',
+      examples: ['solana-mainnet-beta'],
     }),
-  ),
-  tickSpacing: Type.Optional(Type.Number({ description: 'Orca Whirlpool tick spacing (fee tier)' })),
-  ammConfig: Type.Optional(Type.String({ description: 'pancakeswap-sol CLMM amm_config account address (required)' })),
-  gasPrice: Type.Optional(Type.Number({ description: 'EVM gas price in gwei (uniswap/pancakeswap)' })),
-  maxGas: Type.Optional(Type.Number({ description: 'EVM max gas limit (uniswap/pancakeswap)' })),
-});
+    walletAddress: Type.String({ description: 'Wallet address (pool creator + payer)', default: defaultWallet }),
+  }),
+  Type.Omit(ClmmCreatePoolRequest, ['network', 'walletAddress'], {}),
+]);
 
 export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
@@ -97,14 +85,19 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
           binStep,
           feeBps,
           ammConfigIndex,
-          fee,
-          tickSpacing,
-          ammConfig,
-          gasPrice,
-          maxGas,
         } = request.body;
 
         const { network } = parseChainNetwork(chainNetwork);
+
+        // EVM V3 fee tiers are denominated in hundredths of a bip; feeBps is the
+        // route's one fee vocabulary, so map it (1 bps -> 100).
+        if ((connector === 'uniswap' || connector === 'pancakeswap') && feeBps === undefined) {
+          throw httpErrors.badRequest(
+            `feeBps is required for ${connector}: the V3 fee tier in basis points ` +
+              '(1, 5, 30 or 100; pancakeswap also 25)',
+          );
+        }
+        const evmFeeTier = feeBps === undefined ? undefined : feeBps * 100;
 
         switch (connector) {
           case 'meteora':
@@ -120,29 +113,13 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
           case 'raydium':
             return await raydiumCreatePool(network, walletAddress, baseToken, quoteToken, initialPrice, ammConfigIndex);
           case 'uniswap':
-            return await uniswapCreatePool(
-              network,
-              walletAddress,
-              baseToken,
-              quoteToken,
-              initialPrice,
-              fee,
-              gasPrice,
-              maxGas,
-            );
+            return await uniswapCreatePool(network, walletAddress, baseToken, quoteToken, initialPrice, evmFeeTier);
           case 'orca':
-            return await orcaCreatePool(network, walletAddress, baseToken, quoteToken, initialPrice, tickSpacing);
+            // Orca's fee tier IS its tick spacing — binStep is the route's one
+            // granularity vocabulary.
+            return await orcaCreatePool(network, walletAddress, baseToken, quoteToken, initialPrice, binStep);
           case 'pancakeswap':
-            return await pancakeswapCreatePool(
-              network,
-              walletAddress,
-              baseToken,
-              quoteToken,
-              initialPrice,
-              fee,
-              gasPrice,
-              maxGas,
-            );
+            return await pancakeswapCreatePool(network, walletAddress, baseToken, quoteToken, initialPrice, evmFeeTier);
           case 'pancakeswap-sol':
             return await pancakeswapSolCreatePool(
               network,
@@ -150,7 +127,7 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
               baseToken,
               quoteToken,
               initialPrice,
-              ammConfig,
+              ammConfigIndex,
             );
           default:
             throw httpErrors.badRequest(`Unsupported CLMM connector: ${connector}`);

@@ -7,7 +7,7 @@ import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
 import { Ethereum, TokenInfo } from '../../../chains/ethereum/ethereum';
-import { CreatePoolResponse, CreatePoolResponseType } from '../../../schemas/amm-schema';
+import { CreatePoolResponse, CreatePoolResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { UniswapClmmCreatePoolRequest } from '../schemas';
@@ -202,8 +202,6 @@ export async function createPool(
       price: seedPrice,
       data: {
         fee: gasFee,
-        baseTokenAmountAdded: 0, // create-pool only initializes price; no liquidity is seeded
-        quoteTokenAmountAdded: 0,
       },
     };
   }

@@ -322,6 +322,72 @@ export const ClosePositionResponse = Type.Object(
 );
 export type ClosePositionResponseType = Static<typeof ClosePositionResponse>;
 
+// ========================================
+// CLMM Create Pool Types
+// ========================================
+
+// One fee-tier vocabulary across connectors: binStep is the bin/tick granularity
+// (Meteora DLMM bin step, Orca tick spacing), feeBps the base fee in basis points
+// (Meteora DLMM base fee; Uniswap/PancakeSwap V3 tier — 1, 5, 30 or 100 bps,
+// PancakeSwap also 25), ammConfigIndex the Raydium-family fee-config index
+// (Raydium API config list; pancakeswap-sol amm_config PDA index).
+export const CreatePoolRequest = Type.Object(
+  {
+    network: Type.Optional(Type.String()),
+    walletAddress: Type.Optional(Type.String()),
+    baseToken: Type.String(),
+    quoteToken: Type.String(),
+    initialPrice: Type.Optional(
+      Type.Number({
+        description:
+          'Initial pool price as quote per base. If omitted, the current market price is fetched from the ' +
+          'unified swap router so the pool opens on-market.',
+      }),
+    ),
+    binStep: Type.Optional(
+      Type.Number({
+        description: 'Bin/tick granularity: Meteora DLMM bin step (bps); Orca Whirlpool tick spacing.',
+      }),
+    ),
+    feeBps: Type.Optional(
+      Type.Number({
+        description:
+          'Base fee in basis points: Meteora DLMM base fee; Uniswap/PancakeSwap V3 fee tier ' +
+          '(1, 5, 30 or 100 bps; PancakeSwap also 25).',
+      }),
+    ),
+    ammConfigIndex: Type.Optional(
+      Type.Number({
+        description:
+          'Fee-config index for the Raydium CLMM family: Raydium API config list index; ' +
+          'pancakeswap-sol amm_config PDA index. Default 0.',
+      }),
+    ),
+  },
+  { $id: 'ClmmCreatePoolRequest' },
+);
+export type CreatePoolRequestType = Static<typeof CreatePoolRequest>;
+
+// CLMM create-pool initializes an EMPTY pool — liquidity arrives later via
+// open-position — so unlike the AMM response there are no seeded amounts.
+export const CreatePoolResponse = Type.Object(
+  {
+    signature: Type.String(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+    poolAddress: Type.String({ description: 'Address of the newly created pool' }),
+    price: Type.Optional(Type.Number({ description: 'Initial price the pool was initialized at (quote per base)' })),
+
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object({
+        fee: Type.Number(),
+      }),
+    ),
+  },
+  { $id: 'ClmmCreatePoolResponse' },
+);
+export type CreatePoolResponseType = Static<typeof CreatePoolResponse>;
+
 export const QuotePositionRequest = Type.Omit(OpenPositionRequest, ['walletAddress'], { $id: 'QuotePositionRequest' });
 export type QuotePositionRequestType = Static<typeof QuotePositionRequest>;
 

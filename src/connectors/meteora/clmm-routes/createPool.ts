@@ -9,7 +9,7 @@ import BN from 'bn.js';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { CreatePoolResponse, CreatePoolResponseType } from '../../../schemas/amm-schema';
+import { CreatePoolResponse, CreatePoolResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
@@ -208,8 +208,6 @@ export async function createPool(
       price: seedPrice,
       data: {
         fee: txData.meta.fee / 1e9,
-        baseTokenAmountAdded: 0,
-        quoteTokenAmountAdded: 0,
       },
     };
   }

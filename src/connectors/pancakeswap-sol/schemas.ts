@@ -127,13 +127,16 @@ export const PancakeswapSolClmmCreatePoolRequest = Type.Object({
       examples: [QUOTE_TOKEN_AMOUNT / BASE_TOKEN_AMOUNT],
     }),
   ),
-  ammConfig: Type.String({
-    description:
-      'Base58 address of an existing on-chain amm_config account for the desired fee tier. ' +
-      'There is no API to enumerate amm_config accounts, so this must be supplied explicitly. ' +
-      'The pool_state PDA is derived from this config plus the (canonically ordered) token mints.',
-    examples: ['E64NGkDLLCdQ2yFNPcavaKptrEgmiQaNykUuLC1Qgwyp'],
-  }),
+  ammConfigIndex: Type.Optional(
+    Type.Integer({
+      description:
+        'Fee-config index; resolves to the amm_config PDA (["amm_config", index]) and is validated ' +
+        'on-chain. Each index is a fee tier created by the program admin. Default 0.',
+      default: 0,
+      minimum: 0,
+      maximum: 65535,
+    }),
+  ),
 });
 
 export type PancakeswapSolClmmCreatePoolRequestType = Static<typeof PancakeswapSolClmmCreatePoolRequest>;
