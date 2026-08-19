@@ -120,6 +120,10 @@ export async function addLiquidity(
       signature,
       status: 1, // CONFIRMED
       data: {
+        // The pool this position belongs to, already loaded here. The unified route is
+        // position-addressed and never receives it, so this is the only place it can
+        // come from without a second lookup.
+        poolAddress: positionInfo.poolAddress,
         fee: totalFee / 1e9,
         baseTokenAmountAdded: Math.abs(baseTokenChange),
         quoteTokenAmountAdded: Math.abs(quoteTokenChange),

@@ -96,6 +96,10 @@ export async function removeLiquidity(
       signature,
       status: 1, // CONFIRMED
       data: {
+        // The pool this position belongs to, already loaded here. The unified route is
+        // position-addressed and never receives it, so this is the only place it can
+        // come from without a second lookup.
+        poolAddress: positionInfo.poolId.toBase58(),
         fee: totalFee / 1e9,
         baseTokenAmountRemoved: Math.abs(baseTokenBalanceChange),
         quoteTokenAmountRemoved: Math.abs(quoteTokenBalanceChange),

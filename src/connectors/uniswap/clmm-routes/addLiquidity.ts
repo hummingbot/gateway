@@ -1,6 +1,6 @@
 import { Contract } from '@ethersproject/contracts';
 import { CurrencyAmount, Percent } from '@uniswap/sdk-core';
-import { Position, NonfungiblePositionManager } from '@uniswap/v3-sdk';
+import { Position, NonfungiblePositionManager, computePoolAddress } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
 import JSBI from 'jsbi';
 
@@ -10,7 +10,7 @@ import { AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
-import { getUniswapV3NftManagerAddress, POSITION_MANAGER_ABI } from '../uniswap.contracts';
+import { getUniswapV3NftManagerAddress, POSITION_MANAGER_ABI, getUniswapV3FactoryAddress } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
 // Default gas limit for CLMM add liquidity operations
@@ -41,6 +41,16 @@ export async function addLiquidity(
 
   const token0 = await uniswap.getToken(position.token0);
   const token1 = await uniswap.getToken(position.token1);
+
+  // The pool this position belongs to, derived from the same inputs position-info
+  // uses. The unified route is position-addressed and never receives a pool, so
+  // deriving it here is what lets the response name the venue it acted on.
+  const poolAddress = computePoolAddress({
+    factoryAddress: getUniswapV3FactoryAddress(network),
+    tokenA: token0,
+    tokenB: token1,
+    fee: position.fee,
+  });
   const fee = position.fee;
   const tickLower = position.tickLower;
   const tickUpper = position.tickUpper;
@@ -165,6 +175,7 @@ export async function addLiquidity(
     signature: outcome.signature,
     status: TransactionStatus.CONFIRMED,
     data: {
+      poolAddress,
       fee: outcome.fee,
       baseTokenAmountAdded: actualBaseAmount,
       quoteTokenAmountAdded: actualQuoteAmount,

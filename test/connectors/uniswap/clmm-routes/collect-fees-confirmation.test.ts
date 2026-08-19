@@ -63,6 +63,9 @@ const primeMocks = (receipt: any) => {
     positions: jest.fn().mockResolvedValue({
       token0: WETH.address,
       token1: USDC.address,
+      // The real positions() struct always carries the fee tier; collect-fees now reads
+      // it to derive the pool it acted on for the response.
+      fee: 3000,
       tokensOwed0: BigNumber.from('1000000000000000'), // 0.001 WETH
       tokensOwed1: BigNumber.from('2000000'), // 2 USDC
     }),

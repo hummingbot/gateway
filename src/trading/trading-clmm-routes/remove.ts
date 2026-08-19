@@ -9,7 +9,6 @@ import { removeLiquidity as raydiumRemoveLiquidity } from '../../connectors/rayd
 import { removeLiquidity as uniswapRemoveLiquidity } from '../../connectors/uniswap/clmm-routes/removeLiquidity';
 import { RemoveLiquidityResponseType, RemoveLiquidityResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { getPositionPool } from '../clmm/positions';
 import {
   chainNetworkField,
   CLMM_CONNECTORS,
@@ -75,10 +74,6 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const { network } = parseChainNetwork(chainNetwork);
 
         // Route to appropriate connector
-        // Resolved before the write: these routes are position-addressed and never
-        // receive a pool, and after a close the position is gone.
-        const poolAddress = await getPositionPool(fastify, connector, chainNetwork, positionAddress);
-
         const result = await (async () => {
           switch (connector) {
             case 'uniswap':
@@ -110,7 +105,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           }
         })();
 
-        return withIdentifiers(result, { poolAddress, positionAddress });
+        // poolAddress comes from the connector, which already loaded the position.
+        return withIdentifiers(result, { positionAddress });
       } catch (e: any) {
         rethrowRouteError(e, 'Failed to remove liquidity');
       }

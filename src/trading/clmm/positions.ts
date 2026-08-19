@@ -130,32 +130,3 @@ export const positionsRoute: FastifyPluginAsync = async (fastify) => {
 };
 
 export default positionsRoute;
-
-/**
- * The pool a position belongs to, for stamping onto a write's result.
- *
- * The CLMM write routes are position-addressed — they never receive a pool — so this
- * is the only way their responses can name the venue they acted on. It must run
- * BEFORE the write: after a close the position is gone and the lookup would fail.
- *
- * Best-effort by design. The identifier is a convenience on the response; a lookup
- * that fails must not fail the liquidity operation the caller actually asked for, so
- * it is logged and the field is simply absent.
- */
-export async function getPositionPool(
-  fastify: FastifyInstance,
-  connector: string,
-  chainNetwork: string,
-  positionAddress: string,
-): Promise<string | undefined> {
-  try {
-    const info = await getUnifiedPositionInfo(fastify, connector, chainNetwork, positionAddress);
-    return info.poolAddress;
-  } catch (e: any) {
-    logger.warn(
-      `Could not resolve the pool for position ${positionAddress} on ${connector}; ` +
-        `the response will omit poolAddress: ${e?.message ?? e}`,
-    );
-    return undefined;
-  }
-}

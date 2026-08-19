@@ -9,7 +9,6 @@ import { closePosition as raydiumClosePosition } from '../../connectors/raydium/
 import { closePosition as uniswapClosePosition } from '../../connectors/uniswap/clmm-routes/closePosition';
 import { ClosePositionResponseType, ClosePositionResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { getPositionPool } from '../clmm/positions';
 import {
   chainNetworkField,
   CLMM_CONNECTORS,
@@ -60,10 +59,6 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         const { network } = parseChainNetwork(chainNetwork);
 
         // Route to appropriate connector
-        // Resolved before the write: these routes are position-addressed and never
-        // receive a pool, and after a close the position is gone.
-        const poolAddress = await getPositionPool(fastify, connector, chainNetwork, positionAddress);
-
         const result = await (async () => {
           switch (connector) {
             case 'uniswap':
@@ -89,7 +84,8 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
           }
         })();
 
-        return withIdentifiers(result, { poolAddress, positionAddress });
+        // poolAddress comes from the connector, which already loaded the position.
+        return withIdentifiers(result, { positionAddress });
       } catch (e: any) {
         rethrowRouteError(e, 'Failed to close position');
       }

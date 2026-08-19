@@ -1,6 +1,6 @@
 import { Contract } from '@ethersproject/contracts';
 import { Percent, CurrencyAmount } from '@pancakeswap/sdk';
-import { NonfungiblePositionManager, Position } from '@pancakeswap/v3-sdk';
+import { NonfungiblePositionManager, Position, computePoolAddress } from '@pancakeswap/v3-sdk';
 import { BigNumber } from 'ethers';
 import { Address } from 'viem';
 
@@ -9,7 +9,11 @@ import { TransactionStatus } from '../../../schemas/chain-schema';
 import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { Pancakeswap } from '../pancakeswap';
-import { POSITION_MANAGER_ABI, getPancakeswapV3NftManagerAddress } from '../pancakeswap.contracts';
+import {
+  POSITION_MANAGER_ABI,
+  getPancakeswapV3NftManagerAddress,
+  getPancakeswapV3PoolDeployerAddress,
+} from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
 
 // Default gas limit for CLMM close position operations
@@ -47,6 +51,16 @@ export async function closePosition(
 
   const token0 = await pancakeswap.getToken(position.token0);
   const token1 = await pancakeswap.getToken(position.token1);
+
+  // The pool this position belongs to, derived from the same inputs position-info
+  // uses. The unified route is position-addressed and never receives a pool, so
+  // deriving it here is what lets the response name the venue it acted on.
+  const poolAddress = computePoolAddress({
+    deployerAddress: getPancakeswapV3PoolDeployerAddress(network),
+    tokenA: token0,
+    tokenB: token1,
+    fee: position.fee,
+  });
 
   const isBaseToken0 =
     token0.symbol === 'WETH' ||
@@ -137,6 +151,7 @@ export async function closePosition(
     signature: outcome.signature,
     status: TransactionStatus.CONFIRMED,
     data: {
+      poolAddress,
       fee: outcome.fee,
       positionRentRefunded,
       baseTokenAmountRemoved,

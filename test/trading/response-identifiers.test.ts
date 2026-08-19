@@ -2,8 +2,9 @@ import { fastifyWithTypeProvider } from '../utils/testUtils';
 
 // Every fund-moving response should name the pool — and, where one exists, the position
 // — it acted on, so a stored record identifies its venue without the request that
-// produced it. The AMM routes take the pool in the request; the CLMM write routes are
-// position-addressed and never receive one, so they resolve it before the write.
+// produced it. The AMM routes take the pool in the request and echo it. The CLMM write
+// routes are position-addressed and never receive one, so the connector reports the pool
+// it already loaded, and the route only adds the position the caller named.
 
 const POOL = 'FAKEpoolAddress1111111111111111111111111111';
 const POSITION = 'FAKEpositionAddress11111111111111111111111';
@@ -18,7 +19,6 @@ const mockRaydiumAmmAdd = jest.fn();
 const mockRaydiumAmmRemove = jest.fn();
 const mockMeteoraAmmClose = jest.fn();
 const mockMeteoraClmmClose = jest.fn();
-const mockPositionPool = jest.fn();
 
 jest.mock('../../src/connectors/raydium/amm-routes/addLiquidity', () => ({
   addLiquidity: (...a: any[]) => mockRaydiumAmmAdd(...a),
@@ -34,12 +34,6 @@ jest.mock('../../src/connectors/meteora/amm-routes/closePosition', () => ({
 }));
 jest.mock('../../src/connectors/meteora/clmm-routes/closePosition', () => ({
   closePosition: (...a: any[]) => mockMeteoraClmmClose(...a),
-}));
-// Mocked at getPositionPool rather than at the position-info dispatch beneath it:
-// the two live in one module, so an intra-module call would bypass the mock.
-jest.mock('../../src/trading/clmm/positions', () => ({
-  ...jest.requireActual('../../src/trading/clmm/positions'),
-  getPositionPool: (...a: any[]) => mockPositionPool(...a),
 }));
 
 const buildAmm = async () => {
@@ -138,31 +132,29 @@ describe('write responses name what they acted on', () => {
     });
   });
 
-  describe('CLMM — the pool is resolved, since the route never receives it', () => {
+  describe('CLMM — the pool comes from the connector', () => {
     let server: any;
     beforeAll(async () => {
       server = await buildClmm();
     });
     afterAll(async () => server.close());
 
-    const closed = {
+    const closed = (poolAddress?: string) => ({
       signature: 'sig',
       status: 1,
       data: {
         fee: 0.00001,
+        ...(poolAddress ? { poolAddress } : {}),
         positionRentRefunded: 0.002,
         baseTokenAmountRemoved: 1,
         quoteTokenAmountRemoved: 2,
         baseFeeAmountCollected: 0,
         quoteFeeAmountCollected: 0,
       },
-    };
+    });
 
-    it('resolves the pool before closing, since the position is gone afterwards', async () => {
-      mockPositionPool.mockResolvedValue(POOL);
-      mockMeteoraClmmClose.mockResolvedValue(closed);
-
-      const response = await server.inject({
+    const close = () =>
+      server.inject({
         method: 'POST',
         url: '/close',
         payload: {
@@ -172,37 +164,34 @@ describe('write responses name what they acted on', () => {
           positionAddress: POSITION,
         },
       });
+
+    it('keeps the pool the connector reported and adds the position the caller named', async () => {
+      mockMeteoraClmmClose.mockResolvedValue(closed(POOL));
+
+      const response = await close();
 
       expect(response.statusCode).toBe(200);
       expect(response.json().data).toMatchObject({ poolAddress: POOL, positionAddress: POSITION });
-      // Ordering is the point: after the close there is no position left to ask.
-      expect(mockPositionPool).toHaveBeenCalled();
-      expect(mockPositionPool.mock.invocationCallOrder[0]).toBeLessThan(
-        mockMeteoraClmmClose.mock.invocationCallOrder[0],
-      );
     });
 
-    it('still closes when the pool cannot be resolved, omitting the field', async () => {
-      // getPositionPool swallows its own lookup failure and yields undefined.
-      mockPositionPool.mockResolvedValue(undefined);
-      mockMeteoraClmmClose.mockResolvedValue(closed);
+    it('does not invent a pool the connector did not report', async () => {
+      // The route never receives a pool, so it has nothing of its own to fall back on.
+      mockMeteoraClmmClose.mockResolvedValue(closed());
 
-      const response = await server.inject({
-        method: 'POST',
-        url: '/close',
-        payload: {
-          connector: 'meteora',
-          chainNetwork: 'solana-mainnet-beta',
-          walletAddress: WALLET,
-          positionAddress: POSITION,
-        },
-      });
+      const response = await close();
 
-      // A convenience identifier must never fail the liquidity operation itself.
       expect(response.statusCode).toBe(200);
-      expect(mockMeteoraClmmClose).toHaveBeenCalled();
       expect(response.json().data.poolAddress).toBeUndefined();
       expect(response.json().data.positionAddress).toBe(POSITION);
+    });
+
+    it('does not stamp a pending close, which has no confirmed data to describe', async () => {
+      mockMeteoraClmmClose.mockResolvedValue({ signature: 'sig-pending', status: 0 });
+
+      const response = await close();
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ signature: 'sig-pending', status: 0 });
     });
   });
 });
