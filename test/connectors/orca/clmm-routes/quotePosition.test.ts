@@ -2,8 +2,26 @@ import { Solana } from '../../../../src/chains/solana/solana';
 import { Orca } from '../../../../src/connectors/orca/orca';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 
+// The connector reaches the SDK through orca.utils.quotePosition, not through a
+// method on the Orca instance. Mocking the instance (as this did) left the real helper
+// running against an empty rpc, so every success case answered 500 and the assertions
+// accepted it.
+const mockQuotePosition = jest.fn();
+
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/orca/orca');
+jest.mock('../../../../src/connectors/orca/orca.utils', () => ({
+  ...jest.requireActual('../../../../src/connectors/orca/orca.utils'),
+  quotePosition: (...a: any[]) => mockQuotePosition(...a),
+}));
+
+const QUOTE = {
+  baseLimited: true,
+  baseTokenAmount: 1,
+  quoteTokenAmount: 200,
+  baseTokenAmountMax: 1.01,
+  quoteTokenAmountMax: 202,
+};
 
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
@@ -32,18 +50,8 @@ describe('GET /quote-liquidity', () => {
 
   describe('successful position quoting', () => {
     it('should get position quote with base token amount', async () => {
-      const mockQuote = {
-        baseTokenAmount: '1.0',
-        quoteTokenAmount: '200',
-        liquidity: '1000000',
-        lowerPrice: '150',
-        upperPrice: '250',
-      };
-
-      const mockOrca = {
-        quotePosition: jest.fn().mockResolvedValue(mockQuote),
-      };
-      (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
+      (Orca.getInstance as jest.Mock).mockResolvedValue({ solanaKitRpc: {} });
+      mockQuotePosition.mockResolvedValue(QUOTE);
 
       const response = await app.inject({
         method: 'GET',
@@ -58,25 +66,19 @@ describe('GET /quote-liquidity', () => {
         },
       });
 
-      expect([200, 400, 500]).toContain(response.statusCode);
-      if (response.statusCode === 200) {
-        const body = JSON.parse(response.body);
-        expect(body.baseTokenAmount).toBe(1.0);
-        expect(mockOrca.quotePosition).toHaveBeenCalled();
-      }
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        baseTokenAmount: 1,
+        quoteTokenAmount: 200,
+        poolAddress: mockPoolAddress,
+      });
+      // The range and the offered amount reach the quote unchanged.
+      expect(mockQuotePosition).toHaveBeenCalledWith({}, mockPoolAddress, 150, 250, 1, undefined, 1);
     });
 
     it('should get position quote with quote token amount', async () => {
-      const mockQuote = {
-        baseTokenAmount: '1.0',
-        quoteTokenAmount: '200',
-        liquidity: '1000000',
-      };
-
-      const mockOrca = {
-        quotePosition: jest.fn().mockResolvedValue(mockQuote),
-      };
-      (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
+      (Orca.getInstance as jest.Mock).mockResolvedValue({ solanaKitRpc: {} });
+      mockQuotePosition.mockResolvedValue(QUOTE);
 
       const response = await app.inject({
         method: 'GET',
@@ -91,18 +93,14 @@ describe('GET /quote-liquidity', () => {
         },
       });
 
-      expect([200, 400, 500]).toContain(response.statusCode);
+      expect(response.statusCode).toBe(200);
+      // Only the quote side was offered, so that is what the quote is asked for.
+      expect(mockQuotePosition).toHaveBeenCalledWith({}, mockPoolAddress, 150, 250, undefined, 200, 1);
     });
 
     it('should get position quote with both token amounts', async () => {
-      const mockOrca = {
-        quotePosition: jest.fn().mockResolvedValue({
-          baseTokenAmount: '1.0',
-          quoteTokenAmount: '200',
-          liquidity: '1000000',
-        }),
-      };
-      (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
+      (Orca.getInstance as jest.Mock).mockResolvedValue({ solanaKitRpc: {} });
+      mockQuotePosition.mockResolvedValue(QUOTE);
 
       const response = await app.inject({
         method: 'GET',
@@ -118,18 +116,15 @@ describe('GET /quote-liquidity', () => {
         },
       });
 
-      expect([200, 400, 500]).toContain(response.statusCode);
+      expect(response.statusCode).toBe(200);
+      // Both sides offered: the quote decides which one binds.
+      expect(mockQuotePosition).toHaveBeenCalledWith({}, mockPoolAddress, 150, 250, 1, 200, 1);
+      expect(response.json().baseLimited).toBe(true);
     });
 
     it('should use default network if not provided', async () => {
-      const mockOrca = {
-        quotePosition: jest.fn().mockResolvedValue({
-          baseTokenAmount: '1.0',
-          quoteTokenAmount: '200',
-          liquidity: '1000000',
-        }),
-      };
-      (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
+      (Orca.getInstance as jest.Mock).mockResolvedValue({ solanaKitRpc: {} });
+      mockQuotePosition.mockResolvedValue(QUOTE);
 
       const response = await app.inject({
         method: 'GET',
@@ -143,7 +138,8 @@ describe('GET /quote-liquidity', () => {
         },
       });
 
-      expect([200, 400, 500]).toContain(response.statusCode);
+      expect(response.statusCode).toBe(200);
+      expect(Orca.getInstance).toHaveBeenCalledWith('mainnet-beta');
     });
   });
 
@@ -230,6 +226,9 @@ describe('GET /quote-liquidity', () => {
     });
 
     it('should handle invalid pool address', async () => {
+      (Orca.getInstance as jest.Mock).mockResolvedValue({ solanaKitRpc: {} });
+      mockQuotePosition.mockRejectedValue(new Error('Invalid pool address'));
+
       const response = await app.inject({
         method: 'GET',
         url: '/quote-liquidity',
@@ -249,10 +248,8 @@ describe('GET /quote-liquidity', () => {
 
   describe('error handling', () => {
     it('should handle Orca errors gracefully', async () => {
-      const mockOrca = {
-        quotePosition: jest.fn().mockRejectedValue(new Error('Failed to quote position')),
-      };
-      (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
+      (Orca.getInstance as jest.Mock).mockResolvedValue({ solanaKitRpc: {} });
+      mockQuotePosition.mockRejectedValue(new Error('Failed to quote position'));
 
       const response = await app.inject({
         method: 'GET',
@@ -290,10 +287,8 @@ describe('GET /quote-liquidity', () => {
     });
 
     it('should handle pool not found', async () => {
-      const mockOrca = {
-        quotePosition: jest.fn().mockRejectedValue(new Error('Pool not found')),
-      };
-      (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
+      (Orca.getInstance as jest.Mock).mockResolvedValue({ solanaKitRpc: {} });
+      mockQuotePosition.mockRejectedValue(new Error('Pool not found'));
 
       const response = await app.inject({
         method: 'GET',

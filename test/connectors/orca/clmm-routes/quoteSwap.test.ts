@@ -221,7 +221,17 @@ describe('GET /quote-swap', () => {
     // The unified schema carries defaults for baseToken/quoteToken/amount/side (the
     // convention the unified trading routes already used), so an omitted field is
     // filled rather than rejected. What still fails is a token that cannot resolve.
-    it('should return 400 for invalid token', async () => {
+    it('rejects a base token that is not one of the pool mints', async () => {
+      // Re-seeded rather than inherited: the pool-lookup case above swapped the Solana
+      // mock, and this assertion should not depend on which test ran before it.
+      (Solana.getInstance as jest.Mock).mockResolvedValue({
+        getToken: jest.fn().mockImplementation((symbol: string) => {
+          if (symbol === 'SOL') return mockBaseTokenInfo;
+          if (symbol === 'USDC') return mockQuoteTokenInfo;
+          return null;
+        }),
+      });
+
       const response = await app.inject({
         method: 'GET',
         url: '/quote-swap',
@@ -236,7 +246,9 @@ describe('GET /quote-swap', () => {
         },
       });
 
-      expect([400, 404, 500]).toContain(response.statusCode);
+      // The pool's mints are SOL/USDC, so INVALID belongs to neither side of it.
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body).message).toContain('not part of pool');
     });
 
     it('rejects a side outside the enum', async () => {

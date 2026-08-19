@@ -88,9 +88,23 @@ describe('GET /position-info', () => {
     });
 
     it('should use default network if not provided', async () => {
+      // A complete position: the response schema is serialized against it, so a partial
+      // object fails on the way out rather than telling us anything about defaulting.
       const mockOrca = {
         getPositionInfo: jest.fn().mockResolvedValue({
           address: mockPositionAddress,
+          poolAddress: 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE',
+          baseTokenAddress: 'So11111111111111111111111111111111111111112',
+          quoteTokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+          baseTokenAmount: 1.0,
+          quoteTokenAmount: 200,
+          baseFeeAmount: 0.01,
+          quoteFeeAmount: 0.2,
+          lowerBinId: 1000,
+          upperBinId: 2000,
+          lowerPrice: 150,
+          upperPrice: 250,
+          price: 200.5,
         }),
       };
       (Orca.getInstance as jest.Mock).mockResolvedValue(mockOrca);
@@ -104,7 +118,9 @@ describe('GET /position-info', () => {
         },
       });
 
-      expect([200, 400, 500]).toContain(response.statusCode);
+      expect(response.statusCode).toBe(200);
+      // The schema default is solana-mainnet-beta, so the connector is built for it.
+      expect(Orca.getInstance).toHaveBeenCalledWith('mainnet-beta');
     });
 
     it('should handle null response when position not found', async () => {
@@ -142,7 +158,7 @@ describe('GET /position-info', () => {
       expect(response.statusCode).toBe(400);
     });
 
-    it('should handle invalid position address', async () => {
+    it('reports a missing position as not-found rather than as an empty position', async () => {
       const mockOrca = {
         getPositionInfo: jest.fn().mockResolvedValue(null),
       };
@@ -158,8 +174,8 @@ describe('GET /position-info', () => {
         },
       });
 
-      // Route now throws 404 when position not found
-      expect([404, 400, 500]).toContain(response.statusCode);
+      // A position the connector cannot read is not-found, not a 200 with nothing in it.
+      expect(response.statusCode).toBe(404);
     });
   });
 
