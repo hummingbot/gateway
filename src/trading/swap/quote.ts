@@ -61,6 +61,15 @@ const UnifiedQuoteSwapRequestSchema = Type.Object({
     enum: ['BUY', 'SELL'],
     default: 'SELL',
   }),
+  poolAddress: Type.Optional(
+    Type.String({
+      description:
+        'Pin the swap to a specific pool. Only meaningful for amm/clmm providers, which trade against one ' +
+        'pool; router providers choose their own route and reject it. Omit to resolve the pool from ' +
+        "Gateway's configured pool list by token pair — which a pool that is not in that list (a freshly " +
+        'created one, an unlisted token) cannot be, so pass its address here.',
+    }),
+  ),
   slippagePct: slippagePctField(),
   approximateIfNoExactOut: Type.Optional(
     Type.Boolean({
@@ -85,6 +94,7 @@ async function getSolanaQuoteSwap(
   slippagePct?: number,
   connector?: string,
   approximateIfNoExactOut?: boolean,
+  requestedPoolAddress?: string,
 ): Promise<any> {
   try {
     const networkConfig = getSolanaNetworkConfig(network);
@@ -97,20 +107,28 @@ async function getSolanaQuoteSwap(
       `Using swap provider: ${swapProvider} for network: ${network}${connector ? ' (explicit)' : ' (from config)'}`,
     );
 
-    // For AMM and CLMM, look up the pool address using PoolService
-    let poolAddress: string | undefined;
+    // An explicit pin wins; otherwise resolve the pool from the configured list.
+    let poolAddress: string | undefined = requestedPoolAddress;
     if (connectorType === 'amm' || connectorType === 'clmm') {
-      const poolService = PoolService.getInstance();
-      const pool = await poolService.getPool('solana', network, connectorType, baseToken, quoteToken, connectorName);
+      if (!poolAddress) {
+        const poolService = PoolService.getInstance();
+        const pool = await poolService.getPool('solana', network, connectorType, baseToken, quoteToken, connectorName);
 
-      if (!pool) {
-        throw httpErrors.notFound(
-          `No ${connectorType.toUpperCase()} pool found for ${baseToken}-${quoteToken} on ${connectorName}/${network}`,
-        );
+        if (!pool) {
+          throw httpErrors.notFound(
+            `No ${connectorType.toUpperCase()} pool found for ${baseToken}-${quoteToken} on ${connectorName}/${network}. ` +
+              'Pass poolAddress to trade against a specific pool.',
+          );
+        }
+
+        poolAddress = pool.address;
+        logger.info(`Found pool: ${poolAddress} for ${baseToken}-${quoteToken}`);
       }
-
-      poolAddress = pool.address;
-      logger.info(`Found pool: ${poolAddress} for ${baseToken}-${quoteToken}`);
+    } else if (requestedPoolAddress) {
+      throw httpErrors.badRequest(
+        `poolAddress is not supported for router provider ${swapProvider}: a router chooses its own route ` +
+          'across pools. Use an amm or clmm provider to pin a pool.',
+      );
     }
 
     // Route to the appropriate connector based on swapProvider
@@ -191,6 +209,7 @@ async function getEthereumQuoteSwap(
   side: 'BUY' | 'SELL',
   slippagePct?: number,
   connector?: string,
+  requestedPoolAddress?: string,
 ): Promise<any> {
   try {
     const networkConfig = getEthereumNetworkConfig(network);
@@ -203,20 +222,35 @@ async function getEthereumQuoteSwap(
       `Using swap provider: ${swapProvider} for network: ${network}${connector ? ' (explicit)' : ' (from config)'}`,
     );
 
-    // For AMM and CLMM, look up the pool address using PoolService
-    let poolAddress: string | undefined;
+    // An explicit pin wins; otherwise resolve the pool from the configured list.
+    let poolAddress: string | undefined = requestedPoolAddress;
     if (connectorType === 'amm' || connectorType === 'clmm') {
-      const poolService = PoolService.getInstance();
-      const pool = await poolService.getPool('ethereum', network, connectorType, baseToken, quoteToken, connectorName);
-
-      if (!pool) {
-        throw httpErrors.notFound(
-          `No ${connectorType.toUpperCase()} pool found for ${baseToken}-${quoteToken} on ${connectorName}/${network}`,
+      if (!poolAddress) {
+        const poolService = PoolService.getInstance();
+        const pool = await poolService.getPool(
+          'ethereum',
+          network,
+          connectorType,
+          baseToken,
+          quoteToken,
+          connectorName,
         );
-      }
 
-      poolAddress = pool.address;
-      logger.info(`Found pool: ${poolAddress} for ${baseToken}-${quoteToken}`);
+        if (!pool) {
+          throw httpErrors.notFound(
+            `No ${connectorType.toUpperCase()} pool found for ${baseToken}-${quoteToken} on ${connectorName}/${network}. ` +
+              'Pass poolAddress to trade against a specific pool.',
+          );
+        }
+
+        poolAddress = pool.address;
+        logger.info(`Found pool: ${poolAddress} for ${baseToken}-${quoteToken}`);
+      }
+    } else if (requestedPoolAddress) {
+      throw httpErrors.badRequest(
+        `poolAddress is not supported for router provider ${swapProvider}: a router chooses its own route ` +
+          'across pools. Use an amm or clmm provider to pin a pool.',
+      );
     }
 
     // Route to the appropriate connector based on swapProvider
@@ -260,6 +294,7 @@ export async function getUnifiedQuoteSwap(
   slippagePct?: number,
   connector?: string,
   approximateIfNoExactOut?: boolean,
+  requestedPoolAddress?: string,
 ): Promise<any> {
   const { chain, network } = parseChainNetwork(chainNetwork);
 
@@ -269,7 +304,16 @@ export async function getUnifiedQuoteSwap(
 
   switch (chain.toLowerCase()) {
     case 'ethereum':
-      return getEthereumQuoteSwap(network, baseToken, quoteToken, amount, side, slippagePct, connector);
+      return getEthereumQuoteSwap(
+        network,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct,
+        connector,
+        requestedPoolAddress,
+      );
 
     case 'solana':
       return getSolanaQuoteSwap(
@@ -281,6 +325,7 @@ export async function getUnifiedQuoteSwap(
         slippagePct,
         connector,
         approximateIfNoExactOut,
+        requestedPoolAddress,
       );
 
     default:
@@ -306,8 +351,17 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request, reply) => {
-      const { chainNetwork, baseToken, quoteToken, amount, side, slippagePct, approximateIfNoExactOut, connector } =
-        request.query as UnifiedQuoteSwapRequest;
+      const {
+        chainNetwork,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct,
+        approximateIfNoExactOut,
+        connector,
+        poolAddress,
+      } = request.query as UnifiedQuoteSwapRequest;
 
       try {
         const result = await getUnifiedQuoteSwap(
@@ -319,6 +373,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
           connector,
           approximateIfNoExactOut,
+          poolAddress,
         );
         return reply.code(200).send(result);
       } catch (error: any) {
