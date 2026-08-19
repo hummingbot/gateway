@@ -128,7 +128,7 @@ one set of routes covers every DEX.
 - `GET /trading/amm/position-info` - Wallet's liquidity in a pool
 - `GET /trading/amm/positions-owned` - All of a wallet's positions
 - `GET /trading/amm/quote-liquidity` - Two-sided deposit quote
-- `POST /trading/amm/open` / `close` - Open or close a position (non-fungible-LP AMMs only)
+- `POST /trading/amm/open` / `close` - Open or close a position (fungible-LP AMMs deposit/withdraw in full)
 - `POST /trading/amm/add` / `remove` - Change a position's liquidity
 - `POST /trading/amm/create-pool`
 

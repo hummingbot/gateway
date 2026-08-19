@@ -65,9 +65,11 @@ export type AddLiquidityResponseType = Static<typeof AddLiquidityResponse>;
 // ============================================
 // Open / close (non-fungible-LP AMMs)
 // ============================================
-// Mirrors the CLMM open/close responses. Only AMMs whose positions are discrete
-// accounts (Meteora DAMM v2, whose positions are NFTs) can open or close one;
-// fungible-LP AMMs have no position to address, so their routes reject instead.
+// Mirrors the CLMM open/close responses. Both work on every AMM, but the position
+// fields only carry values where a position is a discrete account (Meteora DAMM v2,
+// whose positions are NFTs). A fungible-LP AMM issues LP tokens against the pool, so
+// there is no position address to report and no account rent to lock or refund —
+// positionAddress is absent and the rent figures are 0 because nothing was locked.
 
 export const OpenPositionResponse = Type.Object(
   {
@@ -78,10 +80,16 @@ export const OpenPositionResponse = Type.Object(
     data: Type.Optional(
       Type.Object({
         fee: Type.Number({ format: 'decimal' }),
-        positionAddress: Type.String({ description: 'Address of the newly opened position' }),
+        positionAddress: Type.Optional(
+          Type.String({
+            description:
+              'Address of the newly opened position. Absent on fungible-LP AMMs, which hold liquidity as LP tokens rather than a position account.',
+          }),
+        ),
         positionRent: Type.Number({
           format: 'decimal',
-          description: 'Native token locked as rent for the position account (refunded on close)',
+          description:
+            'Native token locked as rent for the position account, refunded on close. 0 on fungible-LP AMMs, which lock no rent.',
         }),
         baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
         quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
@@ -103,7 +111,8 @@ export const ClosePositionResponse = Type.Object(
         fee: Type.Number({ format: 'decimal' }),
         positionRentRefunded: Type.Number({
           format: 'decimal',
-          description: 'Native token rent returned when the position account closed',
+          description:
+            'Native token rent returned when the position account closed. 0 on fungible-LP AMMs, which have no position account to close.',
         }),
         baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
         quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),

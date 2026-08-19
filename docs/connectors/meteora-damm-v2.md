@@ -18,7 +18,7 @@ Gateway exposes it through the unified AMM interface at `/trading/amm/*` with
 | `/trading/amm/open` | POST | Open a new position (NFT) and seed it with liquidity |
 | `/trading/amm/add` | POST | Add to a specific position (`positionAddress`) or open a new one |
 | `/trading/amm/remove` | POST | Remove a % from a specific position (`positionAddress` **required**) |
-| `/trading/amm/close` | POST | Withdraw everything and close the position, refunding its rent |
+| `/trading/amm/close` | POST | Withdraw everything and close the position NFT, refunding its rent (`positionAddress` **required**) |
 | `/trading/amm/create-pool` | POST | Create + seed a new pool |
 
 The implementation deliberately keeps to "the basics" so it fits the shared AMM schema. This

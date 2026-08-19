@@ -2,6 +2,7 @@ import { derivePositionAddress } from '@meteora-ag/cp-amm-sdk';
 import { Keypair, PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { accountLamports } from '../../../chains/solana/solana.utils';
 import { OpenPositionResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -69,9 +70,7 @@ export async function openPosition(
   // The position account is derived from the NFT mint; its post-balance is the rent
   // the account now holds, which comes back to the wallet when the position closes.
   const position = derivePositionAddress(positionNft.publicKey);
-  const accountKeys = txData.transaction.message.getAccountKeys().staticAccountKeys;
-  const positionIndex = accountKeys.findIndex((key) => key.equals(position));
-  const positionRent = positionIndex === -1 ? 0 : (txData.meta?.postBalances?.[positionIndex] ?? 0) / 1e9;
+  const positionRent = accountLamports(txData, position, 'post') ?? 0;
 
   const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
     poolState.tokenAMint.toBase58(),
