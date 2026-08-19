@@ -1,5 +1,5 @@
 import sensible from '@fastify/sensible';
-import Fastify, { FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 jest.mock('../../src/services/hardware-wallet-service');
 jest.mock('../../src/wallet/utils');
@@ -11,6 +11,7 @@ import { Solana } from '../../src/chains/solana/solana';
 import { HardwareWalletService } from '../../src/services/hardware-wallet-service';
 import { addHardwareWalletRoute } from '../../src/wallet/routes/addHardwareWallet';
 import { getHardwareWallets, saveHardwareWallets, validateChainName } from '../../src/wallet/utils';
+import { fastifyWithTypeProvider } from '../utils/testUtils';
 
 describe('Hardware Wallet Routes', () => {
   let app: FastifyInstance;
@@ -19,7 +20,7 @@ describe('Hardware Wallet Routes', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    app = Fastify();
+    app = fastifyWithTypeProvider();
     await app.register(addHardwareWalletRoute);
 
     mockHardwareWalletService = {

@@ -1,5 +1,3 @@
-import Fastify, { FastifyInstance } from 'fastify';
-
 // Mock dependencies
 jest.mock('../../src/services/logger', () => ({
   logger: {
@@ -13,14 +11,17 @@ jest.mock('../../src/services/logger', () => ({
 jest.mock('../../src/services/token-service');
 
 // Import after mocking
+import { FastifyInstance } from 'fastify';
+
 import { TokenService } from '../../src/services/token-service';
 import { tokensRoutes } from '../../src/tokens/tokens.routes';
+import { fastifyWithTypeProvider } from '../utils/testUtils';
 
 describe('Token Routes', () => {
   let app: FastifyInstance;
 
   beforeEach(async () => {
-    app = Fastify();
+    app = fastifyWithTypeProvider();
     await app.register(tokensRoutes);
 
     // Reset all mocks

@@ -20,7 +20,9 @@
   "paths": {
     "/config/": {
       "get": {
-        "tags": ["/config"],
+        "tags": [
+          "/config"
+        ],
         "description": "Get configuration settings. Returns all configurations if no parameters are specified. Use namespace to get a specific config (e.g., server, ethereum-mainnet, solana-mainnet-beta, uniswap).",
         "parameters": [
           {
@@ -64,7 +66,9 @@
     },
     "/config/update": {
       "post": {
-        "tags": ["/config"],
+        "tags": [
+          "/config"
+        ],
         "description": "Update a specific configuration value",
         "requestBody": {
           "content": {
@@ -105,7 +109,11 @@
                     ]
                   }
                 },
-                "required": ["namespace", "path", "value"]
+                "required": [
+                  "namespace",
+                  "path",
+                  "value"
+                ]
               },
               "examples": {
                 "example1": {
@@ -161,7 +169,9 @@
                       "type": "string"
                     }
                   },
-                  "required": ["message"]
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }
@@ -171,7 +181,9 @@
     },
     "/config/chains": {
       "get": {
-        "tags": ["/config"],
+        "tags": [
+          "/config"
+        ],
         "description": "Returns a list of available blockchain networks supported by Gateway.",
         "responses": {
           "200": {
@@ -196,11 +208,16 @@
                             }
                           }
                         },
-                        "required": ["chain", "networks"]
+                        "required": [
+                          "chain",
+                          "networks"
+                        ]
                       }
                     }
                   },
-                  "required": ["chains"]
+                  "required": [
+                    "chains"
+                  ]
                 }
               }
             }
@@ -210,7 +227,9 @@
     },
     "/config/connectors": {
       "get": {
-        "tags": ["/config"],
+        "tags": [
+          "/config"
+        ],
         "description": "Returns a list of available DEX connectors and their supported blockchain networks.",
         "responses": {
           "200": {
@@ -244,11 +263,18 @@
                             }
                           }
                         },
-                        "required": ["name", "trading_types", "chain", "networks"]
+                        "required": [
+                          "name",
+                          "trading_types",
+                          "chain",
+                          "networks"
+                        ]
                       }
                     }
                   },
-                  "required": ["connectors"]
+                  "required": [
+                    "connectors"
+                  ]
                 }
               }
             }
@@ -258,7 +284,9 @@
     },
     "/config/namespaces": {
       "get": {
-        "tags": ["/config"],
+        "tags": [
+          "/config"
+        ],
         "description": "Returns a list of all configuration namespaces available in Gateway.",
         "responses": {
           "200": {
@@ -275,7 +303,9 @@
                       }
                     }
                   },
-                  "required": ["namespaces"]
+                  "required": [
+                    "namespaces"
+                  ]
                 }
               }
             }
@@ -285,7 +315,9 @@
     },
     "/wallet/": {
       "get": {
-        "tags": ["/wallet"],
+        "tags": [
+          "/wallet"
+        ],
         "description": "Get all wallets across different chains",
         "parameters": [
           {
@@ -330,7 +362,10 @@
                         }
                       }
                     },
-                    "required": ["chain", "walletAddresses"]
+                    "required": [
+                      "chain",
+                      "walletAddresses"
+                    ]
                   }
                 }
               }
@@ -341,7 +376,9 @@
     },
     "/wallet/add": {
       "post": {
-        "tags": ["/wallet"],
+        "tags": [
+          "/wallet"
+        ],
         "description": "Add a new wallet using a private key",
         "requestBody": {
           "content": {
@@ -351,7 +388,10 @@
                 "properties": {
                   "chain": {
                     "description": "Blockchain to add wallet to",
-                    "enum": ["ethereum", "solana"],
+                    "enum": [
+                      "ethereum",
+                      "solana"
+                    ],
                     "type": "string",
                     "example": "solana"
                   },
@@ -366,7 +406,10 @@
                     "type": "boolean"
                   }
                 },
-                "required": ["chain", "privateKey"]
+                "required": [
+                  "chain",
+                  "privateKey"
+                ]
               },
               "example": {
                 "chain": "solana",
@@ -390,7 +433,9 @@
                       "type": "string"
                     }
                   },
-                  "required": ["address"]
+                  "required": [
+                    "address"
+                  ]
                 }
               }
             }
@@ -400,7 +445,9 @@
     },
     "/wallet/add-hardware": {
       "post": {
-        "tags": ["/wallet"],
+        "tags": [
+          "/wallet"
+        ],
         "description": "Add a hardware wallet",
         "requestBody": {
           "content": {
@@ -410,7 +457,10 @@
                 "properties": {
                   "chain": {
                     "description": "Blockchain for hardware wallet",
-                    "enum": ["ethereum", "solana"],
+                    "enum": [
+                      "ethereum",
+                      "solana"
+                    ],
                     "default": "solana",
                     "type": "string",
                     "example": "solana"
@@ -425,7 +475,10 @@
                     "type": "boolean"
                   }
                 },
-                "required": ["chain", "address"]
+                "required": [
+                  "chain",
+                  "address"
+                ]
               }
             }
           },
@@ -456,7 +509,12 @@
                       "type": "string"
                     }
                   },
-                  "required": ["address", "publicKey", "derivationPath", "message"]
+                  "required": [
+                    "address",
+                    "publicKey",
+                    "derivationPath",
+                    "message"
+                  ]
                 }
               }
             }
@@ -466,7 +524,9 @@
     },
     "/wallet/remove": {
       "delete": {
-        "tags": ["/wallet"],
+        "tags": [
+          "/wallet"
+        ],
         "description": "Remove a wallet by its address (automatically detects wallet type)",
         "requestBody": {
           "content": {
@@ -476,7 +536,10 @@
                 "properties": {
                   "chain": {
                     "description": "Blockchain to remove wallet from",
-                    "enum": ["ethereum", "solana"],
+                    "enum": [
+                      "ethereum",
+                      "solana"
+                    ],
                     "type": "string",
                     "example": "solana"
                   },
@@ -485,7 +548,10 @@
                     "type": "string"
                   }
                 },
-                "required": ["chain", "address"]
+                "required": [
+                  "chain",
+                  "address"
+                ]
               }
             }
           },
@@ -504,7 +570,9 @@
                       "type": "string"
                     }
                   },
-                  "required": ["message"]
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }
@@ -514,7 +582,9 @@
     },
     "/wallet/setDefault": {
       "post": {
-        "tags": ["/wallet"],
+        "tags": [
+          "/wallet"
+        ],
         "description": "Set a wallet as default for a specific chain",
         "requestBody": {
           "content": {
@@ -524,7 +594,10 @@
                 "properties": {
                   "chain": {
                     "description": "Blockchain to set default wallet for",
-                    "enum": ["ethereum", "solana"],
+                    "enum": [
+                      "ethereum",
+                      "solana"
+                    ],
                     "type": "string",
                     "example": "solana"
                   },
@@ -533,7 +606,10 @@
                     "type": "string"
                   }
                 },
-                "required": ["chain", "address"]
+                "required": [
+                  "chain",
+                  "address"
+                ]
               },
               "examples": {
                 "example1": {
@@ -574,7 +650,11 @@
                       "type": "string"
                     }
                   },
-                  "required": ["message", "chain", "address"]
+                  "required": [
+                    "message",
+                    "chain",
+                    "address"
+                  ]
                 }
               }
             }
@@ -584,7 +664,9 @@
     },
     "/tokens/{symbolOrAddress}": {
       "get": {
-        "tags": ["/tokens"],
+        "tags": [
+          "/tokens"
+        ],
         "description": "Get a specific token by symbol or address",
         "parameters": [
           {
@@ -673,7 +755,12 @@
                           "example": 6
                         }
                       },
-                      "required": ["name", "symbol", "address", "decimals"]
+                      "required": [
+                        "name",
+                        "symbol",
+                        "address",
+                        "decimals"
+                      ]
                     },
                     "chain": {
                       "type": "string"
@@ -682,7 +769,11 @@
                       "type": "string"
                     }
                   },
-                  "required": ["token", "chain", "network"]
+                  "required": [
+                    "token",
+                    "chain",
+                    "network"
+                  ]
                 }
               }
             }
@@ -692,7 +783,9 @@
     },
     "/tokens/find/{address}": {
       "get": {
-        "tags": ["/tokens"],
+        "tags": [
+          "/tokens"
+        ],
         "description": "Get token information with market data from GeckoTerminal by address",
         "parameters": [
           {
@@ -772,7 +865,12 @@
                       "example": 6
                     }
                   },
-                  "required": ["name", "symbol", "address", "decimals"]
+                  "required": [
+                    "name",
+                    "symbol",
+                    "address",
+                    "decimals"
+                  ]
                 }
               }
             }
@@ -782,7 +880,9 @@
     },
     "/tokens/": {
       "get": {
-        "tags": ["/tokens"],
+        "tags": [
+          "/tokens"
+        ],
         "description": "List tokens from token lists with optional filtering",
         "parameters": [
           {
@@ -881,11 +981,18 @@
                             "example": 6
                           }
                         },
-                        "required": ["name", "symbol", "address", "decimals"]
+                        "required": [
+                          "name",
+                          "symbol",
+                          "address",
+                          "decimals"
+                        ]
                       }
                     }
                   },
-                  "required": ["tokens"]
+                  "required": [
+                    "tokens"
+                  ]
                 }
               }
             }
@@ -893,7 +1000,9 @@
         }
       },
       "post": {
-        "tags": ["/tokens"],
+        "tags": [
+          "/tokens"
+        ],
         "description": "Add a new token to a token list",
         "requestBody": {
           "content": {
@@ -942,10 +1051,19 @@
                         "example": 6
                       }
                     },
-                    "required": ["name", "symbol", "address", "decimals"]
+                    "required": [
+                      "name",
+                      "symbol",
+                      "address",
+                      "decimals"
+                    ]
                   }
                 },
-                "required": ["chain", "network", "token"]
+                "required": [
+                  "chain",
+                  "network",
+                  "token"
+                ]
               }
             }
           },
@@ -964,7 +1082,9 @@
                       "type": "string"
                     }
                   },
-                  "required": ["message"]
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }
@@ -974,7 +1094,9 @@
     },
     "/tokens/save/{address}": {
       "post": {
-        "tags": ["/tokens"],
+        "tags": [
+          "/tokens"
+        ],
         "description": "Find token from GeckoTerminal and save it to the token list",
         "parameters": [
           {
@@ -1060,10 +1182,18 @@
                           "example": 6
                         }
                       },
-                      "required": ["name", "symbol", "address", "decimals"]
+                      "required": [
+                        "name",
+                        "symbol",
+                        "address",
+                        "decimals"
+                      ]
                     }
                   },
-                  "required": ["message", "token"]
+                  "required": [
+                    "message",
+                    "token"
+                  ]
                 }
               }
             }
@@ -1073,7 +1203,9 @@
     },
     "/tokens/{address}": {
       "delete": {
-        "tags": ["/tokens"],
+        "tags": [
+          "/tokens"
+        ],
         "description": "Remove a token from a token list by address",
         "parameters": [
           {
@@ -1136,7 +1268,9 @@
                       "type": "string"
                     }
                   },
-                  "required": ["message"]
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }
@@ -1146,7 +1280,9 @@
     },
     "/pools/{tradingPair}": {
       "get": {
-        "tags": ["/pools"],
+        "tags": [
+          "/pools"
+        ],
         "description": "Get a specific pool by trading pair",
         "parameters": [
           {
@@ -1186,7 +1322,10 @@
           },
           {
             "schema": {
-              "enum": ["amm", "clmm"],
+              "enum": [
+                "amm",
+                "clmm"
+              ],
               "type": "string"
             },
             "examples": {
@@ -1258,7 +1397,10 @@
                     },
                     "type": {
                       "description": "Pool type",
-                      "enum": ["clmm", "amm"],
+                      "enum": [
+                        "clmm",
+                        "amm"
+                      ],
                       "type": "string",
                       "example": "clmm"
                     },
@@ -1278,6 +1420,7 @@
                       "type": "string"
                     },
                     "feePct": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "address": {
@@ -1319,7 +1462,9 @@
     },
     "/pools/find/{address}": {
       "get": {
-        "tags": ["/pools"],
+        "tags": [
+          "/pools"
+        ],
         "description": "Get detailed pool information by address from GeckoTerminal",
         "parameters": [
           {
@@ -1378,7 +1523,10 @@
                     },
                     "type": {
                       "description": "Pool type",
-                      "enum": ["clmm", "amm"],
+                      "enum": [
+                        "clmm",
+                        "amm"
+                      ],
                       "type": "string",
                       "example": "clmm"
                     },
@@ -1398,6 +1546,7 @@
                       "type": "string"
                     },
                     "feePct": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "address": {
@@ -1424,7 +1573,9 @@
     },
     "/pools/find": {
       "get": {
-        "tags": ["/pools"],
+        "tags": [
+          "/pools"
+        ],
         "description": "Find pools for a token pair from GeckoTerminal",
         "parameters": [
           {
@@ -1481,7 +1632,10 @@
           },
           {
             "schema": {
-              "enum": ["clmm", "amm"],
+              "enum": [
+                "clmm",
+                "amm"
+              ],
               "default": "clmm",
               "type": "string"
             },
@@ -1568,7 +1722,10 @@
                       },
                       "type": {
                         "description": "Pool type",
-                        "enum": ["clmm", "amm"],
+                        "enum": [
+                          "clmm",
+                          "amm"
+                        ],
                         "type": "string",
                         "example": "clmm"
                       },
@@ -1588,6 +1745,7 @@
                         "type": "string"
                       },
                       "feePct": {
+                        "format": "decimal",
                         "type": "number"
                       },
                       "address": {
@@ -1615,7 +1773,9 @@
     },
     "/pools/": {
       "get": {
-        "tags": ["/pools"],
+        "tags": [
+          "/pools"
+        ],
         "description": "List all pools for a chain/network, optionally filtered by connector, type, or search term",
         "parameters": [
           {
@@ -1683,7 +1843,10 @@
           },
           {
             "schema": {
-              "enum": ["clmm", "amm"],
+              "enum": [
+                "clmm",
+                "amm"
+              ],
               "type": "string"
             },
             "examples": {
@@ -1726,7 +1889,10 @@
                       },
                       "type": {
                         "description": "Pool type",
-                        "enum": ["clmm", "amm"],
+                        "enum": [
+                          "clmm",
+                          "amm"
+                        ],
                         "type": "string",
                         "example": "clmm"
                       },
@@ -1746,6 +1912,7 @@
                         "type": "string"
                       },
                       "feePct": {
+                        "format": "decimal",
                         "type": "number"
                       },
                       "address": {
@@ -1771,7 +1938,9 @@
         }
       },
       "post": {
-        "tags": ["/pools"],
+        "tags": [
+          "/pools"
+        ],
         "description": "Add a new pool",
         "requestBody": {
           "content": {
@@ -1791,7 +1960,10 @@
                   },
                   "type": {
                     "description": "Pool type",
-                    "enum": ["clmm", "amm"],
+                    "enum": [
+                      "clmm",
+                      "amm"
+                    ],
                     "type": "string",
                     "example": "clmm"
                   },
@@ -1826,6 +1998,7 @@
                     "example": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
                   },
                   "feePct": {
+                    "format": "decimal",
                     "description": "Pool fee percentage (optional - fetched from pool-info if not provided)",
                     "minimum": 0,
                     "maximum": 100,
@@ -1859,7 +2032,9 @@
                       "type": "string"
                     }
                   },
-                  "required": ["message"]
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }
@@ -1884,7 +2059,9 @@
     },
     "/pools/save/{address}": {
       "post": {
-        "tags": ["/pools"],
+        "tags": [
+          "/pools"
+        ],
         "description": "Find pool from GeckoTerminal and save it to the pool list. Auto-adds missing tokens.",
         "parameters": [
           {
@@ -1949,7 +2126,10 @@
                         },
                         "type": {
                           "description": "Pool type",
-                          "enum": ["clmm", "amm"],
+                          "enum": [
+                            "clmm",
+                            "amm"
+                          ],
                           "type": "string",
                           "example": "clmm"
                         },
@@ -1969,6 +2149,7 @@
                           "type": "string"
                         },
                         "feePct": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "address": {
@@ -1994,7 +2175,10 @@
                       }
                     }
                   },
-                  "required": ["message", "pool"]
+                  "required": [
+                    "message",
+                    "pool"
+                  ]
                 }
               }
             }
@@ -2004,7 +2188,9 @@
     },
     "/pools/{address}": {
       "delete": {
-        "tags": ["/pools"],
+        "tags": [
+          "/pools"
+        ],
         "description": "Remove a pool by address",
         "parameters": [
           {
@@ -2063,7 +2249,9 @@
                       "type": "string"
                     }
                   },
-                  "required": ["message"]
+                  "required": [
+                    "message"
+                  ]
                 }
               }
             }
@@ -2088,7 +2276,9 @@
     },
     "/trading/router/quote-swap": {
       "get": {
-        "tags": ["/trading/router"],
+        "tags": [
+          "/trading/router"
+        ],
         "description": "Get a swap quote from a router connector on any supported chain",
         "parameters": [
           {
@@ -2104,7 +2294,15 @@
           },
           {
             "schema": {
-              "enum": ["jupiter", "dflow", "okx", "titan", "uniswap", "pancakeswap", "0x"],
+              "enum": [
+                "jupiter",
+                "dflow",
+                "okx",
+                "titan",
+                "uniswap",
+                "pancakeswap",
+                "0x"
+              ],
               "default": "jupiter",
               "type": "string"
             },
@@ -2147,7 +2345,10 @@
           },
           {
             "schema": {
-              "enum": ["BUY", "SELL"],
+              "enum": [
+                "BUY",
+                "SELL"
+              ],
               "default": "SELL",
               "type": "string"
             },
@@ -2181,7 +2382,12 @@
           {
             "schema": {
               "default": true,
-              "x-connectors": ["jupiter", "dflow", "okx", "titan"],
+              "x-connectors": [
+                "jupiter",
+                "dflow",
+                "okx",
+                "titan"
+              ],
               "type": "boolean"
             },
             "in": "query",
@@ -2191,7 +2397,9 @@
           },
           {
             "schema": {
-              "x-connectors": ["0x"],
+              "x-connectors": [
+                "0x"
+              ],
               "type": "boolean"
             },
             "in": "query",
@@ -2288,7 +2496,9 @@
     },
     "/trading/router/execute-quote": {
       "post": {
-        "tags": ["/trading/router"],
+        "tags": [
+          "/trading/router"
+        ],
         "description": "Execute a previously fetched router quote by its quote id",
         "requestBody": {
           "content": {
@@ -2304,7 +2514,15 @@
                   },
                   "connector": {
                     "description": "Router connector. Defaults to the network's swapProvider",
-                    "enum": ["jupiter", "dflow", "okx", "titan", "uniswap", "pancakeswap", "0x"],
+                    "enum": [
+                      "jupiter",
+                      "dflow",
+                      "okx",
+                      "titan",
+                      "uniswap",
+                      "pancakeswap",
+                      "0x"
+                    ],
                     "default": "jupiter",
                     "type": "string",
                     "example": "jupiter"
@@ -2319,7 +2537,11 @@
                     "type": "string"
                   }
                 },
-                "required": ["chainNetwork", "walletAddress", "quoteId"]
+                "required": [
+                  "chainNetwork",
+                  "walletAddress",
+                  "quoteId"
+                ]
               }
             }
           },
@@ -2398,7 +2620,10 @@
                       ]
                     }
                   },
-                  "required": ["signature", "status"]
+                  "required": [
+                    "signature",
+                    "status"
+                  ]
                 }
               }
             }
@@ -2408,7 +2633,9 @@
     },
     "/trading/router/execute-swap": {
       "post": {
-        "tags": ["/trading/router"],
+        "tags": [
+          "/trading/router"
+        ],
         "description": "Quote and execute a swap through a router connector on any supported chain",
         "requestBody": {
           "content": {
@@ -2424,7 +2651,15 @@
                   },
                   "connector": {
                     "description": "Router connector. Defaults to the network's swapProvider",
-                    "enum": ["jupiter", "dflow", "okx", "titan", "uniswap", "pancakeswap", "0x"],
+                    "enum": [
+                      "jupiter",
+                      "dflow",
+                      "okx",
+                      "titan",
+                      "uniswap",
+                      "pancakeswap",
+                      "0x"
+                    ],
                     "default": "jupiter",
                     "type": "string",
                     "example": "jupiter"
@@ -2452,7 +2687,10 @@
                   },
                   "side": {
                     "description": "BUY means buying base token with quote token, SELL means selling base token for quote token",
-                    "enum": ["BUY", "SELL"],
+                    "enum": [
+                      "BUY",
+                      "SELL"
+                    ],
                     "default": "SELL",
                     "type": "string"
                   },
@@ -2467,11 +2705,23 @@
                   "approximateIfNoExactOut": {
                     "description": "For BUY orders when the router has no ExactOut route: approximate via a sell-leg ExactIn swap instead of failing.",
                     "default": true,
-                    "x-connectors": ["jupiter", "dflow", "okx", "titan"],
+                    "x-connectors": [
+                      "jupiter",
+                      "dflow",
+                      "okx",
+                      "titan"
+                    ],
                     "type": "boolean"
                   }
                 },
-                "required": ["chainNetwork", "walletAddress", "baseToken", "quoteToken", "amount", "side"]
+                "required": [
+                  "chainNetwork",
+                  "walletAddress",
+                  "baseToken",
+                  "quoteToken",
+                  "amount",
+                  "side"
+                ]
               }
             }
           },
@@ -2550,7 +2800,10 @@
                       ]
                     }
                   },
-                  "required": ["signature", "status"]
+                  "required": [
+                    "signature",
+                    "status"
+                  ]
                 }
               }
             }
@@ -2560,12 +2813,21 @@
     },
     "/trading/clmm/pool-info": {
       "get": {
-        "tags": ["/trading/clmm"],
+        "tags": [
+          "/trading/clmm"
+        ],
         "description": "Get CLMM pool information from any supported connector",
         "parameters": [
           {
             "schema": {
-              "enum": ["meteora", "raydium", "pancakeswap-sol", "orca", "uniswap", "pancakeswap"],
+              "enum": [
+                "meteora",
+                "raydium",
+                "pancakeswap-sol",
+                "orca",
+                "uniswap",
+                "pancakeswap"
+              ],
               "default": "meteora",
               "type": "string"
             },
@@ -2630,15 +2892,19 @@
                       "type": "number"
                     },
                     "feePct": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "price": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "baseTokenAmount": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "quoteTokenAmount": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "activeBinId": {
@@ -2653,16 +2919,24 @@
                             "type": "number"
                           },
                           "price": {
+                            "format": "decimal",
                             "type": "number"
                           },
                           "baseTokenAmount": {
+                            "format": "decimal",
                             "type": "number"
                           },
                           "quoteTokenAmount": {
+                            "format": "decimal",
                             "type": "number"
                           }
                         },
-                        "required": ["binId", "price", "baseTokenAmount", "quoteTokenAmount"],
+                        "required": [
+                          "binId",
+                          "price",
+                          "baseTokenAmount",
+                          "quoteTokenAmount"
+                        ],
                         "title": "BinLiquidity"
                       }
                     }
@@ -2686,12 +2960,21 @@
     },
     "/trading/clmm/position-info": {
       "get": {
-        "tags": ["/trading/clmm"],
+        "tags": [
+          "/trading/clmm"
+        ],
         "description": "Get CLMM position information from any supported connector",
         "parameters": [
           {
             "schema": {
-              "enum": ["meteora", "raydium", "pancakeswap-sol", "orca", "uniswap", "pancakeswap"],
+              "enum": [
+                "meteora",
+                "raydium",
+                "pancakeswap-sol",
+                "orca",
+                "uniswap",
+                "pancakeswap"
+              ],
               "default": "meteora",
               "type": "string"
             },
@@ -2744,15 +3027,19 @@
                       "type": "string"
                     },
                     "baseTokenAmount": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "quoteTokenAmount": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "baseFeeAmount": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "quoteFeeAmount": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "lowerBinId": {
@@ -2762,12 +3049,15 @@
                       "type": "number"
                     },
                     "lowerPrice": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "upperPrice": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "price": {
+                      "format": "decimal",
                       "type": "number"
                     }
                   },
@@ -2795,12 +3085,21 @@
     },
     "/trading/clmm/positions-owned": {
       "get": {
-        "tags": ["/trading/clmm"],
+        "tags": [
+          "/trading/clmm"
+        ],
         "description": "Get all CLMM positions owned by a wallet from any supported connector",
         "parameters": [
           {
             "schema": {
-              "enum": ["meteora", "raydium", "pancakeswap-sol", "orca", "uniswap", "pancakeswap"],
+              "enum": [
+                "meteora",
+                "raydium",
+                "pancakeswap-sol",
+                "orca",
+                "uniswap",
+                "pancakeswap"
+              ],
               "default": "meteora",
               "type": "string"
             },
@@ -2855,15 +3154,19 @@
                         "type": "string"
                       },
                       "baseTokenAmount": {
+                        "format": "decimal",
                         "type": "number"
                       },
                       "quoteTokenAmount": {
+                        "format": "decimal",
                         "type": "number"
                       },
                       "baseFeeAmount": {
+                        "format": "decimal",
                         "type": "number"
                       },
                       "quoteFeeAmount": {
+                        "format": "decimal",
                         "type": "number"
                       },
                       "lowerBinId": {
@@ -2873,12 +3176,15 @@
                         "type": "number"
                       },
                       "lowerPrice": {
+                        "format": "decimal",
                         "type": "number"
                       },
                       "upperPrice": {
+                        "format": "decimal",
                         "type": "number"
                       },
                       "price": {
+                        "format": "decimal",
                         "type": "number"
                       }
                     },
@@ -2908,12 +3214,21 @@
     },
     "/trading/clmm/quote-liquidity": {
       "get": {
-        "tags": ["/trading/clmm"],
+        "tags": [
+          "/trading/clmm"
+        ],
         "description": "Quote amounts for a new CLMM position from any supported connector",
         "parameters": [
           {
             "schema": {
-              "enum": ["meteora", "raydium", "pancakeswap-sol", "orca", "uniswap", "pancakeswap"],
+              "enum": [
+                "meteora",
+                "raydium",
+                "pancakeswap-sol",
+                "orca",
+                "uniswap",
+                "pancakeswap"
+              ],
               "default": "meteora",
               "type": "string"
             },
@@ -3018,15 +3333,19 @@
                       "type": "boolean"
                     },
                     "baseTokenAmount": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "quoteTokenAmount": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "baseTokenAmountMax": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "quoteTokenAmountMax": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "liquidity": {}
@@ -3047,7 +3366,9 @@
     },
     "/trading/clmm/fetch-pools": {
       "get": {
-        "tags": ["/trading/clmm"],
+        "tags": [
+          "/trading/clmm"
+        ],
         "description": "Discover pools from a CLMM connector's own pool-listing API",
         "parameters": [
           {
@@ -3063,7 +3384,10 @@
           },
           {
             "schema": {
-              "enum": ["meteora", "orca"],
+              "enum": [
+                "meteora",
+                "orca"
+              ],
               "default": "meteora",
               "type": "string"
             },
@@ -3122,7 +3446,9 @@
           {
             "schema": {
               "minimum": 0,
-              "x-connectors": ["meteora"],
+              "x-connectors": [
+                "meteora"
+              ],
               "type": "number"
             },
             "in": "query",
@@ -3132,7 +3458,9 @@
           },
           {
             "schema": {
-              "x-connectors": ["meteora"],
+              "x-connectors": [
+                "meteora"
+              ],
               "type": "boolean"
             },
             "in": "query",
@@ -3142,8 +3470,13 @@
           },
           {
             "schema": {
-              "enum": ["asc", "desc"],
-              "x-connectors": ["orca"],
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "x-connectors": [
+                "orca"
+              ],
               "type": "string"
             },
             "in": "query",
@@ -3153,7 +3486,9 @@
           },
           {
             "schema": {
-              "x-connectors": ["orca"],
+              "x-connectors": [
+                "orca"
+              ],
               "type": "boolean"
             },
             "in": "query",
@@ -3267,7 +3602,12 @@
                       "type": "number"
                     }
                   },
-                  "required": ["pools", "total", "page", "pageSize"]
+                  "required": [
+                    "pools",
+                    "total",
+                    "page",
+                    "pageSize"
+                  ]
                 }
               }
             }
@@ -3277,7 +3617,9 @@
     },
     "/trading/clmm/quote-swap": {
       "get": {
-        "tags": ["/trading/clmm"],
+        "tags": [
+          "/trading/clmm"
+        ],
         "description": "Get a swap quote from a single CLMM pool",
         "parameters": [
           {
@@ -3293,7 +3635,14 @@
           },
           {
             "schema": {
-              "enum": ["meteora", "raydium", "orca", "pancakeswap-sol", "uniswap", "pancakeswap"],
+              "enum": [
+                "meteora",
+                "raydium",
+                "orca",
+                "pancakeswap-sol",
+                "uniswap",
+                "pancakeswap"
+              ],
               "default": "meteora",
               "type": "string"
             },
@@ -3336,7 +3685,10 @@
           },
           {
             "schema": {
-              "enum": ["BUY", "SELL"],
+              "enum": [
+                "BUY",
+                "SELL"
+              ],
               "default": "SELL",
               "type": "string"
             },
@@ -3447,7 +3799,9 @@
     },
     "/trading/clmm/execute-swap": {
       "post": {
-        "tags": ["/trading/clmm"],
+        "tags": [
+          "/trading/clmm"
+        ],
         "description": "Execute a swap against a single CLMM pool",
         "requestBody": {
           "content": {
@@ -3463,7 +3817,14 @@
                   },
                   "connector": {
                     "description": "CLMM connector to execute the swap against",
-                    "enum": ["meteora", "raydium", "orca", "pancakeswap-sol", "uniswap", "pancakeswap"],
+                    "enum": [
+                      "meteora",
+                      "raydium",
+                      "orca",
+                      "pancakeswap-sol",
+                      "uniswap",
+                      "pancakeswap"
+                    ],
                     "default": "meteora",
                     "type": "string",
                     "example": "meteora"
@@ -3491,7 +3852,10 @@
                   },
                   "side": {
                     "description": "BUY means buying base token with quote token, SELL means selling base token for quote token",
-                    "enum": ["BUY", "SELL"],
+                    "enum": [
+                      "BUY",
+                      "SELL"
+                    ],
                     "default": "SELL",
                     "type": "string"
                   },
@@ -3508,7 +3872,14 @@
                     "example": 1
                   }
                 },
-                "required": ["chainNetwork", "walletAddress", "baseToken", "quoteToken", "amount", "side"]
+                "required": [
+                  "chainNetwork",
+                  "walletAddress",
+                  "baseToken",
+                  "quoteToken",
+                  "amount",
+                  "side"
+                ]
               }
             }
           },
@@ -3587,7 +3958,10 @@
                       ]
                     }
                   },
-                  "required": ["signature", "status"]
+                  "required": [
+                    "signature",
+                    "status"
+                  ]
                 }
               }
             }
@@ -3597,7 +3971,9 @@
     },
     "/trading/clmm/open": {
       "post": {
-        "tags": ["/trading/clmm"],
+        "tags": [
+          "/trading/clmm"
+        ],
         "description": "Open a new CLMM position across supported connectors",
         "requestBody": {
           "content": {
@@ -3607,7 +3983,14 @@
                 "properties": {
                   "connector": {
                     "description": "CLMM connector",
-                    "enum": ["meteora", "raydium", "pancakeswap-sol", "orca", "uniswap", "pancakeswap"],
+                    "enum": [
+                      "meteora",
+                      "raydium",
+                      "pancakeswap-sol",
+                      "orca",
+                      "uniswap",
+                      "pancakeswap"
+                    ],
                     "default": "meteora",
                     "type": "string",
                     "example": "meteora"
@@ -3661,13 +4044,22 @@
                     "example": 1
                   },
                   "strategyType": {
-                    "x-connectors": ["meteora"],
+                    "x-connectors": [
+                      "meteora"
+                    ],
                     "description": "Strategy type for Meteora positions (0=Spot, 1=Curve). Only applies to Meteora connector.",
                     "type": "number",
                     "example": 0
                   }
                 },
-                "required": ["connector", "chainNetwork", "walletAddress", "lowerPrice", "upperPrice", "poolAddress"]
+                "required": [
+                  "connector",
+                  "chainNetwork",
+                  "walletAddress",
+                  "lowerPrice",
+                  "upperPrice",
+                  "poolAddress"
+                ]
               }
             }
           },
@@ -3692,6 +4084,7 @@
                       "type": "object",
                       "properties": {
                         "fee": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "poolAddress": {
@@ -3702,12 +4095,15 @@
                           "type": "string"
                         },
                         "positionRent": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "baseTokenAmountAdded": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "quoteTokenAmountAdded": {
+                          "format": "decimal",
                           "type": "number"
                         }
                       },
@@ -3720,7 +4116,10 @@
                       ]
                     }
                   },
-                  "required": ["signature", "status"]
+                  "required": [
+                    "signature",
+                    "status"
+                  ]
                 }
               }
             }
@@ -3730,7 +4129,9 @@
     },
     "/trading/clmm/add": {
       "post": {
-        "tags": ["/trading/clmm"],
+        "tags": [
+          "/trading/clmm"
+        ],
         "description": "Add liquidity to an existing CLMM position across supported connectors",
         "requestBody": {
           "content": {
@@ -3740,7 +4141,14 @@
                 "properties": {
                   "connector": {
                     "description": "CLMM connector",
-                    "enum": ["meteora", "raydium", "pancakeswap-sol", "orca", "uniswap", "pancakeswap"],
+                    "enum": [
+                      "meteora",
+                      "raydium",
+                      "pancakeswap-sol",
+                      "orca",
+                      "uniswap",
+                      "pancakeswap"
+                    ],
                     "default": "meteora",
                     "type": "string",
                     "example": "meteora"
@@ -3782,13 +4190,20 @@
                     "example": 1
                   },
                   "strategyType": {
-                    "x-connectors": ["meteora"],
+                    "x-connectors": [
+                      "meteora"
+                    ],
                     "description": "Strategy type for Meteora positions (0=Spot, 1=Curve). Only applies to Meteora connector.",
                     "type": "number",
                     "example": 0
                   }
                 },
-                "required": ["connector", "chainNetwork", "walletAddress", "positionAddress"]
+                "required": [
+                  "connector",
+                  "chainNetwork",
+                  "walletAddress",
+                  "positionAddress"
+                ]
               }
             }
           },
@@ -3813,6 +4228,7 @@
                       "type": "object",
                       "properties": {
                         "fee": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "poolAddress": {
@@ -3824,16 +4240,25 @@
                           "type": "string"
                         },
                         "baseTokenAmountAdded": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "quoteTokenAmountAdded": {
+                          "format": "decimal",
                           "type": "number"
                         }
                       },
-                      "required": ["fee", "baseTokenAmountAdded", "quoteTokenAmountAdded"]
+                      "required": [
+                        "fee",
+                        "baseTokenAmountAdded",
+                        "quoteTokenAmountAdded"
+                      ]
                     }
                   },
-                  "required": ["signature", "status"]
+                  "required": [
+                    "signature",
+                    "status"
+                  ]
                 }
               }
             }
@@ -3843,7 +4268,9 @@
     },
     "/trading/clmm/remove": {
       "post": {
-        "tags": ["/trading/clmm"],
+        "tags": [
+          "/trading/clmm"
+        ],
         "description": "Remove liquidity from a CLMM position across supported connectors",
         "requestBody": {
           "content": {
@@ -3853,7 +4280,14 @@
                 "properties": {
                   "connector": {
                     "description": "CLMM connector",
-                    "enum": ["meteora", "raydium", "pancakeswap-sol", "orca", "uniswap", "pancakeswap"],
+                    "enum": [
+                      "meteora",
+                      "raydium",
+                      "pancakeswap-sol",
+                      "orca",
+                      "uniswap",
+                      "pancakeswap"
+                    ],
                     "default": "meteora",
                     "type": "string",
                     "example": "meteora"
@@ -3892,7 +4326,13 @@
                     "example": 1
                   }
                 },
-                "required": ["connector", "chainNetwork", "walletAddress", "positionAddress", "percentageToRemove"]
+                "required": [
+                  "connector",
+                  "chainNetwork",
+                  "walletAddress",
+                  "positionAddress",
+                  "percentageToRemove"
+                ]
               }
             }
           },
@@ -3917,6 +4357,7 @@
                       "type": "object",
                       "properties": {
                         "fee": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "poolAddress": {
@@ -3928,16 +4369,25 @@
                           "type": "string"
                         },
                         "baseTokenAmountRemoved": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "quoteTokenAmountRemoved": {
+                          "format": "decimal",
                           "type": "number"
                         }
                       },
-                      "required": ["fee", "baseTokenAmountRemoved", "quoteTokenAmountRemoved"]
+                      "required": [
+                        "fee",
+                        "baseTokenAmountRemoved",
+                        "quoteTokenAmountRemoved"
+                      ]
                     }
                   },
-                  "required": ["signature", "status"]
+                  "required": [
+                    "signature",
+                    "status"
+                  ]
                 }
               }
             }
@@ -3947,7 +4397,9 @@
     },
     "/trading/clmm/collect-fees": {
       "post": {
-        "tags": ["/trading/clmm"],
+        "tags": [
+          "/trading/clmm"
+        ],
         "description": "Collect fees from a CLMM position across supported connectors",
         "requestBody": {
           "content": {
@@ -3957,7 +4409,14 @@
                 "properties": {
                   "connector": {
                     "description": "CLMM connector",
-                    "enum": ["meteora", "raydium", "pancakeswap-sol", "orca", "uniswap", "pancakeswap"],
+                    "enum": [
+                      "meteora",
+                      "raydium",
+                      "pancakeswap-sol",
+                      "orca",
+                      "uniswap",
+                      "pancakeswap"
+                    ],
                     "default": "meteora",
                     "type": "string",
                     "example": "meteora"
@@ -3979,7 +4438,12 @@
                     "example": "<sample-position-address>"
                   }
                 },
-                "required": ["connector", "chainNetwork", "walletAddress", "positionAddress"]
+                "required": [
+                  "connector",
+                  "chainNetwork",
+                  "walletAddress",
+                  "positionAddress"
+                ]
               }
             }
           },
@@ -4004,6 +4468,7 @@
                       "type": "object",
                       "properties": {
                         "fee": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "poolAddress": {
@@ -4015,16 +4480,25 @@
                           "type": "string"
                         },
                         "baseFeeAmountCollected": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "quoteFeeAmountCollected": {
+                          "format": "decimal",
                           "type": "number"
                         }
                       },
-                      "required": ["fee", "baseFeeAmountCollected", "quoteFeeAmountCollected"]
+                      "required": [
+                        "fee",
+                        "baseFeeAmountCollected",
+                        "quoteFeeAmountCollected"
+                      ]
                     }
                   },
-                  "required": ["signature", "status"]
+                  "required": [
+                    "signature",
+                    "status"
+                  ]
                 }
               }
             }
@@ -4034,7 +4508,9 @@
     },
     "/trading/clmm/close": {
       "post": {
-        "tags": ["/trading/clmm"],
+        "tags": [
+          "/trading/clmm"
+        ],
         "description": "Close a CLMM position across supported connectors",
         "requestBody": {
           "content": {
@@ -4044,7 +4520,14 @@
                 "properties": {
                   "connector": {
                     "description": "CLMM connector",
-                    "enum": ["meteora", "raydium", "pancakeswap-sol", "orca", "uniswap", "pancakeswap"],
+                    "enum": [
+                      "meteora",
+                      "raydium",
+                      "pancakeswap-sol",
+                      "orca",
+                      "uniswap",
+                      "pancakeswap"
+                    ],
                     "default": "meteora",
                     "type": "string",
                     "example": "meteora"
@@ -4066,7 +4549,12 @@
                     "example": "<sample-position-address>"
                   }
                 },
-                "required": ["connector", "chainNetwork", "walletAddress", "positionAddress"]
+                "required": [
+                  "connector",
+                  "chainNetwork",
+                  "walletAddress",
+                  "positionAddress"
+                ]
               }
             }
           },
@@ -4091,6 +4579,7 @@
                       "type": "object",
                       "properties": {
                         "fee": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "poolAddress": {
@@ -4102,18 +4591,23 @@
                           "type": "string"
                         },
                         "positionRentRefunded": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "baseTokenAmountRemoved": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "quoteTokenAmountRemoved": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "baseFeeAmountCollected": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "quoteFeeAmountCollected": {
+                          "format": "decimal",
                           "type": "number"
                         }
                       },
@@ -4127,7 +4621,10 @@
                       ]
                     }
                   },
-                  "required": ["signature", "status"]
+                  "required": [
+                    "signature",
+                    "status"
+                  ]
                 }
               }
             }
@@ -4137,7 +4634,9 @@
     },
     "/trading/clmm/create-pool": {
       "post": {
-        "tags": ["/trading/clmm"],
+        "tags": [
+          "/trading/clmm"
+        ],
         "description": "Create and initialize a new CLMM pool across supported connectors (Meteora DLMM, Raydium CLMM, PancakeSwap Solana CLMM, Orca Whirlpool, Uniswap V3, PancakeSwap V3)",
         "requestBody": {
           "content": {
@@ -4147,7 +4646,14 @@
                 "properties": {
                   "connector": {
                     "description": "CLMM connector",
-                    "enum": ["meteora", "raydium", "pancakeswap-sol", "orca", "uniswap", "pancakeswap"],
+                    "enum": [
+                      "meteora",
+                      "raydium",
+                      "pancakeswap-sol",
+                      "orca",
+                      "uniswap",
+                      "pancakeswap"
+                    ],
                     "default": "meteora",
                     "type": "string",
                     "example": "meteora"
@@ -4175,22 +4681,38 @@
                     "type": "number"
                   },
                   "binStep": {
-                    "x-connectors": ["meteora", "orca"],
+                    "x-connectors": [
+                      "meteora",
+                      "orca"
+                    ],
                     "description": "Bin/tick granularity: Meteora DLMM bin step (bps); Orca Whirlpool tick spacing.",
                     "type": "number"
                   },
                   "feeBps": {
-                    "x-connectors": ["meteora", "uniswap", "pancakeswap"],
+                    "x-connectors": [
+                      "meteora",
+                      "uniswap",
+                      "pancakeswap"
+                    ],
                     "description": "Base fee in basis points: Meteora DLMM base fee; Uniswap/PancakeSwap V3 fee tier (1, 5, 30 or 100 bps; PancakeSwap also 25).",
                     "type": "number"
                   },
                   "ammConfigIndex": {
-                    "x-connectors": ["raydium", "pancakeswap-sol"],
+                    "x-connectors": [
+                      "raydium",
+                      "pancakeswap-sol"
+                    ],
                     "description": "Fee-config index for the Raydium CLMM family: Raydium API config list index; pancakeswap-sol amm_config PDA index. Default 0.",
                     "type": "number"
                   }
                 },
-                "required": ["connector", "chainNetwork", "walletAddress", "baseToken", "quoteToken"]
+                "required": [
+                  "connector",
+                  "chainNetwork",
+                  "walletAddress",
+                  "baseToken",
+                  "quoteToken"
+                ]
               }
             }
           },
@@ -4224,13 +4746,20 @@
                       "type": "object",
                       "properties": {
                         "fee": {
+                          "format": "decimal",
                           "type": "number"
                         }
                       },
-                      "required": ["fee"]
+                      "required": [
+                        "fee"
+                      ]
                     }
                   },
-                  "required": ["signature", "status", "poolAddress"]
+                  "required": [
+                    "signature",
+                    "status",
+                    "poolAddress"
+                  ]
                 }
               }
             }
@@ -4240,12 +4769,19 @@
     },
     "/trading/amm/pool-info": {
       "get": {
-        "tags": ["/trading/amm"],
+        "tags": [
+          "/trading/amm"
+        ],
         "description": "Get AMM pool information from any supported connector",
         "parameters": [
           {
             "schema": {
-              "enum": ["meteora", "raydium", "uniswap", "pancakeswap"],
+              "enum": [
+                "meteora",
+                "raydium",
+                "uniswap",
+                "pancakeswap"
+              ],
               "default": "meteora",
               "type": "string"
             },
@@ -4294,15 +4830,19 @@
                       "type": "string"
                     },
                     "feePct": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "price": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "baseTokenAmount": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "quoteTokenAmount": {
+                      "format": "decimal",
                       "type": "number"
                     }
                   },
@@ -4324,12 +4864,19 @@
     },
     "/trading/amm/position-info": {
       "get": {
-        "tags": ["/trading/amm"],
+        "tags": [
+          "/trading/amm"
+        ],
         "description": "Get a wallet's aggregated AMM liquidity in a pool from any supported connector",
         "parameters": [
           {
             "schema": {
-              "enum": ["meteora", "raydium", "uniswap", "pancakeswap"],
+              "enum": [
+                "meteora",
+                "raydium",
+                "uniswap",
+                "pancakeswap"
+              ],
               "default": "meteora",
               "type": "string"
             },
@@ -4391,15 +4938,19 @@
                       "type": "string"
                     },
                     "lpTokenAmount": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "baseTokenAmount": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "quoteTokenAmount": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "price": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "positions": {
@@ -4417,13 +4968,20 @@
                             "type": "number"
                           },
                           "baseTokenAmount": {
+                            "format": "decimal",
                             "type": "number"
                           },
                           "quoteTokenAmount": {
+                            "format": "decimal",
                             "type": "number"
                           }
                         },
-                        "required": ["positionAddress", "lpTokenAmount", "baseTokenAmount", "quoteTokenAmount"],
+                        "required": [
+                          "positionAddress",
+                          "lpTokenAmount",
+                          "baseTokenAmount",
+                          "quoteTokenAmount"
+                        ],
                         "title": "PositionDetail"
                       }
                     }
@@ -4447,12 +5005,19 @@
     },
     "/trading/amm/positions-owned": {
       "get": {
-        "tags": ["/trading/amm"],
+        "tags": [
+          "/trading/amm"
+        ],
         "description": "List all AMM positions a wallet owns across pools. Supported only for non-fungible-LP AMMs (meteora DAMM v2). Fungible-LP AMMs (raydium, uniswap, pancakeswap) have no enumerable positions — use position-info with a specific pool address instead.",
         "parameters": [
           {
             "schema": {
-              "enum": ["meteora", "raydium", "uniswap", "pancakeswap"],
+              "enum": [
+                "meteora",
+                "raydium",
+                "uniswap",
+                "pancakeswap"
+              ],
               "default": "meteora",
               "type": "string"
             },
@@ -4507,15 +5072,19 @@
                         "type": "string"
                       },
                       "lpTokenAmount": {
+                        "format": "decimal",
                         "type": "number"
                       },
                       "baseTokenAmount": {
+                        "format": "decimal",
                         "type": "number"
                       },
                       "quoteTokenAmount": {
+                        "format": "decimal",
                         "type": "number"
                       },
                       "price": {
+                        "format": "decimal",
                         "type": "number"
                       },
                       "positions": {
@@ -4533,13 +5102,20 @@
                               "type": "number"
                             },
                             "baseTokenAmount": {
+                              "format": "decimal",
                               "type": "number"
                             },
                             "quoteTokenAmount": {
+                              "format": "decimal",
                               "type": "number"
                             }
                           },
-                          "required": ["positionAddress", "lpTokenAmount", "baseTokenAmount", "quoteTokenAmount"]
+                          "required": [
+                            "positionAddress",
+                            "lpTokenAmount",
+                            "baseTokenAmount",
+                            "quoteTokenAmount"
+                          ]
                         }
                       }
                     },
@@ -4563,12 +5139,19 @@
     },
     "/trading/amm/quote-liquidity": {
       "get": {
-        "tags": ["/trading/amm"],
+        "tags": [
+          "/trading/amm"
+        ],
         "description": "Quote amounts for adding liquidity to an AMM pool from any supported connector",
         "parameters": [
           {
             "schema": {
-              "enum": ["meteora", "raydium", "uniswap", "pancakeswap"],
+              "enum": [
+                "meteora",
+                "raydium",
+                "uniswap",
+                "pancakeswap"
+              ],
               "default": "meteora",
               "type": "string"
             },
@@ -4648,15 +5231,19 @@
                       "type": "boolean"
                     },
                     "baseTokenAmount": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "quoteTokenAmount": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "baseTokenAmountMax": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "quoteTokenAmountMax": {
+                      "format": "decimal",
                       "type": "number"
                     }
                   },
@@ -4676,7 +5263,9 @@
     },
     "/trading/amm/quote-swap": {
       "get": {
-        "tags": ["/trading/amm"],
+        "tags": [
+          "/trading/amm"
+        ],
         "description": "Get a swap quote from a single AMM pool",
         "parameters": [
           {
@@ -4692,7 +5281,12 @@
           },
           {
             "schema": {
-              "enum": ["meteora", "raydium", "uniswap", "pancakeswap"],
+              "enum": [
+                "meteora",
+                "raydium",
+                "uniswap",
+                "pancakeswap"
+              ],
               "default": "meteora",
               "type": "string"
             },
@@ -4735,7 +5329,10 @@
           },
           {
             "schema": {
-              "enum": ["BUY", "SELL"],
+              "enum": [
+                "BUY",
+                "SELL"
+              ],
               "default": "SELL",
               "type": "string"
             },
@@ -4846,7 +5443,9 @@
     },
     "/trading/amm/execute-swap": {
       "post": {
-        "tags": ["/trading/amm"],
+        "tags": [
+          "/trading/amm"
+        ],
         "description": "Execute a swap against a single AMM pool",
         "requestBody": {
           "content": {
@@ -4862,7 +5461,12 @@
                   },
                   "connector": {
                     "description": "AMM connector to execute the swap against",
-                    "enum": ["meteora", "raydium", "uniswap", "pancakeswap"],
+                    "enum": [
+                      "meteora",
+                      "raydium",
+                      "uniswap",
+                      "pancakeswap"
+                    ],
                     "default": "meteora",
                     "type": "string",
                     "example": "meteora"
@@ -4890,7 +5494,10 @@
                   },
                   "side": {
                     "description": "BUY means buying base token with quote token, SELL means selling base token for quote token",
-                    "enum": ["BUY", "SELL"],
+                    "enum": [
+                      "BUY",
+                      "SELL"
+                    ],
                     "default": "SELL",
                     "type": "string"
                   },
@@ -4907,7 +5514,14 @@
                     "example": 1
                   }
                 },
-                "required": ["chainNetwork", "walletAddress", "baseToken", "quoteToken", "amount", "side"]
+                "required": [
+                  "chainNetwork",
+                  "walletAddress",
+                  "baseToken",
+                  "quoteToken",
+                  "amount",
+                  "side"
+                ]
               }
             }
           },
@@ -4986,7 +5600,10 @@
                       ]
                     }
                   },
-                  "required": ["signature", "status"]
+                  "required": [
+                    "signature",
+                    "status"
+                  ]
                 }
               }
             }
@@ -4996,7 +5613,9 @@
     },
     "/trading/amm/open": {
       "post": {
-        "tags": ["/trading/amm"],
+        "tags": [
+          "/trading/amm"
+        ],
         "description": "Open a position with initial liquidity. On AMMs whose positions are discrete accounts (meteora DAMM v2) this mints the position and returns its address and rent; on fungible-LP AMMs (raydium, uniswap, pancakeswap) it performs the equivalent deposit and returns neither.",
         "requestBody": {
           "content": {
@@ -5006,7 +5625,12 @@
                 "properties": {
                   "connector": {
                     "description": "AMM connector",
-                    "enum": ["meteora", "raydium", "uniswap", "pancakeswap"],
+                    "enum": [
+                      "meteora",
+                      "raydium",
+                      "uniswap",
+                      "pancakeswap"
+                    ],
                     "default": "meteora",
                     "type": "string",
                     "example": "meteora"
@@ -5102,10 +5726,18 @@
                           "type": "number"
                         }
                       },
-                      "required": ["fee", "positionRent", "baseTokenAmountAdded", "quoteTokenAmountAdded"]
+                      "required": [
+                        "fee",
+                        "positionRent",
+                        "baseTokenAmountAdded",
+                        "quoteTokenAmountAdded"
+                      ]
                     }
                   },
-                  "required": ["signature", "status"]
+                  "required": [
+                    "signature",
+                    "status"
+                  ]
                 }
               }
             }
@@ -5115,7 +5747,9 @@
     },
     "/trading/amm/add": {
       "post": {
-        "tags": ["/trading/amm"],
+        "tags": [
+          "/trading/amm"
+        ],
         "description": "Add liquidity to an AMM pool from any supported connector",
         "requestBody": {
           "content": {
@@ -5125,7 +5759,12 @@
                 "properties": {
                   "connector": {
                     "description": "AMM connector",
-                    "enum": ["meteora", "raydium", "uniswap", "pancakeswap"],
+                    "enum": [
+                      "meteora",
+                      "raydium",
+                      "uniswap",
+                      "pancakeswap"
+                    ],
                     "default": "meteora",
                     "type": "string",
                     "example": "meteora"
@@ -5156,7 +5795,9 @@
                     "type": "number"
                   },
                   "positionAddress": {
-                    "x-connectors": ["meteora"],
+                    "x-connectors": [
+                      "meteora"
+                    ],
                     "description": "meteora only (DAMM v2 positions are NFTs): add to this specific position. Omit to open a new position. Ignored by fungible-LP AMMs.",
                     "type": "string"
                   },
@@ -5210,13 +5851,17 @@
                         },
                         "positionAddress": {
                           "description": "Position the liquidity went into. Absent on fungible-LP AMMs, which hold liquidity as LP tokens rather than a position account.",
-                          "x-connectors": ["meteora"],
+                          "x-connectors": [
+                            "meteora"
+                          ],
                           "type": "string"
                         },
                         "positionRent": {
                           "format": "decimal",
                           "description": "Native token locked as rent when this call opened the position. Absent when adding to a position that already existed, and on fungible-LP AMMs.",
-                          "x-connectors": ["meteora"],
+                          "x-connectors": [
+                            "meteora"
+                          ],
                           "type": "number"
                         },
                         "baseTokenAmountAdded": {
@@ -5228,10 +5873,17 @@
                           "type": "number"
                         }
                       },
-                      "required": ["fee", "baseTokenAmountAdded", "quoteTokenAmountAdded"]
+                      "required": [
+                        "fee",
+                        "baseTokenAmountAdded",
+                        "quoteTokenAmountAdded"
+                      ]
                     }
                   },
-                  "required": ["signature", "status"]
+                  "required": [
+                    "signature",
+                    "status"
+                  ]
                 }
               }
             }
@@ -5241,7 +5893,9 @@
     },
     "/trading/amm/remove": {
       "post": {
-        "tags": ["/trading/amm"],
+        "tags": [
+          "/trading/amm"
+        ],
         "description": "Remove liquidity from an AMM pool from any supported connector",
         "requestBody": {
           "content": {
@@ -5251,7 +5905,12 @@
                 "properties": {
                   "connector": {
                     "description": "AMM connector",
-                    "enum": ["meteora", "raydium", "uniswap", "pancakeswap"],
+                    "enum": [
+                      "meteora",
+                      "raydium",
+                      "uniswap",
+                      "pancakeswap"
+                    ],
                     "default": "meteora",
                     "type": "string",
                     "example": "meteora"
@@ -5272,7 +5931,9 @@
                     "type": "string"
                   },
                   "positionAddress": {
-                    "x-connectors": ["meteora"],
+                    "x-connectors": [
+                      "meteora"
+                    ],
                     "description": "Required for meteora (DAMM v2 positions are NFTs): the specific position to remove from. List positions with position-info or positions-owned. Ignored by fungible-LP AMMs.",
                     "type": "string"
                   },
@@ -5294,7 +5955,13 @@
                     "example": 1
                   }
                 },
-                "required": ["connector", "chainNetwork", "walletAddress", "poolAddress", "percentageToRemove"]
+                "required": [
+                  "connector",
+                  "chainNetwork",
+                  "walletAddress",
+                  "poolAddress",
+                  "percentageToRemove"
+                ]
               }
             }
           },
@@ -5319,6 +5986,7 @@
                       "type": "object",
                       "properties": {
                         "fee": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "poolAddress": {
@@ -5327,20 +5995,31 @@
                         },
                         "positionAddress": {
                           "description": "Position this operation acted on",
-                          "x-connectors": ["meteora"],
+                          "x-connectors": [
+                            "meteora"
+                          ],
                           "type": "string"
                         },
                         "baseTokenAmountRemoved": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "quoteTokenAmountRemoved": {
+                          "format": "decimal",
                           "type": "number"
                         }
                       },
-                      "required": ["fee", "baseTokenAmountRemoved", "quoteTokenAmountRemoved"]
+                      "required": [
+                        "fee",
+                        "baseTokenAmountRemoved",
+                        "quoteTokenAmountRemoved"
+                      ]
                     }
                   },
-                  "required": ["signature", "status"]
+                  "required": [
+                    "signature",
+                    "status"
+                  ]
                 }
               }
             }
@@ -5350,7 +6029,9 @@
     },
     "/trading/amm/close": {
       "post": {
-        "tags": ["/trading/amm"],
+        "tags": [
+          "/trading/amm"
+        ],
         "description": "Withdraw all of a position's liquidity. On AMMs whose positions are discrete accounts (meteora DAMM v2) this also closes the position account and refunds its rent; on fungible-LP AMMs (raydium, uniswap, pancakeswap) it withdraws the full LP balance and refunds no rent.",
         "requestBody": {
           "content": {
@@ -5360,7 +6041,12 @@
                 "properties": {
                   "connector": {
                     "description": "AMM connector",
-                    "enum": ["meteora", "raydium", "uniswap", "pancakeswap"],
+                    "enum": [
+                      "meteora",
+                      "raydium",
+                      "uniswap",
+                      "pancakeswap"
+                    ],
                     "default": "meteora",
                     "type": "string",
                     "example": "meteora"
@@ -5382,7 +6068,9 @@
                   },
                   "positionAddress": {
                     "description": "Position to close. Required on AMMs whose positions are discrete accounts (meteora DAMM v2), where a wallet may hold several per pool. Ignored by fungible-LP AMMs, which hold one LP balance per pool.",
-                    "x-connectors": ["meteora"],
+                    "x-connectors": [
+                      "meteora"
+                    ],
                     "type": "string"
                   },
                   "slippagePct": {
@@ -5394,7 +6082,12 @@
                     "example": 1
                   }
                 },
-                "required": ["connector", "chainNetwork", "walletAddress", "poolAddress"]
+                "required": [
+                  "connector",
+                  "chainNetwork",
+                  "walletAddress",
+                  "poolAddress"
+                ]
               }
             }
           },
@@ -5428,7 +6121,9 @@
                         },
                         "positionAddress": {
                           "description": "Position this operation acted on",
-                          "x-connectors": ["meteora"],
+                          "x-connectors": [
+                            "meteora"
+                          ],
                           "type": "string"
                         },
                         "positionRentRefunded": {
@@ -5445,10 +6140,18 @@
                           "type": "number"
                         }
                       },
-                      "required": ["fee", "positionRentRefunded", "baseTokenAmountRemoved", "quoteTokenAmountRemoved"]
+                      "required": [
+                        "fee",
+                        "positionRentRefunded",
+                        "baseTokenAmountRemoved",
+                        "quoteTokenAmountRemoved"
+                      ]
                     }
                   },
-                  "required": ["signature", "status"]
+                  "required": [
+                    "signature",
+                    "status"
+                  ]
                 }
               }
             }
@@ -5458,7 +6161,9 @@
     },
     "/trading/amm/create-pool": {
       "post": {
-        "tags": ["/trading/amm"],
+        "tags": [
+          "/trading/amm"
+        ],
         "description": "Create and seed a new AMM pool across supported connectors (Meteora DAMM v2, Raydium CPMM, Uniswap V2, PancakeSwap V2)",
         "requestBody": {
           "content": {
@@ -5468,7 +6173,12 @@
                 "properties": {
                   "connector": {
                     "description": "AMM connector",
-                    "enum": ["meteora", "raydium", "uniswap", "pancakeswap"],
+                    "enum": [
+                      "meteora",
+                      "raydium",
+                      "uniswap",
+                      "pancakeswap"
+                    ],
                     "default": "meteora",
                     "type": "string",
                     "example": "meteora"
@@ -5508,12 +6218,16 @@
                     "type": "number"
                   },
                   "configAddress": {
-                    "x-connectors": ["meteora"],
+                    "x-connectors": [
+                      "meteora"
+                    ],
                     "description": "Meteora DAMM v2 config account address (required for the meteora connector — configs are permissionless accounts with no index derivation, so the address must be explicit).",
                     "type": "string"
                   },
                   "ammConfigIndex": {
-                    "x-connectors": ["raydium"],
+                    "x-connectors": [
+                      "raydium"
+                    ],
                     "description": "Raydium CPMM fee-config index (optional; defaults to the first available config).",
                     "type": "number"
                   },
@@ -5526,7 +6240,14 @@
                     "example": 1
                   }
                 },
-                "required": ["connector", "chainNetwork", "walletAddress", "baseToken", "quoteToken", "baseTokenAmount"]
+                "required": [
+                  "connector",
+                  "chainNetwork",
+                  "walletAddress",
+                  "baseToken",
+                  "quoteToken",
+                  "baseTokenAmount"
+                ]
               }
             }
           },
@@ -5560,19 +6281,30 @@
                       "type": "object",
                       "properties": {
                         "fee": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "baseTokenAmountAdded": {
+                          "format": "decimal",
                           "type": "number"
                         },
                         "quoteTokenAmountAdded": {
+                          "format": "decimal",
                           "type": "number"
                         }
                       },
-                      "required": ["fee", "baseTokenAmountAdded", "quoteTokenAmountAdded"]
+                      "required": [
+                        "fee",
+                        "baseTokenAmountAdded",
+                        "quoteTokenAmountAdded"
+                      ]
                     }
                   },
-                  "required": ["signature", "status", "poolAddress"]
+                  "required": [
+                    "signature",
+                    "status",
+                    "poolAddress"
+                  ]
                 }
               }
             }
@@ -5582,7 +6314,9 @@
     },
     "/chains/{chain}/status": {
       "get": {
-        "tags": ["/chains"],
+        "tags": [
+          "/chains"
+        ],
         "description": "Get the status of a chain and network",
         "parameters": [
           {
@@ -5650,7 +6384,9 @@
     },
     "/chains/{chain}/estimate-gas": {
       "get": {
-        "tags": ["/chains"],
+        "tags": [
+          "/chains"
+        ],
         "description": "Estimate the current transaction fee on a chain",
         "parameters": [
           {
@@ -5679,6 +6415,7 @@
                   "type": "object",
                   "properties": {
                     "feePerComputeUnit": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "denomination": {
@@ -5691,6 +6428,7 @@
                       "type": "string"
                     },
                     "fee": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "timestamp": {
@@ -5700,19 +6438,29 @@
                       "type": "string"
                     },
                     "maxFeePerGas": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "maxPriorityFeePerGas": {
+                      "format": "decimal",
                       "type": "number"
                     },
                     "priorityFeeLevel": {
                       "type": "string"
                     },
                     "priorityFeePerCUEstimate": {
+                      "format": "decimal",
                       "type": "number"
                     }
                   },
-                  "required": ["feePerComputeUnit", "denomination", "computeUnits", "feeAsset", "fee", "timestamp"]
+                  "required": [
+                    "feePerComputeUnit",
+                    "denomination",
+                    "computeUnits",
+                    "feeAsset",
+                    "fee",
+                    "timestamp"
+                  ]
                 }
               }
             }
@@ -5722,7 +6470,9 @@
     },
     "/chains/{chain}/balances": {
       "post": {
-        "tags": ["/chains"],
+        "tags": [
+          "/chains"
+        ],
         "description": "Get token balances for a wallet",
         "requestBody": {
           "content": {
@@ -5777,7 +6527,9 @@
                       }
                     }
                   },
-                  "required": ["balances"]
+                  "required": [
+                    "balances"
+                  ]
                 }
               }
             }
@@ -5787,7 +6539,9 @@
     },
     "/chains/{chain}/poll": {
       "post": {
-        "tags": ["/chains"],
+        "tags": [
+          "/chains"
+        ],
         "description": "Poll a transaction by signature/hash",
         "requestBody": {
           "content": {
@@ -5803,7 +6557,9 @@
                     "type": "string"
                   }
                 },
-                "required": ["signature"]
+                "required": [
+                  "signature"
+                ]
               }
             }
           },
@@ -5880,7 +6636,15 @@
                       ]
                     }
                   },
-                  "required": ["currentBlock", "signature", "txBlock", "txStatus", "fee", "error", "txData"]
+                  "required": [
+                    "currentBlock",
+                    "signature",
+                    "txBlock",
+                    "txStatus",
+                    "fee",
+                    "error",
+                    "txData"
+                  ]
                 }
               }
             }
@@ -5890,7 +6654,9 @@
     },
     "/chains/{chain}/wrap": {
       "post": {
-        "tags": ["/chains"],
+        "tags": [
+          "/chains"
+        ],
         "description": "Wrap native token into its wrapped form (SOL to WSOL, ETH to WETH, ...)",
         "requestBody": {
           "content": {
@@ -5911,7 +6677,10 @@
                     "example": "1.0"
                   }
                 },
-                "required": ["address", "amount"]
+                "required": [
+                  "address",
+                  "amount"
+                ]
               }
             }
           },
@@ -5965,10 +6734,19 @@
                           "type": "string"
                         }
                       },
-                      "required": ["fee", "amount", "wrappedAddress", "nativeToken", "wrappedToken"]
+                      "required": [
+                        "fee",
+                        "amount",
+                        "wrappedAddress",
+                        "nativeToken",
+                        "wrappedToken"
+                      ]
                     }
                   },
-                  "required": ["signature", "status"]
+                  "required": [
+                    "signature",
+                    "status"
+                  ]
                 }
               }
             }
@@ -5978,7 +6756,9 @@
     },
     "/chains/{chain}/unwrap": {
       "post": {
-        "tags": ["/chains"],
+        "tags": [
+          "/chains"
+        ],
         "description": "Unwrap a wrapped native token back into the native token",
         "requestBody": {
           "content": {
@@ -5999,7 +6779,9 @@
                     "example": "1.0"
                   }
                 },
-                "required": ["address"]
+                "required": [
+                  "address"
+                ]
               }
             }
           },
@@ -6053,10 +6835,19 @@
                           "type": "string"
                         }
                       },
-                      "required": ["fee", "amount", "wrappedAddress", "nativeToken", "wrappedToken"]
+                      "required": [
+                        "fee",
+                        "amount",
+                        "wrappedAddress",
+                        "nativeToken",
+                        "wrappedToken"
+                      ]
                     }
                   },
-                  "required": ["signature", "status"]
+                  "required": [
+                    "signature",
+                    "status"
+                  ]
                 }
               }
             }
@@ -6066,7 +6857,9 @@
     },
     "/chains/ethereum/allowances": {
       "post": {
-        "tags": ["/chain/ethereum"],
+        "tags": [
+          "/chain/ethereum"
+        ],
         "description": "Get token allowances",
         "requestBody": {
           "content": {
@@ -6109,10 +6902,16 @@
                     "items": {
                       "type": "string"
                     },
-                    "example": ["USDC", "WETH"]
+                    "example": [
+                      "USDC",
+                      "WETH"
+                    ]
                   }
                 },
-                "required": ["spender", "tokens"]
+                "required": [
+                  "spender",
+                  "tokens"
+                ]
               }
             }
           },
@@ -6136,7 +6935,10 @@
                       }
                     }
                   },
-                  "required": ["spender", "approvals"]
+                  "required": [
+                    "spender",
+                    "approvals"
+                  ]
                 }
               }
             }
@@ -6146,7 +6948,9 @@
     },
     "/chains/ethereum/approve": {
       "post": {
-        "tags": ["/chain/ethereum"],
+        "tags": [
+          "/chain/ethereum"
+        ],
         "description": "Approve token spending",
         "requestBody": {
           "content": {
@@ -6194,7 +6998,10 @@
                     "type": "string"
                   }
                 },
-                "required": ["spender", "token"]
+                "required": [
+                  "spender",
+                  "token"
+                ]
               }
             }
           },
@@ -6234,10 +7041,19 @@
                           "type": "string"
                         }
                       },
-                      "required": ["tokenAddress", "spender", "amount", "nonce", "fee"]
+                      "required": [
+                        "tokenAddress",
+                        "spender",
+                        "amount",
+                        "nonce",
+                        "fee"
+                      ]
                     }
                   },
-                  "required": ["signature", "status"]
+                  "required": [
+                    "signature",
+                    "status"
+                  ]
                 }
               }
             }

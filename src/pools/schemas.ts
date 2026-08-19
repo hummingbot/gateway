@@ -48,7 +48,7 @@ export const PoolTemplateSchema = Type.Object({
   quoteSymbol: Type.String(),
   baseTokenAddress: Type.String(),
   quoteTokenAddress: Type.String(),
-  feePct: Type.Number(),
+  feePct: Type.Number({ format: 'decimal' }),
   address: Type.String(),
 });
 
@@ -102,6 +102,7 @@ export const PoolAddRequestSchema = Type.Object({
   }),
   feePct: Type.Optional(
     Type.Number({
+      format: 'decimal',
       description: 'Pool fee percentage (optional - fetched from pool-info if not provided)',
       examples: [0.25, 0.3, 1],
       minimum: 0,

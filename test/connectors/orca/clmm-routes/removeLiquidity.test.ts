@@ -93,6 +93,7 @@ describe('POST /remove-liquidity', () => {
         method: 'POST',
         url: '/remove',
         payload: {
+          connector: 'orca',
           positionAddress: mockPositionAddress,
           percentageToRemove: 25,
         },

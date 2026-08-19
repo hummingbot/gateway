@@ -17,18 +17,18 @@ export type EstimateGasRequestType = Static<typeof EstimateGasRequestSchema>;
 
 export const EstimateGasResponseSchema = Type.Object(
   {
-    feePerComputeUnit: Type.Number(), // Fee per compute unit (legacy gas price or maxFeePerGas for EIP-1559)
+    feePerComputeUnit: Type.Number({ format: 'decimal' }), // Fee per compute unit (legacy gas price or maxFeePerGas for EIP-1559)
     denomination: Type.String(), // Denomination: "lamports" or "gwei"
     computeUnits: Type.Number(), // Default compute units/gas limit used for fee calculation
     feeAsset: Type.String(), // Native currency symbol from network config (ETH, SOL, etc.)
-    fee: Type.Number(), // Total fee calculated using default gas/compute limits
+    fee: Type.Number({ format: 'decimal' }), // Total fee calculated using default gas/compute limits
     timestamp: Type.Number(), // Unix timestamp when estimate was made
     gasType: Type.Optional(Type.String()), // Gas type: "legacy" or "eip1559"
-    maxFeePerGas: Type.Optional(Type.Number()), // EIP-1559: Maximum fee per gas in gwei
-    maxPriorityFeePerGas: Type.Optional(Type.Number()), // EIP-1559: Maximum priority fee per gas in gwei
+    maxFeePerGas: Type.Optional(Type.Number({ format: 'decimal' })), // EIP-1559: Maximum fee per gas in gwei
+    maxPriorityFeePerGas: Type.Optional(Type.Number({ format: 'decimal' })), // EIP-1559: Maximum priority fee per gas in gwei
     // Solana Helius-specific fields
     priorityFeeLevel: Type.Optional(Type.String()), // Helius priority level used: Min, Low, Medium, High, VeryHigh, UnsafeMax
-    priorityFeePerCUEstimate: Type.Optional(Type.Number()), // Raw Helius estimate in lamports/CU (before minimum enforcement)
+    priorityFeePerCUEstimate: Type.Optional(Type.Number({ format: 'decimal' })), // Raw Helius estimate in lamports/CU (before minimum enforcement)
   },
   { $id: 'EstimateGasResponse' },
 );

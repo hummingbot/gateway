@@ -170,6 +170,7 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
+        connector: 'meteora',
         walletAddress: mockWalletAddress,
       },
     });

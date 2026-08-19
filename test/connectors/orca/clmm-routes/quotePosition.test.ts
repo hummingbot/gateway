@@ -135,6 +135,7 @@ describe('GET /quote-liquidity', () => {
         method: 'GET',
         url: '/quote-liquidity',
         query: {
+          connector: 'orca',
           poolAddress: mockPoolAddress,
           lowerPrice: '150',
           upperPrice: '250',

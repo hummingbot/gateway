@@ -7,10 +7,10 @@ export const PoolInfoSchema = Type.Object(
     address: Type.String(),
     baseTokenAddress: Type.String(),
     quoteTokenAddress: Type.String(),
-    feePct: Type.Number(),
-    price: Type.Number(),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
+    feePct: Type.Number({ format: 'decimal' }),
+    price: Type.Number({ format: 'decimal' }),
+    baseTokenAmount: Type.Number({ format: 'decimal' }),
+    quoteTokenAmount: Type.Number({ format: 'decimal' }),
   },
   { $id: 'PoolInfo' },
 );
@@ -30,8 +30,8 @@ export const AddLiquidityRequest = Type.Object(
     network: Type.Optional(Type.String()),
     walletAddress: Type.Optional(Type.String()),
     poolAddress: Type.String(),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
+    baseTokenAmount: Type.Number({ format: 'decimal' }),
+    quoteTokenAmount: Type.Number({ format: 'decimal' }),
     slippagePct: Type.Optional(
       Type.Number({
         format: 'decimal',
@@ -171,10 +171,10 @@ export const QuoteLiquidityResponse = Type.Object(
     // named one, and on AMM it keeps the quote self-describing alongside quote-swap.
     poolAddress: Type.Optional(Type.String({ description: 'Pool the quote was computed against' })),
     baseLimited: Type.Boolean(),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
-    baseTokenAmountMax: Type.Number(),
-    quoteTokenAmountMax: Type.Number(),
+    baseTokenAmount: Type.Number({ format: 'decimal' }),
+    quoteTokenAmount: Type.Number({ format: 'decimal' }),
+    baseTokenAmountMax: Type.Number({ format: 'decimal' }),
+    quoteTokenAmountMax: Type.Number({ format: 'decimal' }),
   },
   { $id: 'QuoteLiquidityResponse' },
 );
@@ -203,7 +203,7 @@ export const RemoveLiquidityResponse = Type.Object(
     // Only included when status = CONFIRMED
     data: Type.Optional(
       Type.Object({
-        fee: Type.Number(),
+        fee: Type.Number({ format: 'decimal' }),
         // The venue this write touched. Echoed so a stored record identifies its pool
         // without the request that produced it — the same reason the swap execute
         // responses carry it.
@@ -213,8 +213,8 @@ export const RemoveLiquidityResponse = Type.Object(
         positionAddress: Type.Optional(
           Type.String({ description: 'Position this operation acted on', 'x-connectors': ['meteora'] } as any),
         ),
-        baseTokenAmountRemoved: Type.Number(),
-        quoteTokenAmountRemoved: Type.Number(),
+        baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
+        quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),
       }),
     ),
   },
@@ -272,9 +272,9 @@ export const CreatePoolResponse = Type.Object(
     // Only included when status = CONFIRMED
     data: Type.Optional(
       Type.Object({
-        fee: Type.Number(),
-        baseTokenAmountAdded: Type.Number(),
-        quoteTokenAmountAdded: Type.Number(),
+        fee: Type.Number({ format: 'decimal' }),
+        baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
+        quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
       }),
     ),
   },
@@ -292,8 +292,8 @@ export const PositionDetailSchema = Type.Object(
       format: 'decimal',
       description: 'Liquidity held by this position (LP units)',
     }),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
+    baseTokenAmount: Type.Number({ format: 'decimal' }),
+    quoteTokenAmount: Type.Number({ format: 'decimal' }),
   },
   { $id: 'PositionDetail' },
 );
@@ -305,10 +305,10 @@ export const PositionInfoSchema = Type.Object(
     walletAddress: Type.String(),
     baseTokenAddress: Type.String(),
     quoteTokenAddress: Type.String(),
-    lpTokenAmount: Type.Number(),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
-    price: Type.Number(),
+    lpTokenAmount: Type.Number({ format: 'decimal' }),
+    baseTokenAmount: Type.Number({ format: 'decimal' }),
+    quoteTokenAmount: Type.Number({ format: 'decimal' }),
+    price: Type.Number({ format: 'decimal' }),
     // Per-position breakdown for non-fungible-LP AMMs. When a wallet holds multiple positions in a
     // pool, the top-level amounts are the aggregate and each entry here is individually addressable
     // (pass its positionAddress to remove-liquidity / add-liquidity). Omitted for fungible-LP AMMs.
@@ -348,7 +348,7 @@ export const QuoteSwapRequest = Type.Object(
         description: 'The other token in the pair (optional - required if poolAddress not provided)',
       }),
     ),
-    amount: Type.Number(),
+    amount: Type.Number({ format: 'decimal' }),
     side: Type.String({
       description: 'Trade direction',
       enum: ['BUY', 'SELL'],
@@ -370,13 +370,13 @@ export const QuoteSwapResponse = Type.Object(
     poolAddress: Type.String(),
     tokenIn: Type.String(),
     tokenOut: Type.String(),
-    amountIn: Type.Number(),
-    amountOut: Type.Number(),
-    price: Type.Number(),
-    slippagePct: Type.Optional(Type.Number()),
-    minAmountOut: Type.Number(),
-    maxAmountIn: Type.Number(),
-    priceImpactPct: Type.Number(),
+    amountIn: Type.Number({ format: 'decimal' }),
+    amountOut: Type.Number({ format: 'decimal' }),
+    price: Type.Number({ format: 'decimal' }),
+    slippagePct: Type.Optional(Type.Number({ format: 'decimal' })),
+    minAmountOut: Type.Number({ format: 'decimal' }),
+    maxAmountIn: Type.Number({ format: 'decimal' }),
+    priceImpactPct: Type.Number({ format: 'decimal' }),
   },
   { $id: 'AmmQuoteSwapResponse' },
 );
@@ -397,7 +397,7 @@ export const ExecuteSwapRequest = Type.Object(
         description: 'The other token in the pair (optional - required if poolAddress not provided)',
       }),
     ),
-    amount: Type.Number(),
+    amount: Type.Number({ format: 'decimal' }),
     side: Type.String({
       enum: ['BUY', 'SELL'],
     }),
@@ -423,11 +423,11 @@ export const ExecuteSwapResponse = Type.Object(
       Type.Object({
         tokenIn: Type.String(),
         tokenOut: Type.String(),
-        amountIn: Type.Number(),
-        amountOut: Type.Number(),
-        fee: Type.Number(),
-        baseTokenBalanceChange: Type.Number(),
-        quoteTokenBalanceChange: Type.Number(),
+        amountIn: Type.Number({ format: 'decimal' }),
+        amountOut: Type.Number({ format: 'decimal' }),
+        fee: Type.Number({ format: 'decimal' }),
+        baseTokenBalanceChange: Type.Number({ format: 'decimal' }),
+        quoteTokenBalanceChange: Type.Number({ format: 'decimal' }),
         slippagePct: Type.Optional(
           Type.Number({
             format: 'decimal',

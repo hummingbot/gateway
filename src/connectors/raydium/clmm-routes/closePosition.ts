@@ -122,6 +122,9 @@ export async function closePosition(
       signature,
       status: 1, // CONFIRMED
       data: {
+        // Same pool as the branch above — this is the already-empty position path, which
+        // closes the account without a withdrawal, so it must name its venue too.
+        poolAddress: position.poolId.toBase58(),
         fee,
         positionRentRefunded: rentRefunded,
         baseTokenAmountRemoved: 0,

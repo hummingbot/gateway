@@ -104,9 +104,9 @@ export type GetPositionsOwnedRequestType = Static<typeof GetPositionsOwnedReques
 export const BinLiquiditySchema = Type.Object(
   {
     binId: Type.Number(),
-    price: Type.Number(),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
+    price: Type.Number({ format: 'decimal' }),
+    baseTokenAmount: Type.Number({ format: 'decimal' }),
+    quoteTokenAmount: Type.Number({ format: 'decimal' }),
   },
   { $id: 'BinLiquidity' },
 );
@@ -122,10 +122,10 @@ export const PoolInfoSchema = Type.Object(
     baseTokenAddress: Type.String(),
     quoteTokenAddress: Type.String(),
     binStep: Type.Optional(Type.Number()), // Optional - Meteora-specific
-    feePct: Type.Number(),
-    price: Type.Number(),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
+    feePct: Type.Number({ format: 'decimal' }),
+    price: Type.Number({ format: 'decimal' }),
+    baseTokenAmount: Type.Number({ format: 'decimal' }),
+    quoteTokenAmount: Type.Number({ format: 'decimal' }),
     activeBinId: Type.Number(),
     bins: Type.Optional(Type.Array(BinLiquiditySchema)),
   },
@@ -173,15 +173,15 @@ export const PositionInfoSchema = Type.Object(
     poolAddress: Type.String(),
     baseTokenAddress: Type.String(),
     quoteTokenAddress: Type.String(),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
-    baseFeeAmount: Type.Number(),
-    quoteFeeAmount: Type.Number(),
+    baseTokenAmount: Type.Number({ format: 'decimal' }),
+    quoteTokenAmount: Type.Number({ format: 'decimal' }),
+    baseFeeAmount: Type.Number({ format: 'decimal' }),
+    quoteFeeAmount: Type.Number({ format: 'decimal' }),
     lowerBinId: Type.Number(),
     upperBinId: Type.Number(),
-    lowerPrice: Type.Number(),
-    upperPrice: Type.Number(),
-    price: Type.Number(),
+    lowerPrice: Type.Number({ format: 'decimal' }),
+    upperPrice: Type.Number({ format: 'decimal' }),
+    price: Type.Number({ format: 'decimal' }),
   },
   { $id: 'PositionInfo' },
 );
@@ -201,11 +201,11 @@ export const OpenPositionRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
     walletAddress: Type.Optional(Type.String()),
-    lowerPrice: Type.Number(),
-    upperPrice: Type.Number(),
+    lowerPrice: Type.Number({ format: 'decimal' }),
+    upperPrice: Type.Number({ format: 'decimal' }),
     poolAddress: Type.String(),
-    baseTokenAmount: Type.Optional(Type.Number()),
-    quoteTokenAmount: Type.Optional(Type.Number()),
+    baseTokenAmount: Type.Optional(Type.Number({ format: 'decimal' })),
+    quoteTokenAmount: Type.Optional(Type.Number({ format: 'decimal' })),
     slippagePct: Type.Optional(
       Type.Number({
         format: 'decimal',
@@ -226,15 +226,15 @@ export const OpenPositionResponse = Type.Object(
     // Only included when status = CONFIRMED
     data: Type.Optional(
       Type.Object({
-        fee: Type.Number(),
+        fee: Type.Number({ format: 'decimal' }),
         // The venue this write touched. Echoed so a stored record identifies its pool
         // without the request that produced it — the same reason the swap execute
         // responses carry it.
         poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
         positionAddress: Type.String(),
-        positionRent: Type.Number(),
-        baseTokenAmountAdded: Type.Number(),
-        quoteTokenAmountAdded: Type.Number(),
+        positionRent: Type.Number({ format: 'decimal' }),
+        baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
+        quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
       }),
     ),
   },
@@ -247,8 +247,8 @@ export const AddLiquidityRequest = Type.Object(
     network: Type.Optional(Type.String()),
     walletAddress: Type.Optional(Type.String()),
     positionAddress: Type.String(),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
+    baseTokenAmount: Type.Number({ format: 'decimal' }),
+    quoteTokenAmount: Type.Number({ format: 'decimal' }),
     slippagePct: Type.Optional(
       Type.Number({
         format: 'decimal',
@@ -269,14 +269,14 @@ export const AddLiquidityResponse = Type.Object(
     // Only included when status = CONFIRMED
     data: Type.Optional(
       Type.Object({
-        fee: Type.Number(),
+        fee: Type.Number({ format: 'decimal' }),
         // The venue this write touched. Echoed so a stored record identifies its pool
         // without the request that produced it — the same reason the swap execute
         // responses carry it.
         poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
         positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
-        baseTokenAmountAdded: Type.Number(),
-        quoteTokenAmountAdded: Type.Number(),
+        baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
+        quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
       }),
     ),
   },
@@ -307,14 +307,14 @@ export const RemoveLiquidityResponse = Type.Object(
     // Only included when status = CONFIRMED
     data: Type.Optional(
       Type.Object({
-        fee: Type.Number(),
+        fee: Type.Number({ format: 'decimal' }),
         // The venue this write touched. Echoed so a stored record identifies its pool
         // without the request that produced it — the same reason the swap execute
         // responses carry it.
         poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
         positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
-        baseTokenAmountRemoved: Type.Number(),
-        quoteTokenAmountRemoved: Type.Number(),
+        baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
+        quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),
       }),
     ),
   },
@@ -340,14 +340,14 @@ export const CollectFeesResponse = Type.Object(
     // Only included when status = CONFIRMED
     data: Type.Optional(
       Type.Object({
-        fee: Type.Number(),
+        fee: Type.Number({ format: 'decimal' }),
         // The venue this write touched. Echoed so a stored record identifies its pool
         // without the request that produced it — the same reason the swap execute
         // responses carry it.
         poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
         positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
-        baseFeeAmountCollected: Type.Number(),
-        quoteFeeAmountCollected: Type.Number(),
+        baseFeeAmountCollected: Type.Number({ format: 'decimal' }),
+        quoteFeeAmountCollected: Type.Number({ format: 'decimal' }),
       }),
     ),
   },
@@ -373,17 +373,17 @@ export const ClosePositionResponse = Type.Object(
     // Only included when status = CONFIRMED
     data: Type.Optional(
       Type.Object({
-        fee: Type.Number(),
+        fee: Type.Number({ format: 'decimal' }),
         // The venue this write touched. Echoed so a stored record identifies its pool
         // without the request that produced it — the same reason the swap execute
         // responses carry it.
         poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
         positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
-        positionRentRefunded: Type.Number(),
-        baseTokenAmountRemoved: Type.Number(),
-        quoteTokenAmountRemoved: Type.Number(),
-        baseFeeAmountCollected: Type.Number(),
-        quoteFeeAmountCollected: Type.Number(),
+        positionRentRefunded: Type.Number({ format: 'decimal' }),
+        baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
+        quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),
+        baseFeeAmountCollected: Type.Number({ format: 'decimal' }),
+        quoteFeeAmountCollected: Type.Number({ format: 'decimal' }),
       }),
     ),
   },
@@ -458,7 +458,7 @@ export const CreatePoolResponse = Type.Object(
     // Only included when status = CONFIRMED
     data: Type.Optional(
       Type.Object({
-        fee: Type.Number(),
+        fee: Type.Number({ format: 'decimal' }),
       }),
     ),
   },
@@ -475,10 +475,10 @@ export const QuotePositionResponse = Type.Object(
     // named one, and on AMM it keeps the quote self-describing alongside quote-swap.
     poolAddress: Type.Optional(Type.String({ description: 'Pool the quote was computed against' })),
     baseLimited: Type.Boolean(),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
-    baseTokenAmountMax: Type.Number(),
-    quoteTokenAmountMax: Type.Number(),
+    baseTokenAmount: Type.Number({ format: 'decimal' }),
+    quoteTokenAmount: Type.Number({ format: 'decimal' }),
+    baseTokenAmountMax: Type.Number({ format: 'decimal' }),
+    quoteTokenAmountMax: Type.Number({ format: 'decimal' }),
     liquidity: Type.Optional(Type.Any()),
   },
   { $id: 'QuotePositionResponse' },
@@ -505,7 +505,7 @@ export const QuoteSwapRequest = Type.Object(
         description: 'The other token in the pair (optional - required if poolAddress not provided)',
       }),
     ),
-    amount: Type.Number(),
+    amount: Type.Number({ format: 'decimal' }),
     side: Type.String({
       description: 'Trade direction',
       enum: ['BUY', 'SELL'],
@@ -527,13 +527,13 @@ export const QuoteSwapResponse = Type.Object(
     poolAddress: Type.String(),
     tokenIn: Type.String(),
     tokenOut: Type.String(),
-    amountIn: Type.Number(),
-    amountOut: Type.Number(),
-    price: Type.Number(),
-    slippagePct: Type.Optional(Type.Number()),
-    minAmountOut: Type.Number(),
-    maxAmountIn: Type.Number(),
-    priceImpactPct: Type.Number(),
+    amountIn: Type.Number({ format: 'decimal' }),
+    amountOut: Type.Number({ format: 'decimal' }),
+    price: Type.Number({ format: 'decimal' }),
+    slippagePct: Type.Optional(Type.Number({ format: 'decimal' })),
+    minAmountOut: Type.Number({ format: 'decimal' }),
+    maxAmountIn: Type.Number({ format: 'decimal' }),
+    priceImpactPct: Type.Number({ format: 'decimal' }),
   },
   { $id: 'ClmmQuoteSwapResponse' },
 );
@@ -554,7 +554,7 @@ export const ExecuteSwapRequest = Type.Object(
         description: 'The other token in the pair (optional - required if poolAddress not provided)',
       }),
     ),
-    amount: Type.Number(),
+    amount: Type.Number({ format: 'decimal' }),
     side: Type.String({
       enum: ['BUY', 'SELL'],
     }),
@@ -580,11 +580,11 @@ export const ExecuteSwapResponse = Type.Object(
       Type.Object({
         tokenIn: Type.String(),
         tokenOut: Type.String(),
-        amountIn: Type.Number(),
-        amountOut: Type.Number(),
-        fee: Type.Number(),
-        baseTokenBalanceChange: Type.Number(),
-        quoteTokenBalanceChange: Type.Number(),
+        amountIn: Type.Number({ format: 'decimal' }),
+        amountOut: Type.Number({ format: 'decimal' }),
+        fee: Type.Number({ format: 'decimal' }),
+        baseTokenBalanceChange: Type.Number({ format: 'decimal' }),
+        quoteTokenBalanceChange: Type.Number({ format: 'decimal' }),
         slippagePct: Type.Optional(
           Type.Number({
             format: 'decimal',

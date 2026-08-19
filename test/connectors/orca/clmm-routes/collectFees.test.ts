@@ -76,6 +76,7 @@ describe('POST /collect-fees', () => {
         method: 'POST',
         url: '/collect-fees',
         payload: {
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
         },

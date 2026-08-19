@@ -1,5 +1,3 @@
-import Fastify, { FastifyInstance } from 'fastify';
-
 // Mock dependencies
 jest.mock('../../src/services/logger', () => ({
   logger: {
@@ -47,11 +45,14 @@ jest.mock('@fastify/sensible', () => {
 });
 
 // Import after mocking
+import { FastifyInstance } from 'fastify';
+
 import { poolRoutes } from '../../src/pools/pools.routes';
 import { Pool } from '../../src/pools/types';
 import { CoinGeckoService } from '../../src/services/coingecko-service';
 import { PoolService } from '../../src/services/pool-service';
 import { TokenService } from '../../src/services/token-service';
+import { fastifyWithTypeProvider } from '../utils/testUtils';
 
 describe('Pool Routes Tests', () => {
   let fastify: FastifyInstance;
@@ -61,7 +62,7 @@ describe('Pool Routes Tests', () => {
 
   beforeEach(async () => {
     // Create a new Fastify instance for each test
-    fastify = Fastify();
+    fastify = fastifyWithTypeProvider();
 
     // Setup PoolService mock
     mockPoolService = {
