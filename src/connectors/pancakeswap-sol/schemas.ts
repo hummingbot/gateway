@@ -1,4 +1,4 @@
-import { Static, Type } from '@sinclair/typebox';
+import { Type } from '@sinclair/typebox';
 
 import { getSolanaChainConfig } from '../../chains/solana/solana.config';
 
@@ -41,8 +41,6 @@ export const PancakeswapSolClmmGetPoolInfoRequest = Type.Object({
     }),
   ),
 });
-
-export type PancakeswapSolClmmGetPoolInfoRequestType = Static<typeof PancakeswapSolClmmGetPoolInfoRequest>;
 
 // CLMM Open Position Request
 export const PancakeswapSolClmmOpenPositionRequest = Type.Object({
@@ -94,8 +92,6 @@ export const PancakeswapSolClmmOpenPositionRequest = Type.Object({
   ),
 });
 
-export type PancakeswapSolClmmOpenPositionRequestType = Static<typeof PancakeswapSolClmmOpenPositionRequest>;
-
 // CLMM Create Pool Request
 export const PancakeswapSolClmmCreatePoolRequest = Type.Object({
   network: Type.Optional(
@@ -139,8 +135,6 @@ export const PancakeswapSolClmmCreatePoolRequest = Type.Object({
   ),
 });
 
-export type PancakeswapSolClmmCreatePoolRequestType = Static<typeof PancakeswapSolClmmCreatePoolRequest>;
-
 // CLMM Position Info Request
 export const PancakeswapSolClmmGetPositionInfoRequest = Type.Object({
   network: Type.Optional(
@@ -155,8 +149,6 @@ export const PancakeswapSolClmmGetPositionInfoRequest = Type.Object({
     examples: [POSITION_ADDRESS_EXAMPLE],
   }),
 });
-
-export type PancakeswapSolClmmGetPositionInfoRequestType = Static<typeof PancakeswapSolClmmGetPositionInfoRequest>;
 
 // CLMM Get Positions Owned Request
 export const PancakeswapSolClmmGetPositionsOwnedRequest = Type.Object({
@@ -178,8 +170,6 @@ export const PancakeswapSolClmmGetPositionsOwnedRequest = Type.Object({
     }),
   ),
 });
-
-export type PancakeswapSolClmmGetPositionsOwnedRequestType = Static<typeof PancakeswapSolClmmGetPositionsOwnedRequest>;
 
 // CLMM Quote Swap Request
 export const PancakeswapSolClmmQuoteSwapRequest = Type.Object({
@@ -223,8 +213,6 @@ export const PancakeswapSolClmmQuoteSwapRequest = Type.Object({
     }),
   ),
 });
-
-export type PancakeswapSolClmmQuoteSwapRequestType = Static<typeof PancakeswapSolClmmQuoteSwapRequest>;
 
 // CLMM Execute Swap Request
 export const PancakeswapSolClmmExecuteSwapRequest = Type.Object({
@@ -276,8 +264,6 @@ export const PancakeswapSolClmmExecuteSwapRequest = Type.Object({
   ),
 });
 
-export type PancakeswapSolClmmExecuteSwapRequestType = Static<typeof PancakeswapSolClmmExecuteSwapRequest>;
-
 // CLMM Close Position Request
 export const PancakeswapSolClmmClosePositionRequest = Type.Object({
   network: Type.Optional(
@@ -298,8 +284,6 @@ export const PancakeswapSolClmmClosePositionRequest = Type.Object({
     examples: [POSITION_ADDRESS_EXAMPLE],
   }),
 });
-
-export type PancakeswapSolClmmClosePositionRequestType = Static<typeof PancakeswapSolClmmClosePositionRequest>;
 
 // CLMM Remove Liquidity Request
 export const PancakeswapSolClmmRemoveLiquidityRequest = Type.Object({
@@ -328,8 +312,6 @@ export const PancakeswapSolClmmRemoveLiquidityRequest = Type.Object({
   }),
 });
 
-export type PancakeswapSolClmmRemoveLiquidityRequestType = Static<typeof PancakeswapSolClmmRemoveLiquidityRequest>;
-
 // CLMM Collect Fees Request
 export const PancakeswapSolClmmCollectFeesRequest = Type.Object({
   network: Type.Optional(
@@ -350,8 +332,6 @@ export const PancakeswapSolClmmCollectFeesRequest = Type.Object({
     examples: [POSITION_ADDRESS_EXAMPLE],
   }),
 });
-
-export type PancakeswapSolClmmCollectFeesRequestType = Static<typeof PancakeswapSolClmmCollectFeesRequest>;
 
 // CLMM Add Liquidity Request
 export const PancakeswapSolClmmAddLiquidityRequest = Type.Object({
@@ -390,8 +370,6 @@ export const PancakeswapSolClmmAddLiquidityRequest = Type.Object({
     }),
   ),
 });
-
-export type PancakeswapSolClmmAddLiquidityRequestType = Static<typeof PancakeswapSolClmmAddLiquidityRequest>;
 
 // CLMM Quote Position Request
 export const PancakeswapSolClmmQuotePositionRequest = Type.Object({
@@ -436,5 +414,3 @@ export const PancakeswapSolClmmQuotePositionRequest = Type.Object({
     }),
   ),
 });
-
-export type PancakeswapSolClmmQuotePositionRequestType = Static<typeof PancakeswapSolClmmQuotePositionRequest>;
