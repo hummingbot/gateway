@@ -13,8 +13,14 @@ import {
   CreatePoolRequest as ClmmCreatePoolRequest,
 } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
-import { CLMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
+import {
+  chainNetworkField,
+  CLMM_CONNECTORS,
+  connectorField,
+  defaultWallet,
+  parseChainNetwork,
+  rethrowRouteError,
+} from '../common';
 
 // Unified CLMM create-pool. Creates + initializes a pool at an initial price (no position is
 // seeded — concentrated-liquidity positions need a range, opened separately via open-position).
@@ -107,9 +113,7 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
             throw httpErrors.badRequest(`Unsupported CLMM connector: ${connector}`);
         }
       } catch (e: any) {
-        logger.error('Failed to create CLMM pool:', e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to create pool');
+        rethrowRouteError(e, 'Failed to create CLMM pool');
       }
     },
   );

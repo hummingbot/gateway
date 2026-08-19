@@ -7,8 +7,14 @@ import { removeLiquidity as raydiumRemoveLiquidity } from '../../connectors/rayd
 import { removeLiquidity as uniswapRemoveLiquidity } from '../../connectors/uniswap/amm-routes/removeLiquidity';
 import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
-import { AMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
+import {
+  AMM_CONNECTORS,
+  chainNetworkField,
+  connectorField,
+  defaultWallet,
+  parseChainNetwork,
+  rethrowRouteError,
+} from '../common';
 
 const UnifiedAmmRemoveLiquidityRequest = Type.Object({
   connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
@@ -100,9 +106,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             );
         }
       } catch (e: any) {
-        logger.error('Failed to remove AMM liquidity:', e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to remove liquidity');
+        rethrowRouteError(e, 'Failed to remove AMM liquidity');
       }
     },
   );

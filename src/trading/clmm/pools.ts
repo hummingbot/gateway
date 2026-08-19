@@ -11,7 +11,7 @@ import { getPoolInfo as raydiumGetPoolInfo } from '../../connectors/raydium/clmm
 import { getPoolInfo as uniswapGetPoolInfo } from '../../connectors/uniswap/clmm-routes/poolInfo';
 import { PoolInfo, PoolInfoSchema } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
-import { CLMM_CONNECTORS, chainNetworkField, connectorField, parseChainNetwork } from '../common';
+import { chainNetworkField, CLMM_CONNECTORS, connectorField, parseChainNetwork, rethrowRouteError } from '../common';
 
 // Constants for examples (using Meteora CLMM values)
 const CLMM_POOL_ADDRESS_EXAMPLE = '2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3';
@@ -143,8 +143,7 @@ export const poolsRoute: FastifyPluginAsync = async (fastify) => {
         const result = await getUnifiedPoolInfo(fastify, connector, chainNetwork, poolAddress, binCount);
         return reply.code(200).send(result);
       } catch (error: any) {
-        logger.error(`[UnifiedCLMM] Pool info error: ${error.message}`);
-        throw error;
+        rethrowRouteError(error, 'Failed to get CLMM pool info');
       }
     },
   );

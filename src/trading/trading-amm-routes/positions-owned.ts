@@ -4,8 +4,14 @@ import { FastifyPluginAsync } from 'fastify';
 import { getPositionsOwned as meteoraGetPositionsOwned } from '../../connectors/meteora/amm-routes/positionsOwned';
 import { PositionInfo, PositionInfoSchema } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
-import { AMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
+import {
+  AMM_CONNECTORS,
+  chainNetworkField,
+  connectorField,
+  defaultWallet,
+  parseChainNetwork,
+  rethrowRouteError,
+} from '../common';
 
 const UnifiedAmmPositionsOwnedRequest = Type.Object({
   connector: connectorField(AMM_CONNECTORS, 'AMM connector (only non-fungible-LP AMMs supported: meteora)'),
@@ -50,9 +56,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
             );
         }
       } catch (e: any) {
-        logger.error('Failed to list AMM positions owned:', e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to list positions owned');
+        rethrowRouteError(e, 'Failed to list AMM positions owned');
       }
     },
   );

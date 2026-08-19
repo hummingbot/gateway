@@ -28,7 +28,7 @@ import { ChainQuoteSwapResponseSchema } from '../../schemas/chain-schema';
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 import { PoolService } from '../../services/pool-service';
-import { chainNetworkField, parseChainNetwork } from '../common';
+import { chainNetworkField, parseChainNetwork, rethrowRouteError } from '../common';
 
 /**
  * Unified swap quote request schema
@@ -324,11 +324,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
         );
         return reply.code(200).send(result);
       } catch (error: any) {
-        logger.error(`[UnifiedSwap] Quote error: ${error.message}`);
-        if (error.statusCode) {
-          throw error;
-        }
-        throw fastify.httpErrors.internalServerError(error.message || 'Failed to get swap quote');
+        rethrowRouteError(error, 'Failed to get swap quote');
       }
     },
   );

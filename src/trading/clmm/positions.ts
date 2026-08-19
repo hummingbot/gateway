@@ -9,7 +9,7 @@ import { getPositionInfo as raydiumGetPositionInfo } from '../../connectors/rayd
 import { getPositionInfo as uniswapGetPositionInfo } from '../../connectors/uniswap/clmm-routes/positionInfo';
 import { PositionInfo, PositionInfoSchema } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
-import { CLMM_CONNECTORS, chainNetworkField, connectorField, parseChainNetwork } from '../common';
+import { chainNetworkField, CLMM_CONNECTORS, connectorField, parseChainNetwork, rethrowRouteError } from '../common';
 
 /**
  * Unified position info request schema
@@ -123,8 +123,7 @@ export const positionsRoute: FastifyPluginAsync = async (fastify) => {
         const result = await getUnifiedPositionInfo(fastify, connector, chainNetwork, positionAddress);
         return reply.code(200).send(result);
       } catch (error: any) {
-        logger.error(`[UnifiedCLMM] Position info error: ${error.message}`);
-        throw error;
+        rethrowRouteError(error, 'Failed to get CLMM position info');
       }
     },
   );

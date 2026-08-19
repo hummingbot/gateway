@@ -7,8 +7,7 @@ import { quoteLiquidity as raydiumQuoteLiquidity } from '../../connectors/raydiu
 import { quoteLiquidity as uniswapQuoteLiquidity } from '../../connectors/uniswap/amm-routes/quoteLiquidity';
 import { QuoteLiquidityResponse, QuoteLiquidityResponseType } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
-import { AMM_CONNECTORS, chainNetworkField, connectorField, parseChainNetwork } from '../common';
+import { AMM_CONNECTORS, chainNetworkField, connectorField, parseChainNetwork, rethrowRouteError } from '../common';
 
 const UnifiedAmmQuoteLiquidityRequest = Type.Object({
   connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
@@ -66,9 +65,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             );
         }
       } catch (e: any) {
-        logger.error('Failed to quote AMM liquidity:', e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to quote liquidity');
+        rethrowRouteError(e, 'Failed to quote AMM liquidity');
       }
     },
   );

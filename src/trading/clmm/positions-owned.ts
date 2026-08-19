@@ -9,7 +9,14 @@ import { getPositionsOwned as raydiumGetPositionsOwned } from '../../connectors/
 import { getPositionsOwned as uniswapGetPositionsOwned } from '../../connectors/uniswap/clmm-routes/positionsOwned';
 import { PositionInfo, PositionInfoSchema } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
-import { CLMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
+import {
+  chainNetworkField,
+  CLMM_CONNECTORS,
+  connectorField,
+  defaultWallet,
+  parseChainNetwork,
+  rethrowRouteError,
+} from '../common';
 
 /**
  * Unified positions owned request schema
@@ -123,8 +130,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         const result = await getUnifiedPositionsOwned(fastify, connector, chainNetwork, walletAddress);
         return reply.code(200).send(result);
       } catch (error: any) {
-        logger.error(`[UnifiedCLMM] Positions owned error: ${error.message}`);
-        throw error;
+        rethrowRouteError(error, 'Failed to list CLMM positions owned');
       }
     },
   );

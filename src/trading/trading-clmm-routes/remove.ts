@@ -9,8 +9,14 @@ import { removeLiquidity as raydiumRemoveLiquidity } from '../../connectors/rayd
 import { removeLiquidity as uniswapRemoveLiquidity } from '../../connectors/uniswap/clmm-routes/removeLiquidity';
 import { RemoveLiquidityResponseType, RemoveLiquidityResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
-import { CLMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
+import {
+  chainNetworkField,
+  CLMM_CONNECTORS,
+  connectorField,
+  defaultWallet,
+  parseChainNetwork,
+  rethrowRouteError,
+} from '../common';
 
 // Unified schema with connector field
 const UnifiedRemoveLiquidityRequest = Type.Object({
@@ -100,11 +106,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
         }
       } catch (e: any) {
-        logger.error('Failed to remove liquidity:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw httpErrors.internalServerError('Failed to remove liquidity');
+        rethrowRouteError(e, 'Failed to remove liquidity');
       }
     },
   );

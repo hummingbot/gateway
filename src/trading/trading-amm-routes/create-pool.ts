@@ -7,8 +7,14 @@ import { createPool as raydiumCreatePool } from '../../connectors/raydium/amm-ro
 import { createPool as uniswapCreatePool } from '../../connectors/uniswap/amm-routes/createPool';
 import { CreatePoolRequest, CreatePoolResponse, CreatePoolResponseType } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
-import { AMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
+import {
+  AMM_CONNECTORS,
+  chainNetworkField,
+  connectorField,
+  defaultWallet,
+  parseChainNetwork,
+  rethrowRouteError,
+} from '../common';
 
 // Composed from the canonical CreatePoolRequest (schemas/amm-schema.ts): the
 // unified route swaps per-connector `network` for connector + chainNetwork,
@@ -138,9 +144,7 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
             throw httpErrors.badRequest(`Unsupported AMM connector: ${connector}`);
         }
       } catch (e: any) {
-        logger.error('Failed to create pool:', e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to create pool');
+        rethrowRouteError(e, 'Failed to create pool');
       }
     },
   );

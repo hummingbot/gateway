@@ -28,7 +28,7 @@ import { ChainExecuteSwapResponseSchema } from '../../schemas/chain-schema';
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 import { PoolService } from '../../services/pool-service';
-import { chainNetworkField, defaultWallet, parseChainNetwork } from '../common';
+import { chainNetworkField, defaultWallet, parseChainNetwork, rethrowRouteError } from '../common';
 
 /**
  * Unified swap execute request schema
@@ -378,11 +378,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
         );
         return reply.code(200).send(result);
       } catch (error: any) {
-        logger.error(`[UnifiedSwap] Execute error: ${error.message}`);
-        if (error.statusCode) {
-          throw error;
-        }
-        throw fastify.httpErrors.internalServerError(error.message || 'Failed to execute swap');
+        rethrowRouteError(error, 'Failed to execute swap');
       }
     },
   );

@@ -7,8 +7,7 @@ import { getPoolInfo as raydiumGetPoolInfo } from '../../connectors/raydium/amm-
 import { getPoolInfo as uniswapGetPoolInfo } from '../../connectors/uniswap/amm-routes/poolInfo';
 import { PoolInfo, PoolInfoSchema } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
-import { AMM_CONNECTORS, chainNetworkField, connectorField, parseChainNetwork } from '../common';
+import { AMM_CONNECTORS, chainNetworkField, connectorField, parseChainNetwork, rethrowRouteError } from '../common';
 
 const UnifiedAmmPoolInfoRequest = Type.Object({
   connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
@@ -49,9 +48,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
             );
         }
       } catch (e: any) {
-        logger.error('Failed to get AMM pool info:', e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to get pool info');
+        rethrowRouteError(e, 'Failed to get AMM pool info');
       }
     },
   );

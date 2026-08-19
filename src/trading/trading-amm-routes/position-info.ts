@@ -7,8 +7,14 @@ import { getPositionInfo as raydiumGetPositionInfo } from '../../connectors/rayd
 import { getPositionInfo as uniswapGetPositionInfo } from '../../connectors/uniswap/amm-routes/positionInfo';
 import { PositionInfo, PositionInfoSchema } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
-import { AMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
+import {
+  AMM_CONNECTORS,
+  chainNetworkField,
+  connectorField,
+  defaultWallet,
+  parseChainNetwork,
+  rethrowRouteError,
+} from '../common';
 
 const UnifiedAmmPositionInfoRequest = Type.Object({
   connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
@@ -50,9 +56,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
             );
         }
       } catch (e: any) {
-        logger.error('Failed to get AMM position info:', e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to get position info');
+        rethrowRouteError(e, 'Failed to get AMM position info');
       }
     },
   );

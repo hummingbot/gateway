@@ -1,6 +1,23 @@
 import { Static, Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
+import { openPosition as meteoraOpenPosition } from '../../connectors/meteora/clmm-routes/openPosition';
+import { openPosition as orcaOpenPosition } from '../../connectors/orca/clmm-routes/openPosition';
+import { openPosition as pancakeswapOpenPosition } from '../../connectors/pancakeswap/clmm-routes/openPosition';
+import { openPosition as pancakeswapSolOpenPosition } from '../../connectors/pancakeswap-sol/clmm-routes/openPosition';
+import { openPosition as raydiumOpenPosition } from '../../connectors/raydium/clmm-routes/openPosition';
+import { openPosition as uniswapOpenPosition } from '../../connectors/uniswap/clmm-routes/openPosition';
+import { OpenPositionResponseType, OpenPositionResponse } from '../../schemas/clmm-schema';
+import { httpErrors } from '../../services/error-handler';
+import {
+  chainNetworkField,
+  CLMM_CONNECTORS,
+  connectorField,
+  defaultWallet,
+  parseChainNetwork,
+  rethrowRouteError,
+} from '../common';
+
 // Constants for examples (using Meteora CLMM values)
 const BASE_TOKEN_AMOUNT = 0.01;
 const QUOTE_TOKEN_AMOUNT = 2;
@@ -57,18 +74,6 @@ const UnifiedOpenPositionRequest = Type.Object({
     }),
   ),
 });
-
-// Import connector functions
-import { openPosition as meteoraOpenPosition } from '../../connectors/meteora/clmm-routes/openPosition';
-import { openPosition as orcaOpenPosition } from '../../connectors/orca/clmm-routes/openPosition';
-import { openPosition as pancakeswapOpenPosition } from '../../connectors/pancakeswap/clmm-routes/openPosition';
-import { openPosition as pancakeswapSolOpenPosition } from '../../connectors/pancakeswap-sol/clmm-routes/openPosition';
-import { openPosition as raydiumOpenPosition } from '../../connectors/raydium/clmm-routes/openPosition';
-import { openPosition as uniswapOpenPosition } from '../../connectors/uniswap/clmm-routes/openPosition';
-import { OpenPositionResponseType, OpenPositionResponse } from '../../schemas/clmm-schema';
-import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
-import { CLMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
@@ -191,11 +196,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
             throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
         }
       } catch (e: any) {
-        logger.error('Failed to open position:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw httpErrors.internalServerError('Failed to open position');
+        rethrowRouteError(e, 'Failed to open position');
       }
     },
   );

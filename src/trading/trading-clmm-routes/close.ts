@@ -9,8 +9,14 @@ import { closePosition as raydiumClosePosition } from '../../connectors/raydium/
 import { closePosition as uniswapClosePosition } from '../../connectors/uniswap/clmm-routes/closePosition';
 import { ClosePositionResponseType, ClosePositionResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
-import { CLMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
+import {
+  chainNetworkField,
+  CLMM_CONNECTORS,
+  connectorField,
+  defaultWallet,
+  parseChainNetwork,
+  rethrowRouteError,
+} from '../common';
 
 // Unified schema with connector field
 const UnifiedClosePositionRequest = Type.Object({
@@ -75,11 +81,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
             throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
         }
       } catch (e: any) {
-        logger.error('Failed to close position:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw httpErrors.internalServerError('Failed to close position');
+        rethrowRouteError(e, 'Failed to close position');
       }
     },
   );

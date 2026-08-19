@@ -3,6 +3,7 @@ import { Type } from '@sinclair/typebox';
 import { getEthereumChainConfig } from '../chains/ethereum/ethereum.config';
 import { getSolanaChainConfig } from '../chains/solana/solana.config';
 import { httpErrors } from '../services/error-handler';
+import { logger } from '../services/logger';
 
 /** CLMM connectors that back the unified /trading/clmm routes. */
 export const CLMM_CONNECTORS = ['meteora', 'raydium', 'pancakeswap-sol', 'orca', 'uniswap', 'pancakeswap'];
@@ -21,6 +22,20 @@ export const chainNetworkField = () =>
     default: 'solana-mainnet-beta',
     examples: ['solana-mainnet-beta'],
   });
+
+/**
+ * Standard catch handler for the unified trading routes: errors that already
+ * carry an HTTP status code (connector badRequest/notFound, chain errors) pass
+ * through untouched; anything else becomes a 500 that keeps the underlying
+ * message so callers see the real cause instead of a generic label.
+ */
+export function rethrowRouteError(e: any, context: string): never {
+  logger.error(`${context}: ${e?.message ?? e}`);
+  if (e?.statusCode) {
+    throw e;
+  }
+  throw httpErrors.internalServerError(`${context}: ${e?.message ?? e}`);
+}
 
 /** Parse a chain-network string (e.g. "solana-mainnet-beta") into its chain and network parts. */
 export function parseChainNetwork(chainNetwork: string): { chain: string; network: string } {

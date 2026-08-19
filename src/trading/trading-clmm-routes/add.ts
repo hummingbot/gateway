@@ -9,8 +9,14 @@ import { addLiquidity as raydiumAddLiquidity } from '../../connectors/raydium/cl
 import { addLiquidity as uniswapAddLiquidity } from '../../connectors/uniswap/clmm-routes/addLiquidity';
 import { AddLiquidityResponseType, AddLiquidityResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
-import { CLMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
+import {
+  chainNetworkField,
+  CLMM_CONNECTORS,
+  connectorField,
+  defaultWallet,
+  parseChainNetwork,
+  rethrowRouteError,
+} from '../common';
 
 // Constants for examples (using Meteora CLMM values)
 const BASE_TOKEN_AMOUNT = 0.01;
@@ -168,11 +174,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
         }
       } catch (e: any) {
-        logger.error('Failed to add liquidity:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw httpErrors.internalServerError('Failed to add liquidity');
+        rethrowRouteError(e, 'Failed to add liquidity');
       }
     },
   );

@@ -7,8 +7,7 @@ import { quoteSwap as raydiumQuoteSwap } from '../../connectors/raydium/amm-rout
 import { quoteSwap as uniswapQuoteSwap } from '../../connectors/uniswap/amm-routes/quoteSwap';
 import { QuoteSwapResponse, QuoteSwapResponseType } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
-import { AMM_CONNECTORS, chainNetworkField, connectorField, parseChainNetwork } from '../common';
+import { AMM_CONNECTORS, chainNetworkField, connectorField, parseChainNetwork, rethrowRouteError } from '../common';
 
 const UnifiedAmmQuoteSwapRequest = Type.Object({
   connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
@@ -62,9 +61,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
             );
         }
       } catch (e: any) {
-        logger.error('Failed to get AMM swap quote:', e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to get swap quote');
+        rethrowRouteError(e, 'Failed to get AMM swap quote');
       }
     },
   );

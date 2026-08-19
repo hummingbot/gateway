@@ -7,8 +7,14 @@ import { addLiquidity as raydiumAddLiquidity } from '../../connectors/raydium/am
 import { addLiquidity as uniswapAddLiquidity } from '../../connectors/uniswap/amm-routes/addLiquidity';
 import { AddLiquidityResponse, AddLiquidityResponseType } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
-import { AMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
+import {
+  AMM_CONNECTORS,
+  chainNetworkField,
+  connectorField,
+  defaultWallet,
+  parseChainNetwork,
+  rethrowRouteError,
+} from '../common';
 
 const UnifiedAmmAddLiquidityRequest = Type.Object({
   connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
@@ -106,9 +112,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             );
         }
       } catch (e: any) {
-        logger.error('Failed to add AMM liquidity:', e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to add liquidity');
+        rethrowRouteError(e, 'Failed to add AMM liquidity');
       }
     },
   );

@@ -10,7 +10,7 @@ import { quotePosition as uniswapQuotePosition } from '../../connectors/uniswap/
 import { QuotePositionResponseType, QuotePositionResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
-import { CLMM_CONNECTORS, chainNetworkField, connectorField, parseChainNetwork } from '../common';
+import { chainNetworkField, CLMM_CONNECTORS, connectorField, parseChainNetwork, rethrowRouteError } from '../common';
 
 // Constants for examples (using Meteora CLMM values)
 const BASE_TOKEN_AMOUNT = 0.01;
@@ -256,8 +256,7 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
         );
         return reply.code(200).send(result);
       } catch (error: any) {
-        logger.error(`[UnifiedCLMM] Quote position error: ${error.message}`);
-        throw error;
+        rethrowRouteError(error, 'Failed to quote CLMM position');
       }
     },
   );

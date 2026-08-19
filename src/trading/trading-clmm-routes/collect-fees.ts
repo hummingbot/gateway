@@ -9,8 +9,14 @@ import { collectFees as raydiumCollectFees } from '../../connectors/raydium/clmm
 import { collectFees as uniswapCollectFees } from '../../connectors/uniswap/clmm-routes/collectFees';
 import { CollectFeesResponseType, CollectFeesResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
-import { CLMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
+import {
+  chainNetworkField,
+  CLMM_CONNECTORS,
+  connectorField,
+  defaultWallet,
+  parseChainNetwork,
+  rethrowRouteError,
+} from '../common';
 
 // Unified schema with connector field
 const UnifiedCollectFeesRequest = Type.Object({
@@ -75,11 +81,7 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
             throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
         }
       } catch (e: any) {
-        logger.error('Failed to collect fees:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw httpErrors.internalServerError('Failed to collect fees');
+        rethrowRouteError(e, 'Failed to collect fees');
       }
     },
   );
