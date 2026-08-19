@@ -20,7 +20,15 @@ const UnifiedAmmQuoteLiquidityRequest = Type.Object({
   poolAddress: Type.String({ description: 'Pool contract address' }),
   baseTokenAmount: Type.Number({ description: 'Amount of base token to deposit' }),
   quoteTokenAmount: Type.Number({ description: 'Amount of quote token to deposit' }),
-  slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: 1,
+      examples: [1],
+    }),
+  ),
 });
 
 export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {

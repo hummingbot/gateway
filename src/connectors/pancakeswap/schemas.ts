@@ -80,17 +80,6 @@ export const PancakeswapAmmCreatePoolRequest = Type.Object({
       default: PancakeswapConfig.config.slippagePct,
     }),
   ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // ========================================
@@ -158,17 +147,6 @@ export const PancakeswapClmmCreatePoolRequest = Type.Object({
       description:
         'Initial price as quote per base. If omitted, the current market price is fetched from the ' +
         'unified swap router so the pool opens on-market and is not immediately arbitraged.',
-    }),
-  ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [600000],
     }),
   ),
 });
@@ -309,17 +287,6 @@ export const PancakeswapAmmAddLiquidityRequest = Type.Object({
       default: PancakeswapConfig.config.slippagePct,
     }),
   ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Pancakeswap AMM Remove Liquidity Request
@@ -345,17 +312,6 @@ export const PancakeswapAmmRemoveLiquidityRequest = Type.Object({
     maximum: 100,
     description: 'Percentage of liquidity to remove',
   }),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Pancakeswap AMM Execute Swap Request
@@ -494,17 +450,6 @@ export const PancakeswapClmmOpenPositionRequest = Type.Object({
       default: PancakeswapConfig.config.slippagePct,
     }),
   ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Pancakeswap CLMM Add Liquidity Request
@@ -540,17 +485,6 @@ export const PancakeswapClmmAddLiquidityRequest = Type.Object({
       default: PancakeswapConfig.config.slippagePct,
     }),
   ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Pancakeswap CLMM Remove Liquidity Request
@@ -577,17 +511,6 @@ export const PancakeswapClmmRemoveLiquidityRequest = Type.Object({
     maximum: 100,
     description: 'Percentage of liquidity to remove',
   }),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Pancakeswap CLMM Close Position Request
@@ -609,17 +532,6 @@ export const PancakeswapClmmClosePositionRequest = Type.Object({
   positionAddress: Type.String({
     description: 'NFT token ID of the position to close',
   }),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Pancakeswap CLMM Collect Fees Request
@@ -641,17 +553,6 @@ export const PancakeswapClmmCollectFeesRequest = Type.Object({
   positionAddress: Type.String({
     description: 'NFT token ID of the position',
   }),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Pancakeswap CLMM Execute Swap Request
@@ -699,17 +600,6 @@ export const PancakeswapClmmExecuteSwapRequest = Type.Object({
       maximum: 100,
       description: 'Maximum acceptable slippage percentage',
       default: PancakeswapConfig.config.slippagePct,
-    }),
-  ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
     }),
   ),
 });

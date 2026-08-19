@@ -33,8 +33,6 @@ export async function removeLiquidity(
   poolAddress: string,
   percentageToRemove: number,
   slippagePct: number = PancakeswapConfig.config.slippagePct,
-  gasPrice?: string,
-  maxGas?: number,
 ): Promise<RemoveLiquidityResponseType> {
   if (!poolAddress || !percentageToRemove) throw httpErrors.badRequest('Missing required parameters');
   if (percentageToRemove <= 0 || percentageToRemove > 100) {
@@ -89,8 +87,7 @@ export async function removeLiquidity(
   await checkLPAllowance(ethereum, wallet, poolAddress, routerAddress, liquidityToRemove);
 
   const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
-  const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-  const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_REMOVE_LIQUIDITY_GAS_LIMIT);
+  const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_REMOVE_LIQUIDITY_GAS_LIMIT);
 
   let tx;
   if (baseTokenObj.symbol === 'WETH') {
@@ -162,14 +159,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          poolAddress,
-          percentageToRemove,
-          walletAddress: requestedWalletAddress,
-          gasPrice,
-          maxGas,
-        } = request.body;
+        const { network, poolAddress, percentageToRemove, walletAddress: requestedWalletAddress } = request.body;
 
         let walletAddress = requestedWalletAddress;
         if (!walletAddress) {
@@ -180,15 +170,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
-        return await removeLiquidity(
-          network,
-          walletAddress,
-          poolAddress,
-          percentageToRemove,
-          undefined,
-          gasPrice,
-          maxGas,
-        );
+        return await removeLiquidity(network, walletAddress, poolAddress, percentageToRemove, undefined);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) throw e;

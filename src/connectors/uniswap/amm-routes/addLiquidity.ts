@@ -31,8 +31,6 @@ async function addLiquidityInternal(
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct: number = UniswapConfig.config.slippagePct,
-  gasPrice?: string,
-  maxGas?: number,
 ): Promise<AddLiquidityResponseType> {
   const networkToUse = network;
 
@@ -182,8 +180,7 @@ async function addLiquidityInternal(
 
     // Add liquidity Token + ETH
     // Convert gasPrice from wei to gwei if provided
-    const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-    const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_ADD_LIQUIDITY_GAS_LIMIT);
+    const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_ADD_LIQUIDITY_GAS_LIMIT);
     gasOptions.value = quote.rawQuoteTokenAmount;
 
     tx = await router.addLiquidityETH(
@@ -244,8 +241,7 @@ async function addLiquidityInternal(
 
     // Add liquidity Token + Token
     // Convert gasPrice from wei to gwei if provided
-    const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-    const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_ADD_LIQUIDITY_GAS_LIMIT);
+    const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_ADD_LIQUIDITY_GAS_LIMIT);
 
     tx = await router.addLiquidity(
       quote.baseTokenObj.address,
@@ -293,8 +289,6 @@ export async function addLiquidity(
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct: number = UniswapConfig.config.slippagePct,
-  gasPrice?: string,
-  maxGas?: number,
 ): Promise<AddLiquidityResponseType> {
   const poolInfo = await getUniswapPoolInfo(poolAddress, network, 'amm');
   if (!poolInfo) throw httpErrors.notFound(`Pool not found: ${poolAddress}`);
@@ -308,8 +302,6 @@ export async function addLiquidity(
     baseTokenAmount,
     quoteTokenAmount,
     slippagePct,
-    gasPrice,
-    maxGas,
   );
 }
 
@@ -341,8 +333,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           quoteTokenAmount,
           slippagePct,
           walletAddress: requestedWalletAddress,
-          gasPrice,
-          maxGas,
         } = request.body;
 
         // Validate essential parameters
@@ -369,8 +359,6 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
-          gasPrice,
-          maxGas,
         );
       } catch (e) {
         logger.error(e);

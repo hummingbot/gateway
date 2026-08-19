@@ -7,7 +7,7 @@ import { createPool as meteoraCreatePool } from '../../connectors/meteora/amm-ro
 import { createPool as pancakeswapCreatePool } from '../../connectors/pancakeswap/amm-routes/createPool';
 import { createPool as raydiumCreatePool } from '../../connectors/raydium/amm-routes/createPool';
 import { createPool as uniswapCreatePool } from '../../connectors/uniswap/amm-routes/createPool';
-import { CreatePoolResponse, CreatePoolResponseType } from '../../schemas/amm-schema';
+import { CreatePoolRequest, CreatePoolResponse, CreatePoolResponseType } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 
@@ -34,55 +34,50 @@ function parseChainNetwork(chainNetwork: string): { chain: string; network: stri
   return { chain: parts[0], network: parts.slice(1).join('-') };
 }
 
-// Unified schema with a connector field. Per-connector create-pool extras are optional
-// and only consumed by their owning connector (configAddress → meteora, feeConfigIndex →
-// raydium, gasPrice/maxGas/slippagePct → uniswap). See docs/connectors/meteora-damm-v2.md.
-const UnifiedCreatePoolRequest = Type.Object({
-  connector: Type.String({
-    description: 'AMM connector name (meteora, raydium, uniswap)',
-    default: 'meteora',
-    examples: ['meteora'],
-  }),
-  chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    default: 'solana-mainnet-beta',
-    examples: ['solana-mainnet-beta'],
-  }),
-  walletAddress: Type.String({
-    description: 'Wallet address (pool creator + payer)',
-    default: defaultWallet,
-  }),
-  baseToken: Type.String({ description: 'Base token symbol or address (becomes the pool base)' }),
-  quoteToken: Type.String({ description: 'Quote token symbol or address (becomes the pool quote)' }),
-  baseTokenAmount: Type.Number({ description: 'Amount of base token to seed the pool with' }),
-  quoteTokenAmount: Type.Optional(
-    Type.Number({
-      description:
-        'Amount of quote token to seed with. If provided, the base:quote ratio sets the initial price. ' +
-        'If omitted (and no initialPrice), the price is fetched from the market.',
+// Composed from the canonical CreatePoolRequest (schemas/amm-schema.ts): the
+// unified route swaps per-connector `network` for connector + chainNetwork,
+// defaults the wallet, and adds the per-protocol fee-config selectors.
+const UnifiedCreatePoolRequest = Type.Composite([
+  Type.Object({
+    connector: Type.String({
+      description: 'AMM connector name (meteora, raydium, uniswap)',
+      default: 'meteora',
+      examples: ['meteora'],
     }),
-  ),
-  initialPrice: Type.Optional(
-    Type.Number({
-      description:
-        'Initial price as quote per base. Overrides quoteTokenAmount. If both are omitted, the current ' +
-        'market price is fetched from the unified swap router so the pool opens on-market.',
+    chainNetwork: Type.String({
+      description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
+      default: 'solana-mainnet-beta',
+      examples: ['solana-mainnet-beta'],
     }),
-  ),
-  // Connector-specific create-pool params (optional; ignored by connectors that do not use them):
-  configAddress: Type.Optional(
-    Type.String({ description: 'Meteora DAMM v2 config account address (required for the meteora connector)' }),
-  ),
-  feeConfigIndex: Type.Optional(
-    Type.Number({ description: 'Raydium CPMM fee config index (optional; defaults to the first available config)' }),
-  ),
-  openTime: Type.Optional(Type.Number({ description: 'Raydium CPMM pool open time (unix seconds; optional)' })),
-  gasPrice: Type.Optional(Type.Number({ description: 'Uniswap (EVM) gas price in gwei (optional)' })),
-  maxGas: Type.Optional(Type.Number({ description: 'Uniswap (EVM) max gas limit (optional)' })),
-  slippagePct: Type.Optional(
-    Type.Number({ minimum: 0, maximum: 100, description: 'Uniswap seeding slippage percentage (optional)' }),
-  ),
-});
+    walletAddress: Type.String({
+      description: 'Wallet address (pool creator + payer)',
+      default: defaultWallet,
+    }),
+    configAddress: Type.Optional(
+      Type.String({
+        description:
+          'Meteora DAMM v2 config account address (required for the meteora connector — configs are ' +
+          'permissionless accounts with no index derivation, so the address must be explicit).',
+      }),
+    ),
+    ammConfigIndex: Type.Optional(
+      Type.Number({
+        description: 'Raydium CPMM fee-config index (optional; defaults to the first available config).',
+      }),
+    ),
+    openTime: Type.Optional(Type.Number({ description: 'Raydium CPMM pool open time (unix seconds; optional)' })),
+    slippagePct: Type.Optional(
+      Type.Number({
+        minimum: 0,
+        maximum: 100,
+        description: 'Uniswap seeding slippage percentage',
+        default: 1,
+        examples: [1],
+      }),
+    ),
+  }),
+  Type.Omit(CreatePoolRequest, ['network', 'walletAddress'], {}),
+]);
 
 export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
@@ -113,10 +108,8 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
           quoteTokenAmount,
           initialPrice,
           configAddress,
-          feeConfigIndex,
+          ammConfigIndex,
           openTime,
-          gasPrice,
-          maxGas,
           slippagePct,
         } = request.body;
 
@@ -144,7 +137,7 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
               baseTokenAmount,
               quoteTokenAmount,
               initialPrice,
-              feeConfigIndex,
+              ammConfigIndex,
               openTime,
             );
 
@@ -157,8 +150,6 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
               baseTokenAmount,
               quoteTokenAmount,
               initialPrice,
-              gasPrice,
-              maxGas,
               slippagePct,
             );
 
@@ -171,8 +162,6 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
               baseTokenAmount,
               quoteTokenAmount,
               initialPrice,
-              gasPrice,
-              maxGas,
               slippagePct,
             );
 

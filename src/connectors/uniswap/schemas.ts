@@ -197,17 +197,6 @@ export const UniswapAmmAddLiquidityRequest = Type.Object({
       default: UniswapConfig.config.slippagePct,
     }),
   ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Uniswap AMM Create Pool Request
@@ -258,17 +247,6 @@ export const UniswapAmmCreatePoolRequest = Type.Object({
       default: UniswapConfig.config.slippagePct,
     }),
   ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Uniswap CLMM Create Pool Request (Uniswap V3)
@@ -306,17 +284,6 @@ export const UniswapClmmCreatePoolRequest = Type.Object({
         'unified swap router so the pool opens on-market and is not immediately arbitraged.',
     }),
   ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [600000],
-    }),
-  ),
 });
 
 // Uniswap AMM Remove Liquidity Request
@@ -342,17 +309,6 @@ export const UniswapAmmRemoveLiquidityRequest = Type.Object({
     maximum: 100,
     description: 'Percentage of liquidity to remove',
   }),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Uniswap AMM Execute Swap Request
@@ -490,17 +446,6 @@ export const UniswapClmmOpenPositionRequest = Type.Object({
       default: UniswapConfig.config.slippagePct,
     }),
   ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Uniswap CLMM Add Liquidity Request
@@ -535,17 +480,6 @@ export const UniswapClmmAddLiquidityRequest = Type.Object({
       default: UniswapConfig.config.slippagePct,
     }),
   ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Uniswap CLMM Remove Liquidity Request
@@ -571,17 +505,6 @@ export const UniswapClmmRemoveLiquidityRequest = Type.Object({
     maximum: 100,
     description: 'Percentage of liquidity to remove',
   }),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Uniswap CLMM Close Position Request
@@ -602,17 +525,6 @@ export const UniswapClmmClosePositionRequest = Type.Object({
   positionAddress: Type.String({
     description: 'NFT token ID of the position to close',
   }),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Uniswap CLMM Collect Fees Request
@@ -633,17 +545,6 @@ export const UniswapClmmCollectFeesRequest = Type.Object({
   positionAddress: Type.String({
     description: 'NFT token ID of the position',
   }),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
-    }),
-  ),
 });
 
 // Uniswap CLMM Execute Swap Request
@@ -690,17 +591,6 @@ export const UniswapClmmExecuteSwapRequest = Type.Object({
       maximum: 100,
       description: 'Maximum acceptable slippage percentage',
       default: UniswapConfig.config.slippagePct,
-    }),
-  ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
     }),
   ),
 });

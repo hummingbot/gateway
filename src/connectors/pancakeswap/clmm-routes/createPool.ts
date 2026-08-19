@@ -78,8 +78,6 @@ export async function createPool(
   quoteToken: string,
   initialPrice?: number,
   fee?: number,
-  gasPrice?: number,
-  maxGas?: number,
 ): Promise<CreatePoolResponseType> {
   // Validate the fee tier — V3 only accepts a fixed set of tiers, each mapped to a tick spacing.
   if (fee === undefined) {
@@ -174,7 +172,7 @@ export async function createPool(
   const nftManagerAddress = getPancakeswapV3NftManagerAddress(network);
   const nftManager = new Contract(nftManagerAddress, INftManagerCreatePoolABI, wallet);
 
-  const gasOptions = await ethereum.prepareGasOptions(gasPrice, maxGas || CLMM_CREATE_POOL_GAS_LIMIT);
+  const gasOptions = await ethereum.prepareGasOptions(undefined, CLMM_CREATE_POOL_GAS_LIMIT);
 
   const tx = await nftManager.createAndInitializePoolIfNecessary(
     token0.address,
@@ -239,8 +237,6 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
           quoteToken,
           fee,
           initialPrice,
-          gasPrice,
-          maxGas,
           walletAddress: requestedWalletAddress,
         } = request.body;
 
@@ -257,10 +253,7 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
-        // Route accepts gasPrice as a wei string (matching sibling requests); createPool expects gwei.
-        const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-
-        return await createPool(network, walletAddress, baseToken, quoteToken, initialPrice, fee, gasPriceGwei, maxGas);
+        return await createPool(network, walletAddress, baseToken, quoteToken, initialPrice, fee);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

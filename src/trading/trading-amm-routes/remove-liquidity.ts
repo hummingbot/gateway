@@ -27,7 +27,15 @@ const UnifiedAmmRemoveLiquidityRequest = Type.Object({
     }),
   ),
   percentageToRemove: Type.Number({ minimum: 0, maximum: 100, description: 'Percentage of liquidity to remove' }),
-  slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: 1,
+      examples: [1],
+    }),
+  ),
 });
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {

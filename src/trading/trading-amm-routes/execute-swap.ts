@@ -22,7 +22,15 @@ const UnifiedAmmExecuteSwapRequest = Type.Object({
   baseToken: Type.String({ description: 'Base token symbol or address (determines swap direction)' }),
   amount: Type.Number({ description: 'Amount denominated in the base token' }),
   side: Type.String({ description: 'Trade direction', enum: ['BUY', 'SELL'] }),
-  slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+  slippagePct: Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description: 'Maximum acceptable slippage percentage',
+      default: 1,
+      examples: [1],
+    }),
+  ),
 });
 
 export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {

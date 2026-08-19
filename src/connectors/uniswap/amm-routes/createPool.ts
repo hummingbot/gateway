@@ -80,8 +80,6 @@ export async function createPool(
   baseTokenAmount: number,
   quoteTokenAmount?: number,
   initialPrice?: number,
-  gasPrice?: number,
-  maxGas?: number,
   slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<CreatePoolResponseType> {
   if (baseTokenAmount <= 0) {
@@ -178,10 +176,6 @@ export async function createPool(
 
   const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
 
-  // gasPrice arrives already in gwei (the unit prepareGasOptions expects). The connector's Fastify
-  // route accepts gasPrice as a wei string (sibling shape) and converts it to gwei before calling.
-  const gasPriceGwei = gasPrice;
-
   let tx;
   if (baseIsEth || quoteIsEth) {
     // One side is ETH/WETH → addLiquidityETH. The ERC20 side needs an allowance to the router; the
@@ -204,7 +198,7 @@ export async function createPool(
       );
     }
 
-    const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_CREATE_POOL_GAS_LIMIT);
+    const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_CREATE_POOL_GAS_LIMIT);
     gasOptions.value = ethRawAmount;
 
     tx = await router.addLiquidityETH(
@@ -248,7 +242,7 @@ export async function createPool(
       );
     }
 
-    const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_CREATE_POOL_GAS_LIMIT);
+    const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_CREATE_POOL_GAS_LIMIT);
 
     tx = await router.addLiquidity(
       baseTokenInfo.address,
@@ -322,8 +316,6 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
           quoteTokenAmount,
           initialPrice,
           slippagePct,
-          gasPrice,
-          maxGas,
           walletAddress: requestedWalletAddress,
         } = request.body;
 
@@ -340,9 +332,6 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
           logger.info(`Using first available wallet address: ${walletAddress}`);
         }
 
-        // Route accepts gasPrice as a wei string (matching sibling AMM requests); createPool expects gwei.
-        const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-
         return await createPool(
           network,
           walletAddress,
@@ -351,8 +340,6 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           initialPrice,
-          gasPriceGwei,
-          maxGas,
           slippagePct,
         );
       } catch (e) {
