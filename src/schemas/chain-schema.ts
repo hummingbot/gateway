@@ -1,5 +1,38 @@
 import { Type, Static } from '@sinclair/typebox';
 
+import { networks as ethereumNetworks } from '../chains/ethereum/ethereum.config';
+import { networks as solanaNetworks } from '../chains/solana/solana.config';
+
+/**
+ * Every network the chain routes accept, read from the chain configs rather than
+ * listed here, so a network added to conf/chains appears in the docs without an
+ * edit. The union spans both chains: `chain` is a path parameter and `network` a
+ * query/body field, and OpenAPI cannot make one enum depend on another parameter.
+ * Passing a network belonging to the other chain still fails, in resolveChain,
+ * with a message naming the chain's own networks.
+ */
+export const CHAIN_NETWORKS = [...new Set([...solanaNetworks, ...ethereumNetworks])];
+
+/**
+ * Network selector shared by every chain route.
+ *
+ * Carries `examples` rather than `default` on purpose. Fastify injects schema
+ * defaults into the request before the handler runs, so a default of
+ * 'mainnet-beta' here would be injected for /chains/ethereum/* too and turn a
+ * working call that omits the network into "Network 'mainnet-beta' is not an
+ * ethereum network". Left absent, each chain resolves its own configured default
+ * (solana mainnet-beta, ethereum mainnet) as it does today, while Swagger still
+ * renders the enum as a dropdown and shows the example.
+ */
+export const networkField = () =>
+  Type.Optional(
+    Type.String({
+      description: "Network to use. Defaults to the chain's configured default network.",
+      enum: CHAIN_NETWORKS,
+      examples: ['mainnet-beta'],
+    }),
+  );
+
 // Transaction status enum
 export enum TransactionStatus {
   PENDING = 0,
@@ -9,7 +42,7 @@ export enum TransactionStatus {
 
 export const EstimateGasRequestSchema = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: networkField(),
   },
   { $id: 'EstimateGasRequest' },
 );
@@ -36,7 +69,7 @@ export type EstimateGasResponse = Static<typeof EstimateGasResponseSchema>;
 
 export const BalanceRequestSchema = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: networkField(),
     address: Type.Optional(Type.String()),
     tokens: Type.Optional(
       Type.Array(Type.String(), {
@@ -63,7 +96,7 @@ export type BalanceResponseType = Static<typeof BalanceResponseSchema>;
 
 export const TokensRequestSchema = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: networkField(),
     tokenSymbols: Type.Optional(Type.Union([Type.String(), Type.Array(Type.String())])),
   },
   { $id: 'TokensRequest' },
@@ -87,7 +120,7 @@ export type TokensResponseType = Static<typeof TokensResponseSchema>;
 
 export const PollRequestSchema = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: networkField(),
     signature: Type.String({ description: 'Transaction signature/hash' }),
   },
   { $id: 'PollRequest' },
@@ -121,7 +154,7 @@ export type PollResponseType = Static<typeof PollResponseSchema>;
 
 export const StatusRequestSchema = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: networkField(),
   },
   { $id: 'StatusRequest' },
 );
@@ -267,7 +300,7 @@ export type ChainExecuteSwapResponseType = Static<typeof ChainExecuteSwapRespons
 
 export const WrapRequestSchema = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: networkField(),
     address: Type.String({ description: 'Wallet address holding the native token' }),
     amount: Type.String({
       description: 'Amount of the native token to wrap, in whole units (not lamports/wei)',
@@ -280,7 +313,7 @@ export type WrapRequestType = Static<typeof WrapRequestSchema>;
 
 export const UnwrapRequestSchema = Type.Object(
   {
-    network: Type.Optional(Type.String()),
+    network: networkField(),
     address: Type.String({ description: 'Wallet address holding the wrapped token' }),
     amount: Type.Optional(
       Type.String({

@@ -808,7 +808,25 @@
         "type": "object",
         "properties": {
           "network": {
-            "type": "string"
+            "description": "Network to use. Defaults to the chain's configured default network.",
+            "enum": [
+              "devnet",
+              "mainnet-beta",
+              "arbitrum",
+              "avalanche",
+              "base",
+              "bsc",
+              "celo",
+              "mainnet",
+              "optimism",
+              "polygon",
+              "robinhoodchain-testnet",
+              "robinhoodchain",
+              "sepolia",
+              "unichain"
+            ],
+            "type": "string",
+            "example": "mainnet-beta"
           }
         }
       },
@@ -867,7 +885,25 @@
         "type": "object",
         "properties": {
           "network": {
-            "type": "string"
+            "description": "Network to use. Defaults to the chain's configured default network.",
+            "enum": [
+              "devnet",
+              "mainnet-beta",
+              "arbitrum",
+              "avalanche",
+              "base",
+              "bsc",
+              "celo",
+              "mainnet",
+              "optimism",
+              "polygon",
+              "robinhoodchain-testnet",
+              "robinhoodchain",
+              "sepolia",
+              "unichain"
+            ],
+            "type": "string",
+            "example": "mainnet-beta"
           },
           "address": {
             "type": "string"
@@ -903,7 +939,25 @@
         "type": "object",
         "properties": {
           "network": {
-            "type": "string"
+            "description": "Network to use. Defaults to the chain's configured default network.",
+            "enum": [
+              "devnet",
+              "mainnet-beta",
+              "arbitrum",
+              "avalanche",
+              "base",
+              "bsc",
+              "celo",
+              "mainnet",
+              "optimism",
+              "polygon",
+              "robinhoodchain-testnet",
+              "robinhoodchain",
+              "sepolia",
+              "unichain"
+            ],
+            "type": "string",
+            "example": "mainnet-beta"
           },
           "tokenSymbols": {
             "anyOf": [
@@ -958,7 +1012,25 @@
         "type": "object",
         "properties": {
           "network": {
-            "type": "string"
+            "description": "Network to use. Defaults to the chain's configured default network.",
+            "enum": [
+              "devnet",
+              "mainnet-beta",
+              "arbitrum",
+              "avalanche",
+              "base",
+              "bsc",
+              "celo",
+              "mainnet",
+              "optimism",
+              "polygon",
+              "robinhoodchain-testnet",
+              "robinhoodchain",
+              "sepolia",
+              "unichain"
+            ],
+            "type": "string",
+            "example": "mainnet-beta"
           },
           "signature": {
             "description": "Transaction signature/hash",
@@ -1039,7 +1111,25 @@
         "type": "object",
         "properties": {
           "network": {
-            "type": "string"
+            "description": "Network to use. Defaults to the chain's configured default network.",
+            "enum": [
+              "devnet",
+              "mainnet-beta",
+              "arbitrum",
+              "avalanche",
+              "base",
+              "bsc",
+              "celo",
+              "mainnet",
+              "optimism",
+              "polygon",
+              "robinhoodchain-testnet",
+              "robinhoodchain",
+              "sepolia",
+              "unichain"
+            ],
+            "type": "string",
+            "example": "mainnet-beta"
           }
         }
       },
@@ -1224,7 +1314,25 @@
         "type": "object",
         "properties": {
           "network": {
-            "type": "string"
+            "description": "Network to use. Defaults to the chain's configured default network.",
+            "enum": [
+              "devnet",
+              "mainnet-beta",
+              "arbitrum",
+              "avalanche",
+              "base",
+              "bsc",
+              "celo",
+              "mainnet",
+              "optimism",
+              "polygon",
+              "robinhoodchain-testnet",
+              "robinhoodchain",
+              "sepolia",
+              "unichain"
+            ],
+            "type": "string",
+            "example": "mainnet-beta"
           },
           "address": {
             "description": "Wallet address holding the native token",
@@ -1245,7 +1353,25 @@
         "type": "object",
         "properties": {
           "network": {
-            "type": "string"
+            "description": "Network to use. Defaults to the chain's configured default network.",
+            "enum": [
+              "devnet",
+              "mainnet-beta",
+              "arbitrum",
+              "avalanche",
+              "base",
+              "bsc",
+              "celo",
+              "mainnet",
+              "optimism",
+              "polygon",
+              "robinhoodchain-testnet",
+              "robinhoodchain",
+              "sepolia",
+              "unichain"
+            ],
+            "type": "string",
+            "example": "mainnet-beta"
           },
           "address": {
             "description": "Wallet address holding the wrapped token",
@@ -7564,19 +7690,43 @@
         "parameters": [
           {
             "schema": {
+              "enum": [
+                "devnet",
+                "mainnet-beta",
+                "arbitrum",
+                "avalanche",
+                "base",
+                "bsc",
+                "celo",
+                "mainnet",
+                "optimism",
+                "polygon",
+                "robinhoodchain-testnet",
+                "robinhoodchain",
+                "sepolia",
+                "unichain"
+              ],
               "type": "string"
             },
+            "example": "mainnet-beta",
             "in": "query",
             "name": "network",
-            "required": false
+            "required": false,
+            "description": "Network to use. Defaults to the chain's configured default network."
           },
           {
             "schema": {
+              "enum": [
+                "solana",
+                "ethereum"
+              ],
+              "default": "solana",
               "type": "string"
             },
             "in": "path",
             "name": "chain",
-            "required": true
+            "required": true,
+            "description": "Chain to operate on"
           }
         ],
         "responses": {
@@ -7602,19 +7752,43 @@
         "parameters": [
           {
             "schema": {
+              "enum": [
+                "devnet",
+                "mainnet-beta",
+                "arbitrum",
+                "avalanche",
+                "base",
+                "bsc",
+                "celo",
+                "mainnet",
+                "optimism",
+                "polygon",
+                "robinhoodchain-testnet",
+                "robinhoodchain",
+                "sepolia",
+                "unichain"
+              ],
               "type": "string"
             },
+            "example": "mainnet-beta",
             "in": "query",
             "name": "network",
-            "required": false
+            "required": false,
+            "description": "Network to use. Defaults to the chain's configured default network."
           },
           {
             "schema": {
+              "enum": [
+                "solana",
+                "ethereum"
+              ],
+              "default": "solana",
               "type": "string"
             },
             "in": "path",
             "name": "chain",
-            "required": true
+            "required": true,
+            "description": "Chain to operate on"
           }
         ],
         "responses": {
@@ -7649,11 +7823,17 @@
         "parameters": [
           {
             "schema": {
+              "enum": [
+                "solana",
+                "ethereum"
+              ],
+              "default": "solana",
               "type": "string"
             },
             "in": "path",
             "name": "chain",
-            "required": true
+            "required": true,
+            "description": "Chain to operate on"
           }
         ],
         "responses": {
@@ -7688,11 +7868,17 @@
         "parameters": [
           {
             "schema": {
+              "enum": [
+                "solana",
+                "ethereum"
+              ],
+              "default": "solana",
               "type": "string"
             },
             "in": "path",
             "name": "chain",
-            "required": true
+            "required": true,
+            "description": "Chain to operate on"
           }
         ],
         "responses": {
@@ -7727,11 +7913,17 @@
         "parameters": [
           {
             "schema": {
+              "enum": [
+                "solana",
+                "ethereum"
+              ],
+              "default": "solana",
               "type": "string"
             },
             "in": "path",
             "name": "chain",
-            "required": true
+            "required": true,
+            "description": "Chain to operate on"
           }
         ],
         "responses": {
@@ -7766,11 +7958,17 @@
         "parameters": [
           {
             "schema": {
+              "enum": [
+                "solana",
+                "ethereum"
+              ],
+              "default": "solana",
               "type": "string"
             },
             "in": "path",
             "name": "chain",
-            "required": true
+            "required": true,
+            "description": "Chain to operate on"
           }
         ],
         "responses": {

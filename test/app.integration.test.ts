@@ -107,11 +107,15 @@ describe('App Integration - Route Registration', () => {
     });
 
     it('serves chain routes for any chain through one parameterized path', async () => {
-      // Not a per-chain registration: an unknown chain reaches the handler and is
-      // rejected there, rather than 404ing at the router.
+      // Not a per-chain registration: the path matches for any chain and an unknown one
+      // is rejected with a 400, rather than 404ing at the router. The rejection now comes
+      // from the `chain` parameter's enum — added so Swagger renders it as a dropdown —
+      // which fires before the handler, so the message is the same schema-validation one
+      // an unknown `connector` produces rather than resolveChain's prose. The allowed
+      // chains are in the spec and the dropdown.
       const response = await fastify.inject({ method: 'GET', url: '/chains/dogecoin/status' });
       expect(response.statusCode).toBe(400);
-      expect(response.json().message).toMatch(/unsupported chain/i);
+      expect(response.json().message).toContain('must be equal to one of the allowed values');
     });
   });
 

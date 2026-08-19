@@ -3,6 +3,7 @@ import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 
 jest.mock('../../../../src/connectors/orca/orca');
 jest.mock('../../../../src/chains/solana/solana.config', () => ({
+  ...jest.requireActual('../../../../src/chains/solana/solana.config'),
   getSolanaChainConfig: jest.fn().mockReturnValue({
     defaultNetwork: 'mainnet-beta',
     defaultWallet: '11111111111111111111111111111111',

@@ -13,6 +13,7 @@
  * simply does not exist there.
  */
 import sensible from '@fastify/sensible';
+import { Type } from '@sinclair/typebox';
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 
 import {
@@ -98,6 +99,20 @@ const CHAINS: Record<string, ChainOps> = {
 export const SUPPORTED_CHAINS = Object.keys(CHAINS);
 
 /**
+ * The `chain` path parameter, enum-constrained so Swagger renders it as a dropdown
+ * rather than a free-text box and an unknown chain is rejected at the schema. Built
+ * from CHAINS, so adding a chain adds it to the docs. The default is documentation
+ * only — a path parameter is always present, so nothing is ever injected for it.
+ */
+const ChainParamsSchema = Type.Object({
+  chain: Type.String({
+    description: 'Chain to operate on',
+    enum: SUPPORTED_CHAINS,
+    default: 'solana',
+  }),
+});
+
+/**
  * Resolve the chain and network for a request, rejecting an unknown chain and a
  * network that belongs to a different one. The per-chain routes got the second
  * check for free from their network enums; parameterizing the path means doing
@@ -136,6 +151,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get the status of a chain and network',
         tags: ['/chains'],
+        params: ChainParamsSchema,
         querystring: StatusRequestSchema,
         response: { 200: StatusResponseSchema },
       },
@@ -152,6 +168,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Estimate the current transaction fee on a chain',
         tags: ['/chains'],
+        params: ChainParamsSchema,
         querystring: EstimateGasRequestSchema,
         response: { 200: EstimateGasResponseSchema },
       },
@@ -168,6 +185,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Get token balances for a wallet',
         tags: ['/chains'],
+        params: ChainParamsSchema,
         body: BalanceRequestSchema,
         response: { 200: BalanceResponseSchema },
       },
@@ -189,6 +207,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Poll a transaction by signature/hash',
         tags: ['/chains'],
+        params: ChainParamsSchema,
         body: PollRequestSchema,
         response: { 200: PollResponseSchema },
       },
@@ -205,6 +224,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Wrap native token into its wrapped form (SOL to WSOL, ETH to WETH, ...)',
         tags: ['/chains'],
+        params: ChainParamsSchema,
         body: WrapRequestSchema,
         response: { 200: WrapResponseSchema },
       },
@@ -221,6 +241,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
       schema: {
         description: 'Unwrap a wrapped native token back into the native token',
         tags: ['/chains'],
+        params: ChainParamsSchema,
         body: UnwrapRequestSchema,
         response: { 200: WrapResponseSchema },
       },
