@@ -7,6 +7,7 @@ import { getSolanaNetworkConfig } from '../../chains/solana/solana.config';
 import { quoteSwap as zeroXRouterQuoteSwap } from '../../connectors/0x/router-routes/quoteSwap';
 import { quoteSwap as dflowRouterQuoteSwap } from '../../connectors/dflow/router-routes/quoteSwap';
 import { quoteSwap as jupiterRouterQuoteSwap } from '../../connectors/jupiter/router-routes/quoteSwap';
+import { quoteSwap as meteoraAmmQuoteSwap } from '../../connectors/meteora/amm-routes/quoteSwap';
 import { quoteSwap as meteoraClmmQuoteSwap } from '../../connectors/meteora/clmm-routes/quoteSwap';
 import { quoteSwap as okxRouterQuoteSwap } from '../../connectors/okx/router-routes/quoteSwap';
 import { quoteSwap as orcaClmmQuoteSwap } from '../../connectors/orca/clmm-routes/quoteSwap';
@@ -155,6 +156,8 @@ async function getSolanaQuoteSwap(
         slippagePct,
         approximateIfNoExactOut,
       );
+    } else if (providerKey === 'meteora/amm') {
+      return await meteoraAmmQuoteSwap(network, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'raydium/amm') {
       return await raydiumAmmQuoteSwap(network, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'raydium/clmm') {

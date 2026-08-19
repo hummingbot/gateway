@@ -7,6 +7,7 @@ import { getSolanaNetworkConfig } from '../../chains/solana/solana.config';
 import { executeSwap as zeroXRouterExecuteSwap } from '../../connectors/0x/router-routes/executeSwap';
 import { executeSwap as dflowRouterExecuteSwap } from '../../connectors/dflow/router-routes/executeSwap';
 import { executeSwap as jupiterRouterExecuteSwap } from '../../connectors/jupiter/router-routes/executeSwap';
+import { executeSwap as meteoraAmmExecuteSwap } from '../../connectors/meteora/amm-routes/executeSwap';
 import { executeSwap as meteoraClmmExecuteSwap } from '../../connectors/meteora/clmm-routes/executeSwap';
 import { executeSwap as okxRouterExecuteSwap } from '../../connectors/okx/router-routes/executeSwap';
 import { executeSwap as orcaClmmExecuteSwap } from '../../connectors/orca/clmm-routes/executeSwap';
@@ -164,6 +165,8 @@ async function executeSolanaSwap(
         slippagePct,
         approximateIfNoExactOut,
       );
+    } else if (providerKey === 'meteora/amm') {
+      return await meteoraAmmExecuteSwap(network, walletAddress, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'raydium/amm') {
       return await raydiumAmmExecuteSwap(network, walletAddress, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'raydium/clmm') {
