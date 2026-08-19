@@ -86,6 +86,15 @@ const UnifiedAddLiquidityRequest = Type.Object({
       examples: [1],
     }),
   ),
+  // Meteora-specific parameter (optional, ignored by other connectors). Without it an
+  // add falls back to the connector-config default shape, which can silently differ
+  // from the shape the position was opened with.
+  strategyType: Type.Optional(
+    Type.Number({
+      description: 'Strategy type for Meteora positions (0=Spot, 1=Curve). Only applies to Meteora connector.',
+      examples: [0],
+    }),
+  ),
 });
 
 // Import connector functions
@@ -116,6 +125,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           baseTokenAmount,
           quoteTokenAmount,
           slippagePct,
+          strategyType,
         } = request.body;
 
         // Parse chain and network from chainNetwork parameter
@@ -168,6 +178,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
               baseAmount,
               quoteAmount,
               slippagePct,
+              strategyType,
             );
 
           case 'pancakeswap-sol':
