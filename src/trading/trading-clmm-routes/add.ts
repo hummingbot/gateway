@@ -9,6 +9,7 @@ import { addLiquidity as raydiumAddLiquidity } from '../../connectors/raydium/cl
 import { addLiquidity as uniswapAddLiquidity } from '../../connectors/uniswap/clmm-routes/addLiquidity';
 import { AddLiquidityResponseType, AddLiquidityResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
+import { getPositionPool } from '../clmm/positions';
 import {
   chainNetworkField,
   CLMM_CONNECTORS,
@@ -16,6 +17,7 @@ import {
   defaultWallet,
   parseChainNetwork,
   rethrowRouteError,
+  withIdentifiers,
   slippagePctField,
 } from '../common';
 
@@ -104,71 +106,79 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Route to appropriate connector
-        switch (connector) {
-          case 'uniswap':
-            return await uniswapAddLiquidity(
-              network,
-              walletAddress,
-              positionAddress,
-              baseAmount,
-              quoteAmount,
-              slippagePct,
-            );
+        // Resolved before the write: these routes are position-addressed and never
+        // receive a pool, and after a close the position is gone.
+        const poolAddress = await getPositionPool(fastify, connector, chainNetwork, positionAddress);
 
-          case 'pancakeswap':
-            return await pancakeswapAddLiquidity(
-              network,
-              walletAddress,
-              positionAddress,
-              baseAmount,
-              quoteAmount,
-              slippagePct,
-            );
+        const result = await (async () => {
+          switch (connector) {
+            case 'uniswap':
+              return await uniswapAddLiquidity(
+                network,
+                walletAddress,
+                positionAddress,
+                baseAmount,
+                quoteAmount,
+                slippagePct,
+              );
 
-          case 'raydium':
-            return await raydiumAddLiquidity(
-              network,
-              walletAddress,
-              positionAddress,
-              baseAmount,
-              quoteAmount,
-              slippagePct,
-            );
+            case 'pancakeswap':
+              return await pancakeswapAddLiquidity(
+                network,
+                walletAddress,
+                positionAddress,
+                baseAmount,
+                quoteAmount,
+                slippagePct,
+              );
 
-          case 'meteora':
-            return await meteoraAddLiquidity(
-              network,
-              walletAddress,
-              positionAddress,
-              baseAmount,
-              quoteAmount,
-              slippagePct,
-              strategyType,
-            );
+            case 'raydium':
+              return await raydiumAddLiquidity(
+                network,
+                walletAddress,
+                positionAddress,
+                baseAmount,
+                quoteAmount,
+                slippagePct,
+              );
 
-          case 'pancakeswap-sol':
-            return await pancakeswapSolAddLiquidity(
-              network,
-              walletAddress,
-              positionAddress,
-              baseAmount,
-              quoteAmount,
-              slippagePct,
-            );
+            case 'meteora':
+              return await meteoraAddLiquidity(
+                network,
+                walletAddress,
+                positionAddress,
+                baseAmount,
+                quoteAmount,
+                slippagePct,
+                strategyType,
+              );
 
-          case 'orca':
-            return await orcaAddLiquidity(
-              network,
-              walletAddress,
-              positionAddress,
-              baseAmount,
-              quoteAmount,
-              slippagePct,
-            );
+            case 'pancakeswap-sol':
+              return await pancakeswapSolAddLiquidity(
+                network,
+                walletAddress,
+                positionAddress,
+                baseAmount,
+                quoteAmount,
+                slippagePct,
+              );
 
-          default:
-            throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
-        }
+            case 'orca':
+              return await orcaAddLiquidity(
+                network,
+                walletAddress,
+                positionAddress,
+                baseAmount,
+                quoteAmount,
+                slippagePct,
+              );
+
+            default:
+              throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
+          }
+        })();
+
+        return withIdentifiers(result, { poolAddress, positionAddress });
       } catch (e: any) {
         rethrowRouteError(e, 'Failed to add liquidity');
       }

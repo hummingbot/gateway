@@ -9,6 +9,7 @@ import { removeLiquidity as raydiumRemoveLiquidity } from '../../connectors/rayd
 import { removeLiquidity as uniswapRemoveLiquidity } from '../../connectors/uniswap/clmm-routes/removeLiquidity';
 import { RemoveLiquidityResponseType, RemoveLiquidityResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
+import { getPositionPool } from '../clmm/positions';
 import {
   chainNetworkField,
   CLMM_CONNECTORS,
@@ -16,6 +17,7 @@ import {
   defaultWallet,
   parseChainNetwork,
   rethrowRouteError,
+  withIdentifiers,
   slippagePctField,
 } from '../common';
 
@@ -73,28 +75,42 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const { network } = parseChainNetwork(chainNetwork);
 
         // Route to appropriate connector
-        switch (connector) {
-          case 'uniswap':
-            return await uniswapRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
+        // Resolved before the write: these routes are position-addressed and never
+        // receive a pool, and after a close the position is gone.
+        const poolAddress = await getPositionPool(fastify, connector, chainNetwork, positionAddress);
 
-          case 'pancakeswap':
-            return await pancakeswapRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
+        const result = await (async () => {
+          switch (connector) {
+            case 'uniswap':
+              return await uniswapRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
 
-          case 'raydium':
-            return await raydiumRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
+            case 'pancakeswap':
+              return await pancakeswapRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
 
-          case 'meteora':
-            return await meteoraRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
+            case 'raydium':
+              return await raydiumRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
 
-          case 'pancakeswap-sol':
-            return await pancakeswapSolRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
+            case 'meteora':
+              return await meteoraRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
 
-          case 'orca':
-            return await orcaRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove, slippagePct);
+            case 'pancakeswap-sol':
+              return await pancakeswapSolRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
 
-          default:
-            throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
-        }
+            case 'orca':
+              return await orcaRemoveLiquidity(
+                network,
+                walletAddress,
+                positionAddress,
+                percentageToRemove,
+                slippagePct,
+              );
+
+            default:
+              throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
+          }
+        })();
+
+        return withIdentifiers(result, { poolAddress, positionAddress });
       } catch (e: any) {
         rethrowRouteError(e, 'Failed to remove liquidity');
       }

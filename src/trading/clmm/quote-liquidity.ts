@@ -257,7 +257,9 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           quoteTokenAmount,
           slippagePct,
         );
-        return reply.code(200).send(result);
+        // Names the pool the split was computed against, so the quote is self-describing
+        // alongside the write that follows it.
+        return reply.code(200).send({ ...result, poolAddress });
       } catch (error: any) {
         rethrowRouteError(error, 'Failed to quote CLMM position');
       }

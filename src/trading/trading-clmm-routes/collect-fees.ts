@@ -9,6 +9,7 @@ import { collectFees as raydiumCollectFees } from '../../connectors/raydium/clmm
 import { collectFees as uniswapCollectFees } from '../../connectors/uniswap/clmm-routes/collectFees';
 import { CollectFeesResponseType, CollectFeesResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
+import { getPositionPool } from '../clmm/positions';
 import {
   chainNetworkField,
   CLMM_CONNECTORS,
@@ -16,6 +17,7 @@ import {
   defaultWallet,
   parseChainNetwork,
   rethrowRouteError,
+  withIdentifiers,
 } from '../common';
 
 // Unified schema with connector field
@@ -58,28 +60,36 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
         const { network } = parseChainNetwork(chainNetwork);
 
         // Route to appropriate connector
-        switch (connector) {
-          case 'uniswap':
-            return await uniswapCollectFees(network, walletAddress, positionAddress);
+        // Resolved before the write: these routes are position-addressed and never
+        // receive a pool, and after a close the position is gone.
+        const poolAddress = await getPositionPool(fastify, connector, chainNetwork, positionAddress);
 
-          case 'pancakeswap':
-            return await pancakeswapCollectFees(network, walletAddress, positionAddress);
+        const result = await (async () => {
+          switch (connector) {
+            case 'uniswap':
+              return await uniswapCollectFees(network, walletAddress, positionAddress);
 
-          case 'raydium':
-            return await raydiumCollectFees(network, walletAddress, positionAddress);
+            case 'pancakeswap':
+              return await pancakeswapCollectFees(network, walletAddress, positionAddress);
 
-          case 'meteora':
-            return await meteoraCollectFees(network, walletAddress, positionAddress);
+            case 'raydium':
+              return await raydiumCollectFees(network, walletAddress, positionAddress);
 
-          case 'pancakeswap-sol':
-            return await pancakeswapSolCollectFees(network, walletAddress, positionAddress);
+            case 'meteora':
+              return await meteoraCollectFees(network, walletAddress, positionAddress);
 
-          case 'orca':
-            return await orcaCollectFees(network, walletAddress, positionAddress);
+            case 'pancakeswap-sol':
+              return await pancakeswapSolCollectFees(network, walletAddress, positionAddress);
 
-          default:
-            throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
-        }
+            case 'orca':
+              return await orcaCollectFees(network, walletAddress, positionAddress);
+
+            default:
+              throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
+          }
+        })();
+
+        return withIdentifiers(result, { poolAddress, positionAddress });
       } catch (e: any) {
         rethrowRouteError(e, 'Failed to collect fees');
       }

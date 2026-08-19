@@ -227,6 +227,10 @@ export const OpenPositionResponse = Type.Object(
     data: Type.Optional(
       Type.Object({
         fee: Type.Number(),
+        // The venue this write touched. Echoed so a stored record identifies its pool
+        // without the request that produced it — the same reason the swap execute
+        // responses carry it.
+        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
         positionAddress: Type.String(),
         positionRent: Type.Number(),
         baseTokenAmountAdded: Type.Number(),
@@ -266,6 +270,11 @@ export const AddLiquidityResponse = Type.Object(
     data: Type.Optional(
       Type.Object({
         fee: Type.Number(),
+        // The venue this write touched. Echoed so a stored record identifies its pool
+        // without the request that produced it — the same reason the swap execute
+        // responses carry it.
+        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+        positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
         baseTokenAmountAdded: Type.Number(),
         quoteTokenAmountAdded: Type.Number(),
       }),
@@ -299,6 +308,11 @@ export const RemoveLiquidityResponse = Type.Object(
     data: Type.Optional(
       Type.Object({
         fee: Type.Number(),
+        // The venue this write touched. Echoed so a stored record identifies its pool
+        // without the request that produced it — the same reason the swap execute
+        // responses carry it.
+        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+        positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
         baseTokenAmountRemoved: Type.Number(),
         quoteTokenAmountRemoved: Type.Number(),
       }),
@@ -327,6 +341,11 @@ export const CollectFeesResponse = Type.Object(
     data: Type.Optional(
       Type.Object({
         fee: Type.Number(),
+        // The venue this write touched. Echoed so a stored record identifies its pool
+        // without the request that produced it — the same reason the swap execute
+        // responses carry it.
+        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+        positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
         baseFeeAmountCollected: Type.Number(),
         quoteFeeAmountCollected: Type.Number(),
       }),
@@ -355,6 +374,11 @@ export const ClosePositionResponse = Type.Object(
     data: Type.Optional(
       Type.Object({
         fee: Type.Number(),
+        // The venue this write touched. Echoed so a stored record identifies its pool
+        // without the request that produced it — the same reason the swap execute
+        // responses carry it.
+        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+        positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
         positionRentRefunded: Type.Number(),
         baseTokenAmountRemoved: Type.Number(),
         quoteTokenAmountRemoved: Type.Number(),
@@ -447,6 +471,9 @@ export type QuotePositionRequestType = Static<typeof QuotePositionRequest>;
 
 export const QuotePositionResponse = Type.Object(
   {
+    // The pool this split was computed against — on CLMM the caller need not have
+    // named one, and on AMM it keeps the quote self-describing alongside quote-swap.
+    poolAddress: Type.Optional(Type.String({ description: 'Pool the quote was computed against' })),
     baseLimited: Type.Boolean(),
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),

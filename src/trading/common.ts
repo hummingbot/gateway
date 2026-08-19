@@ -169,3 +169,28 @@ export async function resolvePoolAddress(
   logger.info(`Resolved pool ${pool.address} for ${baseToken}-${quoteToken} on ${connector}/${network}`);
   return pool.address;
 }
+
+/**
+ * Stamp the identifiers a write acted on onto its confirmed result.
+ *
+ * A settled transaction should say which pool and position it touched without the
+ * caller holding on to the request that produced it — the same reason the swap
+ * execute responses carry `poolAddress`. Only the confirmed `data` block is
+ * decorated: a submitted-but-unconfirmed response has no data, and inventing one
+ * would claim the write landed.
+ *
+ * Undefined identifiers are dropped rather than written as undefined, so a
+ * fungible-LP AMM (which has no position) simply has no positionAddress.
+ */
+export function withIdentifiers<T extends { data?: Record<string, any> }>(
+  result: T,
+  identifiers: { poolAddress?: string; positionAddress?: string },
+): T {
+  if (!result?.data) return result;
+
+  const stamped = { ...result.data };
+  for (const [key, value] of Object.entries(identifiers)) {
+    if (value !== undefined) stamped[key] = value;
+  }
+  return { ...result, data: stamped };
+}

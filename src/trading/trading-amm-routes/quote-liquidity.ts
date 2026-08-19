@@ -49,26 +49,32 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
       try {
         const { connector, chainNetwork, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.query;
         const { network } = parseChainNetwork(chainNetwork);
-        switch (connector) {
-          case 'meteora':
-            return await meteoraQuoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
-          case 'raydium':
-            return await raydiumQuoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
-          case 'uniswap':
-            return await uniswapQuoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
-          case 'pancakeswap':
-            return await pancakeswapQuoteLiquidity(
-              network,
-              poolAddress,
-              baseTokenAmount,
-              quoteTokenAmount,
-              slippagePct,
-            );
-          default:
-            throw httpErrors.badRequest(
-              `Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`,
-            );
-        }
+        const quote = await (async () => {
+          switch (connector) {
+            case 'meteora':
+              return await meteoraQuoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
+            case 'raydium':
+              return await raydiumQuoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
+            case 'uniswap':
+              return await uniswapQuoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
+            case 'pancakeswap':
+              return await pancakeswapQuoteLiquidity(
+                network,
+                poolAddress,
+                baseTokenAmount,
+                quoteTokenAmount,
+                slippagePct,
+              );
+            default:
+              throw httpErrors.badRequest(
+                `Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`,
+              );
+          }
+        })();
+
+        // Names the pool the split was computed against; on CLMM the caller need not
+        // have supplied one.
+        return { ...quote, poolAddress };
       } catch (e: any) {
         rethrowRouteError(e, 'Failed to quote AMM liquidity');
       }

@@ -16,6 +16,7 @@ import {
   defaultWallet,
   parseChainNetwork,
   rethrowRouteError,
+  withIdentifiers,
   slippagePctField,
 } from '../common';
 
@@ -116,83 +117,87 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         }
 
         // Route to appropriate connector
-        switch (connector) {
-          case 'uniswap':
-            return await uniswapOpenPosition(
-              network,
-              walletAddress,
-              lowerPrice,
-              upperPrice,
-              poolAddress,
-              baseTokenAmount,
-              quoteTokenAmount,
-              slippagePct,
-            );
+        const result = await (async () => {
+          switch (connector) {
+            case 'uniswap':
+              return await uniswapOpenPosition(
+                network,
+                walletAddress,
+                lowerPrice,
+                upperPrice,
+                poolAddress,
+                baseTokenAmount,
+                quoteTokenAmount,
+                slippagePct,
+              );
 
-          case 'pancakeswap':
-            return await pancakeswapOpenPosition(
-              network,
-              walletAddress,
-              lowerPrice,
-              upperPrice,
-              poolAddress,
-              baseTokenAmount,
-              quoteTokenAmount,
-              slippagePct,
-            );
+            case 'pancakeswap':
+              return await pancakeswapOpenPosition(
+                network,
+                walletAddress,
+                lowerPrice,
+                upperPrice,
+                poolAddress,
+                baseTokenAmount,
+                quoteTokenAmount,
+                slippagePct,
+              );
 
-          case 'raydium':
-            return await raydiumOpenPosition(
-              network,
-              walletAddress,
-              lowerPrice,
-              upperPrice,
-              poolAddress,
-              baseTokenAmount,
-              quoteTokenAmount,
-              slippagePct,
-            );
+            case 'raydium':
+              return await raydiumOpenPosition(
+                network,
+                walletAddress,
+                lowerPrice,
+                upperPrice,
+                poolAddress,
+                baseTokenAmount,
+                quoteTokenAmount,
+                slippagePct,
+              );
 
-          case 'meteora':
-            return await meteoraOpenPosition(
-              network,
-              walletAddress,
-              lowerPrice,
-              upperPrice,
-              poolAddress,
-              baseTokenAmount,
-              quoteTokenAmount,
-              slippagePct,
-              strategyType,
-            );
+            case 'meteora':
+              return await meteoraOpenPosition(
+                network,
+                walletAddress,
+                lowerPrice,
+                upperPrice,
+                poolAddress,
+                baseTokenAmount,
+                quoteTokenAmount,
+                slippagePct,
+                strategyType,
+              );
 
-          case 'pancakeswap-sol':
-            return await pancakeswapSolOpenPosition(
-              network,
-              walletAddress,
-              poolAddress,
-              lowerPrice,
-              upperPrice,
-              baseTokenAmount,
-              quoteTokenAmount,
-              slippagePct,
-            );
+            case 'pancakeswap-sol':
+              return await pancakeswapSolOpenPosition(
+                network,
+                walletAddress,
+                poolAddress,
+                lowerPrice,
+                upperPrice,
+                baseTokenAmount,
+                quoteTokenAmount,
+                slippagePct,
+              );
 
-          case 'orca':
-            return await orcaOpenPosition(
-              network,
-              walletAddress,
-              poolAddress,
-              lowerPrice,
-              upperPrice,
-              baseTokenAmount,
-              quoteTokenAmount,
-              slippagePct,
-            );
+            case 'orca':
+              return await orcaOpenPosition(
+                network,
+                walletAddress,
+                poolAddress,
+                lowerPrice,
+                upperPrice,
+                baseTokenAmount,
+                quoteTokenAmount,
+                slippagePct,
+              );
 
-          default:
-            throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
-        }
+            default:
+              throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
+          }
+        })();
+
+        return withIdentifiers(result, { poolAddress });
       } catch (e: any) {
         rethrowRouteError(e, 'Failed to open position');
       }

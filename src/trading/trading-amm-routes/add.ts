@@ -14,6 +14,7 @@ import {
   defaultWallet,
   parseChainNetwork,
   rethrowRouteError,
+  withIdentifiers,
   slippagePctField,
 } from '../common';
 
@@ -68,49 +69,53 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
         } = request.body;
         const { network } = parseChainNetwork(chainNetwork);
-        switch (connector) {
-          case 'meteora':
-            return await meteoraAddLiquidity(
-              network,
-              walletAddress,
-              poolAddress,
-              baseTokenAmount,
-              quoteTokenAmount,
-              slippagePct,
-              positionAddress,
-            );
-          case 'raydium':
-            return await raydiumAddLiquidity(
-              network,
-              walletAddress,
-              poolAddress,
-              baseTokenAmount,
-              quoteTokenAmount,
-              slippagePct,
-            );
-          case 'uniswap':
-            return await uniswapAddLiquidity(
-              network,
-              walletAddress,
-              poolAddress,
-              baseTokenAmount,
-              quoteTokenAmount,
-              slippagePct,
-            );
-          case 'pancakeswap':
-            return await pancakeswapAddLiquidity(
-              network,
-              walletAddress,
-              poolAddress,
-              baseTokenAmount,
-              quoteTokenAmount,
-              slippagePct,
-            );
-          default:
-            throw httpErrors.badRequest(
-              `Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`,
-            );
-        }
+        const result = await (async () => {
+          switch (connector) {
+            case 'meteora':
+              return await meteoraAddLiquidity(
+                network,
+                walletAddress,
+                poolAddress,
+                baseTokenAmount,
+                quoteTokenAmount,
+                slippagePct,
+                positionAddress,
+              );
+            case 'raydium':
+              return await raydiumAddLiquidity(
+                network,
+                walletAddress,
+                poolAddress,
+                baseTokenAmount,
+                quoteTokenAmount,
+                slippagePct,
+              );
+            case 'uniswap':
+              return await uniswapAddLiquidity(
+                network,
+                walletAddress,
+                poolAddress,
+                baseTokenAmount,
+                quoteTokenAmount,
+                slippagePct,
+              );
+            case 'pancakeswap':
+              return await pancakeswapAddLiquidity(
+                network,
+                walletAddress,
+                poolAddress,
+                baseTokenAmount,
+                quoteTokenAmount,
+                slippagePct,
+              );
+            default:
+              throw httpErrors.badRequest(
+                `Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`,
+              );
+          }
+        })();
+
+        return withIdentifiers(result, { poolAddress, positionAddress });
       } catch (e: any) {
         rethrowRouteError(e, 'Failed to add AMM liquidity');
       }

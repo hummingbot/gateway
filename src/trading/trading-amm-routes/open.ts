@@ -14,6 +14,7 @@ import {
   defaultWallet,
   parseChainNetwork,
   rethrowRouteError,
+  withIdentifiers,
   slippagePctField,
 } from '../common';
 
@@ -80,21 +81,25 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         const { network } = parseChainNetwork(chainNetwork);
         const args = [network, walletAddress, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct] as const;
 
-        switch (connector) {
-          case 'meteora':
-            // Opens a NEW position NFT rather than adding to an existing one.
-            return await meteoraOpenPosition(...args);
-          case 'raydium':
-            return asOpened(await raydiumAddLiquidity(...args));
-          case 'uniswap':
-            return asOpened(await uniswapAddLiquidity(...args));
-          case 'pancakeswap':
-            return asOpened(await pancakeswapAddLiquidity(...args));
-          default:
-            throw httpErrors.badRequest(
-              `Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`,
-            );
-        }
+        const result = await (async () => {
+          switch (connector) {
+            case 'meteora':
+              // Opens a NEW position NFT rather than adding to an existing one.
+              return await meteoraOpenPosition(...args);
+            case 'raydium':
+              return asOpened(await raydiumAddLiquidity(...args));
+            case 'uniswap':
+              return asOpened(await uniswapAddLiquidity(...args));
+            case 'pancakeswap':
+              return asOpened(await pancakeswapAddLiquidity(...args));
+            default:
+              throw httpErrors.badRequest(
+                `Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`,
+              );
+          }
+        })();
+
+        return withIdentifiers(result, { poolAddress });
       } catch (e: any) {
         rethrowRouteError(e, 'Failed to open AMM position');
       }

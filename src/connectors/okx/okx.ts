@@ -4,10 +4,9 @@ import { VersionedTransaction } from '@solana/web3.js';
 import bs58 from 'bs58';
 
 import { Solana } from '../../chains/solana/solana';
+import { httpErrors } from '../../services/error-handler';
 import { createHttpClient, HttpClient, HttpClientError } from '../../services/http-client';
 import { logger } from '../../services/logger';
-
-import { httpErrors } from '../../services/error-handler';
 
 import { OkxConfig } from './okx.config';
 

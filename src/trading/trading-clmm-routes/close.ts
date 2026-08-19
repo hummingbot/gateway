@@ -9,6 +9,7 @@ import { closePosition as raydiumClosePosition } from '../../connectors/raydium/
 import { closePosition as uniswapClosePosition } from '../../connectors/uniswap/clmm-routes/closePosition';
 import { ClosePositionResponseType, ClosePositionResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
+import { getPositionPool } from '../clmm/positions';
 import {
   chainNetworkField,
   CLMM_CONNECTORS,
@@ -16,6 +17,7 @@ import {
   defaultWallet,
   parseChainNetwork,
   rethrowRouteError,
+  withIdentifiers,
 } from '../common';
 
 // Unified schema with connector field
@@ -58,28 +60,36 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         const { network } = parseChainNetwork(chainNetwork);
 
         // Route to appropriate connector
-        switch (connector) {
-          case 'uniswap':
-            return await uniswapClosePosition(network, walletAddress, positionAddress);
+        // Resolved before the write: these routes are position-addressed and never
+        // receive a pool, and after a close the position is gone.
+        const poolAddress = await getPositionPool(fastify, connector, chainNetwork, positionAddress);
 
-          case 'pancakeswap':
-            return await pancakeswapClosePosition(network, walletAddress, positionAddress);
+        const result = await (async () => {
+          switch (connector) {
+            case 'uniswap':
+              return await uniswapClosePosition(network, walletAddress, positionAddress);
 
-          case 'raydium':
-            return await raydiumClosePosition(network, walletAddress, positionAddress);
+            case 'pancakeswap':
+              return await pancakeswapClosePosition(network, walletAddress, positionAddress);
 
-          case 'meteora':
-            return await meteoraClosePosition(network, walletAddress, positionAddress);
+            case 'raydium':
+              return await raydiumClosePosition(network, walletAddress, positionAddress);
 
-          case 'pancakeswap-sol':
-            return await pancakeswapSolClosePosition(network, walletAddress, positionAddress);
+            case 'meteora':
+              return await meteoraClosePosition(network, walletAddress, positionAddress);
 
-          case 'orca':
-            return await orcaClosePosition(network, walletAddress, positionAddress);
+            case 'pancakeswap-sol':
+              return await pancakeswapSolClosePosition(network, walletAddress, positionAddress);
 
-          default:
-            throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
-        }
+            case 'orca':
+              return await orcaClosePosition(network, walletAddress, positionAddress);
+
+            default:
+              throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
+          }
+        })();
+
+        return withIdentifiers(result, { poolAddress, positionAddress });
       } catch (e: any) {
         rethrowRouteError(e, 'Failed to close position');
       }

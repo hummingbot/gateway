@@ -3298,6 +3298,10 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "poolAddress": {
+                      "description": "Pool the quote was computed against",
+                      "type": "string"
+                    },
                     "baseLimited": {
                       "type": "boolean"
                     },
@@ -4051,6 +4055,10 @@
                         "fee": {
                           "type": "number"
                         },
+                        "poolAddress": {
+                          "description": "Pool this operation acted on",
+                          "type": "string"
+                        },
                         "positionAddress": {
                           "type": "string"
                         },
@@ -4187,6 +4195,14 @@
                         "fee": {
                           "type": "number"
                         },
+                        "poolAddress": {
+                          "description": "Pool this operation acted on",
+                          "type": "string"
+                        },
+                        "positionAddress": {
+                          "description": "Position this operation acted on",
+                          "type": "string"
+                        },
                         "baseTokenAmountAdded": {
                           "type": "number"
                         },
@@ -4305,6 +4321,14 @@
                         "fee": {
                           "type": "number"
                         },
+                        "poolAddress": {
+                          "description": "Pool this operation acted on",
+                          "type": "string"
+                        },
+                        "positionAddress": {
+                          "description": "Position this operation acted on",
+                          "type": "string"
+                        },
                         "baseTokenAmountRemoved": {
                           "type": "number"
                         },
@@ -4405,6 +4429,14 @@
                         "fee": {
                           "type": "number"
                         },
+                        "poolAddress": {
+                          "description": "Pool this operation acted on",
+                          "type": "string"
+                        },
+                        "positionAddress": {
+                          "description": "Position this operation acted on",
+                          "type": "string"
+                        },
                         "baseFeeAmountCollected": {
                           "type": "number"
                         },
@@ -4504,6 +4536,14 @@
                       "properties": {
                         "fee": {
                           "type": "number"
+                        },
+                        "poolAddress": {
+                          "description": "Pool this operation acted on",
+                          "type": "string"
+                        },
+                        "positionAddress": {
+                          "description": "Position this operation acted on",
+                          "type": "string"
                         },
                         "positionRentRefunded": {
                           "type": "number"
@@ -5116,6 +5156,10 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "poolAddress": {
+                      "description": "Pool the quote was computed against",
+                      "type": "string"
+                    },
                     "baseLimited": {
                       "type": "boolean"
                     },
@@ -5589,6 +5633,10 @@
                           "format": "decimal",
                           "type": "number"
                         },
+                        "poolAddress": {
+                          "description": "Pool this operation acted on",
+                          "type": "string"
+                        },
                         "positionAddress": {
                           "description": "Address of the newly opened position. Absent on fungible-LP AMMs, which hold liquidity as LP tokens rather than a position account.",
                           "type": "string"
@@ -5725,6 +5773,10 @@
                         "fee": {
                           "format": "decimal",
                           "type": "number"
+                        },
+                        "poolAddress": {
+                          "description": "Pool this operation acted on",
+                          "type": "string"
                         },
                         "positionAddress": {
                           "description": "Position the liquidity went into. Absent on fungible-LP AMMs, which hold liquidity as LP tokens rather than a position account.",
@@ -5865,6 +5917,17 @@
                         "fee": {
                           "type": "number"
                         },
+                        "poolAddress": {
+                          "description": "Pool this operation acted on",
+                          "type": "string"
+                        },
+                        "positionAddress": {
+                          "description": "Position this operation acted on",
+                          "x-connectors": [
+                            "meteora"
+                          ],
+                          "type": "string"
+                        },
                         "baseTokenAmountRemoved": {
                           "type": "number"
                         },
@@ -5977,6 +6040,17 @@
                         "fee": {
                           "format": "decimal",
                           "type": "number"
+                        },
+                        "poolAddress": {
+                          "description": "Pool this operation acted on",
+                          "type": "string"
+                        },
+                        "positionAddress": {
+                          "description": "Position this operation acted on",
+                          "x-connectors": [
+                            "meteora"
+                          ],
+                          "type": "string"
                         },
                         "positionRentRefunded": {
                           "format": "decimal",

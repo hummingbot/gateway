@@ -14,6 +14,7 @@ import {
   defaultWallet,
   parseChainNetwork,
   rethrowRouteError,
+  withIdentifiers,
   slippagePctField,
 } from '../common';
 
@@ -67,39 +68,43 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
         } = request.body;
         const { network } = parseChainNetwork(chainNetwork);
-        switch (connector) {
-          case 'meteora':
-            if (!positionAddress) {
-              throw httpErrors.badRequest(
-                'positionAddress is required for meteora: DAMM v2 positions are NFTs and a wallet may hold ' +
-                  'several per pool. List them with position-info or positions-owned.',
+        const result = await (async () => {
+          switch (connector) {
+            case 'meteora':
+              if (!positionAddress) {
+                throw httpErrors.badRequest(
+                  'positionAddress is required for meteora: DAMM v2 positions are NFTs and a wallet may hold ' +
+                    'several per pool. List them with position-info or positions-owned.',
+                );
+              }
+              return await meteoraRemoveLiquidity(
+                network,
+                walletAddress,
+                poolAddress,
+                positionAddress,
+                percentageToRemove,
+                slippagePct,
               );
-            }
-            return await meteoraRemoveLiquidity(
-              network,
-              walletAddress,
-              poolAddress,
-              positionAddress,
-              percentageToRemove,
-              slippagePct,
-            );
-          case 'raydium':
-            return await raydiumRemoveLiquidity(network, walletAddress, poolAddress, percentageToRemove, slippagePct);
-          case 'uniswap':
-            return await uniswapRemoveLiquidity(network, walletAddress, poolAddress, percentageToRemove, slippagePct);
-          case 'pancakeswap':
-            return await pancakeswapRemoveLiquidity(
-              network,
-              walletAddress,
-              poolAddress,
-              percentageToRemove,
-              slippagePct,
-            );
-          default:
-            throw httpErrors.badRequest(
-              `Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`,
-            );
-        }
+            case 'raydium':
+              return await raydiumRemoveLiquidity(network, walletAddress, poolAddress, percentageToRemove, slippagePct);
+            case 'uniswap':
+              return await uniswapRemoveLiquidity(network, walletAddress, poolAddress, percentageToRemove, slippagePct);
+            case 'pancakeswap':
+              return await pancakeswapRemoveLiquidity(
+                network,
+                walletAddress,
+                poolAddress,
+                percentageToRemove,
+                slippagePct,
+              );
+            default:
+              throw httpErrors.badRequest(
+                `Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`,
+              );
+          }
+        })();
+
+        return withIdentifiers(result, { poolAddress, positionAddress });
       } catch (e: any) {
         rethrowRouteError(e, 'Failed to remove AMM liquidity');
       }

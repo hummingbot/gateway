@@ -53,6 +53,10 @@ export const AddLiquidityResponse = Type.Object(
     data: Type.Optional(
       Type.Object({
         fee: Type.Number({ format: 'decimal' }),
+        // The venue this write touched. Echoed so a stored record identifies its pool
+        // without the request that produced it — the same reason the swap execute
+        // responses carry it.
+        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
         // Always the position the write touched — the one just opened when no address was
         // given, or the one named. Without it a caller who just paid to open a DAMM v2
         // position could only recover its address by re-listing positions-owned and
@@ -100,6 +104,10 @@ export const OpenPositionResponse = Type.Object(
     data: Type.Optional(
       Type.Object({
         fee: Type.Number({ format: 'decimal' }),
+        // The venue this write touched. Echoed so a stored record identifies its pool
+        // without the request that produced it — the same reason the swap execute
+        // responses carry it.
+        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
         positionAddress: Type.Optional(
           Type.String({
             description:
@@ -129,6 +137,15 @@ export const ClosePositionResponse = Type.Object(
     data: Type.Optional(
       Type.Object({
         fee: Type.Number({ format: 'decimal' }),
+        // The venue this write touched. Echoed so a stored record identifies its pool
+        // without the request that produced it — the same reason the swap execute
+        // responses carry it.
+        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+        // Only AMMs whose positions are discrete accounts have one to name; a
+        // fungible-LP AMM holds liquidity as LP tokens against the pool.
+        positionAddress: Type.Optional(
+          Type.String({ description: 'Position this operation acted on', 'x-connectors': ['meteora'] } as any),
+        ),
         positionRentRefunded: Type.Number({
           format: 'decimal',
           description:
@@ -150,6 +167,9 @@ export type QuoteLiquidityRequestType = Static<typeof QuoteLiquidityRequest>;
 
 export const QuoteLiquidityResponse = Type.Object(
   {
+    // The pool this split was computed against — on CLMM the caller need not have
+    // named one, and on AMM it keeps the quote self-describing alongside quote-swap.
+    poolAddress: Type.Optional(Type.String({ description: 'Pool the quote was computed against' })),
     baseLimited: Type.Boolean(),
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
@@ -184,6 +204,15 @@ export const RemoveLiquidityResponse = Type.Object(
     data: Type.Optional(
       Type.Object({
         fee: Type.Number(),
+        // The venue this write touched. Echoed so a stored record identifies its pool
+        // without the request that produced it — the same reason the swap execute
+        // responses carry it.
+        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+        // Only AMMs whose positions are discrete accounts have one to name; a
+        // fungible-LP AMM holds liquidity as LP tokens against the pool.
+        positionAddress: Type.Optional(
+          Type.String({ description: 'Position this operation acted on', 'x-connectors': ['meteora'] } as any),
+        ),
         baseTokenAmountRemoved: Type.Number(),
         quoteTokenAmountRemoved: Type.Number(),
       }),

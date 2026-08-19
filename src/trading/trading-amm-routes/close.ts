@@ -18,6 +18,7 @@ import {
   defaultWallet,
   parseChainNetwork,
   rethrowRouteError,
+  withIdentifiers,
   slippagePctField,
 } from '../common';
 
@@ -85,28 +86,32 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         const { connector, chainNetwork, walletAddress, poolAddress, positionAddress, slippagePct } = request.body;
         const { network } = parseChainNetwork(chainNetwork);
 
-        switch (connector) {
-          case 'meteora':
-            // DAMM v2 positions are NFTs and a wallet may hold several per pool, so
-            // there is no "the" position to infer — the caller must name it.
-            if (!positionAddress) {
+        const result = await (async () => {
+          switch (connector) {
+            case 'meteora':
+              // DAMM v2 positions are NFTs and a wallet may hold several per pool, so
+              // there is no "the" position to infer — the caller must name it.
+              if (!positionAddress) {
+                throw httpErrors.badRequest(
+                  'positionAddress is required for meteora: DAMM v2 positions are NFTs and a wallet may ' +
+                    'hold several per pool. List them with position-info or positions-owned.',
+                );
+              }
+              return await meteoraClosePosition(network, walletAddress, poolAddress, positionAddress, slippagePct);
+            case 'raydium':
+              return asClosed(await raydiumRemoveLiquidity(network, walletAddress, poolAddress, 100, slippagePct));
+            case 'uniswap':
+              return asClosed(await uniswapRemoveLiquidity(network, walletAddress, poolAddress, 100, slippagePct));
+            case 'pancakeswap':
+              return asClosed(await pancakeswapRemoveLiquidity(network, walletAddress, poolAddress, 100, slippagePct));
+            default:
               throw httpErrors.badRequest(
-                'positionAddress is required for meteora: DAMM v2 positions are NFTs and a wallet may ' +
-                  'hold several per pool. List them with position-info or positions-owned.',
+                `Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`,
               );
-            }
-            return await meteoraClosePosition(network, walletAddress, poolAddress, positionAddress, slippagePct);
-          case 'raydium':
-            return asClosed(await raydiumRemoveLiquidity(network, walletAddress, poolAddress, 100, slippagePct));
-          case 'uniswap':
-            return asClosed(await uniswapRemoveLiquidity(network, walletAddress, poolAddress, 100, slippagePct));
-          case 'pancakeswap':
-            return asClosed(await pancakeswapRemoveLiquidity(network, walletAddress, poolAddress, 100, slippagePct));
-          default:
-            throw httpErrors.badRequest(
-              `Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`,
-            );
-        }
+          }
+        })();
+
+        return withIdentifiers(result, { poolAddress, positionAddress });
       } catch (e: any) {
         rethrowRouteError(e, 'Failed to close AMM position');
       }
