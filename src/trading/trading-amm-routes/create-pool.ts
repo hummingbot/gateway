@@ -53,6 +53,10 @@ const UnifiedCreatePoolRequest = Type.Composite([
       description: 'Wallet address (pool creator + payer)',
       default: defaultWallet,
     }),
+  }),
+  Type.Omit(CreatePoolRequest, ['network', 'walletAddress'], {}),
+  // Optional per-protocol fee-config selectors, last so required fields lead the schema:
+  Type.Object({
     configAddress: Type.Optional(
       Type.String({
         description:
@@ -65,7 +69,6 @@ const UnifiedCreatePoolRequest = Type.Composite([
         description: 'Raydium CPMM fee-config index (optional; defaults to the first available config).',
       }),
     ),
-    openTime: Type.Optional(Type.Number({ description: 'Raydium CPMM pool open time (unix seconds; optional)' })),
     slippagePct: Type.Optional(
       Type.Number({
         minimum: 0,
@@ -76,7 +79,6 @@ const UnifiedCreatePoolRequest = Type.Composite([
       }),
     ),
   }),
-  Type.Omit(CreatePoolRequest, ['network', 'walletAddress'], {}),
 ]);
 
 export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
@@ -109,7 +111,6 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
           initialPrice,
           configAddress,
           ammConfigIndex,
-          openTime,
           slippagePct,
         } = request.body;
 
@@ -138,7 +139,6 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
               quoteTokenAmount,
               initialPrice,
               ammConfigIndex,
-              openTime,
             );
 
           case 'uniswap':
