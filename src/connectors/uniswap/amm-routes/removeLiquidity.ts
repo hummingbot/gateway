@@ -6,6 +6,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { RemoveLiquidityResponseType, RemoveLiquidityResponse } from '../../../schemas/amm-schema';
+import { TransactionStatus } from '../../../schemas/chain-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { UniswapAmmRemoveLiquidityRequest } from '../schemas';
@@ -119,16 +120,20 @@ export async function removeLiquidity(
     );
   }
 
-  const receipt = await ethereum.handleTransactionExecution(tx);
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
+  if (!outcome.confirmed) {
+    // Still pending — the expected amounts were computed before sending and have not moved.
+    return { signature: outcome.signature, status: TransactionStatus.PENDING };
+  }
+
   const baseTokenAmountRemoved = formatTokenAmount(expectedBaseTokenAmount.toString(), baseTokenObj.decimals);
   const quoteTokenAmountRemoved = formatTokenAmount(expectedQuoteTokenAmount.toString(), quoteTokenObj.decimals);
-  const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
 
   return {
-    signature: receipt.transactionHash,
-    status: receipt.status,
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     data: {
-      fee: gasFee,
+      fee: outcome.fee,
       baseTokenAmountRemoved,
       quoteTokenAmountRemoved,
     },

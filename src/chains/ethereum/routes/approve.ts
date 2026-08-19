@@ -3,6 +3,7 @@ import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
 import { getSpender as pancakeswapSpender } from '../../../connectors/pancakeswap/pancakeswap.contracts';
 import { getSpender as uniswapSpender } from '../../../connectors/uniswap/uniswap.contracts';
+import { TransactionStatus } from '../../../schemas/chain-schema';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
@@ -178,17 +179,20 @@ export async function approveEthereumToken(
         const txResponse = await ethereum.provider.sendTransaction(signedTx);
 
         // Wait for confirmation with timeout
-        const receipt = await ethereum.handleTransactionExecution(txResponse);
+        // A revert throws 400 TRANSACTION_FAILED out of the helper; only a still-pending
+        // transaction comes back unconfirmed, and an approval cannot be reported without a
+        // confirmed allowance.
+        const outcome = await ethereum.handleTransactionConfirmation(txResponse);
 
-        if (!receipt || receipt.status === -1) {
+        if (!outcome.confirmed) {
           throw new Error('Transaction timed out or failed to get receipt');
         }
 
         approval = {
-          hash: receipt.transactionHash,
+          hash: outcome.signature,
           nonce: nonce,
-          gasUsed: receipt.gasUsed,
-          effectiveGasPrice: receipt.effectiveGasPrice,
+          gasUsed: outcome.receipt.gasUsed,
+          effectiveGasPrice: outcome.receipt.effectiveGasPrice,
         };
       } else {
         // Regular wallet flow
@@ -207,18 +211,17 @@ export async function approveEthereumToken(
         const tx = await ethereum.approveERC20(contract, wallet, spenderAddress, amountBigNumber);
 
         // Wait for the transaction to be mined with timeout (60 seconds for approvals)
-        const receipt = await ethereum.handleTransactionExecution(tx);
+        const outcome = await ethereum.handleTransactionConfirmation(tx);
 
-        if (!receipt || receipt.status === -1) {
+        if (!outcome.confirmed) {
           throw new Error('Transaction timed out or failed to get receipt');
         }
 
         approval = {
           hash: tx.hash,
           nonce: tx.nonce,
-          gasUsed: receipt.gasUsed,
-          effectiveGasPrice: receipt.effectiveGasPrice,
-          status: receipt.status,
+          gasUsed: outcome.receipt.gasUsed,
+          effectiveGasPrice: outcome.receipt.effectiveGasPrice,
         };
       }
     } else {
@@ -229,7 +232,6 @@ export async function approveEthereumToken(
         nonce: 0,
         gasUsed: ethers.BigNumber.from('0'),
         effectiveGasPrice: ethers.BigNumber.from('0'),
-        status: 1,
       };
     }
 
@@ -291,20 +293,18 @@ export async function approveEthereumToken(
         const txResponse = await ethereum.provider.sendTransaction(signedTx);
 
         // Wait for confirmation with extended timeout
-        const permit2Receipt = await ethereum.handleTransactionExecution(txResponse);
+        const permit2Outcome = await ethereum.handleTransactionConfirmation(txResponse);
 
-        if (!permit2Receipt) {
+        if (!permit2Outcome.confirmed) {
           throw new Error('Permit2 transaction timed out or failed to get receipt');
         }
 
-        logger.info(`Permit2 approval transaction confirmed: ${permit2Receipt.transactionHash}`);
+        logger.info(`Permit2 approval transaction confirmed: ${permit2Outcome.signature}`);
 
         // Update fee to include both transactions
-        if (permit2Receipt.gasUsed && permit2Receipt.effectiveGasPrice) {
-          const permit2FeeInWei = permit2Receipt.gasUsed.mul(permit2Receipt.effectiveGasPrice);
-          const totalFeeInWei = approval.gasUsed.mul(approval.effectiveGasPrice).add(permit2FeeInWei);
-          feeInEth = utils.formatEther(totalFeeInWei);
-        }
+        const permit2FeeInWei = permit2Outcome.receipt.gasUsed.mul(permit2Outcome.receipt.effectiveGasPrice);
+        const totalFeeInWei = approval.gasUsed.mul(approval.effectiveGasPrice).add(permit2FeeInWei);
+        feeInEth = utils.formatEther(totalFeeInWei);
       } else {
         // Regular wallet flow for Permit2 approve
         const wallet = await ethereum.getWallet(address);
@@ -326,20 +326,18 @@ export async function approveEthereumToken(
         );
 
         // Wait for confirmation with extended timeout
-        const permit2Receipt = await ethereum.handleTransactionExecution(permit2Tx);
+        const permit2Outcome = await ethereum.handleTransactionConfirmation(permit2Tx);
 
-        if (!permit2Receipt || permit2Receipt.status === -1) {
+        if (!permit2Outcome.confirmed) {
           throw new Error('Permit2 transaction timed out or failed to get receipt');
         }
 
-        logger.info(`Permit2 approval transaction confirmed: ${permit2Receipt.transactionHash}`);
+        logger.info(`Permit2 approval transaction confirmed: ${permit2Outcome.signature}`);
 
         // Update fee to include both transactions
-        if (permit2Receipt.gasUsed && permit2Receipt.effectiveGasPrice) {
-          const permit2FeeInWei = permit2Receipt.gasUsed.mul(permit2Receipt.effectiveGasPrice);
-          const totalFeeInWei = approval.gasUsed.mul(approval.effectiveGasPrice).add(permit2FeeInWei);
-          feeInEth = utils.formatEther(totalFeeInWei);
-        }
+        const permit2FeeInWei = permit2Outcome.receipt.gasUsed.mul(permit2Outcome.receipt.effectiveGasPrice);
+        const totalFeeInWei = approval.gasUsed.mul(approval.effectiveGasPrice).add(permit2FeeInWei);
+        feeInEth = utils.formatEther(totalFeeInWei);
       }
 
       logger.info(
@@ -349,7 +347,10 @@ export async function approveEthereumToken(
 
     return {
       signature: approval.hash,
-      status: approval.status ?? -1,
+      // Every path that reaches here confirmed: the helper throws on a revert and the
+      // branches above bail out while a transaction is still pending. `approval.status ?? -1`
+      // used to report a confirmed Ledger approval (which never carried a status) as FAILED.
+      status: TransactionStatus.CONFIRMED,
       data: {
         tokenAddress: fullToken.address,
         spender: isUniversalRouter ? universalRouterAddress || spenderAddress : spenderAddress,

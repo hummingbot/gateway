@@ -7,6 +7,7 @@ import JSBI from 'jsbi';
 import { Address } from 'viem';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { TransactionStatus } from '../../../schemas/chain-schema';
 import {
   RemoveLiquidityRequestType,
   RemoveLiquidityRequest,
@@ -133,9 +134,12 @@ export async function removeLiquidity(
   const txParams = await ethereum.prepareGasOptions(undefined, CLMM_REMOVE_LIQUIDITY_GAS_LIMIT);
   txParams.value = BigNumber.from(value.toString());
   const tx = await positionManagerWithSigner.multicall([calldata], txParams);
-  const receipt = await ethereum.handleTransactionExecution(tx);
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
+  if (!outcome.confirmed) {
+    // Still pending — the amounts below were computed before sending and have not moved.
+    return { signature: outcome.signature, status: TransactionStatus.PENDING };
+  }
 
-  const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
   const token0AmountRemoved = formatTokenAmount(totalAmount0.quotient.toString(), token0.decimals);
   const token1AmountRemoved = formatTokenAmount(totalAmount1.quotient.toString(), token1.decimals);
 
@@ -143,10 +147,10 @@ export async function removeLiquidity(
   const quoteTokenAmountRemoved = isBaseToken0 ? token1AmountRemoved : token0AmountRemoved;
 
   return {
-    signature: receipt.transactionHash,
-    status: receipt.status,
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     data: {
-      fee: gasFee,
+      fee: outcome.fee,
       baseTokenAmountRemoved,
       quoteTokenAmountRemoved,
     },

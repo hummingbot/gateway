@@ -7,6 +7,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { wrapEthereum } from '../../../chains/ethereum/routes/wrap';
 import { AddLiquidityResponseType, AddLiquidityResponse } from '../../../schemas/amm-schema';
+import { TransactionStatus } from '../../../schemas/chain-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
@@ -255,19 +256,17 @@ async function addLiquidityInternal(
   }
 
   // Wait for transaction confirmation
-  const receipt = await ethereum.handleTransactionExecution(tx);
-
-  // Calculate gas fee
-  const gasFee = formatTokenAmount(
-    receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(),
-    18, // ETH has 18 decimals
-  );
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
+  if (!outcome.confirmed) {
+    // Still pending — the quoted amounts were computed before sending and have not moved.
+    return { signature: outcome.signature, status: TransactionStatus.PENDING };
+  }
 
   return {
-    signature: receipt.transactionHash,
-    status: receipt.status,
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     data: {
-      fee: gasFee,
+      fee: outcome.fee,
       baseTokenAmountAdded: quote.baseTokenAmount,
       quoteTokenAmountAdded: quote.quoteTokenAmount,
       ...(baseWrapTxHash && { baseWrapTxHash }),

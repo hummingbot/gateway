@@ -5,6 +5,7 @@ import { BigNumber } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { TransactionStatus } from '../../../schemas/chain-schema';
 import {
   CollectFeesRequestType,
   CollectFeesRequest,
@@ -114,10 +115,11 @@ export async function collectFees(
   const tx = await positionManagerWithSigner.multicall([calldata], txParams);
 
   // Wait for transaction confirmation
-  const receipt = await ethereum.handleTransactionExecution(tx);
-
-  // Calculate gas fee
-  const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
+  if (!outcome.confirmed) {
+    // Still pending — the fee amounts below were read before sending and have not moved.
+    return { signature: outcome.signature, status: TransactionStatus.PENDING };
+  }
 
   // Calculate fee amounts collected
   const token0FeeAmount = formatTokenAmount(feeAmount0.toString(), token0.decimals);
@@ -128,10 +130,10 @@ export async function collectFees(
   const quoteFeeAmountCollected = isBaseToken0 ? token1FeeAmount : token0FeeAmount;
 
   return {
-    signature: receipt.transactionHash,
-    status: receipt.status,
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     data: {
-      fee: gasFee,
+      fee: outcome.fee,
       baseFeeAmountCollected,
       quoteFeeAmountCollected,
     },

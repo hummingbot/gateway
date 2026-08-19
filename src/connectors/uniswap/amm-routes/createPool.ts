@@ -7,6 +7,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum, TokenInfo } from '../../../chains/ethereum/ethereum';
 import { CreatePoolResponse, CreatePoolResponseType } from '../../../schemas/amm-schema';
+import { TransactionStatus } from '../../../schemas/chain-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { UniswapAmmCreatePoolRequest } from '../schemas';
@@ -259,32 +260,33 @@ export async function createPool(
 
   logger.info(`Creating Uniswap V2 pool ${baseTokenInfo.symbol}/${quoteTokenInfo.symbol} via tx ${tx.hash}`);
 
-  const receipt = await ethereum.handleTransactionExecution(tx);
+  // A revert throws out of here (400 TRANSACTION_FAILED) — it is never reported as PENDING.
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
 
   // Read the (now-created) pair address from the factory — authoritative source of the pool address.
   const pairAddress: string = await factory.getPair(baseTokenInfo.address, quoteTokenInfo.address);
 
-  if (receipt && receipt.status === 1) {
-    const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18); // ETH has 18 decimals
+  if (!outcome.confirmed) {
+    // Timed out but still broadcasting — report PENDING with the tx hash so the caller can
+    // reconcile it. The seed amounts below have not moved, so they are deliberately omitted.
     return {
-      signature: receipt.transactionHash,
-      status: 1, // CONFIRMED
+      signature: outcome.signature,
+      status: TransactionStatus.PENDING,
       poolAddress: pairAddress,
       price: seedPrice,
-      data: {
-        fee: gasFee,
-        baseTokenAmountAdded: baseTokenAmount,
-        quoteTokenAmountAdded: effectiveQuoteAmount,
-      },
     };
   }
 
-  // Timed out (still broadcasting) or reverted — report as pending with the tx hash.
   return {
-    signature: receipt ? receipt.transactionHash : tx.hash,
-    status: 0, // PENDING
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     poolAddress: pairAddress,
     price: seedPrice,
+    data: {
+      fee: outcome.fee,
+      baseTokenAmountAdded: baseTokenAmount,
+      quoteTokenAmountAdded: effectiveQuoteAmount,
+    },
   };
 }
 

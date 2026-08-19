@@ -1,8 +1,9 @@
 import { BigNumber, Contract, utils } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
-import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { Ethereum, EthereumTransactionOutcome } from '../../../chains/ethereum/ethereum';
 import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
+import { TransactionStatus } from '../../../schemas/chain-schema';
 import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -103,7 +104,7 @@ export async function executeClmmSwap(
     sqrtPriceLimitX96: '0',
   };
 
-  let receipt;
+  let outcome: EthereumTransactionOutcome;
 
   try {
     if (isHardwareWallet) {
@@ -180,7 +181,7 @@ export async function executeClmmSwap(
       logger.info(`Transaction sent: ${txResponse.hash}`);
 
       // Wait for confirmation with timeout
-      receipt = await ethereum.handleTransactionExecution(txResponse);
+      outcome = await ethereum.handleTransactionConfirmation(txResponse);
     } else {
       // Regular wallet flow
       let wallet;
@@ -242,19 +243,18 @@ export async function executeClmmSwap(
       logger.info(`Transaction sent: ${tx.hash}`);
 
       // Wait for transaction confirmation
-      receipt = await ethereum.handleTransactionExecution(tx);
+      outcome = await ethereum.handleTransactionConfirmation(tx);
     }
 
-    // Check if the transaction was successful
-    if (receipt.status === 0) {
-      logger.error(`Transaction failed on-chain. Receipt: ${JSON.stringify(receipt)}`);
-      throw httpErrors.internalServerError(
-        'Transaction reverted on-chain. This could be due to slippage, insufficient funds, or other blockchain issues.',
-      );
+    // A revert threw out of the confirmation helper as a 400 TRANSACTION_FAILED. What is left
+    // is a transaction that is still pending after the extended poll: report it as PENDING
+    // with its hash rather than dereferencing a null receipt and losing the hash to a 500.
+    if (!outcome.confirmed) {
+      return { signature: outcome.signature, status: TransactionStatus.PENDING };
     }
 
-    logger.info(`Transaction confirmed: ${receipt.transactionHash}`);
-    logger.info(`Gas used: ${receipt.gasUsed.toString()}`);
+    logger.info(`Transaction confirmed: ${outcome.signature}`);
+    logger.info(`Gas used: ${outcome.receipt.gasUsed.toString()}`);
 
     // Calculate amounts using quote values
     const amountIn = quote.estimatedAmountIn;
@@ -264,25 +264,19 @@ export async function executeClmmSwap(
     const baseTokenBalanceChange = side === 'BUY' ? amountOut : -amountIn;
     const quoteTokenBalanceChange = side === 'BUY' ? -amountIn : amountOut;
 
-    // Calculate gas fee (formatTokenAmount already returns a number)
-    const gasFee = formatTokenAmount(
-      receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(),
-      18, // ETH has 18 decimals
-    );
-
     // Determine token addresses for computed fields
     const tokenIn = quote.inputToken.address;
     const tokenOut = quote.outputToken.address;
 
     return {
-      signature: receipt.transactionHash,
-      status: receipt.status,
+      signature: outcome.signature,
+      status: TransactionStatus.CONFIRMED,
       data: {
         tokenIn,
         tokenOut,
         amountIn,
         amountOut,
-        fee: gasFee,
+        fee: outcome.fee,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
         slippagePct,

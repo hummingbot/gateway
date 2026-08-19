@@ -1,9 +1,10 @@
 import { ethers, utils } from 'ethers';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
+import { TransactionStatus } from '../../../schemas/chain-schema';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
-import { Ethereum } from '../ethereum';
+import { Ethereum, EthereumTransactionOutcome } from '../ethereum';
 import { EthereumLedger } from '../ethereum-ledger';
 import { UnwrapRequestSchema, UnwrapResponseSchema, UnwrapRequestType, UnwrapResponseType } from '../schemas';
 
@@ -72,9 +73,9 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
   const amountInWei = utils.parseEther(amount);
 
   try {
-    let transaction;
+    let transaction: ethers.providers.TransactionResponse;
     let nonce: number;
-    let receipt;
+    let outcome: EthereumTransactionOutcome;
 
     if (isHardware) {
       // Hardware wallet flow
@@ -117,12 +118,7 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
       const txResponse = await ethereum.provider.sendTransaction(signedTx);
 
       // Wait for confirmation with timeout
-      receipt = await ethereum.handleTransactionExecution(txResponse);
-
-      transaction = {
-        hash: receipt.transactionHash,
-        nonce: nonce,
-      };
+      outcome = await ethereum.handleTransactionConfirmation(txResponse);
     } else {
       // Regular wallet flow
       let wallet: ethers.Wallet;
@@ -157,19 +153,21 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
       nonce = transaction.nonce;
 
       // Wait for transaction confirmation with timeout
-      receipt = await ethereum.handleTransactionExecution(transaction);
+      outcome = await ethereum.handleTransactionConfirmation(transaction);
     }
 
-    // Calculate actual fee from receipt
-    let feeInEth = '0';
-    if (receipt.gasUsed && receipt.effectiveGasPrice) {
-      const feeInWei = receipt.gasUsed.mul(receipt.effectiveGasPrice);
-      feeInEth = utils.formatEther(feeInWei);
+    // A revert threw out of the confirmation helper as a 400 TRANSACTION_FAILED — it is never
+    // reported as PENDING (receipt.status 0 and TransactionStatus.PENDING are the same number).
+    if (!outcome.confirmed) {
+      return { signature: outcome.signature, status: TransactionStatus.PENDING };
     }
+
+    // Calculate actual fee from the confirmed receipt
+    const feeInEth = utils.formatEther(outcome.receipt.gasUsed.mul(outcome.receipt.effectiveGasPrice));
 
     return {
-      signature: transaction.hash,
-      status: receipt.status,
+      signature: outcome.signature,
+      status: TransactionStatus.CONFIRMED,
       data: {
         nonce: nonce,
         fee: feeInEth,

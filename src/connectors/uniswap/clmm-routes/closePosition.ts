@@ -6,6 +6,7 @@ import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { TransactionStatus } from '../../../schemas/chain-schema';
 import {
   ClosePositionRequestType,
   ClosePositionRequest,
@@ -153,10 +154,11 @@ export async function closePosition(
   const tx = await positionManagerWithSigner.multicall([calldata], txParams);
 
   // Wait for transaction confirmation
-  const receipt = await ethereum.handleTransactionExecution(tx);
-
-  // Calculate gas fee
-  const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
+  if (!outcome.confirmed) {
+    // Still pending — the amounts below were computed before sending and have not moved.
+    return { signature: outcome.signature, status: TransactionStatus.PENDING };
+  }
 
   // Calculate token amounts removed including fees
   const token0AmountRemoved = formatTokenAmount(totalAmount0.quotient.toString(), token0.decimals);
@@ -177,10 +179,10 @@ export async function closePosition(
   const positionRentRefunded = 0;
 
   return {
-    signature: receipt.transactionHash,
-    status: receipt.status,
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     data: {
-      fee: gasFee,
+      fee: outcome.fee,
       positionRentRefunded,
       baseTokenAmountRemoved,
       quoteTokenAmountRemoved,

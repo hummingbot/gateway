@@ -10,6 +10,7 @@ import { RPCProvider } from '../../rpc/rpc-provider-base';
 import { TokenValue, tokenValueToString } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import { transactionFailed } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
@@ -28,6 +29,15 @@ export interface TokenInfo {
 
 export type NewBlockHandler = (bn: number) => void;
 export type NewDebugMsgHandler = (msg: any) => void;
+
+/**
+ * Outcome of an EVM liquidity/pool transaction as a route is allowed to report it.
+ * A revert is not one of the cases: it throws, so it can never be mistaken for PENDING.
+ * See {@link Ethereum.handleTransactionConfirmation}.
+ */
+export type EthereumTransactionOutcome =
+  | { confirmed: false; signature: string }
+  | { confirmed: true; signature: string; receipt: providers.TransactionReceipt; fee: number };
 
 // Networks that support EIP-1559 (type 2) transactions
 export const EIP1559_NETWORKS = [
@@ -1024,6 +1034,60 @@ export class Ethereum {
     // Genuinely still pending — caller must handle null.
     logger.warn(`Transaction ${tx.hash} still pending after extended poll`);
     return null;
+  }
+
+  /**
+   * Single confirmation gate for EVM liquidity and pool transactions (open/close position,
+   * add/remove liquidity, collect fees, create pool, execute swap).
+   *
+   * `handleTransactionExecution` has three outcomes but only two of them are a valid response
+   * body, so every caller used to have to remember two separate checks — and almost none did:
+   *
+   * - no receipt (still pending after the extended poll) — dereferencing it throws a TypeError
+   *   that the route catch turns into a generic 500, losing the transaction hash and with it
+   *   any chance of reconciling a transaction that lands a minute later.
+   * - `receipt.status === 0` (reverted on-chain) — forwarding it verbatim as the response
+   *   `status` reports the revert as {@link TransactionStatus.PENDING}, which is also 0, so a
+   *   poller waits on it forever while the route's pre-send amounts are booked as if the
+   *   tokens had moved.
+   *
+   * This helper resolves both:
+   *
+   * - still pending -> `{ confirmed: false, signature: tx.hash }`. The caller returns
+   *   `{ signature, status: TransactionStatus.PENDING }` with NO `data` — the amounts it
+   *   computed before sending have not moved and must not be reported as if they had.
+   * - reverted -> throws the shared 400 TRANSACTION_FAILED, the same terminal, non-retryable
+   *   error the Solana routes throw for a landed-but-failed transaction.
+   * - confirmed -> `{ confirmed: true, signature, receipt, fee }`, fee already converted from
+   *   gas units to the chain's native currency.
+   */
+  public async handleTransactionConfirmation(tx: TransactionResponse): Promise<EthereumTransactionOutcome> {
+    const receipt = await this.handleTransactionExecution(tx);
+
+    if (!receipt) {
+      logger.warn(`Transaction ${tx.hash} still pending — reporting PENDING so the caller can reconcile it later`);
+      return { confirmed: false, signature: tx.hash };
+    }
+
+    if (receipt.status === 0) {
+      throw transactionFailed(
+        `Transaction ${receipt.transactionHash} reverted on-chain. Gas was spent; no tokens moved.`,
+      );
+    }
+
+    if (receipt.status !== 1) {
+      // No status on the receipt (pre-Byzantium chain or a provider quirk): neither a
+      // confirmation nor a revert, so report it as pending rather than guessing.
+      logger.warn(`Transaction ${receipt.transactionHash} has no receipt status — reporting PENDING`);
+      return { confirmed: false, signature: receipt.transactionHash };
+    }
+
+    return {
+      confirmed: true,
+      signature: receipt.transactionHash,
+      receipt,
+      fee: parseFloat(utils.formatUnits(receipt.gasUsed.mul(receipt.effectiveGasPrice), 18)),
+    };
   }
 
   /**

@@ -7,6 +7,7 @@ import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
 import { Ethereum, TokenInfo } from '../../../chains/ethereum/ethereum';
+import { TransactionStatus } from '../../../schemas/chain-schema';
 import { CreatePoolResponse, CreatePoolResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -17,7 +18,6 @@ import {
   getPancakeswapV3FactoryAddress,
   getPancakeswapV3NftManagerAddress,
 } from '../pancakeswap.contracts';
-import { formatTokenAmount } from '../pancakeswap.utils';
 import { PancakeswapClmmCreatePoolRequest } from '../schemas';
 
 // Pancakeswap V3 supported fee tiers (hundredths of a bip). 100=0.01%, 500=0.05%, 2500=0.25%, 10000=1.00%.
@@ -184,30 +184,30 @@ export async function createPool(
 
   logger.info(`Creating Pancakeswap V3 pool via tx ${tx.hash}`);
 
-  const receipt = await ethereum.handleTransactionExecution(tx);
+  // A revert throws out of here (400 TRANSACTION_FAILED) — it is never reported as PENDING.
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
 
   // Read the (now-created) pool address from the factory — the authoritative source.
   const poolAddress: string = await factory.getPool(token0.address, token1.address, fee);
 
-  if (receipt && receipt.status === 1) {
-    const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18); // ETH has 18 decimals
+  if (!outcome.confirmed) {
+    // Timed out but still broadcasting — report PENDING with the tx hash so the caller can reconcile it.
     return {
-      signature: receipt.transactionHash,
-      status: 1, // CONFIRMED
+      signature: outcome.signature,
+      status: TransactionStatus.PENDING,
       poolAddress,
       price: seedPrice,
-      data: {
-        fee: gasFee,
-      },
     };
   }
 
-  // Timed out (still broadcasting) or reverted — report as pending with the tx hash.
   return {
-    signature: receipt ? receipt.transactionHash : tx.hash,
-    status: 0, // PENDING
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     poolAddress,
     price: seedPrice,
+    data: {
+      fee: outcome.fee,
+    },
   };
 }
 

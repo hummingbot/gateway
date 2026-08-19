@@ -9,6 +9,7 @@ import JSBI from 'jsbi';
 const CLMM_OPEN_POSITION_GAS_LIMIT = 600000;
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { TransactionStatus } from '../../../schemas/chain-schema';
 import {
   OpenPositionRequestType,
   OpenPositionRequest,
@@ -235,11 +236,15 @@ export async function openPosition(
   }
 
   // Wait for transaction confirmation
-  const receipt = await ethereum.handleTransactionExecution(tx);
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
+  if (!outcome.confirmed) {
+    // Still pending — there is no mint log to read yet, so no positionAddress and no amounts.
+    return { signature: outcome.signature, status: TransactionStatus.PENDING };
+  }
 
   // Find the NFT ID from the transaction logs
   let positionId = '';
-  for (const log of receipt.logs) {
+  for (const log of outcome.receipt.logs) {
     if (
       log.address.toLowerCase() === positionManagerAddress.toLowerCase() &&
       log.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' &&
@@ -250,8 +255,15 @@ export async function openPosition(
     }
   }
 
-  // Calculate gas fee
-  const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
+  if (!positionId) {
+    // The transaction confirmed but no NFT-mint Transfer log was found. Returning a CONFIRMED
+    // response with an empty positionAddress would have the caller record a position it can
+    // never address — fail loudly, naming the transaction so the position stays recoverable.
+    throw httpErrors.internalServerError(
+      `Position opened in transaction ${outcome.signature} but no position NFT mint was found in its logs. ` +
+        `Inspect the transaction to recover the position ID.`,
+    );
+  }
 
   // For position rent, we're using the estimated gas cost since Ethereum doesn't have rent like Solana
   const positionRent = 0;
@@ -265,10 +277,10 @@ export async function openPosition(
   const quoteAmountUsed = isBaseToken0 ? actualToken1Amount : actualToken0Amount;
 
   return {
-    signature: receipt.transactionHash,
-    status: receipt.status,
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     data: {
-      fee: gasFee,
+      fee: outcome.fee,
       positionAddress: positionId,
       positionRent,
       baseTokenAmountAdded: baseAmountUsed,
@@ -364,8 +376,9 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
           throw httpErrors.badRequest('Insufficient funds to complete the transaction');
         }
 
-        // Generic error
-        throw httpErrors.internalServerError('Failed to open position');
+        // Generic error — keep the underlying message. Dropping it hid every real cause
+        // (including a lost transaction hash) behind an unactionable 'Failed to open position'.
+        throw httpErrors.internalServerError(`Failed to open position: ${e.message ?? String(e)}`);
       }
     },
   );

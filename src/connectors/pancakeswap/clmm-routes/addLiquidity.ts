@@ -6,6 +6,7 @@ import { BigNumber, utils } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
+import { TransactionStatus } from '../../../schemas/chain-schema';
 import { AddLiquidityResponseType, AddLiquidityResponse } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -157,9 +158,12 @@ export async function addLiquidity(
   const txParams = await ethereum.prepareGasOptions(undefined, CLMM_ADD_LIQUIDITY_GAS_LIMIT);
   txParams.value = BigNumber.from(value.toString());
   const tx = await positionManagerWithSigner.multicall([calldata], txParams);
-  const receipt = await ethereum.handleTransactionExecution(tx);
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
+  if (!outcome.confirmed) {
+    // Still pending — the mint amounts below were computed before sending and have not moved.
+    return { signature: outcome.signature, status: TransactionStatus.PENDING };
+  }
 
-  const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
   const actualToken0Amount = formatTokenAmount(newPosition.mintAmounts.amount0.toString(), token0.decimals);
   const actualToken1Amount = formatTokenAmount(newPosition.mintAmounts.amount1.toString(), token1.decimals);
 
@@ -167,10 +171,10 @@ export async function addLiquidity(
   const actualQuoteAmount = isBaseToken0 ? actualToken1Amount : actualToken0Amount;
 
   return {
-    signature: receipt.transactionHash,
-    status: receipt.status,
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     data: {
-      fee: gasFee,
+      fee: outcome.fee,
       baseTokenAmountAdded: actualBaseAmount,
       quoteTokenAmountAdded: actualQuoteAmount,
     },
