@@ -2,8 +2,8 @@ import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
 // Solana connector imports
-import { getEthereumChainConfig, getEthereumNetworkConfig } from '../../chains/ethereum/ethereum.config';
-import { getSolanaChainConfig, getSolanaNetworkConfig } from '../../chains/solana/solana.config';
+import { getEthereumNetworkConfig } from '../../chains/ethereum/ethereum.config';
+import { getSolanaNetworkConfig } from '../../chains/solana/solana.config';
 import { executeSwap as zeroXRouterExecuteSwap } from '../../connectors/0x/router-routes/executeSwap';
 import { executeSwap as dflowRouterExecuteSwap } from '../../connectors/dflow/router-routes/executeSwap';
 import { executeSwap as jupiterRouterExecuteSwap } from '../../connectors/jupiter/router-routes/executeSwap';
@@ -28,16 +28,7 @@ import { ChainExecuteSwapResponseSchema } from '../../schemas/chain-schema';
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 import { PoolService } from '../../services/pool-service';
-
-// Get default wallet from Solana config, fallback to Ethereum if Solana doesn't exist
-let defaultWallet: string;
-try {
-  const solanaChainConfig = getSolanaChainConfig();
-  defaultWallet = solanaChainConfig.defaultWallet;
-} catch {
-  const ethereumChainConfig = getEthereumChainConfig();
-  defaultWallet = ethereumChainConfig.defaultWallet;
-}
+import { chainNetworkField, defaultWallet, parseChainNetwork } from '../common';
 
 /**
  * Unified swap execute request schema
@@ -48,11 +39,7 @@ const UnifiedExecuteSwapRequestSchema = Type.Object({
     description: 'Wallet address to execute swap from',
     default: defaultWallet,
   }),
-  chainNetwork: Type.String({
-    description:
-      'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet, ethereum-polygon)',
-    default: 'solana-mainnet-beta',
-  }),
+  chainNetwork: chainNetworkField(),
   connector: Type.Optional(
     Type.String({
       description:
@@ -93,30 +80,6 @@ const UnifiedExecuteSwapRequestSchema = Type.Object({
 });
 
 type UnifiedExecuteSwapRequest = Static<typeof UnifiedExecuteSwapRequestSchema>;
-
-/**
- * Parse chain-network parameter into chain and network
- * Examples: "solana-mainnet-beta" -> {chain: "solana", network: "mainnet-beta"}
- *          "ethereum-mainnet" -> {chain: "ethereum", network: "mainnet"}
- *          "ethereum-polygon" -> {chain: "ethereum", network: "polygon"}
- */
-function parseChainNetwork(chainNetwork: string): { chain: string; network: string } {
-  const parts = chainNetwork.split('-');
-
-  if (parts.length < 2) {
-    throw new Error(
-      `Invalid chain-network format: ${chainNetwork}. Expected format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)`,
-    );
-  }
-
-  // First part is always the chain
-  const chain = parts[0];
-
-  // Rest is the network (e.g., "mainnet-beta" from ["solana", "mainnet", "beta"])
-  const network = parts.slice(1).join('-');
-
-  return { chain, network };
-}
 
 /**
  * Execute a Solana swap

@@ -11,6 +11,7 @@ import { getPoolInfo as raydiumGetPoolInfo } from '../../connectors/raydium/clmm
 import { getPoolInfo as uniswapGetPoolInfo } from '../../connectors/uniswap/clmm-routes/poolInfo';
 import { PoolInfo, PoolInfoSchema } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
+import { CLMM_CONNECTORS, chainNetworkField, connectorField, parseChainNetwork } from '../common';
 
 // Constants for examples (using Meteora CLMM values)
 const CLMM_POOL_ADDRESS_EXAMPLE = '2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3';
@@ -19,17 +20,8 @@ const CLMM_POOL_ADDRESS_EXAMPLE = '2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3'
  * Unified pool info request schema
  */
 const UnifiedPoolInfoRequestSchema = Type.Object({
-  connector: Type.String({
-    description: 'CLMM connector (raydium, meteora, pancakeswap-sol, uniswap, pancakeswap, orca)',
-    enum: ['raydium', 'meteora', 'pancakeswap-sol', 'uniswap', 'pancakeswap', 'orca'],
-    default: 'meteora',
-    examples: ['meteora'],
-  }),
-  chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    default: 'solana-mainnet-beta',
-    examples: ['solana-mainnet-beta'],
-  }),
+  connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+  chainNetwork: chainNetworkField(),
   poolAddress: Type.String({
     description: 'Pool contract address',
     examples: [CLMM_POOL_ADDRESS_EXAMPLE],
@@ -48,24 +40,6 @@ const UnifiedPoolInfoRequestSchema = Type.Object({
 });
 
 type UnifiedPoolInfoRequest = Static<typeof UnifiedPoolInfoRequestSchema>;
-
-/**
- * Parse chain-network parameter into chain and network
- */
-function parseChainNetwork(chainNetwork: string): { chain: string; network: string } {
-  const parts = chainNetwork.split('-');
-
-  if (parts.length < 2) {
-    throw new Error(
-      `Invalid chain-network format: ${chainNetwork}. Expected format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)`,
-    );
-  }
-
-  const chain = parts[0];
-  const network = parts.slice(1).join('-');
-
-  return { chain, network };
-}
 
 /**
  * Get pool info from Solana connectors

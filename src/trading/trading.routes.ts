@@ -69,8 +69,3 @@ export const tradingAmmRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(ammRemoveLiquidityRoute);
   fastify.register(createPoolRoute);
 };
-
-// Legacy export for backward compatibility
-export const tradingRoutes = tradingSwapRoutes;
-
-export default tradingRoutes;

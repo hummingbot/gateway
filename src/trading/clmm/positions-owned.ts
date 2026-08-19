@@ -1,8 +1,6 @@
 import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
-import { getSolanaChainConfig } from '../../chains/solana/solana.config';
 import { getPositionsOwned as meteoraGetPositionsOwned } from '../../connectors/meteora/clmm-routes/positionsOwned';
 import { getPositionsOwned as orcaGetPositionsOwned } from '../../connectors/orca/clmm-routes/positionsOwned';
 import { getPositionsOwned as pancakeswapGetPositionsOwned } from '../../connectors/pancakeswap/clmm-routes/positionsOwned';
@@ -11,59 +9,21 @@ import { getPositionsOwned as raydiumGetPositionsOwned } from '../../connectors/
 import { getPositionsOwned as uniswapGetPositionsOwned } from '../../connectors/uniswap/clmm-routes/positionsOwned';
 import { PositionInfo, PositionInfoSchema } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
-
-// Get default wallet from Solana config, fallback to Ethereum if Solana doesn't exist
-let defaultWallet: string;
-try {
-  const solanaChainConfig = getSolanaChainConfig();
-  defaultWallet = solanaChainConfig.defaultWallet;
-} catch {
-  const ethereumChainConfig = getEthereumChainConfig();
-  defaultWallet = ethereumChainConfig.defaultWallet;
-}
+import { CLMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
 
 /**
  * Unified positions owned request schema
  */
 const UnifiedPositionsOwnedRequestSchema = Type.Object({
-  connector: Type.String({
-    description: 'CLMM connector (raydium, meteora, pancakeswap-sol, uniswap, pancakeswap, orca)',
-    enum: ['raydium', 'meteora', 'pancakeswap-sol', 'uniswap', 'pancakeswap', 'orca'],
-    default: 'meteora',
-    examples: ['meteora'],
+  connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+  chainNetwork: chainNetworkField(),
+  walletAddress: Type.String({
+    description: 'Wallet address',
+    default: defaultWallet,
   }),
-  chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    default: 'solana-mainnet-beta',
-    examples: ['solana-mainnet-beta'],
-  }),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address (optional, uses default wallet if not provided)',
-      default: defaultWallet,
-    }),
-  ),
 });
 
 type UnifiedPositionsOwnedRequest = Static<typeof UnifiedPositionsOwnedRequestSchema>;
-
-/**
- * Parse chain-network parameter into chain and network
- */
-function parseChainNetwork(chainNetwork: string): { chain: string; network: string } {
-  const parts = chainNetwork.split('-');
-
-  if (parts.length < 2) {
-    throw new Error(
-      `Invalid chain-network format: ${chainNetwork}. Expected format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)`,
-    );
-  }
-
-  const chain = parts[0];
-  const network = parts.slice(1).join('-');
-
-  return { chain, network };
-}
 
 /**
  * Get positions owned from Solana connectors

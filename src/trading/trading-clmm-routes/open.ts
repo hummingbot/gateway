@@ -1,22 +1,6 @@
 import { Static, Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
-import { httpErrors } from '../../services/error-handler';
-import { Ethereum } from '../../chains/ethereum/ethereum';
-import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
-import { Solana } from '../../chains/solana/solana';
-import { getSolanaChainConfig } from '../../chains/solana/solana.config';
-
-// Get default wallet from Solana config, fallback to Ethereum if Solana doesn't exist
-let defaultWallet: string;
-try {
-  const solanaChainConfig = getSolanaChainConfig();
-  defaultWallet = solanaChainConfig.defaultWallet;
-} catch {
-  const ethereumChainConfig = getEthereumChainConfig();
-  defaultWallet = ethereumChainConfig.defaultWallet;
-}
-
 // Constants for examples (using Meteora CLMM values)
 const BASE_TOKEN_AMOUNT = 0.01;
 const QUOTE_TOKEN_AMOUNT = 2;
@@ -24,36 +8,10 @@ const LOWER_PRICE_BOUND = 150;
 const UPPER_PRICE_BOUND = 250;
 const CLMM_POOL_ADDRESS_EXAMPLE = '2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3';
 
-/**
- * Parse chain-network parameter into chain and network
- */
-function parseChainNetwork(chainNetwork: string): { chain: string; network: string } {
-  const parts = chainNetwork.split('-');
-
-  if (parts.length < 2) {
-    throw new Error(
-      `Invalid chain-network format: ${chainNetwork}. Expected format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)`,
-    );
-  }
-
-  const chain = parts[0];
-  const network = parts.slice(1).join('-');
-
-  return { chain, network };
-}
-
 // Unified schema with connector field
 const UnifiedOpenPositionRequest = Type.Object({
-  connector: Type.String({
-    description: 'Connector name (uniswap, pancakeswap, raydium, meteora, pancakeswap-sol, orca)',
-    default: 'meteora',
-    examples: ['meteora'],
-  }),
-  chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    default: 'solana-mainnet-beta',
-    examples: ['solana-mainnet-beta'],
-  }),
+  connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+  chainNetwork: chainNetworkField(),
   walletAddress: Type.String({
     description: 'Wallet address',
     default: defaultWallet,
@@ -108,7 +66,9 @@ import { openPosition as pancakeswapSolOpenPosition } from '../../connectors/pan
 import { openPosition as raydiumOpenPosition } from '../../connectors/raydium/clmm-routes/openPosition';
 import { openPosition as uniswapOpenPosition } from '../../connectors/uniswap/clmm-routes/openPosition';
 import { OpenPositionResponseType, OpenPositionResponse } from '../../schemas/clmm-schema';
+import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
+import { CLMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{

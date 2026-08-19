@@ -8,15 +8,11 @@ import { addLiquidity as uniswapAddLiquidity } from '../../connectors/uniswap/am
 import { AddLiquidityResponse, AddLiquidityResponseType } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
-
-import { AMM_CONNECTORS, parseChainNetwork, defaultWallet } from './common';
+import { AMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
 
 const UnifiedAmmAddLiquidityRequest = Type.Object({
-  connector: Type.String({ description: 'AMM connector (meteora, raydium, uniswap)', default: 'meteora' }),
-  chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    default: 'solana-mainnet-beta',
-  }),
+  connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+  chainNetwork: chainNetworkField(),
   walletAddress: Type.String({ description: 'Wallet address', default: defaultWallet }),
   poolAddress: Type.String({ description: 'Pool contract address' }),
   baseTokenAmount: Type.Number({ description: 'Amount of base token to add' }),

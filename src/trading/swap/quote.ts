@@ -28,17 +28,14 @@ import { ChainQuoteSwapResponseSchema } from '../../schemas/chain-schema';
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 import { PoolService } from '../../services/pool-service';
+import { chainNetworkField, parseChainNetwork } from '../common';
 
 /**
  * Unified swap quote request schema
  * Accepts chain-network parameter like "solana-mainnet-beta", "ethereum-mainnet", or "ethereum-polygon"
  */
 const UnifiedQuoteSwapRequestSchema = Type.Object({
-  chainNetwork: Type.String({
-    description:
-      'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet, ethereum-polygon)',
-    default: 'solana-mainnet-beta',
-  }),
+  chainNetwork: chainNetworkField(),
   connector: Type.Optional(
     Type.String({
       description:
@@ -79,30 +76,6 @@ const UnifiedQuoteSwapRequestSchema = Type.Object({
 });
 
 type UnifiedQuoteSwapRequest = Static<typeof UnifiedQuoteSwapRequestSchema>;
-
-/**
- * Parse chain-network parameter into chain and network
- * Examples: "solana-mainnet-beta" -> {chain: "solana", network: "mainnet-beta"}
- *          "ethereum-mainnet" -> {chain: "ethereum", network: "mainnet"}
- *          "ethereum-polygon" -> {chain: "ethereum", network: "polygon"}
- */
-function parseChainNetwork(chainNetwork: string): { chain: string; network: string } {
-  const parts = chainNetwork.split('-');
-
-  if (parts.length < 2) {
-    throw httpErrors.badRequest(
-      `Invalid chain-network format: ${chainNetwork}. Expected format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)`,
-    );
-  }
-
-  // First part is always the chain
-  const chain = parts[0];
-
-  // Rest is the network (e.g., "mainnet-beta" from ["solana", "mainnet", "beta"])
-  const network = parts.slice(1).join('-');
-
-  return { chain, network };
-}
 
 /**
  * Get a Solana swap quote
@@ -252,7 +225,7 @@ async function getEthereumQuoteSwap(
     const providerKey = swapProvider;
 
     if (providerKey === 'uniswap/router') {
-      return await uniswapRouterQuoteSwap(network, undefined, baseToken, quoteToken, amount, side, slippagePct || 1);
+      return await uniswapRouterQuoteSwap(network, undefined, baseToken, quoteToken, amount, side, slippagePct);
     } else if (providerKey === 'uniswap/amm') {
       return await uniswapAmmQuoteSwap(network, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'uniswap/clmm') {
@@ -264,7 +237,7 @@ async function getEthereumQuoteSwap(
     } else if (providerKey === 'pancakeswap/clmm') {
       return await pancakeswapClmmQuoteSwap(network, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === '0x/router') {
-      return await zeroXRouterQuoteSwap(network, baseToken, quoteToken, amount, side, slippagePct || 1);
+      return await zeroXRouterQuoteSwap(network, baseToken, quoteToken, amount, side, slippagePct);
     }
 
     throw httpErrors.badRequest(`Unsupported swap provider: ${swapProvider}`);

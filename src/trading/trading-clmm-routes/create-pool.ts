@@ -1,8 +1,6 @@
 import { Static, Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
-import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
-import { getSolanaChainConfig } from '../../chains/solana/solana.config';
 import { createPool as meteoraCreatePool } from '../../connectors/meteora/clmm-routes/createPool';
 import { createPool as orcaCreatePool } from '../../connectors/orca/clmm-routes/createPool';
 import { createPool as pancakeswapCreatePool } from '../../connectors/pancakeswap/clmm-routes/createPool';
@@ -16,24 +14,7 @@ import {
 } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
-
-// Get default wallet from Solana config, fallback to Ethereum if Solana doesn't exist
-let defaultWallet: string;
-try {
-  defaultWallet = getSolanaChainConfig().defaultWallet;
-} catch {
-  defaultWallet = getEthereumChainConfig().defaultWallet;
-}
-
-function parseChainNetwork(chainNetwork: string): { chain: string; network: string } {
-  const parts = chainNetwork.split('-');
-  if (parts.length < 2) {
-    throw new Error(
-      `Invalid chain-network format: ${chainNetwork}. Expected format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)`,
-    );
-  }
-  return { chain: parts[0], network: parts.slice(1).join('-') };
-}
+import { CLMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
 
 // Unified CLMM create-pool. Creates + initializes a pool at an initial price (no position is
 // seeded — concentrated-liquidity positions need a range, opened separately via open-position).
@@ -43,16 +24,8 @@ function parseChainNetwork(chainNetwork: string): { chain: string; network: stri
 // and defaults the wallet.
 const UnifiedClmmCreatePoolRequest = Type.Composite([
   Type.Object({
-    connector: Type.String({
-      description: 'CLMM connector name (meteora, raydium, uniswap, orca, pancakeswap, pancakeswap-sol)',
-      default: 'meteora',
-      examples: ['meteora'],
-    }),
-    chainNetwork: Type.String({
-      description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-      default: 'solana-mainnet-beta',
-      examples: ['solana-mainnet-beta'],
-    }),
+    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+    chainNetwork: chainNetworkField(),
     walletAddress: Type.String({ description: 'Wallet address (pool creator + payer)', default: defaultWallet }),
   }),
   Type.Omit(ClmmCreatePoolRequest, ['network', 'walletAddress'], {}),
@@ -67,7 +40,8 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description:
-          'Create and initialize a new CLMM pool across supported connectors (Meteora DLMM, Raydium CLMM, Uniswap V3)',
+          'Create and initialize a new CLMM pool across supported connectors (Meteora DLMM, Raydium CLMM, ' +
+          'PancakeSwap Solana CLMM, Orca Whirlpool, Uniswap V3, PancakeSwap V3)',
         tags: ['/trading/clmm'],
         body: UnifiedClmmCreatePoolRequest,
         response: { 200: CreatePoolResponse },

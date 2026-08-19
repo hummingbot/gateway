@@ -9,22 +9,14 @@ import { getPositionInfo as raydiumGetPositionInfo } from '../../connectors/rayd
 import { getPositionInfo as uniswapGetPositionInfo } from '../../connectors/uniswap/clmm-routes/positionInfo';
 import { PositionInfo, PositionInfoSchema } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
+import { CLMM_CONNECTORS, chainNetworkField, connectorField, parseChainNetwork } from '../common';
 
 /**
  * Unified position info request schema
  */
 const UnifiedPositionInfoRequestSchema = Type.Object({
-  connector: Type.String({
-    description: 'CLMM connector (raydium, meteora, pancakeswap-sol, uniswap, pancakeswap, orca)',
-    enum: ['raydium', 'meteora', 'pancakeswap-sol', 'uniswap', 'pancakeswap', 'orca'],
-    default: 'meteora',
-    examples: ['meteora'],
-  }),
-  chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    default: 'solana-mainnet-beta',
-    examples: ['solana-mainnet-beta'],
-  }),
+  connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+  chainNetwork: chainNetworkField(),
   positionAddress: Type.String({
     description: 'Position address or NFT token ID',
     examples: ['<sample-position-address>'],
@@ -32,24 +24,6 @@ const UnifiedPositionInfoRequestSchema = Type.Object({
 });
 
 type UnifiedPositionInfoRequest = Static<typeof UnifiedPositionInfoRequestSchema>;
-
-/**
- * Parse chain-network parameter into chain and network
- */
-function parseChainNetwork(chainNetwork: string): { chain: string; network: string } {
-  const parts = chainNetwork.split('-');
-
-  if (parts.length < 2) {
-    throw new Error(
-      `Invalid chain-network format: ${chainNetwork}. Expected format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)`,
-    );
-  }
-
-  const chain = parts[0];
-  const network = parts.slice(1).join('-');
-
-  return { chain, network };
-}
 
 /**
  * Get position info from Solana connectors

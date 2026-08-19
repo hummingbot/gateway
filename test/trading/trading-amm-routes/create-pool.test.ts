@@ -34,6 +34,6 @@ describe('POST /trading/amm/create-pool (unified dispatch)', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body).message).toMatch(/Unsupported AMM connector/);
+    expect(JSON.parse(response.body).message).toMatch(/must be equal to one of the allowed values/);
   });
 });

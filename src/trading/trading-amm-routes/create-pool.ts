@@ -1,8 +1,6 @@
 import { Static, Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
-import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
-import { getSolanaChainConfig } from '../../chains/solana/solana.config';
 import { createPool as meteoraCreatePool } from '../../connectors/meteora/amm-routes/createPool';
 import { createPool as pancakeswapCreatePool } from '../../connectors/pancakeswap/amm-routes/createPool';
 import { createPool as raydiumCreatePool } from '../../connectors/raydium/amm-routes/createPool';
@@ -10,45 +8,15 @@ import { createPool as uniswapCreatePool } from '../../connectors/uniswap/amm-ro
 import { CreatePoolRequest, CreatePoolResponse, CreatePoolResponseType } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
-
-// Get default wallet from Solana config, fallback to Ethereum if Solana doesn't exist
-let defaultWallet: string;
-try {
-  const solanaChainConfig = getSolanaChainConfig();
-  defaultWallet = solanaChainConfig.defaultWallet;
-} catch {
-  const ethereumChainConfig = getEthereumChainConfig();
-  defaultWallet = ethereumChainConfig.defaultWallet;
-}
-
-/**
- * Parse chain-network parameter into chain and network.
- */
-function parseChainNetwork(chainNetwork: string): { chain: string; network: string } {
-  const parts = chainNetwork.split('-');
-  if (parts.length < 2) {
-    throw new Error(
-      `Invalid chain-network format: ${chainNetwork}. Expected format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)`,
-    );
-  }
-  return { chain: parts[0], network: parts.slice(1).join('-') };
-}
+import { AMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
 
 // Composed from the canonical CreatePoolRequest (schemas/amm-schema.ts): the
 // unified route swaps per-connector `network` for connector + chainNetwork,
 // defaults the wallet, and adds the per-protocol fee-config selectors.
 const UnifiedCreatePoolRequest = Type.Composite([
   Type.Object({
-    connector: Type.String({
-      description: 'AMM connector name (meteora, raydium, uniswap)',
-      default: 'meteora',
-      examples: ['meteora'],
-    }),
-    chainNetwork: Type.String({
-      description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-      default: 'solana-mainnet-beta',
-      examples: ['solana-mainnet-beta'],
-    }),
+    connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+    chainNetwork: chainNetworkField(),
     walletAddress: Type.String({
       description: 'Wallet address (pool creator + payer)',
       default: defaultWallet,
@@ -90,7 +58,8 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description:
-          'Create and seed a new AMM pool across supported connectors (Meteora DAMM v2, Raydium CPMM, Uniswap V2)',
+          'Create and seed a new AMM pool across supported connectors (Meteora DAMM v2, Raydium CPMM, ' +
+          'Uniswap V2, PancakeSwap V2)',
         tags: ['/trading/amm'],
         body: UnifiedCreatePoolRequest,
         response: {

@@ -8,15 +8,11 @@ import { getPoolInfo as uniswapGetPoolInfo } from '../../connectors/uniswap/amm-
 import { PoolInfo, PoolInfoSchema } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
-
-import { AMM_CONNECTORS, parseChainNetwork } from './common';
+import { AMM_CONNECTORS, chainNetworkField, connectorField, parseChainNetwork } from '../common';
 
 const UnifiedAmmPoolInfoRequest = Type.Object({
-  connector: Type.String({ description: 'AMM connector (meteora, raydium, uniswap)', default: 'meteora' }),
-  chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    default: 'solana-mainnet-beta',
-  }),
+  connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+  chainNetwork: chainNetworkField(),
   poolAddress: Type.String({ description: 'Pool contract address' }),
 });
 

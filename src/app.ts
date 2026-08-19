@@ -45,7 +45,7 @@ import { logger } from './services/logger';
 import { quoteCache } from './services/quote-cache';
 import { displayChainConfigurations } from './services/startup-banner';
 import { tokensRoutes } from './tokens/tokens.routes';
-import { tradingRoutes, tradingClmmRoutes, tradingAmmRoutes } from './trading/trading.routes';
+import { tradingSwapRoutes, tradingClmmRoutes, tradingAmmRoutes } from './trading/trading.routes';
 import { GATEWAY_VERSION } from './version';
 import { walletRoutes } from './wallet/wallet.routes';
 
@@ -292,7 +292,7 @@ const configureGatewayServer = () => {
     app.register(poolRoutes, { prefix: '/pools' });
 
     // Register trading routes (unified cross-chain swap)
-    app.register(tradingRoutes, { prefix: '/trading/swap' });
+    app.register(tradingSwapRoutes, { prefix: '/trading/swap' });
 
     // Register trading CLMM routes (unified cross-chain concentrated liquidity)
     app.register(tradingClmmRoutes, { prefix: '/trading/clmm' });

@@ -365,7 +365,8 @@ describe('Unified Trading CLMM Routes', () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.message).toContain('Unsupported connector');
+      // The connector field is enum-constrained, so rejection happens at schema validation.
+      expect(body.message).toContain('must be equal to one of the allowed values');
     });
   });
 });

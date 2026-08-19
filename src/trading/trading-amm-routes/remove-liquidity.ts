@@ -8,15 +8,11 @@ import { removeLiquidity as uniswapRemoveLiquidity } from '../../connectors/unis
 import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
-
-import { AMM_CONNECTORS, parseChainNetwork, defaultWallet } from './common';
+import { AMM_CONNECTORS, chainNetworkField, connectorField, defaultWallet, parseChainNetwork } from '../common';
 
 const UnifiedAmmRemoveLiquidityRequest = Type.Object({
-  connector: Type.String({ description: 'AMM connector (meteora, raydium, uniswap)', default: 'meteora' }),
-  chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    default: 'solana-mainnet-beta',
-  }),
+  connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+  chainNetwork: chainNetworkField(),
   walletAddress: Type.String({ description: 'Wallet address', default: defaultWallet }),
   poolAddress: Type.String({ description: 'Pool contract address' }),
   positionAddress: Type.Optional(
@@ -26,7 +22,13 @@ const UnifiedAmmRemoveLiquidityRequest = Type.Object({
         'List positions with position-info or positions-owned. Ignored by fungible-LP AMMs.',
     }),
   ),
-  percentageToRemove: Type.Number({ minimum: 0, maximum: 100, description: 'Percentage of liquidity to remove' }),
+  percentageToRemove: Type.Number({
+    minimum: 0,
+    maximum: 100,
+    description: 'Percentage of liquidity to remove',
+    default: 100,
+    examples: [100],
+  }),
   slippagePct: Type.Optional(
     Type.Number({
       minimum: 0,
