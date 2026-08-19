@@ -28,7 +28,7 @@ import { ChainExecuteSwapResponseSchema } from '../../schemas/chain-schema';
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 import { PoolService } from '../../services/pool-service';
-import { chainNetworkField, defaultWallet, parseChainNetwork, rethrowRouteError } from '../common';
+import { chainNetworkField, defaultWallet, parseChainNetwork, rethrowRouteError, slippagePctField } from '../common';
 
 /**
  * Unified swap execute request schema
@@ -64,12 +64,7 @@ const UnifiedExecuteSwapRequestSchema = Type.Object({
     enum: ['BUY', 'SELL'],
     default: 'SELL',
   }),
-  slippagePct: Type.Optional(
-    Type.Number({
-      description: 'Slippage tolerance percentage (optional)',
-      default: 1,
-    }),
-  ),
+  slippagePct: slippagePctField(),
   approximateIfNoExactOut: Type.Optional(
     Type.Boolean({
       description:

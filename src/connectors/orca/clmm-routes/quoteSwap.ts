@@ -5,6 +5,7 @@ import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
+import { OrcaConfig } from '../orca.config';
 import { getOrcaSwapQuote } from '../orca.utils';
 import { OrcaClmmQuoteSwapRequest, OrcaClmmQuoteSwapRequestType } from '../schemas';
 
@@ -15,7 +16,7 @@ export async function getRawSwapQuote(
   amount: number,
   side: 'BUY' | 'SELL',
   poolAddress: string,
-  slippagePct: number = 1,
+  slippagePct: number = OrcaConfig.config.slippagePct ?? 1,
 ) {
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
@@ -50,7 +51,7 @@ async function formatSwapQuote(
   amount: number,
   side: 'BUY' | 'SELL',
   poolAddress: string,
-  slippagePct: number = 1,
+  slippagePct: number = OrcaConfig.config.slippagePct ?? 1,
 ): Promise<QuoteSwapResponseType> {
   const quote = await getRawSwapQuote(
     network,

@@ -301,7 +301,7 @@ export const MeteoraClmmRemoveLiquidityRequest = Type.Object({
     description: 'Position NFT address',
     examples: ['<sample-position-address>'],
   }),
-  liquidityPct: Type.Optional(
+  percentageToRemove: Type.Optional(
     Type.Number({
       minimum: 0,
       maximum: 100,

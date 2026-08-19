@@ -5,6 +5,7 @@ import { QuotePositionResponseType, QuotePositionResponse } from '../../../schem
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
+import { OrcaConfig } from '../orca.config';
 import { quotePosition as getQuotePosition } from '../orca.utils';
 import { OrcaClmmQuotePositionRequest } from '../schemas';
 
@@ -15,7 +16,7 @@ export async function quotePosition(
   poolAddress: string,
   baseTokenAmount?: number,
   quoteTokenAmount?: number,
-  slippagePct: number = 1,
+  slippagePct: number = OrcaConfig.config.slippagePct ?? 1,
 ): Promise<QuotePositionResponseType> {
   const orca = await Orca.getInstance(network);
 

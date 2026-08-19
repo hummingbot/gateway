@@ -12,6 +12,7 @@ import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../../s
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
+import { OrcaConfig } from '../orca.config';
 import { buildOrcaTransaction, createOrcaAuthority } from '../orca.sdk';
 import { OrcaClmmRemoveLiquidityRequest } from '../schemas';
 
@@ -19,11 +20,11 @@ export async function removeLiquidity(
   network: string,
   walletAddress: string,
   positionAddress: string,
-  liquidityPct: number,
-  slippagePct: number,
+  percentageToRemove: number,
+  slippagePct: number = OrcaConfig.config.slippagePct ?? 1,
 ): Promise<RemoveLiquidityResponseType> {
-  if (liquidityPct <= 0 || liquidityPct > 100) {
-    throw httpErrors.badRequest('liquidityPct must be between 0 and 100');
+  if (percentageToRemove <= 0 || percentageToRemove > 100) {
+    throw httpErrors.badRequest('percentageToRemove must be between 0 and 100');
   }
 
   const solana = await Solana.getInstance(network);
@@ -33,7 +34,7 @@ export async function removeLiquidity(
   const whirlpool = await fetchWhirlpool(orca.solanaKitRpc, position.data.whirlpool);
   const [mintA, mintB] = await fetchAllMint(orca.solanaKitRpc, [whirlpool.data.tokenMintA, whirlpool.data.tokenMintB]);
   const liquidityAmount = BigInt(
-    new Decimal(position.data.liquidity.toString()).mul(liquidityPct).div(100).floor().toFixed(0),
+    new Decimal(position.data.liquidity.toString()).mul(percentageToRemove).div(100).floor().toFixed(0),
   );
 
   if (liquidityAmount <= 0n || liquidityAmount > position.data.liquidity) {
@@ -51,7 +52,7 @@ export async function removeLiquidity(
     },
   );
   logger.info(
-    `Removing ${liquidityPct}% liquidity, estimated: ` +
+    `Removing ${percentageToRemove}% liquidity, estimated: ` +
       `${(Number(result.quote.tokenEstA) / 10 ** mintA.data.decimals).toFixed(6)} tokenA, ` +
       `${(Number(result.quote.tokenEstB) / 10 ** mintB.data.decimals).toFixed(6)} tokenB`,
   );
@@ -99,8 +100,8 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { walletAddress, positionAddress, liquidityPct = 100, slippagePct = 1, network } = request.body;
-        return await removeLiquidity(network, walletAddress, positionAddress, liquidityPct, slippagePct);
+        const { walletAddress, positionAddress, percentageToRemove = 100, slippagePct, network } = request.body;
+        return await removeLiquidity(network, walletAddress, positionAddress, percentageToRemove, slippagePct);
       } catch (error) {
         logger.error(error);
         if (error.statusCode) throw error;

@@ -10,6 +10,7 @@ import { ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/c
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
+import { OrcaConfig } from '../orca.config';
 import { buildOrcaTransaction, createOrcaAuthority } from '../orca.sdk';
 import { OrcaClmmExecuteSwapRequest, OrcaClmmExecuteSwapRequestType } from '../schemas';
 
@@ -24,7 +25,7 @@ export async function executeSwap(
   baseTokenIdentifier: string,
   side: 'BUY' | 'SELL',
   amount: number,
-  slippagePct: number = 1,
+  slippagePct: number = OrcaConfig.config.slippagePct ?? 1,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);

@@ -16,6 +16,7 @@ import { AddLiquidityResponse, AddLiquidityResponseType } from '../../../schemas
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
+import { OrcaConfig } from '../orca.config';
 import { getCurrentTransferFee } from '../orca.position';
 import { buildOrcaTransaction, createOrcaAuthority } from '../orca.sdk';
 import { OrcaClmmAddLiquidityRequest } from '../schemas';
@@ -26,7 +27,7 @@ export async function addLiquidity(
   positionAddress: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
-  slippagePct: number,
+  slippagePct: number = OrcaConfig.config.slippagePct ?? 1,
 ): Promise<AddLiquidityResponseType> {
   if ((!baseTokenAmount || baseTokenAmount <= 0) && (!quoteTokenAmount || quoteTokenAmount <= 0)) {
     throw httpErrors.badRequest('At least one token amount must be provided and greater than 0');
@@ -151,14 +152,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          walletAddress,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct = 1,
-          network,
-        } = request.body;
+        const { walletAddress, positionAddress, baseTokenAmount, quoteTokenAmount, slippagePct, network } =
+          request.body;
         return await addLiquidity(
           network,
           walletAddress,

@@ -16,6 +16,7 @@ import {
   defaultWallet,
   parseChainNetwork,
   rethrowRouteError,
+  slippagePctField,
 } from '../common';
 
 // Constants for examples (using Meteora CLMM values)
@@ -57,15 +58,7 @@ const UnifiedOpenPositionRequest = Type.Object({
       examples: [QUOTE_TOKEN_AMOUNT],
     }),
   ),
-  slippagePct: Type.Optional(
-    Type.Number({
-      minimum: 0,
-      maximum: 100,
-      description: 'Maximum acceptable slippage percentage',
-      default: 1,
-      examples: [1],
-    }),
-  ),
+  slippagePct: slippagePctField(),
   // Meteora-specific parameter (optional, ignored by other connectors)
   strategyType: Type.Optional(
     Type.Number({

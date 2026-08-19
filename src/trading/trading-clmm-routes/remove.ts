@@ -16,6 +16,7 @@ import {
   defaultWallet,
   parseChainNetwork,
   rethrowRouteError,
+  slippagePctField,
 } from '../common';
 
 // Unified schema with connector field
@@ -39,14 +40,8 @@ const UnifiedRemoveLiquidityRequest = Type.Object({
   }),
   // Orca-specific parameter (optional, ignored by other connectors, which manage
   // slippage internally).
-  slippagePct: Type.Optional(
-    Type.Number({
-      minimum: 0,
-      maximum: 100,
-      description: 'Maximum acceptable slippage percentage. Only applies to the Orca connector.',
-      default: 1,
-      examples: [1],
-    }),
+  slippagePct: slippagePctField(
+    "Maximum acceptable slippage percentage. Only applies to the Orca connector; defaults to Orca's configured slippagePct.",
   ),
 });
 
@@ -94,13 +89,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
             return await pancakeswapSolRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
 
           case 'orca':
-            return await orcaRemoveLiquidity(
-              network,
-              walletAddress,
-              positionAddress,
-              percentageToRemove,
-              slippagePct ?? 1,
-            );
+            return await orcaRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove, slippagePct);
 
           default:
             throw httpErrors.badRequest(`Unsupported connector: ${connector}`);

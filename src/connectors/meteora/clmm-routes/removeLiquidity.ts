@@ -164,11 +164,11 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { network, walletAddress, positionAddress, liquidityPct } = request.body;
+        const { network, walletAddress, positionAddress, percentageToRemove } = request.body;
 
         const networkToUse = network;
 
-        return await removeLiquidity(networkToUse, walletAddress, positionAddress, liquidityPct);
+        return await removeLiquidity(networkToUse, walletAddress, positionAddress, percentageToRemove);
       } catch (e) {
         logger.error(e);
         if (e.statusCode) {

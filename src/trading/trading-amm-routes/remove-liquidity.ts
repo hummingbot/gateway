@@ -14,6 +14,7 @@ import {
   defaultWallet,
   parseChainNetwork,
   rethrowRouteError,
+  slippagePctField,
 } from '../common';
 
 const UnifiedAmmRemoveLiquidityRequest = Type.Object({
@@ -35,15 +36,7 @@ const UnifiedAmmRemoveLiquidityRequest = Type.Object({
     default: 100,
     examples: [100],
   }),
-  slippagePct: Type.Optional(
-    Type.Number({
-      minimum: 0,
-      maximum: 100,
-      description: 'Maximum acceptable slippage percentage',
-      default: 1,
-      examples: [1],
-    }),
-  ),
+  slippagePct: slippagePctField(),
 });
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {

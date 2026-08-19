@@ -14,6 +14,7 @@ import {
   defaultWallet,
   parseChainNetwork,
   rethrowRouteError,
+  slippagePctField,
 } from '../common';
 
 // Composed from the canonical CreatePoolRequest (schemas/amm-schema.ts): the
@@ -43,14 +44,8 @@ const UnifiedCreatePoolRequest = Type.Composite([
         description: 'Raydium CPMM fee-config index (optional; defaults to the first available config).',
       }),
     ),
-    slippagePct: Type.Optional(
-      Type.Number({
-        minimum: 0,
-        maximum: 100,
-        description: 'Uniswap seeding slippage percentage',
-        default: 1,
-        examples: [1],
-      }),
+    slippagePct: slippagePctField(
+      "Uniswap/PancakeSwap seeding slippage percentage. Defaults to the connector's configured slippagePct.",
     ),
   }),
 ]);

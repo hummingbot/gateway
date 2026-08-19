@@ -320,7 +320,7 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
       );
     });
 
-    test('returns successful swap execution with fee parameters', async () => {
+    test('returns successful swap execution with slippage and BUY-approximation parameters', async () => {
       // Mock response with status-based format
       const executeResponse = {
         signature: '3YHqPTNGFvRjLb6HkBQq8qwsRZ8XNjEjvuehVeNDdz3TxxKnvYBfgMsYCQKNHMpDYzKcUfKdCwzBvkPvDz5aLfYd',
@@ -330,7 +330,7 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
           tokenOut: QUOTE_TOKEN,
           amountIn: 1.0,
           amountOut: 16.391234,
-          fee: 0.002, // Higher fee due to priority
+          fee: 0.000005,
           baseTokenBalanceChange: -1.0,
           quoteTokenBalanceChange: 16.391234,
         },
@@ -342,7 +342,8 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
         data: executeResponse,
       });
 
-      // Make the request with fee parameters
+      // The request surface is slippagePct + approximateIfNoExactOut only —
+      // priority fees and routing policy live in connector/network config.
       const response = await axios.post(`http://localhost:15888/connectors/${CONNECTOR}/execute-swap`, {
         network: NETWORK,
         baseToken: BASE_TOKEN,
@@ -350,22 +351,29 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
         side: 'SELL',
         amount: 1.0,
         walletAddress: TEST_WALLET,
-        priorityLevel: 'veryHigh',
-        maxLamports: 1000000,
+        slippagePct: 0.5,
+        approximateIfNoExactOut: false,
       });
 
       // Validate the response
       expect(response.status).toBe(200);
       expect(validateSwapExecution(response.data)).toBe(true);
       expect(response.data.status).toBe(1); // CONFIRMED
-      expect(response.data.data.fee).toBe(0.002); // Higher fee
+      expect(response.data.data.fee).toBe(0.000005);
 
-      // Verify axios was called with fee parameters
+      // Verify axios was called with the supported parameters
       expect(axios.post).toHaveBeenCalledWith(
         `http://localhost:15888/connectors/${CONNECTOR}/execute-swap`,
         expect.objectContaining({
-          priorityLevel: 'veryHigh',
-          maxLamports: 1000000,
+          slippagePct: 0.5,
+          approximateIfNoExactOut: false,
+        }),
+      );
+      expect(axios.post).toHaveBeenCalledWith(
+        `http://localhost:15888/connectors/${CONNECTOR}/execute-swap`,
+        expect.not.objectContaining({
+          priorityLevel: expect.anything(),
+          maxLamports: expect.anything(),
         }),
       );
     });

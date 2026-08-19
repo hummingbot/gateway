@@ -24,6 +24,24 @@ export const chainNetworkField = () =>
   });
 
 /**
+ * Optional slippage override shared by the unified trading routes. Deliberately
+ * has NO schema default: Fastify injects schema defaults before the handler
+ * runs, so a default here would shadow the connector-level defaults. When
+ * omitted, each connector applies its own configured slippagePct (falling back
+ * to 1 where the config has none).
+ */
+export const slippagePctField = (description?: string) =>
+  Type.Optional(
+    Type.Number({
+      minimum: 0,
+      maximum: 100,
+      description:
+        description ?? "Maximum acceptable slippage percentage. Defaults to the connector's configured slippagePct.",
+      examples: [1],
+    }),
+  );
+
+/**
  * Standard catch handler for the unified trading routes: errors that already
  * carry an HTTP status code (connector badRequest/notFound, chain errors) pass
  * through untouched; anything else becomes a 500 that keeps the underlying

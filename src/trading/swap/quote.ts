@@ -28,7 +28,7 @@ import { ChainQuoteSwapResponseSchema } from '../../schemas/chain-schema';
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
 import { PoolService } from '../../services/pool-service';
-import { chainNetworkField, parseChainNetwork, rethrowRouteError } from '../common';
+import { chainNetworkField, parseChainNetwork, rethrowRouteError, slippagePctField } from '../common';
 
 /**
  * Unified swap quote request schema
@@ -60,12 +60,7 @@ const UnifiedQuoteSwapRequestSchema = Type.Object({
     enum: ['BUY', 'SELL'],
     default: 'SELL',
   }),
-  slippagePct: Type.Optional(
-    Type.Number({
-      description: 'Slippage tolerance percentage (optional)',
-      default: 1,
-    }),
-  ),
+  slippagePct: slippagePctField(),
   approximateIfNoExactOut: Type.Optional(
     Type.Boolean({
       description:

@@ -343,7 +343,7 @@ export const OrcaClmmRemoveLiquidityRequest = Type.Object({
     description: 'Position NFT address',
     examples: ['<sample-position-address>'],
   }),
-  liquidityPct: Type.Optional(
+  percentageToRemove: Type.Optional(
     Type.Number({
       minimum: 0,
       maximum: 100,
@@ -357,7 +357,7 @@ export const OrcaClmmRemoveLiquidityRequest = Type.Object({
       minimum: 0,
       maximum: 100,
       description: 'Maximum acceptable slippage percentage',
-      default: 1,
+      default: OrcaConfig.config.slippagePct ?? 1,
       examples: [1],
     }),
   ),

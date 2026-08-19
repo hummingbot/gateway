@@ -27,6 +27,7 @@ import { OpenPositionResponse, OpenPositionResponseType } from '../../../schemas
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
+import { OrcaConfig } from '../orca.config';
 import { getCurrentTransferFee } from '../orca.position';
 import { buildOrcaTransaction, createOrcaAuthority, replaceOrcaInstructionAccounts } from '../orca.sdk';
 import { extractInnerTransferAmounts } from '../orca.utils';
@@ -61,7 +62,7 @@ export async function openPosition(
     throw httpErrors.badRequest('Calculated tick indices are invalid (lower >= upper)');
   }
 
-  const slippageBps = Math.round((slippagePct || 1) * 100);
+  const slippageBps = Math.round((slippagePct ?? OrcaConfig.config.slippagePct ?? 1) * 100);
   const baseAmount = BigInt(Math.floor((baseTokenAmount || 0) * 10 ** mintA.data.decimals));
   const quoteAmount = BigInt(Math.floor((quoteTokenAmount || 0) * 10 ** mintB.data.decimals));
   const shouldAddLiquidity = baseAmount > 0n || quoteAmount > 0n;

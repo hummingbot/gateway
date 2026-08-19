@@ -10,7 +10,14 @@ import { quotePosition as uniswapQuotePosition } from '../../connectors/uniswap/
 import { QuotePositionResponseType, QuotePositionResponse } from '../../schemas/clmm-schema';
 import { httpErrors } from '../../services/error-handler';
 import { logger } from '../../services/logger';
-import { chainNetworkField, CLMM_CONNECTORS, connectorField, parseChainNetwork, rethrowRouteError } from '../common';
+import {
+  chainNetworkField,
+  CLMM_CONNECTORS,
+  connectorField,
+  parseChainNetwork,
+  rethrowRouteError,
+  slippagePctField,
+} from '../common';
 
 // Constants for examples (using Meteora CLMM values)
 const BASE_TOKEN_AMOUNT = 0.01;
@@ -49,15 +56,7 @@ const UnifiedQuotePositionRequestSchema = Type.Object({
       examples: [QUOTE_TOKEN_AMOUNT],
     }),
   ),
-  slippagePct: Type.Optional(
-    Type.Number({
-      minimum: 0,
-      maximum: 100,
-      description: 'Maximum acceptable slippage percentage',
-      default: 1,
-      examples: [1],
-    }),
-  ),
+  slippagePct: slippagePctField(),
 });
 
 type UnifiedQuotePositionRequest = Static<typeof UnifiedQuotePositionRequestSchema>;

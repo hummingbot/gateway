@@ -7,7 +7,14 @@ import { quoteSwap as raydiumQuoteSwap } from '../../connectors/raydium/amm-rout
 import { quoteSwap as uniswapQuoteSwap } from '../../connectors/uniswap/amm-routes/quoteSwap';
 import { QuoteSwapResponse, QuoteSwapResponseType } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { AMM_CONNECTORS, chainNetworkField, connectorField, parseChainNetwork, rethrowRouteError } from '../common';
+import {
+  AMM_CONNECTORS,
+  chainNetworkField,
+  connectorField,
+  parseChainNetwork,
+  rethrowRouteError,
+  slippagePctField,
+} from '../common';
 
 const UnifiedAmmQuoteSwapRequest = Type.Object({
   connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
@@ -16,15 +23,7 @@ const UnifiedAmmQuoteSwapRequest = Type.Object({
   baseToken: Type.String({ description: 'Base token symbol or address (determines swap direction)' }),
   amount: Type.Number({ description: 'Amount denominated in the base token' }),
   side: Type.String({ description: 'Trade direction', enum: ['BUY', 'SELL'] }),
-  slippagePct: Type.Optional(
-    Type.Number({
-      minimum: 0,
-      maximum: 100,
-      description: 'Maximum acceptable slippage percentage',
-      default: 1,
-      examples: [1],
-    }),
-  ),
+  slippagePct: slippagePctField(),
 });
 
 export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
