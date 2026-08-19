@@ -143,21 +143,27 @@ describe('GET /positions-owned', () => {
     expect(response.statusCode).toBe(400);
   });
 
-  // The unified route defaults walletAddress to the chain's configured wallet
-  // (the convention the other unified trading routes use), so an omitted wallet
-  // is filled rather than rejected. A malformed one still fails.
-  it('rejects a malformed walletAddress', async () => {
+  // The refactor gave walletAddress a schema default, so an omitted wallet is filled
+  // from the chain config rather than rejected. Only a malformed one still fails
+  // (above). Asserted here rather than in the raydium/pancakeswap-sol copies of this
+  // file because only this one mocks the Solana config, so only here is the filled
+  // value something the test knows.
+  it('fills an omitted wallet from the chain config instead of rejecting', async () => {
+    const getAllPositionsForWallet = jest.fn().mockResolvedValue(mockPositions);
+    (Meteora.getInstance as jest.Mock).mockResolvedValue({ getAllPositionsForWallet });
+
     const response = await app.inject({
       method: 'GET',
       url: '/positions-owned',
       query: {
         chainNetwork: 'solana-mainnet-beta',
         connector: 'meteora',
-        walletAddress: 'invalid-address',
       },
     });
 
-    expect([400, 500]).toContain(response.statusCode);
+    expect(response.statusCode).toBe(200);
+    // The connector hands the SDK a PublicKey, not the raw string it was given.
+    expect(getAllPositionsForWallet.mock.calls[0][0].toBase58()).toBe(mockWalletAddress);
   });
 
   it('should use default network if not provided', async () => {

@@ -163,23 +163,6 @@ describe('GET /positions-owned', () => {
     expect(response.statusCode).toBe(400);
   });
 
-  // The unified route defaults walletAddress to the chain's configured wallet
-  // (the convention the other unified trading routes use), so an omitted wallet
-  // is filled rather than rejected. A malformed one still fails.
-  it('rejects a malformed walletAddress', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/positions-owned',
-      query: {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'raydium',
-        walletAddress: 'invalid-address',
-      },
-    });
-
-    expect([400, 500]).toContain(response.statusCode);
-  });
-
   it('should query multiple program IDs', async () => {
     const mockRaydiumSDKMulti = {
       clmm: {
