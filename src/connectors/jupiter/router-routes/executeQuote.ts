@@ -12,8 +12,6 @@ export async function executeQuote(
   walletAddress: string,
   network: string,
   quoteId: string,
-  priorityLevel?: string,
-  maxLamports?: number,
 ): Promise<SwapExecuteResponseType> {
   // Retrieve cached quote
   const quote = quoteCache.get(quoteId);
@@ -38,12 +36,7 @@ export async function executeQuote(
   logger.info(
     `Executing quote ${quoteId} for ${inputToken.symbol} -> ${outputToken.symbol}, slippageBps=${quote.slippageBps}`,
   );
-  const transaction = await jupiter.buildSwapTransactionForHardwareWallet(
-    walletAddress,
-    quote,
-    maxLamports,
-    priorityLevel,
-  );
+  const transaction = await jupiter.buildSwapTransactionForHardwareWallet(walletAddress, quote);
 
   const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
   const txData = await solana.connection.getTransaction(signature, {
@@ -88,10 +81,9 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { walletAddress, network, quoteId, priorityLevel, maxLamports } =
-          request.body as typeof JupiterExecuteQuoteRequest._type;
+        const { walletAddress, network, quoteId } = request.body as typeof JupiterExecuteQuoteRequest._type;
 
-        return await executeQuote(walletAddress, network, quoteId, priorityLevel, maxLamports);
+        return await executeQuote(walletAddress, network, quoteId);
       } catch (e) {
         if (e.statusCode) throw e;
         logger.error('Error executing quote:', e);

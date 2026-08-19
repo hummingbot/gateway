@@ -69,6 +69,13 @@ const UnifiedQuoteSwapRequestSchema = Type.Object({
       default: 1,
     }),
   ),
+  approximateIfNoExactOut: Type.Optional(
+    Type.Boolean({
+      description:
+        'For BUY orders when the router has no ExactOut route: approximate via a sell-leg ExactIn quote instead of failing. Solana routers only.',
+      default: true,
+    }),
+  ),
 });
 
 type UnifiedQuoteSwapRequest = Static<typeof UnifiedQuoteSwapRequestSchema>;
@@ -108,6 +115,7 @@ async function getSolanaQuoteSwap(
   side: 'BUY' | 'SELL',
   slippagePct?: number,
   connector?: string,
+  approximateIfNoExactOut?: boolean,
 ): Promise<any> {
   try {
     const networkConfig = getSolanaNetworkConfig(network);
@@ -147,15 +155,38 @@ async function getSolanaQuoteSwap(
         amount,
         side,
         slippagePct,
-        undefined, // onlyDirectRoutes
-        undefined, // restrictIntermediateTokens
+        approximateIfNoExactOut,
       );
     } else if (providerKey === 'dflow/router') {
-      return await dflowRouterQuoteSwap(network, baseToken, quoteToken, amount, side, slippagePct);
+      return await dflowRouterQuoteSwap(
+        network,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct,
+        approximateIfNoExactOut,
+      );
     } else if (providerKey === 'okx/router') {
-      return await okxRouterQuoteSwap(network, baseToken, quoteToken, amount, side, slippagePct);
+      return await okxRouterQuoteSwap(
+        network,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct,
+        approximateIfNoExactOut,
+      );
     } else if (providerKey === 'titan/router') {
-      return await titanRouterQuoteSwap(network, baseToken, quoteToken, amount, side, slippagePct);
+      return await titanRouterQuoteSwap(
+        network,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct,
+        approximateIfNoExactOut,
+      );
     } else if (providerKey === 'raydium/amm') {
       return await raydiumAmmQuoteSwap(network, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'raydium/clmm') {
@@ -257,6 +288,7 @@ export async function getUnifiedQuoteSwap(
   side: 'BUY' | 'SELL',
   slippagePct?: number,
   connector?: string,
+  approximateIfNoExactOut?: boolean,
 ): Promise<any> {
   const { chain, network } = parseChainNetwork(chainNetwork);
 
@@ -269,7 +301,16 @@ export async function getUnifiedQuoteSwap(
       return getEthereumQuoteSwap(network, baseToken, quoteToken, amount, side, slippagePct, connector);
 
     case 'solana':
-      return getSolanaQuoteSwap(network, baseToken, quoteToken, amount, side, slippagePct, connector);
+      return getSolanaQuoteSwap(
+        network,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct,
+        connector,
+        approximateIfNoExactOut,
+      );
 
     default:
       throw httpErrors.badRequest(`Unsupported chain: ${chain}`);
@@ -294,7 +335,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request, reply) => {
-      const { chainNetwork, baseToken, quoteToken, amount, side, slippagePct, connector } =
+      const { chainNetwork, baseToken, quoteToken, amount, side, slippagePct, approximateIfNoExactOut, connector } =
         request.query as UnifiedQuoteSwapRequest;
 
       try {
@@ -306,6 +347,7 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           side as 'BUY' | 'SELL',
           slippagePct,
           connector,
+          approximateIfNoExactOut,
         );
         return reply.code(200).send(result);
       } catch (error: any) {

@@ -121,24 +121,27 @@ describe('Jupiter Schema Tests', () => {
   });
 
   describe('Jupiter-specific Fields', () => {
-    it('JupiterQuoteSwapRequest should include Jupiter-specific fields', () => {
+    // Routing policy (restrictIntermediateTokens/onlyDirectRoutes) and priority fees
+    // (priorityLevel/maxLamports) are connector-config settings, not request params.
+    // The one request-level knob shared by every Solana router is approximateIfNoExactOut.
+    it('JupiterQuoteSwapRequest exposes only the standard router params', () => {
       const props = Object.keys(Jupiter.JupiterQuoteSwapRequest.properties);
-      expect(props).toContain('restrictIntermediateTokens');
-      expect(props).toContain('onlyDirectRoutes');
+      expect(props).toContain('approximateIfNoExactOut');
+      expect(props).not.toContain('restrictIntermediateTokens');
+      expect(props).not.toContain('onlyDirectRoutes');
     });
 
-    it('JupiterExecuteQuoteRequest should include Jupiter-specific fields', () => {
+    it('JupiterExecuteQuoteRequest exposes no priority-fee params', () => {
       const props = Object.keys(Jupiter.JupiterExecuteQuoteRequest.properties);
-      expect(props).toContain('priorityLevel');
-      expect(props).toContain('maxLamports');
+      expect(props).not.toContain('priorityLevel');
+      expect(props).not.toContain('maxLamports');
     });
 
-    it('JupiterExecuteSwapRequest should include Jupiter-specific fields', () => {
+    it('JupiterExecuteSwapRequest exposes only the standard router params', () => {
       const props = Object.keys(Jupiter.JupiterExecuteSwapRequest.properties);
-      expect(props).toContain('restrictIntermediateTokens');
-      expect(props).toContain('onlyDirectRoutes');
-      expect(props).toContain('priorityLevel');
-      expect(props).toContain('maxLamports');
+      expect(props).toContain('approximateIfNoExactOut');
+      expect(props).not.toContain('restrictIntermediateTokens');
+      expect(props).not.toContain('priorityLevel');
     });
 
     it('JupiterQuoteSwapResponse should include Jupiter-specific fields', () => {

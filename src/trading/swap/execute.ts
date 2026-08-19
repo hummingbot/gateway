@@ -83,6 +83,13 @@ const UnifiedExecuteSwapRequestSchema = Type.Object({
       default: 1,
     }),
   ),
+  approximateIfNoExactOut: Type.Optional(
+    Type.Boolean({
+      description:
+        'For BUY orders when the router has no ExactOut route: approximate via a sell-leg ExactIn quote instead of failing. Solana routers only.',
+      default: true,
+    }),
+  ),
 });
 
 type UnifiedExecuteSwapRequest = Static<typeof UnifiedExecuteSwapRequestSchema>;
@@ -123,6 +130,7 @@ async function executeSolanaSwap(
   side: 'BUY' | 'SELL',
   slippagePct?: number,
   connector?: string,
+  approximateIfNoExactOut?: boolean,
 ): Promise<any> {
   try {
     const networkConfig = getSolanaNetworkConfig(network);
@@ -163,15 +171,41 @@ async function executeSolanaSwap(
         amount,
         side,
         slippagePct,
-        undefined, // priorityLevel
-        undefined, // maxLamports
+        approximateIfNoExactOut,
       );
     } else if (providerKey === 'dflow/router') {
-      return await dflowRouterExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
+      return await dflowRouterExecuteSwap(
+        walletAddress,
+        network,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct,
+        approximateIfNoExactOut,
+      );
     } else if (providerKey === 'okx/router') {
-      return await okxRouterExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
+      return await okxRouterExecuteSwap(
+        walletAddress,
+        network,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct,
+        approximateIfNoExactOut,
+      );
     } else if (providerKey === 'titan/router') {
-      return await titanRouterExecuteSwap(walletAddress, network, baseToken, quoteToken, amount, side, slippagePct);
+      return await titanRouterExecuteSwap(
+        walletAddress,
+        network,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct,
+        approximateIfNoExactOut,
+      );
     } else if (providerKey === 'raydium/amm') {
       return await raydiumAmmExecuteSwap(network, walletAddress, poolAddress!, baseToken, side, amount, slippagePct);
     } else if (providerKey === 'raydium/clmm') {
@@ -307,6 +341,7 @@ export async function executeUnifiedSwap(
   side: 'BUY' | 'SELL',
   slippagePct?: number,
   connector?: string,
+  approximateIfNoExactOut?: boolean,
 ): Promise<any> {
   const { chain, network } = parseChainNetwork(chainNetwork);
 
@@ -319,7 +354,17 @@ export async function executeUnifiedSwap(
       return executeEthereumSwap(network, walletAddress, baseToken, quoteToken, amount, side, slippagePct, connector);
 
     case 'solana':
-      return executeSolanaSwap(network, walletAddress, baseToken, quoteToken, amount, side, slippagePct, connector);
+      return executeSolanaSwap(
+        network,
+        walletAddress,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct,
+        connector,
+        approximateIfNoExactOut,
+      );
 
     default:
       throw httpErrors.badRequest(`Unsupported chain: ${chain}`);
@@ -344,8 +389,17 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request, reply) => {
-      const { chainNetwork, walletAddress, baseToken, quoteToken, amount, side, slippagePct, connector } =
-        request.body as UnifiedExecuteSwapRequest;
+      const {
+        chainNetwork,
+        walletAddress,
+        baseToken,
+        quoteToken,
+        amount,
+        side,
+        slippagePct,
+        approximateIfNoExactOut,
+        connector,
+      } = request.body as UnifiedExecuteSwapRequest;
 
       try {
         const result = await executeUnifiedSwap(
@@ -357,6 +411,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           side as 'BUY' | 'SELL',
           slippagePct,
           connector,
+          approximateIfNoExactOut,
         );
         return reply.code(200).send(result);
       } catch (error: any) {

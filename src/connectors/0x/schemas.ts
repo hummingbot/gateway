@@ -145,17 +145,6 @@ export const ZeroXExecuteQuoteRequest = Type.Object({
     description: 'ID of the quote to execute',
     examples: ['123e4567-e89b-12d3-a456-426614174000'],
   }),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [1000000],
-    }),
-  ),
 });
 
 // 0x-specific execute-swap request (superset of base ExecuteSwapRequest)
@@ -198,17 +187,6 @@ export const ZeroXExecuteSwapRequest = Type.Object({
       maximum: 100,
       description: 'Maximum acceptable slippage percentage',
       examples: [1],
-    }),
-  ),
-  gasPrice: Type.Optional(
-    Type.String({
-      description: 'Gas price in wei for the transaction',
-    }),
-  ),
-  maxGas: Type.Optional(
-    Type.Number({
-      description: 'Maximum gas limit for the transaction',
-      examples: [300000],
     }),
   ),
 });

@@ -47,22 +47,10 @@ export const JupiterQuoteSwapRequest = Type.Object({
       default: JupiterConfig.config.slippagePct,
     }),
   ),
-  restrictIntermediateTokens: Type.Optional(
-    Type.Boolean({
-      description: 'Restrict routing through highly liquid intermediate tokens only for better price and stability',
-      default: JupiterConfig.config.restrictIntermediateTokens,
-    }),
-  ),
-  onlyDirectRoutes: Type.Optional(
-    Type.Boolean({
-      description: 'Restrict routing to only go through 1 market',
-      default: JupiterConfig.config.onlyDirectRoutes,
-    }),
-  ),
   approximateIfNoExactOut: Type.Optional(
     Type.Boolean({
       description:
-        'For BUY orders when the pair has no ExactOut route: approximate via a sell-leg ExactIn quote instead of failing',
+        'For BUY orders when the router has no ExactOut route: approximate via a sell-leg ExactIn quote instead of failing',
       default: true,
     }),
   ),
@@ -167,19 +155,6 @@ export const JupiterExecuteQuoteRequest = Type.Object({
     description: 'ID of the Jupiter quote to execute',
     examples: ['123e4567-e89b-12d3-a456-426614174000'],
   }),
-  priorityLevel: Type.Optional(
-    Type.String({
-      description: 'Priority level for Solana transaction processing',
-      enum: ['medium', 'high', 'veryHigh'],
-      default: JupiterConfig.config.priorityLevel,
-    }),
-  ),
-  maxLamports: Type.Optional(
-    Type.Number({
-      description: 'Maximum priority fee in lamports for Solana transaction',
-      default: [JupiterConfig.config.maxLamports],
-    }),
-  ),
 });
 
 // Jupiter-specific execute-swap request (superset of base ExecuteSwapRequest)
@@ -223,36 +198,11 @@ export const JupiterExecuteSwapRequest = Type.Object({
       default: JupiterConfig.config.slippagePct,
     }),
   ),
-  restrictIntermediateTokens: Type.Optional(
-    Type.Boolean({
-      description: 'Restrict routing through highly liquid intermediate tokens only for better price and stability',
-      default: JupiterConfig.config.restrictIntermediateTokens,
-    }),
-  ),
-  onlyDirectRoutes: Type.Optional(
-    Type.Boolean({
-      description: 'Restrict routing to only go through 1 market',
-      default: JupiterConfig.config.onlyDirectRoutes,
-    }),
-  ),
   approximateIfNoExactOut: Type.Optional(
     Type.Boolean({
       description:
-        'For BUY orders when the pair has no ExactOut route: approximate via a sell-leg ExactIn quote instead of failing',
+        'For BUY orders when the router has no ExactOut route: approximate via a sell-leg ExactIn quote instead of failing',
       default: true,
-    }),
-  ),
-  priorityLevel: Type.Optional(
-    Type.String({
-      description: 'Priority level for Solana transaction processing',
-      enum: ['medium', 'high', 'veryHigh'],
-      default: JupiterConfig.config.priorityLevel,
-    }),
-  ),
-  maxLamports: Type.Optional(
-    Type.Number({
-      description: 'Maximum priority fee in lamports for Solana transaction',
-      default: JupiterConfig.config.maxLamports,
     }),
   ),
 });

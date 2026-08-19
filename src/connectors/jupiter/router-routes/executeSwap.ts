@@ -17,8 +17,6 @@ async function executeSwap(
   amount: number,
   side: 'BUY' | 'SELL',
   slippagePct: number = JupiterConfig.config.slippagePct,
-  priorityLevel?: string,
-  maxLamports?: number,
   approximateIfNoExactOut: boolean = true,
 ): Promise<SwapExecuteResponseType> {
   // Step 1: Get a fresh quote using the quoteSwap function
@@ -29,19 +27,11 @@ async function executeSwap(
     amount,
     side,
     slippagePct,
-    undefined,
-    undefined,
     approximateIfNoExactOut,
   );
 
-  // Step 2: Execute the quote immediately using executeQuote function
-  const executeResult = await executeQuote(
-    walletAddress,
-    network,
-    quoteResult.quoteId,
-    priorityLevel ?? JupiterConfig.config.priorityLevel,
-    maxLamports ?? JupiterConfig.config.maxLamports,
-  );
+  // Step 2: Execute the quote immediately (priority fees come from the connector config)
+  const executeResult = await executeQuote(walletAddress, network, quoteResult.quoteId);
 
   return executeResult;
 }
@@ -64,18 +54,8 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          walletAddress,
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          slippagePct,
-          priorityLevel,
-          maxLamports,
-          approximateIfNoExactOut,
-        } = request.body as typeof JupiterExecuteSwapRequest._type;
+        const { walletAddress, network, baseToken, quoteToken, amount, side, slippagePct, approximateIfNoExactOut } =
+          request.body as typeof JupiterExecuteSwapRequest._type;
 
         return await executeSwap(
           walletAddress,
@@ -85,8 +65,6 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
           amount,
           side as 'BUY' | 'SELL',
           slippagePct,
-          priorityLevel,
-          maxLamports,
           approximateIfNoExactOut,
         );
       } catch (e) {

@@ -50,7 +50,7 @@ export const OkxQuoteSwapRequest = Type.Object({
   approximateIfNoExactOut: Type.Optional(
     Type.Boolean({
       description:
-        'For BUY orders when OKX cannot serve an exactOut quote: approximate via a sell-leg exactIn quote instead of failing',
+        'For BUY orders when the router has no ExactOut route: approximate via a sell-leg ExactIn quote instead of failing',
       default: true,
     }),
   ),
@@ -161,7 +161,7 @@ export const OkxExecuteSwapRequest = Type.Object({
   approximateIfNoExactOut: Type.Optional(
     Type.Boolean({
       description:
-        'For BUY orders when OKX cannot serve an exactOut quote: approximate via a sell-leg exactIn quote instead of failing',
+        'For BUY orders when the router has no ExactOut route: approximate via a sell-leg ExactIn quote instead of failing',
       default: true,
     }),
   ),

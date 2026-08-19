@@ -50,7 +50,7 @@ export const DFlowQuoteSwapRequest = Type.Object({
   approximateIfNoExactOut: Type.Optional(
     Type.Boolean({
       description:
-        'For BUY orders: DFlow is ExactIn-only, so BUYs are approximated via a sell-leg ExactIn quote. If false, BUY requests fail with a clear error.',
+        'For BUY orders when the router has no ExactOut route: approximate via a sell-leg ExactIn quote instead of failing',
       default: true,
     }),
   ),
@@ -161,7 +161,7 @@ export const DFlowExecuteSwapRequest = Type.Object({
   approximateIfNoExactOut: Type.Optional(
     Type.Boolean({
       description:
-        'For BUY orders: DFlow is ExactIn-only, so BUYs are approximated via a sell-leg ExactIn quote. If false, BUY requests fail with a clear error.',
+        'For BUY orders when the router has no ExactOut route: approximate via a sell-leg ExactIn quote instead of failing',
       default: true,
     }),
   ),

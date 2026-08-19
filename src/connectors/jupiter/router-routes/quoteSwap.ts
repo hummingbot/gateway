@@ -20,8 +20,6 @@ export async function quoteSwap(
   amount: number,
   side: 'BUY' | 'SELL',
   slippagePct: number = JupiterConfig.config.slippagePct,
-  onlyDirectRoutes?: boolean,
-  restrictIntermediateTokens?: boolean,
   approximateIfNoExactOut: boolean = true,
 ): Promise<Static<typeof JupiterQuoteSwapResponse>> {
   const solana = await Solana.getInstance(network);
@@ -43,9 +41,10 @@ export async function quoteSwap(
 
   logger.info(`Getting quote for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`);
 
-  const effectiveOnlyDirectRoutes = onlyDirectRoutes ?? JupiterConfig.config.onlyDirectRoutes;
-  const effectiveRestrictIntermediateTokens =
-    restrictIntermediateTokens ?? JupiterConfig.config.restrictIntermediateTokens;
+  // Routing policy comes from the connector config (conf/connectors/jupiter.yml),
+  // not per-request parameters.
+  const effectiveOnlyDirectRoutes = JupiterConfig.config.onlyDirectRoutes;
+  const effectiveRestrictIntermediateTokens = JupiterConfig.config.restrictIntermediateTokens;
 
   let quoteResponse;
   let approximation = false;
@@ -105,8 +104,7 @@ export async function quoteSwap(
     } else {
       // Pass through Jupiter's error with context
       const tokenPair = `${sanitizeString(baseToken)} -> ${sanitizeString(quoteToken)}`;
-      const swapMode = side === 'BUY' ? 'ExactOut' : 'ExactIn';
-      throw httpErrors.noRouteFound(`No route found for ${tokenPair} (${swapMode}). ${errorMessage}`);
+      throw httpErrors.noRouteFound(`No route found for ${tokenPair} (ExactIn). ${errorMessage}`);
     }
   }
 
@@ -188,17 +186,8 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const {
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          slippagePct,
-          onlyDirectRoutes,
-          restrictIntermediateTokens,
-          approximateIfNoExactOut,
-        } = request.query as typeof JupiterQuoteSwapRequest._type;
+        const { network, baseToken, quoteToken, amount, side, slippagePct, approximateIfNoExactOut } =
+          request.query as typeof JupiterQuoteSwapRequest._type;
 
         return await quoteSwap(
           network,
@@ -207,8 +196,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           amount,
           side as 'BUY' | 'SELL',
           slippagePct,
-          onlyDirectRoutes,
-          restrictIntermediateTokens,
           approximateIfNoExactOut,
         );
       } catch (e) {

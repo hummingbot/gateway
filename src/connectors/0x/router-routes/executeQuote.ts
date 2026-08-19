@@ -9,13 +9,7 @@ import { quoteCache } from '../../../services/quote-cache';
 import { ZeroX } from '../0x';
 import { ZeroXExecuteQuoteRequest } from '../schemas';
 
-async function executeQuote(
-  walletAddress: string,
-  network: string,
-  quoteId: string,
-  gasPrice?: string,
-  maxGas?: number,
-): Promise<SwapExecuteResponseType> {
+async function executeQuote(walletAddress: string, network: string, quoteId: string): Promise<SwapExecuteResponseType> {
   // Retrieve cached quote from global cache
   const quote = quoteCache.get(quoteId);
   if (!quote) {
@@ -56,8 +50,7 @@ async function executeQuote(
     to: quote.to,
     data: quote.data,
     value: quote.value,
-    gasLimit: maxGas || parseInt(quote.estimatedGas || quote.gas),
-    ...(gasPrice && { gasPrice: BigNumber.from(gasPrice) }),
+    gasLimit: parseInt(quote.estimatedGas || quote.gas),
   };
 
   const txResponse = await wallet.sendTransaction(txData);
@@ -125,10 +118,9 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { walletAddress, network, quoteId, gasPrice, maxGas } =
-          request.body as typeof ZeroXExecuteQuoteRequest._type;
+        const { walletAddress, network, quoteId } = request.body as typeof ZeroXExecuteQuoteRequest._type;
 
-        return await executeQuote(walletAddress, network, quoteId, gasPrice, maxGas);
+        return await executeQuote(walletAddress, network, quoteId);
       } catch (e) {
         if (e.statusCode) throw e;
         logger.error('Error executing 0x quote:', e);
