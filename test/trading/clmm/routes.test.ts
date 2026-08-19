@@ -113,7 +113,7 @@ describe('Unified Trading CLMM Routes', () => {
           method: 'POST',
           url: '/trading/clmm/open',
           payload: {
-            network: 'mainnet',
+            chainNetwork: 'ethereum-mainnet',
             walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
             lowerPrice: 1800,
             upperPrice: 2200,
@@ -146,7 +146,7 @@ describe('Unified Trading CLMM Routes', () => {
           url: '/trading/clmm/open',
           payload: {
             connector: 'uniswap',
-            network: 'mainnet',
+            chainNetwork: 'ethereum-mainnet',
             lowerPrice: 1800,
             upperPrice: 2200,
             poolAddress: '0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8',
@@ -178,7 +178,7 @@ describe('Unified Trading CLMM Routes', () => {
           url: '/trading/clmm/remove',
           payload: {
             connector: 'uniswap',
-            network: 'mainnet',
+            chainNetwork: 'ethereum-mainnet',
             walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
             percentageToRemove: 50,
           },
@@ -265,7 +265,7 @@ describe('Unified Trading CLMM Routes', () => {
         url: '/trading/clmm/open',
         payload: {
           connector: 'uniswap',
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
           walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
           lowerPrice: 1800,
           upperPrice: 2200,
@@ -301,7 +301,7 @@ describe('Unified Trading CLMM Routes', () => {
         url: '/trading/clmm/remove',
         payload: {
           connector: 'raydium',
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
           walletAddress: 'BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF',
           positionAddress: 'position123',
           percentageToRemove: 50,
@@ -317,7 +317,7 @@ describe('Unified Trading CLMM Routes', () => {
         url: '/trading/clmm/collect-fees',
         payload: {
           connector: 'meteora',
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
           walletAddress: 'BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF',
           positionAddress: 'position456',
         },
@@ -337,7 +337,7 @@ describe('Unified Trading CLMM Routes', () => {
         url: '/trading/clmm/close',
         payload: {
           connector: 'pancakeswap-sol',
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
           walletAddress: 'BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF',
           positionAddress: 'position789',
         },
@@ -352,7 +352,7 @@ describe('Unified Trading CLMM Routes', () => {
         url: '/trading/clmm/open',
         payload: {
           connector: 'invalid-connector',
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
           walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
           lowerPrice: 1800,
           upperPrice: 2200,
