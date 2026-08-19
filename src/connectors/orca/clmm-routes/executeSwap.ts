@@ -118,6 +118,7 @@ export async function executeSwap(
       fee,
       baseTokenBalanceChange,
       quoteTokenBalanceChange,
+      slippagePct,
     },
   };
 }

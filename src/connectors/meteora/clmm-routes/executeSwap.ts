@@ -91,11 +91,10 @@ export async function executeSwap(
 
   logger.info(`Transaction sent with signature: ${signature}`);
 
-  // Get transaction data for confirmation
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Get transaction data for confirmation. The retrying fetch throws the shared
+  // landed-but-failed error when the transaction landed with an error, so existence of
+  // txData below really means "confirmed".
+  const txData = await solana.getConfirmedTransactionData(signature);
 
   const confirmed = txData !== null;
 
@@ -135,6 +134,7 @@ export async function executeSwap(
         fee: txFee,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
+        slippagePct,
       },
     };
   } else {

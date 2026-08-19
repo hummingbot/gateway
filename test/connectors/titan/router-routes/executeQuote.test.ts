@@ -69,6 +69,7 @@ describe('POST /execute-quote (titan)', () => {
     const mockSolanaInstance = {
       sendAndConfirmTransactionForWallet,
       connection: mockConnection,
+      getConfirmedTransactionData: jest.fn(async () => ({ meta: {} })),
       handleConfirmation: jest.fn(async () => confirmedResult),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);

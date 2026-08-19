@@ -122,6 +122,7 @@ const buildSolanaMock = (overrides: any = {}) => ({
   connection: {
     getTransaction: jest.fn().mockResolvedValue({ meta: { fee: 5000 } }),
   },
+  getConfirmedTransactionData: jest.fn().mockResolvedValue({ meta: { fee: 5000 } }),
   extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
     balanceChanges: [-0.999, -149.85],
   }),

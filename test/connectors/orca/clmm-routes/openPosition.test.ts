@@ -60,6 +60,7 @@ describe('openPosition', () => {
     (Solana.getInstance as jest.Mock).mockResolvedValue({
       sendAndConfirmTransactionForWallet: sendForWallet,
       connection: { getTransaction: jest.fn().mockResolvedValue(null) },
+      getConfirmedTransactionData: jest.fn().mockResolvedValue(null),
     });
     (Orca.getInstance as jest.Mock).mockResolvedValue({
       solanaKitRpc: { getEpochInfo: jest.fn(() => ({ send: jest.fn().mockResolvedValue({ epoch: 1n }) })) },

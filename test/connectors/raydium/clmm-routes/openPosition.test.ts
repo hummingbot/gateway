@@ -109,6 +109,7 @@ const buildSolanaMock = (overrides: Record<string, any> = {}) => ({
   connection: {
     getTransaction: jest.fn().mockResolvedValue(mockTxData),
   },
+  getConfirmedTransactionData: jest.fn().mockResolvedValue(mockTxData),
   extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
     balanceChanges: [-0.002, -1, -150],
   }),
@@ -207,10 +208,7 @@ describe('POST /open-position', () => {
       mockWalletAddress,
       mockSigners,
     );
-    expect(mockSolanaInstance.connection.getTransaction).toHaveBeenCalledWith(
-      'mock-signature',
-      expect.objectContaining({ commitment: 'confirmed', maxSupportedTransactionVersion: 0 }),
-    );
+    expect(mockSolanaInstance.getConfirmedTransactionData).toHaveBeenCalledWith('mock-signature');
 
     // Verify the response
     expect(body).toHaveProperty('signature', 'mock-signature');

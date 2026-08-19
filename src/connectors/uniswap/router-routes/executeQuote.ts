@@ -22,7 +22,7 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
   }
 
   const { quote, request } = cached;
-  const { inputToken, outputToken, side, amount } = request;
+  const { inputToken, outputToken, side, amount, slippagePct } = request;
 
   const ethereum = await Ethereum.getInstance(network);
 
@@ -277,6 +277,7 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
     expectedAmountOut,
     side,
     txHash,
+    slippagePct,
   );
 
   // Handle different transaction states

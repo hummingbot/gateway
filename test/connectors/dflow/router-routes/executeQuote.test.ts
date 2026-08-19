@@ -53,6 +53,7 @@ describe('POST /execute-quote (dflow)', () => {
     const mockSolanaInstance = {
       sendAndConfirmTransactionForWallet,
       connection: { getTransaction: jest.fn(async () => ({ meta: {} })) },
+      getConfirmedTransactionData: jest.fn(async () => ({ meta: {} })),
       handleConfirmation: jest.fn(async () => confirmedResult),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);

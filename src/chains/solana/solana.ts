@@ -1447,28 +1447,54 @@ export class Solana {
   }
 
   /**
-   * If a broadcast transaction landed on-chain but failed, throw the parsed program error;
-   * return silently when the transaction is missing or succeeded so the caller can apply
-   * its own confirmation handling. The confirmation helpers report a landed-and-failed
-   * transaction as unconfirmed, which callers would otherwise misreport as a timeout.
+   * If a broadcast transaction landed on-chain but failed, throw the parsed program error
+   * (400 TRANSACTION_FAILED — fees were paid, this is terminal, not retryable); return
+   * silently when the transaction is missing or succeeded so the caller can apply its own
+   * confirmation handling. The confirmation helpers report a landed-and-failed transaction
+   * as unconfirmed, which callers would otherwise misreport as a timeout or as PENDING.
+   *
+   * Pass `txData` when it is already at hand to skip the re-fetch; when the caller only
+   * has a null/absent txData the transaction is looked up once more, because the send
+   * helpers can report a landed-and-failed transaction with no data attached.
    */
-  private async throwIfLandedWithError(signature: string): Promise<void> {
+  public async throwIfLandedWithError(signature: string, txData?: any): Promise<void> {
     if (!signature) return;
-    let txData: any = null;
-    try {
-      txData = await this.connection.getTransaction(signature, {
-        commitment: 'confirmed',
-        maxSupportedTransactionVersion: 0,
-      });
-    } catch {
-      return;
+    if (!txData) {
+      try {
+        txData = await this.connection.getTransaction(signature, {
+          commitment: 'confirmed',
+          maxSupportedTransactionVersion: 0,
+        });
+      } catch {
+        return;
+      }
     }
     if (!txData?.meta?.err) return;
-    const { simulationFailed } = await import('../../services/error-handler');
+    throw await this.buildLandedWithErrorException(signature, txData);
+  }
+
+  /** Build the shared landed-but-failed error from a transaction's on-chain data. */
+  private async buildLandedWithErrorException(signature: string, txData: any): Promise<HttpError> {
+    const { transactionFailed } = await import('../../services/error-handler');
     const { parseSolanaError } = await import('./solana-error-parser');
     const logs: string[] = txData.meta.logMessages ?? [];
     const parsed = parseSolanaError([JSON.stringify(txData.meta.err), ...logs].join('\n'));
-    throw simulationFailed(`Transaction ${signature} landed on-chain but failed: ${parsed.message}`);
+    return transactionFailed(`Transaction ${signature} landed on-chain but failed: ${parsed.message}`);
+  }
+
+  /**
+   * Route-level re-fetch of a just-sent transaction. Uses the retrying fetch (data can lag
+   * RPC visibility right after confirmation, so a single getTransaction call misreports a
+   * confirmed transaction as PENDING) and throws the shared landed-but-failed error when
+   * the transaction landed with an error. Returns null only when the transaction is
+   * genuinely not visible on-chain yet.
+   */
+  public async getConfirmedTransactionData(signature: string): Promise<any | null> {
+    const txData = await this._fetchTransactionWithRetry(signature);
+    if (txData?.meta?.err != null) {
+      throw await this.buildLandedWithErrorException(signature, txData);
+    }
+    return txData;
   }
 
   public async sendAndConfirmTransactionForWallet(
@@ -2251,24 +2277,28 @@ export class Solana {
 
   /**
    * Helper function to handle transaction confirmation results
-   * Returns appropriate response object based on confirmation status
+   * Returns appropriate response object based on the transaction's on-chain data
    * @param signature Transaction signature
-   * @param confirmed Whether transaction was confirmed
-   * @param txData Transaction data (if available)
+   * @param txData Transaction data from the route-level re-fetch (pass null when the
+   *   caller has none — the helper re-fetches with retry so a just-confirmed transaction
+   *   whose data lags RPC visibility is not misreported as PENDING)
    * @param tokenIn Input token address
    * @param tokenOut Output token address
    * @param walletAddress Wallet address for balance changes
    * @param side Trade side (optional, for AMM/CLMM swaps)
-   * @returns Response object with status and data
+   * @param slippagePct Slippage tolerance actually applied to the swap (echoed in data)
+   * @returns Response object with status and data; throws the shared landed-but-failed
+   *   error when the transaction landed on-chain with an error — existence of txData is
+   *   never treated as confirmation by itself
    */
   public async handleConfirmation(
     signature: string,
-    confirmed: boolean,
     txData: any,
     tokenIn: string,
     tokenOut: string,
     walletAddress: string,
     side?: 'BUY' | 'SELL',
+    slippagePct?: number,
   ): Promise<{
     signature: string;
     status: number;
@@ -2280,9 +2310,20 @@ export class Solana {
       fee: number;
       baseTokenBalanceChange: number;
       quoteTokenBalanceChange: number;
+      slippagePct?: number;
     };
   }> {
-    if (confirmed && txData) {
+    if (!txData) {
+      txData = await this._fetchTransactionWithRetry(signature);
+    }
+
+    // Defense: a landed-but-failed transaction must throw — never report it as
+    // confirmed (its data exists) or as pending.
+    if (txData?.meta?.err != null) {
+      throw await this.buildLandedWithErrorException(signature, txData);
+    }
+
+    if (txData) {
       // Transaction confirmed, extract balance changes
       const { balanceChanges, fee } = await this.extractBalanceChangesAndFee(signature, walletAddress, [
         tokenIn,
@@ -2321,25 +2362,7 @@ export class Solana {
           fee,
           baseTokenBalanceChange: baseTokenBalanceChange!,
           quoteTokenBalanceChange: quoteTokenBalanceChange!,
-        },
-      };
-    } else if (txData && !confirmed) {
-      // Transaction exists but not confirmed - extract fee from txData
-      const fee = this.getFee(txData);
-
-      logger.warn(`Transaction ${signature} not confirmed. May need higher priority fee.`);
-
-      return {
-        signature,
-        status: -1, // NOT_CONFIRMED
-        data: {
-          tokenIn,
-          tokenOut,
-          amountIn: 0,
-          amountOut: 0,
-          fee,
-          baseTokenBalanceChange: 0,
-          quoteTokenBalanceChange: 0,
+          slippagePct,
         },
       };
     } else {

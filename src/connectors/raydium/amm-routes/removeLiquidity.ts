@@ -189,10 +189,9 @@ export async function removeLiquidity(
   // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and
   // simulates internally).
   const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Retrying re-fetch; throws the shared landed-but-failed error if the transaction
+  // landed with an error, so txData existing below really means "confirmed".
+  const txData = await solana.getConfirmedTransactionData(signature);
   const confirmed = txData !== null;
 
   if (confirmed && txData) {

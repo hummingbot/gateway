@@ -121,6 +121,10 @@ describe('POST /execute-swap', () => {
           blockTime: Date.now() / 1000,
         }),
       },
+      getConfirmedTransactionData: jest.fn().mockResolvedValue({
+        meta: { fee: 5000 },
+        blockTime: Date.now() / 1000,
+      }),
       simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
       extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
         balanceChanges: [-0.1, 14.85],
@@ -168,6 +172,58 @@ describe('POST /execute-swap', () => {
     expect(body.data).toHaveProperty('quoteTokenBalanceChange', 14.85);
     expect(body.data).toHaveProperty('tokenIn', mockSOL.address);
     expect(body.data).toHaveProperty('tokenOut', mockUSDC.address);
+    // The applied slippage is echoed on the execute response.
+    expect(body.data).toHaveProperty('slippagePct', 1);
+  });
+
+  it('fails loudly (400 TRANSACTION_FAILED) when the transaction landed on-chain but failed', async () => {
+    const { transactionFailed } = jest.requireActual('../../../../src/services/error-handler');
+    const extractBalanceChangesAndFee = jest.fn();
+    const mockSolanaInstance = {
+      getWallet: jest.fn().mockResolvedValue(mockWallet),
+      getToken: jest.fn((t: string) => {
+        if (t === 'SOL' || t === mockSOL.address) return Promise.resolve(mockSOL);
+        if (t === 'USDC' || t === mockUSDC.address) return Promise.resolve(mockUSDC);
+        return Promise.resolve(null);
+      }),
+      sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({
+        signature: mockTransaction.signature,
+        fee: 0.000005,
+      }),
+      // The route-level re-fetch surfaces a landed-but-failed transaction as a throw —
+      // it must never be reported as CONFIRMED (data exists) or PENDING.
+      getConfirmedTransactionData: jest
+        .fn()
+        .mockRejectedValue(
+          transactionFailed(`Transaction ${mockTransaction.signature} landed on-chain but failed: custom error 0x1771`),
+        ),
+      extractBalanceChangesAndFee,
+    };
+    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
+
+    (Meteora.getInstance as jest.Mock).mockResolvedValue({
+      getDlmmPool: jest.fn().mockResolvedValue(mockDlmmPool),
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/execute-swap',
+      payload: {
+        network: 'mainnet-beta',
+        walletAddress: '11111111111111111111111111111111',
+        poolAddress: mockPoolAddress,
+        baseToken: 'SOL',
+        quoteToken: 'USDC',
+        amount: 0.1,
+        side: 'SELL',
+        slippagePct: 1,
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.body).message).toMatch(/landed on-chain but failed/);
+    // The route must not have tried to build a CONFIRMED response.
+    expect(extractBalanceChangesAndFee).not.toHaveBeenCalled();
   });
 
   it('should execute a CLMM swap for BUY side', async () => {
@@ -194,6 +250,10 @@ describe('POST /execute-swap', () => {
           blockTime: Date.now() / 1000,
         }),
       },
+      getConfirmedTransactionData: jest.fn().mockResolvedValue({
+        meta: { fee: 5000 },
+        blockTime: Date.now() / 1000,
+      }),
       simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
       extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
         balanceChanges: [-15, 0.1], // For BUY: first is USDC (negative), second is SOL (positive)

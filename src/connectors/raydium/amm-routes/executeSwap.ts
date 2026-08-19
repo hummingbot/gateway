@@ -156,20 +156,19 @@ export async function executeSwap(
   // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and
   // simulates internally).
   const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Re-fetch with retry; a landed-but-failed transaction throws instead of being
+  // misreported as confirmed or pending.
+  const txData = await solana.getConfirmedTransactionData(signature);
 
   // Handle confirmation status
   const result = await solana.handleConfirmation(
     signature,
-    txData !== null,
     txData,
     inputToken.address,
     outputToken.address,
     walletAddress,
     side,
+    effectiveSlippage,
   );
 
   if (result.status === 1) {

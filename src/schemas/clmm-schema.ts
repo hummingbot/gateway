@@ -492,6 +492,9 @@ export const ExecuteSwapResponse = Type.Object(
         fee: Type.Number(),
         baseTokenBalanceChange: Type.Number(),
         quoteTokenBalanceChange: Type.Number(),
+        slippagePct: Type.Optional(
+          Type.Number({ description: 'Slippage tolerance percentage actually applied to the swap' }),
+        ),
       }),
     ),
   },

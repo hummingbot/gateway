@@ -219,10 +219,9 @@ export async function openPosition(
   const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress, [
     positionMintKeypair,
   ]);
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Retrying re-fetch; throws the shared landed-but-failed error if the transaction
+  // landed with an error, so txData existing below really means "confirmed".
+  const txData = await solana.getConfirmedTransactionData(signature);
 
   let positionRent = 0;
   let baseTokenAmountAdded = liquidityQuote ? Number(liquidityQuote.tokenEstA) / 10 ** mintA.data.decimals : 0;

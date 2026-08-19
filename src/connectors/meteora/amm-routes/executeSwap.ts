@@ -61,19 +61,18 @@ export async function executeSwap(
         });
 
   const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Re-fetch with retry; a landed-but-failed transaction throws instead of being
+  // misreported as confirmed or pending.
+  const txData = await solana.getConfirmedTransactionData(signature);
 
   const result = await solana.handleConfirmation(
     signature,
-    txData !== null,
     txData,
     quote.inputMint.toBase58(),
     quote.outputMint.toBase58(),
     walletAddress,
     side,
+    slippagePct,
   );
 
   return result as ExecuteSwapResponseType;

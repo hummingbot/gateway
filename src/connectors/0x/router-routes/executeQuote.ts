@@ -75,6 +75,9 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
     quote.buyTokenAddress,
     expectedAmountIn,
     expectedAmountOut,
+    undefined,
+    undefined,
+    quoteCache.getRequest(quoteId)?.slippagePct,
   );
 
   // Handle different transaction states

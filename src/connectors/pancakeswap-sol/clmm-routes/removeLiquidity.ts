@@ -114,6 +114,10 @@ export async function removeLiquidity(
     };
   }
 
+  // A landed-but-failed transaction is terminal: fail loudly instead of returning
+  // PENDING (callers would poll forever). Genuinely-not-landed keeps the pending shape.
+  await solana.throwIfLandedWithError(signature, txData);
+
   return {
     signature,
     status: 0, // PENDING

@@ -5,6 +5,7 @@
 export const ErrorCode = {
   TRANSACTION_TIMEOUT: 'TRANSACTION_TIMEOUT', // Retryable - tx may have succeeded
   SIMULATION_FAILED: 'SIMULATION_FAILED', // Non-retryable - tx would fail on-chain
+  TRANSACTION_FAILED: 'TRANSACTION_FAILED', // Non-retryable - tx landed on-chain but failed (fees were paid)
   INSUFFICIENT_BALANCE: 'INSUFFICIENT_BALANCE', // Non-retryable - not enough funds
   INVALID_PARAMS: 'INVALID_PARAMS', // Non-retryable - bad request params
   SLIPPAGE_EXCEEDED: 'SLIPPAGE_EXCEEDED', // Non-retryable - price moved too much
@@ -88,6 +89,10 @@ export function simulationFailed(message: string): HttpError {
   return new HttpError(400, message, ErrorCode.SIMULATION_FAILED);
 }
 
+export function transactionFailed(message: string): HttpError {
+  return new HttpError(400, message, ErrorCode.TRANSACTION_FAILED);
+}
+
 export function insufficientBalance(message: string): HttpError {
   return new HttpError(400, message, ErrorCode.INSUFFICIENT_BALANCE);
 }
@@ -115,6 +120,7 @@ export const httpErrors = {
   forbidden,
   transactionTimeout,
   simulationFailed,
+  transactionFailed,
   insufficientBalance,
   slippageExceeded,
   noRouteFound,

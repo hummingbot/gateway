@@ -285,6 +285,7 @@ export async function executeClmmSwap(
         fee: gasFee,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
+        slippagePct,
       },
     };
   } catch (error) {

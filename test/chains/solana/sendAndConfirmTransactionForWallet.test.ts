@@ -212,6 +212,7 @@ describe('Solana.throwIfLandedWithError / confirmationTimeoutError', () => {
   const throwIfLandedWithError = (Solana.prototype as any).throwIfLandedWithError as (
     this: unknown,
     signature: string,
+    txData?: any,
   ) => Promise<void>;
   const confirmationTimeoutError = (Solana.prototype as any).confirmationTimeoutError as (
     this: unknown,
@@ -220,6 +221,7 @@ describe('Solana.throwIfLandedWithError / confirmationTimeoutError', () => {
 
   it('surfaces the on-chain program error when a tx lands but fails (not a timeout)', async () => {
     const fakeThis = {
+      buildLandedWithErrorException: (Solana.prototype as any).buildLandedWithErrorException,
       connection: {
         getTransaction: jest.fn(async () => ({
           meta: {
@@ -233,7 +235,35 @@ describe('Solana.throwIfLandedWithError / confirmationTimeoutError', () => {
       },
     };
 
-    await expect(throwIfLandedWithError.call(fakeThis, 'landed-sig')).rejects.toThrow(/landed on-chain but failed/);
+    const error = await throwIfLandedWithError.call(fakeThis, 'landed-sig').then(
+      () => {
+        throw new Error('expected throwIfLandedWithError to throw');
+      },
+      (e: any) => e,
+    );
+    // A landed-but-failed tx paid fees on-chain — it is TRANSACTION_FAILED (4xx,
+    // non-retryable), not a simulation failure, and the message keeps the signature.
+    expect(error.message).toMatch(/Transaction landed-sig landed on-chain but failed/);
+    expect(error.code).toBe('TRANSACTION_FAILED');
+    expect(error.statusCode).toBe(400);
+  });
+
+  it('uses caller-provided txData without a re-fetch and throws the shared landed-but-failed error', async () => {
+    const getTransaction = jest.fn();
+    const fakeThis = {
+      buildLandedWithErrorException: (Solana.prototype as any).buildLandedWithErrorException,
+      connection: { getTransaction },
+    };
+
+    const failedTxData = { meta: { err: { InstructionError: [0, 'Custom'] }, logMessages: [] } };
+    const error = await throwIfLandedWithError.call(fakeThis as any, 'route-sig', failedTxData).then(
+      () => {
+        throw new Error('expected throwIfLandedWithError to throw');
+      },
+      (e: any) => e,
+    );
+    expect(error.code).toBe('TRANSACTION_FAILED');
+    expect(getTransaction).not.toHaveBeenCalled();
   });
 
   it('returns silently when the transaction succeeded or is missing', async () => {

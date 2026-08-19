@@ -222,6 +222,11 @@ export const ChainExecuteSwapResponseSchema = Type.Object(
         quoteTokenBalanceChange: Type.Number({
           description: 'Change in quote token balance (negative for decrease)',
         }),
+        slippagePct: Type.Optional(
+          Type.Number({
+            description: 'Slippage tolerance percentage actually applied to the swap',
+          }),
+        ),
       }),
     ),
   },

@@ -22,7 +22,7 @@ export async function executeQuote(
   const solana = await Solana.getInstance(network);
   const dflow = await DFlow.getInstance(network);
 
-  const { inputToken, outputToken, quoteResponse } = cached;
+  const { inputToken, outputToken, quoteResponse, slippagePct } = cached;
 
   // Build the swap UNSIGNED with the wallet as authority, then sign + send via the
   // wallet-type-aware chokepoint (local keypair / Ledger) — no per-wallet-type branching here.
@@ -32,18 +32,18 @@ export async function executeQuote(
   const transaction = await dflow.buildSwapTransactionUnsigned(walletAddress, quoteResponse);
 
   const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Re-fetch with retry; a landed-but-failed transaction throws instead of being
+  // misreported as confirmed or pending.
+  const txData = await solana.getConfirmedTransactionData(signature);
 
   const result = await solana.handleConfirmation(
     signature,
-    txData !== null,
     txData,
     inputToken.address,
     outputToken.address,
     walletAddress,
+    undefined,
+    slippagePct,
   );
 
   // Remove quote from cache only after successful execution (confirmed)

@@ -29,6 +29,7 @@ const confirmedResult = {
     fee: 0.000005,
     baseTokenBalanceChange: -0.1,
     quoteTokenBalanceChange: 15,
+    slippagePct: 0.5,
   },
 };
 
@@ -53,6 +54,7 @@ describe('POST /execute-quote (okx)', () => {
     const mockSolanaInstance = {
       sendAndConfirmTransactionForWallet,
       connection: { getTransaction: jest.fn(async () => ({ meta: {} })) },
+      getConfirmedTransactionData: jest.fn(async () => ({ meta: {} })),
       handleConfirmation: jest.fn(async () => confirmedResult),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
@@ -79,7 +81,10 @@ describe('POST /execute-quote (okx)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body)).toMatchObject({ signature: 'okx-sig', status: 1 });
+    const body = JSON.parse(response.body);
+    expect(body).toMatchObject({ signature: 'okx-sig', status: 1 });
+    // The applied slippage survives the SwapExecuteResponse serializer.
+    expect(body.data.slippagePct).toBe(0.5);
     // The route is re-fetched with the executing wallet and the cached parameters.
     expect(getSwapTransaction).toHaveBeenCalledWith(
       WALLET,
@@ -90,6 +95,18 @@ describe('POST /execute-quote (okx)', () => {
       0.5,
     );
     expect(sendAndConfirmTransactionForWallet).toHaveBeenCalledWith(unsignedTx, WALLET);
+    // The confirmation helper receives the retry-fetched txData and the applied slippage
+    // so it can decide the status (never `txData !== null`) and echo slippagePct.
+    expect(mockSolanaInstance.getConfirmedTransactionData).toHaveBeenCalledWith('okx-sig');
+    expect(mockSolanaInstance.handleConfirmation).toHaveBeenCalledWith(
+      'okx-sig',
+      { meta: {} },
+      mockSOL.address,
+      mockUSDC.address,
+      WALLET,
+      undefined,
+      0.5,
+    );
     expect(quoteCache.get('okx-quote-1')).toBeNull();
   });
 

@@ -259,6 +259,7 @@ export async function executeAmmSwap(
         fee: gasFee,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
+        slippagePct,
       },
     };
   } catch (error) {

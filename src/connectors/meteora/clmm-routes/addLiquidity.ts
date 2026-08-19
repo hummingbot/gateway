@@ -123,10 +123,9 @@ export async function addLiquidity(
   const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(addLiquidityTx, address);
 
   // Get transaction data for confirmation
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Retrying re-fetch; throws the shared landed-but-failed error if the transaction
+  // landed with an error, so txData existing below really means "confirmed".
+  const txData = await solana.getConfirmedTransactionData(signature);
 
   const confirmed = txData !== null;
 

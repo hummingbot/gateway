@@ -97,6 +97,7 @@ describe('POST /create-pool (Orca CLMM)', () => {
         getTransaction: jest.fn().mockResolvedValue({ meta: { fee: 5000 } }),
       },
       sendAndConfirmTransactionForWallet: sendAndConfirm,
+      getConfirmedTransactionData: jest.fn().mockResolvedValue({ meta: { fee: 5000 } }),
     });
     (Orca.getInstance as jest.Mock).mockResolvedValue({
       solanaKitRpc: {},

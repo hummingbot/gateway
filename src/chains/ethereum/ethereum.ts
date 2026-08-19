@@ -1045,6 +1045,7 @@ export class Ethereum {
     expectedAmountOut: number,
     side?: 'BUY' | 'SELL',
     txHash?: string, // Optional tx hash for pending transactions
+    slippagePct?: number, // Slippage tolerance actually applied to the swap (echoed in data)
   ): {
     signature: string;
     status: number;
@@ -1056,6 +1057,7 @@ export class Ethereum {
       fee: number;
       baseTokenBalanceChange: number;
       quoteTokenBalanceChange: number;
+      slippagePct?: number;
     };
   } {
     if (!txReceipt) {
@@ -1118,6 +1120,7 @@ export class Ethereum {
           fee,
           baseTokenBalanceChange,
           quoteTokenBalanceChange,
+          slippagePct,
         },
       };
     }

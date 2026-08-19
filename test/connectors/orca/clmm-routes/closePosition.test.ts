@@ -38,6 +38,7 @@ describe('closePosition', () => {
     (Solana.getInstance as jest.Mock).mockResolvedValue({
       sendAndConfirmTransactionForWallet: sendForWallet,
       connection: { getTransaction: jest.fn().mockResolvedValue(null) },
+      getConfirmedTransactionData: jest.fn().mockResolvedValue(null),
     });
     const deployment = { programId: PROGRAM, configAddress: POOL };
     (Orca.getInstance as jest.Mock).mockResolvedValue({

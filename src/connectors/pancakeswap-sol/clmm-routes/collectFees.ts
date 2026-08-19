@@ -1,46 +1,107 @@
 import { Static } from '@sinclair/typebox';
+import { PublicKey } from '@solana/web3.js';
+import BN from 'bn.js';
 import { FastifyPluginAsync } from 'fastify';
 
+import { Solana } from '../../../chains/solana/solana';
 import { CollectFeesResponse, CollectFeesResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
+import { PancakeswapSol } from '../pancakeswap-sol';
+import { buildRemoveLiquidityTransaction } from '../pancakeswap-sol.transactions';
 import { PancakeswapSolClmmCollectFeesRequest } from '../schemas';
 
-import { removeLiquidity } from './removeLiquidity';
-
+/**
+ * Collect accumulated fees from a position WITHOUT touching its liquidity.
+ *
+ * The PancakeSwap Solana CLMM program (a Raydium CLMM fork) has no owner-facing
+ * "collect fees" instruction — like Raydium, fees (and rewards) owed to a position are
+ * transferred by `decrease_liquidity_v2`. Calling it with `liquidity = 0` collects the
+ * owed fees while leaving the position's liquidity intact.
+ */
 async function collectFees(
   network: string,
   walletAddress: string,
   positionAddress: string,
 ): Promise<CollectFeesResponseType> {
-  logger.info(`Collecting fees from position ${positionAddress} by removing 1% liquidity`);
+  const solana = await Solana.getInstance(network);
+  const pancakeswapSol = await PancakeswapSol.getInstance(network);
 
-  // Use the clever Raydium approach: remove 1% of liquidity to collect fees
-  // This withdraws a tiny amount of liquidity + all accumulated fees
-  const removeLiquidityResponse = await removeLiquidity(network, walletAddress, positionAddress, 1);
+  const positionInfo = await pancakeswapSol.getPositionInfo(positionAddress);
+  if (!positionInfo) {
+    throw httpErrors.notFound(`Position not found: ${positionAddress}`);
+  }
 
-  if (removeLiquidityResponse.status !== 1 || !removeLiquidityResponse.data) {
+  const baseToken = await solana.getToken(positionInfo.baseTokenAddress);
+  const quoteToken = await solana.getToken(positionInfo.quoteTokenAddress);
+  if (!baseToken || !quoteToken) {
+    throw httpErrors.notFound('Token information not found');
+  }
+
+  logger.info(`Collecting fees from position ${positionAddress} via zero-liquidity decrease`);
+
+  const wallet = await solana.getWallet(walletAddress);
+  const walletPubkey = new PublicKey(walletAddress);
+  const positionNftMint = new PublicKey(positionAddress);
+
+  // Get priority fee
+  const priorityFeeInLamports = await solana.estimateGasPrice();
+  const priorityFeePerCU = Math.floor(priorityFeeInLamports * 1e6);
+
+  // decrease_liquidity_v2 with liquidity = 0 transfers the owed fees (and rewards)
+  // without removing any liquidity.
+  const transaction = await buildRemoveLiquidityTransaction(
+    solana,
+    positionNftMint,
+    walletPubkey,
+    new BN(0), // liquidity: collect fees only
+    new BN(0), // amount0Min
+    new BN(0), // amount1Min
+    600000, // Compute units
+    priorityFeePerCU,
+  );
+
+  // Sign and send
+  transaction.sign([wallet]);
+  await solana.simulateWithErrorHandling(transaction);
+
+  const { confirmed, signature, txData } = await solana.sendAndConfirmRawTransaction(transaction);
+
+  if (confirmed && txData) {
+    const totalFee = txData.meta.fee;
+
+    // No liquidity was removed, so the position tokens received are exactly the fees.
+    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
+      baseToken.address,
+      quoteToken.address,
+    ]);
+
+    const baseFeeCollected = Math.abs(balanceChanges[0]);
+    const quoteFeeCollected = Math.abs(balanceChanges[1]);
+
+    logger.info(
+      `Fees collected from position ${positionAddress}: ${baseFeeCollected.toFixed(6)} ${baseToken.symbol}, ` +
+        `${quoteFeeCollected.toFixed(6)} ${quoteToken.symbol}`,
+    );
+
     return {
-      signature: removeLiquidityResponse.signature,
-      status: removeLiquidityResponse.status,
+      signature,
+      status: 1, // CONFIRMED
+      data: {
+        fee: totalFee / 1e9,
+        baseFeeAmountCollected: baseFeeCollected,
+        quoteFeeAmountCollected: quoteFeeCollected,
+      },
     };
   }
 
-  // The fees are included in the amounts removed
-  // Since we only removed 1%, most of the tokens received are fees
-  const baseFeeCollected = removeLiquidityResponse.data.baseTokenAmountRemoved;
-  const quoteFeeCollected = removeLiquidityResponse.data.quoteTokenAmountRemoved;
-
-  logger.info(`Fees collected. Base: ${baseFeeCollected}, Quote: ${quoteFeeCollected}`);
+  // A landed-but-failed transaction is terminal: fail loudly instead of returning
+  // PENDING (callers would poll forever). Genuinely-not-landed keeps the pending shape.
+  await solana.throwIfLandedWithError(signature, txData);
 
   return {
-    signature: removeLiquidityResponse.signature,
-    status: 1, // CONFIRMED
-    data: {
-      fee: removeLiquidityResponse.data.fee,
-      baseFeeAmountCollected: baseFeeCollected,
-      quoteFeeAmountCollected: quoteFeeCollected,
-    },
+    signature,
+    status: 0, // PENDING
   };
 }
 
@@ -54,7 +115,8 @@ export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
     '/collect-fees',
     {
       schema: {
-        description: 'Collect accumulated fees from a PancakeSwap Solana CLMM position (removes 1% liquidity)',
+        description:
+          'Collect accumulated fees from a PancakeSwap Solana CLMM position (zero-liquidity decrease; liquidity is not touched)',
         tags: ['/connector/pancakeswap-sol'],
         body: PancakeswapSolClmmCollectFeesRequest,
         response: {
