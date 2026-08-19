@@ -2047,9 +2047,15 @@ export class Solana {
           return 0;
         }
 
-        // Calculate SOL change including fees
+        // The raw lamport delta bundles the transaction fee in with the trade whenever
+        // the owner paid it — the fee is debited from the fee payer, which is account 0.
+        // Callers read this as the amount swapped, deposited or collected, so the fee is
+        // added back out: it is reported separately as `fee` and must not be counted
+        // twice. Selling SOL previously overstated amountIn by the fee and understated
+        // realized price; collecting SOL-denominated fees understated the amount.
         const lamportChange = postBalances[accountIndex] - preBalances[accountIndex];
-        return lamportChange * LAMPORT_TO_SOL;
+        const solChange = lamportChange * LAMPORT_TO_SOL;
+        return accountIndex === 0 ? solChange + fee : solChange;
       } else {
         // Token mint address provided - get SPL token balance change
         const preBalance =
@@ -2073,7 +2079,6 @@ export class Solana {
    * @param owner Owner address
    * @param baseTokenInfo Base token info object with address and symbol
    * @param quoteTokenInfo Quote token info object with address and symbol
-   * @param txFee Transaction fee in lamports (from txData.meta.fee)
    * @returns Object with base and quote token balance changes and calculated rent
    */
   async extractClmmBalanceChanges(
@@ -2081,7 +2086,6 @@ export class Solana {
     owner: string,
     baseTokenInfo: { address: string; symbol: string },
     quoteTokenInfo: { address: string; symbol: string },
-    txFee: number,
   ): Promise<{
     baseTokenChange: number;
     quoteTokenChange: number;
@@ -2123,12 +2127,13 @@ export class Solana {
     const quoteTokenChange = balanceChanges[tokenIndices.quote!];
 
     // Calculate rent from SOL balance
-    // When neither token is SOL: rent = |SOL change| - fee
+    // When neither token is SOL, the whole SOL movement is rent: extractBalanceChangesAndFee
+    // already nets the transaction fee out of the native-SOL change, so subtracting txFee
+    // again here would understate rent by exactly the fee.
     // When one token is SOL: rent is included in the token's balance change
     let rent = 0;
     if (!isBaseSol && !isQuoteSol) {
-      // SOL change = -(fee + rent)
-      rent = Math.abs(solChange) - txFee / 1e9;
+      rent = Math.abs(solChange);
     } else {
       // For positions, rent is approximately 0.00204928 SOL
       rent = 0.00204928;

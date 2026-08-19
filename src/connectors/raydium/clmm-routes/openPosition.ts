@@ -125,7 +125,6 @@ export async function openPosition(
       walletAddress,
       baseTokenInfo,
       quoteTokenInfo,
-      totalFee,
     );
 
     return {

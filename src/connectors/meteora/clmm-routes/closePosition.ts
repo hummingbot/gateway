@@ -113,15 +113,16 @@ export async function closePosition(
       let totalTokenXReceived = Math.abs(balanceChanges[0]);
       let totalTokenYReceived = Math.abs(balanceChanges[1]);
 
-      // When SOL is base/quote, wallet balance change includes: liquidity + fees + rent refund - tx fee
-      // We need to subtract rent refund to get actual token amounts
+      // When SOL is base/quote, the wallet's change for that side is liquidity + fees
+      // collected + the rent refund, so back the rent out to leave what the position
+      // actually returned. The transaction fee needs no correction: extractBalanceChangesAndFee
+      // nets it out for the fee payer and reports it separately, so adding it back here
+      // would overstate the amount by one fee.
       if (tokenXSymbol === 'SOL') {
-        // SOL is base token - subtract rent refund and add back tx fee
-        totalTokenXReceived = totalTokenXReceived - positionRentRefunded + totalFee;
+        totalTokenXReceived = totalTokenXReceived - positionRentRefunded;
         if (totalTokenXReceived < 0) totalTokenXReceived = 0;
       } else if (tokenYSymbol === 'SOL') {
-        // SOL is quote token - subtract rent refund and add back tx fee
-        totalTokenYReceived = totalTokenYReceived - positionRentRefunded + totalFee;
+        totalTokenYReceived = totalTokenYReceived - positionRentRefunded;
         if (totalTokenYReceived < 0) totalTokenYReceived = 0;
       }
 

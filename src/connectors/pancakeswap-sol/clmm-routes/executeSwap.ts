@@ -161,7 +161,6 @@ export async function executeSwap(
       walletAddress,
       baseToken,
       quoteToken,
-      totalFee,
     );
 
     return {

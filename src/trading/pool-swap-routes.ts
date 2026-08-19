@@ -164,7 +164,13 @@ export const makeExecuteSwapRoute = (type: PoolType): FastifyPluginAsync => {
             amount,
             slippagePct,
           });
-          return reply.code(200).send(result);
+          // This route resolved exactly one pool, so name it in the confirmed result.
+          // Connectors report token flow but not the venue, which leaves a settled fill
+          // unattributable without refetching the transaction. Only meaningful once
+          // there is a `data` block — a pending swap has nothing to attribute yet.
+          return reply
+            .code(200)
+            .send(result.data ? { ...result, data: { ...result.data, poolAddress: pool } } : result);
         } catch (e: any) {
           rethrowRouteError(e, `Failed to execute ${type} swap`);
         }

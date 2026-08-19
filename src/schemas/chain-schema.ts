@@ -240,6 +240,15 @@ export const ChainExecuteSwapResponseSchema = Type.Object(
             description: 'Slippage tolerance percentage actually applied to the swap',
           }),
         ),
+        poolAddress: Type.Optional(
+          Type.String({
+            description:
+              'Pool the swap executed against. Set by the pool-scoped routes ' +
+              '(/trading/clmm, /trading/amm), which resolve exactly one pool; a router picks ' +
+              'its own path across pools and leaves this unset. Without it a settled fill ' +
+              'cannot be reconciled to a venue without refetching the transaction.',
+          }),
+        ),
       }),
     ),
   },

@@ -7,6 +7,8 @@ import { Solana } from '../../chains/solana/solana';
 import { createHttpClient, HttpClient, HttpClientError } from '../../services/http-client';
 import { logger } from '../../services/logger';
 
+import { httpErrors } from '../../services/error-handler';
+
 import { OkxConfig } from './okx.config';
 
 // OKX DEX aggregator API (https://web3.okx.com/build/dev-docs)
@@ -54,7 +56,11 @@ export class Okx {
     this.solana = null;
 
     if (!this.config.apiKey || !this.config.secretKey || !this.config.passphrase) {
-      throw new Error(
+      // A missing credential is a configuration gap, not a Gateway fault. Thrown as a
+      // plain Error it reached callers as a 500, which reads as "retry later" for a
+      // condition no retry can fix — and OKX is advertised in /config/connectors, so
+      // anything enumerating providers hits it.
+      throw httpErrors.badRequest(
         'OKX DEX API credentials are not configured. Set okx.apiKey, okx.secretKey and okx.passphrase ' +
           'in conf/connectors/okx.yml (create them at https://web3.okx.com/build/dev-portal).',
       );

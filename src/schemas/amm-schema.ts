@@ -52,9 +52,29 @@ export const AddLiquidityResponse = Type.Object(
     // Only included when status = CONFIRMED
     data: Type.Optional(
       Type.Object({
-        fee: Type.Number(),
-        baseTokenAmountAdded: Type.Number(),
-        quoteTokenAmountAdded: Type.Number(),
+        fee: Type.Number({ format: 'decimal' }),
+        // Always the position the write touched — the one just opened when no address was
+        // given, or the one named. Without it a caller who just paid to open a DAMM v2
+        // position could only recover its address by re-listing positions-owned and
+        // diffing, which races any concurrent write and cannot attribute an address to a
+        // transaction.
+        positionAddress: Type.Optional(
+          Type.String({
+            description:
+              'Position the liquidity went into. Absent on fungible-LP AMMs, which hold liquidity as LP tokens rather than a position account.',
+            'x-connectors': ['meteora'],
+          } as any),
+        ),
+        positionRent: Type.Optional(
+          Type.Number({
+            format: 'decimal',
+            description:
+              'Native token locked as rent when this call opened the position. Absent when adding to a position that already existed, and on fungible-LP AMMs.',
+            'x-connectors': ['meteora'],
+          } as any),
+        ),
+        baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
+        quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
       }),
     ),
   },

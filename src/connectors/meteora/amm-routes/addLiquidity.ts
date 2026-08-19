@@ -22,7 +22,8 @@ export async function addLiquidity(
   // Opening a new position is its own on-chain operation (it mints the position NFT
   // and locks rent), so it lives in openPosition and is reachable directly through
   // /trading/amm/open. Adding without a position address still opens one — we never
-  // silently pick an existing position — and reports the add-shaped subset of it.
+  // silently pick an existing position — and passes its address and rent through, so
+  // the caller who just paid for it is told which position it is.
   if (!positionAddress) {
     const opened = await openPosition(
       network,
@@ -38,6 +39,8 @@ export async function addLiquidity(
           status: opened.status,
           data: {
             fee: opened.data.fee,
+            positionAddress: opened.data.positionAddress,
+            positionRent: opened.data.positionRent,
             baseTokenAmountAdded: opened.data.baseTokenAmountAdded,
             quoteTokenAmountAdded: opened.data.quoteTokenAmountAdded,
           },
@@ -99,6 +102,10 @@ export async function addLiquidity(
       status: 1, // CONFIRMED
       data: {
         fee: txData.meta.fee / 1e9,
+        // Echoed so the field always names the position the write touched, whether it
+        // was opened by this call or named by the caller. No rent: the account already
+        // existed, so this add locked none.
+        positionAddress: target.position.toBase58(),
         baseTokenAmountAdded: Math.abs(balanceChanges[0]),
         quoteTokenAmountAdded: Math.abs(balanceChanges[1]),
       },

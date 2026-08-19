@@ -3,7 +3,8 @@ import { openPosition } from '../../../../src/connectors/meteora/amm-routes/open
 // Opening a DAMM v2 position is its own on-chain call (it mints the position NFT and
 // locks rent), so it lives in openPosition. addLiquidity without a position address
 // still opens one rather than failing or picking an existing position silently — it
-// delegates, and reports the add-shaped subset of the result.
+// delegates, and passes the position's address and rent through, so the caller who
+// just paid to open it is told which position it is (GW-6).
 
 jest.mock('../../../../src/connectors/meteora/amm-routes/openPosition', () => ({
   openPosition: jest.fn(),
@@ -37,11 +38,14 @@ describe('meteora AMM addLiquidity — new-position delegation', () => {
     expect(result).toEqual({
       signature: 'sig-open',
       status: 1,
-      data: { fee: 0.00001, baseTokenAmountAdded: 0.1, quoteTokenAmountAdded: 20 },
+      data: {
+        fee: 0.00001,
+        positionAddress: 'FAKEpositionAddress11111111111111111111111',
+        positionRent: 0.0575,
+        baseTokenAmountAdded: 0.1,
+        quoteTokenAmountAdded: 20,
+      },
     });
-    // The position fields belong to the open response, not the add one.
-    expect(result.data).not.toHaveProperty('positionAddress');
-    expect(result.data).not.toHaveProperty('positionRent');
   });
 
   it('passes a pending open through without inventing data', async () => {

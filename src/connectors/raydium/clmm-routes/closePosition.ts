@@ -41,7 +41,6 @@ export async function closePosition(
           walletAddress,
           baseTokenInfo,
           quoteTokenInfo,
-          removeLiquidityResponse.data.fee * 1e9,
         );
 
         // The total balance change includes both liquidity removal and fee collection

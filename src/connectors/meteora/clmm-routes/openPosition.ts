@@ -201,15 +201,15 @@ export async function openPosition(
     let baseAmountAdded = Math.abs(balanceChanges[0]);
     let quoteAmountAdded = Math.abs(balanceChanges[1]);
 
-    // When SOL is base/quote, wallet balance change includes: liquidity + rent + fee
-    // We need to subtract rent to get actual liquidity added
+    // When SOL is base/quote, the wallet paid liquidity + rent on that side, so back the
+    // rent out to leave the liquidity added. The transaction fee needs no correction:
+    // extractBalanceChangesAndFee nets it out for the fee payer and reports it separately,
+    // so subtracting it again would understate the amount by one fee.
     if (tokenXSymbol === 'SOL') {
-      // SOL is base token - subtract rent from balance change to get actual liquidity
-      baseAmountAdded = baseAmountAdded - positionRent - txFee;
+      baseAmountAdded = baseAmountAdded - positionRent;
       if (baseAmountAdded < 0) baseAmountAdded = 0;
     } else if (tokenYSymbol === 'SOL') {
-      // SOL is quote token - subtract rent from balance change to get actual liquidity
-      quoteAmountAdded = quoteAmountAdded - positionRent - txFee;
+      quoteAmountAdded = quoteAmountAdded - positionRent;
       if (quoteAmountAdded < 0) quoteAmountAdded = 0;
     }
 

@@ -75,7 +75,6 @@ export async function collectFees(
       walletAddress,
       tokenA,
       tokenB,
-      txData.meta.fee,
     );
 
     logger.info(
