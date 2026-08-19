@@ -369,13 +369,11 @@ describe('Jupiter Swap Tests (Solana Mainnet)', () => {
           approximateIfNoExactOut: false,
         }),
       );
-      expect(axios.post).toHaveBeenCalledWith(
-        `http://localhost:15888/connectors/${CONNECTOR}/execute-swap`,
-        expect.not.objectContaining({
-          priorityLevel: expect.anything(),
-          maxLamports: expect.anything(),
-        }),
-      );
+      // Assert each removed field's absence separately: a combined
+      // not.objectContaining({a, b}) passes when EITHER key is missing.
+      const executeBody = axios.post.mock.calls[axios.post.mock.calls.length - 1][1];
+      expect(executeBody.priorityLevel).toBeUndefined();
+      expect(executeBody.maxLamports).toBeUndefined();
     });
 
     test('returns pending swap execution', async () => {
