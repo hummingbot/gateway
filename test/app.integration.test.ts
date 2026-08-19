@@ -68,7 +68,7 @@ describe('App Integration - Route Registration', () => {
       ['GET', '/trading/clmm/pool-info'],
       ['GET', '/trading/clmm/position-info'],
       ['GET', '/trading/clmm/positions-owned'],
-      ['GET', '/trading/clmm/quote-position'],
+      ['GET', '/trading/clmm/quote-liquidity'],
       ['GET', '/trading/clmm/fetch-pools'],
       ['POST', '/trading/clmm/open'],
       ['POST', '/trading/clmm/add'],
@@ -82,8 +82,10 @@ describe('App Integration - Route Registration', () => {
       ['GET', '/trading/amm/position-info'],
       ['GET', '/trading/amm/positions-owned'],
       ['GET', '/trading/amm/quote-liquidity'],
+      ['POST', '/trading/amm/open'],
       ['POST', '/trading/amm/add'],
       ['POST', '/trading/amm/remove'],
+      ['POST', '/trading/amm/close'],
       ['POST', '/trading/amm/create-pool'],
     ] as Array<['GET' | 'POST', string]>)('registers %s %s', async (method, url) => {
       expect(registered(method, url)).toBe(true);

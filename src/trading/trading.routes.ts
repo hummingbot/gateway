@@ -4,10 +4,12 @@ import { FastifyPluginAsync } from 'fastify';
 import { poolsRoute } from './clmm/pools';
 import { positionsRoute } from './clmm/positions';
 import { positionsOwnedRoute } from './clmm/positions-owned';
-import { quotePositionRoute } from './clmm/quote-position';
+import { quoteLiquidityRoute } from './clmm/quote-liquidity';
 import { makeExecuteSwapRoute, makeQuoteSwapRoute } from './pool-swap-routes';
 import {
   createPoolRoute,
+  openPositionRoute as ammOpenPositionRoute,
+  closePositionRoute as ammClosePositionRoute,
   poolInfoRoute as ammPoolInfoRoute,
   positionInfoRoute as ammPositionInfoRoute,
   positionsOwnedRoute as ammPositionsOwnedRoute,
@@ -46,7 +48,7 @@ export const tradingClmmRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(poolsRoute);
   fastify.register(positionsRoute);
   fastify.register(positionsOwnedRoute);
-  fastify.register(quotePositionRoute);
+  fastify.register(quoteLiquidityRoute);
   fastify.register(fetchPoolsRoute);
 
   // Swap routes (single-pool swaps; execute-quote is router-only)
@@ -76,7 +78,9 @@ export const tradingAmmRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(makeExecuteSwapRoute('amm'));
 
   // Liquidity transaction routes
+  fastify.register(ammOpenPositionRoute);
   fastify.register(ammAddLiquidityRoute);
   fastify.register(ammRemoveLiquidityRoute);
+  fastify.register(ammClosePositionRoute);
   fastify.register(createPoolRoute);
 };

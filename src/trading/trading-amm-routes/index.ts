@@ -5,3 +5,5 @@ export { positionsOwnedRoute } from './positions-owned';
 export { quoteLiquidityRoute } from './quote-liquidity';
 export { addLiquidityRoute } from './add';
 export { removeLiquidityRoute } from './remove';
+export { openPositionRoute } from './open';
+export { closePositionRoute } from './close';

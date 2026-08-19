@@ -62,6 +62,58 @@ export const AddLiquidityResponse = Type.Object(
 );
 export type AddLiquidityResponseType = Static<typeof AddLiquidityResponse>;
 
+// ============================================
+// Open / close (non-fungible-LP AMMs)
+// ============================================
+// Mirrors the CLMM open/close responses. Only AMMs whose positions are discrete
+// accounts (Meteora DAMM v2, whose positions are NFTs) can open or close one;
+// fungible-LP AMMs have no position to address, so their routes reject instead.
+
+export const OpenPositionResponse = Type.Object(
+  {
+    signature: Type.String(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object({
+        fee: Type.Number({ format: 'decimal' }),
+        positionAddress: Type.String({ description: 'Address of the newly opened position' }),
+        positionRent: Type.Number({
+          format: 'decimal',
+          description: 'Native token locked as rent for the position account (refunded on close)',
+        }),
+        baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
+        quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
+      }),
+    ),
+  },
+  { $id: 'AmmOpenPositionResponse' },
+);
+export type OpenPositionResponseType = Static<typeof OpenPositionResponse>;
+
+export const ClosePositionResponse = Type.Object(
+  {
+    signature: Type.String(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object({
+        fee: Type.Number({ format: 'decimal' }),
+        positionRentRefunded: Type.Number({
+          format: 'decimal',
+          description: 'Native token rent returned when the position account closed',
+        }),
+        baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
+        quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),
+      }),
+    ),
+  },
+  { $id: 'AmmClosePositionResponse' },
+);
+export type ClosePositionResponseType = Static<typeof ClosePositionResponse>;
+
 export const QuoteLiquidityRequest = Type.Omit(AddLiquidityRequest, ['walletAddress'], {
   $id: 'QuoteLiquidityRequest',
 });

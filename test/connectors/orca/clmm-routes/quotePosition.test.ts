@@ -8,12 +8,12 @@ jest.mock('../../../../src/connectors/orca/orca');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quotePositionRoute } = await import('../../../../src/trading/clmm/quote-position');
-  await server.register(quotePositionRoute);
+  const { quoteLiquidityRoute } = await import('../../../../src/trading/clmm/quote-liquidity');
+  await server.register(quoteLiquidityRoute);
   return server;
 };
 
-describe('GET /quote-position', () => {
+describe('GET /quote-liquidity', () => {
   const mockPoolAddress = 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE';
   let app: ReturnType<typeof fastifyWithTypeProvider>;
 
@@ -47,7 +47,7 @@ describe('GET /quote-position', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: '/quote-position',
+        url: '/quote-liquidity',
         query: {
           chainNetwork: 'solana-mainnet-beta',
           connector: 'orca',
@@ -80,7 +80,7 @@ describe('GET /quote-position', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: '/quote-position',
+        url: '/quote-liquidity',
         query: {
           chainNetwork: 'solana-mainnet-beta',
           connector: 'orca',
@@ -106,7 +106,7 @@ describe('GET /quote-position', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: '/quote-position',
+        url: '/quote-liquidity',
         query: {
           chainNetwork: 'solana-mainnet-beta',
           connector: 'orca',
@@ -133,7 +133,7 @@ describe('GET /quote-position', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: '/quote-position',
+        url: '/quote-liquidity',
         query: {
           poolAddress: mockPoolAddress,
           lowerPrice: '150',
@@ -150,7 +150,7 @@ describe('GET /quote-position', () => {
     it('should return 400 when poolAddress is missing', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/quote-position',
+        url: '/quote-liquidity',
         query: {
           chainNetwork: 'solana-mainnet-beta',
           connector: 'orca',
@@ -166,7 +166,7 @@ describe('GET /quote-position', () => {
     it('should return 400 when lowerPrice is missing', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/quote-position',
+        url: '/quote-liquidity',
         query: {
           chainNetwork: 'solana-mainnet-beta',
           connector: 'orca',
@@ -182,7 +182,7 @@ describe('GET /quote-position', () => {
     it('should return 400 when upperPrice is missing', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/quote-position',
+        url: '/quote-liquidity',
         query: {
           chainNetwork: 'solana-mainnet-beta',
           connector: 'orca',
@@ -198,7 +198,7 @@ describe('GET /quote-position', () => {
     it('should return error when no token amount provided', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/quote-position',
+        url: '/quote-liquidity',
         query: {
           chainNetwork: 'solana-mainnet-beta',
           connector: 'orca',
@@ -214,7 +214,7 @@ describe('GET /quote-position', () => {
     it('should handle lowerPrice >= upperPrice', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/quote-position',
+        url: '/quote-liquidity',
         query: {
           chainNetwork: 'solana-mainnet-beta',
           connector: 'orca',
@@ -231,7 +231,7 @@ describe('GET /quote-position', () => {
     it('should handle invalid pool address', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/quote-position',
+        url: '/quote-liquidity',
         query: {
           chainNetwork: 'solana-mainnet-beta',
           connector: 'orca',
@@ -255,7 +255,7 @@ describe('GET /quote-position', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: '/quote-position',
+        url: '/quote-liquidity',
         query: {
           chainNetwork: 'solana-mainnet-beta',
           connector: 'orca',
@@ -274,7 +274,7 @@ describe('GET /quote-position', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: '/quote-position',
+        url: '/quote-liquidity',
         query: {
           chainNetwork: 'solana-mainnet-beta',
           connector: 'orca',
@@ -296,7 +296,7 @@ describe('GET /quote-position', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: '/quote-position',
+        url: '/quote-liquidity',
         query: {
           chainNetwork: 'solana-mainnet-beta',
           connector: 'orca',

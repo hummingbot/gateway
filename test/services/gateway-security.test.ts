@@ -98,8 +98,10 @@ describe('gateway-security', () => {
       '/trading/clmm/close',
       '/trading/clmm/create-pool',
       '/trading/amm/execute-swap',
+      '/trading/amm/open',
       '/trading/amm/add',
       '/trading/amm/remove',
+      '/trading/amm/close',
       '/trading/amm/create-pool',
     ])('sensitive: %s', (url) => {
       expect(isSensitivePath(url)).toBe(true);
@@ -114,7 +116,7 @@ describe('gateway-security', () => {
       '/trading/clmm/pool-info',
       '/trading/clmm/position-info',
       '/trading/clmm/positions-owned',
-      '/trading/clmm/quote-position',
+      '/trading/clmm/quote-liquidity',
       '/trading/clmm/fetch-pools',
       '/trading/amm/pool-info',
       '/trading/amm/quote-liquidity',

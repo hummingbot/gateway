@@ -71,7 +71,7 @@ export function isTrustedLocalAddress(ip: string | undefined): boolean {
 /** Path prefixes that move funds or reveal/modify secrets — gated behind auth when exposed. */
 const SENSITIVE_PREFIXES = [/^\/wallet(\/|$)/, /^\/config\/update(\/|$)/, /^\/restart(\/|$)/];
 // Unified trading namespace: only the fund-moving routes. Read-only routes
-// (quote-swap, quote-position, quote-liquidity, pool-info, position-info,
+// (quote-swap, quote-liquidity, pool-info, position-info,
 // positions-owned, fetch-pools) stay public by design.
 //
 // This one pattern replaced a second one that covered the removed /connectors/*

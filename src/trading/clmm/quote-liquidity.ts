@@ -216,14 +216,14 @@ export async function getUnifiedQuotePosition(
 
 /**
  * Unified CLMM quote position route
- * GET /trading/clmm/quote-position
+ * GET /trading/clmm/quote-liquidity
  */
-export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
+export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Querystring: UnifiedQuotePositionRequest;
     Reply: QuotePositionResponseType;
   }>(
-    '/quote-position',
+    '/quote-liquidity',
     {
       schema: {
         description: 'Quote amounts for a new CLMM position from any supported connector',
@@ -265,4 +265,4 @@ export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-export default quotePositionRoute;
+export default quoteLiquidityRoute;

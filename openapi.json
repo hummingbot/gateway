@@ -2898,7 +2898,7 @@
         }
       }
     },
-    "/trading/clmm/quote-position": {
+    "/trading/clmm/quote-liquidity": {
       "get": {
         "tags": ["/trading/clmm"],
         "description": "Quote amounts for a new CLMM position from any supported connector",
@@ -4934,6 +4934,127 @@
         }
       }
     },
+    "/trading/amm/open": {
+      "post": {
+        "tags": ["/trading/amm"],
+        "description": "Open a new AMM position with initial liquidity. Supported only for non-fungible-LP AMMs (meteora DAMM v2), whose positions are NFTs. Fungible-LP AMMs (raydium, uniswap, pancakeswap) have no position to open — use add instead.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "connector": {
+                    "description": "AMM connector (only non-fungible-LP AMMs supported: meteora)",
+                    "enum": ["meteora", "raydium", "uniswap", "pancakeswap"],
+                    "default": "meteora",
+                    "type": "string",
+                    "example": "meteora"
+                  },
+                  "chainNetwork": {
+                    "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)",
+                    "default": "solana-mainnet-beta",
+                    "type": "string",
+                    "example": "solana-mainnet-beta"
+                  },
+                  "walletAddress": {
+                    "description": "Wallet that will own the position",
+                    "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                    "type": "string"
+                  },
+                  "poolAddress": {
+                    "description": "Pool to open the position in",
+                    "type": "string"
+                  },
+                  "baseTokenAmount": {
+                    "format": "decimal",
+                    "description": "Amount of base token to deposit",
+                    "type": "number"
+                  },
+                  "quoteTokenAmount": {
+                    "format": "decimal",
+                    "description": "Amount of quote token to deposit",
+                    "type": "number"
+                  },
+                  "slippagePct": {
+                    "format": "decimal",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Maximum acceptable slippage percentage. Defaults to the connector's configured slippagePct.",
+                    "type": "number",
+                    "example": 1
+                  }
+                },
+                "required": [
+                  "connector",
+                  "chainNetwork",
+                  "walletAddress",
+                  "poolAddress",
+                  "baseTokenAmount",
+                  "quoteTokenAmount"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "signature": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "description": "TransactionStatus enum value",
+                      "type": "number"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "fee": {
+                          "format": "decimal",
+                          "type": "number"
+                        },
+                        "positionAddress": {
+                          "description": "Address of the newly opened position",
+                          "type": "string"
+                        },
+                        "positionRent": {
+                          "format": "decimal",
+                          "description": "Native token locked as rent for the position account (refunded on close)",
+                          "type": "number"
+                        },
+                        "baseTokenAmountAdded": {
+                          "format": "decimal",
+                          "type": "number"
+                        },
+                        "quoteTokenAmountAdded": {
+                          "format": "decimal",
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "fee",
+                        "positionAddress",
+                        "positionRent",
+                        "baseTokenAmountAdded",
+                        "quoteTokenAmountAdded"
+                      ]
+                    }
+                  },
+                  "required": ["signature", "status"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/trading/amm/add": {
       "post": {
         "tags": ["/trading/amm"],
@@ -5132,6 +5253,104 @@
                         }
                       },
                       "required": ["fee", "baseTokenAmountRemoved", "quoteTokenAmountRemoved"]
+                    }
+                  },
+                  "required": ["signature", "status"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trading/amm/close": {
+      "post": {
+        "tags": ["/trading/amm"],
+        "description": "Withdraw all of a position's liquidity and close the position account, refunding its rent. Supported only for non-fungible-LP AMMs (meteora DAMM v2). Fungible-LP AMMs (raydium, uniswap, pancakeswap) have no position account — use remove with percentageToRemove 100.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "connector": {
+                    "description": "AMM connector (only non-fungible-LP AMMs supported: meteora)",
+                    "enum": ["meteora", "raydium", "uniswap", "pancakeswap"],
+                    "default": "meteora",
+                    "type": "string",
+                    "example": "meteora"
+                  },
+                  "chainNetwork": {
+                    "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)",
+                    "default": "solana-mainnet-beta",
+                    "type": "string",
+                    "example": "solana-mainnet-beta"
+                  },
+                  "walletAddress": {
+                    "description": "Wallet that owns the position",
+                    "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+                    "type": "string"
+                  },
+                  "poolAddress": {
+                    "description": "Pool the position belongs to",
+                    "type": "string"
+                  },
+                  "positionAddress": {
+                    "description": "Position to close",
+                    "type": "string"
+                  },
+                  "slippagePct": {
+                    "format": "decimal",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Maximum acceptable slippage on the withdrawn amounts.",
+                    "type": "number",
+                    "example": 1
+                  }
+                },
+                "required": ["connector", "chainNetwork", "walletAddress", "poolAddress", "positionAddress"]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "signature": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "description": "TransactionStatus enum value",
+                      "type": "number"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "fee": {
+                          "format": "decimal",
+                          "type": "number"
+                        },
+                        "positionRentRefunded": {
+                          "format": "decimal",
+                          "description": "Native token rent returned when the position account closed",
+                          "type": "number"
+                        },
+                        "baseTokenAmountRemoved": {
+                          "format": "decimal",
+                          "type": "number"
+                        },
+                        "quoteTokenAmountRemoved": {
+                          "format": "decimal",
+                          "type": "number"
+                        }
+                      },
+                      "required": ["fee", "positionRentRefunded", "baseTokenAmountRemoved", "quoteTokenAmountRemoved"]
                     }
                   },
                   "required": ["signature", "status"]
