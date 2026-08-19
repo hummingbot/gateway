@@ -1,18 +1,11 @@
 import { BN } from '@coral-xyz/anchor';
-import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  RemoveLiquidityResponse,
-  RemoveLiquidityRequestType,
-  RemoveLiquidityResponseType,
-} from '../../../schemas/clmm-schema';
+import { RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
-import { MeteoraClmmRemoveLiquidityRequest } from '../schemas';
 
 // Using centralized error handling
 const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
@@ -142,41 +135,3 @@ export async function removeLiquidity(
     };
   }
 }
-
-export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
-
-  fastify.post<{
-    Body: Static<typeof MeteoraClmmRemoveLiquidityRequest>;
-    Reply: RemoveLiquidityResponseType;
-  }>(
-    '/remove-liquidity',
-    {
-      schema: {
-        description: 'Remove liquidity from a Meteora position',
-        tags: ['/connector/meteora'],
-        body: MeteoraClmmRemoveLiquidityRequest,
-        response: {
-          200: RemoveLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, positionAddress, percentageToRemove } = request.body;
-
-        const networkToUse = network;
-
-        return await removeLiquidity(networkToUse, walletAddress, positionAddress, percentageToRemove);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e; // Re-throw HttpErrors with original message
-        }
-        throw fastify.httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default removeLiquidityRoute;

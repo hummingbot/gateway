@@ -1,16 +1,14 @@
 import { Contract as EthersProjectContract } from '@ethersproject/contracts';
 import { abi as IPancakeV3PoolABI } from '@pancakeswap/v3-core/artifacts/contracts/interfaces/IPancakeV3Pool.sol/IPancakeV3Pool.json';
 import { SqrtPriceMath, TickMath } from '@pancakeswap/v3-sdk';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
-import { logger } from '../../../services/logger';
+import { PoolInfo } from '../../../schemas/clmm-schema';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { computeV3BinDistribution } from '../../clmm-v3-utils';
 import { Pancakeswap } from '../pancakeswap';
 import { formatTokenAmount, getPancakeswapPoolInfo } from '../pancakeswap.utils';
-import { PancakeswapClmmGetPoolInfoRequest, PancakeswapClmmGetPoolInfoRequestType } from '../schemas';
 
 export async function getPoolInfo(
   fastify: FastifyInstance,
@@ -105,37 +103,3 @@ export async function getPoolInfo(
 
   return result;
 }
-
-export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: PancakeswapClmmGetPoolInfoRequestType;
-    Reply: Record<string, any>;
-  }>(
-    '/pool-info',
-    {
-      schema: {
-        description: 'Get CLMM pool information from Pancakeswap V3',
-        tags: ['/connector/pancakeswap'],
-        querystring: PancakeswapClmmGetPoolInfoRequest,
-        response: {
-          200: PoolInfoSchema,
-        },
-      },
-    },
-    async (request): Promise<PoolInfo> => {
-      try {
-        const { poolAddress, binCount = 0 } = request.query;
-        const network = request.query.network;
-        return await getPoolInfo(fastify, network, poolAddress, binCount);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw fastify.httpErrors.internalServerError('Failed to fetch pool info');
-      }
-    },
-  );
-};
-
-export default poolInfoRoute;

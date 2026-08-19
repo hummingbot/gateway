@@ -1,9 +1,7 @@
 import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 
 import { Solana } from '../../../chains/solana/solana';
-import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
@@ -11,8 +9,7 @@ import { sanitizeErrorMessage, sanitizeString } from '../../../services/sanitize
 import { approximateBuyViaSellLeg } from '../../router-utils';
 import { Okx, OkxRouterResult } from '../okx';
 import { OkxConfig } from '../okx.config';
-import { OkxQuoteSwapRequest, OkxQuoteSwapResponse } from '../schemas';
-
+import { OkxQuoteSwapResponse } from '../schemas';
 function priceImpactPct(routerResult: OkxRouterResult): number {
   return parseFloat(routerResult.priceImpactPercent ?? routerResult.priceImpactPercentage ?? '0');
 }
@@ -128,42 +125,3 @@ export async function quoteSwap(
     routerResult,
   };
 }
-
-export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: QuoteSwapRequestType;
-    Reply: Static<typeof OkxQuoteSwapResponse>;
-  }>(
-    '/quote-swap',
-    {
-      schema: {
-        description: 'Get an executable swap quote from the OKX DEX aggregator',
-        tags: ['/connector/okx'],
-        querystring: OkxQuoteSwapRequest,
-        response: { 200: OkxQuoteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, baseToken, quoteToken, amount, side, slippagePct, approximateIfNoExactOut } =
-          request.query as typeof OkxQuoteSwapRequest._type;
-
-        return await quoteSwap(
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
-          slippagePct,
-          approximateIfNoExactOut,
-        );
-      } catch (e) {
-        if (e.statusCode) throw e;
-        logger.error('Error getting OKX quote:', e);
-        throw httpErrors.internalServerError(e.message || 'Internal server error');
-      }
-    },
-  );
-};
-
-export default quoteSwapRoute;

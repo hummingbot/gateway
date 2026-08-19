@@ -1,16 +1,10 @@
 import { ethers } from 'ethers';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
-import {
-  PollRequestType,
-  PollResponseType,
-  PollResponseSchema,
-  TransactionStatusCode,
-} from '../../../schemas/chain-schema';
+import { PollResponseType, TransactionStatusCode } from '../../../schemas/chain-schema';
 import { getConnector } from '../../../services/connection-manager';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
-import { EthereumPollRequest } from '../schemas';
 
 // Helper function for transaction response formatting
 
@@ -94,28 +88,3 @@ export async function pollEthereumTransaction(
     throw fastify.httpErrors.internalServerError(`Failed to poll transaction: ${error.message}`);
   }
 }
-
-export const pollRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: PollRequestType;
-    Reply: PollResponseType;
-  }>(
-    '/poll',
-    {
-      schema: {
-        description: 'Poll Ethereum transaction status',
-        tags: ['/chain/ethereum'],
-        body: EthereumPollRequest,
-        response: {
-          200: PollResponseSchema,
-        },
-      },
-    },
-    async (request) => {
-      const { network, signature } = request.body;
-      return await pollEthereumTransaction(fastify, network, signature);
-    },
-  );
-};
-
-export default pollRoute;

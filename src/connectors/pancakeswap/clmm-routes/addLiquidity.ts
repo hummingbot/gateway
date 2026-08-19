@@ -1,20 +1,16 @@
 import { Contract } from '@ethersproject/contracts';
 import { CurrencyAmount, Percent } from '@pancakeswap/sdk';
 import { Position, NonfungiblePositionManager } from '@pancakeswap/v3-sdk';
-import { Static } from '@sinclair/typebox';
 import { BigNumber, utils } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { TransactionStatus } from '../../../schemas/chain-schema';
-import { AddLiquidityResponseType, AddLiquidityResponse } from '../../../schemas/clmm-schema';
+import { AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
 import { PancakeswapConfig } from '../pancakeswap.config';
 import { getPancakeswapV3NftManagerAddress, POSITION_MANAGER_ABI } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
-import { PancakeswapClmmAddLiquidityRequest } from '../schemas';
 
 // Default gas limit for CLMM add liquidity operations
 const CLMM_ADD_LIQUIDITY_GAS_LIMIT = 600000;
@@ -180,60 +176,3 @@ export async function addLiquidity(
     },
   };
 }
-
-export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof PancakeswapClmmAddLiquidityRequest>;
-    Reply: AddLiquidityResponseType;
-  }>(
-    '/add-liquidity',
-    {
-      schema: {
-        description: 'Add liquidity to an existing Pancakeswap V3 position',
-        tags: ['/connector/pancakeswap'],
-        body: PancakeswapClmmAddLiquidityRequest,
-        response: {
-          200: AddLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network,
-          walletAddress: requestedWalletAddress,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.body;
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          const pancakeswap = await Pancakeswap.getInstance(network);
-          walletAddress = await pancakeswap.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-        }
-
-        return await addLiquidity(
-          network,
-          walletAddress,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Failed to add liquidity:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw httpErrors.internalServerError('Failed to add liquidity');
-      }
-    },
-  );
-};
-
-export default addLiquidityRoute;

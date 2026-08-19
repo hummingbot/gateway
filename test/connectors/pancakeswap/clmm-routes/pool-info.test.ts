@@ -11,8 +11,8 @@ jest.mock('../../../../src/connectors/clmm-v3-utils');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { poolInfoRoute } = await import('../../../../src/connectors/pancakeswap/clmm-routes/poolInfo');
-  await server.register(poolInfoRoute);
+  const { poolsRoute } = await import('../../../../src/trading/clmm/pools');
+  await server.register(poolsRoute);
   return server;
 };
 
@@ -109,7 +109,7 @@ describe('GET /pool-info (PancakeSwap CLMM)', () => {
     const response = await server.inject({
       method: 'GET',
       url: '/pool-info',
-      query: { network: 'bsc', poolAddress: POOL_ADDRESS },
+      query: { chainNetwork: 'ethereum-bsc', connector: 'pancakeswap', poolAddress: POOL_ADDRESS },
     });
 
     expect(response.statusCode).toBe(200);
@@ -138,7 +138,7 @@ describe('GET /pool-info (PancakeSwap CLMM)', () => {
     const response = await server.inject({
       method: 'GET',
       url: '/pool-info',
-      query: { network: 'bsc', poolAddress: POOL_ADDRESS },
+      query: { chainNetwork: 'ethereum-bsc', connector: 'pancakeswap', poolAddress: POOL_ADDRESS },
     });
 
     expect(response.statusCode).toBe(200);
@@ -153,7 +153,7 @@ describe('GET /pool-info (PancakeSwap CLMM)', () => {
     const response = await server.inject({
       method: 'GET',
       url: '/pool-info',
-      query: { network: 'bsc', poolAddress: POOL_ADDRESS, binCount: '11' },
+      query: { chainNetwork: 'ethereum-bsc', connector: 'pancakeswap', poolAddress: POOL_ADDRESS, binCount: '11' },
     });
 
     expect(response.statusCode).toBe(200);

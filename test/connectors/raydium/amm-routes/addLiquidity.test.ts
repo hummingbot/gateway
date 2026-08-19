@@ -35,7 +35,7 @@ jest.mock('../../../../src/services/logger', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { addLiquidityRoute } = await import('../../../../src/connectors/raydium/amm-routes/addLiquidity');
+  const { addLiquidityRoute } = await import('../../../../src/trading/trading-amm-routes/add-liquidity');
   await server.register(addLiquidityRoute);
   return server;
 };
@@ -180,7 +180,8 @@ describe('POST /add-liquidity', () => {
       method: 'POST',
       url: '/add-liquidity',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         baseTokenAmount: 1,
@@ -230,7 +231,8 @@ describe('POST /add-liquidity', () => {
       method: 'POST',
       url: '/add-liquidity',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         baseTokenAmount: 1,
@@ -266,7 +268,8 @@ describe('POST /add-liquidity', () => {
       method: 'POST',
       url: '/add-liquidity',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         baseTokenAmount: 1,
@@ -302,7 +305,8 @@ describe('POST /add-liquidity', () => {
       method: 'POST',
       url: '/add-liquidity',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: 'invalid-pool',
         baseTokenAmount: 1,
@@ -343,7 +347,8 @@ describe('POST /add-liquidity', () => {
       method: 'POST',
       url: '/add-liquidity',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         baseTokenAmount: 1,
@@ -396,7 +401,8 @@ describe('POST /add-liquidity', () => {
       method: 'POST',
       url: '/add-liquidity',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         baseTokenAmount: 1,

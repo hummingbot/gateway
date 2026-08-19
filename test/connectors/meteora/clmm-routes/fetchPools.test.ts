@@ -12,7 +12,7 @@ jest.mock('../../../../src/chains/solana/solana.config', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { fetchPoolsRoute } = await import('../../../../src/connectors/meteora/clmm-routes/fetchPools');
+  const { fetchPoolsRoute } = await import('../../../../src/trading/trading-clmm-routes/fetchPools');
   await server.register(fetchPoolsRoute);
   return server;
 };
@@ -112,7 +112,7 @@ describe('GET /fetch-pools (Meteora)', () => {
 
     const response = await server.inject({
       method: 'GET',
-      url: '/fetch-pools?network=mainnet-beta',
+      url: '/fetch-pools?chainNetwork=solana-mainnet-beta&connector=meteora',
     });
 
     expect(response.statusCode).toBe(200);
@@ -155,7 +155,7 @@ describe('GET /fetch-pools (Meteora)', () => {
 
     const response = await server.inject({
       method: 'GET',
-      url: '/fetch-pools?network=mainnet-beta&query=SOL-USDC&limit=10',
+      url: '/fetch-pools?chainNetwork=solana-mainnet-beta&connector=meteora&query=SOL-USDC&limit=10',
     });
 
     expect(response.statusCode).toBe(200);
@@ -181,7 +181,7 @@ describe('GET /fetch-pools (Meteora)', () => {
 
     const response = await server.inject({
       method: 'GET',
-      url: '/fetch-pools?network=mainnet-beta&sortBy=tvl:desc',
+      url: '/fetch-pools?chainNetwork=solana-mainnet-beta&connector=meteora&sortBy=tvl:desc',
     });
 
     expect(response.statusCode).toBe(200);
@@ -200,7 +200,7 @@ describe('GET /fetch-pools (Meteora)', () => {
 
     const response = await server.inject({
       method: 'GET',
-      url: '/fetch-pools?network=mainnet-beta',
+      url: '/fetch-pools?chainNetwork=solana-mainnet-beta&connector=meteora',
     });
 
     expect(response.statusCode).toBe(500);
@@ -220,7 +220,7 @@ describe('GET /fetch-pools (Meteora)', () => {
 
     const response = await server.inject({
       method: 'GET',
-      url: '/fetch-pools?network=mainnet-beta&query=NONEXISTENT',
+      url: '/fetch-pools?chainNetwork=solana-mainnet-beta&connector=meteora&query=NONEXISTENT',
     });
 
     expect(response.statusCode).toBe(200);
@@ -242,7 +242,7 @@ describe('GET /fetch-pools (Meteora)', () => {
 
     const response = await server.inject({
       method: 'GET',
-      url: '/fetch-pools?network=mainnet-beta&includeUnverified=false',
+      url: '/fetch-pools?chainNetwork=solana-mainnet-beta&connector=meteora&includeUnverified=false',
     });
 
     expect(response.statusCode).toBe(200);

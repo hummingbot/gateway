@@ -1,17 +1,14 @@
-import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { OpenPositionResponse, OpenPositionResponseType } from '../../../schemas/clmm-schema';
+import { OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { PancakeswapSolConfig } from '../pancakeswap-sol.config';
 import { priceToTick, roundTickToSpacing, parsePoolTickSpacing } from '../pancakeswap-sol.parser';
 import { buildOpenPositionTransaction } from '../pancakeswap-sol.transactions';
-import { PancakeswapSolClmmOpenPositionRequest } from '../schemas';
 
 import { quotePosition } from './quotePosition';
 
@@ -182,58 +179,3 @@ export async function openPosition(
     status: 0, // PENDING
   };
 }
-
-export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof PancakeswapSolClmmOpenPositionRequest>;
-    Reply: OpenPositionResponseType;
-  }>(
-    '/open-position',
-    {
-      schema: {
-        description: 'Open a new PancakeSwap Solana CLMM position with Token2022 NFT',
-        tags: ['/connector/pancakeswap-sol'],
-        body: PancakeswapSolClmmOpenPositionRequest,
-        response: {
-          200: OpenPositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network = 'mainnet-beta',
-          walletAddress,
-          poolAddress,
-          lowerPrice,
-          upperPrice,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.body;
-
-        return await openPosition(
-          network,
-          walletAddress!,
-          poolAddress,
-          lowerPrice,
-          upperPrice,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Open position error:', e);
-        // Re-throw httpErrors as-is
-        if (e.statusCode) {
-          throw e;
-        }
-        // Handle unknown errors
-        const errorMessage = e.message || 'Failed to open position';
-        throw httpErrors.internalServerError(errorMessage);
-      }
-    },
-  );
-};
-
-export default openPositionRoute;

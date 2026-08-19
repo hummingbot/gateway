@@ -1,14 +1,11 @@
 import { Contract as EthersProjectContract } from '@ethersproject/contracts';
 import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
-import { FeeAmount } from '@uniswap/v3-sdk';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import JSBI from 'jsbi';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
-import { logger } from '../../../services/logger';
+import { PoolInfo } from '../../../schemas/clmm-schema';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
-import { UniswapClmmGetPoolInfoRequest, UniswapClmmGetPoolInfoRequestType } from '../schemas';
 import { Uniswap } from '../uniswap';
 import { computeUniswapBinDistribution, formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
 
@@ -118,36 +115,3 @@ export async function getPoolInfo(
 
   return result;
 }
-
-export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: UniswapClmmGetPoolInfoRequestType;
-    Reply: Record<string, any>;
-  }>(
-    '/pool-info',
-    {
-      schema: {
-        description: 'Get CLMM pool information from Uniswap V3',
-        tags: ['/connector/uniswap'],
-        querystring: UniswapClmmGetPoolInfoRequest,
-        response: {
-          200: PoolInfoSchema,
-        },
-      },
-    },
-    async (request): Promise<PoolInfo> => {
-      try {
-        const { poolAddress, binCount = 0, network } = request.query;
-        return await getPoolInfo(fastify, network, poolAddress, binCount);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw fastify.httpErrors.internalServerError('Failed to fetch pool info');
-      }
-    },
-  );
-};
-
-export default poolInfoRoute;

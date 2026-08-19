@@ -25,8 +25,8 @@ jest.mock('../../../../src/chains/solana/solana.config', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { executeSwapRoute } = await import('../../../../src/connectors/meteora/clmm-routes/executeSwap');
-  await server.register(executeSwapRoute);
+  const { makeExecuteSwapRoute } = await import('../../../../src/trading/pool-swap-routes');
+  await server.register(makeExecuteSwapRoute('clmm'));
   return server;
 };
 
@@ -150,7 +150,8 @@ describe('POST /execute-swap', () => {
       method: 'POST',
       url: '/execute-swap',
       payload: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         walletAddress: '11111111111111111111111111111111',
         poolAddress: mockPoolAddress,
         baseToken: 'SOL',
@@ -209,7 +210,8 @@ describe('POST /execute-swap', () => {
       method: 'POST',
       url: '/execute-swap',
       payload: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         walletAddress: '11111111111111111111111111111111',
         poolAddress: mockPoolAddress,
         baseToken: 'SOL',
@@ -282,7 +284,8 @@ describe('POST /execute-swap', () => {
       method: 'POST',
       url: '/execute-swap',
       payload: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         walletAddress: '11111111111111111111111111111111',
         poolAddress: mockPoolAddress,
         baseToken: 'SOL',
@@ -321,7 +324,8 @@ describe('POST /execute-swap', () => {
       method: 'POST',
       url: '/execute-swap',
       payload: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         walletAddress: '11111111111111111111111111111111',
         poolAddress: mockPoolAddress,
         baseToken: 'INVALID',

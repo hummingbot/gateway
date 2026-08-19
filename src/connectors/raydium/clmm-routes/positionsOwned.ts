@@ -1,12 +1,11 @@
 import { Type, Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { PositionInfoSchema, PositionInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
-import { RaydiumClmmGetPositionsOwnedRequest, RaydiumClmmGetPositionsOwnedRequestType } from '../schemas';
 
 // Using Fastify's native error handling
 const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
@@ -84,38 +83,3 @@ async function fetchPositionsFromRPC(_solana: Solana, network: string, walletAdd
   logger.info(`Found ${allPositions.length} Raydium position(s) for wallet ${walletAddress.slice(0, 8)}...`);
   return allPositions;
 }
-
-export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
-  // Remove wallet address example population code
-
-  fastify.get<{
-    Querystring: RaydiumClmmGetPositionsOwnedRequestType;
-    Reply: GetPositionsOwnedResponseType;
-  }>(
-    '/positions-owned',
-    {
-      schema: {
-        description: "Retrieve all positions owned by a user's wallet across all Raydium CLMM pools",
-        tags: ['/connector/raydium'],
-        querystring: RaydiumClmmGetPositionsOwnedRequest,
-        response: {
-          200: GetPositionsOwnedResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress } = request.query;
-        return await getPositionsOwned(fastify, network, walletAddress);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e; // Re-throw HttpErrors with original message
-        }
-        throw fastify.httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default positionsOwnedRoute;

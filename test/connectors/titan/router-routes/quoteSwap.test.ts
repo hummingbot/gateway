@@ -9,7 +9,7 @@ jest.mock('../../../../src/connectors/titan/titan');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quoteSwapRoute } = await import('../../../../src/connectors/titan/router-routes/quoteSwap');
+  const { quoteSwapRoute } = await import('../../../../src/trading/trading-router-routes/quoteSwap');
   await server.register(quoteSwapRoute);
   return server;
 };
@@ -79,7 +79,8 @@ describe('GET /quote-swap (titan)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'titan',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -95,7 +96,9 @@ describe('GET /quote-swap (titan)', () => {
     expect(body).toHaveProperty('amountIn', 0.1);
     expect(body).toHaveProperty('amountOut', 15);
     expect(body).toHaveProperty('price', 150);
-    expect(body).toHaveProperty('wallet', WALLET);
+    // `wallet` was a Titan-specific echo field; the unified router response carries
+    // the shared quote fields plus quoteId. The wallet is still what the quote was
+    // priced for — asserted below on the call itself.
     expect(body.approximation).toBeUndefined();
 
     // The route was requested for the provided wallet
@@ -134,7 +137,8 @@ describe('GET /quote-swap (titan)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'titan',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -164,7 +168,8 @@ describe('GET /quote-swap (titan)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'titan',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -192,7 +197,8 @@ describe('GET /quote-swap (titan)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'titan',
         baseToken: 'INVALID',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -216,7 +222,8 @@ describe('GET /quote-swap (titan)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'titan',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',

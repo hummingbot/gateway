@@ -24,12 +24,14 @@ const UnifiedAmmRemoveLiquidityRequest = Type.Object({
   poolAddress: Type.String({ description: 'Pool contract address' }),
   positionAddress: Type.Optional(
     Type.String({
+      'x-connectors': ['meteora'],
       description:
         'Required for meteora (DAMM v2 positions are NFTs): the specific position to remove from. ' +
         'List positions with position-info or positions-owned. Ignored by fungible-LP AMMs.',
     }),
   ),
   percentageToRemove: Type.Number({
+    format: 'decimal',
     minimum: 0,
     maximum: 100,
     description: 'Percentage of liquidity to remove',

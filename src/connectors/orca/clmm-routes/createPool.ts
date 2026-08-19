@@ -1,17 +1,14 @@
 import { createConcentratedLiquidityPoolInstructions, orderMints } from '@orca-so/whirlpools';
-import { Static } from '@sinclair/typebox';
 import { address, type Instruction } from '@solana/kit';
 import { Keypair, PublicKey } from '@solana/web3.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { CreatePoolResponse, CreatePoolResponseType } from '../../../schemas/clmm-schema';
+import { CreatePoolResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Orca } from '../orca';
 import { buildOrcaTransaction, createOrcaAuthority, replaceOrcaInstructionAccounts } from '../orca.sdk';
-import { OrcaClmmCreatePoolRequest } from '../schemas';
 
 /** Resolves a token symbol or mint address to a PublicKey. */
 async function resolveMint(solana: Solana, tokenOrAddress: string): Promise<PublicKey> {
@@ -31,11 +28,11 @@ async function resolveMint(solana: Solana, tokenOrAddress: string): Promise<Publ
  * configured swap provider; throws a clear error if no market route exists.
  */
 async function fetchMarketPrice(network: string, baseToken: string, quoteToken: string): Promise<number> {
-  const { getUnifiedQuoteSwap } = await import('../../../trading/swap/quote');
+  const { getSwapQuote } = await import('../../../trading/market-price');
   let quote: any;
   try {
     // Probe with 1 base token — we only need the price ratio, not a real trade size.
-    quote = await getUnifiedQuoteSwap(`solana-${network}`, baseToken, quoteToken, 1, 'SELL');
+    quote = await getSwapQuote(`solana-${network}`, baseToken, quoteToken, 1, 'SELL');
   } catch (e: any) {
     throw httpErrors.badRequest(
       `Could not fetch a market price for ${baseToken}/${quoteToken} to initialize the pool (${e.message}). ` +
@@ -161,35 +158,3 @@ export async function createPool(
   }
   return { signature, status: 0, poolAddress, price: seedPrice }; // PENDING
 }
-
-export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof OrcaClmmCreatePoolRequest>;
-    Reply: CreatePoolResponseType;
-  }>(
-    '/create-pool',
-    {
-      schema: {
-        description:
-          'Create and initialize a new Orca (Whirlpools) CLMM pool at an initial price. Does not open or seed a position.',
-        tags: ['/connector/orca'],
-        body: OrcaClmmCreatePoolRequest,
-        response: {
-          200: CreatePoolResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, baseToken, quoteToken, initialPrice, tickSpacing } = request.body;
-        return await createPool(network, walletAddress, baseToken, quoteToken, initialPrice, tickSpacing);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Failed to create pool');
-      }
-    },
-  );
-};
-
-export default createPoolRoute;

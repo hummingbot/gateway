@@ -1,16 +1,12 @@
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
-import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { AddLiquidityResponse, AddLiquidityResponseType } from '../../../schemas/clmm-schema';
-import { httpErrors } from '../../../services/error-handler';
+import { AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
-import { RaydiumClmmAddLiquidityRequest } from '../schemas';
 
 import { quotePosition } from './quotePosition';
 
@@ -135,43 +131,3 @@ export async function addLiquidity(
     };
   }
 }
-
-export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof RaydiumClmmAddLiquidityRequest>;
-    Reply: AddLiquidityResponseType;
-  }>(
-    '/add-liquidity',
-    {
-      schema: {
-        description: 'Add liquidity to existing Raydium CLMM position',
-        tags: ['/connector/raydium'],
-        body: RaydiumClmmAddLiquidityRequest,
-        response: {
-          200: AddLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, positionAddress, baseTokenAmount, quoteTokenAmount, slippagePct } =
-          request.body;
-
-        return await addLiquidity(
-          network,
-          walletAddress,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default addLiquidityRoute;

@@ -2,17 +2,14 @@ import { ApiV3PoolInfoStandardItem, ApiV3PoolInfoStandardItemCpmm, CurveCalculat
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
-import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 import { Solana } from '../../../chains/solana/solana';
-import { QuoteSwapResponseType, QuoteSwapResponse, QuoteSwapRequestType } from '../../../schemas/amm-schema';
+import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
-import { RaydiumAmmQuoteSwapRequest } from '../schemas';
 
 async function quoteAmmSwap(
   raydium: Raydium,
@@ -479,106 +476,6 @@ async function formatSwapQuote(
     priceImpactPct,
   };
 }
-
-export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: QuoteSwapRequestType;
-    Reply: QuoteSwapResponseType;
-  }>(
-    '/quote-swap',
-    {
-      schema: {
-        description: 'Get swap quote for Raydium AMM',
-        tags: ['/connector/raydium'],
-        querystring: RaydiumAmmQuoteSwapRequest,
-        response: {
-          200: QuoteSwapResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, poolAddress, baseToken, quoteToken, amount, side, slippagePct } = request.query;
-        const networkToUse = network;
-
-        // Validate essential parameters
-        if (!baseToken || !quoteToken || !amount || !side) {
-          throw httpErrors.badRequest('baseToken, quoteToken, amount, and side are required');
-        }
-
-        const raydium = await Raydium.getInstance(networkToUse);
-        const solana = await Solana.getInstance(networkToUse);
-
-        let poolAddressToUse = poolAddress;
-
-        // If poolAddress is not provided, look it up by token pair
-        if (!poolAddressToUse) {
-          // Resolve token symbols to get proper symbols for pool lookup
-          const baseTokenInfo = await solana.getToken(baseToken);
-          const quoteTokenInfo = await solana.getToken(quoteToken);
-
-          if (!baseTokenInfo || !quoteTokenInfo) {
-            throw httpErrors.badRequest(
-              sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
-            );
-          }
-
-          // Use PoolService to find pool by token pair
-          const { PoolService } = await import('../../../services/pool-service');
-          const poolService = PoolService.getInstance();
-
-          const pool = await poolService.getPool(
-            'raydium',
-            networkToUse,
-            'amm',
-            baseTokenInfo.symbol,
-            quoteTokenInfo.symbol,
-          );
-
-          if (!pool) {
-            throw httpErrors.notFound(
-              `No AMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Raydium`,
-            );
-          }
-
-          poolAddressToUse = pool.address;
-        }
-
-        const result = await quoteSwap(
-          networkToUse,
-          poolAddressToUse,
-          baseToken,
-          side as 'BUY' | 'SELL',
-          amount,
-          slippagePct,
-        );
-
-        let gasEstimation = null;
-        try {
-          gasEstimation = await estimateGasSolana(networkToUse);
-        } catch (error) {
-          logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
-        }
-
-        return result;
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-        if (e.message?.includes('Pool not found')) {
-          throw httpErrors.notFound(e.message);
-        }
-        if (e.message?.includes('Token not found')) {
-          throw httpErrors.badRequest(e.message);
-        }
-        throw httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default quoteSwapRoute;
 
 /**
  * Standardized network-first swap quote for the Raydium AMM/CPMM connector.

@@ -39,13 +39,42 @@ export const PoolListItemSchema = Type.Object(
     quoteTokenAddress: Type.String({ description: 'Quote token address' }),
     quoteTokenSymbol: Type.String({ description: 'Quote token symbol' }),
     binStep: Type.Number({ description: 'Bin step / tick spacing' }),
-    baseFee: Type.Number({ description: 'Base fee percentage' }),
-    price: Type.Number({ description: 'Current price' }),
-    tvl: Type.Number({ description: 'Total value locked in USD' }),
-    apr: Type.Optional(Type.Number({ description: 'Annual percentage rate' })),
-    apy: Type.Optional(Type.Number({ description: 'Annual percentage yield' })),
-    volume24h: Type.Optional(Type.Number({ description: '24-hour trading volume' })),
-    fees24h: Type.Optional(Type.Number({ description: '24-hour fees collected' })),
+    baseFee: Type.Number({
+      format: 'decimal',
+      description: 'Base fee percentage',
+    }),
+    price: Type.Number({
+      format: 'decimal',
+      description: 'Current price',
+    }),
+    tvl: Type.Number({
+      format: 'decimal',
+      description: 'Total value locked in USD',
+    }),
+    apr: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        description: 'Annual percentage rate',
+      }),
+    ),
+    apy: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        description: 'Annual percentage yield',
+      }),
+    ),
+    volume24h: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        description: '24-hour trading volume',
+      }),
+    ),
+    fees24h: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        description: '24-hour fees collected',
+      }),
+    ),
   },
   { $id: 'PoolListItem' },
 );
@@ -177,7 +206,13 @@ export const OpenPositionRequest = Type.Object(
     poolAddress: Type.String(),
     baseTokenAmount: Type.Optional(Type.Number()),
     quoteTokenAmount: Type.Optional(Type.Number()),
-    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+    slippagePct: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        minimum: 0,
+        maximum: 100,
+      }),
+    ),
   },
   { $id: 'OpenPositionRequest' },
 );
@@ -210,7 +245,13 @@ export const AddLiquidityRequest = Type.Object(
     positionAddress: Type.String(),
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
-    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+    slippagePct: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        minimum: 0,
+        maximum: 100,
+      }),
+    ),
   },
   { $id: 'AddLiquidityRequest' },
 );
@@ -239,7 +280,11 @@ export const RemoveLiquidityRequest = Type.Object(
     network: Type.Optional(Type.String()),
     walletAddress: Type.Optional(Type.String()),
     positionAddress: Type.String(),
-    percentageToRemove: Type.Number({ minimum: 0, maximum: 100 }),
+    percentageToRemove: Type.Number({
+      format: 'decimal',
+      minimum: 0,
+      maximum: 100,
+    }),
   },
   { $id: 'RemoveLiquidityRequest' },
 );
@@ -339,6 +384,7 @@ export const CreatePoolRequest = Type.Object(
     quoteToken: Type.String(),
     initialPrice: Type.Optional(
       Type.Number({
+        format: 'decimal',
         description:
           'Initial pool price as quote per base. If omitted, the current market price is fetched from the ' +
           'unified swap router so the pool opens on-market.',
@@ -346,11 +392,13 @@ export const CreatePoolRequest = Type.Object(
     ),
     binStep: Type.Optional(
       Type.Number({
+        'x-connectors': ['meteora', 'orca'],
         description: 'Bin/tick granularity: Meteora DLMM bin step (bps); Orca Whirlpool tick spacing.',
       }),
     ),
     feeBps: Type.Optional(
       Type.Number({
+        'x-connectors': ['meteora', 'uniswap', 'pancakeswap'],
         description:
           'Base fee in basis points: Meteora DLMM base fee; Uniswap/PancakeSwap V3 fee tier ' +
           '(1, 5, 30 or 100 bps; PancakeSwap also 25).',
@@ -358,6 +406,7 @@ export const CreatePoolRequest = Type.Object(
     ),
     ammConfigIndex: Type.Optional(
       Type.Number({
+        'x-connectors': ['raydium', 'pancakeswap-sol'],
         description:
           'Fee-config index for the Raydium CLMM family: Raydium API config list index; ' +
           'pancakeswap-sol amm_config PDA index. Default 0.',
@@ -375,7 +424,12 @@ export const CreatePoolResponse = Type.Object(
     signature: Type.String(),
     status: Type.Number({ description: 'TransactionStatus enum value' }),
     poolAddress: Type.String({ description: 'Address of the newly created pool' }),
-    price: Type.Optional(Type.Number({ description: 'Initial price the pool was initialized at (quote per base)' })),
+    price: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        description: 'Initial price the pool was initialized at (quote per base)',
+      }),
+    ),
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
@@ -429,7 +483,13 @@ export const QuoteSwapRequest = Type.Object(
       description: 'Trade direction',
       enum: ['BUY', 'SELL'],
     }),
-    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+    slippagePct: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        minimum: 0,
+        maximum: 100,
+      }),
+    ),
   },
   { $id: 'ClmmQuoteSwapRequest' },
 );
@@ -471,7 +531,13 @@ export const ExecuteSwapRequest = Type.Object(
     side: Type.String({
       enum: ['BUY', 'SELL'],
     }),
-    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+    slippagePct: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        minimum: 0,
+        maximum: 100,
+      }),
+    ),
   },
   { $id: 'ClmmExecuteSwapRequest' },
 );
@@ -493,7 +559,10 @@ export const ExecuteSwapResponse = Type.Object(
         baseTokenBalanceChange: Type.Number(),
         quoteTokenBalanceChange: Type.Number(),
         slippagePct: Type.Optional(
-          Type.Number({ description: 'Slippage tolerance percentage actually applied to the swap' }),
+          Type.Number({
+            format: 'decimal',
+            description: 'Slippage tolerance percentage actually applied to the swap',
+          }),
         ),
       }),
     ),

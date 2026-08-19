@@ -1,11 +1,9 @@
-import { Static } from '@sinclair/typebox';
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getMint } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { CreatePoolResponse, CreatePoolResponseType } from '../../../schemas/clmm-schema';
+import { CreatePoolResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
@@ -13,7 +11,6 @@ import { PancakeswapSol, PANCAKESWAP_CLMM_PROGRAM_ID } from '../pancakeswap-sol'
 import { buildCreatePoolInstruction } from '../pancakeswap-sol.instructions';
 import { priceToSqrtPriceX64 } from '../pancakeswap-sol.math';
 import { buildTransactionWithInstructions } from '../pancakeswap-sol.transactions';
-import { PancakeswapSolClmmCreatePoolRequest } from '../schemas';
 
 /** Lexicographic byte comparison (mirrors Buffer.compare) for canonical mint ordering. */
 function compareBytes(a: Buffer, b: Buffer): number {
@@ -51,10 +48,10 @@ async function getMintProgram(solana: Solana, mint: PublicKey): Promise<PublicKe
  * no market route exists.
  */
 async function fetchMarketPrice(network: string, baseToken: string, quoteToken: string): Promise<number> {
-  const { getUnifiedQuoteSwap } = await import('../../../trading/swap/quote');
+  const { getSwapQuote } = await import('../../../trading/market-price');
   let quote: any;
   try {
-    quote = await getUnifiedQuoteSwap(`solana-${network}`, baseToken, quoteToken, 1, 'SELL');
+    quote = await getSwapQuote(`solana-${network}`, baseToken, quoteToken, 1, 'SELL');
   } catch (e: any) {
     throw httpErrors.badRequest(
       `Could not fetch a market price for ${baseToken}/${quoteToken} to initialize the pool (${e.message}). ` +
@@ -229,42 +226,3 @@ export async function createPool(
 
   return { signature, status: 0, poolAddress, price: seedPrice }; // PENDING
 }
-
-export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof PancakeswapSolClmmCreatePoolRequest>;
-    Reply: CreatePoolResponseType;
-  }>(
-    '/create-pool',
-    {
-      schema: {
-        description:
-          'Create and initialize a new PancakeSwap Solana CLMM pool at an initial price. Does not open or seed a position.',
-        tags: ['/connector/pancakeswap-sol'],
-        body: PancakeswapSolClmmCreatePoolRequest,
-        response: {
-          200: CreatePoolResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network = 'mainnet-beta',
-          walletAddress,
-          baseToken,
-          quoteToken,
-          initialPrice,
-          ammConfigIndex,
-        } = request.body;
-        return await createPool(network, walletAddress!, baseToken, quoteToken, initialPrice, ammConfigIndex);
-      } catch (e: any) {
-        logger.error('Create pool error:', e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError(e.message || 'Failed to create pool');
-      }
-    },
-  );
-};
-
-export default createPoolRoute;

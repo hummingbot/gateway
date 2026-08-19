@@ -37,12 +37,14 @@ const UnifiedAddLiquidityRequest = Type.Object({
   }),
   baseTokenAmount: Type.Optional(
     Type.Number({
+      format: 'decimal',
       description: 'Amount of base token to deposit (omit for single-sided quote deposit)',
       examples: [BASE_TOKEN_AMOUNT],
     }),
   ),
   quoteTokenAmount: Type.Optional(
     Type.Number({
+      format: 'decimal',
       description: 'Amount of quote token to deposit (omit for single-sided base deposit)',
       examples: [QUOTE_TOKEN_AMOUNT],
     }),
@@ -53,6 +55,7 @@ const UnifiedAddLiquidityRequest = Type.Object({
   // from the shape the position was opened with.
   strategyType: Type.Optional(
     Type.Number({
+      'x-connectors': ['meteora'],
       description: 'Strategy type for Meteora positions (0=Spot, 1=Curve). Only applies to Meteora connector.',
       examples: [0],
     }),

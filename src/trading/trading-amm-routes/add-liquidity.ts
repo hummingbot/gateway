@@ -22,10 +22,17 @@ const UnifiedAmmAddLiquidityRequest = Type.Object({
   chainNetwork: chainNetworkField(),
   walletAddress: Type.String({ description: 'Wallet address', default: defaultWallet }),
   poolAddress: Type.String({ description: 'Pool contract address' }),
-  baseTokenAmount: Type.Number({ description: 'Amount of base token to add' }),
-  quoteTokenAmount: Type.Number({ description: 'Amount of quote token to add' }),
+  baseTokenAmount: Type.Number({
+    format: 'decimal',
+    description: 'Amount of base token to add',
+  }),
+  quoteTokenAmount: Type.Number({
+    format: 'decimal',
+    description: 'Amount of quote token to add',
+  }),
   positionAddress: Type.Optional(
     Type.String({
+      'x-connectors': ['meteora'],
       description:
         'meteora only (DAMM v2 positions are NFTs): add to this specific position. Omit to open a new ' +
         'position. Ignored by fungible-LP AMMs.',

@@ -5,6 +5,8 @@ import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 jest.mock('../../../../src/chains/solana/solana', () => ({
   Solana: {
     getInstance: jest.fn(),
+    // Orca's positionInfo falls back to an example wallet when the caller names none.
+    getWalletAddressExample: jest.fn().mockResolvedValue('BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF'),
   },
 }));
 
@@ -24,8 +26,8 @@ jest.mock('../../../../src/chains/solana/solana.config', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { positionInfoRoute } = await import('../../../../src/connectors/orca/clmm-routes/positionInfo');
-  await server.register(positionInfoRoute);
+  const { positionsRoute } = await import('../../../../src/trading/clmm/positions');
+  await server.register(positionsRoute);
   return server;
 };
 
@@ -70,7 +72,8 @@ describe('GET /position-info', () => {
         method: 'GET',
         url: '/position-info',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           positionAddress: mockPositionAddress,
           walletAddress: mockWalletAddress,
         },
@@ -96,6 +99,7 @@ describe('GET /position-info', () => {
         method: 'GET',
         url: '/position-info',
         query: {
+          connector: 'orca',
           positionAddress: mockPositionAddress,
         },
       });
@@ -113,7 +117,8 @@ describe('GET /position-info', () => {
         method: 'GET',
         url: '/position-info',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           positionAddress: 'invalid-position',
         },
       });
@@ -129,7 +134,8 @@ describe('GET /position-info', () => {
         method: 'GET',
         url: '/position-info',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
         },
       });
 
@@ -146,7 +152,8 @@ describe('GET /position-info', () => {
         method: 'GET',
         url: '/position-info',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           positionAddress: 'invalid',
         },
       });
@@ -167,7 +174,8 @@ describe('GET /position-info', () => {
         method: 'GET',
         url: '/position-info',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           positionAddress: mockPositionAddress,
         },
       });
@@ -182,7 +190,8 @@ describe('GET /position-info', () => {
         method: 'GET',
         url: '/position-info',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           positionAddress: mockPositionAddress,
         },
       });
@@ -200,7 +209,8 @@ describe('GET /position-info', () => {
         method: 'GET',
         url: '/position-info',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           positionAddress: mockPositionAddress,
         },
       });

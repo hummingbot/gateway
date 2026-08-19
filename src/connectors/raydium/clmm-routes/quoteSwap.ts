@@ -6,22 +6,14 @@ import {
 } from '@raydium-io/raydium-sdk-v2';
 import { PublicKey } from '@solana/web3.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
-import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 import { Solana } from '../../../chains/solana/solana';
-import {
-  QuoteSwapResponseType,
-  QuoteSwapResponse,
-  QuoteSwapRequestType,
-  QuoteSwapRequest,
-} from '../../../schemas/clmm-schema';
+import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
-import { RaydiumClmmQuoteSwapRequest } from '../schemas';
 
 export async function getSwapQuote(
   network: string,
@@ -251,103 +243,6 @@ async function formatSwapQuote(
     return result;
   }
 }
-
-export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: QuoteSwapRequestType;
-    Reply: QuoteSwapResponseType;
-  }>(
-    '/quote-swap',
-    {
-      schema: {
-        description: 'Get swap quote for Raydium CLMM',
-        tags: ['/connector/raydium'],
-        querystring: RaydiumClmmQuoteSwapRequest,
-        response: { 200: QuoteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } =
-          request.query as typeof RaydiumClmmQuoteSwapRequest._type;
-        const networkToUse = network;
-
-        // Validate essential parameters
-        if (!baseToken || !quoteToken || !amount || !side) {
-          throw httpErrors.badRequest('baseToken, quoteToken, amount, and side are required');
-        }
-
-        const solana = await Solana.getInstance(networkToUse);
-
-        let poolAddressToUse = poolAddress;
-
-        // If poolAddress is not provided, look it up by token pair
-        if (!poolAddressToUse) {
-          // Resolve token symbols to get proper symbols for pool lookup
-          const baseTokenInfo = await solana.getToken(baseToken);
-          const quoteTokenInfo = await solana.getToken(quoteToken);
-
-          if (!baseTokenInfo || !quoteTokenInfo) {
-            throw httpErrors.badRequest(
-              sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
-            );
-          }
-
-          // Use PoolService to find pool by token pair
-          const { PoolService } = await import('../../../services/pool-service');
-          const poolService = PoolService.getInstance();
-
-          const pool = await poolService.getPool(
-            'raydium',
-            networkToUse,
-            'clmm',
-            baseTokenInfo.symbol,
-            quoteTokenInfo.symbol,
-          );
-
-          if (!pool) {
-            throw httpErrors.notFound(
-              `No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Raydium`,
-            );
-          }
-
-          poolAddressToUse = pool.address;
-        }
-
-        const result = await formatSwapQuote(
-          networkToUse,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
-          poolAddressToUse,
-          slippagePct,
-        );
-
-        let gasEstimation = null;
-        try {
-          gasEstimation = await estimateGasSolana(networkToUse);
-        } catch (error) {
-          logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
-        }
-
-        return {
-          poolAddress: poolAddressToUse,
-          ...result,
-        };
-      } catch (e) {
-        logger.error(e);
-        // Preserve the original error if it's a FastifyError
-        if (e.statusCode) {
-          throw e;
-        }
-        throw httpErrors.internalServerError('Failed to get swap quote');
-      }
-    },
-  );
-};
-
-export default quoteSwapRoute;
 
 /**
  * Resolves the counter ("quote") token for a Raydium CLMM pool given the base token. The

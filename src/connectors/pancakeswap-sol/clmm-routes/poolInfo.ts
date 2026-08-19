@@ -1,11 +1,9 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { GetPoolInfoRequestType, PoolInfo, PoolInfoSchema } from '../../../schemas/clmm-schema';
-import { logger } from '../../../services/logger';
+import { PoolInfo } from '../../../schemas/clmm-schema';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { computeBinDistribution } from '../pancakeswap-sol.bins';
-import { PancakeswapSolClmmGetPoolInfoRequest } from '../schemas';
 
 export async function getPoolInfo(
   fastify: FastifyInstance,
@@ -45,39 +43,3 @@ export async function getPoolInfo(
 
   return poolInfo;
 }
-
-export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: GetPoolInfoRequestType;
-    Reply: PoolInfo;
-  }>(
-    '/pool-info',
-    {
-      schema: {
-        description: 'Get CLMM pool information from PancakeSwap Solana',
-        tags: ['/connector/pancakeswap-sol'],
-        querystring: PancakeswapSolClmmGetPoolInfoRequest,
-        response: {
-          200: PoolInfoSchema,
-        },
-      },
-    },
-    async (request): Promise<PoolInfo> => {
-      try {
-        const { network = 'mainnet-beta', poolAddress, binCount = 0 } = request.query;
-        return await getPoolInfo(fastify, network, poolAddress, binCount);
-      } catch (e: any) {
-        logger.error('Pool info error:', e);
-        // Re-throw httpErrors as-is
-        if (e.statusCode) {
-          throw e;
-        }
-        // Handle unknown errors
-        const errorMessage = e.message || 'Failed to fetch pool info';
-        throw fastify.httpErrors.internalServerError(errorMessage);
-      }
-    },
-  );
-};
-
-export default poolInfoRoute;

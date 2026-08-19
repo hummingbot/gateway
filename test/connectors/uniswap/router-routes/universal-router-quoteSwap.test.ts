@@ -15,7 +15,7 @@ const mockGetAlphaRouterQuote = jest.fn();
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quoteSwapRoute } = await import('../../../../src/connectors/uniswap/router-routes/quoteSwap');
+  const { quoteSwapRoute } = await import('../../../../src/trading/trading-router-routes/quoteSwap');
   await server.register(quoteSwapRoute);
   return server;
 };
@@ -151,7 +151,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'uniswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'WETH',
         quoteToken: 'USDC',
@@ -194,7 +195,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'uniswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'WETH',
         quoteToken: 'USDC',
@@ -219,7 +221,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'uniswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'WETH',
         quoteToken: 'USDC',
@@ -242,7 +245,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'uniswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'WETH',
         quoteToken: 'USDC',
@@ -274,7 +278,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'uniswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'INVALID',
         quoteToken: 'USDC',
@@ -296,7 +301,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'ETH',
           quoteToken: 'USDC',
@@ -338,7 +344,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'USDC',
           quoteToken: 'ETH',
@@ -362,7 +369,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'eth',
           quoteToken: 'USDC',
@@ -384,7 +392,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'Eth',
           quoteToken: 'USDC',
@@ -408,7 +417,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'USDC',
           quoteToken: 'USDC',
@@ -432,7 +442,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'ETH',
           quoteToken: 'WETH',
@@ -456,7 +467,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'WETH',
           quoteToken: 'ETH',
@@ -480,7 +492,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'ETH',
           quoteToken: 'ETH',
@@ -525,7 +538,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'WETH',
           quoteToken: 'USDC',
@@ -551,7 +565,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'WETH',
           quoteToken: 'USDC',

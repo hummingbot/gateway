@@ -1,18 +1,15 @@
 import { StrategyType } from '@meteora-ag/dlmm';
 import { DecimalUtil } from '@orca-so/common-sdk';
-import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { AddLiquidityResponse, AddLiquidityResponseType } from '../../../schemas/clmm-schema';
+import { AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 import { MeteoraConfig } from '../meteora.config';
-import { MeteoraClmmAddLiquidityRequest } from '../schemas';
 
 // Using Fastify's native error handling
 
@@ -168,49 +165,3 @@ export async function addLiquidity(
     };
   }
 }
-
-export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
-
-  fastify.post<{
-    Body: Static<typeof MeteoraClmmAddLiquidityRequest>;
-    Reply: AddLiquidityResponseType;
-  }>(
-    '/add-liquidity',
-    {
-      schema: {
-        description: 'Add liquidity to a Meteora position',
-        tags: ['/connector/meteora'],
-        body: MeteoraClmmAddLiquidityRequest,
-        response: {
-          200: AddLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { walletAddress, positionAddress, baseTokenAmount, quoteTokenAmount, slippagePct, strategyType } =
-          request.body;
-        const network = request.body.network;
-
-        return await addLiquidity(
-          network,
-          walletAddress,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-          strategyType,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e; // Re-throw HttpErrors with original message
-        }
-        throw httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default addLiquidityRoute;

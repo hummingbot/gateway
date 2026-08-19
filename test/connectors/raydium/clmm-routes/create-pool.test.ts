@@ -19,7 +19,7 @@ const mockWallet = '82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5';
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { createPoolRoute } = await import('../../../../src/connectors/raydium/clmm-routes/createPool');
+  const { createPoolRoute } = await import('../../../../src/trading/trading-clmm-routes/create-pool');
   await server.register(createPoolRoute);
   return server;
 };
@@ -52,7 +52,8 @@ describe('POST /create-pool (Raydium CLMM)', () => {
       method: 'POST',
       url: '/create-pool',
       payload: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWallet,
         baseToken: 'SOL',
         quoteToken: 'SOL',
@@ -94,7 +95,8 @@ describe('POST /create-pool (Raydium CLMM)', () => {
       method: 'POST',
       url: '/create-pool',
       payload: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWallet,
         baseToken: 'SOL',
         quoteToken: 'USDC',

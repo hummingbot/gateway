@@ -8,7 +8,7 @@ jest.mock('../../../../src/connectors/orca/orca');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { addLiquidityRoute } = await import('../../../../src/connectors/orca/clmm-routes/addLiquidity');
+  const { addLiquidityRoute } = await import('../../../../src/trading/trading-clmm-routes/add');
   await server.register(addLiquidityRoute);
   return server;
 };
@@ -48,9 +48,10 @@ describe('POST /add-liquidity', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/add-liquidity',
+        url: '/add',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
           baseTokenAmount: 1.0,
@@ -75,9 +76,10 @@ describe('POST /add-liquidity', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/add-liquidity',
+        url: '/add',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
           quoteTokenAmount: 200,
@@ -90,9 +92,10 @@ describe('POST /add-liquidity', () => {
     it('should add liquidity with both token amounts', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/add-liquidity',
+        url: '/add',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
           baseTokenAmount: 1.0,
@@ -108,9 +111,10 @@ describe('POST /add-liquidity', () => {
     it('should return 400 when positionAddress is missing', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/add-liquidity',
+        url: '/add',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           baseTokenAmount: 1.0,
         },
@@ -122,9 +126,10 @@ describe('POST /add-liquidity', () => {
     it('should return error when no token amount provided', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/add-liquidity',
+        url: '/add',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
         },
@@ -136,9 +141,10 @@ describe('POST /add-liquidity', () => {
     it('should handle invalid position address', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/add-liquidity',
+        url: '/add',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: 'invalid',
           baseTokenAmount: 1.0,
@@ -158,9 +164,10 @@ describe('POST /add-liquidity', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/add-liquidity',
+        url: '/add',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
           baseTokenAmount: 1.0,
@@ -175,9 +182,10 @@ describe('POST /add-liquidity', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/add-liquidity',
+        url: '/add',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
           baseTokenAmount: 1.0,

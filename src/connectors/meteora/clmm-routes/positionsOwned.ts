@@ -1,11 +1,10 @@
-import { Type } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
-import { PositionInfo, PositionInfoSchema } from '../../../schemas/clmm-schema';
+import { PositionInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
-import { MeteoraClmmGetPositionsOwnedRequest, MeteoraClmmGetPositionsOwnedRequestType } from '../schemas';
+
 // Using Fastify's native error handling
 const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
 
@@ -40,40 +39,3 @@ async function fetchPositionsFromRPC(network: string, walletAddress: string): Pr
   logger.info(`Found ${positions.length} Meteora position(s) for wallet ${walletAddress.slice(0, 8)}...`);
   return positions;
 }
-
-export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: MeteoraClmmGetPositionsOwnedRequestType;
-    Reply: PositionInfo[];
-  }>(
-    '/positions-owned',
-    {
-      schema: {
-        description: "Retrieve all positions owned by a user's wallet across all Meteora pools",
-        tags: ['/connector/meteora'],
-        querystring: MeteoraClmmGetPositionsOwnedRequest,
-        response: {
-          200: Type.Array(PositionInfoSchema),
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress } = request.query;
-        return await getPositionsOwned(fastify, network, walletAddress);
-      } catch (e: any) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-        // If it's an Error object with a message, use that message
-        if (e.message) {
-          throw fastify.httpErrors.serviceUnavailable(e.message);
-        }
-        throw fastify.httpErrors.internalServerError('Failed to fetch positions');
-      }
-    },
-  );
-};
-
-export default positionsOwnedRoute;

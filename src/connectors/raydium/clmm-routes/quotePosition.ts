@@ -1,16 +1,12 @@
 import { TickUtils, PoolUtils } from '@raydium-io/raydium-sdk-v2';
-import { Static } from '@sinclair/typebox';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { QuotePositionResponseType, QuotePositionResponse } from '../../../schemas/clmm-schema';
-import { httpErrors } from '../../../services/error-handler';
+import { QuotePositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
-import { RaydiumClmmQuotePositionRequest } from '../schemas';
 
 export async function quotePosition(
   network: string,
@@ -157,53 +153,3 @@ export async function quotePosition(
     throw error;
   }
 }
-
-export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: Static<typeof RaydiumClmmQuotePositionRequest>;
-    Reply: QuotePositionResponseType;
-  }>(
-    '/quote-position',
-    {
-      schema: {
-        description: 'Quote amounts for a new Raydium CLMM position',
-        tags: ['/connector/raydium'],
-        querystring: RaydiumClmmQuotePositionRequest,
-        response: {
-          200: QuotePositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network = 'mainnet-beta',
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.query;
-
-        return await quotePosition(
-          network,
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-          undefined, // baseToken not needed anymore
-          undefined, // quoteToken not needed anymore
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to quote position');
-      }
-    },
-  );
-};
-
-export default quotePositionRoute;

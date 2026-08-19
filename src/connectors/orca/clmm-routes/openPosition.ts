@@ -15,15 +15,13 @@ import {
   priceToTickIndex,
   type IncreaseLiquidityQuote,
 } from '@orca-so/whirlpools-core';
-import { Static } from '@sinclair/typebox';
 import { address, type Instruction } from '@solana/kit';
 import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { fetchAllMint } from '@solana-program/token-2022';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { OpenPositionResponse, OpenPositionResponseType } from '../../../schemas/clmm-schema';
+import { OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
@@ -31,7 +29,6 @@ import { OrcaConfig } from '../orca.config';
 import { getCurrentTransferFee } from '../orca.position';
 import { buildOrcaTransaction, createOrcaAuthority, replaceOrcaInstructionAccounts } from '../orca.sdk';
 import { extractInnerTransferAmounts } from '../orca.utils';
-import { OrcaClmmOpenPositionRequest } from '../schemas';
 
 export async function openPosition(
   network: string,
@@ -274,50 +271,3 @@ export async function openPosition(
     },
   };
 }
-
-export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof OrcaClmmOpenPositionRequest>;
-    Reply: OpenPositionResponseType;
-  }>(
-    '/open-position',
-    {
-      schema: {
-        description: 'Open a new Orca position',
-        tags: ['/connector/orca'],
-        body: OrcaClmmOpenPositionRequest,
-        response: { 200: OpenPositionResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          walletAddress,
-          poolAddress,
-          lowerPrice,
-          upperPrice,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-          network,
-        } = request.body;
-        return await openPosition(
-          network,
-          walletAddress,
-          poolAddress,
-          lowerPrice,
-          upperPrice,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (error) {
-        logger.error(error);
-        if (error.statusCode) throw error;
-        throw httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default openPositionRoute;

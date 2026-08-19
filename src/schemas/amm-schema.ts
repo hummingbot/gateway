@@ -32,7 +32,13 @@ export const AddLiquidityRequest = Type.Object(
     poolAddress: Type.String(),
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
-    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+    slippagePct: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        minimum: 0,
+        maximum: 100,
+      }),
+    ),
   },
   { $id: 'AddLiquidityRequest' },
 );
@@ -78,7 +84,11 @@ export const RemoveLiquidityRequest = Type.Object(
     network: Type.Optional(Type.String()),
     walletAddress: Type.Optional(Type.String()),
     poolAddress: Type.String(),
-    percentageToRemove: Type.Number({ minimum: 0, maximum: 100 }),
+    percentageToRemove: Type.Number({
+      format: 'decimal',
+      minimum: 0,
+      maximum: 100,
+    }),
   },
   { $id: 'RemoveLiquidityRequest' },
 );
@@ -112,9 +122,13 @@ export const CreatePoolRequest = Type.Object(
     walletAddress: Type.Optional(Type.String()),
     baseToken: Type.String({ description: 'Base token symbol or address (becomes the pool base)' }),
     quoteToken: Type.String({ description: 'Quote token symbol or address (becomes the pool quote)' }),
-    baseTokenAmount: Type.Number({ description: 'Amount of base token to seed the pool with' }),
+    baseTokenAmount: Type.Number({
+      format: 'decimal',
+      description: 'Amount of base token to seed the pool with',
+    }),
     quoteTokenAmount: Type.Optional(
       Type.Number({
+        format: 'decimal',
         description:
           'Amount of quote token to seed with. If provided, the base:quote ratio sets the initial price. ' +
           'If omitted (and no initialPrice), the price is fetched from the market.',
@@ -122,6 +136,7 @@ export const CreatePoolRequest = Type.Object(
     ),
     initialPrice: Type.Optional(
       Type.Number({
+        format: 'decimal',
         description:
           'Initial price as quote per base. Overrides quoteTokenAmount. If both are omitted, the current ' +
           'market price is fetched from the unified swap router so the pool opens on-market.',
@@ -137,7 +152,12 @@ export const CreatePoolResponse = Type.Object(
     signature: Type.String(),
     status: Type.Number({ description: 'TransactionStatus enum value' }),
     poolAddress: Type.String({ description: 'Address of the newly created pool' }),
-    price: Type.Optional(Type.Number({ description: 'Initial price the pool was seeded at (quote per base)' })),
+    price: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        description: 'Initial price the pool was seeded at (quote per base)',
+      }),
+    ),
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
@@ -158,7 +178,10 @@ export type CreatePoolResponseType = Static<typeof CreatePoolResponse>;
 export const PositionDetailSchema = Type.Object(
   {
     positionAddress: Type.String({ description: 'Address of the individual position (NFT position account)' }),
-    lpTokenAmount: Type.Number({ description: 'Liquidity held by this position (LP units)' }),
+    lpTokenAmount: Type.Number({
+      format: 'decimal',
+      description: 'Liquidity held by this position (LP units)',
+    }),
     baseTokenAmount: Type.Number(),
     quoteTokenAmount: Type.Number(),
   },
@@ -220,7 +243,13 @@ export const QuoteSwapRequest = Type.Object(
       description: 'Trade direction',
       enum: ['BUY', 'SELL'],
     }),
-    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+    slippagePct: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        minimum: 0,
+        maximum: 100,
+      }),
+    ),
   },
   { $id: 'AmmQuoteSwapRequest' },
 );
@@ -262,7 +291,13 @@ export const ExecuteSwapRequest = Type.Object(
     side: Type.String({
       enum: ['BUY', 'SELL'],
     }),
-    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+    slippagePct: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        minimum: 0,
+        maximum: 100,
+      }),
+    ),
   },
   { $id: 'AmmExecuteSwapRequest' },
 );
@@ -284,7 +319,10 @@ export const ExecuteSwapResponse = Type.Object(
         baseTokenBalanceChange: Type.Number(),
         quoteTokenBalanceChange: Type.Number(),
         slippagePct: Type.Optional(
-          Type.Number({ description: 'Slippage tolerance percentage actually applied to the swap' }),
+          Type.Number({
+            format: 'decimal',
+            description: 'Slippage tolerance percentage actually applied to the swap',
+          }),
         ),
       }),
     ),

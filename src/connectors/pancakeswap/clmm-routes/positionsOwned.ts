@@ -1,7 +1,7 @@
 import { Contract } from '@ethersproject/contracts';
 import { Position, tickToPrice, computePoolAddress } from '@pancakeswap/v3-sdk';
 import { Type } from '@sinclair/typebox';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { PositionInfo, PositionInfoSchema } from '../../../schemas/clmm-schema';
@@ -142,46 +142,3 @@ export async function getPositionsOwned(
 
   return positions;
 }
-
-export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
-  fastify.get<{
-    Querystring: typeof PositionsOwnedRequest.static;
-    Reply: typeof PositionsOwnedResponse.static;
-  }>(
-    '/positions-owned',
-    {
-      schema: {
-        description: 'Get all Pancakeswap V3 positions owned by a wallet',
-        tags: ['/connector/pancakeswap'],
-        querystring: {
-          ...PositionsOwnedRequest,
-          properties: {
-            ...PositionsOwnedRequest.properties,
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-          },
-        },
-        response: {
-          200: PositionsOwnedResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { walletAddress } = request.query;
-        const network = request.query.network;
-        return await getPositionsOwned(fastify, network, walletAddress);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw fastify.httpErrors.internalServerError('Failed to fetch positions');
-      }
-    },
-  );
-};
-
-export default positionsOwnedRoute;

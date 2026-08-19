@@ -43,7 +43,7 @@ const buildPool = () => {
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { openPositionRoute } = await import('../../../../src/connectors/uniswap/clmm-routes/openPosition');
+  const { openPositionRoute } = await import('../../../../src/trading/trading-clmm-routes/open');
   await server.register(openPositionRoute);
   return server;
 };
@@ -82,9 +82,10 @@ const primeMocks = (receipt: any, uniswapOverrides: Record<string, any> = {}) =>
 const open = (server: any) =>
   server.inject({
     method: 'POST',
-    url: '/open-position',
+    url: '/open',
     payload: {
-      network: 'base',
+      chainNetwork: 'ethereum-base',
+      connector: 'uniswap',
       walletAddress: mockWallet,
       poolAddress,
       lowerPrice: 2500,

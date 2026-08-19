@@ -5,8 +5,7 @@ import { poolsRoute } from './clmm/pools';
 import { positionsRoute } from './clmm/positions';
 import { positionsOwnedRoute } from './clmm/positions-owned';
 import { quotePositionRoute } from './clmm/quote-position';
-import { executeSwapRoute } from './swap/execute';
-import { quoteSwapRoute } from './swap/quote';
+import { makeExecuteSwapRoute, makeQuoteSwapRoute } from './pool-swap-routes';
 import {
   createPoolRoute,
   poolInfoRoute as ammPoolInfoRoute,
@@ -23,26 +22,38 @@ import {
   collectFeesRoute,
   closePositionRoute,
   createPoolRoute as clmmCreatePoolRoute,
+  fetchPoolsRoute,
 } from './trading-clmm-routes';
+import { quoteSwapRoute, executeQuoteRoute, executeSwapRoute } from './trading-router-routes';
 
-export const tradingSwapRoutes: FastifyPluginAsync = async (fastify) => {
+/**
+ * Router connectors (Jupiter, 0x, ...): quote-swap / execute-quote / execute-swap.
+ * Mounted at /trading/router, exposing the same verb set the per-connector router
+ * routes used to.
+ */
+export const tradingRouterRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
 
-  // Register swap routes
   fastify.register(quoteSwapRoute);
+  fastify.register(executeQuoteRoute);
   fastify.register(executeSwapRoute);
 };
 
 export const tradingClmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
 
-  // Register CLMM query routes
+  // Query routes
   fastify.register(poolsRoute);
   fastify.register(positionsRoute);
   fastify.register(positionsOwnedRoute);
   fastify.register(quotePositionRoute);
+  fastify.register(fetchPoolsRoute);
 
-  // Register CLMM transaction routes
+  // Swap routes (single-pool swaps; execute-quote is router-only)
+  fastify.register(makeQuoteSwapRoute('clmm'));
+  fastify.register(makeExecuteSwapRoute('clmm'));
+
+  // Liquidity transaction routes
   fastify.register(openPositionRoute);
   fastify.register(addLiquidityRoute);
   fastify.register(removeLiquidityRoute);
@@ -54,13 +65,17 @@ export const tradingClmmRoutes: FastifyPluginAsync = async (fastify) => {
 export const tradingAmmRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(sensible);
 
-  // Register AMM query routes (unified cross-connector)
+  // Query routes
   fastify.register(ammPoolInfoRoute);
   fastify.register(ammPositionInfoRoute);
   fastify.register(ammPositionsOwnedRoute);
   fastify.register(ammQuoteLiquidityRoute);
 
-  // Register AMM transaction routes (unified cross-connector)
+  // Swap routes (single-pool swaps; execute-quote is router-only)
+  fastify.register(makeQuoteSwapRoute('amm'));
+  fastify.register(makeExecuteSwapRoute('amm'));
+
+  // Liquidity transaction routes
   fastify.register(ammAddLiquidityRoute);
   fastify.register(ammRemoveLiquidityRoute);
   fastify.register(createPoolRoute);

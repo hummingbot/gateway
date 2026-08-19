@@ -1,15 +1,10 @@
 import { SwapQuoteExactOut, SwapQuote } from '@meteora-ag/dlmm';
 import { PublicKey } from '@solana/web3.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { getSolanaChainConfig } from '../../../chains/solana/solana.config';
-import { ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/clmm-schema';
-import { httpErrors } from '../../../services/error-handler';
+import { ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
-import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { MeteoraConfig } from '../meteora.config';
-import { MeteoraClmmExecuteSwapRequest, MeteoraClmmExecuteSwapRequestType } from '../schemas';
 
 import { resolveCounterToken, getRawSwapQuote } from './quoteSwap';
 
@@ -145,95 +140,3 @@ export async function executeSwap(
     };
   }
 }
-
-export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: MeteoraClmmExecuteSwapRequestType;
-    Reply: ExecuteSwapResponseType;
-  }>(
-    '/execute-swap',
-    {
-      schema: {
-        description: 'Execute a token swap on Meteora DLMM',
-        tags: ['/connector/meteora'],
-        body: MeteoraClmmExecuteSwapRequest,
-        response: { 200: ExecuteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body;
-
-        // Use defaults if not provided
-        const networkUsed = network || getSolanaChainConfig().defaultNetwork;
-        const walletAddressUsed = walletAddress || getSolanaChainConfig().defaultWallet;
-
-        let poolAddressUsed = poolAddress;
-
-        // If poolAddress is not provided, look it up by token pair
-        if (!poolAddressUsed) {
-          const solana = await Solana.getInstance(networkUsed);
-
-          // Resolve token symbols to get proper symbols for pool lookup
-          const baseTokenInfo = await solana.getToken(baseToken);
-          const quoteTokenInfo = await solana.getToken(quoteToken);
-
-          if (!baseTokenInfo || !quoteTokenInfo) {
-            throw httpErrors.badRequest(
-              sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
-            );
-          }
-
-          // Use PoolService to find pool by token pair
-          const { PoolService } = await import('../../../services/pool-service');
-          const poolService = PoolService.getInstance();
-
-          const pool = await poolService.getPool(
-            'meteora',
-            networkUsed,
-            'clmm',
-            baseTokenInfo.symbol,
-            quoteTokenInfo.symbol,
-          );
-
-          if (!pool) {
-            throw httpErrors.notFound(
-              `No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Meteora`,
-            );
-          }
-
-          poolAddressUsed = pool.address;
-        }
-        logger.info(`Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddressUsed}`);
-
-        return await executeSwap(
-          networkUsed,
-          walletAddressUsed,
-          poolAddressUsed,
-          baseToken,
-          side as 'BUY' | 'SELL',
-          amount,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Error executing swap:', e.message || e);
-        logger.error('Full error:', JSON.stringify(e, null, 2));
-
-        if (e.statusCode) {
-          // If it's already an HTTP error, throw it properly
-          throw e;
-        }
-
-        // Check for specific error messages
-        const errorMessage = e.message || e.toString();
-        if (errorMessage.includes('503') || errorMessage.includes('Service Unavailable')) {
-          throw httpErrors.createError(503, 'RPC service temporarily unavailable. Please try again.');
-        }
-
-        throw httpErrors.internalServerError(`Swap execution failed: ${errorMessage}`);
-      }
-    },
-  );
-};
-
-export default executeSwapRoute;

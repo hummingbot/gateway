@@ -2,7 +2,6 @@ import { Contract } from '@ethersproject/contracts';
 import { CurrencyAmount, Percent } from '@uniswap/sdk-core';
 import { Position, NonfungiblePositionManager, MintOptions, nearestUsableTick } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
 // Default gas limit for CLMM open position operations
@@ -10,12 +9,7 @@ const CLMM_OPEN_POSITION_GAS_LIMIT = 600000;
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { TransactionStatus } from '../../../schemas/chain-schema';
-import {
-  OpenPositionRequestType,
-  OpenPositionRequest,
-  OpenPositionResponseType,
-  OpenPositionResponse,
-} from '../../../schemas/clmm-schema';
+import { OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
@@ -288,100 +282,3 @@ export async function openPosition(
     },
   };
 }
-
-export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
-  fastify.post<{
-    Body: OpenPositionRequestType;
-    Reply: OpenPositionResponseType;
-  }>(
-    '/open-position',
-    {
-      schema: {
-        description: 'Open a new liquidity position in a Uniswap V3 pool',
-        tags: ['/connector/uniswap'],
-        body: {
-          ...OpenPositionRequest,
-          properties: {
-            ...OpenPositionRequest.properties,
-            network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            lowerPrice: { type: 'number', examples: [1000] },
-            upperPrice: { type: 'number', examples: [4000] },
-            poolAddress: { type: 'string', examples: ['0xd0b53d9277642d899df5c87a3966a349a798f224'] },
-            baseTokenAmount: { type: 'number', examples: [0.001] },
-            quoteTokenAmount: { type: 'number', examples: [3] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
-        response: {
-          200: OpenPositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network,
-          walletAddress: requestedWalletAddress,
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.body;
-
-        // Get wallet address - either from request or first available
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          const uniswap = await Uniswap.getInstance(network);
-          walletAddress = await uniswap.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-          logger.info(`Using first available wallet address: ${walletAddress}`);
-        }
-
-        return await openPosition(
-          network,
-          walletAddress,
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Failed to open position:', e);
-
-        // If error already has statusCode, re-throw it
-        if (e.statusCode) {
-          throw e;
-        }
-
-        // Check for specific error types
-        if (e.code === 'CALL_EXCEPTION') {
-          throw httpErrors.badRequest(
-            'Transaction failed. Please check token balances, approvals, and position parameters.',
-          );
-        }
-
-        // Handle insufficient funds errors
-        if (e.code === 'INSUFFICIENT_FUNDS' || (e.message && e.message.includes('insufficient funds'))) {
-          throw httpErrors.badRequest('Insufficient funds to complete the transaction');
-        }
-
-        // Generic error — keep the underlying message. Dropping it hid every real cause
-        // (including a lost transaction hash) behind an unactionable 'Failed to open position'.
-        throw httpErrors.internalServerError(`Failed to open position: ${e.message ?? String(e)}`);
-      }
-    },
-  );
-};
-
-export default openPositionRoute;

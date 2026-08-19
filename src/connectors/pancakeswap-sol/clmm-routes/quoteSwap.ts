@@ -1,12 +1,9 @@
-import { FastifyPluginAsync } from 'fastify';
-
 import { Solana } from '../../../chains/solana/solana';
-import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-schema';
+import { QuoteSwapResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { PancakeswapSolConfig } from '../pancakeswap-sol.config';
-import { PancakeswapSolClmmQuoteSwapRequest, PancakeswapSolClmmQuoteSwapRequestType } from '../schemas';
 
 /**
  * Quote swap implementation using pool data with fee and price impact estimation.
@@ -143,58 +140,6 @@ export async function getRawSwapQuote(
 
   return result;
 }
-
-export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: PancakeswapSolClmmQuoteSwapRequestType;
-    Reply: QuoteSwapResponseType;
-  }>(
-    '/quote-swap',
-    {
-      schema: {
-        description:
-          'Get swap quote for PancakeSwap Solana CLMM with fee and estimated price impact based on pool liquidity',
-        tags: ['/connector/pancakeswap-sol'],
-        querystring: PancakeswapSolClmmQuoteSwapRequest,
-        response: { 200: QuoteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network = 'mainnet-beta',
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          poolAddress,
-          slippagePct,
-        } = request.query;
-
-        return await getRawSwapQuote(
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
-          poolAddress,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Quote swap error:', e);
-        // Re-throw httpErrors as-is
-        if (e.statusCode) {
-          throw e;
-        }
-        // Handle unknown errors
-        const errorMessage = e.message || 'Failed to get swap quote';
-        throw httpErrors.internalServerError(errorMessage);
-      }
-    },
-  );
-};
-
-export default quoteSwapRoute;
 
 /**
  * Resolves the counter ("quote") token for a PancakeSwap Solana CLMM pool given the base token. The

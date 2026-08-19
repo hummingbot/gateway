@@ -1,17 +1,14 @@
-import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { ClosePositionResponse, ClosePositionResponseType } from '../../../schemas/clmm-schema';
+import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol, PANCAKESWAP_CLMM_PROGRAM_ID } from '../pancakeswap-sol';
 import { buildDecreaseLiquidityV2Instruction, buildClosePositionInstruction } from '../pancakeswap-sol.instructions';
 import { parsePositionData } from '../pancakeswap-sol.parser';
 import { buildTransactionWithInstructions } from '../pancakeswap-sol.transactions';
-import { PancakeswapSolClmmClosePositionRequest } from '../schemas';
 
 export async function closePosition(
   network: string,
@@ -138,40 +135,3 @@ export async function closePosition(
     status: 0, // PENDING
   };
 }
-
-export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof PancakeswapSolClmmClosePositionRequest>;
-    Reply: ClosePositionResponseType;
-  }>(
-    '/close-position',
-    {
-      schema: {
-        description: 'Close a PancakeSwap Solana CLMM position and remove all liquidity and fees if present',
-        tags: ['/connector/pancakeswap-sol'],
-        body: PancakeswapSolClmmClosePositionRequest,
-        response: {
-          200: ClosePositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network = 'mainnet-beta', walletAddress, positionAddress } = request.body;
-
-        return await closePosition(network, walletAddress!, positionAddress);
-      } catch (e: any) {
-        logger.error('Close position error:', e);
-        // Re-throw httpErrors as-is
-        if (e.statusCode) {
-          throw e;
-        }
-        // Handle unknown errors
-        const errorMessage = e.message || 'Failed to close position';
-        throw httpErrors.internalServerError(errorMessage);
-      }
-    },
-  );
-};
-
-export default closePositionRoute;

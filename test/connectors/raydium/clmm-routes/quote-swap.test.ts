@@ -29,8 +29,8 @@ jest.mock('@raydium-io/raydium-sdk-v2', () => {
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quoteSwapRoute } = await import('../../../../src/connectors/raydium/clmm-routes/quoteSwap');
-  await server.register(quoteSwapRoute);
+  const { makeQuoteSwapRoute } = await import('../../../../src/trading/pool-swap-routes');
+  await server.register(makeQuoteSwapRoute('clmm'));
   return server;
 };
 
@@ -113,7 +113,8 @@ describe('GET /quote-swap (Raydium CLMM)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         poolAddress: mockPoolAddress,
         baseToken: 'SOL',
         quoteToken: 'USDC',
@@ -156,7 +157,8 @@ describe('GET /quote-swap (Raydium CLMM)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         poolAddress: mockPoolAddress,
         baseToken: 'SOL',
         quoteToken: 'USDC',
@@ -198,7 +200,8 @@ describe('GET /quote-swap (Raydium CLMM)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         poolAddress: 'invalid-pool-address',
         baseToken: 'SOL',
         quoteToken: 'USDC',

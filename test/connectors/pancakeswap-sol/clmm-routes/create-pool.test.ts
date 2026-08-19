@@ -27,7 +27,7 @@ const mockAmmConfig = 'E64NGkDLLCdQ2yFNPcavaKptrEgmiQaNykUuLC1Qgwyp';
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { createPoolRoute } = await import('../../../../src/connectors/pancakeswap-sol/clmm-routes/createPool');
+  const { createPoolRoute } = await import('../../../../src/trading/trading-clmm-routes/create-pool');
   await server.register(createPoolRoute);
   return server;
 };
@@ -62,7 +62,8 @@ describe('POST /create-pool (PancakeSwap Solana CLMM)', () => {
       method: 'POST',
       url: '/create-pool',
       payload: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'pancakeswap-sol',
         walletAddress: mockWallet,
         baseToken: 'SOL',
         quoteToken: 'SOL',
@@ -86,7 +87,8 @@ describe('POST /create-pool (PancakeSwap Solana CLMM)', () => {
       method: 'POST',
       url: '/create-pool',
       payload: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'pancakeswap-sol',
         walletAddress: mockWallet,
         baseToken: 'SOL',
         quoteToken: 'USDC',

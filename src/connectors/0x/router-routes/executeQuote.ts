@@ -1,13 +1,11 @@
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { ExecuteQuoteRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
+import { SwapExecuteResponseType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { ZeroX } from '../0x';
-import { ZeroXExecuteQuoteRequest } from '../schemas';
 
 async function executeQuote(walletAddress: string, network: string, quoteId: string): Promise<SwapExecuteResponseType> {
   // Retrieve cached quote from global cache
@@ -104,33 +102,3 @@ async function executeQuote(walletAddress: string, network: string, quoteId: str
 }
 
 export { executeQuote };
-
-export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: ExecuteQuoteRequestType;
-    Reply: SwapExecuteResponseType;
-  }>(
-    '/execute-quote',
-    {
-      schema: {
-        description: 'Execute a previously fetched quote from 0x',
-        tags: ['/connector/0x'],
-        body: ZeroXExecuteQuoteRequest,
-        response: { 200: SwapExecuteResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { walletAddress, network, quoteId } = request.body as typeof ZeroXExecuteQuoteRequest._type;
-
-        return await executeQuote(walletAddress, network, quoteId);
-      } catch (e) {
-        if (e.statusCode) throw e;
-        logger.error('Error executing 0x quote:', e);
-        throw httpErrors.internalServerError(e.message || 'Internal server error');
-      }
-    },
-  );
-};
-
-export default executeQuoteRoute;

@@ -1,9 +1,7 @@
 import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 
 import { Solana } from '../../../chains/solana/solana';
-import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
@@ -11,8 +9,7 @@ import { sanitizeErrorMessage, sanitizeString } from '../../../services/sanitize
 import { approximateBuyViaSellLeg } from '../../router-utils';
 import { DFlow, DFlowQuoteResponse } from '../dflow';
 import { DFlowConfig } from '../dflow.config';
-import { DFlowQuoteSwapRequest, DFlowQuoteSwapResponse } from '../schemas';
-
+import { DFlowQuoteSwapResponse } from '../schemas';
 export async function quoteSwap(
   network: string,
   baseToken: string,
@@ -113,42 +110,3 @@ export async function quoteSwap(
     quoteResponse,
   };
 }
-
-export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: QuoteSwapRequestType;
-    Reply: Static<typeof DFlowQuoteSwapResponse>;
-  }>(
-    '/quote-swap',
-    {
-      schema: {
-        description: 'Get an executable swap quote from DFlow',
-        tags: ['/connector/dflow'],
-        querystring: DFlowQuoteSwapRequest,
-        response: { 200: DFlowQuoteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, baseToken, quoteToken, amount, side, slippagePct, approximateIfNoExactOut } =
-          request.query as typeof DFlowQuoteSwapRequest._type;
-
-        return await quoteSwap(
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
-          slippagePct,
-          approximateIfNoExactOut,
-        );
-      } catch (e) {
-        if (e.statusCode) throw e;
-        logger.error('Error getting DFlow quote:', e);
-        throw httpErrors.internalServerError(e.message || 'Internal server error');
-      }
-    },
-  );
-};
-
-export default quoteSwapRoute;

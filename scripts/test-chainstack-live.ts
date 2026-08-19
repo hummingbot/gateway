@@ -131,17 +131,13 @@ async function runTests(): Promise<void> {
     await testCase('Chainstack Platform API: list_nodes', async () => {
       const nodes = await listChainstackNodes(apiKey);
       log(`Discovered ${nodes.length} Chainstack node(s)`, 'info');
-      nodes.forEach((n: any) =>
-        log(`  - ${n.id} ${n.protocol}/${n.network} [${n.status}]`, 'info'),
-      );
+      nodes.forEach((n: any) => log(`  - ${n.id} ${n.protocol}/${n.network} [${n.status}]`, 'info'));
     });
   }
 
   for (const { chain, network } of ChainstackService.getSupportedNetworks()) {
     const expectedChainId = EXPECTED_CHAIN_IDS[`${chain}:${network}`];
-    await testCase(`Chain status: ${chain}/${network}`, () =>
-      testChainStatus({ chain, network, expectedChainId }),
-    );
+    await testCase(`Chain status: ${chain}/${network}`, () => testChainStatus({ chain, network, expectedChainId }));
   }
 
   log('', 'info');
@@ -153,9 +149,7 @@ async function runTests(): Promise<void> {
   if (tests.failed > 0) {
     log('', 'info');
     log('Failed tests:', 'error');
-    tests.results
-      .filter((r) => r.status === 'failed')
-      .forEach((r) => log(`  - ${r.name}: ${r.error}`, 'error'));
+    tests.results.filter((r) => r.status === 'failed').forEach((r) => log(`  - ${r.name}: ${r.error}`, 'error'));
     process.exit(1);
   }
 }

@@ -2,19 +2,12 @@ import { Contract } from '@ethersproject/contracts';
 import { Percent, CurrencyAmount } from '@pancakeswap/sdk';
 import { NonfungiblePositionManager, Position } from '@pancakeswap/v3-sdk';
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 import { Address } from 'viem';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { TransactionStatus } from '../../../schemas/chain-schema';
-import {
-  ClosePositionRequestType,
-  ClosePositionRequest,
-  ClosePositionResponseType,
-  ClosePositionResponse,
-} from '../../../schemas/clmm-schema';
+import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
 import { POSITION_MANAGER_ABI, getPancakeswapV3NftManagerAddress } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
@@ -153,46 +146,3 @@ export async function closePosition(
     },
   };
 }
-
-export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: ClosePositionRequestType;
-    Reply: ClosePositionResponseType;
-  }>(
-    '/close-position',
-    {
-      schema: {
-        description: 'Close a Pancakeswap V3 position by removing all liquidity and collecting fees',
-        tags: ['/connector/pancakeswap'],
-        body: ClosePositionRequest,
-        response: {
-          200: ClosePositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress: requestedWalletAddress, positionAddress } = request.body;
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          const pancakeswap = await Pancakeswap.getInstance(network);
-          walletAddress = await pancakeswap.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-        }
-
-        return await closePosition(network, walletAddress, positionAddress);
-      } catch (e: any) {
-        logger.error('Failed to close position:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw httpErrors.internalServerError('Failed to close position');
-      }
-    },
-  );
-};
-
-export default closePositionRoute;

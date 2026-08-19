@@ -1,15 +1,13 @@
 import { PublicKey, Transaction } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../../schemas/amm-schema';
+import { RemoveLiquidityResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { MeteoraDamm } from '../meteora-damm';
 import { MeteoraConfig } from '../meteora.config';
-import { MeteoraAmmRemoveLiquidityRequest } from '../schemas';
 
 function withSlippageDown(raw: BN, slippagePct: number): BN {
   return new BN(new Decimal(raw.toString()).mul(1 - slippagePct / 100).toFixed(0));
@@ -117,41 +115,3 @@ export async function removeLiquidity(
   }
   return { signature, status: 0 }; // PENDING
 }
-
-export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: typeof MeteoraAmmRemoveLiquidityRequest.static;
-    Reply: RemoveLiquidityResponseType;
-  }>(
-    '/remove-liquidity',
-    {
-      schema: {
-        description: 'Remove liquidity from a specific position (NFT) in a Meteora DAMM v2 pool',
-        tags: ['/connector/meteora'],
-        body: MeteoraAmmRemoveLiquidityRequest,
-        response: {
-          200: RemoveLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, poolAddress, positionAddress, percentageToRemove } = request.body;
-        return await removeLiquidity(
-          network,
-          walletAddress,
-          poolAddress,
-          positionAddress,
-          percentageToRemove,
-          MeteoraConfig.config.slippagePct,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Failed to remove liquidity');
-      }
-    },
-  );
-};
-
-export default removeLiquidityRoute;

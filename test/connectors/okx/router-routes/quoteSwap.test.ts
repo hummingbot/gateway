@@ -8,7 +8,7 @@ jest.mock('../../../../src/connectors/okx/okx');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quoteSwapRoute } = await import('../../../../src/connectors/okx/router-routes/quoteSwap');
+  const { quoteSwapRoute } = await import('../../../../src/trading/trading-router-routes/quoteSwap');
   await server.register(quoteSwapRoute);
   return server;
 };
@@ -65,7 +65,8 @@ describe('GET /quote-swap (okx)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'okx',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -83,7 +84,9 @@ describe('GET /quote-swap (okx)', () => {
     expect(body).toHaveProperty('priceImpactPct', 0.05);
     expect(body).toHaveProperty('tokenIn', mockSOL.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-    expect(body).toHaveProperty('routerResult');
+    // The connector's raw provider payload (quoteResponse / routerResult) is not part
+    // of the unified router response schema, which serializes the shared quote fields
+    // plus quoteId. Assertions on it moved out with the per-connector route.
     expect(body.approximation).toBeUndefined();
 
     expect(mockOkxInstance.getQuote).toHaveBeenCalledWith(mockSOL.address, mockUSDC.address, '100000000', 'exactIn');
@@ -104,7 +107,8 @@ describe('GET /quote-swap (okx)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'okx',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -150,7 +154,8 @@ describe('GET /quote-swap (okx)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'okx',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -180,7 +185,8 @@ describe('GET /quote-swap (okx)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'okx',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -207,7 +213,8 @@ describe('GET /quote-swap (okx)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'okx',
         baseToken: 'INVALID',
         quoteToken: 'USDC',
         amount: '0.1',

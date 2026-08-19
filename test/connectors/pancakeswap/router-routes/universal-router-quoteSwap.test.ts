@@ -23,7 +23,7 @@ jest.mock('../../../../src/connectors/pancakeswap/universal-router', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quoteSwapRoute } = await import('../../../../src/connectors/pancakeswap/router-routes/quoteSwap');
+  const { quoteSwapRoute } = await import('../../../../src/trading/trading-router-routes/quoteSwap');
   await server.register(quoteSwapRoute);
   return server;
 };
@@ -161,7 +161,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'pancakeswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'WBNB',
         quoteToken: 'USDC',
@@ -209,7 +210,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'pancakeswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'WBNB',
         quoteToken: 'USDC',
@@ -234,7 +236,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'pancakeswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'WBNB',
         quoteToken: 'USDC',
@@ -257,7 +260,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'pancakeswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'WBNB',
         quoteToken: 'USDC',
@@ -289,7 +293,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'pancakeswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'INVALID',
         quoteToken: 'USDC',

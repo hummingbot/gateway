@@ -8,7 +8,7 @@ jest.mock('../../../../src/connectors/orca/orca');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { removeLiquidityRoute } = await import('../../../../src/connectors/orca/clmm-routes/removeLiquidity');
+  const { removeLiquidityRoute } = await import('../../../../src/trading/trading-clmm-routes/remove');
   await server.register(removeLiquidityRoute);
   return server;
 };
@@ -48,9 +48,10 @@ describe('POST /remove-liquidity', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/remove-liquidity',
+        url: '/remove',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
           percentageToRemove: 50,
@@ -74,9 +75,10 @@ describe('POST /remove-liquidity', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/remove-liquidity',
+        url: '/remove',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
           percentageToRemove: 100,
@@ -89,7 +91,7 @@ describe('POST /remove-liquidity', () => {
     it('should use default network and wallet', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/remove-liquidity',
+        url: '/remove',
         payload: {
           positionAddress: mockPositionAddress,
           percentageToRemove: 25,
@@ -104,9 +106,10 @@ describe('POST /remove-liquidity', () => {
     it('should return 400 when positionAddress is missing', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/remove-liquidity',
+        url: '/remove',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           percentageToRemove: 50,
         },
@@ -118,9 +121,10 @@ describe('POST /remove-liquidity', () => {
     it('should return error when percentageToRemove is missing', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/remove-liquidity',
+        url: '/remove',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
         },
@@ -132,9 +136,10 @@ describe('POST /remove-liquidity', () => {
     it('should handle invalid percentageToRemove values', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/remove-liquidity',
+        url: '/remove',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
           percentageToRemove: 150,
@@ -154,9 +159,10 @@ describe('POST /remove-liquidity', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/remove-liquidity',
+        url: '/remove',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
           percentageToRemove: 50,
@@ -171,9 +177,10 @@ describe('POST /remove-liquidity', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/remove-liquidity',
+        url: '/remove',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
           percentageToRemove: 50,

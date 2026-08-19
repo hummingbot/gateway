@@ -1,18 +1,15 @@
 import { BigNumber, Contract, utils } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum, EthereumTransactionOutcome } from '../../../chains/ethereum/ethereum';
 import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
-import { getEthereumChainConfig } from '../../../chains/ethereum/ethereum.config';
 import { TransactionStatus } from '../../../schemas/chain-schema';
-import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
+import { SwapExecuteResponseType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
 import { PancakeswapConfig } from '../pancakeswap.config';
 import { getPancakeswapV2RouterAddress, IPancakeswapV2Router02ABI } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
-import { PancakeswapAmmExecuteSwapRequest } from '../schemas';
 
 import { resolveSwapPair } from './poolTokens';
 import { getPancakeswapAmmQuote } from './quoteSwap';
@@ -281,51 +278,6 @@ export async function executeAmmSwap(
   }
 }
 
-export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: ExecuteSwapRequestType;
-    Reply: SwapExecuteResponseType;
-  }>(
-    '/execute-swap',
-    {
-      schema: {
-        description: 'Execute a swap on Pancakeswap V2 AMM using Router02',
-        tags: ['/connector/pancakeswap'],
-        body: PancakeswapAmmExecuteSwapRequest,
-        response: { 200: SwapExecuteResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const ethereumConfig = getEthereumChainConfig();
-        const {
-          walletAddress = ethereumConfig.defaultWallet,
-          network = ethereumConfig.defaultNetwork,
-          baseToken,
-          quoteToken,
-          amount,
-          side = 'SELL',
-          slippagePct,
-        } = request.body as typeof PancakeswapAmmExecuteSwapRequest._type;
-
-        return await executeAmmSwap(
-          walletAddress,
-          network,
-          baseToken,
-          quoteToken || '', // Handle optional quoteToken
-          amount,
-          side as 'BUY' | 'SELL',
-          slippagePct,
-        );
-      } catch (e) {
-        if (e.statusCode) throw e;
-        logger.error('Error executing swap:', e);
-        throw httpErrors.internalServerError(e.message || 'Internal server error');
-      }
-    },
-  );
-};
-
 /**
  * Standard AMM execute-swap entry point (network-based) — consumed by the unified /trading/amm
  * dispatcher. The quote token is derived from the pool; `amount` is denominated in the base token.
@@ -342,5 +294,3 @@ export async function executeSwap(
   const { baseAddress, quoteAddress } = await resolveSwapPair(network, poolAddress, baseToken);
   return await executeAmmSwap(walletAddress, network, baseAddress, quoteAddress, amount, side, slippagePct);
 }
-
-export default executeSwapRoute;

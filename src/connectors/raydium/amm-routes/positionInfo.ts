@@ -1,14 +1,9 @@
-import { BN } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
-import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { PositionInfo, PositionInfoSchema, GetPositionInfoRequestType } from '../../../schemas/amm-schema';
+import { PositionInfo } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
-import { RaydiumAmmGetPositionInfoRequest } from '../schemas';
 
 /**
  * Calculate the LP token amount and corresponding token amounts
@@ -130,36 +125,3 @@ export async function getPositionInfo(
     price: poolInfo.price,
   };
 }
-
-export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: GetPositionInfoRequestType;
-    Reply: PositionInfo;
-  }>(
-    '/position-info',
-    {
-      schema: {
-        description: 'Get info about a Raydium AMM position',
-        tags: ['/connector/raydium'],
-        querystring: RaydiumAmmGetPositionInfoRequest,
-        response: {
-          200: PositionInfoSchema,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { poolAddress, walletAddress } = request.query;
-        const network = request.query.network;
-
-        return await getPositionInfo(network, poolAddress, walletAddress);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to fetch position info');
-      }
-    },
-  );
-};
-
-export default positionInfoRoute;

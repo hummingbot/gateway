@@ -2,17 +2,11 @@ import { Contract } from '@ethersproject/contracts';
 import { CurrencyAmount, Percent } from '@pancakeswap/sdk';
 import { Position, NonfungiblePositionManager, MintOptions, nearestUsableTick } from '@pancakeswap/v3-sdk';
 import { BigNumber, utils } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 import { Address } from 'viem';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { TransactionStatus } from '../../../schemas/chain-schema';
-import {
-  OpenPositionRequestType,
-  OpenPositionRequest,
-  OpenPositionResponseType,
-  OpenPositionResponse,
-} from '../../../schemas/clmm-schema';
+import { OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
@@ -292,93 +286,3 @@ export async function openPosition(
     },
   };
 }
-
-export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
-  fastify.post<{
-    Body: OpenPositionRequestType;
-    Reply: OpenPositionResponseType;
-  }>(
-    '/open-position',
-    {
-      schema: {
-        description: 'Open a new liquidity position in a Pancakeswap V3 pool',
-        tags: ['/connector/pancakeswap'],
-        body: {
-          ...OpenPositionRequest,
-          properties: {
-            ...OpenPositionRequest.properties,
-            network: { type: 'string', default: 'bsc', examples: ['bsc'] },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            lowerPrice: { type: 'number', examples: [0.0008] },
-            upperPrice: { type: 'number', examples: [0.001] },
-            poolAddress: {
-              type: 'string',
-              default: '0x172fcd41e0913e95784454622d1c3724f546f849',
-              examples: ['0x172fcd41e0913e95784454622d1c3724f546f849'],
-            },
-            baseTokenAmount: { type: 'number', examples: [10] },
-            quoteTokenAmount: { type: 'number', examples: [0.01] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
-        response: {
-          200: OpenPositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network,
-          walletAddress: requestedWalletAddress,
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.body;
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          const pancakeswap = await Pancakeswap.getInstance(network);
-          walletAddress = await pancakeswap.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-        }
-
-        return await openPosition(
-          network,
-          walletAddress,
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Failed to open position:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        if (e.code === 'CALL_EXCEPTION') {
-          throw httpErrors.badRequest(
-            'Transaction failed. Please check token balances, approvals, and position parameters.',
-          );
-        }
-        if (e.code === 'INSUFFICIENT_FUNDS' || (e.message && e.message.includes('insufficient funds'))) {
-          throw httpErrors.badRequest('Insufficient funds to complete the transaction');
-        }
-        throw httpErrors.internalServerError('Failed to open position');
-      }
-    },
-  );
-};
-
-export default openPositionRoute;

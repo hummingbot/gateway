@@ -13,7 +13,7 @@ jest.mock('../../../../src/services/token-service');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { executeQuoteRoute } = await import('../../../../src/connectors/0x/router-routes/executeQuote');
+  const { executeQuoteRoute } = await import('../../../../src/trading/trading-router-routes/executeQuote');
   await server.register(executeQuoteRoute);
   return server;
 };
@@ -196,7 +196,8 @@ describe('POST /execute-quote', () => {
       method: 'POST',
       url: '/execute-quote',
       payload: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: '0x',
         walletAddress: '0x1234567890123456789012345678901234567890',
         quoteId: quoteId,
       },
@@ -220,7 +221,8 @@ describe('POST /execute-quote', () => {
       method: 'POST',
       url: '/execute-quote',
       payload: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: '0x',
         walletAddress: '0x1234567890123456789012345678901234567890',
         quoteId: 'non-existent-quote',
       },
@@ -287,7 +289,8 @@ describe('POST /execute-quote', () => {
       method: 'POST',
       url: '/execute-quote',
       payload: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: '0x',
         walletAddress: '0x1234567890123456789012345678901234567890',
         quoteId: quoteId,
       },

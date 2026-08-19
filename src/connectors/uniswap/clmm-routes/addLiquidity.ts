@@ -1,17 +1,13 @@
 import { Contract } from '@ethersproject/contracts';
-import { Static } from '@sinclair/typebox';
 import { CurrencyAmount, Percent } from '@uniswap/sdk-core';
 import { Position, NonfungiblePositionManager } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { TransactionStatus } from '../../../schemas/chain-schema';
-import { AddLiquidityResponseType, AddLiquidityResponse } from '../../../schemas/clmm-schema';
+import { AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
-import { UniswapClmmAddLiquidityRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
 import { getUniswapV3NftManagerAddress, POSITION_MANAGER_ABI } from '../uniswap.contracts';
@@ -175,60 +171,3 @@ export async function addLiquidity(
     },
   };
 }
-
-export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof UniswapClmmAddLiquidityRequest>;
-    Reply: AddLiquidityResponseType;
-  }>(
-    '/add-liquidity',
-    {
-      schema: {
-        description: 'Add liquidity to an existing Uniswap V3 position',
-        tags: ['/connector/uniswap'],
-        body: UniswapClmmAddLiquidityRequest,
-        response: {
-          200: AddLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network,
-          walletAddress: requestedWalletAddress,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.body;
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          const uniswap = await Uniswap.getInstance(network);
-          walletAddress = await uniswap.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-        }
-
-        return await addLiquidity(
-          network,
-          walletAddress,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Failed to add liquidity:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw httpErrors.internalServerError('Failed to add liquidity');
-      }
-    },
-  );
-};
-
-export default addLiquidityRoute;

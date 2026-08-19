@@ -2,19 +2,12 @@ import { Contract } from '@ethersproject/contracts';
 import { Percent, CurrencyAmount } from '@uniswap/sdk-core';
 import { NonfungiblePositionManager, Position } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { TransactionStatus } from '../../../schemas/chain-schema';
-import {
-  ClosePositionRequestType,
-  ClosePositionRequest,
-  ClosePositionResponseType,
-  ClosePositionResponse,
-} from '../../../schemas/clmm-schema';
+import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { POSITION_MANAGER_ABI, getUniswapV3NftManagerAddress } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
@@ -191,46 +184,3 @@ export async function closePosition(
     },
   };
 }
-
-export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: ClosePositionRequestType;
-    Reply: ClosePositionResponseType;
-  }>(
-    '/close-position',
-    {
-      schema: {
-        description: 'Close a Uniswap V3 position by removing all liquidity and collecting fees',
-        tags: ['/connector/uniswap'],
-        body: ClosePositionRequest,
-        response: {
-          200: ClosePositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress: requestedWalletAddress, positionAddress } = request.body;
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          const uniswap = await Uniswap.getInstance(network);
-          walletAddress = await uniswap.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-        }
-
-        return await closePosition(network, walletAddress, positionAddress);
-      } catch (e: any) {
-        logger.error('Failed to close position:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw fastify.httpErrors.internalServerError('Failed to close position');
-      }
-    },
-  );
-};
-
-export default closePositionRoute;

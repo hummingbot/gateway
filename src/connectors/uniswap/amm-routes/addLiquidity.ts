@@ -1,17 +1,13 @@
 import { Contract } from '@ethersproject/contracts';
-import { Static } from '@sinclair/typebox';
 import { Percent } from '@uniswap/sdk-core';
-import { BigNumber, utils } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
-import { re } from 'mathjs';
+import { BigNumber } from 'ethers';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { wrapEthereum } from '../../../chains/ethereum/routes/wrap';
-import { AddLiquidityResponseType, AddLiquidityResponse } from '../../../schemas/amm-schema';
+import { AddLiquidityResponseType } from '../../../schemas/amm-schema';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
-import { UniswapAmmAddLiquidityRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
 import { IUniswapV2Router02ABI } from '../uniswap.contracts';
@@ -303,85 +299,3 @@ export async function addLiquidity(
     slippagePct,
   );
 }
-
-export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
-  fastify.post<{
-    Body: Static<typeof UniswapAmmAddLiquidityRequest>;
-    Reply: AddLiquidityResponseType;
-  }>(
-    '/add-liquidity',
-    {
-      schema: {
-        description: 'Add liquidity to a Uniswap V2 pool',
-        tags: ['/connector/uniswap'],
-        body: UniswapAmmAddLiquidityRequest,
-        response: {
-          200: AddLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-          walletAddress: requestedWalletAddress,
-        } = request.body;
-
-        // Validate essential parameters
-        if (!poolAddress || !baseTokenAmount || !quoteTokenAmount) {
-          throw fastify.httpErrors.badRequest('Missing required parameters');
-        }
-
-        const networkToUse = network;
-
-        // Get wallet address - either from request or first available
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          walletAddress = await Ethereum.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw fastify.httpErrors.badRequest('No wallet address provided and no wallets found.');
-          }
-          logger.info(`Using first available wallet address: ${walletAddress}`);
-        }
-
-        return await addLiquidity(
-          networkToUse,
-          walletAddress,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-
-        // Handle specific user-actionable errors
-        if (e.message && e.message.includes('Insufficient allowance')) {
-          logger.error('Request error:', e);
-          throw fastify.httpErrors.badRequest('Invalid request');
-        }
-
-        // Handle insufficient funds errors
-        if (e.code === 'INSUFFICIENT_FUNDS' || (e.message && e.message.includes('insufficient funds'))) {
-          throw fastify.httpErrors.badRequest(
-            'Insufficient ETH balance to pay for gas fees. Please add more ETH to your wallet.',
-          );
-        }
-
-        throw fastify.httpErrors.internalServerError('Failed to add liquidity');
-      }
-    },
-  );
-};
-
-export default addLiquidityRoute;

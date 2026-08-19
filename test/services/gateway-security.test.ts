@@ -83,15 +83,24 @@ describe('gateway-security', () => {
       '/wallet',
       '/wallet/add',
       '/wallet/add-swig',
-      '/connectors/orca/clmm/execute-swap',
-      '/connectors/jupiter/router/execute-quote',
       '/restart',
-      '/trading/swap/execute',
+      // Router surface: both fund-moving verbs.
+      '/trading/router/execute-swap',
+      '/trading/router/execute-quote',
+      // Pool-scoped surfaces: swaps and every liquidity mutation. The AMM entries
+      // matter most — they were previously gated only through /connectors/*, which
+      // no longer exists, so a gap here would silently expose them.
+      '/trading/clmm/execute-swap',
       '/trading/clmm/open',
       '/trading/clmm/add',
       '/trading/clmm/remove',
       '/trading/clmm/collect-fees',
       '/trading/clmm/close',
+      '/trading/clmm/create-pool',
+      '/trading/amm/execute-swap',
+      '/trading/amm/add-liquidity',
+      '/trading/amm/remove-liquidity',
+      '/trading/amm/create-pool',
     ])('sensitive: %s', (url) => {
       expect(isSensitivePath(url)).toBe(true);
     });
@@ -99,12 +108,16 @@ describe('gateway-security', () => {
       '/docs',
       '/config/namespaces',
       '/chains/solana/status',
-      '/connectors/orca/clmm/quote-swap',
-      '/trading/swap/quote',
+      '/trading/router/quote-swap',
+      '/trading/clmm/quote-swap',
+      '/trading/amm/quote-swap',
       '/trading/clmm/pool-info',
       '/trading/clmm/position-info',
       '/trading/clmm/positions-owned',
       '/trading/clmm/quote-position',
+      '/trading/clmm/fetch-pools',
+      '/trading/amm/pool-info',
+      '/trading/amm/quote-liquidity',
     ])('not sensitive: %s', (url) => {
       expect(isSensitivePath(url)).toBe(false);
     });

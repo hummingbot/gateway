@@ -1,16 +1,13 @@
-import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { AddLiquidityResponse, AddLiquidityResponseType } from '../../../schemas/clmm-schema';
+import { AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { PancakeswapSolConfig } from '../pancakeswap-sol.config';
 import { buildAddLiquidityTransaction } from '../pancakeswap-sol.transactions';
-import { PancakeswapSolClmmAddLiquidityRequest } from '../schemas';
 
 import { quotePosition } from './quotePosition';
 
@@ -139,54 +136,3 @@ export async function addLiquidity(
     status: 0, // PENDING
   };
 }
-
-export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof PancakeswapSolClmmAddLiquidityRequest>;
-    Reply: AddLiquidityResponseType;
-  }>(
-    '/add-liquidity',
-    {
-      schema: {
-        description: 'Add liquidity to an existing PancakeSwap Solana CLMM position',
-        tags: ['/connector/pancakeswap-sol'],
-        body: PancakeswapSolClmmAddLiquidityRequest,
-        response: {
-          200: AddLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network = 'mainnet-beta',
-          walletAddress,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.body;
-
-        return await addLiquidity(
-          network,
-          walletAddress!,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Add liquidity error:', e);
-        // Re-throw httpErrors as-is
-        if (e.statusCode) {
-          throw e;
-        }
-        // Handle unknown errors
-        const errorMessage = e.message || 'Failed to add liquidity';
-        throw httpErrors.internalServerError(errorMessage);
-      }
-    },
-  );
-};
-
-export default addLiquidityRoute;

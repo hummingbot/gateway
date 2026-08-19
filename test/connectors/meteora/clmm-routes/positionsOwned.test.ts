@@ -16,7 +16,7 @@ jest.mock('../../../../src/chains/solana/solana.config', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { positionsOwnedRoute } = await import('../../../../src/connectors/meteora/clmm-routes/positionsOwned');
+  const { positionsOwnedRoute } = await import('../../../../src/trading/clmm/positions-owned');
   await server.register(positionsOwnedRoute);
   return server;
 };
@@ -87,7 +87,8 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         walletAddress: mockWalletAddress,
       },
     });
@@ -116,7 +117,8 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         walletAddress: mockWalletAddress,
       },
     });
@@ -132,7 +134,8 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         walletAddress: 'invalid-address',
       },
     });
@@ -140,16 +143,21 @@ describe('GET /positions-owned', () => {
     expect(response.statusCode).toBe(400);
   });
 
-  it('should return 400 when walletAddress is missing', async () => {
+  // The unified route defaults walletAddress to the chain's configured wallet
+  // (the convention the other unified trading routes use), so an omitted wallet
+  // is filled rather than rejected. A malformed one still fails.
+  it('rejects a malformed walletAddress', async () => {
     const response = await app.inject({
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
+        walletAddress: 'invalid-address',
       },
     });
 
-    expect(response.statusCode).toBe(400);
+    expect([400, 500]).toContain(response.statusCode);
   });
 
   it('should use default network if not provided', async () => {

@@ -1,13 +1,11 @@
 import { Keypair, PublicKey, Transaction } from '@solana/web3.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { AddLiquidityResponse, AddLiquidityResponseType } from '../../../schemas/amm-schema';
+import { AddLiquidityResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { MeteoraDamm } from '../meteora-damm';
 import { MeteoraConfig } from '../meteora.config';
-import { MeteoraAmmAddLiquidityRequest } from '../schemas';
 
 import { getLiquidityQuote } from './quoteLiquidity';
 
@@ -105,46 +103,3 @@ export async function addLiquidity(
   }
   return { signature, status: 0 }; // PENDING
 }
-
-export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: typeof MeteoraAmmAddLiquidityRequest.static;
-    Reply: AddLiquidityResponseType;
-  }>(
-    '/add-liquidity',
-    {
-      schema: {
-        description:
-          'Add liquidity to a Meteora DAMM v2 pool. Provide positionAddress to add to a specific ' +
-          'position (NFT); omit it to open a new position.',
-        tags: ['/connector/meteora'],
-        body: MeteoraAmmAddLiquidityRequest,
-        response: {
-          200: AddLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct, positionAddress } =
-          request.body;
-        const effectiveSlippage = slippagePct ?? MeteoraConfig.config.slippagePct;
-        return await addLiquidity(
-          network,
-          walletAddress,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          effectiveSlippage,
-          positionAddress,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Failed to add liquidity');
-      }
-    },
-  );
-};
-
-export default addLiquidityRoute;

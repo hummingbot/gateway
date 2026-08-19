@@ -34,7 +34,7 @@ const { Ethereum: RealEthereum } = jest.requireActual('../../../../src/chains/et
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { collectFeesRoute } = await import('../../../../src/connectors/uniswap/clmm-routes/collectFees');
+  const { collectFeesRoute } = await import('../../../../src/trading/trading-clmm-routes/collect-fees');
   await server.register(collectFeesRoute);
   return server;
 };
@@ -74,7 +74,7 @@ const collect = (server: any) =>
   server.inject({
     method: 'POST',
     url: '/collect-fees',
-    payload: { network: 'base', walletAddress: mockWallet, positionAddress },
+    payload: { chainNetwork: 'ethereum-base', connector: 'uniswap', walletAddress: mockWallet, positionAddress },
   });
 
 describe('POST /collect-fees (Uniswap V3 CLMM) — transaction confirmation', () => {

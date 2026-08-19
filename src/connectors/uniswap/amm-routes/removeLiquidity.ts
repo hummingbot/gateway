@@ -1,15 +1,10 @@
 import { Contract } from '@ethersproject/contracts';
-import { Static } from '@sinclair/typebox';
 import { Percent } from '@uniswap/sdk-core';
-import { utils } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { RemoveLiquidityResponseType, RemoveLiquidityResponse } from '../../../schemas/amm-schema';
+import { RemoveLiquidityResponseType } from '../../../schemas/amm-schema';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
-import { UniswapAmmRemoveLiquidityRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
 import { getUniswapV2RouterAddress, IUniswapV2Router02ABI, IUniswapV2PairABI } from '../uniswap.contracts';
@@ -139,52 +134,3 @@ export async function removeLiquidity(
     },
   };
 }
-
-export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
-  fastify.post<{
-    Body: Static<typeof UniswapAmmRemoveLiquidityRequest>;
-    Reply: RemoveLiquidityResponseType;
-  }>(
-    '/remove-liquidity',
-    {
-      schema: {
-        description: 'Remove liquidity from a Uniswap V2 pool',
-        tags: ['/connector/uniswap'],
-        body: UniswapAmmRemoveLiquidityRequest,
-        response: {
-          200: RemoveLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, poolAddress, percentageToRemove, walletAddress: requestedWalletAddress } = request.body;
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          walletAddress = await Ethereum.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-          logger.info(`Using first available wallet address: ${walletAddress}`);
-        }
-
-        return await removeLiquidity(network, walletAddress, poolAddress, percentageToRemove, undefined);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        if (e.code === 'INSUFFICIENT_FUNDS' || (e.message && e.message.includes('insufficient funds'))) {
-          throw fastify.httpErrors.badRequest(
-            'Insufficient ETH balance to pay for gas fees. Please add more ETH to your wallet.',
-          );
-        }
-        throw fastify.httpErrors.internalServerError('Failed to remove liquidity');
-      }
-    },
-  );
-};
-
-export default removeLiquidityRoute;

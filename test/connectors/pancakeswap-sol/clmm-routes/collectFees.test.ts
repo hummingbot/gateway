@@ -13,7 +13,7 @@ jest.mock('../../../../src/connectors/pancakeswap-sol/pancakeswap-sol.transactio
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { collectFeesRoute } = await import('../../../../src/connectors/pancakeswap-sol/clmm-routes/collectFees');
+  const { collectFeesRoute } = await import('../../../../src/trading/trading-clmm-routes/collect-fees');
   await server.register(collectFeesRoute);
   return server;
 };
@@ -75,7 +75,12 @@ describe('POST /collect-fees (pancakeswap-sol)', () => {
     const response = await server.inject({
       method: 'POST',
       url: '/collect-fees',
-      body: { network: 'mainnet-beta', walletAddress: WALLET, positionAddress: POSITION },
+      body: {
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'pancakeswap-sol',
+        walletAddress: WALLET,
+        positionAddress: POSITION,
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -114,7 +119,12 @@ describe('POST /collect-fees (pancakeswap-sol)', () => {
     const response = await server.inject({
       method: 'POST',
       url: '/collect-fees',
-      body: { network: 'mainnet-beta', walletAddress: WALLET, positionAddress: POSITION },
+      body: {
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'pancakeswap-sol',
+        walletAddress: WALLET,
+        positionAddress: POSITION,
+      },
     });
 
     expect(response.statusCode).toBe(400);
@@ -133,7 +143,12 @@ describe('POST /collect-fees (pancakeswap-sol)', () => {
     const response = await server.inject({
       method: 'POST',
       url: '/collect-fees',
-      body: { network: 'mainnet-beta', walletAddress: WALLET, positionAddress: POSITION },
+      body: {
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'pancakeswap-sol',
+        walletAddress: WALLET,
+        positionAddress: POSITION,
+      },
     });
 
     expect(response.statusCode).toBe(200);

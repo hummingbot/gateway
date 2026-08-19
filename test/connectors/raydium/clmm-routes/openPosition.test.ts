@@ -48,7 +48,7 @@ jest.mock('@raydium-io/raydium-sdk-v2', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { openPositionRoute } = await import('../../../../src/connectors/raydium/clmm-routes/openPosition');
+  const { openPositionRoute } = await import('../../../../src/trading/trading-clmm-routes/open');
   await server.register(openPositionRoute);
   return server;
 };
@@ -183,9 +183,10 @@ describe('POST /open-position', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/open-position',
+      url: '/open',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         lowerPrice: 140,
@@ -258,9 +259,10 @@ describe('POST /open-position', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/open-position',
+      url: '/open',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         lowerPrice: 140,
@@ -297,9 +299,10 @@ describe('POST /open-position', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/open-position',
+      url: '/open',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: 'invalid-wallet',
         poolAddress: mockPoolAddress,
         lowerPrice: 140,
@@ -334,9 +337,10 @@ describe('POST /open-position', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/open-position',
+      url: '/open',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: 'invalid-pool',
         lowerPrice: 140,
@@ -375,9 +379,10 @@ describe('POST /open-position', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/open-position',
+      url: '/open',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         lowerPrice: 160, // Lower price is higher than upper price
@@ -421,9 +426,10 @@ describe('POST /open-position', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/open-position',
+      url: '/open',
       body: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         walletAddress: mockWalletAddress,
         poolAddress: mockPoolAddress,
         lowerPrice: 140,

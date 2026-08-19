@@ -1,12 +1,11 @@
 import { ethers, utils } from 'ethers';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum, EthereumTransactionOutcome } from '../ethereum';
 import { EthereumLedger } from '../ethereum-ledger';
-import { UnwrapRequestSchema, UnwrapResponseSchema, UnwrapRequestType, UnwrapResponseType } from '../schemas';
 
 // Default gas limit for unwrap operations
 const UNWRAP_GAS_LIMIT = 50000;
@@ -204,29 +203,3 @@ export async function unwrapEthereum(fastify: FastifyInstance, network: string, 
     );
   }
 }
-
-export const unwrapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: UnwrapRequestType;
-    Reply: UnwrapResponseType;
-  }>(
-    '/unwrap',
-    {
-      schema: {
-        description: 'Unwrap wrapped token to native token (e.g., WETH to ETH, WBNB to BNB)',
-        tags: ['/chain/ethereum'],
-        body: UnwrapRequestSchema,
-        response: {
-          200: UnwrapResponseSchema,
-        },
-      },
-    },
-    async (request) => {
-      const { network, address, amount } = request.body;
-
-      return await unwrapEthereum(fastify, network, address, amount);
-    },
-  );
-};
-
-export default unwrapRoute;

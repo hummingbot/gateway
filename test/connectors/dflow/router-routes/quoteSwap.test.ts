@@ -8,7 +8,7 @@ jest.mock('../../../../src/connectors/dflow/dflow');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quoteSwapRoute } = await import('../../../../src/connectors/dflow/router-routes/quoteSwap');
+  const { quoteSwapRoute } = await import('../../../../src/trading/trading-router-routes/quoteSwap');
   await server.register(quoteSwapRoute);
   return server;
 };
@@ -72,7 +72,8 @@ describe('GET /quote-swap (dflow)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'dflow',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -89,7 +90,9 @@ describe('GET /quote-swap (dflow)', () => {
     expect(body).toHaveProperty('price', 150);
     expect(body).toHaveProperty('tokenIn', mockSOL.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-    expect(body).toHaveProperty('quoteResponse');
+    // The connector's raw provider payload (quoteResponse / routerResult) is not part
+    // of the unified router response schema, which serializes the shared quote fields
+    // plus quoteId. Assertions on it moved out with the per-connector route.
     expect(body.approximation).toBeUndefined();
 
     // ExactIn with the base amount in raw units
@@ -118,7 +121,8 @@ describe('GET /quote-swap (dflow)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'dflow',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -148,7 +152,8 @@ describe('GET /quote-swap (dflow)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'dflow',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -175,7 +180,8 @@ describe('GET /quote-swap (dflow)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'dflow',
         baseToken: 'INVALID',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -198,7 +204,8 @@ describe('GET /quote-swap (dflow)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'dflow',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',

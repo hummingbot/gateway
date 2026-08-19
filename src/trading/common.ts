@@ -1,9 +1,12 @@
 import { Type } from '@sinclair/typebox';
 
-import { getEthereumChainConfig } from '../chains/ethereum/ethereum.config';
-import { getSolanaChainConfig } from '../chains/solana/solana.config';
+import { getEthereumChainConfig, getEthereumNetworkConfig } from '../chains/ethereum/ethereum.config';
+import { getSolanaChainConfig, getSolanaNetworkConfig } from '../chains/solana/solana.config';
 import { httpErrors } from '../services/error-handler';
 import { logger } from '../services/logger';
+import { PoolService } from '../services/pool-service';
+
+import { TradingType } from './connector-registry';
 
 /** CLMM connectors that back the unified /trading/clmm routes. */
 export const CLMM_CONNECTORS = ['meteora', 'raydium', 'pancakeswap-sol', 'orca', 'uniswap', 'pancakeswap'];
@@ -33,6 +36,7 @@ export const chainNetworkField = () =>
 export const slippagePctField = (description?: string) =>
   Type.Optional(
     Type.Number({
+      format: 'decimal',
       minimum: 0,
       maximum: 100,
       description:
@@ -74,3 +78,94 @@ try {
   dw = getEthereumChainConfig().defaultWallet;
 }
 export const defaultWallet = dw;
+
+/** Wallet selector shared by the unified execute routes. */
+export const walletAddressField = (description = 'Wallet address that will execute the transaction') =>
+  Type.String({ description, default: defaultWallet });
+
+/**
+ * Pool pin for the pool-scoped (amm/clmm) swap routes. Optional: when omitted the
+ * pool is resolved from Gateway's configured pool list by token pair, which a pool
+ * that is not in that list (freshly created, unlisted token) cannot be — pass its
+ * address here for those.
+ */
+export const poolAddressField = () =>
+  Type.Optional(
+    Type.String({
+      description:
+        "Pool to trade against. Omit to resolve it from Gateway's configured pool list by token pair; " +
+        'pass an address to pin a pool that is not in that list.',
+    }),
+  );
+
+/**
+ * The connector a swap should use, honoring the network's configured swapProvider
+ * when the caller names none.
+ *
+ * The config stores a provider as "connector/type" (e.g. "jupiter/router"), while
+ * the unified routes carry the type in the path. So a configured default is only
+ * usable on the route matching its type; on any other route, omitting the connector
+ * is an error that names the config value rather than silently picking a connector.
+ */
+export function resolveSwapConnector(chain: string, network: string, type: TradingType, requested?: string): string {
+  if (requested) {
+    // Tolerate a typed value ("jupiter/router") so callers migrating from the old
+    // /trading/swap routes are not broken by the path-carries-the-type change. The
+    // route schemas constrain `connector` to bare names, so this path is reached by
+    // internal callers (pool creation's market-price lookup) passing a config value.
+    const [name, requestedType] = requested.split('/');
+    if (requestedType && requestedType !== type) {
+      throw httpErrors.badRequest(
+        `Connector '${requested}' is a ${requestedType} provider, but this is a ${type} route. ` +
+          `Use /trading/${requestedType}/ instead, or pass a ${type} connector.`,
+      );
+    }
+    return name;
+  }
+
+  const swapProvider =
+    chain === 'solana'
+      ? getSolanaNetworkConfig(network)?.swapProvider
+      : getEthereumNetworkConfig(network)?.swapProvider;
+
+  if (!swapProvider) {
+    throw httpErrors.badRequest(
+      `No connector given and no swapProvider configured for ${chain}-${network}. Pass a connector.`,
+    );
+  }
+
+  const [name, configuredType] = swapProvider.split('/');
+  if (configuredType !== type) {
+    throw httpErrors.badRequest(
+      `No connector given. The configured swapProvider for ${chain}-${network} is '${swapProvider}', ` +
+        `which is a ${configuredType} provider — pass a ${type} connector explicitly.`,
+    );
+  }
+  return name;
+}
+
+/**
+ * Pool address for a pool-scoped swap: the caller's pin when given, otherwise the
+ * pair's pool from Gateway's configured list.
+ */
+export async function resolvePoolAddress(
+  chain: string,
+  network: string,
+  type: 'clmm' | 'amm',
+  connector: string,
+  baseToken: string,
+  quoteToken: string,
+  requested?: string,
+): Promise<string> {
+  if (requested) return requested;
+
+  const pool = await PoolService.getInstance().getPool(chain, network, type, baseToken, quoteToken, connector);
+  if (!pool) {
+    throw httpErrors.notFound(
+      `No ${type.toUpperCase()} pool found for ${baseToken}-${quoteToken} on ${connector}/${network}. ` +
+        'Pass poolAddress to trade against a specific pool.',
+    );
+  }
+  logger.info(`Resolved pool ${pool.address} for ${baseToken}-${quoteToken} on ${connector}/${network}`);
+  return pool.address;
+}

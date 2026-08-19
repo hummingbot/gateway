@@ -2,20 +2,13 @@ import { Contract } from '@ethersproject/contracts';
 import { Percent, CurrencyAmount } from '@pancakeswap/sdk';
 import { NonfungiblePositionManager, Position } from '@pancakeswap/v3-sdk';
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 import { Address } from 'viem';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { TransactionStatus } from '../../../schemas/chain-schema';
-import {
-  RemoveLiquidityRequestType,
-  RemoveLiquidityRequest,
-  RemoveLiquidityResponseType,
-  RemoveLiquidityResponse,
-} from '../../../schemas/clmm-schema';
+import { RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
 import { POSITION_MANAGER_ABI, getPancakeswapV3NftManagerAddress } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
@@ -156,68 +149,3 @@ export async function removeLiquidity(
     },
   };
 }
-
-export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
-  fastify.post<{
-    Body: RemoveLiquidityRequestType;
-    Reply: RemoveLiquidityResponseType;
-  }>(
-    '/remove-liquidity',
-    {
-      schema: {
-        description: 'Remove liquidity from a Pancakeswap V3 position',
-        tags: ['/connector/pancakeswap'],
-        body: {
-          ...RemoveLiquidityRequest,
-          properties: {
-            ...RemoveLiquidityRequest.properties,
-            network: { type: 'string', default: 'bsc', examples: ['bsc'] },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            positionAddress: {
-              type: 'string',
-              description: 'Position NFT token ID',
-              examples: ['1234'],
-            },
-            percentageToRemove: {
-              type: 'number',
-              minimum: 0,
-              maximum: 100,
-              examples: [50],
-            },
-          },
-        },
-        response: {
-          200: RemoveLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress: requestedWalletAddress, positionAddress, percentageToRemove } = request.body;
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          const pancakeswap = await Pancakeswap.getInstance(network);
-          walletAddress = await pancakeswap.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-        }
-
-        return await removeLiquidity(network, walletAddress, positionAddress, percentageToRemove);
-      } catch (e: any) {
-        logger.error('Failed to remove liquidity:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw httpErrors.internalServerError('Failed to remove liquidity');
-      }
-    },
-  );
-};
-
-export default removeLiquidityRoute;

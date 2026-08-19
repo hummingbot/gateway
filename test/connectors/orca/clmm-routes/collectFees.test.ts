@@ -8,7 +8,7 @@ jest.mock('../../../../src/connectors/orca/orca');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { collectFeesRoute } = await import('../../../../src/connectors/orca/clmm-routes/collectFees');
+  const { collectFeesRoute } = await import('../../../../src/trading/trading-clmm-routes/collect-fees');
   await server.register(collectFeesRoute);
   return server;
 };
@@ -50,7 +50,8 @@ describe('POST /collect-fees', () => {
         method: 'POST',
         url: '/collect-fees',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
         },
@@ -88,7 +89,8 @@ describe('POST /collect-fees', () => {
         method: 'POST',
         url: '/collect-fees',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           positionAddress: mockPositionAddress,
         },
       });
@@ -103,7 +105,8 @@ describe('POST /collect-fees', () => {
         method: 'POST',
         url: '/collect-fees',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
         },
       });
@@ -116,7 +119,8 @@ describe('POST /collect-fees', () => {
         method: 'POST',
         url: '/collect-fees',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: 'invalid',
         },
@@ -137,7 +141,8 @@ describe('POST /collect-fees', () => {
         method: 'POST',
         url: '/collect-fees',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
         },
@@ -153,7 +158,8 @@ describe('POST /collect-fees', () => {
         method: 'POST',
         url: '/collect-fees',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
         },
@@ -180,7 +186,8 @@ describe('POST /collect-fees', () => {
         method: 'POST',
         url: '/collect-fees',
         payload: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
         },

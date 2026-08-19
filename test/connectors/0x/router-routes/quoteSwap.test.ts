@@ -8,7 +8,7 @@ jest.mock('../../../../src/connectors/0x/0x');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quoteSwapRoute } = await import('../../../../src/connectors/0x/router-routes/quoteSwap');
+  const { quoteSwapRoute } = await import('../../../../src/trading/trading-router-routes/quoteSwap');
   await server.register(quoteSwapRoute);
   return server;
 };
@@ -75,7 +75,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: '0x',
         baseToken: 'WETH',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -94,8 +95,8 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('price');
     expect(body).toHaveProperty('priceImpactPct');
-    expect(body).toHaveProperty('gasEstimate', '200000');
-    expect(body).toHaveProperty('expirationTime');
+    // gasEstimate / expirationTime were 0x-specific fields on the per-connector route.
+    // The unified router response carries the shared quote fields plus quoteId.
     expect(body).toHaveProperty('tokenIn', mockWETH.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
   });
@@ -126,7 +127,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: '0x',
         baseToken: 'WETH',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -156,7 +158,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: '0x',
         baseToken: 'INVALID',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -190,7 +193,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: '0x',
         baseToken: 'WETH',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -231,7 +235,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: '0x',
         baseToken: 'WETH',
         quoteToken: 'USDC',
         amount: '0.1',

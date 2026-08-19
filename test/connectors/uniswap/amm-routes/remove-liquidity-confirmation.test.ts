@@ -34,7 +34,7 @@ const { Ethereum: RealEthereum } = jest.requireActual('../../../../src/chains/et
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { removeLiquidityRoute } = await import('../../../../src/connectors/uniswap/amm-routes/removeLiquidity');
+  const { removeLiquidityRoute } = await import('../../../../src/trading/trading-amm-routes/remove-liquidity');
   await server.register(removeLiquidityRoute);
   return server;
 };
@@ -76,7 +76,13 @@ const remove = (server: any) =>
   server.inject({
     method: 'POST',
     url: '/remove-liquidity',
-    payload: { network: 'base', walletAddress: mockWallet, poolAddress, percentageToRemove: 50 },
+    payload: {
+      chainNetwork: 'ethereum-base',
+      connector: 'uniswap',
+      walletAddress: mockWallet,
+      poolAddress,
+      percentageToRemove: 50,
+    },
   });
 
 describe('POST /remove-liquidity (Uniswap V2 AMM) — transaction confirmation', () => {

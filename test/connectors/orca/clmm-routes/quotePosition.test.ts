@@ -8,7 +8,7 @@ jest.mock('../../../../src/connectors/orca/orca');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quotePositionRoute } = await import('../../../../src/connectors/orca/clmm-routes/quotePosition');
+  const { quotePositionRoute } = await import('../../../../src/trading/clmm/quote-position');
   await server.register(quotePositionRoute);
   return server;
 };
@@ -49,7 +49,8 @@ describe('GET /quote-position', () => {
         method: 'GET',
         url: '/quote-position',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           poolAddress: mockPoolAddress,
           lowerPrice: '150',
           upperPrice: '250',
@@ -81,7 +82,8 @@ describe('GET /quote-position', () => {
         method: 'GET',
         url: '/quote-position',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           poolAddress: mockPoolAddress,
           lowerPrice: '150',
           upperPrice: '250',
@@ -106,7 +108,8 @@ describe('GET /quote-position', () => {
         method: 'GET',
         url: '/quote-position',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           poolAddress: mockPoolAddress,
           lowerPrice: '150',
           upperPrice: '250',
@@ -149,7 +152,8 @@ describe('GET /quote-position', () => {
         method: 'GET',
         url: '/quote-position',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           lowerPrice: '150',
           upperPrice: '250',
           baseTokenAmount: '1.0',
@@ -164,7 +168,8 @@ describe('GET /quote-position', () => {
         method: 'GET',
         url: '/quote-position',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           poolAddress: mockPoolAddress,
           upperPrice: '250',
           baseTokenAmount: '1.0',
@@ -179,7 +184,8 @@ describe('GET /quote-position', () => {
         method: 'GET',
         url: '/quote-position',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           poolAddress: mockPoolAddress,
           lowerPrice: '150',
           baseTokenAmount: '1.0',
@@ -194,7 +200,8 @@ describe('GET /quote-position', () => {
         method: 'GET',
         url: '/quote-position',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           poolAddress: mockPoolAddress,
           lowerPrice: '150',
           upperPrice: '250',
@@ -209,7 +216,8 @@ describe('GET /quote-position', () => {
         method: 'GET',
         url: '/quote-position',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           poolAddress: mockPoolAddress,
           lowerPrice: '250',
           upperPrice: '150',
@@ -225,7 +233,8 @@ describe('GET /quote-position', () => {
         method: 'GET',
         url: '/quote-position',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           poolAddress: 'invalid',
           lowerPrice: '150',
           upperPrice: '250',
@@ -248,7 +257,8 @@ describe('GET /quote-position', () => {
         method: 'GET',
         url: '/quote-position',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           poolAddress: mockPoolAddress,
           lowerPrice: '150',
           upperPrice: '250',
@@ -266,7 +276,8 @@ describe('GET /quote-position', () => {
         method: 'GET',
         url: '/quote-position',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           poolAddress: mockPoolAddress,
           lowerPrice: '150',
           upperPrice: '250',
@@ -287,7 +298,8 @@ describe('GET /quote-position', () => {
         method: 'GET',
         url: '/quote-position',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           poolAddress: 'nonexistent123',
           lowerPrice: '150',
           upperPrice: '250',

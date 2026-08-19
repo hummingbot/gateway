@@ -35,10 +35,12 @@ const UnifiedOpenPositionRequest = Type.Object({
     default: defaultWallet,
   }),
   lowerPrice: Type.Number({
+    format: 'decimal',
     description: 'Lower price bound for the position',
     examples: [LOWER_PRICE_BOUND],
   }),
   upperPrice: Type.Number({
+    format: 'decimal',
     description: 'Upper price bound for the position',
     examples: [UPPER_PRICE_BOUND],
   }),
@@ -48,12 +50,14 @@ const UnifiedOpenPositionRequest = Type.Object({
   }),
   baseTokenAmount: Type.Optional(
     Type.Number({
+      format: 'decimal',
       description: 'Amount of base token to deposit',
       examples: [BASE_TOKEN_AMOUNT],
     }),
   ),
   quoteTokenAmount: Type.Optional(
     Type.Number({
+      format: 'decimal',
       description: 'Amount of quote token to deposit',
       examples: [QUOTE_TOKEN_AMOUNT],
     }),
@@ -62,6 +66,7 @@ const UnifiedOpenPositionRequest = Type.Object({
   // Meteora-specific parameter (optional, ignored by other connectors)
   strategyType: Type.Optional(
     Type.Number({
+      'x-connectors': ['meteora'],
       description: 'Strategy type for Meteora positions (0=Spot, 1=Curve). Only applies to Meteora connector.',
       examples: [0],
     }),

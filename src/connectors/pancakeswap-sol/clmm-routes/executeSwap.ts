@@ -1,16 +1,12 @@
-import { Static } from '@sinclair/typebox';
-import { PublicKey, VersionedTransaction } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
+import { ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
-import { MIN_SQRT_PRICE_X64, MAX_SQRT_PRICE_X64 } from '../pancakeswap-sol.parser';
 import { buildSwapTransaction } from '../pancakeswap-sol.transactions';
-import { PancakeswapSolClmmExecuteSwapRequest, PancakeswapSolClmmExecuteSwapRequestType } from '../schemas';
 
 /**
  * Execute a swap on PancakeSwap Solana CLMM
@@ -193,79 +189,3 @@ export async function executeSwap(
     };
   }
 }
-
-export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: PancakeswapSolClmmExecuteSwapRequestType;
-    Reply: ExecuteSwapResponseType;
-  }>(
-    '/execute-swap',
-    {
-      schema: {
-        description: 'Execute a swap on PancakeSwap Solana CLMM',
-        tags: ['/connector/pancakeswap-sol'],
-        body: PancakeswapSolClmmExecuteSwapRequest,
-        response: { 200: ExecuteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network = 'mainnet-beta',
-          walletAddress,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          poolAddress,
-          slippagePct,
-        } = request.body;
-
-        // executeSwap is standardized to require poolAddress; resolve it from the pair when absent.
-        let poolAddressToUse = poolAddress;
-        if (!poolAddressToUse) {
-          const solana = await Solana.getInstance(network);
-          const baseTokenInfo = await solana.getToken(baseToken);
-          const quoteTokenInfo = await solana.getToken(quoteToken);
-          if (!baseTokenInfo || !quoteTokenInfo) {
-            throw httpErrors.badRequest(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
-          }
-          const { PoolService } = await import('../../../services/pool-service');
-          const poolService = PoolService.getInstance();
-          const pool = await poolService.getPool(
-            'pancakeswap-sol',
-            network,
-            'clmm',
-            baseTokenInfo.symbol,
-            quoteTokenInfo.symbol,
-          );
-          if (!pool) {
-            throw httpErrors.notFound(`No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol}`);
-          }
-          poolAddressToUse = pool.address;
-        }
-
-        return await executeSwap(
-          network,
-          walletAddress!,
-          poolAddressToUse,
-          baseToken,
-          side as 'BUY' | 'SELL',
-          amount,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Execute swap error:', e);
-        // Re-throw httpErrors as-is
-        if (e.statusCode) {
-          throw e;
-        }
-        // Handle unknown errors
-        const errorMessage = e.message || 'Failed to execute swap';
-        throw httpErrors.internalServerError(errorMessage);
-      }
-    },
-  );
-};
-
-export default executeSwapRoute;

@@ -10,7 +10,7 @@ const mockPoolAddress = 'FH6mP2MUobhDnLERp9z5yv5t2zMUA9WDNXPixpbvYKMv';
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quoteLiquidityRoute } = await import('../../../../src/connectors/meteora/amm-routes/quoteLiquidity');
+  const { quoteLiquidityRoute } = await import('../../../../src/trading/trading-amm-routes/quote-liquidity');
   await server.register(quoteLiquidityRoute);
   return server;
 };
@@ -68,7 +68,8 @@ describe('GET /quote-liquidity (Meteora DAMM v2)', () => {
       method: 'GET',
       url: '/quote-liquidity',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         poolAddress: mockPoolAddress,
         baseTokenAmount: '0.01',
         quoteTokenAmount: '2',

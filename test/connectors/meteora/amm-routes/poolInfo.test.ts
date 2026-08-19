@@ -10,7 +10,7 @@ const mockUSDC = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { poolInfoRoute } = await import('../../../../src/connectors/meteora/amm-routes/poolInfo');
+  const { poolInfoRoute } = await import('../../../../src/trading/trading-amm-routes/pool-info');
   await server.register(poolInfoRoute);
   return server;
 };
@@ -46,7 +46,7 @@ describe('GET /pool-info (Meteora DAMM v2)', () => {
     const response = await server.inject({
       method: 'GET',
       url: '/pool-info',
-      query: { network: 'mainnet-beta', poolAddress: mockPoolAddress },
+      query: { chainNetwork: 'solana-mainnet-beta', connector: 'meteora', poolAddress: mockPoolAddress },
     });
 
     expect(response.statusCode).toBe(200);
@@ -70,7 +70,7 @@ describe('GET /pool-info (Meteora DAMM v2)', () => {
     const response = await server.inject({
       method: 'GET',
       url: '/pool-info',
-      query: { network: 'mainnet-beta', poolAddress: mockPoolAddress },
+      query: { chainNetwork: 'solana-mainnet-beta', connector: 'meteora', poolAddress: mockPoolAddress },
     });
 
     expect(response.statusCode).toBe(404);

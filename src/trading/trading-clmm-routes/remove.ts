@@ -32,6 +32,7 @@ const UnifiedRemoveLiquidityRequest = Type.Object({
     examples: ['<sample-position-address>'],
   }),
   percentageToRemove: Type.Number({
+    format: 'decimal',
     minimum: 0,
     maximum: 100,
     description: 'Percentage of liquidity to remove',

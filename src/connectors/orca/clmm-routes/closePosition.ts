@@ -1,20 +1,17 @@
 import { closePositionInstructions } from '@orca-so/whirlpools';
 import { fetchMaybePosition, fetchWhirlpool } from '@orca-so/whirlpools-client';
-import { Static } from '@sinclair/typebox';
 import { address } from '@solana/kit';
 import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import { fetchMint } from '@solana-program/token-2022';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { ClosePositionResponse, ClosePositionResponseType } from '../../../schemas/clmm-schema';
+import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
 import { buildOrcaTransaction, createOrcaAuthority } from '../orca.sdk';
 import { extractInnerTransferAmounts } from '../orca.utils';
-import { OrcaClmmClosePositionRequest } from '../schemas';
 
 export async function closePosition(
   network: string,
@@ -121,34 +118,3 @@ export async function closePosition(
     },
   };
 }
-
-export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof OrcaClmmClosePositionRequest>;
-    Reply: ClosePositionResponseType;
-  }>(
-    '/close-position',
-    {
-      schema: {
-        description: 'Close an Orca position',
-        tags: ['/connector/orca'],
-        body: OrcaClmmClosePositionRequest,
-        response: {
-          200: ClosePositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { walletAddress, positionAddress, network } = request.body;
-        return await closePosition(network, walletAddress, positionAddress);
-      } catch (error) {
-        logger.error(error);
-        if (error.statusCode) throw error;
-        throw fastify.httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default closePositionRoute;

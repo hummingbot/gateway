@@ -15,7 +15,7 @@ jest.mock('../../../../src/connectors/0x/router-routes/executeQuote', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { executeSwapRoute } = await import('../../../../src/connectors/0x/router-routes/executeSwap');
+  const { executeSwapRoute } = await import('../../../../src/trading/trading-router-routes/executeSwap');
   await server.register(executeSwapRoute);
   return server;
 };
@@ -95,7 +95,8 @@ describe('POST /execute-swap', () => {
       method: 'POST',
       url: '/execute-swap',
       payload: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: '0x',
         walletAddress: '0x1234567890123456789012345678901234567890',
         baseToken: 'WETH',
         quoteToken: 'USDC',
@@ -159,7 +160,8 @@ describe('POST /execute-swap', () => {
       method: 'POST',
       url: '/execute-swap',
       payload: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: '0x',
         walletAddress: '0x1234567890123456789012345678901234567890',
         baseToken: 'WETH',
         quoteToken: 'USDC',
@@ -193,7 +195,8 @@ describe('POST /execute-swap', () => {
       method: 'POST',
       url: '/execute-swap',
       payload: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: '0x',
         walletAddress: '0x1234567890123456789012345678901234567890',
         baseToken: 'INVALID',
         quoteToken: 'USDC',

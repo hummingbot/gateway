@@ -1,14 +1,10 @@
 import { StrategyType, getPriceOfBinByBinId } from '@meteora-ag/dlmm';
-import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { QuotePositionResponseType, QuotePositionResponse } from '../../../schemas/clmm-schema';
-import { httpErrors } from '../../../services/error-handler';
+import { QuotePositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 import { MeteoraConfig } from '../meteora.config';
-import { MeteoraClmmQuotePositionRequest } from '../schemas';
 
 export async function quotePosition(
   network: string,
@@ -124,55 +120,3 @@ export async function quotePosition(
     throw error;
   }
 }
-
-export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: Static<typeof MeteoraClmmQuotePositionRequest>;
-    Reply: QuotePositionResponseType;
-  }>(
-    '/quote-position',
-    {
-      schema: {
-        description: 'Quote amounts for a new Meteora CLMM position',
-        tags: ['/connector/meteora'],
-        querystring: MeteoraClmmQuotePositionRequest,
-        response: {
-          200: QuotePositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network = 'mainnet-beta',
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-          strategyType,
-        } = request.query;
-
-        return await quotePosition(
-          network,
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-          strategyType,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e; // Re-throw HttpErrors with original message
-        }
-        throw httpErrors.internalServerError('Failed to quote position');
-      }
-    },
-  );
-};
-
-export default quotePositionRoute;

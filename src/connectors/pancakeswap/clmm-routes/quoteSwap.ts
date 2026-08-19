@@ -1,15 +1,9 @@
 import { Token, CurrencyAmount, Percent, TradeType } from '@pancakeswap/sdk';
 import { Route as V3Route, Trade as V3Trade } from '@pancakeswap/v3-sdk';
 import { BigNumber, utils } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  QuoteSwapRequestType,
-  QuoteSwapResponseType,
-  QuoteSwapRequest,
-  QuoteSwapResponse,
-} from '../../../schemas/clmm-schema';
+import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
@@ -271,124 +265,6 @@ async function formatSwapQuote(
     throw error;
   }
 }
-
-export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  // Import the httpErrors plugin to ensure it's available
-  await fastify.register(require('@fastify/sensible'));
-
-  fastify.get<{
-    Querystring: QuoteSwapRequestType;
-    Reply: QuoteSwapResponseType;
-  }>(
-    '/quote-swap',
-    {
-      schema: {
-        description: 'Get swap quote for Pancakeswap V3 CLMM',
-        tags: ['/connector/pancakeswap'],
-        querystring: {
-          ...QuoteSwapRequest,
-          properties: {
-            ...QuoteSwapRequest.properties,
-            network: { type: 'string', default: 'bsc', examples: ['bsc'] },
-            baseToken: { type: 'string', examples: ['USDT'] },
-            quoteToken: { type: 'string', examples: ['WBNB'] },
-            amount: { type: 'number', examples: [10] },
-            side: { type: 'string', enum: ['BUY', 'SELL'], examples: ['SELL'] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
-        response: { 200: QuoteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, poolAddress, baseToken, quoteToken, amount, side, slippagePct } = request.query;
-
-        const networkToUse = network;
-
-        // Validate essential parameters
-        if (!baseToken || !amount || !side) {
-          throw httpErrors.badRequest('baseToken, amount, and side are required');
-        }
-
-        const pancakeswap = await Pancakeswap.getInstance(networkToUse);
-
-        let poolAddressToUse = poolAddress;
-        let baseTokenToUse: string;
-        let quoteTokenToUse: string;
-
-        if (poolAddressToUse) {
-          // Pool address provided, get pool info to determine tokens
-          const poolInfo = await getPancakeswapPoolInfo(poolAddressToUse, networkToUse, 'clmm');
-          if (!poolInfo) {
-            throw httpErrors.notFound(sanitizeErrorMessage('Pool not found: {}', poolAddressToUse));
-          }
-
-          // Determine which token is base and which is quote based on the provided baseToken
-          if (baseToken === poolInfo.baseTokenAddress) {
-            baseTokenToUse = poolInfo.baseTokenAddress;
-            quoteTokenToUse = poolInfo.quoteTokenAddress;
-          } else if (baseToken === poolInfo.quoteTokenAddress) {
-            // User specified the quote token as base, so swap them
-            baseTokenToUse = poolInfo.quoteTokenAddress;
-            quoteTokenToUse = poolInfo.baseTokenAddress;
-          } else {
-            // Try to resolve baseToken as symbol to address
-            const resolvedToken = await pancakeswap.getToken(baseToken);
-
-            if (resolvedToken) {
-              if (resolvedToken.address === poolInfo.baseTokenAddress) {
-                baseTokenToUse = poolInfo.baseTokenAddress;
-                quoteTokenToUse = poolInfo.quoteTokenAddress;
-              } else if (resolvedToken.address === poolInfo.quoteTokenAddress) {
-                baseTokenToUse = poolInfo.quoteTokenAddress;
-                quoteTokenToUse = poolInfo.baseTokenAddress;
-              } else {
-                throw httpErrors.badRequest(`Token ${baseToken} not found in pool ${poolAddressToUse}`);
-              }
-            } else {
-              throw httpErrors.badRequest(`Token ${baseToken} not found in pool ${poolAddressToUse}`);
-            }
-          }
-        } else {
-          // No pool address provided, need quoteToken to find pool
-          if (!quoteToken) {
-            throw httpErrors.badRequest('quoteToken is required when poolAddress is not provided');
-          }
-
-          baseTokenToUse = baseToken;
-          quoteTokenToUse = quoteToken;
-
-          // Find pool using findDefaultPool
-          poolAddressToUse = await pancakeswap.findDefaultPool(baseTokenToUse, quoteTokenToUse, 'clmm');
-
-          if (!poolAddressToUse) {
-            throw httpErrors.notFound(`No CLMM pool found for pair ${baseTokenToUse}-${quoteTokenToUse}`);
-          }
-        }
-
-        return await formatSwapQuote(
-          networkToUse,
-          poolAddressToUse,
-          baseTokenToUse,
-          quoteTokenToUse,
-          amount,
-          side as 'BUY' | 'SELL',
-          slippagePct,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-        logger.error('Unexpected error getting swap quote:', e);
-        throw httpErrors.internalServerError('Error getting swap quote');
-      }
-    },
-  );
-};
-
-export default quoteSwapRoute;
 
 /**
  * Resolves the counter ("quote") token for a Pancakeswap V3 pool given the base token. The

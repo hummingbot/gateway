@@ -13,20 +13,8 @@ import Fastify, { FastifyInstance } from 'fastify';
 // Internal dependencies
 
 // Routes
-import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
-import { solanaRoutes } from './chains/solana/solana.routes';
+import { chainRoutes } from './chains/chain.routes';
 import { configRoutes } from './config/config.routes';
-import { register0xRoutes } from './connectors/0x/0x.routes';
-import { dflowRoutes } from './connectors/dflow/dflow.routes';
-import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
-import { meteoraRoutes } from './connectors/meteora/meteora.routes';
-import { okxRoutes } from './connectors/okx/okx.routes';
-import { orcaRoutes } from './connectors/orca/orca.routes';
-import { pancakeswapRoutes } from './connectors/pancakeswap/pancakeswap.routes';
-import { pancakeswapSolRoutes } from './connectors/pancakeswap-sol/pancakeswap-sol.routes';
-import { raydiumRoutes } from './connectors/raydium/raydium.routes';
-import { titanRoutes } from './connectors/titan/titan.routes';
-import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { getHttpsOptions } from './https';
 import { rootPath } from './paths';
 import { poolRoutes } from './pools/pools.routes';
@@ -43,9 +31,10 @@ import {
 } from './services/gateway-security';
 import { logger } from './services/logger';
 import { quoteCache } from './services/quote-cache';
+import { ajvOptions } from './services/schema-keywords';
 import { displayChainConfigurations } from './services/startup-banner';
 import { tokensRoutes } from './tokens/tokens.routes';
-import { tradingSwapRoutes, tradingClmmRoutes, tradingAmmRoutes } from './trading/trading.routes';
+import { tradingRouterRoutes, tradingClmmRoutes, tradingAmmRoutes } from './trading/trading.routes';
 import { GATEWAY_VERSION } from './version';
 import { walletRoutes } from './wallet/wallet.routes';
 
@@ -74,67 +63,14 @@ const swaggerOptions = {
       },
     ],
     tags: [
-      // Main categories
       { name: '/config', description: 'System configuration endpoints' },
       { name: '/wallet', description: 'Wallet management endpoints' },
       { name: '/tokens', description: 'Token management endpoints' },
       { name: '/pools', description: 'Pool management endpoints' },
-      { name: '/trading/swap', description: 'Unified cross-chain swap endpoints' },
-      { name: '/trading/clmm', description: 'Unified cross-chain CLMM (Concentrated Liquidity) endpoints' },
-      { name: '/trading/amm', description: 'Unified cross-connector AMM endpoints (pool creation)' },
-
-      // Chains
-      {
-        name: '/chain/solana',
-        description: 'Solana and SVM-based chain endpoints',
-      },
-      {
-        name: '/chain/ethereum',
-        description: 'Ethereum and EVM-based chain endpoints',
-      },
-
-      // Connectors
-      {
-        name: '/connector/jupiter',
-        description: 'Jupiter connector endpoints',
-      },
-      {
-        name: '/connector/meteora',
-        description: 'Meteora connector endpoints',
-      },
-      {
-        name: '/connector/orca',
-        description: 'Orca connector endpoints',
-      },
-      {
-        name: '/connector/raydium',
-        description: 'Raydium connector endpoints',
-      },
-      {
-        name: '/connector/uniswap',
-        description: 'Uniswap connector endpoints',
-      },
-      { name: '/connector/0x', description: '0x connector endpoints' },
-      {
-        name: '/connector/pancakeswap-sol',
-        description: 'PancakeSwap Solana connector endpoints',
-      },
-      {
-        name: '/connector/pancakeswap',
-        description: 'PancakeSwap EVM connector endpoints',
-      },
-      {
-        name: '/connector/dflow',
-        description: 'DFlow connector endpoints',
-      },
-      {
-        name: '/connector/okx',
-        description: 'OKX DEX aggregator connector endpoints',
-      },
-      {
-        name: '/connector/titan',
-        description: 'Titan connector endpoints',
-      },
+      { name: '/chains', description: 'Chain endpoints, parameterized by chain' },
+      { name: '/trading/router', description: 'Swaps routed across pools by a router connector' },
+      { name: '/trading/clmm', description: 'Concentrated-liquidity pools: swaps, positions, and pool management' },
+      { name: '/trading/amm', description: 'Constant-product pools: swaps, liquidity, and pool management' },
     ],
     components: {
       parameters: {
@@ -181,11 +117,12 @@ const configureGatewayServer = () => {
         }
       : false,
     https: devMode ? undefined : getHttpsOptions(),
+    ajv: ajvOptions,
   });
 
   const docsPort = ConfigManagerV2.getInstance().get('server.docsPort');
 
-  docsServer = docsPort ? Fastify() : null;
+  docsServer = docsPort ? Fastify({ ajv: ajvOptions }) : null;
 
   // Register TypeBox provider
   server.withTypeProvider<TypeBoxTypeProvider>();
@@ -291,71 +228,13 @@ const configureGatewayServer = () => {
     // Register pool routes
     app.register(poolRoutes, { prefix: '/pools' });
 
-    // Register trading routes (unified cross-chain swap)
-    app.register(tradingSwapRoutes, { prefix: '/trading/swap' });
-
-    // Register trading CLMM routes (unified cross-chain concentrated liquidity)
+    // Unified trading routes: the type lives in the path, the connector is a parameter.
+    app.register(tradingRouterRoutes, { prefix: '/trading/router' });
     app.register(tradingClmmRoutes, { prefix: '/trading/clmm' });
-
-    // Register trading AMM routes (unified cross-connector AMM: pool creation)
     app.register(tradingAmmRoutes, { prefix: '/trading/amm' });
 
-    // Register chain routes
-    app.register(solanaRoutes, { prefix: '/chains/solana' });
-    app.register(ethereumRoutes, { prefix: '/chains/ethereum' });
-
-    // Register DEX connector routes - organized by connector
-
-    // Jupiter routes
-    app.register(jupiterRoutes.router, {
-      prefix: '/connectors/jupiter/router',
-    });
-
-    // DFlow routes
-    app.register(dflowRoutes.router, {
-      prefix: '/connectors/dflow/router',
-    });
-
-    // OKX DEX aggregator routes
-    app.register(okxRoutes.router, {
-      prefix: '/connectors/okx/router',
-    });
-
-    // Titan routes
-    app.register(titanRoutes.router, {
-      prefix: '/connectors/titan/router',
-    });
-
-    // Meteora routes
-    app.register(meteoraRoutes.clmm, { prefix: '/connectors/meteora/clmm' });
-    app.register(meteoraRoutes.amm, { prefix: '/connectors/meteora/amm' });
-
-    // // Orca routes
-    app.register(orcaRoutes.clmm, { prefix: '/connectors/orca/clmm' });
-
-    // Raydium routes
-    app.register(raydiumRoutes.amm, { prefix: '/connectors/raydium/amm' });
-    app.register(raydiumRoutes.clmm, { prefix: '/connectors/raydium/clmm' });
-
-    // Uniswap routes
-    app.register(uniswapRoutes.router, {
-      prefix: '/connectors/uniswap/router',
-    });
-    app.register(uniswapRoutes.amm, { prefix: '/connectors/uniswap/amm' });
-    app.register(uniswapRoutes.clmm, { prefix: '/connectors/uniswap/clmm' });
-
-    // 0x routes
-    app.register(register0xRoutes);
-
-    // Pancakeswap routes
-    app.register(pancakeswapRoutes.router, {
-      prefix: '/connectors/pancakeswap/router',
-    });
-    app.register(pancakeswapRoutes.amm, { prefix: '/connectors/pancakeswap/amm' });
-    app.register(pancakeswapRoutes.clmm, { prefix: '/connectors/pancakeswap/clmm' });
-
-    // PancakeSwap Solana routes
-    app.register(pancakeswapSolRoutes, { prefix: '/connectors/pancakeswap-sol' });
+    // Chain routes, parameterized by chain (/chains/:chain/...).
+    app.register(chainRoutes, { prefix: '/chains' });
   };
 
   // Register routes on main server

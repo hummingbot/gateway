@@ -1,15 +1,9 @@
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  CollectFeesRequest,
-  CollectFeesResponse,
-  CollectFeesRequestType,
-  CollectFeesResponseType,
-} from '../../../schemas/clmm-schema';
+import { CollectFeesResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
@@ -104,41 +98,3 @@ export async function collectFees(
     status: 0, // PENDING
   };
 }
-
-export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
-  const walletAddressExample = await Solana.getWalletAddressExample();
-
-  fastify.post<{
-    Body: CollectFeesRequestType;
-    Reply: CollectFeesResponseType;
-  }>(
-    '/collect-fees',
-    {
-      schema: {
-        description: 'Collect fees from a Raydium CLMM position by removing 1% of liquidity',
-        tags: ['/connector/raydium'],
-        body: {
-          ...CollectFeesRequest,
-          properties: {
-            ...CollectFeesRequest.properties,
-            network: { type: 'string', default: 'mainnet-beta' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-          },
-        },
-        response: { 200: CollectFeesResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, positionAddress } = request.body;
-        return await collectFees(network, walletAddress, positionAddress);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to collect fees');
-      }
-    },
-  );
-};
-
-export default collectFeesRoute;

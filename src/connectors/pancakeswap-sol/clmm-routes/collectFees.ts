@@ -1,15 +1,12 @@
-import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { CollectFeesResponse, CollectFeesResponseType } from '../../../schemas/clmm-schema';
+import { CollectFeesResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { buildRemoveLiquidityTransaction } from '../pancakeswap-sol.transactions';
-import { PancakeswapSolClmmCollectFeesRequest } from '../schemas';
 
 /**
  * Collect accumulated fees from a position WITHOUT touching its liquidity.
@@ -106,41 +103,3 @@ async function collectFees(
 }
 
 export { collectFees };
-
-export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof PancakeswapSolClmmCollectFeesRequest>;
-    Reply: CollectFeesResponseType;
-  }>(
-    '/collect-fees',
-    {
-      schema: {
-        description:
-          'Collect accumulated fees from a PancakeSwap Solana CLMM position (zero-liquidity decrease; liquidity is not touched)',
-        tags: ['/connector/pancakeswap-sol'],
-        body: PancakeswapSolClmmCollectFeesRequest,
-        response: {
-          200: CollectFeesResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network = 'mainnet-beta', walletAddress, positionAddress } = request.body;
-
-        return await collectFees(network, walletAddress!, positionAddress);
-      } catch (e: any) {
-        logger.error('Collect fees error:', e);
-        // Re-throw httpErrors as-is
-        if (e.statusCode) {
-          throw e;
-        }
-        // Handle unknown errors
-        const errorMessage = e.message || 'Failed to collect fees';
-        throw httpErrors.internalServerError(errorMessage);
-      }
-    },
-  );
-};
-
-export default collectFeesRoute;

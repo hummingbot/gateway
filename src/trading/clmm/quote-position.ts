@@ -33,10 +33,12 @@ const UnifiedQuotePositionRequestSchema = Type.Object({
   connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
   chainNetwork: chainNetworkField(),
   lowerPrice: Type.Number({
+    format: 'decimal',
     description: 'Lower price bound for the position',
     examples: [LOWER_PRICE_BOUND],
   }),
   upperPrice: Type.Number({
+    format: 'decimal',
     description: 'Upper price bound for the position',
     examples: [UPPER_PRICE_BOUND],
   }),
@@ -46,12 +48,14 @@ const UnifiedQuotePositionRequestSchema = Type.Object({
   }),
   baseTokenAmount: Type.Optional(
     Type.Number({
+      format: 'decimal',
       description: 'Amount of base token to deposit',
       examples: [BASE_TOKEN_AMOUNT],
     }),
   ),
   quoteTokenAmount: Type.Optional(
     Type.Number({
+      format: 'decimal',
       description: 'Amount of quote token to deposit',
       examples: [QUOTE_TOKEN_AMOUNT],
     }),

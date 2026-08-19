@@ -4,20 +4,20 @@ DAMM v2 is Meteora's constant-product AMM, implemented by the on-chain **cp-amm*
 (`cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG`) and driven by the
 [`@meteora-ag/cp-amm-sdk`](https://docs.meteora.ag/developer-guides/damm-v2/typescript-sdk/getting-started).
 
-Gateway exposes it under the standard AMM interface at `/connectors/meteora/amm/*`, mirroring
-the Raydium AMM connector:
+Gateway exposes it through the unified AMM interface at `/trading/amm/*` with
+`connector=meteora`, the same routes that serve every other AMM connector:
 
 | Endpoint | Method | Notes |
 |---|---|---|
-| `/connectors/meteora/amm/pool-info` | GET | Pool reserves, price, base (cliff) fee % |
-| `/connectors/meteora/amm/position-info` | GET | Wallet's aggregate liquidity in a pool + per-position `positions[]` breakdown |
-| `/connectors/meteora/amm/positions-owned` | GET | All of the wallet's DAMM v2 positions across pools |
-| `/connectors/meteora/amm/quote-swap` | GET | Exact-in (SELL) / exact-out (BUY) quote |
-| `/connectors/meteora/amm/execute-swap` | POST | Swap |
-| `/connectors/meteora/amm/quote-liquidity` | GET | Two-sided deposit quote |
-| `/connectors/meteora/amm/add-liquidity` | POST | Add to a specific position (`positionAddress`) or open a new one |
-| `/connectors/meteora/amm/remove-liquidity` | POST | Remove a % from a specific position (`positionAddress` **required**) |
-| `/connectors/meteora/amm/create-pool` | POST | Create + seed a new pool |
+| `/trading/amm/pool-info` | GET | Pool reserves, price, base (cliff) fee % |
+| `/trading/amm/position-info` | GET | Wallet's aggregate liquidity in a pool + per-position `positions[]` breakdown |
+| `/trading/amm/positions-owned` | GET | All of the wallet's DAMM v2 positions across pools |
+| `/trading/amm/quote-swap` | GET | Exact-in (SELL) / exact-out (BUY) quote |
+| `/trading/amm/execute-swap` | POST | Swap |
+| `/trading/amm/quote-liquidity` | GET | Two-sided deposit quote |
+| `/trading/amm/add-liquidity` | POST | Add to a specific position (`positionAddress`) or open a new one |
+| `/trading/amm/remove-liquidity` | POST | Remove a % from a specific position (`positionAddress` **required**) |
+| `/trading/amm/create-pool` | POST | Create + seed a new pool |
 
 The implementation deliberately keeps to "the basics" so it fits the shared AMM schema. This
 document records where DAMM v2 differs from a classic fungible-LP AMM (e.g. Raydium AMM/CPMM),
@@ -91,7 +91,7 @@ resolves the seed price in this priority order:
 1. **`initialPrice`** (quote per base) if provided — `quoteTokenAmount = baseTokenAmount × initialPrice`.
 2. **`quoteTokenAmount`** if provided — the `baseTokenAmount : quoteTokenAmount` ratio sets the price.
 3. **Otherwise, the current market price is fetched** from the unified swap router
-   (`/trading/swap/quote`, i.e. the network's configured `swapProvider` — Jupiter on Solana, which
+   (`/trading/router/quote-swap`, i.e. the network's configured `swapProvider` — Jupiter on Solana, which
    aggregates existing venues) via a SELL quote of a small probe (1% of `baseTokenAmount`), and the
    pool is seeded there. The probe is kept small so the quote approximates the marginal market
    price; quoting the full seed amount would bake its own price impact into the seed price and

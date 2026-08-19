@@ -11,7 +11,7 @@ const mockWallet = '0x0000000000000000000000000000000000000001';
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { createPoolRoute } = await import('../../../../src/connectors/uniswap/amm-routes/createPool');
+  const { createPoolRoute } = await import('../../../../src/trading/trading-amm-routes/create-pool');
   await server.register(createPoolRoute);
   return server;
 };
@@ -44,7 +44,8 @@ describe('POST /create-pool (Uniswap V2)', () => {
       method: 'POST',
       url: '/create-pool',
       payload: {
-        network: 'base',
+        chainNetwork: 'ethereum-base',
+        connector: 'uniswap',
         walletAddress: mockWallet,
         baseToken: 'ETH',
         quoteToken: 'WETH',

@@ -10,7 +10,7 @@ const mockWallet = '0x0000000000000000000000000000000000000001';
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { createPoolRoute } = await import('../../../../src/connectors/uniswap/clmm-routes/createPool');
+  const { createPoolRoute } = await import('../../../../src/trading/trading-clmm-routes/create-pool');
   await server.register(createPoolRoute);
   return server;
 };
@@ -44,16 +44,19 @@ describe('POST /create-pool (Uniswap V3 CLMM)', () => {
       method: 'POST',
       url: '/create-pool',
       payload: {
-        network: 'base',
+        chainNetwork: 'ethereum-base',
+        connector: 'uniswap',
         walletAddress: mockWallet,
         baseToken: 'WETH',
         quoteToken: 'USDC',
-        fee: 1234, // not one of 100 / 500 / 3000 / 10000
+        // The unified route takes the V3 fee tier as feeBps (basis points) and
+        // multiplies by 100; 7 bps is not one of 1 / 5 / 30 / 100.
+        feeBps: 7,
         initialPrice: 3000,
       },
     });
 
-    // Fastify schema validation rejects the out-of-enum fee before the handler runs → 400.
+    // The connector rejects an unsupported tier with a 400.
     expect(response.statusCode).toBe(400);
   });
 
@@ -62,7 +65,10 @@ describe('POST /create-pool (Uniswap V3 CLMM)', () => {
       method: 'POST',
       url: '/create-pool',
       payload: {
-        network: 'base',
+        chainNetwork: 'ethereum-base',
+        // The unified route requires the V3 fee tier explicitly.
+        feeBps: 30,
+        connector: 'uniswap',
         walletAddress: mockWallet,
         baseToken: 'WETH',
         quoteToken: 'WETH',

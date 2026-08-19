@@ -19,6 +19,7 @@ export const QuoteSwapRequest = Type.Object(
       description: 'The other token in the pair',
     }),
     amount: Type.Number({
+      format: 'decimal',
       description: 'Amount of base token to trade',
     }),
     side: Type.String({
@@ -28,6 +29,7 @@ export const QuoteSwapRequest = Type.Object(
     }),
     slippagePct: Type.Optional(
       Type.Number({
+        format: 'decimal',
         minimum: 0,
         maximum: 100,
         description: 'Maximum acceptable slippage percentage',
@@ -57,21 +59,27 @@ export const QuoteSwapResponse = Type.Object(
       description: 'Address of the token being swapped to',
     }),
     amountIn: Type.Number({
+      format: 'decimal',
       description: 'Amount of tokenIn to be swapped',
     }),
     amountOut: Type.Number({
+      format: 'decimal',
       description: 'Expected amount of tokenOut to receive',
     }),
     price: Type.Number({
+      format: 'decimal',
       description: 'Exchange rate between tokenIn and tokenOut',
     }),
     priceImpactPct: Type.Number({
+      format: 'decimal',
       description: 'Estimated price impact percentage (0-100)',
     }),
     minAmountOut: Type.Number({
+      format: 'decimal',
       description: 'Minimum amount of tokenOut that will be accepted',
     }),
     maxAmountIn: Type.Number({
+      format: 'decimal',
       description: 'Maximum amount of tokenIn that will be spent',
     }),
     approximation: Type.Optional(
@@ -124,6 +132,7 @@ export const ExecuteSwapRequest = Type.Object(
       description: 'The other token in the pair',
     }),
     amount: Type.Number({
+      format: 'decimal',
       description: 'Amount of base token to trade',
     }),
     side: Type.String({
@@ -133,6 +142,7 @@ export const ExecuteSwapRequest = Type.Object(
     }),
     slippagePct: Type.Optional(
       Type.Number({
+        format: 'decimal',
         minimum: 0,
         maximum: 100,
         description: 'Maximum acceptable slippage percentage',
@@ -169,22 +179,28 @@ export const SwapExecuteResponse = Type.Object(
           description: 'Address of the token swapped to',
         }),
         amountIn: Type.Number({
+          format: 'decimal',
           description: 'Actual amount of tokenIn swapped',
         }),
         amountOut: Type.Number({
+          format: 'decimal',
           description: 'Actual amount of tokenOut received',
         }),
         fee: Type.Number({
+          format: 'decimal',
           description: 'Transaction fee paid',
         }),
         baseTokenBalanceChange: Type.Number({
+          format: 'decimal',
           description: 'Change in base token balance (negative for decrease)',
         }),
         quoteTokenBalanceChange: Type.Number({
+          format: 'decimal',
           description: 'Change in quote token balance (negative for decrease)',
         }),
         slippagePct: Type.Optional(
           Type.Number({
+            format: 'decimal',
             description: 'Slippage tolerance percentage actually applied to the swap',
           }),
         ),

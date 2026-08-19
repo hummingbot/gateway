@@ -1,16 +1,13 @@
 import { Contract } from '@ethersproject/contracts';
-import { Static } from '@sinclair/typebox';
 import { Percent } from '@uniswap/sdk-core';
 import { Decimal } from 'decimal.js';
 import { BigNumber, constants, utils } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum, TokenInfo } from '../../../chains/ethereum/ethereum';
-import { CreatePoolResponse, CreatePoolResponseType } from '../../../schemas/amm-schema';
+import { CreatePoolResponseType } from '../../../schemas/amm-schema';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
-import { UniswapAmmCreatePoolRequest } from '../schemas';
 import { UniswapConfig } from '../uniswap.config';
 import {
   IUniswapV2FactoryABI,
@@ -55,10 +52,10 @@ async function fetchMarketPrice(
   quoteToken: string,
   amount: number,
 ): Promise<number> {
-  const { getUnifiedQuoteSwap } = await import('../../../trading/swap/quote');
+  const { getSwapQuote } = await import('../../../trading/market-price');
   let quote: any;
   try {
-    quote = await getUnifiedQuoteSwap(`ethereum-${network}`, baseToken, quoteToken, amount, 'SELL');
+    quote = await getSwapQuote(`ethereum-${network}`, baseToken, quoteToken, amount, 'SELL');
   } catch (e: any) {
     throw httpErrors.badRequest(
       `Could not fetch a market price for ${baseToken}/${quoteToken} to seed the pool (${e.message}). ` +
@@ -289,83 +286,3 @@ export async function createPool(
     },
   };
 }
-
-export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-
-  fastify.post<{
-    Body: Static<typeof UniswapAmmCreatePoolRequest>;
-    Reply: CreatePoolResponseType;
-  }>(
-    '/create-pool',
-    {
-      schema: {
-        description: 'Create a new Uniswap V2 (AMM) pool and seed it with initial liquidity (fixed 0.30% fee)',
-        tags: ['/connector/uniswap'],
-        body: UniswapAmmCreatePoolRequest,
-        response: {
-          200: CreatePoolResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network,
-          baseToken,
-          quoteToken,
-          baseTokenAmount,
-          quoteTokenAmount,
-          initialPrice,
-          slippagePct,
-          walletAddress: requestedWalletAddress,
-        } = request.body;
-
-        if (!baseToken || !quoteToken || !baseTokenAmount) {
-          throw fastify.httpErrors.badRequest('Missing required parameters');
-        }
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          walletAddress = await Ethereum.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw fastify.httpErrors.badRequest('No wallet address provided and no wallets found.');
-          }
-          logger.info(`Using first available wallet address: ${walletAddress}`);
-        }
-
-        return await createPool(
-          network,
-          walletAddress,
-          baseToken,
-          quoteToken,
-          baseTokenAmount,
-          quoteTokenAmount,
-          initialPrice,
-          slippagePct,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-
-        if (e.message && e.message.includes('Insufficient allowance')) {
-          throw fastify.httpErrors.badRequest(e.message);
-        }
-        if (e.message && e.message.includes('already exists')) {
-          throw fastify.httpErrors.badRequest(e.message);
-        }
-        if (e.code === 'INSUFFICIENT_FUNDS' || (e.message && e.message.includes('insufficient funds'))) {
-          throw fastify.httpErrors.badRequest(
-            'Insufficient ETH balance to pay for gas fees. Please add more ETH to your wallet.',
-          );
-        }
-
-        throw fastify.httpErrors.internalServerError('Failed to create pool');
-      }
-    },
-  );
-};
-
-export default createPoolRoute;

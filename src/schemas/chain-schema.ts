@@ -151,21 +151,27 @@ export const ChainQuoteSwapResponseSchema = Type.Object(
       description: 'Address of the token being swapped to',
     }),
     amountIn: Type.Number({
+      format: 'decimal',
       description: 'Amount of tokenIn to be swapped',
     }),
     amountOut: Type.Number({
+      format: 'decimal',
       description: 'Expected amount of tokenOut to receive',
     }),
     price: Type.Number({
+      format: 'decimal',
       description: 'Exchange rate between tokenIn and tokenOut',
     }),
     priceImpactPct: Type.Number({
+      format: 'decimal',
       description: 'Estimated price impact percentage (0-100)',
     }),
     minAmountOut: Type.Number({
+      format: 'decimal',
       description: 'Minimum amount of tokenOut that will be accepted',
     }),
     maxAmountIn: Type.Number({
+      format: 'decimal',
       description: 'Maximum amount of tokenIn that will be spent',
     }),
     // Optional fields that may be included by specific connectors
@@ -181,6 +187,7 @@ export const ChainQuoteSwapResponseSchema = Type.Object(
     ),
     slippagePct: Type.Optional(
       Type.Number({
+        format: 'decimal',
         description: 'Slippage tolerance percentage',
       }),
     ),
@@ -208,22 +215,28 @@ export const ChainExecuteSwapResponseSchema = Type.Object(
           description: 'Address of the token swapped to',
         }),
         amountIn: Type.Number({
+          format: 'decimal',
           description: 'Actual amount of tokenIn swapped',
         }),
         amountOut: Type.Number({
+          format: 'decimal',
           description: 'Actual amount of tokenOut received',
         }),
         fee: Type.Number({
+          format: 'decimal',
           description: 'Transaction fee paid',
         }),
         baseTokenBalanceChange: Type.Number({
+          format: 'decimal',
           description: 'Change in base token balance (negative for decrease)',
         }),
         quoteTokenBalanceChange: Type.Number({
+          format: 'decimal',
           description: 'Change in quote token balance (negative for decrease)',
         }),
         slippagePct: Type.Optional(
           Type.Number({
+            format: 'decimal',
             description: 'Slippage tolerance percentage actually applied to the swap',
           }),
         ),
@@ -233,3 +246,83 @@ export const ChainExecuteSwapResponseSchema = Type.Object(
   { $id: 'ChainExecuteSwapResponse' },
 );
 export type ChainExecuteSwapResponseType = Static<typeof ChainExecuteSwapResponseSchema>;
+
+// ============================================
+// Wrap / unwrap (shared by every chain with a wrapped native token)
+// ============================================
+// The per-chain schemas these replace differed only in EVM's `nonce`, so it is
+// optional here and simply absent on chains that have no nonce.
+
+export const WrapRequestSchema = Type.Object(
+  {
+    network: Type.Optional(Type.String()),
+    address: Type.String({ description: 'Wallet address holding the native token' }),
+    amount: Type.String({
+      description: 'Amount of the native token to wrap, in whole units (not lamports/wei)',
+      examples: ['1.0', '0.5'],
+    }),
+  },
+  { $id: 'WrapRequest' },
+);
+export type WrapRequestType = Static<typeof WrapRequestSchema>;
+
+export const UnwrapRequestSchema = Type.Object(
+  {
+    network: Type.Optional(Type.String()),
+    address: Type.String({ description: 'Wallet address holding the wrapped token' }),
+    amount: Type.Optional(
+      Type.String({
+        description:
+          'Amount of the wrapped token to unwrap, in whole units. Solana unwraps the full balance when omitted; EVM chains require it.',
+        examples: ['1.0', '0.5'],
+      }),
+    ),
+  },
+  { $id: 'UnwrapRequest' },
+);
+export type UnwrapRequestType = Static<typeof UnwrapRequestSchema>;
+
+export const WrapResponseSchema = Type.Object(
+  {
+    signature: Type.String(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object({
+        nonce: Type.Optional(Type.Number({ description: 'EVM transaction nonce; absent on non-EVM chains' })),
+        fee: Type.String(),
+        amount: Type.String(),
+        wrappedAddress: Type.String(),
+        nativeToken: Type.String(),
+        wrappedToken: Type.String(),
+      }),
+    ),
+  },
+  { $id: 'ChainWrapResponse' },
+);
+export type ChainWrapResponseType = Static<typeof WrapResponseSchema>;
+
+/**
+ * Router quote response: the shared swap-quote fields plus the two a router adds.
+ *
+ * `quoteId` is what makes /trading/router/execute-quote reachable — a quote whose
+ * id is stripped in serialization can never be executed by id — so the router
+ * surface cannot use the plain ChainQuoteSwapResponse.
+ */
+export const RouterQuoteSwapResponseSchema = Type.Composite(
+  [
+    ChainQuoteSwapResponseSchema,
+    Type.Object({
+      quoteId: Type.String({ description: 'Identifier to pass to /trading/router/execute-quote' }),
+      approximation: Type.Optional(
+        Type.Boolean({
+          description:
+            'True when a BUY was approximated via a sell-leg ExactIn quote because the router has no ExactOut route; amountOut is an estimate rather than exact',
+        }),
+      ),
+    }),
+  ],
+  { $id: 'RouterQuoteSwapResponse' },
+);
+export type RouterQuoteSwapResponseType = Static<typeof RouterQuoteSwapResponseSchema>;

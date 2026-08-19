@@ -14,7 +14,7 @@ jest.mock('../../../../src/chains/solana/solana.config', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { positionsOwnedRoute } = await import('../../../../src/connectors/orca/clmm-routes/positionsOwned');
+  const { positionsOwnedRoute } = await import('../../../../src/trading/clmm/positions-owned');
   await server.register(positionsOwnedRoute);
   return server;
 };
@@ -76,7 +76,8 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'orca',
         walletAddress: mockWalletAddress,
       },
     });
@@ -105,7 +106,8 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'orca',
         walletAddress: mockWalletAddress,
       },
     });
@@ -121,7 +123,8 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'orca',
         walletAddress: 'invalid-address',
       },
     });
@@ -139,7 +142,8 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'orca',
         walletAddress: mockWalletAddress,
       },
     });
@@ -157,6 +161,7 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
+        connector: 'orca',
         walletAddress: mockWalletAddress,
       },
     });
@@ -175,7 +180,8 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'orca',
         walletAddress: mockWalletAddress,
       },
     });
@@ -191,7 +197,8 @@ describe('GET /positions-owned', () => {
         method: 'GET',
         url: '/positions-owned',
         query: {
-          network: 'mainnet-beta',
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
           walletAddress: invalidAddress,
         },
       });

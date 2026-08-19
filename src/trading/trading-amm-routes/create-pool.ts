@@ -34,6 +34,7 @@ const UnifiedCreatePoolRequest = Type.Composite([
   Type.Object({
     configAddress: Type.Optional(
       Type.String({
+        'x-connectors': ['meteora'],
         description:
           'Meteora DAMM v2 config account address (required for the meteora connector — configs are ' +
           'permissionless accounts with no index derivation, so the address must be explicit).',
@@ -41,6 +42,7 @@ const UnifiedCreatePoolRequest = Type.Composite([
     ),
     ammConfigIndex: Type.Optional(
       Type.Number({
+        'x-connectors': ['raydium'],
         description: 'Raydium CPMM fee-config index (optional; defaults to the first available config).',
       }),
     ),

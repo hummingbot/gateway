@@ -1,17 +1,14 @@
-import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
+import { RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol, PANCAKESWAP_CLMM_PROGRAM_ID } from '../pancakeswap-sol';
 import { parsePositionData } from '../pancakeswap-sol.parser';
 import { buildRemoveLiquidityTransaction } from '../pancakeswap-sol.transactions';
-import { PancakeswapSolClmmRemoveLiquidityRequest } from '../schemas';
 
 export async function removeLiquidity(
   network: string,
@@ -123,40 +120,3 @@ export async function removeLiquidity(
     status: 0, // PENDING
   };
 }
-
-export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof PancakeswapSolClmmRemoveLiquidityRequest>;
-    Reply: RemoveLiquidityResponseType;
-  }>(
-    '/remove-liquidity',
-    {
-      schema: {
-        description: 'Remove liquidity from a PancakeSwap Solana CLMM position',
-        tags: ['/connector/pancakeswap-sol'],
-        body: PancakeswapSolClmmRemoveLiquidityRequest,
-        response: {
-          200: RemoveLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network = 'mainnet-beta', walletAddress, positionAddress, percentageToRemove } = request.body;
-
-        return await removeLiquidity(network, walletAddress!, positionAddress, percentageToRemove);
-      } catch (e: any) {
-        logger.error('Remove liquidity error:', e);
-        // Re-throw httpErrors as-is
-        if (e.statusCode) {
-          throw e;
-        }
-        // Handle unknown errors
-        const errorMessage = e.message || 'Failed to remove liquidity';
-        throw httpErrors.internalServerError(errorMessage);
-      }
-    },
-  );
-};
-
-export default removeLiquidityRoute;

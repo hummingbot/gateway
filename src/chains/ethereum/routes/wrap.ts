@@ -1,12 +1,11 @@
 import { ethers, utils } from 'ethers';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
 import { Ethereum, EthereumTransactionOutcome } from '../ethereum';
 import { EthereumLedger } from '../ethereum-ledger';
-import { WrapRequestSchema, WrapResponseSchema, WrapRequestType, WrapResponseType } from '../schemas';
 
 // Gas limit for wrap operations. Plain WETH9 deposit() costs ~27k, but networks
 // fronting WETH with a proxy (e.g. robinhoodchain) need appreciably more.
@@ -188,29 +187,3 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
     );
   }
 }
-
-export const wrapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: WrapRequestType;
-    Reply: WrapResponseType;
-  }>(
-    '/wrap',
-    {
-      schema: {
-        description: 'Wrap native token to wrapped token (e.g., ETH to WETH, BNB to WBNB)',
-        tags: ['/chain/ethereum'],
-        body: WrapRequestSchema,
-        response: {
-          200: WrapResponseSchema,
-        },
-      },
-    },
-    async (request) => {
-      const { network, address, amount } = request.body;
-
-      return await wrapEthereum(fastify, network, address, amount);
-    },
-  );
-};
-
-export default wrapRoute;

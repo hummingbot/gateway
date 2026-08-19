@@ -5,19 +5,16 @@ import {
   ApiV3PoolInfoStandardItemCpmm,
   Percent,
 } from '@raydium-io/raydium-sdk-v2';
-import { Static } from '@sinclair/typebox';
 import { VersionedTransaction, Transaction, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../../schemas/amm-schema';
+import { RemoveLiquidityResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
-import { RaydiumAmmRemoveLiquidityRequest } from '../schemas';
 
 // Interfaces for SDK responses
 interface TokenBurnInfo {
@@ -226,37 +223,3 @@ export async function removeLiquidity(
     };
   }
 }
-
-export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  // const walletAddressExample = await Solana.getWalletAddressExample();
-
-  fastify.post<{
-    Body: Static<typeof RaydiumAmmRemoveLiquidityRequest>;
-    Reply: RemoveLiquidityResponseType;
-  }>(
-    '/remove-liquidity',
-    {
-      schema: {
-        description: 'Remove liquidity from a Raydium AMM/CPMM pool',
-        tags: ['/connector/raydium'],
-        body: RaydiumAmmRemoveLiquidityRequest,
-        response: {
-          200: RemoveLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, poolAddress, percentageToRemove } = request.body;
-
-        return await removeLiquidity(network, walletAddress, poolAddress, percentageToRemove);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default removeLiquidityRoute;

@@ -1,13 +1,7 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
-import {
-  PollRequestType,
-  PollResponseType,
-  PollResponseSchema,
-  TransactionStatusCode,
-} from '../../../schemas/chain-schema';
+import { PollResponseType, TransactionStatusCode } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
-import { SolanaPollRequest } from '../schemas';
 import { Solana } from '../solana';
 import { parseSolanaError } from '../solana-error-parser';
 
@@ -98,28 +92,3 @@ export async function pollSolanaTransaction(
     };
   }
 }
-
-export const pollRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: PollRequestType;
-    Reply: PollResponseType;
-  }>(
-    '/poll',
-    {
-      schema: {
-        description: 'Poll for the status of a Solana transaction',
-        tags: ['/chain/solana'],
-        body: SolanaPollRequest,
-        response: {
-          200: PollResponseSchema,
-        },
-      },
-    },
-    async (request) => {
-      const { network, signature } = request.body;
-      return await pollSolanaTransaction(fastify, network, signature);
-    },
-  );
-};
-
-export default pollRoute;

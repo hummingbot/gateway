@@ -1,13 +1,8 @@
-import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync } from 'fastify';
-
-import { QuotePositionResponseType, QuotePositionResponse } from '../../../schemas/clmm-schema';
+import { QuotePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
 import { OrcaConfig } from '../orca.config';
 import { quotePosition as getQuotePosition } from '../orca.utils';
-import { OrcaClmmQuotePositionRequest } from '../schemas';
 
 export async function quotePosition(
   network: string,
@@ -47,51 +42,3 @@ export async function quotePosition(
 
   return quote;
 }
-
-export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: Static<typeof OrcaClmmQuotePositionRequest>;
-    Reply: QuotePositionResponseType;
-  }>(
-    '/quote-position',
-    {
-      schema: {
-        description: 'Quote amounts for a new Orca CLMM position',
-        tags: ['/connector/orca'],
-        querystring: OrcaClmmQuotePositionRequest,
-        response: {
-          200: QuotePositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network = 'mainnet-beta',
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.query;
-
-        return await quotePosition(
-          network,
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to quote position');
-      }
-    },
-  );
-};
-
-export default quotePositionRoute;

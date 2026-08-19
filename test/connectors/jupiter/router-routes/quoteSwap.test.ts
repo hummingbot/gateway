@@ -9,7 +9,7 @@ const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
   try {
-    const { quoteSwapRoute } = await import('../../../../src/connectors/jupiter/router-routes/quoteSwap');
+    const { quoteSwapRoute } = await import('../../../../src/trading/trading-router-routes/quoteSwap');
     await server.register(quoteSwapRoute);
   } catch (error) {
     console.error('Failed to import route:', error);
@@ -75,7 +75,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'jupiter',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -95,7 +96,9 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('minAmountOut');
     expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('price', 150);
-    expect(body.quoteResponse).toHaveProperty('priceImpactPct', '0.001');
+    // The connector's raw provider payload (quoteResponse / routerResult) is not part
+    // of the unified router response schema, which serializes the shared quote fields
+    // plus quoteId. Assertions on it moved out with the per-connector route.
     expect(body).toHaveProperty('tokenIn', mockSOL.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
   });
@@ -121,7 +124,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'jupiter',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -138,7 +142,6 @@ describe('GET /quote-swap', () => {
     expect(body).toHaveProperty('minAmountOut');
     expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('price', 150);
-    expect(body.quoteResponse).toHaveProperty('priceImpactPct', '0.001');
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockSOL.address);
   });
@@ -153,7 +156,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'jupiter',
         baseToken: 'INVALID',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -180,7 +184,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'jupiter',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -227,7 +232,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'jupiter',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -264,7 +270,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'jupiter',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -295,7 +302,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'jupiter',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',

@@ -18,7 +18,7 @@ const TEST_CONFIG = {
 
 async function testAllowances(spender, description) {
   console.log(`\n📊 Testing allowances for ${description}...`);
-  
+
   try {
     const response = await axios.post(`${API_URL}/chains/ethereum/allowances`, {
       chain: 'ethereum',
@@ -27,9 +27,9 @@ async function testAllowances(spender, description) {
       spender: spender,
       tokens: TEST_CONFIG.tokens,
     });
-    
+
     console.log(`✅ Allowances response:`, JSON.stringify(response.data, null, 2));
-    
+
     // Check if spender contains both addresses for CLMM
     if (spender.includes('/clmm')) {
       const spenderAddresses = response.data.spender.split(',');
@@ -41,7 +41,7 @@ async function testAllowances(spender, description) {
         console.log(`⚠️ Expected 2 addresses for CLMM, got: ${response.data.spender}`);
       }
     }
-    
+
     return response.data;
   } catch (error) {
     console.error(`❌ Error testing allowances:`, error.response?.data || error.message);
@@ -52,7 +52,7 @@ async function testAllowances(spender, description) {
 async function testApprove(spender, token, amount, description) {
   console.log(`\n🔐 Testing approve for ${description}...`);
   console.log(`   Token: ${token}, Amount: ${amount || 'MAX'}`);
-  
+
   try {
     const response = await axios.post(`${API_URL}/chains/ethereum/approve`, {
       chain: 'ethereum',
@@ -62,9 +62,9 @@ async function testApprove(spender, token, amount, description) {
       token: token,
       amount: amount,
     });
-    
+
     console.log(`✅ Approve response:`, JSON.stringify(response.data, null, 2));
-    
+
     // Check if spender contains both addresses for CLMM
     if (spender.includes('/clmm') && response.data.data.spender.includes(',')) {
       const spenderAddresses = response.data.data.spender.split(',');
@@ -72,7 +72,7 @@ async function testApprove(spender, token, amount, description) {
       console.log(`   - SwapRouter02: ${spenderAddresses[0]}`);
       console.log(`   - NftManager: ${spenderAddresses[1]}`);
     }
-    
+
     return response.data;
   } catch (error) {
     console.error(`❌ Error testing approve:`, error.response?.data || error.message);
@@ -86,28 +86,28 @@ async function runTests() {
   console.log(`Network: ${TEST_CONFIG.network}`);
   console.log(`Address: ${TEST_CONFIG.address}`);
   console.log(`Tokens: ${TEST_CONFIG.tokens.join(', ')}`);
-  
+
   // Test Uniswap CLMM
   console.log('\n\n=== UNISWAP CLMM TESTS ===');
   await testAllowances('uniswap/clmm', 'Uniswap CLMM');
-  
+
   // Note: Approve will actually submit a transaction if a valid wallet is configured
   // Uncomment below to test approve functionality (requires wallet with funds)
   // await testApprove('uniswap/clmm', 'USDC', '100', 'Uniswap CLMM');
-  
+
   // Test PancakeSwap CLMM
   console.log('\n\n=== PANCAKESWAP CLMM TESTS ===');
   await testAllowances('pancakeswap/clmm', 'PancakeSwap CLMM');
-  
+
   // Note: Approve will actually submit a transaction if a valid wallet is configured
   // Uncomment below to test approve functionality (requires wallet with funds)
   // await testApprove('pancakeswap/clmm', 'USDC', '100', 'PancakeSwap CLMM');
-  
+
   // Test regular connectors for comparison
   console.log('\n\n=== COMPARISON TESTS ===');
   await testAllowances('uniswap/amm', 'Uniswap AMM (V2)');
   await testAllowances('pancakeswap/amm', 'PancakeSwap AMM (V2)');
-  
+
   console.log('\n\n✅ Tests completed!');
 }
 

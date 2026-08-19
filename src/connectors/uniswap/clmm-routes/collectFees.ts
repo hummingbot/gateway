@@ -2,18 +2,11 @@ import { Contract } from '@ethersproject/contracts';
 import { CurrencyAmount } from '@uniswap/sdk-core';
 import { NonfungiblePositionManager } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { TransactionStatus } from '../../../schemas/chain-schema';
-import {
-  CollectFeesRequestType,
-  CollectFeesRequest,
-  CollectFeesResponseType,
-  CollectFeesResponse,
-} from '../../../schemas/clmm-schema';
+import { CollectFeesResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { POSITION_MANAGER_ABI, getUniswapV3NftManagerAddress } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
@@ -139,61 +132,3 @@ export async function collectFees(
     },
   };
 }
-
-export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
-  fastify.post<{
-    Body: CollectFeesRequestType;
-    Reply: CollectFeesResponseType;
-  }>(
-    '/collect-fees',
-    {
-      schema: {
-        description: 'Collect fees from a Uniswap V3 position',
-        tags: ['/connector/uniswap'],
-        body: {
-          ...CollectFeesRequest,
-          properties: {
-            ...CollectFeesRequest.properties,
-            network: { type: 'string', default: 'base' },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            positionAddress: {
-              type: 'string',
-              description: 'Position NFT token ID',
-              examples: ['1234'],
-            },
-          },
-        },
-        response: {
-          200: CollectFeesResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress: requestedWalletAddress, positionAddress } = request.body;
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          const uniswap = await Uniswap.getInstance(network);
-          walletAddress = await uniswap.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-        }
-
-        return await collectFees(network, walletAddress, positionAddress);
-      } catch (e: any) {
-        logger.error('Failed to collect fees:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw httpErrors.internalServerError('Failed to collect fees');
-      }
-    },
-  );
-};
-
-export default collectFeesRoute;

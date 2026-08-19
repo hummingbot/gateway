@@ -6,14 +6,12 @@ import DLMM, {
 } from '@meteora-ag/dlmm';
 import { PublicKey, Transaction } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { CreatePoolResponse, CreatePoolResponseType } from '../../../schemas/clmm-schema';
+import { CreatePoolResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
-import { MeteoraClmmCreatePoolRequest } from '../schemas';
 
 // A DLMM pool is created with no liquidity; the initial active bin only encodes the starting
 // price. binStep/feeBps have no universal default, so both are required request params.
@@ -36,10 +34,10 @@ async function resolveMint(solana: Solana, tokenOrAddress: string): Promise<Publ
  * market route exists.
  */
 async function fetchMarketPrice(network: string, baseToken: string, quoteToken: string): Promise<number> {
-  const { getUnifiedQuoteSwap } = await import('../../../trading/swap/quote');
+  const { getSwapQuote } = await import('../../../trading/market-price');
   let quote: any;
   try {
-    quote = await getUnifiedQuoteSwap(`solana-${network}`, baseToken, quoteToken, 1, 'SELL');
+    quote = await getSwapQuote(`solana-${network}`, baseToken, quoteToken, 1, 'SELL');
   } catch (e: any) {
     throw httpErrors.badRequest(
       `Could not fetch a market price for ${baseToken}/${quoteToken} to initialize the pool (${e.message}). ` +
@@ -212,35 +210,3 @@ export async function createPool(
   }
   return { signature, status: 0, poolAddress, price: seedPrice }; // PENDING
 }
-
-export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: typeof MeteoraClmmCreatePoolRequest.static;
-    Reply: CreatePoolResponseType;
-  }>(
-    '/create-pool',
-    {
-      schema: {
-        description:
-          'Create and initialize a new Meteora DLMM pool (LB pair) at an initial price (no liquidity seeded)',
-        tags: ['/connector/meteora'],
-        body: MeteoraClmmCreatePoolRequest,
-        response: {
-          200: CreatePoolResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, baseToken, quoteToken, initialPrice, binStep, feeBps } = request.body;
-        return await createPool(network, walletAddress, baseToken, quoteToken, initialPrice, binStep, feeBps);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Failed to create pool');
-      }
-    },
-  );
-};
-
-export default createPoolRoute;

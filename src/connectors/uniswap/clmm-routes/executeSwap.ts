@@ -1,13 +1,11 @@
 import { BigNumber, Contract, utils } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum, EthereumTransactionOutcome } from '../../../chains/ethereum/ethereum';
 import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
 import { TransactionStatus } from '../../../schemas/chain-schema';
-import { ExecuteSwapRequestType, SwapExecuteResponseType, SwapExecuteResponse } from '../../../schemas/router-schema';
+import { SwapExecuteResponseType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
-import { UniswapExecuteSwapRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
 import { getUniswapV3SwapRouter02Address, ISwapRouter02ABI } from '../uniswap.contracts';
@@ -313,52 +311,5 @@ export async function executeClmmSwap(
   }
 }
 
-export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: ExecuteSwapRequestType;
-    Reply: SwapExecuteResponseType;
-  }>(
-    '/execute-swap',
-    {
-      schema: {
-        description: 'Execute a swap on Uniswap V3 CLMM using SwapRouter02',
-        tags: ['/connector/uniswap'],
-        body: UniswapExecuteSwapRequest,
-        response: { 200: SwapExecuteResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { walletAddress, network, baseToken, quoteToken, amount, side, slippagePct } =
-          request.body as typeof UniswapExecuteSwapRequest._type;
-
-        // This route resolves the pool from the pair (no poolAddress in its request schema);
-        // executeClmmSwap itself is standardized to require poolAddress.
-        const uniswap = await Uniswap.getInstance(network);
-        const poolAddress = await uniswap.findDefaultPool(baseToken, quoteToken, 'clmm');
-        if (!poolAddress) {
-          throw httpErrors.notFound(`No CLMM pool found for pair ${baseToken}-${quoteToken}`);
-        }
-
-        return await executeClmmSwap(
-          network,
-          walletAddress,
-          poolAddress,
-          baseToken,
-          side as 'BUY' | 'SELL',
-          amount,
-          slippagePct,
-        );
-      } catch (e) {
-        if (e.statusCode) throw e;
-        logger.error('Error executing swap:', e);
-        throw httpErrors.internalServerError(e.message || 'Internal server error');
-      }
-    },
-  );
-};
-
 // Export executeSwap alias for uniform chain route imports
 export { executeClmmSwap as executeSwap };
-
-export default executeSwapRoute;
