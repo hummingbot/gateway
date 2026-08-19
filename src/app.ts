@@ -18,6 +18,10 @@ import { configRoutes } from './config/config.routes';
 import { getHttpsOptions } from './https';
 import { rootPath } from './paths';
 import { poolRoutes } from './pools/pools.routes';
+import * as ammSchemas from './schemas/amm-schema';
+import * as chainSchemas from './schemas/chain-schema';
+import * as clmmSchemas from './schemas/clmm-schema';
+import * as routerSchemas from './schemas/router-schema';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import {
   constantTimeEqual,
@@ -49,6 +53,80 @@ const devMode = process.argv.includes('--dev') || process.env.GATEWAY_TEST_MODE 
 
 // Promisify exec for async/await usage
 const execPromise = promisify(exec);
+
+/**
+ * Collect every `$id`-carrying schema reachable from `node`, itself included.
+ *
+ * The search continues *through* a schema it has already collected, because `$id`s
+ * nest: each write response names its confirmed-transaction `data` object, and those
+ * only ever appear inside their parent. Collecting the parent alone would leave the
+ * ref `refIdentifiedSchemas` writes for that child pointing at a component nobody
+ * defined — a spec that resolves nowhere.
+ */
+const collectIdentifiedSchemas = (node: any, found: Map<string, Record<string, any>>): void => {
+  if (Array.isArray(node)) {
+    node.forEach((item) => collectIdentifiedSchemas(item, found));
+    return;
+  }
+  if (node === null || typeof node !== 'object') return;
+  if (typeof node.$id === 'string' && !found.has(node.$id)) found.set(node.$id, node);
+  Object.values(node).forEach((value) => collectIdentifiedSchemas(value, found));
+};
+
+/**
+ * Every schema carrying an `$id`, collected from the shared schema modules.
+ *
+ * Registering these with `addSchema` is what puts them in the spec's
+ * `components.schemas`; `refIdentifiedSchemas` below then points the routes at them.
+ * `$id`s must be unique across all modules — Fastify rejects a duplicate — which is
+ * why the AMM copies of the names CLMM also uses carry an `Amm` prefix.
+ */
+const identifiedSchemas = (): Array<Record<string, any>> => {
+  const found = new Map<string, Record<string, any>>();
+  for (const module of [ammSchemas, chainSchemas, clmmSchemas, routerSchemas]) {
+    for (const value of Object.values(module)) {
+      if (typeof value === 'object' && value !== null) collectIdentifiedSchemas(value, found);
+    }
+  }
+  return [...found.values()].map((value) => {
+    // Ref the schema's own $id'd children too, keeping only its root $id. Registering
+    // a parent with its children inlined emits both the child component and an
+    // anonymous copy inside the parent, which is what a generated client names Data1,
+    // Data2, ... — numbered by traversal order, so they churn on any insertion.
+    const { $id, ...rest } = Type.Strict(value as any) as Record<string, any>;
+    return { $id, ...refIdentifiedSchemas(rest, 'openapi') };
+  });
+};
+
+/**
+ * Replace inline schema objects that carry an `$id` with a `$ref` to the component.
+ *
+ * Fastify inlines whatever a route declares, so without this every operation restates
+ * its schemas in full: the spec had no `components.schemas` at all, identical shapes
+ * (CLMM and AMM execute-swap, say) appeared as separate anonymous objects, and a
+ * generated client got names derived from route paths rather than the domain — which
+ * change whenever a route is renamed.
+ *
+ * This runs only while the spec document is built. Route validation and serialization
+ * keep using the compiled inline schemas, so nothing about request handling changes.
+ *
+ * Two ref forms are needed, because the two places refs appear are processed
+ * differently. Route schemas go through @fastify/swagger's transform, which rewrites
+ * Fastify's own "Id#" form into "#/components/schemas/Id" — passing the components path
+ * there instead makes it read the ref as local to the route schema and fail to resolve
+ * it. Registered components are emitted verbatim, so they must already carry the
+ * components path.
+ */
+type RefStyle = 'fastify' | 'openapi';
+
+const refIdentifiedSchemas = (node: any, style: RefStyle = 'fastify'): any => {
+  if (Array.isArray(node)) return node.map((item) => refIdentifiedSchemas(item, style));
+  if (node === null || typeof node !== 'object') return node;
+  if (typeof node.$id === 'string') {
+    return { $ref: style === 'fastify' ? `${node.$id}#` : `#/components/schemas/${node.$id}` };
+  }
+  return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, refIdentifiedSchemas(value, style)]));
+};
 
 const swaggerOptions = {
   openapi: {
@@ -87,12 +165,20 @@ const swaggerOptions = {
   transform: ({ schema, url }) => {
     try {
       return {
-        schema: schema ? Type.Strict(schema) : schema,
+        schema: schema ? refIdentifiedSchemas(Type.Strict(schema)) : schema,
         url: url,
       };
     } catch (error) {
       return { schema, url };
     }
+  },
+  // Name components by their $id. Without this @fastify/swagger numbers them def-0,
+  // def-1, ... in registration order, so every component is renamed whenever a schema
+  // is added or removed — which is precisely the churn components exist to avoid.
+  refResolver: {
+    buildLocalReference(json: any, _baseUri: unknown, _fragment: unknown, i: number) {
+      return json.$id || `def-${i}`;
+    },
   },
   hideUntagged: true,
   exposeRoute: true,
@@ -178,6 +264,14 @@ const configureGatewayServer = () => {
   // /docs hands an attacker the full route map of fund-handling endpoints. (#652)
   const exposeDocs = !isExposedHost(getBindAddress()) || process.env.GATEWAY_ENABLE_DOCS === 'true';
   if (exposeDocs) {
+    // Publish the $id'd schemas as spec components before Swagger builds the document.
+    // Routes keep their inline schemas for validation; this only gives the spec somewhere
+    // for refIdentifiedSchemas to point, so a generated client gets stable, domain names.
+    for (const schema of identifiedSchemas()) {
+      server.addSchema(schema);
+      docsServer?.addSchema(schema);
+    }
+
     // Register Swagger
     server.register(fastifySwagger, swaggerOptions);
 

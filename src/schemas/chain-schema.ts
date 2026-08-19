@@ -207,49 +207,52 @@ export const ChainExecuteSwapResponseSchema = Type.Object(
     }),
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        tokenIn: Type.String({
-          description: 'Address of the token swapped from',
-        }),
-        tokenOut: Type.String({
-          description: 'Address of the token swapped to',
-        }),
-        amountIn: Type.Number({
-          format: 'decimal',
-          description: 'Actual amount of tokenIn swapped',
-        }),
-        amountOut: Type.Number({
-          format: 'decimal',
-          description: 'Actual amount of tokenOut received',
-        }),
-        fee: Type.Number({
-          format: 'decimal',
-          description: 'Transaction fee paid',
-        }),
-        baseTokenBalanceChange: Type.Number({
-          format: 'decimal',
-          description: 'Change in base token balance (negative for decrease)',
-        }),
-        quoteTokenBalanceChange: Type.Number({
-          format: 'decimal',
-          description: 'Change in quote token balance (negative for decrease)',
-        }),
-        slippagePct: Type.Optional(
-          Type.Number({
+      Type.Object(
+        {
+          tokenIn: Type.String({
+            description: 'Address of the token swapped from',
+          }),
+          tokenOut: Type.String({
+            description: 'Address of the token swapped to',
+          }),
+          amountIn: Type.Number({
             format: 'decimal',
-            description: 'Slippage tolerance percentage actually applied to the swap',
+            description: 'Actual amount of tokenIn swapped',
           }),
-        ),
-        poolAddress: Type.Optional(
-          Type.String({
-            description:
-              'Pool the swap executed against. Set by the pool-scoped routes ' +
-              '(/trading/clmm, /trading/amm), which resolve exactly one pool; a router picks ' +
-              'its own path across pools and leaves this unset. Without it a settled fill ' +
-              'cannot be reconciled to a venue without refetching the transaction.',
+          amountOut: Type.Number({
+            format: 'decimal',
+            description: 'Actual amount of tokenOut received',
           }),
-        ),
-      }),
+          fee: Type.Number({
+            format: 'decimal',
+            description: 'Transaction fee paid',
+          }),
+          baseTokenBalanceChange: Type.Number({
+            format: 'decimal',
+            description: 'Change in base token balance (negative for decrease)',
+          }),
+          quoteTokenBalanceChange: Type.Number({
+            format: 'decimal',
+            description: 'Change in quote token balance (negative for decrease)',
+          }),
+          slippagePct: Type.Optional(
+            Type.Number({
+              format: 'decimal',
+              description: 'Slippage tolerance percentage actually applied to the swap',
+            }),
+          ),
+          poolAddress: Type.Optional(
+            Type.String({
+              description:
+                'Pool the swap executed against. Set by the pool-scoped routes ' +
+                '(/trading/clmm, /trading/amm), which resolve exactly one pool; a router picks ' +
+                'its own path across pools and leaves this unset. Without it a settled fill ' +
+                'cannot be reconciled to a venue without refetching the transaction.',
+            }),
+          ),
+        },
+        { $id: 'ChainExecuteSwapResponseData' },
+      ),
     ),
   },
   { $id: 'ChainExecuteSwapResponse' },
@@ -298,14 +301,17 @@ export const WrapResponseSchema = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        nonce: Type.Optional(Type.Number({ description: 'EVM transaction nonce; absent on non-EVM chains' })),
-        fee: Type.String(),
-        amount: Type.String(),
-        wrappedAddress: Type.String(),
-        nativeToken: Type.String(),
-        wrappedToken: Type.String(),
-      }),
+      Type.Object(
+        {
+          nonce: Type.Optional(Type.Number({ description: 'EVM transaction nonce; absent on non-EVM chains' })),
+          fee: Type.String(),
+          amount: Type.String(),
+          wrappedAddress: Type.String(),
+          nativeToken: Type.String(),
+          wrappedToken: Type.String(),
+        },
+        { $id: 'ChainWrapResponseData' },
+      ),
     ),
   },
   { $id: 'ChainWrapResponse' },

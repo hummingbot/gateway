@@ -12,7 +12,7 @@ export const PoolInfoSchema = Type.Object(
     baseTokenAmount: Type.Number({ format: 'decimal' }),
     quoteTokenAmount: Type.Number({ format: 'decimal' }),
   },
-  { $id: 'PoolInfo' },
+  { $id: 'AmmPoolInfo' },
 );
 export type PoolInfo = Static<typeof PoolInfoSchema>;
 
@@ -21,7 +21,7 @@ export const GetPoolInfoRequest = Type.Object(
     network: Type.Optional(Type.String()),
     poolAddress: Type.String(),
   },
-  { $id: 'GetPoolInfoRequest' },
+  { $id: 'AmmGetPoolInfoRequest' },
 );
 export type GetPoolInfoRequestType = Static<typeof GetPoolInfoRequest>;
 
@@ -40,7 +40,7 @@ export const AddLiquidityRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'AddLiquidityRequest' },
+  { $id: 'AmmAddLiquidityRequest' },
 );
 export type AddLiquidityRequestType = Static<typeof AddLiquidityRequest>;
 
@@ -51,38 +51,41 @@ export const AddLiquidityResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        fee: Type.Number({ format: 'decimal' }),
-        // The venue this write touched. Echoed so a stored record identifies its pool
-        // without the request that produced it — the same reason the swap execute
-        // responses carry it.
-        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
-        // Always the position the write touched — the one just opened when no address was
-        // given, or the one named. Without it a caller who just paid to open a DAMM v2
-        // position could only recover its address by re-listing positions-owned and
-        // diffing, which races any concurrent write and cannot attribute an address to a
-        // transaction.
-        positionAddress: Type.Optional(
-          Type.String({
-            description:
-              'Position the liquidity went into. Absent on fungible-LP AMMs, which hold liquidity as LP tokens rather than a position account.',
-            'x-connectors': ['meteora'],
-          } as any),
-        ),
-        positionRent: Type.Optional(
-          Type.Number({
-            format: 'decimal',
-            description:
-              'Native token locked as rent when this call opened the position. Absent when adding to a position that already existed, and on fungible-LP AMMs.',
-            'x-connectors': ['meteora'],
-          } as any),
-        ),
-        baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
-        quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
-      }),
+      Type.Object(
+        {
+          fee: Type.Number({ format: 'decimal' }),
+          // The venue this write touched. Echoed so a stored record identifies its pool
+          // without the request that produced it — the same reason the swap execute
+          // responses carry it.
+          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+          // Always the position the write touched — the one just opened when no address was
+          // given, or the one named. Without it a caller who just paid to open a DAMM v2
+          // position could only recover its address by re-listing positions-owned and
+          // diffing, which races any concurrent write and cannot attribute an address to a
+          // transaction.
+          positionAddress: Type.Optional(
+            Type.String({
+              description:
+                'Position the liquidity went into. Absent on fungible-LP AMMs, which hold liquidity as LP tokens rather than a position account.',
+              'x-connectors': ['meteora'],
+            } as any),
+          ),
+          positionRent: Type.Optional(
+            Type.Number({
+              format: 'decimal',
+              description:
+                'Native token locked as rent when this call opened the position. Absent when adding to a position that already existed, and on fungible-LP AMMs.',
+              'x-connectors': ['meteora'],
+            } as any),
+          ),
+          baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
+          quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
+        },
+        { $id: 'AmmAddLiquidityResponseData' },
+      ),
     ),
   },
-  { $id: 'AddLiquidityResponse' },
+  { $id: 'AmmAddLiquidityResponse' },
 );
 export type AddLiquidityResponseType = Static<typeof AddLiquidityResponse>;
 
@@ -102,26 +105,29 @@ export const OpenPositionResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        fee: Type.Number({ format: 'decimal' }),
-        // The venue this write touched. Echoed so a stored record identifies its pool
-        // without the request that produced it — the same reason the swap execute
-        // responses carry it.
-        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
-        positionAddress: Type.Optional(
-          Type.String({
+      Type.Object(
+        {
+          fee: Type.Number({ format: 'decimal' }),
+          // The venue this write touched. Echoed so a stored record identifies its pool
+          // without the request that produced it — the same reason the swap execute
+          // responses carry it.
+          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+          positionAddress: Type.Optional(
+            Type.String({
+              description:
+                'Address of the newly opened position. Absent on fungible-LP AMMs, which hold liquidity as LP tokens rather than a position account.',
+            }),
+          ),
+          positionRent: Type.Number({
+            format: 'decimal',
             description:
-              'Address of the newly opened position. Absent on fungible-LP AMMs, which hold liquidity as LP tokens rather than a position account.',
+              'Native token locked as rent for the position account, refunded on close. 0 on fungible-LP AMMs, which lock no rent.',
           }),
-        ),
-        positionRent: Type.Number({
-          format: 'decimal',
-          description:
-            'Native token locked as rent for the position account, refunded on close. 0 on fungible-LP AMMs, which lock no rent.',
-        }),
-        baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
-        quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
-      }),
+          baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
+          quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
+        },
+        { $id: 'AmmOpenPositionResponseData' },
+      ),
     ),
   },
   { $id: 'AmmOpenPositionResponse' },
@@ -135,25 +141,28 @@ export const ClosePositionResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        fee: Type.Number({ format: 'decimal' }),
-        // The venue this write touched. Echoed so a stored record identifies its pool
-        // without the request that produced it — the same reason the swap execute
-        // responses carry it.
-        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
-        // Only AMMs whose positions are discrete accounts have one to name; a
-        // fungible-LP AMM holds liquidity as LP tokens against the pool.
-        positionAddress: Type.Optional(
-          Type.String({ description: 'Position this operation acted on', 'x-connectors': ['meteora'] } as any),
-        ),
-        positionRentRefunded: Type.Number({
-          format: 'decimal',
-          description:
-            'Native token rent returned when the position account closed. 0 on fungible-LP AMMs, which have no position account to close.',
-        }),
-        baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
-        quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),
-      }),
+      Type.Object(
+        {
+          fee: Type.Number({ format: 'decimal' }),
+          // The venue this write touched. Echoed so a stored record identifies its pool
+          // without the request that produced it — the same reason the swap execute
+          // responses carry it.
+          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+          // Only AMMs whose positions are discrete accounts have one to name; a
+          // fungible-LP AMM holds liquidity as LP tokens against the pool.
+          positionAddress: Type.Optional(
+            Type.String({ description: 'Position this operation acted on', 'x-connectors': ['meteora'] } as any),
+          ),
+          positionRentRefunded: Type.Number({
+            format: 'decimal',
+            description:
+              'Native token rent returned when the position account closed. 0 on fungible-LP AMMs, which have no position account to close.',
+          }),
+          baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
+          quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),
+        },
+        { $id: 'AmmClosePositionResponseData' },
+      ),
     ),
   },
   { $id: 'AmmClosePositionResponse' },
@@ -191,7 +200,7 @@ export const RemoveLiquidityRequest = Type.Object(
       maximum: 100,
     }),
   },
-  { $id: 'RemoveLiquidityRequest' },
+  { $id: 'AmmRemoveLiquidityRequest' },
 );
 export type RemoveLiquidityRequestType = Static<typeof RemoveLiquidityRequest>;
 
@@ -202,23 +211,26 @@ export const RemoveLiquidityResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        fee: Type.Number({ format: 'decimal' }),
-        // The venue this write touched. Echoed so a stored record identifies its pool
-        // without the request that produced it — the same reason the swap execute
-        // responses carry it.
-        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
-        // Only AMMs whose positions are discrete accounts have one to name; a
-        // fungible-LP AMM holds liquidity as LP tokens against the pool.
-        positionAddress: Type.Optional(
-          Type.String({ description: 'Position this operation acted on', 'x-connectors': ['meteora'] } as any),
-        ),
-        baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
-        quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),
-      }),
+      Type.Object(
+        {
+          fee: Type.Number({ format: 'decimal' }),
+          // The venue this write touched. Echoed so a stored record identifies its pool
+          // without the request that produced it — the same reason the swap execute
+          // responses carry it.
+          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+          // Only AMMs whose positions are discrete accounts have one to name; a
+          // fungible-LP AMM holds liquidity as LP tokens against the pool.
+          positionAddress: Type.Optional(
+            Type.String({ description: 'Position this operation acted on', 'x-connectors': ['meteora'] } as any),
+          ),
+          baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
+          quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),
+        },
+        { $id: 'AmmRemoveLiquidityResponseData' },
+      ),
     ),
   },
-  { $id: 'RemoveLiquidityResponse' },
+  { $id: 'AmmRemoveLiquidityResponse' },
 );
 export type RemoveLiquidityResponseType = Static<typeof RemoveLiquidityResponse>;
 
@@ -271,11 +283,14 @@ export const CreatePoolResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        fee: Type.Number({ format: 'decimal' }),
-        baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
-        quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
-      }),
+      Type.Object(
+        {
+          fee: Type.Number({ format: 'decimal' }),
+          baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
+          quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
+        },
+        { $id: 'CreatePoolResponseData' },
+      ),
     ),
   },
   { $id: 'CreatePoolResponse' },
@@ -314,7 +329,7 @@ export const PositionInfoSchema = Type.Object(
     // (pass its positionAddress to remove-liquidity / add-liquidity). Omitted for fungible-LP AMMs.
     positions: Type.Optional(Type.Array(PositionDetailSchema)),
   },
-  { $id: 'PositionInfo' },
+  { $id: 'AmmPositionInfo' },
 );
 export type PositionInfo = Static<typeof PositionInfoSchema>;
 
@@ -324,7 +339,7 @@ export const GetPositionInfoRequest = Type.Object(
     poolAddress: Type.String(),
     walletAddress: Type.Optional(Type.String()),
   },
-  { $id: 'GetPositionInfoRequest' },
+  { $id: 'AmmGetPositionInfoRequest' },
 );
 export type GetPositionInfoRequestType = Static<typeof GetPositionInfoRequest>;
 
@@ -420,21 +435,24 @@ export const ExecuteSwapResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        tokenIn: Type.String(),
-        tokenOut: Type.String(),
-        amountIn: Type.Number({ format: 'decimal' }),
-        amountOut: Type.Number({ format: 'decimal' }),
-        fee: Type.Number({ format: 'decimal' }),
-        baseTokenBalanceChange: Type.Number({ format: 'decimal' }),
-        quoteTokenBalanceChange: Type.Number({ format: 'decimal' }),
-        slippagePct: Type.Optional(
-          Type.Number({
-            format: 'decimal',
-            description: 'Slippage tolerance percentage actually applied to the swap',
-          }),
-        ),
-      }),
+      Type.Object(
+        {
+          tokenIn: Type.String(),
+          tokenOut: Type.String(),
+          amountIn: Type.Number({ format: 'decimal' }),
+          amountOut: Type.Number({ format: 'decimal' }),
+          fee: Type.Number({ format: 'decimal' }),
+          baseTokenBalanceChange: Type.Number({ format: 'decimal' }),
+          quoteTokenBalanceChange: Type.Number({ format: 'decimal' }),
+          slippagePct: Type.Optional(
+            Type.Number({
+              format: 'decimal',
+              description: 'Slippage tolerance percentage actually applied to the swap',
+            }),
+          ),
+        },
+        { $id: 'AmmExecuteSwapResponseData' },
+      ),
     ),
   },
   { $id: 'AmmExecuteSwapResponse' },

@@ -225,17 +225,20 @@ export const OpenPositionResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        fee: Type.Number({ format: 'decimal' }),
-        // The venue this write touched. Echoed so a stored record identifies its pool
-        // without the request that produced it — the same reason the swap execute
-        // responses carry it.
-        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
-        positionAddress: Type.String(),
-        positionRent: Type.Number({ format: 'decimal' }),
-        baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
-        quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
-      }),
+      Type.Object(
+        {
+          fee: Type.Number({ format: 'decimal' }),
+          // The venue this write touched. Echoed so a stored record identifies its pool
+          // without the request that produced it — the same reason the swap execute
+          // responses carry it.
+          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+          positionAddress: Type.String(),
+          positionRent: Type.Number({ format: 'decimal' }),
+          baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
+          quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
+        },
+        { $id: 'OpenPositionResponseData' },
+      ),
     ),
   },
   { $id: 'OpenPositionResponse' },
@@ -268,16 +271,19 @@ export const AddLiquidityResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        fee: Type.Number({ format: 'decimal' }),
-        // The venue this write touched. Echoed so a stored record identifies its pool
-        // without the request that produced it — the same reason the swap execute
-        // responses carry it.
-        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
-        positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
-        baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
-        quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
-      }),
+      Type.Object(
+        {
+          fee: Type.Number({ format: 'decimal' }),
+          // The venue this write touched. Echoed so a stored record identifies its pool
+          // without the request that produced it — the same reason the swap execute
+          // responses carry it.
+          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+          positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
+          baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
+          quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
+        },
+        { $id: 'AddLiquidityResponseData' },
+      ),
     ),
   },
   { $id: 'AddLiquidityResponse' },
@@ -306,16 +312,19 @@ export const RemoveLiquidityResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        fee: Type.Number({ format: 'decimal' }),
-        // The venue this write touched. Echoed so a stored record identifies its pool
-        // without the request that produced it — the same reason the swap execute
-        // responses carry it.
-        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
-        positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
-        baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
-        quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),
-      }),
+      Type.Object(
+        {
+          fee: Type.Number({ format: 'decimal' }),
+          // The venue this write touched. Echoed so a stored record identifies its pool
+          // without the request that produced it — the same reason the swap execute
+          // responses carry it.
+          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+          positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
+          baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
+          quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),
+        },
+        { $id: 'RemoveLiquidityResponseData' },
+      ),
     ),
   },
   { $id: 'RemoveLiquidityResponse' },
@@ -339,16 +348,19 @@ export const CollectFeesResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        fee: Type.Number({ format: 'decimal' }),
-        // The venue this write touched. Echoed so a stored record identifies its pool
-        // without the request that produced it — the same reason the swap execute
-        // responses carry it.
-        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
-        positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
-        baseFeeAmountCollected: Type.Number({ format: 'decimal' }),
-        quoteFeeAmountCollected: Type.Number({ format: 'decimal' }),
-      }),
+      Type.Object(
+        {
+          fee: Type.Number({ format: 'decimal' }),
+          // The venue this write touched. Echoed so a stored record identifies its pool
+          // without the request that produced it — the same reason the swap execute
+          // responses carry it.
+          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+          positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
+          baseFeeAmountCollected: Type.Number({ format: 'decimal' }),
+          quoteFeeAmountCollected: Type.Number({ format: 'decimal' }),
+        },
+        { $id: 'CollectFeesResponseData' },
+      ),
     ),
   },
   { $id: 'CollectFeesResponse' },
@@ -372,19 +384,22 @@ export const ClosePositionResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        fee: Type.Number({ format: 'decimal' }),
-        // The venue this write touched. Echoed so a stored record identifies its pool
-        // without the request that produced it — the same reason the swap execute
-        // responses carry it.
-        poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
-        positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
-        positionRentRefunded: Type.Number({ format: 'decimal' }),
-        baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
-        quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),
-        baseFeeAmountCollected: Type.Number({ format: 'decimal' }),
-        quoteFeeAmountCollected: Type.Number({ format: 'decimal' }),
-      }),
+      Type.Object(
+        {
+          fee: Type.Number({ format: 'decimal' }),
+          // The venue this write touched. Echoed so a stored record identifies its pool
+          // without the request that produced it — the same reason the swap execute
+          // responses carry it.
+          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+          positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
+          positionRentRefunded: Type.Number({ format: 'decimal' }),
+          baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
+          quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),
+          baseFeeAmountCollected: Type.Number({ format: 'decimal' }),
+          quoteFeeAmountCollected: Type.Number({ format: 'decimal' }),
+        },
+        { $id: 'ClosePositionResponseData' },
+      ),
     ),
   },
   { $id: 'ClosePositionResponse' },
@@ -457,9 +472,12 @@ export const CreatePoolResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        fee: Type.Number({ format: 'decimal' }),
-      }),
+      Type.Object(
+        {
+          fee: Type.Number({ format: 'decimal' }),
+        },
+        { $id: 'ClmmCreatePoolResponseData' },
+      ),
     ),
   },
   { $id: 'ClmmCreatePoolResponse' },
@@ -577,21 +595,24 @@ export const ExecuteSwapResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        tokenIn: Type.String(),
-        tokenOut: Type.String(),
-        amountIn: Type.Number({ format: 'decimal' }),
-        amountOut: Type.Number({ format: 'decimal' }),
-        fee: Type.Number({ format: 'decimal' }),
-        baseTokenBalanceChange: Type.Number({ format: 'decimal' }),
-        quoteTokenBalanceChange: Type.Number({ format: 'decimal' }),
-        slippagePct: Type.Optional(
-          Type.Number({
-            format: 'decimal',
-            description: 'Slippage tolerance percentage actually applied to the swap',
-          }),
-        ),
-      }),
+      Type.Object(
+        {
+          tokenIn: Type.String(),
+          tokenOut: Type.String(),
+          amountIn: Type.Number({ format: 'decimal' }),
+          amountOut: Type.Number({ format: 'decimal' }),
+          fee: Type.Number({ format: 'decimal' }),
+          baseTokenBalanceChange: Type.Number({ format: 'decimal' }),
+          quoteTokenBalanceChange: Type.Number({ format: 'decimal' }),
+          slippagePct: Type.Optional(
+            Type.Number({
+              format: 'decimal',
+              description: 'Slippage tolerance percentage actually applied to the swap',
+            }),
+          ),
+        },
+        { $id: 'ClmmExecuteSwapResponseData' },
+      ),
     ),
   },
   { $id: 'ClmmExecuteSwapResponse' },

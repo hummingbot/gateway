@@ -171,40 +171,43 @@ export const SwapExecuteResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        tokenIn: Type.String({
-          description: 'Address of the token swapped from',
-        }),
-        tokenOut: Type.String({
-          description: 'Address of the token swapped to',
-        }),
-        amountIn: Type.Number({
-          format: 'decimal',
-          description: 'Actual amount of tokenIn swapped',
-        }),
-        amountOut: Type.Number({
-          format: 'decimal',
-          description: 'Actual amount of tokenOut received',
-        }),
-        fee: Type.Number({
-          format: 'decimal',
-          description: 'Transaction fee paid',
-        }),
-        baseTokenBalanceChange: Type.Number({
-          format: 'decimal',
-          description: 'Change in base token balance (negative for decrease)',
-        }),
-        quoteTokenBalanceChange: Type.Number({
-          format: 'decimal',
-          description: 'Change in quote token balance (negative for decrease)',
-        }),
-        slippagePct: Type.Optional(
-          Type.Number({
-            format: 'decimal',
-            description: 'Slippage tolerance percentage actually applied to the swap',
+      Type.Object(
+        {
+          tokenIn: Type.String({
+            description: 'Address of the token swapped from',
           }),
-        ),
-      }),
+          tokenOut: Type.String({
+            description: 'Address of the token swapped to',
+          }),
+          amountIn: Type.Number({
+            format: 'decimal',
+            description: 'Actual amount of tokenIn swapped',
+          }),
+          amountOut: Type.Number({
+            format: 'decimal',
+            description: 'Actual amount of tokenOut received',
+          }),
+          fee: Type.Number({
+            format: 'decimal',
+            description: 'Transaction fee paid',
+          }),
+          baseTokenBalanceChange: Type.Number({
+            format: 'decimal',
+            description: 'Change in base token balance (negative for decrease)',
+          }),
+          quoteTokenBalanceChange: Type.Number({
+            format: 'decimal',
+            description: 'Change in quote token balance (negative for decrease)',
+          }),
+          slippagePct: Type.Optional(
+            Type.Number({
+              format: 'decimal',
+              description: 'Slippage tolerance percentage actually applied to the swap',
+            }),
+          ),
+        },
+        { $id: 'SwapExecuteResponseData' },
+      ),
     ),
   },
   { $id: 'SwapExecuteResponse' },
