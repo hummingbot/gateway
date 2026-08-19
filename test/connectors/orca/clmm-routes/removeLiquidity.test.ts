@@ -53,7 +53,7 @@ describe('POST /remove-liquidity', () => {
           network: 'mainnet-beta',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
-          percentage: 50,
+          percentageToRemove: 50,
         },
       });
 
@@ -79,7 +79,7 @@ describe('POST /remove-liquidity', () => {
           network: 'mainnet-beta',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
-          percentage: 100,
+          percentageToRemove: 100,
         },
       });
 
@@ -92,7 +92,7 @@ describe('POST /remove-liquidity', () => {
         url: '/remove-liquidity',
         payload: {
           positionAddress: mockPositionAddress,
-          percentage: 25,
+          percentageToRemove: 25,
         },
       });
 
@@ -108,14 +108,14 @@ describe('POST /remove-liquidity', () => {
         payload: {
           network: 'mainnet-beta',
           walletAddress: mockWalletAddress,
-          percentage: 50,
+          percentageToRemove: 50,
         },
       });
 
       expect(response.statusCode).toBe(400);
     });
 
-    it('should return error when percentage is missing', async () => {
+    it('should return error when percentageToRemove is missing', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/remove-liquidity',
@@ -129,7 +129,7 @@ describe('POST /remove-liquidity', () => {
       expect(response.statusCode).toBeGreaterThanOrEqual(400);
     });
 
-    it('should handle invalid percentage values', async () => {
+    it('should handle invalid percentageToRemove values', async () => {
       const response = await app.inject({
         method: 'POST',
         url: '/remove-liquidity',
@@ -137,7 +137,7 @@ describe('POST /remove-liquidity', () => {
           network: 'mainnet-beta',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
-          percentage: 150,
+          percentageToRemove: 150,
         },
       });
 
@@ -159,7 +159,7 @@ describe('POST /remove-liquidity', () => {
           network: 'mainnet-beta',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
-          percentage: 50,
+          percentageToRemove: 50,
         },
       });
 
@@ -176,7 +176,7 @@ describe('POST /remove-liquidity', () => {
           network: 'mainnet-beta',
           walletAddress: mockWalletAddress,
           positionAddress: mockPositionAddress,
-          percentage: 50,
+          percentageToRemove: 50,
         },
       });
 
