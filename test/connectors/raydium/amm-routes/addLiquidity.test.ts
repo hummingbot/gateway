@@ -35,7 +35,7 @@ jest.mock('../../../../src/services/logger', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { addLiquidityRoute } = await import('../../../../src/trading/trading-amm-routes/add-liquidity');
+  const { addLiquidityRoute } = await import('../../../../src/trading/trading-amm-routes/add');
   await server.register(addLiquidityRoute);
   return server;
 };
@@ -178,7 +178,7 @@ describe('POST /add-liquidity', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/add-liquidity',
+      url: '/add',
       body: {
         chainNetwork: 'solana-mainnet-beta',
         connector: 'raydium',
@@ -229,7 +229,7 @@ describe('POST /add-liquidity', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/add-liquidity',
+      url: '/add',
       body: {
         chainNetwork: 'solana-mainnet-beta',
         connector: 'raydium',
@@ -266,7 +266,7 @@ describe('POST /add-liquidity', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/add-liquidity',
+      url: '/add',
       body: {
         chainNetwork: 'solana-mainnet-beta',
         connector: 'raydium',
@@ -303,7 +303,7 @@ describe('POST /add-liquidity', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/add-liquidity',
+      url: '/add',
       body: {
         chainNetwork: 'solana-mainnet-beta',
         connector: 'raydium',
@@ -345,7 +345,7 @@ describe('POST /add-liquidity', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/add-liquidity',
+      url: '/add',
       body: {
         chainNetwork: 'solana-mainnet-beta',
         connector: 'raydium',
@@ -399,7 +399,7 @@ describe('POST /add-liquidity', () => {
 
     const response = await server.inject({
       method: 'POST',
-      url: '/add-liquidity',
+      url: '/add',
       body: {
         chainNetwork: 'solana-mainnet-beta',
         connector: 'raydium',

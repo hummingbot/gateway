@@ -46,7 +46,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     Body: Static<typeof UnifiedAmmAddLiquidityRequest>;
     Reply: AddLiquidityResponseType;
   }>(
-    '/add-liquidity',
+    '/add',
     {
       schema: {
         description: 'Add liquidity to an AMM pool from any supported connector',

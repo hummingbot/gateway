@@ -46,7 +46,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     Body: Static<typeof UnifiedAmmRemoveLiquidityRequest>;
     Reply: RemoveLiquidityResponseType;
   }>(
-    '/remove-liquidity',
+    '/remove',
     {
       schema: {
         description: 'Remove liquidity from an AMM pool from any supported connector',

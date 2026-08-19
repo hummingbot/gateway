@@ -4934,7 +4934,7 @@
         }
       }
     },
-    "/trading/amm/add-liquidity": {
+    "/trading/amm/add": {
       "post": {
         "tags": ["/trading/amm"],
         "description": "Add liquidity to an AMM pool from any supported connector",
@@ -5042,7 +5042,7 @@
         }
       }
     },
-    "/trading/amm/remove-liquidity": {
+    "/trading/amm/remove": {
       "post": {
         "tags": ["/trading/amm"],
         "description": "Remove liquidity from an AMM pool from any supported connector",

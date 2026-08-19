@@ -98,8 +98,8 @@ describe('gateway-security', () => {
       '/trading/clmm/close',
       '/trading/clmm/create-pool',
       '/trading/amm/execute-swap',
-      '/trading/amm/add-liquidity',
-      '/trading/amm/remove-liquidity',
+      '/trading/amm/add',
+      '/trading/amm/remove',
       '/trading/amm/create-pool',
     ])('sensitive: %s', (url) => {
       expect(isSensitivePath(url)).toBe(true);

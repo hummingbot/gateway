@@ -3,5 +3,5 @@ export { poolInfoRoute } from './pool-info';
 export { positionInfoRoute } from './position-info';
 export { positionsOwnedRoute } from './positions-owned';
 export { quoteLiquidityRoute } from './quote-liquidity';
-export { addLiquidityRoute } from './add-liquidity';
-export { removeLiquidityRoute } from './remove-liquidity';
+export { addLiquidityRoute } from './add';
+export { removeLiquidityRoute } from './remove';

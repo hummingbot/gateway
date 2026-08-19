@@ -18,7 +18,7 @@ jest.mock('../../../../src/connectors/uniswap/uniswap.utils', () => ({
 }));
 
 // The AMM side of the same confirmation contract (the CLMM side is pinned in
-// clmm-routes/collect-fees-confirmation.test.ts). remove-liquidity is the route where the old
+// clmm-routes/collect-fees-confirmation.test.ts). The AMM remove route is where the old
 // behaviour was worst: `expectedBaseTokenAmount`/`expectedQuoteTokenAmount` are derived from
 // reserves read BEFORE sending, so a reverted transaction used to report those withdrawals
 // alongside status 0 — read downstream as "still pending" forever.
@@ -34,7 +34,7 @@ const { Ethereum: RealEthereum } = jest.requireActual('../../../../src/chains/et
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { removeLiquidityRoute } = await import('../../../../src/trading/trading-amm-routes/remove-liquidity');
+  const { removeLiquidityRoute } = await import('../../../../src/trading/trading-amm-routes/remove');
   await server.register(removeLiquidityRoute);
   return server;
 };
@@ -75,7 +75,7 @@ const primeMocks = (receipt: any) => {
 const remove = (server: any) =>
   server.inject({
     method: 'POST',
-    url: '/remove-liquidity',
+    url: '/remove',
     payload: {
       chainNetwork: 'ethereum-base',
       connector: 'uniswap',
@@ -85,7 +85,7 @@ const remove = (server: any) =>
     },
   });
 
-describe('POST /remove-liquidity (Uniswap V2 AMM) — transaction confirmation', () => {
+describe('POST /remove (Uniswap V2 AMM) — transaction confirmation', () => {
   let server: any;
 
   beforeEach(async () => {

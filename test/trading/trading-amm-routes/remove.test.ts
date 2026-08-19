@@ -3,12 +3,12 @@ import { fastifyWithTypeProvider } from '../../utils/testUtils';
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { removeLiquidityRoute } = await import('../../../src/trading/trading-amm-routes/remove-liquidity');
+  const { removeLiquidityRoute } = await import('../../../src/trading/trading-amm-routes/remove');
   await server.register(removeLiquidityRoute);
   return server;
 };
 
-describe('POST /trading/amm/remove-liquidity (unified dispatch)', () => {
+describe('POST /trading/amm/remove (unified dispatch)', () => {
   let server: any;
 
   beforeAll(async () => {
@@ -22,7 +22,7 @@ describe('POST /trading/amm/remove-liquidity (unified dispatch)', () => {
   it('requires positionAddress for meteora (DAMM v2 positions are NFTs)', async () => {
     const response = await server.inject({
       method: 'POST',
-      url: '/remove-liquidity',
+      url: '/remove',
       payload: {
         connector: 'meteora',
         chainNetwork: 'solana-mainnet-beta',
@@ -39,7 +39,7 @@ describe('POST /trading/amm/remove-liquidity (unified dispatch)', () => {
   it('rejects an unsupported AMM connector', async () => {
     const response = await server.inject({
       method: 'POST',
-      url: '/remove-liquidity',
+      url: '/remove',
       payload: {
         connector: 'notaconnector',
         chainNetwork: 'solana-mainnet-beta',

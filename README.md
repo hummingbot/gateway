@@ -128,7 +128,7 @@ one set of routes covers every DEX.
 - `GET /trading/amm/position-info` - Wallet's liquidity in a pool
 - `GET /trading/amm/positions-owned` - All of a wallet's positions
 - `GET /trading/amm/quote-liquidity` - Two-sided deposit quote
-- `POST /trading/amm/add-liquidity` / `POST /trading/amm/remove-liquidity`
+- `POST /trading/amm/add` / `POST /trading/amm/remove` - Change a position's liquidity
 - `POST /trading/amm/create-pool`
 
 **CLMM** (`/trading/clmm/*`) — concentrated liquidity (Uniswap V3, PancakeSwap V3, Raydium, Meteora DLMM, Orca):

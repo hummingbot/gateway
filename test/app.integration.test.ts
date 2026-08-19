@@ -82,8 +82,8 @@ describe('App Integration - Route Registration', () => {
       ['GET', '/trading/amm/position-info'],
       ['GET', '/trading/amm/positions-owned'],
       ['GET', '/trading/amm/quote-liquidity'],
-      ['POST', '/trading/amm/add-liquidity'],
-      ['POST', '/trading/amm/remove-liquidity'],
+      ['POST', '/trading/amm/add'],
+      ['POST', '/trading/amm/remove'],
       ['POST', '/trading/amm/create-pool'],
     ] as Array<['GET' | 'POST', string]>)('registers %s %s', async (method, url) => {
       expect(registered(method, url)).toBe(true);
