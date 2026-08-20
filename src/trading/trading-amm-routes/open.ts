@@ -28,15 +28,18 @@ import {
 // performs the same add and reports no position address and no rent, because none
 // exists. Callers that do not care which kind of AMM they are on can therefore always
 // open, and read positionAddress only when it is there.
-const UnifiedAmmOpenPositionRequest = Type.Object({
-  connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
-  chainNetwork: chainNetworkField(),
-  walletAddress: Type.String({ description: 'Wallet that will own the position', default: defaultWallet }),
-  poolAddress: Type.String({ description: 'Pool to open the position in' }),
-  baseTokenAmount: Type.Number({ format: 'decimal', description: 'Amount of base token to deposit' } as any),
-  quoteTokenAmount: Type.Number({ format: 'decimal', description: 'Amount of quote token to deposit' } as any),
-  slippagePct: slippagePctField(),
-});
+export const UnifiedAmmOpenPositionRequest = Type.Object(
+  {
+    connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+    chainNetwork: chainNetworkField(),
+    walletAddress: Type.String({ description: 'Wallet that will own the position', default: defaultWallet }),
+    poolAddress: Type.String({ description: 'Pool to open the position in' }),
+    baseTokenAmount: Type.Number({ format: 'decimal', description: 'Amount of base token to deposit' } as any),
+    quoteTokenAmount: Type.Number({ format: 'decimal', description: 'Amount of quote token to deposit' } as any),
+    slippagePct: slippagePctField(),
+  },
+  { $id: 'AmmOpenRequest' },
+);
 
 /**
  * Re-frame a fungible-LP add as an open. No position account is created, so there is

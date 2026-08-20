@@ -28,14 +28,17 @@ import {
 // Composed from the canonical ClmmCreatePoolRequest (schemas/clmm-schema.ts):
 // the unified route swaps per-connector `network` for connector + chainNetwork
 // and defaults the wallet.
-const UnifiedClmmCreatePoolRequest = Type.Composite([
-  Type.Object({
-    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
-    chainNetwork: chainNetworkField(),
-    walletAddress: Type.String({ description: 'Wallet address (pool creator + payer)', default: defaultWallet }),
-  }),
-  Type.Omit(ClmmCreatePoolRequest, ['network', 'walletAddress'], {}),
-]);
+export const UnifiedClmmCreatePoolRequest = Type.Composite(
+  [
+    Type.Object({
+      connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+      chainNetwork: chainNetworkField(),
+      walletAddress: Type.String({ description: 'Wallet address (pool creator + payer)', default: defaultWallet }),
+    }),
+    Type.Omit(ClmmCreatePoolRequest, ['network', 'walletAddress'], {}),
+  ],
+  { $id: 'ClmmCreatePoolRequest' },
+);
 
 export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{

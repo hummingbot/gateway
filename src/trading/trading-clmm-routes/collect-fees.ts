@@ -20,18 +20,21 @@ import {
 } from '../common';
 
 // Unified schema with connector field
-const UnifiedCollectFeesRequest = Type.Object({
-  connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
-  chainNetwork: chainNetworkField(),
-  walletAddress: Type.String({
-    description: 'Wallet address',
-    default: defaultWallet,
-  }),
-  positionAddress: Type.String({
-    description: 'Position address',
-    examples: ['<sample-position-address>'],
-  }),
-});
+export const UnifiedCollectFeesRequest = Type.Object(
+  {
+    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+    chainNetwork: chainNetworkField(),
+    walletAddress: Type.String({
+      description: 'Wallet address',
+      default: defaultWallet,
+    }),
+    positionAddress: Type.String({
+      description: 'Position address',
+      examples: ['<sample-position-address>'],
+    }),
+  },
+  { $id: 'ClmmCollectFeesRequest' },
+);
 
 // Import connector functions
 

@@ -14,34 +14,37 @@ import {
 } from '../common';
 import { APPROXIMATE_IF_NO_EXACT_OUT_CONNECTORS, ROUTER_CONNECTORS, getRouterOps } from '../connector-registry';
 
-export const RouterExecuteSwapRequestSchema = Type.Object({
-  chainNetwork: chainNetworkField(),
-  connector: Type.Optional(
-    connectorField(ROUTER_CONNECTORS, "Router connector. Defaults to the network's swapProvider"),
-  ),
-  walletAddress: walletAddressField('Wallet address that will execute the swap'),
-  baseToken: Type.String({ description: 'Symbol or address of the base token', default: 'SOL' }),
-  quoteToken: Type.String({ description: 'Symbol or address of the quote token', default: 'USDC' }),
-  amount: Type.Number({
-    format: 'decimal',
-    description: 'Amount of base token to trade',
-    default: 0.01,
-  }),
-  side: Type.String({
-    description: 'BUY means buying base token with quote token, SELL means selling base token for quote token',
-    enum: ['BUY', 'SELL'],
-    default: 'SELL',
-  }),
-  slippagePct: slippagePctField(),
-  approximateIfNoExactOut: Type.Optional(
-    Type.Boolean({
-      description:
-        'For BUY orders when the router has no ExactOut route: approximate via a sell-leg ExactIn swap instead of failing.',
-      default: true,
-      'x-connectors': APPROXIMATE_IF_NO_EXACT_OUT_CONNECTORS,
-    } as any),
-  ),
-});
+export const RouterExecuteSwapRequestSchema = Type.Object(
+  {
+    chainNetwork: chainNetworkField(),
+    connector: Type.Optional(
+      connectorField(ROUTER_CONNECTORS, "Router connector. Defaults to the network's swapProvider"),
+    ),
+    walletAddress: walletAddressField('Wallet address that will execute the swap'),
+    baseToken: Type.String({ description: 'Symbol or address of the base token', default: 'SOL' }),
+    quoteToken: Type.String({ description: 'Symbol or address of the quote token', default: 'USDC' }),
+    amount: Type.Number({
+      format: 'decimal',
+      description: 'Amount of base token to trade',
+      default: 0.01,
+    }),
+    side: Type.String({
+      description: 'BUY means buying base token with quote token, SELL means selling base token for quote token',
+      enum: ['BUY', 'SELL'],
+      default: 'SELL',
+    }),
+    slippagePct: slippagePctField(),
+    approximateIfNoExactOut: Type.Optional(
+      Type.Boolean({
+        description:
+          'For BUY orders when the router has no ExactOut route: approximate via a sell-leg ExactIn swap instead of failing.',
+        default: true,
+        'x-connectors': APPROXIMATE_IF_NO_EXACT_OUT_CONNECTORS,
+      } as any),
+    ),
+  },
+  { $id: 'RouterExecuteSwapRequest' },
+);
 
 type RouterExecuteSwapRequest = Static<typeof RouterExecuteSwapRequestSchema>;
 

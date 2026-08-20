@@ -18,29 +18,32 @@ import {
   slippagePctField,
 } from '../common';
 
-const UnifiedAmmAddLiquidityRequest = Type.Object({
-  connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
-  chainNetwork: chainNetworkField(),
-  walletAddress: Type.String({ description: 'Wallet address', default: defaultWallet }),
-  poolAddress: Type.String({ description: 'Pool contract address' }),
-  baseTokenAmount: Type.Number({
-    format: 'decimal',
-    description: 'Amount of base token to add',
-  }),
-  quoteTokenAmount: Type.Number({
-    format: 'decimal',
-    description: 'Amount of quote token to add',
-  }),
-  positionAddress: Type.Optional(
-    Type.String({
-      'x-connectors': ['meteora'],
-      description:
-        'meteora only (DAMM v2 positions are NFTs): add to this specific position. Omit to open a new ' +
-        'position. Ignored by fungible-LP AMMs.',
+export const UnifiedAmmAddLiquidityRequest = Type.Object(
+  {
+    connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+    chainNetwork: chainNetworkField(),
+    walletAddress: Type.String({ description: 'Wallet address', default: defaultWallet }),
+    poolAddress: Type.String({ description: 'Pool contract address' }),
+    baseTokenAmount: Type.Number({
+      format: 'decimal',
+      description: 'Amount of base token to add',
     }),
-  ),
-  slippagePct: slippagePctField(),
-});
+    quoteTokenAmount: Type.Number({
+      format: 'decimal',
+      description: 'Amount of quote token to add',
+    }),
+    positionAddress: Type.Optional(
+      Type.String({
+        'x-connectors': ['meteora'],
+        description:
+          'meteora only (DAMM v2 positions are NFTs): add to this specific position. Omit to open a new ' +
+          'position. Ignored by fungible-LP AMMs.',
+      }),
+    ),
+    slippagePct: slippagePctField(),
+  },
+  { $id: 'AmmAddRequest' },
+);
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{

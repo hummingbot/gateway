@@ -21,31 +21,34 @@ import {
 } from '../common';
 
 // Unified schema with connector field
-const UnifiedRemoveLiquidityRequest = Type.Object({
-  connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
-  chainNetwork: chainNetworkField(),
-  walletAddress: Type.String({
-    description: 'Wallet address',
-    default: defaultWallet,
-  }),
-  positionAddress: Type.String({
-    description: 'Position address',
-    examples: ['<sample-position-address>'],
-  }),
-  percentageToRemove: Type.Number({
-    format: 'decimal',
-    minimum: 0,
-    maximum: 100,
-    description: 'Percentage of liquidity to remove',
-    default: 100,
-    examples: [100],
-  }),
-  // Orca-specific parameter (optional, ignored by other connectors, which manage
-  // slippage internally).
-  slippagePct: slippagePctField(
-    "Maximum acceptable slippage percentage. Only applies to the Orca connector; defaults to Orca's configured slippagePct.",
-  ),
-});
+export const UnifiedRemoveLiquidityRequest = Type.Object(
+  {
+    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+    chainNetwork: chainNetworkField(),
+    walletAddress: Type.String({
+      description: 'Wallet address',
+      default: defaultWallet,
+    }),
+    positionAddress: Type.String({
+      description: 'Position address',
+      examples: ['<sample-position-address>'],
+    }),
+    percentageToRemove: Type.Number({
+      format: 'decimal',
+      minimum: 0,
+      maximum: 100,
+      description: 'Percentage of liquidity to remove',
+      default: 100,
+      examples: [100],
+    }),
+    // Orca-specific parameter (optional, ignored by other connectors, which manage
+    // slippage internally).
+    slippagePct: slippagePctField(
+      "Maximum acceptable slippage percentage. Only applies to the Orca connector; defaults to Orca's configured slippagePct.",
+    ),
+  },
+  { $id: 'ClmmRemoveRequest' },
+);
 
 // Import connector functions
 

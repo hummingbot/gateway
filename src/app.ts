@@ -14,6 +14,7 @@ import Fastify, { FastifyInstance } from 'fastify';
 
 // Routes
 import { chainRoutes } from './chains/chain.routes';
+import * as ethereumSchemas from './chains/ethereum/schemas';
 import { configRoutes } from './config/config.routes';
 import { getHttpsOptions } from './https';
 import { rootPath } from './paths';
@@ -38,8 +39,13 @@ import { quoteCache } from './services/quote-cache';
 import { ajvOptions } from './services/schema-keywords';
 import { displayChainConfigurations } from './services/startup-banner';
 import { tokensRoutes } from './tokens/tokens.routes';
+import * as poolSwapRoutes from './trading/pool-swap-routes';
+import * as ammRouteSchemas from './trading/trading-amm-routes';
+import * as clmmRouteSchemas from './trading/trading-clmm-routes';
+import * as routerRouteSchemas from './trading/trading-router-routes';
 import { tradingRouterRoutes, tradingClmmRoutes, tradingAmmRoutes } from './trading/trading.routes';
 import { GATEWAY_VERSION } from './version';
+import * as walletSchemas from './wallet/schemas';
 import { walletRoutes } from './wallet/wallet.routes';
 
 import { asciiLogo } from './index';
@@ -74,16 +80,34 @@ const collectIdentifiedSchemas = (node: any, found: Map<string, Record<string, a
 };
 
 /**
- * Every schema carrying an `$id`, collected from the shared schema modules.
+ * Every schema carrying an `$id`, collected from the shared schema modules and from the
+ * route modules that declare their own request bodies.
  *
  * Registering these with `addSchema` is what puts them in the spec's
  * `components.schemas`; `refIdentifiedSchemas` below then points the routes at them.
  * `$id`s must be unique across all modules — Fastify rejects a duplicate — which is
  * why the AMM copies of the names CLMM also uses carry an `Amm` prefix.
+ *
+ * The route modules are here because the shapes in `./schemas` are the *base* types the
+ * unified routes compose from, not what a caller sends: they predate the refactor, so
+ * they carry a per-connector `network` and no `connector` or `chainNetwork`. Generating
+ * a client from those alone produced request models that were wrong the same way for
+ * every route, so each route's own body now carries the `$id` instead.
  */
 const identifiedSchemas = (): Array<Record<string, any>> => {
   const found = new Map<string, Record<string, any>>();
-  for (const module of [ammSchemas, chainSchemas, clmmSchemas, routerSchemas]) {
+  for (const module of [
+    ammSchemas,
+    chainSchemas,
+    clmmSchemas,
+    routerSchemas,
+    ammRouteSchemas,
+    clmmRouteSchemas,
+    routerRouteSchemas,
+    poolSwapRoutes,
+    ethereumSchemas,
+    walletSchemas,
+  ]) {
     for (const value of Object.values(module)) {
       if (typeof value === 'object' && value !== null) collectIdentifiedSchemas(value, found);
     }

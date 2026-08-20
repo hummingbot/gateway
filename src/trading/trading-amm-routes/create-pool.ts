@@ -20,37 +20,40 @@ import {
 // Composed from the canonical CreatePoolRequest (schemas/amm-schema.ts): the
 // unified route swaps per-connector `network` for connector + chainNetwork,
 // defaults the wallet, and adds the per-protocol fee-config selectors.
-const UnifiedCreatePoolRequest = Type.Composite([
-  Type.Object({
-    connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
-    chainNetwork: chainNetworkField(),
-    walletAddress: Type.String({
-      description: 'Wallet address (pool creator + payer)',
-      default: defaultWallet,
+export const UnifiedCreatePoolRequest = Type.Composite(
+  [
+    Type.Object({
+      connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+      chainNetwork: chainNetworkField(),
+      walletAddress: Type.String({
+        description: 'Wallet address (pool creator + payer)',
+        default: defaultWallet,
+      }),
     }),
-  }),
-  Type.Omit(CreatePoolRequest, ['network', 'walletAddress'], {}),
-  // Optional per-protocol fee-config selectors, last so required fields lead the schema:
-  Type.Object({
-    configAddress: Type.Optional(
-      Type.String({
-        'x-connectors': ['meteora'],
-        description:
-          'Meteora DAMM v2 config account address (required for the meteora connector — configs are ' +
-          'permissionless accounts with no index derivation, so the address must be explicit).',
-      }),
-    ),
-    ammConfigIndex: Type.Optional(
-      Type.Number({
-        'x-connectors': ['raydium'],
-        description: 'Raydium CPMM fee-config index (optional; defaults to the first available config).',
-      }),
-    ),
-    slippagePct: slippagePctField(
-      "Uniswap/PancakeSwap seeding slippage percentage. Defaults to the connector's configured slippagePct.",
-    ),
-  }),
-]);
+    Type.Omit(CreatePoolRequest, ['network', 'walletAddress'], {}),
+    // Optional per-protocol fee-config selectors, last so required fields lead the schema:
+    Type.Object({
+      configAddress: Type.Optional(
+        Type.String({
+          'x-connectors': ['meteora'],
+          description:
+            'Meteora DAMM v2 config account address (required for the meteora connector — configs are ' +
+            'permissionless accounts with no index derivation, so the address must be explicit).',
+        }),
+      ),
+      ammConfigIndex: Type.Optional(
+        Type.Number({
+          'x-connectors': ['raydium'],
+          description: 'Raydium CPMM fee-config index (optional; defaults to the first available config).',
+        }),
+      ),
+      slippagePct: slippagePctField(
+        "Uniswap/PancakeSwap seeding slippage percentage. Defaults to the connector's configured slippagePct.",
+      ),
+    }),
+  ],
+  { $id: 'AmmCreatePoolRequest' },
+);
 
 export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{

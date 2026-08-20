@@ -18,14 +18,17 @@ import { ROUTER_CONNECTORS, getRouterOps } from '../connector-registry';
  * router built and Gateway cached, which pool-scoped amm/clmm swaps have no
  * equivalent of — they price against a pool at execution time.
  */
-export const RouterExecuteQuoteRequestSchema = Type.Object({
-  chainNetwork: chainNetworkField(),
-  connector: Type.Optional(
-    connectorField(ROUTER_CONNECTORS, "Router connector. Defaults to the network's swapProvider"),
-  ),
-  walletAddress: walletAddressField('Wallet address that will execute the quote'),
-  quoteId: Type.String({ description: 'ID of a quote returned by /trading/router/quote-swap' }),
-});
+export const RouterExecuteQuoteRequestSchema = Type.Object(
+  {
+    chainNetwork: chainNetworkField(),
+    connector: Type.Optional(
+      connectorField(ROUTER_CONNECTORS, "Router connector. Defaults to the network's swapProvider"),
+    ),
+    walletAddress: walletAddressField('Wallet address that will execute the quote'),
+    quoteId: Type.String({ description: 'ID of a quote returned by /trading/router/quote-swap' }),
+  },
+  { $id: 'RouterExecuteQuoteRequest' },
+);
 
 type RouterExecuteQuoteRequest = Static<typeof RouterExecuteQuoteRequestSchema>;
 

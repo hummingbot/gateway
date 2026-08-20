@@ -62,18 +62,21 @@ export const EthereumPollRequest = Type.Object({
 });
 
 // Allowances request schema (multiple tokens)
-export const AllowancesRequestSchema = Type.Object({
-  network: EthereumNetworkParameter,
-  address: EthereumAddressParameter,
-  spender: Type.String({
-    description: 'Connector name (e.g., uniswap/clmm, uniswap/amm, 0x/router) or contract address',
-    examples: [EXAMPLE_SPENDER],
-  }),
-  tokens: Type.Array(Type.String(), {
-    description: 'Array of token symbols or addresses',
-    examples: [EXAMPLE_ALLOWANCE_TOKENS],
-  }),
-});
+export const AllowancesRequestSchema = Type.Object(
+  {
+    network: EthereumNetworkParameter,
+    address: EthereumAddressParameter,
+    spender: Type.String({
+      description: 'Connector name (e.g., uniswap/clmm, uniswap/amm, 0x/router) or contract address',
+      examples: [EXAMPLE_SPENDER],
+    }),
+    tokens: Type.Array(Type.String(), {
+      description: 'Array of token symbols or addresses',
+      examples: [EXAMPLE_ALLOWANCE_TOKENS],
+    }),
+  },
+  { $id: 'AllowancesRequest' },
+);
 
 // Allowances response schema
 export const AllowancesResponseSchema = Type.Object({
@@ -82,24 +85,27 @@ export const AllowancesResponseSchema = Type.Object({
 });
 
 // Approve request schema
-export const ApproveRequestSchema = Type.Object({
-  network: EthereumNetworkParameter,
-  address: EthereumAddressParameter,
-  spender: Type.String({
-    description: 'Connector name (e.g., uniswap/clmm, uniswap/amm, 0x/router) contract address',
-    examples: [EXAMPLE_SPENDER],
-  }),
-  token: Type.String({
-    description: 'Token symbol or address',
-    examples: [EXAMPLE_ALLOWANCE_TOKENS[0]],
-  }),
-  amount: Type.Optional(
-    Type.String({
-      description: 'The amount to approve. If not provided, defaults to maximum amount (unlimited approval).',
-      default: '',
+export const ApproveRequestSchema = Type.Object(
+  {
+    network: EthereumNetworkParameter,
+    address: EthereumAddressParameter,
+    spender: Type.String({
+      description: 'Connector name (e.g., uniswap/clmm, uniswap/amm, 0x/router) contract address',
+      examples: [EXAMPLE_SPENDER],
     }),
-  ),
-});
+    token: Type.String({
+      description: 'Token symbol or address',
+      examples: [EXAMPLE_ALLOWANCE_TOKENS[0]],
+    }),
+    amount: Type.Optional(
+      Type.String({
+        description: 'The amount to approve. If not provided, defaults to maximum amount (unlimited approval).',
+        default: '',
+      }),
+    ),
+  },
+  { $id: 'ApproveRequest' },
+);
 
 // Approve response schema
 export const ApproveResponseSchema = Type.Object({

@@ -452,7 +452,11 @@ export const CreatePoolRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'ClmmCreatePoolRequest' },
+  // No $id: this is the pre-refactor shape (per-connector `network`, no `connector`),
+  // kept only as the base the unified route composes from. The request actually on the
+  // wire is the route's own schema, which now carries this name as its $id — publishing
+  // both would collide, and publishing this one would generate a client that sends the
+  // wrong keys.
 );
 export type CreatePoolRequestType = Static<typeof CreatePoolRequest>;
 
@@ -584,7 +588,11 @@ export const ExecuteSwapRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'ClmmExecuteSwapRequest' },
+  // No $id: this is the pre-refactor shape (per-connector `network`, no `connector`),
+  // kept only as the base the unified route composes from. The request actually on the
+  // wire is the route's own schema, which now carries this name as its $id — publishing
+  // both would collide, and publishing this one would generate a client that sends the
+  // wrong keys.
 );
 export type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;
 

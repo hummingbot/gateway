@@ -25,43 +25,46 @@ const BASE_TOKEN_AMOUNT = 0.01;
 const QUOTE_TOKEN_AMOUNT = 2;
 
 // Unified schema with connector field
-const UnifiedAddLiquidityRequest = Type.Object({
-  connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
-  chainNetwork: chainNetworkField(),
-  walletAddress: Type.String({
-    description: 'Wallet address',
-    default: defaultWallet,
-  }),
-  positionAddress: Type.String({
-    description: 'Position address',
-    examples: ['<sample-position-address>'],
-  }),
-  baseTokenAmount: Type.Optional(
-    Type.Number({
-      format: 'decimal',
-      description: 'Amount of base token to deposit (omit for single-sided quote deposit)',
-      examples: [BASE_TOKEN_AMOUNT],
+export const UnifiedAddLiquidityRequest = Type.Object(
+  {
+    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+    chainNetwork: chainNetworkField(),
+    walletAddress: Type.String({
+      description: 'Wallet address',
+      default: defaultWallet,
     }),
-  ),
-  quoteTokenAmount: Type.Optional(
-    Type.Number({
-      format: 'decimal',
-      description: 'Amount of quote token to deposit (omit for single-sided base deposit)',
-      examples: [QUOTE_TOKEN_AMOUNT],
+    positionAddress: Type.String({
+      description: 'Position address',
+      examples: ['<sample-position-address>'],
     }),
-  ),
-  slippagePct: slippagePctField(),
-  // Meteora-specific parameter (optional, ignored by other connectors). Without it an
-  // add falls back to the connector-config default shape, which can silently differ
-  // from the shape the position was opened with.
-  strategyType: Type.Optional(
-    Type.Number({
-      'x-connectors': ['meteora'],
-      description: 'Strategy type for Meteora positions (0=Spot, 1=Curve). Only applies to Meteora connector.',
-      examples: [0],
-    }),
-  ),
-});
+    baseTokenAmount: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        description: 'Amount of base token to deposit (omit for single-sided quote deposit)',
+        examples: [BASE_TOKEN_AMOUNT],
+      }),
+    ),
+    quoteTokenAmount: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        description: 'Amount of quote token to deposit (omit for single-sided base deposit)',
+        examples: [QUOTE_TOKEN_AMOUNT],
+      }),
+    ),
+    slippagePct: slippagePctField(),
+    // Meteora-specific parameter (optional, ignored by other connectors). Without it an
+    // add falls back to the connector-config default shape, which can silently differ
+    // from the shape the position was opened with.
+    strategyType: Type.Optional(
+      Type.Number({
+        'x-connectors': ['meteora'],
+        description: 'Strategy type for Meteora positions (0=Spot, 1=Curve). Only applies to Meteora connector.',
+        examples: [0],
+      }),
+    ),
+  },
+  { $id: 'ClmmAddRequest' },
+);
 
 // Import connector functions
 

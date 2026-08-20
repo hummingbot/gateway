@@ -30,20 +30,23 @@ import {
 // back. A fungible-LP AMM (raydium, uniswap, pancakeswap) has no position account —
 // its liquidity is LP tokens — so closing is exactly a full withdrawal, and the
 // route performs that remove and reports 0 rent refunded because none was held.
-const UnifiedAmmClosePositionRequest = Type.Object({
-  connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
-  chainNetwork: chainNetworkField(),
-  walletAddress: Type.String({ description: 'Wallet that owns the position', default: defaultWallet }),
-  poolAddress: Type.String({ description: 'Pool the position belongs to' }),
-  positionAddress: Type.Optional(
-    Type.String({
-      description:
-        'Position to close. Required on AMMs whose positions are discrete accounts (meteora DAMM v2), where a wallet may hold several per pool. Ignored by fungible-LP AMMs, which hold one LP balance per pool.',
-      'x-connectors': ['meteora'],
-    } as any),
-  ),
-  slippagePct: slippagePctField('Maximum acceptable slippage on the withdrawn amounts.'),
-});
+export const UnifiedAmmClosePositionRequest = Type.Object(
+  {
+    connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+    chainNetwork: chainNetworkField(),
+    walletAddress: Type.String({ description: 'Wallet that owns the position', default: defaultWallet }),
+    poolAddress: Type.String({ description: 'Pool the position belongs to' }),
+    positionAddress: Type.Optional(
+      Type.String({
+        description:
+          'Position to close. Required on AMMs whose positions are discrete accounts (meteora DAMM v2), where a wallet may hold several per pool. Ignored by fungible-LP AMMs, which hold one LP balance per pool.',
+        'x-connectors': ['meteora'],
+      } as any),
+    ),
+    slippagePct: slippagePctField('Maximum acceptable slippage on the withdrawn amounts.'),
+  },
+  { $id: 'AmmCloseRequest' },
+);
 
 /**
  * Re-frame a fungible-LP full withdrawal as a close. No position account existed, so

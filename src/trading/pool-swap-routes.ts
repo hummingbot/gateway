@@ -53,27 +53,44 @@ const quoteSwapRequestSchema = (type: PoolType) =>
   });
 
 const executeSwapRequestSchema = (type: PoolType) =>
-  Type.Object({
-    chainNetwork: chainNetworkField(),
-    connector: Type.Optional(
-      connectorField(connectorsFor(type), `${type.toUpperCase()} connector to execute the swap against`),
-    ),
-    walletAddress: walletAddressField('Wallet address that will execute the swap'),
-    baseToken: Type.String({ description: 'Symbol or address of the base token', default: 'SOL' }),
-    quoteToken: Type.String({ description: 'Symbol or address of the quote token', default: 'USDC' }),
-    amount: Type.Number({
-      format: 'decimal',
-      description: 'Amount of base token to trade',
-      default: 0.01,
-    }),
-    side: Type.String({
-      description: 'BUY means buying base token with quote token, SELL means selling base token for quote token',
-      enum: ['BUY', 'SELL'],
-      default: 'SELL',
-    }),
-    poolAddress: poolAddressField(),
-    slippagePct: slippagePctField(),
-  });
+  Type.Object(
+    {
+      chainNetwork: chainNetworkField(),
+      connector: Type.Optional(
+        connectorField(connectorsFor(type), `${type.toUpperCase()} connector to execute the swap against`),
+      ),
+      walletAddress: walletAddressField('Wallet address that will execute the swap'),
+      baseToken: Type.String({ description: 'Symbol or address of the base token', default: 'SOL' }),
+      quoteToken: Type.String({ description: 'Symbol or address of the quote token', default: 'USDC' }),
+      amount: Type.Number({
+        format: 'decimal',
+        description: 'Amount of base token to trade',
+        default: 0.01,
+      }),
+      side: Type.String({
+        description: 'BUY means buying base token with quote token, SELL means selling base token for quote token',
+        enum: ['BUY', 'SELL'],
+        default: 'SELL',
+      }),
+      poolAddress: poolAddressField(),
+      slippagePct: slippagePctField(),
+    },
+    { $id: type === 'amm' ? 'AmmExecuteSwapRequest' : 'ClmmExecuteSwapRequest' },
+  );
+
+/**
+ * One instance per pool type, because the `$id` above is what publishes these as spec
+ * components and Fastify rejects the same `$id` twice. Built here rather than inside
+ * makeExecuteSwapRoute so the route and the component registration share the object.
+ *
+ * The quote-swap counterpart deliberately has no `$id`: it is a GET, so its fields
+ * reach the spec as `parameters` and a component for them would be referenced by
+ * nothing.
+ */
+export const EXECUTE_SWAP_REQUEST_SCHEMAS = {
+  amm: executeSwapRequestSchema('amm'),
+  clmm: executeSwapRequestSchema('clmm'),
+} as const;
 
 export const makeQuoteSwapRoute = (type: PoolType): FastifyPluginAsync => {
   const schema = quoteSwapRequestSchema(type);
@@ -120,7 +137,7 @@ export const makeQuoteSwapRoute = (type: PoolType): FastifyPluginAsync => {
 };
 
 export const makeExecuteSwapRoute = (type: PoolType): FastifyPluginAsync => {
-  const schema = executeSwapRequestSchema(type);
+  const schema = EXECUTE_SWAP_REQUEST_SCHEMAS[type];
 
   return async (fastify) => {
     fastify.post(

@@ -18,29 +18,32 @@ import {
   slippagePctField,
 } from '../common';
 
-const UnifiedAmmRemoveLiquidityRequest = Type.Object({
-  connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
-  chainNetwork: chainNetworkField(),
-  walletAddress: Type.String({ description: 'Wallet address', default: defaultWallet }),
-  poolAddress: Type.String({ description: 'Pool contract address' }),
-  positionAddress: Type.Optional(
-    Type.String({
-      'x-connectors': ['meteora'],
-      description:
-        'Required for meteora (DAMM v2 positions are NFTs): the specific position to remove from. ' +
-        'List positions with position-info or positions-owned. Ignored by fungible-LP AMMs.',
+export const UnifiedAmmRemoveLiquidityRequest = Type.Object(
+  {
+    connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+    chainNetwork: chainNetworkField(),
+    walletAddress: Type.String({ description: 'Wallet address', default: defaultWallet }),
+    poolAddress: Type.String({ description: 'Pool contract address' }),
+    positionAddress: Type.Optional(
+      Type.String({
+        'x-connectors': ['meteora'],
+        description:
+          'Required for meteora (DAMM v2 positions are NFTs): the specific position to remove from. ' +
+          'List positions with position-info or positions-owned. Ignored by fungible-LP AMMs.',
+      }),
+    ),
+    percentageToRemove: Type.Number({
+      format: 'decimal',
+      minimum: 0,
+      maximum: 100,
+      description: 'Percentage of liquidity to remove',
+      default: 100,
+      examples: [100],
     }),
-  ),
-  percentageToRemove: Type.Number({
-    format: 'decimal',
-    minimum: 0,
-    maximum: 100,
-    description: 'Percentage of liquidity to remove',
-    default: 100,
-    examples: [100],
-  }),
-  slippagePct: slippagePctField(),
-});
+    slippagePct: slippagePctField(),
+  },
+  { $id: 'AmmRemoveRequest' },
+);
 
 export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
