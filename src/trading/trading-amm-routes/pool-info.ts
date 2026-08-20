@@ -7,7 +7,7 @@ import { getPoolInfo as raydiumGetPoolInfo } from '../../connectors/raydium/amm-
 import { getPoolInfo as uniswapGetPoolInfo } from '../../connectors/uniswap/amm-routes/poolInfo';
 import { PoolInfo, PoolInfoSchema } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { AMM_CONNECTORS, chainNetworkField, connectorField, parseChainNetwork, rethrowRouteError } from '../common';
+import { AMM_CONNECTORS, chainNetworkField, connectorField, resolveChainNetwork, rethrowRouteError } from '../common';
 
 export const UnifiedAmmPoolInfoRequest = Type.Object(
   {
@@ -35,7 +35,7 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { connector, chainNetwork, poolAddress } = request.query;
-        const { network } = parseChainNetwork(chainNetwork);
+        const { network } = resolveChainNetwork(chainNetwork, connector, 'amm');
         switch (connector) {
           case 'meteora':
             return await meteoraGetPoolInfo(network, poolAddress);

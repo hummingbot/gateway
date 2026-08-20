@@ -16,7 +16,7 @@ import {
   chainNetworkField,
   connectorField,
   defaultWallet,
-  parseChainNetwork,
+  resolveChainNetwork,
   rethrowRouteError,
   withIdentifiers,
   slippagePctField,
@@ -87,7 +87,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { connector, chainNetwork, walletAddress, poolAddress, positionAddress, slippagePct } = request.body;
-        const { network } = parseChainNetwork(chainNetwork);
+        const { network } = resolveChainNetwork(chainNetwork, connector, 'amm');
 
         const result = await (async () => {
           switch (connector) {

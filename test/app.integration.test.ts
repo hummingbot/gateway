@@ -4,7 +4,7 @@ import { FastifyInstance } from 'fastify';
 import './mocks/app-mocks';
 
 import { gatewayApp } from '../src/app';
-import { AMM_SWAP_CONNECTORS, CLMM_SWAP_CONNECTORS, ROUTER_CONNECTORS } from '../src/trading/connector-registry';
+import { AMM_CONNECTORS, CLMM_CONNECTORS, ROUTER_CONNECTORS } from '../src/trading/connector-registry';
 
 // The route table is now unified: the trading type is a path segment and the
 // connector is a parameter, so there is one set of routes rather than one set per
@@ -33,8 +33,8 @@ describe('App Integration - Route Registration', () => {
     it('backs every advertised trading type with a unified surface', async () => {
       const registries: Record<string, string[]> = {
         router: ROUTER_CONNECTORS,
-        clmm: CLMM_SWAP_CONNECTORS,
-        amm: AMM_SWAP_CONNECTORS,
+        clmm: CLMM_CONNECTORS,
+        amm: AMM_CONNECTORS,
       };
 
       for (const { name, trading_types } of await connectors()) {

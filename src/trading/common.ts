@@ -2,17 +2,42 @@ import { Type } from '@sinclair/typebox';
 
 import { getEthereumChainConfig, getEthereumNetworkConfig } from '../chains/ethereum/ethereum.config';
 import { getSolanaChainConfig, getSolanaNetworkConfig } from '../chains/solana/solana.config';
+import { ConfigManagerV2 } from '../services/config-manager-v2';
 import { httpErrors } from '../services/error-handler';
 import { logger } from '../services/logger';
 import { PoolService } from '../services/pool-service';
 
-import { TradingType } from './connector-registry';
+import { assertConnectorOnChain, TradingType } from './connector-registry';
 
-/** CLMM connectors that back the unified /trading/clmm routes. */
-export const CLMM_CONNECTORS = ['meteora', 'raydium', 'pancakeswap-sol', 'orca', 'uniswap', 'pancakeswap'];
+/**
+ * The connector rosters the unified routes publish as their `connector` enum.
+ *
+ * Re-exported from the registry rather than listed again here: a second list is a
+ * second thing to update, and the two silently disagreeing is how a connector ends up
+ * offered by a schema that nothing can dispatch.
+ */
+export { AMM_CONNECTORS, CLMM_CONNECTORS } from './connector-registry';
 
-/** AMM connectors that back the unified /trading/amm routes. */
-export const AMM_CONNECTORS = ['meteora', 'raydium', 'uniswap', 'pancakeswap'];
+/**
+ * Every chain-network Gateway is configured for, read from its config namespaces.
+ *
+ * This is the enum on `chainNetworkField`, so an unconfigured or malformed selector is
+ * rejected by the schema instead of being split into parts and half-used. Read at load
+ * rather than listed, so adding a network's config is the only step.
+ */
+export const SUPPORTED_CHAIN_NETWORKS = ConfigManagerV2.getInstance().getSupportedChainNetworks();
+
+const DEFAULT_CHAIN_NETWORK = 'solana-mainnet-beta';
+
+if (!SUPPORTED_CHAIN_NETWORKS.includes(DEFAULT_CHAIN_NETWORK)) {
+  // Fastify injects a schema default before the handler runs, so a default outside the
+  // enum would make every request that omits chainNetwork fail its own validation.
+  throw new Error(
+    `The trading routes default chainNetwork to '${DEFAULT_CHAIN_NETWORK}', which is not among the ` +
+      `configured chain-networks: ${SUPPORTED_CHAIN_NETWORKS.join(', ') || '(none)'}. ` +
+      'Restore that namespace under conf/, or change the default.',
+  );
+}
 
 /** Connector selector: enum-constrained so unknown connectors are rejected at the schema. */
 export const connectorField = (connectors: string[], label: string) =>
@@ -22,8 +47,9 @@ export const connectorField = (connectors: string[], label: string) =>
 export const chainNetworkField = () =>
   Type.String({
     description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    default: 'solana-mainnet-beta',
-    examples: ['solana-mainnet-beta'],
+    enum: SUPPORTED_CHAIN_NETWORKS,
+    default: DEFAULT_CHAIN_NETWORK,
+    examples: [DEFAULT_CHAIN_NETWORK],
   });
 
 /**
@@ -57,6 +83,27 @@ export function rethrowRouteError(e: any, context: string): never {
     throw e;
   }
   throw httpErrors.internalServerError(`${context}: ${e?.message ?? e}`);
+}
+
+/**
+ * Resolve a `chain-network` selector for a pool-scoped route, against the connector it
+ * was sent with.
+ *
+ * `parseChainNetwork` returns whatever it split, so a route that reads only the network
+ * half dispatches on the connector alone and the chain is decorative: `ethereum-mainnet`
+ * with a Solana connector ran that connector on `mainnet`, and a chain that exists
+ * nowhere ran it, successfully, on the network half. Every route that names one
+ * connector for one pool should resolve its selector through here, so the pair is
+ * checked once, in the same place, with the same message the swap routes give.
+ */
+export function resolveChainNetwork(
+  chainNetwork: string,
+  connector: string,
+  type: 'clmm' | 'amm',
+): { chain: string; network: string } {
+  const { chain, network } = parseChainNetwork(chainNetwork);
+  assertConnectorOnChain(connector, chain, type);
+  return { chain, network };
 }
 
 /** Parse a chain-network string (e.g. "solana-mainnet-beta") into its chain and network parts. */

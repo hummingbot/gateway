@@ -24,11 +24,11 @@ import {
   slippagePctField,
   walletAddressField,
 } from './common';
-import { AMM_SWAP_CONNECTORS, CLMM_SWAP_CONNECTORS, getPoolOps } from './connector-registry';
+import { AMM_CONNECTORS, CLMM_CONNECTORS, getPoolOps } from './connector-registry';
 
 type PoolType = 'clmm' | 'amm';
 
-const connectorsFor = (type: PoolType) => (type === 'clmm' ? CLMM_SWAP_CONNECTORS : AMM_SWAP_CONNECTORS);
+const connectorsFor = (type: PoolType) => (type === 'clmm' ? CLMM_CONNECTORS : AMM_CONNECTORS);
 
 const quoteSwapRequestSchema = (type: PoolType) =>
   Type.Object(

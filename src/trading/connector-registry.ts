@@ -378,10 +378,16 @@ const AMM_REGISTRY: Record<string, PoolOps> = {
   },
 };
 
-/** Connector names backing each unified trading surface, in schema-enum order. */
+/**
+ * Connector names backing each unified trading surface, in schema-enum order.
+ *
+ * These are the enums the route schemas publish, so the roster a caller can name is
+ * the roster this table can dispatch. They are re-exported from `./common`, which is
+ * where the routes import their shared fields from.
+ */
 export const ROUTER_CONNECTORS = Object.keys(ROUTER_REGISTRY);
-export const CLMM_SWAP_CONNECTORS = Object.keys(CLMM_REGISTRY);
-export const AMM_SWAP_CONNECTORS = Object.keys(AMM_REGISTRY);
+export const CLMM_CONNECTORS = Object.keys(CLMM_REGISTRY);
+export const AMM_CONNECTORS = Object.keys(AMM_REGISTRY);
 
 /** Connectors whose DEX exposes a pool-discovery API (`/trading/clmm/fetch-pools`). */
 export const FETCH_POOLS_CONNECTORS = Object.entries(CLMM_REGISTRY)
@@ -431,6 +437,20 @@ export const getAmmOps = (connector: string, chain: string): PoolOps => lookup(A
 /** Pool-scoped ops for a type that carries them (`clmm` or `amm`). */
 export const getPoolOps = (connector: string, chain: string, type: 'clmm' | 'amm'): PoolOps =>
   type === 'clmm' ? getClmmOps(connector, chain) : getAmmOps(connector, chain);
+
+/**
+ * Reject a connector that does not run on the chain the caller named.
+ *
+ * The pool-scoped swap routes get this check for free: they fetch their ops through
+ * `lookup`, which compares the two. The liquidity routes have no ops to fetch — they
+ * call their connector module directly — so nothing compared them, and the chain half
+ * of `chainNetwork` was decorative. `ethereum-mainnet` with a Solana connector ran that
+ * connector against network `mainnet`, and on a write that submits a transaction the
+ * caller never asked for. Same registry, same message as the swap routes.
+ */
+export const assertConnectorOnChain = (connector: string, chain: string, type: 'clmm' | 'amm'): void => {
+  lookup(type === 'clmm' ? CLMM_REGISTRY : AMM_REGISTRY, connector, type, chain);
+};
 
 export const getFetchPoolsOps = (connector: string, chain: string) => {
   const ops = getClmmOps(connector, chain);

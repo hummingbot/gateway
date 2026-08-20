@@ -14,7 +14,7 @@ import {
   CLMM_CONNECTORS,
   connectorField,
   defaultWallet,
-  parseChainNetwork,
+  resolveChainNetwork,
   rethrowRouteError,
   withIdentifiers,
 } from '../common';
@@ -59,7 +59,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         const { connector, chainNetwork, walletAddress, positionAddress } = request.body;
 
         // Parse chain and network from chainNetwork parameter
-        const { network } = parseChainNetwork(chainNetwork);
+        const { network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
 
         // Route to appropriate connector
         const result = await (async () => {

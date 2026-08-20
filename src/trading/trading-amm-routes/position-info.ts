@@ -12,7 +12,7 @@ import {
   chainNetworkField,
   connectorField,
   defaultWallet,
-  parseChainNetwork,
+  resolveChainNetwork,
   rethrowRouteError,
 } from '../common';
 
@@ -43,7 +43,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { connector, chainNetwork, poolAddress, walletAddress } = request.query;
-        const { network } = parseChainNetwork(chainNetwork);
+        const { network } = resolveChainNetwork(chainNetwork, connector, 'amm');
         switch (connector) {
           case 'meteora':
             return await meteoraGetPositionInfo(network, poolAddress, walletAddress);

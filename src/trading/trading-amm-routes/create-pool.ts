@@ -12,7 +12,7 @@ import {
   chainNetworkField,
   connectorField,
   defaultWallet,
-  parseChainNetwork,
+  resolveChainNetwork,
   rethrowRouteError,
   slippagePctField,
 } from '../common';
@@ -89,7 +89,7 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
         } = request.body;
 
-        const { network } = parseChainNetwork(chainNetwork);
+        const { network } = resolveChainNetwork(chainNetwork, connector, 'amm');
 
         switch (connector) {
           case 'meteora':

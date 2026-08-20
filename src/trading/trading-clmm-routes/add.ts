@@ -14,7 +14,7 @@ import {
   CLMM_CONNECTORS,
   connectorField,
   defaultWallet,
-  parseChainNetwork,
+  resolveChainNetwork,
   rethrowRouteError,
   withIdentifiers,
   slippagePctField,
@@ -98,7 +98,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         } = request.body;
 
         // Parse chain and network from chainNetwork parameter
-        const { network } = parseChainNetwork(chainNetwork);
+        const { network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
 
         // Single-sided deposits are valid; the omitted side deposits 0.
         const baseAmount = baseTokenAmount ?? 0;

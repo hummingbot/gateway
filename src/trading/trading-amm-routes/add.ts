@@ -12,7 +12,7 @@ import {
   chainNetworkField,
   connectorField,
   defaultWallet,
-  parseChainNetwork,
+  resolveChainNetwork,
   rethrowRouteError,
   withIdentifiers,
   slippagePctField,
@@ -71,7 +71,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           positionAddress,
           slippagePct,
         } = request.body;
-        const { network } = parseChainNetwork(chainNetwork);
+        const { network } = resolveChainNetwork(chainNetwork, connector, 'amm');
         const result = await (async () => {
           switch (connector) {
             case 'meteora':

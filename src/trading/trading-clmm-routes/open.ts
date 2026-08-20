@@ -14,7 +14,7 @@ import {
   CLMM_CONNECTORS,
   connectorField,
   defaultWallet,
-  parseChainNetwork,
+  resolveChainNetwork,
   rethrowRouteError,
   withIdentifiers,
   slippagePctField,
@@ -109,7 +109,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         } = request.body;
 
         // Parse chain and network from chainNetwork parameter
-        const { network } = parseChainNetwork(chainNetwork);
+        const { network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
 
         // Same contract as add.ts: single-sided opens are valid, but at least one
         // side must be positive — reject here rather than deep in connector code.

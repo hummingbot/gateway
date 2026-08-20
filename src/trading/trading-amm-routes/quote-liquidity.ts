@@ -11,7 +11,7 @@ import {
   AMM_CONNECTORS,
   chainNetworkField,
   connectorField,
-  parseChainNetwork,
+  resolveChainNetwork,
   rethrowRouteError,
   slippagePctField,
 } from '../common';
@@ -51,7 +51,7 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { connector, chainNetwork, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.query;
-        const { network } = parseChainNetwork(chainNetwork);
+        const { network } = resolveChainNetwork(chainNetwork, connector, 'amm');
         const quote = await (async () => {
           switch (connector) {
             case 'meteora':

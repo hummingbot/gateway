@@ -18,7 +18,7 @@ import {
   CLMM_CONNECTORS,
   connectorField,
   defaultWallet,
-  parseChainNetwork,
+  resolveChainNetwork,
   rethrowRouteError,
 } from '../common';
 
@@ -70,7 +70,7 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
           ammConfigIndex,
         } = request.body;
 
-        const { network } = parseChainNetwork(chainNetwork);
+        const { network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
 
         // EVM V3 fee tiers are denominated in hundredths of a bip; feeBps is the
         // route's one fee vocabulary, so map it (1 bps -> 100).

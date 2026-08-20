@@ -13,6 +13,8 @@ jest.mock('../../../../src/services/config-manager-v2', () => ({
   ConfigManagerV2: {
     getInstance: jest.fn().mockReturnValue({
       get: jest.fn().mockReturnValue(1), // Default slippage
+      // Read at import time by the trading routes to build the chainNetwork enum.
+      getSupportedChainNetworks: jest.fn().mockReturnValue(['solana-devnet', 'solana-mainnet-beta']),
     }),
   },
 }));

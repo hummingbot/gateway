@@ -21,18 +21,22 @@ describe('GET /trading/amm/positions-owned (unified dispatch)', () => {
     await server.close();
   });
 
-  it.each(['raydium', 'uniswap', 'pancakeswap'])(
-    'rejects %s: fungible-LP AMMs have no enumerable positions',
-    async (connector) => {
-      const response = await server.inject({
-        method: 'GET',
-        url: `/positions-owned?connector=${connector}&chainNetwork=solana-mainnet-beta&walletAddress=${WALLET}`,
-      });
+  // Each connector is asked for on the chain it actually runs on. Naming a Solana
+  // chain-network for an Ethereum connector is now rejected as a mismatched pair, which
+  // is a different rejection than the one these cases are about.
+  it.each([
+    ['raydium', 'solana-mainnet-beta'],
+    ['uniswap', 'ethereum-mainnet'],
+    ['pancakeswap', 'ethereum-mainnet'],
+  ])('rejects %s: fungible-LP AMMs have no enumerable positions', async (connector, chainNetwork) => {
+    const response = await server.inject({
+      method: 'GET',
+      url: `/positions-owned?connector=${connector}&chainNetwork=${chainNetwork}&walletAddress=${WALLET}`,
+    });
 
-      expect(response.statusCode).toBe(400);
-      expect(JSON.parse(response.body).message).toMatch(/not supported for .*fungible-LP/);
-    },
-  );
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.body).message).toMatch(/not supported for .*fungible-LP/);
+  });
 
   it('rejects an unsupported AMM connector', async () => {
     const response = await server.inject({
