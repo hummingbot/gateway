@@ -4,6 +4,7 @@ import BN from 'bn.js';
 import Decimal from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { accountLifecycleSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
 import { RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
@@ -84,11 +85,23 @@ export async function removeLiquidity(
       tokenBInfo?.address || poolInfo.mintB.address,
     ]);
 
-    const baseTokenBalanceChange = balanceChanges[0];
-    const quoteTokenBalanceChange = balanceChanges[1];
+    // A 100% removal closes the position and its NFT account in the same transaction, so
+    // their rent comes back inside the native side of this change. It is not liquidity.
+    // A partial removal closes nothing and this is a no-op.
+    const { closed } = accountLifecycleSol(txData);
+    const baseTokenBalanceChange = liquidityWithoutRent(
+      balanceChanges[0],
+      new PublicKey(tokenAInfo?.address || poolInfo.mintA.address),
+      closed,
+    );
+    const quoteTokenBalanceChange = liquidityWithoutRent(
+      balanceChanges[1],
+      new PublicKey(tokenBInfo?.address || poolInfo.mintB.address),
+      closed,
+    );
 
     logger.info(
-      `Liquidity removed from position ${positionAddress}: ${Math.abs(baseTokenBalanceChange).toFixed(4)} ${poolInfo.mintA.symbol}, ${Math.abs(quoteTokenBalanceChange).toFixed(4)} ${poolInfo.mintB.symbol}`,
+      `Liquidity removed from position ${positionAddress}: ${baseTokenBalanceChange.toFixed(4)} ${poolInfo.mintA.symbol}, ${quoteTokenBalanceChange.toFixed(4)} ${poolInfo.mintB.symbol}`,
     );
 
     const totalFee = txData.meta.fee;
@@ -101,8 +114,8 @@ export async function removeLiquidity(
         // come from without a second lookup.
         poolAddress: positionInfo.poolId.toBase58(),
         fee: totalFee / 1e9,
-        baseTokenAmountRemoved: Math.abs(baseTokenBalanceChange),
-        quoteTokenAmountRemoved: Math.abs(quoteTokenBalanceChange),
+        baseTokenAmountRemoved: baseTokenBalanceChange,
+        quoteTokenAmountRemoved: quoteTokenBalanceChange,
       },
     };
   } else {

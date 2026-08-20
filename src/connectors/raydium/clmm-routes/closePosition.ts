@@ -2,6 +2,7 @@ import { TxVersion } from '@raydium-io/raydium-sdk-v2';
 import { PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { liquidityWithoutRent } from '../../../chains/solana/solana.utils';
 import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -36,18 +37,25 @@ export async function closePosition(
 
       if (removeLiquidityResponse.status === 1 && removeLiquidityResponse.data) {
         // Use the new helper to extract balance changes including SOL handling
-        const { baseTokenChange, quoteTokenChange, rent } = await solana.extractClmmBalanceChanges(
+        const { baseTokenChange, quoteTokenChange, rent, accountSol } = await solana.extractClmmBalanceChanges(
           removeLiquidityResponse.signature,
           walletAddress,
           baseTokenInfo,
           quoteTokenInfo,
         );
 
-        // The total balance change includes both liquidity removal and fee collection
-        // Since we know the liquidity amounts from removeLiquidity response,
-        // we can calculate the fee amounts
-        const baseFeeCollected = Math.abs(baseTokenChange) - removeLiquidityResponse.data.baseTokenAmountRemoved;
-        const quoteFeeCollected = Math.abs(quoteTokenChange) - removeLiquidityResponse.data.quoteTokenAmountRemoved;
+        // The total balance change includes both liquidity removal and fee collection.
+        // Since we know the liquidity amounts from the removeLiquidity response, the fee
+        // is the difference — but only if both sides are measured the same way. The
+        // removal already took the closed accounts' lamports off its native side, so this
+        // one has to as well; measuring one net of rent against the other gross of it
+        // would book the rent as fee income.
+        const baseFeeCollected =
+          liquidityWithoutRent(baseTokenChange, new PublicKey(baseTokenInfo.address), accountSol) -
+          removeLiquidityResponse.data.baseTokenAmountRemoved;
+        const quoteFeeCollected =
+          liquidityWithoutRent(quoteTokenChange, new PublicKey(quoteTokenInfo.address), accountSol) -
+          removeLiquidityResponse.data.quoteTokenAmountRemoved;
 
         return {
           signature: removeLiquidityResponse.signature,
