@@ -38,7 +38,15 @@ jest.mock('../../../../src/connectors/orca/orca.sdk', () => ({
 const POOL = 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE';
 const SOL = 'So11111111111111111111111111111111111111112';
 const USDC = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
-const QUOTE = { liquidityDelta: 500_000n, tokenEstA: 1_000_000_000n, tokenEstB: 200_000_000n };
+// tokenMax* is what increaseLiquidityQuote* returns after applying slippage to tokenEst*;
+// they are kept distinct here so a test cannot pass on the wrong one by accident.
+const QUOTE = {
+  liquidityDelta: 500_000n,
+  tokenEstA: 1_000_000_000n,
+  tokenEstB: 200_000_000n,
+  tokenMaxA: 1_010_000_000n,
+  tokenMaxB: 202_000_000n,
+};
 
 /** The Orca and Solana surface addLiquidity actually touches. */
 const seedConnector = ({ added = [1, 200] as [number, number] } = {}) => {
@@ -95,6 +103,35 @@ describe('POST /add-liquidity', () => {
   });
 
   describe('successful liquidity addition', () => {
+    // The builder applies slippageToleranceBps itself, so handing it the quote's already
+    // inflated ceiling makes the ceiling the target. Found on a one-sided open, where
+    // 1 USDC funded deposited 1.009999; an add to an existing position ran the same
+    // arithmetic, and its own log line has always reported tokenEst*.
+    it('deposits the quoted estimate, not the slippage ceiling', async () => {
+      seedConnector();
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/add',
+        payload: {
+          chainNetwork: 'solana-mainnet-beta',
+          connector: 'orca',
+          walletAddress: mockWalletAddress,
+          positionAddress: mockPositionAddress,
+          baseTokenAmount: 1.0,
+          slippagePct: 1,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(mockIncreaseLiquidity).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        { tokenMaxA: QUOTE.tokenEstA, tokenMaxB: QUOTE.tokenEstB },
+        expect.objectContaining({ slippageToleranceBps: expect.any(Number) }),
+      );
+    });
+
     it('should add liquidity with base token amount', async () => {
       seedConnector();
 

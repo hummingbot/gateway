@@ -98,7 +98,12 @@ export async function addLiquidity(
   const result = await increaseLiquidityInstructions(
     orca.solanaKitRpc,
     position.data.positionMint,
-    { tokenMaxA: quote.tokenMaxA, tokenMaxB: quote.tokenMaxB },
+    // The estimates, not the quote's ceilings — the same correction as openPosition.
+    // increaseLiquidityQuote* already applied slippageBps to produce tokenMax*, and this
+    // builder applies slippageToleranceBps again to derive the on-chain maximums, so
+    // passing tokenMax* deposits slippagePct more than was asked for. The log line above
+    // has always reported tokenEst*, which is what the transaction should be spending.
+    { tokenMaxA: quote.tokenEstA, tokenMaxB: quote.tokenEstB },
     {
       authority: createOrcaAuthority(walletAddress),
       slippageToleranceBps: slippageBps,

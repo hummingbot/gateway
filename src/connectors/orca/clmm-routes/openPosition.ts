@@ -139,7 +139,14 @@ export async function openPosition(
     const generated = await openPositionInstructionsWithTickBounds(
       rpc,
       whirlpool.address,
-      { tokenMaxA: liquidityQuote.tokenMaxA, tokenMaxB: liquidityQuote.tokenMaxB },
+      // The estimates, not the quote's ceilings. increaseLiquidityQuote{A,B} already
+      // applied slippageBps to produce tokenMax*, and the builder applies
+      // slippageToleranceBps again below to derive the on-chain maximums — so passing
+      // tokenMax* here makes the ceiling the target and deposits slippagePct more than
+      // was asked for. A one-sided open showed it plainly: 1 USDC funded deposited
+      // 1.009999. A two-sided one hides it, because the pool ratio pins the deposit
+      // before the bound is reached.
+      { tokenMaxA: liquidityQuote.tokenEstA, tokenMaxB: liquidityQuote.tokenEstB },
       lowerTickIndex,
       upperTickIndex,
       {

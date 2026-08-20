@@ -130,7 +130,11 @@ describe('openPosition', () => {
     expect(openPositionInstructionsWithTickBounds).toHaveBeenCalledWith(
       expect.any(Object),
       POOL,
-      { tokenMaxA: 1_000_000_000n, tokenMaxB: 45_000_000n },
+      // tokenEst*, not the quote's tokenMax*. The mock deliberately differs between the
+      // two (900M/40M against 1000M/45M) so this cannot pass on either by accident:
+      // handing the ceiling to the builder deposits the slippage bound instead of the
+      // amount the caller asked for.
+      { tokenMaxA: 900_000_000n, tokenMaxB: 40_000_000n },
       1,
       2,
       expect.objectContaining({ funder: expect.objectContaining({ address: WALLET }) }),
