@@ -11,8 +11,11 @@ import path from 'path';
  * `network` and neither `connector` nor `chainNetwork`. A client generated from those was
  * wrong the same way for every route.
  *
- * These read the committed spec rather than building the app, so they also catch a spec
- * that was not regenerated after a route changed.
+ * These read the committed spec rather than building the app, which means they check the
+ * document consumers actually generate from — and equally means they cannot notice that
+ * it is stale. A route change with no regeneration leaves every case here passing.
+ * Catching that needs regeneration and a comparison, which is the `Check openapi.json is
+ * regenerated` step in CI, not a test.
  */
 const spec = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../openapi.json'), 'utf8'));
 const components: Record<string, any> = spec.components?.schemas ?? {};
@@ -58,6 +61,25 @@ const componentsForGet = (params: string[]): string[] =>
 
 const componentForGet = (params: string[]): string | undefined => componentsForGet(params)[0];
 
+/**
+ * The component name a `/trading` GET must publish, derived from its own path.
+ *
+ * Matching by shape alone cannot tell twins apart: `/trading/amm/quote-swap` and
+ * `/trading/clmm/quote-swap` have identical query fields, as do the two positions-owned
+ * reads. Removing one twin's `$id` therefore left every case here passing, because the
+ * other still matched — the component vanished from the spec and nothing said so. A name
+ * is unique, so this pins each read to the class a client will actually reach for.
+ */
+const expectedComponentName = (route: string): string => {
+  const [, , type, operation] = route.split('/');
+  const pascal = (value: string) =>
+    value
+      .split('-')
+      .map((word) => word[0].toUpperCase() + word.slice(1))
+      .join('');
+  return `${pascal(type)}${pascal(operation)}Request`;
+};
+
 describe('OpenAPI request bodies are generatable', () => {
   it('names every /trading request body as a component', () => {
     const unnamed = requestBodies()
@@ -101,10 +123,18 @@ describe('OpenAPI request bodies are generatable', () => {
   // by pre-refactor bases carrying `network` and no `connector`.
   it.each(tradingGets().map(({ route, params }) => [route, params]))(
     'GET %s publishes a component matching its query',
-    (_route, params) => {
-      const component = componentForGet(params as string[]);
-      expect(component).toBeDefined();
-      const props = propsOf(component!);
+    (route, params) => {
+      // By name first: the name is what a generated client imports, and it is the half a
+      // shape match cannot check, because two reads can share a shape.
+      const name = expectedComponentName(route as string);
+      expect(Object.keys(components)).toContain(name);
+
+      // Then by shape, so the right name cannot be published over the wrong fields —
+      // which is the trap GW-10 found, with `ClmmQuoteSwapRequest` held by a pre-refactor
+      // base carrying `network` and no `connector`.
+      expect(propsOf(name)).toEqual(params as string[]);
+
+      const props = propsOf(name);
       expect(props).toContain('connector');
       expect(props).toContain('chainNetwork');
       expect(props).not.toContain('network');

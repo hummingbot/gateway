@@ -17,14 +17,66 @@ import path from 'path';
 // importing the app.
 process.env.GATEWAY_TEST_MODE = 'dev';
 
+/**
+ * The port the shipped template configures, rather than the one this machine runs on.
+ *
+ * `servers[0].url` is built from `server.port`, so a developer who moved Gateway off the
+ * default wrote their port into the committed spec — the same way the wallet defaults
+ * were written in, and with the same effect: the artifact could not match what another
+ * machine produces.
+ */
+function templateServerPort(): number {
+  const template = fs.readFileSync(path.resolve(__dirname, '..', 'src', 'templates', 'server.yml'), 'utf8');
+  const match = template.match(/^port:\s*(\d+)/m);
+  if (!match) {
+    throw new Error("No `port` in src/templates/server.yml; the spec would carry this machine's port.");
+  }
+  return Number(match[1]);
+}
+
+/**
+ * Replace this machine's configured wallets with the placeholders the templates ship.
+ *
+ * The execute routes default `walletAddress` to the chain config's `defaultWallet`, which
+ * is right at runtime — a caller who omits it means "the wallet I configured" — and wrong
+ * in a committed artifact. The spec is checked in and vendored by consumers, so whoever
+ * regenerated it last had their address published, and the file could never match what
+ * another machine or CI produces. `src/templates/chains/*.yml` already use these
+ * placeholders; this makes the artifact agree with them.
+ */
+function withoutLocalWallets(json: string): string {
+  const placeholders: Array<[string, string]> = [];
+
+  try {
+    const { getSolanaChainConfig } = require('../src/chains/solana/solana.config');
+    placeholders.push([getSolanaChainConfig().defaultWallet, '<solana-wallet-address>']);
+  } catch {
+    // No Solana config here; nothing of its to redact.
+  }
+  try {
+    const { getEthereumChainConfig } = require('../src/chains/ethereum/ethereum.config');
+    placeholders.push([getEthereumChainConfig().defaultWallet, '<ethereum-wallet-address>']);
+  } catch {
+    // Likewise for Ethereum.
+  }
+
+  return placeholders.reduce(
+    (text, [wallet, placeholder]) => (wallet && !wallet.startsWith('<') ? text.split(wallet).join(placeholder) : text),
+    json,
+  );
+}
+
 async function main() {
   const { gatewayApp } = await import('../src/app');
 
   await gatewayApp.ready();
   const spec = (gatewayApp as any).swagger();
 
+  // The document describes Gateway, not this checkout of it.
+  spec.servers = [{ url: `http://localhost:${templateServerPort()}` }];
+
   const outPath = path.resolve(__dirname, '..', 'openapi.json');
-  fs.writeFileSync(outPath, `${JSON.stringify(spec, null, 2)}\n`);
+  fs.writeFileSync(outPath, `${withoutLocalWallets(JSON.stringify(spec, null, 2))}\n`);
 
   const paths = Object.keys(spec.paths ?? {});
   console.log(`OpenAPI spec written to ${outPath} (${paths.length} paths)`);

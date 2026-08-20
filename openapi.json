@@ -1607,7 +1607,7 @@
           },
           "walletAddress": {
             "description": "Wallet address (pool creator + payer)",
-            "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+            "default": "<solana-wallet-address>",
             "type": "string"
           },
           "baseToken": {
@@ -1704,7 +1704,7 @@
           },
           "walletAddress": {
             "description": "Wallet address",
-            "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+            "default": "<solana-wallet-address>",
             "type": "string"
           },
           "poolAddress": {
@@ -1785,7 +1785,7 @@
           },
           "walletAddress": {
             "description": "Wallet address",
-            "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+            "default": "<solana-wallet-address>",
             "type": "string"
           },
           "poolAddress": {
@@ -1916,7 +1916,7 @@
           },
           "walletAddress": {
             "description": "Wallet address",
-            "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+            "default": "<solana-wallet-address>",
             "type": "string"
           }
         },
@@ -1966,7 +1966,7 @@
           },
           "walletAddress": {
             "description": "Wallet address to list positions for",
-            "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+            "default": "<solana-wallet-address>",
             "type": "string"
           }
         },
@@ -2085,7 +2085,7 @@
           },
           "walletAddress": {
             "description": "Wallet address",
-            "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+            "default": "<solana-wallet-address>",
             "type": "string"
           },
           "lowerPrice": {
@@ -2184,7 +2184,7 @@
           },
           "walletAddress": {
             "description": "Wallet address",
-            "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+            "default": "<solana-wallet-address>",
             "type": "string"
           },
           "positionAddress": {
@@ -2269,7 +2269,7 @@
           },
           "walletAddress": {
             "description": "Wallet address",
-            "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+            "default": "<solana-wallet-address>",
             "type": "string"
           },
           "positionAddress": {
@@ -2344,7 +2344,7 @@
           },
           "walletAddress": {
             "description": "Wallet address",
-            "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+            "default": "<solana-wallet-address>",
             "type": "string"
           },
           "positionAddress": {
@@ -2401,7 +2401,7 @@
           },
           "walletAddress": {
             "description": "Wallet address",
-            "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+            "default": "<solana-wallet-address>",
             "type": "string"
           },
           "positionAddress": {
@@ -2458,7 +2458,7 @@
           },
           "walletAddress": {
             "description": "Wallet address (pool creator + payer)",
-            "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+            "default": "<solana-wallet-address>",
             "type": "string"
           },
           "baseToken": {
@@ -2747,7 +2747,7 @@
           },
           "walletAddress": {
             "description": "Wallet address",
-            "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+            "default": "<solana-wallet-address>",
             "type": "string"
           }
         },
@@ -2884,7 +2884,7 @@
           },
           "walletAddress": {
             "description": "Wallet address that will execute the quote",
-            "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+            "default": "<solana-wallet-address>",
             "type": "string"
           },
           "quoteId": {
@@ -2940,7 +2940,7 @@
           },
           "walletAddress": {
             "description": "Wallet address that will execute the swap",
-            "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+            "default": "<solana-wallet-address>",
             "type": "string"
           },
           "baseToken": {
@@ -3308,7 +3308,7 @@
           },
           "walletAddress": {
             "description": "Wallet address that will execute the swap",
-            "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+            "default": "<solana-wallet-address>",
             "type": "string"
           },
           "baseToken": {
@@ -3399,7 +3399,7 @@
           },
           "walletAddress": {
             "description": "Wallet address that will execute the swap",
-            "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+            "default": "<solana-wallet-address>",
             "type": "string"
           },
           "baseToken": {
@@ -3473,7 +3473,7 @@
           },
           "address": {
             "description": "Ethereum wallet address",
-            "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+            "default": "<ethereum-wallet-address>",
             "type": "string"
           },
           "spender": {
@@ -3522,7 +3522,7 @@
           },
           "address": {
             "description": "Ethereum wallet address",
-            "default": "0xDA50C69342216b538Daf06FfECDa7363E0B96684",
+            "default": "<ethereum-wallet-address>",
             "type": "string"
           },
           "spender": {
@@ -6117,7 +6117,7 @@
           },
           {
             "schema": {
-              "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+              "default": "<solana-wallet-address>",
               "type": "string"
             },
             "in": "query",
@@ -6916,7 +6916,7 @@
           },
           {
             "schema": {
-              "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+              "default": "<solana-wallet-address>",
               "type": "string"
             },
             "in": "query",
@@ -6992,7 +6992,7 @@
           },
           {
             "schema": {
-              "default": "82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5",
+              "default": "<solana-wallet-address>",
               "type": "string"
             },
             "in": "query",
@@ -7795,7 +7795,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:15889"
+      "url": "http://localhost:15888"
     }
   ],
   "tags": [
