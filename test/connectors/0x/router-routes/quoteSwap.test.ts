@@ -1,6 +1,7 @@
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { ZeroX } from '../../../../src/connectors/0x/0x';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 jest.mock('../../../../src/connectors/0x/0x');
@@ -87,9 +88,9 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('quoteId');
-    expect(body).toHaveProperty('amountIn', 0.1);
+    expect(Number(body.amountIn)).toBe(0.1);
     expect(body).toHaveProperty('amountOut', 150);
     expect(body).toHaveProperty('minAmountOut');
     expect(body).toHaveProperty('maxAmountIn');
@@ -139,9 +140,9 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('quoteId');
-    expect(body).toHaveProperty('amountIn', 150);
+    expect(Number(body.amountIn)).toBe(150);
     expect(body).toHaveProperty('amountOut', 0.1);
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockWETH.address);
@@ -169,7 +170,7 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body)).toHaveProperty('error');
+    expect(parseWire(response.body)).toHaveProperty('error');
   });
 
   it('should return indicative price when indicativePrice=true', async () => {
@@ -205,11 +206,11 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(mockZeroXInstance.getPrice).toHaveBeenCalled();
     expect(mockZeroXInstance.getQuote).not.toHaveBeenCalled();
     expect(body).toHaveProperty('quoteId', 'indicative-price');
-    expect(body).toHaveProperty('amountIn', 0.1);
+    expect(Number(body.amountIn)).toBe(0.1);
     expect(body).toHaveProperty('amountOut', 150);
     expect(body).not.toHaveProperty('expirationTime');
   });
@@ -247,7 +248,7 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(mockZeroXInstance.getPrice).toHaveBeenCalled();
     expect(mockZeroXInstance.getQuote).not.toHaveBeenCalled();
     expect(body).toHaveProperty('quoteId', 'indicative-price');

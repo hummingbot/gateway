@@ -2,6 +2,7 @@ import { BigNumber } from 'ethers';
 
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 jest.mock('../../../../src/connectors/pancakeswap/pancakeswap');
@@ -113,10 +114,10 @@ describe('GET /pool-info (PancakeSwap CLMM)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     expect(body.address).toBe(POOL_ADDRESS);
-    expect(body.feePct).toBeCloseTo(0.25, 6);
+    expect(Number(body.feePct)).toBeCloseTo(0.25, 6);
     expect(body.binStep).toBe(50);
     expect(body.activeBinId).toBe(-64000);
 
@@ -142,7 +143,7 @@ describe('GET /pool-info (PancakeSwap CLMM)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body).bins).toBeUndefined();
+    expect(parseWire(response.body).bins).toBeUndefined();
     expect(computeV3BinDistribution).not.toHaveBeenCalled();
   });
 
@@ -157,7 +158,7 @@ describe('GET /pool-info (PancakeSwap CLMM)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body.bins).toHaveLength(11);
     expect(body.bins[0]).toEqual({ binId: -64000, price: 600, baseTokenAmount: 10, quoteTokenAmount: 20 });
 

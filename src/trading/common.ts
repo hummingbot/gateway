@@ -2,6 +2,7 @@ import { Type } from '@sinclair/typebox';
 
 import { getEthereumChainConfig, getEthereumNetworkConfig } from '../chains/ethereum/ethereum.config';
 import { getSolanaChainConfig, getSolanaNetworkConfig } from '../chains/solana/solana.config';
+import { DecimalNumber } from '../schemas/decimal-field';
 import { parseChainNetwork as parseChainNetworkParts } from '../services/chain-network';
 import { httpErrors } from '../services/error-handler';
 import { logger } from '../services/logger';

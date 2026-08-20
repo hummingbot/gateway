@@ -4,6 +4,7 @@ import { BigNumber } from 'ethers';
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { Uniswap } from '../../../../src/connectors/uniswap/uniswap';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 jest.mock('../../../../src/connectors/uniswap/uniswap');
@@ -99,7 +100,7 @@ describe('POST /collect-fees (Uniswap V3 CLMM) — transaction confirmation', ()
     const response = await collect(server);
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body.signature).toBe(txHash);
     expect(body.status).toBe(0); // TransactionStatus.PENDING
     // No fabricated amounts: nothing has been collected yet.
@@ -117,7 +118,7 @@ describe('POST /collect-fees (Uniswap V3 CLMM) — transaction confirmation', ()
     const response = await collect(server);
 
     expect(response.statusCode).toBe(400);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body.message).toContain(txHash);
     expect(body.message).toMatch(/reverted on-chain/);
     // The pre-send fee amounts must not appear anywhere in the response.
@@ -136,10 +137,10 @@ describe('POST /collect-fees (Uniswap V3 CLMM) — transaction confirmation', ()
     const response = await collect(server);
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body.signature).toBe(txHash);
     expect(body.status).toBe(1); // TransactionStatus.CONFIRMED
-    expect(body.data.fee).toBe(0.000021);
+    expect(Number(body.data.fee)).toBe(0.000021);
     expect(body.data.baseFeeAmountCollected).toBe(0.001);
     expect(body.data.quoteFeeAmountCollected).toBe(2);
   });

@@ -4,6 +4,7 @@ import { Address } from 'viem';
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { PancakeswapConfig } from '../../../../src/connectors/pancakeswap/pancakeswap.config';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 jest.mock('../../../../src/connectors/pancakeswap/pancakeswap.config');
@@ -212,9 +213,9 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('poolAddress', mockPoolAddress);
-    expect(body).toHaveProperty('amountIn', 0.1);
+    expect(Number(body.amountIn)).toBe(0.1);
     expect(body).toHaveProperty('amountOut');
     expect(body).toHaveProperty('minAmountOut');
     expect(body).toHaveProperty('maxAmountIn', 0.1);
@@ -360,10 +361,10 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('poolAddress', mockPoolAddress);
     expect(body).toHaveProperty('amountIn');
-    expect(body).toHaveProperty('amountOut', 150);
+    expect(Number(body.amountOut)).toBe(150);
     expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockWBNB.address);
@@ -434,6 +435,6 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(400); // Returns 400 for invalid token
-    expect(JSON.parse(response.body)).toHaveProperty('error');
+    expect(parseWire(response.body)).toHaveProperty('error');
   });
 });

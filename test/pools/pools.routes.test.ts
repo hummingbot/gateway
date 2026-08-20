@@ -53,6 +53,7 @@ import { CoinGeckoService } from '../../src/services/coingecko-service';
 import { PoolService } from '../../src/services/pool-service';
 import { TokenService } from '../../src/services/token-service';
 import { fastifyWithTypeProvider } from '../utils/testUtils';
+import { parseWire } from '../utils/wire';
 
 describe('Pool Routes Tests', () => {
   let fastify: FastifyInstance;
@@ -188,7 +189,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toEqual(mockPools);
+      expect(parseWire(response.payload)).toEqual(mockPools);
       expect(mockPoolService.listPools).toHaveBeenCalledWith('solana', 'mainnet-beta', undefined, undefined, undefined);
     });
 
@@ -215,7 +216,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toEqual(mockPools);
+      expect(parseWire(response.payload)).toEqual(mockPools);
       expect(mockPoolService.listPools).toHaveBeenCalledWith('solana', 'mainnet-beta', 'raydium', 'clmm', undefined);
     });
 
@@ -242,7 +243,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toEqual(mockPools);
+      expect(parseWire(response.payload)).toEqual(mockPools);
       expect(mockPoolService.listPools).toHaveBeenCalledWith('solana', 'mainnet-beta', undefined, undefined, 'SOL');
     });
 
@@ -255,7 +256,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(400);
-      expect(JSON.parse(response.payload)).toHaveProperty('message');
+      expect(parseWire(response.payload)).toHaveProperty('message');
     });
   });
 
@@ -281,7 +282,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toEqual(mockPool);
+      expect(parseWire(response.payload)).toEqual(mockPool);
       expect(mockPoolService.getPool).toHaveBeenCalledWith('solana', 'mainnet-beta', 'amm', 'SOL', 'USDC', 'raydium');
     });
 
@@ -294,7 +295,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(404);
-      expect(JSON.parse(response.payload)).toHaveProperty('message');
+      expect(parseWire(response.payload)).toHaveProperty('message');
     });
 
     it('should return 400 for invalid trading pair format', async () => {
@@ -304,8 +305,8 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(400);
-      expect(JSON.parse(response.payload)).toHaveProperty('message');
-      expect(JSON.parse(response.payload).message).toContain('Invalid trading pair format');
+      expect(parseWire(response.payload)).toHaveProperty('message');
+      expect(parseWire(response.payload).message).toContain('Invalid trading pair format');
     });
   });
 
@@ -332,8 +333,8 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toHaveProperty('message');
-      expect(JSON.parse(response.payload).message).toContain('Pool WIF-SOL');
+      expect(parseWire(response.payload)).toHaveProperty('message');
+      expect(parseWire(response.payload).message).toContain('Pool WIF-SOL');
 
       // Verify addPool was called with chain, network, and pool data
       expect(mockPoolService.addPool).toHaveBeenCalledWith(
@@ -385,7 +386,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toHaveProperty('message');
+      expect(parseWire(response.payload)).toHaveProperty('message');
       expect(mockPoolService.updatePool).toHaveBeenCalled();
     });
 
@@ -415,8 +416,8 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(JSON.parse(response.payload)).toHaveProperty('message');
-      expect(JSON.parse(response.payload).message).toContain('Pool with address');
+      expect(parseWire(response.payload)).toHaveProperty('message');
+      expect(parseWire(response.payload).message).toContain('Pool with address');
 
       expect(mockPoolService.removePool).toHaveBeenCalledWith(
         'solana',
@@ -434,7 +435,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(404);
-      expect(JSON.parse(response.payload)).toHaveProperty('message');
+      expect(parseWire(response.payload)).toHaveProperty('message');
     });
 
     it('should return 400 for missing required parameters', async () => {
@@ -518,7 +519,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const result = JSON.parse(response.payload);
+      const result = parseWire(response.payload);
 
       // Verify response is in PoolInfo format
       expect(result).toHaveLength(2);
@@ -560,7 +561,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const result = JSON.parse(response.payload);
+      const result = parseWire(response.payload);
       expect(result).toEqual([]);
     });
 
@@ -571,7 +572,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(400);
-      expect(JSON.parse(response.payload).message).toContain('Unsupported chainNetwork format');
+      expect(parseWire(response.payload).message).toContain('Unsupported chainNetwork format');
     });
 
     it('should return 500 on service error', async () => {
@@ -583,7 +584,7 @@ describe('Pool Routes Tests', () => {
       });
 
       expect(response.statusCode).toBe(500);
-      expect(JSON.parse(response.payload).message).toContain('Failed to fetch pools from GeckoTerminal');
+      expect(parseWire(response.payload).message).toContain('Failed to fetch pools from GeckoTerminal');
     });
   });
 });

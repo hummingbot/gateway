@@ -1,5 +1,7 @@
 import { Type, Static } from '@sinclair/typebox';
 
+import { DecimalNumber } from './decimal-field';
+
 export const FetchPoolsRequest = Type.Object(
   {
     network: Type.Optional(Type.String({ description: 'Network to use' })),
@@ -39,39 +41,32 @@ export const PoolListItemSchema = Type.Object(
     quoteTokenAddress: Type.String({ description: 'Quote token address' }),
     quoteTokenSymbol: Type.String({ description: 'Quote token symbol' }),
     binStep: Type.Number({ description: 'Bin step / tick spacing' }),
-    baseFee: Type.Number({
-      format: 'decimal',
+    baseFee: DecimalNumber({
       description: 'Base fee percentage',
     }),
-    price: Type.Number({
-      format: 'decimal',
+    price: DecimalNumber({
       description: 'Current price',
     }),
-    tvl: Type.Number({
-      format: 'decimal',
+    tvl: DecimalNumber({
       description: 'Total value locked in USD',
     }),
     apr: Type.Optional(
-      Type.Number({
-        format: 'decimal',
+      DecimalNumber({
         description: 'Annual percentage rate',
       }),
     ),
     apy: Type.Optional(
-      Type.Number({
-        format: 'decimal',
+      DecimalNumber({
         description: 'Annual percentage yield',
       }),
     ),
     volume24h: Type.Optional(
-      Type.Number({
-        format: 'decimal',
+      DecimalNumber({
         description: '24-hour trading volume',
       }),
     ),
     fees24h: Type.Optional(
-      Type.Number({
-        format: 'decimal',
+      DecimalNumber({
         description: '24-hour fees collected',
       }),
     ),
@@ -106,9 +101,9 @@ export type GetPositionsOwnedRequestType = Static<typeof GetPositionsOwnedReques
 export const BinLiquiditySchema = Type.Object(
   {
     binId: Type.Number(),
-    price: Type.Number({ format: 'decimal' }),
-    baseTokenAmount: Type.Number({ format: 'decimal' }),
-    quoteTokenAmount: Type.Number({ format: 'decimal' }),
+    price: DecimalNumber({}),
+    baseTokenAmount: DecimalNumber({}),
+    quoteTokenAmount: DecimalNumber({}),
   },
   { $id: 'BinLiquidity' },
 );
@@ -124,10 +119,10 @@ export const PoolInfoSchema = Type.Object(
     baseTokenAddress: Type.String(),
     quoteTokenAddress: Type.String(),
     binStep: Type.Optional(Type.Number()), // Optional - Meteora-specific
-    feePct: Type.Number({ format: 'decimal' }),
-    price: Type.Number({ format: 'decimal' }),
-    baseTokenAmount: Type.Number({ format: 'decimal' }),
-    quoteTokenAmount: Type.Number({ format: 'decimal' }),
+    feePct: DecimalNumber({}),
+    price: DecimalNumber({}),
+    baseTokenAmount: DecimalNumber({}),
+    quoteTokenAmount: DecimalNumber({}),
     activeBinId: Type.Number(),
     bins: Type.Optional(Type.Array(BinLiquiditySchema)),
   },
@@ -179,15 +174,15 @@ export const PositionInfoSchema = Type.Object(
     poolAddress: Type.String(),
     baseTokenAddress: Type.String(),
     quoteTokenAddress: Type.String(),
-    baseTokenAmount: Type.Number({ format: 'decimal' }),
-    quoteTokenAmount: Type.Number({ format: 'decimal' }),
-    baseFeeAmount: Type.Number({ format: 'decimal' }),
-    quoteFeeAmount: Type.Number({ format: 'decimal' }),
+    baseTokenAmount: DecimalNumber({}),
+    quoteTokenAmount: DecimalNumber({}),
+    baseFeeAmount: DecimalNumber({}),
+    quoteFeeAmount: DecimalNumber({}),
     lowerBinId: Type.Number(),
     upperBinId: Type.Number(),
-    lowerPrice: Type.Number({ format: 'decimal' }),
-    upperPrice: Type.Number({ format: 'decimal' }),
-    price: Type.Number({ format: 'decimal' }),
+    lowerPrice: DecimalNumber({}),
+    upperPrice: DecimalNumber({}),
+    price: DecimalNumber({}),
   },
   { $id: 'ClmmPositionInfo' },
 );
@@ -237,15 +232,15 @@ export const OpenPositionResponse = Type.Object(
     data: Type.Optional(
       Type.Object(
         {
-          fee: Type.Number({ format: 'decimal' }),
+          fee: DecimalNumber({}),
           // The venue this write touched. Echoed so a stored record identifies its pool
           // without the request that produced it — the same reason the swap execute
           // responses carry it.
           poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
           positionAddress: Type.String(),
-          positionRent: Type.Number({ format: 'decimal' }),
-          baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
-          quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
+          positionRent: DecimalNumber({}),
+          baseTokenAmountAdded: DecimalNumber({}),
+          quoteTokenAmountAdded: DecimalNumber({}),
         },
         { $id: 'ClmmOpenPositionResponseData' },
       ),
@@ -285,14 +280,14 @@ export const AddLiquidityResponse = Type.Object(
     data: Type.Optional(
       Type.Object(
         {
-          fee: Type.Number({ format: 'decimal' }),
+          fee: DecimalNumber({}),
           // The venue this write touched. Echoed so a stored record identifies its pool
           // without the request that produced it — the same reason the swap execute
           // responses carry it.
           poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
           positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
-          baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
-          quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
+          baseTokenAmountAdded: DecimalNumber({}),
+          quoteTokenAmountAdded: DecimalNumber({}),
         },
         { $id: 'ClmmAddLiquidityResponseData' },
       ),
@@ -328,14 +323,14 @@ export const RemoveLiquidityResponse = Type.Object(
     data: Type.Optional(
       Type.Object(
         {
-          fee: Type.Number({ format: 'decimal' }),
+          fee: DecimalNumber({}),
           // The venue this write touched. Echoed so a stored record identifies its pool
           // without the request that produced it — the same reason the swap execute
           // responses carry it.
           poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
           positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
-          baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
-          quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),
+          baseTokenAmountRemoved: DecimalNumber({}),
+          quoteTokenAmountRemoved: DecimalNumber({}),
         },
         { $id: 'ClmmRemoveLiquidityResponseData' },
       ),
@@ -366,14 +361,14 @@ export const CollectFeesResponse = Type.Object(
     data: Type.Optional(
       Type.Object(
         {
-          fee: Type.Number({ format: 'decimal' }),
+          fee: DecimalNumber({}),
           // The venue this write touched. Echoed so a stored record identifies its pool
           // without the request that produced it — the same reason the swap execute
           // responses carry it.
           poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
           positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
-          baseFeeAmountCollected: Type.Number({ format: 'decimal' }),
-          quoteFeeAmountCollected: Type.Number({ format: 'decimal' }),
+          baseFeeAmountCollected: DecimalNumber({}),
+          quoteFeeAmountCollected: DecimalNumber({}),
         },
         { $id: 'ClmmCollectFeesResponseData' },
       ),
@@ -404,17 +399,17 @@ export const ClosePositionResponse = Type.Object(
     data: Type.Optional(
       Type.Object(
         {
-          fee: Type.Number({ format: 'decimal' }),
+          fee: DecimalNumber({}),
           // The venue this write touched. Echoed so a stored record identifies its pool
           // without the request that produced it — the same reason the swap execute
           // responses carry it.
           poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
           positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
-          positionRentRefunded: Type.Number({ format: 'decimal' }),
-          baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
-          quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),
-          baseFeeAmountCollected: Type.Number({ format: 'decimal' }),
-          quoteFeeAmountCollected: Type.Number({ format: 'decimal' }),
+          positionRentRefunded: DecimalNumber({}),
+          baseTokenAmountRemoved: DecimalNumber({}),
+          quoteTokenAmountRemoved: DecimalNumber({}),
+          baseFeeAmountCollected: DecimalNumber({}),
+          quoteFeeAmountCollected: DecimalNumber({}),
         },
         { $id: 'ClmmClosePositionResponseData' },
       ),
@@ -486,8 +481,7 @@ export const CreatePoolResponse = Type.Object(
     status: Type.Number({ description: 'TransactionStatus enum value' }),
     poolAddress: Type.String({ description: 'Address of the newly created pool' }),
     price: Type.Optional(
-      Type.Number({
-        format: 'decimal',
+      DecimalNumber({
         description: 'Initial price the pool was initialized at (quote per base)',
       }),
     ),
@@ -496,7 +490,7 @@ export const CreatePoolResponse = Type.Object(
     data: Type.Optional(
       Type.Object(
         {
-          fee: Type.Number({ format: 'decimal' }),
+          fee: DecimalNumber({}),
         },
         { $id: 'ClmmCreatePoolResponseData' },
       ),
@@ -518,10 +512,10 @@ export const QuotePositionResponse = Type.Object(
     // named one, and on AMM it keeps the quote self-describing alongside quote-swap.
     poolAddress: Type.Optional(Type.String({ description: 'Pool the quote was computed against' })),
     baseLimited: Type.Boolean(),
-    baseTokenAmount: Type.Number({ format: 'decimal' }),
-    quoteTokenAmount: Type.Number({ format: 'decimal' }),
-    baseTokenAmountMax: Type.Number({ format: 'decimal' }),
-    quoteTokenAmountMax: Type.Number({ format: 'decimal' }),
+    baseTokenAmount: DecimalNumber({}),
+    quoteTokenAmount: DecimalNumber({}),
+    baseTokenAmountMax: DecimalNumber({}),
+    quoteTokenAmountMax: DecimalNumber({}),
     liquidity: Type.Optional(Type.Any()),
   },
   { $id: 'ClmmQuoteLiquidityResponse' },
@@ -572,13 +566,13 @@ export const QuoteSwapResponse = Type.Object(
     poolAddress: Type.String(),
     tokenIn: Type.String(),
     tokenOut: Type.String(),
-    amountIn: Type.Number({ format: 'decimal' }),
-    amountOut: Type.Number({ format: 'decimal' }),
-    price: Type.Number({ format: 'decimal' }),
-    slippagePct: Type.Optional(Type.Number({ format: 'decimal' })),
-    minAmountOut: Type.Number({ format: 'decimal' }),
-    maxAmountIn: Type.Number({ format: 'decimal' }),
-    priceImpactPct: Type.Number({ format: 'decimal' }),
+    amountIn: DecimalNumber({}),
+    amountOut: DecimalNumber({}),
+    price: DecimalNumber({}),
+    slippagePct: Type.Optional(DecimalNumber({})),
+    minAmountOut: DecimalNumber({}),
+    maxAmountIn: DecimalNumber({}),
+    priceImpactPct: DecimalNumber({}),
   },
   // No $id: no route serves this shape. The pool-scoped surfaces answer with the shared
   // Chain* responses, so publishing this would put a name a caller reaches for on a
@@ -632,14 +626,13 @@ export const ExecuteSwapResponse = Type.Object(
         {
           tokenIn: Type.String(),
           tokenOut: Type.String(),
-          amountIn: Type.Number({ format: 'decimal' }),
-          amountOut: Type.Number({ format: 'decimal' }),
-          fee: Type.Number({ format: 'decimal' }),
-          baseTokenBalanceChange: Type.Number({ format: 'decimal' }),
-          quoteTokenBalanceChange: Type.Number({ format: 'decimal' }),
+          amountIn: DecimalNumber({}),
+          amountOut: DecimalNumber({}),
+          fee: DecimalNumber({}),
+          baseTokenBalanceChange: DecimalNumber({}),
+          quoteTokenBalanceChange: DecimalNumber({}),
           slippagePct: Type.Optional(
-            Type.Number({
-              format: 'decimal',
+            DecimalNumber({
               description: 'Slippage tolerance percentage actually applied to the swap',
             }),
           ),

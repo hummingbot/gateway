@@ -3,6 +3,8 @@ import { Type, Static } from '@sinclair/typebox';
 import { networks as ethereumNetworks } from '../chains/ethereum/ethereum.config';
 import { networks as solanaNetworks } from '../chains/solana/solana.config';
 
+import { DecimalNumber } from './decimal-field';
+
 /**
  * Every network the chain routes accept, read from the chain configs rather than
  * listed here, so a network added to conf/chains appears in the docs without an
@@ -50,18 +52,18 @@ export type EstimateGasRequestType = Static<typeof EstimateGasRequestSchema>;
 
 export const EstimateGasResponseSchema = Type.Object(
   {
-    feePerComputeUnit: Type.Number({ format: 'decimal' }), // Fee per compute unit (legacy gas price or maxFeePerGas for EIP-1559)
+    feePerComputeUnit: DecimalNumber({}), // Fee per compute unit (legacy gas price or maxFeePerGas for EIP-1559)
     denomination: Type.String(), // Denomination: "lamports" or "gwei"
     computeUnits: Type.Number(), // Default compute units/gas limit used for fee calculation
     feeAsset: Type.String(), // Native currency symbol from network config (ETH, SOL, etc.)
-    fee: Type.Number({ format: 'decimal' }), // Total fee calculated using default gas/compute limits
+    fee: DecimalNumber({}), // Total fee calculated using default gas/compute limits
     timestamp: Type.Number(), // Unix timestamp when estimate was made
     gasType: Type.Optional(Type.String()), // Gas type: "legacy" or "eip1559"
-    maxFeePerGas: Type.Optional(Type.Number({ format: 'decimal' })), // EIP-1559: Maximum fee per gas in gwei
-    maxPriorityFeePerGas: Type.Optional(Type.Number({ format: 'decimal' })), // EIP-1559: Maximum priority fee per gas in gwei
+    maxFeePerGas: Type.Optional(DecimalNumber({})), // EIP-1559: Maximum fee per gas in gwei
+    maxPriorityFeePerGas: Type.Optional(DecimalNumber({})), // EIP-1559: Maximum priority fee per gas in gwei
     // Solana Helius-specific fields
     priorityFeeLevel: Type.Optional(Type.String()), // Helius priority level used: Min, Low, Medium, High, VeryHigh, UnsafeMax
-    priorityFeePerCUEstimate: Type.Optional(Type.Number({ format: 'decimal' })), // Raw Helius estimate in lamports/CU (before minimum enforcement)
+    priorityFeePerCUEstimate: Type.Optional(DecimalNumber({})), // Raw Helius estimate in lamports/CU (before minimum enforcement)
   },
   { $id: 'EstimateGasResponse' },
 );
@@ -187,28 +189,22 @@ export const ChainQuoteSwapResponseSchema = Type.Object(
     tokenOut: Type.String({
       description: 'Address of the token being swapped to',
     }),
-    amountIn: Type.Number({
-      format: 'decimal',
+    amountIn: DecimalNumber({
       description: 'Amount of tokenIn to be swapped',
     }),
-    amountOut: Type.Number({
-      format: 'decimal',
+    amountOut: DecimalNumber({
       description: 'Expected amount of tokenOut to receive',
     }),
-    price: Type.Number({
-      format: 'decimal',
+    price: DecimalNumber({
       description: 'Exchange rate between tokenIn and tokenOut',
     }),
-    priceImpactPct: Type.Number({
-      format: 'decimal',
+    priceImpactPct: DecimalNumber({
       description: 'Estimated price impact percentage (0-100)',
     }),
-    minAmountOut: Type.Number({
-      format: 'decimal',
+    minAmountOut: DecimalNumber({
       description: 'Minimum amount of tokenOut that will be accepted',
     }),
-    maxAmountIn: Type.Number({
-      format: 'decimal',
+    maxAmountIn: DecimalNumber({
       description: 'Maximum amount of tokenIn that will be spent',
     }),
     // Optional fields that may be included by specific connectors
@@ -223,8 +219,7 @@ export const ChainQuoteSwapResponseSchema = Type.Object(
       }),
     ),
     slippagePct: Type.Optional(
-      Type.Number({
-        format: 'decimal',
+      DecimalNumber({
         description: 'Slippage tolerance percentage',
       }),
     ),
@@ -252,29 +247,23 @@ export const ChainExecuteSwapResponseSchema = Type.Object(
           tokenOut: Type.String({
             description: 'Address of the token swapped to',
           }),
-          amountIn: Type.Number({
-            format: 'decimal',
+          amountIn: DecimalNumber({
             description: 'Actual amount of tokenIn swapped',
           }),
-          amountOut: Type.Number({
-            format: 'decimal',
+          amountOut: DecimalNumber({
             description: 'Actual amount of tokenOut received',
           }),
-          fee: Type.Number({
-            format: 'decimal',
+          fee: DecimalNumber({
             description: 'Transaction fee paid',
           }),
-          baseTokenBalanceChange: Type.Number({
-            format: 'decimal',
+          baseTokenBalanceChange: DecimalNumber({
             description: 'Change in base token balance (negative for decrease)',
           }),
-          quoteTokenBalanceChange: Type.Number({
-            format: 'decimal',
+          quoteTokenBalanceChange: DecimalNumber({
             description: 'Change in quote token balance (negative for decrease)',
           }),
           slippagePct: Type.Optional(
-            Type.Number({
-              format: 'decimal',
+            DecimalNumber({
               description: 'Slippage tolerance percentage actually applied to the swap',
             }),
           ),

@@ -21,6 +21,7 @@ jest.mock('../../../src/connectors/pancakeswap-sol/clmm-routes/poolInfo', () => 
 
 import { poolsRoute } from '../../../src/trading/clmm/pools';
 import { fastifyWithTypeProvider } from '../../utils/testUtils';
+import { parseWire } from '../../utils/wire';
 
 const POOL = 'Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE';
 
@@ -112,7 +113,7 @@ describe('Unified CLMM pool-info binCount passthrough', () => {
     const response = await call('orca', 'solana-mainnet-beta', 1);
 
     expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body).bins).toEqual(bins);
+    expect(parseWire(response.body).bins).toEqual(bins);
   });
 
   it('rejects a binCount above the supported maximum', async () => {

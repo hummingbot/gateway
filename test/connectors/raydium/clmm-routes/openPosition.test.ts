@@ -3,6 +3,7 @@ import { Keypair, VersionedTransaction, MessageV0 } from '@solana/web3.js';
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Raydium } from '../../../../src/connectors/raydium/raydium';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/raydium/raydium');
@@ -208,7 +209,7 @@ describe('POST /open-position', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     // The SDK owner is set to the wallet's public key (wallet-type-agnostic).
     expect(mockRaydiumInstance.setOwner).toHaveBeenCalledTimes(1);
@@ -226,7 +227,7 @@ describe('POST /open-position', () => {
     expect(body).toHaveProperty('status', 1);
     expect(body.data).toHaveProperty('positionAddress', mockPositionNftMint);
     expect(body.data).toHaveProperty('fee');
-    expect(body.data).toHaveProperty('positionRent', 0.0132);
+    expect(Number(body.data.positionRent)).toBe(0.0132);
 
     // The values, not just the keys. The mocked wallet deltas are -1 SOL and -150 USDC
     // with 0.0132 SOL locked across the accounts the open created, and an open reports

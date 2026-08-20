@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { Uniswap } from '../../../../src/connectors/uniswap/uniswap';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 jest.mock('../../../../src/connectors/uniswap/uniswap');
@@ -163,12 +164,12 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     expect(body).toHaveProperty('quoteId', 'test-quote-id');
     expect(body).toHaveProperty('tokenIn', mockWETH.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-    expect(body).toHaveProperty('amountIn', 1);
+    expect(Number(body.amountIn)).toBe(1);
     expect(body).toHaveProperty('amountOut');
     expect(body.amountOut).toBeGreaterThan(0);
     expect(body).toHaveProperty('price');
@@ -207,11 +208,11 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockWETH.address);
-    expect(body).toHaveProperty('amountOut', 1);
+    expect(Number(body.amountOut)).toBe(1);
     expect(body).toHaveProperty('amountIn');
     expect(body.amountIn).toBeGreaterThan(0);
   });
@@ -233,7 +234,7 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     // `protocols` used to be sent here and was silently dropped: the unified router
     // route declares no such parameter and never read one, so the "filtering" this case
@@ -258,7 +259,7 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     // `protocols` used to be sent here and was silently dropped: the unified router
     // route declares no such parameter and never read one, so the "filtering" this case
@@ -292,7 +293,7 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(404);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('message');
     expect(body.message).toContain('Token not found');
   });
@@ -315,12 +316,12 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
       // Should use WETH address even though ETH was requested
       expect(body).toHaveProperty('tokenIn', mockWETH.address);
       expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-      expect(body).toHaveProperty('amountIn', 1);
+      expect(Number(body.amountIn)).toBe(1);
       expect(body).toHaveProperty('amountOut');
       expect(body.amountOut).toBeGreaterThan(0);
     });
@@ -358,7 +359,7 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
       // Should use WETH address even though ETH was requested as quote
       // SELL side: input=base (USDC), output=quote (ETH->WETH)
@@ -383,7 +384,7 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
       // Should convert lowercase 'eth' to WETH
       expect(body).toHaveProperty('tokenIn', mockWETH.address);
@@ -406,7 +407,7 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
       // Should convert mixed case 'Eth' to WETH
       expect(body).toHaveProperty('tokenIn', mockWETH.address);
@@ -431,9 +432,9 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
-      expect(body).toHaveProperty('price', 1);
+      expect(Number(body.price)).toBe(1);
       expect(body).toHaveProperty('amountIn', 100);
       expect(body).toHaveProperty('amountOut', 100);
       expect(body).toHaveProperty('priceImpactPct', 0);
@@ -456,9 +457,9 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
-      expect(body).toHaveProperty('price', 1);
+      expect(Number(body.price)).toBe(1);
       expect(body).toHaveProperty('amountIn', 1);
       expect(body).toHaveProperty('amountOut', 1);
       expect(body).toHaveProperty('priceImpactPct', 0);
@@ -481,9 +482,9 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
-      expect(body).toHaveProperty('price', 1);
+      expect(Number(body.price)).toBe(1);
       expect(body).toHaveProperty('amountIn', 1);
       expect(body).toHaveProperty('amountOut', 1);
       expect(body).toHaveProperty('priceImpactPct', 0);
@@ -506,9 +507,9 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
-      expect(body).toHaveProperty('price', 1);
+      expect(Number(body.price)).toBe(1);
       expect(body).toHaveProperty('amountIn', 1);
       expect(body).toHaveProperty('amountOut', 1);
     });
@@ -552,12 +553,12 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
       expect(mockGetAlphaRouterQuote).not.toHaveBeenCalled();
       expect(mockGetUniversalRouterQuote).toHaveBeenCalled();
       expect(body).toHaveProperty('routePath', '100% via WETH -> USDC');
-      expect(body).toHaveProperty('amountIn', 1);
+      expect(Number(body.amountIn)).toBe(1);
       expect(body).toHaveProperty('amountOut', 3000);
       expect(body).toHaveProperty('priceImpactPct', 0.5);
     });
@@ -579,7 +580,7 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
       // The calldata's embedded min-out must be built from the same slippage
       // the response advertises, so the requested value has to reach the quote

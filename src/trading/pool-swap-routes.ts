@@ -11,6 +11,7 @@ import { Type, Static } from '@sinclair/typebox';
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 
 import { ChainExecuteSwapResponseSchema, ChainQuoteSwapResponseSchema } from '../schemas/chain-schema';
+import { DecimalNumber } from '../schemas/decimal-field';
 import { logger } from '../services/logger';
 import { ensurePoolSaved, PoolFacts, recordQuietly } from '../services/token-pool-autosave';
 

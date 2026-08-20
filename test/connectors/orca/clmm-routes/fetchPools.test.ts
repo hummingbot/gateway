@@ -1,5 +1,6 @@
 import { Orca } from '../../../../src/connectors/orca/orca';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/connectors/orca/orca');
 jest.mock('../../../../src/chains/solana/solana.config', () => ({
@@ -103,7 +104,7 @@ describe('GET /fetch-pools (Orca)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     expect(body).toHaveProperty('pools');
     expect(body).toHaveProperty('total', 2);
@@ -141,7 +142,7 @@ describe('GET /fetch-pools (Orca)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     expect(body.pools).toHaveLength(1);
     expect(body.pools[0].name).toBe('SOL-USDC');
@@ -187,7 +188,7 @@ describe('GET /fetch-pools (Orca)', () => {
     });
 
     expect(response.statusCode).toBe(500);
-    expect(JSON.parse(response.body)).toHaveProperty('error');
+    expect(parseWire(response.body)).toHaveProperty('error');
   });
 
   it('should handle empty pool results', async () => {
@@ -202,7 +203,7 @@ describe('GET /fetch-pools (Orca)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body.pools).toHaveLength(0);
     expect(body.total).toBe(0);
   });

@@ -5,6 +5,7 @@ import '../../../mocks/app-mocks';
 
 import { gatewayApp } from '../../../../src/app';
 import { Solana } from '../../../../src/chains/solana/solana';
+import { parseWire } from '../../../utils/wire';
 
 // Mock the Solana class
 jest.mock('../../../../src/chains/solana/solana');
@@ -54,7 +55,7 @@ describe('Solana Estimate Gas Route', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const data = JSON.parse(response.body);
+      const data = parseWire(response.body);
 
       expect(data).toMatchObject({
         feePerComputeUnit: 2.5,
@@ -84,7 +85,7 @@ describe('Solana Estimate Gas Route', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const data = JSON.parse(response.body);
+      const data = parseWire(response.body);
 
       expect(data).toMatchObject({
         feePerComputeUnit: 0.5, // minPriorityFeePerCU from mock instance config
@@ -118,7 +119,7 @@ describe('Solana Estimate Gas Route', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const data = JSON.parse(response.body);
+      const data = parseWire(response.body);
 
       expect(data).toMatchObject({
         feePerComputeUnit: 0.1, // Default fallback value
@@ -148,7 +149,7 @@ describe('Solana Estimate Gas Route', () => {
         });
 
         expect(response.statusCode).toBe(200);
-        const data = JSON.parse(response.body);
+        const data = parseWire(response.body);
 
         expect(data).toMatchObject({
           feePerComputeUnit: 1.25,
@@ -176,7 +177,7 @@ describe('Solana Estimate Gas Route', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const data = JSON.parse(response.body);
+      const data = parseWire(response.body);
 
       // Verify response schema
       expect(typeof data.feePerComputeUnit).toBe('number');
@@ -201,7 +202,7 @@ describe('Solana Estimate Gas Route', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const data = JSON.parse(response.body);
+      const data = parseWire(response.body);
 
       expect(data).toMatchObject({
         feePerComputeUnit: 1.5,
@@ -227,7 +228,7 @@ describe('Solana Estimate Gas Route', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const data = JSON.parse(response.body);
+      const data = parseWire(response.body);
 
       expect(data).toMatchObject({
         feePerComputeUnit: 100.123456,
@@ -253,7 +254,7 @@ describe('Solana Estimate Gas Route', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const data = JSON.parse(response.body);
+      const data = parseWire(response.body);
 
       expect(data).toMatchObject({
         feePerComputeUnit: 0, // Should return the actual estimate even if 0

@@ -1,6 +1,7 @@
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Orca } from '../../../../src/connectors/orca/orca';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 // The connector reaches the SDK through orca.utils.quotePosition, not through a
 // method on the Orca instance. Mocking the instance (as this did) left the real helper
@@ -67,7 +68,7 @@ describe('GET /quote-liquidity', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(response.json()).toMatchObject({
+      expect(parseWire(response.body)).toMatchObject({
         baseTokenAmount: 1,
         quoteTokenAmount: 200,
         poolAddress: mockPoolAddress,
@@ -119,7 +120,7 @@ describe('GET /quote-liquidity', () => {
       expect(response.statusCode).toBe(200);
       // Both sides offered: the quote decides which one binds.
       expect(mockQuotePosition).toHaveBeenCalledWith({}, mockPoolAddress, 150, 250, 1, 200, 1);
-      expect(response.json().baseLimited).toBe(true);
+      expect(parseWire(response.body).baseLimited).toBe(true);
     });
 
     it('should use default network if not provided', async () => {

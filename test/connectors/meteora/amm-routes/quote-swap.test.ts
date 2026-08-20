@@ -3,6 +3,7 @@ import BN from 'bn.js';
 
 import { MeteoraDamm } from '../../../../src/connectors/meteora/meteora-damm';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/connectors/meteora/meteora-damm');
 
@@ -79,7 +80,7 @@ describe('GET /quote-swap (Meteora DAMM v2)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(getQuote2).toHaveBeenCalledWith(expect.objectContaining({ swapMode: 0 })); // ExactIn
     expect(body).toMatchObject({
       poolAddress: mockPoolAddress,
@@ -119,7 +120,7 @@ describe('GET /quote-swap (Meteora DAMM v2)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(getQuote2).toHaveBeenCalledWith(expect.objectContaining({ swapMode: 2 })); // ExactOut
     expect(body).toMatchObject({
       poolAddress: mockPoolAddress,

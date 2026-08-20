@@ -2,6 +2,7 @@ import BN from 'bn.js';
 
 import { MeteoraDamm } from '../../../../src/connectors/meteora/meteora-damm';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/connectors/meteora/meteora-damm');
 
@@ -78,7 +79,7 @@ describe('GET /quote-liquidity (Meteora DAMM v2)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toMatchObject({
       baseLimited: true,
       baseTokenAmount: 0.01,

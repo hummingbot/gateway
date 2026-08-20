@@ -4,6 +4,7 @@ import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { Uniswap } from '../../../../src/connectors/uniswap/uniswap';
 import { getUniswapPoolInfo } from '../../../../src/connectors/uniswap/uniswap.utils';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 jest.mock('../../../../src/connectors/uniswap/uniswap');
@@ -104,7 +105,7 @@ describe('POST /remove (Uniswap V2 AMM) — transaction confirmation', () => {
     const response = await remove(server);
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body.signature).toBe(txHash);
     expect(body.status).toBe(0); // TransactionStatus.PENDING
     expect(body.data).toBeUndefined();
@@ -121,7 +122,7 @@ describe('POST /remove (Uniswap V2 AMM) — transaction confirmation', () => {
     const response = await remove(server);
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body).message).toContain(txHash);
+    expect(parseWire(response.body).message).toContain(txHash);
     expect(response.body).not.toContain('baseTokenAmountRemoved');
   });
 
@@ -137,9 +138,9 @@ describe('POST /remove (Uniswap V2 AMM) — transaction confirmation', () => {
     const response = await remove(server);
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body.status).toBe(1); // TransactionStatus.CONFIRMED
-    expect(body.data.baseTokenAmountRemoved).toBe(5);
+    expect(Number(body.data.baseTokenAmountRemoved)).toBe(5);
     expect(body.data.quoteTokenAmountRemoved).toBe(5);
     expect(body.data.fee).toBe(0.000021);
   });

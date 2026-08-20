@@ -2,6 +2,7 @@ import { Solana } from '../../../../src/chains/solana/solana';
 import { Okx } from '../../../../src/connectors/okx/okx';
 import { quoteCache } from '../../../../src/services/quote-cache';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/okx/okx');
@@ -81,10 +82,10 @@ describe('POST /execute-quote (okx)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toMatchObject({ signature: 'okx-sig', status: 1 });
     // The applied slippage survives the SwapExecuteResponse serializer.
-    expect(body.data.slippagePct).toBe(0.5);
+    expect(Number(body.data.slippagePct)).toBe(0.5);
     // The route is re-fetched with the executing wallet and the cached parameters.
     expect(getSwapTransaction).toHaveBeenCalledWith(
       WALLET,
@@ -118,6 +119,6 @@ describe('POST /execute-quote (okx)', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body).message).toContain('Quote not found or expired');
+    expect(parseWire(response.body).message).toContain('Quote not found or expired');
   });
 });

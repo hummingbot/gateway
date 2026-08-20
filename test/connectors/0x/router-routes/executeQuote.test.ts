@@ -5,6 +5,7 @@ import { ZeroX } from '../../../../src/connectors/0x/0x';
 import { quoteCache } from '../../../../src/services/quote-cache';
 import { TokenService } from '../../../../src/services/token-service';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 jest.mock('../../../../src/connectors/0x/0x');
@@ -204,10 +205,10 @@ describe('POST /execute-quote', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('signature', mockReceipt.transactionHash);
     expect(body).toHaveProperty('status', 1);
-    expect(body.data).toHaveProperty('amountIn', 0.1);
+    expect(Number(body.data.amountIn)).toBe(0.1);
     expect(body.data).toHaveProperty('amountOut', 150);
     expect(body.data).toHaveProperty('fee', 0.006);
     expect(body.data).toHaveProperty('baseTokenBalanceChange', 0);
@@ -229,7 +230,7 @@ describe('POST /execute-quote', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body)).toHaveProperty('error');
+    expect(parseWire(response.body)).toHaveProperty('error');
   });
 
   it('should throw error if allowance is insufficient', async () => {
@@ -297,7 +298,7 @@ describe('POST /execute-quote', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body.message).toContain('Insufficient allowance');
     expect(mockEthereumInstance.approveERC20).not.toHaveBeenCalled();
   });

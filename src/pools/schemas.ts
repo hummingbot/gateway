@@ -1,6 +1,7 @@
 import { Type } from '@sinclair/typebox';
 
 import { chainNetworkField } from '../schemas/chain-network-field';
+import { DecimalNumber } from '../schemas/decimal-field';
 
 // Pool list request
 export const PoolListRequestSchema = Type.Object({
@@ -41,7 +42,7 @@ export const PoolTemplateSchema = Type.Object({
   quoteSymbol: Type.String(),
   baseTokenAddress: Type.String(),
   quoteTokenAddress: Type.String(),
-  feePct: Type.Number({ format: 'decimal' }),
+  feePct: DecimalNumber({}),
   address: Type.String(),
 });
 

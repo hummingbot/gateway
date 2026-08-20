@@ -3,6 +3,7 @@ import { VersionedTransaction, MessageV0 } from '@solana/web3.js';
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Raydium } from '../../../../src/connectors/raydium/raydium';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/raydium/raydium');
@@ -196,7 +197,7 @@ describe('POST /add-liquidity', () => {
       console.error('Response error:', response.body);
     }
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     // Owner is set to the wallet public key (wallet-type-agnostic), then sent via the chokepoint.
     expect(mockRaydiumInstance.setOwner).toHaveBeenCalled();
@@ -211,7 +212,7 @@ describe('POST /add-liquidity', () => {
     // returns the live one, [-0.999, -149.85] — and `…Added` reports how much went in,
     // so these are the magnitudes. Asserting only that the keys exist accepted the
     // negatives that were reaching the event table.
-    expect(body.data.baseTokenAmountAdded).toBeCloseTo(0.999, 9);
+    expect(Number(body.data.baseTokenAmountAdded)).toBeCloseTo(0.999, 9);
     expect(body.data.quoteTokenAmountAdded).toBeCloseTo(149.85, 9);
   });
 
@@ -251,8 +252,8 @@ describe('POST /add-liquidity', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
-    expect(body.data.baseTokenAmountAdded).toBe(0.01);
+    const body = parseWire(response.body);
+    expect(Number(body.data.baseTokenAmountAdded)).toBe(0.01);
     expect(body.data.quoteTokenAmountAdded).toBe(0.848971);
   });
 

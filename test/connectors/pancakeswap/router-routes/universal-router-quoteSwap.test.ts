@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { Pancakeswap } from '../../../../src/connectors/pancakeswap/pancakeswap';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 jest.mock('../../../../src/connectors/pancakeswap/pancakeswap');
@@ -173,12 +174,12 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     expect(body).toHaveProperty('quoteId', 'test-quote-id');
     expect(body).toHaveProperty('tokenIn', mockWBNB.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-    expect(body).toHaveProperty('amountIn', 1);
+    expect(Number(body.amountIn)).toBe(1);
     expect(body).toHaveProperty('amountOut');
     expect(body.amountOut).toBeGreaterThan(0);
     expect(body).toHaveProperty('price');
@@ -222,11 +223,11 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockWBNB.address);
-    expect(body).toHaveProperty('amountOut', 1);
+    expect(Number(body.amountOut)).toBe(1);
     expect(body).toHaveProperty('amountIn');
     expect(body.amountIn).toBeGreaterThan(0);
   });
@@ -248,7 +249,7 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     // `protocols` used to be sent here and was silently dropped: the unified router
     // route declares no such parameter and never read one, so the "filtering" this case
@@ -273,7 +274,7 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     // `protocols` used to be sent here and was silently dropped: the unified router
     // route declares no such parameter and never read one, so the "filtering" this case
@@ -307,7 +308,7 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(404);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('message');
     expect(body.message).toContain('Token not found');
   });

@@ -1,6 +1,7 @@
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Orca } from '../../../../src/connectors/orca/orca';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/connectors/orca/orca');
 jest.mock('../../../../src/chains/solana/solana');
@@ -123,7 +124,7 @@ describe('GET /pool-info', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('address', mockPoolAddress);
     expect(body).toHaveProperty('baseTokenAddress');
     expect(body).toHaveProperty('quoteTokenAddress');
@@ -197,7 +198,7 @@ describe('GET /pool-info', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('address', mockPoolAddress);
     expect(body).toHaveProperty('baseTokenAddress');
     expect(body).toHaveProperty('quoteTokenAddress');
@@ -310,7 +311,7 @@ describe('GET /pool-info', () => {
         query: { chainNetwork: 'solana-mainnet-beta', connector: 'orca', poolAddress: mockPoolAddress },
       });
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
       expect(body.bins).toBeUndefined();
       expect(computeOrcaBinDistribution).not.toHaveBeenCalled();
     });
@@ -323,7 +324,7 @@ describe('GET /pool-info', () => {
         query: { chainNetwork: 'solana-mainnet-beta', connector: 'orca', poolAddress: mockPoolAddress, binCount: 0 },
       });
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
       expect(body.bins).toBeUndefined();
       expect(computeOrcaBinDistribution).not.toHaveBeenCalled();
     });
@@ -337,7 +338,7 @@ describe('GET /pool-info', () => {
         query: { chainNetwork: 'solana-mainnet-beta', connector: 'orca', poolAddress: mockPoolAddress, binCount: 11 },
       });
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
       expect(Array.isArray(body.bins)).toBe(true);
       expect(body.bins).toHaveLength(11);
       expect(body.bins[0]).toEqual(
@@ -428,11 +429,11 @@ describe('GET /pool-info', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('address', pyusdPoolAddress);
     expect(body).toHaveProperty('baseTokenAddress', pyusdMint);
     expect(body).toHaveProperty('quoteTokenAddress', usdcMint);
-    expect(body).toHaveProperty('feePct', 0.01);
+    expect(Number(body.feePct)).toBe(0.01);
     expect(body).toHaveProperty('binStep', 1);
   });
 });

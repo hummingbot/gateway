@@ -1,5 +1,6 @@
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 
@@ -107,10 +108,10 @@ describe('POST /execute-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('signature', mockReceipt.transactionHash);
     expect(body).toHaveProperty('status', 1);
-    expect(body.data).toHaveProperty('amountIn', 0.1);
+    expect(Number(body.data.amountIn)).toBe(0.1);
     expect(body.data).toHaveProperty('amountOut', 150);
     expect(body.data).toHaveProperty('fee', 0.006);
     expect(body.data).toHaveProperty('baseTokenBalanceChange', -0.1);
@@ -172,10 +173,10 @@ describe('POST /execute-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('signature', mockReceipt.transactionHash);
     expect(body).toHaveProperty('status', 1);
-    expect(body.data).toHaveProperty('amountIn', 150);
+    expect(Number(body.data.amountIn)).toBe(150);
     expect(body.data).toHaveProperty('amountOut', 0.1);
     expect(body.data).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body.data).toHaveProperty('tokenOut', mockWETH.address);
@@ -207,7 +208,7 @@ describe('POST /execute-swap', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('message', 'Token not found: INVALID');
   });
 });

@@ -1,5 +1,6 @@
 import { MeteoraDamm } from '../../../../src/connectors/meteora/meteora-damm';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/connectors/meteora/meteora-damm');
 
@@ -50,7 +51,7 @@ describe('GET /pool-info (Meteora DAMM v2)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toEqual({
       address: mockPoolAddress,
       baseTokenAddress: mockSOL,

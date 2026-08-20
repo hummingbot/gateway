@@ -1,6 +1,7 @@
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Orca } from '../../../../src/connectors/orca/orca';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 // This previously mocked an `orca.addLiquidity()` the connector never calls, then
 // accepted [200, 400, 500] — so the success cases passed on a 500 from the unmocked SDK.
@@ -149,7 +150,7 @@ describe('POST /add-liquidity', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(response.json()).toMatchObject({
+      expect(parseWire(response.body)).toMatchObject({
         signature: 'sig123',
         status: 1,
         data: { poolAddress: POOL, positionAddress: mockPositionAddress, baseTokenAmountAdded: 1 },

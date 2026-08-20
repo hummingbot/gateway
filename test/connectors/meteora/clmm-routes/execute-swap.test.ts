@@ -3,6 +3,7 @@ import { PublicKey } from '@solana/web3.js';
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Meteora } from '../../../../src/connectors/meteora/meteora';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/meteora/meteora');
@@ -164,10 +165,10 @@ describe('POST /execute-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('signature', mockTransaction.signature);
     expect(body).toHaveProperty('status', 1);
-    expect(body.data).toHaveProperty('amountIn', 0.1);
+    expect(Number(body.data.amountIn)).toBe(0.1);
     expect(body.data).toHaveProperty('amountOut', 14.85);
     expect(body.data).toHaveProperty('fee', 0.000005); // Fee in SOL
     expect(body.data).toHaveProperty('baseTokenBalanceChange', -0.1);
@@ -224,7 +225,7 @@ describe('POST /execute-swap', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body).message).toMatch(/landed on-chain but failed/);
+    expect(parseWire(response.body).message).toMatch(/landed on-chain but failed/);
     // The route must not have tried to build a CONFIRMED response.
     expect(extractBalanceChangesAndFee).not.toHaveBeenCalled();
   });
@@ -298,10 +299,10 @@ describe('POST /execute-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('signature', mockTransaction.signature);
     expect(body).toHaveProperty('status', 1);
-    expect(body.data).toHaveProperty('amountIn', 15); // USDC in
+    expect(Number(body.data.amountIn)).toBe(15); // USDC in
     expect(body.data).toHaveProperty('amountOut', 0.1); // SOL out
     expect(body.data).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body.data).toHaveProperty('tokenOut', mockSOL.address);
@@ -340,7 +341,7 @@ describe('POST /execute-swap', () => {
     // Standardized wrapper derives the counter token from the pool; an unknown base token that
     // isn't one of the pool's tokens is a bad request (400).
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body)).toHaveProperty('error');
+    expect(parseWire(response.body)).toHaveProperty('error');
   });
 });
 

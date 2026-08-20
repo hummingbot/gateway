@@ -5,6 +5,7 @@ import { PancakeswapSol } from '../../../../src/connectors/pancakeswap-sol/panca
 import { buildRemoveLiquidityTransaction } from '../../../../src/connectors/pancakeswap-sol/pancakeswap-sol.transactions';
 import { transactionFailed } from '../../../../src/services/error-handler';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/pancakeswap-sol/pancakeswap-sol');
@@ -84,7 +85,7 @@ describe('POST /collect-fees (pancakeswap-sol)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toMatchObject({
       signature: 'collect-sig',
       status: 1,
@@ -128,7 +129,7 @@ describe('POST /collect-fees (pancakeswap-sol)', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body).message).toMatch(/landed on-chain but failed/);
+    expect(parseWire(response.body).message).toMatch(/landed on-chain but failed/);
     expect(mockSolana.throwIfLandedWithError).toHaveBeenCalledWith('failed-sig', failedTxData);
   });
 
@@ -152,7 +153,7 @@ describe('POST /collect-fees (pancakeswap-sol)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(JSON.parse(response.body)).toMatchObject({ signature: 'pending-sig', status: 0 });
+    expect(parseWire(response.body)).toMatchObject({ signature: 'pending-sig', status: 0 });
     expect(mockSolana.throwIfLandedWithError).toHaveBeenCalledWith('pending-sig', null);
   });
 });

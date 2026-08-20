@@ -1,6 +1,7 @@
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Orca } from '../../../../src/connectors/orca/orca';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 // These previously mocked an `orca.collectFees()` the connector never calls, then
 // accepted [200, 400, 500] — so every case passed on a 500 from the unmocked SDK and
@@ -83,7 +84,7 @@ describe('POST /collect-fees (orca)', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(response.json()).toMatchObject({
+      expect(parseWire(response.body)).toMatchObject({
         signature: 'sig123',
         status: 1,
         data: { poolAddress: POOL, baseFeeAmountCollected: 0.1, quoteFeeAmountCollected: 20 },
@@ -134,7 +135,7 @@ describe('POST /collect-fees (orca)', () => {
 
       // A no-op collection is a successful collection of nothing, not an error.
       expect(response.statusCode).toBe(200);
-      expect(response.json().data).toMatchObject({
+      expect(parseWire(response.body).data).toMatchObject({
         baseFeeAmountCollected: 0,
         quoteFeeAmountCollected: 0,
       });

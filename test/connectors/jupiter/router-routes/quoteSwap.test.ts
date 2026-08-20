@@ -1,6 +1,7 @@
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Jupiter } from '../../../../src/connectors/jupiter/jupiter';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/jupiter/jupiter');
@@ -86,12 +87,12 @@ describe('GET /quote-swap', () => {
     });
 
     if (response.statusCode !== 200) {
-      console.log('Response error:', JSON.parse(response.body));
+      console.log('Response error:', parseWire(response.body));
     }
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('quoteId');
-    expect(body).toHaveProperty('amountIn', 0.1);
+    expect(Number(body.amountIn)).toBe(0.1);
     expect(body).toHaveProperty('amountOut', 15);
     expect(body).toHaveProperty('minAmountOut');
     expect(body).toHaveProperty('maxAmountIn');
@@ -135,9 +136,9 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('quoteId');
-    expect(body).toHaveProperty('amountIn', 15);
+    expect(Number(body.amountIn)).toBe(15);
     expect(body).toHaveProperty('amountOut', 0.1);
     expect(body).toHaveProperty('minAmountOut');
     expect(body).toHaveProperty('maxAmountIn');
@@ -166,7 +167,7 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body)).toHaveProperty('error');
+    expect(parseWire(response.body)).toHaveProperty('error');
   });
 
   it('should return 400 if no routes found', async () => {
@@ -195,7 +196,7 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body)).toHaveProperty('error');
+    expect(parseWire(response.body)).toHaveProperty('error');
   });
 
   it('should approximate BUY via sell leg when ExactOut is not supported', async () => {
@@ -243,9 +244,9 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('approximation', true);
-    expect(body).toHaveProperty('amountIn', 15);
+    expect(Number(body.amountIn)).toBe(15);
     expect(body.amountOut).toBeCloseTo(0.0999);
     // Input is fixed for the approximated ExactIn quote
     expect(body.maxAmountIn).toBeCloseTo(15);
@@ -282,7 +283,7 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body.message).toContain('ExactOut');
     expect(mockJupiterInstance.getQuote).toHaveBeenCalledTimes(1);
   });
@@ -313,7 +314,7 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('error');
     expect(body.message).toContain('No route found for');
     expect(body.message).toContain('SOL');

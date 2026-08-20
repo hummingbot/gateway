@@ -7,6 +7,7 @@ import { Uniswap } from '../../../../src/connectors/uniswap/uniswap';
 import { getUniswapV3NftManagerAddress } from '../../../../src/connectors/uniswap/uniswap.contracts';
 import { getUniswapPoolInfo } from '../../../../src/connectors/uniswap/uniswap.utils';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 jest.mock('../../../../src/connectors/uniswap/uniswap');
@@ -114,7 +115,7 @@ describe('POST /open-position (Uniswap V3 CLMM) — transaction confirmation', (
     const response = await open(server);
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body.signature).toBe(txHash);
     expect(body.status).toBe(0); // TransactionStatus.PENDING
     expect(body.data).toBeUndefined();
@@ -132,7 +133,7 @@ describe('POST /open-position (Uniswap V3 CLMM) — transaction confirmation', (
     const response = await open(server);
 
     expect(response.statusCode).toBe(500);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body.message).toContain(txHash);
     // Never a confirmed response with an unusable position address.
     expect(response.body).not.toContain('positionAddress');
@@ -155,10 +156,10 @@ describe('POST /open-position (Uniswap V3 CLMM) — transaction confirmation', (
     const response = await open(server);
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body.status).toBe(1); // TransactionStatus.CONFIRMED
     expect(body.data.positionAddress).toBe('987654');
-    expect(body.data.fee).toBe(0.000021);
+    expect(Number(body.data.fee)).toBe(0.000021);
   });
 
   it('keeps the underlying error message instead of a bare "Failed to open position"', async () => {
@@ -167,6 +168,6 @@ describe('POST /open-position (Uniswap V3 CLMM) — transaction confirmation', (
     const response = await open(server);
 
     expect(response.statusCode).toBe(500);
-    expect(JSON.parse(response.body).message).toContain('pool state fetch exploded');
+    expect(parseWire(response.body).message).toContain('pool state fetch exploded');
   });
 });

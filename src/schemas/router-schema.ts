@@ -1,5 +1,7 @@
 import { Type, Static } from '@sinclair/typebox';
 
+import { DecimalNumber } from './decimal-field';
+
 // ========================================
 // Base request/response types for DEX aggregators
 // and other order router-based connectors
@@ -60,28 +62,22 @@ export const QuoteSwapResponse = Type.Object(
     tokenOut: Type.String({
       description: 'Address of the token being swapped to',
     }),
-    amountIn: Type.Number({
-      format: 'decimal',
+    amountIn: DecimalNumber({
       description: 'Amount of tokenIn to be swapped',
     }),
-    amountOut: Type.Number({
-      format: 'decimal',
+    amountOut: DecimalNumber({
       description: 'Expected amount of tokenOut to receive',
     }),
-    price: Type.Number({
-      format: 'decimal',
+    price: DecimalNumber({
       description: 'Exchange rate between tokenIn and tokenOut',
     }),
-    priceImpactPct: Type.Number({
-      format: 'decimal',
+    priceImpactPct: DecimalNumber({
       description: 'Estimated price impact percentage (0-100)',
     }),
-    minAmountOut: Type.Number({
-      format: 'decimal',
+    minAmountOut: DecimalNumber({
       description: 'Minimum amount of tokenOut that will be accepted',
     }),
-    maxAmountIn: Type.Number({
-      format: 'decimal',
+    maxAmountIn: DecimalNumber({
       description: 'Maximum amount of tokenIn that will be spent',
     }),
     approximation: Type.Optional(
@@ -187,29 +183,23 @@ export const SwapExecuteResponse = Type.Object(
           tokenOut: Type.String({
             description: 'Address of the token swapped to',
           }),
-          amountIn: Type.Number({
-            format: 'decimal',
+          amountIn: DecimalNumber({
             description: 'Actual amount of tokenIn swapped',
           }),
-          amountOut: Type.Number({
-            format: 'decimal',
+          amountOut: DecimalNumber({
             description: 'Actual amount of tokenOut received',
           }),
-          fee: Type.Number({
-            format: 'decimal',
+          fee: DecimalNumber({
             description: 'Transaction fee paid',
           }),
-          baseTokenBalanceChange: Type.Number({
-            format: 'decimal',
+          baseTokenBalanceChange: DecimalNumber({
             description: 'Change in base token balance (negative for decrease)',
           }),
-          quoteTokenBalanceChange: Type.Number({
-            format: 'decimal',
+          quoteTokenBalanceChange: DecimalNumber({
             description: 'Change in quote token balance (negative for decrease)',
           }),
           slippagePct: Type.Optional(
-            Type.Number({
-              format: 'decimal',
+            DecimalNumber({
               description: 'Slippage tolerance percentage actually applied to the swap',
             }),
           ),
