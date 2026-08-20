@@ -13,8 +13,6 @@ import { buildOrcaTransaction, createOrcaAuthority } from '../orca.sdk';
 
 import { resolveCounterToken } from './quoteSwap';
 
-const COMPUTE_BUDGET_PROGRAM_ID = address('ComputeBudget111111111111111111111111111111');
-
 export async function executeSwap(
   network: string,
   walletAddress: string,

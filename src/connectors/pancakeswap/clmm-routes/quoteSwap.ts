@@ -3,7 +3,7 @@ import { Route as V3Route, Trade as V3Trade } from '@pancakeswap/v3-sdk';
 import { BigNumber, utils } from 'ethers';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-schema';
+import { QuoteSwapResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';

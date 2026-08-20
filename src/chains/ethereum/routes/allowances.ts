@@ -134,7 +134,7 @@ export async function getEthereumAllowances(
                 );
 
             // Then check Permit2's allowance to Universal Router
-            const [amount, expiration, nonce] = await permit2Contract.allowance(
+            const [amount, expiration] = await permit2Contract.allowance(
               address,
               tokenInfoMap[symbol].address,
               universalRouterAddress,

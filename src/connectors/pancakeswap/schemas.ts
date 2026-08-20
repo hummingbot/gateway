@@ -3,7 +3,6 @@ import { Type } from '@sinclair/typebox';
 // Get chain config for defaults
 // Constants for examples
 // Pancakeswap V2 WETH-USDC pool on Base
-const CLMM_POOL_ADDRESS_EXAMPLE = '0x172fcd41e0913e95784454622d1c3724f546f849'; // Pancakeswap V3 USDT-WBNB pool on BSC
 
 // ========================================
 // AMM Request Schemas

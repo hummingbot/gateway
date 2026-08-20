@@ -4,7 +4,7 @@ import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
-import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-schema';
+import { QuoteSwapResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { Meteora } from '../meteora';
 import { MeteoraConfig } from '../meteora.config';
@@ -122,9 +122,6 @@ async function formatSwapQuote(
     // For sell orders:
     // - Base token (input) decreases (negative)
     // - Quote token (output) increases (positive)
-    const baseTokenChange = -estimatedAmountIn;
-    const quoteTokenChange = estimatedAmountOut;
-
     const price = estimatedAmountOut / estimatedAmountIn;
 
     return {

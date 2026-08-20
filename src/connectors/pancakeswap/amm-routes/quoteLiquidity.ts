@@ -76,7 +76,7 @@ export async function getPancakeswapAmmLiquidityQuote(
     const pairContract = new Contract(poolAddressToUse, IPancakeswapV2PairABI.abi, ethereum.provider);
 
     // Get token addresses and reserves
-    const [token0, token1, reserves] = await Promise.all([
+    const [token0, , reserves] = await Promise.all([
       pairContract.token0(),
       pairContract.token1(),
       pairContract.getReserves(),

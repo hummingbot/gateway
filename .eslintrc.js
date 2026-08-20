@@ -21,7 +21,14 @@ module.exports = {
   rules: {
     'no-console': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
-    '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    // `ignoreRestSiblings` allows the idiomatic way to drop a key —
+    // `const { poolType, ...rest } = obj` — which is not dead code; the named sibling is
+    // how the rest is defined. `varsIgnorePattern` keeps a deliberately-unread binding
+    // legible as deliberate.
+    '@typescript-eslint/no-unused-vars': [
+      'warn',
+      { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true },
+    ],
     semi: [2, 'always'],
     'prettier/prettier': 'error',
     '@typescript-eslint/no-var-requires': 'off',

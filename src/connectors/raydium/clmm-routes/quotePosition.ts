@@ -40,12 +40,12 @@ export async function quotePosition(
     const rpcData = await raydium.getClmmPoolfromRPC(poolAddressToUse);
     poolInfo.price = rpcData.currentPrice;
 
-    const { tick: lowerTick, price: tickLowerPrice } = TickUtils.getPriceAndTick({
+    const { tick: lowerTick } = TickUtils.getPriceAndTick({
       poolInfo,
       price: new Decimal(lowerPrice),
       baseIn: true,
     });
-    const { tick: upperTick, price: tickUpperPrice } = TickUtils.getPriceAndTick({
+    const { tick: upperTick } = TickUtils.getPriceAndTick({
       poolInfo,
       price: new Decimal(upperPrice),
       baseIn: true,

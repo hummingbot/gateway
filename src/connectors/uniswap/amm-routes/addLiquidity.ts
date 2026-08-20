@@ -35,6 +35,11 @@ async function addLiquidityInternal(
   let actualBaseToken = baseToken;
   let baseWrapTxHash = null;
   if (baseToken === 'ETH') {
+    // Declared here, as the quote-token branch below does. It used to resolve to a
+    // function-scope binding declared further down, which made this branch a
+    // guaranteed ReferenceError: adding liquidity with ETH as the base token could
+    // never have worked. The dead-code sweep that removed the unused later binding is
+    // what surfaced it.
     const uniswap = await Uniswap.getInstance(networkToUse);
     const wethToken = await uniswap.getToken('WETH');
     if (!wethToken) {
@@ -82,7 +87,6 @@ async function addLiquidityInternal(
 
   // Get Ethereum instance
   const ethereum = await Ethereum.getInstance(networkToUse);
-  const uniswap = await Uniswap.getInstance(networkToUse);
 
   // Get wallet
   const wallet = await ethereum.getWallet(walletAddress);

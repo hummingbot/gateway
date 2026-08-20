@@ -1,18 +1,12 @@
-import { Type, Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import { FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { PositionInfoSchema, PositionInfo } from '../../../schemas/clmm-schema';
+import { PositionInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 
 // Using Fastify's native error handling
-const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
-
-const GetPositionsOwnedResponse = Type.Array(PositionInfoSchema);
-
-type GetPositionsOwnedResponseType = Static<typeof GetPositionsOwnedResponse>;
 
 export async function getPositionsOwned(
   fastify: FastifyInstance,

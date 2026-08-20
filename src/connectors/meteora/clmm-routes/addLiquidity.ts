@@ -14,7 +14,6 @@ import { MeteoraConfig } from '../meteora.config';
 // Using Fastify's native error handling
 
 // Define error messages
-const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
 const MISSING_AMOUNTS_MESSAGE = 'Missing amounts for liquidity addition';
 const INSUFFICIENT_BALANCE_MESSAGE = (token: string, required: string, actual: string) =>
   `Insufficient balance for ${token}. Required: ${required}, Available: ${actual}`;

@@ -1,13 +1,9 @@
 import { Type } from '@sinclair/typebox';
 
-import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
-
 // Get chain config for defaults
-const ethereumChainConfig = getEthereumChainConfig();
 
 // Constants for examples
 // Uniswap V2 WETH-USDC pool on Base
-const CLMM_POOL_ADDRESS_EXAMPLE = '0xd0b53d9277642d899df5c87a3966a349a798f224'; // Uniswap V3 WETH-USDC pool on Base
 
 // ========================================
 // AMM Request Schemas

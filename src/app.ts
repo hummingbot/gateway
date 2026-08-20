@@ -1,6 +1,5 @@
 // External dependencies
-import { spawn } from 'child_process';
-import { exec } from 'child_process';
+import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
 
 import fastifyRateLimit from '@fastify/rate-limit';

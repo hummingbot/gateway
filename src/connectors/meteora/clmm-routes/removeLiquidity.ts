@@ -8,7 +8,6 @@ import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 
 // Using centralized error handling
-const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
 
 export async function removeLiquidity(
   network: string,

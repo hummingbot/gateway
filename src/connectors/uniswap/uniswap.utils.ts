@@ -1,7 +1,5 @@
 import { Contract } from '@ethersproject/contracts';
 import { Token } from '@uniswap/sdk-core';
-import { Pair as V2Pair } from '@uniswap/v2-sdk';
-import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { FeeAmount, Pool as V3Pool, SqrtPriceMath, TickMath } from '@uniswap/v3-sdk';
 import { FastifyInstance } from 'fastify';
 import JSBI from 'jsbi';
@@ -202,7 +200,6 @@ export interface UniswapPoolInfo {
 export async function getV2PoolInfo(poolAddress: string, network: string): Promise<UniswapPoolInfo | null> {
   try {
     const ethereum = await Ethereum.getInstance(network);
-    const uniswap = await Uniswap.getInstance(network);
 
     // Create pair contract
     const pairContract = new Contract(poolAddress, IUniswapV2PairABI.abi, ethereum.provider);

@@ -6,8 +6,6 @@ import { PositionInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
 
-const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
-
 export async function getPositionsOwned(
   fastify: FastifyInstance,
   network: string,

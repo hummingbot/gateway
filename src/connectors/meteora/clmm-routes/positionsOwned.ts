@@ -6,7 +6,6 @@ import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 
 // Using Fastify's native error handling
-const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
 
 export async function getPositionsOwned(
   fastify: FastifyInstance,

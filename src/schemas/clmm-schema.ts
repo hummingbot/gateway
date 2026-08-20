@@ -1,7 +1,5 @@
 import { Type, Static } from '@sinclair/typebox';
 
-import { TransactionStatus } from './chain-schema';
-
 export const FetchPoolsRequest = Type.Object(
   {
     network: Type.Optional(Type.String({ description: 'Network to use' })),

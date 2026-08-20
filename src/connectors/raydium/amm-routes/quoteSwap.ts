@@ -4,7 +4,7 @@ import BN from 'bn.js';
 import Decimal from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
-import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/amm-schema';
+import { QuoteSwapResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
@@ -22,14 +22,12 @@ async function quoteAmmSwap(
   slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<any> {
   let poolInfo: ApiV3PoolInfoStandardItem;
-  let poolKeys: any;
   let rpcData: any;
 
   if (network === 'mainnet-beta') {
     // note: api doesn't support get devnet pool info, so in devnet else we go rpc method
-    const [poolInfoData, poolKeysData] = await raydium.getPoolfromAPI(poolId);
+    const [poolInfoData] = await raydium.getPoolfromAPI(poolId);
     poolInfo = poolInfoData as ApiV3PoolInfoStandardItem;
-    poolKeys = poolKeysData;
     rpcData = await raydium.raydiumSDK.liquidity.getRpcPoolInfo(poolId);
   } else {
     // note: getPoolInfoFromRpc method only returns required pool data for computing not all detail pool info
@@ -37,7 +35,6 @@ async function quoteAmmSwap(
       poolId,
     });
     poolInfo = data.poolInfo;
-    poolKeys = data.poolKeys;
     rpcData = data.poolRpcData;
   }
 
@@ -121,18 +118,15 @@ async function quoteCpmmSwap(
   slippagePct: number = RaydiumConfig.config.slippagePct,
 ): Promise<any> {
   let poolInfo: ApiV3PoolInfoStandardItemCpmm;
-  let poolKeys: any;
   let rpcData: any;
 
   if (network === 'mainnet-beta') {
-    const [poolInfoData, poolKeysData] = await raydium.getPoolfromAPI(poolId);
+    const [poolInfoData] = await raydium.getPoolfromAPI(poolId);
     poolInfo = poolInfoData as ApiV3PoolInfoStandardItemCpmm;
-    poolKeys = poolKeysData;
     rpcData = await raydium.raydiumSDK.cpmm.getRpcPoolInfo(poolInfo.id, true);
   } else {
     const data = await raydium.raydiumSDK.cpmm.getPoolInfoFromRpc(poolId);
     poolInfo = data.poolInfo;
-    poolKeys = data.poolKeys;
     rpcData = data.rpcData;
   }
 
@@ -459,7 +453,6 @@ async function formatSwapQuote(
   const tokenOut = side === 'SELL' ? resolvedQuoteToken.address : resolvedBaseToken.address;
 
   // Calculate fee and price impact
-  const fee = quote.fee ? new Decimal(quote.fee.toString()).div(10 ** inputToken.decimals).toNumber() : 0;
   const priceImpactPct = quote.priceImpact ? quote.priceImpact * 100 : 0;
 
   return {

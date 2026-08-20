@@ -58,7 +58,7 @@ export async function quoteLiquidity(
     const solana = await Solana.getInstance(network);
     const raydium = await Raydium.getInstance(network);
 
-    const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddress);
+    const [poolInfo] = await raydium.getPoolfromAPI(poolAddress);
     const programId = poolInfo.programId;
 
     if (!isValidAmm(programId) && !isValidCpmm(programId)) {

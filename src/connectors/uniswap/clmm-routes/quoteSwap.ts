@@ -4,7 +4,7 @@ import { BigNumber, utils } from 'ethers';
 import JSBI from 'jsbi';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-schema';
+import { QuoteSwapResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
@@ -183,7 +183,7 @@ async function formatSwapQuote(
 
   try {
     // Use the extracted quote function
-    const { quote, uniswap, ethereum, baseTokenObj, quoteTokenObj } = await getUniswapClmmQuote(
+    const { quote, ethereum } = await getUniswapClmmQuote(
       network,
       poolAddress,
       baseToken,
@@ -232,14 +232,12 @@ async function formatSwapQuote(
     const priceImpactPct = quote.priceImpact;
 
     // Get current tick from pool
-    const activeBinId = quote.currentTick || 0;
 
     // Determine token addresses for computed fields
     const tokenIn = quote.inputToken.address;
     const tokenOut = quote.outputToken.address;
 
     // Calculate fee (V3 has dynamic fees based on pool)
-    const fee = quote.estimatedAmountIn * (quote.feeTier / 1000000);
 
     return {
       // Base QuoteSwapResponse fields in correct order

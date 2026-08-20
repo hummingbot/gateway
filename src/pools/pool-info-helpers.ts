@@ -5,8 +5,6 @@
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
 import { connectorsConfig } from '../config/routes/getConnectors';
-import { PoolInfo as AmmPoolInfo } from '../schemas/amm-schema';
-import { PoolInfo as ClmmPoolInfo } from '../schemas/clmm-schema';
 import { logger } from '../services/logger';
 
 interface PoolInfoResult {
@@ -107,31 +105,6 @@ export async function fetchPoolInfo(
           const fee = await poolContract.fee();
           feePct = fee / 10000; // Convert from basis points to percentage
         } else {
-          // V2 pools - get fee from factory contract
-          const v2PairABI = [
-            {
-              inputs: [],
-              name: 'factory',
-              outputs: [{ internalType: 'address', name: '', type: 'address' }],
-              stateMutability: 'view',
-              type: 'function',
-            },
-          ];
-
-          const v2FactoryABI = [
-            {
-              inputs: [],
-              name: 'feeTo',
-              outputs: [{ internalType: 'address', name: '', type: 'address' }],
-              stateMutability: 'view',
-              type: 'function',
-            },
-          ];
-
-          const pairContract = new Contract(poolAddress, v2PairABI, ethereum.provider);
-          const factoryAddress = await pairContract.factory();
-          const factoryContract = new Contract(factoryAddress, v2FactoryABI, ethereum.provider);
-
           // V2 pairs typically have 0.3% fee (30 basis points)
           // PancakeSwap V2 has 0.25% fee (25 basis points)
           // Since the fee isn't exposed on-chain for V2, we use the standard for each DEX

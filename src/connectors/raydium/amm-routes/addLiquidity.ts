@@ -134,13 +134,7 @@ export async function addLiquidity(
     slippagePct,
   )) as QuoteLiquidityResponseType;
 
-  const {
-    baseLimited,
-    baseTokenAmount: quotedBaseAmount,
-    quoteTokenAmount: quotedQuoteAmount,
-    baseTokenAmountMax,
-    quoteTokenAmountMax,
-  } = quoteResponse;
+  const { baseLimited, baseTokenAmount: quotedBaseAmount, quoteTokenAmount: quotedQuoteAmount } = quoteResponse;
 
   const baseTokenAmountAdded = baseLimited ? baseTokenAmount : quotedBaseAmount;
   const quoteTokenAmountAdded = baseLimited ? quotedQuoteAmount : quoteTokenAmount;

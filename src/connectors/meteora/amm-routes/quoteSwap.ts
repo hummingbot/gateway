@@ -4,7 +4,7 @@ import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
-import { QuoteSwapResponse, QuoteSwapResponseType } from '../../../schemas/amm-schema';
+import { QuoteSwapResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { MeteoraDamm } from '../meteora-damm';

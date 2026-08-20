@@ -30,7 +30,7 @@ export async function addLiquidity(
   const position = await raydium.getClmmPosition(positionAddress);
   if (!position) throw new Error('Position not found');
 
-  const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(positionInfo.poolAddress);
+  const [poolInfo] = await raydium.getClmmPoolfromAPI(positionInfo.poolAddress);
   // const clmmPool = await raydium.getClmmPoolfromRPC(positionInfo.poolAddress);
 
   const baseToken = await solana.getToken(poolInfo.mintA.address);
@@ -106,7 +106,6 @@ export async function addLiquidity(
     const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, tokenAddresses);
 
     // Parse balance changes
-    const solChangeIndex = 0;
     const baseChangeIndex = isBaseSol ? 0 : 1;
     const quoteChangeIndex = isQuoteSol ? 0 : isBaseSol ? 1 : 2;
 

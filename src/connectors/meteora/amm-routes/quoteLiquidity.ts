@@ -2,7 +2,7 @@ import { PoolState } from '@meteora-ag/cp-amm-sdk';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 
-import { QuoteLiquidityResponse, QuoteLiquidityResponseType } from '../../../schemas/amm-schema';
+import { QuoteLiquidityResponseType } from '../../../schemas/amm-schema';
 import { MeteoraDamm } from '../meteora-damm';
 import { MeteoraConfig } from '../meteora.config';
 

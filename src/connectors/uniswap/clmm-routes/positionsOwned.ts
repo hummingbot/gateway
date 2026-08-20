@@ -1,22 +1,13 @@
 import { Contract } from '@ethersproject/contracts';
-import { Type } from '@sinclair/typebox';
 import { Position, tickToPrice, computePoolAddress } from '@uniswap/v3-sdk';
 import { FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { PositionInfo, PositionInfoSchema } from '../../../schemas/clmm-schema';
+import { PositionInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { POSITION_MANAGER_ABI, getUniswapV3NftManagerAddress, getUniswapV3FactoryAddress } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
-
-// Define the request and response types
-const PositionsOwnedRequest = Type.Object({
-  network: Type.Optional(Type.String({ examples: ['base'], default: 'base' })),
-  walletAddress: Type.String({ examples: ['<ethereum-wallet-address>'] }),
-});
-
-const PositionsOwnedResponse = Type.Array(PositionInfoSchema);
 
 // Additional ABI methods needed for enumerating positions
 const ENUMERABLE_ABI = [

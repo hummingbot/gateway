@@ -81,9 +81,6 @@ export async function removeLiquidity(
   // Get current liquidity
   const currentLiquidity = position.liquidity;
 
-  // Calculate liquidity to remove based on percentage
-  const liquidityToRemove = currentLiquidity.mul(Math.floor(percentageToRemove * 100)).div(10000);
-
   // Get the pool
   const pool = await uniswap.getV3Pool(token0, token1, position.fee);
   if (!pool) {
@@ -116,8 +113,6 @@ export async function removeLiquidity(
 
   // Apply slippage tolerance
   const slippageTolerance = new Percent(100, 10000); // 1% slippage
-  const amount0Min = amount0.multiply(new Percent(1).subtract(slippageTolerance)).quotient;
-  const amount1Min = amount1.multiply(new Percent(1).subtract(slippageTolerance)).quotient;
 
   // Also add any fees that have been collected to the expected amounts
   const totalAmount0 = CurrencyAmount.fromRawAmount(

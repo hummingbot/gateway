@@ -1,19 +1,12 @@
-import { Token } from '@uniswap/sdk-core';
 import { Position, nearestUsableTick } from '@uniswap/v3-sdk';
 import JSBI from 'jsbi';
 
-import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { QuotePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Uniswap } from '../uniswap';
 import { getUniswapPoolInfo } from '../uniswap.utils';
 // Constants for examples (Base WETH-USDC pool)
-const BASE_TOKEN_AMOUNT = 0.001;
-const QUOTE_TOKEN_AMOUNT = 3;
-const LOWER_PRICE_BOUND = 2000;
-const UPPER_PRICE_BOUND = 4000;
-const POOL_ADDRESS_EXAMPLE = '0xd0b53d9277642d899df5c87a3966a349a798f224';
 
 // Export standalone function for use in unified routes
 export async function quotePosition(
@@ -32,7 +25,6 @@ export async function quotePosition(
 
   // Get Uniswap and Ethereum instances
   const uniswap = await Uniswap.getInstance(network);
-  const ethereum = await Ethereum.getInstance(network);
 
   // Get pool information to determine tokens
   const poolInfo = await getUniswapPoolInfo(poolAddress, network, 'clmm');

@@ -100,7 +100,7 @@ export async function getPositionInfo(
 
   // Get pool info
   const ammPoolInfo = await raydium.getAmmPoolInfo(poolAddress);
-  const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddress);
+  const [poolInfo] = await raydium.getPoolfromAPI(poolAddress);
   if (!poolInfo) {
     throw httpErrors.notFound('Pool not found');
   }

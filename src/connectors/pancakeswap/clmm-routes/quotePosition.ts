@@ -8,11 +8,6 @@ import { Pancakeswap } from '../pancakeswap';
 import { getPancakeswapPoolInfo } from '../pancakeswap.utils';
 
 // Constants for examples (BSC USDT-WBNB pool, current price ~0.00093)
-const BASE_TOKEN_AMOUNT = 10;
-const QUOTE_TOKEN_AMOUNT = 0.01;
-const LOWER_PRICE_BOUND = 0.0008;
-const UPPER_PRICE_BOUND = 0.001;
-const POOL_ADDRESS_EXAMPLE = '0x172fcd41e0913e95784454622d1c3724f546f849';
 
 // Export standalone function for use in unified routes
 export async function quotePosition(

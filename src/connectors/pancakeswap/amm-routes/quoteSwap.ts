@@ -3,7 +3,7 @@ import { Route as V2Route, Trade as V2Trade } from '@pancakeswap/v2-sdk';
 import { BigNumber } from 'ethers';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/amm-schema';
+import { QuoteSwapResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';

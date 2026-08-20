@@ -3,7 +3,7 @@ import { Route as V2Route, Trade as V2Trade } from '@uniswap/v2-sdk';
 import { BigNumber } from 'ethers';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/amm-schema';
+import { QuoteSwapResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
@@ -184,7 +184,7 @@ async function formatSwapQuote(
 
   try {
     // Use the extracted quote function
-    const { quote, uniswap, ethereum, baseTokenObj, quoteTokenObj } = await getUniswapAmmQuote(
+    const { quote, ethereum } = await getUniswapAmmQuote(
       network,
       poolAddress,
       baseToken,
@@ -238,7 +238,6 @@ async function formatSwapQuote(
     const tokenOut = quote.outputToken.address;
 
     // Calculate fee (V2 has 0.3% fixed fee)
-    const fee = quote.estimatedAmountIn * 0.003;
 
     return {
       // Base QuoteSwapResponse fields in correct order

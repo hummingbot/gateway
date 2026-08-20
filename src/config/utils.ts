@@ -1,8 +1,4 @@
-import * as fs from 'fs';
-import * as path from 'path';
-
 import { FastifyInstance } from 'fastify';
-import * as yaml from 'js-yaml';
 
 import { ConfigManagerV2 } from '../services/config-manager-v2';
 import { logger } from '../services/logger';

@@ -1,10 +1,9 @@
 import { Contract } from '@ethersproject/contracts';
 import { Position, tickToPrice, computePoolAddress } from '@pancakeswap/v3-sdk';
-import { Type } from '@sinclair/typebox';
 import { FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { PositionInfo, PositionInfoSchema } from '../../../schemas/clmm-schema';
+import { PositionInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
 import {
@@ -13,14 +12,6 @@ import {
   getPancakeswapV3PoolDeployerAddress,
 } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
-
-// Define the request and response types
-const PositionsOwnedRequest = Type.Object({
-  network: Type.Optional(Type.String({ examples: ['bsc'], default: 'bsc' })),
-  walletAddress: Type.String({ examples: ['<ethereum-wallet-address>'] }),
-});
-
-const PositionsOwnedResponse = Type.Array(PositionInfoSchema);
 
 // Additional ABI methods needed for enumerating positions
 const ENUMERABLE_ABI = [

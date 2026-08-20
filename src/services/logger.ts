@@ -129,7 +129,11 @@ const toStdout = new winston.transports.Console({
 });
 
 export const updateLoggerToStdout = () => {
-  ConfigManagerV2.getInstance().get('server.logToStdOut') === true ? logger.add(toStdout) : logger.remove(toStdout);
+  if (ConfigManagerV2.getInstance().get('server.logToStdOut') === true) {
+    logger.add(toStdout);
+  } else {
+    logger.remove(toStdout);
+  }
 };
 
 // Initialize logger with stdout configuration

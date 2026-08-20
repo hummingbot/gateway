@@ -549,7 +549,6 @@ export class PancakeswapSol {
     // Setting to 0 for now to avoid showing incorrect information
     const baseFeeAmount = 0;
     const quoteFeeAmount = 0;
-    const cakeRewardAmount = 0;
 
     return {
       address: positionAddress,

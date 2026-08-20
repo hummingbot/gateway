@@ -220,7 +220,7 @@ export class Raydium {
       }
 
       const poolIdString = position.poolId.toBase58();
-      const [poolInfo, poolKeys] = await this.getClmmPoolfromAPI(poolIdString);
+      const [poolInfo] = await this.getClmmPoolfromAPI(poolIdString);
 
       const epochInfo = await this.solana.connection.getEpochInfo();
 

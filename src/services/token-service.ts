@@ -13,7 +13,6 @@ import { logger } from './logger';
 
 const writeFile = promisify(fs.writeFile);
 const readFile = promisify(fs.readFile);
-const exists = promisify(fs.exists);
 
 export class TokenService {
   private static instance: TokenService;

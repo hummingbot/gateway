@@ -59,7 +59,6 @@ export async function executeSwap(
 
   // Validate pool contains the requested tokens
   const poolTokens = new Set([poolInfo.baseTokenAddress, poolInfo.quoteTokenAddress]);
-  const requestedTokens = new Set([baseToken.address, quoteToken.address]);
 
   if (!poolTokens.has(baseToken.address) || !poolTokens.has(quoteToken.address)) {
     throw httpErrors.badRequest(
@@ -70,8 +69,6 @@ export async function executeSwap(
   }
 
   // Determine if baseToken matches pool's base or quote
-  const isBaseTokenFirst = poolInfo.baseTokenAddress === baseToken.address;
-  const currentPrice = isBaseTokenFirst ? poolInfo.price : 1 / poolInfo.price;
 
   logger.info(
     `Token addresses - base: ${baseToken.address}, quote: ${quoteToken.address}, pool base: ${poolInfo.baseTokenAddress}, pool quote: ${poolInfo.quoteTokenAddress}`,
