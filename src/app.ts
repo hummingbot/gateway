@@ -37,7 +37,6 @@ import {
 } from './services/gateway-security';
 import { logger } from './services/logger';
 import { OPERATION_IDS } from './services/operation-ids';
-import { quoteCache } from './services/quote-cache';
 import { ajvOptions } from './services/schema-keywords';
 import { displayChainConfigurations } from './services/startup-banner';
 import * as tokenSchemas from './tokens/schemas';

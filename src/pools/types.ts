@@ -36,18 +36,16 @@ export function isSupportedConnector(connector: string): boolean {
 }
 
 export interface PoolListRequest {
-  chain: string;
-  network: string;
+  chainNetwork: string;
   connector?: string; // Optional filter by connector
   type?: 'amm' | 'clmm';
   search?: string;
 }
 
 export interface PoolAddRequest {
-  chain: string;
+  chainNetwork: string;
   connector: string;
   type: 'amm' | 'clmm';
-  network: string;
   address: string;
   baseSymbol: string; // Required
   quoteSymbol: string; // Required

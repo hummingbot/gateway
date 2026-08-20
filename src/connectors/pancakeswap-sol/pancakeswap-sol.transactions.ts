@@ -1,16 +1,8 @@
-import { BorshCoder, Idl } from '@coral-xyz/anchor';
-import {
-  TOKEN_PROGRAM_ID,
-  TOKEN_2022_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-  NATIVE_MINT,
-  getAssociatedTokenAddressSync,
-  createAssociatedTokenAccountInstruction,
-} from '@solana/spl-token';
+import { Idl } from '@coral-xyz/anchor';
+import { NATIVE_MINT, getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
 import {
   PublicKey,
   TransactionInstruction,
-  SYSVAR_RENT_PUBKEY,
   ComputeBudgetProgram,
   TransactionMessage,
   VersionedTransaction,
@@ -28,14 +20,7 @@ import {
   buildIncreaseLiquidityV2Instruction,
   buildOpenPositionWithToken22NftInstruction,
 } from './pancakeswap-sol.instructions';
-import {
-  getTokenProgramForMint,
-  getTickArrayStartIndexFromTick,
-  getTickArrayAddress,
-  parsePositionData,
-  parsePoolTickSpacing,
-  MEMO_PROGRAM_ID,
-} from './pancakeswap-sol.parser';
+import { getTokenProgramForMint, parsePositionData } from './pancakeswap-sol.parser';
 
 const clmmIdl = require('./idl/clmm.json') as Idl;
 

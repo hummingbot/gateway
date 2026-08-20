@@ -1,7 +1,5 @@
 import { Type } from '@sinclair/typebox';
 
-import { PancakeswapConfig } from './pancakeswap.config';
-
 // Get chain config for defaults
 // Constants for examples
 // Pancakeswap V2 WETH-USDC pool on Base

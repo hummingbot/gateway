@@ -1,8 +1,6 @@
 import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { getEthereumNetworkConfig } from '../../chains/ethereum/ethereum.config';
-import { getSolanaNetworkConfig } from '../../chains/solana/solana.config';
 import { getPoolInfo as meteoraGetPoolInfo } from '../../connectors/meteora/clmm-routes/poolInfo';
 import { getPoolInfo as orcaGetPoolInfo } from '../../connectors/orca/clmm-routes/poolInfo';
 import { getPoolInfo as pancakeswapGetPoolInfo } from '../../connectors/pancakeswap/clmm-routes/poolInfo';

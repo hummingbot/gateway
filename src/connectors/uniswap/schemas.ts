@@ -2,8 +2,6 @@ import { Type } from '@sinclair/typebox';
 
 import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
 
-import { UniswapConfig } from './uniswap.config';
-
 // Get chain config for defaults
 const ethereumChainConfig = getEthereumChainConfig();
 

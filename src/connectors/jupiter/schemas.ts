@@ -1,7 +1,5 @@
 import { Type } from '@sinclair/typebox';
 
-import { getSolanaChainConfig } from '../../chains/solana/solana.config';
-
 // Get chain config for defaults
 
 // Constants for examples

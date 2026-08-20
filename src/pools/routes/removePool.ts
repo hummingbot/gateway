@@ -1,6 +1,8 @@
 import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
+import { chainNetworkField } from '../../schemas/chain-network-field';
+import { parseChainNetwork } from '../../services/chain-network';
 import { PoolService } from '../../services/pool-service';
 import { PoolSuccessResponseSchema } from '../schemas';
 
@@ -8,8 +10,7 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
   fastify.delete<{
     Params: { address: string };
     Querystring: {
-      chain: string;
-      network: string;
+      chainNetwork: string;
     };
   }>(
     '/:address',
@@ -27,16 +28,7 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
           },
           required: ['address'],
         },
-        querystring: Type.Object({
-          chain: Type.String({
-            description: 'Blockchain chain (solana, ethereum)',
-            examples: ['solana', 'ethereum'],
-          }),
-          network: Type.String({
-            description: 'Network name (mainnet, mainnet-beta, etc)',
-            examples: ['mainnet', 'mainnet-beta'],
-          }),
-        }),
+        querystring: Type.Object({ chainNetwork: chainNetworkField({ defaulted: false }) }),
         response: {
           200: PoolSuccessResponseSchema,
         },
@@ -44,7 +36,8 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { address } = request.params;
-      const { chain, network } = request.query;
+      const { chainNetwork } = request.query;
+      const { chain, network } = parseChainNetwork(chainNetwork);
       const poolService = PoolService.getInstance();
 
       try {

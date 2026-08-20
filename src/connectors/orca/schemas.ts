@@ -1,6 +1,5 @@
 import { Type, Static } from '@sinclair/typebox';
 
-import { getSolanaChainConfig } from '../../chains/solana/solana.config';
 import { PoolInfoSchema } from '../../schemas/clmm-schema';
 
 // Get chain config for defaults

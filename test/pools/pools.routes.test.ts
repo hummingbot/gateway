@@ -184,7 +184,7 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?chain=solana&network=mainnet-beta',
+        url: '/?chainNetwork=solana-mainnet-beta',
       });
 
       expect(response.statusCode).toBe(200);
@@ -211,7 +211,7 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?chain=solana&network=mainnet-beta&connector=raydium&type=clmm',
+        url: '/?chainNetwork=solana-mainnet-beta&connector=raydium&type=clmm',
       });
 
       expect(response.statusCode).toBe(200);
@@ -238,7 +238,7 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?chain=solana&network=mainnet-beta&search=SOL',
+        url: '/?chainNetwork=solana-mainnet-beta&search=SOL',
       });
 
       expect(response.statusCode).toBe(200);
@@ -251,7 +251,7 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/?chain=invalid&network=mainnet',
+        url: '/?chainNetwork=invalid-mainnet',
       });
 
       expect(response.statusCode).toBe(400);
@@ -277,7 +277,7 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/SOL-USDC?chain=solana&network=mainnet-beta&type=amm&connector=raydium',
+        url: '/SOL-USDC?chainNetwork=solana-mainnet-beta&type=amm&connector=raydium',
       });
 
       expect(response.statusCode).toBe(200);
@@ -290,7 +290,7 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'GET',
-        url: '/UNKNOWN-TOKEN?chain=solana&network=mainnet-beta&type=amm',
+        url: '/UNKNOWN-TOKEN?chainNetwork=solana-mainnet-beta&type=amm',
       });
 
       expect(response.statusCode).toBe(404);
@@ -300,7 +300,7 @@ describe('Pool Routes Tests', () => {
     it('should return 400 for invalid trading pair format', async () => {
       const response = await fastify.inject({
         method: 'GET',
-        url: '/INVALIDFORMAT?chain=solana&network=mainnet-beta&type=amm',
+        url: '/INVALIDFORMAT?chainNetwork=solana-mainnet-beta&type=amm',
       });
 
       expect(response.statusCode).toBe(400);
@@ -319,10 +319,9 @@ describe('Pool Routes Tests', () => {
         method: 'POST',
         url: '/',
         payload: {
-          chain: 'solana',
+          chainNetwork: 'solana-mainnet-beta',
           connector: 'raydium',
           type: 'amm',
-          network: 'mainnet-beta',
           baseSymbol: 'WIF',
           quoteSymbol: 'SOL',
           address: 'EP2ib6dYdEeqD8MfE2ezHCxX3kP3K2eLKkirfPm5eyMx',
@@ -373,10 +372,9 @@ describe('Pool Routes Tests', () => {
         method: 'POST',
         url: '/',
         payload: {
-          chain: 'solana',
+          chainNetwork: 'solana-mainnet-beta',
           connector: 'raydium',
           type: 'amm',
-          network: 'mainnet-beta',
           baseSymbol: 'SOL',
           quoteSymbol: 'USDC',
           address: '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
@@ -413,7 +411,7 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'DELETE',
-        url: '/58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2?chain=solana&network=mainnet-beta',
+        url: '/58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2?chainNetwork=solana-mainnet-beta',
       });
 
       expect(response.statusCode).toBe(200);
@@ -432,7 +430,7 @@ describe('Pool Routes Tests', () => {
 
       const response = await fastify.inject({
         method: 'DELETE',
-        url: '/NonExistent?chain=solana&network=mainnet-beta',
+        url: '/NonExistent?chainNetwork=solana-mainnet-beta',
       });
 
       expect(response.statusCode).toBe(404);
@@ -442,8 +440,9 @@ describe('Pool Routes Tests', () => {
     it('should return 400 for missing required parameters', async () => {
       const response = await fastify.inject({
         method: 'DELETE',
-        url: '/58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2?chain=solana',
-        // Missing network
+        url: '/58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2',
+        // No chainNetwork. A delete must say which list it is deleting from — defaulting
+        // one would pick a network and remove a pool from it.
       });
 
       expect(response.statusCode).toBe(400);

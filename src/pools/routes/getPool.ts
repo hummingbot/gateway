@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import { parseChainNetwork } from '../../services/chain-network';
 import { PoolService } from '../../services/pool-service';
 import { GetPoolRequestSchema, PoolListResponseSchema } from '../schemas';
 
@@ -7,8 +8,7 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
     Params: { tradingPair: string };
     Querystring: {
-      chain: string;
-      network: string;
+      chainNetwork: string;
       type: string;
       connector?: string;
     };
@@ -29,16 +29,7 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
           },
           required: ['tradingPair'],
         },
-        querystring: {
-          ...GetPoolRequestSchema,
-          properties: {
-            ...GetPoolRequestSchema.properties,
-            network: {
-              ...GetPoolRequestSchema.properties.network,
-              default: 'mainnet-beta',
-            },
-          },
-        },
+        querystring: GetPoolRequestSchema,
         response: {
           200: PoolListResponseSchema.items,
         },
@@ -46,7 +37,8 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { tradingPair } = request.params;
-      const { chain, network, type, connector } = request.query;
+      const { chainNetwork, type, connector } = request.query;
+      const { chain, network } = parseChainNetwork(chainNetwork);
       const poolService = PoolService.getInstance();
 
       try {

@@ -2,8 +2,6 @@
  * Helper functions for fetching pool info from connectors
  */
 
-import { FastifyInstance } from 'fastify';
-
 import { Ethereum } from '../chains/ethereum/ethereum';
 import { Solana } from '../chains/solana/solana';
 import { connectorsConfig } from '../config/routes/getConnectors';

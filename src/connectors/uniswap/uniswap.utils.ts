@@ -6,13 +6,12 @@ import { FeeAmount, Pool as V3Pool, SqrtPriceMath, TickMath } from '@uniswap/v3-
 import { FastifyInstance } from 'fastify';
 import JSBI from 'jsbi';
 
-import { TokenInfo, Ethereum } from '../../chains/ethereum/ethereum';
+import { Ethereum } from '../../chains/ethereum/ethereum';
 import { BinLiquidity } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
 import { computeV3BinDistribution, V3SqrtPriceMath, V3TickMath } from '../clmm-v3-utils';
 
 import { Uniswap } from './uniswap';
-import { UniswapConfig } from './uniswap.config';
 import { IUniswapV2PairABI } from './uniswap.contracts';
 
 /**

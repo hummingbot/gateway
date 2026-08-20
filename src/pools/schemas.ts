@@ -1,17 +1,10 @@
 import { Type } from '@sinclair/typebox';
 
-import { ConfigManagerV2 } from '../services/config-manager-v2';
+import { chainNetworkField } from '../schemas/chain-network-field';
 
 // Pool list request
 export const PoolListRequestSchema = Type.Object({
-  chain: Type.String({
-    description: 'Blockchain chain (solana, ethereum)',
-    examples: ['solana', 'ethereum'],
-  }),
-  network: Type.String({
-    description: 'Network name (mainnet-beta, mainnet, base, etc)',
-    examples: ['mainnet-beta', 'mainnet', 'base', 'arbitrum'],
-  }),
+  chainNetwork: chainNetworkField({ defaulted: false }),
   connector: Type.Optional(
     Type.String({
       description: 'Optional: filter by connector (raydium, meteora, uniswap, orca)',
@@ -59,10 +52,7 @@ export const PoolListResponseSchema = Type.Array(PoolTemplateSchema);
 
 // Add pool request
 export const PoolAddRequestSchema = Type.Object({
-  chain: Type.String({
-    description: 'Blockchain chain (solana, ethereum)',
-    examples: ['solana', 'ethereum'],
-  }),
+  chainNetwork: chainNetworkField({ defaulted: false }),
   connector: Type.String({
     description: 'Connector (raydium, meteora, uniswap, orca)',
     examples: ['raydium', 'meteora', 'uniswap', 'orca'],
@@ -71,11 +61,6 @@ export const PoolAddRequestSchema = Type.Object({
     description: 'Pool type',
     examples: ['clmm', 'amm'],
     enum: ['clmm', 'amm'],
-  }),
-  network: Type.String({
-    description: 'Network name (mainnet, mainnet-beta, etc)',
-    examples: ['mainnet-beta', 'mainnet'],
-    default: 'mainnet-beta',
   }),
   address: Type.String({
     description: 'Pool contract address',
@@ -113,15 +98,7 @@ export const PoolAddRequestSchema = Type.Object({
 
 // Get pool request
 export const GetPoolRequestSchema = Type.Object({
-  chain: Type.String({
-    description: 'Blockchain chain (solana, ethereum)',
-    examples: ['solana', 'ethereum'],
-  }),
-  network: Type.String({
-    description: 'Network name (mainnet, mainnet-beta, etc)',
-    examples: ['mainnet-beta', 'mainnet'],
-    default: 'mainnet-beta',
-  }),
+  chainNetwork: chainNetworkField({ defaulted: false }),
   type: Type.String({
     description: 'Pool type',
     examples: ['amm', 'clmm'],

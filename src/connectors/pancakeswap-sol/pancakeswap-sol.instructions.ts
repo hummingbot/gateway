@@ -3,20 +3,9 @@ import {
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  NATIVE_MINT,
   getAssociatedTokenAddressSync,
-  createAssociatedTokenAccountInstruction,
 } from '@solana/spl-token';
-import {
-  PublicKey,
-  TransactionInstruction,
-  SystemProgram,
-  SYSVAR_RENT_PUBKEY,
-  ComputeBudgetProgram,
-  TransactionMessage,
-  VersionedTransaction,
-  Keypair,
-} from '@solana/web3.js';
+import { PublicKey, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY, Keypair } from '@solana/web3.js';
 import BN from 'bn.js';
 
 import { Solana } from '../../chains/solana/solana';

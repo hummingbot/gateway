@@ -3,7 +3,6 @@ import { Type } from '@sinclair/typebox';
 import { getEthereumChainConfig, getEthereumNetworkConfig } from '../chains/ethereum/ethereum.config';
 import { getSolanaChainConfig, getSolanaNetworkConfig } from '../chains/solana/solana.config';
 import { parseChainNetwork as parseChainNetworkParts } from '../services/chain-network';
-import { ConfigManagerV2 } from '../services/config-manager-v2';
 import { httpErrors } from '../services/error-handler';
 import { logger } from '../services/logger';
 import { PoolService } from '../services/pool-service';
@@ -20,38 +19,14 @@ import { assertConnectorOnChain, TradingType } from './connector-registry';
 export { AMM_CONNECTORS, CLMM_CONNECTORS } from './connector-registry';
 
 /**
- * Every chain-network Gateway is configured for, read from its config namespaces.
- *
- * This is the enum on `chainNetworkField`, so an unconfigured or malformed selector is
- * rejected by the schema instead of being split into parts and half-used. Read at load
- * rather than listed, so adding a network's config is the only step.
+ * The chain-network selector and the roster behind it, defined in `services/chain-network`
+ * so the pool and token routes can share the one field rather than each declaring its own.
  */
-export const SUPPORTED_CHAIN_NETWORKS = ConfigManagerV2.getInstance().getSupportedChainNetworks();
-
-const DEFAULT_CHAIN_NETWORK = 'solana-mainnet-beta';
-
-if (!SUPPORTED_CHAIN_NETWORKS.includes(DEFAULT_CHAIN_NETWORK)) {
-  // Fastify injects a schema default before the handler runs, so a default outside the
-  // enum would make every request that omits chainNetwork fail its own validation.
-  throw new Error(
-    `The trading routes default chainNetwork to '${DEFAULT_CHAIN_NETWORK}', which is not among the ` +
-      `configured chain-networks: ${SUPPORTED_CHAIN_NETWORKS.join(', ') || '(none)'}. ` +
-      'Restore that namespace under conf/, or change the default.',
-  );
-}
+export { chainNetworkField, SUPPORTED_CHAIN_NETWORKS } from '../schemas/chain-network-field';
 
 /** Connector selector: enum-constrained so unknown connectors are rejected at the schema. */
 export const connectorField = (connectors: string[], label: string) =>
   Type.String({ description: label, enum: connectors, default: connectors[0], examples: [connectors[0]] });
-
-/** Chain-network selector shared by every unified trading route. */
-export const chainNetworkField = () =>
-  Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    enum: SUPPORTED_CHAIN_NETWORKS,
-    default: DEFAULT_CHAIN_NETWORK,
-    examples: [DEFAULT_CHAIN_NETWORK],
-  });
 
 /**
  * Optional slippage override shared by the unified trading routes. Deliberately
