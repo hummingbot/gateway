@@ -2,7 +2,7 @@ import { derivePositionAddress } from '@meteora-ag/cp-amm-sdk';
 import { Keypair, PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../../chains/solana/solana';
-import { accountLamports } from '../../../chains/solana/solana.utils';
+import { accountBalanceSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
 import { AddLiquidityResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -70,13 +70,17 @@ export async function openPosition(
   // The position account is derived from the NFT mint; its post-balance is the rent
   // the account now holds, which comes back to the wallet when the position closes.
   const position = derivePositionAddress(positionNft.publicKey);
-  const positionRent = accountLamports(txData, position, 'post') ?? 0;
+  const positionRent = accountBalanceSol(txData, position, 'post') ?? 0;
 
   const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
     poolState.tokenAMint.toBase58(),
     poolState.tokenBMint.toBase58(),
   ]);
 
+  // The native side of the change carries the rent this transaction locked; back it out
+  // to leave the liquidity actually deposited. The transaction fee needs no correction —
+  // extractBalanceChangesAndFee already adds it back for the fee payer and reports it
+  // separately as `fee`.
   return {
     signature,
     status: 1, // CONFIRMED
@@ -84,8 +88,8 @@ export async function openPosition(
       fee: txData.meta.fee / 1e9,
       positionAddress: position.toBase58(),
       positionRent,
-      baseTokenAmountAdded: Math.abs(balanceChanges[0]),
-      quoteTokenAmountAdded: Math.abs(balanceChanges[1]),
+      baseTokenAmountAdded: liquidityWithoutRent(balanceChanges[0], poolState.tokenAMint, positionRent),
+      quoteTokenAmountAdded: liquidityWithoutRent(balanceChanges[1], poolState.tokenBMint, positionRent),
     },
   };
 }

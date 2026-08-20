@@ -3,7 +3,7 @@ import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
-import { accountLamports } from '../../../chains/solana/solana.utils';
+import { accountBalanceSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
 import { RemoveLiquidityResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -100,7 +100,7 @@ export async function closePosition(
   }
 
   // The position account's balance BEFORE the close is exactly the rent that comes back.
-  const positionRentRefunded = accountLamports(txData, target.position, 'pre') ?? 0;
+  const positionRentRefunded = accountBalanceSol(txData, target.position, 'pre') ?? 0;
 
   const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
     poolState.tokenAMint.toBase58(),
@@ -108,23 +108,18 @@ export async function closePosition(
   ]);
 
   const fee = txData.meta.fee / 1e9;
-  const nativeMint = 'So11111111111111111111111111111111111111112';
-  // When a pool side IS the native token, the wallet's balance change for it also
-  // carries the rent refund, so back that out to leave the liquidity actually
-  // withdrawn. The transaction fee needs no correction here: extractBalanceChangesAndFee
-  // already adds it back for the fee payer and reports it separately as `fee`, so
-  // subtracting it again would understate the amount by one fee.
-  const adjust = (change: number, mint: PublicKey) =>
-    mint.toBase58() === nativeMint ? Math.max(0, Math.abs(change) - positionRentRefunded) : Math.abs(change);
-
+  // The native side of the change carries the rent that just came back; back it out to
+  // leave the liquidity actually withdrawn. The transaction fee needs no correction here:
+  // extractBalanceChangesAndFee already adds it back for the fee payer and reports it
+  // separately as `fee`, so subtracting it again would understate the amount by one fee.
   return {
     signature,
     status: 1, // CONFIRMED
     data: {
       fee,
       positionRentRefunded,
-      baseTokenAmountRemoved: adjust(balanceChanges[0], poolState.tokenAMint),
-      quoteTokenAmountRemoved: adjust(balanceChanges[1], poolState.tokenBMint),
+      baseTokenAmountRemoved: liquidityWithoutRent(balanceChanges[0], poolState.tokenAMint, positionRentRefunded),
+      quoteTokenAmountRemoved: liquidityWithoutRent(balanceChanges[1], poolState.tokenBMint, positionRentRefunded),
     },
   };
 }
