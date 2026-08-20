@@ -81,9 +81,22 @@ const SENSITIVE_PREFIXES = [/^\/wallet(\/|$)/, /^\/config\/update(\/|$)/, /^\/re
 const SENSITIVE_TRADING =
   /^\/trading\/(router\/(execute-swap|execute-quote)|(clmm|amm)\/(execute-swap|open|close|add|remove|collect-fees|create-pool))(\/|$)/i;
 
+// Chain-level routes that sign with the hot wallet. `approve` is the sharpest of them —
+// an unauthenticated caller reaching it can have the wallet approve an unlimited
+// allowance to an address of their choosing and then drain every ERC-20 the wallet holds,
+// without ever touching a route the patterns above cover. `wrap`/`unwrap` sign and move
+// the native balance. The read-only chain routes (status, estimate-gas, balances, poll,
+// allowances) stay public, as the read-only trading routes do: nothing signs, and gating
+// them would break a co-located bot's polling for no security gain.
+const SENSITIVE_CHAINS = /^\/chains\/[^/]+\/(approve|wrap|unwrap)(\/|$)/i;
+
 export function isSensitivePath(url: string): boolean {
   const pathOnly = url.split('?')[0];
-  return SENSITIVE_PREFIXES.some((re) => re.test(pathOnly)) || SENSITIVE_TRADING.test(pathOnly);
+  return (
+    SENSITIVE_PREFIXES.some((re) => re.test(pathOnly)) ||
+    SENSITIVE_TRADING.test(pathOnly) ||
+    SENSITIVE_CHAINS.test(pathOnly)
+  );
 }
 
 /**

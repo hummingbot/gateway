@@ -103,6 +103,13 @@ describe('gateway-security', () => {
       '/trading/amm/remove',
       '/trading/amm/close',
       '/trading/amm/create-pool',
+      // Chain routes that sign. `approve` is the one that was missing: reachable
+      // unauthenticated, it makes the hot wallet approve an unlimited allowance to an
+      // address the caller chooses, and transferFrom does the rest.
+      '/chains/ethereum/approve',
+      '/chains/ethereum/wrap',
+      '/chains/solana/unwrap',
+      '/chains/ethereum/APPROVE',
     ])('sensitive: %s', (url) => {
       expect(isSensitivePath(url)).toBe(true);
     });
@@ -110,6 +117,12 @@ describe('gateway-security', () => {
       '/docs',
       '/config/namespaces',
       '/chains/solana/status',
+      '/chains/ethereum/allowances',
+      '/chains/ethereum/balances',
+      '/chains/ethereum/estimate-gas',
+      '/chains/solana/poll',
+      // Not a chain route at all; the pattern must not reach past the chain segment.
+      '/tokens/chains/ethereum/approve',
       '/trading/router/quote-swap',
       '/trading/clmm/quote-swap',
       '/trading/amm/quote-swap',
