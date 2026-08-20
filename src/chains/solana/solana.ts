@@ -57,6 +57,7 @@ import { parseSolanaError } from './solana-error-parser';
 import { SolanaLedger } from './solana-ledger';
 import { PriorityFeeResult, SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
+import { accountLifecycleSol } from './solana.utils';
 
 export type SolanaWalletType = 'local' | 'hardware';
 
@@ -2134,6 +2135,8 @@ export class Solana {
   ): Promise<{
     balanceChanges: number[];
     fee: number;
+    /** The transaction these were read from, so a caller needing more of it need not refetch. */
+    txDetails: any;
   }> {
     // Fetch transaction details with retry (data may not be immediately available after confirmation)
     const txDetails = await this._fetchTransactionWithRetry(signature, 5, 500, true);
@@ -2188,7 +2191,7 @@ export class Solana {
       }
     });
 
-    return { balanceChanges, fee };
+    return { balanceChanges, fee, txDetails };
   }
 
   /**
@@ -2207,7 +2210,10 @@ export class Solana {
   ): Promise<{
     baseTokenChange: number;
     quoteTokenChange: number;
+    /** Rent locked or refunded by the accounts this transaction created or closed. */
     rent: number;
+    /** Everything the accounts moved, which is what a native balance change must lose. */
+    accountSol: number;
   }> {
     const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
     const isBaseSol = baseTokenInfo.symbol === 'SOL' || baseTokenInfo.address === SOL_NATIVE_MINT;
@@ -2237,30 +2243,35 @@ export class Solana {
     }
 
     // Extract balance changes
-    const { balanceChanges } = await this.extractBalanceChangesAndFee(signature, owner, tokensToExtract);
+    const { balanceChanges, txDetails } = await this.extractBalanceChangesAndFee(signature, owner, tokensToExtract);
 
     // Get individual balance changes
-    const solChange = balanceChanges[tokenIndices.sol!];
     const baseTokenChange = balanceChanges[tokenIndices.base!];
     const quoteTokenChange = balanceChanges[tokenIndices.quote!];
 
-    // Calculate rent from SOL balance
-    // When neither token is SOL, the whole SOL movement is rent: extractBalanceChangesAndFee
-    // already nets the transaction fee out of the native-SOL change, so subtracting txFee
-    // again here would understate rent by exactly the fee.
-    // When one token is SOL: rent is included in the token's balance change
-    let rent = 0;
-    if (!isBaseSol && !isQuoteSol) {
-      rent = Math.abs(solChange);
-    } else {
-      // For positions, rent is approximately 0.00204928 SOL
-      rent = 0.00204928;
-    }
+    // Rent is read out of the transaction, not assumed. Every account the transaction
+    // created or closed moved lamports for a reason that is not liquidity, and a CLMM
+    // position is several accounts: the position, its NFT account, the shared protocol
+    // position, and any tick array the range was first to touch. This used to return a
+    // hardcoded 0.00204928 whenever a side was SOL — one token account's worth, for a
+    // position that locks four or five accounts' worth — which understated the rent and
+    // by exactly the same amount overstated the liquidity the native side reported.
+    //
+    // `accountRent` is what a route reports as positionRent / positionRentRefunded;
+    // `accountSol` is the larger figure to take out of a native balance change, and
+    // differs only when a wrapped-SOL account the wallet already had a balance in was
+    // closed. Which direction applies is the transaction's to say: an open creates
+    // accounts, a close closes them, and a swap does neither.
+    const lifecycle = accountLifecycleSol(txDetails);
+    const isOpen = lifecycle.opened >= lifecycle.closed;
+    const rent = isOpen ? lifecycle.rentLocked : lifecycle.rentRefunded;
+    const accountSol = isOpen ? lifecycle.opened : lifecycle.closed;
 
     return {
       baseTokenChange,
       quoteTokenChange,
       rent,
+      accountSol,
     };
   }
 

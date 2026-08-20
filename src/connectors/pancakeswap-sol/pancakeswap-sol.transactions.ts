@@ -1,4 +1,3 @@
-import { Idl } from '@coral-xyz/anchor';
 import { NATIVE_MINT, getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction } from '@solana/spl-token';
 import {
   PublicKey,
@@ -21,8 +20,6 @@ import {
   buildOpenPositionWithToken22NftInstruction,
 } from './pancakeswap-sol.instructions';
 import { getTokenProgramForMint, parsePositionData } from './pancakeswap-sol.parser';
-
-const clmmIdl = require('./idl/clmm.json') as Idl;
 
 export async function buildSwapTransaction(
   solana: Solana,
@@ -173,6 +170,32 @@ export async function buildClosePositionTransaction(
   return new VersionedTransaction(messageV0);
 }
 
+/**
+ * The instruction that turns a withdrawal's wrapped SOL back into SOL.
+ *
+ * Every route here that takes tokens *out* of a pool — decreasing liquidity, closing a
+ * position, collecting fees — receives the native side as WSOL in the wallet's associated
+ * token account, because that is what the program transfers to. Nothing used to unwrap it,
+ * so a caller closing a SOL position saw their SOL balance move by the rent alone while
+ * the withdrawal sat wrapped in an account no response field mentioned. Every close left
+ * another balance parked there, and the account's own rent with it.
+ *
+ * Closing the account is the unwrap: the lamports, both the wrapped balance and the
+ * account's rent, go back to the owner. The swap path in this same file has always done
+ * this for a native output; the liquidity paths simply never did.
+ *
+ * Returns nothing when neither side of the pool is native, which is the common case.
+ * WSOL is always a legacy SPL mint, so the token program is never in question here.
+ */
+export function buildUnwrapSolInstructions(
+  solana: Solana,
+  walletPubkey: PublicKey,
+  mints: string[],
+): TransactionInstruction[] {
+  const hasNativeSide = mints.some((mint) => mint === NATIVE_MINT.toBase58());
+  return hasNativeSide ? [solana.unwrapSOL(walletPubkey)] : [];
+}
+
 export async function buildTransactionWithInstructions(
   solana: Solana,
   walletPubkey: PublicKey,
@@ -216,6 +239,7 @@ export async function buildRemoveLiquidityTransaction(
   liquidityToRemove: BN,
   amount0Min: BN,
   amount1Min: BN,
+  poolMints: string[],
   computeUnits: number = 600000,
   priorityFeePerCU?: number,
 ): Promise<VersionedTransaction> {
@@ -243,6 +267,9 @@ export async function buildRemoveLiquidityTransaction(
 
   // Add remove liquidity instruction
   instructions.push(removeLiqIx);
+
+  // What the program just paid out in WSOL, back to SOL.
+  instructions.push(...buildUnwrapSolInstructions(solana, walletPubkey, poolMints));
 
   // Get recent blockhash
   const { blockhash } = await solana.connection.getLatestBlockhash('confirmed');

@@ -3,6 +3,7 @@ import BN from 'bn.js';
 import Decimal from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { accountLifecycleSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
 import { RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -73,6 +74,7 @@ export async function removeLiquidity(
     liquidityToRemove,
     new BN(0), // amount0Min
     new BN(0), // amount1Min
+    [baseToken.address, quoteToken.address], // unwrap a native side rather than leaving it WSOL
     600000, // Compute units
     priorityFeePerCU,
   );
@@ -92,12 +94,16 @@ export async function removeLiquidity(
       quoteToken.address,
     ]);
 
-    const baseTokenChange = balanceChanges[0];
-    const quoteTokenChange = balanceChanges[1];
+    // Unwrapping closes the wrapped-SOL account, so its rent — and any WSOL the wallet
+    // was already holding in it — lands in the native balance change alongside the
+    // withdrawal. None of that is liquidity this position gave back.
+    const { closed } = accountLifecycleSol(txData);
+    const baseTokenChange = liquidityWithoutRent(balanceChanges[0], new PublicKey(baseToken.address), closed);
+    const quoteTokenChange = liquidityWithoutRent(balanceChanges[1], new PublicKey(quoteToken.address), closed);
 
     logger.info(`Liquidity removed successfully. Signature: ${signature}`);
     logger.info(
-      `Removed ${Math.abs(baseTokenChange).toFixed(4)} ${baseToken.symbol}, ${Math.abs(quoteTokenChange).toFixed(4)} ${quoteToken.symbol}`,
+      `Removed ${baseTokenChange.toFixed(4)} ${baseToken.symbol}, ${quoteTokenChange.toFixed(4)} ${quoteToken.symbol}`,
     );
 
     return {
@@ -109,8 +115,8 @@ export async function removeLiquidity(
         // come from without a second lookup.
         poolAddress: positionInfo.poolAddress,
         fee: totalFee / 1e9,
-        baseTokenAmountRemoved: Math.abs(baseTokenChange),
-        quoteTokenAmountRemoved: Math.abs(quoteTokenChange),
+        baseTokenAmountRemoved: baseTokenChange,
+        quoteTokenAmountRemoved: quoteTokenChange,
       },
     };
   }

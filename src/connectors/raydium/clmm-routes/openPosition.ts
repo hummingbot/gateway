@@ -121,7 +121,7 @@ export async function openPosition(
     const totalFee = txData.meta.fee;
 
     // Use the new helper method to extract balance changes
-    const { baseTokenChange, quoteTokenChange, rent } = await solana.extractClmmBalanceChanges(
+    const { baseTokenChange, quoteTokenChange, rent, accountSol } = await solana.extractClmmBalanceChanges(
       signature,
       walletAddress,
       baseTokenInfo,
@@ -135,12 +135,16 @@ export async function openPosition(
         fee: totalFee / 1e9,
         positionAddress: extInfo.nftMint.toBase58(),
         positionRent: rent,
-        // Opening a position locks rent in the position account, and when one side is
+        // Opening a position locks rent in the accounts it creates, and when one side is
         // SOL that outflow sits inside its balance change — so the raw delta is both
         // negative and larger than the deposit. The same helper the DAMM v2 open uses
-        // takes the magnitude and backs the rent off the native side only.
-        baseTokenAmountAdded: liquidityWithoutRent(baseTokenChange, new PublicKey(baseTokenInfo.address), rent),
-        quoteTokenAmountAdded: liquidityWithoutRent(quoteTokenChange, new PublicKey(quoteTokenInfo.address), rent),
+        // takes the magnitude and backs the accounts' lamports off the native side only.
+        baseTokenAmountAdded: liquidityWithoutRent(baseTokenChange, new PublicKey(baseTokenInfo.address), accountSol),
+        quoteTokenAmountAdded: liquidityWithoutRent(
+          quoteTokenChange,
+          new PublicKey(quoteTokenInfo.address),
+          accountSol,
+        ),
       },
     };
   } else {

@@ -51,65 +51,112 @@ export function getAvailableSolanaNetworks(): string[] {
 }
 
 /**
- * Lamports held by `account` in a confirmed transaction, before or after it ran.
+ * The SOL a transaction moved because accounts opened or closed, rather than because
+ * liquidity did.
  *
- * Used to report position rent: an account's pre-balance at close is exactly the
- * rent that comes back to the wallet, and its post-balance at open is the rent it
- * now holds. Resolving the index through `getAccountKeys` with the transaction's
- * loaded addresses keeps this correct for versioned transactions too, where an
- * account may come from an address-lookup table rather than the static keys, while
- * `preBalances`/`postBalances` are indexed over the combined list.
+ * Opening a position creates several accounts and every one of them is rent-bearing: on
+ * DAMM v2 the position, the position NFT's mint and that mint's token account; on a
+ * PancakeSwap/Raydium CLMM the position, its NFT account, the shared protocol position
+ * and any tick array the range is the first to touch. All of it is funded by the wallet
+ * paying for the transaction, so all of it sits inside that wallet's native balance
+ * change — and none of it is liquidity. Closing gives the same lamports back the same
+ * way. Subtracting only the position account's own rent, which is what these routes used
+ * to do, left every other account's rent inside the reported deposit or withdrawal.
  *
- * Returns SOL, not lamports — the raw balances are lamports and this divides them, so
- * the result is directly comparable to the token amounts the routes report. Named for
- * the unit it returns because callers subtract it from those amounts, where being out
- * by 1e9 would be silent.
+ * `opened` and `closed` are the totals to take out of a native-side balance change.
+ * `rentLocked` and `rentRefunded` are the rent halves of those totals, and are what a
+ * route should report as `positionRent` / `positionRentRefunded`.
  *
- * Returns null when the account took no part in the transaction, so a caller can
- * tell "no rent moved" apart from "a zero balance".
+ * The two differ for exactly one kind of account: a wrapped-SOL token account carries a
+ * balance as well as its rent. When a close unwraps one, the lamports that come back are
+ * its rent *plus* whatever WSOL it already held before the transaction — someone else's
+ * money as far as this position is concerned. Taking the whole pre-balance out of the
+ * change is what leaves the true withdrawal behind; calling the whole thing rent would
+ * not be true.
+ *
+ * An account that both opens and closes within the same transaction — a WSOL account
+ * created to receive a withdrawal and unwrapped in the same breath — is neither, and is
+ * correctly ignored: its lamports never left the wallet.
+ *
+ * Reads only the balance arrays and the token balances, both of which `getTransaction`
+ * and `getParsedTransaction` return in the same shape, so it works on either.
+ * Returns SOL, like everything else here that feeds `liquidityWithoutRent`.
  */
-export function accountBalanceSol(txData: any, account: PublicKey, when: 'pre' | 'post'): number | null {
-  const balances: number[] = (when === 'pre' ? txData?.meta?.preBalances : txData?.meta?.postBalances) ?? [];
-  if (!balances.length) return null;
+export interface AccountLifecycleSol {
+  /** Lamports, in SOL, locked into accounts this transaction created. */
+  opened: number;
+  /** Lamports, in SOL, returned by accounts this transaction closed. */
+  closed: number;
+  /** The rent share of `opened` — everything but wrapped SOL already held. */
+  rentLocked: number;
+  /** The rent share of `closed`. */
+  rentRefunded: number;
+}
 
-  let keys;
-  try {
-    keys = txData.transaction.message.getAccountKeys({
-      accountKeysFromLookups: txData.meta?.loadedAddresses,
-    });
-  } catch {
-    // A versioned message whose lookups were not returned cannot resolve its full
-    // key list; the static keys still cover every account a legacy transaction has.
-    keys = txData.transaction.message.getAccountKeys();
+export function accountLifecycleSol(txData: any): AccountLifecycleSol {
+  const pre: number[] = txData?.meta?.preBalances ?? [];
+  const post: number[] = txData?.meta?.postBalances ?? [];
+
+  const wrapped = (balances: any[]): Record<number, number> => {
+    const byIndex: Record<number, number> = {};
+    for (const balance of balances ?? []) {
+      if (balance?.mint !== NATIVE_MINT.toBase58()) continue;
+      // WSOL has 9 decimals, so its raw amount is denominated in lamports already.
+      byIndex[balance.accountIndex] = Number(balance.uiTokenAmount?.amount ?? 0);
+    }
+    return byIndex;
+  };
+  const preWrapped = wrapped(txData?.meta?.preTokenBalances);
+  const postWrapped = wrapped(txData?.meta?.postTokenBalances);
+
+  let opened = 0;
+  let closed = 0;
+  let rentLocked = 0;
+  let rentRefunded = 0;
+
+  for (let i = 0; i < Math.min(pre.length, post.length); i++) {
+    if (pre[i] === 0 && post[i] > 0) {
+      opened += post[i];
+      rentLocked += post[i] - (postWrapped[i] ?? 0);
+    } else if (pre[i] > 0 && post[i] === 0) {
+      closed += pre[i];
+      rentRefunded += pre[i] - (preWrapped[i] ?? 0);
+    }
   }
 
-  for (let i = 0; i < balances.length; i++) {
-    if (keys.get(i)?.equals(account)) return balances[i] / 1e9;
-  }
-  return null;
+  return {
+    opened: opened / 1e9,
+    closed: closed / 1e9,
+    rentLocked: rentLocked / 1e9,
+    rentRefunded: rentRefunded / 1e9,
+  };
 }
 
 /**
- * The liquidity in a wallet balance change, with position rent taken out of it.
+ * The liquidity in a wallet balance change, with the account lamports taken out of it.
  *
- * When a pool side IS the native token, the wallet's balance change for that side
- * carries the position rent as well as the liquidity: on the way in the rent was locked
- * alongside the deposit, on the way out it came back alongside the withdrawal. Rent is
- * not liquidity and not a cost — the chain returns it when the position account closes —
- * so reporting the raw change overstates what the position holds, by the rent. On a small
- * position that is the larger of the two numbers.
+ * When a pool side IS the native token, the wallet's balance change for that side carries
+ * the position's rent as well as the liquidity: on the way in it was locked alongside the
+ * deposit, on the way out it came back alongside the withdrawal. Rent is not liquidity and
+ * not a cost — the chain returns it when the accounts close — so reporting the raw change
+ * overstates what the position holds. On a small position that is the larger of the two
+ * numbers.
  *
- * Both directions use this, with the rent locked at open and the rent refunded at close;
- * the arithmetic is the same because the sign is taken off first. A non-native side never
- * carries rent, so it passes through as a magnitude.
+ * Both directions use this, with `accountLifecycleSol().opened` at open and `.closed` at
+ * close; the arithmetic is the same because the sign is taken off first. Those totals
+ * rather than the rent halves, because a wrapped-SOL account closing also hands back a
+ * balance the wallet already held, which is no more this position's liquidity than its
+ * rent is. A non-native side never carries either, so it passes through as a magnitude.
  *
- * Clamps at zero: a native change smaller than the rent means the rent dominated the
- * transaction, and "nothing was deposited" is the truthful reading of that. A negative
- * amount would be the arithmetic leaking into a field that means a quantity of tokens.
+ * Clamps at zero: a native change smaller than what the accounts moved means they
+ * dominated the transaction, and "nothing was deposited" is the truthful reading of that.
+ * A negative amount would be the arithmetic leaking into a field that means a quantity of
+ * tokens.
  *
- * `rent` must be in SOL, as `accountBalanceSol` returns it — the change is denominated in
- * tokens, so a lamport figure here would clamp every native side to zero in silence.
+ * `accountSol` must be in SOL, as `accountLifecycleSol` returns it — the change is
+ * denominated in tokens, so a lamport figure here would clamp every native side to zero
+ * in silence.
  */
-export function liquidityWithoutRent(change: number, mint: PublicKey, rent: number): number {
-  return mint.equals(NATIVE_MINT) ? Math.max(0, Math.abs(change) - rent) : Math.abs(change);
+export function liquidityWithoutRent(change: number, mint: PublicKey, accountSol: number): number {
+  return mint.equals(NATIVE_MINT) ? Math.max(0, Math.abs(change) - accountSol) : Math.abs(change);
 }

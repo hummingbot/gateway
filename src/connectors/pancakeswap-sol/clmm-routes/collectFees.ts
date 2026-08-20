@@ -2,6 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { accountLifecycleSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
 import { CollectFeesResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -54,6 +55,7 @@ async function collectFees(
     new BN(0), // liquidity: collect fees only
     new BN(0), // amount0Min
     new BN(0), // amount1Min
+    [baseToken.address, quoteToken.address], // unwrap a native-side fee rather than leaving it WSOL
     600000, // Compute units
     priorityFeePerCU,
   );
@@ -73,8 +75,11 @@ async function collectFees(
       quoteToken.address,
     ]);
 
-    const baseFeeCollected = Math.abs(balanceChanges[0]);
-    const quoteFeeCollected = Math.abs(balanceChanges[1]);
+    // Unwrapping closes the wrapped-SOL account, so its rent comes back in the same
+    // native balance change as the fee. Rent is not fee income.
+    const { closed } = accountLifecycleSol(txData);
+    const baseFeeCollected = liquidityWithoutRent(balanceChanges[0], new PublicKey(baseToken.address), closed);
+    const quoteFeeCollected = liquidityWithoutRent(balanceChanges[1], new PublicKey(quoteToken.address), closed);
 
     logger.info(
       `Fees collected from position ${positionAddress}: ${baseFeeCollected.toFixed(6)} ${baseToken.symbol}, ` +

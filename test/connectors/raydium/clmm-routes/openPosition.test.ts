@@ -121,7 +121,12 @@ const buildSolanaMock = (overrides: Record<string, any> = {}) => ({
   extractClmmBalanceChanges: jest.fn().mockResolvedValue({
     baseTokenChange: -1,
     quoteTokenChange: -150,
-    rent: 0.002,
+    // What the accounts this transaction created cost, and the rent share of it. Read
+    // from the transaction rather than assumed: opening a CLMM position creates the
+    // position, its NFT account, the shared protocol position and sometimes a tick
+    // array, which is why a fixed 0.00204928 was never the right number.
+    rent: 0.0132,
+    accountSol: 0.0132,
   }),
   getPositionCache: jest.fn().mockReturnValue({
     get: jest.fn(),
@@ -221,14 +226,15 @@ describe('POST /open-position', () => {
     expect(body).toHaveProperty('status', 1);
     expect(body.data).toHaveProperty('positionAddress', mockPositionNftMint);
     expect(body.data).toHaveProperty('fee');
-    expect(body.data).toHaveProperty('positionRent', 0.002);
+    expect(body.data).toHaveProperty('positionRent', 0.0132);
 
     // The values, not just the keys. The mocked wallet deltas are -1 SOL and -150 USDC
-    // with 0.002 SOL of rent, and an open reports what the position holds: magnitudes,
-    // with the rent — which the chain returns on close, so it is locked rather than
-    // deposited — backed off the native side only. Asserting the keys existed accepted
-    // both the negative and the rent counted as liquidity.
-    expect(body.data.baseTokenAmountAdded).toBeCloseTo(0.998, 9);
+    // with 0.0132 SOL locked across the accounts the open created, and an open reports
+    // what the position holds: magnitudes, with those lamports — which the chain returns
+    // on close, so they are locked rather than deposited — backed off the native side
+    // only. Asserting the keys existed accepted both the negative and the rent counted as
+    // liquidity.
+    expect(body.data.baseTokenAmountAdded).toBeCloseTo(0.9868, 9);
     expect(body.data.quoteTokenAmountAdded).toBeCloseTo(150, 9);
   });
 

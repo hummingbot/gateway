@@ -3,7 +3,7 @@ import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
-import { accountBalanceSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
+import { accountLifecycleSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
 import { RemoveLiquidityResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -99,8 +99,11 @@ export async function closePosition(
     return { signature, status: 0 }; // PENDING
   }
 
-  // The position account's balance BEFORE the close is exactly the rent that comes back.
-  const positionRentRefunded = accountBalanceSol(txData, target.position, 'pre') ?? 0;
+  // A DAMM v2 position is three rent-bearing accounts, not one: the position, the NFT
+  // that represents it, and that NFT's token account. All three close here and all three
+  // refund to the wallet, so reading the position's own balance alone — which is what
+  // this did — captured 38% of the refund and left the rest inside the withdrawal.
+  const { closed, rentRefunded } = accountLifecycleSol(txData);
 
   const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
     poolState.tokenAMint.toBase58(),
@@ -108,18 +111,20 @@ export async function closePosition(
   ]);
 
   const fee = txData.meta.fee / 1e9;
-  // The native side of the change carries the rent that just came back; back it out to
-  // leave the liquidity actually withdrawn. The transaction fee needs no correction here:
-  // extractBalanceChangesAndFee already adds it back for the fee payer and reports it
-  // separately as `fee`, so subtracting it again would understate the amount by one fee.
+  // The native side of the change carries every lamport those accounts gave back; take
+  // all of it out to leave the liquidity actually withdrawn. `closed` rather than
+  // `rentRefunded` because a wrapped-SOL account closing here also returns a balance the
+  // wallet already held, which is not this position's money either. The transaction fee
+  // needs no correction: extractBalanceChangesAndFee already adds it back for the fee
+  // payer and reports it separately as `fee`.
   return {
     signature,
     status: 1, // CONFIRMED
     data: {
       fee,
-      positionRentRefunded,
-      baseTokenAmountRemoved: liquidityWithoutRent(balanceChanges[0], poolState.tokenAMint, positionRentRefunded),
-      quoteTokenAmountRemoved: liquidityWithoutRent(balanceChanges[1], poolState.tokenBMint, positionRentRefunded),
+      positionRentRefunded: rentRefunded,
+      baseTokenAmountRemoved: liquidityWithoutRent(balanceChanges[0], poolState.tokenAMint, closed),
+      quoteTokenAmountRemoved: liquidityWithoutRent(balanceChanges[1], poolState.tokenBMint, closed),
     },
   };
 }

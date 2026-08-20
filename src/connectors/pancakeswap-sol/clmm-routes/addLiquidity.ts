@@ -2,6 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { accountLifecycleSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
 import { AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -108,12 +109,16 @@ export async function addLiquidity(
       quoteToken.address,
     ]);
 
-    const baseTokenChange = balanceChanges[0];
-    const quoteTokenChange = balanceChanges[1];
+    // Adding to a position can still create accounts — a wrapped-SOL account the wallet
+    // did not have, a tick array this range is first to touch — and their rent rides on
+    // the native side of the balance change without being liquidity.
+    const { opened } = accountLifecycleSol(txData);
+    const baseTokenChange = liquidityWithoutRent(balanceChanges[0], new PublicKey(baseToken.address), opened);
+    const quoteTokenChange = liquidityWithoutRent(balanceChanges[1], new PublicKey(quoteToken.address), opened);
 
     logger.info(`Liquidity added successfully. Signature: ${signature}`);
     logger.info(
-      `Added ${Math.abs(baseTokenChange).toFixed(4)} ${baseToken.symbol}, ${Math.abs(quoteTokenChange).toFixed(4)} ${quoteToken.symbol}`,
+      `Added ${baseTokenChange.toFixed(4)} ${baseToken.symbol}, ${quoteTokenChange.toFixed(4)} ${quoteToken.symbol}`,
     );
 
     return {
@@ -125,8 +130,8 @@ export async function addLiquidity(
         // come from without a second lookup.
         poolAddress: positionInfo.poolAddress,
         fee: totalFee / 1e9,
-        baseTokenAmountAdded: Math.abs(baseTokenChange),
-        quoteTokenAmountAdded: Math.abs(quoteTokenChange),
+        baseTokenAmountAdded: baseTokenChange,
+        quoteTokenAmountAdded: quoteTokenChange,
       },
     };
   }

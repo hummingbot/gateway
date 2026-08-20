@@ -2,7 +2,7 @@ import { derivePositionAddress } from '@meteora-ag/cp-amm-sdk';
 import { Keypair, PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../../chains/solana/solana';
-import { accountBalanceSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
+import { accountLifecycleSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
 import { AddLiquidityResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -67,29 +67,30 @@ export async function openPosition(
     return { signature, status: 0 };
   }
 
-  // The position account is derived from the NFT mint; its post-balance is the rent
-  // the account now holds, which comes back to the wallet when the position closes.
+  // Opening locks rent in three accounts — the position, the NFT mint that represents
+  // it, and that mint's token account — and the wallet pays for all of them. Reading the
+  // position's own balance alone left the other two inside the reported deposit.
   const position = derivePositionAddress(positionNft.publicKey);
-  const positionRent = accountBalanceSol(txData, position, 'post') ?? 0;
+  const { opened, rentLocked } = accountLifecycleSol(txData);
 
   const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
     poolState.tokenAMint.toBase58(),
     poolState.tokenBMint.toBase58(),
   ]);
 
-  // The native side of the change carries the rent this transaction locked; back it out
-  // to leave the liquidity actually deposited. The transaction fee needs no correction —
-  // extractBalanceChangesAndFee already adds it back for the fee payer and reports it
-  // separately as `fee`.
+  // The native side of the change carries every lamport those accounts locked; take all
+  // of it out to leave the liquidity actually deposited. The transaction fee needs no
+  // correction — extractBalanceChangesAndFee already adds it back for the fee payer and
+  // reports it separately as `fee`.
   return {
     signature,
     status: 1, // CONFIRMED
     data: {
       fee: txData.meta.fee / 1e9,
       positionAddress: position.toBase58(),
-      positionRent,
-      baseTokenAmountAdded: liquidityWithoutRent(balanceChanges[0], poolState.tokenAMint, positionRent),
-      quoteTokenAmountAdded: liquidityWithoutRent(balanceChanges[1], poolState.tokenBMint, positionRent),
+      positionRent: rentLocked,
+      baseTokenAmountAdded: liquidityWithoutRent(balanceChanges[0], poolState.tokenAMint, opened),
+      quoteTokenAmountAdded: liquidityWithoutRent(balanceChanges[1], poolState.tokenBMint, opened),
     },
   };
 }

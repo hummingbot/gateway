@@ -2,13 +2,14 @@ import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { accountLifecycleSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
 import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol, PANCAKESWAP_CLMM_PROGRAM_ID } from '../pancakeswap-sol';
 import { buildDecreaseLiquidityV2Instruction, buildClosePositionInstruction } from '../pancakeswap-sol.instructions';
 import { parsePositionData } from '../pancakeswap-sol.parser';
-import { buildTransactionWithInstructions } from '../pancakeswap-sol.transactions';
+import { buildTransactionWithInstructions, buildUnwrapSolInstructions } from '../pancakeswap-sol.transactions';
 
 export async function closePosition(
   network: string,
@@ -80,6 +81,11 @@ export async function closePosition(
   const closePositionIx = await buildClosePositionInstruction(solana, positionNftMint, walletPubkey);
   instructions.push(closePositionIx);
 
+  // 3. Unwrap what the withdrawal paid out in WSOL. Without this the SOL never reaches
+  // the native balance, and the only thing that moves it is the rent — which is exactly
+  // how this route came to report the rent as the liquidity withdrawn.
+  instructions.push(...buildUnwrapSolInstructions(solana, walletPubkey, [baseToken.address, quoteToken.address]));
+
   // Build complete transaction
   const transaction = await buildTransactionWithInstructions(
     solana,
@@ -104,12 +110,17 @@ export async function closePosition(
       quoteToken.address,
     ]);
 
-    const baseTokenChange = balanceChanges[0];
-    const quoteTokenChange = balanceChanges[1];
+    // Closing gives back the rent of every account that closed — the position, its NFT
+    // account, the tick array if this was the last position in it, and the wrapped-SOL
+    // account the unwrap above closes. All of it arrives in the same native balance
+    // change as the withdrawal, and none of it is liquidity.
+    const { closed, rentRefunded } = accountLifecycleSol(txData);
+    const baseTokenChange = liquidityWithoutRent(balanceChanges[0], new PublicKey(baseToken.address), closed);
+    const quoteTokenChange = liquidityWithoutRent(balanceChanges[1], new PublicKey(quoteToken.address), closed);
 
     logger.info(`Position closed successfully. Signature: ${signature}`);
     logger.info(
-      `Removed ${Math.abs(baseTokenChange).toFixed(4)} ${baseToken.symbol}, ${Math.abs(quoteTokenChange).toFixed(4)} ${quoteToken.symbol}`,
+      `Removed ${baseTokenChange.toFixed(4)} ${baseToken.symbol}, ${quoteTokenChange.toFixed(4)} ${quoteToken.symbol}`,
     );
 
     return {
@@ -121,11 +132,15 @@ export async function closePosition(
         // come from without a second lookup.
         poolAddress: positionInfo.poolAddress,
         fee: totalFee / 1e9,
-        positionRentRefunded: 0, // Position rent refund (simplified)
-        baseTokenAmountRemoved: Math.abs(baseTokenChange),
-        quoteTokenAmountRemoved: Math.abs(quoteTokenChange),
-        baseFeeAmountCollected: 0, // Included in balance changes
-        quoteFeeAmountCollected: 0, // Included in balance changes
+        positionRentRefunded: rentRefunded,
+        baseTokenAmountRemoved: baseTokenChange,
+        quoteTokenAmountRemoved: quoteTokenChange,
+        // Still flattened into the amounts above: this program moves a position's fees
+        // and its principal in the same `decrease_liquidity_v2` transfer, so the two
+        // cannot be told apart from the transaction. Separating them needs the fees
+        // collected by an instruction of their own — see GW-18.
+        baseFeeAmountCollected: 0,
+        quoteFeeAmountCollected: 0,
       },
     };
   }

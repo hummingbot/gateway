@@ -2,6 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { accountLifecycleSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
 import { OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -149,12 +150,17 @@ export async function openPosition(
       quoteToken.address,
     ]);
 
-    const baseTokenChange = balanceChanges[0];
-    const quoteTokenChange = balanceChanges[1];
+    // Opening locks rent in five accounts here — the position, its NFT account, the
+    // wrapped-SOL account, the shared protocol position, and any tick array this range is
+    // first to touch. On a position this size that rent is larger than the deposit it is
+    // attached to, so reporting the wallet delta made the position read 2.4x its size.
+    const { opened, rentLocked } = accountLifecycleSol(txData);
+    const baseTokenChange = liquidityWithoutRent(balanceChanges[0], new PublicKey(baseToken.address), opened);
+    const quoteTokenChange = liquidityWithoutRent(balanceChanges[1], new PublicKey(quoteToken.address), opened);
 
     logger.info(`Position opened successfully. NFT Mint: ${positionNftMint.publicKey.toString()}`);
     logger.info(
-      `Added ${Math.abs(baseTokenChange).toFixed(4)} ${baseToken.symbol}, ${Math.abs(quoteTokenChange).toFixed(4)} ${quoteToken.symbol}`,
+      `Added ${baseTokenChange.toFixed(4)} ${baseToken.symbol}, ${quoteTokenChange.toFixed(4)} ${quoteToken.symbol}`,
     );
 
     return {
@@ -163,9 +169,9 @@ export async function openPosition(
       data: {
         fee: totalFee / 1e9,
         positionAddress: positionNftMint.publicKey.toString(),
-        positionRent: 0, // Simplified - not extracting rent from transaction
-        baseTokenAmountAdded: Math.abs(baseTokenChange),
-        quoteTokenAmountAdded: Math.abs(quoteTokenChange),
+        positionRent: rentLocked,
+        baseTokenAmountAdded: baseTokenChange,
+        quoteTokenAmountAdded: quoteTokenChange,
       },
     };
   }
