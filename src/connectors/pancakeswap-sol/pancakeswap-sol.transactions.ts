@@ -401,7 +401,8 @@ export async function buildOpenPositionTransaction(
   amount0Max: BN,
   amount1Max: BN,
   withMetadata: boolean,
-  baseFlag: boolean,
+  baseFlag: boolean | null,
+  liquidity: BN,
   computeUnits: number = 800000,
   priorityFeePerCU?: number,
 ): Promise<{ transaction: VersionedTransaction; positionNftMint: Keypair }> {
@@ -482,9 +483,17 @@ export async function buildOpenPositionTransaction(
     amount1Max,
     withMetadata,
     baseFlag,
+    liquidity,
   );
 
   instructions.push(openPositionIx);
+
+  // The deposit now lands below the wrapped maximum rather than exactly on it, so the
+  // difference stays wrapped unless this closes the account. Same instruction the swap
+  // path uses for a native output; it also returns the account's own rent.
+  instructions.push(
+    ...buildUnwrapSolInstructions(solana, walletPubkey, [token0Mint.toBase58(), token1Mint.toBase58()]),
+  );
 
   const { blockhash } = await solana.connection.getLatestBlockhash('confirmed');
 

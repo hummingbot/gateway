@@ -103,17 +103,22 @@ export async function openPosition(
   );
   logger.info(`Quote Max: base=${quote.baseTokenAmountMax}, quote=${quote.quoteTokenAmountMax}`);
 
-  // Use max amounts from quote - slippage already applied in quotePosition
+  // The ceilings — slippage already applied in quotePosition — and, separately, the
+  // liquidity to open. Sizing the position from the ceiling is what GW-28 was: the
+  // program would compute the deposit that liquidity requires, round it up in the
+  // pool's favour, and assert the result against the very number it started from, so a
+  // one-unit rounding failed the open and a wider slippagePct only bought a larger
+  // deposit. The quote already computes the liquidity from the amounts the caller asked
+  // for, which is what the add route has always sent.
   const amount0Max = new BN((quote.baseTokenAmountMax * 10 ** baseToken.decimals).toFixed(0));
   const amount1Max = new BN((quote.quoteTokenAmountMax * 10 ** quoteToken.decimals).toFixed(0));
+  const liquidity = new BN(quote.liquidity);
 
   logger.info(`Amounts with slippage (${slippagePct ?? PancakeswapSolConfig.config.slippagePct}%):`);
   logger.info(`  amount0Max: ${amount0Max.toString()} (${baseToken.symbol})`);
   logger.info(`  amount1Max: ${amount1Max.toString()} (${quoteToken.symbol})`);
 
-  // Determine base flag
-  const baseFlag = quote.baseLimited;
-  logger.info(`Base Flag: ${baseFlag} (${baseFlag ? 'amount0' : 'amount1'} is base)`);
+  logger.info(`Liquidity: ${liquidity.toString()} (from the quoted amounts, base-limited=${quote.baseLimited})`);
 
   // Get priority fee
   const priorityFeeInLamports = await solana.estimateGasPrice();
@@ -129,7 +134,8 @@ export async function openPosition(
     amount0Max,
     amount1Max,
     true, // withMetadata - create NFT with metadata
-    baseFlag,
+    null, // let the maxes be ceilings; the liquidity below is what sizes the position
+    liquidity,
     800000,
     priorityFeePerCU,
   );

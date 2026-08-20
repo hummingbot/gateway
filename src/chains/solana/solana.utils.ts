@@ -133,6 +133,68 @@ export function accountLifecycleSol(txData: any): AccountLifecycleSol {
 }
 
 /**
+ * Token amounts moved by each top-level instruction of one program, in order.
+ *
+ * The reason this exists rather than the grouping in `orca.utils`: that one drops an
+ * instruction that moved nothing, so a caller cannot tell "the first instruction
+ * collected zero fees" from "the first group IS the principal". Position matters here —
+ * a close sends collect-then-decrease and reads the two by their place — so every
+ * matching instruction gets a row, zero-filled.
+ *
+ * Reads a parsed transaction (`getParsedTransaction`), which is what
+ * `extractBalanceChangesAndFee` already fetches. Amounts are returned per requested
+ * mint, in the order the mints were given, in UI units.
+ *
+ * Returns an empty array when the transaction carries no parsed inner instructions,
+ * which a caller must treat as "unknown", never as "nothing moved".
+ */
+export function transfersByProgramInstruction(parsedTx: any, programId: string, mints: string[]): number[][] {
+  const inner = parsedTx?.meta?.innerInstructions ?? [];
+  const outer = parsedTx?.transaction?.message?.instructions ?? [];
+  if (!inner.length || !outer.length) return [];
+
+  const decimalsByMint: Record<string, number> = {};
+  const mintByAccount: Record<string, string> = {};
+  for (const balance of [...(parsedTx.meta?.preTokenBalances ?? []), ...(parsedTx.meta?.postTokenBalances ?? [])]) {
+    const account = parsedTx.transaction.message.accountKeys?.[balance.accountIndex]?.pubkey?.toString();
+    if (account && balance.mint) mintByAccount[account] = balance.mint;
+    if (balance.mint && balance.uiTokenAmount?.decimals !== undefined) {
+      decimalsByMint[balance.mint] = balance.uiTokenAmount.decimals;
+    }
+  }
+
+  const rows: number[][] = [];
+  for (let index = 0; index < outer.length; index++) {
+    if (outer[index]?.programId?.toString() !== programId) continue;
+
+    const amounts = mints.map(() => 0);
+    for (const instruction of inner.find((block: any) => block.index === index)?.instructions ?? []) {
+      const parsed = instruction.parsed;
+      if (!parsed) continue;
+
+      let mint: string | undefined;
+      let raw: string | undefined;
+      let decimals: number | undefined;
+      if (parsed.type === 'transferChecked' && parsed.info) {
+        mint = parsed.info.mint;
+        raw = parsed.info.tokenAmount?.amount;
+        decimals = parsed.info.tokenAmount?.decimals;
+      } else if (parsed.type === 'transfer' && parsed.info) {
+        raw = parsed.info.amount;
+        mint = mintByAccount[parsed.info.source] ?? mintByAccount[parsed.info.destination];
+      }
+      if (!mint || raw === undefined) continue;
+
+      const position = mints.indexOf(mint);
+      if (position === -1) continue;
+      amounts[position] += Number(raw) / 10 ** (decimals ?? decimalsByMint[mint] ?? 0);
+    }
+    rows.push(amounts);
+  }
+  return rows;
+}
+
+/**
  * The liquidity in a wallet balance change, with the account lamports taken out of it.
  *
  * When a pool side IS the native token, the wallet's balance change for that side carries

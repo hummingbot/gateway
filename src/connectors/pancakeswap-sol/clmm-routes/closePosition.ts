@@ -2,7 +2,11 @@ import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 
 import { Solana } from '../../../chains/solana/solana';
-import { accountLifecycleSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
+import {
+  accountLifecycleSol,
+  liquidityWithoutRent,
+  transfersByProgramInstruction,
+} from '../../../chains/solana/solana.utils';
 import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -64,8 +68,25 @@ export async function closePosition(
   // Build transaction with both instructions (like successful manual transaction)
   const instructions = [];
 
-  // 1. If position has liquidity, remove it all first
+  // 1. Collect the fees on their own, THEN remove the liquidity.
+  //
+  // This program moves a position's fees and its principal in the same
+  // `decrease_liquidity_v2` transfer, so a single instruction leaves the two
+  // inseparable — which is why this route reported fees of 0 and a principal that
+  // silently contained them. A zero-liquidity decrease collects the fees and touches
+  // nothing else (it is exactly what the collect-fees route does), so the two land in
+  // different top-level instructions and the transaction says which is which.
   if (hasLiquidity) {
+    const collectFeesIx = await buildDecreaseLiquidityV2Instruction(
+      solana,
+      positionNftMint,
+      walletPubkey,
+      new BN(0), // liquidity: fees only
+      new BN(0), // amount0Min
+      new BN(0), // amount1Min
+    );
+    instructions.push(collectFeesIx);
+
     const removeLiquidityIx = await buildDecreaseLiquidityV2Instruction(
       solana,
       positionNftMint,
@@ -105,7 +126,7 @@ export async function closePosition(
     const totalFee = txData.meta.fee;
 
     // Extract balance changes
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
+    const { balanceChanges, txDetails } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
       baseToken.address,
       quoteToken.address,
     ]);
@@ -117,6 +138,19 @@ export async function closePosition(
     const { closed, rentRefunded } = accountLifecycleSol(txData);
     const baseTokenChange = liquidityWithoutRent(balanceChanges[0], new PublicKey(baseToken.address), closed);
     const quoteTokenChange = liquidityWithoutRent(balanceChanges[1], new PublicKey(quoteToken.address), closed);
+
+    // The fee-collecting instruction is the first of this program's instructions in the
+    // transaction, so its transfers are the fees and nothing else. Taken from the
+    // transaction rather than from a balance change, which cannot separate them.
+    //
+    // An unreadable transaction leaves this at zero and the amounts whole, which is what
+    // this route did for every close before now — a known shape, not a new silence.
+    const [collected = [0, 0]] = transfersByProgramInstruction(txDetails, PANCAKESWAP_CLMM_PROGRAM_ID.toBase58(), [
+      baseToken.address,
+      quoteToken.address,
+    ]);
+    const baseFeeCollected = hasLiquidity ? collected[0] : 0;
+    const quoteFeeCollected = hasLiquidity ? collected[1] : 0;
 
     logger.info(`Position closed successfully. Signature: ${signature}`);
     logger.info(
@@ -133,14 +167,14 @@ export async function closePosition(
         poolAddress: positionInfo.poolAddress,
         fee: totalFee / 1e9,
         positionRentRefunded: rentRefunded,
-        baseTokenAmountRemoved: baseTokenChange,
-        quoteTokenAmountRemoved: quoteTokenChange,
-        // Still flattened into the amounts above: this program moves a position's fees
-        // and its principal in the same `decrease_liquidity_v2` transfer, so the two
-        // cannot be told apart from the transaction. Separating them needs the fees
-        // collected by an instruction of their own — see GW-18.
-        baseFeeAmountCollected: 0,
-        quoteFeeAmountCollected: 0,
+        // Principal is what came back less what the fee instruction paid out. Both
+        // arrive in the same balance change, so the subtraction is what keeps fee
+        // income out of the position's returned capital. Clamped at zero rather than
+        // publishing a negative quantity of tokens if the two measures ever disagree.
+        baseTokenAmountRemoved: Math.max(0, baseTokenChange - baseFeeCollected),
+        quoteTokenAmountRemoved: Math.max(0, quoteTokenChange - quoteFeeCollected),
+        baseFeeAmountCollected: baseFeeCollected,
+        quoteFeeAmountCollected: quoteFeeCollected,
       },
     };
   }

@@ -2,7 +2,11 @@ import { NATIVE_MINT } from '@solana/spl-token';
 import BN from 'bn.js';
 
 import { Solana } from '../../../../src/chains/solana/solana';
-import { PancakeswapSol } from '../../../../src/connectors/pancakeswap-sol/pancakeswap-sol';
+import {
+  PANCAKESWAP_CLMM_PROGRAM_ID,
+  PancakeswapSol,
+} from '../../../../src/connectors/pancakeswap-sol/pancakeswap-sol';
+import { buildDecreaseLiquidityV2Instruction } from '../../../../src/connectors/pancakeswap-sol/pancakeswap-sol.instructions';
 import {
   buildTransactionWithInstructions,
   buildRemoveLiquidityTransaction,
@@ -79,7 +83,67 @@ const closeTxData = {
 // the fee added back, which is rent + dust + the withdrawal all in one number.
 const nativeChange = (RENT_REFUNDED + WSOL_HELD_BEFORE + SOL_FROM_THE_POOL) / 1e9;
 
-const solanaMock = (txData: any) => ({
+// A parsed transaction whose two program instructions are, in order, the fee collect
+// and the principal decrease. Position is the whole signal: this program moves fees and
+// principal through the same instruction unless they are asked for separately, which is
+// why the close now sends a zero-liquidity decrease first.
+const parsedCloseTx = (feeBase: number, feeQuote: number, principalBase: number, principalQuote: number) => ({
+  transaction: {
+    message: {
+      accountKeys: [{ pubkey: 'user-wsol' }, { pubkey: 'user-usdc' }],
+      instructions: [
+        { programId: PANCAKESWAP_CLMM_PROGRAM_ID },
+        { programId: PANCAKESWAP_CLMM_PROGRAM_ID },
+        { programId: { toString: () => 'ComputeBudget111111111111111111111111111111' } },
+      ],
+    },
+  },
+  meta: {
+    preTokenBalances: [
+      { accountIndex: 0, mint: SOL.address, uiTokenAmount: { decimals: 9 } },
+      { accountIndex: 1, mint: USDC.address, uiTokenAmount: { decimals: 6 } },
+    ],
+    postTokenBalances: [],
+    innerInstructions: [
+      {
+        index: 0,
+        instructions: [
+          {
+            parsed: {
+              type: 'transfer',
+              info: { amount: String(Math.round(feeBase * 1e9)), source: 'vault', destination: 'user-wsol' },
+            },
+          },
+          {
+            parsed: {
+              type: 'transfer',
+              info: { amount: String(Math.round(feeQuote * 1e6)), source: 'vault', destination: 'user-usdc' },
+            },
+          },
+        ],
+      },
+      {
+        index: 1,
+        instructions: [
+          {
+            parsed: {
+              type: 'transfer',
+              info: { amount: String(Math.round(principalBase * 1e9)), source: 'vault', destination: 'user-wsol' },
+            },
+          },
+          {
+            parsed: {
+              type: 'transfer',
+              info: { amount: String(Math.round(principalQuote * 1e6)), source: 'vault', destination: 'user-usdc' },
+            },
+          },
+        ],
+      },
+    ],
+  },
+});
+
+const solanaMock = (txData: any, parsedTx: any = { meta: {} }) => ({
   connection: { getAccountInfo: jest.fn().mockResolvedValue({ data: Buffer.alloc(200) }) },
   getToken: jest.fn((t: string) => Promise.resolve(t === SOL.address ? SOL : t === USDC.address ? USDC : null)),
   getWallet: jest.fn().mockResolvedValue({ publicKey: WALLET }),
@@ -87,7 +151,9 @@ const solanaMock = (txData: any) => ({
   simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
   throwIfLandedWithError: jest.fn().mockResolvedValue(undefined),
   sendAndConfirmRawTransaction: jest.fn().mockResolvedValue({ confirmed: true, signature: 'close-sig', txData }),
-  extractBalanceChangesAndFee: jest.fn().mockResolvedValue({ balanceChanges: [nativeChange, USDC_FROM_THE_POOL] }),
+  extractBalanceChangesAndFee: jest
+    .fn()
+    .mockResolvedValue({ balanceChanges: [nativeChange, USDC_FROM_THE_POOL], txDetails: parsedTx }),
   // The real instruction, stubbed to something identifiable.
   unwrapSOL: jest.fn().mockReturnValue({ ix: 'closeWsolAccount' }),
 });
@@ -199,5 +265,65 @@ describe('pancakeswap-sol removeLiquidity and collectFees', () => {
     // Rent arriving in the same native change as a fee would be booked as fee income,
     // which compounds: hummingbot-api sums these across a position's lifetime.
     expect(result.data?.baseFeeAmountCollected).toBeCloseTo(SOL_FROM_THE_POOL / 1e9, 9);
+  });
+});
+
+describe('pancakeswap-sol close: fees and principal are separate money', () => {
+  // The live close reported `baseFeeAmountCollected: 0` next to a principal that
+  // contained the fees, because one decrease_liquidity_v2 transfers both. hummingbot-api
+  // stores the two in different columns, so fee income on this connector was recorded as
+  // zero forever and returned capital read high.
+  const FEE_BASE = 0.000123;
+  const FEE_QUOTE = 0.45;
+
+  it('collects the fees in an instruction of their own, before removing liquidity', async () => {
+    (Solana.getInstance as jest.Mock).mockResolvedValue(solanaMock(closeTxData));
+    const { closePosition } = await import('../../../../src/connectors/pancakeswap-sol/clmm-routes/closePosition');
+
+    await closePosition('mainnet-beta', WALLET, POSITION);
+
+    const decreaseCalls = (buildDecreaseLiquidityV2Instruction as jest.Mock).mock.calls;
+    expect(decreaseCalls).toHaveLength(2);
+    // First: liquidity 0, which collects fees and touches nothing else.
+    expect(decreaseCalls[0][3].isZero()).toBe(true);
+    // Then the principal.
+    expect(decreaseCalls[1][3].isZero()).toBe(false);
+  });
+
+  it('reports what the fee instruction actually paid out', async () => {
+    (Solana.getInstance as jest.Mock).mockResolvedValue(
+      solanaMock(closeTxData, parsedCloseTx(FEE_BASE, FEE_QUOTE, SOL_FROM_THE_POOL / 1e9, USDC_FROM_THE_POOL)),
+    );
+    const { closePosition } = await import('../../../../src/connectors/pancakeswap-sol/clmm-routes/closePosition');
+
+    const result = await closePosition('mainnet-beta', WALLET, POSITION);
+
+    expect(result.data?.baseFeeAmountCollected).toBeCloseTo(FEE_BASE, 9);
+    expect(result.data?.quoteFeeAmountCollected).toBeCloseTo(FEE_QUOTE, 9);
+  });
+
+  it('keeps the fees out of the principal', async () => {
+    (Solana.getInstance as jest.Mock).mockResolvedValue(
+      solanaMock(closeTxData, parsedCloseTx(FEE_BASE, FEE_QUOTE, SOL_FROM_THE_POOL / 1e9, USDC_FROM_THE_POOL)),
+    );
+    const { closePosition } = await import('../../../../src/connectors/pancakeswap-sol/clmm-routes/closePosition');
+
+    const result = await closePosition('mainnet-beta', WALLET, POSITION);
+
+    // The balance change carried both; the principal is what is left after the fees.
+    expect(result.data?.baseTokenAmountRemoved).toBeCloseTo(SOL_FROM_THE_POOL / 1e9 - FEE_BASE, 9);
+    expect(result.data?.quoteTokenAmountRemoved).toBeCloseTo(USDC_FROM_THE_POOL - FEE_QUOTE, 9);
+  });
+
+  it('leaves the amounts whole when the transaction cannot be read', async () => {
+    // No parsed inner instructions: report the total under principal and zero fees,
+    // which is exactly what this route did before. A known shape beats a new silence.
+    (Solana.getInstance as jest.Mock).mockResolvedValue(solanaMock(closeTxData));
+    const { closePosition } = await import('../../../../src/connectors/pancakeswap-sol/clmm-routes/closePosition');
+
+    const result = await closePosition('mainnet-beta', WALLET, POSITION);
+
+    expect(result.data?.baseFeeAmountCollected).toBe(0);
+    expect(result.data?.baseTokenAmountRemoved).toBeCloseTo(SOL_FROM_THE_POOL / 1e9, 9);
   });
 });

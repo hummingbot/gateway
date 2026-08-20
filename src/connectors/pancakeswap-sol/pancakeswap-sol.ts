@@ -10,6 +10,7 @@ import { logger } from '../../services/logger';
 
 import clmmIdl from './idl/clmm.json';
 import { PancakeswapSolConfig } from './pancakeswap-sol.config';
+import { readPendingFees } from './pancakeswap-sol.fees';
 import { getAmountsFromLiquidity } from './pancakeswap-sol.math';
 import { tickToPrice } from './pancakeswap-sol.parser';
 
@@ -545,10 +546,35 @@ export class PancakeswapSol {
     const baseTokenAmount = amounts.amount0;
     const quoteTokenAmount = amounts.amount1;
 
-    // TODO: Fix fee and reward calculations for PancakeSwap-Sol
-    // Setting to 0 for now to avoid showing incorrect information
-    const baseFeeAmount = 0;
-    const quoteFeeAmount = 0;
+    // What a collect would pay out right now. This returned a hardcoded 0 for both
+    // sides, with a TODO reasoning that a wrong number is worse than none — but zero IS
+    // a number and it was being stored, so nothing downstream could tell "this connector
+    // does not compute fees" from "this position earned nothing". A position that sat in
+    // range while the pool traded through it reported 0 throughout, while the
+    // collect-fees route harvested a real amount from it minutes later.
+    //
+    // Everything the calculation needs was already read here and written to logger.debug
+    // before being discarded: the position's checkpoint, the pool's global growth, and
+    // the two boundary ticks (fetched below, decoded with the program's own IDL).
+    const { fee0Raw, fee1Raw } = await readPendingFees(
+      this.solana.connection,
+      manualPoolId,
+      poolInfo.binStep, // tick spacing
+      poolInfo.activeBinId, // current tick
+      poolFeeGrowthGlobal0,
+      poolFeeGrowthGlobal1,
+      {
+        tickLowerIndex,
+        tickUpperIndex,
+        liquidity: BigInt(liquidity.toString()),
+        feeGrowthInside0Last,
+        feeGrowthInside1Last,
+        tokenFeesOwed0,
+        tokenFeesOwed1,
+      },
+    );
+    const baseFeeAmount = Number(fee0Raw) / 10 ** baseTokenInfo.decimals;
+    const quoteFeeAmount = Number(fee1Raw) / 10 ** quoteTokenInfo.decimals;
 
     return {
       address: positionAddress,
