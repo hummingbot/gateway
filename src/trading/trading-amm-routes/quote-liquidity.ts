@@ -16,20 +16,23 @@ import {
   slippagePctField,
 } from '../common';
 
-const UnifiedAmmQuoteLiquidityRequest = Type.Object({
-  connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
-  chainNetwork: chainNetworkField(),
-  poolAddress: Type.String({ description: 'Pool contract address' }),
-  baseTokenAmount: Type.Number({
-    format: 'decimal',
-    description: 'Amount of base token to deposit',
-  }),
-  quoteTokenAmount: Type.Number({
-    format: 'decimal',
-    description: 'Amount of quote token to deposit',
-  }),
-  slippagePct: slippagePctField(),
-});
+export const UnifiedAmmQuoteLiquidityRequest = Type.Object(
+  {
+    connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+    chainNetwork: chainNetworkField(),
+    poolAddress: Type.String({ description: 'Pool contract address' }),
+    baseTokenAmount: Type.Number({
+      format: 'decimal',
+      description: 'Amount of base token to deposit',
+    }),
+    quoteTokenAmount: Type.Number({
+      format: 'decimal',
+      description: 'Amount of quote token to deposit',
+    }),
+    slippagePct: slippagePctField(),
+  },
+  { $id: 'AmmQuoteLiquidityRequest' },
+);
 
 export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{

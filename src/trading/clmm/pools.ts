@@ -19,25 +19,28 @@ const CLMM_POOL_ADDRESS_EXAMPLE = '2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3'
 /**
  * Unified pool info request schema
  */
-const UnifiedPoolInfoRequestSchema = Type.Object({
-  connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
-  chainNetwork: chainNetworkField(),
-  poolAddress: Type.String({
-    description: 'Pool contract address',
-    examples: [CLMM_POOL_ADDRESS_EXAMPLE],
-  }),
-  binCount: Type.Optional(
-    Type.Integer({
-      description:
-        'If > 0, include a `bins` array of per-tick liquidity around the active tick. Supported by ' +
-        'every connector except Meteora, which always returns its bins and ignores this. ' +
-        'Default 0 = skip the bin fetch.',
-      default: 0,
-      minimum: 0,
-      maximum: 401,
+export const UnifiedPoolInfoRequestSchema = Type.Object(
+  {
+    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+    chainNetwork: chainNetworkField(),
+    poolAddress: Type.String({
+      description: 'Pool contract address',
+      examples: [CLMM_POOL_ADDRESS_EXAMPLE],
     }),
-  ),
-});
+    binCount: Type.Optional(
+      Type.Integer({
+        description:
+          'If > 0, include a `bins` array of per-tick liquidity around the active tick. Supported by ' +
+          'every connector except Meteora, which always returns its bins and ignores this. ' +
+          'Default 0 = skip the bin fetch.',
+        default: 0,
+        minimum: 0,
+        maximum: 401,
+      }),
+    ),
+  },
+  { $id: 'ClmmPoolInfoRequest' },
+);
 
 type UnifiedPoolInfoRequest = Static<typeof UnifiedPoolInfoRequestSchema>;
 

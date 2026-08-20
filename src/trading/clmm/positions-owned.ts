@@ -21,14 +21,17 @@ import {
 /**
  * Unified positions owned request schema
  */
-const UnifiedPositionsOwnedRequestSchema = Type.Object({
-  connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
-  chainNetwork: chainNetworkField(),
-  walletAddress: Type.String({
-    description: 'Wallet address',
-    default: defaultWallet,
-  }),
-});
+export const UnifiedPositionsOwnedRequestSchema = Type.Object(
+  {
+    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+    chainNetwork: chainNetworkField(),
+    walletAddress: Type.String({
+      description: 'Wallet address',
+      default: defaultWallet,
+    }),
+  },
+  { $id: 'ClmmPositionsOwnedRequest' },
+);
 
 type UnifiedPositionsOwnedRequest = Static<typeof UnifiedPositionsOwnedRequestSchema>;
 

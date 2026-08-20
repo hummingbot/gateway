@@ -14,14 +14,17 @@ import { chainNetworkField, CLMM_CONNECTORS, connectorField, parseChainNetwork, 
 /**
  * Unified position info request schema
  */
-const UnifiedPositionInfoRequestSchema = Type.Object({
-  connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
-  chainNetwork: chainNetworkField(),
-  positionAddress: Type.String({
-    description: 'Position address or NFT token ID',
-    examples: ['<sample-position-address>'],
-  }),
-});
+export const UnifiedPositionInfoRequestSchema = Type.Object(
+  {
+    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+    chainNetwork: chainNetworkField(),
+    positionAddress: Type.String({
+      description: 'Position address or NFT token ID',
+      examples: ['<sample-position-address>'],
+    }),
+  },
+  { $id: 'ClmmPositionInfoRequest' },
+);
 
 type UnifiedPositionInfoRequest = Static<typeof UnifiedPositionInfoRequestSchema>;
 

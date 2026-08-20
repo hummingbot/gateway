@@ -21,7 +21,9 @@ export const GetPoolInfoRequest = Type.Object(
     network: Type.Optional(Type.String()),
     poolAddress: Type.String(),
   },
-  { $id: 'AmmGetPoolInfoRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type GetPoolInfoRequestType = Static<typeof GetPoolInfoRequest>;
 
@@ -40,7 +42,9 @@ export const AddLiquidityRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'AmmAddLiquidityRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type AddLiquidityRequestType = Static<typeof AddLiquidityRequest>;
 
@@ -169,9 +173,10 @@ export const ClosePositionResponse = Type.Object(
 );
 export type ClosePositionResponseType = Static<typeof ClosePositionResponse>;
 
-export const QuoteLiquidityRequest = Type.Omit(AddLiquidityRequest, ['walletAddress'], {
-  $id: 'QuoteLiquidityRequest',
-});
+// No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+// the base a unified route composes from. Publishing it would generate a client that
+// sends the wrong keys under a name the real wire shape wants.
+export const QuoteLiquidityRequest = Type.Omit(AddLiquidityRequest, ['walletAddress']);
 export type QuoteLiquidityRequestType = Static<typeof QuoteLiquidityRequest>;
 
 export const QuoteLiquidityResponse = Type.Object(
@@ -200,7 +205,9 @@ export const RemoveLiquidityRequest = Type.Object(
       maximum: 100,
     }),
   },
-  { $id: 'AmmRemoveLiquidityRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type RemoveLiquidityRequestType = Static<typeof RemoveLiquidityRequest>;
 
@@ -265,7 +272,9 @@ export const CreatePoolRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'CreatePoolRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type CreatePoolRequestType = Static<typeof CreatePoolRequest>;
 
@@ -339,7 +348,9 @@ export const GetPositionInfoRequest = Type.Object(
     poolAddress: Type.String(),
     walletAddress: Type.Optional(Type.String()),
   },
-  { $id: 'AmmGetPositionInfoRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type GetPositionInfoRequestType = Static<typeof GetPositionInfoRequest>;
 
@@ -376,7 +387,9 @@ export const QuoteSwapRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'AmmQuoteSwapRequest' },
+  // No $id: this is the pre-refactor shape (per-connector `network`, no `connector`),
+  // kept only as the base the unified route composes from. The request actually on the
+  // wire is the route's own querystring, which now carries this name as its $id.
 );
 export type QuoteSwapRequestType = Static<typeof QuoteSwapRequest>;
 
@@ -393,7 +406,9 @@ export const QuoteSwapResponse = Type.Object(
     maxAmountIn: Type.Number({ format: 'decimal' }),
     priceImpactPct: Type.Number({ format: 'decimal' }),
   },
-  { $id: 'AmmQuoteSwapResponse' },
+  // No $id: no route serves this shape. The pool-scoped surfaces answer with the shared
+  // Chain* responses, so publishing this would put a name a caller reaches for on a
+  // shape they never receive. Kept as the base those responses compose from.
 );
 export type QuoteSwapResponseType = Static<typeof QuoteSwapResponse>;
 
@@ -455,10 +470,13 @@ export const ExecuteSwapResponse = Type.Object(
             }),
           ),
         },
-        { $id: 'AmmExecuteSwapResponseData' },
+        // No $id: its parent is not published either — nothing would reference this, and a
+        // generated client would carry it as a class no response ever produces.
       ),
     ),
   },
-  { $id: 'AmmExecuteSwapResponse' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type ExecuteSwapResponseType = Static<typeof ExecuteSwapResponse>;

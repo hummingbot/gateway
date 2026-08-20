@@ -30,6 +30,34 @@ const refOf = (op: any): string | undefined => {
   return ref?.replace('#/components/schemas/', '');
 };
 
+const propsOf = (name: string): string[] => Object.keys(components[name]?.properties ?? {}).sort();
+
+/** A GET's query fields — path parameters are part of the route, not of the query shape. */
+const queryParams = (op: any): string[] =>
+  (op.parameters ?? [])
+    .filter((p: any) => p.in === 'query')
+    .map((p: any) => p.name)
+    .sort();
+
+const tradingGets = (): Array<{ route: string; params: string[] }> =>
+  Object.entries(spec.paths as Record<string, any>)
+    .filter(([route]) => route.startsWith('/trading/'))
+    .filter(([, ops]) => ops.get?.parameters)
+    .map(([route, ops]) => ({ route, params: queryParams(ops.get) }));
+
+/**
+ * The component describing a GET's query, found by shape rather than by reference.
+ *
+ * A GET cannot point at its component the way a body does: @fastify/swagger expands a
+ * querystring into `parameters`, so nothing in the operation carries a `$ref`. The
+ * component is published all the same — registering a schema and referencing it are
+ * independent — so it is identified here by having exactly the operation's fields.
+ */
+const componentsForGet = (params: string[]): string[] =>
+  Object.keys(components).filter((name) => JSON.stringify(propsOf(name)) === JSON.stringify(params));
+
+const componentForGet = (params: string[]): string | undefined => componentsForGet(params)[0];
+
 describe('OpenAPI request bodies are generatable', () => {
   it('names every /trading request body as a component', () => {
     const unnamed = requestBodies()
@@ -64,5 +92,51 @@ describe('OpenAPI request bodies are generatable', () => {
     expect(props).toContain('connector');
     expect(props).toContain('chainNetwork');
     expect(props).not.toContain('network');
+  });
+
+  // The reads are most of this API, and were the half GW-9 left behind: their fields
+  // reach the spec as `parameters`, so it looked as though no component could describe
+  // them. It can — publishing does not depend on being referenced — and until it did,
+  // the names a client reaches for (ClmmQuoteSwapRequest, FetchPoolsRequest) were held
+  // by pre-refactor bases carrying `network` and no `connector`.
+  it.each(tradingGets().map(({ route, params }) => [route, params]))(
+    'GET %s publishes a component matching its query',
+    (_route, params) => {
+      const component = componentForGet(params as string[]);
+      expect(component).toBeDefined();
+      const props = propsOf(component!);
+      expect(props).toContain('connector');
+      expect(props).toContain('chainNetwork');
+      expect(props).not.toContain('network');
+    },
+  );
+
+  it('publishes nothing that no route serves', () => {
+    // Every component is either referenced, or is a GET's query shape. A component that
+    // is neither is a stale base: it generates a class, under a name a caller trusts,
+    // for a shape Gateway never sends or accepts.
+    //
+    // Matching by shape is what makes this possible at all — a GET has no $ref to follow
+    // — and it is also the limit: a stale schema whose fields happen to equal some GET's
+    // query is excused. In practice that only reaches the single-field `{ network }`
+    // shapes the chain routes use, because every stale trading base carries `network`
+    // where the live ones carry `chainNetwork`.
+    // Across the whole document, not just the paths: a nested `data` shape is referenced
+    // by its parent component rather than by any operation.
+    const referenced = new Set<string>(
+      [...JSON.stringify(spec).matchAll(/#\/components\/schemas\/([A-Za-z0-9_]+)/g)].map((m) => m[1]),
+    );
+    // All matches, not the first: the AMM and CLMM reads of the same kind have identical
+    // query shapes, so one lookup would leave the other looking like an orphan.
+    const getShapes = new Set(
+      Object.values(spec.paths as Record<string, any>)
+        .filter((ops: any) => ops.get?.parameters)
+        .flatMap((ops: any) => componentsForGet(queryParams(ops.get))),
+    );
+    const orphans = Object.keys(components)
+      .filter((name) => !referenced.has(name) && !getShapes.has(name))
+      .sort();
+
+    expect(orphans).toEqual([]);
   });
 });

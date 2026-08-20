@@ -24,7 +24,9 @@ export const FetchPoolsRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'FetchPoolsRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 
 export type FetchPoolsRequestType = Static<typeof FetchPoolsRequest>;
@@ -96,7 +98,9 @@ export const GetPositionsOwnedRequest = Type.Object(
     network: Type.Optional(Type.String()),
     walletAddress: Type.String(),
   },
-  { $id: 'GetPositionsOwnedRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 
 export type GetPositionsOwnedRequestType = Static<typeof GetPositionsOwnedRequest>;
@@ -144,7 +148,9 @@ export const MeteoraPoolInfoSchema = Type.Composite(
       maxBinId: Type.Number(),
     }),
   ],
-  { $id: 'MeteoraPoolInfo' },
+  // No $id: a connector's extension of PoolInfo, not a response any route declares — the
+  // unified pool-info route answers with PoolInfo and drops these fields. Publishing it
+  // would advertise fields that never arrive.
 );
 export type MeteoraPoolInfo = Static<typeof MeteoraPoolInfoSchema>;
 
@@ -163,7 +169,9 @@ export const GetPoolInfoRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'GetPoolInfoRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type GetPoolInfoRequestType = Static<typeof GetPoolInfoRequest>;
 
@@ -193,7 +201,9 @@ export const GetPositionInfoRequest = Type.Object(
     positionAddress: Type.String(),
     walletAddress: Type.Optional(Type.String()),
   },
-  { $id: 'GetPositionInfoRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type GetPositionInfoRequestType = Static<typeof GetPositionInfoRequest>;
 
@@ -214,7 +224,9 @@ export const OpenPositionRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'OpenPositionRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type OpenPositionRequestType = Static<typeof OpenPositionRequest>;
 
@@ -260,7 +272,9 @@ export const AddLiquidityRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'AddLiquidityRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type AddLiquidityRequestType = Static<typeof AddLiquidityRequest>;
 
@@ -301,7 +315,9 @@ export const RemoveLiquidityRequest = Type.Object(
       maximum: 100,
     }),
   },
-  { $id: 'RemoveLiquidityRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type RemoveLiquidityRequestType = Static<typeof RemoveLiquidityRequest>;
 
@@ -337,7 +353,9 @@ export const CollectFeesRequest = Type.Object(
     walletAddress: Type.Optional(Type.String()),
     positionAddress: Type.String(),
   },
-  { $id: 'CollectFeesRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type CollectFeesRequestType = Static<typeof CollectFeesRequest>;
 
@@ -373,7 +391,9 @@ export const ClosePositionRequest = Type.Object(
     walletAddress: Type.Optional(Type.String()),
     positionAddress: Type.String(),
   },
-  { $id: 'ClosePositionRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type ClosePositionRequestType = Static<typeof ClosePositionRequest>;
 
@@ -488,7 +508,10 @@ export const CreatePoolResponse = Type.Object(
 );
 export type CreatePoolResponseType = Static<typeof CreatePoolResponse>;
 
-export const QuotePositionRequest = Type.Omit(OpenPositionRequest, ['walletAddress'], { $id: 'QuotePositionRequest' });
+// No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+// the base a unified route composes from. Publishing it would generate a client that
+// sends the wrong keys under a name the real wire shape wants.
+export const QuotePositionRequest = Type.Omit(OpenPositionRequest, ['walletAddress']);
 export type QuotePositionRequestType = Static<typeof QuotePositionRequest>;
 
 export const QuotePositionResponse = Type.Object(
@@ -540,7 +563,9 @@ export const QuoteSwapRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'ClmmQuoteSwapRequest' },
+  // No $id: this is the pre-refactor shape (per-connector `network`, no `connector`),
+  // kept only as the base the unified route composes from. The request actually on the
+  // wire is the route's own querystring, which now carries this name as its $id.
 );
 export type QuoteSwapRequestType = Static<typeof QuoteSwapRequest>;
 
@@ -557,7 +582,9 @@ export const QuoteSwapResponse = Type.Object(
     maxAmountIn: Type.Number({ format: 'decimal' }),
     priceImpactPct: Type.Number({ format: 'decimal' }),
   },
-  { $id: 'ClmmQuoteSwapResponse' },
+  // No $id: no route serves this shape. The pool-scoped surfaces answer with the shared
+  // Chain* responses, so publishing this would put a name a caller reaches for on a
+  // shape they never receive. Kept as the base those responses compose from.
 );
 export type QuoteSwapResponseType = Static<typeof QuoteSwapResponse>;
 
@@ -619,10 +646,13 @@ export const ExecuteSwapResponse = Type.Object(
             }),
           ),
         },
-        { $id: 'ClmmExecuteSwapResponseData' },
+        // No $id: its parent is not published either — nothing would reference this, and a
+        // generated client would carry it as a class no response ever produces.
       ),
     ),
   },
-  { $id: 'ClmmExecuteSwapResponse' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type ExecuteSwapResponseType = Static<typeof ExecuteSwapResponse>;

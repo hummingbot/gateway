@@ -3,32 +3,35 @@ import { Type } from '@sinclair/typebox';
 import { ConfigManagerV2 } from '../services/config-manager-v2';
 
 // Individual token structure
-export const TokenSchema = Type.Object({
-  chainId: Type.Optional(
-    Type.Number({
-      description: 'The chain ID',
-      examples: [1, 101, 137],
+export const TokenSchema = Type.Object(
+  {
+    chainId: Type.Optional(
+      Type.Number({
+        description: 'The chain ID',
+        examples: [1, 101, 137],
+      }),
+    ),
+    name: Type.String({
+      description: 'The full name of the token',
+      examples: ['USD Coin', 'Wrapped Ether'],
     }),
-  ),
-  name: Type.String({
-    description: 'The full name of the token',
-    examples: ['USD Coin', 'Wrapped Ether'],
-  }),
-  symbol: Type.String({
-    description: 'The token symbol',
-    examples: ['USDC', 'WETH'],
-  }),
-  address: Type.String({
-    description: 'The token contract address',
-    examples: ['0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'],
-  }),
-  decimals: Type.Number({
-    description: 'The number of decimals the token uses',
-    minimum: 0,
-    maximum: 255,
-    examples: [6, 18],
-  }),
-});
+    symbol: Type.String({
+      description: 'The token symbol',
+      examples: ['USDC', 'WETH'],
+    }),
+    address: Type.String({
+      description: 'The token contract address',
+      examples: ['0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'],
+    }),
+    decimals: Type.Number({
+      description: 'The number of decimals the token uses',
+      minimum: 0,
+      maximum: 255,
+      examples: [6, 18],
+    }),
+  },
+  { $id: 'Token' },
+);
 
 export type Token = {
   chainId?: number;

@@ -16,3 +16,11 @@ export { UnifiedAmmAddLiquidityRequest } from './add';
 export { UnifiedAmmRemoveLiquidityRequest } from './remove';
 export { UnifiedAmmOpenPositionRequest } from './open';
 export { UnifiedAmmClosePositionRequest } from './close';
+
+// The GET querystrings. Registering these publishes them as components; the routes still
+// expand their fields into `parameters`, so the operations are unchanged and a generated
+// client gains a request model for the reads.
+export { UnifiedAmmPoolInfoRequest } from './pool-info';
+export { UnifiedAmmPositionInfoRequest } from './position-info';
+export { UnifiedAmmPositionsOwnedRequest } from './positions-owned';
+export { UnifiedAmmQuoteLiquidityRequest } from './quote-liquidity';

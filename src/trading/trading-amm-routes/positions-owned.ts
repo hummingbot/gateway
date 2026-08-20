@@ -13,11 +13,14 @@ import {
   rethrowRouteError,
 } from '../common';
 
-const UnifiedAmmPositionsOwnedRequest = Type.Object({
-  connector: connectorField(AMM_CONNECTORS, 'AMM connector (only non-fungible-LP AMMs supported: meteora)'),
-  chainNetwork: chainNetworkField(),
-  walletAddress: Type.String({ description: 'Wallet address to list positions for', default: defaultWallet }),
-});
+export const UnifiedAmmPositionsOwnedRequest = Type.Object(
+  {
+    connector: connectorField(AMM_CONNECTORS, 'AMM connector (only non-fungible-LP AMMs supported: meteora)'),
+    chainNetwork: chainNetworkField(),
+    walletAddress: Type.String({ description: 'Wallet address to list positions for', default: defaultWallet }),
+  },
+  { $id: 'AmmPositionsOwnedRequest' },
+);
 
 export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{

@@ -9,11 +9,14 @@ import { PoolInfo, PoolInfoSchema } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
 import { AMM_CONNECTORS, chainNetworkField, connectorField, parseChainNetwork, rethrowRouteError } from '../common';
 
-const UnifiedAmmPoolInfoRequest = Type.Object({
-  connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
-  chainNetwork: chainNetworkField(),
-  poolAddress: Type.String({ description: 'Pool contract address' }),
-});
+export const UnifiedAmmPoolInfoRequest = Type.Object(
+  {
+    connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+    chainNetwork: chainNetworkField(),
+    poolAddress: Type.String({ description: 'Pool contract address' }),
+  },
+  { $id: 'AmmPoolInfoRequest' },
+);
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{

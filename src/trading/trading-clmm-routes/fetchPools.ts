@@ -14,38 +14,42 @@ import { FETCH_POOLS_CONNECTORS, getFetchPoolsOps } from '../connector-registry'
  * them. A knob the chosen connector ignores is dropped rather than erroring,
  * matching how the other unified routes treat connector-specific parameters.
  */
-export const FetchPoolsRequestSchema = Type.Object({
-  chainNetwork: chainNetworkField(),
-  connector: connectorField(FETCH_POOLS_CONNECTORS, 'CLMM connector whose pool-discovery API to query'),
-  limit: Type.Optional(
-    Type.Number({ minimum: 1, maximum: 1000, default: 50, description: 'Maximum number of pools to return' }),
-  ),
-  query: Type.Optional(
-    Type.String({ description: 'Search pools by name, token, or address', examples: ['SOL', 'SOL-USDC'] }),
-  ),
-  sortBy: Type.Optional(
-    Type.String({
-      description: 'Sort field. Meteora takes a "field:direction" pair; Orca takes the field alone with sortDirection.',
-      examples: ['tvl', 'tvl:desc'],
-    }),
-  ),
-  page: Type.Optional(
-    Type.Number({
-      minimum: 0,
-      description: '0-based page index. Only connectors whose API paginates honor this.',
-      'x-connectors': ['meteora'],
-    } as any),
-  ),
-  includeUnverified: Type.Optional(
-    Type.Boolean({ description: 'Include unverified pools', 'x-connectors': ['meteora'] } as any),
-  ),
-  sortDirection: Type.Optional(
-    Type.String({ description: 'Sort direction', enum: ['asc', 'desc'], 'x-connectors': ['orca'] } as any),
-  ),
-  verifiedOnly: Type.Optional(
-    Type.Boolean({ description: 'Return only verified pools', 'x-connectors': ['orca'] } as any),
-  ),
-});
+export const FetchPoolsRequestSchema = Type.Object(
+  {
+    chainNetwork: chainNetworkField(),
+    connector: connectorField(FETCH_POOLS_CONNECTORS, 'CLMM connector whose pool-discovery API to query'),
+    limit: Type.Optional(
+      Type.Number({ minimum: 1, maximum: 1000, default: 50, description: 'Maximum number of pools to return' }),
+    ),
+    query: Type.Optional(
+      Type.String({ description: 'Search pools by name, token, or address', examples: ['SOL', 'SOL-USDC'] }),
+    ),
+    sortBy: Type.Optional(
+      Type.String({
+        description:
+          'Sort field. Meteora takes a "field:direction" pair; Orca takes the field alone with sortDirection.',
+        examples: ['tvl', 'tvl:desc'],
+      }),
+    ),
+    page: Type.Optional(
+      Type.Number({
+        minimum: 0,
+        description: '0-based page index. Only connectors whose API paginates honor this.',
+        'x-connectors': ['meteora'],
+      } as any),
+    ),
+    includeUnverified: Type.Optional(
+      Type.Boolean({ description: 'Include unverified pools', 'x-connectors': ['meteora'] } as any),
+    ),
+    sortDirection: Type.Optional(
+      Type.String({ description: 'Sort direction', enum: ['asc', 'desc'], 'x-connectors': ['orca'] } as any),
+    ),
+    verifiedOnly: Type.Optional(
+      Type.Boolean({ description: 'Return only verified pools', 'x-connectors': ['orca'] } as any),
+    ),
+  },
+  { $id: 'ClmmFetchPoolsRequest' },
+);
 
 type FetchPoolsRequest = Static<typeof FetchPoolsRequestSchema>;
 

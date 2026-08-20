@@ -6,3 +6,4 @@ export { executeSwapRoute } from './executeSwap';
 // quote-swap is a GET, so its fields are `parameters` and it has no component.
 export { RouterExecuteQuoteRequestSchema } from './executeQuote';
 export { RouterExecuteSwapRequestSchema } from './executeSwap';
+export { RouterQuoteSwapRequestSchema } from './quoteSwap';

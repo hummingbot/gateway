@@ -16,12 +16,15 @@ import {
   rethrowRouteError,
 } from '../common';
 
-const UnifiedAmmPositionInfoRequest = Type.Object({
-  connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
-  chainNetwork: chainNetworkField(),
-  poolAddress: Type.String({ description: 'Pool contract address' }),
-  walletAddress: Type.String({ description: 'Wallet address', default: defaultWallet }),
-});
+export const UnifiedAmmPositionInfoRequest = Type.Object(
+  {
+    connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+    chainNetwork: chainNetworkField(),
+    poolAddress: Type.String({ description: 'Pool contract address' }),
+    walletAddress: Type.String({ description: 'Wallet address', default: defaultWallet }),
+  },
+  { $id: 'AmmPositionInfoRequest' },
+);
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{

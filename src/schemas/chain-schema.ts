@@ -99,7 +99,9 @@ export const TokensRequestSchema = Type.Object(
     network: networkField(),
     tokenSymbols: Type.Optional(Type.Union([Type.String(), Type.Array(Type.String())])),
   },
-  { $id: 'TokensRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type TokensRequestType = Static<typeof TokensRequestSchema>;
 
@@ -114,7 +116,9 @@ export const TokensResponseSchema = Type.Object(
       }),
     ),
   },
-  { $id: 'TokensResponse' },
+  // No $id: no route serves this shape. The pool-scoped surfaces answer with the shared
+  // Chain* responses, so publishing this would put a name a caller reaches for on a
+  // shape they never receive. Kept as the base those responses compose from.
 );
 export type TokensResponseType = Static<typeof TokensResponseSchema>;
 

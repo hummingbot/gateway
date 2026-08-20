@@ -29,39 +29,42 @@ const CLMM_POOL_ADDRESS_EXAMPLE = '2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3'
 /**
  * Unified quote position request schema
  */
-const UnifiedQuotePositionRequestSchema = Type.Object({
-  connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
-  chainNetwork: chainNetworkField(),
-  lowerPrice: Type.Number({
-    format: 'decimal',
-    description: 'Lower price bound for the position',
-    examples: [LOWER_PRICE_BOUND],
-  }),
-  upperPrice: Type.Number({
-    format: 'decimal',
-    description: 'Upper price bound for the position',
-    examples: [UPPER_PRICE_BOUND],
-  }),
-  poolAddress: Type.String({
-    description: 'Pool contract address',
-    examples: [CLMM_POOL_ADDRESS_EXAMPLE],
-  }),
-  baseTokenAmount: Type.Optional(
-    Type.Number({
+export const UnifiedQuotePositionRequestSchema = Type.Object(
+  {
+    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+    chainNetwork: chainNetworkField(),
+    lowerPrice: Type.Number({
       format: 'decimal',
-      description: 'Amount of base token to deposit',
-      examples: [BASE_TOKEN_AMOUNT],
+      description: 'Lower price bound for the position',
+      examples: [LOWER_PRICE_BOUND],
     }),
-  ),
-  quoteTokenAmount: Type.Optional(
-    Type.Number({
+    upperPrice: Type.Number({
       format: 'decimal',
-      description: 'Amount of quote token to deposit',
-      examples: [QUOTE_TOKEN_AMOUNT],
+      description: 'Upper price bound for the position',
+      examples: [UPPER_PRICE_BOUND],
     }),
-  ),
-  slippagePct: slippagePctField(),
-});
+    poolAddress: Type.String({
+      description: 'Pool contract address',
+      examples: [CLMM_POOL_ADDRESS_EXAMPLE],
+    }),
+    baseTokenAmount: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        description: 'Amount of base token to deposit',
+        examples: [BASE_TOKEN_AMOUNT],
+      }),
+    ),
+    quoteTokenAmount: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        description: 'Amount of quote token to deposit',
+        examples: [QUOTE_TOKEN_AMOUNT],
+      }),
+    ),
+    slippagePct: slippagePctField(),
+  },
+  { $id: 'ClmmQuoteLiquidityRequest' },
+);
 
 type UnifiedQuotePositionRequest = Static<typeof UnifiedQuotePositionRequestSchema>;
 

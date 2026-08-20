@@ -38,7 +38,9 @@ import { logger } from './services/logger';
 import { quoteCache } from './services/quote-cache';
 import { ajvOptions } from './services/schema-keywords';
 import { displayChainConfigurations } from './services/startup-banner';
+import * as tokenSchemas from './tokens/schemas';
 import { tokensRoutes } from './tokens/tokens.routes';
+import * as clmmReadRouteSchemas from './trading/clmm';
 import * as poolSwapRoutes from './trading/pool-swap-routes';
 import * as ammRouteSchemas from './trading/trading-amm-routes';
 import * as clmmRouteSchemas from './trading/trading-clmm-routes';
@@ -103,10 +105,12 @@ const identifiedSchemas = (): Array<Record<string, any>> => {
     routerSchemas,
     ammRouteSchemas,
     clmmRouteSchemas,
+    clmmReadRouteSchemas,
     routerRouteSchemas,
     poolSwapRoutes,
     ethereumSchemas,
     walletSchemas,
+    tokenSchemas,
   ]) {
     for (const value of Object.values(module)) {
       if (typeof value === 'object' && value !== null) collectIdentifiedSchemas(value, found);
