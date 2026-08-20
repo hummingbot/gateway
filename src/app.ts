@@ -22,6 +22,7 @@ import { poolRoutes } from './pools/pools.routes';
 import * as ammSchemas from './schemas/amm-schema';
 import * as chainSchemas from './schemas/chain-schema';
 import * as clmmSchemas from './schemas/clmm-schema';
+import * as errorSchemas from './schemas/error-schema';
 import * as routerSchemas from './schemas/router-schema';
 import { ConfigManagerV2 } from './services/config-manager-v2';
 import {
@@ -35,6 +36,7 @@ import {
   loadOrCreateApiKey,
 } from './services/gateway-security';
 import { logger } from './services/logger';
+import { OPERATION_IDS } from './services/operation-ids';
 import { quoteCache } from './services/quote-cache';
 import { ajvOptions } from './services/schema-keywords';
 import { displayChainConfigurations } from './services/startup-banner';
@@ -111,6 +113,7 @@ const identifiedSchemas = (): Array<Record<string, any>> => {
     ethereumSchemas,
     walletSchemas,
     tokenSchemas,
+    errorSchemas,
   ]) {
     for (const value of Object.values(module)) {
       if (typeof value === 'object' && value !== null) collectIdentifiedSchemas(value, found);
@@ -156,6 +159,41 @@ const refIdentifiedSchemas = (node: any, style: RefStyle = 'fastify'): any => {
   return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, refIdentifiedSchemas(value, style)]));
 };
 
+/**
+ * Give an operation the two things a generated client needs and Gateway never stated: a
+ * stable name, and the shape of a failure.
+ *
+ * Both are applied here rather than in 56 route files. The name comes from the table in
+ * `operation-ids.ts` — chosen, not derived, so renaming a path does not rename a caller's
+ * method. The failure shape is the same envelope on every route, so listing it per route
+ * would only be a list to forget to update.
+ *
+ * 400 and 500 are declared everywhere because both are reachable everywhere: Fastify
+ * answers 400 for any request its schema rejects, and `rethrowRouteError` turns anything
+ * without a status of its own into a 500. A route that already declares a status keeps
+ * what it declared.
+ */
+const describeOperation = (schema: any, url: string, route: any): any => {
+  if (!schema || schema.hide) return schema;
+
+  const method = Array.isArray(route?.method) ? route.method[0] : route?.method;
+  // Fastify spells a path parameter `:name`; the table is keyed the way the spec renders
+  // it. Without this the 14 parameterised routes silently keep no name at all.
+  const specPath = url.replace(/:([A-Za-z0-9_]+)/g, '{$1}');
+  const operationId = OPERATION_IDS[`${method} ${specPath}`];
+  const errorRef = { $ref: 'ErrorResponse#' };
+
+  return {
+    ...schema,
+    ...(operationId && !schema.operationId ? { operationId } : {}),
+    response: {
+      400: errorRef,
+      500: errorRef,
+      ...(schema.response ?? {}),
+    },
+  };
+};
+
 const swaggerOptions = {
   openapi: {
     info: {
@@ -190,12 +228,10 @@ const swaggerOptions = {
       },
     },
   },
-  transform: ({ schema, url }) => {
+  transform: ({ schema, url, route }: any) => {
     try {
-      return {
-        schema: schema ? refIdentifiedSchemas(Type.Strict(schema)) : schema,
-        url: url,
-      };
+      const transformed = schema ? refIdentifiedSchemas(Type.Strict(schema)) : schema;
+      return { schema: describeOperation(transformed, url, route), url };
     } catch (error) {
       return { schema, url };
     }

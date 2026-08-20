@@ -15,12 +15,6 @@ export const addPoolRoute: FastifyPluginAsync = async (fastify) => {
         body: PoolAddRequestSchema,
         response: {
           200: PoolSuccessResponseSchema,
-          400: {
-            type: 'object',
-            properties: {
-              message: { type: 'string' },
-            },
-          },
         },
       },
     },

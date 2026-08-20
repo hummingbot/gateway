@@ -89,7 +89,7 @@ export const FetchPoolsResponse = Type.Object(
     page: Type.Number({ description: 'Current page number' }),
     pageSize: Type.Number({ description: 'Number of pools per page' }),
   },
-  { $id: 'FetchPoolsResponse' },
+  { $id: 'ClmmFetchPoolsResponse' },
 );
 export type FetchPoolsResponseType = Static<typeof FetchPoolsResponse>;
 
@@ -133,7 +133,7 @@ export const PoolInfoSchema = Type.Object(
     activeBinId: Type.Number(),
     bins: Type.Optional(Type.Array(BinLiquiditySchema)),
   },
-  { $id: 'PoolInfo' },
+  { $id: 'ClmmPoolInfo' },
 );
 export type PoolInfo = Static<typeof PoolInfoSchema>;
 
@@ -191,7 +191,7 @@ export const PositionInfoSchema = Type.Object(
     upperPrice: Type.Number({ format: 'decimal' }),
     price: Type.Number({ format: 'decimal' }),
   },
-  { $id: 'PositionInfo' },
+  { $id: 'ClmmPositionInfo' },
 );
 export type PositionInfo = Static<typeof PositionInfoSchema>;
 
@@ -249,11 +249,11 @@ export const OpenPositionResponse = Type.Object(
           baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
           quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
         },
-        { $id: 'OpenPositionResponseData' },
+        { $id: 'ClmmOpenPositionResponseData' },
       ),
     ),
   },
-  { $id: 'OpenPositionResponse' },
+  { $id: 'ClmmOpenPositionResponse' },
 );
 export type OpenPositionResponseType = Static<typeof OpenPositionResponse>;
 
@@ -296,11 +296,11 @@ export const AddLiquidityResponse = Type.Object(
           baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
           quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
         },
-        { $id: 'AddLiquidityResponseData' },
+        { $id: 'ClmmAddLiquidityResponseData' },
       ),
     ),
   },
-  { $id: 'AddLiquidityResponse' },
+  { $id: 'ClmmAddLiquidityResponse' },
 );
 export type AddLiquidityResponseType = Static<typeof AddLiquidityResponse>;
 
@@ -339,11 +339,11 @@ export const RemoveLiquidityResponse = Type.Object(
           baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
           quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),
         },
-        { $id: 'RemoveLiquidityResponseData' },
+        { $id: 'ClmmRemoveLiquidityResponseData' },
       ),
     ),
   },
-  { $id: 'RemoveLiquidityResponse' },
+  { $id: 'ClmmRemoveLiquidityResponse' },
 );
 export type RemoveLiquidityResponseType = Static<typeof RemoveLiquidityResponse>;
 
@@ -377,11 +377,11 @@ export const CollectFeesResponse = Type.Object(
           baseFeeAmountCollected: Type.Number({ format: 'decimal' }),
           quoteFeeAmountCollected: Type.Number({ format: 'decimal' }),
         },
-        { $id: 'CollectFeesResponseData' },
+        { $id: 'ClmmCollectFeesResponseData' },
       ),
     ),
   },
-  { $id: 'CollectFeesResponse' },
+  { $id: 'ClmmCollectFeesResponse' },
 );
 export type CollectFeesResponseType = Static<typeof CollectFeesResponse>;
 
@@ -418,11 +418,11 @@ export const ClosePositionResponse = Type.Object(
           baseFeeAmountCollected: Type.Number({ format: 'decimal' }),
           quoteFeeAmountCollected: Type.Number({ format: 'decimal' }),
         },
-        { $id: 'ClosePositionResponseData' },
+        { $id: 'ClmmClosePositionResponseData' },
       ),
     ),
   },
-  { $id: 'ClosePositionResponse' },
+  { $id: 'ClmmClosePositionResponse' },
 );
 export type ClosePositionResponseType = Static<typeof ClosePositionResponse>;
 
@@ -526,7 +526,7 @@ export const QuotePositionResponse = Type.Object(
     quoteTokenAmountMax: Type.Number({ format: 'decimal' }),
     liquidity: Type.Optional(Type.Any()),
   },
-  { $id: 'QuotePositionResponse' },
+  { $id: 'ClmmQuoteLiquidityResponse' },
 );
 export type QuotePositionResponseType = Static<typeof QuotePositionResponse>;
 

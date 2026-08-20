@@ -388,7 +388,7 @@ export const approveRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Approve token spending',
-        tags: ['/chain/ethereum'],
+        tags: ['/chains'],
         body: ApproveRequestSchema,
         response: {
           200: ApproveResponseSchema,

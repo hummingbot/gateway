@@ -7,6 +7,7 @@ import yaml from 'js-yaml';
 
 import { rootPath } from '../paths';
 
+import { parseChainNetwork as parseChainNetworkParts } from './chain-network';
 import { httpErrors } from './error-handler';
 
 type Configuration = { [key: string]: any };
@@ -528,9 +529,7 @@ export class ConfigManagerV2 {
    * Parse chain-network format into components
    */
   parseChainNetwork(chainNetwork: string): { chain: string; network: string } {
-    const [chain, ...networkParts] = chainNetwork.split('-');
-    const network = networkParts.join('-');
-    return { chain, network };
+    return parseChainNetworkParts(chainNetwork);
   }
 
   /**

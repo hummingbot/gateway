@@ -19,29 +19,6 @@ const CLMM_POOL_ADDRESS_EXAMPLE = '0xd0b53d9277642d899df5c87a3966a349a798f224'; 
 // CLMM Request Schemas
 // ========================================
 
-export const UniswapClmmGetPoolInfoRequest = Type.Object({
-  network: Type.Optional(
-    Type.String({
-      description: 'The EVM network to use',
-      default: ethereumChainConfig.defaultNetwork,
-      enum: [...UniswapConfig.networks],
-    }),
-  ),
-  poolAddress: Type.String({
-    description: 'Uniswap V3 pool address',
-    examples: [CLMM_POOL_ADDRESS_EXAMPLE],
-  }),
-  binCount: Type.Optional(
-    Type.Integer({
-      description:
-        'If > 0, include a `bins` array (per-tickSpacing token amounts around the current tick), ' +
-        'mirroring Meteora pool-info.bins[]. Default 0 — pool-info skips the extra eth_calls.',
-      default: 0,
-      minimum: 0,
-      maximum: 401,
-    }),
-  ),
-});
 // ========================================
 // Router Request Schemas
 // ========================================

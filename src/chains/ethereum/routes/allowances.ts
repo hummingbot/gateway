@@ -217,7 +217,7 @@ export const allowancesRoute: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         description: 'Get token allowances',
-        tags: ['/chain/ethereum'],
+        tags: ['/chains'],
         body: AllowancesRequestSchema,
         response: {
           200: AllowancesResponseSchema,

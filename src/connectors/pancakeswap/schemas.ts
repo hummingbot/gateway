@@ -15,30 +15,6 @@ const CLMM_POOL_ADDRESS_EXAMPLE = '0x172fcd41e0913e95784454622d1c3724f546f849'; 
 // CLMM Request Schemas
 // ========================================
 
-export const PancakeswapClmmGetPoolInfoRequest = Type.Object({
-  network: Type.Optional(
-    Type.String({
-      description: 'The EVM network to use',
-      default: 'bsc',
-      examples: ['bsc'],
-      enum: [...PancakeswapConfig.networks],
-    }),
-  ),
-  poolAddress: Type.String({
-    description: 'Pancakeswap V3 pool address',
-    examples: [CLMM_POOL_ADDRESS_EXAMPLE],
-  }),
-  binCount: Type.Optional(
-    Type.Integer({
-      description:
-        'If > 0, include a `bins` array (per-tickSpacing token amounts around the current tick), ' +
-        'mirroring Meteora pool-info.bins[]. Default 0 — pool-info skips the extra eth_calls.',
-      default: 0,
-      minimum: 0,
-      maximum: 401,
-    }),
-  ),
-});
 // ========================================
 // Router Request Schemas
 // ========================================

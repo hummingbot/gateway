@@ -41,12 +41,6 @@ export const getPoolRoute: FastifyPluginAsync = async (fastify) => {
         },
         response: {
           200: PoolListResponseSchema.items,
-          404: {
-            type: 'object',
-            properties: {
-              message: { type: 'string' },
-            },
-          },
         },
       },
     },

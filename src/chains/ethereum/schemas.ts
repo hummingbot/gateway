@@ -79,10 +79,16 @@ export const AllowancesRequestSchema = Type.Object(
 );
 
 // Allowances response schema
-export const AllowancesResponseSchema = Type.Object({
-  spender: Type.String(),
-  approvals: Type.Record(Type.String(), Type.String()),
-});
+export const AllowancesResponseSchema = Type.Object(
+  {
+    spender: Type.String(),
+    approvals: Type.Record(Type.String(), Type.String()),
+  },
+  // The last two chain responses without a name of their own. Every other route on
+  // /chains publishes a component; these were inlined, so a generated client got an
+  // anonymous model for them and nothing to import.
+  { $id: 'AllowancesResponse' },
+);
 
 // Approve request schema
 export const ApproveRequestSchema = Type.Object(
@@ -108,21 +114,27 @@ export const ApproveRequestSchema = Type.Object(
 );
 
 // Approve response schema
-export const ApproveResponseSchema = Type.Object({
-  signature: Type.String(),
-  status: Type.Number({ description: 'TransactionStatus enum value' }),
+export const ApproveResponseSchema = Type.Object(
+  {
+    signature: Type.String(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
 
-  // Only included when status = CONFIRMED
-  data: Type.Optional(
-    Type.Object({
-      tokenAddress: Type.String(),
-      spender: Type.String(),
-      amount: Type.String(),
-      nonce: Type.Number(),
-      fee: Type.String(),
-    }),
-  ),
-});
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object(
+        {
+          tokenAddress: Type.String(),
+          spender: Type.String(),
+          amount: Type.String(),
+          nonce: Type.Number(),
+          fee: Type.String(),
+        },
+        { $id: 'ApproveResponseData' },
+      ),
+    ),
+  },
+  { $id: 'ApproveResponse' },
+);
 
 // Wrap request schema
 export const WrapRequestSchema = Type.Object({

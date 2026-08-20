@@ -2,6 +2,7 @@ import { Type } from '@sinclair/typebox';
 
 import { getEthereumChainConfig, getEthereumNetworkConfig } from '../chains/ethereum/ethereum.config';
 import { getSolanaChainConfig, getSolanaNetworkConfig } from '../chains/solana/solana.config';
+import { parseChainNetwork as parseChainNetworkParts } from '../services/chain-network';
 import { ConfigManagerV2 } from '../services/config-manager-v2';
 import { httpErrors } from '../services/error-handler';
 import { logger } from '../services/logger';
@@ -106,15 +107,18 @@ export function resolveChainNetwork(
   return { chain, network };
 }
 
-/** Parse a chain-network string (e.g. "solana-mainnet-beta") into its chain and network parts. */
+/**
+ * Parse a chain-network string (e.g. "solana-mainnet-beta") into its chain and network.
+ *
+ * The split itself lives in `services/chain-network`; what this adds is the HTTP framing,
+ * so a malformed selector reaches the caller as a 400 rather than a 500.
+ */
 export function parseChainNetwork(chainNetwork: string): { chain: string; network: string } {
-  const parts = chainNetwork.split('-');
-  if (parts.length < 2) {
-    throw httpErrors.badRequest(
-      `Invalid chain-network format: ${chainNetwork}. Expected format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)`,
-    );
+  try {
+    return parseChainNetworkParts(chainNetwork);
+  } catch (e: any) {
+    throw httpErrors.badRequest(e.message);
   }
-  return { chain: parts[0], network: parts.slice(1).join('-') };
 }
 
 // Default wallet from Solana config, falling back to Ethereum when Solana is unavailable.

@@ -39,12 +39,6 @@ export const removePoolRoute: FastifyPluginAsync = async (fastify) => {
         }),
         response: {
           200: PoolSuccessResponseSchema,
-          404: {
-            type: 'object',
-            properties: {
-              message: { type: 'string' },
-            },
-          },
         },
       },
     },

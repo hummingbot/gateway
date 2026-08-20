@@ -108,7 +108,7 @@ export const QuoteLiquidityResponse = Type.Object(
     baseTokenAmountMax: Type.Number({ format: 'decimal' }),
     quoteTokenAmountMax: Type.Number({ format: 'decimal' }),
   },
-  { $id: 'QuoteLiquidityResponse' },
+  { $id: 'AmmQuoteLiquidityResponse' },
 );
 export type QuoteLiquidityResponseType = Static<typeof QuoteLiquidityResponse>;
 
@@ -229,11 +229,11 @@ export const CreatePoolResponse = Type.Object(
           baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
           quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
         },
-        { $id: 'CreatePoolResponseData' },
+        { $id: 'AmmCreatePoolResponseData' },
       ),
     ),
   },
-  { $id: 'CreatePoolResponse' },
+  { $id: 'AmmCreatePoolResponse' },
 );
 export type CreatePoolResponseType = Static<typeof CreatePoolResponse>;
 
