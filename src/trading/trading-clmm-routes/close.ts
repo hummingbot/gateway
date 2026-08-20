@@ -16,6 +16,7 @@ import {
   defaultWallet,
   resolveChainNetwork,
   rethrowRouteError,
+  slippagePctField,
   withIdentifiers,
 } from '../common';
 
@@ -32,6 +33,12 @@ export const UnifiedClosePositionRequest = Type.Object(
       description: 'Position address',
       examples: ['<sample-position-address>'],
     }),
+    slippagePct: slippagePctField(
+      'Maximum acceptable slippage percentage for the withdrawal. Enforced by orca, uniswap ' +
+        'and pancakeswap; meteora, raydium and pancakeswap-sol close with no minimum-amount ' +
+        "check at all, so it changes nothing there. Defaults to the connector's configured " +
+        'slippagePct.',
+    ),
   },
   { $id: 'ClmmCloseRequest' },
 );
@@ -56,7 +63,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { connector, chainNetwork, walletAddress, positionAddress } = request.body;
+        const { connector, chainNetwork, walletAddress, positionAddress, slippagePct } = request.body;
 
         // Parse chain and network from chainNetwork parameter
         const { network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
@@ -65,10 +72,10 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
         const result = await (async () => {
           switch (connector) {
             case 'uniswap':
-              return await uniswapClosePosition(network, walletAddress, positionAddress);
+              return await uniswapClosePosition(network, walletAddress, positionAddress, slippagePct);
 
             case 'pancakeswap':
-              return await pancakeswapClosePosition(network, walletAddress, positionAddress);
+              return await pancakeswapClosePosition(network, walletAddress, positionAddress, slippagePct);
 
             case 'raydium':
               return await raydiumClosePosition(network, walletAddress, positionAddress);
@@ -80,7 +87,7 @@ export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
               return await pancakeswapSolClosePosition(network, walletAddress, positionAddress);
 
             case 'orca':
-              return await orcaClosePosition(network, walletAddress, positionAddress);
+              return await orcaClosePosition(network, walletAddress, positionAddress, slippagePct);
 
             default:
               throw httpErrors.badRequest(`Unsupported connector: ${connector}`);

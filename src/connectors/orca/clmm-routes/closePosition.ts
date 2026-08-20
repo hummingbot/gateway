@@ -17,6 +17,7 @@ export async function closePosition(
   network: string,
   walletAddress: string,
   positionAddress: string,
+  slippagePct?: number,
 ): Promise<ClosePositionResponseType> {
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
@@ -42,7 +43,10 @@ export async function closePosition(
   // and destination account setup/cleanup. Gateway remains the only signer.
   const closeResult = await closePositionInstructions(orca.solanaKitRpc, position.data.positionMint, {
     authority: createOrcaAuthority(walletAddress),
-    slippageToleranceBps: Math.round(orca.config.slippagePct * 100),
+    // The caller's tolerance when they set one — an executor widening across retries is
+    // the case this exists for; a narrow in-range close can fail on slippage at the
+    // connector's configured value with no way to say "accept more to get out".
+    slippageToleranceBps: Math.round((slippagePct ?? orca.config.slippagePct) * 100),
     whirlpoolDeployment: orca.deployment,
   });
   const rewardCount = closeResult.rewardsQuote.rewards.filter((reward) => reward.rewardsOwed > 0n).length;
