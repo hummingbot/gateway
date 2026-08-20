@@ -4,6 +4,7 @@ import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
+import { liquidityWithoutRent } from '../../../chains/solana/solana.utils';
 import { OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
@@ -134,8 +135,12 @@ export async function openPosition(
         fee: totalFee / 1e9,
         positionAddress: extInfo.nftMint.toBase58(),
         positionRent: rent,
-        baseTokenAmountAdded: baseTokenChange,
-        quoteTokenAmountAdded: quoteTokenChange,
+        // Opening a position locks rent in the position account, and when one side is
+        // SOL that outflow sits inside its balance change — so the raw delta is both
+        // negative and larger than the deposit. The same helper the DAMM v2 open uses
+        // takes the magnitude and backs the rent off the native side only.
+        baseTokenAmountAdded: liquidityWithoutRent(baseTokenChange, new PublicKey(baseTokenInfo.address), rent),
+        quoteTokenAmountAdded: liquidityWithoutRent(quoteTokenChange, new PublicKey(quoteTokenInfo.address), rent),
       },
     };
   } else {

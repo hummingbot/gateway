@@ -202,8 +202,13 @@ export async function addLiquidity(
       status: 1, // CONFIRMED
       data: {
         fee: txData.meta.fee / 1e9,
-        baseTokenAmountAdded: baseTokenBalanceChange,
-        quoteTokenAmountAdded: quoteTokenBalanceChange,
+        // Magnitudes, not the raw wallet delta. A deposit moves tokens out, so the
+        // signed change is negative and a field named `…Added` would report a negative
+        // deposit — which is what every consumer summing these rows then has to guess
+        // about. Every other connector, and the whole removed side including Raydium's
+        // own, reports magnitudes.
+        baseTokenAmountAdded: Math.abs(baseTokenBalanceChange),
+        quoteTokenAmountAdded: Math.abs(quoteTokenBalanceChange),
       },
     };
   } else {

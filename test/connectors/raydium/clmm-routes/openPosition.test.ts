@@ -7,6 +7,9 @@ import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/raydium/raydium');
 jest.mock('../../../../src/chains/solana/solana.utils', () => ({
+  // Spread the real module: only the network lookup needs standing in for, and the
+  // arithmetic beside it (liquidityWithoutRent) is what the amounts below assert.
+  ...jest.requireActual('../../../../src/chains/solana/solana.utils'),
   getAvailableSolanaNetworks: jest.fn().mockReturnValue(['mainnet-beta', 'devnet']),
 }));
 jest.mock('../../../../src/services/config-manager-v2', () => ({
@@ -218,9 +221,15 @@ describe('POST /open-position', () => {
     expect(body).toHaveProperty('status', 1);
     expect(body.data).toHaveProperty('positionAddress', mockPositionNftMint);
     expect(body.data).toHaveProperty('fee');
-    expect(body.data).toHaveProperty('positionRent');
-    expect(body.data).toHaveProperty('baseTokenAmountAdded');
-    expect(body.data).toHaveProperty('quoteTokenAmountAdded');
+    expect(body.data).toHaveProperty('positionRent', 0.002);
+
+    // The values, not just the keys. The mocked wallet deltas are -1 SOL and -150 USDC
+    // with 0.002 SOL of rent, and an open reports what the position holds: magnitudes,
+    // with the rent — which the chain returns on close, so it is locked rather than
+    // deposited — backed off the native side only. Asserting the keys existed accepted
+    // both the negative and the rent counted as liquidity.
+    expect(body.data.baseTokenAmountAdded).toBeCloseTo(0.998, 9);
+    expect(body.data.quoteTokenAmountAdded).toBeCloseTo(150, 9);
   });
 
   it('should set the owner before pool operations', async () => {

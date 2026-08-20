@@ -45,7 +45,6 @@ export async function addLiquidity(
     quoteTokenAmount,
     slippagePct,
   );
-  console.log('quotePositionResponse', quotePositionResponse);
   logger.info('Adding liquidity to Raydium CLMM position...');
 
   // Use hardcoded compute units for add liquidity
@@ -123,8 +122,11 @@ export async function addLiquidity(
         // come from without a second lookup.
         poolAddress: position.poolId.toBase58(),
         fee: totalFee / 1e9,
-        baseTokenAmountAdded: baseTokenBalanceChange,
-        quoteTokenAmountAdded: quoteTokenBalanceChange,
+        // Magnitudes, as everywhere else: a deposit's signed wallet delta is negative,
+        // and `…Added` naming a negative number is wrong at the source. Adding to an
+        // existing position locks no new rent, so there is nothing to back out.
+        baseTokenAmountAdded: Math.abs(baseTokenBalanceChange),
+        quoteTokenAmountAdded: Math.abs(quoteTokenBalanceChange),
       },
     };
   } else {
