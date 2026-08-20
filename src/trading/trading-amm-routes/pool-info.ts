@@ -16,7 +16,7 @@ export const UnifiedAmmPoolInfoRequest = Type.Object(
     chainNetwork: chainNetworkField(),
     poolAddress: Type.String({ description: 'Pool contract address' }),
   },
-  { $id: 'AmmPoolInfoRequest' },
+  { $id: 'AmmPoolInfoRequest', additionalProperties: false },
 );
 
 /** Pool info from any AMM connector. Exported so the swap routes can learn a pool too. */

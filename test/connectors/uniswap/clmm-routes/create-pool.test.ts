@@ -72,7 +72,6 @@ describe('POST /create-pool (Uniswap V3 CLMM)', () => {
         walletAddress: mockWallet,
         baseToken: 'WETH',
         quoteToken: 'WETH',
-        fee: 3000,
         initialPrice: 3000,
       },
     });

@@ -75,7 +75,7 @@ export const AllowancesRequestSchema = Type.Object(
       examples: [EXAMPLE_ALLOWANCE_TOKENS],
     }),
   },
-  { $id: 'AllowancesRequest' },
+  { $id: 'AllowancesRequest', additionalProperties: false },
 );
 
 // Allowances response schema
@@ -110,7 +110,7 @@ export const ApproveRequestSchema = Type.Object(
       }),
     ),
   },
-  { $id: 'ApproveRequest' },
+  { $id: 'ApproveRequest', additionalProperties: false },
 );
 
 // Approve response schema

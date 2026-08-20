@@ -22,7 +22,7 @@ import {
 // Unified schema with connector field
 export const UnifiedCollectFeesRequest = Type.Object(
   {
-    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector', { defaulted: false }),
     chainNetwork: chainNetworkField(),
     walletAddress: Type.String({
       description: 'Wallet address',
@@ -33,7 +33,7 @@ export const UnifiedCollectFeesRequest = Type.Object(
       examples: ['<sample-position-address>'],
     }),
   },
-  { $id: 'ClmmCollectFeesRequest' },
+  { $id: 'ClmmCollectFeesRequest', additionalProperties: false },
 );
 
 // Import connector functions

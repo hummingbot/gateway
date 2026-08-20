@@ -35,15 +35,29 @@ describe('Unified Trading CLMM Routes', () => {
       { method: 'GET', url: '/trading/clmm/position-info', missing: 'positionAddress' },
     ] as const;
 
+    // The write routes name their connector: it lost its schema default, because AJV
+    // injects defaults before the handler and "whichever connector is first in the
+    // registry" is not an answer to "which venue?" on a request that signs. So the
+    // request under test carries a connector and omits only the field being checked.
     it.each(REQUIRE_A_FIELD)('registers $method $url and validates its input', async ({ method, url, missing }) => {
       expect(app.hasRoute({ method, url })).toBe(true);
 
-      const response = await app.inject(method === 'GET' ? { method, url, query: {} } : { method, url, payload: {} });
+      const request = { connector: 'meteora' };
+      const response = await app.inject(
+        method === 'GET' ? { method, url, query: request } : { method, url, payload: request },
+      );
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
       expect(body.code).toBe('FST_ERR_VALIDATION');
       expect(body.message).toContain(`must have required property '${missing}'`);
+    });
+
+    it('will not pick a venue for a write whose caller did not name one', async () => {
+      const response = await app.inject({ method: 'POST', url: '/trading/clmm/close', payload: {} });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body).message).toContain("must have required property 'connector'");
     });
 
     // positions-owned is the one route here with no required field — connector,

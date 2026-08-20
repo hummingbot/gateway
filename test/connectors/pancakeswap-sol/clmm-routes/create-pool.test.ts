@@ -68,7 +68,7 @@ describe('POST /create-pool (PancakeSwap Solana CLMM)', () => {
         baseToken: 'SOL',
         quoteToken: 'SOL',
         initialPrice: 150,
-        ammConfig: mockAmmConfig,
+        ammConfigIndex: 0,
       },
     });
 

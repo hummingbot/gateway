@@ -23,7 +23,7 @@ export const UnifiedPositionInfoRequestSchema = Type.Object(
       examples: ['<sample-position-address>'],
     }),
   },
-  { $id: 'ClmmPositionInfoRequest' },
+  { $id: 'ClmmPositionInfoRequest', additionalProperties: false },
 );
 
 type UnifiedPositionInfoRequest = Static<typeof UnifiedPositionInfoRequestSchema>;

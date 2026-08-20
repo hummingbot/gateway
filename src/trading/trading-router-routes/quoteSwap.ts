@@ -23,7 +23,13 @@ export const RouterQuoteSwapRequestSchema = Type.Object(
   {
     chainNetwork: chainNetworkField(),
     connector: Type.Optional(
-      connectorField(ROUTER_CONNECTORS, "Router connector. Defaults to the network's swapProvider"),
+      // No schema default: AJV injects defaults before the handler, so one here would
+      // hand resolveSwapConnector the first router in the registry and the configured
+      // swapProvider would never be consulted — including on Ethereum, where the first
+      // router is a Solana connector.
+      connectorField(ROUTER_CONNECTORS, "Router connector. Defaults to the network's swapProvider", {
+        defaulted: false,
+      }),
     ),
     baseToken: Type.String({ description: 'Symbol or address of the base token', default: 'SOL' }),
     quoteToken: Type.String({ description: 'Symbol or address of the quote token', default: 'USDC' }),
@@ -62,7 +68,7 @@ export const RouterQuoteSwapRequestSchema = Type.Object(
       } as any),
     ),
   },
-  { $id: 'RouterQuoteSwapRequest' },
+  { $id: 'RouterQuoteSwapRequest', additionalProperties: false },
 );
 
 type RouterQuoteSwapRequest = Static<typeof RouterQuoteSwapRequestSchema>;

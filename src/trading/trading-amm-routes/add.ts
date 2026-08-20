@@ -20,7 +20,7 @@ import {
 
 export const UnifiedAmmAddLiquidityRequest = Type.Object(
   {
-    connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+    connector: connectorField(AMM_CONNECTORS, 'AMM connector', { defaulted: false }),
     chainNetwork: chainNetworkField(),
     walletAddress: Type.String({ description: 'Wallet address', default: defaultWallet }),
     poolAddress: Type.String({ description: 'Pool contract address' }),
@@ -42,7 +42,7 @@ export const UnifiedAmmAddLiquidityRequest = Type.Object(
     ),
     slippagePct: slippagePctField(),
   },
-  { $id: 'AmmAddRequest' },
+  { $id: 'AmmAddRequest', additionalProperties: false },
 );
 
 export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {

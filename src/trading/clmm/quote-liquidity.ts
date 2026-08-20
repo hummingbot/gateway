@@ -63,7 +63,7 @@ export const UnifiedQuotePositionRequestSchema = Type.Object(
     ),
     slippagePct: slippagePctField(),
   },
-  { $id: 'ClmmQuoteLiquidityRequest' },
+  { $id: 'ClmmQuoteLiquidityRequest', additionalProperties: false },
 );
 
 type UnifiedQuotePositionRequest = Static<typeof UnifiedQuotePositionRequestSchema>;

@@ -23,7 +23,7 @@ import {
 // Unified schema with connector field
 export const UnifiedClosePositionRequest = Type.Object(
   {
-    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector', { defaulted: false }),
     chainNetwork: chainNetworkField(),
     walletAddress: Type.String({
       description: 'Wallet address',
@@ -40,7 +40,7 @@ export const UnifiedClosePositionRequest = Type.Object(
         'slippagePct.',
     ),
   },
-  { $id: 'ClmmCloseRequest' },
+  { $id: 'ClmmCloseRequest', additionalProperties: false },
 );
 
 // Import connector functions

@@ -44,7 +44,7 @@ export const EstimateGasRequestSchema = Type.Object(
   {
     network: networkField(),
   },
-  { $id: 'EstimateGasRequest' },
+  { $id: 'EstimateGasRequest', additionalProperties: false },
 );
 export type EstimateGasRequestType = Static<typeof EstimateGasRequestSchema>;
 
@@ -82,7 +82,7 @@ export const BalanceRequestSchema = Type.Object(
       }),
     ),
   },
-  { $id: 'BalanceRequest' },
+  { $id: 'BalanceRequest', additionalProperties: false },
 );
 export type BalanceRequestType = Static<typeof BalanceRequestSchema>;
 
@@ -127,7 +127,7 @@ export const PollRequestSchema = Type.Object(
     network: networkField(),
     signature: Type.String({ description: 'Transaction signature/hash' }),
   },
-  { $id: 'PollRequest' },
+  { $id: 'PollRequest', additionalProperties: false },
 );
 export type PollRequestType = Static<typeof PollRequestSchema>;
 
@@ -160,7 +160,7 @@ export const StatusRequestSchema = Type.Object(
   {
     network: networkField(),
   },
-  { $id: 'StatusRequest' },
+  { $id: 'StatusRequest', additionalProperties: false },
 );
 export type StatusRequestType = Static<typeof StatusRequestSchema>;
 
@@ -311,7 +311,7 @@ export const WrapRequestSchema = Type.Object(
       examples: ['1.0', '0.5'],
     }),
   },
-  { $id: 'WrapRequest' },
+  { $id: 'WrapRequest', additionalProperties: false },
 );
 export type WrapRequestType = Static<typeof WrapRequestSchema>;
 
@@ -327,7 +327,7 @@ export const UnwrapRequestSchema = Type.Object(
       }),
     ),
   },
-  { $id: 'UnwrapRequest' },
+  { $id: 'UnwrapRequest', additionalProperties: false },
 );
 export type UnwrapRequestType = Static<typeof UnwrapRequestSchema>;
 

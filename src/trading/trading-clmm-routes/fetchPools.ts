@@ -48,7 +48,7 @@ export const FetchPoolsRequestSchema = Type.Object(
       Type.Boolean({ description: 'Return only verified pools', 'x-connectors': ['orca'] } as any),
     ),
   },
-  { $id: 'ClmmFetchPoolsRequest' },
+  { $id: 'ClmmFetchPoolsRequest', additionalProperties: false },
 );
 
 type FetchPoolsRequest = Static<typeof FetchPoolsRequestSchema>;

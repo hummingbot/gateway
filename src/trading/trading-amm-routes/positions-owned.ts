@@ -19,7 +19,7 @@ export const UnifiedAmmPositionsOwnedRequest = Type.Object(
     chainNetwork: chainNetworkField(),
     walletAddress: Type.String({ description: 'Wallet address to list positions for', default: defaultWallet }),
   },
-  { $id: 'AmmPositionsOwnedRequest' },
+  { $id: 'AmmPositionsOwnedRequest', additionalProperties: false },
 );
 
 export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {

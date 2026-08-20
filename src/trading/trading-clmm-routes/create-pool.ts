@@ -31,13 +31,13 @@ import {
 export const UnifiedClmmCreatePoolRequest = Type.Composite(
   [
     Type.Object({
-      connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+      connector: connectorField(CLMM_CONNECTORS, 'CLMM connector', { defaulted: false }),
       chainNetwork: chainNetworkField(),
       walletAddress: Type.String({ description: 'Wallet address (pool creator + payer)', default: defaultWallet }),
     }),
     Type.Omit(ClmmCreatePoolRequest, ['network', 'walletAddress'], {}),
   ],
-  { $id: 'ClmmCreatePoolRequest' },
+  { $id: 'ClmmCreatePoolRequest', additionalProperties: false },
 );
 
 export const createPoolRoute: FastifyPluginAsync = async (fastify) => {

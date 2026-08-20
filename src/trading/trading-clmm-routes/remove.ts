@@ -23,7 +23,7 @@ import {
 // Unified schema with connector field
 export const UnifiedRemoveLiquidityRequest = Type.Object(
   {
-    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector', { defaulted: false }),
     chainNetwork: chainNetworkField(),
     walletAddress: Type.String({
       description: 'Wallet address',
@@ -48,7 +48,7 @@ export const UnifiedRemoveLiquidityRequest = Type.Object(
         "the other connectors remove at their configured slippagePct. Defaults to the connector's configured slippagePct.",
     ),
   },
-  { $id: 'ClmmRemoveRequest' },
+  { $id: 'ClmmRemoveRequest', additionalProperties: false },
 );
 
 // Import connector functions

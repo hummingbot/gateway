@@ -30,7 +30,7 @@ const CLMM_POOL_ADDRESS_EXAMPLE = '2sf5NYcY4zUPXUSmG6f66mskb24t5F8S11pC1Nz5nQT3'
 // Unified schema with connector field
 export const UnifiedOpenPositionRequest = Type.Object(
   {
-    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector', { defaulted: false }),
     chainNetwork: chainNetworkField(),
     walletAddress: Type.String({
       description: 'Wallet address',
@@ -74,7 +74,7 @@ export const UnifiedOpenPositionRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'ClmmOpenRequest' },
+  { $id: 'ClmmOpenRequest', additionalProperties: false },
 );
 
 export const openPositionRoute: FastifyPluginAsync = async (fastify) => {

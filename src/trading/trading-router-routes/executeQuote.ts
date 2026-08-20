@@ -22,12 +22,18 @@ export const RouterExecuteQuoteRequestSchema = Type.Object(
   {
     chainNetwork: chainNetworkField(),
     connector: Type.Optional(
-      connectorField(ROUTER_CONNECTORS, "Router connector. Defaults to the network's swapProvider"),
+      // No schema default: AJV injects defaults before the handler, so one here would
+      // hand resolveSwapConnector the first router in the registry and the configured
+      // swapProvider would never be consulted — including on Ethereum, where the first
+      // router is a Solana connector.
+      connectorField(ROUTER_CONNECTORS, "Router connector. Defaults to the network's swapProvider", {
+        defaulted: false,
+      }),
     ),
     walletAddress: walletAddressField('Wallet address that will execute the quote'),
     quoteId: Type.String({ description: 'ID of a quote returned by /trading/router/quote-swap' }),
   },
-  { $id: 'RouterExecuteQuoteRequest' },
+  { $id: 'RouterExecuteQuoteRequest', additionalProperties: false },
 );
 
 type RouterExecuteQuoteRequest = Static<typeof RouterExecuteQuoteRequestSchema>;

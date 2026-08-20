@@ -59,7 +59,7 @@ export const RemoveWalletRequestSchema = Type.Object(
       description: 'Wallet address to remove',
     }),
   },
-  { $id: 'RemoveWalletRequest' },
+  { $id: 'RemoveWalletRequest', additionalProperties: false },
 );
 
 export const RemoveWalletResponseSchema = Type.Object({
@@ -98,7 +98,7 @@ export const AddHardwareWalletRequestSchema = Type.Object(
       }),
     ),
   },
-  { $id: 'AddHardwareWalletRequest' },
+  { $id: 'AddHardwareWalletRequest', additionalProperties: false },
 );
 
 export const AddHardwareWalletResponseSchema = Type.Object({

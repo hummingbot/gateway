@@ -30,7 +30,7 @@ export const UnifiedPositionsOwnedRequestSchema = Type.Object(
       default: defaultWallet,
     }),
   },
-  { $id: 'ClmmPositionsOwnedRequest' },
+  { $id: 'ClmmPositionsOwnedRequest', additionalProperties: false },
 );
 
 type UnifiedPositionsOwnedRequest = Static<typeof UnifiedPositionsOwnedRequestSchema>;

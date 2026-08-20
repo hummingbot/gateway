@@ -24,6 +24,7 @@ import * as clmmSchemas from './schemas/clmm-schema';
 import * as errorSchemas from './schemas/error-schema';
 import * as routerSchemas from './schemas/router-schema';
 import { ConfigManagerV2 } from './services/config-manager-v2';
+import { httpErrors } from './services/error-handler';
 import {
   constantTimeEqual,
   extractBearerToken,
@@ -36,7 +37,7 @@ import {
 } from './services/gateway-security';
 import { logger } from './services/logger';
 import { OPERATION_IDS } from './services/operation-ids';
-import { ajvOptions } from './services/schema-keywords';
+import { ajvOptions, schemaErrorFormatter } from './services/schema-keywords';
 import { displayChainConfigurations } from './services/startup-banner';
 import * as tokenSchemas from './tokens/schemas';
 import { tokensRoutes } from './tokens/tokens.routes';
@@ -266,11 +267,12 @@ const configureGatewayServer = () => {
       : false,
     https: devMode ? undefined : getHttpsOptions(),
     ajv: ajvOptions,
+    schemaErrorFormatter,
   });
 
   const docsPort = ConfigManagerV2.getInstance().get('server.docsPort');
 
-  docsServer = docsPort ? Fastify({ ajv: ajvOptions }) : null;
+  docsServer = docsPort ? Fastify({ ajv: ajvOptions, schemaErrorFormatter }) : null;
 
   // Register TypeBox provider
   server.withTypeProvider<TypeBoxTypeProvider>();
@@ -321,6 +323,40 @@ const configureGatewayServer = () => {
       }
     });
   }
+
+  // `x-connectors` marks a field as belonging to particular venues — `configAddress` is
+  // meteora's, `ammConfigIndex` is raydium's — and it was documentation only: passing the
+  // wrong one created a pool with the connector's defaults instead of erroring, because
+  // Gateway destructures the keys it knows and ignores the rest.
+  //
+  // preValidation, deliberately: it runs on the body as the caller sent it, before AJV
+  // fills defaults. Checking afterwards would reject every 0x quote, since
+  // `approximateIfNoExactOut` defaults to true and is marked for the Solana routers.
+  server.addHook('preValidation', async (request) => {
+    const schema = (request as any).routeOptions?.schema;
+    if (!schema) return;
+
+    for (const [part, sent] of [
+      [schema.body, request.body],
+      [schema.querystring, request.query],
+    ] as [any, any][]) {
+      if (!part?.properties || !sent || typeof sent !== 'object') continue;
+
+      const connector = sent.connector ?? part.properties.connector?.default;
+      if (!connector) continue;
+
+      for (const [field, spec] of Object.entries<any>(part.properties)) {
+        const connectors: string[] | undefined = spec?.['x-connectors'];
+        if (!connectors || sent[field] === undefined) continue;
+        if (!connectors.includes(connector)) {
+          throw httpErrors.badRequest(
+            `${field} is not a ${connector} parameter — it applies to ${connectors.join(', ')}. ` +
+              'Remove it, or name a connector that takes it.',
+          );
+        }
+      }
+    }
+  });
 
   // Serve Swagger/OpenAPI docs only on loopback (or when explicitly enabled). An exposed
   // /docs hands an attacker the full route map of fund-handling endpoints. (#652)

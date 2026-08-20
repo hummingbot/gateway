@@ -25,8 +25,22 @@ export { AMM_CONNECTORS, CLMM_CONNECTORS } from './connector-registry';
 export { chainNetworkField, SUPPORTED_CHAIN_NETWORKS } from '../schemas/chain-network-field';
 
 /** Connector selector: enum-constrained so unknown connectors are rejected at the schema. */
-export const connectorField = (connectors: string[], label: string) =>
-  Type.String({ description: label, enum: connectors, default: connectors[0], examples: [connectors[0]] });
+/**
+ * The venue to act on.
+ *
+ * `defaulted: false` on every route that signs. AJV injects schema defaults before the
+ * handler runs, so a default here answers "which venue?" for a caller who never said —
+ * and the answer is whichever connector happens to be first in the registry. On a read
+ * that is a convenience; on a write it picks a venue for someone's money. The reads keep
+ * it, which is also what fills the Swagger form.
+ */
+export const connectorField = (connectors: string[], label: string, { defaulted = true } = {}) =>
+  Type.String({
+    description: label,
+    enum: connectors,
+    ...(defaulted ? { default: connectors[0] } : {}),
+    examples: [connectors[0]],
+  });
 
 /**
  * Optional slippage override shared by the unified trading routes. Deliberately

@@ -31,7 +31,7 @@ export const UnifiedAmmQuoteLiquidityRequest = Type.Object(
     }),
     slippagePct: slippagePctField(),
   },
-  { $id: 'AmmQuoteLiquidityRequest' },
+  { $id: 'AmmQuoteLiquidityRequest', additionalProperties: false },
 );
 
 export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {

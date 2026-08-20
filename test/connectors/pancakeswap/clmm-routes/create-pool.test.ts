@@ -74,7 +74,6 @@ describe('POST /create-pool (Pancakeswap V3 CLMM)', () => {
         walletAddress: mockWallet,
         baseToken: 'WBNB',
         quoteToken: 'WBNB',
-        fee: 2500,
         initialPrice: 600,
       },
     });

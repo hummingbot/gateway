@@ -38,7 +38,7 @@ export const UnifiedPoolInfoRequestSchema = Type.Object(
       }),
     ),
   },
-  { $id: 'ClmmPoolInfoRequest' },
+  { $id: 'ClmmPoolInfoRequest', additionalProperties: false },
 );
 
 type UnifiedPoolInfoRequest = Static<typeof UnifiedPoolInfoRequestSchema>;

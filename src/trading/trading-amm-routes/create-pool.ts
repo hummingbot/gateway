@@ -23,7 +23,7 @@ import {
 export const UnifiedCreatePoolRequest = Type.Composite(
   [
     Type.Object({
-      connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+      connector: connectorField(AMM_CONNECTORS, 'AMM connector', { defaulted: false }),
       chainNetwork: chainNetworkField(),
       walletAddress: Type.String({
         description: 'Wallet address (pool creator + payer)',
@@ -52,7 +52,7 @@ export const UnifiedCreatePoolRequest = Type.Composite(
       ),
     }),
   ],
-  { $id: 'AmmCreatePoolRequest' },
+  { $id: 'AmmCreatePoolRequest', additionalProperties: false },
 );
 
 export const createPoolRoute: FastifyPluginAsync = async (fastify) => {

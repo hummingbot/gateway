@@ -216,7 +216,7 @@ describe('GET /quote-swap', () => {
     expect(body.amountIn).toBeGreaterThan(0);
   });
 
-  it('should handle V3 protocol', async () => {
+  it('quotes through the universal router', async () => {
     const response = await server.inject({
       method: 'GET',
       url: '/quote-swap',
@@ -229,18 +229,19 @@ describe('GET /quote-swap', () => {
         amount: '1',
         side: 'SELL',
         slippagePct: '1',
-        protocols: ['v3'],
       },
     });
 
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
 
-    // Protocols aren't returned in the response - they're only used for filtering
+    // `protocols` used to be sent here and was silently dropped: the unified router
+    // route declares no such parameter and never read one, so the "filtering" this case
+    // was written for never happened. The route answers with the path it chose.
     expect(body).toHaveProperty('routePath');
   });
 
-  it('should handle multiple protocols', async () => {
+  it('quotes the same pair a second time, without a protocol filter', async () => {
     const response = await server.inject({
       method: 'GET',
       url: '/quote-swap',
@@ -253,14 +254,15 @@ describe('GET /quote-swap', () => {
         amount: '1',
         side: 'SELL',
         slippagePct: '1',
-        protocols: ['v2', 'v3'],
       },
     });
 
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
 
-    // Protocols aren't returned in the response - they're only used for filtering
+    // `protocols` used to be sent here and was silently dropped: the unified router
+    // route declares no such parameter and never read one, so the "filtering" this case
+    // was written for never happened. The route answers with the path it chose.
     expect(body).toHaveProperty('routePath');
   });
 

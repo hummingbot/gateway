@@ -27,7 +27,7 @@ const QUOTE_TOKEN_AMOUNT = 2;
 // Unified schema with connector field
 export const UnifiedAddLiquidityRequest = Type.Object(
   {
-    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector', { defaulted: false }),
     chainNetwork: chainNetworkField(),
     walletAddress: Type.String({
       description: 'Wallet address',
@@ -63,7 +63,7 @@ export const UnifiedAddLiquidityRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'ClmmAddRequest' },
+  { $id: 'ClmmAddRequest', additionalProperties: false },
 );
 
 // Import connector functions

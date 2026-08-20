@@ -77,11 +77,12 @@ describe('Hardware Wallet Routes', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/add-hardware',
+        // accountIndex and name used to be sent here and silently dropped: the route
+        // declares neither and reads neither, so a caller naming their Ledger lost the
+        // name without being told.
         body: {
           chain: 'solana',
           address: mockAddress,
-          accountIndex: 0,
-          name: 'My Ledger',
         },
       });
 

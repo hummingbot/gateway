@@ -72,11 +72,12 @@ describe('GET /position-info', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/position-info',
+        // No walletAddress: a position is addressed by its own address and the route
+        // declares no wallet. It used to be sent here and silently dropped.
         query: {
           chainNetwork: 'solana-mainnet-beta',
           connector: 'orca',
           positionAddress: mockPositionAddress,
-          walletAddress: mockWalletAddress,
         },
       });
 

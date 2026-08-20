@@ -23,7 +23,7 @@ export const UnifiedAmmPositionInfoRequest = Type.Object(
     poolAddress: Type.String({ description: 'Pool contract address' }),
     walletAddress: Type.String({ description: 'Wallet address', default: defaultWallet }),
   },
-  { $id: 'AmmPositionInfoRequest' },
+  { $id: 'AmmPositionInfoRequest', additionalProperties: false },
 );
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
