@@ -57,6 +57,8 @@ export class Ethereum {
   public network: string;
   public nativeTokenSymbol: string;
   public chainId: number;
+  /** Tokens read from the chain because the configured list did not have them. */
+  private readonly chainReadTokens = new Map<string, TokenInfo>();
   public rpcUrl: string;
   public swapProvider: string;
   public gasPrice?: number | null;
@@ -537,9 +539,19 @@ export class Ethereum {
   }
 
   /**
-   * Get token info by symbol or address from local token list only
+   * Get token info by symbol or address, from the configured list or the chain.
+   *
+   * A symbol can only come from the list — there is nothing to ask the chain about a
+   * name it does not hold — so an unknown one is still undefined. An address is
+   * different: it identifies a contract that can be asked what it is, and until it was,
+   * every route describing a pool by its token addresses failed on any token the list
+   * happened to omit. Uniswap's pool-info answered `Token information not found for
+   * pool` for a real pool on real tokens, which is what Solana's getToken has always
+   * avoided by reading the mint.
+   *
    * @param tokenSymbol Token symbol or contract address
-   * @returns TokenInfo object or undefined if token not found in local list
+   * @returns TokenInfo, or undefined for a symbol that is not listed and an address
+   *          that is not an ERC-20
    */
   public async getToken(tokenSymbol: string): Promise<TokenInfo | undefined> {
     const tokenList = await this.getTokenList();
@@ -554,17 +566,43 @@ export class Ethereum {
     }
 
     // If not found by symbol, check if it's a valid address
+    let normalizedAddress: string;
     try {
-      const normalizedAddress = utils.getAddress(tokenSymbol);
-      // Try to find token by normalized address
-      return tokenList.find(
-        (token: TokenInfo) =>
-          token.address.toLowerCase() === normalizedAddress.toLowerCase() && token.chainId === this.chainId,
-      );
+      normalizedAddress = utils.getAddress(tokenSymbol);
     } catch {
-      // If not a valid address format, return undefined
+      // Not an address, so the list was the only place it could have been.
       return undefined;
     }
+
+    const tokenByAddress = tokenList.find(
+      (token: TokenInfo) =>
+        token.address.toLowerCase() === normalizedAddress.toLowerCase() && token.chainId === this.chainId,
+    );
+
+    return tokenByAddress ?? (await this.tokenFromChainCached(normalizedAddress));
+  }
+
+  /**
+   * A chain-read token, remembered for the life of the process.
+   *
+   * getToken runs in loops — over the tokens of a balance request, over every position a
+   * wallet owns — so an address the list omits would otherwise cost three eth_calls on
+   * every pass, forever, for a name, symbol and decimals that cannot change. Only
+   * successes are remembered: an address with no contract today may have one tomorrow.
+   */
+  private async tokenFromChainCached(address: string): Promise<TokenInfo | undefined> {
+    const cached = this.chainReadTokens.get(address);
+    if (cached) {
+      return cached;
+    }
+
+    const token = await this.fetchTokenFromChain(address);
+    if (!token) {
+      return undefined;
+    }
+
+    this.chainReadTokens.set(address, token);
+    return token;
   }
 
   /**
