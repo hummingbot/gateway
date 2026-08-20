@@ -4,7 +4,7 @@ import { Decimal } from 'decimal.js';
 
 import { Solana } from '../../../chains/solana/solana';
 import { accountLamports } from '../../../chains/solana/solana.utils';
-import { ClosePositionResponseType } from '../../../schemas/amm-schema';
+import { RemoveLiquidityResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { MeteoraDamm } from '../meteora-damm';
@@ -15,11 +15,12 @@ function withSlippageDown(raw: BN, slippagePct: number): BN {
 }
 
 /**
- * Close a DAMM v2 position: withdraw all of its liquidity and close the position
- * account itself, which returns the account's rent to the wallet.
+ * Withdraw all of a DAMM v2 position's liquidity and close the position account
+ * itself, which returns the account's rent to the wallet.
  *
- * This is why close is not the same call as remove at 100%: removing all the
- * liquidity leaves an empty position NFT behind, still holding its rent. The SDK's
+ * Not a route of its own. It is what removeLiquidity does at 100%, because removing
+ * all the liquidity without this leaves an empty position NFT behind still holding
+ * its rent, and nothing later reclaims it. The SDK's
  * removeAllLiquidityAndClosePosition does both in one transaction.
  */
 export async function closePosition(
@@ -28,7 +29,7 @@ export async function closePosition(
   poolAddress: string,
   positionAddress: string,
   slippagePct: number = MeteoraConfig.config.slippagePct,
-): Promise<ClosePositionResponseType> {
+): Promise<RemoveLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const meteoraDamm = await MeteoraDamm.getInstance(network);
 

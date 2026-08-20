@@ -39,12 +39,8 @@ jest.mock('../../src/connectors/meteora/clmm-routes/closePosition', () => ({
 const buildAmm = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { openPositionRoute } = await import('../../src/trading/trading-amm-routes/open');
-  const { closePositionRoute } = await import('../../src/trading/trading-amm-routes/close');
   const { addLiquidityRoute } = await import('../../src/trading/trading-amm-routes/add');
   const { removeLiquidityRoute } = await import('../../src/trading/trading-amm-routes/remove');
-  await server.register(openPositionRoute);
-  await server.register(closePositionRoute);
   await server.register(addLiquidityRoute);
   await server.register(removeLiquidityRoute);
   return server;
@@ -89,7 +85,9 @@ describe('write responses name what they acted on', () => {
       expect(response.json().data.positionAddress).toBeUndefined();
     });
 
-    it('stamps both on a meteora close, whose position the caller named', async () => {
+    // A full removal closes the position account, so it routes through closePosition —
+    // hence the close mock on a /remove request.
+    it('stamps both on a meteora full removal, whose position the caller named', async () => {
       mockMeteoraAmmClose.mockResolvedValue({
         signature: 'sig',
         status: 1,
@@ -98,13 +96,14 @@ describe('write responses name what they acted on', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: '/close',
+        url: '/remove',
         payload: {
           connector: 'meteora',
           chainNetwork: 'solana-mainnet-beta',
           walletAddress: WALLET,
           poolAddress: POOL,
           positionAddress: POSITION,
+          percentageToRemove: 100,
         },
       });
 

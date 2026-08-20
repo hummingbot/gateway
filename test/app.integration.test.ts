@@ -82,13 +82,22 @@ describe('App Integration - Route Registration', () => {
       ['GET', '/trading/amm/position-info'],
       ['GET', '/trading/amm/positions-owned'],
       ['GET', '/trading/amm/quote-liquidity'],
-      ['POST', '/trading/amm/open'],
       ['POST', '/trading/amm/add'],
       ['POST', '/trading/amm/remove'],
-      ['POST', '/trading/amm/close'],
       ['POST', '/trading/amm/create-pool'],
     ] as Array<['GET' | 'POST', string]>)('registers %s %s', async (method, url) => {
       expect(registered(method, url)).toBe(true);
+    });
+
+    // Two routes the AMM surface deliberately does not have. `open` was a synonym for
+    // `add` without a position address, and `close` for `remove` at 100% — which now
+    // closes the position account itself, so nothing is lost by their absence. Asserted
+    // so re-adding one is a decision rather than a drift back.
+    it.each([
+      ['POST', '/trading/amm/open'],
+      ['POST', '/trading/amm/close'],
+    ] as Array<['GET' | 'POST', string]>)('does not register %s %s', async (method, url) => {
+      expect(registered(method, url)).toBe(false);
     });
 
     it.each([

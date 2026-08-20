@@ -9,6 +9,8 @@ import { logger } from '../../../services/logger';
 import { MeteoraDamm } from '../meteora-damm';
 import { MeteoraConfig } from '../meteora.config';
 
+import { closePosition } from './closePosition';
+
 function withSlippageDown(raw: BN, slippagePct: number): BN {
   return new BN(new Decimal(raw.toString()).mul(1 - slippagePct / 100).toFixed(0));
 }
@@ -23,6 +25,15 @@ export async function removeLiquidity(
 ): Promise<RemoveLiquidityResponseType> {
   if (percentageToRemove <= 0 || percentageToRemove > 100) {
     throw httpErrors.badRequest('percentageToRemove must be between 0 and 100');
+  }
+
+  // Removing everything closes the position account with it. Withdrawing the last of a
+  // position's liquidity and stopping there leaves an empty NFT behind still holding its
+  // rent — around 0.0099 SOL, which on a small position is more than the liquidity — and
+  // no later call reclaims it. The SDK does both in one transaction, so a caller asking
+  // for 100% gets the rent back rather than having to know to ask for it separately.
+  if (percentageToRemove === 100) {
+    return await closePosition(network, walletAddress, poolAddress, positionAddress, slippagePct);
   }
 
   const solana = await Solana.getInstance(network);

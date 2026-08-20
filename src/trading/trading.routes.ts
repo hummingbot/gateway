@@ -8,8 +8,6 @@ import { quoteLiquidityRoute } from './clmm/quote-liquidity';
 import { makeExecuteSwapRoute, makeQuoteSwapRoute } from './pool-swap-routes';
 import {
   createPoolRoute,
-  openPositionRoute as ammOpenPositionRoute,
-  closePositionRoute as ammClosePositionRoute,
   poolInfoRoute as ammPoolInfoRoute,
   positionInfoRoute as ammPositionInfoRoute,
   positionsOwnedRoute as ammPositionsOwnedRoute,
@@ -78,9 +76,7 @@ export const tradingAmmRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.register(makeExecuteSwapRoute('amm'));
 
   // Liquidity transaction routes
-  fastify.register(ammOpenPositionRoute);
   fastify.register(ammAddLiquidityRoute);
   fastify.register(ammRemoveLiquidityRoute);
-  fastify.register(ammClosePositionRoute);
   fastify.register(createPoolRoute);
 };

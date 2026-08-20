@@ -1,7 +1,5 @@
 import { Type, Static } from '@sinclair/typebox';
 
-import { TransactionStatus } from './chain-schema';
-
 export const PoolInfoSchema = Type.Object(
   {
     address: Type.String(),
@@ -93,86 +91,6 @@ export const AddLiquidityResponse = Type.Object(
 );
 export type AddLiquidityResponseType = Static<typeof AddLiquidityResponse>;
 
-// ============================================
-// Open / close (non-fungible-LP AMMs)
-// ============================================
-// Mirrors the CLMM open/close responses. Both work on every AMM, but the position
-// fields only carry values where a position is a discrete account (Meteora DAMM v2,
-// whose positions are NFTs). A fungible-LP AMM issues LP tokens against the pool, so
-// there is no position address to report and no account rent to lock or refund —
-// positionAddress is absent and the rent figures are 0 because nothing was locked.
-
-export const OpenPositionResponse = Type.Object(
-  {
-    signature: Type.String(),
-    status: Type.Number({ description: 'TransactionStatus enum value' }),
-
-    // Only included when status = CONFIRMED
-    data: Type.Optional(
-      Type.Object(
-        {
-          fee: Type.Number({ format: 'decimal' }),
-          // The venue this write touched. Echoed so a stored record identifies its pool
-          // without the request that produced it — the same reason the swap execute
-          // responses carry it.
-          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
-          positionAddress: Type.Optional(
-            Type.String({
-              description:
-                'Address of the newly opened position. Absent on fungible-LP AMMs, which hold liquidity as LP tokens rather than a position account.',
-            }),
-          ),
-          positionRent: Type.Number({
-            format: 'decimal',
-            description:
-              'Native token locked as rent for the position account, refunded on close. 0 on fungible-LP AMMs, which lock no rent.',
-          }),
-          baseTokenAmountAdded: Type.Number({ format: 'decimal' }),
-          quoteTokenAmountAdded: Type.Number({ format: 'decimal' }),
-        },
-        { $id: 'AmmOpenPositionResponseData' },
-      ),
-    ),
-  },
-  { $id: 'AmmOpenPositionResponse' },
-);
-export type OpenPositionResponseType = Static<typeof OpenPositionResponse>;
-
-export const ClosePositionResponse = Type.Object(
-  {
-    signature: Type.String(),
-    status: Type.Number({ description: 'TransactionStatus enum value' }),
-
-    // Only included when status = CONFIRMED
-    data: Type.Optional(
-      Type.Object(
-        {
-          fee: Type.Number({ format: 'decimal' }),
-          // The venue this write touched. Echoed so a stored record identifies its pool
-          // without the request that produced it — the same reason the swap execute
-          // responses carry it.
-          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
-          // Only AMMs whose positions are discrete accounts have one to name; a
-          // fungible-LP AMM holds liquidity as LP tokens against the pool.
-          positionAddress: Type.Optional(
-            Type.String({ description: 'Position this operation acted on', 'x-connectors': ['meteora'] } as any),
-          ),
-          positionRentRefunded: Type.Number({
-            format: 'decimal',
-            description:
-              'Native token rent returned when the position account closed. 0 on fungible-LP AMMs, which have no position account to close.',
-          }),
-          baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
-          quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),
-        },
-        { $id: 'AmmClosePositionResponseData' },
-      ),
-    ),
-  },
-  { $id: 'AmmClosePositionResponse' },
-);
-export type ClosePositionResponseType = Static<typeof ClosePositionResponse>;
-
 // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
 // the base a unified route composes from. Publishing it would generate a client that
 // sends the wrong keys under a name the real wire shape wants.
@@ -229,6 +147,19 @@ export const RemoveLiquidityResponse = Type.Object(
           // fungible-LP AMM holds liquidity as LP tokens against the pool.
           positionAddress: Type.Optional(
             Type.String({ description: 'Position this operation acted on', 'x-connectors': ['meteora'] } as any),
+          ),
+          // Present only when the removal closed the position account, which is what
+          // removing 100% does: the account is closed in the same transaction and its
+          // rent comes back. A partial removal leaves the account open and refunds
+          // nothing, and fungible-LP AMMs have no account to close, so both omit it
+          // rather than reporting a 0 that would read as "closed, refunded nothing".
+          positionRentRefunded: Type.Optional(
+            Type.Number({
+              format: 'decimal',
+              description:
+                'Native token rent returned when the position account closed. Present only on a 100% removal from an AMM whose positions are accounts.',
+              'x-connectors': ['meteora'],
+            } as any),
           ),
           baseTokenAmountRemoved: Type.Number({ format: 'decimal' }),
           quoteTokenAmountRemoved: Type.Number({ format: 'decimal' }),

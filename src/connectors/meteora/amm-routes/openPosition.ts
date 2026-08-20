@@ -3,7 +3,7 @@ import { Keypair, PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../../chains/solana/solana';
 import { accountLamports } from '../../../chains/solana/solana.utils';
-import { OpenPositionResponseType } from '../../../schemas/amm-schema';
+import { AddLiquidityResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { MeteoraDamm } from '../meteora-damm';
@@ -26,7 +26,7 @@ export async function openPosition(
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct: number = MeteoraConfig.config.slippagePct,
-): Promise<OpenPositionResponseType> {
+): Promise<AddLiquidityResponseType> {
   const solana = await Solana.getInstance(network);
   const meteoraDamm = await MeteoraDamm.getInstance(network);
 
