@@ -8,11 +8,13 @@
  * nothing else.
  */
 import { Type, Static } from '@sinclair/typebox';
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 
 import { ChainExecuteSwapResponseSchema, ChainQuoteSwapResponseSchema } from '../schemas/chain-schema';
 import { logger } from '../services/logger';
+import { ensurePoolSaved, PoolFacts, recordQuietly } from '../services/token-pool-autosave';
 
+import { getUnifiedPoolInfo } from './clmm/pools';
 import {
   chainNetworkField,
   connectorField,
@@ -25,8 +27,41 @@ import {
   walletAddressField,
 } from './common';
 import { AMM_CONNECTORS, CLMM_CONNECTORS, getPoolOps } from './connector-registry';
+import { getAmmPoolInfo } from './trading-amm-routes/pool-info';
 
 type PoolType = 'clmm' | 'amm';
+
+/**
+ * Record the pool a swap ran against, and its two tokens, if Gateway does not know them.
+ *
+ * A swap reaches here with a pool address either because the caller pinned one — which
+ * they only need to do for a pool that is *not* in the configured list — or because it
+ * was resolved from that list, in which case this returns after one read. So the cost
+ * falls exactly on the case that has something to learn, and only once per pool.
+ */
+const learnPool = async (
+  fastify: FastifyInstance,
+  type: PoolType,
+  chain: string,
+  network: string,
+  connector: string,
+  chainNetwork: string,
+  poolAddress: string,
+): Promise<void> =>
+  recordQuietly(
+    ensurePoolSaved({
+      chain,
+      network,
+      connector,
+      type,
+      poolAddress,
+      fetchPoolInfo: (): Promise<PoolFacts> =>
+        type === 'clmm'
+          ? getUnifiedPoolInfo(fastify, connector, chainNetwork, poolAddress, 0)
+          : getAmmPoolInfo(connector, network, poolAddress),
+    }),
+    `pool ${poolAddress}`,
+  );
 
 const connectorsFor = (type: PoolType) => (type === 'clmm' ? CLMM_CONNECTORS : AMM_CONNECTORS);
 
@@ -137,6 +172,8 @@ export const makeQuoteSwapRoute = (type: PoolType): FastifyPluginAsync => {
             amount,
             slippagePct,
           });
+          await learnPool(fastify, type, chain, network, name, chainNetwork, pool);
+
           return reply.code(200).send(result);
         } catch (e: any) {
           rethrowRouteError(e, `Failed to get ${type} swap quote`);
@@ -191,6 +228,8 @@ export const makeExecuteSwapRoute = (type: PoolType): FastifyPluginAsync => {
             amount,
             slippagePct,
           });
+          await learnPool(fastify, type, chain, network, name, chainNetwork, pool);
+
           // This route resolved exactly one pool, so name it in the confirmed result.
           // Connectors report token flow but not the venue, which leaves a settled fill
           // unattributable without refetching the transaction. Only meaningful once

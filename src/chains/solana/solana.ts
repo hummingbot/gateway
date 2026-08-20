@@ -8,6 +8,7 @@ import {
   createSyncNativeInstruction,
   createCloseAccountInstruction,
   AccountLayout,
+  getTokenMetadata,
 } from '@solana/spl-token';
 import { TokenInfo } from '@solana/spl-token-registry';
 import {
@@ -60,6 +61,12 @@ import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } fro
 export type SolanaWalletType = 'local' | 'hardware';
 
 // Constants used for fee calculations
+/** Metaplex Token Metadata program — where every legacy SPL token's name and symbol live. */
+const METAPLEX_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
+
+/** Metadata account header: key (1) + update authority (32) + mint (32), then the strings. */
+const METAPLEX_NAME_OFFSET = 65;
+
 export const BASE_FEE = 5000;
 const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
 
@@ -286,6 +293,117 @@ export class Solana {
     }
 
     return token;
+  }
+
+  /**
+   * Read a token's name, symbol and decimals from the chain.
+   *
+   * Distinct from getToken, which searches the configured list and, failing that,
+   * invents a `DUMMY_xxxx` symbol so a swap can still be priced. That placeholder is
+   * fine to trade on and unfit to persist, so anything that writes to the token list
+   * comes here instead and gets null when the chain has no name to give.
+   *
+   * A mint account carries only decimals. The name and symbol live in one of two
+   * places, and both are read here because neither covers the other's tokens: the
+   * Token-2022 metadata extension, which most newly minted tokens use, and the
+   * Metaplex metadata account, which is where every legacy SPL token keeps them.
+   */
+  async fetchTokenFromChain(address: string): Promise<TokenInfo | null> {
+    let mintPubkey: PublicKey;
+    try {
+      mintPubkey = new PublicKey(address);
+    } catch {
+      return null;
+    }
+
+    const accountInfo = await this.connection.getAccountInfo(mintPubkey);
+    if (!accountInfo) {
+      return null;
+    }
+
+    // A well-formed address that is not a mint — a wallet, a pool, a program — is a
+    // question with an answer ("not a token"), not a failure, so it returns null rather
+    // than letting getMint's rejection escape to the caller.
+    const programId = accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID) ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID;
+    let mintInfo;
+    try {
+      mintInfo = await getMint(this.connection, mintPubkey, undefined, programId);
+    } catch (e: any) {
+      logger.debug(`${address} on solana is not a mint account: ${e.message}`);
+      return null;
+    }
+
+    const metadata =
+      (await this.readToken2022Metadata(mintPubkey, programId)) ?? (await this.readMetaplexMetadata(mintPubkey));
+    if (!metadata) {
+      logger.info(`No on-chain metadata for mint ${address}; not naming it`);
+      return null;
+    }
+
+    return {
+      address,
+      chainId: 101,
+      decimals: mintInfo.decimals,
+      name: metadata.name,
+      symbol: metadata.symbol,
+    };
+  }
+
+  /** Name and symbol from the Token-2022 metadata extension. Null for a legacy mint. */
+  private async readToken2022Metadata(
+    mint: PublicKey,
+    programId: PublicKey,
+  ): Promise<{ name: string; symbol: string } | null> {
+    if (!programId.equals(TOKEN_2022_PROGRAM_ID)) {
+      return null;
+    }
+    try {
+      const metadata = await getTokenMetadata(this.connection, mint, undefined, programId);
+      if (!metadata?.symbol) {
+        return null;
+      }
+      return { name: metadata.name || metadata.symbol, symbol: metadata.symbol };
+    } catch (e: any) {
+      logger.debug(`Token-2022 metadata unreadable for ${mint.toBase58()}: ${e.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Name and symbol from the Metaplex metadata account.
+   *
+   * Read directly rather than through the Metaplex SDK, which is not a dependency here:
+   * the account is at a PDA of ['metadata', program, mint], and the three fields wanted
+   * are the first Borsh strings after a fixed 65-byte header of key, update authority
+   * and mint. Each is a 4-byte little-endian length followed by null-padded bytes.
+   */
+  private async readMetaplexMetadata(mint: PublicKey): Promise<{ name: string; symbol: string } | null> {
+    try {
+      const [pda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('metadata'), METAPLEX_METADATA_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+        METAPLEX_METADATA_PROGRAM_ID,
+      );
+      const account = await this.connection.getAccountInfo(pda);
+      if (!account) {
+        return null;
+      }
+
+      const readString = (offset: number): { value: string; next: number } => {
+        const length = account.data.readUInt32LE(offset);
+        const raw = account.data.subarray(offset + 4, offset + 4 + length).toString('utf8');
+        return { value: raw.replace(/\0/g, '').trim(), next: offset + 4 + length };
+      };
+
+      const name = readString(METAPLEX_NAME_OFFSET);
+      const symbol = readString(name.next);
+      if (!symbol.value) {
+        return null;
+      }
+      return { name: name.value || symbol.value, symbol: symbol.value };
+    } catch (e: any) {
+      logger.debug(`Metaplex metadata unreadable for ${mint.toBase58()}: ${e.message}`);
+      return null;
+    }
   }
 
   // returns Keypair for a private key, which should be encoded in Base58

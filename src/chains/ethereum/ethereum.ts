@@ -568,6 +568,45 @@ export class Ethereum {
   }
 
   /**
+   * Read a token's name, symbol and decimals from the chain.
+   *
+   * getToken above only searches the configured list, so an unlisted token is simply
+   * absent there. These three are standard ERC-20 view calls and the ABI for them is
+   * already in getContract, so nothing outside the chain is consulted.
+   *
+   * Returns null when the address is not a contract that answers them — a wallet
+   * address, or a token predating the metadata methods — rather than inventing a name.
+   */
+  public async fetchTokenFromChain(address: string): Promise<TokenInfo | null> {
+    let normalizedAddress: string;
+    try {
+      normalizedAddress = getAddress(address);
+    } catch {
+      return null;
+    }
+
+    try {
+      const contract = this.getContract(normalizedAddress);
+      const [name, symbol, decimals] = await Promise.all([contract.name(), contract.symbol(), contract.decimals()]);
+
+      if (!symbol) {
+        return null;
+      }
+
+      return {
+        address: normalizedAddress,
+        chainId: this.chainId,
+        decimals: Number(decimals),
+        name: name || symbol,
+        symbol,
+      };
+    } catch (e: any) {
+      logger.debug(`No ERC-20 metadata at ${normalizedAddress}: ${e.message}`);
+      return null;
+    }
+  }
+
+  /**
    * Get multiple tokens and return a map with symbols as keys
    * This helper function is used by routes like allowances and balances
    * @param tokens Array of token symbols or addresses
