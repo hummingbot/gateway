@@ -6,7 +6,7 @@ import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage, sanitizeString } from '../../../services/sanitize';
-import { approximateBuyViaSellLeg } from '../../router-utils';
+import { approximateBuyViaSellLeg, attemptedRoute } from '../../router-utils';
 import { Okx, OkxRouterResult } from '../okx';
 import { OkxConfig } from '../okx.config';
 import { OkxQuoteSwapResponse } from '../schemas';
@@ -71,8 +71,8 @@ export async function quoteSwap(
       executableSwapMode = 'exactIn';
       isApproximation = true;
     } else {
-      const tokenPair = `${sanitizeString(baseToken)} -> ${sanitizeString(quoteToken)}`;
-      throw httpErrors.noRouteFound(`No route found for ${tokenPair} (${executableSwapMode}). ${errorMessage}`);
+      const route = attemptedRoute(side, sanitizeString(baseToken), sanitizeString(quoteToken), executableSwapMode);
+      throw httpErrors.noRouteFound(`No route found for ${route}. ${errorMessage}`);
     }
   }
 

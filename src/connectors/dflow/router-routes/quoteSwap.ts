@@ -6,7 +6,7 @@ import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage, sanitizeString } from '../../../services/sanitize';
-import { approximateBuyViaSellLeg } from '../../router-utils';
+import { approximateBuyViaSellLeg, attemptedRoute, priceImpactPercentFromFraction } from '../../router-utils';
 import { DFlow, DFlowQuoteResponse } from '../dflow';
 import { DFlowConfig } from '../dflow.config';
 import { DFlowQuoteSwapResponse } from '../schemas';
@@ -45,8 +45,8 @@ export async function quoteSwap(
     try {
       quoteResponse = await dflow.getQuote(inputToken.address, outputToken.address, amountRaw, slippageBps);
     } catch (error) {
-      const tokenPair = `${sanitizeString(baseToken)} -> ${sanitizeString(quoteToken)}`;
-      throw httpErrors.noRouteFound(`No route found for ${tokenPair} (ExactIn). ${error?.message || error}`);
+      const route = attemptedRoute(side, sanitizeString(baseToken), sanitizeString(quoteToken));
+      throw httpErrors.noRouteFound(`No route found for ${route}. ${error?.message || error}`);
     }
   } else {
     // DFlow is ExactIn-only (it silently ignores swapMode and quotes ExactIn, verified
@@ -103,7 +103,10 @@ export async function quoteSwap(
     amountIn: side === 'SELL' ? amount : estimatedAmountIn,
     amountOut: estimatedAmountOut,
     price,
-    priceImpactPct: parseFloat(quoteResponse.priceImpactPct || '0'),
+    // DFlow serves Jupiter's quote schema field for field — same name, same string type,
+    // same siblings — so its priceImpactPct is a fraction too. Inferred from the schema
+    // rather than measured: the public quote endpoint refuses an unkeyed request.
+    priceImpactPct: priceImpactPercentFromFraction(quoteResponse.priceImpactPct),
     minAmountOut,
     maxAmountIn,
     ...(isApproximation ? { approximation: true } : {}),

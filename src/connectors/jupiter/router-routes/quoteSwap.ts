@@ -6,7 +6,7 @@ import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage, sanitizeString } from '../../../services/sanitize';
-import { approximateBuyViaSellLeg } from '../../router-utils';
+import { approximateBuyViaSellLeg, attemptedRoute, priceImpactPercentFromFraction } from '../../router-utils';
 import { Jupiter } from '../jupiter';
 import { JupiterConfig } from '../jupiter.config';
 import { JupiterQuoteSwapResponse } from '../schemas';
@@ -94,14 +94,21 @@ export async function quoteSwap(
         quoteResponse = approximated.forwardQuote.quote;
         approximation = true;
       } catch (fallbackError) {
-        const tokenPair = `${sanitizeString(baseToken)} -> ${sanitizeString(quoteToken)}`;
         const msg = fallbackError?.message || String(fallbackError);
-        throw httpErrors.noRouteFound(`No route found for ${tokenPair} (ExactOut, ExactIn fallback failed). ${msg}`);
+        const route = attemptedRoute(
+          side,
+          sanitizeString(baseToken),
+          sanitizeString(quoteToken),
+          'ExactOut, ExactIn fallback failed',
+        );
+        throw httpErrors.noRouteFound(`No route found for ${route}. ${msg}`);
       }
     } else {
-      // Pass through Jupiter's error with context
-      const tokenPair = `${sanitizeString(baseToken)} -> ${sanitizeString(quoteToken)}`;
-      throw httpErrors.noRouteFound(`No route found for ${tokenPair} (ExactIn). ${errorMessage}`);
+      // Pass through Jupiter's error, naming the route that was actually attempted. This
+      // branch serves a failed SELL and a BUY that declined approximation, and the two
+      // are quoted in opposite directions and opposite modes.
+      const route = attemptedRoute(side, sanitizeString(baseToken), sanitizeString(quoteToken));
+      throw httpErrors.noRouteFound(`No route found for ${route}. ${errorMessage}`);
     }
   }
 
@@ -146,7 +153,7 @@ export async function quoteSwap(
     amountIn: side === 'SELL' ? amount : estimatedAmountIn,
     amountOut: outputIsExact ? amount : estimatedAmountOut,
     price,
-    priceImpactPct: parseFloat(quoteResponse.priceImpactPct || '0'),
+    priceImpactPct: priceImpactPercentFromFraction(quoteResponse.priceImpactPct),
     minAmountOut,
     maxAmountIn,
     approximation,
@@ -159,6 +166,8 @@ export async function quoteSwap(
       otherAmountThreshold: quoteResponse.otherAmountThreshold || '0',
       swapMode: quoteResponse.swapMode || 'ExactIn',
       slippageBps: quoteResponse.slippageBps,
+      // Jupiter's own payload, handed back to Jupiter at execution: its fields stay in
+      // Jupiter's units. Only the unified field above is normalised to a percentage.
       priceImpactPct: quoteResponse.priceImpactPct || '0',
       routePlan: quoteResponse.routePlan || [],
       contextSlot: quoteResponse.contextSlot,

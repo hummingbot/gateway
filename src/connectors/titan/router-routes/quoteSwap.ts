@@ -7,7 +7,7 @@ import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
-import { approximateBuyViaSellLeg } from '../../router-utils';
+import { approximateBuyViaSellLeg, attemptedRoute } from '../../router-utils';
 import { TitanQuoteSwapResponse } from '../schemas';
 import { Titan, TitanSwapResponse } from '../titan';
 import { TitanConfig } from '../titan.config';
@@ -58,7 +58,7 @@ export async function quoteSwap(
       swapRoute = await titan.getSwapRoute(inputToken.address, outputToken.address, amountRaw, wallet, slippageBps);
     } catch (error) {
       throw httpErrors.noRouteFound(
-        `No route found for ${baseTokenInfo.symbol} -> ${quoteTokenInfo.symbol} (ExactIn). ${error?.message || error}`,
+        `No route found for ${attemptedRoute(side, baseTokenInfo.symbol, quoteTokenInfo.symbol)}. ${error?.message || error}`,
       );
     }
   } else {

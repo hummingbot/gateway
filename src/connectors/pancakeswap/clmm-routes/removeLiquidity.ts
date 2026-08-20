@@ -9,7 +9,9 @@ import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
+import { slippageBasisPoints } from '../../evm-slippage';
 import { Pancakeswap } from '../pancakeswap';
+import { PancakeswapConfig } from '../pancakeswap.config';
 import {
   POSITION_MANAGER_ABI,
   getPancakeswapV3NftManagerAddress,
@@ -25,6 +27,7 @@ export async function removeLiquidity(
   walletAddress: string,
   positionAddress: string,
   percentageToRemove: number,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<RemoveLiquidityResponseType> {
   if (!positionAddress || percentageToRemove === undefined) {
     throw httpErrors.badRequest('Missing required parameters');
@@ -98,7 +101,10 @@ export async function removeLiquidity(
 
   const amount0 = partialPosition.amount0;
   const amount1 = partialPosition.amount1;
-  const slippageTolerance = new Percent(100, 10000);
+  // The caller's tolerance, or the connector's configured one — not a literal. This was
+  // `new Percent(100, 10000)`, a flat 1% that ignored both, so an operator who had widened
+  // slippagePct for a volatile pair got 1% anyway and a revert that cost gas.
+  const slippageTolerance = new Percent(slippageBasisPoints(slippagePct), 10000);
 
   const totalAmount0 = CurrencyAmount.fromRawAmount(
     token0,

@@ -8,7 +8,9 @@ import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { TransactionStatus } from '../../../schemas/chain-schema';
 import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
+import { slippageBasisPoints } from '../../evm-slippage';
 import { Uniswap } from '../uniswap';
+import { UniswapConfig } from '../uniswap.config';
 import { POSITION_MANAGER_ABI, getUniswapV3NftManagerAddress, getUniswapV3FactoryAddress } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
@@ -19,6 +21,7 @@ export async function closePosition(
   network: string,
   walletAddress: string,
   positionAddress: string,
+  slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<ClosePositionResponseType> {
   // Validate essential parameters
   if (!positionAddress) {
@@ -104,7 +107,10 @@ export async function closePosition(
   const amount1 = positionSDK.amount1;
 
   // Apply slippage tolerance
-  const slippageTolerance = new Percent(100, 10000); // 1% slippage
+  // The caller's tolerance, or the connector's configured one — not a literal. This was
+  // `new Percent(100, 10000)`, a flat 1% that ignored both, so an operator who had widened
+  // slippagePct for a volatile pair got 1% anyway and a revert that cost gas.
+  const slippageTolerance = new Percent(slippageBasisPoints(slippagePct), 10000);
 
   // Add any fees that have been collected to the expected amounts
   const totalAmount0 = CurrencyAmount.fromRawAmount(

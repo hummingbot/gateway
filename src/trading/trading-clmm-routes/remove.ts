@@ -44,7 +44,8 @@ export const UnifiedRemoveLiquidityRequest = Type.Object(
     // Orca-specific parameter (optional, ignored by other connectors, which manage
     // slippage internally).
     slippagePct: slippagePctField(
-      "Maximum acceptable slippage percentage. Only applies to the Orca connector; defaults to Orca's configured slippagePct.",
+      'Maximum acceptable slippage percentage. Honored by orca, uniswap and pancakeswap; ' +
+        "the other connectors remove at their configured slippagePct. Defaults to the connector's configured slippagePct.",
     ),
   },
   { $id: 'ClmmRemoveRequest' },
@@ -80,10 +81,22 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const result = await (async () => {
           switch (connector) {
             case 'uniswap':
-              return await uniswapRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
+              return await uniswapRemoveLiquidity(
+                network,
+                walletAddress,
+                positionAddress,
+                percentageToRemove,
+                slippagePct,
+              );
 
             case 'pancakeswap':
-              return await pancakeswapRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);
+              return await pancakeswapRemoveLiquidity(
+                network,
+                walletAddress,
+                positionAddress,
+                percentageToRemove,
+                slippagePct,
+              );
 
             case 'raydium':
               return await raydiumRemoveLiquidity(network, walletAddress, positionAddress, percentageToRemove);

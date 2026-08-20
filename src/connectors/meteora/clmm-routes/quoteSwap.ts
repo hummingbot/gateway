@@ -87,6 +87,23 @@ async function formatSwapQuote(
     throw httpErrors.notFound('Failed to get pool tokens');
   }
 
+  // The spot price to measure the quote against, in the same orientation the response
+  // reports its price: quote per base, for the pair as the caller named it. A DLMM's
+  // active bin is priced tokenY per tokenX, so it inverts when the caller's base is Y.
+  const activeBin = await dlmmPool.getActiveBin();
+  const baseMint = side === 'SELL' ? inputToken.address : outputToken.address;
+  const pricePerToken = Number(activeBin?.pricePerToken ?? 0);
+  const spotPrice =
+    baseMint === dlmmPool.tokenX.publicKey.toBase58() ? pricePerToken : pricePerToken > 0 ? 1 / pricePerToken : 0;
+
+  // What the quote costs against that spot, as a percentage — the same measure Orca
+  // reports, and it includes the pool fee, since it is taken from the executed price
+  // rather than from depth alone. This route used to return a hardcoded 0, so a swap of
+  // any size through a Meteora pool claimed zero impact and a caller could not tell that
+  // from a real measurement.
+  const priceImpactFrom = (executionPrice: number): number =>
+    spotPrice > 0 ? Math.abs((executionPrice - spotPrice) / spotPrice) * 100 : 0;
+
   if (side === 'BUY') {
     const exactOutQuote = quote as SwapQuoteExactOut;
     const estimatedAmountIn = DecimalUtil.fromBN(exactOutQuote.inAmount, inputToken.decimals).toNumber();
@@ -111,7 +128,7 @@ async function formatSwapQuote(
       minAmountOut: amountOut,
       maxAmountIn,
       // CLMM-specific fields
-      priceImpactPct: 0, // TODO: Calculate actual price impact
+      priceImpactPct: priceImpactFrom(price),
     };
   } else {
     const exactInQuote = quote as SwapQuote;
@@ -136,7 +153,7 @@ async function formatSwapQuote(
       minAmountOut,
       maxAmountIn: estimatedAmountIn,
       // CLMM-specific fields
-      priceImpactPct: 0, // TODO: Calculate actual price impact
+      priceImpactPct: priceImpactFrom(price),
     };
   }
 }
