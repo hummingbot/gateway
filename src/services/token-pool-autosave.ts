@@ -61,12 +61,24 @@ const fetchFromChain = async (chain: string, network: string, address: string): 
 /**
  * The token at an address, adding it to the token list if it is not there yet.
  *
- * Returns null when the chain has no name for it. A token cannot be stored without a
- * symbol — the list is keyed by one and pools pair by one — and inventing a placeholder
- * would put a name into the list that no caller would ever ask for, under which the
- * pools built on it would then be filed.
+ * Returns null when nothing can name it. A token cannot be stored without a symbol — the
+ * list is keyed by one and pools pair by one — and inventing a placeholder would put a
+ * name into the list that no caller would ever ask for, under which the pools built on it
+ * would then be filed.
+ *
+ * The chain is asked first and is enough for almost everything: name, symbol and decimals
+ * all live on-chain, so an indexer adds nothing for them and can only be missing, stale or
+ * rate-limited. `fallback` covers the remainder — a mint with no Token-2022 extension and
+ * no Metaplex account, or an ERC-20 that never implemented name()/symbol() — where an
+ * indexer may still know it. Swap paths pass none: a third party does not belong in the
+ * hot path, and a token nothing on-chain can name is not one to learn mid-trade.
  */
-export async function ensureTokenSaved(chain: string, network: string, address: string): Promise<Token | null> {
+export async function ensureTokenSaved(
+  chain: string,
+  network: string,
+  address: string,
+  fallback?: (address: string) => Promise<Token | null>,
+): Promise<Token | null> {
   const tokenService = TokenService.getInstance();
 
   const existing = await tokenService.getToken(chain, network, address);
@@ -75,9 +87,15 @@ export async function ensureTokenSaved(chain: string, network: string, address: 
   }
 
   try {
-    const token = await fetchFromChain(chain, network, address);
+    let token = await fetchFromChain(chain, network, address);
+    if (!token && fallback) {
+      token = await fallback(address);
+      if (token) {
+        logger.info(`No on-chain metadata for ${address} on ${chain}/${network}; named it from the fallback`);
+      }
+    }
     if (!token) {
-      logger.info(`No on-chain metadata for ${address} on ${chain}/${network}; leaving it unlisted`);
+      logger.info(`Nothing can name ${address} on ${chain}/${network}; leaving it unlisted`);
       return null;
     }
 
