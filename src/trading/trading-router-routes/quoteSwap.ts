@@ -3,7 +3,6 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { RouterQuoteSwapResponseSchema } from '../../schemas/chain-schema';
 import { logger } from '../../services/logger';
-import { ensureTokenSaved, recordQuietly } from '../../services/token-pool-autosave';
 import {
   chainNetworkField,
   connectorField,
@@ -115,13 +114,6 @@ export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
           indicativePrice,
           walletAddress,
         });
-        // A router swap names its tokens directly, so an address Gateway has never seen
-        // is the only chance it gets to learn one. Symbols resolve from the list and cost
-        // nothing here; an unknown address is read from the chain once and then known.
-        await recordQuietly(
-          Promise.all([ensureTokenSaved(chain, network, baseToken), ensureTokenSaved(chain, network, quoteToken)]),
-          `tokens ${baseToken} and ${quoteToken}`,
-        );
 
         return reply.code(200).send(result);
       } catch (e: any) {

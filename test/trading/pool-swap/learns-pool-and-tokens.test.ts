@@ -70,7 +70,7 @@ const buildApp = async () => {
 
 const url = (base: string, params: Record<string, string>) => `${base}?${new URLSearchParams(params).toString()}`;
 
-describe('a swap records what it traded against', () => {
+describe('a quote records nothing; only a fill does', () => {
   let app: any;
 
   beforeAll(async () => {
@@ -87,7 +87,11 @@ describe('a swap records what it traded against', () => {
     mockEnsureTokenSaved.mockResolvedValue(null);
   });
 
-  it('records the pinned pool a CLMM quote used, not the pair it was asked for', async () => {
+  // A quote is a question, not a trade. Recording from one fills the lists with pools
+  // and tokens nobody ever traded — every pair someone priced and walked away from —
+  // and the caller pays an RPC read for a pool they did not use. The write belongs on
+  // the routes that move funds: execute-swap, clmm open, amm add and remove.
+  it('does not record the pool a CLMM quote priced against', async () => {
     mockMeteoraClmmQuoteSwap.mockResolvedValue(POOL_QUOTE);
 
     const response = await app.inject({
@@ -104,22 +108,14 @@ describe('a swap records what it traded against', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(mockEnsurePoolSaved).toHaveBeenCalledWith(
-      expect.objectContaining({
-        chain: 'solana',
-        network: 'mainnet-beta',
-        connector: 'meteora',
-        type: 'clmm',
-        poolAddress: PINNED_POOL,
-      }),
-    );
-    // The pool list was never consulted for a pair, because a pin skips that lookup.
-    expect(mockGetPool).not.toHaveBeenCalled();
+    expect(mockEnsurePoolSaved).not.toHaveBeenCalled();
+    expect(mockEnsureTokenSaved).not.toHaveBeenCalled();
   });
 
-  // A router picks its own path across pools, so there is no pool to record — only the
-  // two tokens the caller named, which is the one chance to learn an unlisted address.
-  it('records both tokens of a router quote, and no pool', async () => {
+  // Same rule on the router side, where it used to differ: a router quote recorded both
+  // tokens while a pool quote recorded the pool. Tokens and pools are now learned at the
+  // same moment, so there is no longer a rule to remember about which is which.
+  it('does not record the tokens a router quote named', async () => {
     mockJupiterRouterQuoteSwap.mockResolvedValue(ROUTER_QUOTE);
 
     const response = await app.inject({
@@ -135,30 +131,7 @@ describe('a swap records what it traded against', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(mockEnsureTokenSaved).toHaveBeenCalledWith('solana', 'mainnet-beta', SOL);
-    expect(mockEnsureTokenSaved).toHaveBeenCalledWith('solana', 'mainnet-beta', USDC);
+    expect(mockEnsureTokenSaved).not.toHaveBeenCalled();
     expect(mockEnsurePoolSaved).not.toHaveBeenCalled();
-  });
-
-  // Recording is bookkeeping. A quote that priced correctly has answered the caller's
-  // question, and must not be reported as failed because the write behind it did not.
-  it('answers the caller even when recording fails', async () => {
-    mockMeteoraClmmQuoteSwap.mockResolvedValue(POOL_QUOTE);
-    mockEnsurePoolSaved.mockRejectedValue(new Error('pool list unwritable'));
-
-    const response = await app.inject({
-      method: 'GET',
-      url: url('/trading/clmm/quote-swap', {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'meteora',
-        baseToken: 'SOL',
-        quoteToken: 'USDC',
-        amount: '1',
-        side: 'SELL',
-        poolAddress: PINNED_POOL,
-      }),
-    });
-
-    expect(response.statusCode).toBe(200);
   });
 });

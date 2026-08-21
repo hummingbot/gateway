@@ -19,6 +19,7 @@ import {
   withIdentifiers,
   slippagePctField,
 } from '../common';
+import { learnPool } from '../learn-pool';
 
 // Constants for examples (using Meteora CLMM values)
 const BASE_TOKEN_AMOUNT = 0.01;
@@ -109,7 +110,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         } = request.body;
 
         // Parse chain and network from chainNetwork parameter
-        const { network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
+        const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
 
         // Same contract as add.ts: single-sided opens are valid, but at least one
         // side must be positive — reject here rather than deep in connector code.
@@ -199,6 +200,10 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
               throw httpErrors.badRequest(`Unsupported connector: ${connector}`);
           }
         })();
+
+        // Funds are now in this pool, so it is worth naming next time. Read-only
+        // routes deliberately do not do this; see learn-pool.ts.
+        await learnPool(fastify, 'clmm', chain, network, connector, chainNetwork, poolAddress);
 
         return withIdentifiers(result, { poolAddress });
       } catch (e: any) {

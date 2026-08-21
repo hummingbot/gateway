@@ -8,14 +8,12 @@
  * nothing else.
  */
 import { Type, Static } from '@sinclair/typebox';
-import { FastifyInstance, FastifyPluginAsync } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 
 import { ChainExecuteSwapResponseSchema, ChainQuoteSwapResponseSchema } from '../schemas/chain-schema';
 import { DecimalNumber } from '../schemas/decimal-field';
 import { logger } from '../services/logger';
-import { ensurePoolSaved, PoolFacts, recordQuietly } from '../services/token-pool-autosave';
 
-import { getUnifiedPoolInfo } from './clmm/pools';
 import {
   chainNetworkField,
   connectorField,
@@ -28,9 +26,7 @@ import {
   walletAddressField,
 } from './common';
 import { AMM_CONNECTORS, CLMM_CONNECTORS, getPoolOps } from './connector-registry';
-import { getAmmPoolInfo } from './trading-amm-routes/pool-info';
-
-type PoolType = 'clmm' | 'amm';
+import { learnPool, PoolType } from './learn-pool';
 
 /**
  * Record the pool a swap ran against, and its two tokens, if Gateway does not know them.
@@ -40,30 +36,6 @@ type PoolType = 'clmm' | 'amm';
  * was resolved from that list, in which case this returns after one read. So the cost
  * falls exactly on the case that has something to learn, and only once per pool.
  */
-const learnPool = async (
-  fastify: FastifyInstance,
-  type: PoolType,
-  chain: string,
-  network: string,
-  connector: string,
-  chainNetwork: string,
-  poolAddress: string,
-): Promise<void> =>
-  recordQuietly(
-    ensurePoolSaved({
-      chain,
-      network,
-      connector,
-      type,
-      poolAddress,
-      fetchPoolInfo: (): Promise<PoolFacts> =>
-        type === 'clmm'
-          ? getUnifiedPoolInfo(fastify, connector, chainNetwork, poolAddress, 0)
-          : getAmmPoolInfo(connector, network, poolAddress),
-    }),
-    `pool ${poolAddress}`,
-  );
-
 const connectorsFor = (type: PoolType) => (type === 'clmm' ? CLMM_CONNECTORS : AMM_CONNECTORS);
 
 const quoteSwapRequestSchema = (type: PoolType) =>
@@ -173,7 +145,6 @@ export const makeQuoteSwapRoute = (type: PoolType): FastifyPluginAsync => {
             amount,
             slippagePct,
           });
-          await learnPool(fastify, type, chain, network, name, chainNetwork, pool);
 
           return reply.code(200).send(result);
         } catch (e: any) {

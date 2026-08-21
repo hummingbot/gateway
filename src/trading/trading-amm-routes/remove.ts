@@ -17,6 +17,7 @@ import {
   withIdentifiers,
   slippagePctField,
 } from '../common';
+import { learnPool } from '../learn-pool';
 
 export const UnifiedAmmRemoveLiquidityRequest = Type.Object(
   {
@@ -70,7 +71,7 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
           percentageToRemove,
           slippagePct,
         } = request.body;
-        const { network } = resolveChainNetwork(chainNetwork, connector, 'amm');
+        const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'amm');
         const result = await (async () => {
           switch (connector) {
             case 'meteora':
@@ -106,6 +107,10 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
               );
           }
         })();
+
+        // Funds moved through this pool, so it is worth naming next time.
+        // Read-only routes deliberately do not do this; see learn-pool.ts.
+        await learnPool(fastify, 'amm', chain, network, connector, chainNetwork, poolAddress);
 
         return withIdentifiers(result, { poolAddress, positionAddress });
       } catch (e: any) {

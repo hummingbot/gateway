@@ -7,7 +7,6 @@ import { getPoolInfo as raydiumGetPoolInfo } from '../../connectors/raydium/amm-
 import { getPoolInfo as uniswapGetPoolInfo } from '../../connectors/uniswap/amm-routes/poolInfo';
 import { PoolInfo, PoolInfoSchema } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { ensurePoolSaved, recordQuietly } from '../../services/token-pool-autosave';
 import { AMM_CONNECTORS, chainNetworkField, connectorField, resolveChainNetwork, rethrowRouteError } from '../common';
 
 export const UnifiedAmmPoolInfoRequest = Type.Object(
@@ -52,23 +51,12 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { connector, chainNetwork, poolAddress } = request.query;
-        const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'amm');
+        const { network } = resolveChainNetwork(chainNetwork, connector, 'amm');
         const poolInfo = await getAmmPoolInfo(connector, network, poolAddress);
 
         // Asking about a pool by address is the moment Gateway can learn it: the reply
         // already carries both token addresses and the fee, so recording it costs the
         // list read below and nothing more when it is already known.
-        await recordQuietly(
-          ensurePoolSaved({
-            chain,
-            network,
-            connector,
-            type: 'amm',
-            poolAddress,
-            fetchPoolInfo: async () => poolInfo,
-          }),
-          `pool ${poolAddress}`,
-        );
 
         return poolInfo;
       } catch (e: any) {

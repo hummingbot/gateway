@@ -9,7 +9,6 @@ import { getPoolInfo as raydiumGetPoolInfo } from '../../connectors/raydium/clmm
 import { getPoolInfo as uniswapGetPoolInfo } from '../../connectors/uniswap/clmm-routes/poolInfo';
 import { PoolInfo, PoolInfoSchema } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
-import { ensurePoolSaved, recordQuietly } from '../../services/token-pool-autosave';
 import { chainNetworkField, CLMM_CONNECTORS, connectorField, parseChainNetwork, rethrowRouteError } from '../common';
 
 // Constants for examples (using Meteora CLMM values)
@@ -148,17 +147,6 @@ export const poolsRoute: FastifyPluginAsync = async (fastify) => {
         // already carries both token addresses and the fee, so recording it costs the
         // list read below and nothing more when it is already known.
         const { chain, network } = parseChainNetwork(chainNetwork);
-        await recordQuietly(
-          ensurePoolSaved({
-            chain,
-            network,
-            connector,
-            type: 'clmm',
-            poolAddress,
-            fetchPoolInfo: async () => result,
-          }),
-          `pool ${poolAddress}`,
-        );
 
         return reply.code(200).send(result);
       } catch (error: any) {
