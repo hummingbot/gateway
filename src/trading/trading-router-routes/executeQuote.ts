@@ -3,6 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import { ChainExecuteSwapResponseSchema } from '../../schemas/chain-schema';
 import { logger } from '../../services/logger';
+import { ensureTokenSaved, recordQuietly } from '../../services/token-pool-autosave';
 import {
   chainNetworkField,
   connectorField,
@@ -59,6 +60,23 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
         logger.info(`[trading/router] execute quote ${quoteId} on ${chain}/${network} via ${name}`);
 
         const result = await getRouterOps(name, chain).executeQuote(walletAddress, network, quoteId);
+
+        // Same learning executeSwap does, from the only place this route can get the
+        // tokens: the request carries a quote id, not a pair. `data` is present only on
+        // a CONFIRMED swap and names both sides by ADDRESS, which is exactly what should
+        // be recorded — a quote that was never executed teaches nothing, and a failed one
+        // has nothing to teach.
+        const swapped = (result as { data?: { tokenIn?: string; tokenOut?: string } })?.data;
+        if (swapped?.tokenIn && swapped?.tokenOut) {
+          await recordQuietly(
+            Promise.all([
+              ensureTokenSaved(chain, network, swapped.tokenIn),
+              ensureTokenSaved(chain, network, swapped.tokenOut),
+            ]),
+            `tokens ${swapped.tokenIn} and ${swapped.tokenOut}`,
+          );
+        }
+
         return reply.code(200).send(result);
       } catch (e: any) {
         rethrowRouteError(e, 'Failed to execute quote');
