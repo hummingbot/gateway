@@ -12,6 +12,19 @@ const mockDecreaseLiquidity = jest.fn();
 const mockSendAndConfirm = jest.fn();
 
 jest.mock('../../../../src/chains/solana/solana');
+// The wallet default on the unified schema is read from conf/chains/solana.yml at module
+// load. conf/ is gitignored, so a developer machine supplies a real address and CI falls
+// back to the template's literal '<solana-wallet-address>' — which is not base58, so
+// `new PublicKey(...)` throws and the route 500s. These two cases OMIT walletAddress on
+// purpose, so they were passing only on machines that happened to have a wallet
+// configured. Pin the default here instead of inheriting the ambient one.
+jest.mock('../../../../src/chains/solana/solana.config', () => ({
+  ...jest.requireActual('../../../../src/chains/solana/solana.config'),
+  getSolanaChainConfig: () => ({
+    ...jest.requireActual('../../../../src/chains/solana/solana.config').getSolanaChainConfig(),
+    defaultWallet: 'BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF',
+  }),
+}));
 jest.mock('../../../../src/connectors/orca/orca');
 jest.mock('@orca-so/whirlpools-client', () => ({
   fetchPosition: (...a: any[]) => mockFetchPosition(...a),
