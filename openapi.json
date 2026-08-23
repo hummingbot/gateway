@@ -5961,7 +5961,7 @@
         "tags": [
           "/pools"
         ],
-        "description": "Find pool from GeckoTerminal and save it to the pool list. Auto-adds missing tokens.",
+        "description": "Save a pool to the pool list, auto-adding its tokens. Pass connector and type to name the pool directly from that connector; omit them and GeckoTerminal is asked which DEX the address belongs to first.",
         "parameters": [
           {
             "schema": {
@@ -5985,6 +5985,51 @@
             "name": "chainNetwork",
             "required": true,
             "description": "Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "examples": {
+              "meteora": {
+                "value": "meteora"
+              },
+              "raydium": {
+                "value": "raydium"
+              },
+              "orca": {
+                "value": "orca"
+              },
+              "uniswap": {
+                "value": "uniswap"
+              }
+            },
+            "in": "query",
+            "name": "connector",
+            "required": false,
+            "description": "DEX connector the pool belongs to. Supply it with `type` to skip the GeckoTerminal lookup — a caller that already knows the venue, such as one holding an LP provider config, always does."
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "amm"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "clmm"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "description": "Pool type. Required alongside `connector`."
           },
           {
             "schema": {
