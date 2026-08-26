@@ -45,7 +45,11 @@ const mockWallets: { [key: string]: Set<string> } = {
 
 beforeAll(async () => {
   patch(ConfigManagerCertPassphrase, 'readPassphrase', () => 'a');
-  eth = await Ethereum.getInstance('sepolia');
+  // `addWallet` resolves the chain's own default network — 'mainnet' for ethereum
+  // (src/wallet/utils.ts) — and never reads a network from the request. Holding a
+  // different instance here left every `patch(eth, ...)` below applying to an object the
+  // route never touched, so the "mocked" add ran the real key derivation.
+  eth = await Ethereum.getInstance('mainnet');
   await gatewayApp.ready();
 });
 
@@ -55,12 +59,17 @@ beforeEach(() => {
   // Clear mock wallets
   mockWallets.ethereum.clear();
 
-  // Mock wallet operations to work with in-memory storage
-  patch(eth, 'getWalletFromPrivateKey', () => {
+  // Mock wallet operations to work with in-memory storage.
+  //
+  // Patched on the prototype rather than on `eth`: whichever Ethereum instance the route
+  // resolves is then stubbed, so a change to the network addWallet picks cannot quietly
+  // put the real implementations back. That matters most for `encrypt`, which is scrypt
+  // at n=131072 — roughly a second of CPU per call.
+  patch(Ethereum.prototype, 'getWalletFromPrivateKey', () => {
     return { address: testAddress };
   });
 
-  patch(eth, 'encrypt', () => {
+  patch(Ethereum.prototype, 'encrypt', () => {
     return JSON.stringify(encodedPrivateKey);
   });
 
@@ -154,8 +163,11 @@ describe('Ethereum Wallet Operations', () => {
     });
 
     it('should fail with invalid private key', async () => {
-      // Override the mock to simulate invalid key
-      patch(eth, 'getWalletFromPrivateKey', () => {
+      // Override the mock to simulate invalid key. Patched on the prototype like the
+      // beforeEach stubs: `patch` stores a property descriptor rather than the function
+      // when the property is inherited rather than own, and `unpatch` puts that
+      // descriptor back as a value — leaving a non-callable behind for the next test.
+      patch(Ethereum.prototype, 'getWalletFromPrivateKey', () => {
         throw new Error('Invalid private key');
       });
 

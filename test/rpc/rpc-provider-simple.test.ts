@@ -1,6 +1,54 @@
+// These tests are about the config-loading plumbing: that a chain-level `rpcProvider`
+// is read from the chain namespace, that network namespaces carry their own fields and
+// not that one, and that the shapes come back whole. None of that is a claim about any
+// particular deployment, so the config manager is stubbed with a fixture rather than
+// read from conf/. Reading the real conf made the suite assert on whatever RPC the
+// developer happened to be pointed at — it failed against a local validator, which is a
+// perfectly valid `nodeURL` and no fault of the code under test.
+jest.mock('../../src/services/config-manager-v2', () => {
+  const CONFIG: Record<string, unknown> = {
+    'solana.defaultNetwork': 'mainnet-beta',
+    'solana.defaultNetworks': ['mainnet-beta', 'devnet'],
+    'solana.defaultWallet': '82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5',
+    'solana.rpcProvider': 'url',
+
+    'solana-mainnet-beta.chainID': 101,
+    'solana-mainnet-beta.nodeURL': 'https://api.mainnet-beta.solana.com',
+    'solana-mainnet-beta.nativeCurrencySymbol': 'SOL',
+    'solana-mainnet-beta.geckoId': 'solana',
+    'solana-mainnet-beta.swapProvider': 'jupiter/router',
+    'solana-mainnet-beta.defaultComputeUnits': 200000,
+    'solana-mainnet-beta.confirmRetryInterval': 1,
+    'solana-mainnet-beta.confirmRetryCount': 10,
+    'solana-mainnet-beta.minPriorityFeePerCU': 0.1,
+    'solana-mainnet-beta.maxPriorityFeePerCU': 1,
+    'solana-mainnet-beta.priorityFeeLevel': 'High',
+
+    'solana-devnet.chainID': 103,
+    'solana-devnet.nodeURL': 'https://api.devnet.solana.com',
+    'solana-devnet.nativeCurrencySymbol': 'SOL',
+    'solana-devnet.geckoId': 'solana',
+    'solana-devnet.swapProvider': 'jupiter/router',
+    'solana-devnet.defaultComputeUnits': 200000,
+    'solana-devnet.confirmRetryInterval': 1,
+    'solana-devnet.confirmRetryCount': 10,
+    'solana-devnet.minPriorityFeePerCU': 0.1,
+    'solana-devnet.maxPriorityFeePerCU': 1,
+    'solana-devnet.priorityFeeLevel': 'High',
+  };
+
+  return {
+    ConfigManagerV2: {
+      getInstance: () => ({
+        get: (key: string) => CONFIG[key],
+        getSupportedChainNetworks: () => ['solana-mainnet-beta', 'solana-devnet'],
+      }),
+    },
+  };
+});
+
 import { getSolanaNetworkConfig, getSolanaChainConfig } from '../../src/chains/solana/solana.config';
 
-// Simple configuration tests without mocking complex dependencies
 describe('Solana RPC Provider Configuration Tests', () => {
   describe('Config Loading', () => {
     it('should load chain configuration with rpcProvider field', () => {
