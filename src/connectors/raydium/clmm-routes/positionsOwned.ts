@@ -1,7 +1,6 @@
 import { PublicKey } from '@solana/web3.js';
 import { FastifyInstance } from 'fastify';
 
-import { Solana } from '../../../chains/solana/solana';
 import { PositionInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
@@ -13,8 +12,6 @@ export async function getPositionsOwned(
   network: string,
   walletAddress: string,
 ): Promise<PositionInfo[]> {
-  const solana = await Solana.getInstance(network);
-
   // Validate wallet address
   try {
     new PublicKey(walletAddress);
@@ -23,7 +20,7 @@ export async function getPositionsOwned(
   }
 
   // Fetch from RPC (positions are cached individually by position address, not by wallet)
-  const positions = await fetchPositionsFromRPC(solana, network, walletAddress);
+  const positions = await fetchPositionsFromRPC(network, walletAddress);
 
   return positions;
 }
@@ -31,49 +28,13 @@ export async function getPositionsOwned(
 /**
  * Fetch positions from RPC
  */
-async function fetchPositionsFromRPC(_solana: Solana, network: string, walletAddress: string): Promise<PositionInfo[]> {
+async function fetchPositionsFromRPC(network: string, walletAddress: string): Promise<PositionInfo[]> {
   const raydium = await Raydium.getInstance(network);
-
-  // Prepare wallet and check if it's hardware
-  const { wallet } = await raydium.prepareWallet(walletAddress);
-
-  // Set the owner for SDK operations
-  await raydium.setOwner(wallet);
 
   logger.info(`Fetching all positions for wallet ${walletAddress}`);
 
-  // Get all positions owned by the wallet
-  const allPositions: PositionInfo[] = [];
+  const positions = await raydium.getPositionsForWalletAddress(walletAddress);
 
-  // Try both CLMM program IDs (standard and new)
-  const programIds = [
-    'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK', // CLMM program
-    'devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH', // Devnet CLMM (if applicable)
-  ];
-
-  for (const programId of programIds) {
-    try {
-      const positions = await raydium.raydiumSDK.clmm.getOwnerPositionInfo({
-        programId,
-      });
-      logger.debug(`Found ${positions.length} positions for program ${programId}`);
-
-      // Convert SDK positions to our format
-      for (const pos of positions) {
-        try {
-          const positionInfo = await raydium.getPositionInfo(pos.nftMint.toString());
-          if (positionInfo) {
-            allPositions.push(positionInfo);
-          }
-        } catch (error) {
-          logger.debug(`Error fetching position info for ${pos.nftMint.toString()}:`, error);
-        }
-      }
-    } catch (error) {
-      logger.debug(`No positions found for program ${programId}:`, error);
-    }
-  }
-
-  logger.info(`Found ${allPositions.length} Raydium position(s) for wallet ${walletAddress.slice(0, 8)}...`);
-  return allPositions;
+  logger.info(`Found ${positions.length} Raydium position(s) for wallet ${walletAddress.slice(0, 8)}...`);
+  return positions;
 }

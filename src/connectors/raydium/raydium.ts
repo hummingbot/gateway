@@ -14,6 +14,7 @@ import {
   AmmV4Keys,
   AmmV5Keys,
 } from '@raydium-io/raydium-sdk-v2';
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { Keypair, PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../chains/solana/solana';
@@ -264,6 +265,59 @@ export class Raydium {
       logger.error('Error in getPositionInfo:', error);
       return null;
     }
+  }
+
+  /**
+   * Lists the CLMM positions held by an arbitrary wallet address.
+   *
+   * Read-only: it enumerates the owner's position NFTs on-chain rather than going
+   * through the SDK's `owner`, so the address does not have to be a wallet that
+   * Gateway has stored.
+   */
+  async getPositionsForWalletAddress(walletAddress: string): Promise<PositionInfo[]> {
+    const ownerPubkey = new PublicKey(walletAddress);
+
+    // Raydium position NFTs are minted under either the SPL Token or Token-2022 program
+    const [splTokenAccounts, token2022Accounts] = await Promise.all([
+      this.solana.connection.getParsedTokenAccountsByOwner(ownerPubkey, { programId: TOKEN_PROGRAM_ID }),
+      this.solana.connection.getParsedTokenAccountsByOwner(ownerPubkey, { programId: TOKEN_2022_PROGRAM_ID }),
+    ]);
+
+    // Position NFTs have decimals 0 and a balance of exactly 1
+    const nftMints = [...splTokenAccounts.value, ...token2022Accounts.value]
+      .filter((account) => {
+        const tokenAmount = account.account.data.parsed?.info?.tokenAmount;
+        return tokenAmount?.decimals === 0 && tokenAmount?.uiAmount === 1;
+      })
+      .map((account) => account.account.data.parsed.info.mint as string);
+
+    logger.debug(`Found ${nftMints.length} NFT(s) for wallet ${walletAddress}, checking for Raydium CLMM positions`);
+
+    // Keep only the NFTs whose personal-position PDA actually exists on the CLMM program
+    const positionMints: string[] = [];
+    const chunkSize = 100; // getMultipleAccountsInfo limit
+    for (let i = 0; i < nftMints.length; i += chunkSize) {
+      const chunk = nftMints.slice(i, i + chunkSize);
+      const positionAddresses = chunk.map(
+        (mint) => getPdaPersonalPositionAddress(CLMM_PROGRAM_ID, new PublicKey(mint)).publicKey,
+      );
+      const accounts = await this.solana.connection.getMultipleAccountsInfo(positionAddresses);
+      accounts.forEach((account, index) => {
+        if (account) {
+          positionMints.push(chunk[index]);
+        }
+      });
+    }
+
+    const positions: PositionInfo[] = [];
+    for (const mint of positionMints) {
+      const positionInfo = await this.getPositionInfo(mint);
+      if (positionInfo) {
+        positions.push(positionInfo);
+      }
+    }
+
+    return positions;
   }
 
   // General Pool Methods
