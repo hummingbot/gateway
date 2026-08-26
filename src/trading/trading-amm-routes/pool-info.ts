@@ -7,18 +7,32 @@ import { getPoolInfo as raydiumGetPoolInfo } from '../../connectors/raydium/amm-
 import { getPoolInfo as uniswapGetPoolInfo } from '../../connectors/uniswap/amm-routes/poolInfo';
 import { PoolInfo, PoolInfoSchema } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
+import { AMM_CONNECTORS, chainNetworkField, connectorField, resolveChainNetwork, rethrowRouteError } from '../common';
 
-import { AMM_CONNECTORS, parseChainNetwork } from './common';
+export const UnifiedAmmPoolInfoRequest = Type.Object(
+  {
+    connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+    chainNetwork: chainNetworkField(),
+    poolAddress: Type.String({ description: 'Pool contract address' }),
+  },
+  { $id: 'AmmPoolInfoRequest', additionalProperties: false },
+);
 
-const UnifiedAmmPoolInfoRequest = Type.Object({
-  connector: Type.String({ description: 'AMM connector (meteora, raydium, uniswap)', default: 'meteora' }),
-  chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    default: 'solana-mainnet-beta',
-  }),
-  poolAddress: Type.String({ description: 'Pool contract address' }),
-});
+/** Pool info from any AMM connector. Exported so the swap routes can learn a pool too. */
+export async function getAmmPoolInfo(connector: string, network: string, poolAddress: string) {
+  switch (connector) {
+    case 'meteora':
+      return await meteoraGetPoolInfo(network, poolAddress);
+    case 'raydium':
+      return await raydiumGetPoolInfo(network, poolAddress);
+    case 'uniswap':
+      return await uniswapGetPoolInfo(network, poolAddress);
+    case 'pancakeswap':
+      return await pancakeswapGetPoolInfo(network, poolAddress);
+    default:
+      throw httpErrors.badRequest(`Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`);
+  }
+}
 
 export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -37,25 +51,16 @@ export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { connector, chainNetwork, poolAddress } = request.query;
-        const { network } = parseChainNetwork(chainNetwork);
-        switch (connector) {
-          case 'meteora':
-            return await meteoraGetPoolInfo(network, poolAddress);
-          case 'raydium':
-            return await raydiumGetPoolInfo(network, poolAddress);
-          case 'uniswap':
-            return await uniswapGetPoolInfo(network, poolAddress);
-          case 'pancakeswap':
-            return await pancakeswapGetPoolInfo(network, poolAddress);
-          default:
-            throw httpErrors.badRequest(
-              `Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`,
-            );
-        }
+        const { network } = resolveChainNetwork(chainNetwork, connector, 'amm');
+        const poolInfo = await getAmmPoolInfo(connector, network, poolAddress);
+
+        // Asking about a pool by address is the moment Gateway can learn it: the reply
+        // already carries both token addresses and the fee, so recording it costs the
+        // list read below and nothing more when it is already known.
+
+        return poolInfo;
       } catch (e: any) {
-        logger.error('Failed to get AMM pool info:', e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to get pool info');
+        rethrowRouteError(e, 'Failed to get AMM pool info');
       }
     },
   );

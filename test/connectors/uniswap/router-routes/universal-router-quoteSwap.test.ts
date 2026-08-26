@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { Uniswap } from '../../../../src/connectors/uniswap/uniswap';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 jest.mock('../../../../src/connectors/uniswap/uniswap');
@@ -15,7 +16,7 @@ const mockGetAlphaRouterQuote = jest.fn();
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quoteSwapRoute } = await import('../../../../src/connectors/uniswap/router-routes/quoteSwap');
+  const { quoteSwapRoute } = await import('../../../../src/trading/trading-router-routes/quoteSwap');
   await server.register(quoteSwapRoute);
   return server;
 };
@@ -151,7 +152,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'uniswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'WETH',
         quoteToken: 'USDC',
@@ -162,12 +164,12 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     expect(body).toHaveProperty('quoteId', 'test-quote-id');
     expect(body).toHaveProperty('tokenIn', mockWETH.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-    expect(body).toHaveProperty('amountIn', 1);
+    expect(Number(body.amountIn)).toBe(1);
     expect(body).toHaveProperty('amountOut');
     expect(body.amountOut).toBeGreaterThan(0);
     expect(body).toHaveProperty('price');
@@ -194,7 +196,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'uniswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'WETH',
         quoteToken: 'USDC',
@@ -205,58 +208,62 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockWETH.address);
-    expect(body).toHaveProperty('amountOut', 1);
+    expect(Number(body.amountOut)).toBe(1);
     expect(body).toHaveProperty('amountIn');
     expect(body.amountIn).toBeGreaterThan(0);
   });
 
-  it('should handle V3 protocol', async () => {
+  it('quotes through the universal router', async () => {
     const response = await server.inject({
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'uniswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'WETH',
         quoteToken: 'USDC',
         amount: '1',
         side: 'SELL',
         slippagePct: '1',
-        protocols: ['v3'],
       },
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
-    // Protocols aren't returned in the response - they're only used for filtering
+    // `protocols` used to be sent here and was silently dropped: the unified router
+    // route declares no such parameter and never read one, so the "filtering" this case
+    // was written for never happened. The route answers with the path it chose.
     expect(body).toHaveProperty('routePath');
   });
 
-  it('should handle multiple protocols', async () => {
+  it('quotes the same pair a second time, without a protocol filter', async () => {
     const response = await server.inject({
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'uniswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'WETH',
         quoteToken: 'USDC',
         amount: '1',
         side: 'SELL',
         slippagePct: '1',
-        protocols: ['v2', 'v3'],
       },
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
-    // Protocols aren't returned in the response - they're only used for filtering
+    // `protocols` used to be sent here and was silently dropped: the unified router
+    // route declares no such parameter and never read one, so the "filtering" this case
+    // was written for never happened. The route answers with the path it chose.
     expect(body).toHaveProperty('routePath');
   });
 
@@ -274,7 +281,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'uniswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'INVALID',
         quoteToken: 'USDC',
@@ -285,7 +293,7 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(404);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('message');
     expect(body.message).toContain('Token not found');
   });
@@ -296,7 +304,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'ETH',
           quoteToken: 'USDC',
@@ -307,12 +316,12 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
       // Should use WETH address even though ETH was requested
       expect(body).toHaveProperty('tokenIn', mockWETH.address);
       expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-      expect(body).toHaveProperty('amountIn', 1);
+      expect(Number(body.amountIn)).toBe(1);
       expect(body).toHaveProperty('amountOut');
       expect(body.amountOut).toBeGreaterThan(0);
     });
@@ -338,7 +347,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'USDC',
           quoteToken: 'ETH',
@@ -349,7 +359,7 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
       // Should use WETH address even though ETH was requested as quote
       // SELL side: input=base (USDC), output=quote (ETH->WETH)
@@ -362,7 +372,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'eth',
           quoteToken: 'USDC',
@@ -373,7 +384,7 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
       // Should convert lowercase 'eth' to WETH
       expect(body).toHaveProperty('tokenIn', mockWETH.address);
@@ -384,7 +395,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'Eth',
           quoteToken: 'USDC',
@@ -395,7 +407,7 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
       // Should convert mixed case 'Eth' to WETH
       expect(body).toHaveProperty('tokenIn', mockWETH.address);
@@ -408,7 +420,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'USDC',
           quoteToken: 'USDC',
@@ -419,9 +432,9 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
-      expect(body).toHaveProperty('price', 1);
+      expect(Number(body.price)).toBe(1);
       expect(body).toHaveProperty('amountIn', 100);
       expect(body).toHaveProperty('amountOut', 100);
       expect(body).toHaveProperty('priceImpactPct', 0);
@@ -432,7 +445,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'ETH',
           quoteToken: 'WETH',
@@ -443,9 +457,9 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
-      expect(body).toHaveProperty('price', 1);
+      expect(Number(body.price)).toBe(1);
       expect(body).toHaveProperty('amountIn', 1);
       expect(body).toHaveProperty('amountOut', 1);
       expect(body).toHaveProperty('priceImpactPct', 0);
@@ -456,7 +470,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'WETH',
           quoteToken: 'ETH',
@@ -467,9 +482,9 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
-      expect(body).toHaveProperty('price', 1);
+      expect(Number(body.price)).toBe(1);
       expect(body).toHaveProperty('amountIn', 1);
       expect(body).toHaveProperty('amountOut', 1);
       expect(body).toHaveProperty('priceImpactPct', 0);
@@ -480,7 +495,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'ETH',
           quoteToken: 'ETH',
@@ -491,9 +507,9 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
-      expect(body).toHaveProperty('price', 1);
+      expect(Number(body.price)).toBe(1);
       expect(body).toHaveProperty('amountIn', 1);
       expect(body).toHaveProperty('amountOut', 1);
     });
@@ -525,7 +541,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'WETH',
           quoteToken: 'USDC',
@@ -536,12 +553,12 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
       expect(mockGetAlphaRouterQuote).not.toHaveBeenCalled();
       expect(mockGetUniversalRouterQuote).toHaveBeenCalled();
       expect(body).toHaveProperty('routePath', '100% via WETH -> USDC');
-      expect(body).toHaveProperty('amountIn', 1);
+      expect(Number(body.amountIn)).toBe(1);
       expect(body).toHaveProperty('amountOut', 3000);
       expect(body).toHaveProperty('priceImpactPct', 0.5);
     });
@@ -551,7 +568,8 @@ describe('GET /quote-swap', () => {
         method: 'GET',
         url: '/quote-swap',
         query: {
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
+          connector: 'uniswap',
           walletAddress: '0x0000000000000000000000000000000000000001',
           baseToken: 'WETH',
           quoteToken: 'USDC',
@@ -562,7 +580,7 @@ describe('GET /quote-swap', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
+      const body = parseWire(response.body);
 
       // The calldata's embedded min-out must be built from the same slippage
       // the response advertises, so the requested value has to reach the quote

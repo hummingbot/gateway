@@ -45,6 +45,39 @@ function versionedTx(): VersionedTransaction {
   return new VersionedTransaction(message);
 }
 
+describe('Solana.sendAndConfirmTransaction compute simulation', () => {
+  const sendAndConfirm = (Solana.prototype as any).sendAndConfirmTransaction as (
+    this: unknown,
+    tx: Transaction,
+  ) => Promise<{ signature: string; fee: number }>;
+
+  it('does not broadcast when the compute-estimation simulation returned an error', async () => {
+    const _sendAndConfirmRawTransaction = jest.fn();
+    const fakeThis = {
+      config: { defaultComputeUnits: 200000 },
+      estimateGasPrice: jest.fn(async () => 0.1),
+      connection: {
+        simulateTransaction: jest.fn(async () => ({
+          value: {
+            err: { InstructionError: [0, { Custom: 6018 }] },
+            unitsConsumed: 10385,
+            logs: [
+              'Program whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc invoke [1]',
+              'Program whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc failed: custom program error: 0x1782',
+            ],
+          },
+        })),
+      },
+      _sendAndConfirmRawTransaction,
+    };
+
+    await expect(sendAndConfirm.call(fakeThis, legacyTx())).rejects.toMatchObject({
+      code: 'SLIPPAGE_EXCEEDED',
+    });
+    expect(_sendAndConfirmRawTransaction).not.toHaveBeenCalled();
+  });
+});
+
 describe('Solana.sendAndConfirmTransactionForWallet', () => {
   it('drops extra signers that carry the wallet pubkey (SDK dummy owner signers)', async () => {
     // Raydium's TxBuilder appends `owner.signer` to the signers it returns. For non-local
@@ -179,6 +212,7 @@ describe('Solana.throwIfLandedWithError / confirmationTimeoutError', () => {
   const throwIfLandedWithError = (Solana.prototype as any).throwIfLandedWithError as (
     this: unknown,
     signature: string,
+    txData?: any,
   ) => Promise<void>;
   const confirmationTimeoutError = (Solana.prototype as any).confirmationTimeoutError as (
     this: unknown,
@@ -187,6 +221,7 @@ describe('Solana.throwIfLandedWithError / confirmationTimeoutError', () => {
 
   it('surfaces the on-chain program error when a tx lands but fails (not a timeout)', async () => {
     const fakeThis = {
+      buildLandedWithErrorException: (Solana.prototype as any).buildLandedWithErrorException,
       connection: {
         getTransaction: jest.fn(async () => ({
           meta: {
@@ -200,7 +235,35 @@ describe('Solana.throwIfLandedWithError / confirmationTimeoutError', () => {
       },
     };
 
-    await expect(throwIfLandedWithError.call(fakeThis, 'landed-sig')).rejects.toThrow(/landed on-chain but failed/);
+    const error = await throwIfLandedWithError.call(fakeThis, 'landed-sig').then(
+      () => {
+        throw new Error('expected throwIfLandedWithError to throw');
+      },
+      (e: any) => e,
+    );
+    // A landed-but-failed tx paid fees on-chain — it is TRANSACTION_FAILED (4xx,
+    // non-retryable), not a simulation failure, and the message keeps the signature.
+    expect(error.message).toMatch(/Transaction landed-sig landed on-chain but failed/);
+    expect(error.code).toBe('TRANSACTION_FAILED');
+    expect(error.statusCode).toBe(400);
+  });
+
+  it('uses caller-provided txData without a re-fetch and throws the shared landed-but-failed error', async () => {
+    const getTransaction = jest.fn();
+    const fakeThis = {
+      buildLandedWithErrorException: (Solana.prototype as any).buildLandedWithErrorException,
+      connection: { getTransaction },
+    };
+
+    const failedTxData = { meta: { err: { InstructionError: [0, 'Custom'] }, logMessages: [] } };
+    const error = await throwIfLandedWithError.call(fakeThis as any, 'route-sig', failedTxData).then(
+      () => {
+        throw new Error('expected throwIfLandedWithError to throw');
+      },
+      (e: any) => e,
+    );
+    expect(error.code).toBe('TRANSACTION_FAILED');
+    expect(getTransaction).not.toHaveBeenCalled();
   });
 
   it('returns silently when the transaction succeeded or is missing', async () => {

@@ -1,6 +1,5 @@
-import DLMM, { getPriceOfBinByBinId, LbPair, LBCLMM_PROGRAM_IDS } from '@meteora-ag/dlmm';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { PublicKey, MemcmpFilter } from '@solana/web3.js';
+import DLMM, { getPriceOfBinByBinId, LbPair } from '@meteora-ag/dlmm';
+import { PublicKey } from '@solana/web3.js';
 
 import { Solana } from '../../chains/solana/solana';
 import { MeteoraPoolInfo, PositionInfo, BinLiquidity } from '../../schemas/clmm-schema';

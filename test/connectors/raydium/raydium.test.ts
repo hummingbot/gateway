@@ -375,7 +375,8 @@ describe('Raydium', () => {
           address: mockPoolAddress,
           baseTokenAddress: 'base-token',
           quoteTokenAddress: 'quote-token',
-          feePct: 0.0025,
+          // 25/10000 is the fraction; feePct is a percent, so 0.25% (GW-2).
+          feePct: 0.25,
           price: 100,
           baseTokenAmount: 1,
           quoteTokenAmount: 100,
@@ -417,7 +418,8 @@ describe('Raydium', () => {
           address: mockPoolAddress,
           baseTokenAddress: 'base-token',
           quoteTokenAddress: 'quote-token',
-          feePct: 30,
+          // CPMM tradeFeeRate is in millionths, so the mock's 30 is 0.003% (GW-2).
+          feePct: 0.003,
           price: 200,
           baseTokenAmount: 2,
           quoteTokenAmount: 400,

@@ -1,14 +1,11 @@
 import { SwapMode } from '@meteora-ag/cp-amm-sdk';
 import { PublicKey, Transaction } from '@solana/web3.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/amm-schema';
-import { httpErrors } from '../../../services/error-handler';
+import { ExecuteSwapResponseType } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { MeteoraDamm } from '../meteora-damm';
 import { MeteoraConfig } from '../meteora.config';
-import { MeteoraAmmExecuteSwapRequest } from '../schemas';
 
 import { getRawSwapQuote } from './quoteSwap';
 
@@ -61,61 +58,19 @@ export async function executeSwap(
         });
 
   const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Re-fetch with retry; a landed-but-failed transaction throws instead of being
+  // misreported as confirmed or pending.
+  const txData = await solana.getConfirmedTransactionData(signature);
 
   const result = await solana.handleConfirmation(
     signature,
-    txData !== null,
     txData,
     quote.inputMint.toBase58(),
     quote.outputMint.toBase58(),
     walletAddress,
     side,
+    slippagePct,
   );
 
   return result as ExecuteSwapResponseType;
 }
-
-export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: typeof MeteoraAmmExecuteSwapRequest.static;
-    Reply: ExecuteSwapResponseType;
-  }>(
-    '/execute-swap',
-    {
-      schema: {
-        description: 'Execute a swap on a Meteora DAMM v2 pool',
-        tags: ['/connector/meteora'],
-        body: MeteoraAmmExecuteSwapRequest,
-        response: {
-          200: ExecuteSwapResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, poolAddress, baseToken, amount, side, slippagePct } = request.body;
-        const effectiveSlippage = slippagePct ?? MeteoraConfig.config.slippagePct;
-
-        return await executeSwap(
-          network,
-          walletAddress,
-          poolAddress,
-          baseToken,
-          side as 'BUY' | 'SELL',
-          amount,
-          effectiveSlippage,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Swap execution failed');
-      }
-    },
-  );
-};
-
-export default executeSwapRoute;

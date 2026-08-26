@@ -2,17 +2,12 @@ import { SwapQuoteExactOut, SwapQuote } from '@meteora-ag/dlmm';
 import { DecimalUtil } from '@orca-so/common-sdk';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
-import { estimateGasSolana } from '../../../chains/solana/routes/estimate-gas';
 import { Solana } from '../../../chains/solana/solana';
-import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-schema';
+import { QuoteSwapResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
-import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Meteora } from '../meteora';
 import { MeteoraConfig } from '../meteora.config';
-import { MeteoraClmmQuoteSwapRequest, MeteoraClmmQuoteSwapRequestType } from '../schemas';
 
 export async function getRawSwapQuote(
   network: string,
@@ -92,6 +87,23 @@ async function formatSwapQuote(
     throw httpErrors.notFound('Failed to get pool tokens');
   }
 
+  // The spot price to measure the quote against, in the same orientation the response
+  // reports its price: quote per base, for the pair as the caller named it. A DLMM's
+  // active bin is priced tokenY per tokenX, so it inverts when the caller's base is Y.
+  const activeBin = await dlmmPool.getActiveBin();
+  const baseMint = side === 'SELL' ? inputToken.address : outputToken.address;
+  const pricePerToken = Number(activeBin?.pricePerToken ?? 0);
+  const spotPrice =
+    baseMint === dlmmPool.tokenX.publicKey.toBase58() ? pricePerToken : pricePerToken > 0 ? 1 / pricePerToken : 0;
+
+  // What the quote costs against that spot, as a percentage — the same measure Orca
+  // reports, and it includes the pool fee, since it is taken from the executed price
+  // rather than from depth alone. This route used to return a hardcoded 0, so a swap of
+  // any size through a Meteora pool claimed zero impact and a caller could not tell that
+  // from a real measurement.
+  const priceImpactFrom = (executionPrice: number): number =>
+    spotPrice > 0 ? Math.abs((executionPrice - spotPrice) / spotPrice) * 100 : 0;
+
   if (side === 'BUY') {
     const exactOutQuote = quote as SwapQuoteExactOut;
     const estimatedAmountIn = DecimalUtil.fromBN(exactOutQuote.inAmount, inputToken.decimals).toNumber();
@@ -116,7 +128,7 @@ async function formatSwapQuote(
       minAmountOut: amountOut,
       maxAmountIn,
       // CLMM-specific fields
-      priceImpactPct: 0, // TODO: Calculate actual price impact
+      priceImpactPct: priceImpactFrom(price),
     };
   } else {
     const exactInQuote = quote as SwapQuote;
@@ -127,9 +139,6 @@ async function formatSwapQuote(
     // For sell orders:
     // - Base token (input) decreases (negative)
     // - Quote token (output) increases (positive)
-    const baseTokenChange = -estimatedAmountIn;
-    const quoteTokenChange = estimatedAmountOut;
-
     const price = estimatedAmountOut / estimatedAmountIn;
 
     return {
@@ -144,104 +153,10 @@ async function formatSwapQuote(
       minAmountOut,
       maxAmountIn: estimatedAmountIn,
       // CLMM-specific fields
-      priceImpactPct: 0, // TODO: Calculate actual price impact
+      priceImpactPct: priceImpactFrom(price),
     };
   }
 }
-
-export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: MeteoraClmmQuoteSwapRequestType;
-    Reply: QuoteSwapResponseType;
-  }>(
-    '/quote-swap',
-    {
-      schema: {
-        description: 'Get swap quote for Meteora CLMM',
-        tags: ['/connector/meteora'],
-        querystring: MeteoraClmmQuoteSwapRequest,
-        response: {
-          200: QuoteSwapResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.query;
-        const networkUsed = network;
-
-        // Validate essential parameters
-        if (!baseToken || !quoteToken || !amount || !side) {
-          throw httpErrors.badRequest('baseToken, quoteToken, amount, and side are required');
-        }
-
-        const solana = await Solana.getInstance(networkUsed);
-
-        let poolAddressToUse = poolAddress;
-
-        // If poolAddress is not provided, look it up by token pair
-        if (!poolAddressToUse) {
-          // Resolve token symbols to get proper symbols for pool lookup
-          const baseTokenInfo = await solana.getToken(baseToken);
-          const quoteTokenInfo = await solana.getToken(quoteToken);
-
-          if (!baseTokenInfo || !quoteTokenInfo) {
-            throw httpErrors.badRequest(
-              sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
-            );
-          }
-
-          // Use PoolService to find pool by token pair
-          const { PoolService } = await import('../../../services/pool-service');
-          const poolService = PoolService.getInstance();
-
-          const pool = await poolService.getPool(
-            'meteora',
-            networkUsed,
-            'clmm',
-            baseTokenInfo.symbol,
-            quoteTokenInfo.symbol,
-          );
-
-          if (!pool) {
-            throw httpErrors.notFound(
-              `No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Meteora`,
-            );
-          }
-
-          poolAddressToUse = pool.address;
-        }
-
-        const result = await formatSwapQuote(
-          networkUsed,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
-          poolAddressToUse,
-          slippagePct,
-        );
-
-        try {
-          // Note: estimateGasSolana returns feePerComputeUnit, not gasLimit
-          await estimateGasSolana(networkUsed);
-        } catch (error) {
-          logger.warn(`Failed to estimate gas for swap quote: ${error.message}`);
-        }
-
-        return result;
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e; // Re-throw HttpErrors with original message
-        }
-        throw httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default quoteSwapRoute;
 
 /**
  * Resolves the counter ("quote") token for a DLMM pool given the base token. The standardized swap

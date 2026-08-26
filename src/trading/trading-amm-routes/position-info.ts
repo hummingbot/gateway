@@ -7,19 +7,24 @@ import { getPositionInfo as raydiumGetPositionInfo } from '../../connectors/rayd
 import { getPositionInfo as uniswapGetPositionInfo } from '../../connectors/uniswap/amm-routes/positionInfo';
 import { PositionInfo, PositionInfoSchema } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
+import {
+  AMM_CONNECTORS,
+  chainNetworkField,
+  connectorField,
+  defaultWallet,
+  resolveChainNetwork,
+  rethrowRouteError,
+} from '../common';
 
-import { AMM_CONNECTORS, parseChainNetwork, defaultWallet } from './common';
-
-const UnifiedAmmPositionInfoRequest = Type.Object({
-  connector: Type.String({ description: 'AMM connector (meteora, raydium, uniswap)', default: 'meteora' }),
-  chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    default: 'solana-mainnet-beta',
-  }),
-  poolAddress: Type.String({ description: 'Pool contract address' }),
-  walletAddress: Type.String({ description: 'Wallet address', default: defaultWallet }),
-});
+export const UnifiedAmmPositionInfoRequest = Type.Object(
+  {
+    connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+    chainNetwork: chainNetworkField(),
+    poolAddress: Type.String({ description: 'Pool contract address' }),
+    walletAddress: Type.String({ description: 'Wallet address', default: defaultWallet }),
+  },
+  { $id: 'AmmPositionInfoRequest', additionalProperties: false },
+);
 
 export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -38,7 +43,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { connector, chainNetwork, poolAddress, walletAddress } = request.query;
-        const { network } = parseChainNetwork(chainNetwork);
+        const { network } = resolveChainNetwork(chainNetwork, connector, 'amm');
         switch (connector) {
           case 'meteora':
             return await meteoraGetPositionInfo(network, poolAddress, walletAddress);
@@ -54,9 +59,7 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
             );
         }
       } catch (e: any) {
-        logger.error('Failed to get AMM position info:', e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to get position info');
+        rethrowRouteError(e, 'Failed to get AMM position info');
       }
     },
   );

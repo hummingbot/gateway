@@ -2,16 +2,13 @@ import { PoolState, SwapMode } from '@meteora-ag/cp-amm-sdk';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { QuoteSwapResponse, QuoteSwapResponseType } from '../../../schemas/amm-schema';
+import { QuoteSwapResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { MeteoraDamm } from '../meteora-damm';
 import { MeteoraConfig } from '../meteora.config';
-import { MeteoraAmmQuoteSwapRequest } from '../schemas';
 
 /**
  * A fully-resolved DAMM v2 swap quote. The BN fields are what the swap instruction consumes;
@@ -182,34 +179,3 @@ export async function quoteSwap(
     priceImpactPct: quote.priceImpactPct,
   };
 }
-
-export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: typeof MeteoraAmmQuoteSwapRequest.static;
-    Reply: QuoteSwapResponseType;
-  }>(
-    '/quote-swap',
-    {
-      schema: {
-        description: 'Get a swap quote for a Meteora DAMM v2 pool',
-        tags: ['/connector/meteora'],
-        querystring: MeteoraAmmQuoteSwapRequest,
-        response: {
-          200: QuoteSwapResponse,
-        },
-      },
-    },
-    async (request): Promise<QuoteSwapResponseType> => {
-      try {
-        const { network, poolAddress, baseToken, amount, side, slippagePct } = request.query;
-        return await quoteSwap(network, poolAddress, baseToken, side as 'BUY' | 'SELL', amount, slippagePct);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Failed to get swap quote');
-      }
-    },
-  );
-};
-
-export default quoteSwapRoute;

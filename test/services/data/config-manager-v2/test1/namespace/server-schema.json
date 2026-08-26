@@ -12,9 +12,5 @@
     "fastifyLogs": { "type": "boolean" }
   },
   "additionalProperties": false,
-  "required": [
-    "port",
-    "certificatePath",
-    "logPath"
-  ]
+  "required": ["port", "certificatePath", "logPath"]
 }

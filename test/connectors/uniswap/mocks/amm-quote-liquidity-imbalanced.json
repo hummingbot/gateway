@@ -1,5 +1,0 @@
-{
-  "statusCode": 500,
-  "error": "InternalServerError",
-  "message": "Failed to get liquidity quote"
-}

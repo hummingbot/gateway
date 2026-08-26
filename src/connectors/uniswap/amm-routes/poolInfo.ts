@@ -1,11 +1,8 @@
 import { Contract } from '@ethersproject/contracts';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { GetPoolInfoRequestType, PoolInfo, PoolInfoSchema } from '../../../schemas/amm-schema';
+import { PoolInfo } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
-import { UniswapAmmGetPoolInfoRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
 import { IUniswapV2PairABI } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
@@ -57,48 +54,3 @@ export async function getPoolInfo(network: string, poolAddress: string): Promise
     quoteTokenAmount,
   };
 }
-
-export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: GetPoolInfoRequestType;
-    Reply: Record<string, any>;
-  }>(
-    '/pool-info',
-    {
-      schema: {
-        description: 'Get AMM pool information from Uniswap V2',
-        tags: ['/connector/uniswap'],
-        querystring: UniswapAmmGetPoolInfoRequest,
-        response: {
-          200: PoolInfoSchema,
-        },
-      },
-    },
-    async (request): Promise<PoolInfo> => {
-      try {
-        const { poolAddress, network } = request.query;
-        return await getPoolInfo(network, poolAddress);
-      } catch (e) {
-        logger.error(`Error in pool-info route: ${e.message}`);
-        if (e.stack) {
-          logger.debug(`Stack trace: ${e.stack}`);
-        }
-
-        // Return appropriate error based on the error message
-        if (e.statusCode) {
-          throw e; // Already a formatted error carrying an HTTP status
-        } else if (e.message && e.message.includes('invalid address')) {
-          throw fastify.httpErrors.badRequest(`Invalid pool address`);
-        } else if (e.message && e.message.includes('not found')) {
-          logger.error('Not found error:', e);
-          throw fastify.httpErrors.notFound('Resource not found');
-        } else {
-          logger.error('Unexpected error fetching pool info:', e);
-          throw fastify.httpErrors.internalServerError('Failed to fetch pool info');
-        }
-      }
-    },
-  );
-};
-
-export default poolInfoRoute;

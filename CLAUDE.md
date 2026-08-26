@@ -251,19 +251,6 @@ Gateway implements RPC provider abstraction for optimized blockchain connectivit
   - Regional optimization (slc, ewr, lon, fra, ams, sg, tyo)
   - Connection warming for reduced latency
 
-### Testing RPC Providers
-Live integration tests in `scripts/`:
-- `test-infura-live.js`: Test Infura integration with real API key
-- `test-helius-live.js`: Test Helius integration with real API key
-- `test-provider-switching.js`: Test provider switching functionality
-
-Run tests:
-```bash
-# Requires configured API keys in conf/rpc/*.yml
-node scripts/test-infura-live.js
-node scripts/test-helius-live.js
-```
-
 ### Adding New RPC Provider
 1. Create config template: `src/templates/rpc/{provider}.yml`
 2. Create JSON schema: `src/templates/namespace/{provider}-schema.json`
@@ -271,8 +258,7 @@ node scripts/test-helius-live.js
 4. Implement service class: `src/chains/{chain}/{provider}-service.ts`
 5. Update chain connector to support provider selection
 6. Add `rpcProvider` enum to network schema
-7. Create live integration test script
-8. Document configuration and usage
+7. Document configuration and usage
 
 ## Hummingbot Gateway Endpoint Standardization
 - This repo standardized DEX and chain endpoints that are used by Hummingbot strategies. See this branch for the matching code, especially the Gateway connector classes https://github.com/hummingbot/hummingbot/tree/development

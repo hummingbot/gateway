@@ -1,21 +1,19 @@
 import { Contract } from '@ethersproject/contracts';
 import { CurrencyAmount } from '@pancakeswap/sdk';
-import { NonfungiblePositionManager } from '@pancakeswap/v3-sdk';
+import { NonfungiblePositionManager, computePoolAddress } from '@pancakeswap/v3-sdk';
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 import { Address } from 'viem';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  CollectFeesRequestType,
-  CollectFeesRequest,
-  CollectFeesResponseType,
-  CollectFeesResponse,
-} from '../../../schemas/clmm-schema';
+import { TransactionStatus } from '../../../schemas/chain-schema';
+import { CollectFeesResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
-import { POSITION_MANAGER_ABI, getPancakeswapV3NftManagerAddress } from '../pancakeswap.contracts';
+import {
+  POSITION_MANAGER_ABI,
+  getPancakeswapV3NftManagerAddress,
+  getPancakeswapV3PoolDeployerAddress,
+} from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
 
 // Default gas limit for CLMM collect fees operations
@@ -53,6 +51,16 @@ export async function collectFees(
 
   const token0 = await pancakeswap.getToken(position.token0);
   const token1 = await pancakeswap.getToken(position.token1);
+
+  // The pool this position belongs to, derived from the same inputs position-info
+  // uses. The unified route is position-addressed and never receives a pool, so
+  // deriving it here is what lets the response name the venue it acted on.
+  const poolAddress = computePoolAddress({
+    deployerAddress: getPancakeswapV3PoolDeployerAddress(network),
+    tokenA: token0,
+    tokenB: token1,
+    fee: position.fee,
+  });
 
   const isBaseToken0 =
     token0.symbol === 'WETH' ||
@@ -94,9 +102,12 @@ export async function collectFees(
   const txParams = await ethereum.prepareGasOptions(undefined, CLMM_COLLECT_FEES_GAS_LIMIT);
   txParams.value = BigNumber.from(value.toString());
   const tx = await positionManagerWithSigner.multicall([calldata], txParams);
-  const receipt = await ethereum.handleTransactionExecution(tx);
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
+  if (!outcome.confirmed) {
+    // Still pending — the fee amounts below were read before sending and have not moved.
+    return { signature: outcome.signature, status: TransactionStatus.PENDING };
+  }
 
-  const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
   const token0FeeAmount = formatTokenAmount(feeAmount0.toString(), token0.decimals);
   const token1FeeAmount = formatTokenAmount(feeAmount1.toString(), token1.decimals);
 
@@ -104,70 +115,13 @@ export async function collectFees(
   const quoteFeeAmountCollected = isBaseToken0 ? token1FeeAmount : token0FeeAmount;
 
   return {
-    signature: receipt.transactionHash,
-    status: receipt.status,
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     data: {
-      fee: gasFee,
+      poolAddress,
+      fee: outcome.fee,
       baseFeeAmountCollected,
       quoteFeeAmountCollected,
     },
   };
 }
-
-export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
-  fastify.post<{
-    Body: CollectFeesRequestType;
-    Reply: CollectFeesResponseType;
-  }>(
-    '/collect-fees',
-    {
-      schema: {
-        description: 'Collect fees from a Pancakeswap V3 position',
-        tags: ['/connector/pancakeswap'],
-        body: {
-          ...CollectFeesRequest,
-          properties: {
-            ...CollectFeesRequest.properties,
-            network: { type: 'string', default: 'bsc', examples: ['bsc'] },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            positionAddress: {
-              type: 'string',
-              description: 'Position NFT token ID',
-              examples: ['1234'],
-            },
-          },
-        },
-        response: {
-          200: CollectFeesResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress: requestedWalletAddress, positionAddress } = request.body;
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          const pancakeswap = await Pancakeswap.getInstance(network);
-          walletAddress = await pancakeswap.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-        }
-
-        return await collectFees(network, walletAddress, positionAddress);
-      } catch (e: any) {
-        logger.error('Failed to collect fees:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw httpErrors.internalServerError('Failed to collect fees');
-      }
-    },
-  );
-};
-
-export default collectFeesRoute;

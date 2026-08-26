@@ -1,16 +1,12 @@
 import { TxVersion } from '@raydium-io/raydium-sdk-v2';
-import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { AddLiquidityResponse, AddLiquidityResponseType } from '../../../schemas/clmm-schema';
-import { httpErrors } from '../../../services/error-handler';
+import { AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
-import { RaydiumClmmAddLiquidityRequest } from '../schemas';
 
 import { quotePosition } from './quotePosition';
 
@@ -34,7 +30,7 @@ export async function addLiquidity(
   const position = await raydium.getClmmPosition(positionAddress);
   if (!position) throw new Error('Position not found');
 
-  const [poolInfo, poolKeys] = await raydium.getClmmPoolfromAPI(positionInfo.poolAddress);
+  const [poolInfo] = await raydium.getClmmPoolfromAPI(positionInfo.poolAddress);
   // const clmmPool = await raydium.getClmmPoolfromRPC(positionInfo.poolAddress);
 
   const baseToken = await solana.getToken(poolInfo.mintA.address);
@@ -49,7 +45,6 @@ export async function addLiquidity(
     quoteTokenAmount,
     slippagePct,
   );
-  console.log('quotePositionResponse', quotePositionResponse);
   logger.info('Adding liquidity to Raydium CLMM position...');
 
   // Use hardcoded compute units for add liquidity
@@ -81,10 +76,9 @@ export async function addLiquidity(
   // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and
   // simulates internally).
   const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Retrying re-fetch; throws the shared landed-but-failed error if the transaction
+  // landed with an error, so txData existing below really means "confirmed".
+  const txData = await solana.getConfirmedTransactionData(signature);
   const confirmed = txData !== null;
 
   if (confirmed && txData) {
@@ -112,7 +106,6 @@ export async function addLiquidity(
     const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, tokenAddresses);
 
     // Parse balance changes
-    const solChangeIndex = 0;
     const baseChangeIndex = isBaseSol ? 0 : 1;
     const quoteChangeIndex = isQuoteSol ? 0 : isBaseSol ? 1 : 2;
 
@@ -123,9 +116,16 @@ export async function addLiquidity(
       signature,
       status: 1, // CONFIRMED
       data: {
+        // The pool this position belongs to, already loaded here. The unified route is
+        // position-addressed and never receives it, so this is the only place it can
+        // come from without a second lookup.
+        poolAddress: position.poolId.toBase58(),
         fee: totalFee / 1e9,
-        baseTokenAmountAdded: baseTokenBalanceChange,
-        quoteTokenAmountAdded: quoteTokenBalanceChange,
+        // Magnitudes, as everywhere else: a deposit's signed wallet delta is negative,
+        // and `…Added` naming a negative number is wrong at the source. Adding to an
+        // existing position locks no new rent, so there is nothing to back out.
+        baseTokenAmountAdded: Math.abs(baseTokenBalanceChange),
+        quoteTokenAmountAdded: Math.abs(quoteTokenBalanceChange),
       },
     };
   } else {
@@ -136,43 +136,3 @@ export async function addLiquidity(
     };
   }
 }
-
-export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof RaydiumClmmAddLiquidityRequest>;
-    Reply: AddLiquidityResponseType;
-  }>(
-    '/add-liquidity',
-    {
-      schema: {
-        description: 'Add liquidity to existing Raydium CLMM position',
-        tags: ['/connector/raydium'],
-        body: RaydiumClmmAddLiquidityRequest,
-        response: {
-          200: AddLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, positionAddress, baseTokenAmount, quoteTokenAmount, slippagePct } =
-          request.body;
-
-        return await addLiquidity(
-          network,
-          walletAddress,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default addLiquidityRoute;

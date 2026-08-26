@@ -12,7 +12,7 @@ import {
   AddHardwareWalletRequestSchema,
   AddHardwareWalletResponseSchema,
 } from '../schemas';
-import { validateChainName, getHardwareWallets, saveHardwareWallets, HardwareWalletData } from '../utils';
+import { validateChainName, getHardwareWallets, saveHardwareWallets } from '../utils';
 
 // Maximum number of account indices to check when searching for an address
 const MAX_ACCOUNTS_TO_CHECK = 8;

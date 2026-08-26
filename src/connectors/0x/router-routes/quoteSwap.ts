@@ -1,17 +1,14 @@
 import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { ZeroX } from '../0x';
 import { ZeroXConfig } from '../0x.config';
-import { ZeroXQuoteSwapRequest, ZeroXQuoteSwapResponse } from '../schemas';
-
+import { ZeroXQuoteSwapResponse } from '../schemas';
 async function quoteSwap(
   network: string,
   baseToken: string,
@@ -167,56 +164,5 @@ async function quoteSwap(
 
 export { quoteSwap };
 
-export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: QuoteSwapRequestType;
-    Reply: Static<typeof ZeroXQuoteSwapResponse>;
-  }>(
-    '/quote-swap',
-    {
-      schema: {
-        description:
-          'Get a swap quote from 0x. Use indicativePrice=true for price discovery only, or false/undefined for executable quotes',
-        tags: ['/connector/0x'],
-        querystring: ZeroXQuoteSwapRequest,
-        response: { 200: ZeroXQuoteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, baseToken, quoteToken, amount, side, slippagePct, indicativePrice, takerAddress } =
-          request.query as typeof ZeroXQuoteSwapRequest._type;
-
-        return await quoteSwap(
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
-          slippagePct,
-          indicativePrice ?? true,
-          takerAddress,
-        );
-      } catch (e: any) {
-        if (e.statusCode) throw e;
-        logger.error('Error getting 0x quote:', e.message || e);
-
-        // Handle specific error cases
-        if (e.message?.includes('0x API key not configured')) {
-          throw httpErrors.badRequest(e.message);
-        }
-        if (e.message?.includes('0x API Error')) {
-          throw httpErrors.badRequest(e.message);
-        }
-
-        // Return the actual error message instead of generic one
-        throw httpErrors.internalServerError(e.message || 'Failed to get quote');
-      }
-    },
-  );
-};
-
 // Export quote cache for use in execute-quote
 export { quoteCache };
-
-export default quoteSwapRoute;

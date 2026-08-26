@@ -220,7 +220,7 @@ export class Raydium {
       }
 
       const poolIdString = position.poolId.toBase58();
-      const [poolInfo, poolKeys] = await this.getClmmPoolfromAPI(poolIdString);
+      const [poolInfo] = await this.getClmmPoolfromAPI(poolIdString);
 
       const epochInfo = await this.solana.connection.getEpochInfo();
 
@@ -323,7 +323,12 @@ export class Raydium {
           address: poolAddress,
           baseTokenAddress: rawPool[poolAddress].baseMint.toString(),
           quoteTokenAddress: rawPool[poolAddress].quoteMint.toString(),
-          feePct: Number(rawPool[poolAddress].tradeFeeNumerator) / Number(rawPool[poolAddress].tradeFeeDenominator),
+          // feePct is a PERCENT on every other surface (getClmmPoolInfo above, Meteora,
+          // Orca), so the numerator/denominator ratio — a fraction — is scaled to match.
+          // Unscaled this reported 0.0025 for a pool charging 0.25%, and consumers render
+          // the field literally.
+          feePct:
+            (Number(rawPool[poolAddress].tradeFeeNumerator) / Number(rawPool[poolAddress].tradeFeeDenominator)) * 100,
           price: Number(rawPool[poolAddress].poolPrice),
           baseTokenAmount: Number(rawPool[poolAddress].mintAAmount) / 10 ** Number(rawPool[poolAddress].baseDecimal),
           quoteTokenAmount: Number(rawPool[poolAddress].mintBAmount) / 10 ** Number(rawPool[poolAddress].quoteDecimal),
@@ -337,7 +342,9 @@ export class Raydium {
           address: poolAddress,
           baseTokenAddress: rawPool[poolAddress].mintA.toString(),
           quoteTokenAddress: rawPool[poolAddress].mintB.toString(),
-          feePct: Number(rawPool[poolAddress].configInfo?.tradeFeeRate || 0),
+          // CPMM's tradeFeeRate is in millionths (2500 = 0.25%); /10000 yields the percent,
+          // the same conversion getClmmPoolInfo applies to the CLMM config's rate.
+          feePct: Number(rawPool[poolAddress].configInfo?.tradeFeeRate || 0) / 10000,
           price: Number(rawPool[poolAddress].poolPrice),
           baseTokenAmount: Number(rawPool[poolAddress].baseReserve) / 10 ** Number(rawPool[poolAddress].mintDecimalA),
           quoteTokenAmount: Number(rawPool[poolAddress].quoteReserve) / 10 ** Number(rawPool[poolAddress].mintDecimalB),

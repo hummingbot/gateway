@@ -1,17 +1,14 @@
 import { DecimalUtil } from '@orca-so/common-sdk';
-import { Static } from '@sinclair/typebox';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { OpenPositionResponse, OpenPositionResponseType } from '../../../schemas/clmm-schema';
+import { OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 import { MeteoraConfig } from '../meteora.config';
-import { MeteoraClmmOpenPositionRequest } from '../schemas';
 
 // Using Fastify's native error handling
 
@@ -174,10 +171,9 @@ export async function openPosition(
   ]);
 
   // Get transaction data for confirmation
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Retrying re-fetch; throws the shared landed-but-failed error if the transaction
+  // landed with an error, so txData existing below really means "confirmed".
+  const txData = await solana.getConfirmedTransactionData(signature);
 
   const confirmed = txData !== null;
 
@@ -205,15 +201,15 @@ export async function openPosition(
     let baseAmountAdded = Math.abs(balanceChanges[0]);
     let quoteAmountAdded = Math.abs(balanceChanges[1]);
 
-    // When SOL is base/quote, wallet balance change includes: liquidity + rent + fee
-    // We need to subtract rent to get actual liquidity added
+    // When SOL is base/quote, the wallet paid liquidity + rent on that side, so back the
+    // rent out to leave the liquidity added. The transaction fee needs no correction:
+    // extractBalanceChangesAndFee nets it out for the fee payer and reports it separately,
+    // so subtracting it again would understate the amount by one fee.
     if (tokenXSymbol === 'SOL') {
-      // SOL is base token - subtract rent from balance change to get actual liquidity
-      baseAmountAdded = baseAmountAdded - positionRent - txFee;
+      baseAmountAdded = baseAmountAdded - positionRent;
       if (baseAmountAdded < 0) baseAmountAdded = 0;
     } else if (tokenYSymbol === 'SOL') {
-      // SOL is quote token - subtract rent from balance change to get actual liquidity
-      quoteAmountAdded = quoteAmountAdded - positionRent - txFee;
+      quoteAmountAdded = quoteAmountAdded - positionRent;
       if (quoteAmountAdded < 0) quoteAmountAdded = 0;
     }
 
@@ -239,58 +235,3 @@ export async function openPosition(
     };
   }
 }
-
-export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof MeteoraClmmOpenPositionRequest>;
-    Reply: OpenPositionResponseType;
-  }>(
-    '/open-position',
-    {
-      schema: {
-        description: 'Open a new Meteora position',
-        tags: ['/connector/meteora'],
-        body: MeteoraClmmOpenPositionRequest,
-        response: {
-          200: OpenPositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network,
-          walletAddress,
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-          strategyType,
-        } = request.body;
-        const networkToUse = network;
-
-        return await openPosition(
-          networkToUse,
-          walletAddress,
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-          strategyType,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e; // Re-throw HttpErrors with original message
-        }
-        throw httpErrors.internalServerError(e.message || 'Internal server error');
-      }
-    },
-  );
-};
-
-export default openPositionRoute;

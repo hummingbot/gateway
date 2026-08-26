@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import { parseChainNetwork } from '../../services/chain-network';
 import { PoolService } from '../../services/pool-service';
 import { PoolListRequestSchema, PoolListResponseSchema } from '../schemas';
 import { PoolListRequest } from '../types';
@@ -18,7 +19,8 @@ export const listPoolsRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { chain, network, connector, type, search } = request.query;
+      const { chainNetwork, connector, type, search } = request.query;
+      const { chain, network } = parseChainNetwork(chainNetwork);
       const poolService = PoolService.getInstance();
 
       try {

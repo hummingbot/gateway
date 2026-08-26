@@ -110,6 +110,37 @@ describe('Solana Error Parser', () => {
     });
 
     describe('Orca Whirlpool errors', () => {
+      it('should parse Orca token minimum error 6018 as slippage, not math overflow', () => {
+        const errorMessage = `Program whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc failed: custom program error: 0x1782`;
+        const result = parseSolanaError(errorMessage);
+
+        expect(result.type).toBe('SLIPPAGE_EXCEEDED');
+        expect(result.program).toBe('Orca Whirlpool');
+        expect(result.errorCode).toBe(6018);
+        expect(result.message).toContain('minimum token amount');
+      });
+
+      it('attributes a custom error to the FAILING program, not the first invoked one', () => {
+        // Simulation-shaped message: full logs open with prelude programs
+        // (ComputeBudget), and the Whirlpool failure comes later. The parser must
+        // consult Orca's table (6018 = TokenMinSubceeded → slippage), not fall
+        // through to the generic map's MATH_OVERFLOW.
+        const errorMessage = [
+          'Transaction simulation failed: ',
+          'Error: {"InstructionError":[3,{"Custom":6018}]}',
+          'Program Logs: Program ComputeBudget111111111111111111111111111111 invoke [1]',
+          'Program ComputeBudget111111111111111111111111111111 success',
+          'Program whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc invoke [1]',
+          'Program log: Error: TokenMinSubceeded',
+          'Program whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc failed: custom program error: 0x1782',
+        ].join('\n');
+        const result = parseSolanaError(errorMessage);
+
+        expect(result.type).toBe('SLIPPAGE_EXCEEDED');
+        expect(result.program).toBe('Orca Whirlpool');
+        expect(result.errorCode).toBe(6018);
+      });
+
       it('should parse Orca slippage error via program ID string match', () => {
         const errorMessage = `Program whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc failed: custom program error: 0x178d`;
         const result = parseSolanaError(errorMessage);

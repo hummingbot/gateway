@@ -4,6 +4,13 @@ import { FastifyInstance } from 'fastify';
 import './mocks/app-mocks';
 
 import { gatewayApp } from '../src/app';
+import { AMM_CONNECTORS, CLMM_CONNECTORS, ROUTER_CONNECTORS } from '../src/trading/connector-registry';
+
+// The route table is now unified: the trading type is a path segment and the
+// connector is a parameter, so there is one set of routes rather than one set per
+// connector. These tests guard that shape — that every connector Gateway advertises
+// is reachable through the surface for its trading type, that each unified route is
+// registered, and that the per-connector paths they replaced are gone.
 
 describe('App Integration - Route Registration', () => {
   let fastify: FastifyInstance;
@@ -17,144 +24,120 @@ describe('App Integration - Route Registration', () => {
     await fastify.close();
   });
 
-  describe('Connector Route Structure', () => {
-    it('should register routes based on connector trading types', async () => {
-      // Get the list of connectors and their trading types
-      const connectorsResponse = await fastify.inject({
-        method: 'GET',
-        url: '/config/connectors',
-      });
+  const connectors = async () => {
+    const response = await fastify.inject({ method: 'GET', url: '/config/connectors' });
+    return JSON.parse(response.body).connectors as Array<{ name: string; trading_types: string[] }>;
+  };
 
-      const { connectors } = JSON.parse(connectorsResponse.body);
+  describe('Connector coverage', () => {
+    it('backs every advertised trading type with a unified surface', async () => {
+      const registries: Record<string, string[]> = {
+        router: ROUTER_CONNECTORS,
+        clmm: CLMM_CONNECTORS,
+        amm: AMM_CONNECTORS,
+      };
 
-      // Test each connector has the expected routes based on trading types
-      for (const connector of connectors) {
-        const { name, trading_types } = connector;
-
-        // Test router routes
-        if (trading_types.includes('router')) {
-          // Test quote-swap for all router connectors
-          const routerResponse = await fastify.inject({
-            method: 'GET',
-            url: `/connectors/${name}/router/quote-swap`,
-          });
-          // Should not be 404 if the route exists
-          expect(routerResponse.statusCode).not.toBe(404);
-        }
-
-        // Test AMM routes
-        if (trading_types.includes('amm')) {
-          const ammResponse = await fastify.inject({
-            method: 'GET',
-            url: `/connectors/${name}/amm/pool-info`,
-          });
-          expect(ammResponse.statusCode).not.toBe(404);
-        }
-
-        // Test CLMM routes
-        if (trading_types.includes('clmm')) {
-          const clmmResponse = await fastify.inject({
-            method: 'GET',
-            url: `/connectors/${name}/clmm/pool-info`,
-          });
-          expect(clmmResponse.statusCode).not.toBe(404);
+      for (const { name, trading_types } of await connectors()) {
+        for (const type of trading_types) {
+          expect(registries[type]).toContain(name);
         }
       }
     });
-  });
 
-  describe('Trading Type Validation', () => {
-    it('should return valid trading types for all connectors', async () => {
-      const response = await fastify.inject({
-        method: 'GET',
-        url: '/config/connectors',
-      });
-
-      const data = JSON.parse(response.body);
-
-      // Validate all connectors have valid trading types
-      data.connectors.forEach((connector: any) => {
-        expect(connector.trading_types).toBeDefined();
+    it('advertises only valid, non-duplicated trading types', async () => {
+      for (const connector of await connectors()) {
         expect(Array.isArray(connector.trading_types)).toBe(true);
         expect(connector.trading_types.length).toBeGreaterThan(0);
-
-        // All trading types should be valid
-        connector.trading_types.forEach((type: string) => {
-          expect(['router', 'amm', 'clmm']).toContain(type);
-        });
-
-        // No duplicates
-        const uniqueTypes = [...new Set(connector.trading_types)];
-        expect(uniqueTypes.length).toBe(connector.trading_types.length);
-      });
+        connector.trading_types.forEach((type) => expect(['router', 'amm', 'clmm']).toContain(type));
+        expect(new Set(connector.trading_types).size).toBe(connector.trading_types.length);
+      }
     });
   });
 
-  describe('Route Structure Validation', () => {
-    it('should return 404 for unsupported trading type routes', async () => {
-      // Get connector information
-      const connectorsResponse = await fastify.inject({
-        method: 'GET',
-        url: '/config/connectors',
-      });
+  describe('Unified route table', () => {
+    // Ask the router directly. Injecting and checking for a non-404 would be wrong:
+    // a registered route can legitimately answer 404 (an unresolvable pool, say).
+    const registered = (method: 'GET' | 'POST', url: string) => (fastify as any).hasRoute({ method, url });
 
-      const { connectors } = JSON.parse(connectorsResponse.body);
+    it.each([
+      ['GET', '/trading/router/quote-swap'],
+      ['POST', '/trading/router/execute-swap'],
+      ['POST', '/trading/router/execute-quote'],
+      ['GET', '/trading/clmm/quote-swap'],
+      ['POST', '/trading/clmm/execute-swap'],
+      ['GET', '/trading/clmm/pool-info'],
+      ['GET', '/trading/clmm/position-info'],
+      ['GET', '/trading/clmm/positions-owned'],
+      ['GET', '/trading/clmm/quote-liquidity'],
+      ['GET', '/trading/clmm/fetch-pools'],
+      ['POST', '/trading/clmm/open'],
+      ['POST', '/trading/clmm/add'],
+      ['POST', '/trading/clmm/remove'],
+      ['POST', '/trading/clmm/collect-fees'],
+      ['POST', '/trading/clmm/close'],
+      ['POST', '/trading/clmm/create-pool'],
+      ['GET', '/trading/amm/quote-swap'],
+      ['POST', '/trading/amm/execute-swap'],
+      ['GET', '/trading/amm/pool-info'],
+      ['GET', '/trading/amm/position-info'],
+      ['GET', '/trading/amm/positions-owned'],
+      ['GET', '/trading/amm/quote-liquidity'],
+      ['POST', '/trading/amm/add'],
+      ['POST', '/trading/amm/remove'],
+      ['POST', '/trading/amm/create-pool'],
+    ] as Array<['GET' | 'POST', string]>)('registers %s %s', async (method, url) => {
+      expect(registered(method, url)).toBe(true);
+    });
 
-      // Test that connectors without certain trading types return 404
-      for (const connector of connectors) {
-        const { name, trading_types } = connector;
+    // Two routes the AMM surface deliberately does not have. `open` was a synonym for
+    // `add` without a position address, and `close` for `remove` at 100% — which now
+    // closes the position account itself, so nothing is lost by their absence. Asserted
+    // so re-adding one is a decision rather than a drift back.
+    it.each([
+      ['POST', '/trading/amm/open'],
+      ['POST', '/trading/amm/close'],
+    ] as Array<['GET' | 'POST', string]>)('does not register %s %s', async (method, url) => {
+      expect(registered(method, url)).toBe(false);
+    });
 
-        // Test router routes if not supported
-        if (!trading_types.includes('router')) {
-          const response = await fastify.inject({
-            method: 'POST',
-            url: `/connectors/${name}/router/quote`,
-            payload: {
-              chain: connector.chain,
-              network: connector.networks[0],
-              baseToken: 'TEST',
-              quoteToken: 'TEST2',
-              amount: 1,
-              side: 'SELL',
-            },
-          });
-          expect(response.statusCode).toBe(404);
-        }
+    it.each([
+      ['GET', '/chains/solana/status'],
+      ['GET', '/chains/ethereum/status'],
+      ['GET', '/chains/solana/estimate-gas'],
+      ['POST', '/chains/solana/balances'],
+      ['POST', '/chains/ethereum/poll'],
+      ['POST', '/chains/solana/wrap'],
+      ['POST', '/chains/solana/unwrap'],
+      // EVM-only operations keep chain-specific paths rather than 400ing on Solana.
+      ['POST', '/chains/ethereum/allowances'],
+      ['POST', '/chains/ethereum/approve'],
+    ] as Array<['GET' | 'POST', string]>)('registers %s %s', async (method, url) => {
+      expect(registered(method, url)).toBe(true);
+    });
 
-        // Test AMM routes if not supported
-        if (!trading_types.includes('amm')) {
-          const response = await fastify.inject({
-            method: 'POST',
-            url: `/connectors/${name}/amm/quote`,
-            payload: {
-              chain: connector.chain,
-              network: connector.networks[0],
-              baseToken: 'TEST',
-              quoteToken: 'TEST2',
-              amount: 1,
-              side: 'SELL',
-            },
-          });
-          expect(response.statusCode).toBe(404);
-        }
+    it('serves chain routes for any chain through one parameterized path', async () => {
+      // Not a per-chain registration: the path matches for any chain and an unknown one
+      // is rejected with a 400, rather than 404ing at the router. The rejection now comes
+      // from the `chain` parameter's enum — added so Swagger renders it as a dropdown —
+      // which fires before the handler, so the message is the same schema-validation one
+      // an unknown `connector` produces rather than resolveChain's prose. The allowed
+      // chains are in the spec and the dropdown.
+      const response = await fastify.inject({ method: 'GET', url: '/chains/dogecoin/status' });
+      expect(response.statusCode).toBe(400);
+      expect(response.json().message).toContain('must be equal to one of the allowed values');
+    });
+  });
 
-        // Test CLMM routes if not supported
-        if (!trading_types.includes('clmm')) {
-          const response = await fastify.inject({
-            method: 'POST',
-            url: `/connectors/${name}/clmm/quote`,
-            payload: {
-              chain: connector.chain,
-              network: connector.networks[0],
-              baseToken: 'TEST',
-              quoteToken: 'TEST2',
-              amount: 1,
-              side: 'SELL',
-            },
-          });
-          expect(response.statusCode).toBe(404);
-        }
-      }
+  describe('Replaced routes are gone', () => {
+    it.each([
+      '/connectors/jupiter/router/quote-swap',
+      '/connectors/meteora/clmm/pool-info',
+      '/connectors/raydium/amm/pool-info',
+      '/connectors/orca/clmm/fetch-pools',
+      '/trading/swap/quote',
+    ])('404s on %s', async (url) => {
+      const response = await fastify.inject({ method: 'GET', url });
+      expect(response.statusCode).toBe(404);
     });
   });
 });

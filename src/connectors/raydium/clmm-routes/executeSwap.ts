@@ -1,15 +1,13 @@
 import { ReturnTypeComputeAmountOutFormat, ReturnTypeComputeAmountOutBaseOut } from '@raydium-io/raydium-sdk-v2';
 import { PublicKey, VersionedTransaction } from '@solana/web3.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { ExecuteSwapResponse, ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
+import { ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
-import { RaydiumClmmExecuteSwapRequest, RaydiumClmmExecuteSwapRequestType } from '../schemas';
 
 import { getSwapQuote, resolveCounterToken } from './quoteSwap';
 
@@ -154,20 +152,19 @@ export async function executeSwap(
   // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and
   // simulates internally).
   const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Re-fetch with retry; a landed-but-failed transaction throws instead of being
+  // misreported as confirmed or pending.
+  const txData = await solana.getConfirmedTransactionData(signature);
 
   // Handle confirmation status
   const result = await solana.handleConfirmation(
     signature,
-    txData !== null,
     txData,
     inputToken.address,
     outputToken.address,
     walletAddress,
     side,
+    slippagePct,
   );
 
   if (result.status === 1) {
@@ -178,80 +175,3 @@ export async function executeSwap(
 
   return result as ExecuteSwapResponseType;
 }
-
-export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: RaydiumClmmExecuteSwapRequestType;
-    Reply: ExecuteSwapResponseType;
-  }>(
-    '/execute-swap',
-    {
-      schema: {
-        description: 'Execute a swap on Raydium CLMM',
-        tags: ['/connector/raydium'],
-        body: RaydiumClmmExecuteSwapRequest,
-        response: { 200: ExecuteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body;
-        const networkToUse = network;
-
-        // If no pool address provided, find default pool
-        let poolAddressToUse = poolAddress;
-        if (!poolAddressToUse) {
-          const solana = await Solana.getInstance(networkToUse);
-
-          // Resolve token symbols to get proper symbols for pool lookup
-          const baseTokenInfo = await solana.getToken(baseToken);
-          const quoteTokenInfo = await solana.getToken(quoteToken);
-
-          if (!baseTokenInfo || !quoteTokenInfo) {
-            throw httpErrors.badRequest(
-              sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
-            );
-          }
-
-          // Use PoolService to find pool by token pair
-          const { PoolService } = await import('../../../services/pool-service');
-          const poolService = PoolService.getInstance();
-
-          const pool = await poolService.getPool(
-            'raydium',
-            networkToUse,
-            'clmm',
-            baseTokenInfo.symbol,
-            quoteTokenInfo.symbol,
-          );
-
-          if (!pool) {
-            throw httpErrors.notFound(
-              `No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Raydium`,
-            );
-          }
-
-          poolAddressToUse = pool.address;
-        }
-
-        return await executeSwap(
-          networkToUse,
-          walletAddress,
-          poolAddressToUse,
-          baseToken,
-          side as 'BUY' | 'SELL',
-          amount,
-          slippagePct,
-        );
-      } catch (e) {
-        // Preserve the original error if it's a FastifyError
-        if (e.statusCode) {
-          throw e;
-        }
-        throw httpErrors.internalServerError('Failed to get swap quote');
-      }
-    },
-  );
-};
-
-export default executeSwapRoute;

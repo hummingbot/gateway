@@ -10,7 +10,7 @@ jest.mock('../../../../src/connectors/pancakeswap-sol/pancakeswap-sol');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { positionsOwnedRoute } = await import('../../../../src/connectors/pancakeswap-sol/clmm-routes/positionsOwned');
+  const { positionsOwnedRoute } = await import('../../../../src/trading/clmm/positions-owned');
   await server.register(positionsOwnedRoute);
   return server;
 };
@@ -122,7 +122,8 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'pancakeswap-sol',
         walletAddress: mockWalletAddress,
       },
     });
@@ -156,7 +157,8 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'pancakeswap-sol',
         walletAddress: mockWalletAddress,
       },
     });
@@ -172,20 +174,9 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'pancakeswap-sol',
         walletAddress: 'invalid-address',
-      },
-    });
-
-    expect(response.statusCode).toBe(400);
-  });
-
-  it('should return 400 when walletAddress is missing', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/positions-owned',
-      query: {
-        network: 'mainnet-beta',
       },
     });
 
@@ -220,7 +211,8 @@ describe('GET /positions-owned', () => {
       method: 'GET',
       url: '/positions-owned',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'pancakeswap-sol',
         walletAddress: mockWalletAddress,
       },
     });

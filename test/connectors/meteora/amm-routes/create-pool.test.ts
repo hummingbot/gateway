@@ -6,7 +6,7 @@ jest.mock('../../../../src/connectors/meteora/meteora-damm');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { createPoolRoute } = await import('../../../../src/connectors/meteora/amm-routes/createPool');
+  const { createPoolRoute } = await import('../../../../src/trading/trading-amm-routes/create-pool');
   await server.register(createPoolRoute);
   return server;
 };
@@ -33,7 +33,8 @@ describe('POST /create-pool (Meteora DAMM v2)', () => {
       method: 'POST',
       url: '/create-pool',
       payload: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         walletAddress: '82Sg8kkChhY7Qb2ptR4uLGqLg7Zm3z9v9tQ6Zb6Jk4iZ',
         baseToken: 'SOL',
         quoteToken: 'USDC',

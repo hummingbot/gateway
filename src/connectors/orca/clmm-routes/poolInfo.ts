@@ -1,20 +1,13 @@
 import { sqrtPriceToPrice } from '@orca-so/whirlpools-core';
 import { PublicKey } from '@solana/web3.js';
 import { fetchAllMint } from '@solana-program/token-2022';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
 import { PoolInfo } from '../../../schemas/clmm-schema';
-import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
 import { computeOrcaBinDistribution } from '../orca.utils';
-import {
-  OrcaClmmGetPoolInfoRequest,
-  OrcaClmmGetPoolInfoRequestType,
-  OrcaPoolInfo,
-  OrcaPoolInfoSchema,
-} from '../schemas';
-
+import { OrcaPoolInfo } from '../schemas';
 export async function getPoolInfo(
   fastify: FastifyInstance,
   network: string,
@@ -100,36 +93,3 @@ export async function getPoolInfo(
 
   return poolInfo;
 }
-
-export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: OrcaClmmGetPoolInfoRequestType;
-    Reply: OrcaPoolInfo;
-  }>(
-    '/pool-info',
-    {
-      schema: {
-        description: 'Get pool information for a Orca pool',
-        tags: ['/connector/orca'],
-        querystring: OrcaClmmGetPoolInfoRequest,
-        response: {
-          200: OrcaPoolInfoSchema,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { poolAddress, binCount = 0, network } = request.query;
-        return (await getPoolInfo(fastify, network, poolAddress, binCount)) as OrcaPoolInfo;
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e; // Re-throw HttpErrors with original message
-        }
-        throw fastify.httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default poolInfoRoute;

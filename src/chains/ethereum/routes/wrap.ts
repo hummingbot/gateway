@@ -1,11 +1,11 @@
 import { ethers, utils } from 'ethers';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
+import { TransactionStatus } from '../../../schemas/chain-schema';
 import { bigNumberWithDecimalToStr } from '../../../services/base';
 import { logger } from '../../../services/logger';
-import { Ethereum } from '../ethereum';
+import { Ethereum, EthereumTransactionOutcome } from '../ethereum';
 import { EthereumLedger } from '../ethereum-ledger';
-import { WrapRequestSchema, WrapResponseSchema, WrapRequestType, WrapResponseType } from '../schemas';
 
 // Gas limit for wrap operations. Plain WETH9 deposit() costs ~27k, but networks
 // fronting WETH with a proxy (e.g. robinhoodchain) need appreciably more.
@@ -73,9 +73,9 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
   const amountInWei = utils.parseEther(amount);
 
   try {
-    let transaction;
+    let transaction: ethers.providers.TransactionResponse;
     let nonce: number;
-    let receipt;
+    let outcome: EthereumTransactionOutcome;
 
     if (isHardware) {
       // Hardware wallet flow
@@ -110,12 +110,7 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
       const txResponse = await ethereum.provider.sendTransaction(signedTx);
 
       // Wait for confirmation with timeout
-      receipt = await ethereum.handleTransactionExecution(txResponse);
-
-      transaction = {
-        hash: receipt.transactionHash,
-        nonce: nonce,
-      };
+      outcome = await ethereum.handleTransactionConfirmation(txResponse);
     } else {
       // Regular wallet flow
       let wallet: ethers.Wallet;
@@ -143,19 +138,21 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
       nonce = transaction.nonce;
 
       // Wait for transaction confirmation with timeout
-      receipt = await ethereum.handleTransactionExecution(transaction);
+      outcome = await ethereum.handleTransactionConfirmation(transaction);
     }
 
-    // Calculate actual fee from receipt
-    let feeInEth = '0';
-    if (receipt.gasUsed && receipt.effectiveGasPrice) {
-      const feeInWei = receipt.gasUsed.mul(receipt.effectiveGasPrice);
-      feeInEth = utils.formatEther(feeInWei);
+    // A revert threw out of the confirmation helper as a 400 TRANSACTION_FAILED — it is never
+    // reported as PENDING (receipt.status 0 and TransactionStatus.PENDING are the same number).
+    if (!outcome.confirmed) {
+      return { signature: outcome.signature, status: TransactionStatus.PENDING };
     }
+
+    // Calculate actual fee from the confirmed receipt
+    const feeInEth = utils.formatEther(outcome.receipt.gasUsed.mul(outcome.receipt.effectiveGasPrice));
 
     return {
-      signature: transaction.hash,
-      status: receipt.status,
+      signature: outcome.signature,
+      status: TransactionStatus.CONFIRMED,
       data: {
         nonce: nonce,
         fee: feeInEth,
@@ -190,29 +187,3 @@ export async function wrapEthereum(fastify: FastifyInstance, network: string, ad
     );
   }
 }
-
-export const wrapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: WrapRequestType;
-    Reply: WrapResponseType;
-  }>(
-    '/wrap',
-    {
-      schema: {
-        description: 'Wrap native token to wrapped token (e.g., ETH to WETH, BNB to WBNB)',
-        tags: ['/chain/ethereum'],
-        body: WrapRequestSchema,
-        response: {
-          200: WrapResponseSchema,
-        },
-      },
-    },
-    async (request) => {
-      const { network, address, amount } = request.body;
-
-      return await wrapEthereum(fastify, network, address, amount);
-    },
-  );
-};
-
-export default wrapRoute;

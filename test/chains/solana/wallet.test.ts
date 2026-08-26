@@ -1,6 +1,23 @@
 // Mock fs-extra to prevent actual file writes
 jest.mock('fs-extra');
 
+// Importing src/app runs configureGatewayServer() at module scope, which reads the
+// certificate passphrase and calls process.exit when none is configured. That happens
+// while this file's imports are being evaluated — long before beforeAll could patch
+// readPassphrase — so both suites died at load and reported zero tests. jest.mock is
+// hoisted above the imports, which is early enough.
+jest.mock('../../../src/services/config-manager-cert-passphrase', () => ({
+  // The whole namespace, not just readPassphrase: wallet add/remove goes through
+  // readWalletKey, which delegates to readPassphrase inside the module, so a partial
+  // mock leaves it undefined and every write turns into a 500.
+  ConfigManagerCertPassphrase: {
+    bindings: { _exit: jest.fn() },
+    readPassphrase: jest.fn().mockReturnValue('a'),
+    readWalletKey: jest.fn().mockReturnValue('a'),
+  },
+}));
+jest.mock('../../../src/https', () => ({ getHttpsOptions: jest.fn().mockReturnValue(null) }));
+
 import { Keypair } from '@solana/web3.js';
 import bs58 from 'bs58';
 import * as fse from 'fs-extra';

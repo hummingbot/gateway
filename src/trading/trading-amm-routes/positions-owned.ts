@@ -4,18 +4,23 @@ import { FastifyPluginAsync } from 'fastify';
 import { getPositionsOwned as meteoraGetPositionsOwned } from '../../connectors/meteora/amm-routes/positionsOwned';
 import { PositionInfo, PositionInfoSchema } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
+import {
+  AMM_CONNECTORS,
+  chainNetworkField,
+  connectorField,
+  defaultWallet,
+  resolveChainNetwork,
+  rethrowRouteError,
+} from '../common';
 
-import { AMM_CONNECTORS, parseChainNetwork, defaultWallet } from './common';
-
-const UnifiedAmmPositionsOwnedRequest = Type.Object({
-  connector: Type.String({ description: 'AMM connector (meteora)', default: 'meteora' }),
-  chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta)',
-    default: 'solana-mainnet-beta',
-  }),
-  walletAddress: Type.String({ description: 'Wallet address to list positions for', default: defaultWallet }),
-});
+export const UnifiedAmmPositionsOwnedRequest = Type.Object(
+  {
+    connector: connectorField(AMM_CONNECTORS, 'AMM connector (only non-fungible-LP AMMs supported: meteora)'),
+    chainNetwork: chainNetworkField(),
+    walletAddress: Type.String({ description: 'Wallet address to list positions for', default: defaultWallet }),
+  },
+  { $id: 'AmmPositionsOwnedRequest', additionalProperties: false },
+);
 
 export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -37,7 +42,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { connector, chainNetwork, walletAddress } = request.query;
-        const { network } = parseChainNetwork(chainNetwork);
+        const { network } = resolveChainNetwork(chainNetwork, connector, 'amm');
         switch (connector) {
           case 'meteora':
             return await meteoraGetPositionsOwned(fastify, network, walletAddress);
@@ -54,9 +59,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
             );
         }
       } catch (e: any) {
-        logger.error('Failed to list AMM positions owned:', e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to list positions owned');
+        rethrowRouteError(e, 'Failed to list AMM positions owned');
       }
     },
   );

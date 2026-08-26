@@ -1,6 +1,6 @@
 import { Type, Static } from '@sinclair/typebox';
 
-import { TransactionStatus } from './chain-schema';
+import { DecimalNumber } from './decimal-field';
 
 export const FetchPoolsRequest = Type.Object(
   {
@@ -24,7 +24,9 @@ export const FetchPoolsRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'FetchPoolsRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 
 export type FetchPoolsRequestType = Static<typeof FetchPoolsRequest>;
@@ -39,13 +41,35 @@ export const PoolListItemSchema = Type.Object(
     quoteTokenAddress: Type.String({ description: 'Quote token address' }),
     quoteTokenSymbol: Type.String({ description: 'Quote token symbol' }),
     binStep: Type.Number({ description: 'Bin step / tick spacing' }),
-    baseFee: Type.Number({ description: 'Base fee percentage' }),
-    price: Type.Number({ description: 'Current price' }),
-    tvl: Type.Number({ description: 'Total value locked in USD' }),
-    apr: Type.Optional(Type.Number({ description: 'Annual percentage rate' })),
-    apy: Type.Optional(Type.Number({ description: 'Annual percentage yield' })),
-    volume24h: Type.Optional(Type.Number({ description: '24-hour trading volume' })),
-    fees24h: Type.Optional(Type.Number({ description: '24-hour fees collected' })),
+    baseFee: DecimalNumber({
+      description: 'Base fee percentage',
+    }),
+    price: DecimalNumber({
+      description: 'Current price',
+    }),
+    tvl: DecimalNumber({
+      description: 'Total value locked in USD',
+    }),
+    apr: Type.Optional(
+      DecimalNumber({
+        description: 'Annual percentage rate',
+      }),
+    ),
+    apy: Type.Optional(
+      DecimalNumber({
+        description: 'Annual percentage yield',
+      }),
+    ),
+    volume24h: Type.Optional(
+      DecimalNumber({
+        description: '24-hour trading volume',
+      }),
+    ),
+    fees24h: Type.Optional(
+      DecimalNumber({
+        description: '24-hour fees collected',
+      }),
+    ),
   },
   { $id: 'PoolListItem' },
 );
@@ -58,7 +82,7 @@ export const FetchPoolsResponse = Type.Object(
     page: Type.Number({ description: 'Current page number' }),
     pageSize: Type.Number({ description: 'Number of pools per page' }),
   },
-  { $id: 'FetchPoolsResponse' },
+  { $id: 'ClmmFetchPoolsResponse' },
 );
 export type FetchPoolsResponseType = Static<typeof FetchPoolsResponse>;
 
@@ -67,7 +91,9 @@ export const GetPositionsOwnedRequest = Type.Object(
     network: Type.Optional(Type.String()),
     walletAddress: Type.String(),
   },
-  { $id: 'GetPositionsOwnedRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 
 export type GetPositionsOwnedRequestType = Static<typeof GetPositionsOwnedRequest>;
@@ -75,9 +101,9 @@ export type GetPositionsOwnedRequestType = Static<typeof GetPositionsOwnedReques
 export const BinLiquiditySchema = Type.Object(
   {
     binId: Type.Number(),
-    price: Type.Number(),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
+    price: DecimalNumber({}),
+    baseTokenAmount: DecimalNumber({}),
+    quoteTokenAmount: DecimalNumber({}),
   },
   { $id: 'BinLiquidity' },
 );
@@ -93,14 +119,14 @@ export const PoolInfoSchema = Type.Object(
     baseTokenAddress: Type.String(),
     quoteTokenAddress: Type.String(),
     binStep: Type.Optional(Type.Number()), // Optional - Meteora-specific
-    feePct: Type.Number(),
-    price: Type.Number(),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
+    feePct: DecimalNumber({}),
+    price: DecimalNumber({}),
+    baseTokenAmount: DecimalNumber({}),
+    quoteTokenAmount: DecimalNumber({}),
     activeBinId: Type.Number(),
     bins: Type.Optional(Type.Array(BinLiquiditySchema)),
   },
-  { $id: 'PoolInfo' },
+  { $id: 'ClmmPoolInfo' },
 );
 export type PoolInfo = Static<typeof PoolInfoSchema>;
 
@@ -115,7 +141,9 @@ export const MeteoraPoolInfoSchema = Type.Composite(
       maxBinId: Type.Number(),
     }),
   ],
-  { $id: 'MeteoraPoolInfo' },
+  // No $id: a connector's extension of PoolInfo, not a response any route declares — the
+  // unified pool-info route answers with PoolInfo and drops these fields. Publishing it
+  // would advertise fields that never arrive.
 );
 export type MeteoraPoolInfo = Static<typeof MeteoraPoolInfoSchema>;
 
@@ -134,7 +162,9 @@ export const GetPoolInfoRequest = Type.Object(
       }),
     ),
   },
-  { $id: 'GetPoolInfoRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type GetPoolInfoRequestType = Static<typeof GetPoolInfoRequest>;
 
@@ -144,19 +174,17 @@ export const PositionInfoSchema = Type.Object(
     poolAddress: Type.String(),
     baseTokenAddress: Type.String(),
     quoteTokenAddress: Type.String(),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
-    baseFeeAmount: Type.Number(),
-    quoteFeeAmount: Type.Number(),
+    baseTokenAmount: DecimalNumber({}),
+    quoteTokenAmount: DecimalNumber({}),
+    baseFeeAmount: DecimalNumber({}),
+    quoteFeeAmount: DecimalNumber({}),
     lowerBinId: Type.Number(),
     upperBinId: Type.Number(),
-    lowerPrice: Type.Number(),
-    upperPrice: Type.Number(),
-    price: Type.Number(),
-    rewardTokenAddress: Type.Optional(Type.String()),
-    rewardAmount: Type.Optional(Type.Number()),
+    lowerPrice: DecimalNumber({}),
+    upperPrice: DecimalNumber({}),
+    price: DecimalNumber({}),
   },
-  { $id: 'PositionInfo' },
+  { $id: 'ClmmPositionInfo' },
 );
 export type PositionInfo = Static<typeof PositionInfoSchema>;
 
@@ -166,7 +194,9 @@ export const GetPositionInfoRequest = Type.Object(
     positionAddress: Type.String(),
     walletAddress: Type.Optional(Type.String()),
   },
-  { $id: 'GetPositionInfoRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type GetPositionInfoRequestType = Static<typeof GetPositionInfoRequest>;
 
@@ -174,14 +204,22 @@ export const OpenPositionRequest = Type.Object(
   {
     network: Type.Optional(Type.String()),
     walletAddress: Type.Optional(Type.String()),
-    lowerPrice: Type.Number(),
-    upperPrice: Type.Number(),
+    lowerPrice: Type.Number({ format: 'decimal' }),
+    upperPrice: Type.Number({ format: 'decimal' }),
     poolAddress: Type.String(),
-    baseTokenAmount: Type.Optional(Type.Number()),
-    quoteTokenAmount: Type.Optional(Type.Number()),
-    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+    baseTokenAmount: Type.Optional(Type.Number({ format: 'decimal' })),
+    quoteTokenAmount: Type.Optional(Type.Number({ format: 'decimal' })),
+    slippagePct: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        minimum: 0,
+        maximum: 100,
+      }),
+    ),
   },
-  { $id: 'OpenPositionRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type OpenPositionRequestType = Static<typeof OpenPositionRequest>;
 
@@ -192,16 +230,23 @@ export const OpenPositionResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        fee: Type.Number(),
-        positionAddress: Type.String(),
-        positionRent: Type.Number(),
-        baseTokenAmountAdded: Type.Number(),
-        quoteTokenAmountAdded: Type.Number(),
-      }),
+      Type.Object(
+        {
+          fee: DecimalNumber({}),
+          // The venue this write touched. Echoed so a stored record identifies its pool
+          // without the request that produced it — the same reason the swap execute
+          // responses carry it.
+          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+          positionAddress: Type.String(),
+          positionRent: DecimalNumber({}),
+          baseTokenAmountAdded: DecimalNumber({}),
+          quoteTokenAmountAdded: DecimalNumber({}),
+        },
+        { $id: 'ClmmOpenPositionResponseData' },
+      ),
     ),
   },
-  { $id: 'OpenPositionResponse' },
+  { $id: 'ClmmOpenPositionResponse' },
 );
 export type OpenPositionResponseType = Static<typeof OpenPositionResponse>;
 
@@ -210,11 +255,19 @@ export const AddLiquidityRequest = Type.Object(
     network: Type.Optional(Type.String()),
     walletAddress: Type.Optional(Type.String()),
     positionAddress: Type.String(),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
-    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+    baseTokenAmount: Type.Number({ format: 'decimal' }),
+    quoteTokenAmount: Type.Number({ format: 'decimal' }),
+    slippagePct: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        minimum: 0,
+        maximum: 100,
+      }),
+    ),
   },
-  { $id: 'AddLiquidityRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type AddLiquidityRequestType = Static<typeof AddLiquidityRequest>;
 
@@ -225,14 +278,22 @@ export const AddLiquidityResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        fee: Type.Number(),
-        baseTokenAmountAdded: Type.Number(),
-        quoteTokenAmountAdded: Type.Number(),
-      }),
+      Type.Object(
+        {
+          fee: DecimalNumber({}),
+          // The venue this write touched. Echoed so a stored record identifies its pool
+          // without the request that produced it — the same reason the swap execute
+          // responses carry it.
+          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+          positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
+          baseTokenAmountAdded: DecimalNumber({}),
+          quoteTokenAmountAdded: DecimalNumber({}),
+        },
+        { $id: 'ClmmAddLiquidityResponseData' },
+      ),
     ),
   },
-  { $id: 'AddLiquidityResponse' },
+  { $id: 'ClmmAddLiquidityResponse' },
 );
 export type AddLiquidityResponseType = Static<typeof AddLiquidityResponse>;
 
@@ -241,9 +302,15 @@ export const RemoveLiquidityRequest = Type.Object(
     network: Type.Optional(Type.String()),
     walletAddress: Type.Optional(Type.String()),
     positionAddress: Type.String(),
-    percentageToRemove: Type.Number({ minimum: 0, maximum: 100 }),
+    percentageToRemove: Type.Number({
+      format: 'decimal',
+      minimum: 0,
+      maximum: 100,
+    }),
   },
-  { $id: 'RemoveLiquidityRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type RemoveLiquidityRequestType = Static<typeof RemoveLiquidityRequest>;
 
@@ -254,14 +321,22 @@ export const RemoveLiquidityResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        fee: Type.Number(),
-        baseTokenAmountRemoved: Type.Number(),
-        quoteTokenAmountRemoved: Type.Number(),
-      }),
+      Type.Object(
+        {
+          fee: DecimalNumber({}),
+          // The venue this write touched. Echoed so a stored record identifies its pool
+          // without the request that produced it — the same reason the swap execute
+          // responses carry it.
+          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+          positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
+          baseTokenAmountRemoved: DecimalNumber({}),
+          quoteTokenAmountRemoved: DecimalNumber({}),
+        },
+        { $id: 'ClmmRemoveLiquidityResponseData' },
+      ),
     ),
   },
-  { $id: 'RemoveLiquidityResponse' },
+  { $id: 'ClmmRemoveLiquidityResponse' },
 );
 export type RemoveLiquidityResponseType = Static<typeof RemoveLiquidityResponse>;
 
@@ -271,7 +346,9 @@ export const CollectFeesRequest = Type.Object(
     walletAddress: Type.Optional(Type.String()),
     positionAddress: Type.String(),
   },
-  { $id: 'CollectFeesRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type CollectFeesRequestType = Static<typeof CollectFeesRequest>;
 
@@ -282,14 +359,22 @@ export const CollectFeesResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        fee: Type.Number(),
-        baseFeeAmountCollected: Type.Number(),
-        quoteFeeAmountCollected: Type.Number(),
-      }),
+      Type.Object(
+        {
+          fee: DecimalNumber({}),
+          // The venue this write touched. Echoed so a stored record identifies its pool
+          // without the request that produced it — the same reason the swap execute
+          // responses carry it.
+          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+          positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
+          baseFeeAmountCollected: DecimalNumber({}),
+          quoteFeeAmountCollected: DecimalNumber({}),
+        },
+        { $id: 'ClmmCollectFeesResponseData' },
+      ),
     ),
   },
-  { $id: 'CollectFeesResponse' },
+  { $id: 'ClmmCollectFeesResponse' },
 );
 export type CollectFeesResponseType = Static<typeof CollectFeesResponse>;
 
@@ -299,7 +384,9 @@ export const ClosePositionRequest = Type.Object(
     walletAddress: Type.Optional(Type.String()),
     positionAddress: Type.String(),
   },
-  { $id: 'ClosePositionRequest' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type ClosePositionRequestType = Static<typeof ClosePositionRequest>;
 
@@ -310,33 +397,128 @@ export const ClosePositionResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        fee: Type.Number(),
-        positionRentRefunded: Type.Number(),
-        baseTokenAmountRemoved: Type.Number(),
-        quoteTokenAmountRemoved: Type.Number(),
-        baseFeeAmountCollected: Type.Number(),
-        quoteFeeAmountCollected: Type.Number(),
-      }),
+      Type.Object(
+        {
+          fee: DecimalNumber({}),
+          // The venue this write touched. Echoed so a stored record identifies its pool
+          // without the request that produced it — the same reason the swap execute
+          // responses carry it.
+          poolAddress: Type.Optional(Type.String({ description: 'Pool this operation acted on' })),
+          positionAddress: Type.Optional(Type.String({ description: 'Position this operation acted on' })),
+          positionRentRefunded: DecimalNumber({}),
+          baseTokenAmountRemoved: DecimalNumber({}),
+          quoteTokenAmountRemoved: DecimalNumber({}),
+          baseFeeAmountCollected: DecimalNumber({}),
+          quoteFeeAmountCollected: DecimalNumber({}),
+        },
+        { $id: 'ClmmClosePositionResponseData' },
+      ),
     ),
   },
-  { $id: 'ClosePositionResponse' },
+  { $id: 'ClmmClosePositionResponse' },
 );
 export type ClosePositionResponseType = Static<typeof ClosePositionResponse>;
 
-export const QuotePositionRequest = Type.Omit(OpenPositionRequest, ['walletAddress'], { $id: 'QuotePositionRequest' });
+// ========================================
+// CLMM Create Pool Types
+// ========================================
+
+// One fee-tier vocabulary across connectors: binStep is the bin/tick granularity
+// (Meteora DLMM bin step, Orca tick spacing), feeBps the base fee in basis points
+// (Meteora DLMM base fee; Uniswap/PancakeSwap V3 tier — 1, 5, 30 or 100 bps,
+// PancakeSwap also 25), ammConfigIndex the Raydium-family fee-config index
+// (Raydium API config list; pancakeswap-sol amm_config PDA index).
+export const CreatePoolRequest = Type.Object(
+  {
+    network: Type.Optional(Type.String()),
+    walletAddress: Type.Optional(Type.String()),
+    baseToken: Type.String(),
+    quoteToken: Type.String(),
+    initialPrice: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        description:
+          'Initial pool price as quote per base. If omitted, the current market price is fetched from the ' +
+          'unified swap router so the pool opens on-market.',
+      }),
+    ),
+    binStep: Type.Optional(
+      Type.Number({
+        'x-connectors': ['meteora', 'orca'],
+        description: 'Bin/tick granularity: Meteora DLMM bin step (bps); Orca Whirlpool tick spacing.',
+      }),
+    ),
+    feeBps: Type.Optional(
+      Type.Number({
+        'x-connectors': ['meteora', 'uniswap', 'pancakeswap'],
+        description:
+          'Base fee in basis points: Meteora DLMM base fee; Uniswap/PancakeSwap V3 fee tier ' +
+          '(1, 5, 30 or 100 bps; PancakeSwap also 25).',
+      }),
+    ),
+    ammConfigIndex: Type.Optional(
+      Type.Number({
+        'x-connectors': ['raydium', 'pancakeswap-sol'],
+        description:
+          'Fee-config index for the Raydium CLMM family: Raydium API config list index; ' +
+          'pancakeswap-sol amm_config PDA index. Default 0.',
+      }),
+    ),
+  },
+  // No $id: this is the pre-refactor shape (per-connector `network`, no `connector`),
+  // kept only as the base the unified route composes from. The request actually on the
+  // wire is the route's own schema, which now carries this name as its $id — publishing
+  // both would collide, and publishing this one would generate a client that sends the
+  // wrong keys.
+);
+export type CreatePoolRequestType = Static<typeof CreatePoolRequest>;
+
+// CLMM create-pool initializes an EMPTY pool — liquidity arrives later via
+// open-position — so unlike the AMM response there are no seeded amounts.
+export const CreatePoolResponse = Type.Object(
+  {
+    signature: Type.String(),
+    status: Type.Number({ description: 'TransactionStatus enum value' }),
+    poolAddress: Type.String({ description: 'Address of the newly created pool' }),
+    price: Type.Optional(
+      DecimalNumber({
+        description: 'Initial price the pool was initialized at (quote per base)',
+      }),
+    ),
+
+    // Only included when status = CONFIRMED
+    data: Type.Optional(
+      Type.Object(
+        {
+          fee: DecimalNumber({}),
+        },
+        { $id: 'ClmmCreatePoolResponseData' },
+      ),
+    ),
+  },
+  { $id: 'ClmmCreatePoolResponse' },
+);
+export type CreatePoolResponseType = Static<typeof CreatePoolResponse>;
+
+// No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+// the base a unified route composes from. Publishing it would generate a client that
+// sends the wrong keys under a name the real wire shape wants.
+export const QuotePositionRequest = Type.Omit(OpenPositionRequest, ['walletAddress']);
 export type QuotePositionRequestType = Static<typeof QuotePositionRequest>;
 
 export const QuotePositionResponse = Type.Object(
   {
+    // The pool this split was computed against — on CLMM the caller need not have
+    // named one, and on AMM it keeps the quote self-describing alongside quote-swap.
+    poolAddress: Type.Optional(Type.String({ description: 'Pool the quote was computed against' })),
     baseLimited: Type.Boolean(),
-    baseTokenAmount: Type.Number(),
-    quoteTokenAmount: Type.Number(),
-    baseTokenAmountMax: Type.Number(),
-    quoteTokenAmountMax: Type.Number(),
+    baseTokenAmount: DecimalNumber({}),
+    quoteTokenAmount: DecimalNumber({}),
+    baseTokenAmountMax: DecimalNumber({}),
+    quoteTokenAmountMax: DecimalNumber({}),
     liquidity: Type.Optional(Type.Any()),
   },
-  { $id: 'QuotePositionResponse' },
+  { $id: 'ClmmQuoteLiquidityResponse' },
 );
 export type QuotePositionResponseType = Static<typeof QuotePositionResponse>;
 
@@ -360,14 +542,22 @@ export const QuoteSwapRequest = Type.Object(
         description: 'The other token in the pair (optional - required if poolAddress not provided)',
       }),
     ),
-    amount: Type.Number(),
+    amount: Type.Number({ format: 'decimal' }),
     side: Type.String({
       description: 'Trade direction',
       enum: ['BUY', 'SELL'],
     }),
-    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+    slippagePct: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        minimum: 0,
+        maximum: 100,
+      }),
+    ),
   },
-  { $id: 'ClmmQuoteSwapRequest' },
+  // No $id: this is the pre-refactor shape (per-connector `network`, no `connector`),
+  // kept only as the base the unified route composes from. The request actually on the
+  // wire is the route's own querystring, which now carries this name as its $id.
 );
 export type QuoteSwapRequestType = Static<typeof QuoteSwapRequest>;
 
@@ -376,15 +566,17 @@ export const QuoteSwapResponse = Type.Object(
     poolAddress: Type.String(),
     tokenIn: Type.String(),
     tokenOut: Type.String(),
-    amountIn: Type.Number(),
-    amountOut: Type.Number(),
-    price: Type.Number(),
-    slippagePct: Type.Optional(Type.Number()),
-    minAmountOut: Type.Number(),
-    maxAmountIn: Type.Number(),
-    priceImpactPct: Type.Number(),
+    amountIn: DecimalNumber({}),
+    amountOut: DecimalNumber({}),
+    price: DecimalNumber({}),
+    slippagePct: Type.Optional(DecimalNumber({})),
+    minAmountOut: DecimalNumber({}),
+    maxAmountIn: DecimalNumber({}),
+    priceImpactPct: DecimalNumber({}),
   },
-  { $id: 'ClmmQuoteSwapResponse' },
+  // No $id: no route serves this shape. The pool-scoped surfaces answer with the shared
+  // Chain* responses, so publishing this would put a name a caller reaches for on a
+  // shape they never receive. Kept as the base those responses compose from.
 );
 export type QuoteSwapResponseType = Static<typeof QuoteSwapResponse>;
 
@@ -403,13 +595,23 @@ export const ExecuteSwapRequest = Type.Object(
         description: 'The other token in the pair (optional - required if poolAddress not provided)',
       }),
     ),
-    amount: Type.Number(),
+    amount: Type.Number({ format: 'decimal' }),
     side: Type.String({
       enum: ['BUY', 'SELL'],
     }),
-    slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
+    slippagePct: Type.Optional(
+      Type.Number({
+        format: 'decimal',
+        minimum: 0,
+        maximum: 100,
+      }),
+    ),
   },
-  { $id: 'ClmmExecuteSwapRequest' },
+  // No $id: this is the pre-refactor shape (per-connector `network`, no `connector`),
+  // kept only as the base the unified route composes from. The request actually on the
+  // wire is the route's own schema, which now carries this name as its $id — publishing
+  // both would collide, and publishing this one would generate a client that sends the
+  // wrong keys.
 );
 export type ExecuteSwapRequestType = Static<typeof ExecuteSwapRequest>;
 
@@ -420,17 +622,28 @@ export const ExecuteSwapResponse = Type.Object(
 
     // Only included when status = CONFIRMED
     data: Type.Optional(
-      Type.Object({
-        tokenIn: Type.String(),
-        tokenOut: Type.String(),
-        amountIn: Type.Number(),
-        amountOut: Type.Number(),
-        fee: Type.Number(),
-        baseTokenBalanceChange: Type.Number(),
-        quoteTokenBalanceChange: Type.Number(),
-      }),
+      Type.Object(
+        {
+          tokenIn: Type.String(),
+          tokenOut: Type.String(),
+          amountIn: DecimalNumber({}),
+          amountOut: DecimalNumber({}),
+          fee: DecimalNumber({}),
+          baseTokenBalanceChange: DecimalNumber({}),
+          quoteTokenBalanceChange: DecimalNumber({}),
+          slippagePct: Type.Optional(
+            DecimalNumber({
+              description: 'Slippage tolerance percentage actually applied to the swap',
+            }),
+          ),
+        },
+        // No $id: its parent is not published either — nothing would reference this, and a
+        // generated client would carry it as a class no response ever produces.
+      ),
     ),
   },
-  { $id: 'ClmmExecuteSwapResponse' },
+  // No $id: the pre-refactor shape (per-connector `network`, no `connector`), kept only as
+  // the base a unified route composes from. Publishing it would generate a client that
+  // sends the wrong keys under a name the real wire shape wants.
 );
 export type ExecuteSwapResponseType = Static<typeof ExecuteSwapResponse>;

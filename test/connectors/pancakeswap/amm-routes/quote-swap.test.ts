@@ -4,9 +4,16 @@ import { Address } from 'viem';
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { PancakeswapConfig } from '../../../../src/connectors/pancakeswap/pancakeswap.config';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 jest.mock('../../../../src/connectors/pancakeswap/pancakeswap.config');
+// The unified amm route enters through quoteSwap(), which reads the pair's
+// token0/token1 on-chain instead of taking quoteToken from the caller.
+jest.mock('../../../../src/connectors/pancakeswap/amm-routes/poolTokens', () => ({
+  resolveSwapPair: jest.fn(),
+  getAmmPoolTokens: jest.fn(),
+}));
 jest.mock('../../../../src/connectors/pancakeswap/pancakeswap');
 jest.mock('../../../../src/connectors/pancakeswap/pancakeswap.utils');
 
@@ -31,8 +38,8 @@ const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
 
-  const { quoteSwapRoute } = await import('../../../../src/connectors/pancakeswap/amm-routes/quoteSwap');
-  await server.register(quoteSwapRoute);
+  const { makeQuoteSwapRoute } = await import('../../../../src/trading/pool-swap-routes');
+  await server.register(makeQuoteSwapRoute('amm'));
   return server;
 };
 
@@ -108,6 +115,11 @@ describe('GET /quote-swap', () => {
       ready: jest.fn().mockReturnValue(true),
       init: jest.fn().mockResolvedValue(undefined),
     };
+    const { resolveSwapPair } = require('../../../../src/connectors/pancakeswap/amm-routes/poolTokens');
+    (resolveSwapPair as jest.Mock).mockResolvedValue({
+      baseAddress: mockWBNB.address,
+      quoteAddress: mockUSDC.address,
+    });
     (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
     (Ethereum.getWalletAddressExample as jest.Mock).mockResolvedValue('0x1234567890123456789012345678901234567890');
 
@@ -189,7 +201,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'pancakeswap',
         poolAddress: mockPoolAddress,
         baseToken: 'WBNB',
         quoteToken: 'USDC',
@@ -200,9 +213,9 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('poolAddress', mockPoolAddress);
-    expect(body).toHaveProperty('amountIn', 0.1);
+    expect(Number(body.amountIn)).toBe(0.1);
     expect(body).toHaveProperty('amountOut');
     expect(body).toHaveProperty('minAmountOut');
     expect(body).toHaveProperty('maxAmountIn', 0.1);
@@ -336,7 +349,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'pancakeswap',
         poolAddress: mockPoolAddress,
         baseToken: 'WBNB',
         quoteToken: 'USDC',
@@ -347,10 +361,10 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('poolAddress', mockPoolAddress);
     expect(body).toHaveProperty('amountIn');
-    expect(body).toHaveProperty('amountOut', 150);
+    expect(Number(body.amountOut)).toBe(150);
     expect(body).toHaveProperty('maxAmountIn');
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockWBNB.address);
@@ -398,11 +412,19 @@ describe('GET /quote-swap', () => {
     };
     (Ethereum.getInstance as jest.Mock).mockResolvedValue(mockEthereumInstance);
 
+    // On the unified route the base token is resolved against the pool, so an
+    // unresolvable token fails there rather than in a caller-supplied quoteToken.
+    const { resolveSwapPair } = require('../../../../src/connectors/pancakeswap/amm-routes/poolTokens');
+    (resolveSwapPair as jest.Mock).mockRejectedValueOnce(
+      Object.assign(new Error('Token not found: INVALID'), { statusCode: 400 }),
+    );
+
     const response = await server.inject({
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'pancakeswap',
         poolAddress: mockPoolAddress,
         baseToken: 'INVALID',
         quoteToken: 'USDC',
@@ -413,6 +435,6 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(400); // Returns 400 for invalid token
-    expect(JSON.parse(response.body)).toHaveProperty('error');
+    expect(parseWire(response.body)).toHaveProperty('error');
   });
 });

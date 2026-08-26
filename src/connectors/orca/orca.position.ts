@@ -1,6 +1,8 @@
 import {
-  fetchAllTickArray,
-  fetchPosition,
+  decodePosition,
+  decodeTickArray,
+  decodeWhirlpool,
+  fetchMaybePosition,
   fetchWhirlpool,
   getTickArrayAddress,
   type WhirlpoolDeployment,
@@ -18,6 +20,8 @@ import {
 } from '@orca-so/whirlpools-core';
 import {
   address,
+  assertAccountExists,
+  fetchEncodedAccounts,
   type GetAccountInfoApi,
   type GetEpochInfoApi,
   type GetMultipleAccountsApi,
@@ -25,7 +29,7 @@ import {
   Account,
   MaybeAccount,
 } from '@solana/kit';
-import { fetchAllMint, type Mint } from '@solana-program/token-2022';
+import { decodeMint, type Mint } from '@solana-program/token-2022';
 
 import { PositionInfo } from '../../schemas/clmm-schema';
 
@@ -55,18 +59,65 @@ export const getPositionDetails = async (
   rpc: OrcaRpc,
   positionAddress: string,
   deployment: WhirlpoolDeployment,
-): Promise<PositionInfo> => {
-  const position = await fetchPosition(rpc, address(positionAddress));
-  const whirlpool = await fetchWhirlpool(rpc, position.data.whirlpool);
-  const [mintA, mintB] = await fetchAllMint(rpc, [whirlpool.data.tokenMintA, whirlpool.data.tokenMintB]);
+): Promise<PositionInfo | null> => {
+  // The discovery reads provide only the addresses needed for the final batch.
+  // No changing fee or liquidity value from these reads is used below.
+  const discoveredPosition = await fetchMaybePosition(rpc, address(positionAddress));
+  if (!discoveredPosition.exists) {
+    return null;
+  }
+  const discoveredWhirlpool = await fetchWhirlpool(rpc, discoveredPosition.data.whirlpool);
 
-  const lowerStartIndex = getTickArrayStartTickIndex(position.data.tickLowerIndex, whirlpool.data.tickSpacing);
-  const upperStartIndex = getTickArrayStartTickIndex(position.data.tickUpperIndex, whirlpool.data.tickSpacing);
+  const lowerStartIndex = getTickArrayStartTickIndex(
+    discoveredPosition.data.tickLowerIndex,
+    discoveredWhirlpool.data.tickSpacing,
+  );
+  const upperStartIndex = getTickArrayStartTickIndex(
+    discoveredPosition.data.tickUpperIndex,
+    discoveredWhirlpool.data.tickSpacing,
+  );
   const [[lowerTickArrayAddress], [upperTickArrayAddress]] = await Promise.all([
-    getTickArrayAddress(whirlpool.address, lowerStartIndex, deployment.programId),
-    getTickArrayAddress(whirlpool.address, upperStartIndex, deployment.programId),
+    getTickArrayAddress(discoveredWhirlpool.address, lowerStartIndex, deployment.programId),
+    getTickArrayAddress(discoveredWhirlpool.address, upperStartIndex, deployment.programId),
   ]);
-  const [lowerTickArray, upperTickArray] = await fetchAllTickArray(rpc, [lowerTickArrayAddress, upperTickArrayAddress]);
+
+  // Fee growth is spread across the position, Whirlpool, and boundary ticks.
+  // Fetch all of them in one RPC response so collectFeesQuote never receives a
+  // mix of values from opposite sides of a tick-crossing transaction.
+  const encodedAccounts = await fetchEncodedAccounts(rpc, [
+    discoveredPosition.address,
+    discoveredWhirlpool.address,
+    discoveredWhirlpool.data.tokenMintA,
+    discoveredWhirlpool.data.tokenMintB,
+    lowerTickArrayAddress,
+    upperTickArrayAddress,
+  ]);
+  const position = decodePosition(encodedAccounts[0]);
+  if (!position.exists) {
+    return null;
+  }
+  const whirlpool = decodeWhirlpool(encodedAccounts[1]);
+  const mintA = decodeMint(encodedAccounts[2]);
+  const mintB = decodeMint(encodedAccounts[3]);
+  const lowerTickArray = decodeTickArray(encodedAccounts[4]);
+  const upperTickArray = decodeTickArray(encodedAccounts[5]);
+  assertAccountExists(whirlpool);
+  assertAccountExists(mintA);
+  assertAccountExists(mintB);
+  assertAccountExists(lowerTickArray);
+  assertAccountExists(upperTickArray);
+
+  if (
+    position.data.whirlpool !== discoveredPosition.data.whirlpool ||
+    position.data.tickLowerIndex !== discoveredPosition.data.tickLowerIndex ||
+    position.data.tickUpperIndex !== discoveredPosition.data.tickUpperIndex ||
+    whirlpool.data.tokenMintA !== discoveredWhirlpool.data.tokenMintA ||
+    whirlpool.data.tokenMintB !== discoveredWhirlpool.data.tokenMintB ||
+    whirlpool.data.tickSpacing !== discoveredWhirlpool.data.tickSpacing
+  ) {
+    throw new Error('Orca position changed while its account snapshot was being assembled');
+  }
+
   const lowerTick =
     lowerTickArray.data.ticks[
       getTickIndexInArray(position.data.tickLowerIndex, lowerStartIndex, whirlpool.data.tickSpacing)

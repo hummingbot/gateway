@@ -1,14 +1,10 @@
 import { Contract } from '@ethersproject/contracts';
-import { Static } from '@sinclair/typebox';
 import { Percent } from '@uniswap/sdk-core';
-import { utils } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { RemoveLiquidityResponseType, RemoveLiquidityResponse } from '../../../schemas/amm-schema';
+import { RemoveLiquidityResponseType } from '../../../schemas/amm-schema';
+import { TransactionStatus } from '../../../schemas/chain-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
-import { UniswapAmmRemoveLiquidityRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
 import { getUniswapV2RouterAddress, IUniswapV2Router02ABI, IUniswapV2PairABI } from '../uniswap.contracts';
@@ -29,8 +25,6 @@ export async function removeLiquidity(
   poolAddress: string,
   percentageToRemove: number,
   slippagePct: number = UniswapConfig.config.slippagePct,
-  gasPrice?: string,
-  maxGas?: number,
 ): Promise<RemoveLiquidityResponseType> {
   if (!poolAddress || !percentageToRemove) throw httpErrors.badRequest('Missing required parameters');
   if (percentageToRemove <= 0 || percentageToRemove > 100) {
@@ -85,8 +79,7 @@ export async function removeLiquidity(
   await checkLPAllowance(ethereum, wallet, poolAddress, routerAddress, liquidityToRemove);
 
   const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
-  const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-  const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_REMOVE_LIQUIDITY_GAS_LIMIT);
+  const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_REMOVE_LIQUIDITY_GAS_LIMIT);
 
   let tx;
   if (baseTokenObj.symbol === 'WETH') {
@@ -122,82 +115,22 @@ export async function removeLiquidity(
     );
   }
 
-  const receipt = await ethereum.handleTransactionExecution(tx);
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
+  if (!outcome.confirmed) {
+    // Still pending — the expected amounts were computed before sending and have not moved.
+    return { signature: outcome.signature, status: TransactionStatus.PENDING };
+  }
+
   const baseTokenAmountRemoved = formatTokenAmount(expectedBaseTokenAmount.toString(), baseTokenObj.decimals);
   const quoteTokenAmountRemoved = formatTokenAmount(expectedQuoteTokenAmount.toString(), quoteTokenObj.decimals);
-  const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
 
   return {
-    signature: receipt.transactionHash,
-    status: receipt.status,
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     data: {
-      fee: gasFee,
+      fee: outcome.fee,
       baseTokenAmountRemoved,
       quoteTokenAmountRemoved,
     },
   };
 }
-
-export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
-  fastify.post<{
-    Body: Static<typeof UniswapAmmRemoveLiquidityRequest>;
-    Reply: RemoveLiquidityResponseType;
-  }>(
-    '/remove-liquidity',
-    {
-      schema: {
-        description: 'Remove liquidity from a Uniswap V2 pool',
-        tags: ['/connector/uniswap'],
-        body: UniswapAmmRemoveLiquidityRequest,
-        response: {
-          200: RemoveLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network,
-          poolAddress,
-          percentageToRemove,
-          walletAddress: requestedWalletAddress,
-          gasPrice,
-          maxGas,
-        } = request.body;
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          walletAddress = await Ethereum.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-          logger.info(`Using first available wallet address: ${walletAddress}`);
-        }
-
-        return await removeLiquidity(
-          network,
-          walletAddress,
-          poolAddress,
-          percentageToRemove,
-          undefined,
-          gasPrice,
-          maxGas,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        if (e.code === 'INSUFFICIENT_FUNDS' || (e.message && e.message.includes('insufficient funds'))) {
-          throw fastify.httpErrors.badRequest(
-            'Insufficient ETH balance to pay for gas fees. Please add more ETH to your wallet.',
-          );
-        }
-        throw fastify.httpErrors.internalServerError('Failed to remove liquidity');
-      }
-    },
-  );
-};
-
-export default removeLiquidityRoute;

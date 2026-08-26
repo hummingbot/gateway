@@ -1,7 +1,6 @@
 import EthApp, { ledgerService } from '@ledgerhq/hw-app-eth';
 import SolanaApp from '@ledgerhq/hw-app-solana';
 import { Transaction, VersionedTransaction, PublicKey } from '@solana/web3.js';
-import bs58 from 'bs58';
 
 import { LedgerTransportManager } from './ledger-transport';
 import { logger } from './logger';

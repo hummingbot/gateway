@@ -20,7 +20,7 @@ const mockWallet = '82SggYRE2Vo4jN4a2pk3aQ4SET4ctafZJGbowmCqyHx5';
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { createPoolRoute } = await import('../../../../src/connectors/orca/clmm-routes/createPool');
+  const { createPoolRoute } = await import('../../../../src/trading/trading-clmm-routes/create-pool');
   await server.register(createPoolRoute);
   return server;
 };
@@ -51,11 +51,13 @@ describe('POST /create-pool (Orca CLMM)', () => {
       method: 'POST',
       url: '/create-pool',
       payload: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'orca',
         walletAddress: mockWallet,
         baseToken: 'SOL',
         quoteToken: 'SOL',
-        tickSpacing: 64,
+        // The unified route names Orca's fee tier binStep; for Orca that IS the tick spacing.
+        binStep: 64,
         initialPrice: 150,
       },
     });
@@ -73,7 +75,8 @@ describe('POST /create-pool (Orca CLMM)', () => {
       method: 'POST',
       url: '/create-pool',
       payload: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'orca',
         walletAddress: mockWallet,
         baseToken: 'SOL',
         quoteToken: 'USDC',
@@ -97,6 +100,7 @@ describe('POST /create-pool (Orca CLMM)', () => {
         getTransaction: jest.fn().mockResolvedValue({ meta: { fee: 5000 } }),
       },
       sendAndConfirmTransactionForWallet: sendAndConfirm,
+      getConfirmedTransactionData: jest.fn().mockResolvedValue({ meta: { fee: 5000 } }),
     });
     (Orca.getInstance as jest.Mock).mockResolvedValue({
       solanaKitRpc: {},
@@ -132,11 +136,13 @@ describe('POST /create-pool (Orca CLMM)', () => {
       method: 'POST',
       url: '/create-pool',
       payload: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'orca',
         walletAddress: mockWallet,
         baseToken: 'SOL',
         quoteToken: 'USDC',
-        tickSpacing: 64,
+        // The unified route names Orca's fee tier binStep; for Orca that IS the tick spacing.
+        binStep: 64,
         initialPrice: 150,
       },
     });

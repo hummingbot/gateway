@@ -1,11 +1,9 @@
-import { Static } from '@sinclair/typebox';
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getMint } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { CreatePoolResponse, CreatePoolResponseType } from '../../../schemas/amm-schema';
+import { CreatePoolResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
@@ -13,7 +11,6 @@ import { PancakeswapSol, PANCAKESWAP_CLMM_PROGRAM_ID } from '../pancakeswap-sol'
 import { buildCreatePoolInstruction } from '../pancakeswap-sol.instructions';
 import { priceToSqrtPriceX64 } from '../pancakeswap-sol.math';
 import { buildTransactionWithInstructions } from '../pancakeswap-sol.transactions';
-import { PancakeswapSolClmmCreatePoolRequest } from '../schemas';
 
 /** Lexicographic byte comparison (mirrors Buffer.compare) for canonical mint ordering. */
 function compareBytes(a: Buffer, b: Buffer): number {
@@ -51,10 +48,10 @@ async function getMintProgram(solana: Solana, mint: PublicKey): Promise<PublicKe
  * no market route exists.
  */
 async function fetchMarketPrice(network: string, baseToken: string, quoteToken: string): Promise<number> {
-  const { getUnifiedQuoteSwap } = await import('../../../trading/swap/quote');
+  const { getSwapQuote } = await import('../../../trading/market-price');
   let quote: any;
   try {
-    quote = await getUnifiedQuoteSwap(`solana-${network}`, baseToken, quoteToken, 1, 'SELL');
+    quote = await getSwapQuote(`solana-${network}`, baseToken, quoteToken, 1, 'SELL');
   } catch (e: any) {
     throw httpErrors.badRequest(
       `Could not fetch a market price for ${baseToken}/${quoteToken} to initialize the pool (${e.message}). ` +
@@ -68,11 +65,43 @@ async function fetchMarketPrice(network: string, baseToken: string, quoteToken: 
 }
 
 /**
+ * Derive the amm_config PDA for a fee-config index. The program (a Raydium CLMM
+ * fork) seeds it with ["amm_config", index] — index encoded big-endian, the same
+ * Raydium convention this connector's tick_array PDAs use. The little-endian
+ * (plain Anchor/borsh) form is tried as a fallback before failing.
+ */
+async function resolveAmmConfigByIndex(solana: Solana, ammConfigIndex: number): Promise<PublicKey> {
+  if (!Number.isInteger(ammConfigIndex) || ammConfigIndex < 0 || ammConfigIndex > 0xffff) {
+    throw httpErrors.badRequest(`ammConfigIndex must be an integer in [0, 65535], got ${ammConfigIndex}`);
+  }
+  const candidates: PublicKey[] = [];
+  for (const endian of ['BE', 'LE'] as const) {
+    const indexBuffer = Buffer.alloc(2);
+    if (endian === 'BE') indexBuffer.writeUInt16BE(ammConfigIndex, 0);
+    else indexBuffer.writeUInt16LE(ammConfigIndex, 0);
+    const [pda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('amm_config'), indexBuffer],
+      PANCAKESWAP_CLMM_PROGRAM_ID,
+    );
+    candidates.push(pda);
+  }
+  for (const pda of candidates) {
+    const info = await solana.connection.getAccountInfo(pda);
+    if (info && info.owner.equals(PANCAKESWAP_CLMM_PROGRAM_ID)) {
+      return pda;
+    }
+  }
+  throw httpErrors.badRequest(
+    `No amm_config account found on-chain for index ${ammConfigIndex} ` +
+      `(tried ${candidates.map((c) => c.toBase58()).join(', ')})`,
+  );
+}
+
+/**
  * Create and initialize (but do NOT seed a position for) a PancakeSwap Solana CLMM pool.
  *
- * @param ammConfig  Base58 address of an existing on-chain amm_config account for the desired fee tier.
- *                   Required — there is no API to enumerate amm_config accounts, so the caller supplies
- *                   the config for the fee tier they want (mirrors Meteora DAMM v2 configAddress).
+ * @param ammConfigIndex  Fee-config index; resolves to the program's amm_config PDA
+ *                        (["amm_config", index]) and is validated on-chain. Default 0.
  */
 export async function createPool(
   network: string,
@@ -80,31 +109,13 @@ export async function createPool(
   baseToken: string,
   quoteToken: string,
   initialPrice?: number,
-  ammConfig?: string,
+  ammConfigIndex: number = 0,
 ): Promise<CreatePoolResponseType> {
   const solana = await Solana.getInstance(network);
   // Ensure the connector singleton is initialized (mirrors the other pancakeswap-sol routes).
   await PancakeswapSol.getInstance(network);
 
-  // Validate the required amm_config address and confirm it exists on-chain.
-  if (!ammConfig) {
-    throw httpErrors.badRequest('ammConfig is required: pass the address of an existing on-chain amm_config account');
-  }
-  let ammConfigPubkey: PublicKey;
-  try {
-    ammConfigPubkey = new PublicKey(ammConfig);
-  } catch {
-    throw httpErrors.badRequest(sanitizeErrorMessage('Invalid ammConfig address: {}', ammConfig));
-  }
-  const ammConfigInfo = await solana.connection.getAccountInfo(ammConfigPubkey);
-  if (!ammConfigInfo) {
-    throw httpErrors.badRequest(`amm_config account not found: ${ammConfigPubkey.toBase58()}`);
-  }
-  if (!ammConfigInfo.owner.equals(PANCAKESWAP_CLMM_PROGRAM_ID)) {
-    throw httpErrors.badRequest(
-      `amm_config ${ammConfigPubkey.toBase58()} is not owned by the PancakeSwap CLMM program`,
-    );
-  }
+  const ammConfigPubkey = await resolveAmmConfigByIndex(solana, ammConfigIndex);
 
   // Resolve mints, decimals and token programs from authoritative on-chain data.
   const baseMint = await resolveMint(solana, baseToken);
@@ -205,51 +216,13 @@ export async function createPool(
       price: seedPrice,
       data: {
         fee: txData.meta.fee / 1e9,
-        // Pool created + initialized only — no liquidity/position seeded.
-        baseTokenAmountAdded: 0,
-        quoteTokenAmountAdded: 0,
       },
     };
   }
 
+  // A landed-but-failed transaction is terminal: fail loudly instead of returning
+  // PENDING (callers would poll forever). Genuinely-not-landed keeps the pending shape.
+  await solana.throwIfLandedWithError(signature, txData);
+
   return { signature, status: 0, poolAddress, price: seedPrice }; // PENDING
 }
-
-export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof PancakeswapSolClmmCreatePoolRequest>;
-    Reply: CreatePoolResponseType;
-  }>(
-    '/create-pool',
-    {
-      schema: {
-        description:
-          'Create and initialize a new PancakeSwap Solana CLMM pool at an initial price. Does not open or seed a position.',
-        tags: ['/connector/pancakeswap-sol'],
-        body: PancakeswapSolClmmCreatePoolRequest,
-        response: {
-          200: CreatePoolResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network = 'mainnet-beta',
-          walletAddress,
-          baseToken,
-          quoteToken,
-          initialPrice,
-          ammConfig,
-        } = request.body;
-        return await createPool(network, walletAddress!, baseToken, quoteToken, initialPrice, ammConfig);
-      } catch (e: any) {
-        logger.error('Create pool error:', e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError(e.message || 'Failed to create pool');
-      }
-    },
-  );
-};
-
-export default createPoolRoute;

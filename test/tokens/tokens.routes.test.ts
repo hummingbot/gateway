@@ -1,5 +1,3 @@
-import Fastify, { FastifyInstance } from 'fastify';
-
 // Mock dependencies
 jest.mock('../../src/services/logger', () => ({
   logger: {
@@ -13,14 +11,17 @@ jest.mock('../../src/services/logger', () => ({
 jest.mock('../../src/services/token-service');
 
 // Import after mocking
+import { FastifyInstance } from 'fastify';
+
 import { TokenService } from '../../src/services/token-service';
 import { tokensRoutes } from '../../src/tokens/tokens.routes';
+import { fastifyWithTypeProvider } from '../utils/testUtils';
 
 describe('Token Routes', () => {
   let app: FastifyInstance;
 
   beforeEach(async () => {
-    app = Fastify();
+    app = fastifyWithTypeProvider();
     await app.register(tokensRoutes);
 
     // Reset all mocks
@@ -43,17 +44,14 @@ describe('Token Routes', () => {
   });
 
   describe('GET /tokens', () => {
-    it('should return empty list when no chain/network specified', async () => {
-      const response = await app.inject({
-        method: 'GET',
-        url: '/',
-      });
+    it('rejects a request that names no chain-network, rather than answering nothing', async () => {
+      // This used to answer 200 with an empty list, which reads as "no tokens here" when
+      // it means "you did not say where". The data-management routes take no default,
+      // because guessing which stored list to read is not a convenience.
+      const response = await app.inject({ method: 'GET', url: '/' });
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body).toEqual({
-        tokens: [],
-      });
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body).message).toContain('chainNetwork');
     });
 
     it('should return tokens when chain and network specified', async () => {
@@ -72,7 +70,7 @@ describe('Token Routes', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: '/?chain=ethereum&network=mainnet',
+        url: '/?chainNetwork=ethereum-mainnet',
       });
 
       expect(response.statusCode).toBe(200);
@@ -95,7 +93,7 @@ describe('Token Routes', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: '/?chain=ethereum&network=invalid',
+        url: '/?chainNetwork=ethereum-sepolia',
       });
 
       expect(response.statusCode).toBe(404);
@@ -117,15 +115,14 @@ describe('Token Routes', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: '/USDC?chain=ethereum&network=mainnet',
+        url: '/USDC?chainNetwork=ethereum-mainnet',
       });
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body).toEqual({
         token: mockToken,
-        chain: 'ethereum',
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
       });
     });
 
@@ -135,7 +132,7 @@ describe('Token Routes', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: '/INVALID?chain=ethereum&network=mainnet',
+        url: '/INVALID?chainNetwork=ethereum-mainnet',
       });
 
       expect(response.statusCode).toBe(404);
@@ -159,8 +156,7 @@ describe('Token Routes', () => {
         method: 'POST',
         url: '/',
         payload: {
-          chain: 'ethereum',
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
           token: mockToken,
         },
       });
@@ -175,8 +171,7 @@ describe('Token Routes', () => {
         method: 'POST',
         url: '/',
         payload: {
-          chain: 'ethereum',
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
           token: {
             symbol: 'TEST',
             // missing required fields
@@ -203,8 +198,7 @@ describe('Token Routes', () => {
         method: 'POST',
         url: '/',
         payload: {
-          chain: 'ethereum',
-          network: 'mainnet',
+          chainNetwork: 'ethereum-mainnet',
           token: updatedToken,
         },
       });
@@ -222,7 +216,7 @@ describe('Token Routes', () => {
 
       const response = await app.inject({
         method: 'DELETE',
-        url: '/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48?chain=ethereum&network=mainnet',
+        url: '/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48?chainNetwork=ethereum-mainnet',
       });
 
       expect(response.statusCode).toBe(200);
@@ -238,7 +232,7 @@ describe('Token Routes', () => {
 
       const response = await app.inject({
         method: 'DELETE',
-        url: '/0x123?chain=ethereum&network=mainnet',
+        url: '/0x123?chainNetwork=ethereum-mainnet',
       });
 
       expect(response.statusCode).toBe(404);

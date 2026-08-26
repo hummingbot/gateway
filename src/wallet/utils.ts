@@ -28,7 +28,7 @@ export const walletPath = './conf/wallets';
 // Utility to sanitize file paths and prevent path traversal attacks
 export function sanitizePathComponent(input: string): string {
   // Remove any characters that could be used for directory traversal
-  return input.replace(/[\/\\:*?"<>|]/g, '');
+  return input.replace(/[/\\:*?"<>|]/g, '');
 }
 
 // Import supported chains function
@@ -93,7 +93,7 @@ export async function addWallet(fastify: FastifyInstance, req: AddWalletRequest)
   const network = req.chain === 'solana' ? 'mainnet-beta' : 'mainnet';
 
   try {
-    connection = await getInitializedChain<Chain>(req.chain, network);
+    connection = await getInitializedChain(req.chain, network);
   } catch (e) {
     if (e instanceof UnsupportedChainException) {
       throw fastify.httpErrors.badRequest(`Unrecognized chain name: ${req.chain}`);

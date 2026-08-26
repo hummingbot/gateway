@@ -1,9 +1,7 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
-import { MeteoraPoolInfo, MeteoraPoolInfoSchema, GetPoolInfoRequestType, PoolInfo } from '../../../schemas/clmm-schema';
-import { logger } from '../../../services/logger';
+import { MeteoraPoolInfo, PoolInfo } from '../../../schemas/clmm-schema';
 import { Meteora } from '../meteora';
-import { MeteoraClmmGetPoolInfoRequest } from '../schemas';
 
 export async function getPoolInfo(
   fastify: FastifyInstance,
@@ -27,37 +25,3 @@ export async function getPoolInfo(
 
   return poolInfo;
 }
-
-export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: GetPoolInfoRequestType;
-    Reply: MeteoraPoolInfo;
-  }>(
-    '/pool-info',
-    {
-      schema: {
-        description: 'Get pool information for a Meteora pool',
-        tags: ['/connector/meteora'],
-        querystring: MeteoraClmmGetPoolInfoRequest,
-        response: {
-          200: MeteoraPoolInfoSchema,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { poolAddress } = request.query;
-        const network = request.query.network;
-        return (await getPoolInfo(fastify, network, poolAddress)) as MeteoraPoolInfo;
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e; // Re-throw HttpErrors with original message
-        }
-        throw fastify.httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default poolInfoRoute;

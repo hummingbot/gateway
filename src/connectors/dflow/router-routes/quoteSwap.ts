@@ -1,18 +1,15 @@
 import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 
 import { Solana } from '../../../chains/solana/solana';
-import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage, sanitizeString } from '../../../services/sanitize';
-import { approximateBuyViaSellLeg } from '../../router-utils';
+import { approximateBuyViaSellLeg, attemptedRoute, priceImpactPercentFromFraction } from '../../router-utils';
 import { DFlow, DFlowQuoteResponse } from '../dflow';
 import { DFlowConfig } from '../dflow.config';
-import { DFlowQuoteSwapRequest, DFlowQuoteSwapResponse } from '../schemas';
-
+import { DFlowQuoteSwapResponse } from '../schemas';
 export async function quoteSwap(
   network: string,
   baseToken: string,
@@ -48,8 +45,8 @@ export async function quoteSwap(
     try {
       quoteResponse = await dflow.getQuote(inputToken.address, outputToken.address, amountRaw, slippageBps);
     } catch (error) {
-      const tokenPair = `${sanitizeString(baseToken)} -> ${sanitizeString(quoteToken)}`;
-      throw httpErrors.noRouteFound(`No route found for ${tokenPair} (ExactIn). ${error?.message || error}`);
+      const route = attemptedRoute(side, sanitizeString(baseToken), sanitizeString(quoteToken));
+      throw httpErrors.noRouteFound(`No route found for ${route}. ${error?.message || error}`);
     }
   } else {
     // DFlow is ExactIn-only (it silently ignores swapMode and quotes ExactIn, verified
@@ -106,49 +103,13 @@ export async function quoteSwap(
     amountIn: side === 'SELL' ? amount : estimatedAmountIn,
     amountOut: estimatedAmountOut,
     price,
-    priceImpactPct: parseFloat(quoteResponse.priceImpactPct || '0'),
+    // DFlow serves Jupiter's quote schema field for field — same name, same string type,
+    // same siblings — so its priceImpactPct is a fraction too. Inferred from the schema
+    // rather than measured: the public quote endpoint refuses an unkeyed request.
+    priceImpactPct: priceImpactPercentFromFraction(quoteResponse.priceImpactPct),
     minAmountOut,
     maxAmountIn,
     ...(isApproximation ? { approximation: true } : {}),
     quoteResponse,
   };
 }
-
-export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: QuoteSwapRequestType;
-    Reply: Static<typeof DFlowQuoteSwapResponse>;
-  }>(
-    '/quote-swap',
-    {
-      schema: {
-        description: 'Get an executable swap quote from DFlow',
-        tags: ['/connector/dflow'],
-        querystring: DFlowQuoteSwapRequest,
-        response: { 200: DFlowQuoteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, baseToken, quoteToken, amount, side, slippagePct, approximateIfNoExactOut } =
-          request.query as typeof DFlowQuoteSwapRequest._type;
-
-        return await quoteSwap(
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
-          slippagePct,
-          approximateIfNoExactOut,
-        );
-      } catch (e) {
-        if (e.statusCode) throw e;
-        logger.error('Error getting DFlow quote:', e);
-        throw httpErrors.internalServerError(e.message || 'Internal server error');
-      }
-    },
-  );
-};
-
-export default quoteSwapRoute;

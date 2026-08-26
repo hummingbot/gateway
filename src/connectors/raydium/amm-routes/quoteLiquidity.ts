@@ -5,19 +5,13 @@ import {
   TokenAmount,
 } from '@raydium-io/raydium-sdk-v2';
 import BN from 'bn.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  QuoteLiquidityRequestType,
-  QuoteLiquidityResponse,
-  QuoteLiquidityResponseType,
-} from '../../../schemas/amm-schema';
+import { QuoteLiquidityResponseType } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
 import { isValidAmm, isValidCpmm } from '../raydium.utils';
-import { RaydiumAmmQuoteLiquidityRequest } from '../schemas';
 
 interface AmmComputePairResult {
   anotherAmount: TokenAmount;
@@ -64,7 +58,7 @@ export async function quoteLiquidity(
     const solana = await Solana.getInstance(network);
     const raydium = await Raydium.getInstance(network);
 
-    const [poolInfo, poolKeys] = await raydium.getPoolfromAPI(poolAddress);
+    const [poolInfo] = await raydium.getPoolfromAPI(poolAddress);
     const programId = poolInfo.programId;
 
     if (!isValidAmm(programId) && !isValidCpmm(programId)) {
@@ -209,39 +203,3 @@ export async function quoteLiquidity(
     throw error;
   }
 }
-
-export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: QuoteLiquidityRequestType;
-    Reply: QuoteLiquidityResponseType | { error: string };
-  }>(
-    '/quote-liquidity',
-    {
-      schema: {
-        description: 'Quote amounts for a new Raydium AMM liquidity position',
-        tags: ['/connector/raydium'],
-        querystring: RaydiumAmmQuoteLiquidityRequest,
-        response: {
-          200: QuoteLiquidityResponse,
-          500: {
-            type: 'object',
-            properties: { error: { type: 'string' } },
-          },
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network = 'mainnet-beta', poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.query;
-
-        return await quoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Failed to quote position');
-      }
-    },
-  );
-};
-
-export default quoteLiquidityRoute;

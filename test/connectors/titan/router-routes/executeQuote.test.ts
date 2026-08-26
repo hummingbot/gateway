@@ -12,7 +12,7 @@ jest.mock('../../../../src/connectors/titan/titan.utils', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { executeQuoteRoute } = await import('../../../../src/connectors/titan/router-routes/executeQuote');
+  const { executeQuoteRoute } = await import('../../../../src/trading/trading-router-routes/executeQuote');
   await server.register(executeQuoteRoute);
   return server;
 };
@@ -69,6 +69,7 @@ describe('POST /execute-quote (titan)', () => {
     const mockSolanaInstance = {
       sendAndConfirmTransactionForWallet,
       connection: mockConnection,
+      getConfirmedTransactionData: jest.fn(async () => ({ meta: {} })),
       handleConfirmation: jest.fn(async () => confirmedResult),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
@@ -79,7 +80,12 @@ describe('POST /execute-quote (titan)', () => {
     const response = await server.inject({
       method: 'POST',
       url: '/execute-quote',
-      body: { walletAddress: WALLET, network: 'mainnet-beta', quoteId: 'titan-quote-1' },
+      body: {
+        walletAddress: WALLET,
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'titan',
+        quoteId: 'titan-quote-1',
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -100,7 +106,12 @@ describe('POST /execute-quote (titan)', () => {
     const response = await server.inject({
       method: 'POST',
       url: '/execute-quote',
-      body: { walletAddress: OTHER_WALLET, network: 'mainnet-beta', quoteId: 'titan-quote-2' },
+      body: {
+        walletAddress: OTHER_WALLET,
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'titan',
+        quoteId: 'titan-quote-2',
+      },
     });
 
     expect(response.statusCode).toBe(400);
@@ -113,7 +124,12 @@ describe('POST /execute-quote (titan)', () => {
     const response = await server.inject({
       method: 'POST',
       url: '/execute-quote',
-      body: { walletAddress: WALLET, network: 'mainnet-beta', quoteId: 'missing-quote' },
+      body: {
+        walletAddress: WALLET,
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'titan',
+        quoteId: 'missing-quote',
+      },
     });
 
     expect(response.statusCode).toBe(400);

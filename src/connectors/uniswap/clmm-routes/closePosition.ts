@@ -1,21 +1,17 @@
 import { Contract } from '@ethersproject/contracts';
 import { Percent, CurrencyAmount } from '@uniswap/sdk-core';
-import { NonfungiblePositionManager, Position } from '@uniswap/v3-sdk';
+import { NonfungiblePositionManager, Position, computePoolAddress } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  ClosePositionRequestType,
-  ClosePositionRequest,
-  ClosePositionResponseType,
-  ClosePositionResponse,
-} from '../../../schemas/clmm-schema';
+import { TransactionStatus } from '../../../schemas/chain-schema';
+import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
+import { slippageBasisPoints } from '../../evm-slippage';
 import { Uniswap } from '../uniswap';
-import { POSITION_MANAGER_ABI, getUniswapV3NftManagerAddress } from '../uniswap.contracts';
+import { UniswapConfig } from '../uniswap.config';
+import { POSITION_MANAGER_ABI, getUniswapV3NftManagerAddress, getUniswapV3FactoryAddress } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
 // Default gas limit for CLMM close position operations
@@ -25,6 +21,7 @@ export async function closePosition(
   network: string,
   walletAddress: string,
   positionAddress: string,
+  slippagePct: number = UniswapConfig.config.slippagePct,
 ): Promise<ClosePositionResponseType> {
   // Validate essential parameters
   if (!positionAddress) {
@@ -64,6 +61,16 @@ export async function closePosition(
   const token0 = await uniswap.getToken(position.token0);
   const token1 = await uniswap.getToken(position.token1);
 
+  // The pool this position belongs to, derived from the same inputs position-info
+  // uses. The unified route is position-addressed and never receives a pool, so
+  // deriving it here is what lets the response name the venue it acted on.
+  const poolAddress = computePoolAddress({
+    factoryAddress: getUniswapV3FactoryAddress(network),
+    tokenA: token0,
+    tokenB: token1,
+    fee: position.fee,
+  });
+
   // Determine base and quote tokens - WETH or lower address is base
   const isBaseToken0 =
     token0.symbol === 'WETH' ||
@@ -100,9 +107,10 @@ export async function closePosition(
   const amount1 = positionSDK.amount1;
 
   // Apply slippage tolerance
-  const slippageTolerance = new Percent(100, 10000); // 1% slippage
-  const amount0Min = amount0.multiply(new Percent(1).subtract(slippageTolerance)).quotient;
-  const amount1Min = amount1.multiply(new Percent(1).subtract(slippageTolerance)).quotient;
+  // The caller's tolerance, or the connector's configured one — not a literal. This was
+  // `new Percent(100, 10000)`, a flat 1% that ignored both, so an operator who had widened
+  // slippagePct for a volatile pair got 1% anyway and a revert that cost gas.
+  const slippageTolerance = new Percent(slippageBasisPoints(slippagePct), 10000);
 
   // Add any fees that have been collected to the expected amounts
   const totalAmount0 = CurrencyAmount.fromRawAmount(
@@ -153,10 +161,11 @@ export async function closePosition(
   const tx = await positionManagerWithSigner.multicall([calldata], txParams);
 
   // Wait for transaction confirmation
-  const receipt = await ethereum.handleTransactionExecution(tx);
-
-  // Calculate gas fee
-  const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
+  if (!outcome.confirmed) {
+    // Still pending — the amounts below were computed before sending and have not moved.
+    return { signature: outcome.signature, status: TransactionStatus.PENDING };
+  }
 
   // Calculate token amounts removed including fees
   const token0AmountRemoved = formatTokenAmount(totalAmount0.quotient.toString(), token0.decimals);
@@ -177,10 +186,11 @@ export async function closePosition(
   const positionRentRefunded = 0;
 
   return {
-    signature: receipt.transactionHash,
-    status: receipt.status,
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     data: {
-      fee: gasFee,
+      poolAddress,
+      fee: outcome.fee,
       positionRentRefunded,
       baseTokenAmountRemoved,
       quoteTokenAmountRemoved,
@@ -189,46 +199,3 @@ export async function closePosition(
     },
   };
 }
-
-export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: ClosePositionRequestType;
-    Reply: ClosePositionResponseType;
-  }>(
-    '/close-position',
-    {
-      schema: {
-        description: 'Close a Uniswap V3 position by removing all liquidity and collecting fees',
-        tags: ['/connector/uniswap'],
-        body: ClosePositionRequest,
-        response: {
-          200: ClosePositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress: requestedWalletAddress, positionAddress } = request.body;
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          const uniswap = await Uniswap.getInstance(network);
-          walletAddress = await uniswap.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw fastify.httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-        }
-
-        return await closePosition(network, walletAddress, positionAddress);
-      } catch (e: any) {
-        logger.error('Failed to close position:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw fastify.httpErrors.internalServerError('Failed to close position');
-      }
-    },
-  );
-};
-
-export default closePositionRoute;

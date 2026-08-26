@@ -1,11 +1,12 @@
 # DFlow Router Connector
 
-[DFlow](https://dflow.net) is a low-latency DEX aggregator built for Solana. This connector
-exposes DFlow through Gateway's standard router endpoints:
+[DFlow](https://dflow.net) is a low-latency DEX aggregator built for Solana. Like every
+router connector it is reached through the unified trading routes, naming `dflow` as the
+`connector`:
 
-- `GET  /connectors/dflow/router/quote-swap`
-- `POST /connectors/dflow/router/execute-quote`
-- `POST /connectors/dflow/router/execute-swap`
+- `GET  /trading/router/quote-swap`
+- `POST /trading/router/execute-quote`
+- `POST /trading/router/execute-swap`
 
 Network support: `mainnet-beta` only.
 

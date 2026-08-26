@@ -1,12 +1,11 @@
 import { Contract } from '@ethersproject/contracts';
-import { Static } from '@sinclair/typebox';
 import { Percent } from '@uniswap/sdk-core';
 import { Decimal } from 'decimal.js';
 import { BigNumber, constants, utils } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum, TokenInfo } from '../../../chains/ethereum/ethereum';
-import { CreatePoolResponse, CreatePoolResponseType } from '../../../schemas/amm-schema';
+import { CreatePoolResponseType } from '../../../schemas/amm-schema';
+import { TransactionStatus } from '../../../schemas/chain-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapConfig } from '../pancakeswap.config';
@@ -18,7 +17,6 @@ import {
   getPancakeswapV2RouterAddress,
 } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
-import { PancakeswapAmmCreatePoolRequest } from '../schemas';
 
 // Default gas limit for AMM create-pool operations (pair creation + initial mint costs more than a plain add).
 // Pancakeswap V2 pools all share a fixed 0.25% swap fee — there is no fee parameter to set.
@@ -54,10 +52,10 @@ async function fetchMarketPrice(
   quoteToken: string,
   amount: number,
 ): Promise<number> {
-  const { getUnifiedQuoteSwap } = await import('../../../trading/swap/quote');
+  const { getSwapQuote } = await import('../../../trading/market-price');
   let quote: any;
   try {
-    quote = await getUnifiedQuoteSwap(`ethereum-${network}`, baseToken, quoteToken, amount, 'SELL');
+    quote = await getSwapQuote(`ethereum-${network}`, baseToken, quoteToken, amount, 'SELL');
   } catch (e: any) {
     throw httpErrors.badRequest(
       `Could not fetch a market price for ${baseToken}/${quoteToken} to seed the pool (${e.message}). ` +
@@ -80,8 +78,6 @@ export async function createPool(
   baseTokenAmount: number,
   quoteTokenAmount?: number,
   initialPrice?: number,
-  gasPrice?: number,
-  maxGas?: number,
   slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<CreatePoolResponseType> {
   if (baseTokenAmount <= 0) {
@@ -178,10 +174,6 @@ export async function createPool(
 
   const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
 
-  // gasPrice arrives already in gwei (the unit prepareGasOptions expects). The connector's Fastify
-  // route accepts gasPrice as a wei string (sibling shape) and converts it to gwei before calling.
-  const gasPriceGwei = gasPrice;
-
   let tx;
   if (baseIsEth || quoteIsEth) {
     // One side is ETH/WETH → addLiquidityETH. The ERC20 side needs an allowance to the router; the
@@ -204,7 +196,7 @@ export async function createPool(
       );
     }
 
-    const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_CREATE_POOL_GAS_LIMIT);
+    const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_CREATE_POOL_GAS_LIMIT);
     gasOptions.value = ethRawAmount;
 
     tx = await router.addLiquidityETH(
@@ -248,7 +240,7 @@ export async function createPool(
       );
     }
 
-    const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_CREATE_POOL_GAS_LIMIT);
+    const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_CREATE_POOL_GAS_LIMIT);
 
     tx = await router.addLiquidity(
       baseTokenInfo.address,
@@ -265,118 +257,32 @@ export async function createPool(
 
   logger.info(`Creating Pancakeswap V2 pool ${baseTokenInfo.symbol}/${quoteTokenInfo.symbol} via tx ${tx.hash}`);
 
-  const receipt = await ethereum.handleTransactionExecution(tx);
+  // A revert throws out of here (400 TRANSACTION_FAILED) — it is never reported as PENDING.
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
 
   // Read the (now-created) pair address from the factory — authoritative source of the pool address.
   const pairAddress: string = await factory.getPair(baseTokenInfo.address, quoteTokenInfo.address);
 
-  if (receipt && receipt.status === 1) {
-    const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18); // ETH has 18 decimals
+  if (!outcome.confirmed) {
+    // Timed out but still broadcasting — report PENDING with the tx hash so the caller can
+    // reconcile it. The seed amounts below have not moved, so they are deliberately omitted.
     return {
-      signature: receipt.transactionHash,
-      status: 1, // CONFIRMED
+      signature: outcome.signature,
+      status: TransactionStatus.PENDING,
       poolAddress: pairAddress,
       price: seedPrice,
-      data: {
-        fee: gasFee,
-        baseTokenAmountAdded: baseTokenAmount,
-        quoteTokenAmountAdded: effectiveQuoteAmount,
-      },
     };
   }
 
-  // Timed out (still broadcasting) or reverted — report as pending with the tx hash.
   return {
-    signature: receipt ? receipt.transactionHash : tx.hash,
-    status: 0, // PENDING
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     poolAddress: pairAddress,
     price: seedPrice,
+    data: {
+      fee: outcome.fee,
+      baseTokenAmountAdded: baseTokenAmount,
+      quoteTokenAmountAdded: effectiveQuoteAmount,
+    },
   };
 }
-
-export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-
-  fastify.post<{
-    Body: Static<typeof PancakeswapAmmCreatePoolRequest>;
-    Reply: CreatePoolResponseType;
-  }>(
-    '/create-pool',
-    {
-      schema: {
-        description: 'Create a new Pancakeswap V2 (AMM) pool and seed it with initial liquidity (fixed 0.25% fee)',
-        tags: ['/connector/pancakeswap'],
-        body: PancakeswapAmmCreatePoolRequest,
-        response: {
-          200: CreatePoolResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network,
-          baseToken,
-          quoteToken,
-          baseTokenAmount,
-          quoteTokenAmount,
-          initialPrice,
-          slippagePct,
-          gasPrice,
-          maxGas,
-          walletAddress: requestedWalletAddress,
-        } = request.body;
-
-        if (!baseToken || !quoteToken || !baseTokenAmount) {
-          throw fastify.httpErrors.badRequest('Missing required parameters');
-        }
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          walletAddress = await Ethereum.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw fastify.httpErrors.badRequest('No wallet address provided and no wallets found.');
-          }
-          logger.info(`Using first available wallet address: ${walletAddress}`);
-        }
-
-        // Route accepts gasPrice as a wei string (matching sibling AMM requests); createPool expects gwei.
-        const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-
-        return await createPool(
-          network,
-          walletAddress,
-          baseToken,
-          quoteToken,
-          baseTokenAmount,
-          quoteTokenAmount,
-          initialPrice,
-          gasPriceGwei,
-          maxGas,
-          slippagePct,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-
-        if (e.message && e.message.includes('Insufficient allowance')) {
-          throw fastify.httpErrors.badRequest(e.message);
-        }
-        if (e.message && e.message.includes('already exists')) {
-          throw fastify.httpErrors.badRequest(e.message);
-        }
-        if (e.code === 'INSUFFICIENT_FUNDS' || (e.message && e.message.includes('insufficient funds'))) {
-          throw fastify.httpErrors.badRequest(
-            'Insufficient native balance to pay for gas fees. Please add more funds to your wallet.',
-          );
-        }
-
-        throw fastify.httpErrors.internalServerError('Failed to create pool');
-      }
-    },
-  );
-};
-
-export default createPoolRoute;

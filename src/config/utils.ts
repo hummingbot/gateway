@@ -1,8 +1,4 @@
-import * as fs from 'fs';
-import * as path from 'path';
-
 import { FastifyInstance } from 'fastify';
-import * as yaml from 'js-yaml';
 
 import { ConfigManagerV2 } from '../services/config-manager-v2';
 import { logger } from '../services/logger';
@@ -11,10 +7,13 @@ import { logger } from '../services/logger';
 const KNOWN_CHAINS = ['solana', 'ethereum'];
 
 /**
- * Parse a chain-network namespace format into chain and network components.
- * Returns null if not a chain-network format.
+ * Is this config namespace a chain-network one, and if so which?
+ *
+ * Distinct from services/chain-network's parser, which reads a caller's selector and
+ * rejects a malformed one. This classifies a namespace against the known chains and
+ * answers null for anything else — `server`, `uniswap` — which is not an error here.
  */
-function parseChainNetwork(namespace: string): { chain: string; network: string } | null {
+function parseChainNetworkNamespace(namespace: string): { chain: string; network: string } | null {
   for (const chain of KNOWN_CHAINS) {
     if (namespace.startsWith(`${chain}-`)) {
       const network = namespace.slice(chain.length + 1);
@@ -36,7 +35,7 @@ export const getConfig = (fastify: FastifyInstance, namespace?: string): object 
     }
 
     // Check if this is a chain-network format (e.g., solana-mainnet-beta)
-    const parsed = parseChainNetwork(namespace);
+    const parsed = parseChainNetworkNamespace(namespace);
     if (parsed) {
       // Get the parent chain config and merge it
       const chainConfig = ConfigManagerV2.getInstance().getNamespace(parsed.chain);
@@ -65,7 +64,7 @@ export const updateConfig = (fastify: FastifyInstance, configPath: string, confi
     const [namespace, ...pathParts] = configPath.split('.');
     const field = pathParts[0];
 
-    const parsed = parseChainNetwork(namespace);
+    const parsed = parseChainNetworkNamespace(namespace);
     if (parsed && field) {
       // Check if this field exists in the chain config (not network config)
       const chainConfig = ConfigManagerV2.getInstance().getNamespace(parsed.chain);

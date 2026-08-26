@@ -9,7 +9,7 @@ const mockWallet = '0x0000000000000000000000000000000000000001';
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { createPoolRoute } = await import('../../../../src/connectors/pancakeswap/amm-routes/createPool');
+  const { createPoolRoute } = await import('../../../../src/trading/trading-amm-routes/create-pool');
   await server.register(createPoolRoute);
   return server;
 };
@@ -39,7 +39,8 @@ describe('POST /create-pool (Pancakeswap V2 AMM)', () => {
       method: 'POST',
       url: '/create-pool',
       payload: {
-        network: 'bsc',
+        chainNetwork: 'ethereum-bsc',
+        connector: 'pancakeswap',
         walletAddress: mockWallet,
         baseToken: 'ETH',
         quoteToken: 'WETH',

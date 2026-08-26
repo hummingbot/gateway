@@ -1,16 +1,13 @@
 import { Contract } from '@ethersproject/contracts';
-import { Static } from '@sinclair/typebox';
 import { Percent } from '@uniswap/sdk-core';
-import { BigNumber, utils } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
-import { re } from 'mathjs';
+import { BigNumber } from 'ethers';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
 import { wrapEthereum } from '../../../chains/ethereum/routes/wrap';
-import { AddLiquidityResponseType, AddLiquidityResponse } from '../../../schemas/amm-schema';
+import { AddLiquidityResponseType } from '../../../schemas/amm-schema';
+import { TransactionStatus } from '../../../schemas/chain-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
-import { UniswapAmmAddLiquidityRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
 import { IUniswapV2Router02ABI } from '../uniswap.contracts';
@@ -31,8 +28,6 @@ async function addLiquidityInternal(
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct: number = UniswapConfig.config.slippagePct,
-  gasPrice?: string,
-  maxGas?: number,
 ): Promise<AddLiquidityResponseType> {
   const networkToUse = network;
 
@@ -40,6 +35,11 @@ async function addLiquidityInternal(
   let actualBaseToken = baseToken;
   let baseWrapTxHash = null;
   if (baseToken === 'ETH') {
+    // Declared here, as the quote-token branch below does. It used to resolve to a
+    // function-scope binding declared further down, which made this branch a
+    // guaranteed ReferenceError: adding liquidity with ETH as the base token could
+    // never have worked. The dead-code sweep that removed the unused later binding is
+    // what surfaced it.
     const uniswap = await Uniswap.getInstance(networkToUse);
     const wethToken = await uniswap.getToken('WETH');
     if (!wethToken) {
@@ -87,7 +87,6 @@ async function addLiquidityInternal(
 
   // Get Ethereum instance
   const ethereum = await Ethereum.getInstance(networkToUse);
-  const uniswap = await Uniswap.getInstance(networkToUse);
 
   // Get wallet
   const wallet = await ethereum.getWallet(walletAddress);
@@ -182,8 +181,7 @@ async function addLiquidityInternal(
 
     // Add liquidity Token + ETH
     // Convert gasPrice from wei to gwei if provided
-    const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-    const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_ADD_LIQUIDITY_GAS_LIMIT);
+    const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_ADD_LIQUIDITY_GAS_LIMIT);
     gasOptions.value = quote.rawQuoteTokenAmount;
 
     tx = await router.addLiquidityETH(
@@ -244,8 +242,7 @@ async function addLiquidityInternal(
 
     // Add liquidity Token + Token
     // Convert gasPrice from wei to gwei if provided
-    const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-    const gasOptions = await ethereum.prepareGasOptions(gasPriceGwei, maxGas || AMM_ADD_LIQUIDITY_GAS_LIMIT);
+    const gasOptions = await ethereum.prepareGasOptions(undefined, AMM_ADD_LIQUIDITY_GAS_LIMIT);
 
     tx = await router.addLiquidity(
       quote.baseTokenObj.address,
@@ -261,19 +258,17 @@ async function addLiquidityInternal(
   }
 
   // Wait for transaction confirmation
-  const receipt = await ethereum.handleTransactionExecution(tx);
-
-  // Calculate gas fee
-  const gasFee = formatTokenAmount(
-    receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(),
-    18, // ETH has 18 decimals
-  );
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
+  if (!outcome.confirmed) {
+    // Still pending — the quoted amounts were computed before sending and have not moved.
+    return { signature: outcome.signature, status: TransactionStatus.PENDING };
+  }
 
   return {
-    signature: receipt.transactionHash,
-    status: receipt.status,
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     data: {
-      fee: gasFee,
+      fee: outcome.fee,
       baseTokenAmountAdded: quote.baseTokenAmount,
       quoteTokenAmountAdded: quote.quoteTokenAmount,
       ...(baseWrapTxHash && { baseWrapTxHash }),
@@ -293,8 +288,6 @@ export async function addLiquidity(
   baseTokenAmount: number,
   quoteTokenAmount: number,
   slippagePct: number = UniswapConfig.config.slippagePct,
-  gasPrice?: string,
-  maxGas?: number,
 ): Promise<AddLiquidityResponseType> {
   const poolInfo = await getUniswapPoolInfo(poolAddress, network, 'amm');
   if (!poolInfo) throw httpErrors.notFound(`Pool not found: ${poolAddress}`);
@@ -308,93 +301,5 @@ export async function addLiquidity(
     baseTokenAmount,
     quoteTokenAmount,
     slippagePct,
-    gasPrice,
-    maxGas,
   );
 }
-
-export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
-  fastify.post<{
-    Body: Static<typeof UniswapAmmAddLiquidityRequest>;
-    Reply: AddLiquidityResponseType;
-  }>(
-    '/add-liquidity',
-    {
-      schema: {
-        description: 'Add liquidity to a Uniswap V2 pool',
-        tags: ['/connector/uniswap'],
-        body: UniswapAmmAddLiquidityRequest,
-        response: {
-          200: AddLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-          walletAddress: requestedWalletAddress,
-          gasPrice,
-          maxGas,
-        } = request.body;
-
-        // Validate essential parameters
-        if (!poolAddress || !baseTokenAmount || !quoteTokenAmount) {
-          throw fastify.httpErrors.badRequest('Missing required parameters');
-        }
-
-        const networkToUse = network;
-
-        // Get wallet address - either from request or first available
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          walletAddress = await Ethereum.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw fastify.httpErrors.badRequest('No wallet address provided and no wallets found.');
-          }
-          logger.info(`Using first available wallet address: ${walletAddress}`);
-        }
-
-        return await addLiquidity(
-          networkToUse,
-          walletAddress,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-          gasPrice,
-          maxGas,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-
-        // Handle specific user-actionable errors
-        if (e.message && e.message.includes('Insufficient allowance')) {
-          logger.error('Request error:', e);
-          throw fastify.httpErrors.badRequest('Invalid request');
-        }
-
-        // Handle insufficient funds errors
-        if (e.code === 'INSUFFICIENT_FUNDS' || (e.message && e.message.includes('insufficient funds'))) {
-          throw fastify.httpErrors.badRequest(
-            'Insufficient ETH balance to pay for gas fees. Please add more ETH to your wallet.',
-          );
-        }
-
-        throw fastify.httpErrors.internalServerError('Failed to add liquidity');
-      }
-    },
-  );
-};
-
-export default addLiquidityRoute;
