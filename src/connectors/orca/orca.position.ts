@@ -32,22 +32,8 @@ import {
 import { decodeMint, type Mint } from '@solana-program/token-2022';
 
 import { PositionInfo } from '../../schemas/clmm-schema';
-import { logger } from '../../services/logger';
 
 type OrcaRpc = Rpc<GetAccountInfoApi & GetMultipleAccountsApi & GetEpochInfoApi>;
-
-const MAX_POSITION_SNAPSHOT_ATTEMPTS = 2;
-
-class PositionSnapshotChangedError extends Error {
-  constructor() {
-    super('Orca position changed while its account snapshot was being assembled');
-  }
-}
-
-const isRetryableSnapshotError = (error: unknown): boolean => {
-  const message = error instanceof Error ? error.message : String(error);
-  return error instanceof PositionSnapshotChangedError || message.includes('Amount exceeds max u64');
-};
 
 export const getCurrentTransferFee = (
   mint: MaybeAccount<Mint> | Account<Mint>,
@@ -69,7 +55,7 @@ export const getCurrentTransferFee = (
   };
 };
 
-const getPositionDetailsFromSnapshot = async (
+export const getPositionDetails = async (
   rpc: OrcaRpc,
   positionAddress: string,
   deployment: WhirlpoolDeployment,
@@ -129,7 +115,7 @@ const getPositionDetailsFromSnapshot = async (
     whirlpool.data.tokenMintB !== discoveredWhirlpool.data.tokenMintB ||
     whirlpool.data.tickSpacing !== discoveredWhirlpool.data.tickSpacing
   ) {
-    throw new PositionSnapshotChangedError();
+    throw new Error('Orca position changed while its account snapshot was being assembled');
   }
 
   const lowerTick =
@@ -185,23 +171,4 @@ const getPositionDetailsFromSnapshot = async (
     quoteTokenAmount: Number(tokenB) / scaleB,
     price: sqrtPriceToPrice(whirlpool.data.sqrtPrice, mintA.data.decimals, mintB.data.decimals),
   };
-};
-
-export const getPositionDetails = async (
-  rpc: OrcaRpc,
-  positionAddress: string,
-  deployment: WhirlpoolDeployment,
-): Promise<PositionInfo | null> => {
-  for (let attempt = 1; attempt <= MAX_POSITION_SNAPSHOT_ATTEMPTS; attempt++) {
-    try {
-      return await getPositionDetailsFromSnapshot(rpc, positionAddress, deployment);
-    } catch (error) {
-      if (attempt === MAX_POSITION_SNAPSHOT_ATTEMPTS || !isRetryableSnapshotError(error)) {
-        throw error;
-      }
-      logger.warn(`Retrying Orca position snapshot for ${positionAddress} after an inconsistent read`);
-    }
-  }
-
-  throw new Error(`Failed to read Orca position snapshot: ${positionAddress}`);
 };

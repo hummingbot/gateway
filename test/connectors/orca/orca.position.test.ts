@@ -28,11 +28,6 @@ jest.mock('@solana/kit', () => ({
 jest.mock('@solana-program/token-2022', () => ({
   decodeMint: jest.fn(),
 }));
-jest.mock('../../../src/services/logger', () => ({
-  logger: {
-    warn: jest.fn(),
-  },
-}));
 
 import {
   decodePosition,
@@ -47,7 +42,6 @@ import { fetchEncodedAccounts } from '@solana/kit';
 import { decodeMint } from '@solana-program/token-2022';
 
 import { getPositionDetails } from '../../../src/connectors/orca/orca.position';
-import { logger } from '../../../src/services/logger';
 
 describe('Orca position snapshot', () => {
   const rpc = {
@@ -173,33 +167,26 @@ describe('Orca position snapshot', () => {
     expect(decodeWhirlpool).not.toHaveBeenCalled();
   });
 
-  it('retries once when Orca rejects an inconsistent fee-growth snapshot', async () => {
-    (collectFeesQuote as jest.Mock)
-      .mockImplementationOnce(() => {
-        throw new Error('Amount exceeds max u64');
-      })
-      .mockReturnValueOnce({ feeOwedA: 5_000_000n, feeOwedB: 7_000_000n });
+  it('propagates an inconsistent fee-growth calculation without connector-specific retry', async () => {
+    (collectFeesQuote as jest.Mock).mockImplementation(() => {
+      throw new Error('Amount exceeds max u64');
+    });
 
-    await expect(getPositionDetails(rpc, 'position', deployment)).resolves.toEqual(
-      expect.objectContaining({ address: 'position' }),
-    );
-    expect(fetchEncodedAccounts).toHaveBeenCalledTimes(2);
-    expect(logger.warn).toHaveBeenCalledTimes(1);
+    await expect(getPositionDetails(rpc, 'position', deployment)).rejects.toThrow('Amount exceeds max u64');
+    expect(fetchEncodedAccounts).toHaveBeenCalledTimes(1);
   });
 
-  it('retries discovery when the position changes before the final batch', async () => {
-    (decodePosition as jest.Mock)
-      .mockReturnValueOnce({
-        ...position,
-        data: { ...position.data, tickUpperIndex: 21 },
-      })
-      .mockReturnValue(position);
+  it('rejects when discovery metadata changes before the final batch', async () => {
+    (decodePosition as jest.Mock).mockReturnValue({
+      ...position,
+      data: { ...position.data, tickUpperIndex: 21 },
+    });
 
-    await expect(getPositionDetails(rpc, 'position', deployment)).resolves.toEqual(
-      expect.objectContaining({ address: 'position' }),
+    await expect(getPositionDetails(rpc, 'position', deployment)).rejects.toThrow(
+      'Orca position changed while its account snapshot was being assembled',
     );
-    expect(fetchEncodedAccounts).toHaveBeenCalledTimes(2);
-    expect(collectFeesQuote).toHaveBeenCalledTimes(1);
+    expect(fetchEncodedAccounts).toHaveBeenCalledTimes(1);
+    expect(collectFeesQuote).not.toHaveBeenCalled();
   });
 
   it('propagates non-snapshot failures without retrying', async () => {
@@ -207,7 +194,6 @@ describe('Orca position snapshot', () => {
 
     await expect(getPositionDetails(rpc, 'position', deployment)).rejects.toThrow('429 Too Many Requests');
     expect(fetchEncodedAccounts).toHaveBeenCalledTimes(1);
-    expect(logger.warn).not.toHaveBeenCalled();
   });
 
   it('propagates a missing Whirlpool dependency instead of reporting the position closed', async () => {
