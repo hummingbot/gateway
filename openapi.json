@@ -8992,6 +8992,40 @@
           }
         }
       }
+    },
+    "/restart": {
+      "post": {
+        "operationId": "restartGateway",
+        "tags": [
+          "/"
+        ],
+        "description": "Restarts the Gateway process so configuration changes take effect. Responds before exiting, so a 200 means the restart was accepted, not that Gateway is back. Note that Gateway exits with code 0: under a process supervisor that only revives on failure, it will not come back on its own.",
+        "responses": {
+          "200": {
+            "description": "Restart accepted; Gateway is going down."
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "servers": [
@@ -9031,6 +9065,10 @@
     {
       "name": "/trading/amm",
       "description": "Constant-product pools: swaps, liquidity, and pool management"
+    },
+    {
+      "name": "/",
+      "description": "Server lifecycle"
     }
   ]
 }

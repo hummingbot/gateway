@@ -214,6 +214,7 @@ const swaggerOptions = {
       { name: '/trading/router', description: 'Swaps routed across pools by a router connector' },
       { name: '/trading/clmm', description: 'Concentrated-liquidity pools: swaps, positions, and pool management' },
       { name: '/trading/amm', description: 'Constant-product pools: swaps, liquidity, and pool management' },
+      { name: '/', description: 'Server lifecycle' },
     ],
     components: {
       parameters: {
@@ -490,15 +491,42 @@ const configureGatewayServer = () => {
     return { status: 'ok' };
   });
 
-  // Restart endpoint (outside registerRoutes, only on main server)
-  server.post('/restart', async (_req, reply) => {
-    await reply.status(200).send();
-    // Spawn a new instance before exiting
-    spawn(process.argv[0], process.argv.slice(1), {
-      detached: true,
-      stdio: 'inherit',
-    });
-    process.exit(0);
+  // Restart endpoint (outside registerRoutes, only on main server).
+  //
+  // Tagged, and so in the spec: `hideUntagged` drops any route without one, and this was
+  // the only route a client had to know about without the spec saying it existed --
+  // hummingbot calls it after every config write. The 200 is sent before the process
+  // goes down, so it means "restart accepted", not "restart finished".
+  //
+  // Registered through `register` rather than added directly: @fastify/swagger documents
+  // a route via an `onRoute` hook, and that hook only exists once its plugin has loaded
+  // during `ready()`. A route added straight onto the instance is registered before that
+  // happens, so the hook never sees it -- which is why this one stayed out of the spec
+  // even once it had a tag. Deferring it into the plugin tree puts it after swagger,
+  // while keeping it off the docs server.
+  server.register(async (app) => {
+    app.post(
+      '/restart',
+      {
+        schema: {
+          description:
+            'Restarts the Gateway process so configuration changes take effect. Responds before exiting, so a 200 means the restart was accepted, not that Gateway is back. Note that Gateway exits with code 0: under a process supervisor that only revives on failure, it will not come back on its own.',
+          tags: ['/'],
+          response: {
+            200: Type.Null({ description: 'Restart accepted; Gateway is going down.' }),
+          },
+        },
+      },
+      async (_req, reply) => {
+        await reply.status(200).send();
+        // Spawn a new instance before exiting
+        spawn(process.argv[0], process.argv.slice(1), {
+          detached: true,
+          stdio: 'inherit',
+        });
+        process.exit(0);
+      },
+    );
   });
 
   return server;

@@ -14,6 +14,9 @@
  * `test/spec/operation-ids.test.ts` holds this to every route, in both directions.
  */
 export const OPERATION_IDS: Record<string, string> = {
+  // Server lifecycle
+  'POST /restart': 'restartGateway',
+
   // System configuration
   'GET /config/': 'getConfig',
   'POST /config/update': 'updateConfig',
