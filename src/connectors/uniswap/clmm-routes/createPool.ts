@@ -1,16 +1,14 @@
 import { Contract } from '@ethersproject/contracts';
-import { Static } from '@sinclair/typebox';
 import { encodeSqrtRatioX96 } from '@uniswap/v3-sdk';
 import { Decimal } from 'decimal.js';
-import { BigNumber, constants, utils } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
+import { BigNumber, constants } from 'ethers';
 import JSBI from 'jsbi';
 
 import { Ethereum, TokenInfo } from '../../../chains/ethereum/ethereum';
-import { CreatePoolResponse, CreatePoolResponseType } from '../../../schemas/amm-schema';
+import { TransactionStatus } from '../../../schemas/chain-schema';
+import { CreatePoolResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
-import { UniswapClmmCreatePoolRequest } from '../schemas';
 import {
   IUniswapV3FactoryABI,
   IUniswapV3PoolSlot0ABI,
@@ -18,7 +16,6 @@ import {
   getUniswapV3FactoryAddress,
   getUniswapV3NftManagerAddress,
 } from '../uniswap.contracts';
-import { formatTokenAmount } from '../uniswap.utils';
 
 // Uniswap V3 supported fee tiers (hundredths of a bip). 100=0.01%, 500=0.05%, 3000=0.30%, 10000=1.00%.
 const VALID_FEE_TIERS = [100, 500, 3000, 10000];
@@ -54,10 +51,10 @@ async function fetchMarketPrice(
   quoteToken: string,
   amount: number,
 ): Promise<number> {
-  const { getUnifiedQuoteSwap } = await import('../../../trading/swap/quote');
+  const { getSwapQuote } = await import('../../../trading/market-price');
   let quote: any;
   try {
-    quote = await getUnifiedQuoteSwap(`ethereum-${network}`, baseToken, quoteToken, amount, 'SELL');
+    quote = await getSwapQuote(`ethereum-${network}`, baseToken, quoteToken, amount, 'SELL');
   } catch (e: any) {
     throw httpErrors.badRequest(
       `Could not fetch a market price for ${baseToken}/${quoteToken} to seed the pool (${e.message}). ` +
@@ -77,8 +74,6 @@ export async function createPool(
   quoteToken: string,
   initialPrice?: number,
   fee?: number,
-  gasPrice?: number,
-  maxGas?: number,
 ): Promise<CreatePoolResponseType> {
   // Validate the fee tier — V3 only accepts a fixed set of tiers, each mapped to a tick spacing.
   if (fee === undefined) {
@@ -176,7 +171,7 @@ export async function createPool(
   const nftManagerAddress = getUniswapV3NftManagerAddress(network);
   const nftManager = new Contract(nftManagerAddress, INftManagerCreatePoolABI, wallet);
 
-  const gasOptions = await ethereum.prepareGasOptions(gasPrice, maxGas || CLMM_CREATE_POOL_GAS_LIMIT);
+  const gasOptions = await ethereum.prepareGasOptions(undefined, CLMM_CREATE_POOL_GAS_LIMIT);
 
   const tx = await nftManager.createAndInitializePoolIfNecessary(
     token0.address,
@@ -188,102 +183,29 @@ export async function createPool(
 
   logger.info(`Creating Uniswap V3 pool via tx ${tx.hash}`);
 
-  const receipt = await ethereum.handleTransactionExecution(tx);
+  // A revert throws out of here (400 TRANSACTION_FAILED) — it is never reported as PENDING.
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
 
   // Read the (now-created) pool address from the factory — the authoritative source.
   const poolAddress: string = await factory.getPool(token0.address, token1.address, fee);
 
-  if (receipt && receipt.status === 1) {
-    const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18); // ETH has 18 decimals
+  if (!outcome.confirmed) {
+    // Timed out but still broadcasting — report PENDING with the tx hash so the caller can reconcile it.
     return {
-      signature: receipt.transactionHash,
-      status: 1, // CONFIRMED
+      signature: outcome.signature,
+      status: TransactionStatus.PENDING,
       poolAddress,
       price: seedPrice,
-      data: {
-        fee: gasFee,
-        baseTokenAmountAdded: 0, // create-pool only initializes price; no liquidity is seeded
-        quoteTokenAmountAdded: 0,
-      },
     };
   }
 
-  // Timed out (still broadcasting) or reverted — report as pending with the tx hash.
   return {
-    signature: receipt ? receipt.transactionHash : tx.hash,
-    status: 0, // PENDING
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     poolAddress,
     price: seedPrice,
+    data: {
+      fee: outcome.fee,
+    },
   };
 }
-
-export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-
-  fastify.post<{
-    Body: Static<typeof UniswapClmmCreatePoolRequest>;
-    Reply: CreatePoolResponseType;
-  }>(
-    '/create-pool',
-    {
-      schema: {
-        description: 'Create and initialize a new Uniswap V3 (CLMM) pool at an initial price (no liquidity seeded)',
-        tags: ['/connector/uniswap'],
-        body: UniswapClmmCreatePoolRequest,
-        response: {
-          200: CreatePoolResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network,
-          baseToken,
-          quoteToken,
-          fee,
-          initialPrice,
-          gasPrice,
-          maxGas,
-          walletAddress: requestedWalletAddress,
-        } = request.body;
-
-        if (!baseToken || !quoteToken) {
-          throw fastify.httpErrors.badRequest('Missing required parameters');
-        }
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          walletAddress = await Ethereum.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw fastify.httpErrors.badRequest('No wallet address provided and no wallets found.');
-          }
-          logger.info(`Using first available wallet address: ${walletAddress}`);
-        }
-
-        // Route accepts gasPrice as a wei string (matching sibling requests); createPool expects gwei.
-        const gasPriceGwei = gasPrice ? parseFloat(utils.formatUnits(gasPrice, 'gwei')) : undefined;
-
-        return await createPool(network, walletAddress, baseToken, quoteToken, initialPrice, fee, gasPriceGwei, maxGas);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-
-        if (e.message && e.message.includes('already exists')) {
-          throw fastify.httpErrors.badRequest(e.message);
-        }
-        if (e.code === 'INSUFFICIENT_FUNDS' || (e.message && e.message.includes('insufficient funds'))) {
-          throw fastify.httpErrors.badRequest(
-            'Insufficient ETH balance to pay for gas fees. Please add more ETH to your wallet.',
-          );
-        }
-
-        throw fastify.httpErrors.internalServerError('Failed to create pool');
-      }
-    },
-  );
-};
-
-export default createPoolRoute;

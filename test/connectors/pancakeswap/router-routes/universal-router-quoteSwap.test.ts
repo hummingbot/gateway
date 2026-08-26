@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Ethereum } from '../../../../src/chains/ethereum/ethereum';
 import { Pancakeswap } from '../../../../src/connectors/pancakeswap/pancakeswap';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 jest.mock('../../../../src/connectors/pancakeswap/pancakeswap');
@@ -23,7 +24,7 @@ jest.mock('../../../../src/connectors/pancakeswap/universal-router', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quoteSwapRoute } = await import('../../../../src/connectors/pancakeswap/router-routes/quoteSwap');
+  const { quoteSwapRoute } = await import('../../../../src/trading/trading-router-routes/quoteSwap');
   await server.register(quoteSwapRoute);
   return server;
 };
@@ -161,7 +162,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'pancakeswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'WBNB',
         quoteToken: 'USDC',
@@ -172,12 +174,12 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     expect(body).toHaveProperty('quoteId', 'test-quote-id');
     expect(body).toHaveProperty('tokenIn', mockWBNB.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-    expect(body).toHaveProperty('amountIn', 1);
+    expect(Number(body.amountIn)).toBe(1);
     expect(body).toHaveProperty('amountOut');
     expect(body.amountOut).toBeGreaterThan(0);
     expect(body).toHaveProperty('price');
@@ -209,7 +211,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'pancakeswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'WBNB',
         quoteToken: 'USDC',
@@ -220,58 +223,62 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body).toHaveProperty('tokenOut', mockWBNB.address);
-    expect(body).toHaveProperty('amountOut', 1);
+    expect(Number(body.amountOut)).toBe(1);
     expect(body).toHaveProperty('amountIn');
     expect(body.amountIn).toBeGreaterThan(0);
   });
 
-  it('should handle V3 protocol', async () => {
+  it('quotes through the universal router', async () => {
     const response = await server.inject({
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'pancakeswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'WBNB',
         quoteToken: 'USDC',
         amount: '1',
         side: 'SELL',
         slippagePct: '1',
-        protocols: ['v3'],
       },
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
-    // Protocols aren't returned in the response - they're only used for filtering
+    // `protocols` used to be sent here and was silently dropped: the unified router
+    // route declares no such parameter and never read one, so the "filtering" this case
+    // was written for never happened. The route answers with the path it chose.
     expect(body).toHaveProperty('routePath');
   });
 
-  it('should handle multiple protocols', async () => {
+  it('quotes the same pair a second time, without a protocol filter', async () => {
     const response = await server.inject({
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'pancakeswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'WBNB',
         quoteToken: 'USDC',
         amount: '1',
         side: 'SELL',
         slippagePct: '1',
-        protocols: ['v2', 'v3'],
       },
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
 
-    // Protocols aren't returned in the response - they're only used for filtering
+    // `protocols` used to be sent here and was silently dropped: the unified router
+    // route declares no such parameter and never read one, so the "filtering" this case
+    // was written for never happened. The route answers with the path it chose.
     expect(body).toHaveProperty('routePath');
   });
 
@@ -289,7 +296,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: 'pancakeswap',
         walletAddress: '0x0000000000000000000000000000000000000001',
         baseToken: 'INVALID',
         quoteToken: 'USDC',
@@ -300,7 +308,7 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(404);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('message');
     expect(body.message).toContain('Token not found');
   });

@@ -2,18 +2,10 @@ import { q64ToDecimal } from '@meteora-ag/cp-amm-sdk';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
-import {
-  GetPositionInfoRequestType,
-  PositionInfo,
-  PositionInfoSchema,
-  PositionDetail,
-} from '../../../schemas/amm-schema';
+import { PositionInfo, PositionDetail } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
 import { MeteoraDamm } from '../meteora-damm';
-import { MeteoraAmmGetPositionInfoRequest } from '../schemas';
 
 /**
  * Standard AMM position-info entry point (network-based) — consumed by the unified /trading/amm
@@ -82,36 +74,3 @@ export async function getPositionInfo(
     positions: breakdown,
   };
 }
-
-export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: GetPositionInfoRequestType;
-    Reply: PositionInfo;
-  }>(
-    '/position-info',
-    {
-      schema: {
-        description:
-          "Get the wallet's aggregated liquidity in a Meteora DAMM v2 pool. DAMM v2 positions " +
-          'are NFTs; amounts sum across all of the wallet positions in the pool.',
-        tags: ['/connector/meteora'],
-        querystring: MeteoraAmmGetPositionInfoRequest,
-        response: {
-          200: PositionInfoSchema,
-        },
-      },
-    },
-    async (request): Promise<PositionInfo> => {
-      try {
-        const { poolAddress, walletAddress, network } = request.query;
-        return await getPositionInfo(network, poolAddress, walletAddress);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Failed to fetch position info');
-      }
-    },
-  );
-};
-
-export default positionInfoRoute;

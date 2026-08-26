@@ -1,8 +1,7 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
-import { StatusRequestType, StatusResponseType, StatusResponseSchema } from '../../../schemas/chain-schema';
+import { StatusResponseType } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
-import { SolanaStatusRequest } from '../schemas';
 import { Solana } from '../solana';
 import { getSolanaChainConfig } from '../solana.config';
 
@@ -43,28 +42,3 @@ export async function getSolanaStatus(fastify: FastifyInstance, network: string)
     throw fastify.httpErrors.internalServerError(`Failed to get Solana status: ${error.message}`);
   }
 }
-
-export const statusRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: StatusRequestType;
-    Reply: StatusResponseType;
-  }>(
-    '/status',
-    {
-      schema: {
-        description: 'Get Solana network status',
-        tags: ['/chain/solana'],
-        querystring: SolanaStatusRequest,
-        response: {
-          200: StatusResponseSchema,
-        },
-      },
-    },
-    async (request) => {
-      const { network } = request.query;
-      return await getSolanaStatus(fastify, network);
-    },
-  );
-};
-
-export default statusRoute;

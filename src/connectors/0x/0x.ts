@@ -215,7 +215,6 @@ export class ZeroX {
 
   public parseTokenAmount(amount: number, decimals: number): string {
     // Convert a decimal amount to the token's smallest unit
-    const multiplier = BigNumber.from(10).pow(decimals);
     const amountStr = amount.toFixed(decimals);
     const [whole, decimal = ''] = amountStr.split('.');
     const paddedDecimal = decimal.padEnd(decimals, '0');

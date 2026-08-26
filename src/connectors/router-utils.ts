@@ -51,6 +51,58 @@ export interface ApproximateBuyResult<TQuote> {
 }
 
 /**
+ * A router's price impact as the percentage the schema documents.
+ *
+ * `QuoteSwapResponse.priceImpactPct` promises "Estimated price impact percentage
+ * (0-100)". Jupiter's field of the same name is a decimal *fraction* — 0.0126 means
+ * 1.26% — and it was passed through unconverted, so the number was 100x low against its
+ * own documentation, in the direction that makes a bad trade look harmless. A guard of
+ * the form `if (priceImpactPct > 5) reject` could never fire.
+ *
+ * Measured on SOL-USDC: a 20,000 SOL sell reported 0.001260 against a 0.134% impact
+ * computed from the quoted prices — agreement to within the fee once the trade is large
+ * enough for impact to dominate.
+ *
+ * Applies to the routers that serve Jupiter's quote schema: jupiter itself and dflow,
+ * whose quote response is that schema field for field. It does NOT apply to a router's
+ * native payload passed back for execution — that has to stay in the router's own units.
+ */
+export function priceImpactPercentFromFraction(fraction: string | number | undefined | null): number {
+  const parsed = parseFloat(String(fraction ?? ''));
+  // A router that omits the field reports 0, which is what the call sites' `|| '0'` did
+  // before this existed. It is indistinguishable from a measured zero — the field cannot
+  // express "not computed" — which is the half of this defect the schema still owes.
+  return Number.isFinite(parsed) ? parsed * 100 : 0;
+}
+
+/**
+ * The route a quote actually attempted, for an error message a caller can act on.
+ *
+ * A SELL is ExactIn base -> quote; a BUY is ExactOut quote -> base. Every router here
+ * built its no-route message from the SELL shape and reused it for both, so a BUY that
+ * failed was reported as a failed ExactIn in the opposite direction — naming a route
+ * nobody tried. That matters because the message is a NO_ROUTE_FOUND, which reads as
+ * "this token is untradable": the same file already carries a fix for mislabelling a
+ * failure that way, after callers blacklisted good pools over it. A BUY declining
+ * approximation is precisely the case where ExactIn *does* route, since ExactIn is what
+ * the approximation would have used.
+ *
+ * `mode` overrides the side's default for a router whose executable mode differs from the
+ * one implied by the side, or to describe a compound attempt.
+ */
+export function attemptedRoute(
+  side: 'BUY' | 'SELL',
+  baseTokenName: string,
+  quoteTokenName: string,
+  mode?: string,
+): string {
+  const buying = side === 'BUY';
+  const from = buying ? quoteTokenName : baseTokenName;
+  const to = buying ? baseTokenName : quoteTokenName;
+  return `${from} -> ${to} (${mode ?? (buying ? 'ExactOut' : 'ExactIn')})`;
+}
+
+/**
  * Approximates a BUY (ExactOut) on a router that only supports ExactIn quotes.
  *
  * 1. Sell leg: quote ExactIn base -> quote for the desired base amount, which implies the

@@ -336,7 +336,11 @@ export class Orca {
             position.address.toString(),
             this.deployment,
           );
-          positions.push(positionDetails);
+          if (positionDetails) {
+            positions.push(positionDetails);
+          } else {
+            logger.debug(`Position ${position.address} appears to be closed, skipping`);
+          }
         } catch (positionError: any) {
           // Skip positions that fail to fetch (e.g., closed positions, invalid data)
           // Only log as debug since this is expected for closed positions
@@ -369,12 +373,8 @@ export class Orca {
       throw httpErrors.badRequest(`Invalid position address: ${positionAddress}`);
     }
 
-    try {
-      const positionInfo = await getPositionDetails(this.solanaKitRpc, positionAddress, this.deployment);
-      return positionInfo;
-    } catch (error) {
-      logger.error('Error getting position info:', error);
-      return null;
-    }
+    // getPositionDetails returns null only when its final atomic snapshot proves
+    // the position account does not exist. All transient failures propagate.
+    return await getPositionDetails(this.solanaKitRpc, positionAddress, this.deployment);
   }
 }

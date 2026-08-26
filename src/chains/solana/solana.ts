@@ -8,6 +8,7 @@ import {
   createSyncNativeInstruction,
   createCloseAccountInstruction,
   AccountLayout,
+  getTokenMetadata,
 } from '@solana/spl-token';
 import { TokenInfo } from '@solana/spl-token-registry';
 import {
@@ -43,6 +44,7 @@ import { ChainstackService } from '../../rpc/chainstack-service';
 import { HeliusService } from '../../rpc/helius-service';
 import { createRateLimitAwareSolanaConnection } from '../../rpc/rpc-connection-interceptor';
 import { RPCProvider } from '../../rpc/rpc-provider-base';
+import { TransactionStatusCode } from '../../schemas/chain-schema';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
 import { httpErrors, HttpError } from '../../services/error-handler';
@@ -51,13 +53,21 @@ import { encryptSecret, decryptSecret, isLegacyKeystore } from '../../services/s
 import { TokenService } from '../../services/token-service';
 import { getSafeWalletFilePath, isHardwareWallet as isHardwareWalletUtil } from '../../wallet/utils';
 
+import { parseSolanaError } from './solana-error-parser';
 import { SolanaLedger } from './solana-ledger';
 import { PriorityFeeResult, SolanaPriorityFees } from './solana-priority-fees';
 import { SolanaNetworkConfig, getSolanaNetworkConfig, getSolanaChainConfig } from './solana.config';
+import { accountLifecycleSol } from './solana.utils';
 
 export type SolanaWalletType = 'local' | 'hardware';
 
 // Constants used for fee calculations
+/** Metaplex Token Metadata program — where every legacy SPL token's name and symbol live. */
+const METAPLEX_METADATA_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
+
+/** Metadata account header: key (1) + update authority (32) + mint (32), then the strings. */
+const METAPLEX_NAME_OFFSET = 65;
+
 export const BASE_FEE = 5000;
 const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
 
@@ -65,12 +75,6 @@ const LAMPORT_TO_SOL = 1 / Math.pow(10, 9);
 interface TokenAccount {
   parsedAccount: any;
   value: any;
-}
-
-enum TransactionResponseStatusCode {
-  FAILED = -1,
-  UNCONFIRMED = 0,
-  CONFIRMED = 1,
 }
 
 export class Solana {
@@ -290,6 +294,117 @@ export class Solana {
     }
 
     return token;
+  }
+
+  /**
+   * Read a token's name, symbol and decimals from the chain.
+   *
+   * Distinct from getToken, which searches the configured list and, failing that,
+   * invents a `DUMMY_xxxx` symbol so a swap can still be priced. That placeholder is
+   * fine to trade on and unfit to persist, so anything that writes to the token list
+   * comes here instead and gets null when the chain has no name to give.
+   *
+   * A mint account carries only decimals. The name and symbol live in one of two
+   * places, and both are read here because neither covers the other's tokens: the
+   * Token-2022 metadata extension, which most newly minted tokens use, and the
+   * Metaplex metadata account, which is where every legacy SPL token keeps them.
+   */
+  async fetchTokenFromChain(address: string): Promise<TokenInfo | null> {
+    let mintPubkey: PublicKey;
+    try {
+      mintPubkey = new PublicKey(address);
+    } catch {
+      return null;
+    }
+
+    const accountInfo = await this.connection.getAccountInfo(mintPubkey);
+    if (!accountInfo) {
+      return null;
+    }
+
+    // A well-formed address that is not a mint — a wallet, a pool, a program — is a
+    // question with an answer ("not a token"), not a failure, so it returns null rather
+    // than letting getMint's rejection escape to the caller.
+    const programId = accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID) ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID;
+    let mintInfo;
+    try {
+      mintInfo = await getMint(this.connection, mintPubkey, undefined, programId);
+    } catch (e: any) {
+      logger.debug(`${address} on solana is not a mint account: ${e.message}`);
+      return null;
+    }
+
+    const metadata =
+      (await this.readToken2022Metadata(mintPubkey, programId)) ?? (await this.readMetaplexMetadata(mintPubkey));
+    if (!metadata) {
+      logger.info(`No on-chain metadata for mint ${address}; not naming it`);
+      return null;
+    }
+
+    return {
+      address,
+      chainId: 101,
+      decimals: mintInfo.decimals,
+      name: metadata.name,
+      symbol: metadata.symbol,
+    };
+  }
+
+  /** Name and symbol from the Token-2022 metadata extension. Null for a legacy mint. */
+  private async readToken2022Metadata(
+    mint: PublicKey,
+    programId: PublicKey,
+  ): Promise<{ name: string; symbol: string } | null> {
+    if (!programId.equals(TOKEN_2022_PROGRAM_ID)) {
+      return null;
+    }
+    try {
+      const metadata = await getTokenMetadata(this.connection, mint, undefined, programId);
+      if (!metadata?.symbol) {
+        return null;
+      }
+      return { name: metadata.name || metadata.symbol, symbol: metadata.symbol };
+    } catch (e: any) {
+      logger.debug(`Token-2022 metadata unreadable for ${mint.toBase58()}: ${e.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Name and symbol from the Metaplex metadata account.
+   *
+   * Read directly rather than through the Metaplex SDK, which is not a dependency here:
+   * the account is at a PDA of ['metadata', program, mint], and the three fields wanted
+   * are the first Borsh strings after a fixed 65-byte header of key, update authority
+   * and mint. Each is a 4-byte little-endian length followed by null-padded bytes.
+   */
+  private async readMetaplexMetadata(mint: PublicKey): Promise<{ name: string; symbol: string } | null> {
+    try {
+      const [pda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('metadata'), METAPLEX_METADATA_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+        METAPLEX_METADATA_PROGRAM_ID,
+      );
+      const account = await this.connection.getAccountInfo(pda);
+      if (!account) {
+        return null;
+      }
+
+      const readString = (offset: number): { value: string; next: number } => {
+        const length = account.data.readUInt32LE(offset);
+        const raw = account.data.subarray(offset + 4, offset + 4 + length).toString('utf8');
+        return { value: raw.replace(/\0/g, '').trim(), next: offset + 4 + length };
+      };
+
+      const name = readString(METAPLEX_NAME_OFFSET);
+      const symbol = readString(name.next);
+      if (!symbol.value) {
+        return null;
+      }
+      return { name: name.value || symbol.value, symbol: symbol.value };
+    } catch (e: any) {
+      logger.debug(`Metaplex metadata unreadable for ${mint.toBase58()}: ${e.message}`);
+      return null;
+    }
   }
 
   // returns Keypair for a private key, which should be encoded in Base58
@@ -1175,18 +1290,38 @@ export class Solana {
     });
   }
 
-  // returns a Solana TransactionResponseStatusCode for a txData.
-  public async getTransactionStatusCode(txData: TransactionResponse | null): Promise<TransactionResponseStatusCode> {
+  // returns a Solana TransactionStatusCode for a txData.
+  public async getTransactionStatusCode(txData: TransactionResponse | null): Promise<TransactionStatusCode> {
     let txStatus;
     if (!txData) {
       // tx not yet confirmed by validator
-      txStatus = TransactionResponseStatusCode.UNCONFIRMED;
+      txStatus = TransactionStatusCode.PENDING;
     } else {
       // If txData exists, check if there's an error in the metadata
-      txStatus =
-        txData.meta?.err == null ? TransactionResponseStatusCode.CONFIRMED : TransactionResponseStatusCode.FAILED;
+      txStatus = txData.meta?.err == null ? TransactionStatusCode.CONFIRMED : TransactionStatusCode.FAILED;
     }
     return txStatus;
+  }
+
+  // Distinguishes a signature the cluster has seen from one it does not know at all.
+  // getTransaction (commitment 'confirmed') returns null for both a tx awaiting
+  // confirmation and a tx that was dropped, so pollers cannot tell them apart from
+  // txData alone. A signature that stays NOT_FOUND after its blockhash expires
+  // (~90s) can never land.
+  public async getSignatureStatus(signature: string): Promise<TransactionStatusCode> {
+    const { value } = await this.connection.getSignatureStatuses([signature], {
+      searchTransactionHistory: true,
+    });
+    const status = value[0];
+    if (!status) {
+      return TransactionStatusCode.NOT_FOUND;
+    }
+    if (status.err) {
+      return TransactionStatusCode.FAILED;
+    }
+    // Seen by the cluster: 'processed', or confirmed/finalized racing ahead of
+    // getTransaction visibility — report unconfirmed and let the next poll resolve it.
+    return TransactionStatusCode.PENDING;
   }
 
   // returns the current block number
@@ -1325,6 +1460,30 @@ export class Solana {
     return totalFee;
   }
 
+  private static throwIfSimulationReturnedError(simulationResult: { err: unknown; logs?: string[] | null }): void {
+    if (!simulationResult.err) return;
+
+    const logs = simulationResult.logs ?? [];
+    const errorMessage = `${SIMULATION_ERROR_MESSAGE}\nError: ${JSON.stringify(simulationResult.err)}\nProgram Logs: ${logs.join('\n')}`;
+    const parsedError = parseSolanaError(errorMessage);
+    const detail = [
+      parsedError.message,
+      parsedError.instructionIndex !== null ? `Failing instruction index: ${parsedError.instructionIndex}.` : '',
+      logs.length > 0 ? `Program logs:\n${logs.slice(-12).join('\n')}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    logger.error(errorMessage);
+    if (parsedError.type === 'SLIPPAGE_EXCEEDED') {
+      throw httpErrors.slippageExceeded(detail);
+    }
+    if (parsedError.type === 'INSUFFICIENT_BALANCE') {
+      throw httpErrors.insufficientBalance(detail);
+    }
+    throw httpErrors.simulationFailed(detail);
+  }
+
   public async sendAndConfirmTransaction(
     tx: Transaction | VersionedTransaction,
     signers: Signer[] = [],
@@ -1334,10 +1493,9 @@ export class Solana {
     const currentPriorityFee = priorityFeePerCU ?? (await this.estimateGasPrice());
 
     // Always simulate transaction to get actual compute units
-    let computeUnitsToUse: number;
+    let computeUnitsToUse = this.config.defaultComputeUnits;
+    let simulationResult: { err: unknown; logs?: string[] | null; unitsConsumed?: number } | undefined;
     try {
-      let simulationResult;
-
       if (tx instanceof Transaction) {
         // For regular transactions, simulate with the Transaction object
         const result = await this.connection.simulateTransaction(tx);
@@ -1350,7 +1508,12 @@ export class Solana {
         });
         simulationResult = result.value;
       }
+    } catch (error) {
+      logger.warn(`Failed to simulate for compute units: ${error.message}, using default`);
+    }
 
+    if (simulationResult) {
+      Solana.throwIfSimulationReturnedError(simulationResult);
       if (simulationResult.unitsConsumed) {
         // Add 10% margin for safety
         computeUnitsToUse = Math.ceil(simulationResult.unitsConsumed * 1.1);
@@ -1358,13 +1521,8 @@ export class Solana {
           `Simulation consumed ${simulationResult.unitsConsumed} units, using ${computeUnitsToUse} with 10% margin`,
         );
       } else {
-        // Fallback to default if simulation doesn't return units
-        computeUnitsToUse = this.config.defaultComputeUnits;
         logger.warn('Simulation did not return units consumed, using default');
       }
-    } catch (error) {
-      logger.warn(`Failed to simulate for compute units: ${error.message}, using default`);
-      computeUnitsToUse = this.config.defaultComputeUnits;
     }
 
     const basePriorityFeeLamports = currentPriorityFee * computeUnitsToUse;
@@ -1408,28 +1566,54 @@ export class Solana {
   }
 
   /**
-   * If a broadcast transaction landed on-chain but failed, throw the parsed program error;
-   * return silently when the transaction is missing or succeeded so the caller can apply
-   * its own confirmation handling. The confirmation helpers report a landed-and-failed
-   * transaction as unconfirmed, which callers would otherwise misreport as a timeout.
+   * If a broadcast transaction landed on-chain but failed, throw the parsed program error
+   * (400 TRANSACTION_FAILED — fees were paid, this is terminal, not retryable); return
+   * silently when the transaction is missing or succeeded so the caller can apply its own
+   * confirmation handling. The confirmation helpers report a landed-and-failed transaction
+   * as unconfirmed, which callers would otherwise misreport as a timeout or as PENDING.
+   *
+   * Pass `txData` when it is already at hand to skip the re-fetch; when the caller only
+   * has a null/absent txData the transaction is looked up once more, because the send
+   * helpers can report a landed-and-failed transaction with no data attached.
    */
-  private async throwIfLandedWithError(signature: string): Promise<void> {
+  public async throwIfLandedWithError(signature: string, txData?: any): Promise<void> {
     if (!signature) return;
-    let txData: any = null;
-    try {
-      txData = await this.connection.getTransaction(signature, {
-        commitment: 'confirmed',
-        maxSupportedTransactionVersion: 0,
-      });
-    } catch {
-      return;
+    if (!txData) {
+      try {
+        txData = await this.connection.getTransaction(signature, {
+          commitment: 'confirmed',
+          maxSupportedTransactionVersion: 0,
+        });
+      } catch {
+        return;
+      }
     }
     if (!txData?.meta?.err) return;
-    const { simulationFailed } = await import('../../services/error-handler');
+    throw await this.buildLandedWithErrorException(signature, txData);
+  }
+
+  /** Build the shared landed-but-failed error from a transaction's on-chain data. */
+  private async buildLandedWithErrorException(signature: string, txData: any): Promise<HttpError> {
+    const { transactionFailed } = await import('../../services/error-handler');
     const { parseSolanaError } = await import('./solana-error-parser');
     const logs: string[] = txData.meta.logMessages ?? [];
     const parsed = parseSolanaError([JSON.stringify(txData.meta.err), ...logs].join('\n'));
-    throw simulationFailed(`Transaction ${signature} landed on-chain but failed: ${parsed.message}`);
+    return transactionFailed(`Transaction ${signature} landed on-chain but failed: ${parsed.message}`);
+  }
+
+  /**
+   * Route-level re-fetch of a just-sent transaction. Uses the retrying fetch (data can lag
+   * RPC visibility right after confirmation, so a single getTransaction call misreports a
+   * confirmed transaction as PENDING) and throws the shared landed-but-failed error when
+   * the transaction landed with an error. Returns null only when the transaction is
+   * genuinely not visible on-chain yet.
+   */
+  public async getConfirmedTransactionData(signature: string): Promise<any | null> {
+    const txData = await this._fetchTransactionWithRetry(signature);
+    if (txData?.meta?.err != null) {
+      throw await this.buildLandedWithErrorException(signature, txData);
+    }
+    return txData;
   }
 
   public async sendAndConfirmTransactionForWallet(
@@ -1469,18 +1653,22 @@ export class Solana {
     // External wallets (hardware/Ledger): add the compute budget and sign any extra
     // keypairs, then sign the fee payer externally.
     const currentPriorityFee = priorityFeePerCU ?? (await this.estimateGasPrice());
-    let computeUnitsToUse: number;
+    let computeUnitsToUse = this.config.defaultComputeUnits;
+    let simulationResult: { err: unknown; logs?: string[] | null; unitsConsumed?: number } | undefined;
     try {
       const sim =
         tx instanceof VersionedTransaction
           ? await this.connection.simulateTransaction(tx, { replaceRecentBlockhash: true, sigVerify: false })
           : await this.connection.simulateTransaction(tx);
-      computeUnitsToUse = sim.value.unitsConsumed
-        ? Math.ceil(sim.value.unitsConsumed * 1.1)
-        : this.config.defaultComputeUnits;
+      simulationResult = sim.value;
     } catch (error) {
       logger.warn(`Failed to simulate for compute units: ${(error as Error).message}, using default`);
-      computeUnitsToUse = this.config.defaultComputeUnits;
+    }
+    if (simulationResult) {
+      Solana.throwIfSimulationReturnedError(simulationResult);
+      computeUnitsToUse = simulationResult.unitsConsumed
+        ? Math.ceil(simulationResult.unitsConsumed * 1.1)
+        : this.config.defaultComputeUnits;
     }
 
     let prepared: Transaction | VersionedTransaction;
@@ -1947,6 +2135,8 @@ export class Solana {
   ): Promise<{
     balanceChanges: number[];
     fee: number;
+    /** The transaction these were read from, so a caller needing more of it need not refetch. */
+    txDetails: any;
   }> {
     // Fetch transaction details with retry (data may not be immediately available after confirmation)
     const txDetails = await this._fetchTransactionWithRetry(signature, 5, 500, true);
@@ -1978,9 +2168,15 @@ export class Solana {
           return 0;
         }
 
-        // Calculate SOL change including fees
+        // The raw lamport delta bundles the transaction fee in with the trade whenever
+        // the owner paid it — the fee is debited from the fee payer, which is account 0.
+        // Callers read this as the amount swapped, deposited or collected, so the fee is
+        // added back out: it is reported separately as `fee` and must not be counted
+        // twice. Selling SOL previously overstated amountIn by the fee and understated
+        // realized price; collecting SOL-denominated fees understated the amount.
         const lamportChange = postBalances[accountIndex] - preBalances[accountIndex];
-        return lamportChange * LAMPORT_TO_SOL;
+        const solChange = lamportChange * LAMPORT_TO_SOL;
+        return accountIndex === 0 ? solChange + fee : solChange;
       } else {
         // Token mint address provided - get SPL token balance change
         const preBalance =
@@ -1995,7 +2191,7 @@ export class Solana {
       }
     });
 
-    return { balanceChanges, fee };
+    return { balanceChanges, fee, txDetails };
   }
 
   /**
@@ -2004,7 +2200,6 @@ export class Solana {
    * @param owner Owner address
    * @param baseTokenInfo Base token info object with address and symbol
    * @param quoteTokenInfo Quote token info object with address and symbol
-   * @param txFee Transaction fee in lamports (from txData.meta.fee)
    * @returns Object with base and quote token balance changes and calculated rent
    */
   async extractClmmBalanceChanges(
@@ -2012,11 +2207,13 @@ export class Solana {
     owner: string,
     baseTokenInfo: { address: string; symbol: string },
     quoteTokenInfo: { address: string; symbol: string },
-    txFee: number,
   ): Promise<{
     baseTokenChange: number;
     quoteTokenChange: number;
+    /** Rent locked or refunded by the accounts this transaction created or closed. */
     rent: number;
+    /** Everything the accounts moved, which is what a native balance change must lose. */
+    accountSol: number;
   }> {
     const SOL_NATIVE_MINT = 'So11111111111111111111111111111111111111112';
     const isBaseSol = baseTokenInfo.symbol === 'SOL' || baseTokenInfo.address === SOL_NATIVE_MINT;
@@ -2046,29 +2243,35 @@ export class Solana {
     }
 
     // Extract balance changes
-    const { balanceChanges } = await this.extractBalanceChangesAndFee(signature, owner, tokensToExtract);
+    const { balanceChanges, txDetails } = await this.extractBalanceChangesAndFee(signature, owner, tokensToExtract);
 
     // Get individual balance changes
-    const solChange = balanceChanges[tokenIndices.sol!];
     const baseTokenChange = balanceChanges[tokenIndices.base!];
     const quoteTokenChange = balanceChanges[tokenIndices.quote!];
 
-    // Calculate rent from SOL balance
-    // When neither token is SOL: rent = |SOL change| - fee
-    // When one token is SOL: rent is included in the token's balance change
-    let rent = 0;
-    if (!isBaseSol && !isQuoteSol) {
-      // SOL change = -(fee + rent)
-      rent = Math.abs(solChange) - txFee / 1e9;
-    } else {
-      // For positions, rent is approximately 0.00204928 SOL
-      rent = 0.00204928;
-    }
+    // Rent is read out of the transaction, not assumed. Every account the transaction
+    // created or closed moved lamports for a reason that is not liquidity, and a CLMM
+    // position is several accounts: the position, its NFT account, the shared protocol
+    // position, and any tick array the range was first to touch. This used to return a
+    // hardcoded 0.00204928 whenever a side was SOL — one token account's worth, for a
+    // position that locks four or five accounts' worth — which understated the rent and
+    // by exactly the same amount overstated the liquidity the native side reported.
+    //
+    // `accountRent` is what a route reports as positionRent / positionRentRefunded;
+    // `accountSol` is the larger figure to take out of a native balance change, and
+    // differs only when a wrapped-SOL account the wallet already had a balance in was
+    // closed. Which direction applies is the transaction's to say: an open creates
+    // accounts, a close closes them, and a swap does neither.
+    const lifecycle = accountLifecycleSol(txDetails);
+    const isOpen = lifecycle.opened >= lifecycle.closed;
+    const rent = isOpen ? lifecycle.rentLocked : lifecycle.rentRefunded;
+    const accountSol = isOpen ? lifecycle.opened : lifecycle.closed;
 
     return {
       baseTokenChange,
       quoteTokenChange,
       rent,
+      accountSol,
     };
   }
 
@@ -2208,24 +2411,28 @@ export class Solana {
 
   /**
    * Helper function to handle transaction confirmation results
-   * Returns appropriate response object based on confirmation status
+   * Returns appropriate response object based on the transaction's on-chain data
    * @param signature Transaction signature
-   * @param confirmed Whether transaction was confirmed
-   * @param txData Transaction data (if available)
+   * @param txData Transaction data from the route-level re-fetch (pass null when the
+   *   caller has none — the helper re-fetches with retry so a just-confirmed transaction
+   *   whose data lags RPC visibility is not misreported as PENDING)
    * @param tokenIn Input token address
    * @param tokenOut Output token address
    * @param walletAddress Wallet address for balance changes
    * @param side Trade side (optional, for AMM/CLMM swaps)
-   * @returns Response object with status and data
+   * @param slippagePct Slippage tolerance actually applied to the swap (echoed in data)
+   * @returns Response object with status and data; throws the shared landed-but-failed
+   *   error when the transaction landed on-chain with an error — existence of txData is
+   *   never treated as confirmation by itself
    */
   public async handleConfirmation(
     signature: string,
-    confirmed: boolean,
     txData: any,
     tokenIn: string,
     tokenOut: string,
     walletAddress: string,
     side?: 'BUY' | 'SELL',
+    slippagePct?: number,
   ): Promise<{
     signature: string;
     status: number;
@@ -2237,9 +2444,20 @@ export class Solana {
       fee: number;
       baseTokenBalanceChange: number;
       quoteTokenBalanceChange: number;
+      slippagePct?: number;
     };
   }> {
-    if (confirmed && txData) {
+    if (!txData) {
+      txData = await this._fetchTransactionWithRetry(signature);
+    }
+
+    // Defense: a landed-but-failed transaction must throw — never report it as
+    // confirmed (its data exists) or as pending.
+    if (txData?.meta?.err != null) {
+      throw await this.buildLandedWithErrorException(signature, txData);
+    }
+
+    if (txData) {
       // Transaction confirmed, extract balance changes
       const { balanceChanges, fee } = await this.extractBalanceChangesAndFee(signature, walletAddress, [
         tokenIn,
@@ -2278,25 +2496,7 @@ export class Solana {
           fee,
           baseTokenBalanceChange: baseTokenBalanceChange!,
           quoteTokenBalanceChange: quoteTokenBalanceChange!,
-        },
-      };
-    } else if (txData && !confirmed) {
-      // Transaction exists but not confirmed - extract fee from txData
-      const fee = this.getFee(txData);
-
-      logger.warn(`Transaction ${signature} not confirmed. May need higher priority fee.`);
-
-      return {
-        signature,
-        status: -1, // NOT_CONFIRMED
-        data: {
-          tokenIn,
-          tokenOut,
-          amountIn: 0,
-          amountOut: 0,
-          fee,
-          baseTokenBalanceChange: 0,
-          quoteTokenBalanceChange: 0,
+          slippagePct,
         },
       };
     } else {

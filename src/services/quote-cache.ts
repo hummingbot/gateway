@@ -42,6 +42,20 @@ class QuoteCache {
   }
 
   /**
+   * Get the original request data stored alongside a quote
+   * @param quoteId The unique quote identifier
+   * @returns The cached request data or null if not found
+   */
+  public getRequest(quoteId: string): any | null {
+    const cached = this.cache.get(quoteId);
+    if (!cached) {
+      return null;
+    }
+
+    return cached.request;
+  }
+
+  /**
    * Store a quote in cache
    * @param quoteId The unique quote identifier
    * @param quote The quote data to cache

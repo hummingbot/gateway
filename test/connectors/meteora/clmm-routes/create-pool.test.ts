@@ -3,6 +3,7 @@ import { fastifyWithTypeProvider } from '../../../utils/testUtils';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/chains/solana/solana.config', () => ({
+  ...jest.requireActual('../../../../src/chains/solana/solana.config'),
   getSolanaChainConfig: jest.fn().mockReturnValue({
     defaultNetwork: 'mainnet-beta',
     defaultWallet: '11111111111111111111111111111111',
@@ -14,7 +15,7 @@ const SAME_MINT = 'So11111111111111111111111111111111111111112';
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { createPoolRoute } = await import('../../../../src/connectors/meteora/clmm-routes/createPool');
+  const { createPoolRoute } = await import('../../../../src/trading/trading-clmm-routes/create-pool');
   await server.register(createPoolRoute);
   return server;
 };
@@ -45,7 +46,8 @@ describe('POST /create-pool (Meteora DLMM)', () => {
       method: 'POST',
       url: '/create-pool',
       payload: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         walletAddress: '82Sg8kkChhY7Qb2ptR4uLGqLg7Zm3z9v9tQ6Zb6Jk4iZ',
         baseToken: 'SOL',
         quoteToken: 'SOL',

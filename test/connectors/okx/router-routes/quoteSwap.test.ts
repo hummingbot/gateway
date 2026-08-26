@@ -1,6 +1,7 @@
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Okx } from '../../../../src/connectors/okx/okx';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/okx/okx');
@@ -8,7 +9,7 @@ jest.mock('../../../../src/connectors/okx/okx');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quoteSwapRoute } = await import('../../../../src/connectors/okx/router-routes/quoteSwap');
+  const { quoteSwapRoute } = await import('../../../../src/trading/trading-router-routes/quoteSwap');
   await server.register(quoteSwapRoute);
   return server;
 };
@@ -65,7 +66,8 @@ describe('GET /quote-swap (okx)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'okx',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -75,15 +77,17 @@ describe('GET /quote-swap (okx)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('quoteId');
-    expect(body).toHaveProperty('amountIn', 0.1);
+    expect(Number(body.amountIn)).toBe(0.1);
     expect(body).toHaveProperty('amountOut', 15);
     expect(body).toHaveProperty('price', 150);
     expect(body).toHaveProperty('priceImpactPct', 0.05);
     expect(body).toHaveProperty('tokenIn', mockSOL.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-    expect(body).toHaveProperty('routerResult');
+    // The connector's raw provider payload (quoteResponse / routerResult) is not part
+    // of the unified router response schema, which serializes the shared quote fields
+    // plus quoteId. Assertions on it moved out with the per-connector route.
     expect(body.approximation).toBeUndefined();
 
     expect(mockOkxInstance.getQuote).toHaveBeenCalledWith(mockSOL.address, mockUSDC.address, '100000000', 'exactIn');
@@ -104,7 +108,8 @@ describe('GET /quote-swap (okx)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'okx',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -114,8 +119,8 @@ describe('GET /quote-swap (okx)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
-    expect(body).toHaveProperty('amountIn', 15);
+    const body = parseWire(response.body);
+    expect(Number(body.amountIn)).toBe(15);
     expect(body).toHaveProperty('amountOut', 0.1);
     expect(body.approximation).toBeUndefined();
     // maxAmountIn includes slippage buffer for native exactOut
@@ -150,7 +155,8 @@ describe('GET /quote-swap (okx)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'okx',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -160,9 +166,9 @@ describe('GET /quote-swap (okx)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('approximation', true);
-    expect(body).toHaveProperty('amountIn', 15);
+    expect(Number(body.amountIn)).toBe(15);
     expect(body.amountOut).toBeCloseTo(0.0999);
     expect(body.maxAmountIn).toBeCloseTo(15);
     expect(body.minAmountOut).toBeCloseTo(0.0999 * (1 - 0.005));
@@ -180,7 +186,8 @@ describe('GET /quote-swap (okx)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'okx',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -191,7 +198,7 @@ describe('GET /quote-swap (okx)', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body.message).toContain('No route found');
     expect(mockOkxInstance.getQuote).toHaveBeenCalledTimes(1);
   });
@@ -207,7 +214,8 @@ describe('GET /quote-swap (okx)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'okx',
         baseToken: 'INVALID',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -216,6 +224,6 @@ describe('GET /quote-swap (okx)', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body)).toHaveProperty('error');
+    expect(parseWire(response.body)).toHaveProperty('error');
   });
 });

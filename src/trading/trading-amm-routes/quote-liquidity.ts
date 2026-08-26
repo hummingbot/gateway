@@ -7,21 +7,32 @@ import { quoteLiquidity as raydiumQuoteLiquidity } from '../../connectors/raydiu
 import { quoteLiquidity as uniswapQuoteLiquidity } from '../../connectors/uniswap/amm-routes/quoteLiquidity';
 import { QuoteLiquidityResponse, QuoteLiquidityResponseType } from '../../schemas/amm-schema';
 import { httpErrors } from '../../services/error-handler';
-import { logger } from '../../services/logger';
+import {
+  AMM_CONNECTORS,
+  chainNetworkField,
+  connectorField,
+  resolveChainNetwork,
+  rethrowRouteError,
+  slippagePctField,
+} from '../common';
 
-import { AMM_CONNECTORS, parseChainNetwork } from './common';
-
-const UnifiedAmmQuoteLiquidityRequest = Type.Object({
-  connector: Type.String({ description: 'AMM connector (meteora, raydium, uniswap)', default: 'meteora' }),
-  chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    default: 'solana-mainnet-beta',
-  }),
-  poolAddress: Type.String({ description: 'Pool contract address' }),
-  baseTokenAmount: Type.Number({ description: 'Amount of base token to deposit' }),
-  quoteTokenAmount: Type.Number({ description: 'Amount of quote token to deposit' }),
-  slippagePct: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
-});
+export const UnifiedAmmQuoteLiquidityRequest = Type.Object(
+  {
+    connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
+    chainNetwork: chainNetworkField(),
+    poolAddress: Type.String({ description: 'Pool contract address' }),
+    baseTokenAmount: Type.Number({
+      format: 'decimal',
+      description: 'Amount of base token to deposit',
+    }),
+    quoteTokenAmount: Type.Number({
+      format: 'decimal',
+      description: 'Amount of quote token to deposit',
+    }),
+    slippagePct: slippagePctField(),
+  },
+  { $id: 'AmmQuoteLiquidityRequest', additionalProperties: false },
+);
 
 export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
   fastify.get<{
@@ -40,31 +51,35 @@ export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       try {
         const { connector, chainNetwork, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.query;
-        const { network } = parseChainNetwork(chainNetwork);
-        switch (connector) {
-          case 'meteora':
-            return await meteoraQuoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
-          case 'raydium':
-            return await raydiumQuoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
-          case 'uniswap':
-            return await uniswapQuoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
-          case 'pancakeswap':
-            return await pancakeswapQuoteLiquidity(
-              network,
-              poolAddress,
-              baseTokenAmount,
-              quoteTokenAmount,
-              slippagePct,
-            );
-          default:
-            throw httpErrors.badRequest(
-              `Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`,
-            );
-        }
+        const { network } = resolveChainNetwork(chainNetwork, connector, 'amm');
+        const quote = await (async () => {
+          switch (connector) {
+            case 'meteora':
+              return await meteoraQuoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
+            case 'raydium':
+              return await raydiumQuoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
+            case 'uniswap':
+              return await uniswapQuoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
+            case 'pancakeswap':
+              return await pancakeswapQuoteLiquidity(
+                network,
+                poolAddress,
+                baseTokenAmount,
+                quoteTokenAmount,
+                slippagePct,
+              );
+            default:
+              throw httpErrors.badRequest(
+                `Unsupported AMM connector: ${connector}. Supported: ${AMM_CONNECTORS.join(', ')}`,
+              );
+          }
+        })();
+
+        // Names the pool the split was computed against; on CLMM the caller need not
+        // have supplied one.
+        return { ...quote, poolAddress };
       } catch (e: any) {
-        logger.error('Failed to quote AMM liquidity:', e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to quote liquidity');
+        rethrowRouteError(e, 'Failed to quote AMM liquidity');
       }
     },
   );

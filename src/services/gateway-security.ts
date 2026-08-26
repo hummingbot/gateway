@@ -70,18 +70,32 @@ export function isTrustedLocalAddress(ip: string | undefined): boolean {
 
 /** Path prefixes that move funds or reveal/modify secrets — gated behind auth when exposed. */
 const SENSITIVE_PREFIXES = [/^\/wallet(\/|$)/, /^\/config\/update(\/|$)/, /^\/restart(\/|$)/];
-const SENSITIVE_CONNECTOR = /^\/connectors\/[^/]+\/(amm|clmm|router)\/(execute|add|remove|open|close|collect)/i;
-// Unified cross-chain trading namespace: only the fund-moving routes. Read-only routes
-// (/trading/swap/quote, /trading/clmm/pool-info|position-info|positions-owned|quote-position)
-// stay public by design.
-const SENSITIVE_TRADING = /^\/trading\/(swap\/execute|clmm\/(open|add|remove|collect-fees|close))(\/|$)/i;
+// Unified trading namespace: only the fund-moving routes. Read-only routes
+// (quote-swap, quote-liquidity, pool-info, position-info,
+// positions-owned, fetch-pools) stay public by design.
+//
+// This one pattern replaced a second one that covered the removed /connectors/*
+// surface, so it has to cover every fund-moving verb that surface carried —
+// including the AMM add/remove/create-pool routes, which the previous /trading
+// pattern omitted only because /connectors was still gating them.
+const SENSITIVE_TRADING =
+  /^\/trading\/(router\/(execute-swap|execute-quote)|(clmm|amm)\/(execute-swap|open|close|add|remove|collect-fees|create-pool))(\/|$)/i;
+
+// Chain-level routes that sign with the hot wallet. `approve` is the sharpest of them —
+// an unauthenticated caller reaching it can have the wallet approve an unlimited
+// allowance to an address of their choosing and then drain every ERC-20 the wallet holds,
+// without ever touching a route the patterns above cover. `wrap`/`unwrap` sign and move
+// the native balance. The read-only chain routes (status, estimate-gas, balances, poll,
+// allowances) stay public, as the read-only trading routes do: nothing signs, and gating
+// them would break a co-located bot's polling for no security gain.
+const SENSITIVE_CHAINS = /^\/chains\/[^/]+\/(approve|wrap|unwrap)(\/|$)/i;
 
 export function isSensitivePath(url: string): boolean {
   const pathOnly = url.split('?')[0];
   return (
     SENSITIVE_PREFIXES.some((re) => re.test(pathOnly)) ||
-    SENSITIVE_CONNECTOR.test(pathOnly) ||
-    SENSITIVE_TRADING.test(pathOnly)
+    SENSITIVE_TRADING.test(pathOnly) ||
+    SENSITIVE_CHAINS.test(pathOnly)
   );
 }
 

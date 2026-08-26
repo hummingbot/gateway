@@ -1,17 +1,10 @@
 import { PoolState } from '@meteora-ag/cp-amm-sdk';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
-import {
-  QuoteLiquidityRequestType,
-  QuoteLiquidityResponse,
-  QuoteLiquidityResponseType,
-} from '../../../schemas/amm-schema';
-import { logger } from '../../../services/logger';
+import { QuoteLiquidityResponseType } from '../../../schemas/amm-schema';
 import { MeteoraDamm } from '../meteora-damm';
 import { MeteoraConfig } from '../meteora.config';
-import { MeteoraAmmQuoteLiquidityRequest } from '../schemas';
 
 /** A resolved deposit quote: which side limits the deposit, the amounts, and the liquidity delta. */
 export interface LiquidityQuote {
@@ -128,34 +121,3 @@ export async function quoteLiquidity(
     quoteTokenAmountMax: quote.quoteTokenAmountMax,
   };
 }
-
-export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: QuoteLiquidityRequestType;
-    Reply: QuoteLiquidityResponseType;
-  }>(
-    '/quote-liquidity',
-    {
-      schema: {
-        description: 'Quote amounts for adding liquidity to a Meteora DAMM v2 pool',
-        tags: ['/connector/meteora'],
-        querystring: MeteoraAmmQuoteLiquidityRequest,
-        response: {
-          200: QuoteLiquidityResponse,
-        },
-      },
-    },
-    async (request): Promise<QuoteLiquidityResponseType> => {
-      try {
-        const { network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.query;
-        return await quoteLiquidity(network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Failed to quote liquidity');
-      }
-    },
-  );
-};
-
-export default quoteLiquidityRoute;

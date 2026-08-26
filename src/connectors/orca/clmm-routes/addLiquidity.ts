@@ -5,20 +5,18 @@ import {
   increaseLiquidityQuoteB,
   type IncreaseLiquidityQuote,
 } from '@orca-so/whirlpools-core';
-import { Static } from '@sinclair/typebox';
 import { address } from '@solana/kit';
 import { PublicKey } from '@solana/web3.js';
 import { fetchAllMint } from '@solana-program/token-2022';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { AddLiquidityResponse, AddLiquidityResponseType } from '../../../schemas/clmm-schema';
+import { AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
+import { OrcaConfig } from '../orca.config';
 import { getCurrentTransferFee } from '../orca.position';
 import { buildOrcaTransaction, createOrcaAuthority } from '../orca.sdk';
-import { OrcaClmmAddLiquidityRequest } from '../schemas';
 
 export async function addLiquidity(
   network: string,
@@ -26,7 +24,7 @@ export async function addLiquidity(
   positionAddress: string,
   baseTokenAmount: number,
   quoteTokenAmount: number,
-  slippagePct: number,
+  slippagePct: number = OrcaConfig.config.slippagePct ?? 1,
 ): Promise<AddLiquidityResponseType> {
   if ((!baseTokenAmount || baseTokenAmount <= 0) && (!quoteTokenAmount || quoteTokenAmount <= 0)) {
     throw httpErrors.badRequest('At least one token amount must be provided and greater than 0');
@@ -100,7 +98,12 @@ export async function addLiquidity(
   const result = await increaseLiquidityInstructions(
     orca.solanaKitRpc,
     position.data.positionMint,
-    { tokenMaxA: quote.tokenMaxA, tokenMaxB: quote.tokenMaxB },
+    // The estimates, not the quote's ceilings — the same correction as openPosition.
+    // increaseLiquidityQuote* already applied slippageBps to produce tokenMax*, and this
+    // builder applies slippageToleranceBps again to derive the on-chain maximums, so
+    // passing tokenMax* deposits slippagePct more than was asked for. The log line above
+    // has always reported tokenEst*, which is what the transaction should be spending.
+    { tokenMaxA: quote.tokenEstA, tokenMaxB: quote.tokenEstB },
     {
       authority: createOrcaAuthority(walletAddress),
       slippageToleranceBps: slippageBps,
@@ -128,52 +131,13 @@ export async function addLiquidity(
     signature,
     status: 1,
     data: {
+      // The pool this position belongs to, already loaded here. The unified route is
+      // position-addressed and never receives it, so this is the only place it can
+      // come from without a second lookup.
+      poolAddress: position.data.whirlpool.toString(),
       fee,
       baseTokenAmountAdded: Math.abs(balanceChanges[0]),
       quoteTokenAmountAdded: Math.abs(balanceChanges[1]),
     },
   };
 }
-
-export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof OrcaClmmAddLiquidityRequest>;
-    Reply: AddLiquidityResponseType;
-  }>(
-    '/add-liquidity',
-    {
-      schema: {
-        description: 'Add liquidity to an Orca position',
-        tags: ['/connector/orca'],
-        body: OrcaClmmAddLiquidityRequest,
-        response: { 200: AddLiquidityResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          walletAddress,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct = 1,
-          network,
-        } = request.body;
-        return await addLiquidity(
-          network,
-          walletAddress,
-          positionAddress,
-          baseTokenAmount || 0,
-          quoteTokenAmount || 0,
-          slippagePct,
-        );
-      } catch (error) {
-        logger.error(error);
-        if (error.statusCode) throw error;
-        throw httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default addLiquidityRoute;

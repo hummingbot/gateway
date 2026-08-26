@@ -7,6 +7,7 @@ import yaml from 'js-yaml';
 
 import { rootPath } from '../paths';
 
+import { parseChainNetwork as parseChainNetworkParts } from './chain-network';
 import { httpErrors } from './error-handler';
 
 type Configuration = { [key: string]: any };
@@ -226,10 +227,8 @@ export class ConfigurationNamespace {
     const pathComponents: Array<string> = configPath.split('.');
     const configClone: Configuration = JSON.parse(JSON.stringify(this.#configuration));
     let cursor: Configuration | any = configClone;
-    let parent: Configuration = configClone;
 
     for (const component of pathComponents.slice(0, -1)) {
-      parent = cursor;
       cursor = cursor[component];
       if (cursor === undefined) {
         parent[component] = {};
@@ -252,11 +251,9 @@ export class ConfigurationNamespace {
     const pathComponents: Array<string> = configPath.split('.');
     const configClone: Configuration = JSON.parse(JSON.stringify(this.#configuration));
     let cursor: Configuration | any = configClone;
-    let parent: Configuration = configClone;
 
     // Navigate to the parent of the property we want to delete
     for (const component of pathComponents.slice(0, -1)) {
-      parent = cursor;
       cursor = cursor[component];
       if (cursor === undefined) {
         return; // Property doesn't exist, nothing to delete
@@ -528,9 +525,7 @@ export class ConfigManagerV2 {
    * Parse chain-network format into components
    */
   parseChainNetwork(chainNetwork: string): { chain: string; network: string } {
-    const [chain, ...networkParts] = chainNetwork.split('-');
-    const network = networkParts.join('-');
-    return { chain, network };
+    return parseChainNetworkParts(chainNetwork);
   }
 
   /**

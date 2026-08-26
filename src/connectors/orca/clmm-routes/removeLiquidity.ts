@@ -1,29 +1,27 @@
 import { decreaseLiquidityInstructions } from '@orca-so/whirlpools';
 import { fetchPosition, fetchWhirlpool } from '@orca-so/whirlpools-client';
-import { Static } from '@sinclair/typebox';
 import { address } from '@solana/kit';
 import { PublicKey } from '@solana/web3.js';
 import { fetchAllMint } from '@solana-program/token-2022';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
+import { RemoveLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
+import { OrcaConfig } from '../orca.config';
 import { buildOrcaTransaction, createOrcaAuthority } from '../orca.sdk';
-import { OrcaClmmRemoveLiquidityRequest } from '../schemas';
 
 export async function removeLiquidity(
   network: string,
   walletAddress: string,
   positionAddress: string,
-  liquidityPct: number,
-  slippagePct: number,
+  percentageToRemove: number,
+  slippagePct: number = OrcaConfig.config.slippagePct ?? 1,
 ): Promise<RemoveLiquidityResponseType> {
-  if (liquidityPct <= 0 || liquidityPct > 100) {
-    throw httpErrors.badRequest('liquidityPct must be between 0 and 100');
+  if (percentageToRemove <= 0 || percentageToRemove > 100) {
+    throw httpErrors.badRequest('percentageToRemove must be between 0 and 100');
   }
 
   const solana = await Solana.getInstance(network);
@@ -33,7 +31,7 @@ export async function removeLiquidity(
   const whirlpool = await fetchWhirlpool(orca.solanaKitRpc, position.data.whirlpool);
   const [mintA, mintB] = await fetchAllMint(orca.solanaKitRpc, [whirlpool.data.tokenMintA, whirlpool.data.tokenMintB]);
   const liquidityAmount = BigInt(
-    new Decimal(position.data.liquidity.toString()).mul(liquidityPct).div(100).floor().toFixed(0),
+    new Decimal(position.data.liquidity.toString()).mul(percentageToRemove).div(100).floor().toFixed(0),
   );
 
   if (liquidityAmount <= 0n || liquidityAmount > position.data.liquidity) {
@@ -51,7 +49,7 @@ export async function removeLiquidity(
     },
   );
   logger.info(
-    `Removing ${liquidityPct}% liquidity, estimated: ` +
+    `Removing ${percentageToRemove}% liquidity, estimated: ` +
       `${(Number(result.quote.tokenEstA) / 10 ** mintA.data.decimals).toFixed(6)} tokenA, ` +
       `${(Number(result.quote.tokenEstB) / 10 ** mintB.data.decimals).toFixed(6)} tokenB`,
   );
@@ -76,38 +74,13 @@ export async function removeLiquidity(
     signature,
     status: 1,
     data: {
+      // The pool this position belongs to, already loaded here. The unified route is
+      // position-addressed and never receives it, so this is the only place it can
+      // come from without a second lookup.
+      poolAddress: position.data.whirlpool.toString(),
       fee,
       baseTokenAmountRemoved: Math.abs(balanceChanges[0]),
       quoteTokenAmountRemoved: Math.abs(balanceChanges[1]),
     },
   };
 }
-
-export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof OrcaClmmRemoveLiquidityRequest>;
-    Reply: RemoveLiquidityResponseType;
-  }>(
-    '/remove-liquidity',
-    {
-      schema: {
-        description: 'Remove liquidity from an Orca position',
-        tags: ['/connector/orca'],
-        body: OrcaClmmRemoveLiquidityRequest,
-        response: { 200: RemoveLiquidityResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { walletAddress, positionAddress, liquidityPct = 100, slippagePct = 1, network } = request.body;
-        return await removeLiquidity(network, walletAddress, positionAddress, liquidityPct, slippagePct);
-      } catch (error) {
-        logger.error(error);
-        if (error.statusCode) throw error;
-        throw fastify.httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default removeLiquidityRoute;

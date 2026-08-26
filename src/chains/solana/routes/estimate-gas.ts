@@ -1,9 +1,6 @@
-import { FastifyPluginAsync } from 'fastify';
-
-import { EstimateGasResponse, EstimateGasResponseSchema } from '../../../schemas/chain-schema';
+import { EstimateGasResponse } from '../../../schemas/chain-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
-import { SolanaEstimateGasRequest, SolanaEstimateGasRequestType } from '../schemas';
 import { Solana } from '../solana';
 
 export async function estimateGasSolana(network: string): Promise<EstimateGasResponse> {
@@ -72,29 +69,3 @@ export async function estimateGasSolana(network: string): Promise<EstimateGasRes
     }
   }
 }
-
-export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: SolanaEstimateGasRequestType;
-    Reply: EstimateGasResponse;
-  }>(
-    '/estimate-gas',
-    {
-      schema: {
-        description:
-          'Estimate priority fees for Solana transactions. Optionally pass addresses (program IDs, pools) for Helius-specific fee estimation.',
-        tags: ['/chain/solana'],
-        querystring: SolanaEstimateGasRequest,
-        response: {
-          200: EstimateGasResponseSchema,
-        },
-      },
-    },
-    async (request) => {
-      const { network } = request.query;
-      return await estimateGasSolana(network);
-    },
-  );
-};
-
-export default estimateGasRoute;

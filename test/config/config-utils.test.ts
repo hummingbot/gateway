@@ -1,5 +1,3 @@
-import Fastify, { FastifyInstance } from 'fastify';
-
 // Mock dependencies
 jest.mock('../../src/services/logger', () => ({
   logger: {
@@ -86,14 +84,17 @@ jest.mock('../../src/services/config-manager-v2', () => ({
 }));
 
 // Import after mocking
+import { FastifyInstance } from 'fastify';
+
 import { getConfig, updateConfig } from '../../src/config/utils';
 import { ConfigManagerV2 } from '../../src/services/config-manager-v2';
+import { fastifyWithTypeProvider } from '../utils/testUtils';
 
 describe('Config Utils - Chain-Network Merge', () => {
   let fastify: FastifyInstance;
 
   beforeEach(async () => {
-    fastify = Fastify();
+    fastify = fastifyWithTypeProvider();
     jest.clearAllMocks();
   });
 

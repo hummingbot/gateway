@@ -10,6 +10,7 @@ import { RPCProvider } from '../../rpc/rpc-provider-base';
 import { TokenValue, tokenValueToString } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
 import { ConfigManagerV2 } from '../../services/config-manager-v2';
+import { transactionFailed } from '../../services/error-handler';
 import { logger, redactUrl } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { walletPath, isHardwareWallet as checkIsHardwareWallet } from '../../wallet/utils';
@@ -29,6 +30,15 @@ export interface TokenInfo {
 export type NewBlockHandler = (bn: number) => void;
 export type NewDebugMsgHandler = (msg: any) => void;
 
+/**
+ * Outcome of an EVM liquidity/pool transaction as a route is allowed to report it.
+ * A revert is not one of the cases: it throws, so it can never be mistaken for PENDING.
+ * See {@link Ethereum.handleTransactionConfirmation}.
+ */
+export type EthereumTransactionOutcome =
+  | { confirmed: false; signature: string }
+  | { confirmed: true; signature: string; receipt: providers.TransactionReceipt; fee: number };
+
 // Networks that support EIP-1559 (type 2) transactions
 export const EIP1559_NETWORKS = [
   'mainnet',
@@ -47,6 +57,8 @@ export class Ethereum {
   public network: string;
   public nativeTokenSymbol: string;
   public chainId: number;
+  /** Tokens read from the chain because the configured list did not have them. */
+  private readonly chainReadTokens = new Map<string, TokenInfo>();
   public rpcUrl: string;
   public swapProvider: string;
   public gasPrice?: number | null;
@@ -527,9 +539,19 @@ export class Ethereum {
   }
 
   /**
-   * Get token info by symbol or address from local token list only
+   * Get token info by symbol or address, from the configured list or the chain.
+   *
+   * A symbol can only come from the list — there is nothing to ask the chain about a
+   * name it does not hold — so an unknown one is still undefined. An address is
+   * different: it identifies a contract that can be asked what it is, and until it was,
+   * every route describing a pool by its token addresses failed on any token the list
+   * happened to omit. Uniswap's pool-info answered `Token information not found for
+   * pool` for a real pool on real tokens, which is what Solana's getToken has always
+   * avoided by reading the mint.
+   *
    * @param tokenSymbol Token symbol or contract address
-   * @returns TokenInfo object or undefined if token not found in local list
+   * @returns TokenInfo, or undefined for a symbol that is not listed and an address
+   *          that is not an ERC-20
    */
   public async getToken(tokenSymbol: string): Promise<TokenInfo | undefined> {
     const tokenList = await this.getTokenList();
@@ -544,16 +566,81 @@ export class Ethereum {
     }
 
     // If not found by symbol, check if it's a valid address
+    let normalizedAddress: string;
     try {
-      const normalizedAddress = utils.getAddress(tokenSymbol);
-      // Try to find token by normalized address
-      return tokenList.find(
-        (token: TokenInfo) =>
-          token.address.toLowerCase() === normalizedAddress.toLowerCase() && token.chainId === this.chainId,
-      );
+      normalizedAddress = utils.getAddress(tokenSymbol);
     } catch {
-      // If not a valid address format, return undefined
+      // Not an address, so the list was the only place it could have been.
       return undefined;
+    }
+
+    const tokenByAddress = tokenList.find(
+      (token: TokenInfo) =>
+        token.address.toLowerCase() === normalizedAddress.toLowerCase() && token.chainId === this.chainId,
+    );
+
+    return tokenByAddress ?? (await this.tokenFromChainCached(normalizedAddress));
+  }
+
+  /**
+   * A chain-read token, remembered for the life of the process.
+   *
+   * getToken runs in loops — over the tokens of a balance request, over every position a
+   * wallet owns — so an address the list omits would otherwise cost three eth_calls on
+   * every pass, forever, for a name, symbol and decimals that cannot change. Only
+   * successes are remembered: an address with no contract today may have one tomorrow.
+   */
+  private async tokenFromChainCached(address: string): Promise<TokenInfo | undefined> {
+    const cached = this.chainReadTokens.get(address);
+    if (cached) {
+      return cached;
+    }
+
+    const token = await this.fetchTokenFromChain(address);
+    if (!token) {
+      return undefined;
+    }
+
+    this.chainReadTokens.set(address, token);
+    return token;
+  }
+
+  /**
+   * Read a token's name, symbol and decimals from the chain.
+   *
+   * getToken above only searches the configured list, so an unlisted token is simply
+   * absent there. These three are standard ERC-20 view calls and the ABI for them is
+   * already in getContract, so nothing outside the chain is consulted.
+   *
+   * Returns null when the address is not a contract that answers them — a wallet
+   * address, or a token predating the metadata methods — rather than inventing a name.
+   */
+  public async fetchTokenFromChain(address: string): Promise<TokenInfo | null> {
+    let normalizedAddress: string;
+    try {
+      normalizedAddress = getAddress(address);
+    } catch {
+      return null;
+    }
+
+    try {
+      const contract = this.getContract(normalizedAddress);
+      const [name, symbol, decimals] = await Promise.all([contract.name(), contract.symbol(), contract.decimals()]);
+
+      if (!symbol) {
+        return null;
+      }
+
+      return {
+        address: normalizedAddress,
+        chainId: this.chainId,
+        decimals: Number(decimals),
+        name: name || symbol,
+        symbol,
+      };
+    } catch (e: any) {
+      logger.debug(`No ERC-20 metadata at ${normalizedAddress}: ${e.message}`);
+      return null;
     }
   }
 
@@ -1027,6 +1114,60 @@ export class Ethereum {
   }
 
   /**
+   * Single confirmation gate for EVM liquidity and pool transactions (open/close position,
+   * add/remove liquidity, collect fees, create pool, execute swap).
+   *
+   * `handleTransactionExecution` has three outcomes but only two of them are a valid response
+   * body, so every caller used to have to remember two separate checks — and almost none did:
+   *
+   * - no receipt (still pending after the extended poll) — dereferencing it throws a TypeError
+   *   that the route catch turns into a generic 500, losing the transaction hash and with it
+   *   any chance of reconciling a transaction that lands a minute later.
+   * - `receipt.status === 0` (reverted on-chain) — forwarding it verbatim as the response
+   *   `status` reports the revert as {@link TransactionStatus.PENDING}, which is also 0, so a
+   *   poller waits on it forever while the route's pre-send amounts are booked as if the
+   *   tokens had moved.
+   *
+   * This helper resolves both:
+   *
+   * - still pending -> `{ confirmed: false, signature: tx.hash }`. The caller returns
+   *   `{ signature, status: TransactionStatus.PENDING }` with NO `data` — the amounts it
+   *   computed before sending have not moved and must not be reported as if they had.
+   * - reverted -> throws the shared 400 TRANSACTION_FAILED, the same terminal, non-retryable
+   *   error the Solana routes throw for a landed-but-failed transaction.
+   * - confirmed -> `{ confirmed: true, signature, receipt, fee }`, fee already converted from
+   *   gas units to the chain's native currency.
+   */
+  public async handleTransactionConfirmation(tx: TransactionResponse): Promise<EthereumTransactionOutcome> {
+    const receipt = await this.handleTransactionExecution(tx);
+
+    if (!receipt) {
+      logger.warn(`Transaction ${tx.hash} still pending — reporting PENDING so the caller can reconcile it later`);
+      return { confirmed: false, signature: tx.hash };
+    }
+
+    if (receipt.status === 0) {
+      throw transactionFailed(
+        `Transaction ${receipt.transactionHash} reverted on-chain. Gas was spent; no tokens moved.`,
+      );
+    }
+
+    if (receipt.status !== 1) {
+      // No status on the receipt (pre-Byzantium chain or a provider quirk): neither a
+      // confirmation nor a revert, so report it as pending rather than guessing.
+      logger.warn(`Transaction ${receipt.transactionHash} has no receipt status — reporting PENDING`);
+      return { confirmed: false, signature: receipt.transactionHash };
+    }
+
+    return {
+      confirmed: true,
+      signature: receipt.transactionHash,
+      receipt,
+      fee: parseFloat(utils.formatUnits(receipt.gasUsed.mul(receipt.effectiveGasPrice), 18)),
+    };
+  }
+
+  /**
    * Handle transaction confirmation status and return appropriate response
    * Similar to Solana's handleConfirmation helper
    * @param txReceipt Transaction receipt
@@ -1045,6 +1186,7 @@ export class Ethereum {
     expectedAmountOut: number,
     side?: 'BUY' | 'SELL',
     txHash?: string, // Optional tx hash for pending transactions
+    slippagePct?: number, // Slippage tolerance actually applied to the swap (echoed in data)
   ): {
     signature: string;
     status: number;
@@ -1056,6 +1198,7 @@ export class Ethereum {
       fee: number;
       baseTokenBalanceChange: number;
       quoteTokenBalanceChange: number;
+      slippagePct?: number;
     };
   } {
     if (!txReceipt) {
@@ -1118,6 +1261,7 @@ export class Ethereum {
           fee,
           baseTokenBalanceChange,
           quoteTokenBalanceChange,
+          slippagePct,
         },
       };
     }

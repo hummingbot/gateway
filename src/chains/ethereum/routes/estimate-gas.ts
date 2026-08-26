@@ -1,9 +1,8 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
-import { EstimateGasRequestType, EstimateGasResponse, EstimateGasResponseSchema } from '../../../schemas/chain-schema';
+import { EstimateGasResponse } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
 import { Ethereum, EIP1559_NETWORKS } from '../ethereum';
-import { EthereumEstimateGasRequest } from '../schemas';
 
 export async function estimateGasEthereum(fastify: FastifyInstance, network: string): Promise<EstimateGasResponse> {
   try {
@@ -69,28 +68,3 @@ export async function estimateGasEthereum(fastify: FastifyInstance, network: str
     throw fastify.httpErrors.internalServerError(`Failed to estimate gas for network ${network}: ${error.message}`);
   }
 }
-
-export const estimateGasRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: EstimateGasRequestType;
-    Reply: EstimateGasResponse;
-  }>(
-    '/estimate-gas',
-    {
-      schema: {
-        description: 'Estimate gas prices for Ethereum transactions',
-        tags: ['/chain/ethereum'],
-        querystring: EthereumEstimateGasRequest,
-        response: {
-          200: EstimateGasResponseSchema,
-        },
-      },
-    },
-    async (request) => {
-      const { network } = request.query;
-      return await estimateGasEthereum(fastify, network);
-    },
-  );
-};
-
-export default estimateGasRoute;

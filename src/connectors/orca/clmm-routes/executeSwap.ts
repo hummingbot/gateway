@@ -2,20 +2,16 @@ import { swapInstructions } from '@orca-so/whirlpools';
 import { fetchWhirlpool } from '@orca-so/whirlpools-client';
 import { address } from '@solana/kit';
 import { fetchAllMint } from '@solana-program/token-2022';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { getSolanaChainConfig } from '../../../chains/solana/solana.config';
-import { ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/clmm-schema';
+import { ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
+import { OrcaConfig } from '../orca.config';
 import { buildOrcaTransaction, createOrcaAuthority } from '../orca.sdk';
-import { OrcaClmmExecuteSwapRequest, OrcaClmmExecuteSwapRequestType } from '../schemas';
 
 import { resolveCounterToken } from './quoteSwap';
-
-const COMPUTE_BUDGET_PROGRAM_ID = address('ComputeBudget111111111111111111111111111111');
 
 export async function executeSwap(
   network: string,
@@ -24,7 +20,7 @@ export async function executeSwap(
   baseTokenIdentifier: string,
   side: 'BUY' | 'SELL',
   amount: number,
-  slippagePct: number = 1,
+  slippagePct: number = OrcaConfig.config.slippagePct ?? 1,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
   const orca = await Orca.getInstance(network);
@@ -117,95 +113,7 @@ export async function executeSwap(
       fee,
       baseTokenBalanceChange,
       quoteTokenBalanceChange,
+      slippagePct,
     },
   };
 }
-
-export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: OrcaClmmExecuteSwapRequestType;
-    Reply: ExecuteSwapResponseType;
-  }>(
-    '/execute-swap',
-    {
-      schema: {
-        description: 'Execute a token swap on Orca CLMM',
-        tags: ['/connector/orca'],
-        body: OrcaClmmExecuteSwapRequest,
-        response: { 200: ExecuteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body;
-
-        // Use defaults if not provided
-        const networkUsed = network || getSolanaChainConfig().defaultNetwork;
-        const walletAddressUsed = walletAddress || getSolanaChainConfig().defaultWallet;
-
-        let poolAddressUsed = poolAddress;
-
-        // If poolAddress is not provided, look it up by token pair
-        if (!poolAddressUsed) {
-          const solana = await Solana.getInstance(networkUsed);
-
-          // Resolve token symbols to get proper symbols for pool lookup
-          const baseTokenInfo = await solana.getToken(baseToken);
-          const quoteTokenInfo = await solana.getToken(quoteToken);
-
-          if (!baseTokenInfo || !quoteTokenInfo) {
-            throw httpErrors.badRequest(`Token not found: ${!baseTokenInfo ? baseToken : quoteToken}`);
-          }
-
-          // Use PoolService to find pool by token pair
-          const { PoolService } = await import('../../../services/pool-service');
-          const poolService = PoolService.getInstance();
-
-          const pool = await poolService.getPool(
-            'orca',
-            networkUsed,
-            'clmm',
-            baseTokenInfo.symbol,
-            quoteTokenInfo.symbol,
-          );
-
-          if (!pool) {
-            throw httpErrors.notFound(
-              `No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Orca`,
-            );
-          }
-
-          poolAddressUsed = pool.address;
-        }
-        logger.info(`Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddressUsed}`);
-
-        return await executeSwap(
-          networkUsed,
-          walletAddressUsed,
-          poolAddressUsed,
-          baseToken,
-          side as 'BUY' | 'SELL',
-          amount,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Error executing swap:', e.message || e);
-
-        if (e.statusCode) {
-          // If it's already an HTTP error, throw it properly
-          throw e;
-        }
-
-        // Check for specific error messages
-        const errorMessage = e.message || e.toString();
-        if (errorMessage.includes('503') || errorMessage.includes('Service Unavailable')) {
-          throw httpErrors.serviceUnavailable('RPC service temporarily unavailable. Please try again.');
-        }
-
-        throw httpErrors.internalServerError(`Swap execution failed: ${errorMessage}`);
-      }
-    },
-  );
-};
-
-export default executeSwapRoute;

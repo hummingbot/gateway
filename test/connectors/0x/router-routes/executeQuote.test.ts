@@ -5,6 +5,7 @@ import { ZeroX } from '../../../../src/connectors/0x/0x';
 import { quoteCache } from '../../../../src/services/quote-cache';
 import { TokenService } from '../../../../src/services/token-service';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/ethereum/ethereum');
 jest.mock('../../../../src/connectors/0x/0x');
@@ -13,7 +14,7 @@ jest.mock('../../../../src/services/token-service');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { executeQuoteRoute } = await import('../../../../src/connectors/0x/router-routes/executeQuote');
+  const { executeQuoteRoute } = await import('../../../../src/trading/trading-router-routes/executeQuote');
   await server.register(executeQuoteRoute);
   return server;
 };
@@ -196,17 +197,18 @@ describe('POST /execute-quote', () => {
       method: 'POST',
       url: '/execute-quote',
       payload: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: '0x',
         walletAddress: '0x1234567890123456789012345678901234567890',
         quoteId: quoteId,
       },
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('signature', mockReceipt.transactionHash);
     expect(body).toHaveProperty('status', 1);
-    expect(body.data).toHaveProperty('amountIn', 0.1);
+    expect(Number(body.data.amountIn)).toBe(0.1);
     expect(body.data).toHaveProperty('amountOut', 150);
     expect(body.data).toHaveProperty('fee', 0.006);
     expect(body.data).toHaveProperty('baseTokenBalanceChange', 0);
@@ -220,14 +222,15 @@ describe('POST /execute-quote', () => {
       method: 'POST',
       url: '/execute-quote',
       payload: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: '0x',
         walletAddress: '0x1234567890123456789012345678901234567890',
         quoteId: 'non-existent-quote',
       },
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body)).toHaveProperty('error');
+    expect(parseWire(response.body)).toHaveProperty('error');
   });
 
   it('should throw error if allowance is insufficient', async () => {
@@ -287,14 +290,15 @@ describe('POST /execute-quote', () => {
       method: 'POST',
       url: '/execute-quote',
       payload: {
-        network: 'mainnet',
+        chainNetwork: 'ethereum-mainnet',
+        connector: '0x',
         walletAddress: '0x1234567890123456789012345678901234567890',
         quoteId: quoteId,
       },
     });
 
     expect(response.statusCode).toBe(400);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body.message).toContain('Insufficient allowance');
     expect(mockEthereumInstance.approveERC20).not.toHaveBeenCalled();
   });

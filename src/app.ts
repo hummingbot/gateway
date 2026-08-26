@@ -1,6 +1,5 @@
 // External dependencies
-import { spawn } from 'child_process';
-import { exec } from 'child_process';
+import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
 
 import fastifyRateLimit from '@fastify/rate-limit';
@@ -13,24 +12,19 @@ import Fastify, { FastifyInstance } from 'fastify';
 // Internal dependencies
 
 // Routes
-import { ethereumRoutes } from './chains/ethereum/ethereum.routes';
-import { solanaRoutes } from './chains/solana/solana.routes';
+import { chainRoutes } from './chains/chain.routes';
+import * as ethereumSchemas from './chains/ethereum/schemas';
 import { configRoutes } from './config/config.routes';
-import { register0xRoutes } from './connectors/0x/0x.routes';
-import { dflowRoutes } from './connectors/dflow/dflow.routes';
-import { jupiterRoutes } from './connectors/jupiter/jupiter.routes';
-import { meteoraRoutes } from './connectors/meteora/meteora.routes';
-import { okxRoutes } from './connectors/okx/okx.routes';
-import { orcaRoutes } from './connectors/orca/orca.routes';
-import { pancakeswapRoutes } from './connectors/pancakeswap/pancakeswap.routes';
-import { pancakeswapSolRoutes } from './connectors/pancakeswap-sol/pancakeswap-sol.routes';
-import { raydiumRoutes } from './connectors/raydium/raydium.routes';
-import { titanRoutes } from './connectors/titan/titan.routes';
-import { uniswapRoutes } from './connectors/uniswap/uniswap.routes';
 import { getHttpsOptions } from './https';
 import { rootPath } from './paths';
 import { poolRoutes } from './pools/pools.routes';
+import * as ammSchemas from './schemas/amm-schema';
+import * as chainSchemas from './schemas/chain-schema';
+import * as clmmSchemas from './schemas/clmm-schema';
+import * as errorSchemas from './schemas/error-schema';
+import * as routerSchemas from './schemas/router-schema';
 import { ConfigManagerV2 } from './services/config-manager-v2';
+import { httpErrors } from './services/error-handler';
 import {
   constantTimeEqual,
   extractBearerToken,
@@ -42,11 +36,19 @@ import {
   loadOrCreateApiKey,
 } from './services/gateway-security';
 import { logger } from './services/logger';
-import { quoteCache } from './services/quote-cache';
+import { OPERATION_IDS } from './services/operation-ids';
+import { ajvOptions, schemaErrorFormatter } from './services/schema-keywords';
 import { displayChainConfigurations } from './services/startup-banner';
+import * as tokenSchemas from './tokens/schemas';
 import { tokensRoutes } from './tokens/tokens.routes';
-import { tradingRoutes, tradingClmmRoutes, tradingAmmRoutes } from './trading/trading.routes';
+import * as clmmReadRouteSchemas from './trading/clmm';
+import * as poolSwapRoutes from './trading/pool-swap-routes';
+import * as ammRouteSchemas from './trading/trading-amm-routes';
+import * as clmmRouteSchemas from './trading/trading-clmm-routes';
+import * as routerRouteSchemas from './trading/trading-router-routes';
+import { tradingRouterRoutes, tradingClmmRoutes, tradingAmmRoutes } from './trading/trading.routes';
 import { GATEWAY_VERSION } from './version';
+import * as walletSchemas from './wallet/schemas';
 import { walletRoutes } from './wallet/wallet.routes';
 
 import { asciiLogo } from './index';
@@ -61,6 +63,136 @@ const devMode = process.argv.includes('--dev') || process.env.GATEWAY_TEST_MODE 
 // Promisify exec for async/await usage
 const execPromise = promisify(exec);
 
+/**
+ * Collect every `$id`-carrying schema reachable from `node`, itself included.
+ *
+ * The search continues *through* a schema it has already collected, because `$id`s
+ * nest: each write response names its confirmed-transaction `data` object, and those
+ * only ever appear inside their parent. Collecting the parent alone would leave the
+ * ref `refIdentifiedSchemas` writes for that child pointing at a component nobody
+ * defined — a spec that resolves nowhere.
+ */
+const collectIdentifiedSchemas = (node: any, found: Map<string, Record<string, any>>): void => {
+  if (Array.isArray(node)) {
+    node.forEach((item) => collectIdentifiedSchemas(item, found));
+    return;
+  }
+  if (node === null || typeof node !== 'object') return;
+  if (typeof node.$id === 'string' && !found.has(node.$id)) found.set(node.$id, node);
+  Object.values(node).forEach((value) => collectIdentifiedSchemas(value, found));
+};
+
+/**
+ * Every schema carrying an `$id`, collected from the shared schema modules and from the
+ * route modules that declare their own request bodies.
+ *
+ * Registering these with `addSchema` is what puts them in the spec's
+ * `components.schemas`; `refIdentifiedSchemas` below then points the routes at them.
+ * `$id`s must be unique across all modules — Fastify rejects a duplicate — which is
+ * why the AMM copies of the names CLMM also uses carry an `Amm` prefix.
+ *
+ * The route modules are here because the shapes in `./schemas` are the *base* types the
+ * unified routes compose from, not what a caller sends: they predate the refactor, so
+ * they carry a per-connector `network` and no `connector` or `chainNetwork`. Generating
+ * a client from those alone produced request models that were wrong the same way for
+ * every route, so each route's own body now carries the `$id` instead.
+ */
+const identifiedSchemas = (): Array<Record<string, any>> => {
+  const found = new Map<string, Record<string, any>>();
+  for (const module of [
+    ammSchemas,
+    chainSchemas,
+    clmmSchemas,
+    routerSchemas,
+    ammRouteSchemas,
+    clmmRouteSchemas,
+    clmmReadRouteSchemas,
+    routerRouteSchemas,
+    poolSwapRoutes,
+    ethereumSchemas,
+    walletSchemas,
+    tokenSchemas,
+    errorSchemas,
+  ]) {
+    for (const value of Object.values(module)) {
+      if (typeof value === 'object' && value !== null) collectIdentifiedSchemas(value, found);
+    }
+  }
+  return [...found.values()].map((value) => {
+    // Ref the schema's own $id'd children too, keeping only its root $id. Registering
+    // a parent with its children inlined emits both the child component and an
+    // anonymous copy inside the parent, which is what a generated client names Data1,
+    // Data2, ... — numbered by traversal order, so they churn on any insertion.
+    const { $id, ...rest } = Type.Strict(value as any) as Record<string, any>;
+    return { $id, ...refIdentifiedSchemas(rest, 'openapi') };
+  });
+};
+
+/**
+ * Replace inline schema objects that carry an `$id` with a `$ref` to the component.
+ *
+ * Fastify inlines whatever a route declares, so without this every operation restates
+ * its schemas in full: the spec had no `components.schemas` at all, identical shapes
+ * (CLMM and AMM execute-swap, say) appeared as separate anonymous objects, and a
+ * generated client got names derived from route paths rather than the domain — which
+ * change whenever a route is renamed.
+ *
+ * This runs only while the spec document is built. Route validation and serialization
+ * keep using the compiled inline schemas, so nothing about request handling changes.
+ *
+ * Two ref forms are needed, because the two places refs appear are processed
+ * differently. Route schemas go through @fastify/swagger's transform, which rewrites
+ * Fastify's own "Id#" form into "#/components/schemas/Id" — passing the components path
+ * there instead makes it read the ref as local to the route schema and fail to resolve
+ * it. Registered components are emitted verbatim, so they must already carry the
+ * components path.
+ */
+type RefStyle = 'fastify' | 'openapi';
+
+const refIdentifiedSchemas = (node: any, style: RefStyle = 'fastify'): any => {
+  if (Array.isArray(node)) return node.map((item) => refIdentifiedSchemas(item, style));
+  if (node === null || typeof node !== 'object') return node;
+  if (typeof node.$id === 'string') {
+    return { $ref: style === 'fastify' ? `${node.$id}#` : `#/components/schemas/${node.$id}` };
+  }
+  return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, refIdentifiedSchemas(value, style)]));
+};
+
+/**
+ * Give an operation the two things a generated client needs and Gateway never stated: a
+ * stable name, and the shape of a failure.
+ *
+ * Both are applied here rather than in 56 route files. The name comes from the table in
+ * `operation-ids.ts` — chosen, not derived, so renaming a path does not rename a caller's
+ * method. The failure shape is the same envelope on every route, so listing it per route
+ * would only be a list to forget to update.
+ *
+ * 400 and 500 are declared everywhere because both are reachable everywhere: Fastify
+ * answers 400 for any request its schema rejects, and `rethrowRouteError` turns anything
+ * without a status of its own into a 500. A route that already declares a status keeps
+ * what it declared.
+ */
+const describeOperation = (schema: any, url: string, route: any): any => {
+  if (!schema || schema.hide) return schema;
+
+  const method = Array.isArray(route?.method) ? route.method[0] : route?.method;
+  // Fastify spells a path parameter `:name`; the table is keyed the way the spec renders
+  // it. Without this the 14 parameterised routes silently keep no name at all.
+  const specPath = url.replace(/:([A-Za-z0-9_]+)/g, '{$1}');
+  const operationId = OPERATION_IDS[`${method} ${specPath}`];
+  const errorRef = { $ref: 'ErrorResponse#' };
+
+  return {
+    ...schema,
+    ...(operationId && !schema.operationId ? { operationId } : {}),
+    response: {
+      400: errorRef,
+      500: errorRef,
+      ...(schema.response ?? {}),
+    },
+  };
+};
+
 const swaggerOptions = {
   openapi: {
     info: {
@@ -74,67 +206,15 @@ const swaggerOptions = {
       },
     ],
     tags: [
-      // Main categories
       { name: '/config', description: 'System configuration endpoints' },
       { name: '/wallet', description: 'Wallet management endpoints' },
       { name: '/tokens', description: 'Token management endpoints' },
       { name: '/pools', description: 'Pool management endpoints' },
-      { name: '/trading/swap', description: 'Unified cross-chain swap endpoints' },
-      { name: '/trading/clmm', description: 'Unified cross-chain CLMM (Concentrated Liquidity) endpoints' },
-      { name: '/trading/amm', description: 'Unified cross-connector AMM endpoints (pool creation)' },
-
-      // Chains
-      {
-        name: '/chain/solana',
-        description: 'Solana and SVM-based chain endpoints',
-      },
-      {
-        name: '/chain/ethereum',
-        description: 'Ethereum and EVM-based chain endpoints',
-      },
-
-      // Connectors
-      {
-        name: '/connector/jupiter',
-        description: 'Jupiter connector endpoints',
-      },
-      {
-        name: '/connector/meteora',
-        description: 'Meteora connector endpoints',
-      },
-      {
-        name: '/connector/orca',
-        description: 'Orca connector endpoints',
-      },
-      {
-        name: '/connector/raydium',
-        description: 'Raydium connector endpoints',
-      },
-      {
-        name: '/connector/uniswap',
-        description: 'Uniswap connector endpoints',
-      },
-      { name: '/connector/0x', description: '0x connector endpoints' },
-      {
-        name: '/connector/pancakeswap-sol',
-        description: 'PancakeSwap Solana connector endpoints',
-      },
-      {
-        name: '/connector/pancakeswap',
-        description: 'PancakeSwap EVM connector endpoints',
-      },
-      {
-        name: '/connector/dflow',
-        description: 'DFlow connector endpoints',
-      },
-      {
-        name: '/connector/okx',
-        description: 'OKX DEX aggregator connector endpoints',
-      },
-      {
-        name: '/connector/titan',
-        description: 'Titan connector endpoints',
-      },
+      { name: '/chains', description: 'Chain endpoints, parameterized by chain' },
+      { name: '/trading/router', description: 'Swaps routed across pools by a router connector' },
+      { name: '/trading/clmm', description: 'Concentrated-liquidity pools: swaps, positions, and pool management' },
+      { name: '/trading/amm', description: 'Constant-product pools: swaps, liquidity, and pool management' },
+      { name: '/', description: 'Server lifecycle' },
     ],
     components: {
       parameters: {
@@ -148,15 +228,21 @@ const swaggerOptions = {
       },
     },
   },
-  transform: ({ schema, url }) => {
+  transform: ({ schema, url, route }: any) => {
     try {
-      return {
-        schema: schema ? Type.Strict(schema) : schema,
-        url: url,
-      };
+      const transformed = schema ? refIdentifiedSchemas(Type.Strict(schema)) : schema;
+      return { schema: describeOperation(transformed, url, route), url };
     } catch (error) {
       return { schema, url };
     }
+  },
+  // Name components by their $id. Without this @fastify/swagger numbers them def-0,
+  // def-1, ... in registration order, so every component is renamed whenever a schema
+  // is added or removed — which is precisely the churn components exist to avoid.
+  refResolver: {
+    buildLocalReference(json: any, _baseUri: unknown, _fragment: unknown, i: number) {
+      return json.$id || `def-${i}`;
+    },
   },
   hideUntagged: true,
   exposeRoute: true,
@@ -181,11 +267,13 @@ const configureGatewayServer = () => {
         }
       : false,
     https: devMode ? undefined : getHttpsOptions(),
+    ajv: ajvOptions,
+    schemaErrorFormatter,
   });
 
   const docsPort = ConfigManagerV2.getInstance().get('server.docsPort');
 
-  docsServer = docsPort ? Fastify() : null;
+  docsServer = docsPort ? Fastify({ ajv: ajvOptions, schemaErrorFormatter }) : null;
 
   // Register TypeBox provider
   server.withTypeProvider<TypeBoxTypeProvider>();
@@ -237,10 +325,52 @@ const configureGatewayServer = () => {
     });
   }
 
+  // `x-connectors` marks a field as belonging to particular venues — `configAddress` is
+  // meteora's, `ammConfigIndex` is raydium's — and it was documentation only: passing the
+  // wrong one created a pool with the connector's defaults instead of erroring, because
+  // Gateway destructures the keys it knows and ignores the rest.
+  //
+  // preValidation, deliberately: it runs on the body as the caller sent it, before AJV
+  // fills defaults. Checking afterwards would reject every 0x quote, since
+  // `approximateIfNoExactOut` defaults to true and is marked for the Solana routers.
+  server.addHook('preValidation', async (request) => {
+    const schema = (request as any).routeOptions?.schema;
+    if (!schema) return;
+
+    for (const [part, sent] of [
+      [schema.body, request.body],
+      [schema.querystring, request.query],
+    ] as [any, any][]) {
+      if (!part?.properties || !sent || typeof sent !== 'object') continue;
+
+      const connector = sent.connector ?? part.properties.connector?.default;
+      if (!connector) continue;
+
+      for (const [field, spec] of Object.entries<any>(part.properties)) {
+        const connectors: string[] | undefined = spec?.['x-connectors'];
+        if (!connectors || sent[field] === undefined) continue;
+        if (!connectors.includes(connector)) {
+          throw httpErrors.badRequest(
+            `${field} is not a ${connector} parameter — it applies to ${connectors.join(', ')}. ` +
+              'Remove it, or name a connector that takes it.',
+          );
+        }
+      }
+    }
+  });
+
   // Serve Swagger/OpenAPI docs only on loopback (or when explicitly enabled). An exposed
   // /docs hands an attacker the full route map of fund-handling endpoints. (#652)
   const exposeDocs = !isExposedHost(getBindAddress()) || process.env.GATEWAY_ENABLE_DOCS === 'true';
   if (exposeDocs) {
+    // Publish the $id'd schemas as spec components before Swagger builds the document.
+    // Routes keep their inline schemas for validation; this only gives the spec somewhere
+    // for refIdentifiedSchemas to point, so a generated client gets stable, domain names.
+    for (const schema of identifiedSchemas()) {
+      server.addSchema(schema);
+      docsServer?.addSchema(schema);
+    }
+
     // Register Swagger
     server.register(fastifySwagger, swaggerOptions);
 
@@ -291,71 +421,13 @@ const configureGatewayServer = () => {
     // Register pool routes
     app.register(poolRoutes, { prefix: '/pools' });
 
-    // Register trading routes (unified cross-chain swap)
-    app.register(tradingRoutes, { prefix: '/trading/swap' });
-
-    // Register trading CLMM routes (unified cross-chain concentrated liquidity)
+    // Unified trading routes: the type lives in the path, the connector is a parameter.
+    app.register(tradingRouterRoutes, { prefix: '/trading/router' });
     app.register(tradingClmmRoutes, { prefix: '/trading/clmm' });
-
-    // Register trading AMM routes (unified cross-connector AMM: pool creation)
     app.register(tradingAmmRoutes, { prefix: '/trading/amm' });
 
-    // Register chain routes
-    app.register(solanaRoutes, { prefix: '/chains/solana' });
-    app.register(ethereumRoutes, { prefix: '/chains/ethereum' });
-
-    // Register DEX connector routes - organized by connector
-
-    // Jupiter routes
-    app.register(jupiterRoutes.router, {
-      prefix: '/connectors/jupiter/router',
-    });
-
-    // DFlow routes
-    app.register(dflowRoutes.router, {
-      prefix: '/connectors/dflow/router',
-    });
-
-    // OKX DEX aggregator routes
-    app.register(okxRoutes.router, {
-      prefix: '/connectors/okx/router',
-    });
-
-    // Titan routes
-    app.register(titanRoutes.router, {
-      prefix: '/connectors/titan/router',
-    });
-
-    // Meteora routes
-    app.register(meteoraRoutes.clmm, { prefix: '/connectors/meteora/clmm' });
-    app.register(meteoraRoutes.amm, { prefix: '/connectors/meteora/amm' });
-
-    // // Orca routes
-    app.register(orcaRoutes.clmm, { prefix: '/connectors/orca/clmm' });
-
-    // Raydium routes
-    app.register(raydiumRoutes.amm, { prefix: '/connectors/raydium/amm' });
-    app.register(raydiumRoutes.clmm, { prefix: '/connectors/raydium/clmm' });
-
-    // Uniswap routes
-    app.register(uniswapRoutes.router, {
-      prefix: '/connectors/uniswap/router',
-    });
-    app.register(uniswapRoutes.amm, { prefix: '/connectors/uniswap/amm' });
-    app.register(uniswapRoutes.clmm, { prefix: '/connectors/uniswap/clmm' });
-
-    // 0x routes
-    app.register(register0xRoutes);
-
-    // Pancakeswap routes
-    app.register(pancakeswapRoutes.router, {
-      prefix: '/connectors/pancakeswap/router',
-    });
-    app.register(pancakeswapRoutes.amm, { prefix: '/connectors/pancakeswap/amm' });
-    app.register(pancakeswapRoutes.clmm, { prefix: '/connectors/pancakeswap/clmm' });
-
-    // PancakeSwap Solana routes
-    app.register(pancakeswapSolRoutes, { prefix: '/connectors/pancakeswap-sol' });
+    // Chain routes, parameterized by chain (/chains/:chain/...).
+    app.register(chainRoutes, { prefix: '/chains' });
   };
 
   // Register routes on main server
@@ -419,15 +491,42 @@ const configureGatewayServer = () => {
     return { status: 'ok' };
   });
 
-  // Restart endpoint (outside registerRoutes, only on main server)
-  server.post('/restart', async (_req, reply) => {
-    await reply.status(200).send();
-    // Spawn a new instance before exiting
-    spawn(process.argv[0], process.argv.slice(1), {
-      detached: true,
-      stdio: 'inherit',
-    });
-    process.exit(0);
+  // Restart endpoint (outside registerRoutes, only on main server).
+  //
+  // Tagged, and so in the spec: `hideUntagged` drops any route without one, and this was
+  // the only route a client had to know about without the spec saying it existed --
+  // hummingbot calls it after every config write. The 200 is sent before the process
+  // goes down, so it means "restart accepted", not "restart finished".
+  //
+  // Registered through `register` rather than added directly: @fastify/swagger documents
+  // a route via an `onRoute` hook, and that hook only exists once its plugin has loaded
+  // during `ready()`. A route added straight onto the instance is registered before that
+  // happens, so the hook never sees it -- which is why this one stayed out of the spec
+  // even once it had a tag. Deferring it into the plugin tree puts it after swagger,
+  // while keeping it off the docs server.
+  server.register(async (app) => {
+    app.post(
+      '/restart',
+      {
+        schema: {
+          description:
+            'Restarts the Gateway process so configuration changes take effect. Responds before exiting, so a 200 means the restart was accepted, not that Gateway is back. Note that Gateway exits with code 0: under a process supervisor that only revives on failure, it will not come back on its own.',
+          tags: ['/'],
+          response: {
+            200: Type.Null({ description: 'Restart accepted; Gateway is going down.' }),
+          },
+        },
+      },
+      async (_req, reply) => {
+        await reply.status(200).send();
+        // Spawn a new instance before exiting
+        spawn(process.argv[0], process.argv.slice(1), {
+          detached: true,
+          stdio: 'inherit',
+        });
+        process.exit(0);
+      },
+    );
   });
 
   return server;

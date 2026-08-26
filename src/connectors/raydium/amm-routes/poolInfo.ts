@@ -1,10 +1,6 @@
-import { FastifyPluginAsync } from 'fastify';
-
-import { GetPoolInfoRequestType, PoolInfo, PoolInfoSchema } from '../../../schemas/amm-schema';
+import { PoolInfo } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
-import { RaydiumAmmGetPoolInfoRequest } from '../schemas';
 
 /**
  * Standardized network-first pool-info fetcher for the Raydium AMM/CPMM connector.
@@ -20,34 +16,3 @@ export async function getPoolInfo(network: string, poolAddress: string): Promise
   const { poolType, ...basePoolInfo } = poolInfo;
   return basePoolInfo;
 }
-
-export const poolInfoRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: GetPoolInfoRequestType;
-    Reply: Record<string, any>;
-  }>(
-    '/pool-info',
-    {
-      schema: {
-        description: 'Get AMM pool information from Raydium',
-        tags: ['/connector/raydium'],
-        querystring: RaydiumAmmGetPoolInfoRequest,
-        response: {
-          200: PoolInfoSchema,
-        },
-      },
-    },
-    async (request): Promise<PoolInfo> => {
-      try {
-        const { poolAddress, network } = request.query;
-        return await getPoolInfo(network, poolAddress);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw httpErrors.internalServerError('Failed to fetch pool info');
-      }
-    },
-  );
-};
-
-export default poolInfoRoute;

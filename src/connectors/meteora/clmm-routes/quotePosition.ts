@@ -1,15 +1,31 @@
-import { StrategyType, getPriceOfBinByBinId } from '@meteora-ag/dlmm';
-import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync } from 'fastify';
+import { BN } from '@coral-xyz/anchor';
+import { StrategyType, autoFillXByStrategy, autoFillYByStrategy } from '@meteora-ag/dlmm';
+import { DecimalUtil } from '@orca-so/common-sdk';
+import { Decimal } from 'decimal.js';
 
-import { Solana } from '../../../chains/solana/solana';
-import { QuotePositionResponseType, QuotePositionResponse } from '../../../schemas/clmm-schema';
-import { httpErrors } from '../../../services/error-handler';
+import { QuotePositionResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Meteora } from '../meteora';
 import { MeteoraConfig } from '../meteora.config';
-import { MeteoraClmmQuotePositionRequest } from '../schemas';
 
+const toLamports = (amount: number, decimals: number): BN => new BN(DecimalUtil.toBN(new Decimal(amount), decimals));
+
+const fromLamports = (amount: BN, decimals: number): number => Number(amount.toString()) / Math.pow(10, decimals);
+
+/**
+ * Quote what a DLMM position of this shape would actually take.
+ *
+ * The paired amount comes from the SDK's autoFill helpers, which take the active bin,
+ * the bin step and the bin range and return what the strategy requires on the other
+ * side — the same math the open performs, so the quote describes the position the
+ * caller is about to create.
+ *
+ * It matters most for a range that does not straddle spot: such a position is entirely
+ * one-sided, and the unused side is 0. Pricing the paired amount off the range's
+ * midpoint instead — as this did — quoted a nonzero amount for a side the position
+ * cannot hold, and openPosition rejects exactly that, so following the quote produced
+ * a 400 from the open it fed.
+ */
 export async function quotePosition(
   network: string,
   lowerPrice: number,
@@ -21,93 +37,87 @@ export async function quotePosition(
   strategyType?: StrategyType,
 ): Promise<QuotePositionResponseType> {
   try {
-    const solana = await Solana.getInstance(network);
     const meteora = await Meteora.getInstance(network);
-
-    // Get DLMM pool instance
     const dlmmPool = await meteora.getDlmmPool(poolAddress);
 
-    // Get current bin information
-    const activeBinId = dlmmPool.lbPair.activeId;
+    const baseDecimals = dlmmPool.tokenX.mint.decimals;
+    const quoteDecimals = dlmmPool.tokenY.mint.decimals;
+
+    // Derive the bin range exactly as openPosition does — per-lamport prices, and the
+    // rounding flags that way round. Passing raw prices with the flags swapped, as this
+    // did, described a different bin range than the position would occupy.
+    const lowerPricePerLamport = dlmmPool.toPricePerLamport(lowerPrice);
+    const upperPricePerLamport = dlmmPool.toPricePerLamport(upperPrice);
+    const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true);
+    const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false);
+
+    const activeBin = await dlmmPool.getActiveBin();
+    const activeId = activeBin.binId;
     const binStep = dlmmPool.lbPair.binStep;
+    const strategy = strategyType ?? MeteoraConfig.config.strategyType;
+    const amountXInActiveBin = new BN(activeBin.xAmount.toString());
+    const amountYInActiveBin = new BN(activeBin.yAmount.toString());
 
-    // Calculate bin IDs from price range
-    const lowerBinId = dlmmPool.getBinIdFromPrice(lowerPrice, false);
-    const upperBinId = dlmmPool.getBinIdFromPrice(upperPrice, true);
-
-    // Use provided strategy type or default to Spot
-    const strategy = {
-      minBinId: Math.min(lowerBinId, upperBinId),
-      maxBinId: Math.max(lowerBinId, upperBinId),
-      strategyType: strategyType ?? StrategyType.Spot,
-    };
-
-    // Get token amounts needed for the position
     const slippage = slippagePct / 100;
 
-    // Calculate liquidity distribution if amounts are provided
+    /** What the strategy needs on the quote side for a given base amount. */
+    const fillQuote = (base: number): number =>
+      fromLamports(
+        autoFillYByStrategy(
+          activeId,
+          binStep,
+          toLamports(base, baseDecimals),
+          amountXInActiveBin,
+          amountYInActiveBin,
+          minBinId,
+          maxBinId,
+          strategy,
+        ),
+        quoteDecimals,
+      );
+
+    /** What the strategy needs on the base side for a given quote amount. */
+    const fillBase = (quote: number): number =>
+      fromLamports(
+        autoFillXByStrategy(
+          activeId,
+          binStep,
+          toLamports(quote, quoteDecimals),
+          amountXInActiveBin,
+          amountYInActiveBin,
+          minBinId,
+          maxBinId,
+          strategy,
+        ),
+        baseDecimals,
+      );
+
     let baseAmount = 0;
     let quoteAmount = 0;
-    let baseAmountMax = 0;
-    let quoteAmountMax = 0;
     let baseLimited = false;
-    let liquidityValue = '0';
 
-    if (baseTokenAmount || quoteTokenAmount) {
-      // Get current price adjusted for decimals
-      const rawPrice = getPriceOfBinByBinId(activeBinId, binStep).toNumber();
-      const decimalDiff = dlmmPool.tokenX.mint.decimals - dlmmPool.tokenY.mint.decimals;
-      const adjustmentFactor = Math.pow(10, decimalDiff);
-      const currentPrice = rawPrice * adjustmentFactor;
+    if (baseTokenAmount && !quoteTokenAmount) {
+      baseLimited = true;
+      baseAmount = baseTokenAmount;
+      quoteAmount = fillQuote(baseTokenAmount);
+    } else if (quoteTokenAmount && !baseTokenAmount) {
+      baseLimited = false;
+      quoteAmount = quoteTokenAmount;
+      baseAmount = fillBase(quoteTokenAmount);
+    } else if (baseTokenAmount && quoteTokenAmount) {
+      // Ask what the offered base would require on the quote side. If that needs more
+      // quote than the caller has, the quote side binds; otherwise the base does. This
+      // asks the strategy rather than comparing a ratio against spot, which was wrong
+      // for any range not centred on the current price.
+      const quoteNeeded = fillQuote(baseTokenAmount);
+      baseLimited = quoteNeeded <= quoteTokenAmount;
 
-      // Calculate amounts based on strategy
-      if (baseTokenAmount && !quoteTokenAmount) {
-        baseLimited = true;
+      if (baseLimited) {
         baseAmount = baseTokenAmount;
-        baseAmountMax = baseTokenAmount * (1 + slippage);
-        // Estimate quote amount based on price range and strategy
-        const avgPrice = (lowerPrice + upperPrice) / 2;
-        quoteAmount = baseAmount * avgPrice;
-        quoteAmountMax = quoteAmount * (1 + slippage);
-      } else if (quoteTokenAmount && !baseTokenAmount) {
-        baseLimited = false;
+        quoteAmount = quoteNeeded;
+      } else {
         quoteAmount = quoteTokenAmount;
-        quoteAmountMax = quoteTokenAmount * (1 + slippage);
-        // Estimate base amount based on price range and strategy
-        const avgPrice = (lowerPrice + upperPrice) / 2;
-        baseAmount = quoteAmount / avgPrice;
-        baseAmountMax = baseAmount * (1 + slippage);
-      } else if (baseTokenAmount && quoteTokenAmount) {
-        // Both amounts provided - use ratio to determine limiting token
-        const providedRatio = quoteTokenAmount / baseTokenAmount;
-        baseLimited = providedRatio > currentPrice;
-
-        if (baseLimited) {
-          baseAmount = baseTokenAmount;
-          baseAmountMax = baseTokenAmount * (1 + slippage);
-          quoteAmount = baseTokenAmount * currentPrice;
-          quoteAmountMax = quoteAmount * (1 + slippage);
-        } else {
-          quoteAmount = quoteTokenAmount;
-          quoteAmountMax = quoteTokenAmount * (1 + slippage);
-          baseAmount = quoteTokenAmount / currentPrice;
-          baseAmountMax = baseAmount * (1 + slippage);
-        }
-      }
-
-      // Calculate liquidity estimate
-      // For DLMM pools, liquidity is distributed across bins based on the strategy
-      // We'll estimate it based on the token amounts in lamports
-      try {
-        const tokenXAmountLamports = baseAmount * Math.pow(10, dlmmPool.tokenX.mint.decimals);
-        const tokenYAmountLamports = quoteAmount * Math.pow(10, dlmmPool.tokenY.mint.decimals);
-
-        // For a balanced position, liquidity can be approximated as the geometric mean
-        // This is a simplified estimate; actual distribution depends on bin strategy
-        const estimatedLiquidity = Math.floor(Math.sqrt(tokenXAmountLamports * tokenYAmountLamports));
-        liquidityValue = estimatedLiquidity.toString();
-      } catch (error) {
-        logger.warn('Failed to calculate liquidity estimate:', error);
+        baseAmount = fillBase(quoteTokenAmount);
       }
     }
 
@@ -115,64 +125,14 @@ export async function quotePosition(
       baseLimited,
       baseTokenAmount: baseAmount,
       quoteTokenAmount: quoteAmount,
-      baseTokenAmountMax: baseAmountMax,
-      quoteTokenAmountMax: quoteAmountMax,
-      liquidity: liquidityValue,
+      baseTokenAmountMax: baseAmount * (1 + slippage),
+      quoteTokenAmountMax: quoteAmount * (1 + slippage),
+      // No `liquidity`: the geometric mean this used to report collapses to 0 for any
+      // one-sided position, which is most of them. The field is optional in the schema
+      // and Orca already omits it.
     };
   } catch (error) {
     logger.error(error);
     throw error;
   }
 }
-
-export const quotePositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: Static<typeof MeteoraClmmQuotePositionRequest>;
-    Reply: QuotePositionResponseType;
-  }>(
-    '/quote-position',
-    {
-      schema: {
-        description: 'Quote amounts for a new Meteora CLMM position',
-        tags: ['/connector/meteora'],
-        querystring: MeteoraClmmQuotePositionRequest,
-        response: {
-          200: QuotePositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network = 'mainnet-beta',
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-          strategyType,
-        } = request.query;
-
-        return await quotePosition(
-          network,
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-          strategyType,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e; // Re-throw HttpErrors with original message
-        }
-        throw httpErrors.internalServerError('Failed to quote position');
-      }
-    },
-  );
-};
-
-export default quotePositionRoute;

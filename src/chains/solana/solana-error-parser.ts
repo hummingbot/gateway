@@ -90,8 +90,12 @@ const PROGRAM_ERROR_CODES: Record<string, Record<number, { type: SolanaErrorType
     },
   },
 
-  // Orca Whirlpool error codes (same as Raydium CLMM since they share similar design)
+  // Orca Whirlpool error codes
   [PROGRAM_IDS.ORCA_WHIRLPOOL]: {
+    6018: {
+      type: 'SLIPPAGE_EXCEEDED',
+      message: 'Did not meet the minimum token amount for the liquidity withdrawal.',
+    },
     6029: {
       type: 'SLIPPAGE_EXCEEDED',
       message: 'Price slippage check failed.',
@@ -324,6 +328,21 @@ export function extractProgramLogs(errorMessage: string, maxLines = 12): string[
  * Extract program ID from error message
  */
 function extractProgramId(errorMessage: string): string | null {
+  // Attribute a custom program error to the program that raised it: the id on the
+  // "failed: custom program error" line. Matching the FIRST "Program X invoke"
+  // instead misattributes simulation-shaped errors — their logs open with prelude
+  // programs (ComputeBudget, token programs), so the failing DEX program's
+  // error-code table was never consulted and codes fell through to the generic
+  // map (e.g. Orca 6018 TokenMinSubceeded reported as MATH_OVERFLOW — the exact
+  // misreporting in gateway#678).
+  const failedCustomMatch = errorMessage.match(/Program ([A-Za-z0-9]{32,44}) failed: custom program error/);
+  if (failedCustomMatch) {
+    return failedCustomMatch[1];
+  }
+  const failedMatch = errorMessage.match(/Program ([A-Za-z0-9]{32,44}) failed/);
+  if (failedMatch) {
+    return failedMatch[1];
+  }
   // Look for program invocation in logs
   const programMatch = errorMessage.match(/Program ([A-Za-z0-9]{32,44}) (?:invoke|failed)/);
   if (programMatch) {

@@ -7,23 +7,16 @@ import {
   TokenAmount,
   toToken,
 } from '@raydium-io/raydium-sdk-v2';
-import { Static } from '@sinclair/typebox';
 import { VersionedTransaction, Transaction, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import {
-  AddLiquidityResponse,
-  AddLiquidityResponseType,
-  QuoteLiquidityResponseType,
-} from '../../../schemas/amm-schema';
+import { AddLiquidityResponseType, QuoteLiquidityResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Raydium } from '../raydium';
 import { RaydiumConfig } from '../raydium.config';
-import { RaydiumAmmAddLiquidityRequest } from '../schemas';
 
 import { quoteLiquidity } from './quoteLiquidity';
 
@@ -141,13 +134,7 @@ export async function addLiquidity(
     slippagePct,
   )) as QuoteLiquidityResponseType;
 
-  const {
-    baseLimited,
-    baseTokenAmount: quotedBaseAmount,
-    quoteTokenAmount: quotedQuoteAmount,
-    baseTokenAmountMax,
-    quoteTokenAmountMax,
-  } = quoteResponse;
+  const { baseLimited, baseTokenAmount: quotedBaseAmount, quoteTokenAmount: quotedQuoteAmount } = quoteResponse;
 
   const baseTokenAmountAdded = baseLimited ? baseTokenAmount : quotedBaseAmount;
   const quoteTokenAmountAdded = baseLimited ? quotedQuoteAmount : quoteTokenAmount;
@@ -188,10 +175,9 @@ export async function addLiquidity(
   // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and
   // simulates internally).
   const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Retrying re-fetch; throws the shared landed-but-failed error if the transaction
+  // landed with an error, so txData existing below really means "confirmed".
+  const txData = await solana.getConfirmedTransactionData(signature);
   const confirmed = txData !== null;
 
   if (confirmed && txData) {
@@ -210,8 +196,13 @@ export async function addLiquidity(
       status: 1, // CONFIRMED
       data: {
         fee: txData.meta.fee / 1e9,
-        baseTokenAmountAdded: baseTokenBalanceChange,
-        quoteTokenAmountAdded: quoteTokenBalanceChange,
+        // Magnitudes, not the raw wallet delta. A deposit moves tokens out, so the
+        // signed change is negative and a field named `…Added` would report a negative
+        // deposit — which is what every consumer summing these rows then has to guess
+        // about. Every other connector, and the whole removed side including Raydium's
+        // own, reports magnitudes.
+        baseTokenAmountAdded: Math.abs(baseTokenBalanceChange),
+        quoteTokenAmountAdded: Math.abs(quoteTokenBalanceChange),
       },
     };
   } else {
@@ -221,37 +212,3 @@ export async function addLiquidity(
     };
   }
 }
-
-export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  // const walletAddressExample = await Solana.getWalletAddressExample();
-
-  fastify.post<{
-    Body: Static<typeof RaydiumAmmAddLiquidityRequest>;
-    Reply: AddLiquidityResponseType;
-  }>(
-    '/add-liquidity',
-    {
-      schema: {
-        description: 'Add liquidity to a Raydium AMM/CPMM pool',
-        tags: ['/connector/raydium'],
-        body: RaydiumAmmAddLiquidityRequest,
-        response: {
-          200: AddLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.body;
-
-        return await addLiquidity(network, walletAddress, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default addLiquidityRoute;

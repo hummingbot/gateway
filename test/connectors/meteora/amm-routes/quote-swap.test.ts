@@ -3,6 +3,7 @@ import BN from 'bn.js';
 
 import { MeteoraDamm } from '../../../../src/connectors/meteora/meteora-damm';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/connectors/meteora/meteora-damm');
 
@@ -13,8 +14,8 @@ const mockUSDC = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quoteSwapRoute } = await import('../../../../src/connectors/meteora/amm-routes/quoteSwap');
-  await server.register(quoteSwapRoute);
+  const { makeQuoteSwapRoute } = await import('../../../../src/trading/pool-swap-routes');
+  await server.register(makeQuoteSwapRoute('amm'));
   return server;
 };
 
@@ -68,7 +69,8 @@ describe('GET /quote-swap (Meteora DAMM v2)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         poolAddress: mockPoolAddress,
         baseToken: 'SOL',
         amount: '0.1',
@@ -78,7 +80,7 @@ describe('GET /quote-swap (Meteora DAMM v2)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(getQuote2).toHaveBeenCalledWith(expect.objectContaining({ swapMode: 0 })); // ExactIn
     expect(body).toMatchObject({
       poolAddress: mockPoolAddress,
@@ -107,7 +109,8 @@ describe('GET /quote-swap (Meteora DAMM v2)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         poolAddress: mockPoolAddress,
         baseToken: 'SOL',
         amount: '0.1',
@@ -117,7 +120,7 @@ describe('GET /quote-swap (Meteora DAMM v2)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(getQuote2).toHaveBeenCalledWith(expect.objectContaining({ swapMode: 2 })); // ExactOut
     expect(body).toMatchObject({
       poolAddress: mockPoolAddress,
@@ -141,7 +144,8 @@ describe('GET /quote-swap (Meteora DAMM v2)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         poolAddress: mockPoolAddress,
         baseToken: 'Es9vMFrzaCERmJfrF4H2FYD4KCon15JpFuLYc7uGZa9K', // USDT, not in pool
         amount: '0.1',

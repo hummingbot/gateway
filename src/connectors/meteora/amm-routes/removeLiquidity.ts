@@ -1,15 +1,15 @@
 import { PublicKey, Transaction } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { RemoveLiquidityResponse, RemoveLiquidityResponseType } from '../../../schemas/amm-schema';
+import { RemoveLiquidityResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { MeteoraDamm } from '../meteora-damm';
 import { MeteoraConfig } from '../meteora.config';
-import { MeteoraAmmRemoveLiquidityRequest } from '../schemas';
+
+import { closePosition } from './closePosition';
 
 function withSlippageDown(raw: BN, slippagePct: number): BN {
   return new BN(new Decimal(raw.toString()).mul(1 - slippagePct / 100).toFixed(0));
@@ -25,6 +25,15 @@ export async function removeLiquidity(
 ): Promise<RemoveLiquidityResponseType> {
   if (percentageToRemove <= 0 || percentageToRemove > 100) {
     throw httpErrors.badRequest('percentageToRemove must be between 0 and 100');
+  }
+
+  // Removing everything closes the position account with it. Withdrawing the last of a
+  // position's liquidity and stopping there leaves an empty NFT behind still holding its
+  // rent — around 0.0099 SOL, which on a small position is more than the liquidity — and
+  // no later call reclaims it. The SDK does both in one transaction, so a caller asking
+  // for 100% gets the rent back rather than having to know to ask for it separately.
+  if (percentageToRemove === 100) {
+    return await closePosition(network, walletAddress, poolAddress, positionAddress, slippagePct);
   }
 
   const solana = await Solana.getInstance(network);
@@ -96,10 +105,9 @@ export async function removeLiquidity(
   });
 
   const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Retrying re-fetch; throws the shared landed-but-failed error if the transaction
+  // landed with an error, so txData existing below really means "confirmed".
+  const txData = await solana.getConfirmedTransactionData(signature);
 
   if (txData) {
     const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
@@ -118,41 +126,3 @@ export async function removeLiquidity(
   }
   return { signature, status: 0 }; // PENDING
 }
-
-export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: typeof MeteoraAmmRemoveLiquidityRequest.static;
-    Reply: RemoveLiquidityResponseType;
-  }>(
-    '/remove-liquidity',
-    {
-      schema: {
-        description: 'Remove liquidity from a specific position (NFT) in a Meteora DAMM v2 pool',
-        tags: ['/connector/meteora'],
-        body: MeteoraAmmRemoveLiquidityRequest,
-        response: {
-          200: RemoveLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, poolAddress, positionAddress, percentageToRemove } = request.body;
-        return await removeLiquidity(
-          network,
-          walletAddress,
-          poolAddress,
-          positionAddress,
-          percentageToRemove,
-          MeteoraConfig.config.slippagePct,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Failed to remove liquidity');
-      }
-    },
-  );
-};
-
-export default removeLiquidityRoute;

@@ -3,20 +3,9 @@ import {
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  NATIVE_MINT,
   getAssociatedTokenAddressSync,
-  createAssociatedTokenAccountInstruction,
 } from '@solana/spl-token';
-import {
-  PublicKey,
-  TransactionInstruction,
-  SystemProgram,
-  SYSVAR_RENT_PUBKEY,
-  ComputeBudgetProgram,
-  TransactionMessage,
-  VersionedTransaction,
-  Keypair,
-} from '@solana/web3.js';
+import { PublicKey, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY, Keypair } from '@solana/web3.js';
 import BN from 'bn.js';
 
 import { Solana } from '../../chains/solana/solana';
@@ -600,7 +589,19 @@ export async function buildOpenPositionWithToken22NftInstruction(
   amount0Max: BN,
   amount1Max: BN,
   withMetadata: boolean,
-  baseFlag: boolean,
+  /**
+   * Which side the *program* should size liquidity from, or null to use the `liquidity`
+   * argument and treat the maxes as the ceilings they are named for.
+   *
+   * null is what the open route sends. Handing the program a side makes that side's
+   * max both the amount to size from and the ceiling to check against, so the check has
+   * no headroom by construction: it computes the deposit that liquidity requires,
+   * rounds it up in the pool's favour, and asserts it against the number it started
+   * from. One unit of rounding fails the whole transaction, and a wider slippagePct
+   * cannot help — a larger bound is simply a larger deposit.
+   */
+  baseFlag: boolean | null,
+  liquidity: BN = new BN(0),
 ): Promise<TransactionInstruction> {
   // Get pool data
   const poolAccountInfo = await solana.connection.getAccountInfo(poolAddress);
@@ -694,11 +695,15 @@ export async function buildOpenPositionWithToken22NftInstruction(
     tick_upper_index: tickUpperIndex,
     tick_array_lower_start_index: tickArrayLowerStartIndex,
     tick_array_upper_start_index: tickArrayUpperStartIndex,
-    liquidity: new BN(0), // Let program calculate from amounts
+    liquidity,
     amount_0_max: amount0Max,
     amount_1_max: amount1Max,
     with_metadata: withMetadata,
-    base_flag: baseFlag ? { some: true } : { some: false },
+    // The plain value, not `{ some: ... }`. Borsh encodes an Option as "0x00" for null
+    // or "0x01" + the value, and its bool layout is `value ? 1 : 0` — so an object is
+    // truthy and `{ some: false }` encoded as Some(TRUE). Every request that meant
+    // "size from the quote side" told the program to size from the base side instead.
+    base_flag: baseFlag,
   });
 
   logger.info(`Instruction Data (hex): ${instructionData.toString('hex')}`);

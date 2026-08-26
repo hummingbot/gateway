@@ -1,10 +1,7 @@
-import { FastifyPluginAsync } from 'fastify';
-
-import { StatusRequestType, StatusResponseType, StatusResponseSchema } from '../../../schemas/chain-schema';
+import { StatusResponseType } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
 import { getEthereumChainConfig } from '../ethereum.config';
-import { EthereumStatusRequest } from '../schemas';
 
 export async function getEthereumStatus(network: string): Promise<StatusResponseType> {
   try {
@@ -57,45 +54,3 @@ export async function getEthereumStatus(network: string): Promise<StatusResponse
     throw new Error(`Failed to get Ethereum status: ${error.message}`);
   }
 }
-
-export const statusRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: StatusRequestType;
-    Reply: StatusResponseType;
-  }>(
-    '/status',
-    {
-      schema: {
-        description: 'Get Ethereum chain status',
-        tags: ['/chain/ethereum'],
-        querystring: EthereumStatusRequest,
-        response: {
-          200: StatusResponseSchema,
-        },
-      },
-    },
-    async (request, reply) => {
-      const { network } = request.query;
-      try {
-        // This will handle node timeout internally
-        return await getEthereumStatus(network);
-      } catch (error) {
-        // This will catch any other unexpected errors
-        logger.error(`Error in Ethereum status endpoint: ${error.message}`);
-        reply.status(500);
-        // Return a minimal valid response
-        return {
-          chain: 'ethereum',
-          network,
-          rpcUrl: 'unavailable',
-          rpcProvider: 'unavailable',
-          currentBlockNumber: 0,
-          nativeCurrency: 'ETH',
-          swapProvider: '',
-        };
-      }
-    },
-  );
-};
-
-export default statusRoute;

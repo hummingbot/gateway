@@ -299,7 +299,11 @@ describe('Ethereum Status Route', () => {
       expect(responseBody).toHaveProperty('rpcUrl');
     });
 
-    it('should return error response on failure with fallback values', async () => {
+    // The per-chain route used to answer a failed status check with HTTP 500 AND a
+    // fabricated body ("unavailable", block 0), which a client could not tell apart
+    // from a real reading without inspecting the status code. The parameterized route
+    // reports the actual error instead.
+    it('reports the underlying error instead of fabricating a status body', async () => {
       // Mock the getInstance to throw an error
       mockEthereum.getInstance.mockRejectedValue(new Error('Connection failed'));
 
@@ -314,15 +318,8 @@ describe('Ethereum Status Route', () => {
       expect(response.statusCode).toBe(500);
 
       const responseBody = JSON.parse(response.body);
-      expect(responseBody).toEqual({
-        chain: 'ethereum',
-        network: 'mainnet',
-        rpcUrl: 'unavailable',
-        rpcProvider: 'unavailable',
-        currentBlockNumber: 0,
-        nativeCurrency: 'ETH',
-        swapProvider: '',
-      });
+      expect(responseBody).toHaveProperty('statusCode', 500);
+      expect(responseBody).not.toHaveProperty('currentBlockNumber');
 
       mockError.mockRestore();
     });

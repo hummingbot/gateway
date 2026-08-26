@@ -5,20 +5,17 @@ import {
   DEV_CREATE_CPMM_POOL_PROGRAM,
   DEV_CREATE_CPMM_POOL_FEE_ACC,
 } from '@raydium-io/raydium-sdk-v2';
-import { Static } from '@sinclair/typebox';
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getMint } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { Decimal } from 'decimal.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { CreatePoolResponse, CreatePoolResponseType } from '../../../schemas/amm-schema';
+import { CreatePoolResponseType } from '../../../schemas/amm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Raydium } from '../raydium';
-import { RaydiumAmmCreatePoolRequest } from '../schemas';
 
 /** Resolves a token symbol or mint address to a PublicKey. */
 async function resolveMint(solana: Solana, tokenOrAddress: string): Promise<PublicKey> {
@@ -53,10 +50,10 @@ async function fetchMarketPrice(
   quoteToken: string,
   amount: number,
 ): Promise<number> {
-  const { getUnifiedQuoteSwap } = await import('../../../trading/swap/quote');
+  const { getSwapQuote } = await import('../../../trading/market-price');
   let quote: any;
   try {
-    quote = await getUnifiedQuoteSwap(`solana-${network}`, baseToken, quoteToken, amount, 'SELL');
+    quote = await getSwapQuote(`solana-${network}`, baseToken, quoteToken, amount, 'SELL');
   } catch (e: any) {
     throw httpErrors.badRequest(
       `Could not fetch a market price for ${baseToken}/${quoteToken} to seed the pool (${e.message}). ` +
@@ -186,10 +183,9 @@ export async function createPool(
   logger.info(`Creating Raydium CPMM pool ${poolAddress} (${baseToken}/${quoteToken})`);
 
   const { signature } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress);
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Retrying re-fetch; throws the shared landed-but-failed error if the transaction
+  // landed with an error, so txData existing below really means "confirmed".
+  const txData = await solana.getConfirmedTransactionData(signature);
 
   if (txData) {
     const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletAddress, [
@@ -210,54 +206,3 @@ export async function createPool(
   }
   return { signature, status: 0, poolAddress, price: seedPrice }; // PENDING
 }
-
-export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof RaydiumAmmCreatePoolRequest>;
-    Reply: CreatePoolResponseType;
-  }>(
-    '/create-pool',
-    {
-      schema: {
-        description: 'Create a new Raydium CPMM (CP-Swap) pool and seed it with initial liquidity',
-        tags: ['/connector/raydium'],
-        body: RaydiumAmmCreatePoolRequest,
-        response: {
-          200: CreatePoolResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network,
-          walletAddress,
-          baseToken,
-          quoteToken,
-          baseTokenAmount,
-          quoteTokenAmount,
-          initialPrice,
-          feeConfigIndex,
-          openTime,
-        } = request.body;
-        return await createPool(
-          network,
-          walletAddress,
-          baseToken,
-          quoteToken,
-          baseTokenAmount,
-          quoteTokenAmount,
-          initialPrice,
-          feeConfigIndex,
-          openTime,
-        );
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Failed to create pool');
-      }
-    },
-  );
-};
-
-export default createPoolRoute;

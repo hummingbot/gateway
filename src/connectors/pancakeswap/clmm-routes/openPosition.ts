@@ -2,16 +2,11 @@ import { Contract } from '@ethersproject/contracts';
 import { CurrencyAmount, Percent } from '@pancakeswap/sdk';
 import { Position, NonfungiblePositionManager, MintOptions, nearestUsableTick } from '@pancakeswap/v3-sdk';
 import { BigNumber, utils } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 import { Address } from 'viem';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  OpenPositionRequestType,
-  OpenPositionRequest,
-  OpenPositionResponseType,
-  OpenPositionResponse,
-} from '../../../schemas/clmm-schema';
+import { TransactionStatus } from '../../../schemas/chain-schema';
+import { OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
@@ -239,11 +234,15 @@ export async function openPosition(
   }
 
   // Wait for transaction confirmation
-  const receipt = await ethereum.handleTransactionExecution(tx);
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
+  if (!outcome.confirmed) {
+    // Still pending — there is no mint log to read yet, so no positionAddress and no amounts.
+    return { signature: outcome.signature, status: TransactionStatus.PENDING };
+  }
 
   // Find the NFT ID from the transaction logs
   let positionId = '';
-  for (const log of receipt.logs) {
+  for (const log of outcome.receipt.logs) {
     if (
       log.address.toLowerCase() === positionManagerAddress.toLowerCase() &&
       log.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' &&
@@ -254,8 +253,15 @@ export async function openPosition(
     }
   }
 
-  // Calculate gas fee
-  const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
+  if (!positionId) {
+    // The transaction confirmed but no NFT-mint Transfer log was found. Returning a CONFIRMED
+    // response with an empty positionAddress would have the caller record a position it can
+    // never address — fail loudly, naming the transaction so the position stays recoverable.
+    throw httpErrors.internalServerError(
+      `Position opened in transaction ${outcome.signature} but no position NFT mint was found in its logs. ` +
+        `Inspect the transaction to recover the position ID.`,
+    );
+  }
 
   // For position rent, we're using the estimated gas cost since Ethereum doesn't have rent like Solana
   const positionRent = 0;
@@ -269,10 +275,10 @@ export async function openPosition(
   const quoteAmountUsed = isBaseToken0 ? actualToken1Amount : actualToken0Amount;
 
   return {
-    signature: receipt.transactionHash,
-    status: receipt.status,
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     data: {
-      fee: gasFee,
+      fee: outcome.fee,
       positionAddress: positionId,
       positionRent,
       baseTokenAmountAdded: baseAmountUsed,
@@ -280,93 +286,3 @@ export async function openPosition(
     },
   };
 }
-
-export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
-  fastify.post<{
-    Body: OpenPositionRequestType;
-    Reply: OpenPositionResponseType;
-  }>(
-    '/open-position',
-    {
-      schema: {
-        description: 'Open a new liquidity position in a Pancakeswap V3 pool',
-        tags: ['/connector/pancakeswap'],
-        body: {
-          ...OpenPositionRequest,
-          properties: {
-            ...OpenPositionRequest.properties,
-            network: { type: 'string', default: 'bsc', examples: ['bsc'] },
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-            lowerPrice: { type: 'number', examples: [0.0008] },
-            upperPrice: { type: 'number', examples: [0.001] },
-            poolAddress: {
-              type: 'string',
-              default: '0x172fcd41e0913e95784454622d1c3724f546f849',
-              examples: ['0x172fcd41e0913e95784454622d1c3724f546f849'],
-            },
-            baseTokenAmount: { type: 'number', examples: [10] },
-            quoteTokenAmount: { type: 'number', examples: [0.01] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
-        response: {
-          200: OpenPositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network,
-          walletAddress: requestedWalletAddress,
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.body;
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          const pancakeswap = await Pancakeswap.getInstance(network);
-          walletAddress = await pancakeswap.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-        }
-
-        return await openPosition(
-          network,
-          walletAddress,
-          lowerPrice,
-          upperPrice,
-          poolAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Failed to open position:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        if (e.code === 'CALL_EXCEPTION') {
-          throw httpErrors.badRequest(
-            'Transaction failed. Please check token balances, approvals, and position parameters.',
-          );
-        }
-        if (e.code === 'INSUFFICIENT_FUNDS' || (e.message && e.message.includes('insufficient funds'))) {
-          throw httpErrors.badRequest('Insufficient funds to complete the transaction');
-        }
-        throw httpErrors.internalServerError('Failed to open position');
-      }
-    },
-  );
-};
-
-export default openPositionRoute;

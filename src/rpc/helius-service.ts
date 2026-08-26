@@ -136,7 +136,7 @@ export class HeliusService extends RPCProvider {
   public disconnect(): void {
     this.cancelIdleTimeout();
 
-    for (const [_, subscription] of this.subscriptions) {
+    for (const subscription of this.subscriptions.values()) {
       clearTimeout(subscription.timeout);
       subscription.reject(new Error('Service disconnected'));
     }
@@ -267,7 +267,7 @@ export class HeliusService extends RPCProvider {
   }
 
   private handleWebSocketClose(): void {
-    for (const [_, subscription] of this.subscriptions) {
+    for (const subscription of this.subscriptions.values()) {
       clearTimeout(subscription.timeout);
       subscription.reject(new Error('WebSocket disconnected'));
     }

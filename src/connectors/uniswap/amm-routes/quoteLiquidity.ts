@@ -1,18 +1,12 @@
 import { Contract } from '@ethersproject/contracts';
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  QuoteLiquidityRequestType,
-  QuoteLiquidityRequest,
-  QuoteLiquidityResponseType,
-  QuoteLiquidityResponse,
-} from '../../../schemas/amm-schema';
+import { QuoteLiquidityResponseType } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { Uniswap } from '../uniswap';
 import { IUniswapV2PairABI, getUniswapV2RouterAddress } from '../uniswap.contracts';
-import { formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
+import { formatTokenAmount } from '../uniswap.utils';
 
 import { getAmmPoolTokens } from './poolTokens';
 
@@ -82,7 +76,7 @@ export async function getUniswapAmmLiquidityQuote(
     const pairContract = new Contract(poolAddressToUse, IUniswapV2PairABI.abi, ethereum.provider);
 
     // Get token addresses and reserves
-    const [token0, token1, reserves] = await Promise.all([
+    const [token0, , reserves] = await Promise.all([
       pairContract.token0(),
       pairContract.token1(),
       pairContract.getReserves(),
@@ -175,87 +169,6 @@ export async function getUniswapAmmLiquidityQuote(
   };
 }
 
-export const quoteLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-  fastify.get<{
-    Querystring: QuoteLiquidityRequestType;
-    Reply: QuoteLiquidityResponseType;
-  }>(
-    '/quote-liquidity',
-    {
-      schema: {
-        description: 'Get liquidity quote for a Uniswap V2 pool',
-        tags: ['/connector/uniswap'],
-        querystring: {
-          ...QuoteLiquidityRequest,
-          properties: {
-            ...QuoteLiquidityRequest.properties,
-            network: { type: 'string', default: 'base' },
-            poolAddress: {
-              type: 'string',
-              examples: [''],
-            },
-            baseToken: { type: 'string', examples: ['WETH'] },
-            quoteToken: { type: 'string', examples: ['USDC'] },
-            baseTokenAmount: { type: 'number', examples: [0.001] },
-            quoteTokenAmount: { type: 'number', examples: [2.5] },
-            slippagePct: { type: 'number', examples: [1] },
-          },
-        },
-        response: {
-          200: QuoteLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, poolAddress, baseTokenAmount, quoteTokenAmount, slippagePct } = request.query;
-
-        if (!poolAddress) {
-          throw fastify.httpErrors.badRequest('Pool address is required');
-        }
-
-        // Get pool information to determine tokens
-        const poolInfo = await getUniswapPoolInfo(poolAddress, network, 'amm');
-        if (!poolInfo) {
-          throw fastify.httpErrors.notFound(`Pool not found: ${poolAddress}`);
-        }
-
-        const baseToken = poolInfo.baseTokenAddress;
-        const quoteToken = poolInfo.quoteTokenAddress;
-
-        const quote = await getUniswapAmmLiquidityQuote(
-          network,
-          poolAddress,
-          baseToken,
-          quoteToken,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-
-        // Use standard gas limit for liquidity operations
-        const computeUnits = 500000;
-
-        return {
-          baseLimited: quote.baseLimited,
-          baseTokenAmount: quote.baseTokenAmount,
-          quoteTokenAmount: quote.quoteTokenAmount,
-          baseTokenAmountMax: quote.baseTokenAmountMax,
-          quoteTokenAmountMax: quote.quoteTokenAmountMax,
-          computeUnits,
-        };
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw fastify.httpErrors.internalServerError('Failed to get liquidity quote');
-      }
-    },
-  );
-};
-
 /**
  * Standard AMM quote-liquidity entry point (network-based) — consumed by the unified /trading/amm
  * dispatcher. Base/quote follow the pair's token0/token1 orientation.
@@ -285,5 +198,3 @@ export async function quoteLiquidity(
     quoteTokenAmountMax: q.quoteTokenAmountMax,
   };
 }
-
-export default quoteLiquidityRoute;

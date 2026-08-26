@@ -33,7 +33,11 @@ interface PoolInfo {
   feePct: number;
 }
 
-async function fetchRaydiumPoolInfo(type: 'amm' | 'clmm', network: string, poolAddress: string): Promise<PoolInfo | null> {
+async function fetchRaydiumPoolInfo(
+  type: 'amm' | 'clmm',
+  network: string,
+  poolAddress: string,
+): Promise<PoolInfo | null> {
   try {
     const raydium = await Raydium.getInstance(network);
 
@@ -73,7 +77,11 @@ async function fetchMeteoraPoolInfo(network: string, poolAddress: string): Promi
   }
 }
 
-async function fetchUniswapPoolInfo(type: 'amm' | 'clmm', network: string, poolAddress: string): Promise<PoolInfo | null> {
+async function fetchUniswapPoolInfo(
+  type: 'amm' | 'clmm',
+  network: string,
+  poolAddress: string,
+): Promise<PoolInfo | null> {
   try {
     const uniswap = await Uniswap.getInstance(network);
     const ethereum = await Ethereum.getInstance(network);

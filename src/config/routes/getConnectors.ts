@@ -1,14 +1,13 @@
 import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
-import { PancakeswapConfig } from '#src/connectors/pancakeswap/pancakeswap.config';
-
 import { ZeroXConfig } from '../../connectors/0x/0x.config';
 import { DFlowConfig } from '../../connectors/dflow/dflow.config';
 import { JupiterConfig } from '../../connectors/jupiter/jupiter.config';
 import { MeteoraConfig } from '../../connectors/meteora/meteora.config';
 import { OkxConfig } from '../../connectors/okx/okx.config';
 import { OrcaConfig } from '../../connectors/orca/orca.config';
+import { PancakeswapConfig } from '../../connectors/pancakeswap/pancakeswap.config';
 import { PancakeswapSolConfig } from '../../connectors/pancakeswap-sol/pancakeswap-sol.config';
 import { RaydiumConfig } from '../../connectors/raydium/raydium.config';
 import { TitanConfig } from '../../connectors/titan/titan.config';

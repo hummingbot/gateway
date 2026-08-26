@@ -1,17 +1,13 @@
 import { harvestPositionInstructions } from '@orca-so/whirlpools';
 import { fetchPosition, fetchWhirlpool } from '@orca-so/whirlpools-client';
-import { Static } from '@sinclair/typebox';
 import { address } from '@solana/kit';
 import { PublicKey } from '@solana/web3.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { CollectFeesResponse, CollectFeesResponseType } from '../../../schemas/clmm-schema';
-import { httpErrors } from '../../../services/error-handler';
+import { CollectFeesResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
 import { buildOrcaTransaction, createOrcaAuthority } from '../orca.sdk';
-import { OrcaClmmCollectFeesRequest } from '../schemas';
 
 export async function collectFees(
   network: string,
@@ -53,38 +49,13 @@ export async function collectFees(
     signature,
     status: 1,
     data: {
+      // The pool this position belongs to, already loaded here. The unified route is
+      // position-addressed and never receives it, so this is the only place it can
+      // come from without a second lookup.
+      poolAddress: position.data.whirlpool.toString(),
       fee,
       baseFeeAmountCollected: Math.abs(balanceChanges[0]),
       quoteFeeAmountCollected: Math.abs(balanceChanges[1]),
     },
   };
 }
-
-export const collectFeesRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof OrcaClmmCollectFeesRequest>;
-    Reply: CollectFeesResponseType;
-  }>(
-    '/collect-fees',
-    {
-      schema: {
-        description: 'Collect fees and rewards from an Orca position',
-        tags: ['/connector/orca'],
-        body: OrcaClmmCollectFeesRequest,
-        response: { 200: CollectFeesResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { walletAddress, positionAddress, network } = request.body;
-        return await collectFees(network, walletAddress, positionAddress);
-      } catch (error) {
-        logger.error(error);
-        if (error.statusCode) throw error;
-        throw httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default collectFeesRoute;

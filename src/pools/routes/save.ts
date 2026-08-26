@@ -4,66 +4,61 @@ import { FastifyPluginAsync } from 'fastify';
 import { CoinGeckoService } from '../../services/coingecko-service';
 import { logger } from '../../services/logger';
 import { PoolService } from '../../services/pool-service';
+import { ensureTokenSaved } from '../../services/token-pool-autosave';
 import { TokenService } from '../../services/token-service';
+import { fetchTokenInfo } from '../../tokens/token-lookup-helper';
 import { Token } from '../../tokens/types';
 import { handlePoolError } from '../pool-error-handler';
+import { fetchPoolInfo } from '../pool-info-helpers';
 import { fetchDetailedPoolInfo } from '../pool-lookup-helper';
 import { FindPoolsQuerySchema, PoolInfoSchema } from '../schemas';
 import { Pool } from '../types';
 
 /**
- * Auto-save a token if it doesn't exist in the token list
- * Fetches token info from GeckoTerminal and adds it
+ * Record a token, reporting whether it was new.
+ *
+ * ensureTokenSaved is the single writer into the token list — it names the token from
+ * the chain, checks for an existing entry by ADDRESS, and refuses to write one whose
+ * on-chain symbol belongs to a different address. It cannot say whether it added or
+ * found, which this route's `tokensAdded` needs, so existence is checked first. That
+ * read hits the same list ensureTokenSaved is about to read, so it costs nothing new.
+ *
+ * GeckoTerminal stays as the fallback for a mint with no Token-2022 extension and no
+ * Metaplex account, or an ERC-20 that never implemented name()/symbol().
  */
-async function autoSaveTokenIfMissing(
+async function saveToken(
   chain: string,
   network: string,
   chainNetwork: string,
-  tokenAddress: string,
-  tokenSymbol: string,
-): Promise<{ added: boolean; symbol: string }> {
-  const tokenService = TokenService.getInstance();
-  const coinGeckoService = CoinGeckoService.getInstance();
+  address: string,
+  tokensAdded: string[],
+): Promise<Token | null> {
+  const existed = await TokenService.getInstance().getToken(chain, network, address);
 
-  // Check if token already exists by address
-  const existingToken = await tokenService.getToken(chain, network, tokenAddress);
-  if (existingToken) {
-    return { added: false, symbol: existingToken.symbol };
+  const token = await ensureTokenSaved(chain, network, address, async (addr) => {
+    const info = await fetchTokenInfo(chainNetwork, addr);
+    return info ? { name: info.name, symbol: info.symbol, address: info.address, decimals: info.decimals } : null;
+  });
+
+  if (token && !existed) {
+    tokensAdded.push(token.symbol);
   }
-
-  // Token doesn't exist, fetch info from GeckoTerminal
-  try {
-    logger.info(`Token ${tokenSymbol} (${tokenAddress}) not found, fetching from GeckoTerminal...`);
-    const tokenInfo = await coinGeckoService.getTokenInfo(chainNetwork, tokenAddress);
-
-    const newToken: Token = {
-      name: tokenInfo.name,
-      symbol: tokenInfo.symbol,
-      address: tokenInfo.address,
-      decimals: tokenInfo.decimals,
-    };
-
-    await tokenService.addToken(chain, network, newToken);
-    logger.info(`Auto-added token ${newToken.symbol} (${newToken.address}) to ${chain}/${network}`);
-
-    return { added: true, symbol: newToken.symbol };
-  } catch (error: any) {
-    logger.warn(`Failed to auto-add token ${tokenSymbol} (${tokenAddress}): ${error.message}`);
-    // Don't fail the pool save if token auto-add fails
-    return { added: false, symbol: tokenSymbol };
-  }
+  return token;
 }
 
 export const savePoolRoute: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
     Params: { address: string };
-    Querystring: { chainNetwork: string };
+    Querystring: { chainNetwork: string; connector?: string; type?: 'amm' | 'clmm' };
     Reply: { message: string; pool: Pool; tokensAdded?: string[] };
   }>(
     '/save/:address',
     {
       schema: {
-        description: 'Find pool from GeckoTerminal and save it to the pool list. Auto-adds missing tokens.',
+        description:
+          'Save a pool to the pool list, auto-adding its tokens. Pass connector and type to ' +
+          'name the pool directly from that connector; omit them and GeckoTerminal is asked ' +
+          'which DEX the address belongs to first.',
         tags: ['/pools'],
         params: {
           type: 'object',
@@ -78,6 +73,20 @@ export const savePoolRoute: FastifyPluginAsync = async (fastify) => {
         },
         querystring: Type.Object({
           chainNetwork: FindPoolsQuerySchema.properties.chainNetwork,
+          connector: Type.Optional(
+            Type.String({
+              description:
+                'DEX connector the pool belongs to. Supply it with `type` to skip the ' +
+                'GeckoTerminal lookup — a caller that already knows the venue, such as one ' +
+                'holding an LP provider config, always does.',
+              examples: ['meteora', 'raydium', 'orca', 'uniswap'],
+            }),
+          ),
+          type: Type.Optional(
+            Type.Union([Type.Literal('amm'), Type.Literal('clmm')], {
+              description: 'Pool type. Required alongside `connector`.',
+            }),
+          ),
         }),
         response: {
           200: Type.Object({
@@ -90,57 +99,75 @@ export const savePoolRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       const { address } = request.params;
-      const { chainNetwork } = request.query;
+      const { chainNetwork, connector, type } = request.query;
 
       try {
-        // Parse chainNetwork to get chain and network
-        const coinGeckoService = CoinGeckoService.getInstance();
-        const { chain, network } = coinGeckoService.parseChainNetwork(chainNetwork);
+        const { chain, network } = CoinGeckoService.getInstance().parseChainNetwork(chainNetwork);
 
-        // Fetch detailed pool information using shared helper
-        const { poolData, pool } = await fetchDetailedPoolInfo(chainNetwork, address);
+        if ((connector && !type) || (type && !connector)) {
+          throw new Error('connector and type must be given together, or both omitted');
+        }
 
-        // Auto-save tokens if they don't exist and get the correct symbols
+        // GeckoTerminal is only needed to answer "which DEX is this address, and is it
+        // amm or clmm" — the pool's own facts come from the connector either way. A
+        // caller that already knows the venue can skip that question entirely, which is
+        // the common case: anything holding an LP provider config knows it.
+        let facts: { baseTokenAddress: string; quoteTokenAddress: string; feePct: number };
+        let poolConnector: string;
+        let poolType: 'amm' | 'clmm';
+
+        if (connector && type) {
+          const info = await fetchPoolInfo(connector, type, network, address);
+          if (!info) {
+            throw new Error(`Unable to fetch pool-info for ${address} from ${connector} ${type} on ${network}`);
+          }
+          facts = info;
+          poolConnector = connector;
+          poolType = type;
+          logger.info(`Naming pool ${address} from ${connector} ${type}, no GeckoTerminal lookup`);
+        } else {
+          const { poolData, pool: found } = await fetchDetailedPoolInfo(chainNetwork, address);
+          facts = {
+            baseTokenAddress: found.baseTokenAddress,
+            quoteTokenAddress: found.quoteTokenAddress,
+            feePct: found.feePct,
+          };
+          poolConnector = found.connector;
+          poolType = poolData.type as 'amm' | 'clmm';
+        }
+
         const tokensAdded: string[] = [];
+        const [base, quote] = [
+          await saveToken(chain, network, chainNetwork, facts.baseTokenAddress, tokensAdded),
+          await saveToken(chain, network, chainNetwork, facts.quoteTokenAddress, tokensAdded),
+        ];
 
-        const baseResult = await autoSaveTokenIfMissing(
-          chain,
-          network,
-          chainNetwork,
-          pool.baseTokenAddress,
-          pool.baseSymbol,
-        );
-        if (baseResult.added) {
-          tokensAdded.push(baseResult.symbol);
-        }
-        // Update pool with correct base symbol (in case it was resolved from GeckoTerminal)
-        pool.baseSymbol = baseResult.symbol;
-
-        const quoteResult = await autoSaveTokenIfMissing(
-          chain,
-          network,
-          chainNetwork,
-          pool.quoteTokenAddress,
-          pool.quoteSymbol,
-        );
-        if (quoteResult.added) {
-          tokensAdded.push(quoteResult.symbol);
-        }
-        // Update pool with correct quote symbol (in case it was resolved from GeckoTerminal)
-        pool.quoteSymbol = quoteResult.symbol;
-
-        // Check if pool already exists
-        const poolService = PoolService.getInstance();
-        const existingPool = await poolService.getPoolByAddress(chain, network, address);
-
-        if (existingPool) {
-          // Update existing pool with latest market data
-          logger.info(
-            `Pool ${pool.baseSymbol}-${pool.quoteSymbol} (${address}) already exists, updating with latest data`,
+        // A pool is filed under its pair, so an unnamed side leaves nothing to file it
+        // under — the same rule ensurePoolSaved applies on the trading paths.
+        if (!base || !quote) {
+          throw new Error(
+            `Cannot name pool ${address}: ${!base ? facts.baseTokenAddress : facts.quoteTokenAddress} has no symbol`,
           );
-          await poolService.updatePoolByAddress(chain, network, pool);
+        }
 
-          const tokenMsg = tokensAdded.length > 0 ? ` (auto-added tokens: ${tokensAdded.join(', ')})` : '';
+        const pool: Pool = {
+          connector: poolConnector,
+          type: poolType,
+          network,
+          address,
+          baseSymbol: base.symbol,
+          quoteSymbol: quote.symbol,
+          baseTokenAddress: base.address,
+          quoteTokenAddress: quote.address,
+          feePct: facts.feePct,
+        };
+
+        const poolService = PoolService.getInstance();
+        const tokenMsg = tokensAdded.length > 0 ? ` (auto-added tokens: ${tokensAdded.join(', ')})` : '';
+
+        if (await poolService.getPoolByAddress(chain, network, address)) {
+          logger.info(`Pool ${pool.baseSymbol}-${pool.quoteSymbol} (${address}) already exists, updating`);
+          await poolService.updatePoolByAddress(chain, network, pool);
           return {
             message: `Pool ${pool.baseSymbol}-${pool.quoteSymbol} already exists in the pool list for ${chain}/${network}, updated with latest data${tokenMsg}`,
             pool,
@@ -148,13 +175,11 @@ export const savePoolRoute: FastifyPluginAsync = async (fastify) => {
           };
         }
 
-        // Add pool to the list
         await poolService.addPool(chain, network, pool);
         logger.info(
-          `Saved pool ${pool.baseSymbol}-${pool.quoteSymbol} (${address}) to ${chain}/${network} ${poolData.type}`,
+          `Saved pool ${pool.baseSymbol}-${pool.quoteSymbol} (${address}) to ${chain}/${network} ${poolType}`,
         );
 
-        const tokenMsg = tokensAdded.length > 0 ? ` (auto-added tokens: ${tokensAdded.join(', ')})` : '';
         return {
           message: `Pool ${pool.baseSymbol}-${pool.quoteSymbol} has been added to the pool list for ${chain}/${network}${tokenMsg}`,
           pool,

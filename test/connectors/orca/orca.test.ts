@@ -146,6 +146,16 @@ describe('Orca', () => {
     );
   });
 
+  it('omits an owned position only when the final snapshot proves it closed', async () => {
+    const positionAddress = Keypair.generate().publicKey.toBase58();
+    (fetchPositionsForOwner as jest.Mock).mockResolvedValue([{ address: positionAddress, isPositionBundle: false }]);
+    (getPositionDetails as jest.Mock).mockResolvedValue(null);
+    const orca = await Orca.getInstance('mainnet-beta');
+
+    await expect(orca.getPositionsForWalletAddress(wallet.publicKey.toBase58())).resolves.toEqual([]);
+    expect(logger.debug).toHaveBeenCalledWith(`Position ${positionAddress} appears to be closed, skipping`);
+  });
+
   it('validates and reads a specific position without a wallet-bound SDK client', async () => {
     const info = { address: Keypair.generate().publicKey.toBase58() };
     (getPositionDetails as jest.Mock).mockResolvedValue(info);
@@ -154,6 +164,23 @@ describe('Orca', () => {
     await expect(orca.getPositionInfo('invalid', wallet.publicKey.toBase58())).rejects.toThrow(
       'Invalid position address',
     );
+  });
+
+  it('returns null from getPositionInfo only when the account definitively does not exist', async () => {
+    (getPositionDetails as jest.Mock).mockResolvedValue(null);
+    const orca = await Orca.getInstance('mainnet-beta');
+    const positionAddress = Keypair.generate().publicKey.toBase58();
+    await expect(orca.getPositionInfo(positionAddress, wallet.publicKey.toBase58())).resolves.toBeNull();
+    expect(getPositionDetails).toHaveBeenCalledWith(orca.solanaKitRpc, positionAddress, orca.deployment);
+  });
+
+  it('propagates transient errors from getPositionInfo instead of reporting the position closed', async () => {
+    // Callers treat null as "position closed"; a swallowed RPC error here would
+    // let an LP executor abandon a live, funded position while reporting success.
+    const orca = await Orca.getInstance('mainnet-beta');
+    const positionAddress = Keypair.generate().publicKey.toBase58();
+    (getPositionDetails as jest.Mock).mockRejectedValue(new Error('RPC node behind'));
+    await expect(orca.getPositionInfo(positionAddress, wallet.publicKey.toBase58())).rejects.toThrow('RPC node behind');
   });
 
   it('keeps connector configuration public', async () => {

@@ -1,5 +1,4 @@
 import BN from 'bn.js';
-import Decimal from 'decimal.js';
 
 /**
  * CLMM (Concentrated Liquidity Market Maker) Math Utilities
@@ -106,13 +105,14 @@ export function getAmountsFromLiquidity(
   let amount1Raw: number;
 
   if (currentPrice < lowerPrice) {
-    // Price below range - all liquidity in token1
-    amount0Raw = 0;
-    amount1Raw = liquidityNum * (sqrtPriceUpper - sqrtPriceLower);
-  } else if (currentPrice >= upperPrice) {
-    // Price above range - all liquidity in token0
+    // Price below range - all liquidity in token0: the range sits above the
+    // market, so the pool sells token0 as price rises through it.
     amount0Raw = (liquidityNum * (sqrtPriceUpper - sqrtPriceLower)) / (sqrtPriceLower * sqrtPriceUpper);
     amount1Raw = 0;
+  } else if (currentPrice >= upperPrice) {
+    // Price above range - all liquidity in token1 (token0 fully sold on the way up)
+    amount0Raw = 0;
+    amount1Raw = liquidityNum * (sqrtPriceUpper - sqrtPriceLower);
   } else {
     // Price in range
     amount0Raw = (liquidityNum * (sqrtPriceUpper - sqrtPriceCurrent)) / (sqrtPriceCurrent * sqrtPriceUpper);

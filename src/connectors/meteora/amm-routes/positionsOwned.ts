@@ -1,11 +1,9 @@
-import { Type } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
-import { PositionInfo, PositionInfoSchema } from '../../../schemas/amm-schema';
+import { PositionInfo } from '../../../schemas/amm-schema';
 import { logger } from '../../../services/logger';
 import { MeteoraDamm } from '../meteora-damm';
-import { MeteoraAmmGetPositionsOwnedRequest, MeteoraAmmGetPositionsOwnedRequestType } from '../schemas';
 
 import { getPositionInfo } from './positionInfo';
 
@@ -41,34 +39,3 @@ export async function getPositionsOwned(
   }
   return result;
 }
-
-export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: MeteoraAmmGetPositionsOwnedRequestType;
-    Reply: PositionInfo[];
-  }>(
-    '/positions-owned',
-    {
-      schema: {
-        description: "List all of a wallet's DAMM v2 positions across all Meteora AMM pools",
-        tags: ['/connector/meteora'],
-        querystring: MeteoraAmmGetPositionsOwnedRequest,
-        response: {
-          200: Type.Array(PositionInfoSchema),
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress } = request.query;
-        return await getPositionsOwned(fastify, network, walletAddress);
-      } catch (e: any) {
-        logger.error(e);
-        if (e.statusCode) throw e;
-        throw fastify.httpErrors.internalServerError('Failed to fetch positions');
-      }
-    },
-  );
-};
-
-export default positionsOwnedRoute;

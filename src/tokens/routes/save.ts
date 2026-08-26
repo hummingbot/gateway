@@ -1,10 +1,9 @@
 import { Type } from '@sinclair/typebox';
-import { ethers } from 'ethers';
 import { FastifyPluginAsync } from 'fastify';
 
 import { CoinGeckoService } from '../../services/coingecko-service';
 import { logger } from '../../services/logger';
-import { TokenService } from '../../services/token-service';
+import { ensureTokenSaved } from '../../services/token-pool-autosave';
 import { FindTokenQuery, FindTokenQuerySchema, Token, TokenSchema } from '../schemas';
 import { handleTokenError } from '../token-error-handler';
 import { fetchTokenInfo } from '../token-lookup-helper';
@@ -45,45 +44,42 @@ export const saveTokenRoute: FastifyPluginAsync = async (fastify) => {
       const { chainNetwork } = request.query;
 
       try {
-        // Parse chain-network parameter using CoinGeckoService
         const coinGeckoService = CoinGeckoService.getInstance();
         const { chain, network } = coinGeckoService.parseChainNetwork(chainNetwork);
 
-        // Fetch token info using shared helper
-        const tokenInfo = await fetchTokenInfo(chainNetwork, address);
+        // ensureTokenSaved is the one writer into the token list, so this route gets the
+        // same guarantees the swap paths do rather than a second implementation of them:
+        //
+        //   - the chain names the token, not an indexer. name, symbol and decimals all
+        //     live on-chain, so an indexer can only be missing, stale or rate-limited —
+        //     and it is likeliest to be missing for exactly the tokens someone is trying
+        //     to save by hand, the ones too new to be listed.
+        //   - it checks for an existing entry BY ADDRESS. The check here used to be by
+        //     symbol, which was wrong in both directions: a new address whose symbol was
+        //     already taken reported "already exists" and silently saved nothing, and a
+        //     token whose symbol had changed upstream was saved a second time.
+        //   - it refuses to write a token whose on-chain symbol belongs to a different
+        //     address, so wrapped SOL reporting its symbol as SOL cannot repoint the SOL
+        //     that every pool in the list pairs against.
+        //   - it checksums EVM addresses, which is why the ethers import went away.
+        //
+        // GeckoTerminal stays as the fallback, for a mint with no Token-2022 extension
+        // and no Metaplex account, or an ERC-20 that never implemented name()/symbol().
+        // This route is a deliberate, user-initiated write, so the extra call is fine
+        // here in a way it would not be mid-swap.
+        const token = await ensureTokenSaved(chain, network, address, async (addr) => {
+          const info = await fetchTokenInfo(chainNetwork, addr);
+          return info ? { name: info.name, symbol: info.symbol, address: info.address, decimals: info.decimals } : null;
+        });
 
-        // For Ethereum chains, normalize address to checksummed format
-        let normalizedAddress = tokenInfo.address;
-        if (chain === 'ethereum') {
-          try {
-            normalizedAddress = ethers.utils.getAddress(tokenInfo.address);
-          } catch (error: any) {
-            logger.warn(`Failed to checksum address ${tokenInfo.address}: ${error.message}`);
-            // If checksumming fails, use the address as-is
-          }
+        if (!token) {
+          throw fastify.httpErrors.notFound(
+            `Could not name token ${address} on ${chain}/${network}: no on-chain metadata, and no fallback data. ` +
+              `Add it explicitly with POST /tokens if you know its symbol and decimals.`,
+          );
         }
 
-        const token = {
-          ...tokenInfo,
-          address: normalizedAddress,
-        };
-
-        // Check if token already exists
-        const tokenService = TokenService.getInstance();
-        const existingToken = await tokenService.getToken(chain, network, token.symbol);
-
-        if (existingToken) {
-          logger.warn(`Token ${token.symbol} already exists in ${chain}/${network}`);
-          return {
-            message: `Token ${token.symbol} already exists in the token list for ${chain}/${network}`,
-            token,
-          };
-        }
-
-        // Save token to the token list
-        await tokenService.addToken(chain, network, token);
-
-        logger.info(`Successfully saved token ${token.symbol} (${token.address}) to ${chain}/${network}`);
+        logger.info(`Saved token ${token.symbol} (${token.address}) to ${chain}/${network}`);
 
         return {
           message: `Token ${token.symbol} has been added to the token list for ${chain}/${network}`,

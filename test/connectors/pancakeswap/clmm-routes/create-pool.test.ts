@@ -10,7 +10,7 @@ const mockWallet = '0x0000000000000000000000000000000000000001';
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { createPoolRoute } = await import('../../../../src/connectors/pancakeswap/clmm-routes/createPool');
+  const { createPoolRoute } = await import('../../../../src/trading/trading-clmm-routes/create-pool');
   await server.register(createPoolRoute);
   return server;
 };
@@ -45,16 +45,19 @@ describe('POST /create-pool (Pancakeswap V3 CLMM)', () => {
       method: 'POST',
       url: '/create-pool',
       payload: {
-        network: 'bsc',
+        chainNetwork: 'ethereum-bsc',
+        connector: 'pancakeswap',
         walletAddress: mockWallet,
         baseToken: 'WBNB',
         quoteToken: 'USDT',
-        fee: 3000, // valid on Uniswap V3, but NOT one of Pancakeswap's 100 / 500 / 2500 / 10000
+        // The unified route takes the tier as feeBps and multiplies by 100. 30 bps ->
+        // 3000, valid on Uniswap V3 but not one of Pancakeswap's 100 / 500 / 2500 / 10000.
+        feeBps: 30,
         initialPrice: 600,
       },
     });
 
-    // Fastify schema validation rejects the out-of-enum fee before the handler runs → 400.
+    // The connector rejects a tier it does not support with a 400.
     expect(response.statusCode).toBe(400);
   });
 
@@ -63,11 +66,14 @@ describe('POST /create-pool (Pancakeswap V3 CLMM)', () => {
       method: 'POST',
       url: '/create-pool',
       payload: {
-        network: 'bsc',
+        chainNetwork: 'ethereum-bsc',
+        // The unified route requires the V3 fee tier explicitly.
+        // PancakeSwap V3 tiers are 1 / 5 / 25 / 100 bps.
+        feeBps: 25,
+        connector: 'pancakeswap',
         walletAddress: mockWallet,
         baseToken: 'WBNB',
         quoteToken: 'WBNB',
-        fee: 2500,
         initialPrice: 600,
       },
     });

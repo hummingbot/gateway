@@ -1,6 +1,3 @@
-import fs from 'fs';
-import path from 'path';
-
 /**
  * Returns the project root path.
  *
@@ -9,8 +6,5 @@ import path from 'path';
  * via ts-jest.
  */
 export function rootPath(): string {
-  const insideDistDir: boolean = __filename.match(/dist\//) !== null;
-  // Return absolute path to project root, always pointing to /Users/feng/gateway
-  // regardless of environment
   return process.cwd();
 }

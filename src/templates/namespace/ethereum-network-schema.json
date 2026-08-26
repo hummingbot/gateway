@@ -11,7 +11,7 @@
     },
     "swapProvider": {
       "type": "string",
-      "description": "Default swap provider used by the unified /trading/swap routes when no connector is specified (format: connector/type)",
+      "description": "Default swap provider used by the unified /trading/{router,clmm,amm} routes when no connector is specified (format: connector/type)",
       "enum": [
         "uniswap/router",
         "0x/router",

@@ -1,16 +1,15 @@
 import { Contract } from '@ethersproject/contracts';
 import { Token } from '@uniswap/sdk-core';
-import { Pair as V2Pair } from '@uniswap/v2-sdk';
-import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { FeeAmount, Pool as V3Pool, SqrtPriceMath, TickMath } from '@uniswap/v3-sdk';
 import { FastifyInstance } from 'fastify';
 import JSBI from 'jsbi';
 
-import { TokenInfo, Ethereum } from '../../chains/ethereum/ethereum';
+import { Ethereum } from '../../chains/ethereum/ethereum';
+import { BinLiquidity } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
+import { computeV3BinDistribution, V3SqrtPriceMath, V3TickMath } from '../clmm-v3-utils';
 
 import { Uniswap } from './uniswap';
-import { UniswapConfig } from './uniswap.config';
 import { IUniswapV2PairABI } from './uniswap.contracts';
 
 /**
@@ -201,7 +200,6 @@ export interface UniswapPoolInfo {
 export async function getV2PoolInfo(poolAddress: string, network: string): Promise<UniswapPoolInfo | null> {
   try {
     const ethereum = await Ethereum.getInstance(network);
-    const uniswap = await Uniswap.getInstance(network);
 
     // Create pair contract
     const pairContract = new Contract(poolAddress, IUniswapV2PairABI.abi, ethereum.provider);
@@ -304,32 +302,35 @@ export async function getUniswapPoolInfo(
 
 /**
  * Per-bin liquidity distribution around the current tick for a Uniswap V3 pool.
- *
- * Uniswap V3 has no equivalent of Orca's "fetch all positions for pool" RPC —
- * positions are NFTs on the NonfungiblePositionManager. Instead we walk the
- * pool's per-tick liquidity profile directly:
- *
- *   1. Read `liquidityNet` at every bin boundary in the window via parallel
- *      `pool.ticks(tick)` reads (one eth_call each, fired with Promise.all).
- *      Ticks that have never been initialized return zeros — that's harmless.
- *   2. Start with the pool's active L = pool.liquidity() in the bin that
- *      contains the current tick. Propagate L outward by adding/subtracting
- *      `liquidityNet` at each boundary crossed (per the V3 spec).
- *   3. For each bin, convert L → (amount0, amount1) via
- *      SqrtPriceMath.getAmount{0,1}Delta(sqrtA, sqrtB, L, false), splitting
- *      at the pool's current sqrtPriceX96 when the bin straddles the
- *      active tick.
- *   4. Map to base/quote using `isBaseToken0`, scale by decimals.
- *
- * Output shape mirrors Meteora's `pool-info.bins[]`:
- *   { binId, price, baseTokenAmount, quoteTokenAmount }
+ * The tick walk lives in the shared V3 helper (`clmm-v3-utils`); Uniswap's SDK is
+ * JSBI-based while the helper works in native bigint, so the math is adapted here.
  */
-export interface UniswapBinDistributionEntry {
-  binId: number;
-  price: number;
-  baseTokenAmount: number;
-  quoteTokenAmount: number;
-}
+export type UniswapBinDistributionEntry = BinLiquidity;
+
+const uniswapTickMath: V3TickMath = {
+  getSqrtRatioAtTick: (tick) => BigInt(TickMath.getSqrtRatioAtTick(tick).toString()),
+};
+
+const uniswapSqrtPriceMath: V3SqrtPriceMath = {
+  getAmount0Delta: (a, b, l, roundUp) =>
+    BigInt(
+      SqrtPriceMath.getAmount0Delta(
+        JSBI.BigInt(a.toString()),
+        JSBI.BigInt(b.toString()),
+        JSBI.BigInt(l.toString()),
+        roundUp,
+      ).toString(),
+    ),
+  getAmount1Delta: (a, b, l, roundUp) =>
+    BigInt(
+      SqrtPriceMath.getAmount1Delta(
+        JSBI.BigInt(a.toString()),
+        JSBI.BigInt(b.toString()),
+        JSBI.BigInt(l.toString()),
+        roundUp,
+      ).toString(),
+    ),
+};
 
 export async function computeUniswapBinDistribution(args: {
   poolContract: Contract;
@@ -342,84 +343,11 @@ export async function computeUniswapBinDistribution(args: {
   isBaseToken0: boolean;
   binCount: number;
 }): Promise<UniswapBinDistributionEntry[]> {
-  const {
-    poolContract,
-    tickSpacing,
-    currentTick,
-    currentSqrtPriceX96,
-    activeLiquidity,
-    decimals0,
-    decimals1,
-    isBaseToken0,
-    binCount,
-  } = args;
-  if (binCount <= 0) return [];
-
-  const halfBins = Math.floor(binCount / 2);
-  const snapped = Math.floor(currentTick / tickSpacing) * tickSpacing;
-  const firstBinStart = snapped - halfBins * tickSpacing;
-  const boundaries: number[] = [];
-  for (let i = 0; i <= binCount; i++) {
-    boundaries.push(firstBinStart + i * tickSpacing);
-  }
-
-  // Parallel reads of pool.ticks(tick) at each boundary. Non-initialized
-  // ticks return zeros which is the correct neutral element for liquidityNet.
-  const tickData = await Promise.all(
-    boundaries.map((tick) => poolContract.ticks(tick).catch(() => ({ liquidityNet: 0 }))),
-  );
-
-  const curIdx = Math.floor((currentTick - firstBinStart) / tickSpacing);
-
-  // Propagate L outward from the current bin (V3 spec: crossing a tick going
-  // UP adds liquidityNet, going DOWN subtracts it).
-  const binLs: JSBI[] = new Array(binCount);
-  binLs[curIdx] = activeLiquidity;
-  for (let i = curIdx + 1; i < binCount; i++) {
-    const net = JSBI.BigInt(tickData[i].liquidityNet.toString());
-    binLs[i] = JSBI.add(binLs[i - 1], net);
-  }
-  for (let i = curIdx - 1; i >= 0; i--) {
-    const net = JSBI.BigInt(tickData[i + 1].liquidityNet.toString());
-    binLs[i] = JSBI.subtract(binLs[i + 1], net);
-  }
-
-  const scale0 = Math.pow(10, decimals0);
-  const scale1 = Math.pow(10, decimals1);
-  const zero = JSBI.BigInt(0);
-  const bins: UniswapBinDistributionEntry[] = [];
-  for (let i = 0; i < binCount; i++) {
-    const tickStart = boundaries[i];
-    const tickEnd = boundaries[i + 1];
-    const L = binLs[i];
-    let amount0: JSBI = zero;
-    let amount1: JSBI = zero;
-    if (JSBI.greaterThan(L, zero)) {
-      const sqrtA = TickMath.getSqrtRatioAtTick(tickStart);
-      const sqrtB = TickMath.getSqrtRatioAtTick(tickEnd);
-      if (currentTick >= tickEnd) {
-        amount1 = SqrtPriceMath.getAmount1Delta(sqrtA, sqrtB, L, false);
-      } else if (currentTick < tickStart) {
-        amount0 = SqrtPriceMath.getAmount0Delta(sqrtA, sqrtB, L, false);
-      } else {
-        amount0 = SqrtPriceMath.getAmount0Delta(currentSqrtPriceX96, sqrtB, L, false);
-        amount1 = SqrtPriceMath.getAmount1Delta(sqrtA, currentSqrtPriceX96, L, false);
-      }
-    }
-    const amt0 = parseFloat(amount0.toString()) / scale0;
-    const amt1 = parseFloat(amount1.toString()) / scale1;
-    const baseTokenAmount = isBaseToken0 ? amt0 : amt1;
-    const quoteTokenAmount = isBaseToken0 ? amt1 : amt0;
-
-    // Price at tickStart in human units (quote/base regardless of token order).
-    const rawT1PerT0 = Math.pow(1.0001, tickStart) * Math.pow(10, decimals0 - decimals1);
-    const price = isBaseToken0 ? rawT1PerT0 : 1 / rawT1PerT0;
-    bins.push({
-      binId: tickStart,
-      price,
-      baseTokenAmount,
-      quoteTokenAmount,
-    });
-  }
-  return bins;
+  return computeV3BinDistribution({
+    ...args,
+    currentSqrtPriceX96: BigInt(args.currentSqrtPriceX96.toString()),
+    activeLiquidity: BigInt(args.activeLiquidity.toString()),
+    tickMath: uniswapTickMath,
+    sqrtPriceMath: uniswapSqrtPriceMath,
+  });
 }

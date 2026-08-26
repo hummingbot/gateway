@@ -15,22 +15,20 @@ import {
   priceToTickIndex,
   type IncreaseLiquidityQuote,
 } from '@orca-so/whirlpools-core';
-import { Static } from '@sinclair/typebox';
 import { address, type Instruction } from '@solana/kit';
 import { getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { fetchAllMint } from '@solana-program/token-2022';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { OpenPositionResponse, OpenPositionResponseType } from '../../../schemas/clmm-schema';
+import { OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { Orca } from '../orca';
+import { OrcaConfig } from '../orca.config';
 import { getCurrentTransferFee } from '../orca.position';
 import { buildOrcaTransaction, createOrcaAuthority, replaceOrcaInstructionAccounts } from '../orca.sdk';
 import { extractInnerTransferAmounts } from '../orca.utils';
-import { OrcaClmmOpenPositionRequest } from '../schemas';
 
 export async function openPosition(
   network: string,
@@ -61,7 +59,7 @@ export async function openPosition(
     throw httpErrors.badRequest('Calculated tick indices are invalid (lower >= upper)');
   }
 
-  const slippageBps = Math.round((slippagePct || 1) * 100);
+  const slippageBps = Math.round((slippagePct ?? OrcaConfig.config.slippagePct ?? 1) * 100);
   const baseAmount = BigInt(Math.floor((baseTokenAmount || 0) * 10 ** mintA.data.decimals));
   const quoteAmount = BigInt(Math.floor((quoteTokenAmount || 0) * 10 ** mintB.data.decimals));
   const shouldAddLiquidity = baseAmount > 0n || quoteAmount > 0n;
@@ -141,7 +139,14 @@ export async function openPosition(
     const generated = await openPositionInstructionsWithTickBounds(
       rpc,
       whirlpool.address,
-      { tokenMaxA: liquidityQuote.tokenMaxA, tokenMaxB: liquidityQuote.tokenMaxB },
+      // The estimates, not the quote's ceilings. increaseLiquidityQuote{A,B} already
+      // applied slippageBps to produce tokenMax*, and the builder applies
+      // slippageToleranceBps again below to derive the on-chain maximums — so passing
+      // tokenMax* here makes the ceiling the target and deposits slippagePct more than
+      // was asked for. A one-sided open showed it plainly: 1 USDC funded deposited
+      // 1.009999. A two-sided one hides it, because the pool ratio pins the deposit
+      // before the bound is reached.
+      { tokenMaxA: liquidityQuote.tokenEstA, tokenMaxB: liquidityQuote.tokenEstB },
       lowerTickIndex,
       upperTickIndex,
       {
@@ -218,10 +223,9 @@ export async function openPosition(
   const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(transaction, walletAddress, [
     positionMintKeypair,
   ]);
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Retrying re-fetch; throws the shared landed-but-failed error if the transaction
+  // landed with an error, so txData existing below really means "confirmed".
+  const txData = await solana.getConfirmedTransactionData(signature);
 
   let positionRent = 0;
   let baseTokenAmountAdded = liquidityQuote ? Number(liquidityQuote.tokenEstA) / 10 ** mintA.data.decimals : 0;
@@ -274,50 +278,3 @@ export async function openPosition(
     },
   };
 }
-
-export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof OrcaClmmOpenPositionRequest>;
-    Reply: OpenPositionResponseType;
-  }>(
-    '/open-position',
-    {
-      schema: {
-        description: 'Open a new Orca position',
-        tags: ['/connector/orca'],
-        body: OrcaClmmOpenPositionRequest,
-        response: { 200: OpenPositionResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          walletAddress,
-          poolAddress,
-          lowerPrice,
-          upperPrice,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-          network,
-        } = request.body;
-        return await openPosition(
-          network,
-          walletAddress,
-          poolAddress,
-          lowerPrice,
-          upperPrice,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (error) {
-        logger.error(error);
-        if (error.statusCode) throw error;
-        throw httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default openPositionRoute;

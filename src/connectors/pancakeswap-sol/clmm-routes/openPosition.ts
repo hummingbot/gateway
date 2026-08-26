@@ -1,17 +1,15 @@
-import { Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { OpenPositionResponse, OpenPositionResponseType } from '../../../schemas/clmm-schema';
+import { accountLifecycleSol, liquidityWithoutRent } from '../../../chains/solana/solana.utils';
+import { OpenPositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { PancakeswapSolConfig } from '../pancakeswap-sol.config';
 import { priceToTick, roundTickToSpacing, parsePoolTickSpacing } from '../pancakeswap-sol.parser';
 import { buildOpenPositionTransaction } from '../pancakeswap-sol.transactions';
-import { PancakeswapSolClmmOpenPositionRequest } from '../schemas';
 
 import { quotePosition } from './quotePosition';
 
@@ -105,17 +103,22 @@ export async function openPosition(
   );
   logger.info(`Quote Max: base=${quote.baseTokenAmountMax}, quote=${quote.quoteTokenAmountMax}`);
 
-  // Use max amounts from quote - slippage already applied in quotePosition
+  // The ceilings — slippage already applied in quotePosition — and, separately, the
+  // liquidity to open. Sizing the position from the ceiling is what GW-28 was: the
+  // program would compute the deposit that liquidity requires, round it up in the
+  // pool's favour, and assert the result against the very number it started from, so a
+  // one-unit rounding failed the open and a wider slippagePct only bought a larger
+  // deposit. The quote already computes the liquidity from the amounts the caller asked
+  // for, which is what the add route has always sent.
   const amount0Max = new BN((quote.baseTokenAmountMax * 10 ** baseToken.decimals).toFixed(0));
   const amount1Max = new BN((quote.quoteTokenAmountMax * 10 ** quoteToken.decimals).toFixed(0));
+  const liquidity = new BN(quote.liquidity);
 
   logger.info(`Amounts with slippage (${slippagePct ?? PancakeswapSolConfig.config.slippagePct}%):`);
   logger.info(`  amount0Max: ${amount0Max.toString()} (${baseToken.symbol})`);
   logger.info(`  amount1Max: ${amount1Max.toString()} (${quoteToken.symbol})`);
 
-  // Determine base flag
-  const baseFlag = quote.baseLimited;
-  logger.info(`Base Flag: ${baseFlag} (${baseFlag ? 'amount0' : 'amount1'} is base)`);
+  logger.info(`Liquidity: ${liquidity.toString()} (from the quoted amounts, base-limited=${quote.baseLimited})`);
 
   // Get priority fee
   const priorityFeeInLamports = await solana.estimateGasPrice();
@@ -131,7 +134,8 @@ export async function openPosition(
     amount0Max,
     amount1Max,
     true, // withMetadata - create NFT with metadata
-    baseFlag,
+    null, // let the maxes be ceilings; the liquidity below is what sizes the position
+    liquidity,
     800000,
     priorityFeePerCU,
   );
@@ -152,12 +156,17 @@ export async function openPosition(
       quoteToken.address,
     ]);
 
-    const baseTokenChange = balanceChanges[0];
-    const quoteTokenChange = balanceChanges[1];
+    // Opening locks rent in five accounts here — the position, its NFT account, the
+    // wrapped-SOL account, the shared protocol position, and any tick array this range is
+    // first to touch. On a position this size that rent is larger than the deposit it is
+    // attached to, so reporting the wallet delta made the position read 2.4x its size.
+    const { opened, rentLocked } = accountLifecycleSol(txData);
+    const baseTokenChange = liquidityWithoutRent(balanceChanges[0], new PublicKey(baseToken.address), opened);
+    const quoteTokenChange = liquidityWithoutRent(balanceChanges[1], new PublicKey(quoteToken.address), opened);
 
     logger.info(`Position opened successfully. NFT Mint: ${positionNftMint.publicKey.toString()}`);
     logger.info(
-      `Added ${Math.abs(baseTokenChange).toFixed(4)} ${baseToken.symbol}, ${Math.abs(quoteTokenChange).toFixed(4)} ${quoteToken.symbol}`,
+      `Added ${baseTokenChange.toFixed(4)} ${baseToken.symbol}, ${quoteTokenChange.toFixed(4)} ${quoteToken.symbol}`,
     );
 
     return {
@@ -166,70 +175,19 @@ export async function openPosition(
       data: {
         fee: totalFee / 1e9,
         positionAddress: positionNftMint.publicKey.toString(),
-        positionRent: 0, // Simplified - not extracting rent from transaction
-        baseTokenAmountAdded: Math.abs(baseTokenChange),
-        quoteTokenAmountAdded: Math.abs(quoteTokenChange),
+        positionRent: rentLocked,
+        baseTokenAmountAdded: baseTokenChange,
+        quoteTokenAmountAdded: quoteTokenChange,
       },
     };
   }
+
+  // A landed-but-failed transaction is terminal: fail loudly instead of returning
+  // PENDING (callers would poll forever). Genuinely-not-landed keeps the pending shape.
+  await solana.throwIfLandedWithError(signature, txData);
 
   return {
     signature,
     status: 0, // PENDING
   };
 }
-
-export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof PancakeswapSolClmmOpenPositionRequest>;
-    Reply: OpenPositionResponseType;
-  }>(
-    '/open-position',
-    {
-      schema: {
-        description: 'Open a new PancakeSwap Solana CLMM position with Token2022 NFT',
-        tags: ['/connector/pancakeswap-sol'],
-        body: PancakeswapSolClmmOpenPositionRequest,
-        response: {
-          200: OpenPositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network = 'mainnet-beta',
-          walletAddress,
-          poolAddress,
-          lowerPrice,
-          upperPrice,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.body;
-
-        return await openPosition(
-          network,
-          walletAddress!,
-          poolAddress,
-          lowerPrice,
-          upperPrice,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Open position error:', e);
-        // Re-throw httpErrors as-is
-        if (e.statusCode) {
-          throw e;
-        }
-        // Handle unknown errors
-        const errorMessage = e.message || 'Failed to open position';
-        throw httpErrors.internalServerError(errorMessage);
-      }
-    },
-  );
-};
-
-export default openPositionRoute;
