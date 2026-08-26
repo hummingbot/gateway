@@ -8,9 +8,37 @@ export const PoolInfoSchema = Type.Object(
     baseTokenAddress: Type.String(),
     quoteTokenAddress: Type.String(),
     feePct: DecimalNumber({}),
-    price: DecimalNumber({}),
-    baseTokenAmount: DecimalNumber({}),
-    quoteTokenAmount: DecimalNumber({}),
+    /**
+     * Deliberately NOT derived from the two amounts below.
+     *
+     * On a plain constant-product pool (Uniswap V2, PancakeSwap V2, Raydium) the vaults
+     * are the curve, so the marginal price happens to equal quoteTokenAmount /
+     * baseTokenAmount. That identity is a property of those venues, not of this field:
+     * pump prices against `quote_vault + virtual_quote_reserves`, and a bounded-range
+     * Meteora DAMM v2 pool prices against the virtual reserves implied by its sqrt price
+     * and liquidity. On both, the vaults hold something other than the curve's reserves
+     * and the division is wrong — severalfold on a new pool, converging as real liquidity
+     * accumulates, which is what makes assuming the identity so easy to get away with
+     * until it matters.
+     */
+    price: DecimalNumber({
+      description:
+        'Marginal spot price of the pool, in quote token per base token. NOT necessarily ' +
+        'quoteTokenAmount / baseTokenAmount — on venues that price against virtual reserves ' +
+        '(pump) or a bounded range (Meteora DAMM v2) the vault balances are not the curve’s ' +
+        'reserves, and the two can differ severalfold. For the price a trade would actually ' +
+        'get, including fee and price impact, use quote-swap, which prices each side.',
+    }),
+    baseTokenAmount: DecimalNumber({
+      description:
+        'Base tokens held in the pool’s vault. This is what backs withdrawals; it is not ' +
+        'always the reserve `price` is computed from — see `price`.',
+    }),
+    quoteTokenAmount: DecimalNumber({
+      description:
+        'Quote tokens held in the pool’s vault. This is what backs withdrawals; it is not ' +
+        'always the reserve `price` is computed from — see `price`.',
+    }),
   },
   { $id: 'AmmPoolInfo' },
 );

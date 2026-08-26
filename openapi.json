@@ -34,14 +34,17 @@
           },
           "price": {
             "format": "decimal",
+            "description": "Marginal spot price of the pool, in quote token per base token. NOT necessarily quoteTokenAmount / baseTokenAmount — on venues that price against virtual reserves (pump) or a bounded range (Meteora DAMM v2) the vault balances are not the curve’s reserves, and the two can differ severalfold. For the price a trade would actually get, including fee and price impact, use quote-swap, which prices each side.",
             "type": "string"
           },
           "baseTokenAmount": {
             "format": "decimal",
+            "description": "Base tokens held in the pool’s vault. This is what backs withdrawals; it is not always the reserve `price` is computed from — see `price`.",
             "type": "string"
           },
           "quoteTokenAmount": {
             "format": "decimal",
+            "description": "Quote tokens held in the pool’s vault. This is what backs withdrawals; it is not always the reserve `price` is computed from — see `price`.",
             "type": "string"
           }
         },
@@ -1135,14 +1138,17 @@
           },
           "price": {
             "format": "decimal",
+            "description": "Price at the pool’s active tick/bin, in quote token per base token. NOT quoteTokenAmount / baseTokenAmount — concentrated liquidity spreads inventory across ranges, so vault holdings are unrelated to the active price. For the price a trade would actually get, including fee and price impact, use quote-swap.",
             "type": "string"
           },
           "baseTokenAmount": {
             "format": "decimal",
+            "description": "Base tokens held across the whole pool’s vaults, summed over all ranges — not the liquidity available at the active price, and not a reserve `price` derives from.",
             "type": "string"
           },
           "quoteTokenAmount": {
             "format": "decimal",
+            "description": "Quote tokens held across the whole pool’s vaults, summed over all ranges — not the liquidity available at the active price, and not a reserve `price` derives from.",
             "type": "string"
           },
           "activeBinId": {

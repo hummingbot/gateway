@@ -120,9 +120,31 @@ export const PoolInfoSchema = Type.Object(
     quoteTokenAddress: Type.String(),
     binStep: Type.Optional(Type.Number()), // Optional - Meteora-specific
     feePct: DecimalNumber({}),
-    price: DecimalNumber({}),
-    baseTokenAmount: DecimalNumber({}),
-    quoteTokenAmount: DecimalNumber({}),
+    /**
+     * The price at the active tick/bin, read from the pool itself (Raydium's
+     * `currentPrice`, Meteora's active-bin price, Orca's pool price) — never derived
+     * from the amounts below. Concentrated liquidity spreads inventory across ranges,
+     * so a pool's vault holdings say nothing about the price at the active tick: a pool
+     * sitting at one edge of its liquidity is almost entirely one-sided while still
+     * quoting a perfectly ordinary price.
+     */
+    price: DecimalNumber({
+      description:
+        'Price at the pool’s active tick/bin, in quote token per base token. NOT ' +
+        'quoteTokenAmount / baseTokenAmount — concentrated liquidity spreads inventory ' +
+        'across ranges, so vault holdings are unrelated to the active price. For the price ' +
+        'a trade would actually get, including fee and price impact, use quote-swap.',
+    }),
+    baseTokenAmount: DecimalNumber({
+      description:
+        'Base tokens held across the whole pool’s vaults, summed over all ranges — not the ' +
+        'liquidity available at the active price, and not a reserve `price` derives from.',
+    }),
+    quoteTokenAmount: DecimalNumber({
+      description:
+        'Quote tokens held across the whole pool’s vaults, summed over all ranges — not the ' +
+        'liquidity available at the active price, and not a reserve `price` derives from.',
+    }),
     activeBinId: Type.Number(),
     bins: Type.Optional(Type.Array(BinLiquiditySchema)),
   },
