@@ -262,6 +262,21 @@ export class Meteora {
         return null;
       }
 
+      // getActiveBin() fetches activeId fresh from chain, but the cached DLMM
+      // instance's lbPair state (which getBinsAroundActiveBin centers on) is
+      // only refreshed once, when getDlmmPool first created it. After price
+      // drifts, pool-info returns a fresh price/activeBinId alongside a bins
+      // window frozen around the creation-time active bin - and once the drift
+      // exceeds the window, the bins no longer even contain the active bin.
+      // When the fresh activeId disagrees with the cached one, refresh the
+      // cached state before reading bins. Costs nothing when nothing drifted.
+      if (activeBin.binId !== dlmmPool.lbPair.activeId) {
+        logger.info(
+          `Pool ${poolAddress} active bin drifted (cached ${dlmmPool.lbPair.activeId} -> onchain ${activeBin.binId}); refreshing cached pool state`,
+        );
+        await dlmmPool.refetchStates();
+      }
+
       const poolInfo: MeteoraPoolInfo = {
         address: poolAddress,
         baseTokenAddress: dlmmPool.tokenX.publicKey.toBase58(),
