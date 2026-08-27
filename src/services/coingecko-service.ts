@@ -223,16 +223,24 @@ export class CoinGeckoService {
     const configManager = ConfigManagerV2.getInstance();
     this.apiKey = configManager.get('apiKeys.coingecko');
 
+    // A CoinGecko Pro key unlocks the same GeckoTerminal data at pro rate
+    // limits through CoinGecko's onchain endpoints (identical paths under
+    // /onchain); keyless falls back to the public GeckoTerminal host.
+    if (this.apiKey) {
+      this.baseURL = 'https://pro-api.coingecko.com/api/v3/onchain';
+    }
     this.client = createHttpClient({
       baseURL: this.baseURL,
       timeout: 30000,
       headers: {
         Accept: 'application/json',
-        ...(this.apiKey && { 'X-CG-API-KEY': this.apiKey }),
+        ...(this.apiKey && { 'x-cg-pro-api-key': this.apiKey }),
       },
     });
 
-    logger.info(`CoinGecko service initialized${this.apiKey ? ' with API key' : ' (no API key)'}`);
+    logger.info(
+      `CoinGecko service initialized${this.apiKey ? ` with Pro API key (${this.baseURL})` : ' (no API key, public GeckoTerminal)'}`,
+    );
   }
 
   public static getInstance(): CoinGeckoService {
