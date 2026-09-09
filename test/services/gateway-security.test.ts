@@ -3,15 +3,19 @@ import { tmpdir } from 'os';
 import path from 'path';
 
 import {
+  clearAuthFailures,
   constantTimeEqual,
   extractBearerToken,
   getBindAddress,
+  isAuthLockedOut,
   isExposedHost,
   isLoopbackAddress,
   isPrivateNetworkAddress,
   isSensitivePath,
   isTrustedLocalAddress,
+  isWeakApiKey,
   loadOrCreateApiKey,
+  recordAuthFailure,
 } from '../../src/services/gateway-security';
 
 describe('gateway-security', () => {
@@ -185,6 +189,48 @@ describe('gateway-security', () => {
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
+    });
+  });
+
+  describe('isWeakApiKey', () => {
+    it.each(['', 'short', 'a'.repeat(15)])('true for weak key %p', (k) => {
+      expect(isWeakApiKey(k)).toBe(true);
+    });
+    it.each(['a'.repeat(16), 'b'.repeat(64)])('false for strong-length key %p', (k) => {
+      expect(isWeakApiKey(k)).toBe(false);
+    });
+  });
+
+  describe('failed-auth lockout', () => {
+    afterEach(() => clearAuthFailures());
+
+    it('does not lock out below the threshold', () => {
+      const ip = '172.18.0.9';
+      for (let i = 0; i < 9; i++) recordAuthFailure(ip);
+      expect(isAuthLockedOut(ip)).toBe(false);
+    });
+
+    it('locks out at the threshold and is keyed per source', () => {
+      const attacker = '172.18.0.9';
+      for (let i = 0; i < 10; i++) recordAuthFailure(attacker);
+      expect(isAuthLockedOut(attacker)).toBe(true);
+      expect(isAuthLockedOut('172.18.0.10')).toBe(false); // a different source is unaffected
+    });
+
+    it('a successful auth clears the counter', () => {
+      const ip = '10.0.0.5';
+      for (let i = 0; i < 10; i++) recordAuthFailure(ip);
+      expect(isAuthLockedOut(ip)).toBe(true);
+      clearAuthFailures(ip);
+      expect(isAuthLockedOut(ip)).toBe(false);
+    });
+
+    it('the lockout window expires', () => {
+      const ip = '192.168.1.7';
+      const t0 = 1_000_000;
+      for (let i = 0; i < 10; i++) recordAuthFailure(ip, t0);
+      expect(isAuthLockedOut(ip, t0)).toBe(true);
+      expect(isAuthLockedOut(ip, t0 + 16 * 60 * 1000)).toBe(false); // past the default 15-min window
     });
   });
 });

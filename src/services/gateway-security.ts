@@ -141,6 +141,63 @@ export function loadOrCreateApiKey(confDir: string): string {
 }
 
 /**
+ * Heuristic weak-key check for an operator-supplied GATEWAY_API_KEY. The auto-generated
+ * key is 256-bit (64 hex chars); a short, human-chosen value is brute-forceable — which
+ * matters because the general rate limiter allow-lists private-network sources (see
+ * isTrustedLocalAddress), so a LAN/compose-adjacent client is not throttled on the token.
+ * Pure check — the caller decides how to surface it (we warn, not fail, so an existing
+ * deployment with a short key keeps working).
+ */
+export function isWeakApiKey(key: string): boolean {
+  return key.trim().length < 16;
+}
+
+/**
+ * In-memory failed-authentication lockout for sensitive routes (hummingbot/gateway#660 §2).
+ *
+ * Keyed on the source IP and incremented ONLY on a failed token check, so a correctly
+ * authenticated client — including a sibling-container bot that the general rate limiter
+ * allow-lists — is never affected, while a token-guessing client is locked out after
+ * GATEWAY_AUTH_FAIL_MAX failures within GATEWAY_AUTH_FAIL_WINDOW_MS. This is the control the
+ * global limiter cannot provide: it exempts every private-network source (isTrustedLocalAddress)
+ * and would otherwise give a LAN/compose-adjacent attacker unlimited guesses against the token.
+ *
+ * Scope note: an IP-keyed lockout is a proportionate mitigation for this local/LAN threat
+ * model; it does not by itself stop an attacker able to rotate many source IPs (#660 §2). The
+ * primary defense remains a high-entropy token (the generated key is 256-bit).
+ */
+const AUTH_FAIL_MAX = Math.max(1, Number(process.env.GATEWAY_AUTH_FAIL_MAX ?? 10));
+const AUTH_FAIL_WINDOW_MS = Math.max(1000, Number(process.env.GATEWAY_AUTH_FAIL_WINDOW_MS ?? 15 * 60 * 1000));
+const authFailures = new Map<string, { count: number; resetAt: number }>();
+
+export function isAuthLockedOut(ip: string | undefined, now: number = Date.now()): boolean {
+  const key = ip ?? 'unknown';
+  const rec = authFailures.get(key);
+  if (!rec) return false;
+  if (now > rec.resetAt) {
+    authFailures.delete(key);
+    return false;
+  }
+  return rec.count >= AUTH_FAIL_MAX;
+}
+
+export function recordAuthFailure(ip: string | undefined, now: number = Date.now()): void {
+  const key = ip ?? 'unknown';
+  const rec = authFailures.get(key);
+  if (!rec || now > rec.resetAt) {
+    authFailures.set(key, { count: 1, resetAt: now + AUTH_FAIL_WINDOW_MS });
+  } else {
+    rec.count += 1;
+  }
+}
+
+/** Clear failed-auth state — on a successful auth for that source, or globally in tests. */
+export function clearAuthFailures(ip?: string): void {
+  if (ip === undefined) authFailures.clear();
+  else authFailures.delete(ip);
+}
+
+/**
  * True when Gateway is running inside a container (Docker/Podman). Uses the same markers the
  * Hummingbot API relies on, so the two stay in agreement about the deployment shape.
  */
