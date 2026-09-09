@@ -55,9 +55,18 @@ export interface MeteoraApiPool {
 
 export class Meteora {
   private static _instances: { [name: string]: Meteora };
-  // Recommended maximum bins per position (aligns with SDK's DEFAULT_BIN_PER_POSITION)
-  // Ensures single-transaction operations. SDK supports up to 1400 bins via multiple transactions.
-  private static readonly MAX_BINS = 70;
+  // The widest bin range one DLMM position can be created and funded in a single
+  // transaction. The program itself allows up to POSITION_MAX_LENGTH (1400) bins, but
+  // reaching that needs incremental resizes; the one-shot
+  // initializePositionAndAddLiquidityByStrategy path is bounded by
+  // DEFAULT_BIN_PER_POSITION and by Solana's 10,240-byte CPI allocation limit. A wider
+  // range is covered by splitting it across several positions — see openPosition.
+  public static readonly MAX_POSITION_BIN_WIDTH = 69;
+
+  // How many bins either side of the active bin pool-info reports. Unrelated to what a
+  // position can hold: this is how much of the book to show, and it shared a constant
+  // with the position cap only by coincidence.
+  private static readonly POOL_LIQUIDITY_BIN_RANGE = 69;
   private solana: Solana;
   public config: MeteoraConfig.RootConfig;
   private dlmmPools: Map<string, DLMM> = new Map();
@@ -290,7 +299,10 @@ export class Meteora {
     if (!dlmmPool) {
       throw new Error(`Pool not found: ${poolAddress}`);
     }
-    const binData = await dlmmPool.getBinsAroundActiveBin(Meteora.MAX_BINS - 1, Meteora.MAX_BINS - 1);
+    const binData = await dlmmPool.getBinsAroundActiveBin(
+      Meteora.POOL_LIQUIDITY_BIN_RANGE,
+      Meteora.POOL_LIQUIDITY_BIN_RANGE,
+    );
 
     return binData.bins.map((bin) => ({
       binId: bin.binId,
@@ -596,11 +608,14 @@ export class Meteora {
     const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true) - padBins;
     const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false) + padBins;
 
-    if (maxBinId - minBinId > Meteora.MAX_BINS) {
+    // Same width rule as openPosition, from the same constant. This used to compare
+    // `maxBinId - minBinId` against 70 while openPosition compared the inclusive width
+    // against 69, so the two disagreed by two bins on what a position could hold.
+    if (maxBinId - minBinId + 1 > Meteora.MAX_POSITION_BIN_WIDTH) {
       throw new Error(
-        `Position range too wide: ${maxBinId - minBinId} bins requested. ` +
-          `Recommended maximum is ${Meteora.MAX_BINS} bins for single-transaction operations. ` +
-          `For wider ranges, create multiple positions or narrow your price range.`,
+        `Position range too wide: ${maxBinId - minBinId + 1} bins requested. ` +
+          `One position holds at most ${Meteora.MAX_POSITION_BIN_WIDTH} bins. ` +
+          `For wider ranges, open the position without a pad or narrow your price range.`,
       );
     }
 
