@@ -56,12 +56,18 @@ export interface MeteoraApiPool {
 export class Meteora {
   private static _instances: { [name: string]: Meteora };
   // The widest bin range one DLMM position can be created and funded in a single
-  // transaction. The program itself allows up to POSITION_MAX_LENGTH (1400) bins, but
-  // reaching that needs incremental resizes; the one-shot
-  // initializePositionAndAddLiquidityByStrategy path is bounded by
-  // DEFAULT_BIN_PER_POSITION and by Solana's 10,240-byte CPI allocation limit. A wider
-  // range is covered by splitting it across several positions — see openPosition.
-  public static readonly MAX_POSITION_BIN_WIDTH = 69;
+  // transaction, and the program's own limit on how wide a position may be initialized:
+  // DEFAULT_BIN_PER_POSITION. A position can still span up to POSITION_MAX_LENGTH (1400)
+  // bins, but only by growing past this, which openPosition does by chunking the deposit.
+  //
+  // 70, not the 69 this used to say, confirmed by mainnet simulation against the Meteora
+  // SOL/USDC pool: initializePosition succeeds at 70 bins and fails at 71 with
+  // InvalidPositionWidth (6040 / 0x1798, thrown at position/common.rs:30), and the
+  // combined create-and-fund transaction behaves identically — 819 message bytes at width
+  // 70, comfortably inside the 1232-byte limit, so neither transaction size nor the
+  // 10,240-byte CPI allocation limit binds first. The old 69 came from a simulation that
+  // verified 69 worked without testing whether 70 did.
+  public static readonly MAX_POSITION_BIN_WIDTH = 70;
 
   // How many bins either side of the active bin pool-info reports. Unrelated to what a
   // position can hold: this is how much of the book to show, and it shared a constant
@@ -608,9 +614,9 @@ export class Meteora {
     const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true) - padBins;
     const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false) + padBins;
 
-    // Same width rule as openPosition, from the same constant. This used to compare
-    // `maxBinId - minBinId` against 70 while openPosition compared the inclusive width
-    // against 69, so the two disagreed by two bins on what a position could hold.
+    // Same width rule as openPosition, from the same constant. These used to disagree:
+    // this compared `maxBinId - minBinId` against 70 while openPosition compared the
+    // inclusive width against 69, differing by two bins on what a position could hold.
     if (maxBinId - minBinId + 1 > Meteora.MAX_POSITION_BIN_WIDTH) {
       throw new Error(
         `Position range too wide: ${maxBinId - minBinId + 1} bins requested. ` +

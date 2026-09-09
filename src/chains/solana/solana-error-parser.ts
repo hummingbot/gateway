@@ -67,7 +67,7 @@ const PROGRAM_ERROR_CODES: Record<string, Record<number, { type: SolanaErrorType
     6040: {
       type: 'INVALID_POSITION',
       message:
-        'Invalid position width. A DLMM position spans up to 1400 bins, but only about 69 can be created ' +
+        'Invalid position width. A DLMM position spans up to 1400 bins, but only 70 can be created ' +
         'and funded in one transaction — a wider range has to be deposited in chunks.',
     },
   },
@@ -170,7 +170,7 @@ const GENERIC_ERROR_CODES: Record<number, { type: SolanaErrorType; message: stri
   6040: {
     type: 'INVALID_POSITION',
     message:
-      'Invalid position width. A DLMM position spans up to 1400 bins, but only about 69 can be created ' +
+      'Invalid position width. A DLMM position spans up to 1400 bins, but only 70 can be created ' +
       'and funded in one transaction — a wider range has to be deposited in chunks.',
   },
   // Math errors
@@ -414,7 +414,7 @@ export function parseSolanaError(errorMessage: string): ParsedSolanaError {
       message:
         'An instruction tried to grow an account beyond Solana’s 10,240-byte allocation limit. If this is a ' +
         'Meteora DLMM position, the range was deposited in one instruction rather than in chunks — a position ' +
-        'spans up to 1400 bins, but only about 69 fit in a single transaction.',
+        'spans up to 1400 bins, but only 70 fit in a single transaction.',
       rawError: errorMessage,
     };
   }

@@ -380,7 +380,7 @@ describe('Solana Error Parser', () => {
         // The limit is on how much an instruction grows the account, not on the position:
         // a DLMM position spans up to 1400 bins when the deposit is chunked.
         expect(result.message).toMatch(/spans up to 1400 bins/);
-        expect(result.message).toMatch(/only about 69 fit in a single transaction/);
+        expect(result.message).toMatch(/only 70 fit in a single transaction/);
       });
     });
   });

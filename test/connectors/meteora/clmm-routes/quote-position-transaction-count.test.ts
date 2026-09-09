@@ -51,12 +51,15 @@ describe('meteora quote-liquidity transaction count', () => {
   });
 
   it('counts the position-creation transaction once the range is chunked', async () => {
-    // Just over the threshold: one deposit chunk, plus the separate create.
+    // One bin over the threshold. Note the threshold and the chunk size are the same
+    // number — MAX_POSITION_BIN_WIDTH is DEFAULT_BIN_PER_POSITION — so the narrowest
+    // chunked range already needs two deposit chunks, not one: the create, then 70 bins,
+    // then the remainder. There is no such thing as a one-chunk chunked open.
     primePool(Meteora.MAX_POSITION_BIN_WIDTH + 1);
 
     const quote = await quotePosition('mainnet-beta', 1, 2, POOL, 1, undefined);
 
-    expect(quote.transactionCount).toBe(2);
+    expect(quote.transactionCount).toBe(3);
   });
 
   it('matches what open-position sends for a wide range', async () => {
