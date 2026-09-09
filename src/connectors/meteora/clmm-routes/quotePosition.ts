@@ -121,20 +121,29 @@ export async function quotePosition(
       }
     }
 
-    // What opening this range will take. Sized by the SDK from the same strategy the open
-    // uses, so the quote and the open cannot disagree. One position spans up to 1400
-    // bins, so `positionCount` stays 1 for any realistic range; the number that actually
-    // moves is `transactionCount`, because a deposit is chunked at 70 bins per
-    // transaction. Reported so a caller sees a wide range costs several transactions
+    // What opening this range will take. One position spans up to 1400 bins, so
+    // `positionCount` stays 1 for any realistic range; the number that actually moves is
+    // `transactionCount`, because a deposit is chunked at DEFAULT_BIN_PER_POSITION bins
+    // per transaction. Reported so a caller sees a wide range costs several transactions
     // before opening, rather than discovering it from a rejection.
     const { positionCount, transactionCount } = await dlmmPool.quoteCreatePosition({
       strategy: { minBinId, maxBinId, strategyType: strategy },
     });
 
+    // The SDK counts deposit chunks only — ceil(bins / DEFAULT_BIN_PER_POSITION) — and
+    // says nothing about creating the position. openPosition sends that as its own
+    // transaction whenever the range is chunked, because a full chunk is already sized to
+    // fill a transaction and folding the position init in alongside it risks overflowing
+    // one. Add it here so the number quoted is the number the open actually sends; below
+    // the chunking threshold the position is created and funded together and the SDK's
+    // count is already right.
+    const chunkedOpen = maxBinId - minBinId + 1 > Meteora.MAX_POSITION_BIN_WIDTH;
+    const openTransactionCount = chunkedOpen ? transactionCount + 1 : transactionCount;
+
     return {
       baseLimited,
       positionCount,
-      transactionCount,
+      transactionCount: openTransactionCount,
       baseTokenAmount: baseAmount,
       quoteTokenAmount: quoteAmount,
       baseTokenAmountMax: baseAmount * (1 + slippage),
