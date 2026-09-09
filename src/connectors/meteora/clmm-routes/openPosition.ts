@@ -1,5 +1,5 @@
 import { DecimalUtil } from '@orca-so/common-sdk';
-import { Keypair, PublicKey } from '@solana/web3.js';
+import { Keypair, PublicKey, Transaction } from '@solana/web3.js';
 import { BN } from 'bn.js';
 import { Decimal } from 'decimal.js';
 
@@ -61,7 +61,10 @@ export async function openPosition(
     }
     // Handle InvalidPositionWidth error from Meteora SDK
     if (error instanceof Error && error.message.includes('InvalidPositionWidth')) {
-      throw httpErrors.badRequest('Invalid position width. Please use a position width of 69 bins or lower.');
+      throw httpErrors.badRequest(
+        `Invalid position width. Use a width of ${Meteora.MAX_POSITION_BIN_WIDTH} bins or lower, ` +
+          'or a range this route can chunk across transactions.',
+      );
     }
     throw error; // Re-throw unexpected errors
   }
@@ -108,21 +111,13 @@ export async function openPosition(
   const minBinId = dlmmPool.getBinIdFromPrice(Number(lowerPricePerLamport), true);
   const maxBinId = dlmmPool.getBinIdFromPrice(Number(upperPricePerLamport), false);
 
-  // A DLMM position holds at most 69 bins (program error 0x1798/6040 beyond that; ranges
-  // past ~130 bins fail even earlier with InvalidRealloc because the position account
-  // would exceed Solana's 10,240-byte CPI allocation limit). Validate here so users get
-  // the actual constraint instead of a cryptic on-chain error.
-  const MAX_POSITION_BIN_WIDTH = 69;
+  // A range wider than one transaction can create and fund is opened by chunking the
+  // deposit instead of being rejected. One position spans up to POSITION_MAX_LENGTH
+  // (1400) bins, so this stays a single position; what grows is the number of
+  // transactions, because the deposit is chunked at DEFAULT_BIN_PER_POSITION bins each.
+  // quote-liquidity reports that count up front via `transactionCount`.
   const positionWidth = maxBinId - minBinId + 1;
-  if (positionWidth > MAX_POSITION_BIN_WIDTH) {
-    const binStepPct = dlmmPool.lbPair.binStep / 100;
-    const maxRangePct = ((Math.pow(1 + binStepPct / 100, MAX_POSITION_BIN_WIDTH) - 1) * 100).toFixed(1);
-    throw httpErrors.badRequest(
-      `Price range ${lowerPrice}-${upperPrice} spans ${positionWidth} bins, but a Meteora DLMM position holds at ` +
-        `most ${MAX_POSITION_BIN_WIDTH} bins. At this pool's ${binStepPct}% bin step that is ~${maxRangePct}% ` +
-        `between lower and upper price. Narrow the range, or open multiple positions to cover it.`,
-    );
-  }
+  const needsChunkedOpen = positionWidth > Meteora.MAX_POSITION_BIN_WIDTH;
 
   // Don't add SOL rent to the liquidity amounts - rent is separate
   const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount || 0), dlmmPool.tokenX.mint.decimals));
@@ -132,19 +127,7 @@ export async function openPosition(
   // Slippage needs to be in BPS (basis points): percentage * 100
   const slippageBps = slippagePct * 100;
 
-  const createPositionTx = await dlmmPool.initializePositionAndAddLiquidityByStrategy({
-    positionPubKey: newImbalancePosition.publicKey,
-    user: walletPublicKey,
-    totalXAmount,
-    totalYAmount,
-    strategy: {
-      maxBinId,
-      minBinId,
-      strategyType: strategyType ?? MeteoraConfig.config.strategyType,
-    },
-    // Only add slippage if provided and greater than 0
-    ...(slippageBps ? { slippage: slippageBps } : {}),
-  });
+  const resolvedStrategyType = strategyType ?? MeteoraConfig.config.strategyType;
 
   logger.info(
     `Opening position in pool ${poolAddress} with price range ${lowerPrice.toFixed(4)} - ${upperPrice.toFixed(4)} ${tokenYSymbol}/${tokenXSymbol}`,
@@ -152,23 +135,102 @@ export async function openPosition(
   logger.info(
     `Token amounts: ${(baseTokenAmount || 0).toFixed(6)} ${tokenXSymbol}, ${(quoteTokenAmount || 0).toFixed(6)} ${tokenYSymbol}`,
   );
-  logger.info(`Bin IDs: min=${minBinId}, max=${maxBinId}, active=${activeBin.binId}`);
+  logger.info(`Bin IDs: min=${minBinId}, max=${maxBinId}, active=${activeBin.binId}, width=${positionWidth}`);
   if (slippageBps) {
     logger.info(`Slippage: ${slippagePct}% (${slippageBps} BPS)`);
   }
 
-  // Log the transaction details before sending
-  logger.info(`Transaction details: ${createPositionTx.instructions.length} instructions`);
+  // The position account, and every transaction that built it. A narrow range is one
+  // transaction, as before; a wide one is the same single position funded over several,
+  // so everything downstream reads the list rather than a lone signature.
+  let positionKeypair = newImbalancePosition;
+  const signatures: string[] = [];
+  let txFee = 0;
 
-  // Set the fee payer for simulation
-  createPositionTx.feePayer = walletPublicKey;
+  /** Send one transaction through the wallet-type-aware chokepoint and record it. */
+  const sendStep = async (tx: Transaction, signers: Keypair[], label: string): Promise<void> => {
+    tx.feePayer = walletPublicKey;
+    logger.info(`${label}: ${tx.instructions.length} instructions`);
+    const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(tx, walletAddress, signers);
+    signatures.push(signature);
+    txFee += fee;
+  };
 
-  // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and
-  // simulates internally). The newly generated position keypair is passed
-  // as an extra signer.
-  const { signature, fee: txFee } = await solana.sendAndConfirmTransactionForWallet(createPositionTx, walletAddress, [
-    newImbalancePosition,
-  ]);
+  if (!needsChunkedOpen) {
+    const createPositionTx = await dlmmPool.initializePositionAndAddLiquidityByStrategy({
+      positionPubKey: newImbalancePosition.publicKey,
+      user: walletPublicKey,
+      totalXAmount,
+      totalYAmount,
+      strategy: { maxBinId, minBinId, strategyType: resolvedStrategyType },
+      // Only add slippage if provided and greater than 0
+      ...(slippageBps ? { slippage: slippageBps } : {}),
+    });
+    await sendStep(createPositionTx, [newImbalancePosition], 'Create position');
+  } else {
+    // The SDK sizes the work from the strategy and hands back raw instructions grouped by
+    // position: the position init, idempotent ATA creations, and the deposit split into
+    // chunks of DEFAULT_BIN_PER_POSITION bins. Note this takes slippage as a percentage,
+    // not the basis points the single-transaction builder above wants.
+    const { instructionsByPositions } = await dlmmPool.initializeMultiplePositionAndAddLiquidityByStrategy(
+      async (count: number) => Array.from({ length: count }, () => Keypair.generate()),
+      totalXAmount,
+      totalYAmount,
+      { maxBinId, minBinId, strategyType: resolvedStrategyType },
+      walletPublicKey,
+      walletPublicKey,
+      slippagePct,
+    );
+
+    // Above POSITION_MAX_LENGTH bins the SDK splits into several positions, which this
+    // route cannot describe: its response carries one position address. Refuse rather
+    // than silently return one of several and leave the rest unreferenced.
+    if (instructionsByPositions.length !== 1) {
+      throw httpErrors.badRequest(
+        `Price range ${lowerPrice}-${upperPrice} spans ${positionWidth} bins, which needs ` +
+          `${instructionsByPositions.length} separate positions. This route opens one position — ` +
+          `narrow the range, or open each part with its own call.`,
+      );
+    }
+
+    const [plan] = instructionsByPositions;
+    positionKeypair = plan.positionKeypair;
+
+    // Create the position first, on its own. The deposit chunks are already sized to fit a
+    // transaction by themselves, so folding the init and the ATA creations in alongside one
+    // risks overflowing it — for the sake of saving a signature on a path that is
+    // multi-transaction by nature.
+    const initTx = new Transaction().add(...plan.initializeAtaIxs, plan.initializePositionIx);
+    await sendStep(initTx, [plan.positionKeypair], 'Create position');
+
+    // Each chunk deposits into part of the range. They are sent in order, and a failure
+    // partway leaves the position open with the chunks so far funded — reported below
+    // rather than swallowed, since the caller now owns an account it did not see created.
+    for (let i = 0; i < plan.addLiquidityIxs.length; i++) {
+      try {
+        await sendStep(
+          new Transaction().add(...plan.addLiquidityIxs[i]),
+          [],
+          `Add liquidity ${i + 1}/${plan.addLiquidityIxs.length}`,
+        );
+      } catch (error) {
+        logger.error(
+          `Chunk ${i + 1}/${plan.addLiquidityIxs.length} failed for ${positionKeypair.publicKey.toBase58()}`,
+        );
+        throw httpErrors.internalServerError(
+          `Position ${positionKeypair.publicKey.toBase58()} was opened, but only ${i} of ` +
+            `${plan.addLiquidityIxs.length} liquidity chunks were funded before ` +
+            `${error instanceof Error ? error.message : String(error)}. The position exists and holds what ` +
+            `landed — add the rest with add-liquidity, or close it to recover the funds. ` +
+            `Transactions: ${signatures.join(', ')}`,
+        );
+      }
+    }
+  }
+
+  // The transaction that created the position: the rent and the position account come from
+  // this one, while the amounts added are summed across all of them below.
+  const signature = signatures[0];
 
   // Get transaction data for confirmation
   // Retrying re-fetch; throws the shared landed-but-failed error if the transaction
@@ -180,26 +242,41 @@ export async function openPosition(
   if (confirmed && txData) {
     // Extract position rent from the position account's SOL balance
     // The position account is newly created, so its postBalance IS the rent
-    const positionPubkey = newImbalancePosition.publicKey;
+    const positionPubkey = positionKeypair.publicKey;
     const accountKeys = txData.transaction.message.getAccountKeys().staticAccountKeys;
     const postBalances = txData.meta?.postBalances || [];
 
+    // Read the rent off the position account itself rather than the creating transaction.
+    // A chunked open grows the position as it funds each chunk, so its balance in the
+    // first transaction is only the rent it started with, not what the caller paid. For a
+    // single-transaction open the two are the same number.
     let positionRent = 0;
-    const positionAccountIndex = accountKeys.findIndex((key) => key.equals(positionPubkey));
-    if (positionAccountIndex !== -1) {
-      // Position account's balance after tx is the rent (it was 0 before creation)
-      positionRent = postBalances[positionAccountIndex] / 1e9; // Convert lamports to SOL
+    try {
+      positionRent = (await solana.connection.getBalance(positionPubkey)) / 1e9;
+    } catch (error) {
+      // Fall back to the creating transaction's post balance, which is right whenever the
+      // position was never resized.
+      logger.warn(`Could not read rent from ${positionPubkey.toBase58()}, using the creating transaction: ${error}`);
+      const positionAccountIndex = accountKeys.findIndex((key) => key.equals(positionPubkey));
+      if (positionAccountIndex !== -1) {
+        positionRent = postBalances[positionAccountIndex] / 1e9;
+      }
     }
 
-    // Track wallet's balance changes for the tokens
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletPublicKey.toBase58(), [
-      dlmmPool.tokenX.publicKey.toBase58(),
-      dlmmPool.tokenY.publicKey.toBase58(),
-    ]);
-
-    // Balance changes are negative (tokens leaving wallet)
-    let baseAmountAdded = Math.abs(balanceChanges[0]);
-    let quoteAmountAdded = Math.abs(balanceChanges[1]);
+    // Track wallet's balance changes for the tokens, across every transaction that funded
+    // the position. A chunked open deposits over several, so reading only the first would
+    // report a fraction of what was actually added.
+    let baseAmountAdded = 0;
+    let quoteAmountAdded = 0;
+    for (const sig of signatures) {
+      const { balanceChanges } = await solana.extractBalanceChangesAndFee(sig, walletPublicKey.toBase58(), [
+        dlmmPool.tokenX.publicKey.toBase58(),
+        dlmmPool.tokenY.publicKey.toBase58(),
+      ]);
+      // Balance changes are negative (tokens leaving wallet)
+      baseAmountAdded += Math.abs(balanceChanges[0]);
+      quoteAmountAdded += Math.abs(balanceChanges[1]);
+    }
 
     // When SOL is base/quote, the wallet paid liquidity + rent on that side, so back the
     // rent out to leave the liquidity added. The transaction fee needs no correction:
@@ -214,7 +291,9 @@ export async function openPosition(
     }
 
     logger.info(
-      `Position opened at ${newImbalancePosition.publicKey.toBase58()}: ${baseAmountAdded.toFixed(4)} ${tokenXSymbol}, ${quoteAmountAdded.toFixed(4)} ${tokenYSymbol}, rent: ${positionRent.toFixed(6)} SOL`,
+      `Position opened at ${positionKeypair.publicKey.toBase58()} over ${signatures.length} transaction(s): ` +
+        `${baseAmountAdded.toFixed(4)} ${tokenXSymbol}, ${quoteAmountAdded.toFixed(4)} ${tokenYSymbol}, ` +
+        `rent: ${positionRent.toFixed(6)} SOL`,
     );
 
     return {
@@ -222,7 +301,7 @@ export async function openPosition(
       status: 1, // CONFIRMED
       data: {
         fee: txFee,
-        positionAddress: newImbalancePosition.publicKey.toBase58(),
+        positionAddress: positionKeypair.publicKey.toBase58(),
         positionRent: positionRent,
         baseTokenAmountAdded: baseAmountAdded,
         quoteTokenAmountAdded: quoteAmountAdded,
