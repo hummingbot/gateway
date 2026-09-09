@@ -377,7 +377,10 @@ describe('Solana Error Parser', () => {
 
         expect(result.type).toBe('INSTRUCTION_ERROR');
         expect(result.message).toMatch(/10,240-byte allocation limit/);
-        expect(result.message).toMatch(/at most 69 bins/);
+        // The limit is on how much an instruction grows the account, not on the position:
+        // a DLMM position spans up to 1400 bins when the deposit is chunked.
+        expect(result.message).toMatch(/spans up to 1400 bins/);
+        expect(result.message).toMatch(/only about 69 fit in a single transaction/);
       });
     });
   });
