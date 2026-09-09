@@ -121,8 +121,20 @@ export async function quotePosition(
       }
     }
 
+    // What opening this range will take. Sized by the SDK from the same strategy the open
+    // uses, so the quote and the open cannot disagree. One position spans up to 1400
+    // bins, so `positionCount` stays 1 for any realistic range; the number that actually
+    // moves is `transactionCount`, because a deposit is chunked at 70 bins per
+    // transaction. Reported so a caller sees a wide range costs several transactions
+    // before opening, rather than discovering it from a rejection.
+    const { positionCount, transactionCount } = await dlmmPool.quoteCreatePosition({
+      strategy: { minBinId, maxBinId, strategyType: strategy },
+    });
+
     return {
       baseLimited,
+      positionCount,
+      transactionCount,
       baseTokenAmount: baseAmount,
       quoteTokenAmount: quoteAmount,
       baseTokenAmountMax: baseAmount * (1 + slippage),
