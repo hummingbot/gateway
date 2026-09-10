@@ -70,17 +70,17 @@ export async function getPositionsOwned(
       const tokenId = await positionManager.tokenOfOwnerByIndex(walletAddress, i);
       const positionDetails = await positionManager.positions(tokenId);
 
-      if (positionDetails.liquidity.eq(0)) {
-        continue;
-      }
+      // Zero-liquidity positions are reported, not skipped. The NFT is still
+      // owned and still counted by balanceOf, it can hold uncollected
+      // tokensOwed after a decrease, and it can be increased again or burned.
+      // Callers that want only active liquidity filter on it themselves.
 
       const token0 = await pancakeswap.getToken(positionDetails.token0);
       const token1 = await pancakeswap.getToken(positionDetails.token1);
 
       const pool = await pancakeswap.getV3Pool(token0, token1, positionDetails.fee);
       if (!pool) {
-        logger.warn(`Pool not found for position ${tokenId}`);
-        continue;
+        throw new Error(`pool not found for ${token0.symbol}-${token1.symbol} at fee tier ${positionDetails.fee}`);
       }
 
       const position = new Position({
@@ -127,8 +127,22 @@ export async function getPositionsOwned(
         price: parseFloat(pool.token0Price.toSignificant(6)),
       });
     } catch (err) {
-      logger.warn(`Error fetching position ${i} for wallet ${walletAddress}: ${err.message}`);
+      // Do not swallow this. A failure here is indistinguishable from the
+      // position not existing, so returning the rest would hand the caller a
+      // silently short list — and callers size new exposure against it.
+      throw fastify.httpErrors.internalServerError(
+        `Failed to read position ${i + 1} of ${numPositions} for wallet ${walletAddress}: ${err.message}`,
+      );
     }
+  }
+
+  // Index-based enumeration is only consistent if the wallet's balance did not
+  // change mid-scan. If it did, the list is not the inventory it claims to be.
+  if (positions.length !== numPositions) {
+    throw fastify.httpErrors.internalServerError(
+      `Resolved ${positions.length} positions but balanceOf reported ${numPositions} for wallet ` +
+        `${walletAddress}; the wallet's positions likely changed during enumeration. Retry.`,
+    );
   }
 
   return positions;

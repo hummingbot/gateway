@@ -1,4 +1,4 @@
-import { BigNumber, Contract, utils } from 'ethers';
+import { BigNumber, Contract, providers, utils } from 'ethers';
 
 import { Ethereum, EthereumTransactionOutcome } from '../../../chains/ethereum/ethereum';
 import { EthereumLedger } from '../../../chains/ethereum/ethereum-ledger';
@@ -15,6 +15,43 @@ import { getUniswapClmmQuote, resolveCounterToken } from './quoteSwap';
 
 // Default gas limit for CLMM swap operations
 const CLMM_SWAP_GAS_LIMIT = 350000;
+
+// Uniswap V3 pool `Swap` event. Its two amounts are signed from the pool's point of
+// view — positive is what the pool took in, negative what it paid out — which
+// identifies the input and output sides without needing token0/token1 ordering.
+const SWAP_EVENT_TOPIC = utils.id('Swap(address,address,int256,int256,uint160,uint128,int24)');
+const SWAP_EVENT_TYPES = ['int256', 'int256', 'uint160', 'uint128', 'int24'];
+
+/**
+ * Read what the swap actually moved, from the receipt.
+ *
+ * The quote is an estimate taken before the transaction lands, and the fill can differ
+ * from it — the pool moves under the trade, or the trade is sandwiched. Those are
+ * exactly the cases a caller needs to see, so the executed amounts come from the pool's
+ * own event rather than from the quote. Returns null if the event is absent.
+ */
+function readExecutedAmounts(
+  receipt: providers.TransactionReceipt,
+  poolAddress: string,
+  inputDecimals: number,
+  outputDecimals: number,
+): { amountIn: number; amountOut: number } | null {
+  const swapLog = receipt.logs.find(
+    (log) => log.address.toLowerCase() === poolAddress.toLowerCase() && log.topics[0] === SWAP_EVENT_TOPIC,
+  );
+  if (!swapLog) {
+    return null;
+  }
+
+  const [amount0, amount1] = utils.defaultAbiCoder.decode(SWAP_EVENT_TYPES, swapLog.data) as BigNumber[];
+  const rawIn = amount0.isNegative() ? amount1 : amount0;
+  const rawOut = amount0.isNegative() ? amount0 : amount1;
+
+  return {
+    amountIn: Number(utils.formatUnits(rawIn, inputDecimals)),
+    amountOut: Number(utils.formatUnits(rawOut.mul(-1), outputDecimals)),
+  };
+}
 
 export async function executeClmmSwap(
   network: string,
@@ -254,9 +291,23 @@ export async function executeClmmSwap(
     logger.info(`Transaction confirmed: ${outcome.signature}`);
     logger.info(`Gas used: ${outcome.receipt.gasUsed.toString()}`);
 
-    // Calculate amounts using quote values
-    const amountIn = quote.estimatedAmountIn;
-    const amountOut = quote.estimatedAmountOut;
+    // Report what the swap moved, not what the quote predicted. Falling back to the
+    // quote is a last resort rather than the default: a settled swap must still return
+    // its hash, so an undecodable receipt is logged loudly instead of thrown.
+    const executed = readExecutedAmounts(
+      outcome.receipt,
+      poolAddress,
+      quote.inputToken.decimals,
+      quote.outputToken.decimals,
+    );
+    if (!executed) {
+      logger.warn(
+        `No Swap event for pool ${poolAddress} in ${outcome.signature}: reporting quoted ` +
+          'amounts, which may not match the fill.',
+      );
+    }
+    const amountIn = executed ? executed.amountIn : quote.estimatedAmountIn;
+    const amountOut = executed ? executed.amountOut : quote.estimatedAmountOut;
 
     // Calculate balance changes as numbers
     const baseTokenBalanceChange = side === 'BUY' ? amountOut : -amountIn;
