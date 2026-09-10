@@ -1,5 +1,5 @@
 import { ConfigManagerV2 } from './config-manager-v2';
-import { createHttpClient, HttpClient, HttpClientError } from './http-client';
+import { createHttpClient, HttpClient, HttpClientError, HttpResponse } from './http-client';
 import { logger } from './logger';
 
 /**
@@ -211,36 +211,109 @@ export interface GeckoTerminalTokenInfo {
 }
 
 /**
+ * CoinGecko serves the same GeckoTerminal data under /onchain, but Demo and Pro keys
+ * are not interchangeable: each is only accepted on its own host, with its own header.
+ * Sending a key to the wrong host fails outright, so the pairing has to be exact.
+ */
+const COINGECKO_PLANS = {
+  demo: { baseURL: 'https://api.coingecko.com/api/v3/onchain', header: 'x-cg-demo-api-key' },
+  pro: { baseURL: 'https://pro-api.coingecko.com/api/v3/onchain', header: 'x-cg-pro-api-key' },
+} as const;
+
+type CoinGeckoPlan = keyof typeof COINGECKO_PLANS;
+
+const GECKOTERMINAL_PUBLIC_URL = 'https://api.geckoterminal.com/api/v2';
+
+/**
+ * CoinGecko answers a host/key mismatch by naming the root URL to use instead
+ * (error 10010 for a Pro key on the Demo host, 10011 for the reverse). That is
+ * authoritative, so it is worth acting on rather than guessing the plan.
+ */
+function mismatchedPlan(error: any): CoinGeckoPlan | null {
+  const payload = error?.response?.data ?? error?.data;
+  const code = payload?.error_code ?? payload?.status?.error_code;
+  const message: string = payload?.status?.error_message ?? payload?.error_message ?? '';
+
+  if (code === 10010 || /change your root URL from api\.coingecko\.com/i.test(message)) {
+    return 'pro';
+  }
+  if (code === 10011 || /change your root URL from pro-api\.coingecko\.com/i.test(message)) {
+    return 'demo';
+  }
+  return null;
+}
+
+/**
  * CoinGecko service for GeckoTerminal API integration
  */
 export class CoinGeckoService {
   private static instance: CoinGeckoService;
   private client: HttpClient;
   private apiKey: string | undefined;
-  private baseURL = 'https://api.geckoterminal.com/api/v2';
+  private plan: CoinGeckoPlan | undefined;
+  private baseURL = GECKOTERMINAL_PUBLIC_URL;
+  /** A plan mismatch is corrected once; after that the error is the caller's answer. */
+  private planCorrected = false;
 
   private constructor() {
     const configManager = ConfigManagerV2.getInstance();
-    this.apiKey = configManager.get('apiKeys.coingecko');
+    this.apiKey = configManager.get('apiKeys.coingecko') || undefined;
 
-    // A CoinGecko Pro key unlocks the same GeckoTerminal data at pro rate
-    // limits through CoinGecko's onchain endpoints (identical paths under
-    // /onchain); keyless falls back to the public GeckoTerminal host.
     if (this.apiKey) {
-      this.baseURL = 'https://pro-api.coingecko.com/api/v3/onchain';
+      // Both tiers reach the same onchain data; only the host and header differ.
+      // `apiKeys.coingeckoPlan` pins it when known, otherwise start on Pro and let
+      // CoinGecko correct us on the first call.
+      const configured = configManager.get('apiKeys.coingeckoPlan');
+      this.plan = configured === 'demo' || configured === 'pro' ? configured : 'pro';
     }
+    this.buildClient();
+
+    logger.info(
+      this.apiKey
+        ? `CoinGecko service initialized with a ${this.plan} API key (${this.baseURL})`
+        : `CoinGecko service initialized with no API key (public GeckoTerminal, ${this.baseURL})`,
+    );
+  }
+
+  /** Points the HTTP client at whichever host matches the current plan. */
+  private buildClient(): void {
+    this.baseURL = this.plan ? COINGECKO_PLANS[this.plan].baseURL : GECKOTERMINAL_PUBLIC_URL;
     this.client = createHttpClient({
       baseURL: this.baseURL,
       timeout: 30000,
       headers: {
         Accept: 'application/json',
-        ...(this.apiKey && { 'x-cg-pro-api-key': this.apiKey }),
+        ...(this.apiKey && this.plan && { [COINGECKO_PLANS[this.plan].header]: this.apiKey }),
       },
     });
+  }
 
-    logger.info(
-      `CoinGecko service initialized${this.apiKey ? ` with Pro API key (${this.baseURL})` : ' (no API key, public GeckoTerminal)'}`,
-    );
+  /**
+   * GET against the CoinGecko/GeckoTerminal host for the configured plan.
+   *
+   * Demo and Pro keys are only accepted on their own host, and a key alone does not
+   * say which it is. When CoinGecko replies that the root URL is wrong, switch to the
+   * host it named and retry once — anything else (a bad key, a missing pool) is a real
+   * error and is raised as one rather than degraded into a keyless request.
+   */
+  private async get<T>(endpoint: string, options?: Parameters<HttpClient['get']>[1]): Promise<HttpResponse<T>> {
+    try {
+      return await this.client.get<T>(endpoint, options);
+    } catch (error) {
+      const correctPlan = mismatchedPlan(error);
+      if (!correctPlan || this.planCorrected || correctPlan === this.plan) {
+        throw error;
+      }
+      logger.info(
+        `CoinGecko rejected the ${this.plan} host for this key; it is a ${correctPlan} key. ` +
+          `Switching to ${COINGECKO_PLANS[correctPlan].baseURL}. ` +
+          `Set apiKeys.coingeckoPlan to '${correctPlan}' to skip this probe.`,
+      );
+      this.plan = correctPlan;
+      this.planCorrected = true;
+      this.buildClient();
+      return await this.client.get<T>(endpoint, options);
+    }
   }
 
   public static getInstance(): CoinGeckoService {
@@ -372,7 +445,7 @@ export class CoinGeckoService {
       // Fetch multiple pages from GeckoTerminal
       for (let page = 1; page <= maxPages; page++) {
         try {
-          const response = await this.client.get<{ data: GeckoTerminalPool[] }>(endpoint, {
+          const response = await this.get<{ data: GeckoTerminalPool[] }>(endpoint, {
             params: {
               page,
             },
@@ -449,7 +522,7 @@ export class CoinGeckoService {
       // Fetch multiple pages from GeckoTerminal
       for (let page = 1; page <= maxPages; page++) {
         try {
-          const response = await this.client.get<{ data: GeckoTerminalPool[] }>(endpoint, {
+          const response = await this.get<{ data: GeckoTerminalPool[] }>(endpoint, {
             params: {
               page,
             },
@@ -548,7 +621,7 @@ export class CoinGeckoService {
 
       logger.info(`Fetching token info for ${tokenAddress} on ${chainNetwork}`);
 
-      const response = await this.client.get<{ data: GeckoTerminalTokenData }>(endpoint);
+      const response = await this.get<{ data: GeckoTerminalTokenData }>(endpoint);
 
       if (!response.data || !response.data.data) {
         throw new Error(`No token info found for ${tokenAddress} on ${geckoNetwork}`);
@@ -617,7 +690,7 @@ export class CoinGeckoService {
 
       logger.info(`Fetching token info with market data for ${tokenAddress} on ${chainNetwork}`);
 
-      const response = await this.client.get<{
+      const response = await this.get<{
         data: {
           id: string;
           type: 'token';
@@ -702,7 +775,7 @@ export class CoinGeckoService {
 
       logger.info(`Fetching pool info for ${poolAddress} on ${chainNetwork}`);
 
-      const response = await this.client.get<{ data: GeckoTerminalPool }>(endpoint);
+      const response = await this.get<{ data: GeckoTerminalPool }>(endpoint);
 
       if (!response.data || !response.data.data) {
         throw new Error(`No pool info found for ${poolAddress} on ${geckoNetwork}`);
