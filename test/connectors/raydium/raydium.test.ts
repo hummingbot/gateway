@@ -18,7 +18,10 @@ jest.mock('@raydium-io/raydium-sdk-v2', () => {
     DEVNET_PROGRAM_ID: {
       AMM_V4: new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8'),
       AMM_STABLE: new PublicKey('5quBtoiQqxF9Jv6KYKctB59NT3gtJD2Y65kdnB1Uev3h'),
-      CLMM_PROGRAM_ID: new PublicKey('CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK'),
+      // The real devnet CLMM program, not a copy of mainnet's — position PDAs are
+      // derived from it, so a test that mocked both to the same value could not
+      // catch the network being ignored.
+      CLMM_PROGRAM_ID: new PublicKey('devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH'),
     },
     PositionInfoLayout: {
       decode: jest.fn(),
@@ -504,6 +507,25 @@ describe('Raydium', () => {
       const raydiumInstance = await Raydium.getInstance('mainnet-beta');
 
       await expect(raydiumInstance.getPositionsForWalletAddress('not-a-wallet')).rejects.toThrow();
+    });
+
+    // Personal-position PDAs are derived from the CLMM program id, so deriving with
+    // mainnet's on devnet produces addresses that do not exist and the wallet looks
+    // empty. The enumeration this replaced tried both program ids explicitly.
+    it.each([
+      ['mainnet-beta', 'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK'],
+      ['devnet', 'devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH'],
+    ])('should derive position PDAs with the %s CLMM program', async (network, expectedProgramId) => {
+      mockSolanaInstance.network = network;
+      const raydiumInstance = await Raydium.getInstance(network);
+      jest.spyOn(raydiumInstance, 'getPositionInfo').mockResolvedValue({ address: positionNft } as any);
+
+      await raydiumInstance.getPositionsForWalletAddress(walletAddress);
+
+      expect(getPdaPersonalPositionAddress).toHaveBeenCalled();
+      for (const [programId] of (getPdaPersonalPositionAddress as jest.Mock).mock.calls) {
+        expect(programId.toBase58()).toBe(expectedProgramId);
+      }
     });
   });
 

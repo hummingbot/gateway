@@ -5,6 +5,7 @@ import {
   ApiV3PoolInfoStandardItemCpmm,
   PositionInfoLayout,
   CLMM_PROGRAM_ID,
+  DEVNET_PROGRAM_ID,
   getPdaPersonalPositionAddress,
   PositionUtils,
   TickUtils,
@@ -189,9 +190,19 @@ export class Raydium {
     }
   }
 
+  /**
+   * The CLMM program that owns this network's positions.
+   *
+   * Personal-position PDAs are derived from it, so using the mainnet id on devnet
+   * derives addresses that do not exist and silently reports no positions.
+   */
+  private get clmmProgramId(): PublicKey {
+    return this.solana.network === 'mainnet-beta' ? CLMM_PROGRAM_ID : DEVNET_PROGRAM_ID.CLMM_PROGRAM_ID;
+  }
+
   async getClmmPosition(positionAddress: string): Promise<any> {
     const positionNftMint = new PublicKey(positionAddress);
-    const positionPubKey = getPdaPersonalPositionAddress(CLMM_PROGRAM_ID, positionNftMint).publicKey;
+    const positionPubKey = getPdaPersonalPositionAddress(this.clmmProgramId, positionNftMint).publicKey;
     const positionAccount = await this.solana.connection.getAccountInfo(new PublicKey(positionPubKey));
 
     if (!positionAccount) {
@@ -293,13 +304,14 @@ export class Raydium {
 
     logger.debug(`Found ${nftMints.length} NFT(s) for wallet ${walletAddress}, checking for Raydium CLMM positions`);
 
-    // Keep only the NFTs whose personal-position PDA actually exists on the CLMM program
+    // Keep only the NFTs whose personal-position PDA actually exists on this
+    // network's CLMM program
     const positionMints: string[] = [];
     const chunkSize = 100; // getMultipleAccountsInfo limit
     for (let i = 0; i < nftMints.length; i += chunkSize) {
       const chunk = nftMints.slice(i, i + chunkSize);
       const positionAddresses = chunk.map(
-        (mint) => getPdaPersonalPositionAddress(CLMM_PROGRAM_ID, new PublicKey(mint)).publicKey,
+        (mint) => getPdaPersonalPositionAddress(this.clmmProgramId, new PublicKey(mint)).publicKey,
       );
       const accounts = await this.solana.connection.getMultipleAccountsInfo(positionAddresses);
       accounts.forEach((account, index) => {
