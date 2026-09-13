@@ -34,7 +34,7 @@ const SIMULATION_ERROR_MESSAGE = 'Transaction simulation failed: ';
 
 // Shared Connection config. disableRetryOnRateLimit turns off web3.js' built-in
 // 429 retry so the rate-limit interceptor is the single retry layer (mirrors
-// throttleLimit: 1 on the Ethereum provider) — avoids compounding retries.
+// rateLimitAwareConnection on the Ethereum provider) — avoids compounding retries.
 const SOLANA_CONNECTION_CONFIG: ConnectionConfig = {
   commitment: 'confirmed',
   disableRetryOnRateLimit: true,

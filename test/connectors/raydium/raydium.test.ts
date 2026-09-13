@@ -18,7 +18,10 @@ jest.mock('@raydium-io/raydium-sdk-v2', () => {
     DEVNET_PROGRAM_ID: {
       AMM_V4: new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8'),
       AMM_STABLE: new PublicKey('5quBtoiQqxF9Jv6KYKctB59NT3gtJD2Y65kdnB1Uev3h'),
-      CLMM_PROGRAM_ID: new PublicKey('CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK'),
+      // The real devnet CLMM program, not a copy of mainnet's — position PDAs are
+      // derived from it, so a test that mocked both to the same value could not
+      // catch the network being ignored.
+      CLMM_PROGRAM_ID: new PublicKey('devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH'),
     },
     PositionInfoLayout: {
       decode: jest.fn(),
@@ -44,7 +47,7 @@ jest.mock('../../../src/connectors/raydium/raydium.utils', () => ({
 }));
 
 // Import after mocks
-import { Raydium as RaydiumSDK, TxVersion } from '@raydium-io/raydium-sdk-v2';
+import { Raydium as RaydiumSDK, TxVersion, getPdaPersonalPositionAddress } from '@raydium-io/raydium-sdk-v2';
 
 import { Solana } from '../../../src/chains/solana/solana';
 import { Raydium } from '../../../src/connectors/raydium/raydium';
@@ -426,6 +429,103 @@ describe('Raydium', () => {
           poolType: 'cpmm',
         });
       });
+    });
+  });
+
+  describe('getPositionsForWalletAddress', () => {
+    const walletAddress = 'BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF';
+    const positionNft = '7YttLkHDoNj9wyDur5pM1ejNaAvT9X4eqaYcHQqtj2G5';
+    const plainNft = '8YttLkHDoNj9wyDur5pM1ejNaAvT9X4eqaYcHQqtj2G6';
+    const fungibleMint = 'So11111111111111111111111111111111111111112';
+
+    const tokenAccount = (mint: string, uiAmount: number, decimals: number) => ({
+      account: { data: { parsed: { info: { mint, tokenAmount: { uiAmount, decimals } } } } },
+    });
+
+    beforeEach(() => {
+      mockConnection.getParsedTokenAccountsByOwner = jest.fn().mockImplementation(async (_owner, filter) => {
+        // Only the SPL Token program holds NFTs in this fixture
+        const isSplToken = filter.programId.toBase58() === 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+        return {
+          value: isSplToken
+            ? [
+                tokenAccount(positionNft, 1, 0),
+                tokenAccount(plainNft, 1, 0),
+                tokenAccount(fungibleMint, 12.5, 9), // not an NFT
+              ]
+            : [],
+        };
+      });
+
+      (getPdaPersonalPositionAddress as jest.Mock).mockImplementation((_programId, nftMint) => ({
+        publicKey: nftMint,
+      }));
+
+      // Only the first NFT has a personal-position account on the CLMM program
+      mockConnection.getMultipleAccountsInfo = jest
+        .fn()
+        .mockImplementation(async (addresses: PublicKey[]) =>
+          addresses.map((address) => (address.toBase58() === positionNft ? { data: Buffer.alloc(0) } : null)),
+        );
+    });
+
+    it('should list positions without requiring a wallet stored in Gateway', async () => {
+      const raydiumInstance = await Raydium.getInstance('mainnet-beta');
+      const getPositionInfo = jest
+        .spyOn(raydiumInstance, 'getPositionInfo')
+        .mockResolvedValue({ address: positionNft } as any);
+
+      const positions = await raydiumInstance.getPositionsForWalletAddress(walletAddress);
+
+      expect(positions).toEqual([{ address: positionNft }]);
+      expect(getPositionInfo).toHaveBeenCalledTimes(1);
+      expect(getPositionInfo).toHaveBeenCalledWith(positionNft);
+      // The address is never looked up in the wallet store
+      expect(mockSolanaInstance.getWallet).not.toHaveBeenCalled();
+    });
+
+    it('should return an empty array when the wallet holds no positions', async () => {
+      mockConnection.getMultipleAccountsInfo = jest
+        .fn()
+        .mockImplementation(async (addresses: PublicKey[]) => addresses.map(() => null));
+
+      const raydiumInstance = await Raydium.getInstance('mainnet-beta');
+      const getPositionInfo = jest.spyOn(raydiumInstance, 'getPositionInfo');
+
+      await expect(raydiumInstance.getPositionsForWalletAddress(walletAddress)).resolves.toEqual([]);
+      expect(getPositionInfo).not.toHaveBeenCalled();
+    });
+
+    it('should skip positions that resolve to null (closed positions)', async () => {
+      const raydiumInstance = await Raydium.getInstance('mainnet-beta');
+      jest.spyOn(raydiumInstance, 'getPositionInfo').mockResolvedValue(null);
+
+      await expect(raydiumInstance.getPositionsForWalletAddress(walletAddress)).resolves.toEqual([]);
+    });
+
+    it('should reject an invalid wallet address', async () => {
+      const raydiumInstance = await Raydium.getInstance('mainnet-beta');
+
+      await expect(raydiumInstance.getPositionsForWalletAddress('not-a-wallet')).rejects.toThrow();
+    });
+
+    // Personal-position PDAs are derived from the CLMM program id, so deriving with
+    // mainnet's on devnet produces addresses that do not exist and the wallet looks
+    // empty. The enumeration this replaced tried both program ids explicitly.
+    it.each([
+      ['mainnet-beta', 'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK'],
+      ['devnet', 'devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH'],
+    ])('should derive position PDAs with the %s CLMM program', async (network, expectedProgramId) => {
+      mockSolanaInstance.network = network;
+      const raydiumInstance = await Raydium.getInstance(network);
+      jest.spyOn(raydiumInstance, 'getPositionInfo').mockResolvedValue({ address: positionNft } as any);
+
+      await raydiumInstance.getPositionsForWalletAddress(walletAddress);
+
+      expect(getPdaPersonalPositionAddress).toHaveBeenCalled();
+      for (const [programId] of (getPdaPersonalPositionAddress as jest.Mock).mock.calls) {
+        expect(programId.toBase58()).toBe(expectedProgramId);
+      }
     });
   });
 

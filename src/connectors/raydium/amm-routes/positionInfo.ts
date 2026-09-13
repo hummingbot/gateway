@@ -76,20 +76,16 @@ export async function getPositionInfo(
   walletAddress: string,
 ): Promise<PositionInfo> {
   // Validate wallet address
+  let walletPublicKey: PublicKey;
   try {
-    new PublicKey(walletAddress);
+    // Read-only: the address does not need to be a wallet stored in Gateway
+    walletPublicKey = new PublicKey(walletAddress);
   } catch (error) {
     throw httpErrors.badRequest('Invalid wallet address');
   }
 
   const raydium = await Raydium.getInstance(network);
   const solana = await Solana.getInstance(network);
-
-  // Prepare wallet and check if it's hardware
-  const { wallet, isHardwareWallet } = await raydium.prepareWallet(walletAddress);
-
-  // Get wallet public key
-  const walletPublicKey = isHardwareWallet ? (wallet as PublicKey) : (wallet as any).publicKey;
 
   // Validate pool address
   try {
