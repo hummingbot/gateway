@@ -5,7 +5,7 @@ import fse from 'fs-extra';
 
 import { ChainstackService } from '../../rpc/chainstack-service';
 import { InfuraService } from '../../rpc/infura-service';
-import { createRateLimitAwareEthereumProvider } from '../../rpc/rpc-connection-interceptor';
+import { createRateLimitAwareEthereumProvider, rateLimitAwareConnection } from '../../rpc/rpc-connection-interceptor';
 import { RPCProvider } from '../../rpc/rpc-provider-base';
 import { TokenValue, tokenValueToString } from '../../services/base';
 import { ConfigManagerCertPassphrase } from '../../services/config-manager-cert-passphrase';
@@ -132,10 +132,10 @@ export class Ethereum {
     } else if (rpcProvider === 'chainstack') {
       this.initializeChainstackProvider();
     } else {
-      // Default: use nodeURL with rate limit detection. throttleLimit: 1 disables
-      // ethers' built-in 429 retry so the interceptor is the single retry layer.
+      // Default: use nodeURL with rate limit detection. The connection keeps ethers
+      // from retrying 429s so the interceptor is the single retry layer.
       this.provider = createRateLimitAwareEthereumProvider(
-        new providers.StaticJsonRpcProvider({ url: this.rpcUrl, throttleLimit: 1 }),
+        new providers.StaticJsonRpcProvider(rateLimitAwareConnection(this.rpcUrl)),
         this.rpcUrl,
       );
     }
@@ -441,7 +441,7 @@ export class Ethereum {
         logger.warn(`⚠️ Infura provider selected but no valid API key configured`);
         logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
         this.provider = createRateLimitAwareEthereumProvider(
-          new providers.StaticJsonRpcProvider({ url: this.rpcUrl, throttleLimit: 1 }),
+          new providers.StaticJsonRpcProvider(rateLimitAwareConnection(this.rpcUrl)),
           this.rpcUrl,
         );
         return;
@@ -462,7 +462,7 @@ export class Ethereum {
       logger.warn(`Failed to initialize Infura provider: ${error.message}`);
       logger.info(`Using standard RPC from nodeURL: ${redactUrl(this.rpcUrl)}`);
       this.provider = createRateLimitAwareEthereumProvider(
-        new providers.StaticJsonRpcProvider({ url: this.rpcUrl, throttleLimit: 1 }),
+        new providers.StaticJsonRpcProvider(rateLimitAwareConnection(this.rpcUrl)),
         this.rpcUrl,
       );
     }
@@ -478,7 +478,7 @@ export class Ethereum {
   private initializeChainstackProvider(): void {
     // Placeholder provider — swapped to the Chainstack URL in init() after discovery.
     this.provider = createRateLimitAwareEthereumProvider(
-      new providers.StaticJsonRpcProvider({ url: this.rpcUrl, throttleLimit: 1 }),
+      new providers.StaticJsonRpcProvider(rateLimitAwareConnection(this.rpcUrl)),
       this.rpcUrl,
     );
 
