@@ -1,4 +1,5 @@
 import { Contract } from '@ethersproject/contracts';
+import { BigNumberish } from 'ethers';
 
 import { BinLiquidity } from '../schemas/clmm-schema';
 
@@ -40,6 +41,33 @@ export interface V3SqrtPriceMath {
   getAmount1Delta(sqrtRatioAX96: bigint, sqrtRatioBX96: bigint, liquidity: bigint, roundUp: boolean): bigint;
 }
 
+/** Initialized-tick reads per round trip, to stay clear of node rate limits. */
+const TICK_READ_BATCH = 25;
+const TICK_READ_RETRIES = 4;
+
+/**
+ * Read a batch of ticks, retrying transport failures.
+ *
+ * These are idempotent reads of a public mapping, so a retry is safe. Nothing is
+ * substituted for a read that never succeeds: after the last attempt the error
+ * propagates, because a missing liquidityNet quietly treated as zero is exactly what
+ * produced a confidently wrong liquidity profile before.
+ */
+async function readTicksWithRetry(poolContract: Contract, ticks: number[]): Promise<{ liquidityNet: BigNumberish }[]> {
+  let delayMs = 250;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await Promise.all(ticks.map((tick) => poolContract.ticks(tick)));
+    } catch (error) {
+      if (attempt >= TICK_READ_RETRIES) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      delayMs *= 2;
+    }
+  }
+}
+
 export async function computeV3BinDistribution(args: {
   poolContract: Contract;
   tickSpacing: number;
@@ -76,11 +104,47 @@ export async function computeV3BinDistribution(args: {
     boundaries.push(firstBinStart + i * tickSpacing);
   }
 
-  // Parallel reads of pool.ticks(tick) at each boundary. Non-initialized
-  // ticks return zeros which is the correct neutral element for liquidityNet.
-  const tickData = await Promise.all(
-    boundaries.map((tick) => poolContract.ticks(tick).catch(() => ({ liquidityNet: 0 }))),
-  );
+  // liquidityNet at each boundary, asking the tick bitmap which boundaries have one.
+  //
+  // Reading `ticks()` at every boundary is mostly wasted work: nearly all of them are
+  // uninitialized and answer zero. The bitmap reports which are not, one bit per
+  // tickSpacing, so a 401-bin window costs a couple of word reads plus one call per tick
+  // that actually carries liquidity — dozens of calls instead of hundreds. A boundary the
+  // bitmap reports as uninitialized has liquidityNet zero by definition, so not reading it
+  // loses nothing.
+  //
+  // This previously read all of them at once and caught each rejection as
+  // `liquidityNet: 0`. Both getters cannot revert for in-range inputs, so every rejection
+  // it caught was a transport failure, and recording one as "no liquidity change here"
+  // silently flattens the profile into a plausible wrong answer rather than an error.
+  // Measured against a node rate-limiting the 401 concurrent calls, a pool whose liquidity
+  // truly falls to 7% of its value at spot by +10% reported 94% — a flat curve where the
+  // real one drops twelvefold, with nothing in the response to indicate it. Rejections now
+  // propagate, and the bitmap keeps the request small enough not to provoke them.
+  const wordOf = (tick: number) => Math.floor(Math.floor(tick / tickSpacing) / 256);
+  const words: number[] = [];
+  for (let word = wordOf(boundaries[0]); word <= wordOf(boundaries[boundaries.length - 1]); word++) {
+    words.push(word);
+  }
+  const bitmaps = await Promise.all(words.map((word) => poolContract.tickBitmap(word)));
+  const initialized = new Set<number>();
+  bitmaps.forEach((bitmap, index) => {
+    const bits = BigInt(bitmap.toString());
+    for (let bit = 0; bit < 256; bit++) {
+      if ((bits >> BigInt(bit)) & 1n) {
+        initialized.add((words[index] * 256 + bit) * tickSpacing);
+      }
+    }
+  });
+
+  const live = boundaries.filter((tick) => initialized.has(tick));
+  const liquidityNets = new Map<number, BigNumberish>();
+  for (let i = 0; i < live.length; i += TICK_READ_BATCH) {
+    const batch = live.slice(i, i + TICK_READ_BATCH);
+    const read = await readTicksWithRetry(poolContract, batch);
+    batch.forEach((tick, j) => liquidityNets.set(tick, read[j].liquidityNet));
+  }
+  const tickData = boundaries.map((tick) => ({ liquidityNet: liquidityNets.get(tick) ?? 0 }));
 
   const curIdx = Math.floor((currentTick - firstBinStart) / tickSpacing);
 
