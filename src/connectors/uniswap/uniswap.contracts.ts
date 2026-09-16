@@ -29,6 +29,8 @@ export interface UniswapContractAddresses {
   // V4 contracts
   uniswapV4PoolManagerAddress?: string;
   uniswapV4StateViewAddress?: string;
+  uniswapV4PositionManagerAddress?: string;
+  uniswapV4QuoterAddress?: string;
 }
 
 export interface NetworkContractAddresses {
@@ -50,6 +52,8 @@ export const contractAddresses: NetworkContractAddresses = {
     // V4 contracts - Official Uniswap addresses
     uniswapV4PoolManagerAddress: '0x000000000004444c5dc75cB358380D2e3dE08A90',
     uniswapV4StateViewAddress: '0x7ffe42c4a5deea5b0fec41c94c136cf115597227',
+    uniswapV4PositionManagerAddress: '0xbD216513d74C8cf14cf4747E6AaA6420FF64ee9e',
+    uniswapV4QuoterAddress: '0x52F0E24D1c21C8A0cB1e5a5dD6198556BD9E1203',
   },
   arbitrum: {
     // V2 contracts - Official Uniswap addresses
@@ -199,6 +203,12 @@ export const contractAddresses: NetworkContractAddresses = {
     uniswapV3FactoryAddress: '0x1f7d7550b1b028f7571e69a784071f0205fd2efa',
     // Universal Router V2 - Official Uniswap address
     universalRouterV2Address: '0x8876789976decbfcbbbe364623c63652db8c0904',
+    // V4 contracts - Official Uniswap addresses
+    // https://developers.uniswap.org/docs/protocols/v4/deployments
+    uniswapV4PoolManagerAddress: '0x8366a39cc670b4001a1121b8f6a443a643e40951',
+    uniswapV4StateViewAddress: '0xf3334192d15450cdd385c8b70e03f9a6bd9e673b',
+    uniswapV4PositionManagerAddress: '0x58daec3116aae6d93017baaea7749052e8a04fa7',
+    uniswapV4QuoterAddress: '0x8dc178efb8111bb0973dd9d722ebeff267c98f94',
   },
   unichain: {
     // V2 contracts - Official Uniswap addresses
@@ -362,6 +372,33 @@ export function getUniswapV4StateViewAddress(network: string): string {
 
   return address;
 }
+
+export function getUniswapV4PositionManagerAddress(network: string): string {
+  const address = contractAddresses[network]?.uniswapV4PositionManagerAddress;
+
+  if (!address) {
+    throw new Error(`Uniswap V4 Position Manager address not configured for network: ${network}`);
+  }
+
+  return address;
+}
+
+export function getUniswapV4QuoterAddress(network: string): string {
+  const address = contractAddresses[network]?.uniswapV4QuoterAddress;
+
+  if (!address) {
+    throw new Error(`Uniswap V4 Quoter address not configured for network: ${network}`);
+  }
+
+  return address;
+}
+
+/**
+ * Permit2 is deployed at one address on every chain, by deterministic deployment, and
+ * V4's PositionManager pulls tokens through it rather than by direct ERC-20 allowance.
+ * https://docs.uniswap.org/contracts/permit2/overview
+ */
+export const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
 
 /**
  * Returns the appropriate spender address based on the connector name
@@ -862,57 +899,6 @@ export const INftManagerCreatePoolABI = [
 ];
 
 /**
- * Uniswap V4 StateView ABI for querying pool state
- */
-export const IStateViewABI = [
-  {
-    inputs: [
-      {
-        components: [
-          { internalType: 'Currency', name: 'currency0', type: 'address' },
-          { internalType: 'Currency', name: 'currency1', type: 'address' },
-          { internalType: 'uint24', name: 'fee', type: 'uint24' },
-          { internalType: 'int24', name: 'tickSpacing', type: 'int24' },
-          { internalType: 'contract IHooks', name: 'hooks', type: 'address' },
-        ],
-        internalType: 'struct PoolKey',
-        name: 'key',
-        type: 'tuple',
-      },
-    ],
-    name: 'getSlot0',
-    outputs: [
-      { internalType: 'uint160', name: 'sqrtPriceX96', type: 'uint160' },
-      { internalType: 'int24', name: 'tick', type: 'int24' },
-      { internalType: 'uint24', name: 'protocolFee', type: 'uint24' },
-      { internalType: 'uint24', name: 'lpFee', type: 'uint24' },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        components: [
-          { internalType: 'Currency', name: 'currency0', type: 'address' },
-          { internalType: 'Currency', name: 'currency1', type: 'address' },
-          { internalType: 'uint24', name: 'fee', type: 'uint24' },
-          { internalType: 'int24', name: 'tickSpacing', type: 'int24' },
-          { internalType: 'contract IHooks', name: 'hooks', type: 'address' },
-        ],
-        internalType: 'struct PoolKey',
-        name: 'key',
-        type: 'tuple',
-      },
-    ],
-    name: 'getLiquidity',
-    outputs: [{ internalType: 'uint128', name: '', type: 'uint128' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-];
-
-/**
  * Standard ERC20 ABI for token operations
  */
 export const ERC20_ABI = [
@@ -928,4 +914,51 @@ export const ERC20_ABI = [
     stateMutability: 'nonpayable',
     type: 'function',
   },
+];
+
+/**
+ * Uniswap V4 PoolManager — the singleton holding every pool.
+ *
+ * `extsload` is the batch storage reader the V4 read paths depend on; one call returns
+ * an arbitrary set of slots, which is the only affordable way to scan a pool's tick
+ * bitmap (see uniswap.v4.ts). `Initialize` is carried for completeness: it is the
+ * canonical record of a PoolKey, though not a reliable lookup on every RPC.
+ */
+export const IPoolManagerABI = [
+  'function extsload(bytes32 slot) view returns (bytes32)',
+  'function extsload(bytes32 startSlot, uint256 nSlots) view returns (bytes32[])',
+  'function extsload(bytes32[] slots) view returns (bytes32[])',
+  'event Initialize(bytes32 indexed id, address indexed currency0, address indexed currency1, uint24 fee, int24 tickSpacing, address hooks, uint160 sqrtPriceX96, int24 tick)',
+];
+
+/**
+ * Uniswap V4 PositionManager.
+ *
+ * `poolKeys` is keyed by the first 25 bytes of a pool id and is how a PoolKey is
+ * recovered from an id. `modifyLiquidities` is the single entry point for every
+ * liquidity change, for the write paths.
+ */
+export const IV4PositionManagerABI = [
+  'function poolKeys(bytes25 poolId) view returns (address currency0, address currency1, uint24 fee, int24 tickSpacing, address hooks)',
+  'function poolManager() view returns (address)',
+  'function nextTokenId() view returns (uint256)',
+  'function ownerOf(uint256 tokenId) view returns (address)',
+  'function balanceOf(address owner) view returns (uint256)',
+  'function getPoolAndPositionInfo(uint256 tokenId) view returns (tuple(address currency0, address currency1, uint24 fee, int24 tickSpacing, address hooks) poolKey, uint256 info)',
+  'function getPositionLiquidity(uint256 tokenId) view returns (uint128 liquidity)',
+  'function modifyLiquidities(bytes unlockData, uint256 deadline) payable',
+];
+
+/**
+ * Uniswap V4 StateView — typed getters over the same PoolManager storage `extsload`
+ * reads. One value per call with no batch variant, so the read paths use `extsload`
+ * instead; this is here for the tests that cross-check the derived slots.
+ */
+export const IStateViewABI = [
+  'function poolManager() view returns (address)',
+  'function getSlot0(bytes32 poolId) view returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee)',
+  'function getLiquidity(bytes32 poolId) view returns (uint128 liquidity)',
+  'function getTickLiquidity(bytes32 poolId, int24 tick) view returns (uint128 liquidityGross, int128 liquidityNet)',
+  'function getTickBitmap(bytes32 poolId, int16 tick) view returns (uint256 tickBitmap)',
+  'function getPositionLiquidity(bytes32 poolId, bytes32 positionId) view returns (uint128 liquidity)',
 ];

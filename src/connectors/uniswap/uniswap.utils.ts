@@ -307,11 +307,11 @@ export async function getUniswapPoolInfo(
  */
 export type UniswapBinDistributionEntry = BinLiquidity;
 
-const uniswapTickMath: V3TickMath = {
+export const uniswapTickMath: V3TickMath = {
   getSqrtRatioAtTick: (tick) => BigInt(TickMath.getSqrtRatioAtTick(tick).toString()),
 };
 
-const uniswapSqrtPriceMath: V3SqrtPriceMath = {
+export const uniswapSqrtPriceMath: V3SqrtPriceMath = {
   getAmount0Delta: (a, b, l, roundUp) =>
     BigInt(
       SqrtPriceMath.getAmount0Delta(

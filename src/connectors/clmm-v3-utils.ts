@@ -167,14 +167,69 @@ export async function computeV3BinDistribution(args: {
     binLs[i] = binLs[i + 1] - net;
   }
 
+  return binsFromLiquidityProfile({
+    boundaries,
+    liquidities: binLs,
+    currentTick,
+    currentSqrtPriceX96,
+    decimals0,
+    decimals1,
+    isBaseToken0,
+    tickMath,
+    sqrtPriceMath,
+  });
+}
+
+/**
+ * Convert a piecewise-constant liquidity profile into per-bin token amounts.
+ *
+ * `boundaries` is an ascending tick list of length n+1 and `liquidities[i]` is the
+ * liquidity active across `[boundaries[i], boundaries[i+1])`. The bins need not be
+ * evenly spaced, which is what lets one implementation serve two callers: the V3 walk
+ * above passes a uniform tickSpacing grid around the active tick, while the V4 reader
+ * passes the pool's initialized ticks to total up its whole reserves.
+ *
+ * A bin entirely below the current tick holds only token1, one entirely above holds
+ * only token0, and the bin containing the current tick is split at the live
+ * sqrtPriceX96 — that split is why the amounts cannot be derived from L alone.
+ */
+export function binsFromLiquidityProfile(args: {
+  boundaries: number[];
+  liquidities: bigint[];
+  currentTick: number;
+  currentSqrtPriceX96: bigint;
+  decimals0: number;
+  decimals1: number;
+  isBaseToken0: boolean;
+  tickMath: V3TickMath;
+  sqrtPriceMath: V3SqrtPriceMath;
+}): BinLiquidity[] {
+  const {
+    boundaries,
+    liquidities,
+    currentTick,
+    currentSqrtPriceX96,
+    decimals0,
+    decimals1,
+    isBaseToken0,
+    tickMath,
+    sqrtPriceMath,
+  } = args;
+  if (boundaries.length !== liquidities.length + 1) {
+    throw new Error(
+      `Liquidity profile is inconsistent: ${boundaries.length} boundaries cannot bound ` +
+        `${liquidities.length} bins (expected ${liquidities.length + 1}).`,
+    );
+  }
+
   const scale0 = Math.pow(10, decimals0);
   const scale1 = Math.pow(10, decimals1);
   const zero = 0n;
   const bins: BinLiquidity[] = [];
-  for (let i = 0; i < binCount; i++) {
+  for (let i = 0; i < liquidities.length; i++) {
     const tickStart = boundaries[i];
     const tickEnd = boundaries[i + 1];
-    const L = binLs[i];
+    const L = liquidities[i];
     let amount0: bigint = zero;
     let amount1: bigint = zero;
     if (L > zero) {

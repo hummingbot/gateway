@@ -8,6 +8,9 @@ import { PoolInfo } from '../../../schemas/clmm-schema';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { Uniswap } from '../uniswap';
 import { computeUniswapBinDistribution, formatTokenAmount, getUniswapPoolInfo } from '../uniswap.utils';
+import { isV4PoolId } from '../uniswap.v4';
+
+import { getV4PoolInfo } from './poolInfoV4';
 
 export async function getPoolInfo(
   fastify: FastifyInstance,
@@ -15,11 +18,17 @@ export async function getPoolInfo(
   poolAddress: string,
   binCount: number = 0,
 ): Promise<PoolInfo> {
-  const uniswap = await Uniswap.getInstance(network);
-
   if (!poolAddress) {
     throw fastify.httpErrors.badRequest('Pool address is required');
   }
+
+  // A 32-byte id is a V4 pool, which is an entry in the singleton PoolManager rather
+  // than a contract, so none of the pool-address reads below apply to it.
+  if (isV4PoolId(poolAddress)) {
+    return getV4PoolInfo(fastify, network, poolAddress, binCount);
+  }
+
+  const uniswap = await Uniswap.getInstance(network);
 
   // Get pool information to determine tokens
   const poolInfo = await getUniswapPoolInfo(poolAddress, network, 'clmm');
