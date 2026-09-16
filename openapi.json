@@ -1564,7 +1564,15 @@
             "format": "decimal",
             "type": "string"
           },
-          "liquidity": {}
+          "liquidity": {},
+          "positionCount": {
+            "description": "Number of positions required to cover this price range",
+            "type": "number"
+          },
+          "transactionCount": {
+            "description": "Number of transactions required to open and fund this range",
+            "type": "number"
+          }
         },
         "required": [
           "baseLimited",

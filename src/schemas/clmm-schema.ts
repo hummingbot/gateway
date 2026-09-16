@@ -517,6 +517,17 @@ export const QuotePositionResponse = Type.Object(
     baseTokenAmountMax: DecimalNumber({}),
     quoteTokenAmountMax: DecimalNumber({}),
     liquidity: Type.Optional(Type.Any()),
+    // What opening this range actually costs in accounts and round trips. On Meteora one
+    // position spans up to 1400 bins, but a deposit is chunked at 70 bins per
+    // transaction, so a wide range is one position funded over several transactions —
+    // `transactionCount` is what grows, and it is the number worth checking before
+    // opening. Omitted by venues that always open in a single transaction.
+    positionCount: Type.Optional(
+      Type.Number({ description: 'Number of positions required to cover this price range' }),
+    ),
+    transactionCount: Type.Optional(
+      Type.Number({ description: 'Number of transactions required to open and fund this range' }),
+    ),
   },
   { $id: 'ClmmQuoteLiquidityResponse' },
 );

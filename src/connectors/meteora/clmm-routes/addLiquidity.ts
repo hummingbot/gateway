@@ -98,7 +98,12 @@ export async function addLiquidity(
   const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount), dlmmPool.tokenX.mint.decimals));
   const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(quoteTokenAmount), dlmmPool.tokenY.mint.decimals));
 
-  const addLiquidityTx = await dlmmPool.addLiquidityByStrategy({
+  // Chunkable, because a position can be wider than one transaction can deposit into.
+  // openPosition will now create such a position, and remove-liquidity, close-position and
+  // collect-fees already send whatever the SDK hands back, so this was the one route on the
+  // position's lifecycle that could not service the wide end of it: the non-chunkable
+  // builder returns a single transaction and silently assumes the range fits in one.
+  const addLiquidityTxs = await dlmmPool.addLiquidityByStrategyChunkable({
     positionPubKey: new PublicKey(position.publicKey),
     user: walletPublicKey,
     totalXAmount,
@@ -111,12 +116,32 @@ export async function addLiquidity(
     slippage: slippagePct,
   });
 
-  // Set the fee payer for simulation
-  addLiquidityTx.feePayer = walletPublicKey;
+  const transactions = Array.isArray(addLiquidityTxs) ? addLiquidityTxs : [addLiquidityTxs];
 
   // Sign + send via the wallet-type-aware chokepoint (handles local/hardware and
-  // simulates internally).
-  const { signature, fee } = await solana.sendAndConfirmTransactionForWallet(addLiquidityTx, address);
+  // simulates internally). A narrow position is still one transaction; a wide one deposits
+  // over several, and a failure partway leaves the earlier chunks funded.
+  const signatures: string[] = [];
+  let fee = 0;
+  for (let i = 0; i < transactions.length; i++) {
+    const tx = transactions[i];
+    tx.feePayer = walletPublicKey;
+    try {
+      const result = await solana.sendAndConfirmTransactionForWallet(tx, address);
+      signatures.push(result.signature);
+      fee += result.fee;
+    } catch (error) {
+      if (signatures.length === 0) throw error;
+      throw httpErrors.internalServerError(
+        `Added liquidity in ${signatures.length} of ${transactions.length} chunks before ` +
+          `${error instanceof Error ? error.message : String(error)}. The position holds what landed — ` +
+          `re-run add-liquidity with the remaining amount. Transactions: ${signatures.join(', ')}`,
+      );
+    }
+  }
+
+  // The first transaction; the amounts below are summed across all of them.
+  const signature = signatures[0];
 
   // Get transaction data for confirmation
   // Retrying re-fetch; throws the shared landed-but-failed error if the transaction
@@ -126,15 +151,19 @@ export async function addLiquidity(
   const confirmed = txData !== null;
 
   if (confirmed && txData) {
-    // Track wallet's balance changes for the tokens
-    const { balanceChanges } = await solana.extractBalanceChangesAndFee(signature, walletPublicKey.toBase58(), [
-      dlmmPool.tokenX.publicKey.toBase58(),
-      dlmmPool.tokenY.publicKey.toBase58(),
-    ]);
-
-    // Balance changes are negative (tokens leaving wallet)
-    let tokenXAddedAmount = Math.abs(balanceChanges[0]);
-    let tokenYAddedAmount = Math.abs(balanceChanges[1]);
+    // Track wallet's balance changes for the tokens, over every transaction that
+    // deposited. Reading only the first would report a fraction of a chunked add.
+    let tokenXAddedAmount = 0;
+    let tokenYAddedAmount = 0;
+    for (const sig of signatures) {
+      const { balanceChanges } = await solana.extractBalanceChangesAndFee(sig, walletPublicKey.toBase58(), [
+        dlmmPool.tokenX.publicKey.toBase58(),
+        dlmmPool.tokenY.publicKey.toBase58(),
+      ]);
+      // Balance changes are negative (tokens leaving wallet)
+      tokenXAddedAmount += Math.abs(balanceChanges[0]);
+      tokenYAddedAmount += Math.abs(balanceChanges[1]);
+    }
 
     // When SOL is base/quote, wallet pays: liquidity + tx fee
     // Subtract fee to get actual liquidity added
