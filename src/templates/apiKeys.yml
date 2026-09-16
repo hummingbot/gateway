@@ -21,6 +21,12 @@ chainstack: ''
 # Free tier: 30 calls/minute without key
 coingecko: ''
 
+# Which CoinGecko plan the key above belongs to: 'demo' or 'pro'.
+# Demo and Pro keys are accepted on different hosts and under different headers,
+# and the key itself does not say which it is. Leave blank to detect it on the
+# first call; set it to skip that probe.
+coingeckoPlan: ''
+
 # Etherscan - Gas price estimates for Ethereum networks
 # Get your API key from https://etherscan.io/myapikey
 # Works for all Etherscan V2 API supported chains

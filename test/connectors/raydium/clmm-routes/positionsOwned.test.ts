@@ -1,5 +1,3 @@
-import { PublicKey, Keypair } from '@solana/web3.js';
-
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Raydium } from '../../../../src/connectors/raydium/raydium';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
@@ -16,7 +14,6 @@ const buildApp = async () => {
 };
 
 const mockWalletAddress = 'BPgNwGDBiRuaAKuRQLpXC9rCiw5FfJDDdTunDEmtN6VF';
-const mockWalletKeypair = Keypair.generate();
 
 const mockPosition1NFT = '7YttLkHDoNj9wyDur5pM1ejNaAvT9X4eqaYcHQqtj2G5';
 const mockPosition2NFT = '8YttLkHDoNj9wyDur5pM1ejNaAvT9X4eqaYcHQqtj2G6';
@@ -54,12 +51,21 @@ const mockPositions = [
   },
 ];
 
-const mockRaydiumSDK = {
-  clmm: {
-    getOwnerPositionInfo: jest
-      .fn()
-      .mockResolvedValue([{ nftMint: new PublicKey(mockPosition1NFT) }, { nftMint: new PublicKey(mockPosition2NFT) }]),
-  },
+const requestPositions = (app: any, walletAddress: string) =>
+  app.inject({
+    method: 'GET',
+    url: '/positions-owned',
+    query: {
+      chainNetwork: 'solana-mainnet-beta',
+      connector: 'raydium',
+      walletAddress,
+    },
+  });
+
+const mockRaydiumWith = (getPositionsForWalletAddress: jest.Mock) => {
+  const mockRaydium = { getPositionsForWalletAddress, prepareWallet: jest.fn(), setOwner: jest.fn() };
+  (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydium);
+  return mockRaydium;
 };
 
 describe('GET /positions-owned', () => {
@@ -68,7 +74,6 @@ describe('GET /positions-owned', () => {
   beforeAll(async () => {
     app = await buildApp();
 
-    // Mock Solana.getInstance
     const mockSolana = {
       connection: {},
       getPositionCache: jest.fn().mockReturnValue({
@@ -77,18 +82,6 @@ describe('GET /positions-owned', () => {
       }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolana);
-
-    // Mock Raydium.getInstance
-    const mockRaydium = {
-      prepareWallet: jest.fn().mockResolvedValue({
-        wallet: mockWalletKeypair,
-        isHardwareWallet: false,
-      }),
-      setOwner: jest.fn().mockResolvedValue(undefined),
-      raydiumSDK: mockRaydiumSDK,
-      getPositionInfo: jest.fn().mockResolvedValueOnce(mockPositions[0]).mockResolvedValueOnce(mockPositions[1]),
-    };
-    (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydium);
   });
 
   afterAll(async () => {
@@ -96,15 +89,9 @@ describe('GET /positions-owned', () => {
   });
 
   it('should return all positions for a wallet across all pools', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/positions-owned',
-      query: {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'raydium',
-        walletAddress: mockWalletAddress,
-      },
-    });
+    mockRaydiumWith(jest.fn().mockResolvedValue(mockPositions));
+
+    const response = await requestPositions(app, mockWalletAddress);
 
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
@@ -115,33 +102,21 @@ describe('GET /positions-owned', () => {
     expect(body[1]).toHaveProperty('address', mockPosition2NFT);
   });
 
+  it('should look positions up by address, without a wallet stored in Gateway', async () => {
+    const mockRaydium = mockRaydiumWith(jest.fn().mockResolvedValue(mockPositions));
+
+    const response = await requestPositions(app, mockWalletAddress);
+
+    expect(response.statusCode).toBe(200);
+    expect(mockRaydium.getPositionsForWalletAddress).toHaveBeenCalledWith(mockWalletAddress);
+    expect(mockRaydium.prepareWallet).not.toHaveBeenCalled();
+    expect(mockRaydium.setOwner).not.toHaveBeenCalled();
+  });
+
   it('should return empty array when wallet has no positions', async () => {
-    const mockRaydiumSDKEmpty = {
-      clmm: {
-        getOwnerPositionInfo: jest.fn().mockResolvedValue([]),
-      },
-    };
+    mockRaydiumWith(jest.fn().mockResolvedValue([]));
 
-    const mockRaydium = {
-      prepareWallet: jest.fn().mockResolvedValue({
-        wallet: mockWalletKeypair,
-        isHardwareWallet: false,
-      }),
-      setOwner: jest.fn().mockResolvedValue(undefined),
-      raydiumSDK: mockRaydiumSDKEmpty,
-      getPositionInfo: jest.fn(),
-    };
-    (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydium);
-
-    const response = await app.inject({
-      method: 'GET',
-      url: '/positions-owned',
-      query: {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'raydium',
-        walletAddress: mockWalletAddress,
-      },
-    });
+    const response = await requestPositions(app, mockWalletAddress);
 
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
@@ -150,83 +125,10 @@ describe('GET /positions-owned', () => {
   });
 
   it('should return 400 for invalid wallet address', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/positions-owned',
-      query: {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'raydium',
-        walletAddress: 'invalid-address',
-      },
-    });
+    mockRaydiumWith(jest.fn().mockResolvedValue([]));
+
+    const response = await requestPositions(app, 'invalid-address');
 
     expect(response.statusCode).toBe(400);
-  });
-
-  it('should query multiple program IDs', async () => {
-    const mockRaydiumSDKMulti = {
-      clmm: {
-        getOwnerPositionInfo: jest
-          .fn()
-          .mockResolvedValueOnce([{ nftMint: new PublicKey(mockPosition1NFT) }])
-          .mockResolvedValueOnce([{ nftMint: new PublicKey(mockPosition2NFT) }]),
-      },
-    };
-
-    const mockRaydium = {
-      prepareWallet: jest.fn().mockResolvedValue({
-        wallet: mockWalletKeypair,
-        isHardwareWallet: false,
-      }),
-      setOwner: jest.fn().mockResolvedValue(undefined),
-      raydiumSDK: mockRaydiumSDKMulti,
-      getPositionInfo: jest.fn().mockResolvedValueOnce(mockPositions[0]).mockResolvedValueOnce(mockPositions[1]),
-    };
-    (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydium);
-
-    const response = await app.inject({
-      method: 'GET',
-      url: '/positions-owned',
-      query: {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'raydium',
-        walletAddress: mockWalletAddress,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
-    expect(body.length).toBe(2);
-  });
-
-  it('should skip positions that fail to fetch info', async () => {
-    const mockRaydium = {
-      prepareWallet: jest.fn().mockResolvedValue({
-        wallet: mockWalletKeypair,
-        isHardwareWallet: false,
-      }),
-      setOwner: jest.fn().mockResolvedValue(undefined),
-      raydiumSDK: mockRaydiumSDK,
-      getPositionInfo: jest
-        .fn()
-        .mockResolvedValueOnce(mockPositions[0])
-        .mockRejectedValueOnce(new Error('Failed to fetch')), // Second position fails
-    };
-    (Raydium.getInstance as jest.Mock).mockResolvedValue(mockRaydium);
-
-    const response = await app.inject({
-      method: 'GET',
-      url: '/positions-owned',
-      query: {
-        chainNetwork: 'solana-mainnet-beta',
-        connector: 'raydium',
-        walletAddress: mockWalletAddress,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
-    expect(body.length).toBe(1);
-    expect(body[0]).toHaveProperty('address', mockPosition1NFT);
   });
 });
