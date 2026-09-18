@@ -18,6 +18,7 @@ import {
   chainNetworkField,
   connectorField,
   parseChainNetwork,
+  resolveWalletAddress,
   poolAddressField,
   rethrowRouteError,
   resolvePoolAddress,
@@ -173,7 +174,7 @@ export const makeExecuteSwapRoute = (type: PoolType): FastifyPluginAsync => {
         const {
           chainNetwork,
           connector,
-          walletAddress,
+          walletAddress: requestedWallet,
           baseToken,
           quoteToken,
           amount,
@@ -184,6 +185,7 @@ export const makeExecuteSwapRoute = (type: PoolType): FastifyPluginAsync => {
 
         try {
           const { chain, network } = parseChainNetwork(chainNetwork);
+          const walletAddress = resolveWalletAddress(chain, requestedWallet);
           const name = resolveSwapConnector(chain, network, type, connector);
           const pool = await resolvePoolAddress(chain, network, type, name, baseToken, quoteToken, poolAddress);
 

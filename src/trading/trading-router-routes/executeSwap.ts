@@ -8,6 +8,7 @@ import {
   chainNetworkField,
   connectorField,
   parseChainNetwork,
+  resolveWalletAddress,
   rethrowRouteError,
   resolveSwapConnector,
   slippagePctField,
@@ -70,7 +71,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
       const {
         chainNetwork,
         connector,
-        walletAddress,
+        walletAddress: requestedWallet,
         baseToken,
         quoteToken,
         amount,
@@ -81,6 +82,7 @@ export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
 
       try {
         const { chain, network } = parseChainNetwork(chainNetwork);
+        const walletAddress = resolveWalletAddress(chain, requestedWallet);
         const name = resolveSwapConnector(chain, network, 'router', connector);
 
         logger.info(

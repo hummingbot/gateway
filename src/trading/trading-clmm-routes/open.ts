@@ -13,7 +13,8 @@ import {
   chainNetworkField,
   CLMM_CONNECTORS,
   connectorField,
-  defaultWallet,
+  resolveWalletAddress,
+  walletAddressField,
   resolveChainNetwork,
   rethrowRouteError,
   withIdentifiers,
@@ -33,10 +34,7 @@ export const UnifiedOpenPositionRequest = Type.Object(
   {
     connector: connectorField(CLMM_CONNECTORS, 'CLMM connector', { defaulted: false }),
     chainNetwork: chainNetworkField(),
-    walletAddress: Type.String({
-      description: 'Wallet address',
-      default: defaultWallet,
-    }),
+    walletAddress: walletAddressField('Wallet address'),
     lowerPrice: Type.Number({
       format: 'decimal',
       description: 'Lower price bound for the position',
@@ -99,7 +97,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
         const {
           connector,
           chainNetwork,
-          walletAddress,
+          walletAddress: requestedWallet,
           lowerPrice,
           upperPrice,
           poolAddress,
@@ -111,6 +109,7 @@ export const openPositionRoute: FastifyPluginAsync = async (fastify) => {
 
         // Parse chain and network from chainNetwork parameter
         const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
+        const walletAddress = resolveWalletAddress(chain, requestedWallet);
 
         // Same contract as add.ts: single-sided opens are valid, but at least one
         // side must be positive — reject here rather than deep in connector code.

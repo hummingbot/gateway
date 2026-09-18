@@ -11,7 +11,8 @@ import {
   AMM_CONNECTORS,
   chainNetworkField,
   connectorField,
-  defaultWallet,
+  resolveWalletAddress,
+  walletAddressField,
   resolveChainNetwork,
   rethrowRouteError,
   withIdentifiers,
@@ -23,7 +24,7 @@ export const UnifiedAmmRemoveLiquidityRequest = Type.Object(
   {
     connector: connectorField(AMM_CONNECTORS, 'AMM connector', { defaulted: false }),
     chainNetwork: chainNetworkField(),
-    walletAddress: Type.String({ description: 'Wallet address', default: defaultWallet }),
+    walletAddress: walletAddressField('Wallet address'),
     poolAddress: Type.String({ description: 'Pool contract address' }),
     positionAddress: Type.Optional(
       Type.String({
@@ -65,13 +66,14 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const {
           connector,
           chainNetwork,
-          walletAddress,
+          walletAddress: requestedWallet,
           poolAddress,
           positionAddress,
           percentageToRemove,
           slippagePct,
         } = request.body;
         const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'amm');
+        const walletAddress = resolveWalletAddress(chain, requestedWallet);
         const result = await (async () => {
           switch (connector) {
             case 'meteora':

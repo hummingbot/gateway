@@ -37,6 +37,7 @@ import {
 } from '../schemas/chain-schema';
 import { httpErrors } from '../services/error-handler';
 
+import { configuredDefaultWallet } from './default-wallet';
 import {
   getEthereumChainConfig,
   getEthereumNetworkConfig,
@@ -193,7 +194,7 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const { chain } = request.params;
       const { ops, network } = resolveChain(chain, request.body.network);
-      const address = request.body.address || defaultWalletFor(chain);
+      const address = request.body.address || configuredDefaultWallet(chain);
       if (!address) {
         throw httpErrors.badRequest(`No address given and no default wallet configured for ${chain}`);
       }
@@ -266,9 +267,5 @@ export const chainRoutes: FastifyPluginAsync = async (fastify) => {
     { prefix: '/ethereum' },
   );
 };
-
-function defaultWalletFor(chain: string): string | undefined {
-  return chain === 'solana' ? getSolanaChainConfig().defaultWallet : getEthereumChainConfig().defaultWallet;
-}
 
 export default chainRoutes;

@@ -1,5 +1,6 @@
 import { Type } from '@sinclair/typebox';
 
+import { configuredDefaultWallet } from '../chains/default-wallet';
 import { getEthereumChainConfig, getEthereumNetworkConfig } from '../chains/ethereum/ethereum.config';
 import { getSolanaChainConfig, getSolanaNetworkConfig } from '../chains/solana/solana.config';
 import { DecimalNumber } from '../schemas/decimal-field';
@@ -111,18 +112,47 @@ export function parseChainNetwork(chainNetwork: string): { chain: string; networ
   }
 }
 
-// Default wallet from Solana config, falling back to Ethereum when Solana is unavailable.
-let dw: string;
-try {
-  dw = getSolanaChainConfig().defaultWallet;
-} catch {
-  dw = getEthereumChainConfig().defaultWallet;
-}
-export const defaultWallet = dw;
-
-/** Wallet selector shared by the unified execute routes. */
+/**
+ * Wallet selector shared by the unified trading routes.
+ *
+ * Deliberately no schema default. This used to carry one module-level constant, read from
+ * the Solana config and reaching Ethereum only when that config threw, which two separate
+ * things then went wrong with. Fastify injects schema defaults before the handler runs, so
+ * an EVM request that omitted the field arrived carrying a Solana address and the handler
+ * could not tell it apart from one the caller had typed — the trade failed in address
+ * validation, naming a wallet with nothing to do with it. And the constant was evaluated
+ * once at import, so /wallet/setDefault did not take effect until restart. Resolving in the
+ * handler, through resolveWalletAddress, against the chain the request names, fixes both.
+ */
 export const walletAddressField = (description = 'Wallet address that will execute the transaction') =>
-  Type.String({ description, default: defaultWallet });
+  Type.Optional(
+    Type.String({
+      description: `${description}. Defaults to the chain's configured default wallet.`,
+    }),
+  );
+
+/**
+ * The wallet a trading request acts as: the one it named, or the default configured for
+ * the chain it is addressed to.
+ *
+ * Throws rather than passing an empty string down to a connector, which is what an unset
+ * default used to become — the request failed somewhere further in, against a value that
+ * did not look like it came from configuration.
+ */
+export function resolveWalletAddress(chain: string, walletAddress?: string): string {
+  if (walletAddress) {
+    return walletAddress;
+  }
+
+  const configured = configuredDefaultWallet(chain);
+  if (!configured) {
+    throw httpErrors.badRequest(
+      `No walletAddress given and no default wallet configured for ${chain}. ` +
+        'Pass walletAddress, or set a default with POST /wallet/setDefault.',
+    );
+  }
+  return configured;
+}
 
 /**
  * Pool pin for the pool-scoped (amm/clmm) swap routes. Optional: when omitted the
