@@ -11,7 +11,8 @@ import {
   AMM_CONNECTORS,
   chainNetworkField,
   connectorField,
-  defaultWallet,
+  resolveWalletAddress,
+  walletAddressField,
   resolveChainNetwork,
   rethrowRouteError,
 } from '../common';
@@ -21,7 +22,7 @@ export const UnifiedAmmPositionInfoRequest = Type.Object(
     connector: connectorField(AMM_CONNECTORS, 'AMM connector'),
     chainNetwork: chainNetworkField(),
     poolAddress: Type.String({ description: 'Pool contract address' }),
-    walletAddress: Type.String({ description: 'Wallet address', default: defaultWallet }),
+    walletAddress: walletAddressField('Wallet address'),
   },
   { $id: 'AmmPositionInfoRequest', additionalProperties: false },
 );
@@ -42,8 +43,9 @@ export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { connector, chainNetwork, poolAddress, walletAddress } = request.query;
-        const { network } = resolveChainNetwork(chainNetwork, connector, 'amm');
+        const { connector, chainNetwork, poolAddress, walletAddress: requestedWallet } = request.query;
+        const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'amm');
+        const walletAddress = resolveWalletAddress(chain, requestedWallet);
         switch (connector) {
           case 'meteora':
             return await meteoraGetPositionInfo(network, poolAddress, walletAddress);

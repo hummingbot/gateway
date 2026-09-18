@@ -8,7 +8,8 @@ import {
   AMM_CONNECTORS,
   chainNetworkField,
   connectorField,
-  defaultWallet,
+  resolveWalletAddress,
+  walletAddressField,
   resolveChainNetwork,
   rethrowRouteError,
 } from '../common';
@@ -17,7 +18,7 @@ export const UnifiedAmmPositionsOwnedRequest = Type.Object(
   {
     connector: connectorField(AMM_CONNECTORS, 'AMM connector (only non-fungible-LP AMMs supported: meteora)'),
     chainNetwork: chainNetworkField(),
-    walletAddress: Type.String({ description: 'Wallet address to list positions for', default: defaultWallet }),
+    walletAddress: walletAddressField('Wallet address to list positions for'),
   },
   { $id: 'AmmPositionsOwnedRequest', additionalProperties: false },
 );
@@ -41,8 +42,9 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { connector, chainNetwork, walletAddress } = request.query;
-        const { network } = resolveChainNetwork(chainNetwork, connector, 'amm');
+        const { connector, chainNetwork, walletAddress: requestedWallet } = request.query;
+        const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'amm');
+        const walletAddress = resolveWalletAddress(chain, requestedWallet);
         switch (connector) {
           case 'meteora':
             return await meteoraGetPositionsOwned(fastify, network, walletAddress);

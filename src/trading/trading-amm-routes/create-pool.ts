@@ -11,7 +11,8 @@ import {
   AMM_CONNECTORS,
   chainNetworkField,
   connectorField,
-  defaultWallet,
+  resolveWalletAddress,
+  walletAddressField,
   resolveChainNetwork,
   rethrowRouteError,
   slippagePctField,
@@ -25,10 +26,7 @@ export const UnifiedCreatePoolRequest = Type.Composite(
     Type.Object({
       connector: connectorField(AMM_CONNECTORS, 'AMM connector', { defaulted: false }),
       chainNetwork: chainNetworkField(),
-      walletAddress: Type.String({
-        description: 'Wallet address (pool creator + payer)',
-        default: defaultWallet,
-      }),
+      walletAddress: walletAddressField('Wallet address (pool creator + payer)'),
     }),
     Type.Omit(CreatePoolRequest, ['network', 'walletAddress'], {}),
     // Optional per-protocol fee-config selectors, last so required fields lead the schema:
@@ -78,7 +76,7 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
         const {
           connector,
           chainNetwork,
-          walletAddress,
+          walletAddress: requestedWallet,
           baseToken,
           quoteToken,
           baseTokenAmount,
@@ -89,7 +87,8 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
           slippagePct,
         } = request.body;
 
-        const { network } = resolveChainNetwork(chainNetwork, connector, 'amm');
+        const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'amm');
+        const walletAddress = resolveWalletAddress(chain, requestedWallet);
 
         switch (connector) {
           case 'meteora':

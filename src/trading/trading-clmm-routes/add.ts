@@ -13,7 +13,8 @@ import {
   chainNetworkField,
   CLMM_CONNECTORS,
   connectorField,
-  defaultWallet,
+  resolveWalletAddress,
+  walletAddressField,
   resolveChainNetwork,
   rethrowRouteError,
   withIdentifiers,
@@ -29,10 +30,7 @@ export const UnifiedAddLiquidityRequest = Type.Object(
   {
     connector: connectorField(CLMM_CONNECTORS, 'CLMM connector', { defaulted: false }),
     chainNetwork: chainNetworkField(),
-    walletAddress: Type.String({
-      description: 'Wallet address',
-      default: defaultWallet,
-    }),
+    walletAddress: walletAddressField('Wallet address'),
     positionAddress: Type.String({
       description: 'Position address',
       examples: ['<sample-position-address>'],
@@ -89,7 +87,7 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         const {
           connector,
           chainNetwork,
-          walletAddress,
+          walletAddress: requestedWallet,
           positionAddress,
           baseTokenAmount,
           quoteTokenAmount,
@@ -98,7 +96,8 @@ export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
         } = request.body;
 
         // Parse chain and network from chainNetwork parameter
-        const { network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
+        const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
+        const walletAddress = resolveWalletAddress(chain, requestedWallet);
 
         // Single-sided deposits are valid; the omitted side deposits 0.
         const baseAmount = baseTokenAmount ?? 0;

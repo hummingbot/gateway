@@ -17,7 +17,8 @@ import {
   chainNetworkField,
   CLMM_CONNECTORS,
   connectorField,
-  defaultWallet,
+  resolveWalletAddress,
+  walletAddressField,
   resolveChainNetwork,
   rethrowRouteError,
 } from '../common';
@@ -33,7 +34,7 @@ export const UnifiedClmmCreatePoolRequest = Type.Composite(
     Type.Object({
       connector: connectorField(CLMM_CONNECTORS, 'CLMM connector', { defaulted: false }),
       chainNetwork: chainNetworkField(),
-      walletAddress: Type.String({ description: 'Wallet address (pool creator + payer)', default: defaultWallet }),
+      walletAddress: walletAddressField('Wallet address (pool creator + payer)'),
     }),
     Type.Omit(ClmmCreatePoolRequest, ['network', 'walletAddress'], {}),
   ],
@@ -61,7 +62,7 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
         const {
           connector,
           chainNetwork,
-          walletAddress,
+          walletAddress: requestedWallet,
           baseToken,
           quoteToken,
           initialPrice,
@@ -70,7 +71,8 @@ export const createPoolRoute: FastifyPluginAsync = async (fastify) => {
           ammConfigIndex,
         } = request.body;
 
-        const { network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
+        const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
+        const walletAddress = resolveWalletAddress(chain, requestedWallet);
 
         // EVM V3 fee tiers are denominated in hundredths of a bip; feeBps is the
         // route's one fee vocabulary, so map it (1 bps -> 100).

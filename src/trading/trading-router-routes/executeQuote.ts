@@ -8,6 +8,7 @@ import {
   chainNetworkField,
   connectorField,
   parseChainNetwork,
+  resolveWalletAddress,
   rethrowRouteError,
   resolveSwapConnector,
   walletAddressField,
@@ -51,10 +52,16 @@ export const executeQuoteRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request, reply) => {
-      const { chainNetwork, connector, walletAddress, quoteId } = request.body as RouterExecuteQuoteRequest;
+      const {
+        chainNetwork,
+        connector,
+        walletAddress: requestedWallet,
+        quoteId,
+      } = request.body as RouterExecuteQuoteRequest;
 
       try {
         const { chain, network } = parseChainNetwork(chainNetwork);
+        const walletAddress = resolveWalletAddress(chain, requestedWallet);
         const name = resolveSwapConnector(chain, network, 'router', connector);
 
         logger.info(`[trading/router] execute quote ${quoteId} on ${chain}/${network} via ${name}`);

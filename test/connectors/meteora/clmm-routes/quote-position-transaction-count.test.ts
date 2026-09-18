@@ -1,5 +1,5 @@
-import { Meteora } from '../../../../src/connectors/meteora/meteora';
 import { quotePosition } from '../../../../src/connectors/meteora/clmm-routes/quotePosition';
+import { Meteora } from '../../../../src/connectors/meteora/meteora';
 
 jest.mock('../../../../src/connectors/meteora/meteora');
 jest.mock('@meteora-ag/dlmm', () => ({

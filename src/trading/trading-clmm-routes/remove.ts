@@ -13,7 +13,8 @@ import {
   chainNetworkField,
   CLMM_CONNECTORS,
   connectorField,
-  defaultWallet,
+  resolveWalletAddress,
+  walletAddressField,
   resolveChainNetwork,
   rethrowRouteError,
   withIdentifiers,
@@ -25,10 +26,7 @@ export const UnifiedRemoveLiquidityRequest = Type.Object(
   {
     connector: connectorField(CLMM_CONNECTORS, 'CLMM connector', { defaulted: false }),
     chainNetwork: chainNetworkField(),
-    walletAddress: Type.String({
-      description: 'Wallet address',
-      default: defaultWallet,
-    }),
+    walletAddress: walletAddressField('Wallet address'),
     positionAddress: Type.String({
       description: 'Position address',
       examples: ['<sample-position-address>'],
@@ -71,11 +69,18 @@ export const removeLiquidityRoute: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       try {
-        const { connector, chainNetwork, walletAddress, positionAddress, percentageToRemove, slippagePct } =
-          request.body;
+        const {
+          connector,
+          chainNetwork,
+          walletAddress: requestedWallet,
+          positionAddress,
+          percentageToRemove,
+          slippagePct,
+        } = request.body;
 
         // Parse chain and network from chainNetwork parameter
-        const { network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
+        const { chain, network } = resolveChainNetwork(chainNetwork, connector, 'clmm');
+        const walletAddress = resolveWalletAddress(chain, requestedWallet);
 
         // Route to appropriate connector
         const result = await (async () => {
