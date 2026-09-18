@@ -1626,8 +1626,7 @@
             "example": "solana-mainnet-beta"
           },
           "walletAddress": {
-            "description": "Wallet address (pool creator + payer)",
-            "default": "<solana-wallet-address>",
+            "description": "Wallet address (pool creator + payer). Defaults to the chain's configured default wallet.",
             "type": "string"
           },
           "baseToken": {
@@ -1679,7 +1678,6 @@
         "required": [
           "connector",
           "chainNetwork",
-          "walletAddress",
           "baseToken",
           "quoteToken",
           "baseTokenAmount"
@@ -1723,8 +1721,7 @@
             "example": "solana-mainnet-beta"
           },
           "walletAddress": {
-            "description": "Wallet address",
-            "default": "<solana-wallet-address>",
+            "description": "Wallet address. Defaults to the chain's configured default wallet.",
             "type": "string"
           },
           "poolAddress": {
@@ -1760,7 +1757,6 @@
         "required": [
           "connector",
           "chainNetwork",
-          "walletAddress",
           "poolAddress",
           "baseTokenAmount",
           "quoteTokenAmount"
@@ -1804,8 +1800,7 @@
             "example": "solana-mainnet-beta"
           },
           "walletAddress": {
-            "description": "Wallet address",
-            "default": "<solana-wallet-address>",
+            "description": "Wallet address. Defaults to the chain's configured default wallet.",
             "type": "string"
           },
           "poolAddress": {
@@ -1840,7 +1835,6 @@
         "required": [
           "connector",
           "chainNetwork",
-          "walletAddress",
           "poolAddress",
           "percentageToRemove"
         ]
@@ -1937,16 +1931,14 @@
             "type": "string"
           },
           "walletAddress": {
-            "description": "Wallet address",
-            "default": "<solana-wallet-address>",
+            "description": "Wallet address. Defaults to the chain's configured default wallet.",
             "type": "string"
           }
         },
         "required": [
           "connector",
           "chainNetwork",
-          "poolAddress",
-          "walletAddress"
+          "poolAddress"
         ]
       },
       "AmmPositionsOwnedRequest": {
@@ -1988,15 +1980,13 @@
             "example": "solana-mainnet-beta"
           },
           "walletAddress": {
-            "description": "Wallet address to list positions for",
-            "default": "<solana-wallet-address>",
+            "description": "Wallet address to list positions for. Defaults to the chain's configured default wallet.",
             "type": "string"
           }
         },
         "required": [
           "connector",
-          "chainNetwork",
-          "walletAddress"
+          "chainNetwork"
         ]
       },
       "AmmQuoteLiquidityRequest": {
@@ -2108,8 +2098,7 @@
             "example": "solana-mainnet-beta"
           },
           "walletAddress": {
-            "description": "Wallet address",
-            "default": "<solana-wallet-address>",
+            "description": "Wallet address. Defaults to the chain's configured default wallet.",
             "type": "string"
           },
           "lowerPrice": {
@@ -2161,7 +2150,6 @@
         "required": [
           "connector",
           "chainNetwork",
-          "walletAddress",
           "lowerPrice",
           "upperPrice",
           "poolAddress"
@@ -2207,8 +2195,7 @@
             "example": "solana-mainnet-beta"
           },
           "walletAddress": {
-            "description": "Wallet address",
-            "default": "<solana-wallet-address>",
+            "description": "Wallet address. Defaults to the chain's configured default wallet.",
             "type": "string"
           },
           "positionAddress": {
@@ -2248,7 +2235,6 @@
         "required": [
           "connector",
           "chainNetwork",
-          "walletAddress",
           "positionAddress"
         ]
       },
@@ -2292,8 +2278,7 @@
             "example": "solana-mainnet-beta"
           },
           "walletAddress": {
-            "description": "Wallet address",
-            "default": "<solana-wallet-address>",
+            "description": "Wallet address. Defaults to the chain's configured default wallet.",
             "type": "string"
           },
           "positionAddress": {
@@ -2322,7 +2307,6 @@
         "required": [
           "connector",
           "chainNetwork",
-          "walletAddress",
           "positionAddress",
           "percentageToRemove"
         ]
@@ -2367,8 +2351,7 @@
             "example": "solana-mainnet-beta"
           },
           "walletAddress": {
-            "description": "Wallet address",
-            "default": "<solana-wallet-address>",
+            "description": "Wallet address. Defaults to the chain's configured default wallet.",
             "type": "string"
           },
           "positionAddress": {
@@ -2380,7 +2363,6 @@
         "required": [
           "connector",
           "chainNetwork",
-          "walletAddress",
           "positionAddress"
         ]
       },
@@ -2424,8 +2406,7 @@
             "example": "solana-mainnet-beta"
           },
           "walletAddress": {
-            "description": "Wallet address",
-            "default": "<solana-wallet-address>",
+            "description": "Wallet address. Defaults to the chain's configured default wallet.",
             "type": "string"
           },
           "positionAddress": {
@@ -2445,7 +2426,6 @@
         "required": [
           "connector",
           "chainNetwork",
-          "walletAddress",
           "positionAddress"
         ]
       },
@@ -2489,8 +2469,7 @@
             "example": "solana-mainnet-beta"
           },
           "walletAddress": {
-            "description": "Wallet address (pool creator + payer)",
-            "default": "<solana-wallet-address>",
+            "description": "Wallet address (pool creator + payer). Defaults to the chain's configured default wallet.",
             "type": "string"
           },
           "baseToken": {
@@ -2533,7 +2512,6 @@
         "required": [
           "connector",
           "chainNetwork",
-          "walletAddress",
           "baseToken",
           "quoteToken"
         ]
@@ -2782,15 +2760,13 @@
             "example": "solana-mainnet-beta"
           },
           "walletAddress": {
-            "description": "Wallet address",
-            "default": "<solana-wallet-address>",
+            "description": "Wallet address. Defaults to the chain's configured default wallet.",
             "type": "string"
           }
         },
         "required": [
           "connector",
-          "chainNetwork",
-          "walletAddress"
+          "chainNetwork"
         ]
       },
       "ClmmQuoteLiquidityRequest": {
@@ -2920,8 +2896,7 @@
             "example": "jupiter"
           },
           "walletAddress": {
-            "description": "Wallet address that will execute the quote",
-            "default": "<solana-wallet-address>",
+            "description": "Wallet address that will execute the quote. Defaults to the chain's configured default wallet.",
             "type": "string"
           },
           "quoteId": {
@@ -2931,7 +2906,6 @@
         },
         "required": [
           "chainNetwork",
-          "walletAddress",
           "quoteId"
         ]
       },
@@ -2976,8 +2950,7 @@
             "example": "jupiter"
           },
           "walletAddress": {
-            "description": "Wallet address that will execute the swap",
-            "default": "<solana-wallet-address>",
+            "description": "Wallet address that will execute the swap. Defaults to the chain's configured default wallet.",
             "type": "string"
           },
           "baseToken": {
@@ -3027,7 +3000,6 @@
         },
         "required": [
           "chainNetwork",
-          "walletAddress",
           "baseToken",
           "quoteToken",
           "amount",
@@ -3344,8 +3316,7 @@
             "example": "meteora"
           },
           "walletAddress": {
-            "description": "Wallet address that will execute the swap",
-            "default": "<solana-wallet-address>",
+            "description": "Wallet address that will execute the swap. Defaults to the chain's configured default wallet.",
             "type": "string"
           },
           "baseToken": {
@@ -3388,7 +3359,6 @@
         },
         "required": [
           "chainNetwork",
-          "walletAddress",
           "baseToken",
           "quoteToken",
           "amount",
@@ -3435,8 +3405,7 @@
             "example": "meteora"
           },
           "walletAddress": {
-            "description": "Wallet address that will execute the swap",
-            "default": "<solana-wallet-address>",
+            "description": "Wallet address that will execute the swap. Defaults to the chain's configured default wallet.",
             "type": "string"
           },
           "baseToken": {
@@ -3479,7 +3448,6 @@
         },
         "required": [
           "chainNetwork",
-          "walletAddress",
           "baseToken",
           "quoteToken",
           "amount",
@@ -6800,13 +6768,12 @@
           },
           {
             "schema": {
-              "default": "<solana-wallet-address>",
               "type": "string"
             },
             "in": "query",
             "name": "walletAddress",
-            "required": true,
-            "description": "Wallet address"
+            "required": false,
+            "description": "Wallet address. Defaults to the chain's configured default wallet."
           }
         ],
         "responses": {
@@ -7851,13 +7818,12 @@
           },
           {
             "schema": {
-              "default": "<solana-wallet-address>",
               "type": "string"
             },
             "in": "query",
             "name": "walletAddress",
-            "required": true,
-            "description": "Wallet address"
+            "required": false,
+            "description": "Wallet address. Defaults to the chain's configured default wallet."
           }
         ],
         "responses": {
@@ -7948,13 +7914,12 @@
           },
           {
             "schema": {
-              "default": "<solana-wallet-address>",
               "type": "string"
             },
             "in": "query",
             "name": "walletAddress",
-            "required": true,
-            "description": "Wallet address to list positions for"
+            "required": false,
+            "description": "Wallet address to list positions for. Defaults to the chain's configured default wallet."
           }
         ],
         "responses": {
