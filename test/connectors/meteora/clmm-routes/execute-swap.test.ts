@@ -3,6 +3,7 @@ import { PublicKey } from '@solana/web3.js';
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Meteora } from '../../../../src/connectors/meteora/meteora';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/meteora/meteora');
@@ -16,6 +17,7 @@ jest.mock('../../../../src/services/pool-service', () => ({
   },
 }));
 jest.mock('../../../../src/chains/solana/solana.config', () => ({
+  ...jest.requireActual('../../../../src/chains/solana/solana.config'),
   getSolanaChainConfig: jest.fn().mockReturnValue({
     defaultNetwork: 'mainnet-beta',
     defaultWallet: '11111111111111111111111111111111',
@@ -25,8 +27,8 @@ jest.mock('../../../../src/chains/solana/solana.config', () => ({
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { executeSwapRoute } = await import('../../../../src/connectors/meteora/clmm-routes/executeSwap');
-  await server.register(executeSwapRoute);
+  const { makeExecuteSwapRoute } = await import('../../../../src/trading/pool-swap-routes');
+  await server.register(makeExecuteSwapRoute('clmm'));
   return server;
 };
 
@@ -98,12 +100,13 @@ describe('POST /execute-swap', () => {
   it('should execute a CLMM swap for SELL side', async () => {
     const mockSolanaInstance = {
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      getToken: jest
-        .fn()
-        .mockResolvedValueOnce(mockSOL)
-        .mockResolvedValueOnce(mockUSDC)
-        .mockResolvedValueOnce({ ...mockSOL }) // For balance extraction
-        .mockResolvedValueOnce({ ...mockUSDC }), // For balance extraction
+      // Argument-based (the standardized wrapper derives the counter token, so getToken
+      // is called more than twice — an ordered mock would resolve the wrong tokens).
+      getToken: jest.fn((t: string) => {
+        if (t === 'SOL' || t === mockSOL.address) return Promise.resolve(mockSOL);
+        if (t === 'USDC' || t === mockUSDC.address) return Promise.resolve(mockUSDC);
+        return Promise.resolve(null);
+      }),
       findAssociatedTokenAddress: jest.fn().mockResolvedValue('mock-ata-address'),
       getTxData: jest.fn().mockResolvedValue({
         blockTime: Date.now() / 1000,
@@ -120,6 +123,10 @@ describe('POST /execute-swap', () => {
           blockTime: Date.now() / 1000,
         }),
       },
+      getConfirmedTransactionData: jest.fn().mockResolvedValue({
+        meta: { fee: 5000 },
+        blockTime: Date.now() / 1000,
+      }),
       simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
       extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
         balanceChanges: [-0.1, 14.85],
@@ -145,7 +152,8 @@ describe('POST /execute-swap', () => {
       method: 'POST',
       url: '/execute-swap',
       payload: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         walletAddress: '11111111111111111111111111111111',
         poolAddress: mockPoolAddress,
         baseToken: 'SOL',
@@ -157,27 +165,79 @@ describe('POST /execute-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('signature', mockTransaction.signature);
     expect(body).toHaveProperty('status', 1);
-    expect(body.data).toHaveProperty('amountIn', 0.1);
+    expect(Number(body.data.amountIn)).toBe(0.1);
     expect(body.data).toHaveProperty('amountOut', 14.85);
     expect(body.data).toHaveProperty('fee', 0.000005); // Fee in SOL
     expect(body.data).toHaveProperty('baseTokenBalanceChange', -0.1);
     expect(body.data).toHaveProperty('quoteTokenBalanceChange', 14.85);
     expect(body.data).toHaveProperty('tokenIn', mockSOL.address);
     expect(body.data).toHaveProperty('tokenOut', mockUSDC.address);
+    // The applied slippage is echoed on the execute response.
+    expect(body.data).toHaveProperty('slippagePct', 1);
+  });
+
+  it('fails loudly (400 TRANSACTION_FAILED) when the transaction landed on-chain but failed', async () => {
+    const { transactionFailed } = jest.requireActual('../../../../src/services/error-handler');
+    const extractBalanceChangesAndFee = jest.fn();
+    const mockSolanaInstance = {
+      getWallet: jest.fn().mockResolvedValue(mockWallet),
+      getToken: jest.fn((t: string) => {
+        if (t === 'SOL' || t === mockSOL.address) return Promise.resolve(mockSOL);
+        if (t === 'USDC' || t === mockUSDC.address) return Promise.resolve(mockUSDC);
+        return Promise.resolve(null);
+      }),
+      sendAndConfirmTransactionForWallet: jest.fn().mockResolvedValue({
+        signature: mockTransaction.signature,
+        fee: 0.000005,
+      }),
+      // The route-level re-fetch surfaces a landed-but-failed transaction as a throw —
+      // it must never be reported as CONFIRMED (data exists) or PENDING.
+      getConfirmedTransactionData: jest
+        .fn()
+        .mockRejectedValue(
+          transactionFailed(`Transaction ${mockTransaction.signature} landed on-chain but failed: custom error 0x1771`),
+        ),
+      extractBalanceChangesAndFee,
+    };
+    (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
+
+    (Meteora.getInstance as jest.Mock).mockResolvedValue({
+      getDlmmPool: jest.fn().mockResolvedValue(mockDlmmPool),
+    });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: '/execute-swap',
+      payload: {
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
+        walletAddress: '11111111111111111111111111111111',
+        poolAddress: mockPoolAddress,
+        baseToken: 'SOL',
+        quoteToken: 'USDC',
+        amount: 0.1,
+        side: 'SELL',
+        slippagePct: 1,
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(parseWire(response.body).message).toMatch(/landed on-chain but failed/);
+    // The route must not have tried to build a CONFIRMED response.
+    expect(extractBalanceChangesAndFee).not.toHaveBeenCalled();
   });
 
   it('should execute a CLMM swap for BUY side', async () => {
     const mockSolanaInstance = {
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      getToken: jest
-        .fn()
-        .mockResolvedValueOnce(mockSOL)
-        .mockResolvedValueOnce(mockUSDC)
-        .mockResolvedValueOnce({ ...mockSOL }) // For balance extraction
-        .mockResolvedValueOnce({ ...mockUSDC }), // For balance extraction
+      getToken: jest.fn((t: string) => {
+        if (t === 'SOL' || t === mockSOL.address) return Promise.resolve(mockSOL);
+        if (t === 'USDC' || t === mockUSDC.address) return Promise.resolve(mockUSDC);
+        return Promise.resolve(null);
+      }),
       findAssociatedTokenAddress: jest.fn().mockResolvedValue('mock-ata-address'),
       getTxData: jest.fn().mockResolvedValue({
         blockTime: Date.now() / 1000,
@@ -194,6 +254,10 @@ describe('POST /execute-swap', () => {
           blockTime: Date.now() / 1000,
         }),
       },
+      getConfirmedTransactionData: jest.fn().mockResolvedValue({
+        meta: { fee: 5000 },
+        blockTime: Date.now() / 1000,
+      }),
       simulateWithErrorHandling: jest.fn().mockResolvedValue(undefined),
       extractBalanceChangesAndFee: jest.fn().mockResolvedValue({
         balanceChanges: [-15, 0.1], // For BUY: first is USDC (negative), second is SOL (positive)
@@ -222,7 +286,8 @@ describe('POST /execute-swap', () => {
       method: 'POST',
       url: '/execute-swap',
       payload: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         walletAddress: '11111111111111111111111111111111',
         poolAddress: mockPoolAddress,
         baseToken: 'SOL',
@@ -234,10 +299,10 @@ describe('POST /execute-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('signature', mockTransaction.signature);
     expect(body).toHaveProperty('status', 1);
-    expect(body.data).toHaveProperty('amountIn', 15); // USDC in
+    expect(Number(body.data.amountIn)).toBe(15); // USDC in
     expect(body.data).toHaveProperty('amountOut', 0.1); // SOL out
     expect(body.data).toHaveProperty('tokenIn', mockUSDC.address);
     expect(body.data).toHaveProperty('tokenOut', mockSOL.address);
@@ -245,18 +310,24 @@ describe('POST /execute-swap', () => {
     expect(body.data).toHaveProperty('quoteTokenBalanceChange', -15); // USDC negative (spending)
   });
 
-  it('should return 400 if token not found', async () => {
+  it('should return 400 if the base token is not part of the pool', async () => {
     const mockSolanaInstance = {
       getWallet: jest.fn().mockResolvedValue(mockWallet),
-      getToken: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(mockUSDC),
+      getToken: jest.fn((t: string) => {
+        if (t === 'USDC' || t === mockUSDC.address) return Promise.resolve(mockUSDC);
+        return Promise.resolve(null); // INVALID resolves to nothing
+      }),
     };
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
+    const mockMeteoraInstance = { getDlmmPool: jest.fn().mockResolvedValue(mockDlmmPool) };
+    (Meteora.getInstance as jest.Mock).mockResolvedValue(mockMeteoraInstance);
 
     const response = await server.inject({
       method: 'POST',
       url: '/execute-swap',
       payload: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'meteora',
         walletAddress: '11111111111111111111111111111111',
         poolAddress: mockPoolAddress,
         baseToken: 'INVALID',
@@ -267,8 +338,10 @@ describe('POST /execute-swap', () => {
       },
     });
 
-    expect(response.statusCode).toBe(404); // Returns 404 for 'Token not found'
-    expect(JSON.parse(response.body)).toHaveProperty('error');
+    // Standardized wrapper derives the counter token from the pool; an unknown base token that
+    // isn't one of the pool's tokens is a bad request (400).
+    expect(response.statusCode).toBe(400);
+    expect(parseWire(response.body)).toHaveProperty('error');
   });
 });
 

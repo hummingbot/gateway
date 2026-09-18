@@ -1,8 +1,6 @@
 import { Type, Static } from '@sinclair/typebox';
 import { FastifyPluginAsync, FastifyInstance } from 'fastify';
 
-import { getEthereumChainConfig } from '../../chains/ethereum/ethereum.config';
-import { getSolanaChainConfig } from '../../chains/solana/solana.config';
 import { getPositionsOwned as meteoraGetPositionsOwned } from '../../connectors/meteora/clmm-routes/positionsOwned';
 import { getPositionsOwned as orcaGetPositionsOwned } from '../../connectors/orca/clmm-routes/positionsOwned';
 import { getPositionsOwned as pancakeswapGetPositionsOwned } from '../../connectors/pancakeswap/clmm-routes/positionsOwned';
@@ -11,59 +9,29 @@ import { getPositionsOwned as raydiumGetPositionsOwned } from '../../connectors/
 import { getPositionsOwned as uniswapGetPositionsOwned } from '../../connectors/uniswap/clmm-routes/positionsOwned';
 import { PositionInfo, PositionInfoSchema } from '../../schemas/clmm-schema';
 import { logger } from '../../services/logger';
-
-// Get default wallet from Solana config, fallback to Ethereum if Solana doesn't exist
-let defaultWallet: string;
-try {
-  const solanaChainConfig = getSolanaChainConfig();
-  defaultWallet = solanaChainConfig.defaultWallet;
-} catch {
-  const ethereumChainConfig = getEthereumChainConfig();
-  defaultWallet = ethereumChainConfig.defaultWallet;
-}
+import {
+  chainNetworkField,
+  CLMM_CONNECTORS,
+  connectorField,
+  parseChainNetwork,
+  resolveWalletAddress,
+  walletAddressField,
+  rethrowRouteError,
+} from '../common';
 
 /**
  * Unified positions owned request schema
  */
-const UnifiedPositionsOwnedRequestSchema = Type.Object({
-  connector: Type.String({
-    description: 'CLMM connector (raydium, meteora, pancakeswap-sol, uniswap, pancakeswap, orca)',
-    enum: ['raydium', 'meteora', 'pancakeswap-sol', 'uniswap', 'pancakeswap', 'orca'],
-    default: 'meteora',
-    examples: ['meteora'],
-  }),
-  chainNetwork: Type.String({
-    description: 'Chain and network in format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)',
-    default: 'solana-mainnet-beta',
-    examples: ['solana-mainnet-beta'],
-  }),
-  walletAddress: Type.Optional(
-    Type.String({
-      description: 'Wallet address (optional, uses default wallet if not provided)',
-      default: defaultWallet,
-    }),
-  ),
-});
+export const UnifiedPositionsOwnedRequestSchema = Type.Object(
+  {
+    connector: connectorField(CLMM_CONNECTORS, 'CLMM connector'),
+    chainNetwork: chainNetworkField(),
+    walletAddress: walletAddressField('Wallet address'),
+  },
+  { $id: 'ClmmPositionsOwnedRequest', additionalProperties: false },
+);
 
 type UnifiedPositionsOwnedRequest = Static<typeof UnifiedPositionsOwnedRequestSchema>;
-
-/**
- * Parse chain-network parameter into chain and network
- */
-function parseChainNetwork(chainNetwork: string): { chain: string; network: string } {
-  const parts = chainNetwork.split('-');
-
-  if (parts.length < 2) {
-    throw new Error(
-      `Invalid chain-network format: ${chainNetwork}. Expected format: chain-network (e.g., solana-mainnet-beta, ethereum-mainnet)`,
-    );
-  }
-
-  const chain = parts[0];
-  const network = parts.slice(1).join('-');
-
-  return { chain, network };
-}
 
 /**
  * Get positions owned from Solana connectors
@@ -121,15 +89,16 @@ export async function getUnifiedPositionsOwned(
   walletAddress?: string,
 ): Promise<PositionInfo[]> {
   const { chain, network } = parseChainNetwork(chainNetwork);
+  const wallet = resolveWalletAddress(chain, walletAddress);
 
   logger.info(`[UnifiedCLMM] Getting positions owned using ${connector} on ${chain}/${network}`);
 
   switch (chain.toLowerCase()) {
     case 'ethereum':
-      return getEthereumPositionsOwned(fastify, connector, network, walletAddress);
+      return getEthereumPositionsOwned(fastify, connector, network, wallet);
 
     case 'solana':
-      return getSolanaPositionsOwned(fastify, connector, network, walletAddress);
+      return getSolanaPositionsOwned(fastify, connector, network, wallet);
 
     default:
       throw fastify.httpErrors.badRequest(`Unsupported chain: ${chain}`);
@@ -163,8 +132,7 @@ export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
         const result = await getUnifiedPositionsOwned(fastify, connector, chainNetwork, walletAddress);
         return reply.code(200).send(result);
       } catch (error: any) {
-        logger.error(`[UnifiedCLMM] Positions owned error: ${error.message}`);
-        throw error;
+        rethrowRouteError(error, 'Failed to list CLMM positions owned');
       }
     },
   );

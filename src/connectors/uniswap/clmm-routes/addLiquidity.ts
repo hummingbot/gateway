@@ -1,19 +1,16 @@
 import { Contract } from '@ethersproject/contracts';
-import { Static } from '@sinclair/typebox';
 import { CurrencyAmount, Percent } from '@uniswap/sdk-core';
-import { Position, NonfungiblePositionManager } from '@uniswap/v3-sdk';
+import { Position, NonfungiblePositionManager, computePoolAddress } from '@uniswap/v3-sdk';
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 import JSBI from 'jsbi';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { AddLiquidityResponseType, AddLiquidityResponse } from '../../../schemas/clmm-schema';
+import { TransactionStatus } from '../../../schemas/chain-schema';
+import { AddLiquidityResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
-import { UniswapClmmAddLiquidityRequest } from '../schemas';
 import { Uniswap } from '../uniswap';
 import { UniswapConfig } from '../uniswap.config';
-import { getUniswapV3NftManagerAddress, POSITION_MANAGER_ABI } from '../uniswap.contracts';
+import { getUniswapV3NftManagerAddress, POSITION_MANAGER_ABI, getUniswapV3FactoryAddress } from '../uniswap.contracts';
 import { formatTokenAmount } from '../uniswap.utils';
 
 // Default gas limit for CLMM add liquidity operations
@@ -44,6 +41,16 @@ export async function addLiquidity(
 
   const token0 = await uniswap.getToken(position.token0);
   const token1 = await uniswap.getToken(position.token1);
+
+  // The pool this position belongs to, derived from the same inputs position-info
+  // uses. The unified route is position-addressed and never receives a pool, so
+  // deriving it here is what lets the response name the venue it acted on.
+  const poolAddress = computePoolAddress({
+    factoryAddress: getUniswapV3FactoryAddress(network),
+    tokenA: token0,
+    tokenB: token1,
+    fee: position.fee,
+  });
   const fee = position.fee;
   const tickLower = position.tickLower;
   const tickUpper = position.tickUpper;
@@ -152,9 +159,12 @@ export async function addLiquidity(
   const txParams = await ethereum.prepareGasOptions(undefined, CLMM_ADD_LIQUIDITY_GAS_LIMIT);
   txParams.value = BigNumber.from(value.toString());
   const tx = await positionManagerWithSigner.multicall([calldata], txParams);
-  const receipt = await ethereum.handleTransactionExecution(tx);
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
+  if (!outcome.confirmed) {
+    // Still pending — the mint amounts below were computed before sending and have not moved.
+    return { signature: outcome.signature, status: TransactionStatus.PENDING };
+  }
 
-  const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
   const actualToken0Amount = formatTokenAmount(newPosition.mintAmounts.amount0.toString(), token0.decimals);
   const actualToken1Amount = formatTokenAmount(newPosition.mintAmounts.amount1.toString(), token1.decimals);
 
@@ -162,69 +172,13 @@ export async function addLiquidity(
   const actualQuoteAmount = isBaseToken0 ? actualToken1Amount : actualToken0Amount;
 
   return {
-    signature: receipt.transactionHash,
-    status: receipt.status,
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     data: {
-      fee: gasFee,
+      poolAddress,
+      fee: outcome.fee,
       baseTokenAmountAdded: actualBaseAmount,
       quoteTokenAmountAdded: actualQuoteAmount,
     },
   };
 }
-
-export const addLiquidityRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: Static<typeof UniswapClmmAddLiquidityRequest>;
-    Reply: AddLiquidityResponseType;
-  }>(
-    '/add-liquidity',
-    {
-      schema: {
-        description: 'Add liquidity to an existing Uniswap V3 position',
-        tags: ['/connector/uniswap'],
-        body: UniswapClmmAddLiquidityRequest,
-        response: {
-          200: AddLiquidityResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network,
-          walletAddress: requestedWalletAddress,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        } = request.body;
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          const uniswap = await Uniswap.getInstance(network);
-          walletAddress = await uniswap.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-        }
-
-        return await addLiquidity(
-          network,
-          walletAddress,
-          positionAddress,
-          baseTokenAmount,
-          quoteTokenAmount,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Failed to add liquidity:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw httpErrors.internalServerError('Failed to add liquidity');
-      }
-    },
-  );
-};
-
-export default addLiquidityRoute;

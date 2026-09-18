@@ -1,11 +1,9 @@
 import { PublicKey } from '@solana/web3.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { PositionInfo, PositionInfoSchema, GetPositionInfoRequestType } from '../../../schemas/clmm-schema';
-import { logger } from '../../../services/logger';
+import { PositionInfo } from '../../../schemas/clmm-schema';
 import { Orca } from '../orca';
-import { OrcaClmmGetPositionInfoRequest } from '../schemas';
 
 export async function getPositionInfo(
   fastify: FastifyInstance,
@@ -41,37 +39,3 @@ export async function getPositionInfo(
 
   return positionInfo;
 }
-
-export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: GetPositionInfoRequestType;
-    Reply: PositionInfo;
-  }>(
-    '/position-info',
-    {
-      schema: {
-        description: 'Get details for a specific Orca position',
-        tags: ['/connector/orca'],
-        querystring: OrcaClmmGetPositionInfoRequest,
-        response: {
-          200: PositionInfoSchema,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { positionAddress, walletAddress } = request.query;
-        const network = request.query.network;
-        return await getPositionInfo(fastify, network, positionAddress, walletAddress);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e; // Re-throw HttpErrors with original message
-        }
-        throw fastify.httpErrors.internalServerError('Internal server error');
-      }
-    },
-  );
-};
-
-export default positionInfoRoute;

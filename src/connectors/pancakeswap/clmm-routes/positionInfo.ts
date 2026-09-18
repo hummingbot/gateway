@@ -1,15 +1,9 @@
 import { Contract } from '@ethersproject/contracts';
 import { Position, tickToPrice, computePoolAddress } from '@pancakeswap/v3-sdk';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  GetPositionInfoRequestType,
-  GetPositionInfoRequest,
-  PositionInfo,
-  PositionInfoSchema,
-} from '../../../schemas/clmm-schema';
-import { logger } from '../../../services/logger';
+import { PositionInfo } from '../../../schemas/clmm-schema';
 import { Pancakeswap } from '../pancakeswap';
 import {
   POSITION_MANAGER_ABI,
@@ -103,48 +97,3 @@ export async function getPositionInfo(
     price: parseFloat(price),
   };
 }
-
-export const positionInfoRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-
-  fastify.get<{
-    Querystring: GetPositionInfoRequestType;
-    Reply: PositionInfo;
-  }>(
-    '/position-info',
-    {
-      schema: {
-        description: 'Get position information for a Pancakeswap V3 position',
-        tags: ['/connector/pancakeswap'],
-        querystring: {
-          ...GetPositionInfoRequest,
-          properties: {
-            network: { type: 'string', default: 'bsc', examples: ['bsc'] },
-            positionAddress: {
-              type: 'string',
-              description: 'Position NFT token ID',
-              examples: ['1234'],
-            },
-          },
-        },
-        response: {
-          200: PositionInfoSchema,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, positionAddress } = request.query;
-        return await getPositionInfo(fastify, network, positionAddress);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw fastify.httpErrors.internalServerError('Failed to get position info');
-      }
-    },
-  );
-};
-
-export default positionInfoRoute;

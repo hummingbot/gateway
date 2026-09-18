@@ -1,5 +1,3 @@
-import { MeteoraConfig } from './meteora.config';
-
 /**
  * Find a pool address for a token pair in the configured pools
  *

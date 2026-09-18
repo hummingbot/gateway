@@ -1,6 +1,7 @@
 import { Type } from '@sinclair/typebox';
 import { FastifyPluginAsync } from 'fastify';
 
+import { parseChainNetwork } from '../../services/chain-network';
 import { TopPoolInfo } from '../../services/coingecko-service';
 import { handlePoolError } from '../pool-error-handler';
 import { findPools } from '../pool-finder';
@@ -105,9 +106,10 @@ export const findPoolsRoute: FastifyPluginAsync = async (fastify) => {
           page: pages,
         });
 
-        // Transform TopPoolInfo to PoolInfo format
-        // Extract network from chainNetwork (format: chain-network)
-        const network = chainNetwork.split('-').slice(1).join('-');
+        // Transform TopPoolInfo to PoolInfo format.
+        // Through the shared parser rather than an inline split: the hand-rolled version
+        // answered '' for a selector with no hyphen and stamped that onto every pool.
+        const { network } = parseChainNetwork(chainNetwork);
 
         const pools = topPools.map((topPool) => {
           const pool = transformToPoolInfo(topPool);

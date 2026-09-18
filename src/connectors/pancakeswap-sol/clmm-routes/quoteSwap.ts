@@ -1,12 +1,9 @@
-import { FastifyPluginAsync } from 'fastify';
-
 import { Solana } from '../../../chains/solana/solana';
-import { QuoteSwapResponseType, QuoteSwapResponse } from '../../../schemas/clmm-schema';
+import { QuoteSwapResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
 import { PancakeswapSolConfig } from '../pancakeswap-sol.config';
-import { PancakeswapSolClmmQuoteSwapRequest, PancakeswapSolClmmQuoteSwapRequestType } from '../schemas';
 
 /**
  * Quote swap implementation using pool data with fee and price impact estimation.
@@ -23,7 +20,7 @@ import { PancakeswapSolClmmQuoteSwapRequest, PancakeswapSolClmmQuoteSwapRequestT
  *
  * For highest precision, this should be replaced with full tick array calculation.
  */
-export async function quoteSwap(
+export async function getRawSwapQuote(
   network: string,
   baseTokenSymbol: string,
   quoteTokenSymbol: string,
@@ -144,54 +141,35 @@ export async function quoteSwap(
   return result;
 }
 
-export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: PancakeswapSolClmmQuoteSwapRequestType;
-    Reply: QuoteSwapResponseType;
-  }>(
-    '/quote-swap',
-    {
-      schema: {
-        description:
-          'Get swap quote for PancakeSwap Solana CLMM with fee and estimated price impact based on pool liquidity',
-        tags: ['/connector/pancakeswap-sol'],
-        querystring: PancakeswapSolClmmQuoteSwapRequest,
-        response: { 200: QuoteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network = 'mainnet-beta',
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          poolAddress,
-          slippagePct,
-        } = request.query;
+/**
+ * Resolves the counter ("quote") token for a PancakeSwap Solana CLMM pool given the base token. The
+ * standardized swap wrappers take poolAddress + baseToken and derive the other side from the pool,
+ * so callers no longer pass quoteToken.
+ */
+export async function resolveCounterToken(network: string, poolAddress: string, baseToken: string): Promise<string> {
+  const solana = await Solana.getInstance(network);
+  const pancakeswapSol = await PancakeswapSol.getInstance(network);
+  const poolInfo = await pancakeswapSol.getClmmPoolInfo(poolAddress);
+  if (!poolInfo) throw httpErrors.notFound(`Pool not found: ${poolAddress}`);
+  const resolved = await solana.getToken(baseToken);
+  const baseAddr = resolved ? resolved.address : baseToken;
+  if (baseAddr === poolInfo.baseTokenAddress) return poolInfo.quoteTokenAddress;
+  if (baseAddr === poolInfo.quoteTokenAddress) return poolInfo.baseTokenAddress;
+  throw httpErrors.badRequest(`Token ${baseToken} is not part of pool ${poolAddress}`);
+}
 
-        return await quoteSwap(
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
-          poolAddress,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Quote swap error:', e);
-        // Re-throw httpErrors as-is
-        if (e.statusCode) {
-          throw e;
-        }
-        // Handle unknown errors
-        const errorMessage = e.message || 'Failed to get swap quote';
-        throw httpErrors.internalServerError(errorMessage);
-      }
-    },
-  );
-};
-
-export default quoteSwapRoute;
+/**
+ * Standard CLMM quote-swap entry point (network-based) — consumed by the unified swap router.
+ * Requires poolAddress; the quote token is derived from the pool.
+ */
+export async function quoteSwap(
+  network: string,
+  poolAddress: string,
+  baseToken: string,
+  side: 'BUY' | 'SELL',
+  amount: number,
+  slippagePct: number = PancakeswapSolConfig.config.slippagePct,
+): Promise<QuoteSwapResponseType> {
+  const quoteToken = await resolveCounterToken(network, poolAddress, baseToken);
+  return await getRawSwapQuote(network, baseToken, quoteToken, amount, side, poolAddress, slippagePct);
+}

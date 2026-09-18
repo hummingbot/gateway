@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 
+import { parseChainNetwork } from '../../services/chain-network';
 import { logger } from '../../services/logger';
 import { TokenService } from '../../services/token-service';
 import { TokenListQuery, TokenListQuerySchema, TokenListResponse, TokenListResponseSchema } from '../schemas';
@@ -18,7 +19,8 @@ export const listTokensRoute: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const { chain, network, search } = request.query;
+      const { chainNetwork, search } = request.query;
+      const { chain, network } = parseChainNetwork(chainNetwork);
 
       try {
         if (!chain || !network) {

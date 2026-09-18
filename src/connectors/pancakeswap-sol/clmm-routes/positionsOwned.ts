@@ -1,18 +1,10 @@
-import { Type, Static } from '@sinclair/typebox';
 import { PublicKey } from '@solana/web3.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { PositionInfo, PositionInfoSchema } from '../../../schemas/clmm-schema';
+import { PositionInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { PancakeswapSol } from '../pancakeswap-sol';
-import { PancakeswapSolClmmGetPositionsOwnedRequest, PancakeswapSolClmmGetPositionsOwnedRequestType } from '../schemas';
-
-const INVALID_SOLANA_ADDRESS_MESSAGE = (address: string) => `Invalid Solana address: ${address}`;
-
-const GetPositionsOwnedResponse = Type.Array(PositionInfoSchema);
-
-type GetPositionsOwnedResponseType = Static<typeof GetPositionsOwnedResponse>;
 
 export async function getPositionsOwned(
   fastify: FastifyInstance,
@@ -111,39 +103,3 @@ async function fetchPositionsFromRPC(solana: Solana, walletAddress: string): Pro
   logger.info(`Found ${positions.length} PancakeSwap position(s) for wallet ${walletAddress.slice(0, 8)}...`);
   return positions;
 }
-
-export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: PancakeswapSolClmmGetPositionsOwnedRequestType;
-    Reply: GetPositionsOwnedResponseType;
-  }>(
-    '/positions-owned',
-    {
-      schema: {
-        description: "Retrieve all positions owned by a user's wallet across all PancakeSwap Solana CLMM pools",
-        tags: ['/connector/pancakeswap-sol'],
-        querystring: PancakeswapSolClmmGetPositionsOwnedRequest,
-        response: {
-          200: GetPositionsOwnedResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network = 'mainnet-beta', walletAddress, poolAddress } = request.query;
-        return await getPositionsOwned(fastify, network, walletAddress, poolAddress);
-      } catch (e: any) {
-        logger.error('Positions owned error:', e);
-        // Re-throw httpErrors as-is
-        if (e.statusCode) {
-          throw e;
-        }
-        // Handle unknown errors
-        const errorMessage = e.message || 'Failed to fetch positions';
-        throw fastify.httpErrors.internalServerError(errorMessage);
-      }
-    },
-  );
-};
-
-export default positionsOwnedRoute;

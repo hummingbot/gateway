@@ -1,18 +1,15 @@
 import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 
 import { Solana } from '../../../chains/solana/solana';
-import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage, sanitizeString } from '../../../services/sanitize';
-import { approximateBuyViaSellLeg } from '../../router-utils';
+import { approximateBuyViaSellLeg, attemptedRoute, priceImpactPercentFromFraction } from '../../router-utils';
 import { Jupiter } from '../jupiter';
 import { JupiterConfig } from '../jupiter.config';
-import { JupiterQuoteSwapRequest, JupiterQuoteSwapResponse } from '../schemas';
-
+import { JupiterQuoteSwapResponse } from '../schemas';
 export async function quoteSwap(
   network: string,
   baseToken: string,
@@ -20,8 +17,6 @@ export async function quoteSwap(
   amount: number,
   side: 'BUY' | 'SELL',
   slippagePct: number = JupiterConfig.config.slippagePct,
-  onlyDirectRoutes?: boolean,
-  restrictIntermediateTokens?: boolean,
   approximateIfNoExactOut: boolean = true,
 ): Promise<Static<typeof JupiterQuoteSwapResponse>> {
   const solana = await Solana.getInstance(network);
@@ -43,9 +38,10 @@ export async function quoteSwap(
 
   logger.info(`Getting quote for ${amount} ${inputToken.symbol} -> ${outputToken.symbol}`);
 
-  const effectiveOnlyDirectRoutes = onlyDirectRoutes ?? JupiterConfig.config.onlyDirectRoutes;
-  const effectiveRestrictIntermediateTokens =
-    restrictIntermediateTokens ?? JupiterConfig.config.restrictIntermediateTokens;
+  // Routing policy comes from the connector config (conf/connectors/jupiter.yml),
+  // not per-request parameters.
+  const effectiveOnlyDirectRoutes = JupiterConfig.config.onlyDirectRoutes;
+  const effectiveRestrictIntermediateTokens = JupiterConfig.config.restrictIntermediateTokens;
 
   let quoteResponse;
   let approximation = false;
@@ -98,15 +94,21 @@ export async function quoteSwap(
         quoteResponse = approximated.forwardQuote.quote;
         approximation = true;
       } catch (fallbackError) {
-        const tokenPair = `${sanitizeString(baseToken)} -> ${sanitizeString(quoteToken)}`;
         const msg = fallbackError?.message || String(fallbackError);
-        throw httpErrors.noRouteFound(`No route found for ${tokenPair} (ExactOut, ExactIn fallback failed). ${msg}`);
+        const route = attemptedRoute(
+          side,
+          sanitizeString(baseToken),
+          sanitizeString(quoteToken),
+          'ExactOut, ExactIn fallback failed',
+        );
+        throw httpErrors.noRouteFound(`No route found for ${route}. ${msg}`);
       }
     } else {
-      // Pass through Jupiter's error with context
-      const tokenPair = `${sanitizeString(baseToken)} -> ${sanitizeString(quoteToken)}`;
-      const swapMode = side === 'BUY' ? 'ExactOut' : 'ExactIn';
-      throw httpErrors.noRouteFound(`No route found for ${tokenPair} (${swapMode}). ${errorMessage}`);
+      // Pass through Jupiter's error, naming the route that was actually attempted. This
+      // branch serves a failed SELL and a BUY that declined approximation, and the two
+      // are quoted in opposite directions and opposite modes.
+      const route = attemptedRoute(side, sanitizeString(baseToken), sanitizeString(quoteToken));
+      throw httpErrors.noRouteFound(`No route found for ${route}. ${errorMessage}`);
     }
   }
 
@@ -151,7 +153,7 @@ export async function quoteSwap(
     amountIn: side === 'SELL' ? amount : estimatedAmountIn,
     amountOut: outputIsExact ? amount : estimatedAmountOut,
     price,
-    priceImpactPct: parseFloat(quoteResponse.priceImpactPct || '0'),
+    priceImpactPct: priceImpactPercentFromFraction(quoteResponse.priceImpactPct),
     minAmountOut,
     maxAmountIn,
     approximation,
@@ -164,6 +166,8 @@ export async function quoteSwap(
       otherAmountThreshold: quoteResponse.otherAmountThreshold || '0',
       swapMode: quoteResponse.swapMode || 'ExactIn',
       slippageBps: quoteResponse.slippageBps,
+      // Jupiter's own payload, handed back to Jupiter at execution: its fields stay in
+      // Jupiter's units. Only the unified field above is normalised to a percentage.
       priceImpactPct: quoteResponse.priceImpactPct || '0',
       routePlan: quoteResponse.routePlan || [],
       contextSlot: quoteResponse.contextSlot,
@@ -171,53 +175,3 @@ export async function quoteSwap(
     },
   };
 }
-
-export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: QuoteSwapRequestType;
-    Reply: Static<typeof JupiterQuoteSwapResponse>;
-  }>(
-    '/quote-swap',
-    {
-      schema: {
-        description: 'Get an executable swap quote from Jupiter',
-        tags: ['/connector/jupiter'],
-        querystring: JupiterQuoteSwapRequest,
-        response: { 200: JupiterQuoteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const {
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side,
-          slippagePct,
-          onlyDirectRoutes,
-          restrictIntermediateTokens,
-          approximateIfNoExactOut,
-        } = request.query as typeof JupiterQuoteSwapRequest._type;
-
-        return await quoteSwap(
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
-          slippagePct,
-          onlyDirectRoutes,
-          restrictIntermediateTokens,
-          approximateIfNoExactOut,
-        );
-      } catch (e) {
-        if (e.statusCode) throw e;
-        logger.error('Error getting quote:', e);
-        throw httpErrors.internalServerError(e.message || 'Internal server error');
-      }
-    },
-  );
-};
-
-export default quoteSwapRoute;

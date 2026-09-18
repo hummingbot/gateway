@@ -1,10 +1,9 @@
 import { Contract } from '@ethersproject/contracts';
 import { Position, tickToPrice, computePoolAddress } from '@pancakeswap/v3-sdk';
-import { Type } from '@sinclair/typebox';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import { PositionInfo, PositionInfoSchema } from '../../../schemas/clmm-schema';
+import { PositionInfo } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
 import { Pancakeswap } from '../pancakeswap';
 import {
@@ -13,14 +12,6 @@ import {
   getPancakeswapV3PoolDeployerAddress,
 } from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
-
-// Define the request and response types
-const PositionsOwnedRequest = Type.Object({
-  network: Type.Optional(Type.String({ examples: ['bsc'], default: 'bsc' })),
-  walletAddress: Type.String({ examples: ['<ethereum-wallet-address>'] }),
-});
-
-const PositionsOwnedResponse = Type.Array(PositionInfoSchema);
 
 // Additional ABI methods needed for enumerating positions
 const ENUMERABLE_ABI = [
@@ -79,17 +70,17 @@ export async function getPositionsOwned(
       const tokenId = await positionManager.tokenOfOwnerByIndex(walletAddress, i);
       const positionDetails = await positionManager.positions(tokenId);
 
-      if (positionDetails.liquidity.eq(0)) {
-        continue;
-      }
+      // Zero-liquidity positions are reported, not skipped. The NFT is still
+      // owned and still counted by balanceOf, it can hold uncollected
+      // tokensOwed after a decrease, and it can be increased again or burned.
+      // Callers that want only active liquidity filter on it themselves.
 
       const token0 = await pancakeswap.getToken(positionDetails.token0);
       const token1 = await pancakeswap.getToken(positionDetails.token1);
 
       const pool = await pancakeswap.getV3Pool(token0, token1, positionDetails.fee);
       if (!pool) {
-        logger.warn(`Pool not found for position ${tokenId}`);
-        continue;
+        throw new Error(`pool not found for ${token0.symbol}-${token1.symbol} at fee tier ${positionDetails.fee}`);
       }
 
       const position = new Position({
@@ -136,52 +127,23 @@ export async function getPositionsOwned(
         price: parseFloat(pool.token0Price.toSignificant(6)),
       });
     } catch (err) {
-      logger.warn(`Error fetching position ${i} for wallet ${walletAddress}: ${err.message}`);
+      // Do not swallow this. A failure here is indistinguishable from the
+      // position not existing, so returning the rest would hand the caller a
+      // silently short list — and callers size new exposure against it.
+      throw fastify.httpErrors.internalServerError(
+        `Failed to read position ${i + 1} of ${numPositions} for wallet ${walletAddress}: ${err.message}`,
+      );
     }
+  }
+
+  // Index-based enumeration is only consistent if the wallet's balance did not
+  // change mid-scan. If it did, the list is not the inventory it claims to be.
+  if (positions.length !== numPositions) {
+    throw fastify.httpErrors.internalServerError(
+      `Resolved ${positions.length} positions but balanceOf reported ${numPositions} for wallet ` +
+        `${walletAddress}; the wallet's positions likely changed during enumeration. Retry.`,
+    );
   }
 
   return positions;
 }
-
-export const positionsOwnedRoute: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(require('@fastify/sensible'));
-  const walletAddressExample = await Ethereum.getWalletAddressExample();
-
-  fastify.get<{
-    Querystring: typeof PositionsOwnedRequest.static;
-    Reply: typeof PositionsOwnedResponse.static;
-  }>(
-    '/positions-owned',
-    {
-      schema: {
-        description: 'Get all Pancakeswap V3 positions owned by a wallet',
-        tags: ['/connector/pancakeswap'],
-        querystring: {
-          ...PositionsOwnedRequest,
-          properties: {
-            ...PositionsOwnedRequest.properties,
-            walletAddress: { type: 'string', examples: [walletAddressExample] },
-          },
-        },
-        response: {
-          200: PositionsOwnedResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { walletAddress } = request.query;
-        const network = request.query.network;
-        return await getPositionsOwned(fastify, network, walletAddress);
-      } catch (e) {
-        logger.error(e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw fastify.httpErrors.internalServerError('Failed to fetch positions');
-      }
-    },
-  );
-};
-
-export default positionsOwnedRoute;

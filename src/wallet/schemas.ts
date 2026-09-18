@@ -48,16 +48,19 @@ export const GetWalletResponseSchema = Type.Object({
   ),
 });
 
-export const RemoveWalletRequestSchema = Type.Object({
-  chain: Type.String({
-    description: 'Blockchain to remove wallet from',
-    enum: ['ethereum', 'solana'],
-    examples: ['solana', 'ethereum'],
-  }),
-  address: Type.String({
-    description: 'Wallet address to remove',
-  }),
-});
+export const RemoveWalletRequestSchema = Type.Object(
+  {
+    chain: Type.String({
+      description: 'Blockchain to remove wallet from',
+      enum: ['ethereum', 'solana'],
+      examples: ['solana', 'ethereum'],
+    }),
+    address: Type.String({
+      description: 'Wallet address to remove',
+    }),
+  },
+  { $id: 'RemoveWalletRequest', additionalProperties: false },
+);
 
 export const RemoveWalletResponseSchema = Type.Object({
   message: Type.String({
@@ -77,23 +80,26 @@ export const SignMessageResponseSchema = Type.Object({
 });
 
 // Hardware wallet schemas
-export const AddHardwareWalletRequestSchema = Type.Object({
-  chain: Type.String({
-    description: 'Blockchain for hardware wallet',
-    enum: ['ethereum', 'solana'],
-    default: 'solana',
-    examples: ['solana', 'ethereum'],
-  }),
-  address: Type.String({
-    description: 'Hardware wallet address to add (must exist on connected Ledger device)',
-  }),
-  setDefault: Type.Optional(
-    Type.Boolean({
-      description: 'Set this wallet as the default for the chain',
-      default: false,
+export const AddHardwareWalletRequestSchema = Type.Object(
+  {
+    chain: Type.String({
+      description: 'Blockchain for hardware wallet',
+      enum: ['ethereum', 'solana'],
+      default: 'solana',
+      examples: ['solana', 'ethereum'],
     }),
-  ),
-});
+    address: Type.String({
+      description: 'Hardware wallet address to add (must exist on connected Ledger device)',
+    }),
+    setDefault: Type.Optional(
+      Type.Boolean({
+        description: 'Set this wallet as the default for the chain',
+        default: false,
+      }),
+    ),
+  },
+  { $id: 'AddHardwareWalletRequest', additionalProperties: false },
+);
 
 export const AddHardwareWalletResponseSchema = Type.Object({
   address: Type.String({

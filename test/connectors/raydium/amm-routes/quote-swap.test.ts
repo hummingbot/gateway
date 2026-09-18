@@ -3,6 +3,7 @@ import { PublicKey } from '@solana/web3.js';
 import { Solana } from '../../../../src/chains/solana/solana';
 import { Raydium } from '../../../../src/connectors/raydium/raydium';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/raydium/raydium');
@@ -10,8 +11,8 @@ jest.mock('../../../../src/connectors/raydium/raydium');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quoteSwapRoute } = await import('../../../../src/connectors/raydium/amm-routes/quoteSwap');
-  await server.register(quoteSwapRoute);
+  const { makeQuoteSwapRoute } = await import('../../../../src/trading/pool-swap-routes');
+  await server.register(makeQuoteSwapRoute('amm'));
   return server;
 };
 
@@ -143,7 +144,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         poolAddress: mockPoolAddress,
         baseToken: 'SOL',
         quoteToken: 'USDC',
@@ -154,9 +156,9 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('poolAddress', mockPoolAddress);
-    expect(body).toHaveProperty('amountIn', 0.1);
+    expect(Number(body.amountIn)).toBe(0.1);
     expect(body).toHaveProperty('amountOut', 14.85);
     expect(body).toHaveProperty('minAmountOut', 14.7);
     expect(body).toHaveProperty('price', 148.5);
@@ -219,7 +221,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         poolAddress: mockPoolAddress,
         baseToken: 'SOL',
         quoteToken: 'USDC',
@@ -230,9 +233,9 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('poolAddress', mockPoolAddress);
-    expect(body).toHaveProperty('amountIn', 15);
+    expect(Number(body.amountIn)).toBe(15);
     expect(body).toHaveProperty('amountOut', 0.1);
     expect(body).toHaveProperty('maxAmountIn', 15.15);
     expect(body).toHaveProperty('tokenIn', mockUSDC.address);
@@ -263,7 +266,8 @@ describe('GET /quote-swap', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'raydium',
         poolAddress: 'invalid-pool-address',
         baseToken: 'SOL',
         quoteToken: 'USDC',
@@ -274,6 +278,6 @@ describe('GET /quote-swap', () => {
     });
 
     expect(response.statusCode).toBe(404);
-    expect(JSON.parse(response.body)).toHaveProperty('error');
+    expect(parseWire(response.body)).toHaveProperty('error');
   });
 });

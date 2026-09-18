@@ -25,7 +25,7 @@ Key features:
 ### Read-Only Routes (Implemented)
 
 #### 1. Pool Info
-- **Endpoint**: `GET /connectors/pancakeswap-sol/clmm/pool-info`
+- **Endpoint**: `GET /trading/clmm/pool-info` (with `connector=pancakeswap-sol`)
 - **Description**: Fetch detailed information about a CLMM pool
 - **Parameters**:
   - `network`: Solana network (mainnet-beta or devnet)
@@ -33,7 +33,7 @@ Key features:
 - **Returns**: Pool info including tokens, price, liquidity, fees, tick spacing, etc.
 
 #### 2. Position Info
-- **Endpoint**: `GET /connectors/pancakeswap-sol/clmm/position-info`
+- **Endpoint**: `GET /trading/clmm/position-info` (with `connector=pancakeswap-sol`)
 - **Description**: Fetch information about a specific position NFT
 - **Parameters**:
   - `network`: Solana network
@@ -41,7 +41,7 @@ Key features:
 - **Returns**: Position details including price range, liquidity, fees earned, etc.
 
 #### 3. Positions Owned
-- **Endpoint**: `GET /connectors/pancakeswap-sol/clmm/positions-owned`
+- **Endpoint**: `GET /trading/clmm/positions-owned` (with `connector=pancakeswap-sol`)
 - **Description**: List all positions owned by a wallet in a specific pool
 - **Parameters**:
   - `network`: Solana network
@@ -53,7 +53,7 @@ Key features:
 ### Swap Routes (Implemented)
 
 #### 4. Quote Swap
-- **Endpoint**: `GET /connectors/pancakeswap-sol/clmm/quote-swap`
+- **Endpoint**: `GET /trading/clmm/quote-swap` (with `connector=pancakeswap-sol`)
 - **Description**: Get swap quote for a token pair (simplified - uses spot price)
 - **Parameters**:
   - `network`: Solana network
@@ -71,7 +71,7 @@ Key features:
   - Suitable for small trades where price impact is minimal
 
 #### 5. Execute Swap
-- **Endpoint**: `POST /connectors/pancakeswap-sol/clmm/execute-swap`
+- **Endpoint**: `POST /trading/clmm/execute-swap` (with `connector=pancakeswap-sol`)
 - **Description**: Execute a swap on PancakeSwap Solana CLMM
 - **Parameters**:
   - `network`: Solana network
@@ -92,7 +92,7 @@ Key features:
 ### Position Management Routes (Implemented)
 
 #### 6. Add Liquidity
-- **Endpoint**: `POST /connectors/pancakeswap-sol/clmm/add-liquidity`
+- **Endpoint**: `POST /trading/clmm/add` (with `connector=pancakeswap-sol`)
 - **Description**: Add liquidity to an existing position
 - **Parameters**:
   - `network`: Solana network
@@ -104,7 +104,7 @@ Key features:
 - **Implementation**: Uses increase_liquidity_v2 instruction with manual building
 
 #### 7. Remove Liquidity
-- **Endpoint**: `POST /connectors/pancakeswap-sol/clmm/remove-liquidity`
+- **Endpoint**: `POST /trading/clmm/remove` (with `connector=pancakeswap-sol`)
 - **Description**: Remove liquidity from a position by percentage
 - **Parameters**:
   - `network`: Solana network
@@ -115,7 +115,7 @@ Key features:
 - **Implementation**: Uses decrease_liquidity_v2 instruction with tick array calculation
 
 #### 8. Collect Fees
-- **Endpoint**: `POST /connectors/pancakeswap-sol/clmm/collect-fees`
+- **Endpoint**: `POST /trading/clmm/collect-fees` (with `connector=pancakeswap-sol`)
 - **Description**: Collect accumulated fees from a position
 - **Parameters**:
   - `network`: Solana network
@@ -125,7 +125,7 @@ Key features:
 - **Implementation**: Uses the clever approach of removing 1% liquidity to collect fees
 
 #### 9. Close Position
-- **Endpoint**: `POST /connectors/pancakeswap-sol/clmm/close-position`
+- **Endpoint**: `POST /trading/clmm/close` (with `connector=pancakeswap-sol`)
 - **Description**: Close an empty position (must have zero liquidity)
 - **Parameters**:
   - `network`: Solana network
@@ -135,7 +135,7 @@ Key features:
 - **Implementation**: Uses close_position instruction, requires position to be emptied first
 
 #### 10. Quote Position
-- **Endpoint**: `GET /connectors/pancakeswap-sol/clmm/quote-position`
+- **Endpoint**: `GET /trading/clmm/quote-liquidity` (with `connector=pancakeswap-sol`)
 - **Description**: Quote token amounts for opening a position (simplified)
 - **Parameters**:
   - `network`: Solana network
@@ -148,7 +148,7 @@ Key features:
 - **Note**: Simplified version using spot price, not full tick math
 
 #### 11. Open Position
-- **Endpoint**: `POST /connectors/pancakeswap-sol/clmm/open-position`
+- **Endpoint**: `POST /trading/clmm/open` (with `connector=pancakeswap-sol`)
 - **Description**: Open a new CLMM position with Token2022 NFT and metadata
 - **Parameters**:
   - `network`: Solana network
@@ -171,7 +171,7 @@ Key features:
 All essential CLMM routes have been implemented:
 - ✅ **Pool/Position Info** (3 routes): pool-info, position-info, positions-owned
 - ✅ **Swap Operations** (2 routes): quote-swap, execute-swap
-- ✅ **Position Management** (6 routes): quote-position, open-position, add-liquidity, remove-liquidity, collect-fees, close-position
+- ✅ **Position Management** (6 routes): quote-liquidity, open, add, remove, collect-fees, close
 
 **Total: 11 routes** providing complete CLMM functionality without SDK dependency.
 
@@ -179,35 +179,36 @@ All essential CLMM routes have been implemented:
 
 ### Get Pool Info
 ```bash
-curl "http://localhost:15888/connectors/pancakeswap-sol/clmm/pool-info?network=mainnet-beta&poolAddress=DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ"
+curl "http://localhost:15888/trading/clmm/pool-info?chainNetwork=solana-mainnet-beta&connector=pancakeswap-sol&poolAddress=DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ"
 ```
 
 ### Get Position Info
 ```bash
-curl "http://localhost:15888/connectors/pancakeswap-sol/clmm/position-info?network=mainnet-beta&positionAddress=F1xRqqbWdg3vdMEsn9YjRU7RnFVn67MZhDVXrWoobii5"
+curl "http://localhost:15888/trading/clmm/position-info?chainNetwork=solana-mainnet-beta&connector=pancakeswap-sol&positionAddress=F1xRqqbWdg3vdMEsn9YjRU7RnFVn67MZhDVXrWoobii5"
 ```
 
 ### Get Positions Owned
 ```bash
-curl "http://localhost:15888/connectors/pancakeswap-sol/clmm/positions-owned?network=mainnet-beta&poolAddress=DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ&walletAddress=<YOUR_WALLET>"
+curl "http://localhost:15888/trading/clmm/positions-owned?chainNetwork=solana-mainnet-beta&connector=pancakeswap-sol&poolAddress=DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ&walletAddress=<YOUR_WALLET>"
 ```
 
 ### Quote Swap
 ```bash
 # SELL 0.01 SOL for USDC
-curl "http://localhost:15888/connectors/pancakeswap-sol/clmm/quote-swap?network=mainnet-beta&baseToken=SOL&quoteToken=USDC&amount=0.01&side=SELL&poolAddress=DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ"
+curl "http://localhost:15888/trading/clmm/quote-swap?chainNetwork=solana-mainnet-beta&connector=pancakeswap-sol&baseToken=SOL&quoteToken=USDC&amount=0.01&side=SELL&poolAddress=DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ"
 
 # BUY 0.01 SOL with USDC
-curl "http://localhost:15888/connectors/pancakeswap-sol/clmm/quote-swap?network=mainnet-beta&baseToken=SOL&quoteToken=USDC&amount=0.01&side=BUY&poolAddress=DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ"
+curl "http://localhost:15888/trading/clmm/quote-swap?chainNetwork=solana-mainnet-beta&connector=pancakeswap-sol&baseToken=SOL&quoteToken=USDC&amount=0.01&side=BUY&poolAddress=DJNtGuBGEQiUCWE8F981M2C3ZghZt2XLD8f2sQdZ6rsZ"
 ```
 
 ### Execute Swap
 ```bash
 # SELL 0.01 SOL for USDC
-curl -X POST "http://localhost:15888/connectors/pancakeswap-sol/clmm/execute-swap" \
+curl -X POST "http://localhost:15888/trading/clmm/execute-swap" \
   -H "Content-Type: application/json" \
   -d '{
-    "network": "mainnet-beta",
+    "chainNetwork": "solana-mainnet-beta",
+    "connector": "pancakeswap-sol",
     "walletAddress": "<YOUR_WALLET>",
     "baseToken": "SOL",
     "quoteToken": "USDC",

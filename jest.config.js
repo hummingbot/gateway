@@ -20,12 +20,7 @@ module.exports = {
   ],
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
   setupFilesAfterEnv: ['<rootDir>/test/jest-setup.js'],
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    'test-helpers',
-    '<rootDir>/test-scripts/',
-    '<rootDir>/test/lifecycle/',
-  ],
+  testPathIgnorePatterns: ['/node_modules/', 'test-helpers', '<rootDir>/test-scripts/', '<rootDir>/test/lifecycle/'],
   testMatch: ['<rootDir>/test/**/*.test.ts', '<rootDir>/test/**/*.test.js'],
   transform: {
     '^.+\\.tsx?$': 'ts-jest',

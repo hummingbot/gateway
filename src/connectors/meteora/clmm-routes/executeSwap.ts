@@ -1,17 +1,12 @@
 import { SwapQuoteExactOut, SwapQuote } from '@meteora-ag/dlmm';
 import { PublicKey } from '@solana/web3.js';
-import { FastifyPluginAsync } from 'fastify';
 
 import { Solana } from '../../../chains/solana/solana';
-import { getSolanaChainConfig } from '../../../chains/solana/solana.config';
-import { ExecuteSwapResponseType, ExecuteSwapResponse } from '../../../schemas/clmm-schema';
-import { httpErrors } from '../../../services/error-handler';
+import { ExecuteSwapResponseType } from '../../../schemas/clmm-schema';
 import { logger } from '../../../services/logger';
-import { sanitizeErrorMessage } from '../../../services/sanitize';
 import { MeteoraConfig } from '../meteora.config';
-import { MeteoraClmmExecuteSwapRequest, MeteoraClmmExecuteSwapRequestType } from '../schemas';
 
-import { getRawSwapQuote } from './quoteSwap';
+import { resolveCounterToken, getRawSwapQuote } from './quoteSwap';
 
 const DLMM_PROGRAM_ID = new PublicKey('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo');
 
@@ -38,11 +33,10 @@ export function fixSwapBitmapExtensionMeta<T extends { instructions?: { programI
 export async function executeSwap(
   network: string,
   address: string,
-  baseTokenIdentifier: string,
-  quoteTokenIdentifier: string,
-  amount: number,
-  side: 'BUY' | 'SELL',
   poolAddress: string,
+  baseToken: string,
+  side: 'BUY' | 'SELL',
+  amount: number,
   slippagePct: number = MeteoraConfig.config.slippagePct,
 ): Promise<ExecuteSwapResponseType> {
   const solana = await Solana.getInstance(network);
@@ -51,13 +45,16 @@ export async function executeSwap(
   // sendAndConfirmTransactionForWallet, which knows how to sign for each type.
   const walletPublicKey = new PublicKey(address);
 
+  // Standardized: quote token is derived from the pool given poolAddress + baseToken.
+  const quoteToken = await resolveCounterToken(network, poolAddress, baseToken);
+
   const {
     inputToken,
     outputToken,
     swapAmount,
     quote: swapQuote,
     dlmmPool,
-  } = await getRawSwapQuote(network, baseTokenIdentifier, quoteTokenIdentifier, amount, side, poolAddress, slippagePct);
+  } = await getRawSwapQuote(network, baseToken, quoteToken, amount, side, poolAddress, slippagePct);
 
   logger.info(`Executing ${amount.toFixed(4)} ${side} swap in pool ${poolAddress}`);
 
@@ -89,11 +86,10 @@ export async function executeSwap(
 
   logger.info(`Transaction sent with signature: ${signature}`);
 
-  // Get transaction data for confirmation
-  const txData = await solana.connection.getTransaction(signature, {
-    commitment: 'confirmed',
-    maxSupportedTransactionVersion: 0,
-  });
+  // Get transaction data for confirmation. The retrying fetch throws the shared
+  // landed-but-failed error when the transaction landed with an error, so existence of
+  // txData below really means "confirmed".
+  const txData = await solana.getConfirmedTransactionData(signature);
 
   const confirmed = txData !== null;
 
@@ -133,6 +129,7 @@ export async function executeSwap(
         fee: txFee,
         baseTokenBalanceChange,
         quoteTokenBalanceChange,
+        slippagePct,
       },
     };
   } else {
@@ -143,96 +140,3 @@ export async function executeSwap(
     };
   }
 }
-
-export const executeSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: MeteoraClmmExecuteSwapRequestType;
-    Reply: ExecuteSwapResponseType;
-  }>(
-    '/execute-swap',
-    {
-      schema: {
-        description: 'Execute a token swap on Meteora DLMM',
-        tags: ['/connector/meteora'],
-        body: MeteoraClmmExecuteSwapRequest,
-        response: { 200: ExecuteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress, baseToken, quoteToken, amount, side, poolAddress, slippagePct } = request.body;
-
-        // Use defaults if not provided
-        const networkUsed = network || getSolanaChainConfig().defaultNetwork;
-        const walletAddressUsed = walletAddress || getSolanaChainConfig().defaultWallet;
-
-        let poolAddressUsed = poolAddress;
-
-        // If poolAddress is not provided, look it up by token pair
-        if (!poolAddressUsed) {
-          const solana = await Solana.getInstance(networkUsed);
-
-          // Resolve token symbols to get proper symbols for pool lookup
-          const baseTokenInfo = await solana.getToken(baseToken);
-          const quoteTokenInfo = await solana.getToken(quoteToken);
-
-          if (!baseTokenInfo || !quoteTokenInfo) {
-            throw httpErrors.badRequest(
-              sanitizeErrorMessage('Token not found: {}', !baseTokenInfo ? baseToken : quoteToken),
-            );
-          }
-
-          // Use PoolService to find pool by token pair
-          const { PoolService } = await import('../../../services/pool-service');
-          const poolService = PoolService.getInstance();
-
-          const pool = await poolService.getPool(
-            'meteora',
-            networkUsed,
-            'clmm',
-            baseTokenInfo.symbol,
-            quoteTokenInfo.symbol,
-          );
-
-          if (!pool) {
-            throw httpErrors.notFound(
-              `No CLMM pool found for ${baseTokenInfo.symbol}-${quoteTokenInfo.symbol} on Meteora`,
-            );
-          }
-
-          poolAddressUsed = pool.address;
-        }
-        logger.info(`Received swap request: ${amount} ${baseToken} -> ${quoteToken} in pool ${poolAddressUsed}`);
-
-        return await executeSwap(
-          networkUsed,
-          walletAddressUsed,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
-          poolAddressUsed,
-          slippagePct,
-        );
-      } catch (e: any) {
-        logger.error('Error executing swap:', e.message || e);
-        logger.error('Full error:', JSON.stringify(e, null, 2));
-
-        if (e.statusCode) {
-          // If it's already an HTTP error, throw it properly
-          throw e;
-        }
-
-        // Check for specific error messages
-        const errorMessage = e.message || e.toString();
-        if (errorMessage.includes('503') || errorMessage.includes('Service Unavailable')) {
-          throw httpErrors.createError(503, 'RPC service temporarily unavailable. Please try again.');
-        }
-
-        throw httpErrors.internalServerError(`Swap execution failed: ${errorMessage}`);
-      }
-    },
-  );
-};
-
-export default executeSwapRoute;

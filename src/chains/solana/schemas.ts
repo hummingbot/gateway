@@ -8,8 +8,6 @@ const solanaChainConfig = getSolanaChainConfig();
 // Example values
 const EXAMPLE_SIGNATURE = '55ukR6VCt1sQFMC8Nyeo51R1SMaTzUC7jikmkEJ2jjkQNdqBxXHraH7vaoaNmf8rX4Y55EXAj8XXoyzvvsrQqWZa';
 const EXAMPLE_TOKENS = ['SOL', 'USDC', 'BONK'];
-const USDC_MINT_ADDRESS = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
-const BONK_MINT_ADDRESS = 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263';
 
 // Network parameter with proper defaults and enum
 export const SolanaNetworkParameter = Type.Optional(

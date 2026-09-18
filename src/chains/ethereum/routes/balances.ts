@@ -1,9 +1,8 @@
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
-import { BalanceRequestType, BalanceResponseType, BalanceResponseSchema } from '../../../schemas/chain-schema';
+import { BalanceResponseType } from '../../../schemas/chain-schema';
 import { logger } from '../../../services/logger';
 import { Ethereum } from '../ethereum';
-import { EthereumBalanceRequest } from '../schemas';
 
 export async function getEthereumBalances(
   fastify: FastifyInstance,
@@ -23,29 +22,3 @@ export async function getEthereumBalances(
     throw fastify.httpErrors.internalServerError(`Failed to get balances: ${error.message}`);
   }
 }
-
-export const balancesRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: BalanceRequestType;
-    Reply: BalanceResponseType;
-  }>(
-    '/balances',
-    {
-      schema: {
-        description:
-          'Get Ethereum balances. If no tokens specified or empty array provided, returns native token (ETH) and only non-zero balances for tokens from the token list. If specific tokens are requested, returns those exact tokens with their balances, including zeros.',
-        tags: ['/chain/ethereum'],
-        body: EthereumBalanceRequest,
-        response: {
-          200: BalanceResponseSchema,
-        },
-      },
-    },
-    async (request) => {
-      const { network, address, tokens } = request.body;
-      return await getEthereumBalances(fastify, network, address, tokens);
-    },
-  );
-};
-
-export default balancesRoute;

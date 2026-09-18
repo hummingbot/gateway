@@ -1,21 +1,21 @@
 import { Contract } from '@ethersproject/contracts';
 import { Percent, CurrencyAmount } from '@pancakeswap/sdk';
-import { NonfungiblePositionManager, Position } from '@pancakeswap/v3-sdk';
+import { NonfungiblePositionManager, Position, computePoolAddress } from '@pancakeswap/v3-sdk';
 import { BigNumber } from 'ethers';
-import { FastifyPluginAsync } from 'fastify';
 import { Address } from 'viem';
 
 import { Ethereum } from '../../../chains/ethereum/ethereum';
-import {
-  ClosePositionRequestType,
-  ClosePositionRequest,
-  ClosePositionResponseType,
-  ClosePositionResponse,
-} from '../../../schemas/clmm-schema';
+import { TransactionStatus } from '../../../schemas/chain-schema';
+import { ClosePositionResponseType } from '../../../schemas/clmm-schema';
 import { httpErrors } from '../../../services/error-handler';
-import { logger } from '../../../services/logger';
+import { slippageBasisPoints } from '../../evm-slippage';
 import { Pancakeswap } from '../pancakeswap';
-import { POSITION_MANAGER_ABI, getPancakeswapV3NftManagerAddress } from '../pancakeswap.contracts';
+import { PancakeswapConfig } from '../pancakeswap.config';
+import {
+  POSITION_MANAGER_ABI,
+  getPancakeswapV3NftManagerAddress,
+  getPancakeswapV3PoolDeployerAddress,
+} from '../pancakeswap.contracts';
 import { formatTokenAmount } from '../pancakeswap.utils';
 
 // Default gas limit for CLMM close position operations
@@ -25,6 +25,7 @@ export async function closePosition(
   network: string,
   walletAddress: string,
   positionAddress: string,
+  slippagePct: number = PancakeswapConfig.config.slippagePct,
 ): Promise<ClosePositionResponseType> {
   if (!positionAddress) {
     throw httpErrors.badRequest('Missing required parameters');
@@ -54,6 +55,16 @@ export async function closePosition(
   const token0 = await pancakeswap.getToken(position.token0);
   const token1 = await pancakeswap.getToken(position.token1);
 
+  // The pool this position belongs to, derived from the same inputs position-info
+  // uses. The unified route is position-addressed and never receives a pool, so
+  // deriving it here is what lets the response name the venue it acted on.
+  const poolAddress = computePoolAddress({
+    deployerAddress: getPancakeswapV3PoolDeployerAddress(network),
+    tokenA: token0,
+    tokenB: token1,
+    fee: position.fee,
+  });
+
   const isBaseToken0 =
     token0.symbol === 'WETH' ||
     (token1.symbol !== 'WETH' && token0.address.toLowerCase() < token1.address.toLowerCase());
@@ -82,7 +93,10 @@ export async function closePosition(
   const amount0 = positionSDK.amount0;
   const amount1 = positionSDK.amount1;
 
-  const slippageTolerance = new Percent(100, 10000);
+  // The caller's tolerance, or the connector's configured one — not a literal. This was
+  // `new Percent(100, 10000)`, a flat 1% that ignored both, so an operator who had widened
+  // slippagePct for a volatile pair got 1% anyway and a revert that cost gas.
+  const slippageTolerance = new Percent(slippageBasisPoints(slippagePct), 10000);
 
   const totalAmount0 = CurrencyAmount.fromRawAmount(token0, BigInt(amount0.quotient) + BigInt(feeAmount0.toString()));
   const totalAmount1 = CurrencyAmount.fromRawAmount(token1, BigInt(amount1.quotient) + BigInt(feeAmount1.toString()));
@@ -119,9 +133,12 @@ export async function closePosition(
   const txParams = await ethereum.prepareGasOptions(undefined, CLMM_CLOSE_POSITION_GAS_LIMIT);
   txParams.value = BigNumber.from(value.toString());
   const tx = await positionManagerWithSigner.multicall([calldata], txParams);
-  const receipt = await ethereum.handleTransactionExecution(tx);
+  const outcome = await ethereum.handleTransactionConfirmation(tx);
+  if (!outcome.confirmed) {
+    // Still pending — the amounts below were computed before sending and have not moved.
+    return { signature: outcome.signature, status: TransactionStatus.PENDING };
+  }
 
-  const gasFee = formatTokenAmount(receipt.gasUsed.mul(receipt.effectiveGasPrice).toString(), 18);
   const token0AmountRemoved = formatTokenAmount(totalAmount0.quotient.toString(), token0.decimals);
   const token1AmountRemoved = formatTokenAmount(totalAmount1.quotient.toString(), token1.decimals);
 
@@ -137,10 +154,11 @@ export async function closePosition(
   const positionRentRefunded = 0;
 
   return {
-    signature: receipt.transactionHash,
-    status: receipt.status,
+    signature: outcome.signature,
+    status: TransactionStatus.CONFIRMED,
     data: {
-      fee: gasFee,
+      poolAddress,
+      fee: outcome.fee,
       positionRentRefunded,
       baseTokenAmountRemoved,
       quoteTokenAmountRemoved,
@@ -149,46 +167,3 @@ export async function closePosition(
     },
   };
 }
-
-export const closePositionRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: ClosePositionRequestType;
-    Reply: ClosePositionResponseType;
-  }>(
-    '/close-position',
-    {
-      schema: {
-        description: 'Close a Pancakeswap V3 position by removing all liquidity and collecting fees',
-        tags: ['/connector/pancakeswap'],
-        body: ClosePositionRequest,
-        response: {
-          200: ClosePositionResponse,
-        },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, walletAddress: requestedWalletAddress, positionAddress } = request.body;
-
-        let walletAddress = requestedWalletAddress;
-        if (!walletAddress) {
-          const pancakeswap = await Pancakeswap.getInstance(network);
-          walletAddress = await pancakeswap.getFirstWalletAddress();
-          if (!walletAddress) {
-            throw httpErrors.badRequest('No wallet address provided and no default wallet found');
-          }
-        }
-
-        return await closePosition(network, walletAddress, positionAddress);
-      } catch (e: any) {
-        logger.error('Failed to close position:', e);
-        if (e.statusCode) {
-          throw e;
-        }
-        throw httpErrors.internalServerError('Failed to close position');
-      }
-    },
-  );
-};
-
-export default closePositionRoute;

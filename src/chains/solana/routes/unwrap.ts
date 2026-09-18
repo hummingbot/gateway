@@ -1,9 +1,9 @@
 import { NATIVE_MINT, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID, AccountLayout } from '@solana/spl-token';
 import { PublicKey, TransactionMessage, VersionedTransaction } from '@solana/web3.js';
-import { FastifyPluginAsync, FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 import { logger } from '../../../services/logger';
-import { UnwrapRequestSchema, UnwrapResponseSchema, UnwrapRequestType, UnwrapResponseType } from '../schemas';
+import { UnwrapResponseType } from '../schemas';
 import { Solana } from '../solana';
 import { handleSolanaTransactionError } from '../solana-errors';
 import { SolanaLedger } from '../solana-ledger';
@@ -134,28 +134,3 @@ export async function unwrapSolana(
     handleSolanaTransactionError(fastify, error, 'unwrap WSOL to SOL');
   }
 }
-
-export const unwrapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.post<{
-    Body: UnwrapRequestType;
-    Reply: UnwrapResponseType;
-  }>(
-    '/unwrap',
-    {
-      schema: {
-        description: 'Unwrap WSOL to SOL. Note: This closes the entire WSOL account, returning all WSOL as SOL.',
-        tags: ['/chain/solana'],
-        body: UnwrapRequestSchema,
-        response: {
-          200: UnwrapResponseSchema,
-        },
-      },
-    },
-    async (request) => {
-      const { network, address, amount } = request.body;
-      return await unwrapSolana(fastify, network, address, amount);
-    },
-  );
-};
-
-export default unwrapRoute;

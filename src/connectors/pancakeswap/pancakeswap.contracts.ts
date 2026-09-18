@@ -1214,6 +1214,84 @@ export const IPancakeswapV2FactoryABI = {
 };
 
 /**
+ * Pancakeswap V3 Factory ABI — minimal fragment for deploying/reading a pool.
+ * `getPool` returns the canonical pool for a (token0, token1, fee) triple, or the zero
+ * address when no pool has been deployed yet. `createPool` deploys the pool (through the
+ * PoolDeployer internally) — used only as a fallback if the NFT manager path is unavailable.
+ * create-pool reads back the authoritative pool address from `getPool` after the tx confirms.
+ */
+export const IPancakeswapV3FactoryABI = [
+  {
+    inputs: [
+      { internalType: 'address', name: 'tokenA', type: 'address' },
+      { internalType: 'address', name: 'tokenB', type: 'address' },
+      { internalType: 'uint24', name: 'fee', type: 'uint24' },
+    ],
+    name: 'getPool',
+    outputs: [{ internalType: 'address', name: 'pool', type: 'address' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'address', name: 'tokenA', type: 'address' },
+      { internalType: 'address', name: 'tokenB', type: 'address' },
+      { internalType: 'uint24', name: 'fee', type: 'uint24' },
+    ],
+    name: 'createPool',
+    outputs: [{ internalType: 'address', name: 'pool', type: 'address' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+];
+
+/**
+ * Pancakeswap V3 Pool ABI — minimal `slot0` fragment. `sqrtPriceX96 == 0` means the pool
+ * contract has been deployed by the factory but not yet initialized with a price.
+ * create-pool uses this to distinguish an already-initialized (live) pool from a
+ * created-but-uninitialized one.
+ */
+export const IPancakeswapV3PoolSlot0ABI = [
+  {
+    inputs: [],
+    name: 'slot0',
+    outputs: [
+      { internalType: 'uint160', name: 'sqrtPriceX96', type: 'uint160' },
+      { internalType: 'int24', name: 'tick', type: 'int24' },
+      { internalType: 'uint16', name: 'observationIndex', type: 'uint16' },
+      { internalType: 'uint16', name: 'observationCardinality', type: 'uint16' },
+      { internalType: 'uint16', name: 'observationCardinalityNext', type: 'uint16' },
+      { internalType: 'uint32', name: 'feeProtocol', type: 'uint32' },
+      { internalType: 'bool', name: 'unlocked', type: 'bool' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+];
+
+/**
+ * Pancakeswap V3 NonfungiblePositionManager ABI — minimal `createAndInitializePoolIfNecessary`
+ * fragment. This single, idempotent call deploys the pool via the factory/PoolDeployer (if it
+ * does not yet exist) AND initializes it at `sqrtPriceX96` (if not yet initialized), returning
+ * the pool address. Preferred over the two-tx Factory.createPool + Pool.initialize path.
+ * Pancakeswap V3 is a Uniswap V3 fork, so its NFT manager exposes this method.
+ */
+export const INftManagerCreatePoolABI = [
+  {
+    inputs: [
+      { internalType: 'address', name: 'token0', type: 'address' },
+      { internalType: 'address', name: 'token1', type: 'address' },
+      { internalType: 'uint24', name: 'fee', type: 'uint24' },
+      { internalType: 'uint160', name: 'sqrtPriceX96', type: 'uint160' },
+    ],
+    name: 'createAndInitializePoolIfNecessary',
+    outputs: [{ internalType: 'address', name: 'pool', type: 'address' }],
+    stateMutability: 'payable',
+    type: 'function',
+  },
+];
+
+/**
  * Standard ERC20 ABI for token operations
  */
 export const ERC20_ABI = [

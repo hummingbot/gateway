@@ -1,6 +1,7 @@
 import { Solana } from '../../../../src/chains/solana/solana';
 import { DFlow } from '../../../../src/connectors/dflow/dflow';
 import { fastifyWithTypeProvider } from '../../../utils/testUtils';
+import { parseWire } from '../../../utils/wire';
 
 jest.mock('../../../../src/chains/solana/solana');
 jest.mock('../../../../src/connectors/dflow/dflow');
@@ -8,7 +9,7 @@ jest.mock('../../../../src/connectors/dflow/dflow');
 const buildApp = async () => {
   const server = fastifyWithTypeProvider();
   await server.register(require('@fastify/sensible'));
-  const { quoteSwapRoute } = await import('../../../../src/connectors/dflow/router-routes/quoteSwap');
+  const { quoteSwapRoute } = await import('../../../../src/trading/trading-router-routes/quoteSwap');
   await server.register(quoteSwapRoute);
   return server;
 };
@@ -72,7 +73,8 @@ describe('GET /quote-swap (dflow)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'dflow',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -82,14 +84,16 @@ describe('GET /quote-swap (dflow)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('quoteId');
-    expect(body).toHaveProperty('amountIn', 0.1);
+    expect(Number(body.amountIn)).toBe(0.1);
     expect(body).toHaveProperty('amountOut', 15);
     expect(body).toHaveProperty('price', 150);
     expect(body).toHaveProperty('tokenIn', mockSOL.address);
     expect(body).toHaveProperty('tokenOut', mockUSDC.address);
-    expect(body).toHaveProperty('quoteResponse');
+    // The connector's raw provider payload (quoteResponse / routerResult) is not part
+    // of the unified router response schema, which serializes the shared quote fields
+    // plus quoteId. Assertions on it moved out with the per-connector route.
     expect(body.approximation).toBeUndefined();
 
     // ExactIn with the base amount in raw units
@@ -118,7 +122,8 @@ describe('GET /quote-swap (dflow)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'dflow',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -128,9 +133,9 @@ describe('GET /quote-swap (dflow)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body).toHaveProperty('approximation', true);
-    expect(body).toHaveProperty('amountIn', 15);
+    expect(Number(body.amountIn)).toBe(15);
     expect(body.amountOut).toBeCloseTo(0.0999);
     // Input is fixed for the approximated ExactIn quote
     expect(body.maxAmountIn).toBeCloseTo(15);
@@ -148,7 +153,8 @@ describe('GET /quote-swap (dflow)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'dflow',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -159,7 +165,7 @@ describe('GET /quote-swap (dflow)', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body.message).toContain('ExactIn only');
     expect(mockDFlowInstance.getQuote).not.toHaveBeenCalled();
   });
@@ -175,7 +181,8 @@ describe('GET /quote-swap (dflow)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'dflow',
         baseToken: 'INVALID',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -184,7 +191,7 @@ describe('GET /quote-swap (dflow)', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body)).toHaveProperty('error');
+    expect(parseWire(response.body)).toHaveProperty('error');
   });
 
   it('should return 400 if no routes found for SELL', async () => {
@@ -198,7 +205,8 @@ describe('GET /quote-swap (dflow)', () => {
       method: 'GET',
       url: '/quote-swap',
       query: {
-        network: 'mainnet-beta',
+        chainNetwork: 'solana-mainnet-beta',
+        connector: 'dflow',
         baseToken: 'SOL',
         quoteToken: 'USDC',
         amount: '0.1',
@@ -207,7 +215,7 @@ describe('GET /quote-swap (dflow)', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    const body = JSON.parse(response.body);
+    const body = parseWire(response.body);
     expect(body.message).toContain('No route found');
   });
 });

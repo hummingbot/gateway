@@ -1,5 +1,5 @@
 import sensible from '@fastify/sensible';
-import Fastify, { FastifyInstance } from 'fastify';
+import { FastifyInstance } from 'fastify';
 
 jest.mock('../../src/wallet/utils');
 jest.mock('../../src/config/utils');
@@ -14,6 +14,7 @@ import { Solana } from '../../src/chains/solana/solana';
 import { updateDefaultWallet } from '../../src/config/utils';
 import { setDefaultRoute } from '../../src/wallet/routes/setDefault';
 import { validateChainName, getSafeWalletFilePath, isHardwareWallet } from '../../src/wallet/utils';
+import { fastifyWithTypeProvider } from '../utils/testUtils';
 
 const SOLANA_ADDRESS = 'HN7cABqLq46Es1jh92dQQisAq662SmxELLLsHHe4YWrH';
 
@@ -23,7 +24,7 @@ describe('POST /setDefault', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    app = Fastify();
+    app = fastifyWithTypeProvider();
     await app.register(sensible);
     await app.register(setDefaultRoute);
 

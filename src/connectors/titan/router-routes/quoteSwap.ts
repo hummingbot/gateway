@@ -1,16 +1,14 @@
 import { Static } from '@sinclair/typebox';
-import { FastifyPluginAsync } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 
 import { Solana } from '../../../chains/solana/solana';
 import { getSolanaChainConfig } from '../../../chains/solana/solana.config';
-import { QuoteSwapRequestType } from '../../../schemas/router-schema';
 import { httpErrors } from '../../../services/error-handler';
 import { logger } from '../../../services/logger';
 import { quoteCache } from '../../../services/quote-cache';
 import { sanitizeErrorMessage } from '../../../services/sanitize';
-import { approximateBuyViaSellLeg } from '../../router-utils';
-import { TitanQuoteSwapRequest, TitanQuoteSwapResponse } from '../schemas';
+import { approximateBuyViaSellLeg, attemptedRoute } from '../../router-utils';
+import { TitanQuoteSwapResponse } from '../schemas';
 import { Titan, TitanSwapResponse } from '../titan';
 import { TitanConfig } from '../titan.config';
 
@@ -28,7 +26,7 @@ export async function quoteSwap(
   const titan = await Titan.getInstance(network);
 
   // Titan DART quotes are wallet-bound; fall back to the configured default wallet when
-  // the caller does not specify one (the unified /trading/swap dispatcher omits it)
+  // the caller does not specify one (the unified /trading/router dispatcher omits it)
   const wallet = walletAddress || getSolanaChainConfig().defaultWallet;
   if (!wallet) {
     throw httpErrors.badRequest(
@@ -60,7 +58,7 @@ export async function quoteSwap(
       swapRoute = await titan.getSwapRoute(inputToken.address, outputToken.address, amountRaw, wallet, slippageBps);
     } catch (error) {
       throw httpErrors.noRouteFound(
-        `No route found for ${baseTokenInfo.symbol} -> ${quoteTokenInfo.symbol} (ExactIn). ${error?.message || error}`,
+        `No route found for ${attemptedRoute(side, baseTokenInfo.symbol, quoteTokenInfo.symbol)}. ${error?.message || error}`,
       );
     }
   } else {
@@ -128,43 +126,3 @@ export async function quoteSwap(
     wallet,
   };
 }
-
-export const quoteSwapRoute: FastifyPluginAsync = async (fastify) => {
-  fastify.get<{
-    Querystring: QuoteSwapRequestType;
-    Reply: Static<typeof TitanQuoteSwapResponse>;
-  }>(
-    '/quote-swap',
-    {
-      schema: {
-        description: 'Get an executable swap quote from Titan (DART)',
-        tags: ['/connector/titan'],
-        querystring: TitanQuoteSwapRequest,
-        response: { 200: TitanQuoteSwapResponse },
-      },
-    },
-    async (request) => {
-      try {
-        const { network, baseToken, quoteToken, amount, side, slippagePct, approximateIfNoExactOut, walletAddress } =
-          request.query as typeof TitanQuoteSwapRequest._type;
-
-        return await quoteSwap(
-          network,
-          baseToken,
-          quoteToken,
-          amount,
-          side as 'BUY' | 'SELL',
-          slippagePct,
-          approximateIfNoExactOut,
-          walletAddress,
-        );
-      } catch (e) {
-        if (e.statusCode) throw e;
-        logger.error('Error getting Titan quote:', e);
-        throw httpErrors.internalServerError(e.message || 'Internal server error');
-      }
-    },
-  );
-};
-
-export default quoteSwapRoute;
