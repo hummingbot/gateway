@@ -52,6 +52,13 @@ describe('POST /execute-quote — Permit2 expiration handling', () => {
     jest.clearAllMocks();
     permit2Expiration = BigNumber.from(MAX_UINT48);
 
+    // The route checks what the quote is bound to before dispatching to the connector.
+    (quoteCache.getBinding as jest.Mock).mockReturnValue({
+      connector: 'uniswap',
+      network: 'robinhoodchain',
+      wallet: null,
+    });
+
     // Cached quote: BUY 0.003 WETH paying USDG, mirroring the failing bot order
     (quoteCache.get as jest.Mock).mockReturnValue({
       request: { inputToken: mockUSDG, outputToken: mockWETH, side: 'BUY', amount: 0.003 },

@@ -61,15 +61,18 @@ describe('POST /execute-quote (dflow)', () => {
     const buildSwapTransactionUnsigned = jest.fn(async () => unsignedTx);
     (DFlow.getInstance as jest.Mock).mockResolvedValue({ buildSwapTransactionUnsigned });
 
-    quoteCache.set('dflow-quote-1', {
-      connector: 'dflow',
-      network: 'mainnet-beta',
-      inputToken: mockSOL,
-      outputToken: mockUSDC,
-      side: 'SELL',
-      slippagePct: 0.5,
-      quoteResponse: { slippageBps: 50 },
-    });
+    quoteCache.set(
+      'dflow-quote-1',
+      { connector: 'dflow', network: 'mainnet-beta', wallet: null },
+      {
+        network: 'mainnet-beta',
+        inputToken: mockSOL,
+        outputToken: mockUSDC,
+        side: 'SELL',
+        slippagePct: 0.5,
+        quoteResponse: { slippageBps: 50 },
+      },
+    );
 
     const response = await server.inject({
       method: 'POST',
@@ -108,7 +111,7 @@ describe('POST /execute-quote (dflow)', () => {
   });
 
   it("returns 400 for another connector's cached quote", async () => {
-    quoteCache.set('other-quote', { connector: 'jupiter' });
+    quoteCache.set('other-quote', { connector: 'jupiter', network: 'mainnet-beta', wallet: null }, {});
 
     const response = await server.inject({
       method: 'POST',

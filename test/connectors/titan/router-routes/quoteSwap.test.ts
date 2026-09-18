@@ -112,9 +112,11 @@ describe('GET /quote-swap (titan)', () => {
     );
 
     // Cached quote is bound to the wallet for the execute-quote wallet-match check
-    const cached = quoteCache.get(body.quoteId);
-    expect(cached.wallet).toBe(WALLET);
-    expect(cached.connector).toBe('titan');
+    expect(quoteCache.getBinding(body.quoteId)).toEqual({
+      connector: 'titan',
+      network: 'mainnet-beta',
+      wallet: WALLET,
+    });
     quoteCache.delete(body.quoteId);
   });
 

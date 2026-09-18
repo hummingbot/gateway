@@ -36,10 +36,10 @@ const confirmedResult = {
   },
 };
 
+const titanBinding = { connector: 'titan', network: 'mainnet-beta', wallet: WALLET };
+
 const cachedTitanQuote = () => ({
-  connector: 'titan',
   network: 'mainnet-beta',
-  wallet: WALLET,
   inputToken: mockSOL,
   outputToken: mockUSDC,
   side: 'SELL',
@@ -75,7 +75,7 @@ describe('POST /execute-quote (titan)', () => {
     (Solana.getInstance as jest.Mock).mockResolvedValue(mockSolanaInstance);
     (buildVersionedTransactionFromInstructions as jest.Mock).mockResolvedValue(unsignedTx);
 
-    quoteCache.set('titan-quote-1', cachedTitanQuote());
+    quoteCache.set('titan-quote-1', titanBinding, cachedTitanQuote());
 
     const response = await server.inject({
       method: 'POST',
@@ -101,7 +101,7 @@ describe('POST /execute-quote (titan)', () => {
   });
 
   it('rejects execution from a wallet other than the one the quote was built for', async () => {
-    quoteCache.set('titan-quote-2', cachedTitanQuote());
+    quoteCache.set('titan-quote-2', titanBinding, cachedTitanQuote());
 
     const response = await server.inject({
       method: 'POST',
@@ -115,7 +115,7 @@ describe('POST /execute-quote (titan)', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(JSON.parse(response.body).message).toContain('re-quote');
+    expect(JSON.parse(response.body).message).toMatch(/re-quote/i);
     // The mismatched attempt must not consume the quote.
     expect(quoteCache.get('titan-quote-2')).not.toBeNull();
   });

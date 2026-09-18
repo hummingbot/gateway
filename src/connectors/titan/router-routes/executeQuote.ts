@@ -11,20 +11,14 @@ export async function executeQuote(
   quoteId: string,
 ): Promise<SwapExecuteResponseType> {
   // Retrieve cached quote
+  // The connector, network and wallet this quote may be spent under are checked by
+  // /trading/router/execute-quote against the binding cached with it.
   const cached = quoteCache.get(quoteId);
-  if (!cached || cached.connector !== 'titan') {
+  if (!cached) {
     throw httpErrors.badRequest('Quote not found or expired');
   }
 
-  const { wallet, inputToken, outputToken, swapRoute, slippagePct } = cached;
-
-  // Titan instructions are built for a specific wallet; executing them from another wallet
-  // would fail on-chain or move the wrong accounts — require a re-quote instead
-  if (walletAddress !== wallet) {
-    throw httpErrors.badRequest(
-      `Quote ${quoteId} was created for wallet ${wallet}; re-quote with walletAddress=${walletAddress}`,
-    );
-  }
+  const { inputToken, outputToken, swapRoute, slippagePct } = cached;
 
   const solana = await Solana.getInstance(network);
 

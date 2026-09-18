@@ -135,7 +135,9 @@ export async function quoteSwap(
   // Generate quote ID and cache the entire quote response
   const quoteId = uuidv4();
 
-  quoteCache.set(quoteId, bestRoute, {
+  // Only the route is cached; execute-quote builds the transaction for the executing
+  // wallet, so the quote is not bound to one.
+  quoteCache.set(quoteId, { connector: 'jupiter', network, wallet: null }, bestRoute, {
     network,
     baseToken,
     quoteToken,

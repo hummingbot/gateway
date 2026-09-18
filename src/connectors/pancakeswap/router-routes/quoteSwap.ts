@@ -103,7 +103,10 @@ async function quoteSwap(
     },
   };
 
-  quoteCache.set(quoteId, cachedQuote);
+  // walletAddress ?? null: with no wallet the recipient is the Universal Router's MSG_SENDER
+  // sentinel, which the router maps to msg.sender — the quote pays out to whoever executes
+  // it, so it is not bound to any one wallet.
+  quoteCache.set(quoteId, { connector: 'pancakeswap', network, wallet: walletAddress ?? null }, cachedQuote);
 
   logger.info(
     `[quoteSwap] Cached quote ${quoteId}: ${estimatedAmountIn} ${inputToken.symbol} -> ${estimatedAmountOut} ${outputToken.symbol}`,

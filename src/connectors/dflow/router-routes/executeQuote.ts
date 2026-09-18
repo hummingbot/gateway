@@ -11,8 +11,10 @@ export async function executeQuote(
   quoteId: string,
 ): Promise<SwapExecuteResponseType> {
   // Retrieve cached quote
+  // The connector, network and wallet this quote may be spent under are checked by
+  // /trading/router/execute-quote against the binding cached with it.
   const cached = quoteCache.get(quoteId);
-  if (!cached || cached.connector !== 'dflow') {
+  if (!cached) {
     throw httpErrors.badRequest('Quote not found or expired');
   }
 

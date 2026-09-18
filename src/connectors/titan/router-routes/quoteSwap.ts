@@ -100,17 +100,20 @@ export async function quoteSwap(
   // V0 transaction from these with a fresh blockhash, so instructions do not expire; the
   // route's minOut is baked in via slippageBps.
   const quoteId = uuidv4();
-  quoteCache.set(quoteId, {
-    connector: 'titan',
-    network,
-    wallet,
-    inputToken,
-    outputToken,
-    side,
-    slippagePct,
-    swapRoute,
-    isApproximation,
-  });
+  // Titan's instructions are compiled for one wallet, so the quote is bound to it.
+  quoteCache.set(
+    quoteId,
+    { connector: 'titan', network, wallet },
+    {
+      network,
+      inputToken,
+      outputToken,
+      side,
+      slippagePct,
+      swapRoute,
+      isApproximation,
+    },
+  );
 
   return {
     quoteId,

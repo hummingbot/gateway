@@ -63,17 +63,20 @@ describe('POST /execute-quote (okx)', () => {
     const getSwapTransaction = jest.fn(async () => ({ transaction: unsignedTx }));
     (Okx.getInstance as jest.Mock).mockResolvedValue({ getSwapTransaction });
 
-    quoteCache.set('okx-quote-1', {
-      connector: 'okx',
-      network: 'mainnet-beta',
-      inputToken: mockSOL,
-      outputToken: mockUSDC,
-      side: 'SELL',
-      slippagePct: 0.5,
-      amountRaw: '100000000',
-      swapMode: 'exactIn',
-      routerResult: {},
-    });
+    quoteCache.set(
+      'okx-quote-1',
+      { connector: 'okx', network: 'mainnet-beta', wallet: null },
+      {
+        network: 'mainnet-beta',
+        inputToken: mockSOL,
+        outputToken: mockUSDC,
+        side: 'SELL',
+        slippagePct: 0.5,
+        amountRaw: '100000000',
+        swapMode: 'exactIn',
+        routerResult: {},
+      },
+    );
 
     const response = await server.inject({
       method: 'POST',

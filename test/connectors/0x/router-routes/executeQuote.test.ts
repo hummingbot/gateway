@@ -85,6 +85,13 @@ const mockQuoteData = {
   auxiliaryChainData: {},
 } as any;
 
+// 0x compiles the taker into the calldata it returns, so the quote is bound to that wallet.
+const zeroXBinding = {
+  connector: '0x',
+  network: 'mainnet',
+  wallet: '0x1234567890123456789012345678901234567890',
+};
+
 describe('POST /execute-quote', () => {
   let server: any;
 
@@ -119,7 +126,7 @@ describe('POST /execute-quote', () => {
 
   it('should execute a previously fetched quote', async () => {
     const quoteId = 'test-quote-id';
-    quoteCache.set(quoteId, mockQuoteData);
+    quoteCache.set(quoteId, zeroXBinding, mockQuoteData);
 
     mockWallet.sendTransaction.mockResolvedValue(mockTransaction);
     mockTransaction.wait.mockResolvedValue(mockReceipt);
@@ -235,7 +242,7 @@ describe('POST /execute-quote', () => {
 
   it('should throw error if allowance is insufficient', async () => {
     const quoteId = 'test-quote-id';
-    quoteCache.set(quoteId, mockQuoteData);
+    quoteCache.set(quoteId, zeroXBinding, mockQuoteData);
 
     mockWallet.sendTransaction.mockResolvedValue(mockTransaction);
     mockTransaction.wait.mockResolvedValue(mockReceipt);

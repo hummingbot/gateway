@@ -120,7 +120,9 @@ async function quoteSwap(
     expirationTime = now + 30000; // 30 seconds TTL
 
     // Store the quote in global cache for later execution
-    quoteCache.set(quoteId, apiResponse, {
+    // The taker is always concrete here — it falls back to the configured default wallet
+    // when the caller names none — and 0x compiles it into the returned calldata.
+    quoteCache.set(quoteId, { connector: '0x', network, wallet: walletAddress }, apiResponse, {
       network,
       baseToken,
       quoteToken,
