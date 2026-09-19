@@ -123,10 +123,13 @@ export async function openPosition(
   const totalXAmount = new BN(DecimalUtil.toBN(new Decimal(baseTokenAmount || 0), dlmmPool.tokenX.mint.decimals));
   const totalYAmount = new BN(DecimalUtil.toBN(new Decimal(quoteTokenAmount || 0), dlmmPool.tokenY.mint.decimals));
 
-  // Create position transaction following SDK example
-  // Slippage needs to be in BPS (basis points): percentage * 100
-  const slippageBps = slippagePct * 100;
-
+  // The SDK takes slippage as a percentage, not basis points. This used to pass
+  // `slippagePct * 100`, which the SDK reads as a percentage and clamps with
+  // capSlippagePercentage() at 100 — and getSlippageMaxAmount(amount, 100) returns
+  // U64_MAX, i.e. no ceiling on what the deposit may consume. At the template default
+  // of 2% that meant every narrow-range open ran with slippage protection switched off,
+  // and any slippagePct >= 1 did the same. The chunked path below always passed the
+  // percentage, so the two halves of this route disagreed.
   const resolvedStrategyType = strategyType ?? MeteoraConfig.config.strategyType;
 
   logger.info(
@@ -136,8 +139,8 @@ export async function openPosition(
     `Token amounts: ${(baseTokenAmount || 0).toFixed(6)} ${tokenXSymbol}, ${(quoteTokenAmount || 0).toFixed(6)} ${tokenYSymbol}`,
   );
   logger.info(`Bin IDs: min=${minBinId}, max=${maxBinId}, active=${activeBin.binId}, width=${positionWidth}`);
-  if (slippageBps) {
-    logger.info(`Slippage: ${slippagePct}% (${slippageBps} BPS)`);
+  if (slippagePct) {
+    logger.info(`Slippage: ${slippagePct}%`);
   }
 
   // The position account, and every transaction that built it. A narrow range is one
@@ -163,15 +166,16 @@ export async function openPosition(
       totalXAmount,
       totalYAmount,
       strategy: { maxBinId, minBinId, strategyType: resolvedStrategyType },
-      // Only add slippage if provided and greater than 0
-      ...(slippageBps ? { slippage: slippageBps } : {}),
+      // Only add slippage if provided and greater than 0. A percentage, matching the
+      // chunked path below and add-liquidity.
+      ...(slippagePct ? { slippage: slippagePct } : {}),
     });
     await sendStep(createPositionTx, [newImbalancePosition], 'Create position');
   } else {
     // The SDK sizes the work from the strategy and hands back raw instructions grouped by
     // position: the position init, idempotent ATA creations, and the deposit split into
-    // chunks of DEFAULT_BIN_PER_POSITION bins. Note this takes slippage as a percentage,
-    // not the basis points the single-transaction builder above wants.
+    // chunks of DEFAULT_BIN_PER_POSITION bins. Slippage is a percentage here, same as the
+    // single-transaction builder above.
     const { instructionsByPositions } = await dlmmPool.initializeMultiplePositionAndAddLiquidityByStrategy(
       async (count: number) => Array.from({ length: count }, () => Keypair.generate()),
       totalXAmount,
