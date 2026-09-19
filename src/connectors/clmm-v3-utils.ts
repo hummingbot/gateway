@@ -106,12 +106,18 @@ export async function computeV3BinDistribution(args: {
 
   // liquidityNet at each boundary, asking the tick bitmap which boundaries have one.
   //
-  // Reading `ticks()` at every boundary is mostly wasted work: nearly all of them are
-  // uninitialized and answer zero. The bitmap reports which are not, one bit per
-  // tickSpacing, so a 401-bin window costs a couple of word reads plus one call per tick
-  // that actually carries liquidity — dozens of calls instead of hundreds. A boundary the
-  // bitmap reports as uninitialized has liquidityNet zero by definition, so not reading it
-  // loses nothing.
+  // The bitmap reports which boundaries are initialized, one bit per tickSpacing, so the
+  // window costs a couple of word reads plus one call per tick that actually carries
+  // liquidity. A boundary the bitmap reports as uninitialized has liquidityNet zero by
+  // definition, so not reading it loses nothing.
+  //
+  // How much this saves depends entirely on the pool, and on the busiest pools it saves
+  // nothing. Measured over a 401-bin window on mainnet: WETH/USDC 0.3% had 400 of 402
+  // boundaries initialized (0% fewer calls), WETH/USDC 0.05% 396 of 402 (1%), WBTC/WETH
+  // 0.3% 311 of 402 (22%), USDC/USDT 0.01% 100 of 402 (75%). So this is a real win on
+  // sparse pools and a no-op on dense ones — it is not what keeps a wide binCount under a
+  // node's rate limit. That is the batching and backoff below, and on a limit as tight as
+  // a public endpoint's a large binCount can still legitimately fail with a 429.
   //
   // This previously read all of them at once and caught each rejection as
   // `liquidityNet: 0`. Both getters cannot revert for in-range inputs, so every rejection
@@ -120,7 +126,7 @@ export async function computeV3BinDistribution(args: {
   // Measured against a node rate-limiting the 401 concurrent calls, a pool whose liquidity
   // truly falls to 7% of its value at spot by +10% reported 94% — a flat curve where the
   // real one drops twelvefold, with nothing in the response to indicate it. Rejections now
-  // propagate, and the bitmap keeps the request small enough not to provoke them.
+  // propagate instead, so a rate-limited read fails loudly rather than flattening the curve.
   const wordOf = (tick: number) => Math.floor(Math.floor(tick / tickSpacing) / 256);
   const words: number[] = [];
   for (let word = wordOf(boundaries[0]); word <= wordOf(boundaries[boundaries.length - 1]); word++) {
