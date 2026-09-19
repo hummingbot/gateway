@@ -17,6 +17,7 @@ import {
 } from '@raydium-io/raydium-sdk-v2';
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { Keypair, PublicKey } from '@solana/web3.js';
+import bs58 from 'bs58';
 
 import { Solana } from '../../chains/solana/solana';
 import { PoolInfo as AmmPoolInfo } from '../../schemas/amm-schema';
@@ -31,6 +32,29 @@ import { isValidClmm, isValidAmm, isValidCpmm } from './raydium.utils';
 interface InternalAmmPoolInfo extends AmmPoolInfo {
   poolType?: 'amm' | 'cpmm';
 }
+
+// SPL token account layout: mint at 0..32, owner at 32..64, amount (u64 LE) at 64..72.
+const TOKEN_ACCOUNT_OWNER_OFFSET = 32;
+const TOKEN_ACCOUNT_AMOUNT_OFFSET = 64;
+
+/** Return only the mint, so a wallet's whole token ledger does not come back. */
+const MINT_SLICE = { offset: 0, length: 32 };
+
+/** Base58 of a u64 little-endian 1 — the balance an NFT holding carries. */
+const AMOUNT_ONE_BASE58 = bs58.encode(Buffer.from([1, 0, 0, 0, 0, 0, 0, 0]));
+
+/**
+ * Accounts that `walletAddress` owns holding exactly one unit.
+ *
+ * This is deliberately looser than the old check, which also required the mint to have
+ * zero decimals and so meant reading every mint. Letting through a dust balance of one
+ * raw unit costs nothing: the personal-position PDA lookup below is what decides whether
+ * a mint is really a Raydium position.
+ */
+const nftHoldingFilters = (walletAddress: string) => [
+  { memcmp: { offset: TOKEN_ACCOUNT_OWNER_OFFSET, bytes: walletAddress } },
+  { memcmp: { offset: TOKEN_ACCOUNT_AMOUNT_OFFSET, bytes: AMOUNT_ONE_BASE58 } },
+];
 
 export class Raydium {
   private static _instances: { [name: string]: Raydium };
@@ -286,21 +310,39 @@ export class Raydium {
    * Gateway has stored.
    */
   async getPositionsForWalletAddress(walletAddress: string): Promise<PositionInfo[]> {
-    const ownerPubkey = new PublicKey(walletAddress);
+    // Validates the address and normalises it to the canonical base58 the memcmp wants.
+    const owner = new PublicKey(walletAddress).toBase58();
 
-    // Raydium position NFTs are minted under either the SPL Token or Token-2022 program
+    // Raydium position NFTs are minted under either the SPL Token or Token-2022 program.
+    //
+    // The filtering happens on the node, not here. Asking for the owner's token accounts
+    // and sifting them locally means the node ships every account the address holds:
+    // `getParsedTokenAccountsByOwner` renders each as verbose JSON and an exchange-scale
+    // address produces ~200MB, which times out; the unparsed form is about a tenth of that
+    // and still overflowed V8's maximum string length on the same address. A memcmp on the
+    // balance asks the node for only the NFT-shaped accounts, and dataSlice trims each
+    // reply to the mint — 1011 accounts in ~3s for that same address. The filters are what
+    // keep this affordable, and both the default public endpoint and the paid providers
+    // serve it; it is an unfiltered getProgramAccounts on the token program that they
+    // refuse.
     const [splTokenAccounts, token2022Accounts] = await Promise.all([
-      this.solana.connection.getParsedTokenAccountsByOwner(ownerPubkey, { programId: TOKEN_PROGRAM_ID }),
-      this.solana.connection.getParsedTokenAccountsByOwner(ownerPubkey, { programId: TOKEN_2022_PROGRAM_ID }),
+      this.solana.connection.getProgramAccounts(TOKEN_PROGRAM_ID, {
+        dataSlice: MINT_SLICE,
+        // Classic token accounts are always exactly 165 bytes.
+        filters: [{ dataSize: 165 }, ...nftHoldingFilters(owner)],
+      }),
+      this.solana.connection.getProgramAccounts(TOKEN_2022_PROGRAM_ID, {
+        dataSlice: MINT_SLICE,
+        // No dataSize here: Token-2022 accounts grow past 165 bytes with each extension,
+        // so pinning the size would silently skip every position NFT that carries one.
+        filters: nftHoldingFilters(owner),
+      }),
     ]);
 
-    // Position NFTs have decimals 0 and a balance of exactly 1
-    const nftMints = [...splTokenAccounts.value, ...token2022Accounts.value]
-      .filter((account) => {
-        const tokenAmount = account.account.data.parsed?.info?.tokenAmount;
-        return tokenAmount?.decimals === 0 && tokenAmount?.uiAmount === 1;
-      })
-      .map((account) => account.account.data.parsed.info.mint as string);
+    // dataSlice left exactly the mint in each account's data.
+    const nftMints = [...splTokenAccounts, ...token2022Accounts].map(({ account }) =>
+      new PublicKey(account.data).toBase58(),
+    );
 
     logger.debug(`Found ${nftMints.length} NFT(s) for wallet ${walletAddress}, checking for Raydium CLMM positions`);
 
@@ -321,12 +363,16 @@ export class Raydium {
       });
     }
 
+    // Read the positions a few at a time. Each getPositionInfo is several round trips, so
+    // one after another a wallet with many positions spends minutes here; unbounded
+    // Promise.all instead rate-limits the node. Order follows positionMints so the
+    // response does not reshuffle between calls.
     const positions: PositionInfo[] = [];
-    for (const mint of positionMints) {
-      const positionInfo = await this.getPositionInfo(mint);
-      if (positionInfo) {
-        positions.push(positionInfo);
-      }
+    const readConcurrency = 8;
+    for (let i = 0; i < positionMints.length; i += readConcurrency) {
+      const batch = positionMints.slice(i, i + readConcurrency);
+      const read = await Promise.all(batch.map((mint) => this.getPositionInfo(mint)));
+      positions.push(...read.filter((position): position is PositionInfo => Boolean(position)));
     }
 
     return positions;

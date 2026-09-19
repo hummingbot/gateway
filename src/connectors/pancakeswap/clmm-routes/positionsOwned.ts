@@ -127,7 +127,24 @@ export async function getPositionsOwned(
         price: parseFloat(pool.token0Price.toSignificant(6)),
       });
     } catch (err) {
-      // Do not swallow this. A failure here is indistinguishable from the
+      // A wallet that loses a position mid-scan renumbers underneath this loop: the
+      // enumerable bookkeeping swap-and-pops on removal, so an index that was inside the
+      // set when balanceOf was read can fall off the end, and a tokenId read a moment ago
+      // can stop existing before positions() is asked about it. Verified against the
+      // mainnet position manager: the first reverts with "EnumerableSet: index out of
+      // bounds", the second with "Invalid token ID".
+      //
+      // That is the caller's own concurrent close, not a Gateway fault. Reporting the raw
+      // revert as a 500 reads like a bug in here and tells them nothing; a conflict says
+      // what happened and that the request is worth repeating.
+      const revert = err.message ?? '';
+      if (revert.includes('index out of bounds') || revert.includes('Invalid token ID')) {
+        throw fastify.httpErrors.conflict(
+          `Wallet ${walletAddress} lost a position while its ${numPositions} positions were being listed. Retry.`,
+        );
+      }
+
+      // Do not swallow anything else. A failure here is indistinguishable from the
       // position not existing, so returning the rest would hand the caller a
       // silently short list — and callers size new exposure against it.
       throw fastify.httpErrors.internalServerError(
@@ -136,14 +153,23 @@ export async function getPositionsOwned(
     }
   }
 
-  // Index-based enumeration is only consistent if the wallet's balance did not
-  // change mid-scan. If it did, the list is not the inventory it claims to be.
-  if (positions.length !== numPositions) {
-    throw fastify.httpErrors.internalServerError(
-      `Resolved ${positions.length} positions but balanceOf reported ${numPositions} for wallet ` +
-        `${walletAddress}; the wallet's positions likely changed during enumeration. Retry.`,
-    );
-  }
+  // No final balanceOf comparison. A count check cannot say what it appears to say, and
+  // the version that was here rejected correct answers to do it.
+  //
+  // Enumeration is EnumerableSet-backed, which appends on add and swap-and-pops on remove.
+  // So a position ADDED mid-scan cannot disturb indices 0..N-1 — the loop reads exactly the
+  // set that existed when the request arrived, and the list it returns is a correct
+  // snapshot. A count check sees N+1 against N and throws that correct snapshot away, which
+  // for a wallet that opens positions while polling this route is the common case, not the
+  // edge. A position REMOVED mid-scan is caught by the loop itself, above: the index walks
+  // off the end, or the tokenId stops existing, and either way the pass throws.
+  //
+  // What neither catches is a change that lands after the loop's last read. That window is
+  // narrow and closing it needs atomicity, not arithmetic — pinning every read to one
+  // blockTag, at which point nothing here has to be inferred. Deliberately not done: a
+  // pinned read against the load-balanced public RPCs Gateway defaults to can land on a
+  // node that has not yet seen that block, trading a rare stale list for a routine failed
+  // request. Known and accepted.
 
   return positions;
 }
